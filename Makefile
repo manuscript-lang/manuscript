@@ -8,3 +8,10 @@ clean:
 
 test:
 	go test ./...
+
+generate_parser:
+	@echo "Generating parser from grammar..."
+	@./scripts/generate_parser.sh
+	@go mod tidy
+
+build: generate_parser install
