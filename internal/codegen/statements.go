@@ -59,12 +59,9 @@ func (v *ManuscriptAstVisitor) VisitExprStmt(ctx *parser.ExprStmtContext) interf
 
 // VisitLetAssignment handles the individual assignments in a let declaration
 func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentContext) interface{} {
-	log.Printf("VisitLetAssignment: Called for '%s'", ctx.GetText())
-
 	// Visit the pattern (LHS of the assignment)
 	patternRaw := v.Visit(ctx.LetPattern())
 	if patternRaw == nil {
-		log.Printf("VisitLetAssignment: Pattern visit returned nil")
 		return nil
 	}
 
@@ -77,7 +74,6 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 	case []ast.Expr:
 		lhs = pattern
 	default:
-		log.Printf("VisitLetAssignment: Unexpected pattern type: %T", pattern)
 		return nil
 	}
 
@@ -87,7 +83,6 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 		valueRaw := v.Visit(ctx.GetValue())
 
 		if valueRaw == nil {
-			log.Printf("VisitLetAssignment: Value visit returned nil")
 			return nil
 		}
 
@@ -97,13 +92,10 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 		case []ast.Expr:
 			rhs = value
 		default:
-			log.Printf("VisitLetAssignment: Unexpected value type: %T", value)
 			return nil
 		}
 	} else {
-		// If no value provided, the Go zero value will be used by default
-		// For simple patterns, we can use nil as placeholder
-		// This creates "var x" declaration
+		// If no value provided, create "var x" declaration
 		return &ast.DeclStmt{
 			Decl: &ast.GenDecl{
 				Tok: token.VAR,
@@ -126,30 +118,24 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 
 // VisitLetPattern handles the left side of a let declaration
 func (v *ManuscriptAstVisitor) VisitLetPattern(ctx *parser.LetPatternContext) interface{} {
-	log.Printf("VisitLetPattern: Called for '%s'", ctx.GetText())
-
 	// Handle simple identifiers
 	if ctx.ID() != nil {
 		idToken := ctx.ID().GetSymbol()
 		idName := idToken.GetText()
-		log.Printf("VisitLetPattern: Found simple ID pattern: %s", idName)
 		return ast.NewIdent(idName)
 	}
 
 	// Handle array patterns - convert to multiple variables
 	if ctx.ArrayPattn() != nil {
-		log.Printf("VisitLetPattern: Found array pattern, not fully implemented yet")
-		// TODO: Full implementation for array destructuring
+		// TODO: Implement array destructuring
 		return nil
 	}
 
 	// Handle object patterns - convert to multiple variables
 	if ctx.ObjectPattn() != nil {
-		log.Printf("VisitLetPattern: Found object pattern, not fully implemented yet")
-		// TODO: Full implementation for object destructuring
+		// TODO: Implement object destructuring
 		return nil
 	}
 
-	log.Printf("VisitLetPattern: Unhandled pattern type")
 	return nil
 }

@@ -3,7 +3,7 @@ lexer grammar ManuscriptLexer;
 // Define whitespace first, so it has highest priority
 WS: [ \t\r\n\f]+ -> channel(HIDDEN);
 COMMENT: '//' ~[\r\n]* -> channel(HIDDEN);
-MULTI_LINE_COMMENT: '/*' ~[\r\n]* '*/' -> channel(HIDDEN);
+MULTI_LINE_COMMENT: '/*' .*? '*/' -> channel(HIDDEN);
 
 // Keywords (DEFAULT_MODE implicitly)
 LET: 'let';
@@ -112,12 +112,12 @@ MULTI_QUOTE_START: '\'\'\'' -> pushMode(MULTI_STRING_MODE);
 
 mode SINGLE_STRING_MODE;
     SINGLE_STR_INTERP_START: INTERP_START -> pushMode(INTERPOLATION_MODE);
-    SINGLE_STR_CONTENT : ( ESC_SEQ | ~['\\${\n\r] )+ ;
+    SINGLE_STR_CONTENT : ( ESC_SEQ | ~['\\${] )+ ;
     SINGLE_STR_END : '\'' -> popMode;
 
 mode MULTI_STRING_MODE;
     MULTI_STR_INTERP_START: INTERP_START -> pushMode(INTERPOLATION_MODE);
-    MULTI_STR_CONTENT : ( ESC_SEQ | ~['\\${] | '${' ~'{' )+? ;
+    MULTI_STR_CONTENT : ( ESC_SEQ | ~['\\${] )+ ;
     MULTI_STR_END : '\'\'\'' -> popMode;
 
 mode INTERPOLATION_MODE;

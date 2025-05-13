@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+- do not write excessive comments, if you must write comments, write long form block comments explaining entire flow
+- updating lexer or grammar requires regeneration of parser, use make to regenerate
+- write simple concise code, do not overcomplicate

@@ -1,19 +1,55 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	codegen "manuscript-co/manuscript/internal/codegen"
 	parser "manuscript-co/manuscript/internal/parser"
-	"strings"
 	"testing"
 
 	"github.com/antlr4-go/antlr/v4"
 )
 
+func manuscriptToGo(t *testing.T, input string) string {
+	inputStream := antlr.NewInputStream(input)
+	lexer := parser.NewManuscriptLexer(inputStream)
+	tokenStream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	// Create parser and generate code
+	p := parser.NewManuscript(tokenStream)
+	tree := p.Program()
+
+	codeGen := codegen.NewCodeGenerator()
+	goCode, err := codeGen.Generate(tree)
+
+	if err != nil {
+		t.Fatalf("codeGen.Generate failed: %v", err)
+	}
+	return goCode
+}
+
+// dumpTokens
+func _(tokenStream *antlr.CommonTokenStream) {
+	log.Println("--- Lexer Token Dump Start ---")
+	tokenStream.Fill() // Ensure all tokens are loaded
+	for i, token := range tokenStream.GetAllTokens() {
+		log.Printf("Token %d: Type=%d, Text='%s', Line=%d, Col=%d",
+			i,
+			token.GetTokenType(),
+			token.GetText(),
+			token.GetLine(),
+			token.GetColumn())
+	}
+	log.Println("--- Lexer Token Dump End ---")
+	tokenStream.Seek(0)
+}
+
+func assertGoCode(t *testing.T, actual, expected string) {
+	if actual != expected {
+		t.Fatalf("Generated code does not match expected output.\nExpected:\n%s\n\nActual:\n%s", expected, actual)
+	}
+}
+
 func TestBasicCodegen(t *testing.T) {
-	// Use a direct number for clarity in the test
-	// We'll test string literals and numeric literals separately
 	input := `
 let x = 10;
 let message = 'hello';
@@ -25,56 +61,39 @@ let multiLine2 = 'This is another multi-line string.
 It can also contain multiple lines of text.
 '
 `
+	expected := `package main
 
-	inputStream := antlr.NewInputStream(input)
-	lexer := parser.NewManuscriptLexer(inputStream)
-	tokenStream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	// --- Lexer Token Dump for Diagnostics ---
-	log.Println("--- Lexer Token Dump Start ---")
-	tokenStream.Fill() // Ensure all tokens are loaded
-	for i, token := range tokenStream.GetAllTokens() {
-		// Just print the raw token type without trying to map to symbolic names
-		log.Printf("Token %d: Type=%d, Text='%s', Line=%d, Col=%d",
-			i,
-			token.GetTokenType(),
-			token.GetText(),
-			token.GetLine(),
-			token.GetColumn())
-	}
-	log.Println("--- Lexer Token Dump End ---")
-	tokenStream.Seek(0)
-	// --- End Lexer Token Dump ---
-
-	// Create parser the standard way (like in ExecuteProgram from main.go)
-	p := parser.NewManuscript(tokenStream)
-	tree := p.Program()
-
-	codeGen := codegen.NewCodeGenerator()
-	goCode, err := codeGen.Generate(tree)
-
-	if err != nil {
-		t.Fatalf("codeGen.Generate failed: %v", err)
-	}
-
-	fmt.Println("Reached print statement in TestBasicCodegen")
-	fmt.Printf("--- Generated Go Code (TestBasicCodegen) ---\n%s\n--------------------------------------------\n", goCode)
-
-	// Check for the package
-	if !strings.Contains(goCode, "package main") {
-		t.Fatalf("Generated code missing 'package main'")
-	}
-
-	// Check for the number literal handling
-	if !strings.Contains(goCode, "x := 10") {
-		t.Fatalf("Generated code missing or improperly formatted number literal '10'")
-	}
-
-	// Check for the string literal handling
-	if !strings.Contains(goCode, `message := "hello"`) {
-		t.Fatalf("Generated code missing or improperly formatted string literal declaration")
-	}
+func main() {
+	x := 10
+	message := "hello"
+	multiLine := "\nThis is a multi-line string.\nIt can contain multiple lines of text.\n"
+	multiLine2 := "This is another multi-line string. \nIt can also contain multiple lines of text.\n"
+}
+`
+	goCode := manuscriptToGo(t, input)
+	assertGoCode(t, goCode, expected)
 }
 
-// TODO: Add more test cases for other features as they are implemented
-// in the codegen visitor (e.g., binary ops, function calls, declarations).
+func TestMultipleVariableDeclaration(t *testing.T) {
+	input := `
+let a = 5, b = 10, c = 15;
+let x, y, z = 20; // Only z gets a value, x and y are just declared
+`
+	expected := `package main
+
+func main() {
+	{
+		a := 5
+		b := 10
+		c := 15
+	}
+	{
+		var x
+		var y
+		z := 20
+	}
+}
+`
+	goCode := manuscriptToGo(t, input)
+	assertGoCode(t, goCode, expected)
+}
