@@ -219,6 +219,18 @@ func (s *BaseManuscriptListener) EnterWhileStmt(ctx *WhileStmtContext) {}
 // ExitWhileStmt is called when production whileStmt is exited.
 func (s *BaseManuscriptListener) ExitWhileStmt(ctx *WhileStmtContext) {}
 
+// EnterBreakStmt is called when production breakStmt is entered.
+func (s *BaseManuscriptListener) EnterBreakStmt(ctx *BreakStmtContext) {}
+
+// ExitBreakStmt is called when production breakStmt is exited.
+func (s *BaseManuscriptListener) ExitBreakStmt(ctx *BreakStmtContext) {}
+
+// EnterContinueStmt is called when production continueStmt is entered.
+func (s *BaseManuscriptListener) EnterContinueStmt(ctx *ContinueStmtContext) {}
+
+// ExitContinueStmt is called when production continueStmt is exited.
+func (s *BaseManuscriptListener) ExitContinueStmt(ctx *ContinueStmtContext) {}
+
 // EnterCodeBlock is called when production codeBlock is entered.
 func (s *BaseManuscriptListener) EnterCodeBlock(ctx *CodeBlockContext) {}
 

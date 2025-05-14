@@ -19,7 +19,7 @@ alwaysApply: true
 - DO use short names
 
 # How to write manuscript code
-- DO refer language-desgin.md for understanding available constructs
+- DO refer language-design.md for understanding available constructs
 
 # How to add or edit a language feature
 1. Update grammar
@@ -42,7 +42,7 @@ alwaysApply: true
 - DO NOT add comments in expected go code
 - DO follow this structure for compilation tests
 
-title
+{title for the test}
 ---
 # {test name}
 ```ms

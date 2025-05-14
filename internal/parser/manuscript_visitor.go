@@ -107,6 +107,12 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#whileStmt.
 	VisitWhileStmt(ctx *WhileStmtContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#breakStmt.
+	VisitBreakStmt(ctx *BreakStmtContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#continueStmt.
+	VisitContinueStmt(ctx *ContinueStmtContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#codeBlock.
 	VisitCodeBlock(ctx *CodeBlockContext) interface{}
 

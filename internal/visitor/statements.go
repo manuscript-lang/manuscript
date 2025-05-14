@@ -1,7 +1,7 @@
 package visitor
 
 import (
-	"go/ast"
+	"go/ast" // Aliased to avoid conflict with ANTLR's token
 	"manuscript-co/manuscript/internal/parser"
 )
 
@@ -10,34 +10,83 @@ import (
 
 // VisitStmt handles different kinds of statements.
 func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
-
 	if ctx.LetDecl() != nil {
-		return v.VisitLetDecl(ctx.LetDecl().(*parser.LetDeclContext))
+		if concreteCtx, ok := ctx.LetDecl().(*parser.LetDeclContext); ok {
+			return v.VisitLetDecl(concreteCtx)
+		}
+		v.addError("Internal error: Failed to process let declaration structure: "+ctx.LetDecl().GetText(), ctx.LetDecl().GetStart())
+		return nil
 	}
 
 	if exprStmtCtx := ctx.ExprStmt(); exprStmtCtx != nil {
-		if concreteExprStmtCtx, ok := exprStmtCtx.(*parser.ExprStmtContext); ok {
-			return v.VisitExprStmt(concreteExprStmtCtx)
-		} else {
-			v.addError("Internal error: Failed to process expression statement structure: "+exprStmtCtx.GetText(), exprStmtCtx.GetStart())
-			return nil
+		if concreteCtx, ok := exprStmtCtx.(*parser.ExprStmtContext); ok {
+			return v.VisitExprStmt(concreteCtx)
 		}
+		v.addError("Internal error: Failed to process expression statement structure: "+exprStmtCtx.GetText(), exprStmtCtx.GetStart())
+		return nil
 	}
 
 	if ifStmtCtx := ctx.IfStmt(); ifStmtCtx != nil {
-		if concreteIfStmtCtx, ok := ifStmtCtx.(*parser.IfStmtContext); ok {
-			return v.VisitIfStmt(concreteIfStmtCtx)
-		} else {
-			v.addError("Internal error: Failed to process if statement structure: "+ifStmtCtx.GetText(), ifStmtCtx.GetStart())
-			return nil
+		if concreteCtx, ok := ifStmtCtx.(*parser.IfStmtContext); ok {
+			return v.VisitIfStmt(concreteCtx)
 		}
+		v.addError("Internal error: Failed to process if statement structure: "+ifStmtCtx.GetText(), ifStmtCtx.GetStart())
+		return nil
+	}
+
+	if whileStmtCtx := ctx.WhileStmt(); whileStmtCtx != nil {
+		if concreteCtx, ok := whileStmtCtx.(*parser.WhileStmtContext); ok {
+			return v.VisitWhileStmt(concreteCtx)
+		}
+		v.addError("Internal error: Failed to process while statement structure: "+whileStmtCtx.GetText(), whileStmtCtx.GetStart())
+		return nil
+	}
+
+	if forStmtCtx := ctx.ForStmt(); forStmtCtx != nil {
+		if concreteCtx, ok := forStmtCtx.(*parser.ForStmtContext); ok {
+			return v.VisitForStmt(concreteCtx)
+		}
+		v.addError("Internal error: Failed to process for statement structure: "+forStmtCtx.GetText(), forStmtCtx.GetStart())
+		return nil
+	}
+
+	if breakStmtCtx := ctx.BreakStmt(); breakStmtCtx != nil {
+		if concreteCtx, ok := breakStmtCtx.(*parser.BreakStmtContext); ok {
+			return v.VisitBreakStmt(concreteCtx)
+		}
+		v.addError("Internal error: Failed to process break statement structure: "+breakStmtCtx.GetText(), breakStmtCtx.GetStart())
+		return nil
+	}
+
+	if continueStmtCtx := ctx.ContinueStmt(); continueStmtCtx != nil {
+		if concreteCtx, ok := continueStmtCtx.(*parser.ContinueStmtContext); ok {
+			return v.VisitContinueStmt(concreteCtx)
+		}
+		v.addError("Internal error: Failed to process continue statement structure: "+continueStmtCtx.GetText(), continueStmtCtx.GetStart())
+		return nil
+	}
+
+	if returnStmtCtx := ctx.ReturnStmt(); returnStmtCtx != nil {
+		if concreteCtx, ok := returnStmtCtx.(*parser.ReturnStmtContext); ok {
+			return v.VisitReturnStmt(concreteCtx)
+		}
+		v.addError("Internal error: Failed to process return statement structure: "+returnStmtCtx.GetText(), returnStmtCtx.GetStart())
+		return nil
+	}
+
+	if codeBlockCtx := ctx.CodeBlock(); codeBlockCtx != nil {
+		if concreteCtx, ok := codeBlockCtx.(*parser.CodeBlockContext); ok {
+			return v.VisitCodeBlock(concreteCtx)
+		}
+		v.addError("Internal error: Failed to process code block structure: "+codeBlockCtx.GetText(), codeBlockCtx.GetStart())
+		return nil
 	}
 
 	if ctx.SEMICOLON() != nil {
-		return &ast.EmptyStmt{}
+		return &ast.EmptyStmt{Semicolon: getAntlrTokenPos(ctx.SEMICOLON().GetSymbol())}
 	}
 
-	v.addError("Unhandled statement type: "+ctx.GetText(), ctx.GetStart())
+	v.addError("Unhandled statement type in VisitStmt: "+ctx.GetText(), ctx.GetStart())
 	return nil
 }
 

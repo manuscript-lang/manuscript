@@ -107,6 +107,12 @@ type ManuscriptListener interface {
 	// EnterWhileStmt is called when entering the whileStmt production.
 	EnterWhileStmt(c *WhileStmtContext)
 
+	// EnterBreakStmt is called when entering the breakStmt production.
+	EnterBreakStmt(c *BreakStmtContext)
+
+	// EnterContinueStmt is called when entering the continueStmt production.
+	EnterContinueStmt(c *ContinueStmtContext)
+
 	// EnterCodeBlock is called when entering the codeBlock production.
 	EnterCodeBlock(c *CodeBlockContext)
 
@@ -313,6 +319,12 @@ type ManuscriptListener interface {
 
 	// ExitWhileStmt is called when exiting the whileStmt production.
 	ExitWhileStmt(c *WhileStmtContext)
+
+	// ExitBreakStmt is called when exiting the breakStmt production.
+	ExitBreakStmt(c *BreakStmtContext)
+
+	// ExitContinueStmt is called when exiting the continueStmt production.
+	ExitContinueStmt(c *ContinueStmtContext)
 
 	// ExitCodeBlock is called when exiting the codeBlock production.
 	ExitCodeBlock(c *CodeBlockContext)

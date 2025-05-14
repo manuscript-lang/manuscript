@@ -132,6 +132,8 @@ stmt:
 	| ifStmt
 	| forStmt
 	| whileStmt
+	| breakStmt
+	| continueStmt
 	| codeBlock // Block of statements
 	| SEMICOLON // Empty statement
 	;
@@ -142,30 +144,31 @@ returnStmt: RETURN (expr (COMMA expr)*)? SEMICOLON?; // Allow zero, one, or mult
 yieldStmt: YIELD expr? SEMICOLON?;
 
 ifStmt: 
-	IF condition = expr block = codeBlock (ELSE elseBlock = codeBlock)?;
+	IF condition = expr block = codeBlock (ELSE elseBlock = codeBlock)? SEMICOLON?; // Restored optional SEMICOLON
 
 // TODO: Define detailed loop structures based on language-design.md
 forStmt:
-	FOR 
-	( 
-	  // C-style loop: for init; condition; update { body }
-	  init = forInitPattn? SEMICOLON 
-	  condition = expr? SEMICOLON 
-	  update = expr? 
-	  block = codeBlock
-	| // For-in loop: for pattern in iterable { body }
-	  pattern = loopPattern IN iterable = expr 
-	  block = codeBlock
-	) SEMICOLON? ; // Optional semicolon after the loop
+    FOR
+    ( // Option 1: C-style loop
+      cStyleInit = forInitPattn? SEMICOLON
+      cStyleCond = expr? SEMICOLON
+      cStylePost = expr?
+      block = codeBlock
+    // Option 2: For-in iterable loop (Removed range-specific version for now)
+    | loopVars = loopPattern IN iterable = expr
+      block = codeBlock
+    ) SEMICOLON? ; // Optional semicolon after the loop
 
 forInitPattn:
-	letDecl | exprStmt; // Allow let declaration or expression statement as initializer
+	letDecl | expr; // Allow let declaration or simple expression as initializer.
 
-loopPattern: // Pattern for for-in loops
-	varName = ID // for v in ...
-	| LSQBR var1 = ID COMMA var2 = ID RSQBR; // for [v, i] in ... or for [k, v] in ... (ambiguity needs semantic check)
+loopPattern: // Pattern for for-in loops, e.g., 'v' or 'k, v'
+    var1 = ID (COMMA var2 = ID)?;
 
 whileStmt: WHILE condition = expr block = codeBlock SEMICOLON?;
+
+breakStmt: BREAK SEMICOLON?;
+continueStmt: CONTINUE SEMICOLON?;
 
 codeBlock: LBRACE (stmts += stmt)* RBRACE; // Sequence of statements
 

@@ -140,6 +140,14 @@ func (v *BaseManuscriptVisitor) VisitWhileStmt(ctx *WhileStmtContext) interface{
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitBreakStmt(ctx *BreakStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitContinueStmt(ctx *ContinueStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitCodeBlock(ctx *CodeBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }

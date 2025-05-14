@@ -37,6 +37,8 @@ ASYNC: 'async';
 AWAIT: 'await';
 METHODS: 'methods';
 SELF: 'self';
+BREAK: 'break';
+CONTINUE: 'continue';
 
 // Punctuation (DEFAULT_MODE implicitly)
 LBRACE: '{';
