@@ -1,164 +1,151 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	parser "manuscript-co/manuscript/internal/parser"
 	codegen "manuscript-co/manuscript/internal/visitor"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
+
+	"kr.dev/diff"
 
 	"github.com/antlr4-go/antlr/v4"
 )
+
+var (
+	fileFilter = flag.String("file", "", "Filter test files by a suffix of their name (without .md extension)")
+	debug      = flag.Bool("debug", false, "Enable token dumping for debugging")
+)
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	os.Exit(m.Run())
+}
 
 func manuscriptToGo(t *testing.T, input string) string {
 	inputStream := antlr.NewInputStream(input)
 	lexer := parser.NewManuscriptLexer(inputStream)
 	tokenStream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
-	// Create parser and generate code
+	if *debug {
+		dumpTokens(tokenStream)
+	}
+
 	p := parser.NewManuscript(tokenStream)
 	tree := p.Program()
-
 	codeGen := codegen.NewCodeGenerator()
 	goCode, err := codeGen.Generate(tree)
-
 	if err != nil {
 		t.Fatalf("codeGen.Generate failed: %v", err)
 	}
-	return goCode
+	return strings.TrimSpace(goCode)
 }
 
-// dumpTokens
-func _(tokenStream *antlr.CommonTokenStream) {
+func dumpTokens(stream *antlr.CommonTokenStream) {
 	log.Println("--- Lexer Token Dump Start ---")
-	tokenStream.Fill() // Ensure all tokens are loaded
-	for i, token := range tokenStream.GetAllTokens() {
+	stream.Fill()
+	for i, token := range stream.GetAllTokens() {
 		log.Printf("Token %d: Type=%d, Text='%s', Line=%d, Col=%d",
-			i,
-			token.GetTokenType(),
-			token.GetText(),
-			token.GetLine(),
-			token.GetColumn())
+			i, token.GetTokenType(), token.GetText(), token.GetLine(), token.GetColumn())
 	}
 	log.Println("--- Lexer Token Dump End ---")
-	tokenStream.Seek(0)
+	stream.Seek(0) // Reset stream for parser
 }
 
 func assertGoCode(t *testing.T, actual, expected string) {
 	if actual != expected {
-		t.Fatalf("Generated code does not match expected output.\nExpected:\n%s\n\nActual:\n%s", expected, actual)
+		diff.Test(t, t.Errorf, expected, actual)
 	}
 }
 
-func TestBasicCodegen(t *testing.T) {
-	input := `
-let x = 10;
-let message = 'hello';
-let multiLine = '''
-This is a multi-line string.
-It can contain multiple lines of text.
-'''
-let multiLine2 = 'This is another multi-line string. 
-It can also contain multiple lines of text.
-'
-`
-	expected := `package main
+func TestMarkdownCompilation(t *testing.T) {
+	testDir := "../tests/compilation"
+	allFiles, err := os.ReadDir(testDir)
+	if err != nil {
+		t.Fatalf("Failed to read test directory %s: %v", testDir, err)
+	}
 
-func main() {
-	x := 10
-	message := "hello"
-	multiLine := "\nThis is a multi-line string.\nIt can contain multiple lines of text.\n"
-	multiLine2 := "This is another multi-line string. \nIt can also contain multiple lines of text.\n"
-}
-`
-	goCode := manuscriptToGo(t, input)
-	assertGoCode(t, goCode, expected)
-}
+	var testFilesToRun []os.DirEntry
+	for _, file := range allFiles {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".md") {
+			continue
+		}
+		if *fileFilter != "" {
+			nameWithoutExt := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+			if strings.HasSuffix(nameWithoutExt, *fileFilter) {
+				testFilesToRun = append(testFilesToRun, file)
+			}
+		} else {
+			testFilesToRun = append(testFilesToRun, file)
+		}
+	}
 
-func TestMultipleVariableDeclaration(t *testing.T) {
-	input := `
-let a = 5, b = 10, c = 15;
-let x, y, z = 20; // Only z gets a value, x and y are just declared
-`
-	expected := `package main
+	if len(testFilesToRun) == 0 {
+		if *fileFilter != "" {
+			t.Fatalf("No .md files matching filter '%s' found in %s", *fileFilter, testDir)
+		} else {
+			t.Logf("No .md files found in %s to test.", testDir)
+			return
+		}
+	}
 
-func main() {
-	a := 5
-	b := 10
-	c := 15
-	var x
-	var y
-	z := 20
-}
-`
-	goCode := manuscriptToGo(t, input)
-	assertGoCode(t, goCode, expected)
-}
+	for _, file := range testFilesToRun {
+		t.Run(file.Name(), func(t *testing.T) {
+			filePath := filepath.Join(testDir, file.Name())
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				t.Fatalf("Failed to read test file %s: %v", filePath, err)
+			}
 
-func TestPrintStatement(t *testing.T) {
-	input := `print("hello world");`
-	expected := `package main
+			msInputs, goExpectedOutputs := parseMarkdownTest(string(content))
 
-import "fmt"
+			if len(msInputs) == 0 {
+				t.Logf("No manuscript/go test pairs found in %s", file.Name())
+				return
+			}
 
-func main() {
-	fmt.Println("hello world")
-}
-`
-	goCode := manuscriptToGo(t, input)
-	assertGoCode(t, goCode, expected)
-}
+			if len(msInputs) != len(goExpectedOutputs) {
+				t.Fatalf("Mismatch in parsed manuscript and go code block counts in %s. Inputs: %d, Outputs: %d",
+					file.Name(), len(msInputs), len(goExpectedOutputs))
+			}
 
-func TestVariableDeclarationOnly(t *testing.T) {
-	input := `let x;`
-	expected := `package main
-
-func main() {
-	var x
-}
-`
-	goCode := manuscriptToGo(t, input)
-	assertGoCode(t, goCode, expected)
+			baseName := strings.TrimSuffix(file.Name(), ".md")
+			for i, msInput := range msInputs {
+				goExpected := goExpectedOutputs[i]
+				t.Run(fmt.Sprintf("%s_pair%d", baseName, i), func(t *testing.T) {
+					actualGo := manuscriptToGo(t, msInput)
+					assertGoCode(t, actualGo, goExpected)
+				})
+			}
+		})
+	}
 }
 
-func TestEmptyInput(t *testing.T) {
-	input := ``
-	expected := `package main
+// parseMarkdownTest extracts ordered pairs of manuscript and go code blocks.
+func parseMarkdownTest(markdownContent string) (msCodes []string, goCodes []string) {
+	// Regex to find fenced code blocks and capture the language tag and the body
+	codeBlockRegex := regexp.MustCompile("(?s)```\\s*(\\w+)\\s*\n(.*?)\n```")
+	allMatches := codeBlockRegex.FindAllStringSubmatch(markdownContent, -1)
 
-func main() {
-}
-`
-	goCode := manuscriptToGo(t, input)
-	assertGoCode(t, goCode, expected)
-}
+	i := 0
+	for i < len(allMatches)-1 {
+		lang1 := strings.TrimSpace(allMatches[i][1])
+		body1 := strings.TrimSpace(allMatches[i][2])
+		lang2 := strings.TrimSpace(allMatches[i+1][1])
+		body2 := strings.TrimSpace(allMatches[i+1][2])
 
-func TestSingleLineComment(t *testing.T) {
-	input := `// This is a single line comment
-let x = 10; // Another comment`
-	expected := `package main
-
-func main() {
-	x := 10
-}
-`
-	goCode := manuscriptToGo(t, input)
-	assertGoCode(t, goCode, expected)
-}
-
-func TestMultiLineComment(t *testing.T) {
-	input := `
-/* This is a
-   multi-line comment */
-let y = "test";
-/* Another multi-line
-   comment spanning
-   several lines */
-`
-	expected := `package main
-
-func main() {
-	y := "test"
-}
-`
-	goCode := manuscriptToGo(t, input)
-	assertGoCode(t, goCode, expected)
+		if lang1 == "ms" && lang2 == "go" {
+			msCodes = append(msCodes, body1)
+			goCodes = append(goCodes, body2)
+			i += 2
+		} else {
+			i++
+		}
+	}
+	return msCodes, goCodes
 }

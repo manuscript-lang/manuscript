@@ -15,3 +15,8 @@ generate_parser:
 	@go mod tidy
 
 build: generate_parser install
+
+.PHONY: test-file
+test-file:
+	@echo "Running single file test: $(f)"
+	go test -v ./cmd/... -run ^TestMarkdownCompilation$$ -timeout 30s -args -file $(f) $(if findstring args debug, -debug)

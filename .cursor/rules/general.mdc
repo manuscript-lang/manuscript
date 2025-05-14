@@ -1,9 +1,10 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 
-- do not write excessive comments, if you must write comments, write long form block comments explaining entire flow
+- do not write excessive comments, if you must write comments, write long form block comments explaining entire flow, rather than indiviaul pieces
 - updating lexer or grammar requires regeneration of parser, use make to regenerate
 - write simple concise code, do not overcomplicate
+- do another pass on the code after writing it, clean up for readability, conciseness, and efficiency
