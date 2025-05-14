@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"manuscript-co/manuscript/internal/codegen"
 	"manuscript-co/manuscript/internal/parser"
+	"manuscript-co/manuscript/internal/visitor"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -22,7 +22,7 @@ func ExecuteProgram(program string) (string, error) {
 	tree := p.Program()
 
 	// Generate Go code
-	codeGen := codegen.NewCodeGenerator()
+	codeGen := visitor.NewCodeGenerator()
 	goCode, err := codeGen.Generate(tree)
 	if err != nil {
 		return "", fmt.Errorf("code generation failed: %w", err)

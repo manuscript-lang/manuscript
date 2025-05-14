@@ -1,13 +1,16 @@
-package codegen
+package visitor
 
 import (
 	"go/ast"
+	"go/token"
 	"log"
 	"manuscript-co/manuscript/internal/parser"
+	"strconv"
 )
 
 // VisitProgram handles the root of the parse tree (program rule).
 func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interface{} {
+	log.Println("SUCCESS: ManuscriptAstVisitor.VisitProgram in program.go is being executed.") // Diagnostic log
 	file := &ast.File{
 		Name:  ast.NewIdent("main"), // Default to main package
 		Decls: []ast.Decl{},         // Declarations will be added here
@@ -43,7 +46,23 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 
 		switch node := visitedItem.(type) {
 		case ast.Stmt:
-			*mainBody = append(*mainBody, node)
+			if stmt, ok := node.(*ast.EmptyStmt); ok && stmt == nil { // Should not happen with current logic, but good check
+				// Do nothing for a truly nil ast.Stmt if it somehow gets here
+			} else if _, isEmpty := node.(*ast.EmptyStmt); isEmpty {
+				// Do not append *ast.EmptyStmt to avoid empty lines or unwanted semicolons
+				log.Printf("VisitProgram: Skipping *ast.EmptyStmt for item: %s", itemCtx.GetText())
+			} else {
+				*mainBody = append(*mainBody, node)
+			}
+		case []ast.Stmt: // New case to handle a slice of statements
+			for _, stmt := range node {
+				if _, isEmpty := stmt.(*ast.EmptyStmt); isEmpty {
+					// Do not append *ast.EmptyStmt from the slice
+					log.Printf("VisitProgram: Skipping *ast.EmptyStmt from slice for item: %s", itemCtx.GetText())
+				} else if stmt != nil {
+					*mainBody = append(*mainBody, stmt)
+				}
+			}
 		case ast.Decl:
 			if funcDecl, ok := node.(*ast.FuncDecl); !ok || funcDecl.Name.Name != "main" {
 				file.Decls = append(file.Decls, node)
@@ -57,6 +76,29 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 				*mainBody = append(*mainBody, &ast.ExprStmt{X: expr})
 			}
 		}
+	}
+
+	// Add collected imports
+	if len(v.ProgramImports) > 0 {
+		var importSpecs []ast.Spec
+		for impPath := range v.ProgramImports {
+			importSpec := &ast.ImportSpec{
+				Path: &ast.BasicLit{
+					Kind:  token.STRING,
+					Value: strconv.Quote(impPath),
+				},
+			}
+			importSpecs = append(importSpecs, importSpec)
+		}
+
+		importDecl := &ast.GenDecl{
+			Tok:   token.IMPORT,
+			Specs: importSpecs,
+		}
+		// Prepend imports to other declarations for conventional Go style.
+		// Ensure mainFunc is still correctly part of Decls if it was the only one.
+		updatedDecls := []ast.Decl{importDecl}
+		file.Decls = append(updatedDecls, file.Decls...)
 	}
 
 	return file

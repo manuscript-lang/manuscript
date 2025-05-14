@@ -1,8 +1,7 @@
-package codegen
+package visitor
 
 import (
 	"go/ast"
-	"go/token"
 	"log"
 	"manuscript-co/manuscript/internal/parser"
 )
@@ -57,85 +56,25 @@ func (v *ManuscriptAstVisitor) VisitExprStmt(ctx *parser.ExprStmtContext) interf
 	return nil // Return nil if the expression visit failed
 }
 
-// VisitLetAssignment handles the individual assignments in a let declaration
-func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentContext) interface{} {
-	// Visit the pattern (LHS of the assignment)
-	patternRaw := v.Visit(ctx.LetPattern())
-	if patternRaw == nil {
-		return nil
-	}
-
-	// For now, we'll only handle simple patterns (identifiers)
-	var lhs []ast.Expr
-
-	switch pattern := patternRaw.(type) {
-	case ast.Expr:
-		lhs = []ast.Expr{pattern}
-	case []ast.Expr:
-		lhs = pattern
-	default:
-		return nil
-	}
-
-	// If there's a value, visit the expression (RHS of the assignment)
-	var rhs []ast.Expr
-	if ctx.GetValue() != nil {
-		valueRaw := v.Visit(ctx.GetValue())
-
-		if valueRaw == nil {
-			return nil
-		}
-
-		switch value := valueRaw.(type) {
-		case ast.Expr:
-			rhs = []ast.Expr{value}
-		case []ast.Expr:
-			rhs = value
-		default:
-			return nil
-		}
-	} else {
-		// If no value provided, create "var x" declaration
-		return &ast.DeclStmt{
-			Decl: &ast.GenDecl{
-				Tok: token.VAR,
-				Specs: []ast.Spec{
-					&ast.ValueSpec{
-						Names: []*ast.Ident{lhs[0].(*ast.Ident)},
-					},
-				},
-			},
+// VisitCodeBlock handles a block of statements.
+// { stmt1; stmt2; ... }
+func (v *ManuscriptAstVisitor) VisitCodeBlock(ctx *parser.CodeBlockContext) interface{} {
+	log.Printf("VisitCodeBlock: Called for '%s'", ctx.GetText())
+	var stmts []ast.Stmt
+	for _, stmtCtx := range ctx.AllStmt() {
+		visitedStmt := v.VisitStmt(stmtCtx.(*parser.StmtContext)) // VisitStmt should handle all statement types
+		if astStmt, ok := visitedStmt.(ast.Stmt); ok {
+			if astStmt != nil { // Ensure we don't append nil statements (e.g. from empty semicolons)
+				stmts = append(stmts, astStmt)
+			}
+		} else if visitedStmt != nil { // If it's not nil, but not ast.Stmt, it's an unexpected type
+			log.Printf("VisitCodeBlock: Expected ast.Stmt from VisitStmt, got %T for '%s'", visitedStmt, stmtCtx.GetText())
+			// Decide on error handling: skip, return nil for block, or panic
+			// For now, skipping the problematic statement
 		}
 	}
-
-	// Create the Go-style ":=" statement (short variable declaration)
-	return &ast.AssignStmt{
-		Lhs: lhs,
-		Tok: token.DEFINE, // ":=" operator
-		Rhs: rhs,
+	return &ast.BlockStmt{
+		List: stmts,
+		// Lbrace and Rbrace positions can be set if needed, e.g., ctx.LBRACE().GetSymbol().GetStart()
 	}
-}
-
-// VisitLetPattern handles the left side of a let declaration
-func (v *ManuscriptAstVisitor) VisitLetPattern(ctx *parser.LetPatternContext) interface{} {
-	// Handle simple identifiers
-	if ctx.ID() != nil {
-		idToken := ctx.ID().GetSymbol()
-		idName := idToken.GetText()
-		return ast.NewIdent(idName)
-	}
-
-	// Handle array patterns - convert to multiple variables
-	if ctx.ArrayPattn() != nil {
-		// TODO: Implement array destructuring
-		return nil
-	}
-
-	// Handle object patterns - convert to multiple variables
-	if ctx.ObjectPattn() != nil {
-		// TODO: Implement object destructuring
-		return nil
-	}
-
-	return nil
 }

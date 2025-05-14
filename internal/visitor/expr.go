@@ -1,4 +1,4 @@
-package codegen
+package visitor
 
 import (
 	"go/ast"
@@ -147,72 +147,6 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 	return v.Visit(ctx.GetLeft()) // Visit the logicalOrExpr
 }
 
-// VisitLogicalOrExpr handles || or passes through logicalAndExpr.
-func (v *ManuscriptAstVisitor) VisitLogicalOrExpr(ctx *parser.LogicalOrExprContext) interface{} {
-	if ctx.GetOp() != nil { // OR case
-		// TODO: Implement binary OR logic (return *ast.BinaryExpr)
-		log.Printf("Warning: Logical OR expression not fully handled: %s", ctx.GetText())
-		return v.Visit(ctx.GetLeft()) // Placeholder
-	}
-	// Pass-through case
-	return v.Visit(ctx.GetLeft()) // Visit the logicalAndExpr
-}
-
-// VisitLogicalAndExpr handles && or passes through equalityExpr.
-func (v *ManuscriptAstVisitor) VisitLogicalAndExpr(ctx *parser.LogicalAndExprContext) interface{} {
-	if ctx.GetOp() != nil { // AND case
-		// TODO: Implement binary AND logic
-		log.Printf("Warning: Logical AND expression not fully handled: %s", ctx.GetText())
-		return v.Visit(ctx.GetLeft()) // Placeholder
-	}
-	// Pass-through case
-	return v.Visit(ctx.GetLeft()) // Visit the equalityExpr
-}
-
-// VisitEqualityExpr handles ==, != or passes through comparisonExpr.
-func (v *ManuscriptAstVisitor) VisitEqualityExpr(ctx *parser.EqualityExprContext) interface{} {
-	if ctx.GetOp() != nil { // Equality op case
-		// TODO: Implement equality logic
-		log.Printf("Warning: Equality expression not fully handled: %s", ctx.GetText())
-		return v.Visit(ctx.GetLeft()) // Placeholder
-	}
-	// Pass-through case
-	return v.Visit(ctx.GetLeft()) // Visit the comparisonExpr
-}
-
-// VisitComparisonExpr handles <, <=, >, >= or passes through additiveExpr.
-func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprContext) interface{} {
-	if ctx.GetOp() != nil { // Comparison op case
-		// TODO: Implement comparison logic
-		log.Printf("Warning: Comparison expression not fully handled: %s", ctx.GetText())
-		return v.Visit(ctx.GetLeft()) // Placeholder
-	}
-	// Pass-through case
-	return v.Visit(ctx.GetLeft()) // Visit the additiveExpr
-}
-
-// VisitAdditiveExpr handles +, - or passes through multiplicativeExpr.
-func (v *ManuscriptAstVisitor) VisitAdditiveExpr(ctx *parser.AdditiveExprContext) interface{} {
-	if ctx.GetOp() != nil { // Add/Sub case
-		// TODO: Implement add/sub logic
-		log.Printf("Warning: Additive expression not fully handled: %s", ctx.GetText())
-		return v.Visit(ctx.GetLeft()) // Placeholder
-	}
-	// Pass-through case
-	return v.Visit(ctx.GetLeft()) // Visit the multiplicativeExpr
-}
-
-// VisitMultiplicativeExpr handles *, / or passes through unaryExpr.
-func (v *ManuscriptAstVisitor) VisitMultiplicativeExpr(ctx *parser.MultiplicativeExprContext) interface{} {
-	if ctx.GetOp() != nil { // Mul/Div case
-		// TODO: Implement mul/div logic
-		log.Printf("Warning: Multiplicative expression not fully handled: %s", ctx.GetText())
-		return v.Visit(ctx.GetLeft()) // Placeholder
-	}
-	// Pass-through case
-	return v.Visit(ctx.GetLeft()) // Visit the unaryExpr
-}
-
 // VisitAwaitExpr handles prefixes or passes through postfixExpr.
 func (v *ManuscriptAstVisitor) VisitAwaitExpr(ctx *parser.AwaitExprContext) interface{} {
 	if ctx.TRY() != nil || ctx.AWAIT() != nil || ctx.ASYNC() != nil {
@@ -225,19 +159,84 @@ func (v *ManuscriptAstVisitor) VisitAwaitExpr(ctx *parser.AwaitExprContext) inte
 
 // VisitPostfixExpr handles calls, member access, index access or passes through primaryExpr.
 func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) interface{} {
-	// Always visit the primary expression first.
 	primaryResult := v.Visit(ctx.PrimaryExpr())
 
-	// Check if there are postfix operations following the primary expression.
-	// A simple heuristic: if the node has more than one child, postfix ops exist.
-	// (Child 0 is primaryExpr, others are tokens like LPAREN, DOT, LSQBR or expr nodes for index/args)
-	if ctx.GetChildCount() > 1 {
-		// TODO: Properly handle the sequence of postfix operations (*ast.CallExpr, *ast.SelectorExpr, *ast.IndexExpr)
-		log.Printf("Warning: Postfix operations (call/member/index) detected but not fully handled: %s. Returning primary expression result.", ctx.GetText())
-		// For now, just return the result from the primary expression to allow propagation.
+	// Check for function call by looking for the LPAREN token
+	if lparenToken := ctx.GetToken(parser.ManuscriptLPAREN, 0); lparenToken != nil {
+		ident, ok := primaryResult.(*ast.Ident)
+		if !ok {
+			log.Printf("Warning: Expected identifier for function call, got %T for %s", primaryResult, ctx.GetText())
+			return &ast.BadExpr{From: token.NoPos, To: token.NoPos} // Return BadExpr for error
+		}
+
+		// Special handling for "print"
+		if ident.Name == "print" {
+			if v.ProgramImports == nil {
+				log.Println("CRITICAL: ProgramImports map not initialized in ManuscriptAstVisitor during print call")
+				// This should ideally not happen due to constructor initialization.
+			}
+			v.ProgramImports["fmt"] = true // Mark "fmt" for import
+
+			var args []ast.Expr
+			// Arguments are in ctx.AllExpr(). This assumes the grammar rule for arguments inside parentheses is `expr*` or `exprList`.
+			// If GetText() of an expr is empty, it might indicate an empty arg list from grammar like `LPAREN RPAREN` vs `LPAREN exprList RPAREN`
+			// We need to ensure AllExpr() doesn't give us a bogus entry for an empty list.
+			rawArgs := ctx.AllExpr()
+			if len(rawArgs) == 1 && rawArgs[0].GetText() == "" { // Heuristic for empty arg list if AllExpr behaves this way
+				rawArgs = nil
+			}
+
+			for _, argCtx := range rawArgs {
+				visitedArg := v.Visit(argCtx)
+				if argExpr, ok := visitedArg.(ast.Expr); ok {
+					args = append(args, argExpr)
+				} else {
+					log.Printf("Warning: Argument to print did not evaluate to ast.Expr: %s. Got %T", argCtx.GetText(), visitedArg)
+					args = append(args, &ast.BadExpr{From: token.NoPos, To: token.NoPos})
+				}
+			}
+
+			return &ast.CallExpr{
+				Fun: &ast.SelectorExpr{
+					X:   ast.NewIdent("fmt"),
+					Sel: ast.NewIdent("Println"),
+				},
+				Args: args,
+			}
+		} else {
+			// Generic function call
+			var args []ast.Expr
+			rawArgs := ctx.AllExpr()
+			if len(rawArgs) == 1 && rawArgs[0].GetText() == "" {
+				rawArgs = nil
+			}
+			for _, argCtx := range rawArgs {
+				visitedArg := v.Visit(argCtx)
+				if argExpr, ok := visitedArg.(ast.Expr); ok {
+					args = append(args, argExpr)
+				} else {
+					log.Printf("Warning: Argument to generic function call did not evaluate to ast.Expr: %s. Got %T", argCtx.GetText(), visitedArg)
+					args = append(args, &ast.BadExpr{From: token.NoPos, To: token.NoPos})
+				}
+			}
+			return &ast.CallExpr{
+				Fun:  ident, // The function identifier itself
+				Args: args,
+			}
+		}
+	} else if dotToken := ctx.GetToken(parser.ManuscriptDOT, 0); dotToken != nil {
+		// TODO: Handle member access (e.g., obj.member) -> *ast.SelectorExpr
+		// This will involve getting the member ID (ctx.ID() or ctx.GetToken(parser.ID, ...))
+		// and creating an *ast.SelectorExpr { X: primaryResult, Sel: ast.NewIdent(memberName) }
+		log.Printf("Warning: Member access (dot operator) not yet handled: %s. Returning primary expression.", ctx.GetText())
+		return primaryResult
+	} else if lsqbrToken := ctx.GetToken(parser.ManuscriptLSQBR, 0); lsqbrToken != nil {
+		// TODO: Handle index access (e.g., arr[index]) -> *ast.IndexExpr
+		// This will involve visiting the expression inside the brackets (ctx.Expr(0) or similar)
+		// and creating an *ast.IndexExpr { X: primaryResult, Index: visitedIndexExpr }
+		log.Printf("Warning: Index access (square brackets) not yet handled: %s. Returning primary expression.", ctx.GetText())
 		return primaryResult
 	}
 
-	// If no postfix operations (only the primaryExpr child), return its result.
 	return primaryResult
 }

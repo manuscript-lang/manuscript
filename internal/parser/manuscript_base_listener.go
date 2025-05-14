@@ -339,6 +339,12 @@ func (s *BaseManuscriptListener) EnterMultiQuotedString(ctx *MultiQuotedStringCo
 // ExitMultiQuotedString is called when production multiQuotedString is exited.
 func (s *BaseManuscriptListener) ExitMultiQuotedString(ctx *MultiQuotedStringContext) {}
 
+// EnterDoubleQuotedString is called when production doubleQuotedString is entered.
+func (s *BaseManuscriptListener) EnterDoubleQuotedString(ctx *DoubleQuotedStringContext) {}
+
+// ExitDoubleQuotedString is called when production doubleQuotedString is exited.
+func (s *BaseManuscriptListener) ExitDoubleQuotedString(ctx *DoubleQuotedStringContext) {}
+
 // EnterStringPart is called when production stringPart is entered.
 func (s *BaseManuscriptListener) EnterStringPart(ctx *StringPartContext) {}
 

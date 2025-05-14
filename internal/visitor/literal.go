@@ -1,8 +1,9 @@
-package codegen
+package visitor
 
 import (
 	"go/ast"
 	"go/token"
+	"log"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
 )
@@ -92,49 +93,39 @@ func (v *ManuscriptAstVisitor) VisitNumberLiteral(ctx *parser.NumberLiteralConte
 
 // VisitStringLiteral converts a string literal context to an ast.BasicLit.
 func (v *ManuscriptAstVisitor) VisitStringLiteral(ctx *parser.StringLiteralContext) interface{} {
-	// Extract string content regardless of quote style
-	if ctx.SingleQuotedString() != nil {
-		// Handle single-quoted string - need to convert to double-quoted for Go
-		content := ""
+	var stringParts []parser.IStringPartContext
+	var rawContent string
 
-		// Extract content between the quotes
-		if parts := ctx.SingleQuotedString().AllStringPart(); len(parts) > 0 {
-			for _, part := range parts {
-				if strContent := part.SINGLE_STR_CONTENT(); strContent != nil {
-					content += strContent.GetText()
-				}
+	if sqs := ctx.SingleQuotedString(); sqs != nil {
+		stringParts = sqs.AllStringPart()
+	} else if mqs := ctx.MultiQuotedString(); mqs != nil {
+		stringParts = mqs.AllStringPart()
+	} else if dqs := ctx.DoubleQuotedString(); dqs != nil {
+		stringParts = dqs.AllStringPart()
+	} else {
+		log.Printf("VisitStringLiteral: No known string type found in StringLiteralContext: %s", ctx.GetText())
+		return &ast.BadExpr{}
+	}
+
+	if stringParts != nil {
+		for _, part := range stringParts {
+			if sContent := part.SINGLE_STR_CONTENT(); sContent != nil {
+				rawContent += sContent.GetText()
+			} else if mContent := part.MULTI_STR_CONTENT(); mContent != nil {
+				rawContent += mContent.GetText()
+			} else if dContent := part.DOUBLE_STR_CONTENT(); dContent != nil {
+				rawContent += dContent.GetText()
+			} else if interpCtx := part.Interpolation(); interpCtx != nil {
+				log.Printf("VisitStringLiteral: Interpolation encountered and ignored for now: %s", interpCtx.GetText())
 			}
-		}
-
-		// Convert to Go string with double quotes
-		goStr := strconv.Quote(content)
-		return &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: goStr,
-		}
-	} else if ctx.MultiQuotedString() != nil {
-		// Handle multi-quoted string (similar approach)
-		content := ""
-
-		// Extract content between triple quotes
-		if parts := ctx.MultiQuotedString().AllStringPart(); len(parts) > 0 {
-			for _, part := range parts {
-				if strContent := part.MULTI_STR_CONTENT(); strContent != nil {
-					content += strContent.GetText()
-				}
-			}
-		}
-
-		// Convert to Go string with double quotes
-		goStr := strconv.Quote(content)
-		return &ast.BasicLit{
-			Kind:  token.STRING,
-			Value: goStr,
 		}
 	}
 
-	// Return a bad expression for malformed strings
-	return &ast.BadExpr{}
+	goStr := strconv.Quote(rawContent)
+	return &ast.BasicLit{
+		Kind:  token.STRING,
+		Value: goStr,
+	}
 }
 
 // VisitBooleanLiteral converts a boolean literal context to an ast.Ident (true/false).

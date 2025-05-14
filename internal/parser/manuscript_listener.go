@@ -167,6 +167,9 @@ type ManuscriptListener interface {
 	// EnterMultiQuotedString is called when entering the multiQuotedString production.
 	EnterMultiQuotedString(c *MultiQuotedStringContext)
 
+	// EnterDoubleQuotedString is called when entering the doubleQuotedString production.
+	EnterDoubleQuotedString(c *DoubleQuotedStringContext)
+
 	// EnterStringPart is called when entering the stringPart production.
 	EnterStringPart(c *StringPartContext)
 
@@ -370,6 +373,9 @@ type ManuscriptListener interface {
 
 	// ExitMultiQuotedString is called when exiting the multiQuotedString production.
 	ExitMultiQuotedString(c *MultiQuotedStringContext)
+
+	// ExitDoubleQuotedString is called when exiting the doubleQuotedString production.
+	ExitDoubleQuotedString(c *DoubleQuotedStringContext)
 
 	// ExitStringPart is called when exiting the stringPart production.
 	ExitStringPart(c *StringPartContext)

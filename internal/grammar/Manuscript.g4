@@ -71,8 +71,12 @@ param: (label = ID)? name = ID COLON type = typeAnnotation (EQUALS defaultValue 
 // --- Type Declaration ---
 typeDecl:
 	TYPE name = ID 
-	 (EXTENDS baseTypes += typeAnnotation (COMMA baseTypes += typeAnnotation)*)?
-	 LBRACE (fields += fieldDecl)* RBRACE;
+	( // Struct definition with optional extends
+	  (EXTENDS baseTypes += typeAnnotation (COMMA baseTypes += typeAnnotation)*)?
+	  LBRACE (fields += fieldDecl)* RBRACE
+	| // Type alias definition
+	  EQUALS alias = typeAnnotation SEMICOLON?
+	);
 
 fieldDecl: name = ID (QUESTION)? COLON type = typeAnnotation SEMICOLON?; // Optional fields
 
@@ -248,11 +252,16 @@ singleQuotedString:
 	SINGLE_QUOTE_START parts += stringPart* SINGLE_STR_END ;
 multiQuotedString:
 	MULTI_QUOTE_START parts += stringPart* MULTI_STR_END ;
+doubleQuotedString:
+	DOUBLE_QUOTE_START parts += stringPart* DOUBLE_STR_END ;
+
 stringPart:
 	SINGLE_STR_CONTENT
 	| MULTI_STR_CONTENT
+	| DOUBLE_STR_CONTENT
 	| interp = interpolation ;
-interpolation: (SINGLE_STR_INTERP_START | MULTI_STR_INTERP_START) value = expr INTERP_RBRACE;
+
+interpolation: (SINGLE_STR_INTERP_START | MULTI_STR_INTERP_START | DOUBLE_STR_INTERP_START) value = expr INTERP_RBRACE;
 
 // --- Literals ---
 literal:
@@ -263,7 +272,8 @@ literal:
 	| VOID;
 stringLiteral:
 	singleQuotedString
-	| multiQuotedString;
+	| multiQuotedString
+	| doubleQuotedString;
 numberLiteral:
 	intValue=INTEGER
   | floatValue=FLOAT

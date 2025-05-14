@@ -167,6 +167,9 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#multiQuotedString.
 	VisitMultiQuotedString(ctx *MultiQuotedStringContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#doubleQuotedString.
+	VisitDoubleQuotedString(ctx *DoubleQuotedStringContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#stringPart.
 	VisitStringPart(ctx *StringPartContext) interface{}
 

@@ -1,4 +1,4 @@
-package codegen
+package visitor
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"go/printer"
 	"go/token"
 	"log"
-	"manuscript-co/manuscript/internal/parser"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -43,31 +42,4 @@ func (cg *CodeGenerator) Generate(astNode interface{}) (string, error) {
 		return "", fmt.Errorf("error printing Go AST: %w", err)
 	}
 	return buf.String(), nil
-}
-
-// VisitLetDecl handles variable declarations like "let x = 10;"
-func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *parser.LetDeclContext) interface{} {
-	// For multiple assignments in a single let declaration, we'll create a block statement
-	if len(ctx.GetAssignments()) > 1 {
-		blockStmt := &ast.BlockStmt{List: []ast.Stmt{}}
-
-		for _, assignment := range ctx.GetAssignments() {
-			if assignmentResult := v.VisitLetAssignment(assignment.(*parser.LetAssignmentContext)); assignmentResult != nil {
-				if assignStmt, ok := assignmentResult.(ast.Stmt); ok {
-					blockStmt.List = append(blockStmt.List, assignStmt)
-				}
-			}
-		}
-
-		return blockStmt
-	} else if len(ctx.GetAssignments()) == 1 {
-		// For a single assignment, just return the statement
-		assignment := ctx.GetAssignments()[0]
-		assignmentResult := v.VisitLetAssignment(assignment.(*parser.LetAssignmentContext))
-		if stmt, ok := assignmentResult.(ast.Stmt); ok {
-			return stmt
-		}
-	}
-
-	return nil
 }

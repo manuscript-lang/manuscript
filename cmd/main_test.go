@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	codegen "manuscript-co/manuscript/internal/codegen"
 	parser "manuscript-co/manuscript/internal/parser"
+	codegen "manuscript-co/manuscript/internal/visitor"
 	"testing"
 
 	"github.com/antlr4-go/antlr/v4"
@@ -82,16 +82,81 @@ let x, y, z = 20; // Only z gets a value, x and y are just declared
 	expected := `package main
 
 func main() {
-	{
-		a := 5
-		b := 10
-		c := 15
-	}
-	{
-		var x
-		var y
-		z := 20
-	}
+	a := 5
+	b := 10
+	c := 15
+	var x
+	var y
+	z := 20
+}
+`
+	goCode := manuscriptToGo(t, input)
+	assertGoCode(t, goCode, expected)
+}
+
+func TestPrintStatement(t *testing.T) {
+	input := `print("hello world");`
+	expected := `package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello world")
+}
+`
+	goCode := manuscriptToGo(t, input)
+	assertGoCode(t, goCode, expected)
+}
+
+func TestVariableDeclarationOnly(t *testing.T) {
+	input := `let x;`
+	expected := `package main
+
+func main() {
+	var x
+}
+`
+	goCode := manuscriptToGo(t, input)
+	assertGoCode(t, goCode, expected)
+}
+
+func TestEmptyInput(t *testing.T) {
+	input := ``
+	expected := `package main
+
+func main() {
+}
+`
+	goCode := manuscriptToGo(t, input)
+	assertGoCode(t, goCode, expected)
+}
+
+func TestSingleLineComment(t *testing.T) {
+	input := `// This is a single line comment
+let x = 10; // Another comment`
+	expected := `package main
+
+func main() {
+	x := 10
+}
+`
+	goCode := manuscriptToGo(t, input)
+	assertGoCode(t, goCode, expected)
+}
+
+func TestMultiLineComment(t *testing.T) {
+	input := `
+/* This is a
+   multi-line comment */
+let y = "test";
+/* Another multi-line
+   comment spanning
+   several lines */
+`
+	expected := `package main
+
+func main() {
+	y := "test"
 }
 `
 	goCode := manuscriptToGo(t, input)

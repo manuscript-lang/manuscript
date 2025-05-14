@@ -108,6 +108,9 @@ SINGLE_QUOTE_START: '\'' -> pushMode(SINGLE_STRING_MODE);
 MULTI_QUOTE_START: '\'\'\'' -> pushMode(MULTI_STRING_MODE);
 // TODO: Add support for prefix if needed
 
+// Double-quoted string start (switches to DOUBLE_STRING_MODE)
+DOUBLE_QUOTE_START: '"' -> pushMode(DOUBLE_STRING_MODE);
+
 // --- Modes for String Processing ---
 
 mode SINGLE_STRING_MODE;
@@ -119,6 +122,11 @@ mode MULTI_STRING_MODE;
     MULTI_STR_INTERP_START: INTERP_START -> pushMode(INTERPOLATION_MODE);
     MULTI_STR_CONTENT : ( ESC_SEQ | ~['\\${] )+ ;
     MULTI_STR_END : '\'\'\'' -> popMode;
+
+mode DOUBLE_STRING_MODE;
+    DOUBLE_STR_INTERP_START: INTERP_START -> pushMode(INTERPOLATION_MODE);
+    DOUBLE_STR_CONTENT : ( ESC_SEQ | ~["\\${] )+ ;
+    DOUBLE_STR_END : '"' -> popMode;
 
 mode INTERPOLATION_MODE;
     INTERP_LBRACE: '{' -> pushMode(INTERPOLATION_MODE);

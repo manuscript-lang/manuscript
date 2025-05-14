@@ -220,6 +220,10 @@ func (v *BaseManuscriptVisitor) VisitMultiQuotedString(ctx *MultiQuotedStringCon
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitDoubleQuotedString(ctx *DoubleQuotedStringContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitStringPart(ctx *StringPartContext) interface{} {
 	return v.VisitChildren(ctx)
 }

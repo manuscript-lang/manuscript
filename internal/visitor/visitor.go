@@ -1,4 +1,4 @@
-package codegen
+package visitor
 
 import (
 	"manuscript-co/manuscript/internal/parser"
@@ -11,6 +11,7 @@ import (
 type ManuscriptAstVisitor struct {
 	*parser.BaseManuscriptVisitor
 	// Add any necessary state fields here if needed (e.g., symbol table)
+	ProgramImports map[string]bool // Added to store program imports
 }
 
 // NewGoAstVisitor creates a new visitor instance.
@@ -18,8 +19,11 @@ func NewGoAstVisitor() *ManuscriptAstVisitor {
 	// Initialize with the base visitor. It's important to initialize the embedded struct.
 	return &ManuscriptAstVisitor{
 		BaseManuscriptVisitor: &parser.BaseManuscriptVisitor{},
+		ProgramImports:        make(map[string]bool), // Initialize the map
 	}
 }
+
+var _ parser.ManuscriptVisitor = (*ManuscriptAstVisitor)(nil) // Static check: verify ManuscriptAstVisitor implements ManuscriptVisitor
 
 // --- Visitor Method Implementations (Starting Point) ---
 
