@@ -6,20 +6,21 @@ import (
 	"github.com/antlr4-go/antlr/v4"
 )
 
-// ManuscriptAstVisitor implements the ANTLR visitor pattern to build a Go AST.
-// It embeds the base visitor struct provided by ANTLR.
 type ManuscriptAstVisitor struct {
 	*parser.BaseManuscriptVisitor
-	// Add any necessary state fields here if needed (e.g., symbol table)
-	ProgramImports map[string]bool // Added to store program imports
+	ProgramImports map[string]bool
+	Errors         []CompilationError
 }
 
-// NewGoAstVisitor creates a new visitor instance.
-func NewGoAstVisitor() *ManuscriptAstVisitor {
-	// Initialize with the base visitor. It's important to initialize the embedded struct.
+func (v *ManuscriptAstVisitor) addError(message string, token antlr.Token) {
+	v.Errors = append(v.Errors, NewCompilationError(message, token))
+}
+
+func NewManuscriptAstVisitor() *ManuscriptAstVisitor {
 	return &ManuscriptAstVisitor{
 		BaseManuscriptVisitor: &parser.BaseManuscriptVisitor{},
-		ProgramImports:        make(map[string]bool), // Initialize the map
+		ProgramImports:        make(map[string]bool),
+		Errors:                make([]CompilationError, 0),
 	}
 }
 
@@ -60,8 +61,7 @@ func (v *ManuscriptAstVisitor) Visit(tree antlr.ParseTree) interface{} {
 // 	return nil // Or return node.GetText() if needed
 // }
 
-// VisitErrorNode is called if the parser encounters an error.
-// func (v *GoAstVisitor) VisitErrorNode(node antlr.ErrorNode) interface{} {
-// 	log.Printf("Error node encountered: %s", node.GetText())
-// 	return nil // Or an error representation
-// }
+func (v *ManuscriptAstVisitor) VisitErrorNode(node antlr.ErrorNode) interface{} {
+	v.addError("Error node encountered: "+node.GetText(), node.GetSymbol())
+	return nil
+}

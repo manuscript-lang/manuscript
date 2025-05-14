@@ -3,7 +3,6 @@ package visitor
 import (
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 )
 
@@ -13,7 +12,7 @@ func (v *ManuscriptAstVisitor) VisitLogicalOrExpr(ctx *parser.LogicalOrExprConte
 	leftResult := v.Visit(ctx.GetLeft())
 	leftExpr, ok := leftResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Left operand in logical OR expression is not an ast.Expr. Got: %T", leftResult)
+		v.addError("Left operand in logical OR expression is not a valid expression", ctx.GetLeft().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -26,7 +25,7 @@ func (v *ManuscriptAstVisitor) VisitLogicalOrExpr(ctx *parser.LogicalOrExprConte
 	rightResult := v.Visit(ctx.GetRight())
 	rightExpr, ok := rightResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Right operand in logical OR expression is not an ast.Expr. Got: %T", rightResult)
+		v.addError("Right operand in logical OR expression is not a valid expression", ctx.GetRight().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -44,7 +43,7 @@ func (v *ManuscriptAstVisitor) VisitLogicalAndExpr(ctx *parser.LogicalAndExprCon
 	leftResult := v.Visit(ctx.GetLeft())
 	leftExpr, ok := leftResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Left operand in logical AND expression is not an ast.Expr. Got: %T", leftResult)
+		v.addError("Left operand in logical AND expression is not a valid expression", ctx.GetLeft().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -57,7 +56,7 @@ func (v *ManuscriptAstVisitor) VisitLogicalAndExpr(ctx *parser.LogicalAndExprCon
 	rightResult := v.Visit(ctx.GetRight())
 	rightExpr, ok := rightResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Right operand in logical AND expression is not an ast.Expr. Got: %T", rightResult)
+		v.addError("Right operand in logical AND expression is not a valid expression", ctx.GetRight().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -75,7 +74,7 @@ func (v *ManuscriptAstVisitor) VisitEqualityExpr(ctx *parser.EqualityExprContext
 	leftResult := v.Visit(ctx.GetLeft())
 	leftExpr, ok := leftResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Left operand in equality expression is not an ast.Expr. Got: %T", leftResult)
+		v.addError("Left operand in equality expression is not a valid expression", ctx.GetLeft().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -88,7 +87,7 @@ func (v *ManuscriptAstVisitor) VisitEqualityExpr(ctx *parser.EqualityExprContext
 	rightResult := v.Visit(ctx.GetRight())
 	rightExpr, ok := rightResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Right operand in equality expression is not an ast.Expr. Got: %T", rightResult)
+		v.addError("Right operand in equality expression is not a valid expression", ctx.GetRight().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -100,7 +99,7 @@ func (v *ManuscriptAstVisitor) VisitEqualityExpr(ctx *parser.EqualityExprContext
 	case parser.ManuscriptNEQ:
 		goOp = token.NEQ // != in Go
 	default:
-		log.Printf("Error: Unknown equality operator: %s", ctx.GetOp().GetText())
+		v.addError("Unknown equality operator: "+ctx.GetOp().GetText(), ctx.GetOp())
 		return &ast.BadExpr{}
 	}
 
@@ -117,7 +116,7 @@ func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprCon
 	leftResult := v.Visit(ctx.GetLeft())
 	leftExpr, ok := leftResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Left operand in comparison expression is not an ast.Expr. Got: %T", leftResult)
+		v.addError("Left operand in comparison expression is not a valid expression", ctx.GetLeft().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -130,7 +129,7 @@ func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprCon
 	rightResult := v.Visit(ctx.GetRight())
 	rightExpr, ok := rightResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Right operand in comparison expression is not an ast.Expr. Got: %T", rightResult)
+		v.addError("Right operand in comparison expression is not a valid expression", ctx.GetRight().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -146,7 +145,7 @@ func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprCon
 	case parser.ManuscriptGT_EQUALS:
 		goOp = token.GEQ // >= in Go
 	default:
-		log.Printf("Error: Unknown comparison operator: %s", ctx.GetOp().GetText())
+		v.addError("Unknown comparison operator: "+ctx.GetOp().GetText(), ctx.GetOp())
 		return &ast.BadExpr{}
 	}
 
@@ -163,7 +162,7 @@ func (v *ManuscriptAstVisitor) VisitAdditiveExpr(ctx *parser.AdditiveExprContext
 	leftResult := v.Visit(ctx.GetLeft())
 	leftExpr, ok := leftResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Left operand in additive expression is not an ast.Expr. Got: %T", leftResult)
+		v.addError("Left operand in additive expression is not a valid expression", ctx.GetLeft().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -176,7 +175,7 @@ func (v *ManuscriptAstVisitor) VisitAdditiveExpr(ctx *parser.AdditiveExprContext
 	rightResult := v.Visit(ctx.GetRight())
 	rightExpr, ok := rightResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Right operand in additive expression is not an ast.Expr. Got: %T", rightResult)
+		v.addError("Right operand in additive expression is not a valid expression", ctx.GetRight().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -188,7 +187,7 @@ func (v *ManuscriptAstVisitor) VisitAdditiveExpr(ctx *parser.AdditiveExprContext
 	case parser.ManuscriptMINUS:
 		goOp = token.SUB // - in Go
 	default:
-		log.Printf("Error: Unknown additive operator: %s", ctx.GetOp().GetText())
+		v.addError("Unknown additive operator: "+ctx.GetOp().GetText(), ctx.GetOp())
 		return &ast.BadExpr{}
 	}
 
@@ -205,7 +204,7 @@ func (v *ManuscriptAstVisitor) VisitMultiplicativeExpr(ctx *parser.Multiplicativ
 	leftResult := v.Visit(ctx.GetLeft())
 	leftExpr, ok := leftResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Left operand in multiplicative expression is not an ast.Expr. Got: %T", leftResult)
+		v.addError("Left operand in multiplicative expression is not a valid expression", ctx.GetLeft().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -218,7 +217,7 @@ func (v *ManuscriptAstVisitor) VisitMultiplicativeExpr(ctx *parser.Multiplicativ
 	rightResult := v.Visit(ctx.GetRight())
 	rightExpr, ok := rightResult.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Right operand in multiplicative expression is not an ast.Expr. Got: %T", rightResult)
+		v.addError("Right operand in multiplicative expression is not a valid expression", ctx.GetRight().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -232,7 +231,7 @@ func (v *ManuscriptAstVisitor) VisitMultiplicativeExpr(ctx *parser.Multiplicativ
 	case parser.ManuscriptMOD:
 		goOp = token.REM // % in Go
 	default:
-		log.Printf("Error: Unknown multiplicative operator: %s", ctx.GetOp().GetText())
+		v.addError("Unknown multiplicative operator: "+ctx.GetOp().GetText(), ctx.GetOp())
 		return &ast.BadExpr{}
 	}
 

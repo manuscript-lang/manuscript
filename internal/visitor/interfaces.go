@@ -5,6 +5,8 @@ import (
 	"go/token"
 	"log"
 	"manuscript-co/manuscript/internal/parser"
+
+	"github.com/antlr4-go/antlr/v4"
 )
 
 // VisitIfaceDecl handles interface declarations.
@@ -26,11 +28,15 @@ func (v *ManuscriptAstVisitor) VisitIfaceDecl(ctx *parser.IfaceDeclContext) inte
 					methods = append(methods, &ast.Field{Type: baseTypeExpr})
 					log.Printf("VisitIfaceDecl: Added base interface %s to '%s'", concreteBaseIfaceCtx.GetText(), ifaceName)
 				} else {
-					log.Printf("VisitIfaceDecl: Base interface '%s' for '%s' did not resolve to ast.Expr, got %T", concreteBaseIfaceCtx.GetText(), ifaceName, visitedBaseType)
+					v.addError("Base interface \""+concreteBaseIfaceCtx.GetText()+"\" for interface \""+ifaceName+"\" is invalid or void.", concreteBaseIfaceCtx.GetStart())
 					return nil // Error processing a base interface
 				}
 			} else {
-				log.Printf("VisitIfaceDecl: Expected *parser.TypeAnnotationContext for base interface of '%s', got %T", ifaceName, baseIfaceAntlrCtx)
+				token := ctx.ID().GetSymbol() // Fallback token
+				if pt, okPt := baseIfaceAntlrCtx.(antlr.ParserRuleContext); okPt {
+					token = pt.GetStart()
+				}
+				v.addError("Internal error: Unexpected structure for base interface of \""+ifaceName+"\".", token)
 				return nil
 			}
 		}
@@ -43,11 +49,19 @@ func (v *ManuscriptAstVisitor) VisitIfaceDecl(ctx *parser.IfaceDeclContext) inte
 			if field, okM := methodField.(*ast.Field); okM && field != nil {
 				methods = append(methods, field)
 			} else {
-				log.Printf("VisitIfaceDecl: Method declaration for '%s' did not return *ast.Field, got %T", ifaceName, methodField)
+				// Error already added by VisitMethodDecl if it returned nil.
+				// If it returned something else, that's an internal error.
+				if methodField != nil {
+					v.addError("Internal error: Method declaration processing for interface \""+ifaceName+"\" returned unexpected type.", concreteMethodDeclCtx.GetStart())
+				}
 				// Skip this method rather than failing the whole interface
 			}
 		} else {
-			log.Printf("VisitIfaceDecl: Method declaration context for '%s' is not *parser.MethodDeclContext", ifaceName)
+			token := ctx.ID().GetSymbol() // Fallback token
+			if pt, okPt := methodDeclCtx.(antlr.ParserRuleContext); okPt {
+				token = pt.GetStart()
+			}
+			v.addError("Internal error: Unexpected structure for method declaration in interface \""+ifaceName+"\".", token)
 			// Skip this method rather than failing the whole interface
 		}
 	}
@@ -79,7 +93,7 @@ func (v *ManuscriptAstVisitor) VisitMethodDecl(ctx *parser.MethodDeclContext) in
 		if pl, ok := paramsInterface.(*ast.FieldList); ok {
 			params = pl
 		} else {
-			log.Printf("VisitMethodDecl: Expected *ast.FieldList for parameters, got %T", paramsInterface)
+			v.addError("Internal error: Parameter processing for method \""+methodName+"\" returned unexpected type.", pCtx.GetStart())
 			return nil
 		}
 	} else {
@@ -94,7 +108,7 @@ func (v *ManuscriptAstVisitor) VisitMethodDecl(ctx *parser.MethodDeclContext) in
 			field := &ast.Field{Type: returnTypeExpr}
 			results = &ast.FieldList{List: []*ast.Field{field}}
 		} else {
-			log.Printf("VisitMethodDecl: Expected ast.Expr for return type, got %T", returnTypeInterface)
+			v.addError("Invalid return type for method \""+methodName+"\".", rtCtx.GetStart())
 			// Allow methods with no explicit return type (void)
 			results = nil
 		}
@@ -127,7 +141,7 @@ func (v *ManuscriptAstVisitor) VisitMethodDecl(ctx *parser.MethodDeclContext) in
 func (v *ManuscriptAstVisitor) VisitMethodBlockDecl(ctx *parser.MethodBlockDeclContext) interface{} {
 	typeNameNode := ctx.GetTypeName()
 	if typeNameNode == nil {
-		log.Printf("VisitMethodBlockDecl: Error: TypeName token is nil")
+		v.addError("Method block missing target type name.", ctx.LBRACE().GetSymbol()) // Token for LBRACE as anchor
 		return nil
 	}
 	typeName := typeNameNode.GetText()
@@ -151,11 +165,18 @@ func (v *ManuscriptAstVisitor) VisitMethodBlockDecl(ctx *parser.MethodBlockDeclC
 			if funcDecl, okF := methodDecl.(*ast.FuncDecl); okF && funcDecl != nil {
 				methods = append(methods, funcDecl)
 			} else {
-				log.Printf("VisitMethodBlockDecl: Method implementation for '%s' did not return *ast.FuncDecl, got %T", typeName, methodDecl)
+				// Error would be added by VisitMethodImpl if it returned nil.
+				if methodDecl != nil {
+					v.addError("Internal error: Method implementation processing for type \""+typeName+"\" returned unexpected type.", concreteMethodImplCtx.GetStart())
+				}
 				// Skip this method rather than failing the whole block
 			}
 		} else {
-			log.Printf("VisitMethodBlockDecl: Method implementation context for '%s' is not *parser.MethodImplContext", typeName)
+			token := typeNameNode.(antlr.ParserRuleContext).GetStart() // typeNameNode is ITypeAnnotationContext, assert to ParserRuleContext
+			if pt, okPt := methodImplCtxAnltr.(antlr.ParserRuleContext); okPt {
+				token = pt.GetStart()
+			}
+			v.addError("Internal error: Unexpected structure for method implementation in block for \""+typeName+"\".", token)
 			// Skip this method rather than failing the whole block
 		}
 	}
@@ -173,16 +194,16 @@ func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) in
 	parentCtx := ctx.GetParent()
 	mbCtx, ok := parentCtx.(*parser.MethodBlockDeclContext)
 	if !ok {
-		log.Printf("VisitMethodImpl: Error: Parent context for method '%s' is not *parser.MethodBlockDeclContext, but %T", methodName, parentCtx)
+		v.addError("Internal error: Method \""+methodName+"\" not within a method block.", ctx.ID().GetSymbol())
 		return nil
 	}
 	if mbCtx.GetTypeName() == nil { // Check if GetTypeName() itself is nil before calling GetText()
-		log.Printf("VisitMethodImpl: Error: Parent MethodBlockDeclContext's GetTypeName() is nil for method %s", methodName)
+		v.addError("Internal error: Method block for \""+methodName+"\" is missing its type name.", ctx.ID().GetSymbol())
 		return nil
 	}
 	receiverTypeName := mbCtx.GetTypeName().GetText()
 	if receiverTypeName == "" {
-		log.Printf("VisitMethodImpl: Error: Derived receiverTypeName is empty for method '%s'", methodName)
+		v.addError("Internal error: Receiver type name for method \""+methodName+"\" is empty.", ctx.ID().GetSymbol())
 		return nil
 	}
 
@@ -217,7 +238,7 @@ func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) in
 		if pl, okP := paramsInterface.(*ast.FieldList); okP {
 			params = pl
 		} else {
-			log.Printf("VisitMethodImpl: Expected *ast.FieldList for parameters, got %T", paramsInterface)
+			v.addError("Internal error: Parameter processing for method \""+methodName+"\" (type \""+receiverTypeName+"\") returned unexpected type.", pCtx.GetStart())
 			return nil
 		}
 	} else {
@@ -232,7 +253,7 @@ func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) in
 			field := &ast.Field{Type: returnTypeExpr}
 			results = &ast.FieldList{List: []*ast.Field{field}}
 		} else {
-			log.Printf("VisitMethodImpl: Expected ast.Expr for return type, got %T", returnTypeInterface)
+			v.addError("Invalid return type for method \""+methodName+"\" (type \""+receiverTypeName+"\").", rtCtx.GetStart())
 			// Allow methods with no explicit return type (void)
 			results = nil
 		}

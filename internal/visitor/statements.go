@@ -24,18 +24,18 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 			log.Printf("VisitStmt: Asserted ExprStmtContext, calling VisitExprStmt for '%s'", concreteExprStmtCtx.GetText())
 			return v.VisitExprStmt(concreteExprStmtCtx)
 		} else {
-			log.Printf("VisitStmt: Failed to assert ExprStmtContext type for '%s'", exprStmtCtx.GetText())
+			v.addError("Internal error: Failed to process expression statement structure: "+exprStmtCtx.GetText(), exprStmtCtx.GetStart())
 			return nil
 		}
 	}
 
 	if ctx.SEMICOLON() != nil {
 		log.Printf("VisitStmt: Found SEMICOLON (empty statement): %s", ctx.GetText())
-		return nil
+		return &ast.EmptyStmt{}
 	}
 
-	log.Printf("VisitStmt: Unhandled statement type for '%s'", ctx.GetText())
-	return nil // Return nil if unhandled
+	v.addError("Unhandled statement type: "+ctx.GetText(), ctx.GetStart())
+	return nil
 }
 
 // VisitExprStmt processes an expression statement.
@@ -52,7 +52,7 @@ func (v *ManuscriptAstVisitor) VisitExprStmt(ctx *parser.ExprStmtContext) interf
 	}
 
 	// Log if the assertion failed
-	log.Printf("VisitExprStmt: Failed to assert ast.Expr for '%s'. Got type %T instead.", ctx.Expr().GetText(), visitedExprRaw)
+	v.addError("Expression statement did not resolve to a valid expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
 	return nil // Return nil if the expression visit failed
 }
 
@@ -68,9 +68,7 @@ func (v *ManuscriptAstVisitor) VisitCodeBlock(ctx *parser.CodeBlockContext) inte
 				stmts = append(stmts, astStmt)
 			}
 		} else if visitedStmt != nil { // If it's not nil, but not ast.Stmt, it's an unexpected type
-			log.Printf("VisitCodeBlock: Expected ast.Stmt from VisitStmt, got %T for '%s'", visitedStmt, stmtCtx.GetText())
-			// Decide on error handling: skip, return nil for block, or panic
-			// For now, skipping the problematic statement
+			v.addError("Internal error: Statement processing in code block returned unexpected type for: "+stmtCtx.GetText(), stmtCtx.GetStart())
 		}
 	}
 	return &ast.BlockStmt{

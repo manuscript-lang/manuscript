@@ -5,6 +5,8 @@ import (
 	"go/token"
 	"log"
 	"manuscript-co/manuscript/internal/parser"
+
+	"github.com/antlr4-go/antlr/v4"
 )
 
 // VisitTypeDecl handles type declarations (structs and aliases).
@@ -36,17 +38,21 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 						},
 					}
 				} else {
-					log.Printf("VisitTypeDecl: Alias type for '%s' did not resolve to ast.Expr, got %T", typeNameStr, visitedAliasType)
+					v.addError("Type alias \""+typeNameStr+"\" has an invalid or void target type: "+concreteAliasTypeCtx.GetText(), concreteAliasTypeCtx.GetStart())
 					return nil
 				}
 			} else {
-				log.Printf("VisitTypeDecl: Alias type context for '%s' is not *parser.TypeAnnotationContext, got %T", typeNameStr, aliasTypeCtx)
+				token := ctx.ID().GetSymbol() // Fallback
+				if prc, okPrc := aliasTypeCtx.(antlr.ParserRuleContext); okPrc {
+					token = prc.GetStart()
+				}
+				v.addError("Internal error: Unexpected structure for alias type target of \""+typeNameStr+"\".", token)
 				return nil
 			}
 		} else {
 			// No LBRACE and no alias type annotation - this should ideally not happen based on the grammar structure presented.
 			// It could imply `type Foo;` which is not valid Go for a new type without definition.
-			log.Printf("VisitTypeDecl: Malformed type declaration for '%s'. No struct body (LBRACE) and no alias target.", typeNameStr)
+			v.addError("Malformed type declaration for \""+typeNameStr+"\": missing struct body or alias target.", ctx.ID().GetSymbol())
 			return nil
 		}
 	} else {
@@ -65,11 +71,15 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 						// Embedded fields in Go have no name, just the type
 						structFields = append(structFields, &ast.Field{Type: baseTypeExpr})
 					} else {
-						log.Printf("VisitTypeDecl: Base type for '%s' did not resolve to ast.Expr, got %T for '%s'", typeNameStr, visitedBaseType, baseTypeAntlrCtx.GetText())
+						v.addError("Base type \""+baseTypeAntlrCtx.GetText()+"\" for struct \""+typeNameStr+"\" is invalid or void.", baseTypeAntlrCtx.GetStart())
 						return nil // Error processing a base type
 					}
 				} else {
-					log.Printf("VisitTypeDecl: Base type context for '%s' is not *parser.TypeAnnotationContext, got %T", typeNameStr, baseTypeAntlrInterface.GetText())
+					token := ctx.ID().GetSymbol() // Fallback
+					if prc, okPrc := baseTypeAntlrInterface.(antlr.ParserRuleContext); okPrc {
+						token = prc.GetStart()
+					}
+					v.addError("Internal error: Unexpected structure for base type of \""+typeNameStr+"\".", token)
 					return nil
 				}
 			}
@@ -82,11 +92,18 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 				if astField, isField := visitedField.(*ast.Field); isField && astField != nil {
 					structFields = append(structFields, astField)
 				} else {
-					log.Printf("VisitTypeDecl: Field declaration for '%s' did not return *ast.Field, got %T for '%s'", typeNameStr, visitedField, fieldDeclCtx.GetText())
+					// Error already added by VisitFieldDecl if it returned nil.
+					if visitedField != nil { // If it wasn't nil, then it was an unexpected type.
+						v.addError("Internal error: Field declaration processing for struct \""+typeNameStr+"\" returned unexpected type.", fieldDeclCtx.GetStart())
+					}
 					return nil // Error processing a field
 				}
 			} else {
-				log.Printf("VisitTypeDecl: FieldDecl context for '%s' is not *parser.FieldDeclContext, got %T", typeNameStr, fieldDeclCtxInterface.GetText())
+				token := ctx.ID().GetSymbol() // Fallback
+				if prc, okPrc := fieldDeclCtxInterface.(antlr.ParserRuleContext); okPrc {
+					token = prc.GetStart()
+				}
+				v.addError("Internal error: Unexpected structure for field declaration in \""+typeNameStr+"\".", token)
 				return nil
 			}
 		}
@@ -117,11 +134,11 @@ func (v *ManuscriptAstVisitor) VisitFieldDecl(ctx *parser.FieldDeclContext) inte
 		if ft, ok := typeInterface.(ast.Expr); ok {
 			fieldType = ft
 		} else {
-			log.Printf("VisitFieldDecl: Expected ast.Expr for field type, got %T for '%s'", typeInterface, ctx.TypeAnnotation().GetText())
+			v.addError("Invalid type for field \""+fieldName+"\": "+ctx.TypeAnnotation().GetText(), ctx.TypeAnnotation().GetStart())
 			return nil // Field must have a valid type
 		}
 	} else {
-		log.Printf("VisitFieldDecl: No type annotation for field '%s'", fieldName)
+		v.addError("Missing type annotation for field \""+fieldName+"\".", ctx.GetName())
 		return nil // Field must have a type
 	}
 

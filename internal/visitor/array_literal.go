@@ -2,7 +2,6 @@ package visitor
 
 import (
 	"go/ast"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 )
 
@@ -16,7 +15,7 @@ func (v *ManuscriptAstVisitor) VisitArrayLiteral(ctx *parser.ArrayLiteralContext
 		if elemExpr, ok := elemResult.(ast.Expr); ok {
 			elements = append(elements, elemExpr)
 		} else {
-			log.Printf("Warning: Array element is not an ast.Expr. Got: %T", elemResult)
+			v.addError("Array element is not a valid expression: "+elemCtx.GetText(), elemCtx.GetStart())
 			// Add a nil for placeholder
 			elements = append(elements, &ast.BadExpr{})
 		}
@@ -61,7 +60,12 @@ func (v *ManuscriptAstVisitor) VisitMapLiteral(ctx *parser.MapLiteralContext) in
 		valueExpr, valueOk := valueResult.(ast.Expr)
 
 		if !keyOk || !valueOk {
-			log.Printf("Warning: Map key or value is not an ast.Expr. Key: %T, Value: %T", keyResult, valueResult)
+			if !keyOk {
+				v.addError("Map key is not a valid expression: "+mapField.GetKey().GetText(), mapField.GetKey().GetStart())
+			}
+			if !valueOk {
+				v.addError("Map value is not a valid expression: "+mapField.GetValue().GetText(), mapField.GetValue().GetStart())
+			}
 			continue
 		}
 
@@ -113,7 +117,7 @@ func (v *ManuscriptAstVisitor) VisitSetLiteral(ctx *parser.SetLiteralContext) in
 
 			elements = append(elements, kvExpr)
 		} else {
-			log.Printf("Warning: Set element is not an ast.Expr. Got: %T", elemResult)
+			v.addError("Set element is not a valid expression: "+elemCtx.GetText(), elemCtx.GetStart())
 		}
 	}
 
@@ -140,7 +144,7 @@ func (v *ManuscriptAstVisitor) VisitTupleLiteral(ctx *parser.TupleLiteralContext
 		if elemExpr, ok := elemResult.(ast.Expr); ok {
 			elements = append(elements, elemExpr)
 		} else {
-			log.Printf("Warning: Tuple element is not an ast.Expr. Got: %T", elemResult)
+			v.addError("Tuple element is not a valid expression: "+elemCtx.GetText(), elemCtx.GetStart())
 			// Add a nil for placeholder
 			elements = append(elements, &ast.BadExpr{})
 		}

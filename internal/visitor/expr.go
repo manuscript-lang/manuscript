@@ -44,7 +44,7 @@ func (v *ManuscriptAstVisitor) VisitPrimaryExpr(ctx *parser.PrimaryExprContext) 
 	// TODO: Add cases for MapLiteral, SetLiteral, TupleLiteral, LambdaExpr, TryBlockExpr, MatchExpr
 	// as their visitor methods are implemented.
 
-	log.Printf("Warning: Unhandled primary expression type in VisitPrimaryExpr: %s", ctx.GetText())
+	v.addError("Unhandled primary expression type: "+ctx.GetText(), ctx.GetStart())
 	return &ast.BadExpr{} // Return BadExpr for unhandled cases
 }
 
@@ -56,7 +56,8 @@ func (v *ManuscriptAstVisitor) VisitUnaryExpr(ctx *parser.UnaryExprContext) inte
 		visitedOperand := v.Visit(ctx.UnaryExpr()) // Visit the inner unaryExpr
 		operandExpr, ok := visitedOperand.(ast.Expr)
 		if !ok {
-			log.Printf("Warning: Visiting operand for unary operator %s did not return ast.Expr. Got: %T", opToken.GetText(), visitedOperand)
+			errMsg := "Visiting operand for unary operator " + opToken.GetText() + " did not return a valid expression."
+			v.addError(errMsg, opToken)
 			return &ast.BadExpr{}
 		}
 
@@ -69,15 +70,16 @@ func (v *ManuscriptAstVisitor) VisitUnaryExpr(ctx *parser.UnaryExprContext) inte
 		case parser.ManuscriptEXCLAMATION:
 			goOp = token.NOT // Logical not
 		case parser.ManuscriptTRY:
-			log.Printf("Warning: Unary 'try' operator translation not fully implemented. Returning operand for: %s", ctx.GetText())
+			v.addError("Unary 'try' operator translation not fully implemented for: "+ctx.GetText(), opToken)
 			// TODO: Implement 'try' translation (e.g., IIFE with panic recovery or multi-value return)
 			return operandExpr // For now, just pass through the operand
 		case parser.ManuscriptCHECK:
-			log.Printf("Warning: Unary 'check' operator translation not fully implemented. Returning operand for: %s", ctx.GetText())
+			v.addError("Unary 'check' operator translation not fully implemented for: "+ctx.GetText(), opToken)
 			// TODO: Implement 'check' translation (likely involves statement-level transformation)
 			return operandExpr // For now, just pass through the operand
 		default:
-			log.Printf("Warning: Unhandled unary operator token type: %d (%s)", opToken.GetTokenType(), opToken.GetText())
+			errMsg := "Unhandled unary operator: " + opToken.GetText()
+			v.addError(errMsg, opToken)
 			return &ast.BadExpr{}
 		}
 
@@ -90,7 +92,7 @@ func (v *ManuscriptAstVisitor) VisitUnaryExpr(ctx *parser.UnaryExprContext) inte
 		// If no operator, it must be the awaitExpr alternative
 		return v.Visit(ctx.AwaitExpr()) // Delegate to VisitAwaitExpr (to be implemented)
 	} else {
-		log.Printf("Error: Invalid UnaryExprContext state: %s", ctx.GetText())
+		v.addError("Invalid unary expression state: "+ctx.GetText(), ctx.GetStart())
 		return &ast.BadExpr{}
 	}
 }
@@ -139,7 +141,7 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 			}
 		}
 
-		log.Printf("Warning: Assignment expression not fully handled: %s", ctx.GetText())
+		v.addError("Assignment expression not fully handled: "+ctx.GetText(), ctx.GetStart())
 		return v.Visit(ctx.GetLeft()) // Fallback to just the left side
 	}
 
@@ -151,7 +153,7 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 func (v *ManuscriptAstVisitor) VisitAwaitExpr(ctx *parser.AwaitExprContext) interface{} {
 	if ctx.TRY() != nil || ctx.AWAIT() != nil || ctx.ASYNC() != nil {
 		// TODO: Implement prefix handling (TRY?, AWAIT?, ASYNC?)
-		log.Printf("Warning: TRY/AWAIT/ASYNC prefixes not fully handled: %s", ctx.GetText())
+		v.addError("TRY/AWAIT/ASYNC prefixes not fully handled: "+ctx.GetText(), ctx.GetStart())
 	}
 	// Always visit the postfix expression part
 	return v.Visit(ctx.PostfixExpr())
@@ -165,7 +167,8 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 	if lparenToken := ctx.GetToken(parser.ManuscriptLPAREN, 0); lparenToken != nil {
 		ident, ok := primaryResult.(*ast.Ident)
 		if !ok {
-			log.Printf("Warning: Expected identifier for function call, got %T for %s", primaryResult, ctx.GetText())
+			errMsg := "Expected identifier for function call, got non-identifier for " + ctx.GetText()
+			v.addError(errMsg, ctx.GetStart())                      // Use ctx.GetStart() as primaryResult might not have token info
 			return &ast.BadExpr{From: token.NoPos, To: token.NoPos} // Return BadExpr for error
 		}
 
@@ -191,7 +194,8 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 				if argExpr, ok := visitedArg.(ast.Expr); ok {
 					args = append(args, argExpr)
 				} else {
-					log.Printf("Warning: Argument to print did not evaluate to ast.Expr: %s. Got %T", argCtx.GetText(), visitedArg)
+					errMsg := "Argument to print did not evaluate to a valid expression: " + argCtx.GetText()
+					v.addError(errMsg, argCtx.GetStart())
 					args = append(args, &ast.BadExpr{From: token.NoPos, To: token.NoPos})
 				}
 			}
@@ -215,7 +219,8 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 				if argExpr, ok := visitedArg.(ast.Expr); ok {
 					args = append(args, argExpr)
 				} else {
-					log.Printf("Warning: Argument to generic function call did not evaluate to ast.Expr: %s. Got %T", argCtx.GetText(), visitedArg)
+					errMsg := "Argument to function call did not evaluate to a valid expression: " + argCtx.GetText()
+					v.addError(errMsg, argCtx.GetStart())
 					args = append(args, &ast.BadExpr{From: token.NoPos, To: token.NoPos})
 				}
 			}
@@ -228,13 +233,13 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 		// TODO: Handle member access (e.g., obj.member) -> *ast.SelectorExpr
 		// This will involve getting the member ID (ctx.ID() or ctx.GetToken(parser.ID, ...))
 		// and creating an *ast.SelectorExpr { X: primaryResult, Sel: ast.NewIdent(memberName) }
-		log.Printf("Warning: Member access (dot operator) not yet handled: %s. Returning primary expression.", ctx.GetText())
+		v.addError("Member access (dot operator) not yet handled: "+ctx.GetText(), dotToken.GetSymbol())
 		return primaryResult
 	} else if lsqbrToken := ctx.GetToken(parser.ManuscriptLSQBR, 0); lsqbrToken != nil {
 		// TODO: Handle index access (e.g., arr[index]) -> *ast.IndexExpr
 		// This will involve visiting the expression inside the brackets (ctx.Expr(0) or similar)
 		// and creating an *ast.IndexExpr { X: primaryResult, Index: visitedIndexExpr }
-		log.Printf("Warning: Index access (square brackets) not yet handled: %s. Returning primary expression.", ctx.GetText())
+		v.addError("Index access (square brackets) not yet handled: "+ctx.GetText(), lsqbrToken.GetSymbol())
 		return primaryResult
 	}
 

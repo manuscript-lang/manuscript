@@ -4,7 +4,24 @@ globs:
 alwaysApply: true
 ---
 
-- do not write excessive comments, if you must write comments, write long form block comments explaining entire flow, rather than indiviaul pieces
-- updating lexer or grammar requires regeneration of parser, use make to regenerate
-- write simple concise code, do not overcomplicate
-- do another pass on the code after writing it, clean up for readability, conciseness, and efficiency
+# How to write comments
+- DO NOT write excessive comments 
+- DO NOT add comments in code every few lines
+- DO write insightful comments about reasoning behind the code
+
+# How to write code
+- DO write simple concise code, do not overcomplicate
+- DO write as little code as possible to achieve the task
+- DO review the code after writing it, clean up for readability, conciseness, and efficiency
+- DO follow DRY, do not repeat same blocks of code
+- DO follow structured logging
+- DO NOT leave commented code in file
+
+# How to work with grammar
+- DO regenerate parser and make corresponding change in visitor after updating Manuscript.g4 and ManuscriptLexer.g4 
+- DO update of lexer or grammar requires regeneration of parser, use make to regenerate
+- DO NOT edit code in internal/parser, its auto generated
+
+# How to add tests
+- DO add lots of tests after making a change
+- DO ensure tests have complete and total coverage

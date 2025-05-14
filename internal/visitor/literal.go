@@ -3,7 +3,6 @@ package visitor
 import (
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
 )
@@ -103,7 +102,7 @@ func (v *ManuscriptAstVisitor) VisitStringLiteral(ctx *parser.StringLiteralConte
 	} else if dqs := ctx.DoubleQuotedString(); dqs != nil {
 		stringParts = dqs.AllStringPart()
 	} else {
-		log.Printf("VisitStringLiteral: No known string type found in StringLiteralContext: %s", ctx.GetText())
+		v.addError("No known string type found in string literal: "+ctx.GetText(), ctx.GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -116,7 +115,7 @@ func (v *ManuscriptAstVisitor) VisitStringLiteral(ctx *parser.StringLiteralConte
 			} else if dContent := part.DOUBLE_STR_CONTENT(); dContent != nil {
 				rawContent += dContent.GetText()
 			} else if interpCtx := part.Interpolation(); interpCtx != nil {
-				log.Printf("VisitStringLiteral: Interpolation encountered and ignored for now: %s", interpCtx.GetText())
+				v.addError("String interpolation is not yet supported: "+interpCtx.GetText(), interpCtx.GetStart())
 			}
 		}
 	}

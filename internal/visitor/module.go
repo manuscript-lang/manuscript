@@ -22,7 +22,7 @@ func capitalizeFirstLetter(s string) string {
 func (v *ManuscriptAstVisitor) VisitImportStmt(ctx *parser.ImportStmtContext) interface{} {
 	pathToken := ctx.GetPath()
 	if pathToken == nil {
-		log.Printf("Error: Import statement missing path: %s", ctx.GetText())
+		v.addError("Import statement is missing a path.", ctx.GetStart())
 		return &ast.BadDecl{}
 	}
 	pathValue := pathToken.GetText() // e.g., "\"module/path\""
@@ -87,7 +87,7 @@ func (v *ManuscriptAstVisitor) VisitImportItem(ctx *parser.ImportItemContext) in
 func (v *ManuscriptAstVisitor) VisitExternStmt(ctx *parser.ExternStmtContext) interface{} {
 	pathToken := ctx.GetPath()
 	if pathToken == nil {
-		log.Printf("Error: Extern statement missing path: %s", ctx.GetText())
+		v.addError("Extern statement is missing a path.", ctx.GetStart())
 		return &ast.BadDecl{}
 	}
 	pathValue := pathToken.GetText()
@@ -158,16 +158,17 @@ func (v *ManuscriptAstVisitor) VisitExportStmt(ctx *parser.ExportStmtContext) in
 	} else if ctx.IfaceDecl() != nil {
 		visitedNode = v.Visit(ctx.IfaceDecl())
 	} else {
-		log.Printf("Error: Export statement with no recognized declaration: %s", ctx.GetText())
+		v.addError("Export statement has no recognized declaration (function, let, type, or interface).", ctx.GetStart())
 		return &ast.BadDecl{}
 	}
 
 	decl, ok := visitedNode.(ast.Decl)
 	if !ok {
-		log.Printf("Error: Exported item did not produce an ast.Decl. Got: %T for %s. Node: %+v", visitedNode, ctx.GetText(), visitedNode)
-		// If nil, return a BadDecl to signify error. Otherwise, return the unmodifiable node.
 		if visitedNode == nil {
+			v.addError("Exported item is invalid or could not be processed.", ctx.GetStart())
 			return &ast.BadDecl{}
+		} else {
+			v.addError("Internal error: Exported item processing returned an unexpected type.", ctx.GetStart())
 		}
 		return visitedNode
 	}
@@ -193,11 +194,11 @@ func (v *ManuscriptAstVisitor) VisitExportStmt(ctx *parser.ExportStmtContext) in
 					s.Name.Name = capitalizeFirstLetter(s.Name.Name)
 				}
 			default:
-				log.Printf("Warning: Unhandled spec type '%T' in exported GenDecl: %s", s, ctx.GetText())
+				v.addError("Internal warning: Unhandled specification type in exported generic declaration for: "+ctx.GetText(), ctx.GetStart())
 			}
 		}
 	default:
-		log.Printf("Warning: Exporting unhandled ast.Decl type: %T for %s", d, ctx.GetText())
+		v.addError("Internal warning: Exporting an unhandled declaration type for: "+ctx.GetText(), ctx.GetStart())
 	}
-	return decl // Return the (potentially modified) declaration
+	return decl
 }

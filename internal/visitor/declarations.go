@@ -21,7 +21,7 @@ func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *parser.LetDeclContext) interfac
 
 	assignments := ctx.AllLetAssignment()
 	if len(assignments) == 0 {
-		log.Printf("VisitLetDecl: No assignments found in let declaration '%s'", ctx.GetText())
+		v.addError("No assignments found in let declaration: "+ctx.GetText(), ctx.GetStart())
 		return &ast.EmptyStmt{} // or nil
 	}
 
@@ -41,13 +41,15 @@ func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *parser.LetDeclContext) interfac
 				stmts = append(stmts, stmt)
 			}
 		} else if assignItem != nil {
-			log.Printf("VisitLetDecl: Expected ast.Stmt from VisitLetAssignment, got %T for '%s'", assignItem, assignCtx.GetText())
+			v.addError("Internal error: Expected statement from let assignment processing for: "+assignCtx.GetText(), assignCtx.GetStart())
 			// Optionally, append a BadStmt or skip
 		}
 	}
 
 	if len(stmts) == 0 {
-		log.Printf("VisitLetDecl: No valid statements processed for '%s'", ctx.GetText())
+		// This could be a valid scenario if all assignments were empty destructures.
+		// However, individual empty destructures are reported as errors below.
+		// If all assignments lead to errors and thus no statements, this path might be taken.
 		return &ast.EmptyStmt{} // or nil
 	}
 
@@ -64,7 +66,7 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 	// Visit the pattern (LHS of the assignment)
 	patternRaw := v.Visit(ctx.LetPattern())
 	if patternRaw == nil {
-		log.Printf("VisitLetAssignment: Pattern visit failed for '%s'", ctx.LetPattern().GetText())
+		v.addError("Failed to process pattern in let assignment: "+ctx.LetPattern().GetText(), ctx.LetPattern().GetStart())
 		return nil
 	}
 
@@ -78,20 +80,18 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 		lhsExprs = p.Elements
 		isDestructuring = true
 		if len(lhsExprs) == 0 {
-			log.Printf("VisitLetAssignment: Array destructuring pattern is empty for '%s'", ctx.GetPattern().GetText())
-			// Depending on language semantics, this might be an error or no-op
+			v.addError("Array destructuring pattern is empty: "+ctx.GetPattern().GetText(), ctx.GetPattern().GetStart())
 			return nil // Or an empty DeclStmt / AssignStmt
 		}
 	case ObjectDestructureMarker:
 		lhsExprs = p.Properties
 		isDestructuring = true
 		if len(lhsExprs) == 0 {
-			log.Printf("VisitLetAssignment: Object destructuring pattern is empty for '%s'", ctx.GetPattern().GetText())
-			// Depending on language semantics, this might be an error or no-op
+			v.addError("Object destructuring pattern is empty: "+ctx.GetPattern().GetText(), ctx.GetPattern().GetStart())
 			return nil // Or an empty DeclStmt / AssignStmt
 		}
 	default:
-		log.Printf("VisitLetAssignment: Unhandled pattern type %T for '%s'", patternRaw, ctx.GetPattern().GetText())
+		v.addError("Unhandled pattern type in let assignment: "+ctx.GetPattern().GetText(), ctx.GetPattern().GetStart())
 		return nil
 	}
 
@@ -99,13 +99,13 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 	if ctx.GetValue() != nil {
 		valueVisited := v.Visit(ctx.GetValue())
 		if valueVisited == nil {
-			log.Printf("VisitLetAssignment: Value visit failed for '%s'", ctx.GetValue().GetText())
+			v.addError("Failed to process value in let assignment: "+ctx.GetValue().GetText(), ctx.GetValue().GetStart())
 			return nil
 		}
 
 		sourceExpr, ok := valueVisited.(ast.Expr)
 		if !ok {
-			log.Printf("VisitLetAssignment: Expected ast.Expr from value visit, got %T for '%s'", valueVisited, ctx.GetValue().GetText())
+			v.addError("Value in let assignment did not evaluate to an expression: "+ctx.GetValue().GetText(), ctx.GetValue().GetStart())
 			return nil
 		}
 
@@ -129,7 +129,7 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 							Sel: ast.NewIdent(ident.Name), // Assumes direct mapping of names
 						})
 					} else {
-						log.Printf("VisitLetAssignment: Expected *ast.Ident in LHS for object destructuring, got %T", lhsItem)
+						v.addError("Expected identifier in left-hand side for object destructuring property name", ctx.GetPattern().GetStart()) // Token might not be perfect, points to whole pattern
 						return nil
 					}
 				}
@@ -149,11 +149,8 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 		// Ensure LHS and RHS have same number of elements for assignment if destructuring
 		// For non-destructuring, len(lhs)=1, len(rhs)=1
 		if isDestructuring && len(lhsExprs) != len(rhsExprs) {
-			// This is a simplified assumption. Go handles this with specific rules.
-			// For now, we expect Manuscript to ensure this or we'll have a mismatch.
-			// A more robust solution would involve tuple assignment concepts or error reporting.
-			log.Printf("VisitLetAssignment: Mismatch in LHS (%d) and RHS (%d) elements for destructuring assignment for '%s'. This may lead to incorrect Go code.", len(lhsExprs), len(rhsExprs), ctx.GetText())
-			// Potentially truncate or pad, but for now, proceed with what we have.
+			v.addError(fmt.Sprintf("Mismatch in number of elements for destructuring assignment (LHS: %d, RHS: %d) for: %s", len(lhsExprs), len(rhsExprs), ctx.GetText()), ctx.GetStart())
+			// Potentially truncate or pad, but for now, proceed with what we have, which might be an error later.
 		}
 
 		return &ast.AssignStmt{
@@ -168,13 +165,22 @@ func (v *ManuscriptAstVisitor) VisitLetAssignment(ctx *parser.LetAssignmentConte
 			if ident, ok := expr.(*ast.Ident); ok {
 				names = append(names, ident)
 			} else {
-				log.Printf("VisitLetAssignment: Expected *ast.Ident for var declaration, got %T", expr)
-				return nil // Should not happen if pattern visitors are correct
+				v.addError("Expected identifier for var declaration without assignment", ctx.GetPattern().GetStart()) // Token points to whole pattern
+				return nil                                                                                            // Should not happen if pattern visitors are correct
 			}
 		}
-		if len(names) == 0 {
-			log.Printf("VisitLetAssignment: No identifiers for var declaration for pattern '%s'", ctx.GetPattern().GetText())
+		if len(names) == 0 && len(lhsExprs) > 0 { // Only error if original pattern had items but none were valid idents
+			v.addError("No valid identifiers found for var declaration from pattern: "+ctx.GetPattern().GetText(), ctx.GetPattern().GetStart())
 			return &ast.EmptyStmt{} // or nil, effectively a no-op
+		}
+		if len(names) == 0 && len(lhsExprs) == 0 { // Case: let [] or let {} without assignment
+			// This is an empty pattern, already errored if isDestructuring was true and lhsExprs was empty.
+			// If it reaches here, it implies a non-destructuring empty pattern, which is odd.
+			// For safety, let's add an error if `names` is empty and it wasn't an explicit empty destructuring error from before.
+			if !isDestructuring { // if it was destructuring, it would have been caught by len(lhsExprs)==0 checks earlier.
+				v.addError("No identifiers provided for var declaration: "+ctx.GetPattern().GetText(), ctx.GetPattern().GetStart())
+			}
+			return &ast.EmptyStmt{}
 		}
 		return &ast.DeclStmt{
 			Decl: &ast.GenDecl{
@@ -223,7 +229,7 @@ func (v *ManuscriptAstVisitor) VisitArrayPattn(ctx *parser.ArrayPattnContext) in
 	// If lhs is empty, it means it was 'let [] = ...' which might be an error or an empty destructuring.
 	// For now, we'll return an empty slice, and let VisitLetAssignment handle it.
 	if len(lhs) == 0 {
-		log.Printf("VisitArrayPattn: No identifiers found in array pattern '%s'", ctx.GetText())
+		log.Printf("VisitArrayPattn: No identifiers found in array pattern '%s'", ctx.GetText()) // Kept as log for now, as LetAssignment handles empty lhs
 	}
 	return ArrayDestructureMarker{Elements: lhs}
 }
@@ -240,7 +246,7 @@ func (v *ManuscriptAstVisitor) VisitObjectPattn(ctx *parser.ObjectPattnContext) 
 
 	// If lhs is empty, it means 'let {} = ...'
 	if len(lhs) == 0 {
-		log.Printf("VisitObjectPattn: No identifiers found in object pattern '%s'", ctx.GetText())
+		log.Printf("VisitObjectPattn: No identifiers found in object pattern '%s'", ctx.GetText()) // Kept as log for now
 	}
 	return ObjectDestructureMarker{Properties: lhs}
 }

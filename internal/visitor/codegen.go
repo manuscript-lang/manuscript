@@ -26,7 +26,7 @@ func (cg *CodeGenerator) Generate(astNode interface{}) (string, error) {
 		return "", fmt.Errorf("error: Input to Generate is not an antlr.ParseTree")
 	}
 
-	visitor := NewGoAstVisitor()
+	visitor := NewManuscriptAstVisitor()
 	visitedNode := visitor.Visit(root)
 
 	goAST, ok := visitedNode.(*ast.File)

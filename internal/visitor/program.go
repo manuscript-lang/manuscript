@@ -29,18 +29,18 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 			if concreteStmtCtx, ok := stmtCtx.(*parser.StmtContext); ok {
 				visitedItem = v.VisitStmt(concreteStmtCtx)
 			} else {
-				log.Printf("Warning: Could not assert StmtContext type for %s", itemCtx.GetText())
+				v.addError("Internal error: Could not assert StmtContext type for program item: "+itemCtx.GetText(), itemCtx.GetStart())
 			}
 		} else if fnDeclCtx := itemCtx.FnDecl(); fnDeclCtx != nil {
 			if concreteFnDeclCtx, ok := fnDeclCtx.(*parser.FnDeclContext); ok {
 				visitedItem = v.Visit(concreteFnDeclCtx)
 			} else {
-				log.Printf("Warning: Could not assert FnDeclContext type for %s", itemCtx.GetText())
+				v.addError("Internal error: Could not assert FnDeclContext type for program item: "+itemCtx.GetText(), itemCtx.GetStart())
 			}
 		} else {
 			// Log only if it's not one of the types we explicitly check for above
 			if itemCtx.Stmt() == nil && itemCtx.FnDecl() == nil /* && other checked types == nil */ {
-				log.Printf("Warning: Unhandled ProgramItem type in VisitProgram loop: %s", itemCtx.GetText())
+				v.addError("Unhandled program item type: "+itemCtx.GetText(), itemCtx.GetStart())
 			}
 		}
 
@@ -70,7 +70,7 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 		case nil:
 			// Expected if an unhandled/unassertable ProgramItem type was encountered
 		default:
-			log.Printf("Warning: Unhandled node type (%T) returned from ProgramItem processing for item: %s", node, itemCtx.GetText())
+			v.addError("Internal error: Unhandled node type returned from program item processing for: "+itemCtx.GetText(), itemCtx.GetStart())
 			if expr, ok := node.(ast.Expr); ok {
 				log.Printf("Treating returned expression as statement in main func.")
 				*mainBody = append(*mainBody, &ast.ExprStmt{X: expr})

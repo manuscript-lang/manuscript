@@ -3,7 +3,6 @@ package visitor
 import (
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 )
 
@@ -13,7 +12,7 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 	valueExpr := v.Visit(ctx.GetValueToMatch())
 	matchValue, ok := valueExpr.(ast.Expr)
 	if !ok {
-		log.Printf("Error: Match value is not an ast.Expr. Got: %T", valueExpr)
+		v.addError("Value in match expression is not a valid expression.", ctx.GetValueToMatch().GetStart())
 		return &ast.BadExpr{}
 	}
 
@@ -21,7 +20,7 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 	cases := ctx.AllCaseClause()
 	if len(cases) == 0 {
 		// Empty match expression, rare but handle it
-		log.Printf("Warning: Empty match expression with no cases")
+		v.addError("Match expression has no case clauses.", ctx.GetStart()) // Or use ctx.MATCH().GetSymbol() if MATCH is a token
 		return &ast.BadExpr{}
 	}
 
@@ -48,14 +47,14 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 		patternExpr := v.Visit(caseClause.GetPattern())
 		pattern, ok := patternExpr.(ast.Expr)
 		if !ok {
-			log.Printf("Warning: Case pattern is not an ast.Expr. Got: %T", patternExpr)
+			v.addError("Pattern in match case is not a valid expression: "+caseClause.GetPattern().GetText(), caseClause.GetPattern().GetStart())
 			continue
 		}
 
 		resultExpr := v.Visit(caseClause.GetResult())
 		result, ok := resultExpr.(ast.Expr)
 		if !ok {
-			log.Printf("Warning: Case result is not an ast.Expr. Got: %T", resultExpr)
+			v.addError("Result in match case is not a valid expression: "+caseClause.GetResult().GetText(), caseClause.GetResult().GetStart())
 			continue
 		}
 
@@ -144,7 +143,7 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 func (v *ManuscriptAstVisitor) VisitCaseClause(ctx *parser.CaseClauseContext) interface{} {
 	// This is actually handled directly in VisitMatchExpr to allow building
 	// the full switch statement. This method is just a placeholder.
-	log.Printf("Warning: VisitCaseClause called directly, should be handled by VisitMatchExpr")
+	v.addError("Internal warning: VisitCaseClause should not be called directly.", ctx.GetStart())
 
 	// For completeness, return the pattern and result if called directly
 	patternExpr := v.Visit(ctx.GetPattern())

@@ -16,14 +16,14 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 
 	children := ctx.GetChildren()
 	if len(children) == 0 {
-		log.Printf("VisitTypeAnnotation: No children found for '%s'", ctx.GetText())
+		v.addError("Invalid empty type annotation: "+ctx.GetText(), ctx.GetStart())
 		return nil
 	}
 
 	// First child must be BaseTypeAnnotationContext
 	baseTypeAntlrCtx, ok := children[0].(*parser.BaseTypeAnnotationContext)
 	if !ok || baseTypeAntlrCtx == nil {
-		log.Printf("VisitTypeAnnotation: Expected first child to be BaseTypeAnnotationContext, got %T for '%s'", children[0], ctx.GetText())
+		v.addError("Internal error: Expected base type annotation, got unexpected type for: "+ctx.GetText(), ctx.GetStart())
 		return nil
 	}
 
@@ -33,12 +33,12 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 		// If baseType is void (which returns nil), and there are no modifiers, this is okay.
 		// If there are modifiers, applying them to a nil base type is an error.
 		if len(children) > 1 && baseTypeInterface == nil { // Modifiers present after a void base type
-			log.Printf("VisitTypeAnnotation: Cannot apply modifiers to 'void' base type for '%s'", ctx.GetText())
+			v.addError("Cannot apply type modifiers (e.g., [], <>) to 'void' type: "+ctx.GetText(), baseTypeAntlrCtx.GetStart())
 			return nil
 		}
 		// If it's not ok, but not nil, it's an unexpected type from VisitBaseTypeAnnotation
 		if !ok && baseTypeInterface != nil {
-			log.Printf("VisitTypeAnnotation: Expected ast.Expr from VisitBaseTypeAnnotation, got %T for '%s'", baseTypeInterface, baseTypeAntlrCtx.GetText())
+			v.addError("Internal error: Base type annotation did not resolve to a valid expression for: "+baseTypeAntlrCtx.GetText(), baseTypeAntlrCtx.GetStart())
 			return nil
 		}
 		// If it's nil and no modifiers, it could be a valid 'void' type indication if allowed by caller
@@ -54,26 +54,27 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 		node, isTerminal := child.(antlr.TerminalNode)
 
 		if !isTerminal {
-			log.Printf("VisitTypeAnnotation: Expected a terminal node (modifier token) at child index %d, got %T for '%s'", i, child, ctx.GetText())
+			cTOKEN := children[i-1].(antlr.TerminalNode).GetSymbol() // Previous token for context
+			v.addError("Invalid type modifier sequence: expected a token (like '[', ']', ':', '<', '>') but found complex structure after: "+cTOKEN.GetText(), cTOKEN)
 			return nil // Error: unexpected context instead of token
 		}
 
 		symbolType := node.GetSymbol().GetTokenType()
 
 		if currentAstExpr == nil { // Should have been caught earlier if base was nil with modifiers
-			log.Printf("VisitTypeAnnotation: Base type resolved to nil, cannot apply modifiers for '%s'", ctx.GetText())
+			v.addError("Internal error: Cannot apply modifiers to a nil base type: "+ctx.GetText(), node.GetSymbol())
 			return nil
 		}
 
 		switch symbolType {
 		case parser.ManuscriptLSQBR: // Start of array `[]` or map `[K:V]`
 			if i+1 >= len(children) {
-				log.Printf("VisitTypeAnnotation: Incomplete LSQBR modifier for '%s'", ctx.GetText())
+				v.addError("Incomplete type modifier: '[' not followed by ']' or ':': "+ctx.GetText(), node.GetSymbol())
 				return nil
 			}
 			nextTokenNode, nextIsTerminal := children[i+1].(antlr.TerminalNode)
 			if !nextIsTerminal {
-				log.Printf("VisitTypeAnnotation: Expected COLON or RSQBR after LSQBR, found %T for '%s'", children[i+1], ctx.GetText())
+				v.addError("Invalid type modifier: expected ':' or ']' after '[', but found complex structure for: "+ctx.GetText(), node.GetSymbol())
 				return nil
 			}
 
@@ -81,23 +82,34 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 			if nextTokenSymbolType == parser.ManuscriptCOLON { // Map: [KeyTypeFromCurrent: ValueType]
 				mapKeyType := currentAstExpr
 				if i+2 >= len(children) {
-					log.Printf("VisitTypeAnnotation: Incomplete map modifier (missing value type or RSQBR) for '%s'", ctx.GetText())
+					v.addError("Incomplete map type: missing value type or ']' after ':': "+ctx.GetText(), nextTokenNode.GetSymbol())
 					return nil
 				}
 				mapValueTypeAntlrCtx, isValueCtx := children[i+2].(*parser.TypeAnnotationContext)
 				if !isValueCtx || mapValueTypeAntlrCtx == nil {
-					log.Printf("VisitTypeAnnotation: Expected TypeAnnotationContext for map value, got %T for '%s'", children[i+2], ctx.GetText())
+					v.addError("Invalid map type: expected a type for map value for: "+ctx.GetText(), nextTokenNode.GetSymbol())
 					return nil
 				}
 				mapValueInterface := v.VisitTypeAnnotation(mapValueTypeAntlrCtx)
 				mapValueAstExpr, okVal := mapValueInterface.(ast.Expr)
 				if !okVal || mapValueAstExpr == nil {
-					log.Printf("VisitTypeAnnotation: Map value type did not resolve to ast.Expr for '%s'", mapValueTypeAntlrCtx.GetText())
+					v.addError("Map value type is invalid or void: "+mapValueTypeAntlrCtx.GetText(), mapValueTypeAntlrCtx.GetStart())
 					return nil
 				}
 
 				if i+3 >= len(children) || children[i+3].(antlr.TerminalNode).GetSymbol().GetTokenType() != parser.ManuscriptRSQBR {
-					log.Printf("VisitTypeAnnotation: Map modifier missing closing RSQBR for '%s'", ctx.GetText())
+					// Attempt to get the last token for error reporting, or fallback to current node
+					lastToken := node.GetSymbol()
+					if i+2 < len(children) && children[i+2].(antlr.ParseTree).GetChildCount() > 0 {
+						// This is a heuristic, trying to get a token from the map value type
+						// It might not always be the most accurate, but better than `node.GetSymbol()` which is `[`
+						// A more robust way would be to get stop token of children[i+2]
+						// For now, we'll use the start of the mapValueTypeAntlrCtx or the colon.
+						lastToken = mapValueTypeAntlrCtx.GetStart()
+					} else {
+						lastToken = nextTokenNode.GetSymbol() // The colon token
+					}
+					v.addError("Map type missing closing ']': "+ctx.GetText(), lastToken)
 					return nil
 				}
 				currentAstExpr = &ast.MapType{Key: mapKeyType, Value: mapValueAstExpr}
@@ -107,13 +119,13 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 				currentAstExpr = &ast.ArrayType{Elt: currentAstExpr}
 				i += 2 // Consumed LSQBR, RSQBR
 			} else {
-				log.Printf("VisitTypeAnnotation: Unexpected token after LSQBR: %s for '%s'", nextTokenNode.GetText(), ctx.GetText())
+				v.addError("Invalid token \""+nextTokenNode.GetText()+"\" after '[' in type. Expected ':' or ']'.", nextTokenNode.GetSymbol())
 				return nil
 			}
 
 		case parser.ManuscriptLT: // Start of set `<>`
 			if i+1 >= len(children) || children[i+1].(antlr.TerminalNode).GetSymbol().GetTokenType() != parser.ManuscriptGT {
-				log.Printf("VisitTypeAnnotation: Incomplete LT GT (set) modifier for '%s'", ctx.GetText())
+				v.addError("Incomplete set type: '<' not followed by '>': "+ctx.GetText(), node.GetSymbol())
 				return nil
 			}
 			// Set<T> becomes map[T]struct{}
@@ -124,7 +136,7 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 			i += 2 // Consumed LT, GT
 
 		default:
-			log.Printf("VisitTypeAnnotation: Unexpected modifier token %s for '%s'", node.GetText(), ctx.GetText())
+			v.addError("Unexpected type modifier token \""+node.GetText()+"\" for: "+ctx.GetText(), node.GetSymbol())
 			return nil
 		}
 	}
@@ -168,6 +180,7 @@ func (v *ManuscriptAstVisitor) VisitBaseTypeAnnotation(ctx *parser.BaseTypeAnnot
 	}
 
 	log.Printf("VisitBaseTypeAnnotation: Unhandled base type annotation for '%s'", ctx.GetText())
+	v.addError("Unhandled base type annotation: "+ctx.GetText(), ctx.GetStart())
 	return nil
 }
 
@@ -184,11 +197,20 @@ func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FunctionTypeContext
 				if paramTypeExpr, ok := paramTypeInterfaceVisit.(ast.Expr); ok {
 					params.List = append(params.List, &ast.Field{Type: paramTypeExpr})
 				} else {
-					log.Printf("VisitFunctionType: Expected ast.Expr for parameter type, got %T for '%s'", paramTypeInterfaceVisit, paramTypeCtx.GetText())
+					v.addError("Invalid parameter type in function type signature: "+paramTypeCtx.GetText(), paramTypeCtx.GetStart())
 					return nil
 				}
 			} else {
-				log.Printf("VisitFunctionType: Failed to assert *parser.TypeAnnotationContext for parameter type '%s'", paramTypeCtxInterface.GetText())
+				// Safely try to get a token if possible, otherwise fallback to parent context start token
+				token := ctx.GetStart()
+				if pTree, isPTree := paramTypeCtxInterface.(antlr.ParseTree); isPTree {
+					if rNode, isRNode := pTree.(antlr.RuleNode); isRNode {
+						if prc, okAssertPrc := rNode.(antlr.ParserRuleContext); okAssertPrc {
+							token = prc.GetStart()
+						}
+					}
+				}
+				v.addError("Internal error: Unexpected structure for parameter type in function type: "+paramTypeCtxInterface.GetText(), token)
 				return nil
 			}
 		}
@@ -201,11 +223,19 @@ func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FunctionTypeContext
 			if returnTypeExpr, ok := returnTypeInterface.(ast.Expr); ok {
 				results = &ast.FieldList{List: []*ast.Field{{Type: returnTypeExpr}}}
 			} else {
-				log.Printf("VisitFunctionType: Expected ast.Expr for return type, got %T for '%s'", returnTypeInterface, ctx.GetReturnType().GetText())
+				token := ctx.GetStart()
+				if prc, okAssertPrc := ctx.GetReturnType().(antlr.ParserRuleContext); okAssertPrc {
+					token = prc.GetStart()
+				}
+				v.addError("Internal error: Unexpected structure for return type in function type: "+ctx.GetReturnType().GetText(), token)
 				return nil
 			}
 		} else {
-			log.Printf("VisitFunctionType: Failed to assert *parser.TypeAnnotationContext for return type '%s'", ctx.GetReturnType().GetText())
+			token := ctx.GetStart()
+			if prc, okAssertPrc := ctx.GetReturnType().(antlr.ParserRuleContext); okAssertPrc {
+				token = prc.GetStart()
+			}
+			v.addError("Internal error: Unexpected structure for return type in function type: "+ctx.GetReturnType().GetText(), token)
 			return nil
 		}
 	} else {
@@ -237,11 +267,27 @@ func (v *ManuscriptAstVisitor) VisitTupleType(ctx *parser.TupleTypeContext) inte
 					Type:  fieldTypeExpr,
 				})
 			} else {
-				log.Printf("VisitTupleType: Element type at index %d did not resolve to ast.Expr for tuple '%s', got %T", i, ctx.GetText(), fieldTypeInterface)
-				return nil // Error in resolving one of the tuple's element types
+				token := ctx.GetStart()
+				if pTree, isPTree := typeAntlrCtxInterface.(antlr.ParseTree); isPTree {
+					if rNode, isRNode := pTree.(antlr.RuleNode); isRNode {
+						if prc, okAssertPrc := rNode.(antlr.ParserRuleContext); okAssertPrc {
+							token = prc.GetStart()
+						}
+					}
+				}
+				v.addError(fmt.Sprintf("Internal error: Unexpected structure for tuple element at index %d: %s", i, typeAntlrCtxInterface.GetText()), token)
+				return nil // Should not happen if grammar is correctly parsed
 			}
 		} else {
-			log.Printf("VisitTupleType: Element at index %d is not a TypeAnnotationContext for tuple '%s', got %T", i, ctx.GetText(), typeAntlrCtxInterface)
+			token := ctx.GetStart()
+			if pTree, isPTree := typeAntlrCtxInterface.(antlr.ParseTree); isPTree {
+				if rNode, isRNode := pTree.(antlr.RuleNode); isRNode {
+					if prc, okAssertPrc := rNode.(antlr.ParserRuleContext); okAssertPrc {
+						token = prc.GetStart()
+					}
+				}
+			}
+			v.addError(fmt.Sprintf("Internal error: Unexpected structure for tuple element at index %d: %s", i, typeAntlrCtxInterface.GetText()), token)
 			return nil // Should not happen if grammar is correctly parsed
 		}
 	}

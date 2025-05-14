@@ -5,11 +5,14 @@ import (
 	"go/token"
 	"log"
 	"manuscript-co/manuscript/internal/parser"
+
+	"github.com/antlr4-go/antlr/v4"
 )
 
 // paramDetail holds extracted information about a function parameter, including any default value.
 type paramDetail struct {
 	Name         *ast.Ident
+	NameToken    antlr.Token // Store the original token for error reporting
 	Type         ast.Expr
 	DefaultValue ast.Expr // nil if no default value
 }
@@ -83,7 +86,7 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 					} else {
 						// Default to nil for complex types or if type determination fails here
 						zeroValExpr = ast.NewIdent("nil")
-						log.Printf("Warning: Could not determine specific zero value for type of param %s; defaulting to 'nil' check for default value assignment.", pd.Name.Name)
+						v.addError("Could not determine specific zero value for type of param "+pd.Name.Name+"; defaulting to 'nil' check for default value assignment.", pd.NameToken)
 					}
 
 					ifStmt := &ast.IfStmt{
@@ -106,7 +109,7 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 				}
 			}
 		} else {
-			log.Printf("VisitFnDecl: Expected []paramDetail for parameters, got %T", paramsInterface)
+			v.addError("Internal error: Expected parameter details from parameter processing.", ctx.Parameters().GetStart())
 			return nil
 		}
 	}
@@ -119,7 +122,7 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 			field := &ast.Field{Type: returnTypeExpr}
 			results = &ast.FieldList{List: []*ast.Field{field}}
 		} else {
-			log.Printf("VisitFnDecl: Expected ast.Expr for return type, got %T", returnTypeInterface)
+			v.addError("Invalid return type for function \""+fnName+"\"", ctx.TypeAnnotation().GetStart())
 			// Allow functions with no explicit return type (void)
 			results = nil
 		}
@@ -148,11 +151,11 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 				body.List = append(defaultAssignments, body.List...)
 			}
 		} else {
-			log.Printf("VisitFnDecl: Expected *ast.BlockStmt for body, got %T", bodyInterface)
+			v.addError("Function \""+fnName+"\" must have a valid code block body.", ctx.CodeBlock().GetStart())
 			return nil // Function must have a body
 		}
 	} else {
-		log.Printf("VisitFnDecl: No code block found for function '%s'", fnName)
+		v.addError("No code block found for function \""+fnName+"\".", ctx.ID().GetSymbol())
 		return nil // Function must have a body
 	}
 
@@ -176,9 +179,9 @@ func (v *ManuscriptAstVisitor) VisitParameters(ctx *parser.ParametersContext) in
 			details = append(details, detail)
 		} else if field, okField := paramInterface.(*ast.Field); okField && field == nil {
 			// This case can happen if VisitParam returns nil (e.g. error)
-			log.Printf("VisitParameters: VisitParam returned nil for '%s', skipping parameter.", paramCtx.GetText())
+			// An error would have already been added by VisitParam, so just skip here.
 		} else {
-			log.Printf("VisitParameters: Expected paramDetail from VisitParam, got %T for '%s'", paramInterface, paramCtx.GetText())
+			v.addError("Internal error: Unexpected type returned from parameter processing for: "+paramCtx.GetText(), paramCtx.GetStart())
 			// Optionally skip problematic param or return error
 		}
 	}
@@ -191,11 +194,13 @@ func (v *ManuscriptAstVisitor) VisitParam(ctx *parser.ParamContext) interface{} 
 	log.Printf("VisitParam: Called for '%s'", ctx.GetText())
 
 	var paramName *ast.Ident
+	var paramNameToken antlr.Token
 	ids := ctx.AllID()
 	if len(ids) > 0 {
-		paramName = ast.NewIdent(ids[len(ids)-1].GetText())
+		paramNameToken = ids[len(ids)-1].GetSymbol()
+		paramName = ast.NewIdent(paramNameToken.GetText())
 	} else {
-		log.Printf("VisitParam: No ID found for parameter name in '%s'", ctx.GetText())
+		v.addError("Parameter name is missing.", ctx.GetStart())
 		return nil // Return nil to indicate an error
 	}
 
@@ -206,11 +211,12 @@ func (v *ManuscriptAstVisitor) VisitParam(ctx *parser.ParamContext) interface{} 
 		if pt, ok := typeInterface.(ast.Expr); ok {
 			paramType = pt
 		} else {
-			log.Printf("VisitParam: Expected ast.Expr for parameter type, got %T for '%s'", typeInterface, ctx.TypeAnnotation().GetText())
+			v.addError("Invalid type for parameter \""+paramName.Name+"\".", ctx.TypeAnnotation().GetStart())
 			return nil // Type annotation is mandatory
 		}
 	} else {
-		log.Printf("VisitParam: No type annotation for parameter '%s'", paramName.Name)
+		// log.Printf("VisitParam: No type annotation for parameter '%s'", paramName.Name)
+		v.addError("Missing type annotation for parameter \""+paramName.Name+"\".", paramNameToken)
 		return nil // Type annotation is mandatory
 	}
 
@@ -225,7 +231,8 @@ func (v *ManuscriptAstVisitor) VisitParam(ctx *parser.ParamContext) interface{} 
 		if dvExpr, ok := defaultValInterface.(ast.Expr); ok {
 			defaultValueExpr = dvExpr
 		} else {
-			log.Printf("VisitParam: Could not convert default value expression to ast.Expr for param '%s'. Got %T", paramName.Name, defaultValInterface)
+			// log.Printf("VisitParam: Could not convert default value expression to ast.Expr for param '%s'. Got %T", paramName.Name, defaultValInterface)
+			v.addError("Default value for parameter \""+paramName.Name+"\" is not a valid expression.", ctx.Expr().GetStart())
 			// Decide: return error, or proceed without default value? For now, proceed without.
 			defaultValueExpr = nil
 		}
@@ -233,6 +240,7 @@ func (v *ManuscriptAstVisitor) VisitParam(ctx *parser.ParamContext) interface{} 
 
 	return paramDetail{ // Return paramDetail struct
 		Name:         paramName,
+		NameToken:    paramNameToken,
 		Type:         paramType,
 		DefaultValue: defaultValueExpr,
 	}
