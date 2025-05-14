@@ -2,31 +2,57 @@ package main
 
 import (
 	"fmt"
-	"manuscript-co/manuscript/internal/parser"
-	"manuscript-co/manuscript/internal/visitor"
+	"log"
+	parser "manuscript-co/manuscript/internal/parser"
+	codegen "manuscript-co/manuscript/internal/visitor"
+	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
 )
 
-func ExecuteProgram(program string) (string, error) {
-	inputStream := antlr.NewInputStream(program)
-
-	// Create lexer
+func manuscriptToGo(input string, debug bool) (string, error) {
+	inputStream := antlr.NewInputStream(input)
 	lexer := parser.NewManuscriptLexer(inputStream)
 	tokenStream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
-	// Create parser
+	if debug {
+		dumpTokens(tokenStream, debug)
+	}
+
 	p := parser.NewManuscript(tokenStream)
-
-	// Parse input
 	tree := p.Program()
-
-	// Generate Go code
-	codeGen := visitor.NewCodeGenerator()
+	codeGen := codegen.NewCodeGenerator()
 	goCode, err := codeGen.Generate(tree)
 	if err != nil {
-		return "", fmt.Errorf("code generation failed: %w", err)
+		return "", fmt.Errorf("codeGen.Generate failed: %w", err)
 	}
+	return strings.TrimSpace(goCode), nil
+}
+
+func dumpTokens(stream *antlr.CommonTokenStream, debug bool) {
+	if !debug {
+		return
+	}
+	log.Println("--- Lexer Token Dump Start ---")
+	stream.Fill()
+	for i, token := range stream.GetAllTokens() {
+		log.Printf("Token %d: Type=%d, Text='%s', Line=%d, Col=%d",
+			i, token.GetTokenType(), token.GetText(), token.GetLine(), token.GetColumn())
+	}
+	log.Println("--- Lexer Token Dump End ---")
+	stream.Seek(0) // Reset stream for parser
+}
+
+func ExecuteProgram(program string) (string, error) {
+	// Call manuscriptToGo for actual parsing and code generation.
+	// Pass 'false' for the debug flag as ExecuteProgram doesn't have a debug mode currently.
+	goCode, err := manuscriptToGo(program, false)
+	if err != nil {
+		// manuscriptToGo already provides a detailed error.
+		return "", fmt.Errorf("failed to execute program: %w", err)
+	}
+
+	// ExecuteProgram's specific behavior: print the generated code.
 	fmt.Printf("Generated Go code:\n%s\n", goCode)
 
 	return goCode, nil

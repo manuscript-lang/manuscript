@@ -3,9 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
-	parser "manuscript-co/manuscript/internal/parser"
-	codegen "manuscript-co/manuscript/internal/visitor"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,8 +10,6 @@ import (
 	"testing"
 
 	"kr.dev/diff"
-
-	"github.com/antlr4-go/antlr/v4"
 )
 
 var (
@@ -25,36 +20,6 @@ var (
 func TestMain(m *testing.M) {
 	flag.Parse()
 	os.Exit(m.Run())
-}
-
-func manuscriptToGo(t *testing.T, input string) string {
-	inputStream := antlr.NewInputStream(input)
-	lexer := parser.NewManuscriptLexer(inputStream)
-	tokenStream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	if *debug {
-		dumpTokens(tokenStream)
-	}
-
-	p := parser.NewManuscript(tokenStream)
-	tree := p.Program()
-	codeGen := codegen.NewCodeGenerator()
-	goCode, err := codeGen.Generate(tree)
-	if err != nil {
-		t.Fatalf("codeGen.Generate failed: %v", err)
-	}
-	return strings.TrimSpace(goCode)
-}
-
-func dumpTokens(stream *antlr.CommonTokenStream) {
-	log.Println("--- Lexer Token Dump Start ---")
-	stream.Fill()
-	for i, token := range stream.GetAllTokens() {
-		log.Printf("Token %d: Type=%d, Text='%s', Line=%d, Col=%d",
-			i, token.GetTokenType(), token.GetText(), token.GetLine(), token.GetColumn())
-	}
-	log.Println("--- Lexer Token Dump End ---")
-	stream.Seek(0) // Reset stream for parser
 }
 
 func assertGoCode(t *testing.T, actual, expected string) {
@@ -126,7 +91,10 @@ func TestMarkdownCompilation(t *testing.T) {
 				}
 
 				t.Run(testSubName, func(t *testing.T) {
-					actualGo := manuscriptToGo(t, pair.MsCode)
+					actualGo, err := manuscriptToGo(pair.MsCode, *debug)
+					if err != nil {
+						t.Fatalf("manuscriptToGo failed: %v", err)
+					}
 					assertGoCode(t, actualGo, pair.GoCode)
 				})
 			}
