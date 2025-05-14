@@ -16,7 +16,8 @@ alwaysApply: true
 - DO follow DRY, do not repeat same blocks of code
 - DO follow structured logging
 - DO NOT leave commented code in file
-- DO use short names
+- DO use short names for variables
+- DO create utility function and extract common logic
 
 # How to write manuscript code
 - DO refer language-design.md for understanding available constructs
@@ -28,12 +29,6 @@ alwaysApply: true
 3. Update visitor
 4. Add tests in tests/compilation
 5. Run the tests and make them pass
-
-## Instructions
-- DO regenerate parser and make corresponding change in visitor after updating Manuscript.g4 and ManuscriptLexer.g4 
-- update of lexer or grammar requires regeneration of parser, use make generate_parser to regenerate
-- DO NOT edit code in internal/parser, its auto generated
-- REMEMBER grammar does not need to be changed for visitor changes
 
 # How to add tests
 - DO add lots of tests after making a change
