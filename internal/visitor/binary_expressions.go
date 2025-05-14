@@ -229,6 +229,8 @@ func (v *ManuscriptAstVisitor) VisitMultiplicativeExpr(ctx *parser.Multiplicativ
 		goOp = token.MUL // * in Go
 	case parser.ManuscriptSLASH:
 		goOp = token.QUO // / in Go
+	case parser.ManuscriptMOD:
+		goOp = token.REM // % in Go
 	default:
 		log.Printf("Error: Unknown multiplicative operator: %s", ctx.GetOp().GetText())
 		return &ast.BadExpr{}

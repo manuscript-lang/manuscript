@@ -188,7 +188,7 @@ comparisonExpr:
 additiveExpr:
 	left = multiplicativeExpr (op = (PLUS | MINUS) right = multiplicativeExpr)*;
 multiplicativeExpr:
-	left = unaryExpr (op = (STAR | SLASH) right = unaryExpr)*;
+	left = unaryExpr (op = (STAR | SLASH | MOD) right = unaryExpr)*;
 unaryExpr:
 	op = (PLUS | MINUS | EXCLAMATION | TRY | CHECK) unaryExpr // Added TRY and CHECK prefixes
 	| awaitExpr;

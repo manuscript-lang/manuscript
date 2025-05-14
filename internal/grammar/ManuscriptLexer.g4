@@ -62,6 +62,7 @@ PIPE_PIPE: '||';
 AMP_AMP: '&&';
 STAR: '*';
 SLASH: '/';
+MOD: '%';
 EXCLAMATION: '!';
 QUESTION: '?';
 DOT: '.';
