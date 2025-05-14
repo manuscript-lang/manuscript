@@ -2,7 +2,6 @@ package visitor
 
 import (
 	"go/ast"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 )
 
@@ -11,17 +10,13 @@ import (
 
 // VisitStmt handles different kinds of statements.
 func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
-	log.Printf("VisitStmt: Called for '%s'", ctx.GetText()) // Log entry
 
 	if ctx.LetDecl() != nil {
-		log.Printf("VisitStmt: Found LetDecl: %s", ctx.LetDecl().GetText())
 		return v.VisitLetDecl(ctx.LetDecl().(*parser.LetDeclContext))
 	}
 
 	if exprStmtCtx := ctx.ExprStmt(); exprStmtCtx != nil {
-		log.Printf("VisitStmt: Found ExprStmt: %s", exprStmtCtx.GetText())
 		if concreteExprStmtCtx, ok := exprStmtCtx.(*parser.ExprStmtContext); ok {
-			log.Printf("VisitStmt: Asserted ExprStmtContext, calling VisitExprStmt for '%s'", concreteExprStmtCtx.GetText())
 			return v.VisitExprStmt(concreteExprStmtCtx)
 		} else {
 			v.addError("Internal error: Failed to process expression statement structure: "+exprStmtCtx.GetText(), exprStmtCtx.GetStart())
@@ -30,7 +25,6 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 	}
 
 	if ctx.SEMICOLON() != nil {
-		log.Printf("VisitStmt: Found SEMICOLON (empty statement): %s", ctx.GetText())
 		return &ast.EmptyStmt{}
 	}
 
@@ -42,16 +36,12 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 func (v *ManuscriptAstVisitor) VisitExprStmt(ctx *parser.ExprStmtContext) interface{} {
 	// Explicitly visit only the expression part, ignore the semicolon child
 	visitedExprRaw := v.Visit(ctx.Expr()) // Visit the core expression
-	// Add detailed logging here:
-	log.Printf("VisitExprStmt: Visited ctx.Expr() for '%s', got type %T, value: %+v", ctx.Expr().GetText(), visitedExprRaw, visitedExprRaw)
 
 	if expr, ok := visitedExprRaw.(ast.Expr); ok {
 		// Wrap the resulting expression in an ast.ExprStmt
-		log.Printf("VisitExprStmt: Successfully asserted ast.Expr for '%s'", ctx.Expr().GetText()) // Log success
 		return &ast.ExprStmt{X: expr}
 	}
 
-	// Log if the assertion failed
 	v.addError("Expression statement did not resolve to a valid expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
 	return nil // Return nil if the expression visit failed
 }
@@ -59,7 +49,6 @@ func (v *ManuscriptAstVisitor) VisitExprStmt(ctx *parser.ExprStmtContext) interf
 // VisitCodeBlock handles a block of statements.
 // { stmt1; stmt2; ... }
 func (v *ManuscriptAstVisitor) VisitCodeBlock(ctx *parser.CodeBlockContext) interface{} {
-	log.Printf("VisitCodeBlock: Called for '%s'", ctx.GetText())
 	var stmts []ast.Stmt
 	for _, stmtCtx := range ctx.AllStmt() {
 		visitedStmt := v.VisitStmt(stmtCtx.(*parser.StmtContext)) // VisitStmt should handle all statement types
