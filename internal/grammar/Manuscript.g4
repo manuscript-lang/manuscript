@@ -176,7 +176,7 @@ codeBlock: LBRACE (stmts += stmt)* RBRACE; // Sequence of statements
 // --- Basic Expressions --- (Existing rules)
 expr: assignmentExpr;
 assignmentExpr:
-	left = logicalOrExpr (op = EQUALS right = assignmentExpr)?;
+	left = logicalOrExpr (op = (EQUALS | PLUS_EQUALS | MINUS_EQUALS | STAR_EQUALS | SLASH_EQUALS | MOD_EQUALS | CARET_EQUALS) right = assignmentExpr)?;
 logicalOrExpr:
 	left = logicalAndExpr (op = PIPE_PIPE right = logicalAndExpr)*;
 logicalAndExpr:

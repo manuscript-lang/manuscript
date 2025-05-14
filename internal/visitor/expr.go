@@ -106,44 +106,88 @@ func (v *ManuscriptAstVisitor) VisitExpr(ctx *parser.ExprContext) interface{} {
 
 // VisitAssignmentExpr handles assignment or passes through logicalOrExpr.
 func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprContext) interface{} {
+	leftAntlrExpr := ctx.GetLeft()
+	if leftAntlrExpr == nil {
+		v.addError("Left-hand side of assignment is missing", ctx.GetStart())
+		return &ast.BadStmt{} // Or some other error representation
+	}
+	visitedLeftExpr := v.Visit(leftAntlrExpr)
+	leftExpr, ok := visitedLeftExpr.(ast.Expr)
+	if !ok {
+		v.addError("Left-hand side of assignment did not resolve to a valid expression: "+leftAntlrExpr.GetText(), leftAntlrExpr.GetStart())
+		return &ast.BadStmt{}
+	}
 
 	if ctx.GetOp() != nil { // Assignment case
-		leftExpr := v.Visit(ctx.GetLeft())
-		rightExpr := v.Visit(ctx.GetRight())
+		opType := ctx.GetOp().GetTokenType()
 
-		// Handle case where the lexer may have missed certain tokens
-		if rightExpr == nil {
-			// Check if there's a literal number in the text that wasn't lexed properly
-			rightText := ctx.GetRight().GetText()
-
-			// Try to parse the right side as a number if it looks numeric
+		rightAntlrExpr := ctx.GetRight()
+		if rightAntlrExpr == nil {
+			v.addError("Right-hand side of assignment is missing for operator "+ctx.GetOp().GetText(), ctx.GetOp())
+			return &ast.BadStmt{}
+		}
+		visitedRightExpr := v.Visit(rightAntlrExpr)
+		rightExpr, ok := visitedRightExpr.(ast.Expr)
+		if !ok {
+			// Attempt to recover if lexer missed a literal number (existing logic)
+			rightText := rightAntlrExpr.GetText()
 			if _, err := strconv.Atoi(rightText); err == nil {
 				rightExpr = &ast.BasicLit{
 					Kind:  token.INT,
 					Value: rightText,
 				}
+				ok = true
+			} else {
+				v.addError("Right-hand side of assignment did not resolve to a valid expression: "+rightAntlrExpr.GetText(), rightAntlrExpr.GetStart())
+				return &ast.BadStmt{}
 			}
 		}
 
-		// Create an assignment statement
-		if leftExpr != nil && rightExpr != nil {
-			if left, ok := leftExpr.(ast.Expr); ok {
-				if right, ok := rightExpr.(ast.Expr); ok {
-					return &ast.AssignStmt{
-						Lhs: []ast.Expr{left},
-						Tok: token.ASSIGN,
-						Rhs: []ast.Expr{right},
-					}
-				}
+		if opType == parser.ManuscriptEQUALS {
+			return &ast.AssignStmt{
+				Lhs: []ast.Expr{leftExpr},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{rightExpr},
 			}
 		}
 
-		v.addError("Assignment expression not fully handled: "+ctx.GetText(), ctx.GetStart())
-		return v.Visit(ctx.GetLeft()) // Fallback to just the left side
+		// Handle compound assignments
+		var binaryOpToken token.Token
+		switch opType {
+		case parser.ManuscriptPLUS_EQUALS:
+			binaryOpToken = token.ADD
+		case parser.ManuscriptMINUS_EQUALS:
+			binaryOpToken = token.SUB
+		case parser.ManuscriptSTAR_EQUALS:
+			binaryOpToken = token.MUL
+		case parser.ManuscriptSLASH_EQUALS:
+			binaryOpToken = token.QUO
+		case parser.ManuscriptMOD_EQUALS:
+			binaryOpToken = token.REM
+		case parser.ManuscriptCARET_EQUALS:
+			binaryOpToken = token.XOR // Assuming ^ is XOR for integer types. Could be AND_NOT for sets or POW for numbers, needs clarification based on language spec.
+		default:
+			v.addError("Unhandled assignment operator: "+ctx.GetOp().GetText(), ctx.GetOp())
+			return &ast.BadStmt{}
+		}
+
+		// Create a binary expression: leftExpr <op> rightExpr
+		rhsBinaryExpr := &ast.BinaryExpr{
+			X:  leftExpr, // Use the already visited left expression
+			Op: binaryOpToken,
+			Y:  rightExpr, // Use the already visited right expression
+		}
+
+		// Create an assignment statement: leftExpr = (leftExpr <op> rightExpr)
+		return &ast.AssignStmt{
+			Lhs: []ast.Expr{leftExpr},
+			Tok: token.ASSIGN, // All compound assignments become a simple assign
+			Rhs: []ast.Expr{rhsBinaryExpr},
+		}
 	}
 
-	// Pass-through case (just a logicalOrExpr)
-	return v.Visit(ctx.GetLeft()) // Visit the logicalOrExpr
+	// Pass-through case (not an assignment, just a logicalOrExpr, which is the left part of assignmentExpr)
+	return leftExpr
 }
 
 // VisitAwaitExpr handles prefixes or passes through postfixExpr.

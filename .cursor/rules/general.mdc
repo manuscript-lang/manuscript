@@ -18,16 +18,38 @@ alwaysApply: true
 - DO NOT leave commented code in file
 - DO use short names
 
-# How to work with grammar
+# How to write manuscript code
+- DO refer language-desgin.md for understanding available constructs
+
+# How to add or edit a language feature
+1. Update grammar
+1.1 determine if Lexer change is needed, then update the Lexer as well, IMPORTANT lexer is order sensitive
+2. Regenerate parser
+3. Update visitor
+4. Add tests in tests/compilation
+5. Run the tests and make them pass
+
+## Instructions
 - DO regenerate parser and make corresponding change in visitor after updating Manuscript.g4 and ManuscriptLexer.g4 
 - update of lexer or grammar requires regeneration of parser, use make generate_parser to regenerate
 - DO NOT edit code in internal/parser, its auto generated
+- REMEMBER grammar does not need to be changed for visitor changes
 
 # How to add tests
 - DO add lots of tests after making a change
 - DO ensure tests have complete and total coverage
 - DO add tests for boundary conditions, invalid inputs
 - DO NOT add comments in expected go code
-- DO use a single # for individual test title
-- DO create a title for entire test file
+- DO follow this structure for compilation tests
+
+title
+---
+# {test name}
+```ms
+// manuscript code
+```
+```go
+// go code
+```
 - DO output go code as go/ast package would, go code is generated using ast, thus should be in cannonical form
+- DO NOT create a new a file if test is covered already, always prefer to add it in existing files

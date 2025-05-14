@@ -68,7 +68,14 @@ QUESTION: '?';
 DOT: '.';
 NEQ: '!=';
 
-// bitwise operators 
+PLUS_EQUALS: '+=';
+MINUS_EQUALS: '-=';
+STAR_EQUALS: '*=';
+SLASH_EQUALS: '/=';
+MOD_EQUALS: '%=';
+CARET_EQUALS: '^=';
+
+// bitwise operators
 PIPE: '|';
 AMP: '&';
 CARET: '^';
@@ -82,7 +89,7 @@ HEX_LITERAL: '0x' [0-9a-fA-F]+ ;
 // Binary with 0b prefix
 BINARY_LITERAL: '0b' [01][01_]* ;
 
-// Floating point 
+// Floating point
 FLOAT:
     [0-9]+ '.' [0-9]* ([eE] [+-]? [0-9]+)? | // 1.23, 1.23e+10
     '.' [0-9]+ ([eE] [+-]? [0-9]+)? |        // .123, .123e-10
@@ -133,4 +140,4 @@ mode INTERPOLATION_MODE;
     INTERP_LBRACE: '{' -> pushMode(INTERPOLATION_MODE);
     INTERP_RBRACE: '}' -> popMode;
     // Tokens from DEFAULT_MODE should be implicitly available here for the expression
-    INTERP_WS: [ \t\r\n]+ -> skip; 
+    INTERP_WS: [ \t\r\n]+ -> skip;

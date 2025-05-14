@@ -44,15 +44,22 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 // VisitExprStmt processes an expression statement.
 func (v *ManuscriptAstVisitor) VisitExprStmt(ctx *parser.ExprStmtContext) interface{} {
 	// Explicitly visit only the expression part, ignore the semicolon child
-	visitedExprRaw := v.Visit(ctx.Expr()) // Visit the core expression
+	visitedNodeRaw := v.Visit(ctx.Expr()) // Visit the core expression, which could be an expr or an assignment stmt
 
-	if expr, ok := visitedExprRaw.(ast.Expr); ok {
+	// Check if the visited node is already a statement (e.g., ast.AssignStmt from VisitAssignmentExpr)
+	if stmt, ok := visitedNodeRaw.(ast.Stmt); ok {
+		return stmt // If it's a statement, return it directly
+	}
+
+	// If not a statement, check if it's an expression to be wrapped
+	if expr, ok := visitedNodeRaw.(ast.Expr); ok {
 		// Wrap the resulting expression in an ast.ExprStmt
 		return &ast.ExprStmt{X: expr}
 	}
 
-	v.addError("Expression statement did not resolve to a valid expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
-	return nil // Return nil if the expression visit failed
+	// If it's neither a recognized statement nor an expression, it's an error
+	v.addError("Expression statement did not resolve to a valid Go expression or statement: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
+	return &ast.BadStmt{} // Return a BadStmt or nil for error
 }
 
 // VisitIfStmt processes an if statement, including any else or else-if branches.
