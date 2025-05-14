@@ -13,8 +13,6 @@ import (
 // type MyStruct { field: Type } or type MyAlias = AnotherType
 func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interface{} {
 	typeNameStr := ctx.ID().GetText()
-	log.Printf("VisitTypeDecl: Called for '%s'", typeNameStr)
-
 	// Check for type alias: type Name = AliasType
 	// The grammar is: typeDecl: ... (LBRACE ... | EQ alias=typeAnnotation SEMICOLON? );
 	// We look for the presence of LBRACE. If not present, and an alias TypeAnnotation is, it's an alias.
@@ -123,8 +121,6 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 // VisitFieldDecl handles field declarations within a type (struct).
 // fieldDecl: (COMMENT_START? QUESTION COMMENT_END?)? name=ID (QUESTION)? COLON typeAnnotation SEMICOLON?;
 func (v *ManuscriptAstVisitor) VisitFieldDecl(ctx *parser.FieldDeclContext) interface{} {
-	log.Printf("VisitFieldDecl: Called for '%s'", ctx.GetText())
-
 	fieldName := ctx.GetName().GetText()
 	isOptional := ctx.QUESTION() != nil // Check if the '?' token is present after the name
 

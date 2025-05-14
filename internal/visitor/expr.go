@@ -106,7 +106,6 @@ func (v *ManuscriptAstVisitor) VisitExpr(ctx *parser.ExprContext) interface{} {
 
 // VisitAssignmentExpr handles assignment or passes through logicalOrExpr.
 func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprContext) interface{} {
-	log.Printf("VisitAssignmentExpr: Called for '%s'", ctx.GetText())
 
 	if ctx.GetOp() != nil { // Assignment case
 		leftExpr := v.Visit(ctx.GetLeft())
@@ -116,11 +115,9 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 		if rightExpr == nil {
 			// Check if there's a literal number in the text that wasn't lexed properly
 			rightText := ctx.GetRight().GetText()
-			log.Printf("VisitAssignmentExpr: Right expr is nil, checking text: '%s'", rightText)
 
 			// Try to parse the right side as a number if it looks numeric
 			if _, err := strconv.Atoi(rightText); err == nil {
-				log.Printf("VisitAssignmentExpr: Treating '%s' as a numeric literal", rightText)
 				rightExpr = &ast.BasicLit{
 					Kind:  token.INT,
 					Value: rightText,

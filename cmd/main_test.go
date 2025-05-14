@@ -63,6 +63,14 @@ func assertGoCode(t *testing.T, actual, expected string) {
 	}
 }
 
+// TestPair holds a single test case parsed from a markdown file,
+// consisting of a title, a manuscript code block, and its expected Go code output.
+type TestPair struct {
+	Title  string
+	MsCode string
+	GoCode string
+}
+
 func TestMarkdownCompilation(t *testing.T) {
 	testDir := "../tests/compilation"
 	allFiles, err := os.ReadDir(testDir)
@@ -102,50 +110,92 @@ func TestMarkdownCompilation(t *testing.T) {
 				t.Fatalf("Failed to read test file %s: %v", filePath, err)
 			}
 
-			msInputs, goExpectedOutputs := parseMarkdownTest(string(content))
+			testPairs := parseMarkdownTest(string(content))
 
-			if len(msInputs) == 0 {
+			if len(testPairs) == 0 {
 				t.Logf("No manuscript/go test pairs found in %s", file.Name())
 				return
 			}
 
-			if len(msInputs) != len(goExpectedOutputs) {
-				t.Fatalf("Mismatch in parsed manuscript and go code block counts in %s. Inputs: %d, Outputs: %d",
-					file.Name(), len(msInputs), len(goExpectedOutputs))
-			}
+			for i, pair := range testPairs {
+				testSubName := ""
+				if pair.Title != "" {
+					testSubName = pair.Title
+				} else {
+					testSubName = fmt.Sprintf("pair_%d", i+1) // 1-indexed for readability
+				}
 
-			baseName := strings.TrimSuffix(file.Name(), ".md")
-			for i, msInput := range msInputs {
-				goExpected := goExpectedOutputs[i]
-				t.Run(fmt.Sprintf("%s_pair%d", baseName, i), func(t *testing.T) {
-					actualGo := manuscriptToGo(t, msInput)
-					assertGoCode(t, actualGo, goExpected)
+				t.Run(testSubName, func(t *testing.T) {
+					actualGo := manuscriptToGo(t, pair.MsCode)
+					assertGoCode(t, actualGo, pair.GoCode)
 				})
 			}
 		})
 	}
 }
 
-// parseMarkdownTest extracts ordered pairs of manuscript and go code blocks.
-func parseMarkdownTest(markdownContent string) (msCodes []string, goCodes []string) {
-	// Regex to find fenced code blocks and capture the language tag and the body
-	codeBlockRegex := regexp.MustCompile("(?s)```\\s*(\\w+)\\s*\n(.*?)\n```")
-	allMatches := codeBlockRegex.FindAllStringSubmatch(markdownContent, -1)
+// findTitleForMsBlock searches for the most relevant title for a manuscript code block.
+// It looks for a title that appears after the last processed Go block and before the current ms block.
+// If multiple such titles exist, the one closest to the ms block is chosen.
+func findTitleForMsBlock(msBlockStartOffset int, lastGoBlockEndOffset int, allTitleMatches [][]int, markdownContent string) string {
+	currentPairTitle := ""
+	bestTitleStartForPair := -1
 
-	i := 0
-	for i < len(allMatches)-1 {
-		lang1 := strings.TrimSpace(allMatches[i][1])
-		body1 := strings.TrimSpace(allMatches[i][2])
-		lang2 := strings.TrimSpace(allMatches[i+1][1])
-		body2 := strings.TrimSpace(allMatches[i+1][2])
+	for _, titleMatchIndices := range allTitleMatches {
+		titleText := strings.TrimSpace(markdownContent[titleMatchIndices[2]:titleMatchIndices[3]])
+		titleStartOffset := titleMatchIndices[0]
+		titleEndOffset := titleMatchIndices[1]
 
-		if lang1 == "ms" && lang2 == "go" {
-			msCodes = append(msCodes, body1)
-			goCodes = append(goCodes, body2)
-			i += 2
-		} else {
-			i++
+		// Title must be after the last go block and before the current ms block
+		if titleStartOffset >= lastGoBlockEndOffset && titleEndOffset < msBlockStartOffset {
+			// If multiple titles fit, choose the latest one (closest to ms block)
+			if titleStartOffset > bestTitleStartForPair {
+				bestTitleStartForPair = titleStartOffset
+				currentPairTitle = titleText
+			}
 		}
 	}
-	return msCodes, goCodes
+	return currentPairTitle
+}
+
+// parseMarkdownTest extracts ordered pairs of manuscript and go code blocks,
+// along with their preceding titles.
+func parseMarkdownTest(content string) []TestPair {
+	// Regex to find fenced code blocks and capture the language tag and the body
+	codeBlockRegex := regexp.MustCompile("(?s)```\\s*(\\w+)\\s*\n(.*?)\n```")
+	// Regex to find titles (lines starting with #)
+	titleRegex := regexp.MustCompile("(?m)^#\\s+(.*)$")
+
+	matches := codeBlockRegex.FindAllStringSubmatchIndex(content, -1)
+	allTitleMatches := titleRegex.FindAllStringSubmatchIndex(content, -1)
+
+	var testPairs []TestPair
+	lastGoBlockEndOffset := 0
+
+	for i := 0; i < len(matches)-1; i++ {
+		b1Indices := matches[i]
+		b2Indices := matches[i+1]
+
+		lang1 := strings.TrimSpace(content[b1Indices[2]:b1Indices[3]])
+		msBody := strings.TrimSpace(content[b1Indices[4]:b1Indices[5]])
+
+		lang2 := strings.TrimSpace(content[b2Indices[2]:b2Indices[3]])
+		goBody := strings.TrimSpace(content[b2Indices[4]:b2Indices[5]])
+
+		if lang1 == "ms" && lang2 == "go" {
+			msBlockStartOffset := b1Indices[0]
+
+			currentPairTitle := findTitleForMsBlock(msBlockStartOffset, lastGoBlockEndOffset, allTitleMatches, content)
+
+			testPairs = append(testPairs, TestPair{
+				Title:  currentPairTitle,
+				MsCode: msBody,
+				GoCode: goBody,
+			})
+
+			lastGoBlockEndOffset = b2Indices[1] // Update for the next search window for titles
+			i++                                 // Consumed two blocks, advance main loop index
+		}
+	}
+	return testPairs
 }

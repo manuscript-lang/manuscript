@@ -3,7 +3,6 @@ package visitor
 import (
 	"fmt"
 	"go/ast"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 
 	"github.com/antlr4-go/antlr/v4"
@@ -12,8 +11,6 @@ import (
 // VisitTypeAnnotation handles type annotations, including modifiers for array, map, and set.
 // It should return an ast.Expr representing the Go type.
 func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationContext) interface{} {
-	log.Printf("VisitTypeAnnotation: Called for '%s'", ctx.GetText())
-
 	children := ctx.GetChildren()
 	if len(children) == 0 {
 		v.addError("Invalid empty type annotation: "+ctx.GetText(), ctx.GetStart())
@@ -141,14 +138,12 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 		}
 	}
 
-	log.Printf("VisitTypeAnnotation: Successfully processed to type %T for input '%s'", currentAstExpr, ctx.GetText())
 	return currentAstExpr
 }
 
 // VisitBaseTypeAnnotation handles the base part of a type annotation.
 // It should return an ast.Expr representing the Go type.
 func (v *ManuscriptAstVisitor) VisitBaseTypeAnnotation(ctx *parser.BaseTypeAnnotationContext) interface{} {
-	log.Printf("VisitBaseTypeAnnotation: Called for '%s'", ctx.GetText())
 	if ctx.ID() != nil { // Simple type (identifier)
 		typeName := ctx.ID().GetText()
 		// Map Manuscript basic types to Go types
@@ -164,22 +159,18 @@ func (v *ManuscriptAstVisitor) VisitBaseTypeAnnotation(ctx *parser.BaseTypeAnnot
 		case "any":
 			return ast.NewIdent("interface{}")
 		case "void":
-			log.Printf("VisitBaseTypeAnnotation: Manuscript 'void' type encountered. Representing as nil type expression.")
 			return nil
 		default:
 			return ast.NewIdent(typeName)
 		}
 	}
 	if ctx.TupleType() != nil {
-		log.Printf("VisitBaseTypeAnnotation: TupleType '%s' encountered, calling VisitTupleType.", ctx.TupleType().GetText())
 		return v.VisitTupleType(ctx.TupleType().(*parser.TupleTypeContext))
 	}
 	if ctx.FunctionType() != nil {
-		log.Printf("VisitBaseTypeAnnotation: FunctionType '%s' encountered, calling VisitFunctionType.", ctx.FunctionType().GetText())
 		return v.VisitFunctionType(ctx.FunctionType().(*parser.FunctionTypeContext))
 	}
 
-	log.Printf("VisitBaseTypeAnnotation: Unhandled base type annotation for '%s'", ctx.GetText())
 	v.addError("Unhandled base type annotation: "+ctx.GetText(), ctx.GetStart())
 	return nil
 }
@@ -187,7 +178,6 @@ func (v *ManuscriptAstVisitor) VisitBaseTypeAnnotation(ctx *parser.BaseTypeAnnot
 // VisitFunctionType handles function type signatures.
 // Returns *ast.FuncType
 func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FunctionTypeContext) interface{} {
-	log.Printf("VisitFunctionType: Called for '%s'", ctx.GetText())
 
 	params := &ast.FieldList{List: []*ast.Field{}}
 	if len(ctx.GetParamTypes()) > 0 {
@@ -252,7 +242,6 @@ func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FunctionTypeContext
 // e.g., (Type1, Type2, Type3)
 // Returns *ast.StructType representing the tuple.
 func (v *ManuscriptAstVisitor) VisitTupleType(ctx *parser.TupleTypeContext) interface{} {
-	log.Printf("VisitTupleType: Called for '%s'", ctx.GetText())
 
 	fields := []*ast.Field{}
 	typeAnnotations := ctx.GetTypes() // This should be []parser.ITypeAnnotationContext
@@ -293,7 +282,6 @@ func (v *ManuscriptAstVisitor) VisitTupleType(ctx *parser.TupleTypeContext) inte
 	}
 
 	if len(fields) == 0 {
-		log.Printf("VisitTupleType: Empty tuple '%s' encountered, representing as struct{}", ctx.GetText())
 		return &ast.StructType{
 			Fields:     &ast.FieldList{List: []*ast.Field{}},
 			Incomplete: false,

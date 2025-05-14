@@ -10,7 +10,6 @@ import (
 
 // VisitProgram handles the root of the parse tree (program rule).
 func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interface{} {
-	log.Println("SUCCESS: ManuscriptAstVisitor.VisitProgram in program.go is being executed.") // Diagnostic log
 	file := &ast.File{
 		Name:  ast.NewIdent("main"), // Default to main package
 		Decls: []ast.Decl{},         // Declarations will be added here

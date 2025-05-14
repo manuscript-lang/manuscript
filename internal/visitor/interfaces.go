@@ -13,8 +13,6 @@ import (
 // ifaceDecl: IFACE name=ID (EXTENDS baseIface+=typeAnnotation (COMMA baseIface+=typeAnnotation)*)? LBRACE (methodDecl SEMICOLON?)* RBRACE;
 func (v *ManuscriptAstVisitor) VisitIfaceDecl(ctx *parser.IfaceDeclContext) interface{} {
 	ifaceName := ctx.ID().GetText()
-	log.Printf("VisitIfaceDecl: Called for '%s'", ifaceName)
-
 	methods := make([]*ast.Field, 0)
 
 	// Handle extends (embedding other interfaces)
@@ -84,8 +82,6 @@ func (v *ManuscriptAstVisitor) VisitIfaceDecl(ctx *parser.IfaceDeclContext) inte
 // methodDecl: name=ID LPAREN parameters? RPAREN (COLON returnType=typeAnnotation)? EXCLAMATION?;
 func (v *ManuscriptAstVisitor) VisitMethodDecl(ctx *parser.MethodDeclContext) interface{} {
 	methodName := ctx.ID().GetText()
-	log.Printf("VisitMethodDecl: Called for '%s'", methodName)
-
 	// Parameters
 	var params *ast.FieldList
 	if pCtx := ctx.Parameters(); pCtx != nil {
@@ -145,17 +141,6 @@ func (v *ManuscriptAstVisitor) VisitMethodBlockDecl(ctx *parser.MethodBlockDeclC
 		return nil
 	}
 	typeName := typeNameNode.GetText()
-	var implForIface string
-	ifaceNameNode := ctx.GetIfaceName()
-	if ifaceNameNode != nil {
-		implForIface = ifaceNameNode.GetText()
-	}
-
-	if implForIface != "" {
-		log.Printf("VisitMethodBlockDecl: Called for '%s' implementing '%s'", typeName, implForIface)
-	} else {
-		log.Printf("VisitMethodBlockDecl: Called for '%s'", typeName)
-	}
 
 	// Collect all method implementations
 	var methods []ast.Decl
@@ -206,8 +191,6 @@ func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) in
 		v.addError("Internal error: Receiver type name for method \""+methodName+"\" is empty.", ctx.ID().GetSymbol())
 		return nil
 	}
-
-	log.Printf("VisitMethodImpl: Called for '%s.%s'", receiverTypeName, methodName)
 
 	// Create receiver parameter (e.g., "r *ReceiverType")
 	// Usually receiver parameter is a single letter or a short name

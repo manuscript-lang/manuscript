@@ -17,8 +17,6 @@ type ObjectDestructureMarker struct{ Properties []ast.Expr }
 // let pattern = expr
 // It can return a single ast.Stmt or a []ast.Stmt if the 'let' expands to multiple Go statements.
 func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *parser.LetDeclContext) interface{} {
-	log.Printf("VisitLetDecl: Called for '%s'", ctx.GetText())
-
 	assignments := ctx.AllLetAssignment()
 	if len(assignments) == 0 {
 		v.addError("No assignments found in let declaration: "+ctx.GetText(), ctx.GetStart())
@@ -220,7 +218,6 @@ func (v *ManuscriptAstVisitor) VisitLetPattern(ctx *parser.LetPatternContext) in
 // VisitArrayPattn handles array destructuring in let declarations.
 // For example: let [a, b] = someArray
 func (v *ManuscriptAstVisitor) VisitArrayPattn(ctx *parser.ArrayPattnContext) interface{} {
-	log.Printf("VisitArrayPattn: Called for '%s'", ctx.GetText())
 	var lhs []ast.Expr
 	for _, idNode := range ctx.AllID() {
 		idName := idNode.GetText()
@@ -237,7 +234,6 @@ func (v *ManuscriptAstVisitor) VisitArrayPattn(ctx *parser.ArrayPattnContext) in
 // VisitObjectPattn handles object destructuring in let declarations.
 // For example: let {x, y} = someObject
 func (v *ManuscriptAstVisitor) VisitObjectPattn(ctx *parser.ObjectPattnContext) interface{} {
-	log.Printf("VisitObjectPattn: Called for '%s'", ctx.GetText())
 	var lhs []ast.Expr
 	for _, idNode := range ctx.AllID() {
 		idName := idNode.GetText()

@@ -16,12 +16,18 @@ alwaysApply: true
 - DO follow DRY, do not repeat same blocks of code
 - DO follow structured logging
 - DO NOT leave commented code in file
+- DO use short names
 
 # How to work with grammar
 - DO regenerate parser and make corresponding change in visitor after updating Manuscript.g4 and ManuscriptLexer.g4 
-- DO update of lexer or grammar requires regeneration of parser, use make to regenerate
+- update of lexer or grammar requires regeneration of parser, use make generate_parser to regenerate
 - DO NOT edit code in internal/parser, its auto generated
 
 # How to add tests
 - DO add lots of tests after making a change
 - DO ensure tests have complete and total coverage
+- DO add tests for boundary conditions, invalid inputs
+- DO NOT add comments in expected go code
+- DO use a single # for individual test title
+- DO create a title for entire test file
+- DO output go code as go/ast package would, go code is generated using ast, thus should be in cannonical form

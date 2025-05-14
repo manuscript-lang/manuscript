@@ -20,8 +20,6 @@ type paramDetail struct {
 // VisitFnDecl handles function declarations.
 // fn foo(a: TypeA, b: TypeB = defaultVal): ReturnType! { body }
 func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{} {
-	log.Printf("VisitFnDecl: Called for '%s'", ctx.GetText())
-
 	fnName := ctx.ID().GetText()
 
 	// Parameters
@@ -171,7 +169,6 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 
 // VisitParameters handles a list of function parameters.
 func (v *ManuscriptAstVisitor) VisitParameters(ctx *parser.ParametersContext) interface{} {
-	log.Printf("VisitParameters: Called for '%s'", ctx.GetText())
 	details := []paramDetail{}
 	for _, paramCtx := range ctx.AllParam() {
 		paramInterface := v.VisitParam(paramCtx.(*parser.ParamContext))
@@ -191,8 +188,6 @@ func (v *ManuscriptAstVisitor) VisitParameters(ctx *parser.ParametersContext) in
 // VisitParam handles a single function parameter.
 // param: (label=ID)? name=ID COLON type_=typeAnnotation (EQUALS defaultValue=expr)?;
 func (v *ManuscriptAstVisitor) VisitParam(ctx *parser.ParamContext) interface{} {
-	log.Printf("VisitParam: Called for '%s'", ctx.GetText())
-
 	var paramName *ast.Ident
 	var paramNameToken antlr.Token
 	ids := ctx.AllID()

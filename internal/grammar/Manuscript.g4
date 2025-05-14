@@ -142,7 +142,7 @@ returnStmt: RETURN (expr (COMMA expr)*)? SEMICOLON?; // Allow zero, one, or mult
 yieldStmt: YIELD expr? SEMICOLON?;
 
 ifStmt: 
-	IF condition = expr block = codeBlock (ELSE elseBlock = codeBlock)?; // Simplified if/else
+	IF condition = expr block = codeBlock (ELSE elseBlock = codeBlock)?;
 
 // TODO: Define detailed loop structures based on language-design.md
 forStmt:

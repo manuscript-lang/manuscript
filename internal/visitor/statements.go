@@ -24,6 +24,15 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 		}
 	}
 
+	if ifStmtCtx := ctx.IfStmt(); ifStmtCtx != nil {
+		if concreteIfStmtCtx, ok := ifStmtCtx.(*parser.IfStmtContext); ok {
+			return v.VisitIfStmt(concreteIfStmtCtx)
+		} else {
+			v.addError("Internal error: Failed to process if statement structure: "+ifStmtCtx.GetText(), ifStmtCtx.GetStart())
+			return nil
+		}
+	}
+
 	if ctx.SEMICOLON() != nil {
 		return &ast.EmptyStmt{}
 	}
@@ -44,6 +53,57 @@ func (v *ManuscriptAstVisitor) VisitExprStmt(ctx *parser.ExprStmtContext) interf
 
 	v.addError("Expression statement did not resolve to a valid expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
 	return nil // Return nil if the expression visit failed
+}
+
+// VisitIfStmt processes an if statement, including any else or else-if branches.
+func (v *ManuscriptAstVisitor) VisitIfStmt(ctx *parser.IfStmtContext) interface{} {
+	// Visit the condition expression
+	condExprRaw := v.Visit(ctx.Expr())
+	var condExpr ast.Expr
+	if expr, ok := condExprRaw.(ast.Expr); ok {
+		condExpr = expr
+	} else {
+		v.addError("If condition did not resolve to a valid expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
+		return nil
+	}
+
+	// Visit the "then" block
+	thenBlockRaw := v.Visit(ctx.CodeBlock(0))
+	var thenBlock *ast.BlockStmt
+	if block, ok := thenBlockRaw.(*ast.BlockStmt); ok {
+		thenBlock = block
+	} else {
+		v.addError("If body did not resolve to a valid block: "+ctx.CodeBlock(0).GetText(), ctx.CodeBlock(0).GetStart())
+		return nil
+	}
+
+	// Create the if statement
+	ifStmt := &ast.IfStmt{
+		Cond: condExpr,
+		Body: thenBlock,
+	}
+
+	// Handle the else clause if it exists
+	if ctx.ELSE() != nil {
+		// Get the else block (second code block)
+		elseBlockRaw := v.Visit(ctx.CodeBlock(1))
+		if elseBlock, ok := elseBlockRaw.(*ast.BlockStmt); ok {
+			// Check if this is an "else if" statement (a block with exactly one if statement)
+			if len(elseBlock.List) == 1 {
+				if elseIf, ok := elseBlock.List[0].(*ast.IfStmt); ok {
+					// This is an "else if" - connect it directly as the Else branch
+					ifStmt.Else = elseIf
+					return ifStmt
+				}
+			}
+			// Regular else block
+			ifStmt.Else = elseBlock
+		} else {
+			v.addError("Else body did not resolve to a valid block", ctx.GetStart())
+		}
+	}
+
+	return ifStmt
 }
 
 // VisitCodeBlock handles a block of statements.
