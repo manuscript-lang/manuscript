@@ -29,6 +29,10 @@ func (cg *CodeGenerator) Generate(astNode interface{}) (string, error) {
 	visitor := NewManuscriptAstVisitor()
 	visitedNode := visitor.Visit(root)
 
+	if len(visitor.Errors) > 0 {
+		return "", fmt.Errorf("error parsing manuscript: %v", visitor.Errors)
+	}
+
 	goAST, ok := visitedNode.(*ast.File)
 	if !ok || goAST == nil {
 		log.Printf("Error: Visiting the root node did not return a valid *ast.File. Got type: %T", visitedNode)
