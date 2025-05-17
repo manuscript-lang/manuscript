@@ -32,8 +32,8 @@ func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *msParser.LetDeclContext) interf
 		}
 		return &ast.EmptyStmt{}
 	} else if blockLetCtx := ctx.LetBlock(); blockLetCtx != nil {
-		// Case: let { a = 1; b }
-		letSingleAssignments := blockLetCtx.AllLetSingle() // Returns []ILetSingleContext
+		// Case: let ( a = 1, b )
+		letSingleAssignments := blockLetCtx.AllAssignmentExpr() // Returns []IAssignmentExprContext
 		if len(letSingleAssignments) == 0 {
 			// This might be 'let {}' which should be an error or no-op.
 			// The grammar for blockLet is LBRACE (letSingle)* RBRACE
@@ -43,9 +43,9 @@ func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *msParser.LetDeclContext) interf
 			return &ast.EmptyStmt{}
 		}
 		for _, singleAssignCtx := range letSingleAssignments { // singleAssignCtx is ILetSingleContext
-			stmt := v.visitLetSingleAssignment(singleAssignCtx)
+			stmt := v.Visit(singleAssignCtx)
 			if stmt != nil {
-				if _, isEmpty := stmt.(*ast.EmptyStmt); !isEmpty {
+				if stmt, ok := stmt.(ast.Stmt); ok {
 					stmts = append(stmts, stmt)
 				}
 			}

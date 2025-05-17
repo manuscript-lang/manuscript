@@ -26,12 +26,12 @@ fn main() {
 package main
 
 func main() {
-	a := 123
-	b := -456
-	c := 0
-	d := 9876543210
-	e := 10 + 20
-	f := 100 - 50
+    a := 123
+    b := -456
+    c := 0
+    d := 9876543210
+    e := 10 + 20
+    f := 100 - 50
 }
 ```
 
@@ -53,12 +53,12 @@ fn main() {
 package main
 
 func main() {
-	fa := 1.23
-	fb := -0.005
-	fc := 0.0
-	fd := .5
-	fe := 0.5 + 1.2
-	ff := 10.0 / 4.0
+    fa := 1.23
+    fb := -0.005
+    fc := 0.0
+    fd := .5
+    fe := 0.5 + 1.2
+    ff := 10.0 / 4.0
 }
 ```
 
@@ -78,11 +78,11 @@ fn main() {
 package main
 
 func main() {
-	ba := true
-	bb := false
-	be := 10 > 5
-	bf := 10 == 10
-	bg := 10 < 5
+    ba := true
+    bb := false
+    be := 10 > 5
+    bf := 10 == 10
+    bg := 10 < 5
 }
 ```
 
@@ -98,6 +98,6 @@ fn main() {
 package main
 
 func main() {
-	na := nil
+    na := nil
 }
 ``` 

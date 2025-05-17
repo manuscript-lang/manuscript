@@ -9,7 +9,7 @@ fn main() {
 package main
 
 func main() {
-	x := 10
+    x := 10
 }
 ```
 
@@ -28,6 +28,6 @@ fn main() {
 package main
 
 func main() {
-	y := "test"
+    y := "test"
 }
 ```

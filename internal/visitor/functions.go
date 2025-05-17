@@ -18,6 +18,122 @@ type ParamDetail struct {
 	DefaultValue ast.Expr // nil if no default value
 }
 
+// Helper structure for function construction
+type functionConstructionParts struct {
+	paramsAST          *ast.FieldList
+	defaultAssignments []ast.Stmt // Kept for clarity, though bodyAST will have them prepended
+	bodyAST            *ast.BlockStmt
+	resultsAST         *ast.FieldList
+}
+
+// buildFunctionEssentials consolidates common logic for processing function parts.
+// It handles parameters, body construction (with default assignments), return type determination (explicit/inferred),
+// and conversion of the last expression to a return statement if applicable.
+func (v *ManuscriptAstVisitor) buildFunctionEssentials(
+	fnNameForError string, // For error messages
+	overallFnToken antlr.Token, // For error reporting when specific part tokens are unavailable
+	paramsCtx parser.IParametersContext,
+	typeAnnotationCtx parser.ITypeAnnotationContext,
+	exclamationNode antlr.TerminalNode,
+	codeBlockCtx parser.ICodeBlockContext,
+	allowReturnTypeInference bool,
+) (*functionConstructionParts, bool) { // returns parts and success status
+
+	parts := &functionConstructionParts{}
+	var paramDetailsList []ParamDetail
+
+	// 1. Process Parameters
+	if paramsCtx != nil {
+		// ProcessParameters expects IParametersContext, which paramsCtx is.
+		// Internally, ProcessParameters might cast to *parser.ParametersContext if needed.
+		parts.paramsAST, parts.defaultAssignments, paramDetailsList = v.ProcessParameters(paramsCtx)
+		_ = paramDetailsList // Currently unused by the direct callers of buildFunctionEssentials
+	} else {
+		parts.paramsAST = &ast.FieldList{List: []*ast.Field{}}
+		parts.defaultAssignments = []ast.Stmt{}
+	}
+
+	// 2. Process Body and identify potential last expression for return
+	var potentialLastExprForReturn ast.Expr
+	if codeBlockCtx == nil {
+		v.addError(fmt.Sprintf("No code block found for function '%s'.", fnNameForError), overallFnToken)
+		return nil, false
+	}
+
+	concreteCodeBlockCtx, ok := codeBlockCtx.(*parser.CodeBlockContext)
+	if !ok {
+		v.addError(fmt.Sprintf("Internal error: Unexpected context type for code block in function '%s'.", fnNameForError), codeBlockCtx.GetStart())
+		return nil, false
+	}
+	bodyInterface := v.VisitCodeBlock(concreteCodeBlockCtx)
+
+	if b, okBody := bodyInterface.(*ast.BlockStmt); okBody {
+		parts.bodyAST = b
+		// Prepend default value assignments to the beginning of the actual body statements
+		if len(parts.defaultAssignments) > 0 {
+			// Ensure a new slice is created to avoid modifying underlying array of defaultAssignments if it's reused.
+			currentBodyList := parts.bodyAST.List
+			newBodyList := make([]ast.Stmt, 0, len(parts.defaultAssignments)+len(currentBodyList))
+			newBodyList = append(newBodyList, parts.defaultAssignments...)
+			newBodyList = append(newBodyList, currentBodyList...)
+			parts.bodyAST.List = newBodyList
+		}
+
+		// Identify potential last expression from the (now fully assembled) body
+		if len(parts.bodyAST.List) > 0 {
+			lastIdx := len(parts.bodyAST.List) - 1
+			finalStmtInBody := parts.bodyAST.List[lastIdx]
+			if exprStmt, isExpr := finalStmtInBody.(*ast.ExprStmt); isExpr {
+				potentialLastExprForReturn = exprStmt.X
+			} else if retStmt, isRet := finalStmtInBody.(*ast.ReturnStmt); isRet {
+				// If it's already a return statement, its expression can be used for type inference if needed.
+				if len(retStmt.Results) > 0 {
+					potentialLastExprForReturn = retStmt.Results[0]
+				}
+			}
+		}
+	} else {
+		v.addError(fmt.Sprintf("Function '%s' must have a valid code block body.", fnNameForError), codeBlockCtx.GetStart())
+		return nil, false
+	}
+
+	// 3. Determine Go Function Return Type ('resultsAST')
+	goFuncWillHaveReturn := false
+	if typeAnnotationCtx != nil || exclamationNode != nil { // Explicit MS return type
+		parts.resultsAST = v.ProcessReturnType(typeAnnotationCtx, exclamationNode, fnNameForError)
+		if parts.resultsAST != nil && len(parts.resultsAST.List) > 0 {
+			goFuncWillHaveReturn = true
+		}
+	} else if allowReturnTypeInference && potentialLastExprForReturn != nil { // No explicit MS return, try to infer
+		inferredTypeExpr := v.inferTypeFromExpression(potentialLastExprForReturn, parts.paramsAST)
+		if inferredTypeExpr != nil {
+			parts.resultsAST = &ast.FieldList{List: []*ast.Field{{Type: inferredTypeExpr}}}
+			goFuncWillHaveReturn = true
+		}
+	}
+
+	// 4. Convert last expression to ReturnStmt if a Go return type is expected
+	// and the last statement in the body is an expression that matches our potential candidate.
+	if goFuncWillHaveReturn && parts.bodyAST != nil && len(parts.bodyAST.List) > 0 {
+		lastIdx := len(parts.bodyAST.List) - 1
+		if exprStmt, isExpr := parts.bodyAST.List[lastIdx].(*ast.ExprStmt); isExpr {
+			// Ensure this expression statement is the one we identified as 'potentialLastExprForReturn'.
+			// This avoids converting if 'potentialLastExprForReturn' came from an already existing ReturnStmt.
+			if exprStmt.X == potentialLastExprForReturn {
+				retStmt := &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
+				parts.bodyAST.List[lastIdx] = retStmt
+			}
+		}
+	}
+
+	// Ensure bodyAST is not nil, even if it was originally empty (it might contain default assignments).
+	if parts.bodyAST == nil {
+		parts.bodyAST = &ast.BlockStmt{}
+	}
+
+	return parts, true
+}
+
 // VisitFnDecl handles function declarations.
 // fn foo(a: TypeA, b: TypeB = defaultVal): ReturnType! { body }
 func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{} {
@@ -28,60 +144,46 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 	}
 
 	var fnName string
-	if fnSig.NamedID() != nil {
+	var fnNameToken antlr.Token
+	if fnSig.NamedID() != nil && fnSig.NamedID().ID() != nil { // Ensure ID is present
 		fnName = fnSig.NamedID().GetText()
+		fnNameToken = fnSig.NamedID().ID().GetSymbol()
 	} else {
 		v.addError("Function signature is missing name.", fnSig.GetStart())
 		return nil
 	}
 
-	// Parameters
-	var paramsAST = &ast.FieldList{List: []*ast.Field{}}
-	var defaultAssignments []ast.Stmt
-
+	var paramsCtx parser.IParametersContext
 	if fnSig.Parameters() != nil {
-		// ProcessParameters now returns []ParamDetail as its third value
-		var pdl []ParamDetail
-		paramsAST, defaultAssignments, pdl = v.ProcessParameters(fnSig.Parameters())
-		_ = pdl // Use pdl to satisfy the linter if no other logic uses it right now.
-		// If pdl is meant to be used for other checks below, that logic should be implemented.
-
-		// The paramsAST is already populated by ProcessParameters
+		paramsCtx = fnSig.Parameters()
 	}
 
-	// Return Type
-	var results *ast.FieldList
-	if fnSig.TypeAnnotation() != nil || fnSig.EXCLAMATION() != nil {
-		results = v.ProcessReturnType(fnSig.TypeAnnotation(), fnSig.EXCLAMATION(), fnName)
+	var typeAnnotation parser.ITypeAnnotationContext
+	if fnSig.TypeAnnotation() != nil {
+		typeAnnotation = fnSig.TypeAnnotation()
 	}
 
-	// Function Body
-	var body *ast.BlockStmt
-	if ctx.CodeBlock() != nil {
-		// v.VisitCodeBlock expects parser.ICodeBlockContext, which ctx.CodeBlock() returns.
-		// The actual VisitCodeBlock method in the visitor might expect *parser.CodeBlockContext.
-		bodyInterface := v.VisitCodeBlock(ctx.CodeBlock().(*parser.CodeBlockContext))
-		if b, ok := bodyInterface.(*ast.BlockStmt); ok {
-			body = b
-			if len(defaultAssignments) > 0 {
-				body.List = append(defaultAssignments, body.List...)
-			}
-		} else {
-			v.addError(fmt.Sprintf("Function \"%s\" must have a valid code block body.", fnName), ctx.CodeBlock().GetStart())
-			return nil
-		}
-	} else {
-		v.addError(fmt.Sprintf("No code block found for function \"%s\".", fnName), fnSig.NamedID().GetStart()) // Use name from signature
-		return nil
+	parts, success := v.buildFunctionEssentials(
+		fnName,
+		fnNameToken, // Token for the function name, for error reporting context
+		paramsCtx,
+		typeAnnotation,
+		fnSig.EXCLAMATION(),
+		ctx.CodeBlock(),
+		true, // Allow return type inference for function declarations
+	)
+
+	if !success {
+		return nil // Error already added by helper
 	}
 
 	return &ast.FuncDecl{
 		Name: ast.NewIdent(fnName),
 		Type: &ast.FuncType{
-			Params:  paramsAST,
-			Results: results,
+			Params:  parts.paramsAST,
+			Results: parts.resultsAST,
 		},
-		Body: body,
+		Body: parts.bodyAST,
 	}
 }
 
@@ -228,6 +330,102 @@ func (v *ManuscriptAstVisitor) ProcessParameters(paramsCtx parser.IParametersCon
 	return paramsAST, defaultAssignments, paramDetailsList
 }
 
+// inferTypeFromExpression attempts to infer a Go AST type from a given expression.
+// It's a basic inference, primarily for literals and simple cases.
+func (v *ManuscriptAstVisitor) inferTypeFromExpression(expr ast.Expr, funcParams *ast.FieldList) ast.Expr {
+	if expr == nil {
+		return nil
+	}
+	switch e := expr.(type) {
+	case *ast.BasicLit:
+		switch e.Kind {
+		case token.INT:
+			return ast.NewIdent("int64") // Manuscript 'int' typically maps to 'int64'
+		case token.FLOAT:
+			return ast.NewIdent("float64") // Manuscript 'float' typically maps to 'float64'
+		case token.STRING:
+			return ast.NewIdent("string")
+		default:
+			return nil
+		}
+	case *ast.Ident:
+		// Check for boolean literals (if Manuscript parses them as Idents)
+		// This needs to align with actual grammar for booleans.
+		// if e.Name == "true" || e.Name == "false" { // Assuming "true"/"false" are idents for bools
+		// 	return ast.NewIdent("bool")
+		// }
+
+		// Check if 'e' is a parameter name, and get its type from funcParams
+		if funcParams != nil {
+			for _, field := range funcParams.List {
+				for _, name := range field.Names {
+					if name.Name == e.Name {
+						// The field.Type is already an ast.Expr representing the type.
+						return field.Type
+					}
+				}
+			}
+		}
+		return nil // Cannot infer from other idents without a symbol table/type system
+	case *ast.BinaryExpr:
+		// Very basic inference: if operands can be inferred to the same type, assume that type.
+		// This doesn't handle type promotion (e.g., int + float = float) or complex cases.
+		leftType := v.inferTypeFromExpression(e.X, funcParams)
+		// rightType := v.inferTypeFromExpression(e.Y, funcParams) // Not used in simple model for now
+
+		// If left operand's type can be inferred, assume binary op results in same type.
+		// This is a major simplification, especially for ops like comparisons (-> bool)
+		// or mixed-type arithmetic.
+		// For `a + b + d`: if `a` is int64, this might infer `int64` if `a` is `e.X`.
+		if leftType != nil {
+			// Check if leftType is one of the numeric types we handle
+			if lt, ok := leftType.(*ast.Ident); ok {
+				if lt.Name == "int64" || lt.Name == "float64" { // Add other types if needed
+					// This assumes the binary operation preserves the type of the left operand.
+					// A more robust solution would check e.Op and types of both X and Y.
+					return ast.NewIdent(lt.Name)
+				}
+				// Could add bool for comparison operators, e.g.
+				// switch e.Op {
+				// case token.EQL, token.LSS, token.GTR, token.NEQ, token.LEQ, token.GEQ:
+				// return ast.NewIdent("bool")
+				// }
+			}
+		}
+		return nil
+	case *ast.CompositeLit:
+		// For composite literals like `[]int{1,2}` or `MyStruct{}{}`, e.Type is the AST node for the type.
+		return e.Type
+	case *ast.CallExpr:
+		// If the function being called is an identifier that represents a type (e.g. type conversion)
+		// like `string(x)`, `int(num)`, then e.Fun is that type.
+		if typeIdent, ok := e.Fun.(*ast.Ident); ok {
+			// Basic check: does it look like a built-in Go type?
+			// A more robust way would be to have a list of known types or a symbol table.
+			switch typeIdent.Name {
+			case "string", "int", "int8", "int16", "int32", "int64",
+				"uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+				"float32", "float64", "complex64", "complex128",
+				"bool", "byte", "rune", "error":
+				return typeIdent // The function name itself is the type.
+			}
+			// If it's not a known built-in type, we can't infer without a symbol table.
+			// For project-specific types or functions, this would need more info.
+			// For now, let's assume if it's not a basic Go type, we can't infer the return from the call expr alone.
+			// However, if the call is `MyType(arg)` and MyType is a defined type in Manuscript,
+			// then e.Fun might be an *ast.Ident{Name: "MyType"}.
+			// This requires knowing it's a type.
+		}
+		// If e.Fun is a more complex expression (e.g. a selector like `pkg.MyFunc()`),
+		// or if it's an identifier for a function whose return type isn't known here,
+		// we can't infer easily.
+		// TODO: A more advanced system would look up the function signature in a symbol table.
+		return nil
+	default:
+		return nil // Cannot infer by default
+	}
+}
+
 // ProcessReturnType processes return type for functions and methods.
 // It returns an *ast.FieldList for the results.
 func (v *ManuscriptAstVisitor) ProcessReturnType(typeAnnotationCtx parser.ITypeAnnotationContext, exclamationNode antlr.TerminalNode, funcNameForError string) *ast.FieldList {
@@ -277,45 +475,41 @@ func (v *ManuscriptAstVisitor) ProcessReturnType(typeAnnotationCtx parser.ITypeA
 // fnExpr: FN LPAREN Parameters? RPAREN (COLON TypeAnnotation)? CodeBlock;
 // (ASYNC and EXCLAMATION are not directly on FnExprContext based on current findings)
 func (v *ManuscriptAstVisitor) VisitFnExpr(ctx *parser.FnExprContext) interface{} {
-
-	// Parameters & Default Value Assignments
-	paramsAST, defaultAssignments, _ := v.ProcessParameters(ctx.Parameters()) // Using helper
-
-	// Return Type
-	var resultsAST *ast.FieldList
-	if ctx.TypeAnnotation() != nil { // Check EXCLAMATION too for the helper
-		resultsAST = v.ProcessReturnType(ctx.TypeAnnotation(), nil, "anonymous function expression") // Using helper, passed nil for EXCLAMATION
+	var paramsCtx parser.IParametersContext
+	if ctx.Parameters() != nil {
+		paramsCtx = ctx.Parameters()
 	}
 
-	// Function Body
-	bodyAST := &ast.BlockStmt{}
-	if ctx.CodeBlock() != nil {
-		// VisitCodeBlock expects *parser.CodeBlockContext.
-		concreteCodeBlockCtx, ok := ctx.CodeBlock().(*parser.CodeBlockContext)
-		if !ok {
-			v.addError("Function expression body has unexpected context type.", ctx.CodeBlock().GetStart())
-		} else {
-			bodyInterface := v.VisitCodeBlock(concreteCodeBlockCtx)
-			if b, okBody := bodyInterface.(*ast.BlockStmt); okBody {
-				bodyAST = b
-				if len(defaultAssignments) > 0 {
-					bodyAST.List = append(defaultAssignments, bodyAST.List...)
-				}
-			} else {
-				v.addError("Function expression body did not resolve to a valid block statement.", concreteCodeBlockCtx.GetStart())
-			}
-		}
-	} else {
-		v.addError("Function expression has no code block.", ctx.GetStart())
+	var typeAnnotation parser.ITypeAnnotationContext
+	if ctx.TypeAnnotation() != nil {
+		typeAnnotation = ctx.TypeAnnotation()
+	}
+
+	// Anonymous functions in Manuscript (fn() { ... } or fn(): Type { ... })
+	// do not use '!' for error returns and typically don't infer complex return types
+	// beyond what's explicitly annotated or a simple last expression if that feature were fully enabled for them.
+	// Current FnExpr visitor logic does not implement return type inference.
+	parts, success := v.buildFunctionEssentials(
+		"anonymous function expression",
+		ctx.FN().GetSymbol(), // Token for "fn" keyword
+		paramsCtx,
+		typeAnnotation, // Pass explicit type annotation
+		nil,            // No EXCLAMATION() in FnExpr syntax
+		ctx.CodeBlock(),
+		false, // Return type inference is typically not done for FnExpr in the same way as FnDecl
+	)
+
+	if !success {
+		return nil // Error already added by helper
 	}
 
 	return &ast.FuncLit{
 		Type: &ast.FuncType{
 			Func:    v.pos(ctx.FN().GetSymbol()),
-			Params:  paramsAST,
-			Results: resultsAST,
+			Params:  parts.paramsAST,
+			Results: parts.resultsAST,
 		},
-		Body: bodyAST,
+		Body: parts.bodyAST,
 	}
 }
 

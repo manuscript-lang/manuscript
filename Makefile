@@ -23,4 +23,4 @@ build: generate_parser install
 .PHONY: test-file
 test-file:
 	@echo "Running single file test: $(f)"
-	go test -v ./cmd/... -run ^TestMarkdownCompilation$$ -timeout 30s -args -file $(f) $(if $(findstring debug,$(args)),-debug)
+	go test -v ./cmd/... -run ^TestCompile$$ -timeout 30s -args -file $(f) $(if $(findstring debug,$(args)),-debug)

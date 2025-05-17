@@ -41,7 +41,7 @@ func (cg *CodeGenerator) Generate(astNode interface{}) (string, error) {
 
 	fileSet := token.NewFileSet()
 	var buf bytes.Buffer
-	config := printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 4}
+	config := printer.Config{Mode: printer.UseSpaces, Tabwidth: 4}
 	if err := config.Fprint(&buf, fileSet, goAST); err != nil {
 		return "", fmt.Errorf("error printing Go AST: %w", err)
 	}

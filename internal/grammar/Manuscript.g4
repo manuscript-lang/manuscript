@@ -59,7 +59,7 @@ letDecl:
 	);
 
 letSingle: typedID (EQUALS value = expr)?;
-letBlock: LBRACE (letSingle)* RBRACE;
+letBlock: LPAREN (assignments += assignmentExpr (COMMA assignments += assignmentExpr)*)? RPAREN;
 letDestructuredObj:
 	LBRACE destructuredIds = typedIDList RBRACE EQUALS value = expr;
 letDestructuredArray:
@@ -77,7 +77,7 @@ typeList:
 fnDecl: signature = fnSignature block = codeBlock;
 
 fnSignature:
-	FN functionName = namedID LPAREN params = parameters? RPAREN (
+	FN functionName = namedID LPAREN params = parameters? RPAREN (COLON
 		returnType = typeAnnotation
 	)? (returnsError = EXCLAMATION)?;
 

@@ -21,7 +21,7 @@ fn main() {
 package main
 
 func main() {
-	var x
+    var x
 }
 ```
 
@@ -43,10 +43,10 @@ It can also contain multiple lines of text.
 package main
 
 func main() {
-	x := 10
-	message := "hello"
-	multiLine := "\nThis is a multi-line string.\nIt can contain multiple lines of text.\n"
-	multiLine2 := "This is another multi-line string. \nIt can also contain multiple lines of text.\n"
+    x := 10
+    message := "hello"
+    multiLine := "\nThis is a multi-line string.\nIt can contain multiple lines of text.\n"
+    multiLine2 := "This is another multi-line string. \nIt can also contain multiple lines of text.\n"
 }
 ``` 
 
@@ -65,11 +65,11 @@ fn main() {
 package main
 
 func main() {
-	a := 5
-	b := 10
-	c := 15
-	var x
-	var y
-	z := 20
+    a := 5
+    b := 10
+    c := 15
+    var x
+    var y
+    z := 20
 }
 ```
