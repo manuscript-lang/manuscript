@@ -30,12 +30,14 @@ alwaysApply: true
 4. Add tests in tests/compilation
 5. Run the tests and make them pass
 
-# How to add tests
+# How to write tests
 - DO add lots of tests after making a change
 - DO ensure tests have complete and total coverage
 - DO add tests for boundary conditions, invalid inputs
 - DO NOT add comments in expected go code
 - DO follow this structure for compilation tests
+- DO use 4 space indents for go code
+- DO use 2 space indent for manuscript code
 
 {title for the test}
 ---
