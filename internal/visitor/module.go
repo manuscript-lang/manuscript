@@ -97,18 +97,18 @@ func (v *ManuscriptAstVisitor) VisitExternStmt(ctx *parser.ExternStmtContext) in
 	if targetNode := ctx.GetTarget(); targetNode != nil { // Form 2: EXTERN target FROM path
 		importName = ast.NewIdent(targetNode.GetText())
 	} else { // Form 1: EXTERN { items } FROM path
-		allItems := ctx.AllExternItem()
+		allItems := ctx.AllImportItem()
 		if ctx.LBRACE() != nil && len(allItems) == 0 { // EXTERN {} FROM path
 			importName = ast.NewIdent("_") // Import for side-effects
 		} else if len(allItems) == 1 {
-			itemCtx := allItems[0].(*parser.ExternItemContext)
+			itemCtx := allItems[0].(*parser.ImportItemContext)
 			if itemCtx.GetAlias() != nil {
 				importName = ast.NewIdent(itemCtx.GetAlias().GetText())
 			}
 		}
 		// Log details of all items
 		for _, itemAntlrNode := range allItems {
-			itemCtx := itemAntlrNode.(*parser.ExternItemContext)
+			itemCtx := itemAntlrNode.(*parser.ImportItemContext)
 			itemNameStr := itemCtx.GetName().GetText()
 			if itemCtx.GetAlias() != nil {
 				aliasStr := itemCtx.GetAlias().GetText()
@@ -130,17 +130,6 @@ func (v *ManuscriptAstVisitor) VisitExternStmt(ctx *parser.ExternStmtContext) in
 	}
 }
 
-// VisitExternItem is called when visiting an extern item.
-func (v *ManuscriptAstVisitor) VisitExternItem(ctx *parser.ExternItemContext) interface{} {
-	name := ctx.GetName().GetText()
-	alias := ""
-	if ctx.GetAlias() != nil {
-		alias = ctx.GetAlias().GetText()
-	}
-	log.Printf("TRACE: Visiting ExternItem: %s (alias: %s)", name, alias)
-	return nil
-}
-
 // VisitExportStmt handles export statements.
 // It visits the underlying declaration and modifies its AST
 // to ensure relevant identifiers are capitalized for Go export.
@@ -155,8 +144,8 @@ func (v *ManuscriptAstVisitor) VisitExportStmt(ctx *parser.ExportStmtContext) in
 		visitedNode = v.Visit(ctx.LetDecl())
 	} else if ctx.TypeDecl() != nil {
 		visitedNode = v.Visit(ctx.TypeDecl())
-	} else if ctx.IfaceDecl() != nil {
-		visitedNode = v.Visit(ctx.IfaceDecl())
+	} else if ctx.InterfaceDecl() != nil {
+		visitedNode = v.Visit(ctx.InterfaceDecl())
 	} else {
 		v.addError("Export statement has no recognized declaration (function, let, type, or interface).", ctx.GetStart())
 		return &ast.BadDecl{}

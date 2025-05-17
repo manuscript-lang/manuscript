@@ -1,6 +1,7 @@
 package visitor
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"log"
@@ -9,8 +10,8 @@ import (
 	"github.com/antlr4-go/antlr/v4"
 )
 
-// paramDetail holds extracted information about a function parameter, including any default value.
-type paramDetail struct {
+// ParamDetail holds extracted information about a function parameter, including any default value.
+type ParamDetail struct {
 	Name         *ast.Ident
 	NameToken    antlr.Token // Store the original token for error reporting
 	Type         ast.Expr
@@ -20,141 +21,58 @@ type paramDetail struct {
 // VisitFnDecl handles function declarations.
 // fn foo(a: TypeA, b: TypeB = defaultVal): ReturnType! { body }
 func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{} {
-	fnName := ctx.ID().GetText()
+	fnSig := ctx.FnSignature()
+	if fnSig == nil {
+		v.addError("Function declaration is missing signature.", ctx.GetStart())
+		return nil
+	}
+
+	var fnName string
+	if fnSig.NamedID() != nil {
+		fnName = fnSig.NamedID().GetText()
+	} else {
+		v.addError("Function signature is missing name.", fnSig.GetStart())
+		return nil
+	}
 
 	// Parameters
 	var paramsAST = &ast.FieldList{List: []*ast.Field{}}
 	var defaultAssignments []ast.Stmt
-	var paramDetailsList []paramDetail
 
-	if ctx.Parameters() != nil {
-		paramsInterface := v.VisitParameters(ctx.Parameters().(*parser.ParametersContext))
-		if pdl, ok := paramsInterface.([]paramDetail); ok {
-			paramDetailsList = pdl
-			for _, pd := range paramDetailsList {
-				field := &ast.Field{
-					Names: []*ast.Ident{pd.Name},
-					Type:  pd.Type,
-				}
-				paramsAST.List = append(paramsAST.List, field)
+	if fnSig.Parameters() != nil {
+		// ProcessParameters now returns []ParamDetail as its third value
+		var pdl []ParamDetail
+		paramsAST, defaultAssignments, pdl = v.ProcessParameters(fnSig.Parameters())
+		_ = pdl // Use pdl to satisfy the linter if no other logic uses it right now.
+		// If pdl is meant to be used for other checks below, that logic should be implemented.
 
-				if pd.DefaultValue != nil {
-					// Create the condition: if param == <zero_value_for_type>
-					// This is a simplified check. A robust check for "zero value" is complex.
-					// For common types, we might check against 0, "", false, nil.
-					// This example assumes the zero value check might be against 'nil' if the type allows it,
-					// or requires more sophisticated type-specific zero value generation.
-					// For now, we'll create a placeholder or a very simple check.
-					// A more robust solution would be needed for production.
-
-					// Placeholder for zero value expression - this needs to be type-aware
-					// For example, for an 'int' type, it would be ast.NewIdent("0")
-					// For a 'string' type, it would be &ast.BasicLit{Kind: token.STRING, Value: "\"\""}
-					// This part is complex and depends on how types are represented and resolved.
-					// Let's assume for now we are checking if the parameter is its Go zero value.
-					// This is a conceptual placeholder for how one might check.
-					// A simple `if param == defaultValue` is not right.
-					// It should be `if param == <zero value for param's type> { param = defaultValue }`
-
-					// Example: if param is an int, check `param == 0`
-					// Example: if param is a string, check `param == ""`
-					// This part is highly dependent on the actual Go type being generated for pd.Type
-					// For this pass, I will generate a simple assignment statement and log the need for a proper zero-value check.
-					log.Printf("VisitFnDecl: Generating default value assignment for %s. Zero-value check needs to be implemented robustly based on type.", pd.Name.Name)
-
-					// The following ifStmt structure an assignment `param = defaultValue`
-					// if `param == <zero_value_for_type>`.
-					// The determination of `zeroValExpr` is crucial and currently simplified.
-
-					var zeroValExpr ast.Expr
-					// This switch is illustrative and not exhaustive or fully correct for all types
-					if ident, okType := pd.Type.(*ast.Ident); okType {
-						switch ident.Name {
-						case "int", "int32", "int64", "float32", "float64": // Add other numeric types
-							zeroValExpr = &ast.BasicLit{Kind: token.INT, Value: "0"}
-						case "string":
-							zeroValExpr = &ast.BasicLit{Kind: token.STRING, Value: `""`}
-						case "bool":
-							zeroValExpr = ast.NewIdent("false")
-						default:
-							// For other types (structs, interfaces, pointers), 'nil' is often the zero value.
-							// This is a simplification.
-							zeroValExpr = ast.NewIdent("nil")
-						}
-					} else {
-						// Default to nil for complex types or if type determination fails here
-						zeroValExpr = ast.NewIdent("nil")
-						v.addError("Could not determine specific zero value for type of param "+pd.Name.Name+"; defaulting to 'nil' check for default value assignment.", pd.NameToken)
-					}
-
-					ifStmt := &ast.IfStmt{
-						Cond: &ast.BinaryExpr{
-							X:  pd.Name,     // The parameter identifier
-							Op: token.EQL,   // ==
-							Y:  zeroValExpr, // The zero value for the parameter's type
-						},
-						Body: &ast.BlockStmt{
-							List: []ast.Stmt{
-								&ast.AssignStmt{
-									Lhs: []ast.Expr{pd.Name}, // Assign to the parameter
-									Tok: token.ASSIGN,
-									Rhs: []ast.Expr{pd.DefaultValue}, // Assign the default value
-								},
-							},
-						},
-					}
-					defaultAssignments = append(defaultAssignments, ifStmt)
-				}
-			}
-		} else {
-			v.addError("Internal error: Expected parameter details from parameter processing.", ctx.Parameters().GetStart())
-			return nil
-		}
+		// The paramsAST is already populated by ProcessParameters
 	}
 
 	// Return Type
 	var results *ast.FieldList
-	if ctx.TypeAnnotation() != nil {
-		returnTypeInterface := v.VisitTypeAnnotation(ctx.TypeAnnotation().(*parser.TypeAnnotationContext))
-		if returnTypeExpr, ok := returnTypeInterface.(ast.Expr); ok {
-			field := &ast.Field{Type: returnTypeExpr}
-			results = &ast.FieldList{List: []*ast.Field{field}}
-		} else {
-			v.addError("Invalid return type for function \""+fnName+"\"", ctx.TypeAnnotation().GetStart())
-			// Allow functions with no explicit return type (void)
-			results = nil
-		}
-	}
-
-	// Handle error indicator '!'
-	if ctx.EXCLAMATION() != nil {
-		// Add error type to results
-		errorType := ast.NewIdent("error") // Standard Go error type
-		errorField := &ast.Field{Type: errorType}
-		if results == nil {
-			results = &ast.FieldList{List: []*ast.Field{errorField}}
-		} else {
-			results.List = append(results.List, errorField)
-		}
+	if fnSig.TypeAnnotation() != nil || fnSig.EXCLAMATION() != nil {
+		results = v.ProcessReturnType(fnSig.TypeAnnotation(), fnSig.EXCLAMATION(), fnName)
 	}
 
 	// Function Body
 	var body *ast.BlockStmt
 	if ctx.CodeBlock() != nil {
+		// v.VisitCodeBlock expects parser.ICodeBlockContext, which ctx.CodeBlock() returns.
+		// The actual VisitCodeBlock method in the visitor might expect *parser.CodeBlockContext.
 		bodyInterface := v.VisitCodeBlock(ctx.CodeBlock().(*parser.CodeBlockContext))
 		if b, ok := bodyInterface.(*ast.BlockStmt); ok {
 			body = b
-			// Prepend default value assignment statements to the function body
 			if len(defaultAssignments) > 0 {
 				body.List = append(defaultAssignments, body.List...)
 			}
 		} else {
-			v.addError("Function \""+fnName+"\" must have a valid code block body.", ctx.CodeBlock().GetStart())
-			return nil // Function must have a body
+			v.addError(fmt.Sprintf("Function \"%s\" must have a valid code block body.", fnName), ctx.CodeBlock().GetStart())
+			return nil
 		}
 	} else {
-		v.addError("No code block found for function \""+fnName+"\".", ctx.ID().GetSymbol())
-		return nil // Function must have a body
+		v.addError(fmt.Sprintf("No code block found for function \"%s\".", fnName), fnSig.NamedID().GetStart()) // Use name from signature
+		return nil
 	}
 
 	return &ast.FuncDecl{
@@ -168,75 +86,289 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 }
 
 // VisitParameters handles a list of function parameters.
+// ctx is parser.IParametersContext
+// This method is called by ProcessParameters. It should return []ParamDetail.
 func (v *ManuscriptAstVisitor) VisitParameters(ctx *parser.ParametersContext) interface{} {
-	details := []paramDetail{}
-	for _, paramCtx := range ctx.AllParam() {
-		paramInterface := v.VisitParam(paramCtx.(*parser.ParamContext))
-		if detail, ok := paramInterface.(paramDetail); ok { // Expect paramDetail
+	details := []ParamDetail{}
+	if ctx == nil { // Guard against nil parameters context
+		return details
+	}
+	for _, paramInterface := range ctx.AllParam() { // paramInterface is IParamContext
+		// v.VisitParam expects parser.IParamContext
+		visitedParam := v.VisitIParam(paramInterface)
+		if detail, ok := visitedParam.(ParamDetail); ok {
 			details = append(details, detail)
-		} else if field, okField := paramInterface.(*ast.Field); okField && field == nil {
-			// This case can happen if VisitParam returns nil (e.g. error)
-			// An error would have already been added by VisitParam, so just skip here.
+		} else if visitedParam == nil {
+			// Error already added by VisitParam
 		} else {
-			v.addError("Internal error: Unexpected type returned from parameter processing for: "+paramCtx.GetText(), paramCtx.GetStart())
-			// Optionally skip problematic param or return error
+			v.addError("Internal error: Unexpected type returned from parameter processing for: "+paramInterface.GetText(), paramInterface.GetStart())
 		}
 	}
-	return details // Return slice of paramDetail
+	return details
+}
+
+func (v *ManuscriptAstVisitor) VisitParam(ctx *parser.ParamContext) interface{} {
+	// Delegate to VisitIParam which handles the full ParamDetail logic including default values.
+	// *parser.ParamContext implements parser.IParamContext.
+	return v.VisitIParam(ctx)
 }
 
 // VisitParam handles a single function parameter.
-// param: (label=ID)? name=ID COLON type_=typeAnnotation (EQUALS defaultValue=expr)?;
-func (v *ManuscriptAstVisitor) VisitParam(ctx *parser.ParamContext) interface{} {
+// param: (label=ID)? name=namedID COLON type_=typeAnnotation (EQUALS defaultValue=expr)?;\n// ctx is parser.IParamContext
+// This method is called by VisitParameters. It should return ParamDetail.
+func (v *ManuscriptAstVisitor) VisitIParam(ctx parser.IParamContext) interface{} {
 	var paramName *ast.Ident
 	var paramNameToken antlr.Token
-	ids := ctx.AllID()
-	if len(ids) > 0 {
-		paramNameToken = ids[len(ids)-1].GetSymbol()
+
+	if ctx.NamedID() != nil && ctx.NamedID().ID() != nil {
+		paramNameToken = ctx.NamedID().ID().GetSymbol()
 		paramName = ast.NewIdent(paramNameToken.GetText())
 	} else {
 		v.addError("Parameter name is missing.", ctx.GetStart())
-		return nil // Return nil to indicate an error
+		return nil
 	}
+
+	// Optional Label
+	// labelToken := ctx.GetLabel() // Available if needed: labelToken.GetText()
 
 	// Type Annotation
 	var paramType ast.Expr
 	if ctx.TypeAnnotation() != nil {
+		// v.VisitTypeAnnotation expects parser.ITypeAnnotationContext
+		// The actual VisitTypeAnnotation method in the visitor might expect *parser.TypeAnnotationContext.
 		typeInterface := v.VisitTypeAnnotation(ctx.TypeAnnotation().(*parser.TypeAnnotationContext))
 		if pt, ok := typeInterface.(ast.Expr); ok {
 			paramType = pt
 		} else {
-			v.addError("Invalid type for parameter \""+paramName.Name+"\".", ctx.TypeAnnotation().GetStart())
-			return nil // Type annotation is mandatory
+			v.addError(fmt.Sprintf("Invalid type for parameter \"%s\".", paramName.Name), ctx.TypeAnnotation().GetStart())
+			return nil
 		}
 	} else {
-		// log.Printf("VisitParam: No type annotation for parameter '%s'", paramName.Name)
-		v.addError("Missing type annotation for parameter \""+paramName.Name+"\".", paramNameToken)
-		return nil // Type annotation is mandatory
+		v.addError(fmt.Sprintf("Missing type annotation for parameter \"%s\".", paramName.Name), paramNameToken)
+		return nil
 	}
 
-	// Handle default value (ctx.Expr()).
 	var defaultValueExpr ast.Expr
-	if ctx.Expr() != nil {
+	if ctx.EQUALS() != nil && ctx.Expr() != nil { // Check for EQUALS token before processing expression
 		log.Printf("VisitParam: Processing default value for '%s': %s", paramName.Name, ctx.Expr().GetText())
-		// Assuming v.Visit(ctx.Expr()) will correctly visit the expression node
-		// and return an ast.Expr. If ctx.Expr() is a specific type from parser,
-		// a more direct Visit<SpecificExprType> might be called, or a general Visit.
-		defaultValInterface := v.Visit(ctx.Expr()) // Generic visit for the expression
+		// v.Visit expects antlr.ParseTree, ctx.Expr() returns IExprContext which is a ParseTree
+		defaultValInterface := v.Visit(ctx.Expr())
 		if dvExpr, ok := defaultValInterface.(ast.Expr); ok {
 			defaultValueExpr = dvExpr
 		} else {
-			// log.Printf("VisitParam: Could not convert default value expression to ast.Expr for param '%s'. Got %T", paramName.Name, defaultValInterface)
-			v.addError("Default value for parameter \""+paramName.Name+"\" is not a valid expression.", ctx.Expr().GetStart())
-			// Decide: return error, or proceed without default value? For now, proceed without.
-			defaultValueExpr = nil
+			v.addError(fmt.Sprintf("Default value for parameter \"%s\" is not a valid expression.", paramName.Name), ctx.Expr().GetStart())
+			defaultValueExpr = nil // Proceed without default value on error
 		}
+	} else if ctx.EQUALS() != nil && ctx.Expr() == nil {
+		// This case (e.g. "param: Type =") should ideally be a parser error.
+		v.addError(fmt.Sprintf("Incomplete default value for parameter \"%s\".", paramName.Name), ctx.EQUALS().GetSymbol())
+		return nil // Error: incomplete default value
 	}
 
-	return paramDetail{ // Return paramDetail struct
+	return ParamDetail{
 		Name:         paramName,
 		NameToken:    paramNameToken,
 		Type:         paramType,
 		DefaultValue: defaultValueExpr,
 	}
 }
+
+// ProcessParameters processes parameters for functions and methods.
+// It returns the AST FieldList for parameters, a slice of default assignment statements,
+// and a slice of ParamDetail for further use (e.g. by interface method checks).
+func (v *ManuscriptAstVisitor) ProcessParameters(paramsCtx parser.IParametersContext) (*ast.FieldList, []ast.Stmt, []ParamDetail) {
+	paramsAST := &ast.FieldList{List: []*ast.Field{}}
+	var defaultAssignments []ast.Stmt
+	var paramDetailsList []ParamDetail
+
+	if paramsCtx == nil {
+		return paramsAST, defaultAssignments, paramDetailsList
+	}
+
+	rawParamDetails := v.VisitParameters(paramsCtx.(*parser.ParametersContext)) // This should return []ParamDetail
+	if pdl, ok := rawParamDetails.([]ParamDetail); ok {
+		paramDetailsList = pdl
+		for _, pd := range paramDetailsList {
+			field := &ast.Field{
+				Names: []*ast.Ident{pd.Name},
+				Type:  pd.Type,
+			}
+			paramsAST.List = append(paramsAST.List, field)
+
+			if pd.DefaultValue != nil {
+				log.Printf("ProcessParameters: Generating default value assignment for %s.", pd.Name.Name)
+				// Simplified zero value check, needs robust implementation based on type system
+				var zeroValExpr ast.Expr = ast.NewIdent("nil") // Default to nil for non-basic types
+				if ident, okType := pd.Type.(*ast.Ident); okType {
+					switch ident.Name {
+					case "int", "int32", "int64", "float32", "float64":
+						zeroValExpr = &ast.BasicLit{Kind: token.INT, Value: "0"}
+					case "string":
+						zeroValExpr = &ast.BasicLit{Kind: token.STRING, Value: `""`}
+					case "bool":
+						zeroValExpr = ast.NewIdent("false")
+					}
+				} else if pd.Type != nil { // Only add error if type was present but not an ident we handle for zero val
+					v.addError(fmt.Sprintf("Could not determine specific zero value for type of param %s for default value; using 'nil' check. Type: %T", pd.Name.Name, pd.Type), pd.NameToken)
+				}
+
+				ifStmt := &ast.IfStmt{
+					Cond: &ast.BinaryExpr{X: pd.Name, Op: token.EQL, Y: zeroValExpr},
+					Body: &ast.BlockStmt{List: []ast.Stmt{
+						&ast.AssignStmt{Lhs: []ast.Expr{pd.Name}, Tok: token.ASSIGN, Rhs: []ast.Expr{pd.DefaultValue}},
+					}},
+				}
+				defaultAssignments = append(defaultAssignments, ifStmt)
+			}
+		}
+	} else if rawParamDetails != nil { // If it's not nil and not []ParamDetail, it's an error
+		v.addError("Internal error: Parameter processing (v.VisitParameters) did not return expected []ParamDetail.", paramsCtx.GetStart())
+	}
+
+	return paramsAST, defaultAssignments, paramDetailsList
+}
+
+// ProcessReturnType processes return type for functions and methods.
+// It returns an *ast.FieldList for the results.
+func (v *ManuscriptAstVisitor) ProcessReturnType(typeAnnotationCtx parser.ITypeAnnotationContext, exclamationNode antlr.TerminalNode, funcNameForError string) *ast.FieldList {
+	var results *ast.FieldList
+
+	if typeAnnotationCtx != nil {
+		// Ensure it's the concrete type *parser.TypeAnnotationContext if VisitTypeAnnotation expects it.
+		concreteTypeAnnotationCtx, ok := typeAnnotationCtx.(*parser.TypeAnnotationContext)
+		if !ok {
+			v.addError(fmt.Sprintf("Return type for function/method \"%s\" has unexpected context type.", funcNameForError), typeAnnotationCtx.GetStart())
+		} else {
+			returnTypeInterface := v.VisitTypeAnnotation(concreteTypeAnnotationCtx)
+			if returnTypeExpr, okRT := returnTypeInterface.(ast.Expr); okRT && returnTypeExpr != nil {
+				field := &ast.Field{Type: returnTypeExpr}
+				results = &ast.FieldList{List: []*ast.Field{field}}
+			} else if returnTypeExpr == nil && okRT {
+				// Valid visit but no type (e.g. error in VisitTypeAnnotation)
+			} else {
+				v.addError(fmt.Sprintf("Invalid return type for function/method \"%s\"", funcNameForError), concreteTypeAnnotationCtx.GetStart())
+			}
+		}
+	}
+
+	if exclamationNode != nil {
+		errorType := ast.NewIdent("error")
+		errorField := &ast.Field{Type: errorType}
+		if results == nil {
+			results = &ast.FieldList{List: []*ast.Field{errorField}}
+		} else {
+			// Check if error type is already there to prevent duplication if a function explicitly returns error AND uses '!'
+			alreadyHasError := false
+			for _, f := range results.List {
+				if id, okId := f.Type.(*ast.Ident); okId && id.Name == "error" {
+					alreadyHasError = true
+					break
+				}
+			}
+			if !alreadyHasError {
+				results.List = append(results.List, errorField)
+			}
+		}
+	}
+	return results
+}
+
+// VisitFnExpr handles function expressions (anonymous functions).
+// fnExpr: FN LPAREN Parameters? RPAREN (COLON TypeAnnotation)? CodeBlock;
+// (ASYNC and EXCLAMATION are not directly on FnExprContext based on current findings)
+func (v *ManuscriptAstVisitor) VisitFnExpr(ctx *parser.FnExprContext) interface{} {
+
+	// Parameters & Default Value Assignments
+	paramsAST, defaultAssignments, _ := v.ProcessParameters(ctx.Parameters()) // Using helper
+
+	// Return Type
+	var resultsAST *ast.FieldList
+	if ctx.TypeAnnotation() != nil { // Check EXCLAMATION too for the helper
+		resultsAST = v.ProcessReturnType(ctx.TypeAnnotation(), nil, "anonymous function expression") // Using helper, passed nil for EXCLAMATION
+	}
+
+	// Function Body
+	bodyAST := &ast.BlockStmt{}
+	if ctx.CodeBlock() != nil {
+		// VisitCodeBlock expects *parser.CodeBlockContext.
+		concreteCodeBlockCtx, ok := ctx.CodeBlock().(*parser.CodeBlockContext)
+		if !ok {
+			v.addError("Function expression body has unexpected context type.", ctx.CodeBlock().GetStart())
+		} else {
+			bodyInterface := v.VisitCodeBlock(concreteCodeBlockCtx)
+			if b, okBody := bodyInterface.(*ast.BlockStmt); okBody {
+				bodyAST = b
+				if len(defaultAssignments) > 0 {
+					bodyAST.List = append(defaultAssignments, bodyAST.List...)
+				}
+			} else {
+				v.addError("Function expression body did not resolve to a valid block statement.", concreteCodeBlockCtx.GetStart())
+			}
+		}
+	} else {
+		v.addError("Function expression has no code block.", ctx.GetStart())
+	}
+
+	return &ast.FuncLit{
+		Type: &ast.FuncType{
+			Func:    v.pos(ctx.FN().GetSymbol()),
+			Params:  paramsAST,
+			Results: resultsAST,
+		},
+		Body: bodyAST,
+	}
+}
+
+// VisitLambdaExpr handles lambda expressions of the form: fn(p1, p2) = expr
+// It translates them to Go's anonymous functions: func(p1, p2) <return_type_inferred_or_any> { return expr }
+// Note: parser.LambdaExprContext is not defined by the current Manuscript.g4 grammar.
+// This function is commented out to resolve compilation errors.
+// If this lambda syntax (e.g., fn() = expr) is intended, the grammar needs to be updated,
+// and this visitor method implemented accordingly.
+/*
+func (v *ManuscriptAstVisitor) VisitLambdaExpr(ctx *parser.LambdaExprContext) interface{} {
+	// Parameters
+	// Use ProcessParameters, but lambdas in this form likely don't support defaults or full type annotations in Manuscript.
+	// The `ParamDetail` from `ProcessParameters` would be important to check for default values.
+	paramsAST, _, paramDetailsList := v.ProcessParameters(ctx.Parameters()) // Using helper
+
+	for _, detail := range paramDetailsList {
+		if detail.DefaultValue != nil {
+			v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in this lambda syntax.", detail.Name.Name), detail.NameToken)
+		}
+	}
+	// Note: The Manuscript lambda syntax fn() = expr does not have return type annotation or '!'
+	// So ProcessReturnType is not directly used here unless the interpretation changes.
+	// The Go AST FuncLit.Type.Results will be nil.
+
+	// Body Expression
+	bodyExprVisited := v.Visit(ctx.Expr()) // ctx.Expr() is IExprContext
+	bodyGoExpr, ok := bodyExprVisited.(ast.Expr)
+	if !ok {
+		v.addError("Lambda body did not resolve to a valid expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+
+	// Lambda body is a single expression, so we create a block statement with a return statement.
+	lambdaBodyStmts := []ast.Stmt{
+		&ast.ReturnStmt{Results: []ast.Expr{bodyGoExpr}},
+	}
+	bodyAST := &ast.BlockStmt{
+		Lbrace: v.pos(ctx.EQUALS().GetSymbol()), // Position of '=', acts as start of body block conceptually
+		List:   lambdaBodyStmts,
+		Rbrace: v.pos(ctx.Expr().GetStop()), // Position of end of body expression
+	}
+
+	// Lambda return type is typically inferred or `interface{}`. Manuscript lambda syntax here doesn't specify it.
+	// We'll leave Results as nil for the FuncType, which Go often interprets as no return or allows inference where possible.
+	// For a more robust translation, one might try to infer the type of bodyGoExpr if needed.
+	return &ast.FuncLit{
+		Type: &ast.FuncType{
+			Func:    v.pos(ctx.FN().GetSymbol()),
+			Params:  paramsAST,
+			Results: nil, // No explicit return type in this lambda syntax
+		},
+		Body: bodyAST,
+	}
+}
+*/

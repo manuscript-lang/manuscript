@@ -1,6 +1,8 @@
 ```ms
-// This is a single line comment
-let x = 10 // Another comment
+fn main() {
+  // This is a single line comment
+  let x = 10 // Another comment
+}
 ```
 
 ```go
@@ -12,12 +14,14 @@ func main() {
 ```
 
 ```ms
-/* This is a
-   multi-line comment */
-let y = "test"
-/* Another multi-line
-   comment spanning
-   several lines */
+fn main() {
+  /* This is a
+     multi-line comment */
+  let y = "test"
+  /* Another multi-line
+     comment spanning
+     several lines */
+}
 ```
 
 ```go

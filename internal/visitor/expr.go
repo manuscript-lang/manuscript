@@ -1,11 +1,14 @@
 package visitor
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"log"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
+
+	"github.com/antlr4-go/antlr/v4"
 )
 
 // --- Expression Handling (Starting with Primary) ---
@@ -41,7 +44,16 @@ func (v *ManuscriptAstVisitor) VisitPrimaryExpr(ctx *parser.PrimaryExprContext) 
 	if ctx.FnExpr() != nil {
 		return v.Visit(ctx.FnExpr())
 	}
-	// TODO: Add cases for MapLiteral, SetLiteral, TupleLiteral, LambdaExpr, TryBlockExpr, MatchExpr
+	if ctx.MapLiteral() != nil {
+		return v.Visit(ctx.MapLiteral())
+	}
+	if ctx.SetLiteral() != nil {
+		return v.Visit(ctx.SetLiteral())
+	}
+	if ctx.TupleLiteral() != nil {
+		return v.Visit(ctx.TupleLiteral())
+	}
+	// TODO: Add cases for LambdaExpr, TryBlockExpr, MatchExpr
 	// as their visitor methods are implemented.
 
 	v.addError("Unhandled primary expression type: "+ctx.GetText(), ctx.GetStart())
@@ -50,50 +62,114 @@ func (v *ManuscriptAstVisitor) VisitPrimaryExpr(ctx *parser.PrimaryExprContext) 
 
 // VisitUnaryExpr handles prefix unary operators.
 func (v *ManuscriptAstVisitor) VisitUnaryExpr(ctx *parser.UnaryExprContext) interface{} {
-	// Check if a prefix operator is present
-	if opToken := ctx.GetOp(); opToken != nil {
-		// Recursively visit the operand expression
-		visitedOperand := v.Visit(ctx.UnaryExpr()) // Visit the inner unaryExpr
-		operandExpr, ok := visitedOperand.(ast.Expr)
-		if !ok {
-			errMsg := "Visiting operand for unary operator " + opToken.GetText() + " did not return a valid expression."
-			v.addError(errMsg, opToken)
-			return &ast.BadExpr{}
+	// The grammar is: unaryExpr: op=(PLUS | MINUS | EXCLAMATION | TRY) unaryExpr | awaitExpr;
+	// So, either awaitExpr is present, or an operator (op) and a recursive unaryExpr are present.
+
+	if ctx.AwaitExpr() != nil {
+		// It's an await expression, delegate to its visitor.
+		return v.Visit(ctx.AwaitExpr())
+	}
+
+	opToken := ctx.GetOp()
+	if opToken == nil {
+		// This should ideally not be reached if AwaitExpr() is also nil, implies grammar mismatch or parse error.
+		v.addError(fmt.Sprintf("Unary expression without an operator or await expression near token %v", ctx.GetStart().GetText()), ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+
+	if ctx.UnaryExpr() == nil {
+		v.addError(fmt.Sprintf("Unary operator '%s' found without an operand expression near token %v", opToken.GetText(), opToken.GetText()), opToken)
+		return &ast.BadExpr{From: v.pos(opToken), To: v.pos(opToken)}
+	}
+
+	operandVisitResult := v.Visit(ctx.UnaryExpr())
+	operandExpr, ok := operandVisitResult.(ast.Expr)
+	if !ok {
+		errMsg := fmt.Sprintf("Operand for unary operator '%s' did not resolve to an ast.Expr. Got %T, near token %v", opToken.GetText(), operandVisitResult, opToken.GetText())
+		v.addError(errMsg, opToken)
+		return &ast.BadExpr{From: v.pos(opToken), To: v.pos(opToken)}
+	}
+
+	opPos := v.pos(opToken)
+
+	switch opToken.GetTokenType() {
+	case parser.ManuscriptLexerTRY:
+		// Construct: defer func() { if r := recover(); r != nil { err = fmt.Errorf("panic: %v", r) } }()
+		recoverFuncBody := &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.IfStmt{
+					Init: &ast.AssignStmt{
+						Lhs: []ast.Expr{ast.NewIdent("r")},
+						Tok: token.DEFINE,
+						Rhs: []ast.Expr{&ast.CallExpr{Fun: ast.NewIdent("recover")}},
+					},
+					Cond: &ast.BinaryExpr{X: ast.NewIdent("r"), Op: token.NEQ, Y: ast.NewIdent("nil")},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.AssignStmt{
+								Lhs: []ast.Expr{ast.NewIdent("err")},
+								Tok: token.ASSIGN,
+								Rhs: []ast.Expr{&ast.CallExpr{
+									Fun:  &ast.SelectorExpr{X: ast.NewIdent("fmt"), Sel: ast.NewIdent("Errorf")},
+									Args: []ast.Expr{&ast.BasicLit{Kind: token.STRING, Value: `"panic: %v"`}, ast.NewIdent("r")},
+								}},
+							},
+						},
+					},
+				},
+			},
+		}
+		deferStmt := &ast.DeferStmt{
+			Call: &ast.CallExpr{
+				Fun: &ast.FuncLit{Type: &ast.FuncType{Params: &ast.FieldList{}}, Body: recoverFuncBody},
+			},
 		}
 
-		var goOp token.Token
-		switch opToken.GetTokenType() {
-		case parser.ManuscriptPLUS:
-			goOp = token.ADD // Unary plus
-		case parser.ManuscriptMINUS:
-			goOp = token.SUB // Unary minus
-		case parser.ManuscriptEXCLAMATION:
-			goOp = token.NOT // Logical not
-		case parser.ManuscriptTRY:
-			v.addError("Unary 'try' operator translation not fully implemented for: "+ctx.GetText(), opToken)
-			// TODO: Implement 'try' translation (e.g., IIFE with panic recovery or multi-value return)
-			return operandExpr // For now, just pass through the operand
-		case parser.ManuscriptCHECK:
-			v.addError("Unary 'check' operator translation not fully implemented for: "+ctx.GetText(), opToken)
-			// TODO: Implement 'check' translation (likely involves statement-level transformation)
-			return operandExpr // For now, just pass through the operand
-		default:
-			errMsg := "Unhandled unary operator: " + opToken.GetText()
-			v.addError(errMsg, opToken)
-			return &ast.BadExpr{}
+		// Construct: val = operandExpr
+		assignValStmt := &ast.AssignStmt{
+			Lhs: []ast.Expr{ast.NewIdent("val")},
+			Tok: token.ASSIGN, // 'val' is defined in IIFE signature
+			Rhs: []ast.Expr{operandExpr},
 		}
 
-		// Create and return the Go unary expression AST node
-		return &ast.UnaryExpr{
-			Op: goOp,
-			X:  operandExpr,
+		// Construct: return val, nil
+		happyReturnStmt := &ast.ReturnStmt{
+			Results: []ast.Expr{ast.NewIdent("val"), ast.NewIdent("nil")},
 		}
-	} else if ctx.AwaitExpr() != nil {
-		// If no operator, it must be the awaitExpr alternative
-		return v.Visit(ctx.AwaitExpr()) // Delegate to VisitAwaitExpr (to be implemented)
-	} else {
-		v.addError("Invalid unary expression state: "+ctx.GetText(), ctx.GetStart())
-		return &ast.BadExpr{}
+
+		iifeBodyStmts := []ast.Stmt{
+			deferStmt,
+			assignValStmt,
+			happyReturnStmt,
+		}
+
+		iifeFuncLit := &ast.FuncLit{
+			Type: &ast.FuncType{
+				Params: &ast.FieldList{}, // No params for this IIFE
+				Results: &ast.FieldList{
+					List: []*ast.Field{
+						{Names: []*ast.Ident{ast.NewIdent("val")}, Type: ast.NewIdent("interface{}")},
+						{Names: []*ast.Ident{ast.NewIdent("err")}, Type: ast.NewIdent("error")},
+					},
+				},
+			},
+			Body: &ast.BlockStmt{List: iifeBodyStmts, Lbrace: opPos},
+		}
+
+		return &ast.CallExpr{
+			Fun:    iifeFuncLit,
+			Lparen: opPos,
+		}
+
+	case parser.ManuscriptLexerPLUS:
+		return &ast.UnaryExpr{OpPos: opPos, Op: token.ADD, X: operandExpr}
+	case parser.ManuscriptLexerMINUS:
+		return &ast.UnaryExpr{OpPos: opPos, Op: token.SUB, X: operandExpr}
+	case parser.ManuscriptLexerEXCLAMATION:
+		return &ast.UnaryExpr{OpPos: opPos, Op: token.NOT, X: operandExpr}
+	default:
+		v.addError(fmt.Sprintf("Unsupported unary operator: %s", opToken.GetText()), opToken)
+		return &ast.BadExpr{From: opPos, To: opPos + token.Pos(len(opToken.GetText()))}
 	}
 }
 
@@ -101,7 +177,71 @@ func (v *ManuscriptAstVisitor) VisitUnaryExpr(ctx *parser.UnaryExprContext) inte
 
 // VisitExpr simply visits its child (assignmentExpr)
 func (v *ManuscriptAstVisitor) VisitExpr(ctx *parser.ExprContext) interface{} {
+	if ctx == nil {
+		v.addError("VisitExpr called with nil context", nil)
+		return &ast.BadExpr{}
+	}
+	if ctx.AssignmentExpr() == nil { // Check if child is nil
+		v.addError("ExprContext has no AssignmentExpr child", ctx.GetStart())
+		return &ast.BadExpr{}
+	}
 	return v.Visit(ctx.AssignmentExpr())
+}
+
+// VisitExprList handles comma-separated expressions.
+// For contexts like for-loop post-updates, this often contains a single expression
+// that should resolve to a statement (e.g., an assignment).
+func (v *ManuscriptAstVisitor) VisitExprList(ctx *parser.ExprListContext) interface{} {
+	if ctx == nil {
+		v.addError("VisitExprList called with nil context", nil)
+		return nil // Or BadStmt
+	}
+
+	allExprs := ctx.AllExpr() // This gets all IExprContext children
+	if len(allExprs) == 0 {
+		// This case implies an empty expression list, which might be valid in some contexts
+		// but likely not directly as a for-loop post-statement.
+		// For now, returning nil, which will lead to an empty Post field in ForStmt.
+		return nil
+	}
+
+	// In Go's for loop, the Init and Post clauses can be a simple statement.
+	// An ExprList with a single expression (like "i++" or "x = y") is common.
+	// If Manuscript's exprList has multiple comma-separated top-level expressions,
+	// e.g., "i++, j++", Go's AST expects a single Stmt.
+	// This simple implementation processes only the first expression.
+	// A more complex implementation might try to form a single AssignStmt for multi-assignments
+	// or report errors for unsupported multi-statement forms in this context.
+	if len(allExprs) > 1 {
+		v.addError(
+			fmt.Sprintf("ExprList with multiple (%d) expressions encountered in a context expecting a single statement; processing only the first: %s", len(allExprs), ctx.GetText()),
+			ctx.GetStart(),
+		)
+		// Consider if this should be a hard error for for-loop contexts.
+	}
+
+	firstExprCtx := allExprs[0] // Process the first expression
+	if firstExprCtx == nil {    // Defensive check
+		v.addError("First expression in ExprList is nil", ctx.GetStart())
+		return nil // Or BadStmt
+	}
+
+	visitedNode := v.Visit(firstExprCtx) // Visit the IExprContext
+
+	if stmt, ok := visitedNode.(ast.Stmt); ok {
+		return stmt // e.g., an *ast.AssignStmt from VisitAssignmentExpr
+	}
+	if expr, ok := visitedNode.(ast.Expr); ok {
+		// Wrap a plain expression in an ExprStmt, e.g. for function calls
+		return &ast.ExprStmt{X: expr}
+	}
+
+	if visitedNode == nil {
+		v.addError(fmt.Sprintf("Visiting first expression in ExprList returned nil: %s", firstExprCtx.GetText()), firstExprCtx.GetStart())
+	} else {
+		v.addError(fmt.Sprintf("Expression in ExprList resolved to unexpected type %T: %s", visitedNode, firstExprCtx.GetText()), firstExprCtx.GetStart())
+	}
+	return &ast.BadStmt{From: v.pos(firstExprCtx.GetStart()), To: v.pos(firstExprCtx.GetStop())} // Return a BadStmt on failure
 }
 
 // VisitAssignmentExpr handles assignment or passes through logicalOrExpr.
@@ -192,97 +332,224 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 
 // VisitAwaitExpr handles prefixes or passes through postfixExpr.
 func (v *ManuscriptAstVisitor) VisitAwaitExpr(ctx *parser.AwaitExprContext) interface{} {
-	if ctx.TRY() != nil || ctx.AWAIT() != nil || ctx.ASYNC() != nil {
-		// TODO: Implement prefix handling (TRY?, AWAIT?, ASYNC?)
-		v.addError("TRY/AWAIT/ASYNC prefixes not fully handled: "+ctx.GetText(), ctx.GetStart())
+	// The prefixes TRY?, AWAIT?, ASYNC? are considered modifiers to the core postfixExpr.
+	// The actual AST transformation for these (e.g., for await creating a goroutine + channel,
+	// or for try creating an IIFE with panic recovery) would be complex and depend on
+	// the target Go patterns.
+	// For now, we'll note their presence and primarily visit the PostfixExpr.
+	// A full implementation would likely wrap the result of Visit(ctx.PostfixExpr()).
+	if ctx.TRY() != nil {
+		v.addError("Semantic translation for 'try' prefix in awaitExpr not fully implemented: "+ctx.GetText(), ctx.GetStart())
 	}
-	// Always visit the postfix expression part
+	if ctx.AWAIT() != nil {
+		v.addError("Semantic translation for 'await' prefix in awaitExpr not fully implemented: "+ctx.GetText(), ctx.GetStart())
+	}
+	if ctx.ASYNC() != nil {
+		v.addError("Semantic translation for 'async' prefix in awaitExpr not fully implemented: "+ctx.GetText(), ctx.GetStart())
+	}
 	return v.Visit(ctx.PostfixExpr())
 }
 
-// VisitPostfixExpr handles calls, member access, index access or passes through primaryExpr.
+// VisitPostfixExpr handles calls, member access, index access by iterating through operations.
 func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) interface{} {
-	primaryResult := v.Visit(ctx.PrimaryExpr())
-
-	// Check for function call by looking for the LPAREN token
-	if lparenToken := ctx.GetToken(parser.ManuscriptLPAREN, 0); lparenToken != nil {
-		ident, ok := primaryResult.(*ast.Ident)
-		if !ok {
-			errMsg := "Expected identifier for function call, got non-identifier for " + ctx.GetText()
-			v.addError(errMsg, ctx.GetStart())                      // Use ctx.GetStart() as primaryResult might not have token info
-			return &ast.BadExpr{From: token.NoPos, To: token.NoPos} // Return BadExpr for error
-		}
-
-		// Special handling for "print"
-		if ident.Name == "print" {
-			if v.ProgramImports == nil {
-				log.Println("CRITICAL: ProgramImports map not initialized in ManuscriptAstVisitor during print call")
-				// This should ideally not happen due to constructor initialization.
-			}
-			v.ProgramImports["fmt"] = true // Mark "fmt" for import
-
-			var args []ast.Expr
-			// Arguments are in ctx.AllExpr(). This assumes the grammar rule for arguments inside parentheses is `expr*` or `exprList`.
-			// If GetText() of an expr is empty, it might indicate an empty arg list from grammar like `LPAREN RPAREN` vs `LPAREN exprList RPAREN`
-			// We need to ensure AllExpr() doesn't give us a bogus entry for an empty list.
-			rawArgs := ctx.AllExpr()
-			if len(rawArgs) == 1 && rawArgs[0].GetText() == "" { // Heuristic for empty arg list if AllExpr behaves this way
-				rawArgs = nil
-			}
-
-			for _, argCtx := range rawArgs {
-				visitedArg := v.Visit(argCtx)
-				if argExpr, ok := visitedArg.(ast.Expr); ok {
-					args = append(args, argExpr)
-				} else {
-					errMsg := "Argument to print did not evaluate to a valid expression: " + argCtx.GetText()
-					v.addError(errMsg, argCtx.GetStart())
-					args = append(args, &ast.BadExpr{From: token.NoPos, To: token.NoPos})
-				}
-			}
-
-			return &ast.CallExpr{
-				Fun: &ast.SelectorExpr{
-					X:   ast.NewIdent("fmt"),
-					Sel: ast.NewIdent("Println"),
-				},
-				Args: args,
-			}
-		} else {
-			// Generic function call
-			var args []ast.Expr
-			rawArgs := ctx.AllExpr()
-			if len(rawArgs) == 1 && rawArgs[0].GetText() == "" {
-				rawArgs = nil
-			}
-			for _, argCtx := range rawArgs {
-				visitedArg := v.Visit(argCtx)
-				if argExpr, ok := visitedArg.(ast.Expr); ok {
-					args = append(args, argExpr)
-				} else {
-					errMsg := "Argument to function call did not evaluate to a valid expression: " + argCtx.GetText()
-					v.addError(errMsg, argCtx.GetStart())
-					args = append(args, &ast.BadExpr{From: token.NoPos, To: token.NoPos})
-				}
-			}
-			return &ast.CallExpr{
-				Fun:  ident, // The function identifier itself
-				Args: args,
-			}
-		}
-	} else if dotToken := ctx.GetToken(parser.ManuscriptDOT, 0); dotToken != nil {
-		// TODO: Handle member access (e.g., obj.member) -> *ast.SelectorExpr
-		// This will involve getting the member ID (ctx.ID() or ctx.GetToken(parser.ID, ...))
-		// and creating an *ast.SelectorExpr { X: primaryResult, Sel: ast.NewIdent(memberName) }
-		v.addError("Member access (dot operator) not yet handled: "+ctx.GetText(), dotToken.GetSymbol())
-		return primaryResult
-	} else if lsqbrToken := ctx.GetToken(parser.ManuscriptLSQBR, 0); lsqbrToken != nil {
-		// TODO: Handle index access (e.g., arr[index]) -> *ast.IndexExpr
-		// This will involve visiting the expression inside the brackets (ctx.Expr(0) or similar)
-		// and creating an *ast.IndexExpr { X: primaryResult, Index: visitedIndexExpr }
-		v.addError("Index access (square brackets) not yet handled: "+ctx.GetText(), lsqbrToken.GetSymbol())
-		return primaryResult
+	if ctx.PrimaryExpr() == nil {
+		v.addError("Postfix expression is missing primary expression part", ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 
-	return primaryResult
+	currentAstNode := v.Visit(ctx.PrimaryExpr())
+	if currentAstNode == nil {
+		// Error already added by child visit
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+
+	currentGoExpr, ok := currentAstNode.(ast.Expr)
+	if !ok {
+		v.addError(fmt.Sprintf("Primary expression did not resolve to ast.Expr, got %T", currentAstNode), ctx.PrimaryExpr().GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.PrimaryExpr().GetStart()), To: v.pos(ctx.PrimaryExpr().GetStop())}
+	}
+
+	// Iterate through the postfix operations applied to the primaryExpr
+	// Children list: [PrimaryExprContext, op1_token1, op1_token2/expr, op2_token1, ...]
+	children := ctx.GetChildren()
+	childIdx := 0
+	// Find the PrimaryExpr child to start iterating after it
+	for i, child := range children {
+		if _, ok := child.(*parser.PrimaryExprContext); ok {
+			childIdx = i + 1
+			break
+		}
+	}
+
+	for childIdx < len(children) {
+		child := children[childIdx]
+		termNode, isTerm := child.(antlr.TerminalNode)
+
+		if !isTerm {
+			// This case should ideally not be reached if grammar is correctly processed sequentially.
+			// It might indicate an ExprContext for an argument that wasn't consumed by a call.
+			var childText string
+			var childStartToken antlr.Token
+			if prc, ok := child.(antlr.ParserRuleContext); ok {
+				childText = prc.GetText()
+				childStartToken = prc.GetStart()
+			} else if tn, ok := child.(antlr.TerminalNode); ok {
+				childText = tn.GetText()
+				childStartToken = tn.GetSymbol()
+			} else {
+				childText = "unknown_child_type"
+			}
+
+			if _, isExprCtx := child.(parser.IExprContext); isExprCtx {
+				log.Printf("VisitPostfixExpr: Encountered unexpected non-terminal node %T: %s. Breaking postfix chain.", child, childText)
+				v.addError("Unexpected expression found in postfix operation chain: "+childText, childStartToken)
+			} else {
+				log.Printf("VisitPostfixExpr: Encountered unexpected non-terminal node type %T: %s. Breaking postfix chain.", child, childText)
+				v.addError("Malformed postfix operation sequence: "+childText, childStartToken)
+			}
+			break // Safety break
+		}
+
+		tokenType := termNode.GetSymbol().GetTokenType()
+
+		switch tokenType {
+		case parser.ManuscriptLPAREN: // Function Call
+			lParenPos := v.pos(termNode.GetSymbol())
+			childIdx++ // Move past LPAREN
+
+			var args []ast.Expr
+			var rParenPos token.Pos
+
+		argLoop:
+			for childIdx < len(children) {
+				argChild := children[childIdx]
+				if argTerm, isArgTerm := argChild.(antlr.TerminalNode); isArgTerm {
+					if argTerm.GetSymbol().GetTokenType() == parser.ManuscriptRPAREN {
+						rParenPos = v.pos(argTerm.GetSymbol())
+						childIdx++ // Consume RPAREN
+						break argLoop
+					} else if argTerm.GetSymbol().GetTokenType() == parser.ManuscriptCOMMA {
+						childIdx++ // Consume COMMA
+						continue
+					} else {
+						v.addError("Unexpected token in argument list: "+argTerm.GetText(), argTerm.GetSymbol())
+						return &ast.BadExpr{From: lParenPos, To: v.pos(ctx.GetStop())}
+					}
+				} else if argListCtx, isArgList := argChild.(*parser.ExprListContext); isArgList {
+					// This is the case where arguments are wrapped in an ExprListContext
+					for _, exprCtx := range argListCtx.AllExpr() {
+						visitedArg := v.Visit(exprCtx)
+						if argExpr, exprOk := visitedArg.(ast.Expr); exprOk {
+							args = append(args, argExpr)
+						} else {
+							v.addError("Argument did not evaluate to a valid expression: "+exprCtx.GetText(), exprCtx.GetStart())
+							args = append(args, &ast.BadExpr{From: v.pos(exprCtx.GetStart()), To: v.pos(exprCtx.GetStop())})
+						}
+					}
+					childIdx++ // Consume ExprListContext
+				} else if argCtx, ok := argChild.(parser.IExprContext); ok {
+					visitedArg := v.Visit(argCtx)
+					if argExpr, exprOk := visitedArg.(ast.Expr); exprOk {
+						args = append(args, argExpr)
+					} else {
+						v.addError("Argument did not evaluate to a valid expression: "+argCtx.GetText(), argCtx.GetStart())
+						args = append(args, &ast.BadExpr{From: v.pos(argCtx.GetStart()), To: v.pos(argCtx.GetStop())})
+					}
+					childIdx++ // Consume ExprContext
+				} else {
+					v.addError(fmt.Sprintf("Unexpected item in argument list %T", argChild), termNode.GetSymbol()) // Use LPAREN for error pos
+					return &ast.BadExpr{From: lParenPos, To: v.pos(ctx.GetStop())}
+				}
+			}
+			if rParenPos == token.NoPos {
+				v.addError("Missing closing parenthesis for function call", termNode.GetSymbol())
+				// rParenPos will be end of context if not found
+				rParenPos = v.pos(ctx.GetStop())
+			}
+
+			currentGoExpr = &ast.CallExpr{
+				Fun:  currentGoExpr,
+				Args: args,
+			}
+
+		case parser.ManuscriptDOT: // Member Access
+			childIdx++ // Move past DOT
+			if childIdx >= len(children) {
+				v.addError("Missing identifier after DOT for member access", termNode.GetSymbol())
+				return &ast.BadExpr{From: v.pos(termNode.GetSymbol()), To: v.pos(ctx.GetStop())}
+			}
+			idNode, idOk := children[childIdx].(antlr.TerminalNode)
+			if !idOk || idNode.GetSymbol().GetTokenType() != parser.ManuscriptID {
+				var offendingText string
+				if prc, ok := children[childIdx].(antlr.ParserRuleContext); ok {
+					offendingText = prc.GetText()
+				} else if tn, ok := children[childIdx].(antlr.TerminalNode); ok {
+					offendingText = tn.GetText()
+				} else {
+					offendingText = "unknown_node_type"
+				}
+				v.addError("Expected identifier after DOT for member access, got: "+offendingText, termNode.GetSymbol())
+				return &ast.BadExpr{From: v.pos(termNode.GetSymbol()), To: v.pos(ctx.GetStop())}
+			}
+			currentGoExpr = &ast.SelectorExpr{
+				X:   currentGoExpr,
+				Sel: ast.NewIdent(idNode.GetText()),
+			}
+			childIdx++ // Consume ID
+
+		case parser.ManuscriptLSQBR: // Index Access
+			lSqbrPos := v.pos(termNode.GetSymbol())
+			childIdx++ // Move past LSQBR
+			if childIdx >= len(children) {
+				v.addError("Missing expression for index access", termNode.GetSymbol())
+				return &ast.BadExpr{From: lSqbrPos, To: v.pos(ctx.GetStop())}
+			}
+			indexExprCtx, exprOk := children[childIdx].(parser.IExprContext)
+			if !exprOk {
+				var offendingText string
+				if prc, ok := children[childIdx].(antlr.ParserRuleContext); ok {
+					offendingText = prc.GetText()
+				} else if tn, ok := children[childIdx].(antlr.TerminalNode); ok {
+					offendingText = tn.GetText()
+				} else {
+					offendingText = "unknown_node_type"
+				}
+				v.addError("Expected expression for index access, got: "+offendingText, termNode.GetSymbol())
+				return &ast.BadExpr{From: lSqbrPos, To: v.pos(ctx.GetStop())}
+			}
+			visitedIndex := v.Visit(indexExprCtx)
+			indexAstExpr, astOk := visitedIndex.(ast.Expr)
+			if !astOk {
+				v.addError("Index did not evaluate to a valid expression: "+indexExprCtx.GetText(), indexExprCtx.GetStart())
+				return &ast.BadExpr{From: lSqbrPos, To: v.pos(ctx.GetStop())}
+			}
+			childIdx++ // Consume ExprContext for index
+
+			if childIdx >= len(children) {
+				v.addError("Missing closing square bracket for index access", termNode.GetSymbol())
+				return &ast.BadExpr{From: lSqbrPos, To: v.pos(ctx.GetStop())}
+			}
+			rSqbrNode, rSqbrOk := children[childIdx].(antlr.TerminalNode)
+			if !rSqbrOk || rSqbrNode.GetSymbol().GetTokenType() != parser.ManuscriptRSQBR {
+				v.addError("Expected closing square bracket for index access", termNode.GetSymbol())
+				return &ast.BadExpr{From: lSqbrPos, To: v.pos(ctx.GetStop())}
+			}
+			rSqbrPos := v.pos(rSqbrNode.GetSymbol())
+			currentGoExpr = &ast.IndexExpr{
+				X:      currentGoExpr,
+				Lbrack: lSqbrPos,
+				Index:  indexAstExpr,
+				Rbrack: rSqbrPos,
+			}
+			childIdx++ // Consume RSQBR
+
+		default:
+			// This token is not a recognized postfix operator starter.
+			// It might be an error or end of postfix operations for this context.
+			// For safety, we stop processing.
+			v.addError(fmt.Sprintf("Unexpected token '%s' in postfix expression chain.", termNode.GetText()), termNode.GetSymbol())
+			return currentGoExpr // return what has been processed so far
+		}
+	}
+	return currentGoExpr
 }

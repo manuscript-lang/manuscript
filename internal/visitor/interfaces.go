@@ -1,75 +1,60 @@
 package visitor
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
-
-	"github.com/antlr4-go/antlr/v4"
+	"strings"
 )
 
-// VisitIfaceDecl handles interface declarations.
-// ifaceDecl: IFACE name=ID (EXTENDS baseIface+=typeAnnotation (COMMA baseIface+=typeAnnotation)*)? LBRACE (methodDecl SEMICOLON?)* RBRACE;
-func (v *ManuscriptAstVisitor) VisitIfaceDecl(ctx *parser.IfaceDeclContext) interface{} {
-	ifaceName := ctx.ID().GetText()
-	methods := make([]*ast.Field, 0)
-
-	// Handle extends (embedding other interfaces)
-	if ctx.EXTENDS() != nil && len(ctx.GetBaseIfaces()) > 0 {
-		log.Printf("VisitIfaceDecl: Processing EXTENDS clause for '%s'", ifaceName)
-		for _, baseIfaceAntlrCtx := range ctx.GetBaseIfaces() {
-			if concreteBaseIfaceCtx, ok := baseIfaceAntlrCtx.(*parser.TypeAnnotationContext); ok {
-				visitedBaseType := v.VisitTypeAnnotation(concreteBaseIfaceCtx) // Use VisitTypeAnnotation
-				if baseTypeExpr, isExpr := visitedBaseType.(ast.Expr); isExpr && baseTypeExpr != nil {
-					// For embedding, Go just lists the embedded interface as a field with no name
-					methods = append(methods, &ast.Field{Type: baseTypeExpr})
-					log.Printf("VisitIfaceDecl: Added base interface %s to '%s'", concreteBaseIfaceCtx.GetText(), ifaceName)
-				} else {
-					v.addError("Base interface \""+concreteBaseIfaceCtx.GetText()+"\" for interface \""+ifaceName+"\" is invalid or void.", concreteBaseIfaceCtx.GetStart())
-					return nil // Error processing a base interface
-				}
-			} else {
-				token := ctx.ID().GetSymbol() // Fallback token
-				if pt, okPt := baseIfaceAntlrCtx.(antlr.ParserRuleContext); okPt {
-					token = pt.GetStart()
-				}
-				v.addError("Internal error: Unexpected structure for base interface of \""+ifaceName+"\".", token)
-				return nil
-			}
-		}
+// generateReceiverName creates a conventional Go receiver name (e.g., "m" for "MyType").
+func generateReceiverName(typeName string) string {
+	if typeName == "" {
+		return "r" // Default receiver name
 	}
+	// Consider if typeName could be a pointer like "*MyType"
+	// For now, assume it's a simple identifier.
+	return strings.ToLower(string(typeName[0]))
+}
 
-	// Add declared methods
-	for _, methodDeclCtx := range ctx.AllMethodDecl() {
-		if concreteMethodDeclCtx, ok := methodDeclCtx.(*parser.MethodDeclContext); ok {
-			methodField := v.VisitMethodDecl(concreteMethodDeclCtx)
-			if field, okM := methodField.(*ast.Field); okM && field != nil {
-				methods = append(methods, field)
-			} else {
-				// Error already added by VisitMethodDecl if it returned nil.
-				// If it returned something else, that's an internal error.
-				if methodField != nil {
-					v.addError("Internal error: Method declaration processing for interface \""+ifaceName+"\" returned unexpected type.", concreteMethodDeclCtx.GetStart())
-				}
-				// Skip this method rather than failing the whole interface
-			}
+// VisitInterfaceDecl handles interface declarations.
+//
+//	interface MyInterface {
+//	  myMethod(a: TypeA): ReturnType
+//	}
+func (v *ManuscriptAstVisitor) VisitInterfaceDecl(ctx *parser.InterfaceDeclContext) interface{} {
+	if ctx.INTERFACE() == nil || ctx.NamedID() == nil || ctx.LBRACE() == nil || ctx.RBRACE() == nil {
+		v.addError(fmt.Sprintf("Malformed interface declaration: %s", ctx.GetText()), ctx.GetStart())
+		return &ast.BadDecl{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+	interfaceName := ctx.NamedID().GetText()
+	methods := []*ast.Field{}
+
+	for _, sigCtx := range ctx.AllFnSignature() {
+		concreteSigCtx, ok := sigCtx.(*parser.FnSignatureContext)
+		if !ok {
+			v.addError("Method signature in interface has unexpected context type.", sigCtx.GetStart())
+			continue
+		}
+		methodField := v.VisitInterfaceMethodDecl(concreteSigCtx)
+		if field, ok := methodField.(*ast.Field); ok {
+			methods = append(methods, field)
 		} else {
-			token := ctx.ID().GetSymbol() // Fallback token
-			if pt, okPt := methodDeclCtx.(antlr.ParserRuleContext); okPt {
-				token = pt.GetStart()
-			}
-			v.addError("Internal error: Unexpected structure for method declaration in interface \""+ifaceName+"\".", token)
-			// Skip this method rather than failing the whole interface
+			// Error already added by VisitInterfaceMethodDecl or it returned nil
 		}
 	}
 
-	// Create the interface type spec
+	// TODO: Handle extends ctx.ExtendedInterfaces() which is ITypeListContext
+	if ctx.EXTENDS() != nil && ctx.TypeList() != nil {
+		v.addError(fmt.Sprintf("Interface extension (extends) for '%s' is not yet fully implemented.", interfaceName), ctx.EXTENDS().GetSymbol())
+	}
+
 	return &ast.GenDecl{
-		Tok: token.TYPE,
+		Tok: token.INTERFACE,
 		Specs: []ast.Spec{
 			&ast.TypeSpec{
-				Name: ast.NewIdent(ifaceName),
+				Name: ast.NewIdent(interfaceName),
 				Type: &ast.InterfaceType{
 					Methods: &ast.FieldList{List: methods},
 				},
@@ -78,204 +63,174 @@ func (v *ManuscriptAstVisitor) VisitIfaceDecl(ctx *parser.IfaceDeclContext) inte
 	}
 }
 
-// VisitMethodDecl handles method signatures within an interface.
-// methodDecl: name=ID LPAREN parameters? RPAREN (COLON returnType=typeAnnotation)? EXCLAMATION?;
-func (v *ManuscriptAstVisitor) VisitMethodDecl(ctx *parser.MethodDeclContext) interface{} {
-	methodName := ctx.ID().GetText()
-	// Parameters
-	var params *ast.FieldList
-	if pCtx := ctx.Parameters(); pCtx != nil {
-		paramsInterface := v.VisitParameters(pCtx.(*parser.ParametersContext))
-		if pl, ok := paramsInterface.(*ast.FieldList); ok {
-			params = pl
-		} else {
-			v.addError("Internal error: Parameter processing for method \""+methodName+"\" returned unexpected type.", pCtx.GetStart())
-			return nil
-		}
-	} else {
-		params = &ast.FieldList{List: []*ast.Field{}} // No parameters
+// VisitInterfaceMethodDecl handles a method signature within an interface.
+// myMethod(a: TypeA): ReturnType -> Name: myMethod, Type: func(a TypeA) ReturnType
+func (v *ManuscriptAstVisitor) VisitInterfaceMethodDecl(ctx *parser.FnSignatureContext) interface{} {
+	if ctx.NamedID() == nil || ctx.LPAREN() == nil || ctx.RPAREN() == nil {
+		v.addError(fmt.Sprintf("Malformed method signature in interface: %s", ctx.GetText()), ctx.GetStart())
+		return nil // Indicate error to caller
 	}
+	methodName := ctx.NamedID().GetText()
 
-	// Return Type
-	var results *ast.FieldList
-	if rtCtx := ctx.TypeAnnotation(); rtCtx != nil {
-		returnTypeInterface := v.VisitTypeAnnotation(rtCtx.(*parser.TypeAnnotationContext))
-		if returnTypeExpr, ok := returnTypeInterface.(ast.Expr); ok {
-			field := &ast.Field{Type: returnTypeExpr}
-			results = &ast.FieldList{List: []*ast.Field{field}}
-		} else {
-			v.addError("Invalid return type for method \""+methodName+"\".", rtCtx.GetStart())
-			// Allow methods with no explicit return type (void)
-			results = nil
+	// Use ProcessParameters for parameters
+	paramsAST, _, paramDetails := v.ProcessParameters(ctx.Parameters()) // Renamed
+	if paramDetails != nil {                                            // Check if paramDetails were actually returned
+		for _, detail := range paramDetails {
+			if detail.DefaultValue != nil {
+				v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in interface method signature.", detail.Name.Name), detail.NameToken)
+			}
 		}
 	}
 
-	// Handle error indicator '!'
-	if ctx.EXCLAMATION() != nil {
-		// Add error type to results
-		errorType := ast.NewIdent("error") // Standard Go error type
-		errorField := &ast.Field{Type: errorType}
-		if results == nil {
-			results = &ast.FieldList{List: []*ast.Field{errorField}}
-		} else {
-			results.List = append(results.List, errorField)
+	// Interface methods in Go AST don't have parameter names, only types.
+	// Need to strip names from paramsAST if ProcessParameters includes them.
+	// For now, assuming ProcessParameters returns FieldList suitable for signatures or can be adapted.
+	// A quick fix for interface params:
+	interfaceParamsList := []*ast.Field{}
+	if paramsAST != nil {
+		for _, p := range paramsAST.List {
+			interfaceParamsList = append(interfaceParamsList, &ast.Field{Type: p.Type})
 		}
 	}
+	finalParams := &ast.FieldList{List: interfaceParamsList}
 
-	// Create field with function type (method signature)
+	// Use ProcessReturnType for results
+	resultsList := v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), methodName) // Renamed
+
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(methodName)},
 		Type: &ast.FuncType{
-			Params:  params,
-			Results: results,
+			Params:  finalParams, // Use modified params
+			Results: resultsList,
 		},
 	}
 }
 
-// VisitMethodBlockDecl handles method implementation blocks.
-// methodBlockDecl: METHODS typeName=ID (FOR ifaceName=ID)? LBRACE (methodImpl SEMICOLON?)* RBRACE
-func (v *ManuscriptAstVisitor) VisitMethodBlockDecl(ctx *parser.MethodBlockDeclContext) interface{} {
-	typeNameNode := ctx.GetTypeName()
-	if typeNameNode == nil {
-		v.addError("Method block missing target type name.", ctx.LBRACE().GetSymbol()) // Token for LBRACE as anchor
-		return nil
+// VisitMethodsDecl handles a 'methods for MyType (implements MyInterface)' block.
+// methods MyInterface for MyType { ... } or methods for MyType { ... }
+func (v *ManuscriptAstVisitor) VisitMethodsDecl(ctx *parser.MethodsDeclContext) interface{} {
+	if ctx.METHODS() == nil || ctx.ID() == nil || ctx.LBRACE() == nil || ctx.RBRACE() == nil {
+		v.addError(fmt.Sprintf("Malformed methods declaration: %s", ctx.GetText()), ctx.GetStart())
+		return &ast.BadDecl{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
-	typeName := typeNameNode.GetText()
+	receiverTypeName := ctx.ID().GetText()
+	receiverName := generateReceiverName(receiverTypeName)
 
-	// Collect all method implementations
-	var methods []ast.Decl
-	for _, methodImplCtxAnltr := range ctx.AllMethodImpl() {
-		if concreteMethodImplCtx, ok := methodImplCtxAnltr.(*parser.MethodImplContext); ok {
-			methodDecl := concreteMethodImplCtx.Accept(v) // Relies on Accept dispatching to the corrected VisitMethodImpl
-			if funcDecl, okF := methodDecl.(*ast.FuncDecl); okF && funcDecl != nil {
-				methods = append(methods, funcDecl)
-			} else {
-				// Error would be added by VisitMethodImpl if it returned nil.
-				if methodDecl != nil {
-					v.addError("Internal error: Method implementation processing for type \""+typeName+"\" returned unexpected type.", concreteMethodImplCtx.GetStart())
-				}
-				// Skip this method rather than failing the whole block
-			}
-		} else {
-			token := typeNameNode.(antlr.ParserRuleContext).GetStart() // typeNameNode is ITypeAnnotationContext, assert to ParserRuleContext
-			if pt, okPt := methodImplCtxAnltr.(antlr.ParserRuleContext); okPt {
-				token = pt.GetStart()
-			}
-			v.addError("Internal error: Unexpected structure for method implementation in block for \""+typeName+"\".", token)
-			// Skip this method rather than failing the whole block
+	// Optional: 'implements InterfaceName' part
+	if ctx.FOR() != nil && ctx.TypeAnnotation() != nil {
+		v.addError(fmt.Sprintf("Processing of 'implements %s' for methods on '%s' is not fully handled yet.", ctx.TypeAnnotation().GetText(), receiverTypeName), ctx.FOR().GetSymbol())
+	}
+
+	decls := []ast.Decl{}
+	for _, implCtx := range ctx.AllFnDecl() { // Corrected: Use AllFnDecl based on grammar `impls += fnDecl`
+		// implCtx is of type parser.IFnDeclContext
+		methodDecl := v.VisitMethodImpl(implCtx, receiverName, receiverTypeName)
+		if decl, ok := methodDecl.(ast.Decl); ok {
+			decls = append(decls, decl)
+		} else if methodDecl != nil {
+			// VisitMethodImpl is expected to return nil on error and log its own detailed error.
+			// If methodDecl is non-nil and not an ast.Decl, it's an unexpected state.
+			v.addError(fmt.Sprintf("Processing method implementation for struct '%s' yielded an unexpected result.", receiverTypeName), implCtx.GetStart())
 		}
 	}
 
-	// Return a slice of function declarations (Go doesn't have a direct equivalent to method blocks)
-	return methods
+	if len(decls) == 0 && ctx.FOR() != nil { // If it was 'methods SomeInterface for SomeType {}' with no actual methods
+		// This might be valid if it's just asserting an interface implementation without adding new methods
+		// or if it's an empty methods block. For now, we just produce no Go code.
+	}
+	return decls // Return a slice of ast.Decl (specifically *ast.FuncDecl)
 }
 
-// VisitMethodImpl handles individual method implementations.
-// methodImpl: name=ID LPAREN parameters? RPAREN (COLON returnType=typeAnnotation)? EXCLAMATION? codeBlock
-func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) interface{} { // New signature
-	methodName := ctx.ID().GetText()
+// VisitMethodImpl handles a single method implementation within a 'methods' block.
+// It receives an FnSignatureContext because the parser (currently) only provides that for method impls.
+// This means it CANNOT GENERATE A BODY correctly. It will produce a func decl without a body.
+func (v *ManuscriptAstVisitor) VisitMethodImpl(implCtx parser.IFnDeclContext, receiverName string, receiverTypeName string) interface{} {
+	if implCtx == nil {
+		v.addError("Received nil method implementation context.", nil) // Position unknown if implCtx is nil
+		return nil
+	}
 
-	// Derive receiverTypeName from parent MethodBlockDeclContext
-	parentCtx := ctx.GetParent()
-	mbCtx, ok := parentCtx.(*parser.MethodBlockDeclContext)
+	signatureCtxNode := implCtx.GetSignature() // Corrected: Use GetSignature()
+	if signatureCtxNode == nil {
+		v.addError("Method implementation is missing a signature.", implCtx.GetStart())
+		return nil
+	}
+	concreteSigCtx, ok := signatureCtxNode.(*parser.FnSignatureContext)
 	if !ok {
-		v.addError("Internal error: Method \""+methodName+"\" not within a method block.", ctx.ID().GetSymbol())
-		return nil
-	}
-	if mbCtx.GetTypeName() == nil { // Check if GetTypeName() itself is nil before calling GetText()
-		v.addError("Internal error: Method block for \""+methodName+"\" is missing its type name.", ctx.ID().GetSymbol())
-		return nil
-	}
-	receiverTypeName := mbCtx.GetTypeName().GetText()
-	if receiverTypeName == "" {
-		v.addError("Internal error: Receiver type name for method \""+methodName+"\" is empty.", ctx.ID().GetSymbol())
+		v.addError("Method signature in implementation has unexpected context type.", signatureCtxNode.GetStart())
 		return nil
 	}
 
-	// Create receiver parameter (e.g., "r *ReceiverType")
-	// Usually receiver parameter is a single letter or a short name
-	receiverName := ""
-	if len(receiverTypeName) > 0 {
-		receiverName = string(receiverTypeName[0]) // First letter of the type name, ensure not empty
-	} else {
-		// This case should ideally be caught by receiverTypeName == "" check above, but as a safeguard:
-		log.Printf("VisitMethodImpl: Warning: receiverTypeName is empty, cannot generate receiver name for method %s", methodName)
-		// Decide on a default or error out. For now, let's use a default to avoid panic.
-		receiverName = "r"
+	if concreteSigCtx.NamedID() == nil || concreteSigCtx.LPAREN() == nil || concreteSigCtx.RPAREN() == nil {
+		v.addError(fmt.Sprintf("Malformed method implementation signature: %s", concreteSigCtx.GetText()), concreteSigCtx.GetStart())
+		return nil
+	}
+	fnName := concreteSigCtx.NamedID().GetText()
+
+	paramsList, defaultAssignments, _ := v.ProcessParameters(concreteSigCtx.Parameters())
+	resultsList := v.ProcessReturnType(concreteSigCtx.TypeAnnotation(), concreteSigCtx.EXCLAMATION(), fnName)
+
+	receiverField := &ast.Field{
+		Names: []*ast.Ident{ast.NewIdent(receiverName)},
+		Type:  ast.NewIdent(receiverTypeName), // Should this be a pointer type, e.g., *ast.StarExpr? Depends on convention.
 	}
 
-	goReceiverType := ast.NewIdent(receiverTypeName) // Use Go's ast.NewIdent for the type
-	// By default we use a pointer receiver for methods that modify state
-	// This could be a configuration option or determined by method semantics
-	receiver := &ast.FieldList{List: []*ast.Field{
-		{
-			Names: []*ast.Ident{ast.NewIdent(receiverName)},
-			Type:  &ast.StarExpr{X: goReceiverType},
-		},
-	}}
+	// Process the method body
+	bodyAntlrNode := implCtx.GetBlock() // Corrected: Use GetBlock()
+	var funcBody *ast.BlockStmt
 
-	// Parameters
-	var params *ast.FieldList
-	if pCtx := ctx.Parameters(); pCtx != nil { // Use specific getter
-		paramsInterface := v.VisitParameters(pCtx.(*parser.ParametersContext))
-		if pl, okP := paramsInterface.(*ast.FieldList); okP {
-			params = pl
-		} else {
-			v.addError("Internal error: Parameter processing for method \""+methodName+"\" (type \""+receiverTypeName+"\") returned unexpected type.", pCtx.GetStart())
-			return nil
+	if bodyAntlrNode == nil {
+		// Grammar: fnDecl: signature = fnSignature block = codeBlock; block is mandatory.
+		v.addError(fmt.Sprintf("Method '%s' implementation is missing the required body block in parser tree.", fnName), concreteSigCtx.GetStop()) // Position at end of signature
+		return nil
+	}
+
+	concreteBodyAntlrNode, ok := bodyAntlrNode.(*parser.CodeBlockContext)
+	if !ok {
+		v.addError(fmt.Sprintf("Method '%s' has an unexpected body context type. Expected CodeBlockContext.", fnName), bodyAntlrNode.GetStart())
+		// Create a minimal error body to allow parsing to continue if possible
+		funcBody = &ast.BlockStmt{
+			Lbrace: v.pos(bodyAntlrNode.GetStart()),
+			Rbrace: v.pos(bodyAntlrNode.GetStop()),
+			List:   defaultAssignments, // At least include default param assignments
 		}
 	} else {
-		params = &ast.FieldList{List: []*ast.Field{}} // No parameters
-	}
+		// Assuming v.VisitCodeBlock(ctx *parser.CodeBlockContext) interface{} returns *ast.BlockStmt or nil
+		visitedBodyResult := v.VisitCodeBlock(concreteBodyAntlrNode)
 
-	// Return Type
-	var results *ast.FieldList
-	if rtCtx := ctx.TypeAnnotation(); rtCtx != nil { // Use specific getter
-		returnTypeInterface := v.VisitTypeAnnotation(rtCtx.(*parser.TypeAnnotationContext))
-		if returnTypeExpr, okRt := returnTypeInterface.(ast.Expr); okRt {
-			field := &ast.Field{Type: returnTypeExpr}
-			results = &ast.FieldList{List: []*ast.Field{field}}
+		if visitedBodyResult == nil {
+			// VisitCodeBlock should have added an error.
+			// Create a minimal body to allow further processing.
+			// Error already logged by VisitCodeBlock hopefully.
+			funcBody = &ast.BlockStmt{
+				Lbrace: v.pos(concreteBodyAntlrNode.GetStart()),
+				Rbrace: v.pos(concreteBodyAntlrNode.GetStop()),
+				List:   defaultAssignments,
+			}
+		} else if bs, ok := visitedBodyResult.(*ast.BlockStmt); ok {
+			funcBody = bs
+			// Prepend defaultAssignments to the actual body statements
+			if funcBody.List == nil { // Ensure list is initialized
+				funcBody.List = []ast.Stmt{}
+			}
+			funcBody.List = append(defaultAssignments, funcBody.List...)
 		} else {
-			v.addError("Invalid return type for method \""+methodName+"\" (type \""+receiverTypeName+"\").", rtCtx.GetStart())
-			// Allow methods with no explicit return type (void)
-			results = nil
+			v.addError(fmt.Sprintf("VisitCodeBlock for method '%s' returned an unexpected type (%T). Expected *ast.BlockStmt.", fnName, visitedBodyResult), concreteBodyAntlrNode.GetStart())
+			funcBody = &ast.BlockStmt{ // Fallback
+				Lbrace: v.pos(concreteBodyAntlrNode.GetStart()),
+				Rbrace: v.pos(concreteBodyAntlrNode.GetStop()),
+				List:   defaultAssignments,
+			}
 		}
-	}
-
-	// Handle error indicator '!'
-	if ctx.EXCLAMATION() != nil {
-		// Add error type to results
-		errorType := ast.NewIdent("error") // Standard Go error type
-		errorField := &ast.Field{Type: errorType}
-		if results == nil {
-			results = &ast.FieldList{List: []*ast.Field{errorField}}
-		} else {
-			results.List = append(results.List, errorField)
-		}
-	}
-
-	// Function Body
-	var body *ast.BlockStmt
-	if cbCtx := ctx.CodeBlock(); cbCtx != nil { // Use specific getter
-		bodyInterface := v.VisitCodeBlock(cbCtx.(*parser.CodeBlockContext))
-		if b, okB := bodyInterface.(*ast.BlockStmt); okB {
-			body = b
-		} else {
-			log.Printf("VisitMethodImpl: Expected *ast.BlockStmt for body, got %T", bodyInterface)
-			return nil // Method must have a body
-		}
-	} else {
-		log.Printf("VisitMethodImpl: No code block found for method '%s.%s'", receiverTypeName, methodName)
-		return nil // Method must have a body
 	}
 
 	return &ast.FuncDecl{
-		Recv: receiver,
-		Name: ast.NewIdent(methodName),
+		Recv: &ast.FieldList{List: []*ast.Field{receiverField}},
+		Name: ast.NewIdent(fnName),
 		Type: &ast.FuncType{
-			Params:  params,
-			Results: results,
+			Params:  paramsList,
+			Results: resultsList,
 		},
-		Body: body,
+		Body: funcBody,
 	}
 }

@@ -1,0 +1,68 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Go AST Visitor Debugging and Update Guide
+
+This guide provides common patterns and solutions for issues encountered when working with the Manuscript to Go AST visitor.
+
+## Key Visitor Files
+
+*   **Expression Handling**: Most expression-related visitor logic (e.g., function calls, operators, literals) is in `[expr.go](mdc:internal/visitor/expr.go)`.
+*   **Statement Handling**: Logic for statements like `if`, `for`, `let`, `return` is primarily in `[statements.go](mdc:internal/visitor/statements.go)`.
+*   **Overall Visitor Structure**: The main visitor struct `ManuscriptAstVisitor` and its core methods are in `[visitor.go](mdc:internal/visitor/visitor.go)`.
+*   **Import Management**: Imports are collected in the `ProgramImports` map on the `ManuscriptAstVisitor` and processed in `[program.go](mdc:internal/visitor/program.go)` during `VisitProgram`.
+
+## Common Issues and Solutions
+
+### 1. Function Call Argument Parsing Errors
+
+*   **Symptom**: Errors like `Unexpected item in argument list *parser.ExprListContext`.
+*   **Location**: Typically in `VisitPostfixExpr` within `[expr.go](mdc:internal/visitor/expr.go)`.
+*   **Cause**: The parser rule for function calls might group arguments into an `ExprListContext`, but the visitor expects individual `IExprContext` nodes.
+*   **Fix**: Modify the argument processing loop in `VisitPostfixExpr` to check for `*parser.ExprListContext`. If found, iterate through its `AllExpr()` method to visit each actual argument expression.
+
+    ```go
+    // Example snippet from VisitPostfixExpr for handling arguments:
+    // ...
+    } else if argListCtx, isArgList := argChild.(*parser.ExprListContext); isArgList {
+        // This is the case where arguments are wrapped in an ExprListContext
+        for _, exprCtx := range argListCtx.AllExpr() {
+            visitedArg := v.Visit(exprCtx)
+            if argExpr, exprOk := visitedArg.(ast.Expr); exprOk {
+                args = append(args, argExpr)
+            } else {
+                // Add error
+            }
+        }
+        childIdx++ // Consume ExprListContext
+    } else if argCtx, ok := argChild.(parser.IExprContext); ok {
+        // Handle single IExprContext
+    // ...
+    ```
+
+### 2. Mapping Manuscript Functions to Go Functions (e.g., `print` to `fmt.Println`)
+
+*   **Location**: In `VisitPostfixExpr` within `[expr.go](mdc:internal/visitor/expr.go)`, before the `ast.CallExpr` is constructed.
+*   **Logic**:
+    1.  Identify the function being called (e.g., if `currentGoExpr` is an `*ast.Ident` with `Name == "print"`).
+    2.  If it's a mapped function, change `currentGoExpr` to the target Go function (e.g., `&ast.SelectorExpr{X: ast.NewIdent("fmt"), Sel: ast.NewIdent("Println")}`).
+    3.  Ensure the necessary Go package is imported by adding it to the visitor's import map: `v.ProgramImports["fmt"] = true`.
+
+### 3. `if-else` and `else if` Translation
+
+*   **Location**: `VisitIfStmt` in `[statements.go](mdc:internal/visitor/statements.go)`.
+*   **Guidance**:
+    *   Manuscript's `else { if ... }` should generally be translated literally to Go's `else { if ... }`.
+    *   Avoid overly aggressive optimizations that automatically convert `else { if condition { ... } }` (where the `CodeBlock` for `else` *only* contains an `if` statement) into Go's `else if condition { ... }`.
+    *   The Manuscript programmer should use an explicit `else if` construct in the Manuscript source if that specific Go structure is desired. The parser and visitor should respect the distinction.
+
+### 4. Testing and Output Verification
+
+*   **Running Tests**: Use the standard test command, often targeting specific files: `go test -v ./cmd/... -run ^TestMarkdownCompilation$ -timeout 30s -args -file <test_file_name>`.
+*   **Interpreting Diffs**:
+    *   Pay close attention to the diff output. Errors like "Unexpected item in argument list" point to parsing/visitor logic issues with how ANTLR contexts are handled.
+    *   Differences in function names (e.g., `print` vs. `fmt.Println`) indicate problems with function call translation or import management.
+    *   Structural differences in control flow (e.g., `else if` vs. `else { if ... }`) point to issues in statement translation logic (e.g., `VisitIfStmt`).
+*   **Canonical Go Formatting**: Test files (e.g., in `[tests/compilation/](mdc:tests/compilation)`) should have their expected Go code formatted as the `go/printer` package would produce (canonical Go form). Minor discrepancies like extra newlines in the *generated* code compared to the *expected* code might sometimes be due to the test's expected output not being perfectly canonical. If the AST structure is confirmed correct, consider adjusting the test's expected output to match the canonically formatted generated code.

@@ -7,22 +7,17 @@ import (
 
 // VisitArrayLiteral handles array literal expressions like [1, 2, 3]
 func (v *ManuscriptAstVisitor) VisitArrayLiteral(ctx *parser.ArrayLiteralContext) interface{} {
-	// Get all the element expressions
 	elements := make([]ast.Expr, 0)
-
-	for _, elemCtx := range ctx.AllExpr() {
+	for _, elemCtx := range ctx.ExprList().AllExpr() {
 		elemResult := v.Visit(elemCtx)
 		if elemExpr, ok := elemResult.(ast.Expr); ok {
 			elements = append(elements, elemExpr)
 		} else {
 			v.addError("Array element is not a valid expression: "+elemCtx.GetText(), elemCtx.GetStart())
-			// Add a nil for placeholder
 			elements = append(elements, &ast.BadExpr{})
 		}
 	}
 
-	// Create a composite literal for the array
-	// In Go, this will be a slice literal without a type
 	return &ast.CompositeLit{
 		Type: nil, // Type will be inferred from the elements
 		Elts: elements,
@@ -137,17 +132,21 @@ func (v *ManuscriptAstVisitor) VisitTupleLiteral(ctx *parser.TupleLiteralContext
 	}
 
 	// Process each tuple element
-	elements := make([]ast.Expr, 0, len(ctx.AllExpr()))
-
-	for _, elemCtx := range ctx.AllExpr() {
-		elemResult := v.Visit(elemCtx)
-		if elemExpr, ok := elemResult.(ast.Expr); ok {
-			elements = append(elements, elemExpr)
-		} else {
-			v.addError("Tuple element is not a valid expression: "+elemCtx.GetText(), elemCtx.GetStart())
-			// Add a nil for placeholder
-			elements = append(elements, &ast.BadExpr{})
+	var elements []ast.Expr
+	if ctx.GetElements() != nil {
+		elements = make([]ast.Expr, 0, len(ctx.GetElements().AllExpr()))
+		for _, elemCtx := range ctx.GetElements().AllExpr() {
+			elemResult := v.Visit(elemCtx)
+			if elemExpr, ok := elemResult.(ast.Expr); ok {
+				elements = append(elements, elemExpr)
+			} else {
+				v.addError("Tuple element is not a valid expression: "+elemCtx.GetText(), elemCtx.GetStart())
+				// Add a nil for placeholder
+				elements = append(elements, &ast.BadExpr{})
+			}
 		}
+	} else {
+		elements = make([]ast.Expr, 0)
 	}
 
 	// Create the tuple composite literal (as a slice)

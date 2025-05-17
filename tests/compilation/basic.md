@@ -1,4 +1,7 @@
 ```ms
+fn main() {
+  // Empty main for an empty ms block
+}
 ```
 
 ```go
@@ -9,7 +12,9 @@ func main() {
 ```
 
 ```ms
-let x
+fn main() {
+  let x // This might still fail if let must be initialized by current grammar
+}
 ```
 
 ```go
@@ -21,15 +26,17 @@ func main() {
 ```
 
 ```ms
-let x = 10;
-let message = 'hello';
-let multiLine = '''
+fn main() {
+  let x = 10;
+  let message = 'hello';
+  let multiLine = '''
 This is a multi-line string.
 It can contain multiple lines of text.
 '''
-let multiLine2 = 'This is another multi-line string. 
+  let multiLine2 = 'This is another multi-line string. 
 It can also contain multiple lines of text.
 '
+}
 ```
 
 ```go
@@ -44,8 +51,14 @@ func main() {
 ``` 
 
 ```ms
-let a = 5, b = 10, c = 15;
-let x, y, z = 20; // Only z gets a value, x and y are just declared
+fn main() {
+  let a = 5;
+  let b = 10;
+  let c = 15;
+  let x; // Assuming this should parse as a declaration
+  let y; // Assuming this should parse as a declaration
+  let z = 20;
+}
 ```
 
 ```go

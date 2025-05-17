@@ -39,6 +39,8 @@ METHODS: 'methods';
 SELF: 'self';
 BREAK: 'break';
 CONTINUE: 'continue';
+DEFAULT: 'default';
+GO: 'go';
 
 // Punctuation (DEFAULT_MODE implicitly)
 LBRACE: '{';
@@ -81,25 +83,40 @@ CARET_EQUALS: '^=';
 PIPE: '|';
 AMP: '&';
 CARET: '^';
+LSHIFT: '<<';
+RSHIFT: '>>';
 
 // Number literals (DEFAULT_MODE implicitly)
 // Define numeric literals BEFORE the ID rule to ensure they take precedence
 
+fragment DEC_DIGIT: [0-9];
+fragment HEX_DIGIT: [0-9a-fA-F];
+fragment BIN_DIGIT: [01];
+fragment OCT_DIGIT: [0-7];
+
+fragment DEC_NUM_PART: DEC_DIGIT ([_]? DEC_DIGIT)*;
+fragment HEX_NUM_PART: HEX_DIGIT ([_]? HEX_DIGIT)*;
+fragment BIN_NUM_PART: BIN_DIGIT ([_]? BIN_DIGIT)*;
+fragment OCT_NUM_PART: OCT_DIGIT ([_]? OCT_DIGIT)*;
+
+fragment FLOAT_SUFFIX: 'f';
+
 // Hexadecimal with 0x prefix
-HEX_LITERAL: '0x' [0-9a-fA-F]+ ;
+HEX_LITERAL: '0x' HEX_NUM_PART;
 
 // Binary with 0b prefix
-BINARY_LITERAL: '0b' [01][01_]* ;
+BINARY_LITERAL: '0b' BIN_NUM_PART;
+
+// Octal with 0o prefix
+OCTAL_LITERAL: '0o' OCT_NUM_PART;
 
 // Floating point
 FLOAT:
-    [0-9]+ '.' [0-9]* ([eE] [+-]? [0-9]+)? | // 1.23, 1.23e+10
-    '.' [0-9]+ ([eE] [+-]? [0-9]+)? |        // .123, .123e-10
-    [0-9]+ [eE] [+-]? [0-9]+                 // 123e+10
-    ;
+    ((DEC_NUM_PART '.' DEC_NUM_PART? | '.' DEC_NUM_PART) ([eE][+-]? DEC_NUM_PART)? | DEC_NUM_PART [eE][+-]? DEC_NUM_PART)
+    FLOAT_SUFFIX?;
 
 // Decimal integers - Must be before ID rule
-INTEGER: [0-9]+ ;
+INTEGER: DEC_NUM_PART;
 
 // Identifiers (DEFAULT_MODE implicitly)
 ID: [a-zA-Z_][a-zA-Z0-9_]*;
@@ -112,14 +129,15 @@ fragment INTERP_START : '${';
 
 // Single-quoted string start (switches to SINGLE_STRING_MODE)
 SINGLE_QUOTE_START: '\'' -> pushMode(SINGLE_STRING_MODE);
-// TODO: Add support for prefix (e.g., r'...') if needed
 
 // Triple-quoted string start (switches to MULTI_STRING_MODE)
 MULTI_QUOTE_START: '\'\'\'' -> pushMode(MULTI_STRING_MODE);
-// TODO: Add support for prefix if needed
 
 // Double-quoted string start (switches to DOUBLE_STRING_MODE)
 DOUBLE_QUOTE_START: '"' -> pushMode(DOUBLE_STRING_MODE);
+
+// Triple-double-quoted string start (switches to MULTI_DOUBLE_STRING_MODE)
+MULTI_DOUBLE_QUOTE_START: '"""' -> pushMode(MULTI_DOUBLE_STRING_MODE);
 
 // --- Modes for String Processing ---
 
@@ -137,6 +155,11 @@ mode DOUBLE_STRING_MODE;
     DOUBLE_STR_INTERP_START: INTERP_START -> pushMode(INTERPOLATION_MODE);
     DOUBLE_STR_CONTENT : ( ESC_SEQ | ~["\\${] )+ ;
     DOUBLE_STR_END : '"' -> popMode;
+
+mode MULTI_DOUBLE_STRING_MODE;
+    MULTI_DOUBLE_STR_INTERP_START: INTERP_START -> pushMode(INTERPOLATION_MODE);
+    MULTI_DOUBLE_STR_CONTENT : ( ESC_SEQ | ~["\\${] )+ ;
+    MULTI_DOUBLE_STR_END : '"""' -> popMode;
 
 mode INTERPOLATION_MODE;
     INTERP_LBRACE: '{' -> pushMode(INTERPOLATION_MODE);

@@ -4,295 +4,332 @@ import (
 	"fmt"
 	"go/ast"
 	"manuscript-co/manuscript/internal/parser"
-
-	"github.com/antlr4-go/antlr/v4"
 )
 
-// VisitTypeAnnotation handles type annotations, including modifiers for array, map, and set.
-// It should return an ast.Expr representing the Go type.
+// VisitTypeAnnotation handles type annotations based on the new grammar:
+// typeAnnotation: (idAsType=ID | tupleAsType=tupleType | funcAsType=fnSignature | objAsType=objectTypeAnnotation | mapAsType=mapTypeAnnotation | setAsType=setTypeAnnotation) (isNullable=QUESTION)? (arrayMarker=LSQBR RSQBR)?;
 func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationContext) interface{} {
-	children := ctx.GetChildren()
-	if len(children) == 0 {
-		v.addError("Invalid empty type annotation: "+ctx.GetText(), ctx.GetStart())
-		return nil
-	}
+	var baseExpr ast.Expr
 
-	// First child must be BaseTypeAnnotationContext
-	baseTypeAntlrCtx, ok := children[0].(*parser.BaseTypeAnnotationContext)
-	if !ok || baseTypeAntlrCtx == nil {
-		v.addError("Internal error: Expected base type annotation, got unexpected type for: "+ctx.GetText(), ctx.GetStart())
-		return nil
-	}
-
-	baseTypeInterface := v.VisitBaseTypeAnnotation(baseTypeAntlrCtx)
-	currentAstExpr, ok := baseTypeInterface.(ast.Expr)
-	if !ok || currentAstExpr == nil {
-		// If baseType is void (which returns nil), and there are no modifiers, this is okay.
-		// If there are modifiers, applying them to a nil base type is an error.
-		if len(children) > 1 && baseTypeInterface == nil { // Modifiers present after a void base type
-			v.addError("Cannot apply type modifiers (e.g., [], <>) to 'void' type: "+ctx.GetText(), baseTypeAntlrCtx.GetStart())
-			return nil
-		}
-		// If it's not ok, but not nil, it's an unexpected type from VisitBaseTypeAnnotation
-		if !ok && baseTypeInterface != nil {
-			v.addError("Internal error: Base type annotation did not resolve to a valid expression for: "+baseTypeAntlrCtx.GetText(), baseTypeAntlrCtx.GetStart())
-			return nil
-		}
-		// If it's nil and no modifiers, it could be a valid 'void' type indication if allowed by caller
-		if currentAstExpr == nil && len(children) == 1 {
-			return nil // e.g. a void return type in a function signature
-		}
-	}
-
-	// Process modifiers if any (children after the first one)
-	i := 1 // Start processing children from the second element (index 1)
-	for i < len(children) {
-		child := children[i]
-		node, isTerminal := child.(antlr.TerminalNode)
-
-		if !isTerminal {
-			cTOKEN := children[i-1].(antlr.TerminalNode).GetSymbol() // Previous token for context
-			v.addError("Invalid type modifier sequence: expected a token (like '[', ']', ':', '<', '>') but found complex structure after: "+cTOKEN.GetText(), cTOKEN)
-			return nil // Error: unexpected context instead of token
-		}
-
-		symbolType := node.GetSymbol().GetTokenType()
-
-		if currentAstExpr == nil { // Should have been caught earlier if base was nil with modifiers
-			v.addError("Internal error: Cannot apply modifiers to a nil base type: "+ctx.GetText(), node.GetSymbol())
-			return nil
-		}
-
-		switch symbolType {
-		case parser.ManuscriptLSQBR: // Start of array `[]` or map `[K:V]`
-			if i+1 >= len(children) {
-				v.addError("Incomplete type modifier: '[' not followed by ']' or ':': "+ctx.GetText(), node.GetSymbol())
-				return nil
-			}
-			nextTokenNode, nextIsTerminal := children[i+1].(antlr.TerminalNode)
-			if !nextIsTerminal {
-				v.addError("Invalid type modifier: expected ':' or ']' after '[', but found complex structure for: "+ctx.GetText(), node.GetSymbol())
-				return nil
-			}
-
-			nextTokenSymbolType := nextTokenNode.GetSymbol().GetTokenType()
-			if nextTokenSymbolType == parser.ManuscriptCOLON { // Map: [KeyTypeFromCurrent: ValueType]
-				mapKeyType := currentAstExpr
-				if i+2 >= len(children) {
-					v.addError("Incomplete map type: missing value type or ']' after ':': "+ctx.GetText(), nextTokenNode.GetSymbol())
-					return nil
-				}
-				mapValueTypeAntlrCtx, isValueCtx := children[i+2].(*parser.TypeAnnotationContext)
-				if !isValueCtx || mapValueTypeAntlrCtx == nil {
-					v.addError("Invalid map type: expected a type for map value for: "+ctx.GetText(), nextTokenNode.GetSymbol())
-					return nil
-				}
-				mapValueInterface := v.VisitTypeAnnotation(mapValueTypeAntlrCtx)
-				mapValueAstExpr, okVal := mapValueInterface.(ast.Expr)
-				if !okVal || mapValueAstExpr == nil {
-					v.addError("Map value type is invalid or void: "+mapValueTypeAntlrCtx.GetText(), mapValueTypeAntlrCtx.GetStart())
-					return nil
-				}
-
-				if i+3 >= len(children) || children[i+3].(antlr.TerminalNode).GetSymbol().GetTokenType() != parser.ManuscriptRSQBR {
-					// Attempt to get the last token for error reporting, or fallback to current node
-					lastToken := node.GetSymbol()
-					if i+2 < len(children) && children[i+2].(antlr.ParseTree).GetChildCount() > 0 {
-						// This is a heuristic, trying to get a token from the map value type
-						// It might not always be the most accurate, but better than `node.GetSymbol()` which is `[`
-						// A more robust way would be to get stop token of children[i+2]
-						// For now, we'll use the start of the mapValueTypeAntlrCtx or the colon.
-						lastToken = mapValueTypeAntlrCtx.GetStart()
-					} else {
-						lastToken = nextTokenNode.GetSymbol() // The colon token
-					}
-					v.addError("Map type missing closing ']': "+ctx.GetText(), lastToken)
-					return nil
-				}
-				currentAstExpr = &ast.MapType{Key: mapKeyType, Value: mapValueAstExpr}
-				i += 4 // Consumed LSQBR, COLON, TypeAnnotationContext, RSQBR
-
-			} else if nextTokenSymbolType == parser.ManuscriptRSQBR { // Array: [] (base type is element)
-				currentAstExpr = &ast.ArrayType{Elt: currentAstExpr}
-				i += 2 // Consumed LSQBR, RSQBR
-			} else {
-				v.addError("Invalid token \""+nextTokenNode.GetText()+"\" after '[' in type. Expected ':' or ']'.", nextTokenNode.GetSymbol())
-				return nil
-			}
-
-		case parser.ManuscriptLT: // Start of set `<>`
-			if i+1 >= len(children) || children[i+1].(antlr.TerminalNode).GetSymbol().GetTokenType() != parser.ManuscriptGT {
-				v.addError("Incomplete set type: '<' not followed by '>': "+ctx.GetText(), node.GetSymbol())
-				return nil
-			}
-			// Set<T> becomes map[T]struct{}
-			currentAstExpr = &ast.MapType{
-				Key:   currentAstExpr,
-				Value: &ast.StructType{Fields: &ast.FieldList{List: []*ast.Field{}}}, // struct{}
-			}
-			i += 2 // Consumed LT, GT
-
-		default:
-			v.addError("Unexpected type modifier token \""+node.GetText()+"\" for: "+ctx.GetText(), node.GetSymbol())
-			return nil
-		}
-	}
-
-	return currentAstExpr
-}
-
-// VisitBaseTypeAnnotation handles the base part of a type annotation.
-// It should return an ast.Expr representing the Go type.
-func (v *ManuscriptAstVisitor) VisitBaseTypeAnnotation(ctx *parser.BaseTypeAnnotationContext) interface{} {
-	if ctx.ID() != nil { // Simple type (identifier)
-		typeName := ctx.ID().GetText()
-		// Map Manuscript basic types to Go types
+	if ctx.GetIdAsType() != nil {
+		typeName := ctx.GetIdAsType().GetText()
 		switch typeName {
 		case "string":
-			return ast.NewIdent("string")
+			baseExpr = ast.NewIdent("string")
 		case "int":
-			return ast.NewIdent("int64") // Default to int64 for broader compatibility
+			baseExpr = ast.NewIdent("int64")
 		case "float":
-			return ast.NewIdent("float64") // Default to float64
+			baseExpr = ast.NewIdent("float64")
 		case "bool":
-			return ast.NewIdent("bool")
+			baseExpr = ast.NewIdent("bool")
 		case "any":
-			return ast.NewIdent("interface{}")
+			baseExpr = ast.NewIdent("interface{}")
 		case "void":
-			return nil
+			baseExpr = nil // Void type represented as nil ast.Expr
 		default:
-			return ast.NewIdent(typeName)
+			baseExpr = ast.NewIdent(typeName) // User-defined types
 		}
-	}
-	if ctx.TupleType() != nil {
-		return v.VisitTupleType(ctx.TupleType().(*parser.TupleTypeContext))
-	}
-	if ctx.FunctionType() != nil {
-		return v.VisitFunctionType(ctx.FunctionType().(*parser.FunctionTypeContext))
-	}
-
-	v.addError("Unhandled base type annotation: "+ctx.GetText(), ctx.GetStart())
-	return nil
-}
-
-// VisitFunctionType handles function type signatures.
-// Returns *ast.FuncType
-func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FunctionTypeContext) interface{} {
-
-	params := &ast.FieldList{List: []*ast.Field{}}
-	if len(ctx.GetParamTypes()) > 0 {
-		for _, paramTypeCtxInterface := range ctx.GetParamTypes() {
-			if paramTypeCtx, okAssert := paramTypeCtxInterface.(*parser.TypeAnnotationContext); okAssert {
-				paramTypeInterfaceVisit := v.VisitTypeAnnotation(paramTypeCtx)
-				if paramTypeExpr, ok := paramTypeInterfaceVisit.(ast.Expr); ok {
-					params.List = append(params.List, &ast.Field{Type: paramTypeExpr})
-				} else {
-					v.addError("Invalid parameter type in function type signature: "+paramTypeCtx.GetText(), paramTypeCtx.GetStart())
-					return nil
-				}
-			} else {
-				// Safely try to get a token if possible, otherwise fallback to parent context start token
-				token := ctx.GetStart()
-				if pTree, isPTree := paramTypeCtxInterface.(antlr.ParseTree); isPTree {
-					if rNode, isRNode := pTree.(antlr.RuleNode); isRNode {
-						if prc, okAssertPrc := rNode.(antlr.ParserRuleContext); okAssertPrc {
-							token = prc.GetStart()
-						}
-					}
-				}
-				v.addError("Internal error: Unexpected structure for parameter type in function type: "+paramTypeCtxInterface.GetText(), token)
-				return nil
-			}
-		}
-	}
-
-	var results *ast.FieldList
-	if ctx.GetReturnType() != nil {
-		if returnTypeActualCtx, okAssert := ctx.GetReturnType().(*parser.TypeAnnotationContext); okAssert {
-			returnTypeInterface := v.VisitTypeAnnotation(returnTypeActualCtx)
-			if returnTypeExpr, ok := returnTypeInterface.(ast.Expr); ok {
-				results = &ast.FieldList{List: []*ast.Field{{Type: returnTypeExpr}}}
-			} else {
-				token := ctx.GetStart()
-				if prc, okAssertPrc := ctx.GetReturnType().(antlr.ParserRuleContext); okAssertPrc {
-					token = prc.GetStart()
-				}
-				v.addError("Internal error: Unexpected structure for return type in function type: "+ctx.GetReturnType().GetText(), token)
-				return nil
-			}
+	} else if ctx.GetTupleAsType() != nil {
+		tupleTypeCtx := ctx.GetTupleAsType().(*parser.TupleTypeContext) // This is *parser.TupleTypeContext
+		visitedTuple := v.VisitTupleType(tupleTypeCtx)
+		if vt, ok := visitedTuple.(ast.Expr); ok {
+			baseExpr = vt
 		} else {
-			token := ctx.GetStart()
-			if prc, okAssertPrc := ctx.GetReturnType().(antlr.ParserRuleContext); okAssertPrc {
-				token = prc.GetStart()
-			}
-			v.addError("Internal error: Unexpected structure for return type in function type: "+ctx.GetReturnType().GetText(), token)
-			return nil
+			v.addError("Tuple type annotation did not resolve to an expression: "+tupleTypeCtx.GetText(), tupleTypeCtx.GetStart())
+			return &ast.BadExpr{}
+		}
+	} else if ctx.GetFuncAsType() != nil {
+		fnSigCtx := ctx.GetFuncAsType().(*parser.FnSignatureContext) // This is *parser.FnSignatureContext
+		visitedFnSig := v.VisitFunctionType(fnSigCtx)
+		if ft, ok := visitedFnSig.(ast.Expr); ok { // *ast.FuncType is an ast.Expr
+			baseExpr = ft
+		} else {
+			v.addError("Function type annotation (fnSignature) did not resolve to an ast.FuncType: "+fnSigCtx.GetText(), fnSigCtx.GetStart())
+			return &ast.BadExpr{}
+		}
+	} else if ctx.GetObjAsType() != nil {
+		objTypeCtx := ctx.GetObjAsType().(*parser.ObjectTypeAnnotationContext) // This is *parser.ObjectTypeAnnotationContext
+		visitedObj := v.VisitObjectTypeAnnotation(objTypeCtx)
+		if ot, ok := visitedObj.(ast.Expr); ok {
+			baseExpr = ot
+		} else {
+			v.addError("Object type annotation did not resolve to an expression: "+objTypeCtx.GetText(), objTypeCtx.GetStart())
+			return &ast.BadExpr{}
+		}
+	} else if ctx.GetMapAsType() != nil {
+		mapTypeCtx := ctx.GetMapAsType().(*parser.MapTypeAnnotationContext) // This is *parser.MapTypeAnnotationContext
+		visitedMap := v.VisitMapTypeAnnotation(mapTypeCtx)
+		if mt, ok := visitedMap.(ast.Expr); ok {
+			baseExpr = mt
+		} else {
+			v.addError("Map type annotation did not resolve to an expression: "+mapTypeCtx.GetText(), mapTypeCtx.GetStart())
+			return &ast.BadExpr{}
+		}
+	} else if ctx.GetSetAsType() != nil {
+		setTypeCtx := ctx.GetSetAsType().(*parser.SetTypeAnnotationContext) // This is *parser.SetTypeAnnotationContext
+		visitedSet := v.VisitSetTypeAnnotation(setTypeCtx)
+		if st, ok := visitedSet.(ast.Expr); ok {
+			baseExpr = st
+		} else {
+			v.addError("Set type annotation did not resolve to an expression: "+setTypeCtx.GetText(), setTypeCtx.GetStart())
+			return &ast.BadExpr{}
 		}
 	} else {
-		results = nil
+		v.addError("Invalid type annotation structure: "+ctx.GetText(), ctx.GetStart())
+		return &ast.BadExpr{}
 	}
 
+	// Handle optional nullable marker '?'
+	if ctx.QUESTION() != nil {
+		if baseExpr == nil { // void?
+			v.addError("Cannot make void type nullable: "+ctx.GetText(), ctx.QUESTION().GetSymbol())
+			return &ast.BadExpr{}
+		}
+
+		isAlreadyNullableOrPointer := false
+		switch be := baseExpr.(type) {
+		case *ast.StarExpr: // Already a pointer *T
+			isAlreadyNullableOrPointer = true
+		case *ast.Ident:
+			if be.Name == "interface{}" { // interface{} is nullable
+				isAlreadyNullableOrPointer = true
+			}
+		case *ast.ArrayType: // Represents a slice Type[], which is nullable
+			isAlreadyNullableOrPointer = true
+		case *ast.MapType: // map[K]V is nullable
+			isAlreadyNullableOrPointer = true
+		case *ast.FuncType: // fn() is nullable
+			isAlreadyNullableOrPointer = true
+			// Note: ast.StructType is a value type and needs *ast.StarExpr if nullable.
+		}
+
+		if !isAlreadyNullableOrPointer {
+			baseExpr = &ast.StarExpr{X: baseExpr}
+		}
+	}
+
+	// Handle optional array marker '[]'
+	if ctx.LSQBR() != nil && ctx.RSQBR() != nil { // arrayMarker = LSQBR RSQBR
+		if baseExpr == nil { // Cannot have array of void, e.g. void[]
+			v.addError("Cannot create an array of void type: "+ctx.GetText(), ctx.LSQBR().GetSymbol())
+			return &ast.BadExpr{}
+		}
+		return &ast.ArrayType{Elt: baseExpr} // Represents a slice in Go AST if Len is nil
+	}
+
+	return baseExpr // Return nil for void if not an array/nullable, or the ast.Expr
+}
+
+// VisitFunctionType now handles an FnSignatureContext directly to produce an *ast.FuncType.
+// This is used by TypeAnnotation for function types like `fn(int): string`.
+func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext) interface{} {
+	var funcNameForError string
+	if ctx.NamedID() != nil { // fnSignature can have a name, but in type context it is anonymous
+		funcNameForError = ctx.NamedID().GetText() + " (in type signature)"
+	} else {
+		funcNameForError = "anonymous function type"
+	}
+
+	// Assuming FnSignatureContext has Parameters() IParametersContext and TypeAnnotation() ITypeAnnotationContext
+	paramsAST, _, paramDetails := v.ProcessParameters(ctx.Parameters()) // Use existing helper
+
+	// Check for default values in function type parameters, which is usually not allowed.
+	for _, detail := range paramDetails {
+		if detail.DefaultValue != nil {
+			v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in function type signature.", detail.Name.Name), detail.NameToken)
+			// Depending on strictness, might return nil or BadExpr here
+		}
+	}
+
+	// Interface methods in Go AST don't have parameter names, only types.
+	// Function types in Go also typically only care about types for matching.
+	// Create a new FieldList for Params with only types.
+	paramTypesOnlyAST := &ast.FieldList{List: []*ast.Field{}}
+	if paramsAST != nil {
+		for _, p := range paramsAST.List {
+			paramTypesOnlyAST.List = append(paramTypesOnlyAST.List, &ast.Field{Type: p.Type})
+		}
+	}
+
+	resultsAST := v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), funcNameForError) // Use existing helper
+
 	return &ast.FuncType{
-		Params:  params,
-		Results: results,
+		Params:  paramTypesOnlyAST,
+		Results: resultsAST,
 	}
 }
 
 // VisitTupleType handles tuple type signatures.
 // e.g., (Type1, Type2, Type3)
-// Returns *ast.StructType representing the tuple.
+// Grammar for tupleType: LPAREN (typeAnnotation (COMMA typeAnnotation)*)? RPAREN;
 func (v *ManuscriptAstVisitor) VisitTupleType(ctx *parser.TupleTypeContext) interface{} {
-
 	fields := []*ast.Field{}
-	typeAnnotations := ctx.GetTypes() // This should be []parser.ITypeAnnotationContext
+	typeAnnotations := ctx.GetElements().GetTypes() // Assuming this is the correct accessor
 
 	for i, typeAntlrCtxInterface := range typeAnnotations {
-		if typeAntlrCtx, okAssert := typeAntlrCtxInterface.(*parser.TypeAnnotationContext); okAssert {
-			fieldTypeInterface := v.VisitTypeAnnotation(typeAntlrCtx)
-			if fieldTypeExpr, ok := fieldTypeInterface.(ast.Expr); ok && fieldTypeExpr != nil {
-				fieldName := fmt.Sprintf("_%d", i) // Generates field names like _0, _1, etc.
-				fields = append(fields, &ast.Field{
-					Names: []*ast.Ident{ast.NewIdent(fieldName)},
-					Type:  fieldTypeExpr,
-				})
-			} else {
-				token := ctx.GetStart()
-				if pTree, isPTree := typeAntlrCtxInterface.(antlr.ParseTree); isPTree {
-					if rNode, isRNode := pTree.(antlr.RuleNode); isRNode {
-						if prc, okAssertPrc := rNode.(antlr.ParserRuleContext); okAssertPrc {
-							token = prc.GetStart()
-						}
-					}
-				}
-				v.addError(fmt.Sprintf("Internal error: Unexpected structure for tuple element at index %d: %s", i, typeAntlrCtxInterface.GetText()), token)
-				return nil // Should not happen if grammar is correctly parsed
-			}
-		} else {
-			token := ctx.GetStart()
-			if pTree, isPTree := typeAntlrCtxInterface.(antlr.ParseTree); isPTree {
-				if rNode, isRNode := pTree.(antlr.RuleNode); isRNode {
-					if prc, okAssertPrc := rNode.(antlr.ParserRuleContext); okAssertPrc {
-						token = prc.GetStart()
-					}
-				}
-			}
-			v.addError(fmt.Sprintf("Internal error: Unexpected structure for tuple element at index %d: %s", i, typeAntlrCtxInterface.GetText()), token)
-			return nil // Should not happen if grammar is correctly parsed
+		// Each element is an ITypeAnnotationContext
+		typeAntlrCtx, okAssert := typeAntlrCtxInterface.(*parser.TypeAnnotationContext)
+		if !okAssert {
+			v.addError(fmt.Sprintf("Internal error: tuple type element %d is not TypeAnnotationContext", i), ctx.GetStart())
+			return &ast.BadExpr{}
+		}
+
+		fieldTypeInterface := v.VisitTypeAnnotation(typeAntlrCtx)
+		if fieldTypeExpr, ok := fieldTypeInterface.(ast.Expr); ok && fieldTypeExpr != nil {
+			fieldName := fmt.Sprintf("_T%d", i) // Generates field names like _T0, _T1 for the struct
+			fields = append(fields, &ast.Field{
+				Names: []*ast.Ident{ast.NewIdent(fieldName)},
+				Type:  fieldTypeExpr,
+			})
+		} else if fieldTypeInterface == nil { // Explicit void type in tuple element
+			v.addError(fmt.Sprintf("Tuple element %d cannot be void: %s", i, typeAntlrCtx.GetText()), typeAntlrCtx.GetStart())
+			return &ast.BadExpr{}
+		} else { // Some other error from VisitTypeAnnotation
+			v.addError(fmt.Sprintf("Invalid type for tuple element %d: %s", i, typeAntlrCtx.GetText()), typeAntlrCtx.GetStart())
+			return &ast.BadExpr{}
 		}
 	}
 
-	if len(fields) == 0 {
-		return &ast.StructType{
-			Fields:     &ast.FieldList{List: []*ast.Field{}},
-			Incomplete: false,
+	// Represent Manuscript tuple type as a Go struct type
+	// Example: (int, string) -> struct { _T0 int; _T1 string }
+	return &ast.StructType{
+		Fields:     &ast.FieldList{List: fields},
+		Incomplete: len(fields) == 0 && len(typeAnnotations) > 0, // Mark incomplete if parsing failed for some elements
+	}
+}
+
+// VisitObjectTypeAnnotation handles object type annotations like `{ name: string, age?: int }`
+// Grammar: objectTypeAnnotation: LBRACE (fields += fieldDecl (COMMA fields += fieldDecl)* (COMMA)?)? RBRACE;
+// fieldDecl: fieldName = namedID (isOptionalField = QUESTION)? COLON type = typeAnnotation;
+func (v *ManuscriptAstVisitor) VisitObjectTypeAnnotation(ctx *parser.ObjectTypeAnnotationContext) interface{} {
+	fields := []*ast.Field{}
+	if ctx.AllFieldDecl() != nil {
+		for _, fieldDeclCtxInterface := range ctx.AllFieldDecl() {
+			fieldDeclCtx := fieldDeclCtxInterface.(*parser.FieldDeclContext)
+			fieldNameNode := fieldDeclCtx.GetFieldName()
+			if fieldNameNode == nil {
+				v.addError("Missing field name in object type annotation", fieldDeclCtx.GetStart())
+				return &ast.BadExpr{}
+			}
+			fieldName := fieldNameNode.GetText()
+
+			typeAntlrCtx := fieldDeclCtx.GetType_()
+			if typeAntlrCtx == nil {
+				v.addError(fmt.Sprintf("Missing type for field '%s' in object type", fieldName), fieldDeclCtx.GetStart())
+				return &ast.BadExpr{}
+			}
+
+			fieldTypeInterface := v.VisitTypeAnnotation(typeAntlrCtx.(*parser.TypeAnnotationContext))
+			var fieldTypeExpr ast.Expr
+			if ftExpr, ok := fieldTypeInterface.(ast.Expr); ok && ftExpr != nil {
+				fieldTypeExpr = ftExpr
+			} else if fieldTypeInterface == nil { // void type
+				v.addError(fmt.Sprintf("Field '%s' in object type cannot be void: %s", fieldName, typeAntlrCtx.GetText()), typeAntlrCtx.GetStart())
+				return &ast.BadExpr{}
+			} else {
+				v.addError(fmt.Sprintf("Invalid type for field '%s' in object type: %s", fieldName, typeAntlrCtx.GetText()), typeAntlrCtx.GetStart())
+				return &ast.BadExpr{}
+			}
+
+			if fieldDeclCtx.QUESTION() != nil { // isOptionalField
+				isAlreadyNullableOrPointer := false
+				switch ft := fieldTypeExpr.(type) {
+				case *ast.StarExpr:
+					isAlreadyNullableOrPointer = true
+				case *ast.Ident:
+					if ft.Name == "interface{}" {
+						isAlreadyNullableOrPointer = true
+					}
+				case *ast.ArrayType, *ast.MapType, *ast.FuncType:
+					isAlreadyNullableOrPointer = true
+				}
+				if !isAlreadyNullableOrPointer {
+					fieldTypeExpr = &ast.StarExpr{X: fieldTypeExpr}
+				}
+			}
+
+			fields = append(fields, &ast.Field{
+				Names: []*ast.Ident{ast.NewIdent(fieldName)},
+				Type:  fieldTypeExpr,
+			})
 		}
 	}
 
 	return &ast.StructType{
 		Fields:     &ast.FieldList{List: fields},
-		Incomplete: false,
+		Incomplete: false, // If any field parse fails, we return BadExpr from loop.
 	}
 }
 
-// VisitIfaceDecl handles interface declarations.
-// ifaceDecl: IFACE name=ID (EXTENDS baseIface+=baseTypeAnnotation (COMMA baseIface+=baseTypeAnnotation)*)? LBRACE (methodDecl SEMICOLON?)* RBRACE;
+// VisitMapTypeAnnotation handles map type annotations like `[string: int]`
+// Grammar: mapTypeAnnotation: LSQBR keyType = typeAnnotation COLON valueType = typeAnnotation RSQBR;
+func (v *ManuscriptAstVisitor) VisitMapTypeAnnotation(ctx *parser.MapTypeAnnotationContext) interface{} {
+	keyTypeAntlrCtx := ctx.GetKeyType()
+	if keyTypeAntlrCtx == nil {
+		v.addError("Missing key type in map type annotation", ctx.GetStart())
+		return &ast.BadExpr{}
+	}
+	keyTypeInterface := v.VisitTypeAnnotation(keyTypeAntlrCtx.(*parser.TypeAnnotationContext))
+	var keyTypeExpr ast.Expr
+	if ktExpr, ok := keyTypeInterface.(ast.Expr); ok && ktExpr != nil {
+		keyTypeExpr = ktExpr
+	} else {
+		errorMsg := "Invalid key type for map type annotation"
+		if keyTypeInterface == nil {
+			errorMsg = "Key type for map type annotation cannot be void"
+		}
+		v.addError(errorMsg+": "+keyTypeAntlrCtx.GetText(), keyTypeAntlrCtx.GetStart())
+		return &ast.BadExpr{}
+	}
+
+	valueTypeAntlrCtx := ctx.GetValueType()
+	if valueTypeAntlrCtx == nil {
+		v.addError("Missing value type in map type annotation", ctx.GetStart())
+		return &ast.BadExpr{}
+	}
+	valueTypeInterface := v.VisitTypeAnnotation(valueTypeAntlrCtx.(*parser.TypeAnnotationContext))
+	var valueTypeExpr ast.Expr
+	if vtExpr, ok := valueTypeInterface.(ast.Expr); ok && vtExpr != nil {
+		valueTypeExpr = vtExpr
+	} else {
+		errorMsg := "Invalid value type for map type annotation"
+		if valueTypeInterface == nil {
+			errorMsg = "Value type for map type annotation cannot be void"
+		}
+		v.addError(errorMsg+": "+valueTypeAntlrCtx.GetText(), valueTypeAntlrCtx.GetStart())
+		return &ast.BadExpr{}
+	}
+
+	return &ast.MapType{
+		Key:   keyTypeExpr,
+		Value: valueTypeExpr,
+	}
+}
+
+// VisitSetTypeAnnotation handles set type annotations like `<int>`
+// This will be represented as map[ElementType]struct{} in Go.
+// Grammar: setTypeAnnotation: LT elementType = typeAnnotation GT;
+func (v *ManuscriptAstVisitor) VisitSetTypeAnnotation(ctx *parser.SetTypeAnnotationContext) interface{} {
+	elementTypeAntlrCtx := ctx.GetElementType()
+	if elementTypeAntlrCtx == nil {
+		v.addError("Missing element type in set type annotation", ctx.GetStart())
+		return &ast.BadExpr{}
+	}
+	elementTypeInterface := v.VisitTypeAnnotation(elementTypeAntlrCtx.(*parser.TypeAnnotationContext))
+	var elementTypeExpr ast.Expr
+	if etExpr, ok := elementTypeInterface.(ast.Expr); ok && etExpr != nil {
+		elementTypeExpr = etExpr
+	} else {
+		errorMsg := "Invalid element type for set type annotation"
+		if elementTypeInterface == nil {
+			errorMsg = "Element type for set type annotation cannot be void"
+		}
+		v.addError(errorMsg+": "+elementTypeAntlrCtx.GetText(), elementTypeAntlrCtx.GetStart())
+		return &ast.BadExpr{}
+	}
+
+	return &ast.MapType{
+		Key:   elementTypeExpr,
+		Value: &ast.StructType{Fields: &ast.FieldList{List: []*ast.Field{}}}, // Represents struct{}
+	}
+}

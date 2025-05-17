@@ -154,7 +154,7 @@ func (v *ManuscriptAstVisitor) VisitLogicalOrExpr(ctx *parser.LogicalOrExprConte
 // VisitLogicalAndExpr handles binary AND expressions (&&)
 func (v *ManuscriptAstVisitor) VisitLogicalAndExpr(ctx *parser.LogicalAndExprContext) interface{} {
 	assertAndGetOperand := func(child antlr.Tree) (antlr.ParserRuleContext, bool) {
-		operand, ok := child.(parser.IEqualityExprContext)
+		operand, ok := child.(parser.IBitwiseOrExprContext)
 		return operand, ok
 	}
 	mapOp := func(msOpToken antlr.Token) (token.Token, bool) {
@@ -164,6 +164,51 @@ func (v *ManuscriptAstVisitor) VisitLogicalAndExpr(ctx *parser.LogicalAndExprCon
 		return token.ILLEGAL, false
 	}
 	return v.buildChainedBinaryExpressionAst(ctx, "logical AND", ctx.GetChildren(), assertAndGetOperand, mapOp)
+}
+
+// VisitBitwiseOrExpr handles bitwise OR expressions (|)
+func (v *ManuscriptAstVisitor) VisitBitwiseOrExpr(ctx *parser.BitwiseOrExprContext) interface{} {
+	assertAndGetOperand := func(child antlr.Tree) (antlr.ParserRuleContext, bool) {
+		operand, ok := child.(parser.IBitwiseXorExprContext)
+		return operand, ok
+	}
+	mapOp := func(msOpToken antlr.Token) (token.Token, bool) {
+		if msOpToken.GetTokenType() == parser.ManuscriptPIPE {
+			return token.OR, true // Bitwise OR
+		}
+		return token.ILLEGAL, false
+	}
+	return v.buildChainedBinaryExpressionAst(ctx, "bitwise OR", ctx.GetChildren(), assertAndGetOperand, mapOp)
+}
+
+// VisitBitwiseXorExpr handles bitwise XOR expressions (^)
+func (v *ManuscriptAstVisitor) VisitBitwiseXorExpr(ctx *parser.BitwiseXorExprContext) interface{} {
+	assertAndGetOperand := func(child antlr.Tree) (antlr.ParserRuleContext, bool) {
+		operand, ok := child.(parser.IBitwiseAndExprContext)
+		return operand, ok
+	}
+	mapOp := func(msOpToken antlr.Token) (token.Token, bool) {
+		if msOpToken.GetTokenType() == parser.ManuscriptCARET {
+			return token.XOR, true // Bitwise XOR
+		}
+		return token.ILLEGAL, false
+	}
+	return v.buildChainedBinaryExpressionAst(ctx, "bitwise XOR", ctx.GetChildren(), assertAndGetOperand, mapOp)
+}
+
+// VisitBitwiseAndExpr handles bitwise AND expressions (&)
+func (v *ManuscriptAstVisitor) VisitBitwiseAndExpr(ctx *parser.BitwiseAndExprContext) interface{} {
+	assertAndGetOperand := func(child antlr.Tree) (antlr.ParserRuleContext, bool) {
+		operand, ok := child.(parser.IEqualityExprContext)
+		return operand, ok
+	}
+	mapOp := func(msOpToken antlr.Token) (token.Token, bool) {
+		if msOpToken.GetTokenType() == parser.ManuscriptAMP {
+			return token.AND, true // Bitwise AND
+		}
+		return token.ILLEGAL, false
+	}
+	return v.buildChainedBinaryExpressionAst(ctx, "bitwise AND", ctx.GetChildren(), assertAndGetOperand, mapOp)
 }
 
 // mapEqualityOpToken maps Manuscript equality operator tokens to Go's token.Token
@@ -323,7 +368,7 @@ func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprCon
 		return &ast.BadExpr{}
 	}
 
-	firstOperandAntlrCtx, ok := children[0].(parser.IAdditiveExprContext)
+	firstOperandAntlrCtx, ok := children[0].(parser.IShiftExprContext)
 	if !ok {
 		errToken := ctx.GetStart()
 		if len(children) > 0 {
@@ -333,7 +378,7 @@ func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprCon
 				errToken = tn.GetSymbol()
 			}
 		}
-		v.addError(fmt.Sprintf("First child of comparison expression is not an additive expression. Got: %s", v.safeGetNodeText(children[0])), errToken)
+		v.addError(fmt.Sprintf("First child of comparison expression is not a shift expression. Got: %s", v.safeGetNodeText(children[0])), errToken)
 		return &ast.BadExpr{}
 	}
 
@@ -383,7 +428,7 @@ func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprCon
 			return &ast.BadExpr{}
 		}
 
-		rightOperandAntlrCtx, ok := children[childIdx].(parser.IAdditiveExprContext)
+		rightOperandAntlrCtx, ok := children[childIdx].(parser.IShiftExprContext)
 		if !ok {
 			errToken := opSymbol
 			if len(children) > childIdx {
@@ -393,7 +438,7 @@ func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprCon
 					errToken = tn.GetSymbol()
 				}
 			}
-			v.addError(fmt.Sprintf("Expected right operand (additive expression) in comparison expression at child index %d, got %s", childIdx, v.safeGetNodeText(children[childIdx])), errToken)
+			v.addError(fmt.Sprintf("Expected right operand (shift expression) in comparison expression at child index %d, got %s", childIdx, v.safeGetNodeText(children[childIdx])), errToken)
 			return &ast.BadExpr{}
 		}
 		childIdx++
@@ -427,6 +472,25 @@ func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprCon
 		currentLHSExpr = currentRHSExpr
 	}
 	return overallChainResult
+}
+
+// VisitShiftExpr handles shift expressions (<<, >>)
+func (v *ManuscriptAstVisitor) VisitShiftExpr(ctx *parser.ShiftExprContext) interface{} {
+	assertAndGetOperand := func(child antlr.Tree) (antlr.ParserRuleContext, bool) {
+		operand, ok := child.(parser.IAdditiveExprContext)
+		return operand, ok
+	}
+	mapOp := func(msOpToken antlr.Token) (token.Token, bool) {
+		switch msOpToken.GetTokenType() {
+		case parser.ManuscriptLSHIFT:
+			return token.SHL, true // Shift Left
+		case parser.ManuscriptRSHIFT:
+			return token.SHR, true // Shift Right
+		default:
+			return token.ILLEGAL, false
+		}
+	}
+	return v.buildChainedBinaryExpressionAst(ctx, "shift", ctx.GetChildren(), assertAndGetOperand, mapOp)
 }
 
 // VisitAdditiveExpr handles additive expressions (+, -)

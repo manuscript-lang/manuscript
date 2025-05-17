@@ -36,7 +36,7 @@ type TestPair struct {
 	GoCode string
 }
 
-func TestMarkdownCompilation(t *testing.T) {
+func TestCompile(t *testing.T) {
 	testDir := "../tests/compilation"
 	allFiles, err := os.ReadDir(testDir)
 	if err != nil {

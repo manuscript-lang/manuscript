@@ -2,6 +2,7 @@ package visitor
 
 import (
 	"go/ast" // Aliased to avoid conflict with ANTLR's token
+	"go/token"
 	"manuscript-co/manuscript/internal/parser"
 )
 
@@ -10,6 +11,32 @@ import (
 
 // VisitStmt handles different kinds of statements.
 func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+
+	// Check for break statement
+	if ctx.GetSBreak() != nil {
+		if !v.isInLoop() {
+			v.addError("'break' statement found outside of a loop", ctx.GetSBreak().BREAK().GetSymbol())
+		}
+		return &ast.BranchStmt{
+			TokPos: v.pos(ctx.GetSBreak().BREAK().GetSymbol()),
+			Tok:    token.BREAK,
+		}
+	}
+
+	// Check for continue statement
+	if ctx.GetSContinue() != nil {
+		if !v.isInLoop() {
+			v.addError("'continue' statement found outside of a loop", ctx.GetSContinue().CONTINUE().GetSymbol())
+		}
+		return &ast.BranchStmt{
+			TokPos: v.pos(ctx.GetSContinue().CONTINUE().GetSymbol()),
+			Tok:    token.CONTINUE,
+		}
+	}
+
 	if ctx.LetDecl() != nil {
 		if concreteCtx, ok := ctx.LetDecl().(*parser.LetDeclContext); ok {
 			return v.VisitLetDecl(concreteCtx)
@@ -18,12 +45,18 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 		return nil
 	}
 
-	if exprStmtCtx := ctx.ExprStmt(); exprStmtCtx != nil {
-		if concreteCtx, ok := exprStmtCtx.(*parser.ExprStmtContext); ok {
-			return v.VisitExprStmt(concreteCtx)
+	// Handle expression statements directly using ctx.Expr()
+	if exprCtx := ctx.Expr(); exprCtx != nil {
+		visitedNodeRaw := v.Visit(exprCtx) // exprCtx is IExprContext
+
+		if stmt, ok := visitedNodeRaw.(ast.Stmt); ok {
+			return stmt // e.g. ast.AssignStmt from VisitAssignmentExpr
 		}
-		v.addError("Internal error: Failed to process expression statement structure: "+exprStmtCtx.GetText(), exprStmtCtx.GetStart())
-		return nil
+		if expr, ok := visitedNodeRaw.(ast.Expr); ok {
+			return &ast.ExprStmt{X: expr} // Wrap other expressions
+		}
+		v.addError("Expression in statement context did not resolve to a valid Go expression or statement: "+exprCtx.GetText(), exprCtx.GetStart())
+		return &ast.BadStmt{}
 	}
 
 	if ifStmtCtx := ctx.IfStmt(); ifStmtCtx != nil {
@@ -50,22 +83,6 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 		return nil
 	}
 
-	if breakStmtCtx := ctx.BreakStmt(); breakStmtCtx != nil {
-		if concreteCtx, ok := breakStmtCtx.(*parser.BreakStmtContext); ok {
-			return v.VisitBreakStmt(concreteCtx)
-		}
-		v.addError("Internal error: Failed to process break statement structure: "+breakStmtCtx.GetText(), breakStmtCtx.GetStart())
-		return nil
-	}
-
-	if continueStmtCtx := ctx.ContinueStmt(); continueStmtCtx != nil {
-		if concreteCtx, ok := continueStmtCtx.(*parser.ContinueStmtContext); ok {
-			return v.VisitContinueStmt(concreteCtx)
-		}
-		v.addError("Internal error: Failed to process continue statement structure: "+continueStmtCtx.GetText(), continueStmtCtx.GetStart())
-		return nil
-	}
-
 	if returnStmtCtx := ctx.ReturnStmt(); returnStmtCtx != nil {
 		if concreteCtx, ok := returnStmtCtx.(*parser.ReturnStmtContext); ok {
 			return v.VisitReturnStmt(concreteCtx)
@@ -88,27 +105,6 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 
 	v.addError("Unhandled statement type in VisitStmt: "+ctx.GetText(), ctx.GetStart())
 	return nil
-}
-
-// VisitExprStmt processes an expression statement.
-func (v *ManuscriptAstVisitor) VisitExprStmt(ctx *parser.ExprStmtContext) interface{} {
-	// Explicitly visit only the expression part, ignore the semicolon child
-	visitedNodeRaw := v.Visit(ctx.Expr()) // Visit the core expression, which could be an expr or an assignment stmt
-
-	// Check if the visited node is already a statement (e.g., ast.AssignStmt from VisitAssignmentExpr)
-	if stmt, ok := visitedNodeRaw.(ast.Stmt); ok {
-		return stmt // If it's a statement, return it directly
-	}
-
-	// If not a statement, check if it's an expression to be wrapped
-	if expr, ok := visitedNodeRaw.(ast.Expr); ok {
-		// Wrap the resulting expression in an ast.ExprStmt
-		return &ast.ExprStmt{X: expr}
-	}
-
-	// If it's neither a recognized statement nor an expression, it's an error
-	v.addError("Expression statement did not resolve to a valid Go expression or statement: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
-	return &ast.BadStmt{} // Return a BadStmt or nil for error
 }
 
 // VisitIfStmt processes an if statement, including any else or else-if branches.
@@ -144,15 +140,6 @@ func (v *ManuscriptAstVisitor) VisitIfStmt(ctx *parser.IfStmtContext) interface{
 		// Get the else block (second code block)
 		elseBlockRaw := v.Visit(ctx.CodeBlock(1))
 		if elseBlock, ok := elseBlockRaw.(*ast.BlockStmt); ok {
-			// Check if this is an "else if" statement (a block with exactly one if statement)
-			if len(elseBlock.List) == 1 {
-				if elseIf, ok := elseBlock.List[0].(*ast.IfStmt); ok {
-					// This is an "else if" - connect it directly as the Else branch
-					ifStmt.Else = elseIf
-					return ifStmt
-				}
-			}
-			// Regular else block
 			ifStmt.Else = elseBlock
 		} else {
 			v.addError("Else body did not resolve to a valid block", ctx.GetStart())

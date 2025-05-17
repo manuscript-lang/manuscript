@@ -4,315 +4,348 @@ options {
 	tokenVocab = ManuscriptLexer;
 }
 
-// =============================================================================
-// Program Structure
-// =============================================================================
 program: items += programItem* EOF;
 programItem:
-	importStmt 
-	| externStmt 
-	| exportStmt 
-	| stmt       
-	| typeDecl   
-	| ifaceDecl  
-	| fnDecl     
-	| methodBlockDecl 
-	;
+	(
+		importStatement = importStmt
+		| exportStatement = exportStmt
+		| externStatement = externStmt
+		| letDeclaration = letDecl
+		| typeDeclaration = typeDecl
+		| interfaceDeclaration = interfaceDecl
+		| functionDeclaration = fnDecl
+		| methodsDeclaration = methodsDecl
+	) SEMICOLON?;
 
-// =============================================================================
-// Imports & Exports
-// =============================================================================
-
-// --- Import/Extern --- // (Existing rules)
-importStmt: IMPORT
-    ( LBRACE (items += importItem (COMMA items += importItem)*)? RBRACE FROM path = importStr
-    | target = ID FROM path = importStr
-    ) SEMICOLON?;
+importStmt:
+	IMPORT (
+		LBRACE (
+			items += importItem (COMMA items += importItem)* (
+				COMMA
+			)?
+		)? RBRACE FROM path = importStr
+		| target = ID FROM path = importStr
+	);
 importItem: name = ID (AS alias = ID)?;
 
-externStmt: EXTERN
-    ( LBRACE (items += externItem (COMMA items += externItem)*)? RBRACE FROM path = importStr
-    | target = ID FROM path = importStr
-    ) SEMICOLON?;
-externItem: name = ID (AS alias = ID)?;
+importStr:
+	pathSingle = singleQuotedString
+	| pathMulti = multiQuotedString;
 
-// --- Export ---
-exportStmt: EXPORT (fnDecl | letDecl | typeDecl | ifaceDecl) SEMICOLON?; // Based on language design
-
-// =============================================================================
-// Declarations
-// =============================================================================
-
-// --- Variable Declarations ---
-letDecl:
-	LET (assignments += letAssignment (COMMA assignments += letAssignment)*) SEMICOLON?;
-letAssignment:
-	pattern = letPattern (EQUALS value = expr)?;
-letPattern:
-	simple = ID
-	| array = arrayPattn
-	| object = objectPattn;
-arrayPattn:
-	LSQBR (names += ID (COMMA names += ID)*)? RSQBR;
-objectPattn:
-	LBRACE (names += ID (COMMA names += ID)*)? RBRACE;
-
-// --- Function Declaration ---
-fnDecl:
-	FN name = ID 
-	  LPAREN params = parameters? RPAREN 
-	  (COLON returnType = typeAnnotation)? 
-	  (EXCLAMATION)? // Error indicator
-	  block = codeBlock; // Assuming a codeBlock rule for function bodies
-
-parameters: param (COMMA param)*;
-param: (label = ID)? name = ID COLON type = typeAnnotation (EQUALS defaultValue = expr)?; // Added default value
-
-// --- Type Declaration ---
-typeDecl:
-	TYPE name = ID 
-	( // Struct definition with optional extends
-	  (EXTENDS baseTypes += typeAnnotation (COMMA baseTypes += typeAnnotation)*)?
-	  LBRACE (fields += fieldDecl)* RBRACE
-	| // Type alias definition
-	  EQUALS alias = typeAnnotation SEMICOLON?
+externStmt:
+	EXTERN (
+		LBRACE (
+			items += importItem (COMMA items += importItem)* (
+				COMMA
+			)?
+		)? RBRACE FROM path = importStr
+		| target = ID FROM path = importStr
 	);
 
-fieldDecl: name = ID (QUESTION)? COLON type = typeAnnotation SEMICOLON?; // Optional fields
+exportStmt:
+	EXPORT (
+		exportedFunction = fnDecl
+		| exportedLet = letDecl
+		| exportedType = typeDecl
+		| exportedInterface = interfaceDecl
+	);
 
-// --- Interface Declaration ---
-ifaceDecl:
-	INTERFACE name = ID 
-	  (EXTENDS baseIfaces += typeAnnotation (COMMA baseIfaces += typeAnnotation)*)?
-	  LBRACE (methods += methodDecl)* RBRACE;
+letDecl:
+	LET (
+		singleLet = letSingle
+		| blockLet = letBlock
+		| destructuredObjectLet = letDestructuredObj
+		| destructuredArrayLet = letDestructuredArray
+	);
 
-methodDecl: // Signature only within interface
-	FN name = ID 
-	  LPAREN params = parameters? RPAREN 
-	  (COLON returnType = typeAnnotation)? 
-	  (EXCLAMATION)? // Error indicator
-	  SEMICOLON?;
+letSingle: typedID (EQUALS value = expr)?;
+letBlock: LBRACE (letSingle)* RBRACE;
+letDestructuredObj:
+	LBRACE destructuredIds = typedIDList RBRACE EQUALS value = expr;
+letDestructuredArray:
+	LSQBR destructuredIds = typedIDList RSQBR EQUALS value = expr;
 
-// --- Methods Block Declaration --- (For implementing interfaces or adding methods to types)
-methodBlockDecl:
-	METHODS (ifaceName = typeAnnotation FOR)? typeName = typeAnnotation 
-	 LBRACE (impls += methodImpl)* RBRACE;
+namedID: name = ID;
+typedID: namedID (COLON type = typeAnnotation)?;
+typedIDList:
+	names += typedID (COMMA names += typedID)* (COMMA)?;
+typeList:
+	types += typeAnnotation (COMMA types += typeAnnotation)* (
+		COMMA
+	)?;
 
-methodImpl: // Full implementation within methods block
-	FN name = ID 
-	  LPAREN params = parameters? RPAREN 
-	  (COLON returnType = typeAnnotation)? 
-	  (EXCLAMATION)? // Error indicator
-	  block = codeBlock;
+fnDecl: signature = fnSignature block = codeBlock;
 
-// --- Type Annotation --- 
-typeAnnotation: 
-    base = baseTypeAnnotation 
-    ( LSQBR RSQBR // Array modifier
-    | LSQBR COLON mapValueType = typeAnnotation RSQBR // Map modifier [keyType: valueType] - keyType is the base
-    | LT GT // Set modifier <valueType> - valueType is the base - This syntax might need review
-    )*; 
+fnSignature:
+	FN functionName = namedID LPAREN params = parameters? RPAREN (
+		returnType = typeAnnotation
+	)? (returnsError = EXCLAMATION)?;
 
-baseTypeAnnotation:
-    simpleType = ID
-    | tuple = tupleType
-    | function = functionType
-    ; 
+parameters: param (COMMA param)* (COMMA)?;
+param:
+	paramName = namedID COLON type = typeAnnotation (
+		EQUALS defaultValue = expr
+	)?;
 
-functionType: FN LPAREN (paramTypes += typeAnnotation (COMMA paramTypes += typeAnnotation)*)? RPAREN (returnType = typeAnnotation)?; // e.g., fn(int, string) bool. Trying MINUS GT for '->'
+typeDecl: TYPE typeName = namedID (typeDefBody | typeAlias);
 
-// =============================================================================
-// Statements
-// =============================================================================
+typeDefBody:
+	(EXTENDS extendedTypes = typeList)? LBRACE (
+		fields += fieldDecl (COMMA fields += fieldDecl)* (COMMA)?
+	)? RBRACE;
+
+typeAlias:
+	EQUALS aliasTarget = typeAnnotation (
+		EXTENDS constraintTypes = typeList
+	)?;
+
+fieldDecl:
+	fieldName = namedID (isOptionalField = QUESTION)? COLON type = typeAnnotation;
+
+interfaceDecl:
+	INTERFACE interfaceName = namedID (
+		EXTENDS extendedInterfaces = typeList
+	)? LBRACE (methods += fnSignature)+ RBRACE;
+
+methodsDecl:
+	METHODS (interface = typeAnnotation FOR)? targetStructName = ID LBRACE (
+		impls += fnDecl
+	)* RBRACE;
+
+typeAnnotation:
+	(
+		idAsType = ID
+		| tupleAsType = tupleType
+		| funcAsType = fnSignature
+		| objAsType = objectTypeAnnotation
+		| mapAsType = mapTypeAnnotation
+		| setAsType = setTypeAnnotation
+	) (isNullable = QUESTION)? (arrayMarker = LSQBR RSQBR)?;
+
+tupleType: LPAREN elements = typeList? RPAREN;
+
+objectTypeAnnotation:
+	LBRACE (
+		fields += fieldDecl (COMMA fields += fieldDecl)* (COMMA)?
+	)? RBRACE;
+
+mapTypeAnnotation:
+	LSQBR keyType = typeAnnotation COLON valueType = typeAnnotation RSQBR;
+
+setTypeAnnotation: LT elementType = typeAnnotation GT;
+
 stmt:
-	letDecl
-	| exprStmt // Expressions as statements
-	| returnStmt
-	| yieldStmt
-	| ifStmt
-	| forStmt
-	| whileStmt
-	| breakStmt
-	| continueStmt
-	| codeBlock // Block of statements
-	| SEMICOLON // Empty statement
-	;
+	(
+		sLetDecl = letDecl
+		| sExpr = expr
+		| sReturn = returnStmt
+		| sYield = yieldStmt
+		| sIf = ifStmt
+		| sFor = forStmt
+		| sWhile = whileStmt
+		| sCodeBlock = codeBlock
+		| sBreak = breakStmt
+		| sContinue = continueStmt
+		| sCheck = checkStmt
+	) SEMICOLON?
+	| SEMICOLON;
 
-exprStmt: expr SEMICOLON?; // Allow expressions followed by optional semicolon
+returnStmt: RETURN returnedValues = exprList?;
+yieldStmt: YIELD yieldedValues = exprList?;
+exprList: expr (COMMA expr)* (COMMA)?;
 
-returnStmt: RETURN (expr (COMMA expr)*)? SEMICOLON?; // Allow zero, one, or multiple return values
-yieldStmt: YIELD expr? SEMICOLON?;
+ifStmt:
+	IF condition = expr thenBlock = codeBlock (
+		ELSE elseBlock = codeBlock
+	)?;
 
-ifStmt: 
-	IF condition = expr block = codeBlock (ELSE elseBlock = codeBlock)? SEMICOLON?; // Restored optional SEMICOLON
+forStmt: FOR type = forLoopType;
 
-// TODO: Define detailed loop structures based on language-design.md
-forStmt:
-    FOR
-    ( // Option 1: C-style loop
-      cStyleInit = forInitPattn? SEMICOLON
-      cStyleCond = expr? SEMICOLON
-      cStylePost = expr?
-      block = codeBlock
-    // Option 2: For-in iterable loop (Removed range-specific version for now)
-    | loopVars = loopPattern IN iterable = expr
-      block = codeBlock
-    ) SEMICOLON? ; // Optional semicolon after the loop
+forLoopType:
+	forTrinity													# ForLoop
+	| (key = ID (COMMA val = ID)?) IN iterable = expr loopBody	# ForInLoop;
 
-forInitPattn:
-	letDecl | expr; // Allow let declaration or simple expression as initializer.
+forTrinity:
+	(initializerDecl = letSingle | initializerExprs = exprList)? SEMICOLON condition = expr?
+		SEMICOLON postUpdate = exprList? body = loopBody;
 
-loopPattern: // Pattern for for-in loops, e.g., 'v' or 'k, v'
-    var1 = ID (COMMA var2 = ID)?;
+whileStmt: WHILE condition = expr loopBody;
 
-whileStmt: WHILE condition = expr block = codeBlock SEMICOLON?;
+loopBody: LBRACE (bodyStmts += stmt)* RBRACE;
 
-breakStmt: BREAK SEMICOLON?;
-continueStmt: CONTINUE SEMICOLON?;
+codeBlock: LBRACE (stmts += stmt)* RBRACE;
 
-codeBlock: LBRACE (stmts += stmt)* RBRACE; // Sequence of statements
-
-// =============================================================================
-// Expressions
-// =============================================================================
-
-// --- Basic Expressions --- (Existing rules)
 expr: assignmentExpr;
 assignmentExpr:
-	left = logicalOrExpr (op = (EQUALS | PLUS_EQUALS | MINUS_EQUALS | STAR_EQUALS | SLASH_EQUALS | MOD_EQUALS | CARET_EQUALS) right = assignmentExpr)?;
+	left = logicalOrExpr (
+		op = (
+			EQUALS
+			| PLUS_EQUALS
+			| MINUS_EQUALS
+			| STAR_EQUALS
+			| SLASH_EQUALS
+			| MOD_EQUALS
+			| CARET_EQUALS
+		) right = assignmentExpr
+	)?;
 logicalOrExpr:
 	left = logicalAndExpr (op = PIPE_PIPE right = logicalAndExpr)*;
 logicalAndExpr:
-	left = equalityExpr (op = AMP_AMP right = equalityExpr)*;
+	left = bitwiseOrExpr (op = AMP_AMP right = bitwiseOrExpr)*;
+bitwiseOrExpr:
+	left = bitwiseXorExpr (op = PIPE right = bitwiseXorExpr)*;
+bitwiseXorExpr:
+	left = bitwiseAndExpr (op = CARET right = bitwiseAndExpr)*;
+bitwiseAndExpr:
+	left = equalityExpr (op = AMP right = equalityExpr)*;
 equalityExpr:
-	left = comparisonExpr (op = (EQUALS_EQUALS | NEQ) right = comparisonExpr)*;
+	left = comparisonExpr (
+		op = (EQUALS_EQUALS | NEQ) right = comparisonExpr
+	)*;
 comparisonExpr:
-	left = additiveExpr (op = (LT | LT_EQUALS | GT | GT_EQUALS) right = additiveExpr)*;
+	left = shiftExpr (
+		op = (LT | LT_EQUALS | GT | GT_EQUALS) right = shiftExpr
+	)*;
+shiftExpr:
+	left = additiveExpr (
+		op = (LSHIFT | RSHIFT) right = additiveExpr
+	)*;
 additiveExpr:
-	left = multiplicativeExpr (op = (PLUS | MINUS) right = multiplicativeExpr)*;
+	left = multiplicativeExpr (
+		op = (PLUS | MINUS) right = multiplicativeExpr
+	)*;
 multiplicativeExpr:
-	left = unaryExpr (op = (STAR | SLASH | MOD) right = unaryExpr)*;
+	left = unaryExpr (
+		op = (STAR | SLASH | MOD) right = unaryExpr
+	)*;
 unaryExpr:
-	op = (PLUS | MINUS | EXCLAMATION | TRY | CHECK) unaryExpr // Added TRY and CHECK prefixes
+	op = (PLUS | MINUS | EXCLAMATION | TRY) unaryExpr
 	| awaitExpr;
-awaitExpr:
-	(TRY? AWAIT? ASYNC?) postfixExpr; // Allow combinations before postfixExpr
-	// Old: op = (AWAIT | ASYNC | TRY) awaitExpr | postfixExpr;
+awaitExpr: (TRY? AWAIT? ASYNC?) postfixExpr;
 
 postfixExpr:
-	primaryExpr
-	(
-		LPAREN (args += expr (COMMA args += expr)*)? RPAREN // Function call
-		| DOT member = ID                                   // Member access
-		| LSQBR indexExpr = expr RSQBR                      // Index access
-		// | op = PLUS_PLUS                                  // Postfix increment (Removed, check design doc)
-		// | op = MINUS_MINUS                                // Postfix decrement (Removed, check design doc)
+	primaryExpr (
+		LPAREN (args = exprList)? RPAREN
+		| DOT member = ID
+		| LSQBR indexExpr = expr RSQBR
 	)*;
 
 primaryExpr:
-	literal          
-	| ID             // Variable reference
-	| SELF           // Reference to self in methods
-	| LPAREN parenExpr = expr RPAREN // Grouping
-	| arrayLiteral   
-	| objectLiteral  
-	| mapLiteral     
-	| setLiteral     
-	| tupleLiteral   
-	| fnExpr        
-	| lambdaExpr     
-	| tryBlockExpr   
-	| matchExpr      
+	literal
+	| ID
+	| SELF
+	| LPAREN parenExpr = expr RPAREN
+	| arrayLiteral
+	| objectLiteral
+	| mapLiteral
+	| setLiteral
+	| tupleLiteral
+	| fnExpr
+	| matchExpr
 	| VOID
-	| NULL;
+	| NULL
+	| taggedBlockString;
 
-// --- Function & Lambda Expressions ---
 fnExpr:
-	FN LPAREN params = parameters? RPAREN 
-	   (COLON returnType = typeAnnotation)? 
-	   block = codeBlock;
-lambdaExpr:
-	FN 
-	  LPAREN params = parameters? RPAREN 
-	  EQUALS body = expr; 
+	FN LPAREN fnParams = parameters? RPAREN (
+		COLON returnType = typeAnnotation
+	)? block = codeBlock;
 
-// --- Control Flow Expressions ---
-tryBlockExpr: // Represents the try { a(); b() } construct
-	TRY block = codeBlock;
-	// This handles block-level try. Expression-level try is handled in unaryExpr.
+matchExpr:
+	MATCH valueToMatch = expr LBRACE (
+		cs += caseClause (COMMA cs += caseClause)*
+	)? (def = defaultClause)? RBRACE;
 
-matchExpr: 
-	MATCH valueToMatch = expr LBRACE (cases += caseClause (COMMA cases += caseClause)*)? RBRACE;
 caseClause:
-	CASE pattern = expr COLON result = expr SEMICOLON?;
+	CASE pattern = expr (
+		COLON resultExpr = expr
+		| resultBlock = codeBlock
+	) SEMICOLON?;
 
-// =============================================================================
-// Literals & String Parsing
-// =============================================================================
+defaultClause:
+	DEFAULT (COLON resultExpr = expr | resultBlock = codeBlock) SEMICOLON?;
 
 // --- String Parsing Rules --- 
 singleQuotedString:
-	SINGLE_QUOTE_START parts += stringPart* SINGLE_STR_END ;
+	SINGLE_QUOTE_START parts += stringPart* SINGLE_STR_END;
 multiQuotedString:
-	MULTI_QUOTE_START parts += stringPart* MULTI_STR_END ;
+	MULTI_QUOTE_START parts += stringPart* MULTI_STR_END;
 doubleQuotedString:
-	DOUBLE_QUOTE_START parts += stringPart* DOUBLE_STR_END ;
+	DOUBLE_QUOTE_START parts += stringPart* DOUBLE_STR_END;
+multiDoubleQuotedString:
+	MULTI_DOUBLE_QUOTE_START parts += stringPart* MULTI_DOUBLE_STR_END;
 
 stringPart:
 	SINGLE_STR_CONTENT
 	| MULTI_STR_CONTENT
 	| DOUBLE_STR_CONTENT
-	| interp = interpolation ;
+	| MULTI_DOUBLE_STR_CONTENT
+	| interp = interpolation;
 
-interpolation: (SINGLE_STR_INTERP_START | MULTI_STR_INTERP_START | DOUBLE_STR_INTERP_START) value = expr INTERP_RBRACE;
+interpolation: (
+		SINGLE_STR_INTERP_START
+		| MULTI_STR_INTERP_START
+		| DOUBLE_STR_INTERP_START
+		| MULTI_DOUBLE_STR_INTERP_START
+	) value = expr INTERP_RBRACE;
 
 // --- Literals ---
 literal:
-	stringLiteral
-	| numberLiteral
-	| booleanLiteral
-	| NULL
-	| VOID;
+	stringLit = stringLiteral
+	| numLit = numberLiteral
+	| boolLit = booleanLiteral
+	| nullConstant = NULL
+	| voidConstant = VOID;
 stringLiteral:
-	singleQuotedString
-	| multiQuotedString
-	| doubleQuotedString;
+	sglQuotedStr = singleQuotedString
+	| mulQuotedStr = multiQuotedString
+	| dblQuotedStr = doubleQuotedString
+	| mulDblQuotedStr = multiDoubleQuotedString;
 numberLiteral:
-	intValue=INTEGER
-  | floatValue=FLOAT
-  | hexValue=HEX_LITERAL
-  | binaryValue=BINARY_LITERAL
-  ; 
+	intValue = INTEGER
+	| floatValue = FLOAT
+	| hexValue = HEX_LITERAL
+	| binaryValue = BINARY_LITERAL
+	| octalValue = OCTAL_LITERAL;
 booleanLiteral: TRUE | FALSE;
 
-arrayLiteral:
-	LSQBR (elements += expr (COMMA elements += expr)*)? RSQBR; 
+arrayLiteral: LSQBR items = exprList? RSQBR;
 
-objectLiteral: // Represents { field: value, ... } syntax from language design
-	LBRACE (fields += objectField (COMMA fields += objectField)*)? RBRACE; 
-objectField: key = ID (COLON value = expr)?; // Field name must be ID 
+objectLiteral:
+	LBRACE (
+		objFields += objectField (COMMA objFields += objectField)* (
+			COMMA
+		)?
+	)? RBRACE;
+
+objectFieldName: keyName = ID | keyString = stringLiteral;
+
+objectField: key = objectFieldName (COLON val = expr)?;
 
 mapLiteral:
-	LSQBR COLON RSQBR // Empty map
-	| LSQBR (fields += mapField (COMMA fields += mapField)*)? RSQBR; // Map with entries
-mapField: key = expr COLON value = expr; 
+	LSQBR COLON RSQBR
+	| LSQBR (
+		fields += mapField (COMMA fields += mapField)* (
+			COMMA
+		)?
+	)? RSQBR;
+mapField: key = expr COLON value = expr;
 
 setLiteral:
-	LT GT // Empty set
-	| LT (elements += expr (COMMA elements += expr)*)? GT; // Set with elements
+	LT (
+		elements += expr (COMMA elements += expr)* (COMMA)?
+	)? GT;
 
-tupleLiteral:
-	LPAREN (elements += expr (COMMA elements += expr)*)? RPAREN; 
+tupleLiteral: LPAREN elements = exprList? RPAREN;
 
-importStr: // Used by import/extern 
-	pathSingle = singleQuotedString
-	| pathMulti = multiQuotedString; 
+breakStmt: BREAK;
+continueStmt: CONTINUE;
 
-// =============================================================================
-// Types (Basic Definitions)
-// =============================================================================
+checkStmt:
+	CHECK condition = expr COMMA message = stringLiteral SEMICOLON?;
 
-// Basic tuple type definition 
-tupleType:
-	LPAREN (types += typeAnnotation (COMMA types += typeAnnotation)*)? RPAREN;
-
+taggedBlockString:
+	tag = ID (
+		blockStrMultiSingle = multiQuotedString
+		| blockStrMultiDouble = multiDoubleQuotedString
+	);

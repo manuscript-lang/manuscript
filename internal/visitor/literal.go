@@ -29,7 +29,8 @@ func (v *ManuscriptAstVisitor) VisitLiteral(ctx *parser.LiteralContext) interfac
 		return ast.NewIdent("nil")
 	}
 	// TODO: Handle ArrayLiteral and ObjectLiteral when implemented
-	return nil
+	v.addError("Unhandled literal type: "+ctx.GetText(), ctx.GetStart())
+	return &ast.BadExpr{}
 }
 
 // VisitNumberLiteral converts a number literal context to an ast.BasicLit.
@@ -45,6 +46,9 @@ func (v *ManuscriptAstVisitor) VisitNumberLiteral(ctx *parser.NumberLiteralConte
 
 	if ctx.FLOAT() != nil {
 		floatText := ctx.FLOAT().GetText()
+		// Ensure Go compatibility for float literals (e.g., no suffix 'f')
+		// strconv.ParseFloat will handle this appropriately.
+		// The raw text is usually fine for ast.BasicLit if it's a valid Go float.
 		return &ast.BasicLit{
 			Kind:  token.FLOAT,
 			Value: floatText,
@@ -54,7 +58,7 @@ func (v *ManuscriptAstVisitor) VisitNumberLiteral(ctx *parser.NumberLiteralConte
 	if ctx.HEX_LITERAL() != nil {
 		hexText := ctx.HEX_LITERAL().GetText()
 		return &ast.BasicLit{
-			Kind:  token.INT,
+			Kind:  token.INT, // Go handles hex literals as ints
 			Value: hexText,
 		}
 	}
@@ -62,15 +66,30 @@ func (v *ManuscriptAstVisitor) VisitNumberLiteral(ctx *parser.NumberLiteralConte
 	if ctx.BINARY_LITERAL() != nil {
 		binText := ctx.BINARY_LITERAL().GetText()
 		return &ast.BasicLit{
-			Kind:  token.INT,
+			Kind:  token.INT, // Go handles binary literals as ints
 			Value: binText,
 		}
 	}
 
-	// If no specific token detected, try to infer the type from the text
+	if ctx.OCTAL_LITERAL() != nil {
+		octText := ctx.OCTAL_LITERAL().GetText()
+		// Go's octal representation is 0o prefix (Go 1.13+) or 0 prefix.
+		// ANTLR token already includes 0o.
+		return &ast.BasicLit{
+			Kind:  token.INT,
+			Value: octText,
+		}
+	}
+
+	// Fallback: if no specific token type was hit (should be rare if grammar is correct)
+	// or if GetText() is needed for some other reason.
 	text := ctx.GetText()
 	if text != "" {
-		if _, err := strconv.ParseInt(text, 10, 64); err == nil {
+		// Try to infer, primarily for robustness or unexpected cases.
+		// Standard integer (base 10)
+		if _, err := strconv.ParseInt(text, 0, 64); err == nil { // base 0 for auto-detection (0x, 0o, 0b)
+			// This path might be redundant if specific literal tokens are always caught.
+			// However, ensuring it handles plain decimal numbers correctly if they somehow miss INTEGER().
 			return &ast.BasicLit{
 				Kind:  token.INT,
 				Value: text,
@@ -83,11 +102,8 @@ func (v *ManuscriptAstVisitor) VisitNumberLiteral(ctx *parser.NumberLiteralConte
 		}
 	}
 
-	// Default to 0 to avoid compiler errors
-	return &ast.BasicLit{
-		Kind:  token.INT,
-		Value: "0",
-	}
+	v.addError("Unhandled or invalid number literal: "+ctx.GetText(), ctx.GetStart())
+	return &ast.BadExpr{}
 }
 
 // VisitStringLiteral converts a string literal context to an ast.BasicLit.

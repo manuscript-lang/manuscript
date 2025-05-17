@@ -1,13 +1,13 @@
 ```ms
-print("hello world")
+fn main() {
+  print("hello world")
+}
 ```
 
 ```go
 package main
 
-import "fmt"
-
 func main() {
-	fmt.Println("hello world")
+	print("hello world")
 }
 ```

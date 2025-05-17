@@ -3,21 +3,23 @@
 #### Integer Literals
 
 ```ms
-// Positive Integer
-let a = 123
+fn main() {
+  // Positive Integer
+  let a = 123
 
-// Negative Integer
-let b = -456
+  // Negative Integer
+  let b = -456
 
-// Zero
-let c = 0
+  // Zero
+  let c = 0
 
-// Large Integer
-let d = 9876543210
+  // Large Integer
+  let d = 9876543210
 
-// Integer assigned from an expression
-let e = 10 + 20
-let f = 100 - 50
+  // Integer assigned from an expression
+  let e = 10 + 20
+  let f = 100 - 50
+}
 ```
 
 ```go
@@ -36,13 +38,15 @@ func main() {
 #### Floating-Point Literals
 
 ```ms
-let fa = 1.23 // Positive float
-let fb = -0.005 // Negative float
-let fc = 0.0 // Zero float
-let fd = .5 // Float without leading zero
-// Float assigned from an expression
-let fe = 0.5 + 1.2
-let ff = 10.0 / 4.0
+fn main() {
+  let fa = 1.23 // Positive float
+  let fb = -0.005 // Negative float
+  let fc = 0.0 // Zero float
+  let fd = .5 // Float without leading zero
+  // Float assigned from an expression
+  let fe = 0.5 + 1.2
+  let ff = 10.0 / 4.0
+}
 ```
 
 ```go
@@ -61,11 +65,13 @@ func main() {
 #### Boolean Literals and Assignment
 
 ```ms
-let ba = true
-let bb = false
-let be = 10 > 5
-let bf = 10 == 10
-let bg = 10 < 5
+fn main() {
+  let ba = true
+  let bb = false
+  let be = 10 > 5
+  let bf = 10 == 10
+  let bg = 10 < 5
+}
 ```
 
 ```go
@@ -83,7 +89,9 @@ func main() {
 #### Null Literal
 
 ```ms
-let na = null
+fn main() {
+  let na = null
+}
 ```
 
 ```go
