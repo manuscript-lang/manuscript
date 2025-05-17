@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"log"
 	"manuscript-co/manuscript/internal/parser"
+	"strconv"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -290,40 +291,126 @@ func (v *ManuscriptAstVisitor) ProcessParameters(paramsCtx parser.IParametersCon
 	rawParamDetails := v.VisitParameters(paramsCtx.(*parser.ParametersContext)) // This should return []ParamDetail
 	if pdl, ok := rawParamDetails.([]ParamDetail); ok {
 		paramDetailsList = pdl
-		for _, pd := range paramDetailsList {
-			field := &ast.Field{
-				Names: []*ast.Ident{pd.Name},
-				Type:  pd.Type,
-			}
-			paramsAST.List = append(paramsAST.List, field)
+		hasDefaultArg := false
+		firstDefaultArgIndex := -1 // To track the first parameter with a default value.
 
+		// First pass: check for default arguments and validate their order.
+		for i, pd := range paramDetailsList {
 			if pd.DefaultValue != nil {
-				log.Printf("ProcessParameters: Generating default value assignment for %s.", pd.Name.Name)
-				// Simplified zero value check, needs robust implementation based on type system
-				var zeroValExpr ast.Expr = ast.NewIdent("nil") // Default to nil for non-basic types
-				if ident, okType := pd.Type.(*ast.Ident); okType {
-					switch ident.Name {
-					case "int", "int32", "int64", "float32", "float64":
-						zeroValExpr = &ast.BasicLit{Kind: token.INT, Value: "0"}
-					case "string":
-						zeroValExpr = &ast.BasicLit{Kind: token.STRING, Value: `""`}
-					case "bool":
-						zeroValExpr = ast.NewIdent("false")
-					}
-				} else if pd.Type != nil { // Only add error if type was present but not an ident we handle for zero val
-					v.addError(fmt.Sprintf("Could not determine specific zero value for type of param %s for default value; using 'nil' check. Type: %T", pd.Name.Name, pd.Type), pd.NameToken)
+				hasDefaultArg = true
+				if firstDefaultArgIndex == -1 {
+					firstDefaultArgIndex = i
 				}
-
-				ifStmt := &ast.IfStmt{
-					Cond: &ast.BinaryExpr{X: pd.Name, Op: token.EQL, Y: zeroValExpr},
-					Body: &ast.BlockStmt{List: []ast.Stmt{
-						&ast.AssignStmt{Lhs: []ast.Expr{pd.Name}, Tok: token.ASSIGN, Rhs: []ast.Expr{pd.DefaultValue}},
-					}},
-				}
-				defaultAssignments = append(defaultAssignments, ifStmt)
+			} else if hasDefaultArg { // A non-default argument after a default argument is an error.
+				v.addError(
+					fmt.Sprintf("Non-default argument '%s' follows default argument. Manuscript requires default arguments to be at the end of the parameter list.", pd.Name.Name),
+					pd.NameToken,
+				)
+				// Consider returning an error or marking the function as invalid.
+				// For now, the error is added, and processing continues, which might lead to malformed Go.
 			}
 		}
-	} else if rawParamDetails != nil { // If it's not nil and not []ParamDetail, it's an error
+
+		if hasDefaultArg {
+			// If there are default arguments, change the Go function signature to use variadic interfaces:
+			// func foo(args ...interface{})
+			paramsAST.List = []*ast.Field{
+				{
+					// No explicit name for `...interface{}` in Go's AST representation of parameters sometimes,
+					// but `args` is typical for the variable used to access them in the body.
+					// The important part is the Ellipsis Type.
+					Names: []*ast.Ident{ast.NewIdent("args")}, // Name used to access in the generated body
+					Type: &ast.Ellipsis{
+						Elt: ast.NewIdent("interface{}"),
+					},
+				},
+			}
+
+			// Generate statements for argument handling within the function body.
+			for i, pd := range paramDetailsList {
+				paramIdent := pd.Name // This is already *ast.Ident
+
+				if pd.DefaultValue != nil {
+					// Parameter has a default value.
+					// 1. Declare the variable with its type and default value:
+					//    var paramName type = defaultValue
+					declStmt := &ast.DeclStmt{
+						Decl: &ast.GenDecl{
+							Tok: token.VAR,
+							Specs: []ast.Spec{
+								&ast.ValueSpec{
+									Names:  []*ast.Ident{paramIdent},
+									Type:   pd.Type, // Original Manuscript type, translated to Go AST type
+									Values: []ast.Expr{pd.DefaultValue},
+								},
+							},
+						},
+					}
+					defaultAssignments = append(defaultAssignments, declStmt)
+
+					// 2. If the argument was provided, override the default:
+					//    if len(args) > i {
+					//        paramName = args[i].(type)
+					//    }
+					ifStmt := &ast.IfStmt{
+						Cond: &ast.BinaryExpr{
+							X:  &ast.CallExpr{Fun: ast.NewIdent("len"), Args: []ast.Expr{ast.NewIdent("args")}},
+							Op: token.GTR,
+							Y:  &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)},
+						},
+						Body: &ast.BlockStmt{
+							List: []ast.Stmt{
+								&ast.AssignStmt{
+									Lhs: []ast.Expr{paramIdent},
+									Tok: token.ASSIGN,
+									Rhs: []ast.Expr{
+										&ast.TypeAssertExpr{
+											X: &ast.IndexExpr{
+												X:     ast.NewIdent("args"),
+												Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)},
+											},
+											Type: pd.Type, // Type for assertion
+										},
+									},
+								},
+							},
+						},
+					}
+					defaultAssignments = append(defaultAssignments, ifStmt)
+
+				} else {
+					// Mandatory parameter (no default value).
+					// Must be provided if function uses ...interface{} args.
+					// paramName := args[i].(type)
+					assignStmt := &ast.AssignStmt{
+						Lhs: []ast.Expr{paramIdent},
+						Tok: token.DEFINE, // := for first assignment
+						Rhs: []ast.Expr{
+							&ast.TypeAssertExpr{
+								X: &ast.IndexExpr{
+									X:     ast.NewIdent("args"),
+									Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)},
+								},
+								Type: pd.Type, // Type for assertion
+							},
+						},
+					}
+					defaultAssignments = append(defaultAssignments, assignStmt)
+				}
+			}
+		} else {
+			// No default arguments, construct parameter list as before.
+			for _, pd := range paramDetailsList {
+				field := &ast.Field{
+					Names: []*ast.Ident{pd.Name},
+					Type:  pd.Type,
+				}
+				paramsAST.List = append(paramsAST.List, field)
+			}
+			// The old logic for `if param == zero_value { param = default_value }`
+			// is removed as it's incompatible with the variadic interface approach for default args.
+		}
+	} else if rawParamDetails != nil {
 		v.addError("Internal error: Parameter processing (v.VisitParameters) did not return expected []ParamDetail.", paramsCtx.GetStart())
 	}
 

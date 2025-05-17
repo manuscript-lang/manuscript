@@ -30,3 +30,7 @@ test-file:
 		$(if $(findstring debug,$(args)),-debug) \
 		$(if $(findstring update,$(args)),-update) \
 		-file $(f))
+
+update-file:
+	@echo "Updating single file test: $(f)"
+	@(go test -v ./cmd/... -run ^TestCompile$$ -timeout 30s -args -update -file $(f))
