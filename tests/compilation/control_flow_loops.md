@@ -288,7 +288,7 @@ fn main() {
 package main
 
 func main() {
-    arr := {10, 20, 30}
+    arr := []interface{}{10, 20, 30}
     for _, v := range arr {
         print(v)
     }
@@ -309,7 +309,7 @@ fn main() {
 package main
 
 func main() {
-    arr := {"a", "b", "c"}
+    arr := []interface{}{"a", "b", "c"}
     for v, i := range arr {
         print(i)
         print(v)
@@ -333,7 +333,7 @@ fn main() {
 package main
 
 func main() {
-    arr := {1, 2, 3, 4, 5}
+    arr := []interface{}{1, 2, 3, 4, 5}
     for _, v := range arr {
         if v == 4 {
             break
@@ -359,7 +359,7 @@ fn main() {
 package main
 
 func main() {
-    arr := {1, 2, 3, 4, 5}
+    arr := []interface{}{1, 2, 3, 4, 5}
     for _, v := range arr {
         if v == 3 {
             continue
@@ -456,7 +456,7 @@ fn main() {
 package main
 
 func main() {
-    arr := {10, 20, 30}
+    arr := []interface{}{10, 20, 30}
     for _, val := range arr {
         print(val)
     }
@@ -477,7 +477,7 @@ fn main() {
 package main
 
 func main() {
-    arr := {10, 20, 30}
+    arr := []interface{}{10, 20, 30}
     for val, idx := range arr {
         print(idx)
         print(val)
@@ -501,7 +501,7 @@ fn main() {
 package main
 
 func main() {
-    arr := {1, 2, 3, 4, 5}
+    arr := []interface{}{1, 2, 3, 4, 5}
     for _, val := range arr {
         if val == 3 {
             break
@@ -527,7 +527,7 @@ fn main() {
 package main
 
 func main() {
-    arr := {1, 2, 3, 4, 5}
+    arr := []interface{}{1, 2, 3, 4, 5}
     for _, val := range arr {
         if val == 3 {
             continue
@@ -549,7 +549,7 @@ fn main() {
 package main
 
 func main() {
-    for _, x := range {100, 200, 300} {
+    for _, x := range []interface{}{100, 200, 300} {
         print(x)
     }
 }
@@ -570,7 +570,7 @@ fn main() {
 package main
 
 func main() {
-    data := {1, 2}
+    data := []interface{}{1, 2}
     for _, v := range data {
         for i := 0; i < v; i = i + 1 {
             print(v*10 + i)

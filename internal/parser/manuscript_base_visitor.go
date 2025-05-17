@@ -44,6 +44,18 @@ func (v *BaseManuscriptVisitor) VisitLetSingle(ctx *LetSingleContext) interface{
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitLetBlockItemSingle(ctx *LetBlockItemSingleContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitLetBlockItemDestructuredObj(ctx *LetBlockItemDestructuredObjContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitLetBlockItemDestructuredArray(ctx *LetBlockItemDestructuredArrayContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitLetBlock(ctx *LetBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }

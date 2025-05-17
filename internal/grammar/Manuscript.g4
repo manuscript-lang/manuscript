@@ -59,7 +59,15 @@ letDecl:
 	);
 
 letSingle: typedID (EQUALS value = expr)?;
-letBlock: LPAREN (assignments += assignmentExpr (COMMA assignments += assignmentExpr)*)? RPAREN;
+
+letBlockItem:
+	  lhsTypedId = typedID EQUALS rhsExpr = expr             # letBlockItemSingle
+	| LBRACE lhsDestructuredIdsObj = typedIDList RBRACE EQUALS rhsExprObj = expr  # letBlockItemDestructuredObj
+	| LSQBR lhsDestructuredIdsArr = typedIDList RSQBR EQUALS rhsExprArr = expr # letBlockItemDestructuredArray
+;
+
+letBlock: LPAREN (items += letBlockItem (COMMA items += letBlockItem)* (COMMA)?)? RPAREN;
+
 letDestructuredObj:
 	LBRACE destructuredIds = typedIDList RBRACE EQUALS value = expr;
 letDestructuredArray:

@@ -75,6 +75,28 @@ func (s *BaseManuscriptListener) EnterLetSingle(ctx *LetSingleContext) {}
 // ExitLetSingle is called when production letSingle is exited.
 func (s *BaseManuscriptListener) ExitLetSingle(ctx *LetSingleContext) {}
 
+// EnterLetBlockItemSingle is called when production letBlockItemSingle is entered.
+func (s *BaseManuscriptListener) EnterLetBlockItemSingle(ctx *LetBlockItemSingleContext) {}
+
+// ExitLetBlockItemSingle is called when production letBlockItemSingle is exited.
+func (s *BaseManuscriptListener) ExitLetBlockItemSingle(ctx *LetBlockItemSingleContext) {}
+
+// EnterLetBlockItemDestructuredObj is called when production letBlockItemDestructuredObj is entered.
+func (s *BaseManuscriptListener) EnterLetBlockItemDestructuredObj(ctx *LetBlockItemDestructuredObjContext) {
+}
+
+// ExitLetBlockItemDestructuredObj is called when production letBlockItemDestructuredObj is exited.
+func (s *BaseManuscriptListener) ExitLetBlockItemDestructuredObj(ctx *LetBlockItemDestructuredObjContext) {
+}
+
+// EnterLetBlockItemDestructuredArray is called when production letBlockItemDestructuredArray is entered.
+func (s *BaseManuscriptListener) EnterLetBlockItemDestructuredArray(ctx *LetBlockItemDestructuredArrayContext) {
+}
+
+// ExitLetBlockItemDestructuredArray is called when production letBlockItemDestructuredArray is exited.
+func (s *BaseManuscriptListener) ExitLetBlockItemDestructuredArray(ctx *LetBlockItemDestructuredArrayContext) {
+}
+
 // EnterLetBlock is called when production letBlock is entered.
 func (s *BaseManuscriptListener) EnterLetBlock(ctx *LetBlockContext) {}
 

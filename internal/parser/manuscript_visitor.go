@@ -35,6 +35,15 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#letSingle.
 	VisitLetSingle(ctx *LetSingleContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#letBlockItemSingle.
+	VisitLetBlockItemSingle(ctx *LetBlockItemSingleContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#letBlockItemDestructuredObj.
+	VisitLetBlockItemDestructuredObj(ctx *LetBlockItemDestructuredObjContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#letBlockItemDestructuredArray.
+	VisitLetBlockItemDestructuredArray(ctx *LetBlockItemDestructuredArrayContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#letBlock.
 	VisitLetBlock(ctx *LetBlockContext) interface{}
 

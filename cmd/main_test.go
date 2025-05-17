@@ -15,6 +15,7 @@ import (
 var (
 	fileFilter = flag.String("file", "", "Filter test files by a suffix of their name (without .md extension)")
 	debug      = flag.Bool("debug", false, "Enable token dumping for debugging")
+	update     = flag.Bool("update", false, "Update Go code snapshots in markdown test files")
 )
 
 func TestMain(m *testing.M) {
@@ -94,6 +95,13 @@ func TestCompile(t *testing.T) {
 					actualGo, err := manuscriptToGo(pair.MsCode, *debug)
 					if err != nil {
 						t.Fatalf("manuscriptToGo failed: %v", err)
+					}
+					if *update && pair.GoCode != actualGo {
+						content = []byte(strings.Replace(string(content), pair.GoCode, actualGo, 1))
+						err = os.WriteFile(filePath, content, 0644)
+						if err != nil {
+							t.Fatalf("Failed to update test file %s: %v", filePath, err)
+						}
 					}
 					assertGoCode(t, actualGo, pair.GoCode)
 				})

@@ -23,4 +23,10 @@ build: generate_parser install
 .PHONY: test-file
 test-file:
 	@echo "Running single file test: $(f)"
-	go test -v ./cmd/... -run ^TestCompile$$ -timeout 30s -args -file $(f) $(if $(findstring debug,$(args)),-debug)
+	@(go test -v ./cmd/... \
+		-run ^TestCompile$$ \
+		-timeout 30s \
+		-args \
+		$(if $(findstring debug,$(args)),-debug) \
+		$(if $(findstring update,$(args)),-update) \
+		-file $(f))

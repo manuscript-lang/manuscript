@@ -8,18 +8,20 @@ import (
 // VisitArrayLiteral handles array literal expressions like [1, 2, 3]
 func (v *ManuscriptAstVisitor) VisitArrayLiteral(ctx *parser.ArrayLiteralContext) interface{} {
 	elements := make([]ast.Expr, 0)
-	for _, elemCtx := range ctx.ExprList().AllExpr() {
-		elemResult := v.Visit(elemCtx)
-		if elemExpr, ok := elemResult.(ast.Expr); ok {
-			elements = append(elements, elemExpr)
-		} else {
-			v.addError("Array element is not a valid expression: "+elemCtx.GetText(), elemCtx.GetStart())
-			elements = append(elements, &ast.BadExpr{})
+	if ctx.ExprList() != nil { // Check if ExprList is present
+		for _, elemCtx := range ctx.ExprList().AllExpr() {
+			elemResult := v.Visit(elemCtx)
+			if elemExpr, ok := elemResult.(ast.Expr); ok {
+				elements = append(elements, elemExpr)
+			} else {
+				v.addError("Array element is not a valid expression: "+elemCtx.GetText(), elemCtx.GetStart())
+				elements = append(elements, &ast.BadExpr{})
+			}
 		}
 	}
 
 	return &ast.CompositeLit{
-		Type: nil, // Type will be inferred from the elements
+		Type: &ast.ArrayType{Elt: ast.NewIdent("interface{}")}, // Corrected Type
 		Elts: elements,
 	}
 }

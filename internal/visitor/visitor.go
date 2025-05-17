@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	gotoken "go/token"
+	"strconv"
 
 	// For parsing numbers
 	msParser "manuscript-co/manuscript/internal/parser"
@@ -32,6 +33,7 @@ type ManuscriptAstVisitor struct {
 	goVarDecls    []*ast.GenDecl        // For collecting global variable declarations
 	goStmtList    []ast.Stmt            // For collecting statements (e.g. in main or init)
 	deferredStmts map[string][]ast.Stmt // For defer statements, key might be function name or scope ID
+	tempVarCount  int                   // For unique temporary variables like __val1, __val2
 }
 
 // NewManuscriptAstVisitor creates a new visitor instance.
@@ -50,6 +52,7 @@ func NewManuscriptAstVisitor(pkgName, fileName string) *ManuscriptAstVisitor {
 		goFileSet:             fs,
 		// Initialize slices/maps
 		deferredStmts: make(map[string][]ast.Stmt),
+		tempVarCount:  0, // Initialize the counter
 	}
 }
 
@@ -228,4 +231,10 @@ func NewSymbolTable() *SymbolTable {
 	return &SymbolTable{
 		Global: globalScope,
 	}
+}
+
+// nextTempVarCounter generates a unique string suffix for temporary variables.
+func (v *ManuscriptAstVisitor) nextTempVarCounter() string {
+	v.tempVarCount++
+	return strconv.Itoa(v.tempVarCount) // strconv needs to be imported in this file if not already.
 }

@@ -35,6 +35,15 @@ type ManuscriptListener interface {
 	// EnterLetSingle is called when entering the letSingle production.
 	EnterLetSingle(c *LetSingleContext)
 
+	// EnterLetBlockItemSingle is called when entering the letBlockItemSingle production.
+	EnterLetBlockItemSingle(c *LetBlockItemSingleContext)
+
+	// EnterLetBlockItemDestructuredObj is called when entering the letBlockItemDestructuredObj production.
+	EnterLetBlockItemDestructuredObj(c *LetBlockItemDestructuredObjContext)
+
+	// EnterLetBlockItemDestructuredArray is called when entering the letBlockItemDestructuredArray production.
+	EnterLetBlockItemDestructuredArray(c *LetBlockItemDestructuredArrayContext)
+
 	// EnterLetBlock is called when entering the letBlock production.
 	EnterLetBlock(c *LetBlockContext)
 
@@ -289,6 +298,15 @@ type ManuscriptListener interface {
 
 	// ExitLetSingle is called when exiting the letSingle production.
 	ExitLetSingle(c *LetSingleContext)
+
+	// ExitLetBlockItemSingle is called when exiting the letBlockItemSingle production.
+	ExitLetBlockItemSingle(c *LetBlockItemSingleContext)
+
+	// ExitLetBlockItemDestructuredObj is called when exiting the letBlockItemDestructuredObj production.
+	ExitLetBlockItemDestructuredObj(c *LetBlockItemDestructuredObjContext)
+
+	// ExitLetBlockItemDestructuredArray is called when exiting the letBlockItemDestructuredArray production.
+	ExitLetBlockItemDestructuredArray(c *LetBlockItemDestructuredArrayContext)
 
 	// ExitLetBlock is called when exiting the letBlock production.
 	ExitLetBlock(c *LetBlockContext)
