@@ -3,7 +3,6 @@ package visitor
 import (
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 	"unicode"
 )
@@ -42,19 +41,6 @@ func (v *ManuscriptAstVisitor) VisitImportStmt(ctx *parser.ImportStmtContext) in
 				importName = ast.NewIdent(itemCtx.GetAlias().GetText())
 			}
 		}
-		// Otherwise (multiple items, single unaliased item), importName remains nil (default Go package name).
-
-		// Log details of all items for Manuscript's symbol table/resolver phase
-		for _, itemAntlrNode := range allItems {
-			itemCtx := itemAntlrNode.(*parser.ImportItemContext)
-			itemNameStr := itemCtx.GetName().GetText()
-			if itemCtx.GetAlias() != nil {
-				aliasStr := itemCtx.GetAlias().GetText()
-				log.Printf("DEBUG: Manuscript import item: '%s' as '%s' from %s", itemNameStr, aliasStr, pathValue)
-			} else {
-				log.Printf("DEBUG: Manuscript import item: '%s' from %s", itemNameStr, pathValue)
-			}
-		}
 	}
 
 	importSpec := &ast.ImportSpec{
@@ -71,12 +57,6 @@ func (v *ManuscriptAstVisitor) VisitImportStmt(ctx *parser.ImportStmtContext) in
 // VisitImportItem is called when visiting an import item.
 // Currently, its information is used directly by VisitImportStmt for logging.
 func (v *ManuscriptAstVisitor) VisitImportItem(ctx *parser.ImportItemContext) interface{} {
-	name := ctx.GetName().GetText()
-	alias := ""
-	if ctx.GetAlias() != nil {
-		alias = ctx.GetAlias().GetText()
-	}
-	log.Printf("TRACE: Visiting ImportItem: %s (alias: %s)", name, alias)
 	// This method could return a struct/map if VisitImportStmt needed to aggregate complex data.
 	// For the current AST generation strategy, it's not strictly producing a node.
 	return nil
@@ -104,17 +84,6 @@ func (v *ManuscriptAstVisitor) VisitExternStmt(ctx *parser.ExternStmtContext) in
 			itemCtx := allItems[0].(*parser.ImportItemContext)
 			if itemCtx.GetAlias() != nil {
 				importName = ast.NewIdent(itemCtx.GetAlias().GetText())
-			}
-		}
-		// Log details of all items
-		for _, itemAntlrNode := range allItems {
-			itemCtx := itemAntlrNode.(*parser.ImportItemContext)
-			itemNameStr := itemCtx.GetName().GetText()
-			if itemCtx.GetAlias() != nil {
-				aliasStr := itemCtx.GetAlias().GetText()
-				log.Printf("DEBUG: Manuscript extern item: '%s' as '%s' from %s", itemNameStr, aliasStr, pathValue)
-			} else {
-				log.Printf("DEBUG: Manuscript extern item: '%s' from %s", itemNameStr, pathValue)
 			}
 		}
 	}
@@ -166,7 +135,6 @@ func (v *ManuscriptAstVisitor) VisitExportStmt(ctx *parser.ExportStmtContext) in
 	switch d := decl.(type) {
 	case *ast.FuncDecl:
 		if d.Name != nil {
-			log.Printf("DEBUG: Exporting function: %s -> %s", d.Name.Name, capitalizeFirstLetter(d.Name.Name))
 			d.Name.Name = capitalizeFirstLetter(d.Name.Name)
 		}
 	case *ast.GenDecl:
@@ -174,12 +142,10 @@ func (v *ManuscriptAstVisitor) VisitExportStmt(ctx *parser.ExportStmtContext) in
 			switch s := spec.(type) {
 			case *ast.ValueSpec: // From letDecl (var/const)
 				for _, nameIdent := range s.Names {
-					log.Printf("DEBUG: Exporting variable: %s -> %s", nameIdent.Name, capitalizeFirstLetter(nameIdent.Name))
 					nameIdent.Name = capitalizeFirstLetter(nameIdent.Name)
 				}
 			case *ast.TypeSpec: // From typeDecl or ifaceDecl
 				if s.Name != nil {
-					log.Printf("DEBUG: Exporting type/interface: %s -> %s", s.Name.Name, capitalizeFirstLetter(s.Name.Name))
 					s.Name.Name = capitalizeFirstLetter(s.Name.Name)
 				}
 			default:

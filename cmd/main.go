@@ -1,10 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	parser "manuscript-co/manuscript/internal/parser"
 	codegen "manuscript-co/manuscript/internal/visitor"
+	"os"
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
@@ -43,26 +45,30 @@ func dumpTokens(stream *antlr.CommonTokenStream, debug bool) {
 	stream.Seek(0) // Reset stream for parser
 }
 
-func ExecuteProgram(program string) (string, error) {
-	// Call manuscriptToGo for actual parsing and code generation.
-	// Pass 'false' for the debug flag as ExecuteProgram doesn't have a debug mode currently.
-	goCode, err := manuscriptToGo(program, false)
-	if err != nil {
-		// manuscriptToGo already provides a detailed error.
-		return "", fmt.Errorf("failed to execute program: %w", err)
+func main() {
+	// Define command line flags
+	debugFlag := flag.Bool("debug", false, "Enable token dumping for debugging")
+	flag.BoolVar(debugFlag, "d", false, "Enable token dumping for debugging (shorthand)")
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) < 1 {
+		fmt.Println("Usage: msc [-debug] <filename>")
+		return
 	}
 
-	// ExecuteProgram's specific behavior: print the generated code.
-	fmt.Printf("Generated Go code:\n%s\n", goCode)
+	filename := args[0]
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Printf("failed to read file %s: %v\n", filename, err)
+		return
+	}
 
-	return goCode, nil
-}
-
-func main() {
-	fmt.Println("Manuscript ANTLR parser demo")
-	// Create input for parsing
-	input := "2 * (3 + 4); 1 + 2; 3 - 4; 5 / 2"
-	result, _ := ExecuteProgram(input)
-	fmt.Printf("Expression '%s' evaluates to %s\n", input, result)
-	fmt.Println("Expression parsed successfully")
+	program := string(content)
+	goCode, err := manuscriptToGo(program, *debugFlag)
+	if err != nil {
+		fmt.Printf("failed to compile program: %v\n", err)
+		return
+	}
+	fmt.Printf("%s", goCode)
 }
