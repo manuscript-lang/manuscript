@@ -7,6 +7,8 @@ import (
 	"log"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
+	"strings"
+	"unicode"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -52,6 +54,12 @@ func (v *ManuscriptAstVisitor) VisitPrimaryExpr(ctx *parser.PrimaryExprContext) 
 	}
 	if ctx.TupleLiteral() != nil {
 		return v.Visit(ctx.TupleLiteral())
+	}
+	if ctx.TaggedBlockString() != nil {
+		return v.Visit(ctx.TaggedBlockString())
+	}
+	if ctx.StructInitExpr() != nil {
+		return v.Visit(ctx.StructInitExpr())
 	}
 	// TODO: Add cases for LambdaExpr, TryBlockExpr, MatchExpr
 	// as their visitor methods are implemented.
@@ -413,12 +421,13 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 		tokenType := termNode.GetSymbol().GetTokenType()
 
 		switch tokenType {
-		case parser.ManuscriptLPAREN: // Function Call
+		case parser.ManuscriptLPAREN: // Function Call or Struct Init
 			lParenPos := v.pos(termNode.GetSymbol())
 			childIdx++ // Move past LPAREN
-
-			var args []ast.Expr
 			var rParenPos token.Pos
+
+			// Process function call arguments
+			var args []ast.Expr
 
 		argLoop:
 			for childIdx < len(children) {
@@ -438,11 +447,32 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 				} else if argListCtx, isArgList := argChild.(*parser.ExprListContext); isArgList {
 					// This is the case where arguments are wrapped in an ExprListContext
 					for _, exprCtx := range argListCtx.AllExpr() {
+						exprText := exprCtx.GetText()
+
+						// For struct initialization, we're looking for patterns like "field: value"
+						if strings.Contains(exprText, ":") {
+							colonPos := strings.Index(exprText, ":")
+							if colonPos > 0 {
+								fieldName := strings.TrimSpace(exprText[:colonPos])
+								if isValidIdentifier(fieldName) {
+									// Extract the value expression
+									valueExpr := v.extractValueAfterColon(exprCtx)
+									if valueExpr != nil {
+										args = append(args, &ast.KeyValueExpr{
+											Key:   ast.NewIdent(fieldName),
+											Value: valueExpr,
+										})
+										continue
+									}
+								}
+							}
+						}
+
 						visitedArg := v.Visit(exprCtx)
 						if argExpr, exprOk := visitedArg.(ast.Expr); exprOk {
 							args = append(args, argExpr)
 						} else {
-							v.addError("Argument did not evaluate to a valid expression: "+exprCtx.GetText(), exprCtx.GetStart())
+							v.addError(fmt.Sprintf("Argument did not evaluate to a valid expression: %s", exprText), exprCtx.GetStart())
 							args = append(args, &ast.BadExpr{From: v.pos(exprCtx.GetStart()), To: v.pos(exprCtx.GetStop())})
 						}
 					}
@@ -461,15 +491,19 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 					return &ast.BadExpr{From: lParenPos, To: v.pos(ctx.GetStop())}
 				}
 			}
+
 			if rParenPos == token.NoPos {
 				v.addError("Missing closing parenthesis for function call", termNode.GetSymbol())
 				// rParenPos will be end of context if not found
 				rParenPos = v.pos(ctx.GetStop())
 			}
 
+			// Regular function call
 			currentGoExpr = &ast.CallExpr{
-				Fun:  currentGoExpr,
-				Args: args,
+				Fun:    currentGoExpr,
+				Args:   args,
+				Lparen: lParenPos,
+				Rparen: rParenPos,
 			}
 
 		case parser.ManuscriptDOT: // Member Access
@@ -552,4 +586,110 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 		}
 	}
 	return currentGoExpr
+}
+
+// isValidIdentifier checks if a string is a valid Go identifier
+func isValidIdentifier(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+
+	// First character must be a letter or underscore
+	firstChar := rune(s[0])
+	if !unicode.IsLetter(firstChar) && firstChar != '_' {
+		return false
+	}
+
+	// Remaining characters must be letters, digits, or underscores
+	for _, c := range s[1:] {
+		if !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != '_' {
+			return false
+		}
+	}
+
+	return true
+}
+
+// extractValueAfterColon extracts the value expression after a colon in a struct field initialization
+func (v *ManuscriptAstVisitor) extractValueAfterColon(exprCtx parser.IExprContext) ast.Expr {
+	exprText := exprCtx.GetText()
+	colonPos := strings.Index(exprText, ":")
+	if colonPos < 0 {
+		return nil
+	}
+
+	// Try to visit the expression as is
+	visitedExpr := v.Visit(exprCtx)
+	if expr, ok := visitedExpr.(ast.Expr); ok {
+		return expr
+	}
+
+	// If direct visit doesn't work, try to extract and parse the right-hand side
+	// Try to find the assignment expression and get the right side
+	if ctx, ok := exprCtx.(*parser.ExprContext); ok {
+		if assignExpr, ok := ctx.AssignmentExpr().(*parser.AssignmentExprContext); ok {
+			if assignExpr.GetRight() != nil {
+				valueResult := v.Visit(assignExpr.GetRight())
+				if valueExpr, ok := valueResult.(ast.Expr); ok {
+					return valueExpr
+				}
+			}
+		}
+	}
+
+	// If we can't parse it as an expression, create a placeholder BadExpr
+	return &ast.BadExpr{
+		From: v.pos(exprCtx.GetStart()),
+		To:   v.pos(exprCtx.GetStop()),
+	}
+}
+
+// VisitStructInitExpr handles struct initialization expressions with named fields.
+// Example: Point(x: 1, y: 2) -> Point{x: 1, y: 2}
+func (v *ManuscriptAstVisitor) VisitStructInitExpr(ctx *parser.StructInitExprContext) interface{} {
+	if ctx == nil {
+		v.addError("VisitStructInitExpr called with nil context", nil)
+		return &ast.BadExpr{}
+	}
+
+	// Get the struct type name
+	if ctx.ID() == nil {
+		v.addError("Struct initialization missing type name", ctx.GetStart())
+		return &ast.BadExpr{}
+	}
+	structTypeName := ctx.ID().GetText()
+	structTypeExpr := ast.NewIdent(structTypeName)
+
+	// Process each field
+	keyValueElts := make([]ast.Expr, 0)
+
+	for _, fieldCtx := range ctx.AllStructField() {
+		if fieldCtx.GetKey() == nil {
+			v.addError("Struct field missing key", fieldCtx.GetStart())
+			continue
+		}
+		fieldName := fieldCtx.GetKey().GetText()
+
+		if fieldCtx.GetVal() == nil {
+			v.addError("Struct field missing value", fieldCtx.GetStart())
+			continue
+		}
+		valueResult := v.Visit(fieldCtx.GetVal())
+		valueExpr, ok := valueResult.(ast.Expr)
+		if !ok {
+			v.addError("Struct field value did not resolve to a valid expression", fieldCtx.GetVal().GetStart())
+			continue
+		}
+
+		keyValueElts = append(keyValueElts, &ast.KeyValueExpr{
+			Key:   ast.NewIdent(fieldName),
+			Value: valueExpr,
+		})
+	}
+
+	// Create a composite literal representing the struct initialization
+	return &ast.CompositeLit{
+		Type: structTypeExpr,
+		Elts: keyValueElts,
+	}
 }

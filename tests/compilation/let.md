@@ -4,6 +4,9 @@ let patterns
 # basic
 ```ms
 let a = 10
+let b = ["asd", "Asds"]
+let set = <1, 2, 3>
+let map = [key: "value", another: 10]
 let { a, b } = obj
 let [c, d] = [1, 2]
 let (
@@ -19,6 +22,9 @@ package main
 
 func main() {
     a := 10
+    b := []interface{}{"asd", "Asds"}
+    set := map[interface{}]bool{1: true, 2: true, 3: true}
+    map := map[interface{}]interface{}{key: "value", another: 10}
     {
         __val1 := obj
         a := __val1.a

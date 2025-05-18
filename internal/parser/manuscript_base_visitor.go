@@ -120,6 +120,10 @@ func (v *BaseManuscriptVisitor) VisitInterfaceDecl(ctx *InterfaceDeclContext) in
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitInterfaceMethod(ctx *InterfaceMethodContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitMethodsDecl(ctx *MethodsDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -357,5 +361,13 @@ func (v *BaseManuscriptVisitor) VisitCheckStmt(ctx *CheckStmtContext) interface{
 }
 
 func (v *BaseManuscriptVisitor) VisitTaggedBlockString(ctx *TaggedBlockStringContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitStructInitExpr(ctx *StructInitExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitStructField(ctx *StructFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }

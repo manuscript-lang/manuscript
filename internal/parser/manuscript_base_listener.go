@@ -193,6 +193,12 @@ func (s *BaseManuscriptListener) EnterInterfaceDecl(ctx *InterfaceDeclContext) {
 // ExitInterfaceDecl is called when production interfaceDecl is exited.
 func (s *BaseManuscriptListener) ExitInterfaceDecl(ctx *InterfaceDeclContext) {}
 
+// EnterInterfaceMethod is called when production interfaceMethod is entered.
+func (s *BaseManuscriptListener) EnterInterfaceMethod(ctx *InterfaceMethodContext) {}
+
+// ExitInterfaceMethod is called when production interfaceMethod is exited.
+func (s *BaseManuscriptListener) ExitInterfaceMethod(ctx *InterfaceMethodContext) {}
+
 // EnterMethodsDecl is called when production methodsDecl is entered.
 func (s *BaseManuscriptListener) EnterMethodsDecl(ctx *MethodsDeclContext) {}
 
@@ -552,3 +558,15 @@ func (s *BaseManuscriptListener) EnterTaggedBlockString(ctx *TaggedBlockStringCo
 
 // ExitTaggedBlockString is called when production taggedBlockString is exited.
 func (s *BaseManuscriptListener) ExitTaggedBlockString(ctx *TaggedBlockStringContext) {}
+
+// EnterStructInitExpr is called when production structInitExpr is entered.
+func (s *BaseManuscriptListener) EnterStructInitExpr(ctx *StructInitExprContext) {}
+
+// ExitStructInitExpr is called when production structInitExpr is exited.
+func (s *BaseManuscriptListener) ExitStructInitExpr(ctx *StructInitExprContext) {}
+
+// EnterStructField is called when production structField is entered.
+func (s *BaseManuscriptListener) EnterStructField(ctx *StructFieldContext) {}
+
+// ExitStructField is called when production structField is exited.
+func (s *BaseManuscriptListener) ExitStructField(ctx *StructFieldContext) {}

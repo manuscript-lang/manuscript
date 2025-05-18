@@ -130,6 +130,15 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 				}
 				return nil
 			}
+
+			// Properly set field names
+			if len(astField.Names) > 0 {
+				fieldName := astField.Names[0].Name
+				log.Printf("Adding field '%s' to struct '%s'", fieldName, typeNameStr)
+			} else {
+				log.Printf("Adding unnamed field to struct '%s'", typeNameStr)
+			}
+
 			structFields = append(structFields, astField)
 		}
 

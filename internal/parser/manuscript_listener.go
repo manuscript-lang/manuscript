@@ -92,6 +92,9 @@ type ManuscriptListener interface {
 	// EnterInterfaceDecl is called when entering the interfaceDecl production.
 	EnterInterfaceDecl(c *InterfaceDeclContext)
 
+	// EnterInterfaceMethod is called when entering the interfaceMethod production.
+	EnterInterfaceMethod(c *InterfaceMethodContext)
+
 	// EnterMethodsDecl is called when entering the methodsDecl production.
 	EnterMethodsDecl(c *MethodsDeclContext)
 
@@ -272,6 +275,12 @@ type ManuscriptListener interface {
 	// EnterTaggedBlockString is called when entering the taggedBlockString production.
 	EnterTaggedBlockString(c *TaggedBlockStringContext)
 
+	// EnterStructInitExpr is called when entering the structInitExpr production.
+	EnterStructInitExpr(c *StructInitExprContext)
+
+	// EnterStructField is called when entering the structField production.
+	EnterStructField(c *StructFieldContext)
+
 	// ExitProgram is called when exiting the program production.
 	ExitProgram(c *ProgramContext)
 
@@ -355,6 +364,9 @@ type ManuscriptListener interface {
 
 	// ExitInterfaceDecl is called when exiting the interfaceDecl production.
 	ExitInterfaceDecl(c *InterfaceDeclContext)
+
+	// ExitInterfaceMethod is called when exiting the interfaceMethod production.
+	ExitInterfaceMethod(c *InterfaceMethodContext)
 
 	// ExitMethodsDecl is called when exiting the methodsDecl production.
 	ExitMethodsDecl(c *MethodsDeclContext)
@@ -535,4 +547,10 @@ type ManuscriptListener interface {
 
 	// ExitTaggedBlockString is called when exiting the taggedBlockString production.
 	ExitTaggedBlockString(c *TaggedBlockStringContext)
+
+	// ExitStructInitExpr is called when exiting the structInitExpr production.
+	ExitStructInitExpr(c *StructInitExprContext)
+
+	// ExitStructField is called when exiting the structField production.
+	ExitStructField(c *StructFieldContext)
 }

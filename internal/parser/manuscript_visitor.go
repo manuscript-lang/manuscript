@@ -92,6 +92,9 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#interfaceDecl.
 	VisitInterfaceDecl(ctx *InterfaceDeclContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#interfaceMethod.
+	VisitInterfaceMethod(ctx *InterfaceMethodContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#methodsDecl.
 	VisitMethodsDecl(ctx *MethodsDeclContext) interface{}
 
@@ -271,4 +274,10 @@ type ManuscriptVisitor interface {
 
 	// Visit a parse tree produced by Manuscript#taggedBlockString.
 	VisitTaggedBlockString(ctx *TaggedBlockStringContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#structInitExpr.
+	VisitStructInitExpr(ctx *StructInitExprContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#structField.
+	VisitStructField(ctx *StructFieldContext) interface{}
 }

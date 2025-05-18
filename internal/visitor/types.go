@@ -7,11 +7,14 @@ import (
 )
 
 // VisitTypeAnnotation handles type annotations based on the new grammar:
-// typeAnnotation: (idAsType=ID | tupleAsType=tupleType | funcAsType=fnSignature | objAsType=objectTypeAnnotation | mapAsType=mapTypeAnnotation | setAsType=setTypeAnnotation) (isNullable=QUESTION)? (arrayMarker=LSQBR RSQBR)?;
+// typeAnnotation: (idAsType=ID | tupleAsType=tupleType | funcAsType=fnSignature | objAsType=objectTypeAnnotation | mapAsType=mapTypeAnnotation | setAsType=setTypeAnnotation | VOID) (isNullable=QUESTION)? (arrayMarker=LSQBR RSQBR)?;
 func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationContext) interface{} {
 	var baseExpr ast.Expr
 
-	if ctx.GetIdAsType() != nil {
+	if ctx.VOID() != nil {
+		// Void type is represented as nil ast.Expr
+		baseExpr = v.handleVoidType()
+	} else if ctx.GetIdAsType() != nil {
 		typeName := ctx.GetIdAsType().GetText()
 		switch typeName {
 		case "string":
@@ -24,8 +27,6 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 			baseExpr = ast.NewIdent("bool")
 		case "any":
 			baseExpr = ast.NewIdent("interface{}")
-		case "void":
-			baseExpr = nil // Void type represented as nil ast.Expr
 		default:
 			baseExpr = ast.NewIdent(typeName) // User-defined types
 		}
@@ -332,4 +333,14 @@ func (v *ManuscriptAstVisitor) VisitSetTypeAnnotation(ctx *parser.SetTypeAnnotat
 		Key:   elementTypeExpr,
 		Value: &ast.StructType{Fields: &ast.FieldList{List: []*ast.Field{}}}, // Represents struct{}
 	}
+}
+
+// handleVoidType processes void type appropriately for Go code.
+// In Manuscript, 'void' is used where Go would typically use no return value.
+// Returns nil to indicate absence of a return type, with the caller responsible for
+// creating the appropriate empty FieldList.
+func (v *ManuscriptAstVisitor) handleVoidType() ast.Expr {
+	// In Go, a function with no return values has a nil or empty result FieldList.
+	// We return nil here to indicate there is no return type, not even an empty interface.
+	return nil
 }

@@ -104,6 +104,15 @@ func (v *ManuscriptAstVisitor) visitLetSingleAssignment(ctx msParser.ILetSingleC
 	}
 	lhsExprs := []ast.Expr{ident}
 
+	// Get type information if available
+	var typeName string
+	typedIDCtx, typedIDOk := concreteCtx.TypedID().(*msParser.TypedIDContext)
+	if typedIDOk && typedIDCtx.TypeAnnotation() != nil {
+		// Extract the type name
+		typeText := typedIDCtx.TypeAnnotation().GetText()
+		typeName = typeText
+	}
+
 	// Check for assignment (RHS)
 	if concreteCtx.EQUALS() != nil && concreteCtx.Expr() != nil {
 		valueVisited := v.Visit(concreteCtx.Expr())
@@ -117,6 +126,57 @@ func (v *ManuscriptAstVisitor) visitLetSingleAssignment(ctx msParser.ILetSingleC
 			v.addError("Value did not evaluate to an expression: "+concreteCtx.Expr().GetText(), concreteCtx.Expr().GetStart())
 			return &ast.EmptyStmt{}
 		}
+
+		// If we have a type and the expression is an object literal, convert it to a struct initialization
+		if typeName != "" && concreteCtx.Expr().GetText()[0] == '{' {
+			// Check if the source is a map literal (from object literal)
+			if compositeLit, isCompositeLit := sourceExpr.(*ast.CompositeLit); isCompositeLit {
+				if mapType, isMapType := compositeLit.Type.(*ast.MapType); isMapType {
+					if mapType.Key != nil && mapType.Key.(*ast.Ident).Name == "string" &&
+						mapType.Value != nil && mapType.Value.(*ast.Ident).Name == "interface{}" {
+						// This is a map[string]interface{} from object literal
+						// Convert it to a struct initialization
+						structType := ast.NewIdent(typeName)
+
+						// Create a new set of elements with identifiers as keys instead of string literals
+						newElts := make([]ast.Expr, 0, len(compositeLit.Elts))
+						for _, elt := range compositeLit.Elts {
+							if keyVal, isKeyVal := elt.(*ast.KeyValueExpr); isKeyVal {
+								if strLit, isStrLit := keyVal.Key.(*ast.BasicLit); isStrLit && strLit.Kind == token.STRING {
+									// Convert the string key (e.g., "id") to an identifier key (e.g., id)
+									// First, unquote the string
+									fieldName, err := strconv.Unquote(strLit.Value)
+									if err != nil {
+										v.addError("Failed to unquote struct field name: "+strLit.Value, ctx.GetStart())
+										continue
+									}
+
+									// Create a new KeyValueExpr with the identifier as the key
+									newKeyVal := &ast.KeyValueExpr{
+										Key:   ast.NewIdent(fieldName),
+										Value: keyVal.Value,
+									}
+									newElts = append(newElts, newKeyVal)
+								} else {
+									// Not a string literal key, just keep as is
+									newElts = append(newElts, keyVal)
+								}
+							} else {
+								// Not a key-value pair, just keep as is
+								newElts = append(newElts, elt)
+							}
+						}
+
+						// Create a struct composite literal with the converted elements
+						sourceExpr = &ast.CompositeLit{
+							Type: structType,
+							Elts: newElts,
+						}
+					}
+				}
+			}
+		}
+
 		rhsExprs := []ast.Expr{sourceExpr}
 
 		return &ast.AssignStmt{

@@ -113,7 +113,12 @@ fieldDecl:
 interfaceDecl:
 	INTERFACE interfaceName = namedID (
 		EXTENDS extendedInterfaces = typeList
-	)? LBRACE (methods += fnSignature)+ RBRACE;
+	)? LBRACE (methods += interfaceMethod)+ RBRACE;
+
+interfaceMethod:
+	methodName = namedID LPAREN params = parameters? RPAREN (COLON
+		returnType = typeAnnotation
+	)? (returnsError = EXCLAMATION)?;
 
 methodsDecl:
 	METHODS (interface = typeAnnotation FOR)? targetStructName = ID LBRACE (
@@ -128,6 +133,7 @@ typeAnnotation:
 		| objAsType = objectTypeAnnotation
 		| mapAsType = mapTypeAnnotation
 		| setAsType = setTypeAnnotation
+		| VOID
 	) (isNullable = QUESTION)? (arrayMarker = LSQBR RSQBR)?;
 
 tupleType: LPAREN elements = typeList? RPAREN;
@@ -252,7 +258,8 @@ primaryExpr:
 	| matchExpr
 	| VOID
 	| NULL
-	| taggedBlockString;
+	| taggedBlockString
+	| structInitExpr;
 
 fnExpr:
 	FN LPAREN fnParams = parameters? RPAREN (
@@ -357,3 +364,6 @@ taggedBlockString:
 		blockStrMultiSingle = multiQuotedString
 		| blockStrMultiDouble = multiDoubleQuotedString
 	);
+
+structInitExpr: ID LPAREN (fields += structField (COMMA fields += structField)* (COMMA)?)? RPAREN;
+structField: key = ID COLON val = expr;

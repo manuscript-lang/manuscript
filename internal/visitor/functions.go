@@ -528,8 +528,9 @@ func (v *ManuscriptAstVisitor) ProcessReturnType(typeAnnotationCtx parser.ITypeA
 			if returnTypeExpr, okRT := returnTypeInterface.(ast.Expr); okRT && returnTypeExpr != nil {
 				field := &ast.Field{Type: returnTypeExpr}
 				results = &ast.FieldList{List: []*ast.Field{field}}
-			} else if returnTypeExpr == nil && okRT {
-				// Valid visit but no type (e.g. error in VisitTypeAnnotation)
+			} else if returnTypeInterface == nil {
+				// For void return type, we create an empty results list
+				results = &ast.FieldList{List: []*ast.Field{}}
 			} else {
 				v.addError(fmt.Sprintf("Invalid return type for function/method \"%s\"", funcNameForError), concreteTypeAnnotationCtx.GetStart())
 			}

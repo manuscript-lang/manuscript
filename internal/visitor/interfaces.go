@@ -31,17 +31,17 @@ func (v *ManuscriptAstVisitor) VisitInterfaceDecl(ctx *parser.InterfaceDeclConte
 	interfaceName := ctx.NamedID().GetText()
 	methods := []*ast.Field{}
 
-	for _, sigCtx := range ctx.AllFnSignature() {
-		concreteSigCtx, ok := sigCtx.(*parser.FnSignatureContext)
+	for _, sigCtx := range ctx.AllInterfaceMethod() {
+		concreteSigCtx, ok := sigCtx.(*parser.InterfaceMethodContext)
 		if !ok {
 			v.addError("Method signature in interface has unexpected context type.", sigCtx.GetStart())
 			continue
 		}
-		methodField := v.VisitInterfaceMethodDecl(concreteSigCtx)
+		methodField := v.VisitInterfaceMethod(concreteSigCtx)
 		if field, ok := methodField.(*ast.Field); ok {
 			methods = append(methods, field)
 		} else {
-			// Error already added by VisitInterfaceMethodDecl or it returned nil
+			// Error already added by VisitInterfaceMethod or it returned nil
 		}
 	}
 
@@ -63,9 +63,9 @@ func (v *ManuscriptAstVisitor) VisitInterfaceDecl(ctx *parser.InterfaceDeclConte
 	}
 }
 
-// VisitInterfaceMethodDecl handles a method signature within an interface.
+// VisitInterfaceMethod handles a method signature within an interface.
 // myMethod(a: TypeA): ReturnType -> Name: myMethod, Type: func(a TypeA) ReturnType
-func (v *ManuscriptAstVisitor) VisitInterfaceMethodDecl(ctx *parser.FnSignatureContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitInterfaceMethod(ctx *parser.InterfaceMethodContext) interface{} {
 	if ctx.NamedID() == nil || ctx.LPAREN() == nil || ctx.RPAREN() == nil {
 		v.addError(fmt.Sprintf("Malformed method signature in interface: %s", ctx.GetText()), ctx.GetStart())
 		return nil // Indicate error to caller
@@ -73,12 +73,10 @@ func (v *ManuscriptAstVisitor) VisitInterfaceMethodDecl(ctx *parser.FnSignatureC
 	methodName := ctx.NamedID().GetText()
 
 	// Use ProcessParameters for parameters
-	paramsAST, _, paramDetails := v.ProcessParameters(ctx.Parameters()) // Renamed
-	if paramDetails != nil {                                            // Check if paramDetails were actually returned
-		for _, detail := range paramDetails {
-			if detail.DefaultValue != nil {
-				v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in interface method signature.", detail.Name.Name), detail.NameToken)
-			}
+	paramsAST, _, paramDetails := v.ProcessParameters(ctx.Parameters())
+	for _, detail := range paramDetails {
+		if detail.DefaultValue != nil {
+			v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in interface method signature.", detail.Name.Name), detail.NameToken)
 		}
 	}
 
@@ -87,7 +85,7 @@ func (v *ManuscriptAstVisitor) VisitInterfaceMethodDecl(ctx *parser.FnSignatureC
 	// For now, assuming ProcessParameters returns FieldList suitable for signatures or can be adapted.
 	// A quick fix for interface params:
 	interfaceParamsList := []*ast.Field{}
-	if paramsAST != nil {
+	if paramsAST != nil && paramsAST.List != nil {
 		for _, p := range paramsAST.List {
 			interfaceParamsList = append(interfaceParamsList, &ast.Field{Type: p.Type})
 		}
@@ -95,12 +93,12 @@ func (v *ManuscriptAstVisitor) VisitInterfaceMethodDecl(ctx *parser.FnSignatureC
 	finalParams := &ast.FieldList{List: interfaceParamsList}
 
 	// Use ProcessReturnType for results
-	resultsList := v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), methodName) // Renamed
+	resultsList := v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), methodName)
 
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(methodName)},
 		Type: &ast.FuncType{
-			Params:  finalParams, // Use modified params
+			Params:  finalParams,
 			Results: resultsList,
 		},
 	}
