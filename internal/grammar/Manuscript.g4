@@ -74,7 +74,7 @@ letDestructuredArray:
 	LSQBR destructuredIds = typedIDList RSQBR EQUALS value = expr;
 
 namedID: name = ID;
-typedID: namedID (COLON type = typeAnnotation)?;
+typedID: namedID (type = typeAnnotation)?;
 typedIDList:
 	names += typedID (COMMA names += typedID)* (COMMA)?;
 typeList:
@@ -85,13 +85,13 @@ typeList:
 fnDecl: signature = fnSignature block = codeBlock;
 
 fnSignature:
-	FN functionName = namedID LPAREN params = parameters? RPAREN (COLON
+	FN functionName = namedID LPAREN params = parameters? RPAREN (
 		returnType = typeAnnotation
 	)? (returnsError = EXCLAMATION)?;
 
 parameters: param (COMMA param)* (COMMA)?;
 param:
-	paramName = namedID COLON type = typeAnnotation (
+	paramName = namedID type = typeAnnotation (
 		EQUALS defaultValue = expr
 	)?;
 
@@ -108,7 +108,7 @@ typeAlias:
 	)?;
 
 fieldDecl:
-	fieldName = namedID (isOptionalField = QUESTION)? COLON type = typeAnnotation;
+	fieldName = namedID (isOptionalField = QUESTION)? type = typeAnnotation;
 
 interfaceDecl:
 	INTERFACE interfaceName = namedID (
@@ -116,7 +116,7 @@ interfaceDecl:
 	)? LBRACE (methods += interfaceMethod)+ RBRACE;
 
 interfaceMethod:
-	methodName = namedID LPAREN params = parameters? RPAREN (COLON
+	methodName = namedID LPAREN params = parameters? RPAREN (
 		returnType = typeAnnotation
 	)? (returnsError = EXCLAMATION)?;
 
@@ -263,7 +263,7 @@ primaryExpr:
 
 fnExpr:
 	FN LPAREN fnParams = parameters? RPAREN (
-		COLON returnType = typeAnnotation
+		returnType = typeAnnotation
 	)? block = codeBlock;
 
 matchExpr:

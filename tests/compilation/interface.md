@@ -4,7 +4,7 @@ interface tests
 # basic interface
 ```ms
 interface IWriter {
-    write(data: Buffer): void
+    write(data Buffer) void
 }
 ```
 
@@ -22,10 +22,10 @@ func main() {
 # complex interface
 ```ms
 interface IFileSystem {
-    readFile(path: string): Buffer
-    writeFile(path: string, data: Buffer): void
-    exists(path: string): boolean
-    listDir(path: string): string[]
+    readFile(path string) Buffer
+    writeFile(path string, data Buffer) void
+    exists(path string) boolean
+    listDir(path string) string[]
 }
 ```
 

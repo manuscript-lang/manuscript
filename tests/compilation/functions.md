@@ -14,7 +14,7 @@ func main() {
 ---
 # Test function with parameters and no return
 ```ms
-fn greet(name: string) {
+fn greet(name string) {
   print("Hello, " + name)
 }
 
@@ -35,7 +35,7 @@ func main() {
 ---
 # Test function with no parameters and a return value
 ```ms
-fn get_pi(): float {
+fn get_pi() float {
   3.14
 }
 
@@ -58,7 +58,7 @@ func main() {
 ---
 # Test function with parmeters and a return value
 ```ms
-fn add(a: int, b: int): int {
+fn add(a int, b int) int {
   let d = 10
   a + b + d
 }
@@ -83,7 +83,7 @@ func main() {
 
 # With a bang
 ```ms
-fn save(item: Type): Type! {
+fn save(item Type) Type! {
   // function body
 }
 ```
@@ -98,7 +98,7 @@ func main() {
 
 # default arguments
 ```ms
-fn greet(name: string = "World") {
+fn greet(name string = "World") {
   print("Hello, " + name)
 }
 
@@ -125,7 +125,7 @@ func main() {
 
 # Test function with multiple arguments, some with defaults
 ```ms
-fn createUser(username: string, isActive: bool = true, retries: int = 3) {
+fn createUser(username string, isActive bool = true, retries int = 3) {
   print(username + " " + string(isActive) + " " + string(retries))
 }
 

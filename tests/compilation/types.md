@@ -4,11 +4,11 @@ types
 # Test function with custom type parameter
 ```ms
 type Point {
-  x: int,
-  y: int
+  x int,
+  y int
 }
 
-fn printPoint(p: Point) {
+fn printPoint(p Point) {
   print(p.x)
   print(p.y)
 }
@@ -40,12 +40,12 @@ func main() {
 # Test function returning custom type
 ```ms
 type User {
-  id: int,
-  name: string
+  id int,
+  name string
 }
 
-fn createUser(id: int, name: string): User {
-  let u: User = {id: id, name: name}
+fn createUser(id int, name string) User {
+  let u = User(id: id, name: name)
   u
 }
 
@@ -78,11 +78,11 @@ func main() {
 # Test function with custom type parameter and return
 ```ms
 type Vector {
-  dx: float,
-  dy: float
+  dx float,
+  dy float
 }
 
-fn scaleVector(v: Vector, factor: float): Vector {
+fn scaleVector(v Vector, factor float) Vector {
   Vector(dx: v.dx * factor, dy: v.dy * factor)
 }
 
@@ -117,12 +117,12 @@ func main() {
 ```ms
 type UserID = int
 
-fn printUserID(id: UserID) {
+fn printUserID(id UserID) {
   print(id)
 }
 
 fn main() {
-  let userID: UserID = 123
+  let userID = 123
   printUserID(userID)
 }
 ```

@@ -48,22 +48,14 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 		}
 
 		if resultExprCtx := caseClauseCtx.GetResultExpr(); resultExprCtx != nil {
-			if caseClauseCtx.COLON() == nil {
-				v.addError(fmt.Sprintf("Malformed case clause (missing COLON for result expression): %s", caseClauseCtx.GetText()), resultExprCtx.GetStart())
-				badResultVal := &ast.BadExpr{From: v.pos(resultExprCtx.GetStart()), To: v.pos(resultExprCtx.GetStop())}
-				currentCaseBody = []ast.Stmt{
-					&ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(resultVarName)}, Tok: token.ASSIGN, Rhs: []ast.Expr{badResultVal}},
-				}
-			} else {
-				resultExprVisited := v.Visit(resultExprCtx)
-				rAST, rOk := resultExprVisited.(ast.Expr)
-				if !rOk {
-					v.addError("Case result expression did not resolve to ast.Expr: "+resultExprCtx.GetText(), resultExprCtx.GetStart())
-					rAST = &ast.BadExpr{From: v.pos(resultExprCtx.GetStart()), To: v.pos(resultExprCtx.GetStop())}
-				}
-				currentCaseBody = []ast.Stmt{
-					&ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(resultVarName)}, Tok: token.ASSIGN, Rhs: []ast.Expr{rAST}},
-				}
+			resultExprVisited := v.Visit(resultExprCtx)
+			rAST, rOk := resultExprVisited.(ast.Expr)
+			if !rOk {
+				v.addError("Case result expression did not resolve to ast.Expr: "+resultExprCtx.GetText(), resultExprCtx.GetStart())
+				rAST = &ast.BadExpr{From: v.pos(resultExprCtx.GetStart()), To: v.pos(resultExprCtx.GetStop())}
+			}
+			currentCaseBody = []ast.Stmt{
+				&ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(resultVarName)}, Tok: token.ASSIGN, Rhs: []ast.Expr{rAST}},
 			}
 		} else if resultBlockCtx := caseClauseCtx.GetResultBlock(); resultBlockCtx != nil {
 			visitedBlock := v.Visit(resultBlockCtx)

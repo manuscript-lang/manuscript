@@ -64,8 +64,8 @@ func (v *ManuscriptAstVisitor) VisitObjectLiteral(ctx *parser.ObjectLiteralConte
 			continue
 		}
 
-		// Check for shorthand { key } vs. explicit { key : value }
-		if fieldCtx.Expr() != nil && fieldCtx.COLON() != nil { // Explicit key: value
+		// Check for shorthand { key } vs. explicit { key value }
+		if fieldCtx.Expr() != nil { // Explicit key: value
 			valResult := v.Visit(fieldCtx.Expr())
 			if valExpr, okVal := valResult.(ast.Expr); okVal {
 				valueAstExpr = valExpr
@@ -73,7 +73,7 @@ func (v *ManuscriptAstVisitor) VisitObjectLiteral(ctx *parser.ObjectLiteralConte
 				v.addError("Object field value is not a valid expression: "+fieldCtx.Expr().GetText(), fieldCtx.Expr().GetStart())
 				valueAstExpr = &ast.BadExpr{From: v.pos(fieldCtx.Expr().GetStart()), To: v.pos(fieldCtx.Expr().GetStop())}
 			}
-		} else if fieldCtx.COLON() == nil && fieldCtx.Expr() == nil { // Shorthand: { key }
+		} else { // Shorthand: { key }
 			// Value is the identifier itself if the key was a simple ID
 			if keyNameCtx.ID() != nil { // Ensure key was an ID for shorthand value
 				valueAstExpr = ast.NewIdent(keyStringValue)
@@ -82,18 +82,6 @@ func (v *ManuscriptAstVisitor) VisitObjectLiteral(ctx *parser.ObjectLiteralConte
 				v.addError(fmt.Sprintf("Object shorthand field key '%s' must be a simple identifier, not a string, to automatically derive its value.", keyStringValue), keyErrorToken)
 				valueAstExpr = &ast.BadExpr{From: v.pos(keyErrorToken), To: v.pos(keyErrorToken)}
 			}
-		} else {
-			// Malformed: key : (missing value) or key (missing colon and value, but not ID keyName)
-			var errMsg string
-			var errToken antlr.Token = fieldCtx.GetStart()
-			if fieldCtx.COLON() != nil {
-				errMsg = "Object field '%s' has a colon but is missing a value."
-				errToken = fieldCtx.COLON().GetSymbol()
-			} else {
-				errMsg = "Object field '%s' is malformed (neither shorthand nor full key:value)."
-			}
-			v.addError(fmt.Sprintf(errMsg, keyStringValue), errToken)
-			valueAstExpr = &ast.BadExpr{From: v.pos(errToken), To: v.pos(errToken)}
 		}
 
 		astKey := &ast.BasicLit{
