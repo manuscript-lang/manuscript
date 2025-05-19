@@ -28,7 +28,6 @@ func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *msParser.LetDeclContext) interf
 	} else if blockLetCtx := ctx.LetBlock(); blockLetCtx != nil {
 		blockItems := blockLetCtx.AllLetBlockItem()
 		if len(blockItems) == 0 {
-
 			return &ast.EmptyStmt{}
 		}
 		for _, itemCtx := range blockItems {

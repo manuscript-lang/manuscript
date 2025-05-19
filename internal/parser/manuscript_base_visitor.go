@@ -212,6 +212,10 @@ func (v *BaseManuscriptVisitor) VisitAssignmentExpr(ctx *AssignmentExprContext) 
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitTernaryExpr(ctx *TernaryExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitLogicalOrExpr(ctx *LogicalOrExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }

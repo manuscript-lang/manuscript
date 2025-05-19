@@ -162,12 +162,25 @@ func (v *ManuscriptAstVisitor) VisitIfStmt(ctx *parser.IfStmtContext) interface{
 func (v *ManuscriptAstVisitor) VisitCodeBlock(ctx *parser.CodeBlockContext) interface{} {
 	var stmts []ast.Stmt
 	for _, stmtCtx := range ctx.AllStmt() {
-		visitedStmt := v.VisitStmt(stmtCtx.(*parser.StmtContext)) // VisitStmt should handle all statement types
-		if astStmt, ok := visitedStmt.(ast.Stmt); ok {
-			if astStmt != nil { // Ensure we don't append nil statements (e.g. from empty semicolons)
-				stmts = append(stmts, astStmt)
+		visitedNode := v.VisitStmt(stmtCtx.(*parser.StmtContext)) // VisitStmt returns interface{}
+
+		if visitedNode == nil {
+			continue // Skip nil results (e.g. from empty statements or errors handled deeper)
+		}
+
+		if singleStmt, ok := visitedNode.(ast.Stmt); ok {
+			if _, isEmpty := singleStmt.(*ast.EmptyStmt); !isEmpty {
+				stmts = append(stmts, singleStmt)
 			}
-		} else if visitedStmt != nil { // If it's not nil, but not ast.Stmt, it's an unexpected type
+		} else if multiStmts, ok := visitedNode.([]ast.Stmt); ok {
+			for _, stmt := range multiStmts {
+				if stmt != nil {
+					if _, isEmpty := stmt.(*ast.EmptyStmt); !isEmpty {
+						stmts = append(stmts, stmt)
+					}
+				}
+			}
+		} else {
 			v.addError("Internal error: Statement processing in code block returned unexpected type for: "+stmtCtx.GetText(), stmtCtx.GetStart())
 		}
 	}

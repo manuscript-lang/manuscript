@@ -193,7 +193,7 @@ codeBlock: LBRACE (stmts += stmt)* RBRACE;
 
 expr: assignmentExpr;
 assignmentExpr:
-	left = logicalOrExpr (
+	left = ternaryExpr (
 		op = (
 			EQUALS
 			| PLUS_EQUALS
@@ -204,6 +204,10 @@ assignmentExpr:
 			| CARET_EQUALS
 		) right = assignmentExpr
 	)?;
+
+ternaryExpr:
+	condition = logicalOrExpr (QUESTION trueExpr = expr COLON falseExpr = ternaryExpr)?;
+
 logicalOrExpr:
 	left = logicalAndExpr (op = PIPE_PIPE right = logicalAndExpr)*;
 logicalAndExpr:

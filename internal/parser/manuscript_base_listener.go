@@ -331,6 +331,12 @@ func (s *BaseManuscriptListener) EnterAssignmentExpr(ctx *AssignmentExprContext)
 // ExitAssignmentExpr is called when production assignmentExpr is exited.
 func (s *BaseManuscriptListener) ExitAssignmentExpr(ctx *AssignmentExprContext) {}
 
+// EnterTernaryExpr is called when production ternaryExpr is entered.
+func (s *BaseManuscriptListener) EnterTernaryExpr(ctx *TernaryExprContext) {}
+
+// ExitTernaryExpr is called when production ternaryExpr is exited.
+func (s *BaseManuscriptListener) ExitTernaryExpr(ctx *TernaryExprContext) {}
+
 // EnterLogicalOrExpr is called when production logicalOrExpr is entered.
 func (s *BaseManuscriptListener) EnterLogicalOrExpr(ctx *LogicalOrExprContext) {}
 

@@ -161,6 +161,9 @@ type ManuscriptListener interface {
 	// EnterAssignmentExpr is called when entering the assignmentExpr production.
 	EnterAssignmentExpr(c *AssignmentExprContext)
 
+	// EnterTernaryExpr is called when entering the ternaryExpr production.
+	EnterTernaryExpr(c *TernaryExprContext)
+
 	// EnterLogicalOrExpr is called when entering the logicalOrExpr production.
 	EnterLogicalOrExpr(c *LogicalOrExprContext)
 
@@ -439,6 +442,9 @@ type ManuscriptListener interface {
 
 	// ExitAssignmentExpr is called when exiting the assignmentExpr production.
 	ExitAssignmentExpr(c *AssignmentExprContext)
+
+	// ExitTernaryExpr is called when exiting the ternaryExpr production.
+	ExitTernaryExpr(c *TernaryExprContext)
 
 	// ExitLogicalOrExpr is called when exiting the logicalOrExpr production.
 	ExitLogicalOrExpr(c *LogicalOrExprContext)

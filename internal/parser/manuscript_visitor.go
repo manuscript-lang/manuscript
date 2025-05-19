@@ -161,6 +161,9 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#assignmentExpr.
 	VisitAssignmentExpr(ctx *AssignmentExprContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#ternaryExpr.
+	VisitTernaryExpr(ctx *TernaryExprContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#logicalOrExpr.
 	VisitLogicalOrExpr(ctx *LogicalOrExprContext) interface{}
 

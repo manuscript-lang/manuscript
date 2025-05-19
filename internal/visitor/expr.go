@@ -25,12 +25,6 @@ func (v *ManuscriptAstVisitor) VisitPrimaryExpr(ctx *parser.PrimaryExprContext) 
 		identName := ctx.ID().GetText()
 		return ast.NewIdent(identName)
 	}
-	if ctx.SELF() != nil {
-		// Handle 'self': map to 'this' or a specific receiver name if applicable?
-		// For now, let's represent it as an identifier named "self".
-		// Go translation might require context (e.g., inside a method).
-		return ast.NewIdent("self") // Placeholder, might need refinement
-	}
 	// Use the getter for the labeled element "parenExpr"
 	if ctx.GetParenExpr() != nil {
 		// Handle parenthesized expression: visit the inner expression
@@ -691,4 +685,80 @@ func (v *ManuscriptAstVisitor) VisitStructInitExpr(ctx *parser.StructInitExprCon
 		Type: structTypeExpr,
 		Elts: keyValueElts,
 	}
+}
+
+// New function VisitTernaryExpr
+func (v *ManuscriptAstVisitor) VisitTernaryExpr(ctx *parser.TernaryExprContext) interface{} {
+	if ctx == nil {
+		v.addError("VisitTernaryExpr called with nil context", nil)
+		return &ast.BadExpr{}
+	}
+
+	// If QUESTION token is not present, it's just a logicalOrExpr
+	if ctx.QUESTION() == nil {
+		// The grammar is 'condition = logicalOrExpr (...)'. So we access 'condition'.
+		if ctx.GetCondition() == nil {
+			v.addError("TernaryExprContext has no Condition (LogicalOrExpr) child when QUESTION is missing", ctx.GetStart())
+			return &ast.BadExpr{}
+		}
+		return v.Visit(ctx.GetCondition()) // Visit the condition which is a logicalOrExpr
+	}
+
+	// Ensure all parts of the ternary are present using Get accessors
+	if ctx.GetCondition() == nil || ctx.GetTrueExpr() == nil || ctx.GetFalseExpr() == nil || ctx.COLON() == nil {
+		v.addError("Incomplete ternary expression", ctx.GetStart())
+		return &ast.BadExpr{}
+	}
+
+	condNode := v.Visit(ctx.GetCondition())
+	condExpr, ok := condNode.(ast.Expr)
+	if !ok {
+		v.addError("Condition in ternary expression did not resolve to an ast.Expr", ctx.GetCondition().GetStart())
+		return &ast.BadExpr{}
+	}
+
+	trueNode := v.Visit(ctx.GetTrueExpr())
+	trueExpr, ok := trueNode.(ast.Expr)
+	if !ok {
+		v.addError("True expression in ternary did not resolve to an ast.Expr", ctx.GetTrueExpr().GetStart())
+		return &ast.BadExpr{}
+	}
+
+	falseNode := v.Visit(ctx.GetFalseExpr())
+	falseExpr, ok := falseNode.(ast.Expr)
+	if !ok {
+		v.addError("False expression in ternary did not resolve to an ast.Expr", ctx.GetFalseExpr().GetStart())
+		return &ast.BadExpr{}
+	}
+
+	// Create the if statement: if cond { return trueExpr } else { return falseExpr }
+	ifStmt := &ast.IfStmt{
+		Cond: condExpr,
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.ReturnStmt{Results: []ast.Expr{trueExpr}},
+			},
+		},
+		Else: &ast.BlockStmt{ // Else must be a BlockStmt
+			List: []ast.Stmt{
+				&ast.ReturnStmt{Results: []ast.Expr{falseExpr}},
+			},
+		},
+	}
+
+	// For now, use interface{} as the return type of the IIFE.
+	// This might need to be refined with actual type inference later.
+	returnType := ast.NewIdent("interface{}") // Placeholder
+
+	// Create the function literal (IIFE)
+	funcLit := &ast.FuncLit{
+		Type: &ast.FuncType{
+			Params:  &ast.FieldList{}, // No parameters for the IIFE
+			Results: &ast.FieldList{List: []*ast.Field{{Type: returnType}}},
+		},
+		Body: &ast.BlockStmt{List: []ast.Stmt{ifStmt}},
+	}
+
+	// Return a call to this function literal
+	return &ast.CallExpr{Fun: funcLit}
 }
