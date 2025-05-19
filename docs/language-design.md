@@ -58,7 +58,7 @@ import, export, extern
 if, else, for, while, in, match, case, default
 
 // Error Handling & Preconditions
-check, try, catch
+check, try
 
 // Concurrency
 go
@@ -83,7 +83,7 @@ as, void, null, true, false
 *   **`for`, `while`, `in`**: Loop constructs.
 *   **`match`, `case`, `default`**: Pattern matching control flow.
 *   **`check`**: Asserts a precondition; if false, exits the current function with an error.
-*   **`try`, `catch`**: Error handling blocks.
+*   **`try`**: Used for error propagation in expressions.
 *   **`async`**: Defines an asynchronous function.
 *   **`await`**: Pauses execution of an async function until an awaited task completes.
 *   **`as`**: Used for type casting or renaming imports.
@@ -167,52 +167,48 @@ Primitive types are the most basic data types available in Manuscript.
 Variables store values that can be referenced and potentially manipulated. Manuscript uses the `let` keyword for declaring bindings.
 ```ms
 let serverBaseUrl = "https://api.example.com"
-
-let can also be 
 ```
+
+#### Let Block Syntax
+You can declare multiple variables at once using a let block:
+```ms
+let (a = 1, b = 2)
+```
+This is equivalent to declaring `a` and `b` separately.
+
+#### Destructuring Assignment
+Manuscript supports destructuring assignment for arrays and objects (structs). This allows for concisely extracting multiple values into separate variables, improving readability.
+
+```ms
+// For Objects (Structs)
+type ServerConfig { host: string, port: i32, use_tls: bool }
+let current_config ServerConfig = {
+    host: "localhost", 
+    port: 8080, 
+    use_tls: false
+}
+let {host, port} = current_config
+// host is "localhost", port is 8080
+
+// For Arrays
+let semver_components = "1.2.3-beta".split('.') // Assume split returns string[]
+let [major_version, minor_version] = semver_components // major = "1", minor = "2"
+// To get all parts, or handle variable length, other patterns might be needed:
+// let [major, minor, patch_and_prerelease...] = sem_ver_parts // Spread for remaining parts
+```
+
+> **Note:** Tuple destructuring on the left-hand side of `let` (e.g., `let (a, b) = ...`) is not directly supported by the grammar. To destructure a tuple, assign it to a variable and then access its elements by index or use array destructuring if the tuple is returned as an array.
 
 *   **Type Annotation and Inference**: Type annotations are optional if the compiler can unambiguously infer the type from the initializer expression. Explicit type annotations improve code clarity, act as documentation, and are required in situations where inference is not possible or desired for contract clarity (e.g., function signatures, uninitialized variable declarations if allowed).
 
     ```ms
     let default_api_version = "v1"          // Type inferred as string
-    let max_connections: i32 = 100          // Type explicitly annotated
+    let max_connections i32 = 100          // Type explicitly annotated
     let default_timeout_seconds = 15.0      // Type inferred as number (f32)
 
-    let loaded_plugin: PluginType? // Declaring a nullable variable, type annotation is essential here.
+    let loaded_plugin PluginType? // Declaring a nullable variable, type annotation is essential here.
                                     // It will be initialized to null by default for optional types.
     loaded_plugin = plugin_manager.load("advanced-renderer") // Assuming function returns PluginType?
-    ```
-
-*   **Destructuring Assignment**: Manuscript supports destructuring assignment for arrays, tuples, and objects (structs). This allows for concisely extracting multiple values into separate variables, improving readability.
-    ```ms
-    // For Tuples (e.g., returning multiple values from a function)
-    fn parse_http_header(raw_header: string): (string, string)? { // Returns optional tuple
-        if raw_header.contains(':') {
-            let parts = raw_header.split(':', 1) // Assume split exists and returns array
-            return (parts[0].trim(), parts[1].trim()) // Assume trim exists
-        }
-        return null
-    }
-    let http_header = "Content-Type: application/json"
-    let (header_name, header_value) = parse_http_header(http_header)!
-    // header_name is "Content-Type", header_value is "application/json"
-    // The '!' implies an assertion that parse_http_header will not return null here, or a try/check was used.
-
-    // For Objects (Structs)
-    type ServerConfig { host: string, port: i32, use_tls: bool }
-    let current_config: ServerConfig = {
-        host: "localhost", 
-        port: 8080, 
-        use_tls: false
-    }
-    let {host, port} = current_config
-    // host is "localhost", port is 8080
-
-    // For Arrays
-    let semver_components = "1.2.3-beta".split('.') // Assume split returns string[]
-    let [major_version, minor_version] = semver_components // major = "1", minor = "2"
-    // To get all parts, or handle variable length, other patterns might be needed:
-    // let [major, minor, patch_and_prerelease...] = sem_ver_parts // Spread for remaining parts
     ```
 
 ### 3.3 Literals
@@ -416,33 +412,38 @@ type Circle extends Shape {
 
 // A Circle instance will have 'id' and 'radius' fields.
 ```
-The syntax `type A = B extends C` and `type A = B extends C, D` seems to imply type aliasing with extension or composition. This needs clarification:
-*   `type A = B extends C`: Does `A` become an alias for `B` which must extend `C`, or does `A` become a new type that has all fields of `B` and `C`?
-*   `type A = B extends C, D`: This suggests multiple inheritance or composition. If `C` and `D` are interfaces, `B` must implement them. If `C` and `D` are structs, this is likely composition.
 
-**Object Creation (Instantiation)**: Instances of structs are created by calling the type name as a function.
+**Type Aliases with Constraints**: You can create a type alias with an optional constraint using `extends`:
+```ms
+type NewName = ExistingType extends Constraint
+```
+This means `NewName` is an alias for `ExistingType` with the additional constraint `Constraint` (which may be an interface or another type).
+
+**Object Creation (Instantiation)**: Instances of structs are created by calling the type name as a function with named fields:
 ```ms
 let p1 = Point() // x and y will have default values for 'number' (e.g., 0)
-let p2 = Point(x: 10, y: 20) // Using struct literal for initialization
+let p2 = Point(x: 10, y: 20) // Using named fields for initialization
 ```
 
-**Constructors**: Custom constructor functions can be defined using `fn` with the same name as the type. If no constructor is defined, a default one is provided which initializes fields to their default values.
+**Constructors**: Custom constructor functions can be defined using `fn` with the same name as the type. These are regular functions that return an instance of the struct. If no constructor is defined, a default one is provided which initializes fields to their default values.
 ```ms
 type Vector {
-    x: number
-    y: number
+    x number
+    y number
 }
 
-fn Vector(x_val: number, y_val: number): Vector {
+fn Vector(x_val number, y_val number) Vector {
     let v: Vector = {
         x: 10,
         y: 20
     }
+    v
 }
 
 let v1 = Vector(3, 4)
 let v2 = Vector()
 ```
+The primary way to instantiate a struct is via the named-field literal, either directly or from a constructor function.
 
 ### 4.2 Interfaces (`interface`)
 
@@ -450,25 +451,23 @@ Interfaces define a contract of methods that a type can implement. They specify 
 
 ```ms
 interface Renderer {
-    draw(): void
-    setColor(hex: string): bool
+    draw() void
+    setColor(hex: string) bool
 }
 
 interface Logger {
-    log(message: string): void
-    error(message: string, code?: number): void
+    log(message string) void
+    error(message string, code number?): void
 }
 ```
 
 **Interface Inheritance with `extends`**: Interfaces can extend other interfaces, inheriting their method signatures.
 ```ms
 interface AdvancedRenderer extends Renderer {
-    setShader(shaderId: string): void
+    setShader(shaderId string) void
 }
-
-// A type implementing AdvancedRenderer must implement draw(), setColor(), and setShader().
 ```
-The syntax `interface B extends name {}` is clear.
+The syntax is `interface B extends name {}`.
 
 ### 4.3 Methods
 
@@ -477,20 +476,20 @@ Methods are functions associated with a specific type. They are defined using th
 **Implementing Interface Methods**:
 ```ms
 interface ILogger {
-    log(message: string): void
-    error(message: string, code?: number): void
+    log(message string) void
+    error(message string, code number?): void
 }
 
 type ConsoleLogger {
-    prefix: string
+    prefix string
 }
 
-methods ILogger for ConsoleLogger {
-    fn log(message: string): void {
+methods ConsoleLogger as self {
+    fn log(message string) void {
         print('${self.prefix}: ${message}')
     }
 
-    fn error(message: string, code?: number): void {
+    fn error(message string, code? number) void {
         if code != null {
             print('ERROR (${code}): ${self.prefix}: ${message}')
         } else {
@@ -509,17 +508,17 @@ type Counter {
     value: number
 }
 
-methods Counter {
-    fn increment(amount: number): void {
-        self.value = self.value + amount
+methods Counter as c {
+    fn increment(amount number) void {
+        c.value = c.value + amount
     }
 
-    fn getValue(): number {
-        return self.value
+    fn getValue() number {
+        return c.value
     }
 }
 
-let c = Counter(value: 0)
+let c = Counter(value 0)
 c.increment(5)
 c.getValue()
 ```
@@ -549,7 +548,7 @@ let my_function = fn() {
     print('This is a function variable.')
 }
 
-fn add(a: number, b: number): number {
+fn add(a number, b number) number {
     return a + b
 }
 ```
@@ -559,11 +558,13 @@ fn add(a: number, b: number): number {
 Functions can accept zero or more parameters. Each parameter must have a name, and its type can be specified.
 
 ```ms
-fn print_message(message: string) {
+fn print_message(message string) {
     print(message)
 }
 
-fn process_data(data: {value: number}, options?: {verbose: bool}) {
+type Data {value number}
+type Options {verbose bool}
+fn process_data(data Data, options? Options) {
     if options?.verbose {
         print('Processing: ${data.value}')
     }
@@ -574,13 +575,13 @@ fn process_data(data: {value: number}, options?: {verbose: bool}) {
 If the last statement is an expression then last value from the block is returned automatically, however functions can return values using the `return` keyword.
 *   **Single Return Value**:
     ```ms
-    fn get_pi(): number {
+    fn get_pi() number {
         return 3.14159
     }
     ```
 *   **Void Return Type**: If a function does not return a value, its return type is `void`. The `return` keyword can be omitted, or used without an expression.
     ```ms
-    fn log_message(message: string): void {
+    fn log_message(message string) void {
         print(message)
     }
 
@@ -589,7 +590,7 @@ If the last statement is an expression then last value from the block is returne
 
 *   **Multiple Return Values**: Functions can return multiple values as a tuple.
     ```ms
-    fn get_coordinates(): (number, number) {
+    fn get_coordinates() (number, number) {
         (10.5, -3.2)
     }
     let (x, y) = get_coordinates()
@@ -597,7 +598,7 @@ If the last statement is an expression then last value from the block is returne
 
 *   **Error Indication**: The `!` suffix on a return type (e.g., `string!`) indicates that a function might throw an error or return an error state. This is often used in conjunction with `try/catch` or `check`.
     ```ms
-    fn read_file_content(path: string): string! {
+    fn read_file_content(path string) string! {
         // ... logic that might fail ...
         // if path_does_not_exist {
             // throw new Error('File not found') // Exact error throwing mechanism TBD
@@ -605,13 +606,13 @@ If the last statement is an expression then last value from the block is returne
         return "file content"
     }
 
-    fn withErrorShorthand(arg1: string): string! { "placeholder!" }
+    fn withErrorShorthand(arg1 string) string! { "placeholder!" }
     ```
 
 *   **Implicit Returns**: For single-expression functions, the `return` keyword can sometimes be omitted, and the result of the expression is automatically returned.
     ```ms
-    fn get_one(): number { 1 }
-    fn square(x: number): number { x * x }
+    fn get_one() number { 1 }
+    fn square(x number) number { x * x }
     ```
 
 ### 5.5 Generator Functions (`yield`)
@@ -619,7 +620,7 @@ If the last statement is an expression then last value from the block is returne
 Generator functions can pause execution and yield multiple values one at a time, without returning. They are defined using the `fn` keyword and use the `yield` keyword to produce values.
 
 ```ms
-fn count_to(n: number) {
+fn count_to(n number) {
     let i = 0
     while i < n {
         yield i
@@ -632,7 +633,7 @@ fn count_to(n: number) {
 // print(item_val)
 // }
 
-fn range_generator(start: number, end: number, step: number = 1) {
+fn range_generator(start number, end number, step number = 1) {
     let current = start
     while current < end {
         yield current
@@ -646,28 +647,28 @@ fn range_generator(start: number, end: number, step: number = 1) {
 Function parameters can have default values, making them optional when the function is called.
 
 ```ms
-fn greet_person(name: string, greeting: string = 'Hello') {
+fn greet_person(namestring, greeting string = 'Hello') {
     print('${greeting}, ${name}!')
 }
 
 // greet_person('Alice')           // Example call
 // greet_person('Bob', 'Hi')     // Example call
 
-fn setup_service(port: number = 8080, retries: number = 3) {
+fn setup_service(port number = 8080, retries number = 3) {
     print('Setting up service on port ${port} with ${retries} retries.')
 }
 // setup_service() // Example call
-// setup_service(port: 9000) // Example call
+// setup_service(port 9000) // Example call
 ```
 
 ### 5.8 Anonymous function
 Anonymous functions can be declared using fn keyword, but without the name, eg - 
 
 ```ms
-fn(a: int, b: int): int { a + b }
-fn(a: int, b: int) { a + b }
+fn(a int, b int) int { a + b }
+fn(a int, b int) { a + b }
 
-let filterFunc = fn(a: string) { a.startWith("a") }
+let filterFunc = fn(a string) { a.startWith("a") }
 list.filter(filterFunc)
 ```
 
@@ -681,15 +682,15 @@ The `export` keyword makes functions, variables, types, or interfaces available 
 
 ```ms
 // module: 'math_utils.ms'
-export fn add_numbers(a: number, b: number): number {
+export fn add_numbers(a number, b number) number {
     return a + b
 }
 
-export let PI_VALUE: number = 3.14159
+export let PI_VALUE number = 3.14159
 
 export type PointType {
-    x_val: number
-    y_val: number
+    x_val number
+    y_val number
 }
 ```
 
@@ -703,7 +704,7 @@ import { add_numbers, PI_VALUE } from 'math_utils'
 import { PointType as Vec2D } from 'math_utils'
 
 let sum_val = add_numbers(5, PI_VALUE)
-let p_vec: Vec2D = {x_val:0, y_val:0}
+let p_vec Vec2D = {x_val:0, y_val:0}
 
 import b1_service_client from 'b/v1/client'
 
@@ -743,7 +744,7 @@ Manuscript provides several control flow statements to direct the execution path
 The `if` statement executes a block of code if a condition is true. An optional `else` block can be provided for execution if the condition is false. `else if` can be used for multiple conditions.
 
 ```ms
-fn check_number_sign(n: number): string {
+fn check_number_sign(n number) string {
     if n > 0 {
         return 'Positive'
     } else if n < 0 {
@@ -753,14 +754,14 @@ fn check_number_sign(n: number): string {
     }
 }
 
-fn get_llm_provider(modelName: string): string {
+fn get_llm_provider(modelName string) string {
     if modelName == 'gpt4' { 'OpenAI' }
     if modelName == 'gemini-pro' { 'Google' }
     return 'UnknownProvider' 
 }
 
-fn determine_provider_style1(modelName: string): string {
-    let provider: string
+fn determine_provider_style1(modelName string) string {
+    let provider string
     if modelName == 'gpt4' { provider = 'OpenAI' }
     else if modelName == 'gemini-pro' { provider = 'Google' }
     else { provider = 'UnknownProvider' }
@@ -773,7 +774,7 @@ fn determine_provider_style1(modelName: string): string {
 The `match` statement provides a way to compare a value against a series of patterns and execute code based on the first matching pattern. This is often more powerful and readable than `if/else if` chains for complex conditional logic.
 
 ```ms
-fn get_llm_provider_with_match(modelName: string): string {
+fn get_llm_provider_with_match(modelName string) string {
     match modelName {
         case 'gpt4': 'OpenAI' 
         case 'gemini-pro': 'Google'
@@ -795,7 +796,7 @@ Loops are used to execute a block of code repeatedly.
 A `while` loop executes as long as a condition remains true.
 
 ```ms
-fn perform_countdown_while(start_val: number) {
+fn perform_countdown_while(start_val number) {
     let i = start_val
     while i > 0 {
         // print(i) // Example action
@@ -811,7 +812,7 @@ Manuscript supports several styles of `for` loops.
 
 *   **C-style `for` loop** (syntax based on original notes):
     ```ms
-    fn print_numbers_c_loop(limit_val: number) {
+    fn print_numbers_c_loop(limit_val number) {
         for i = 0; i < limit_val; i++ { 
             // print(i) // Example action
         }
@@ -852,7 +853,7 @@ Functions can indicate that an error might occur in a few primary ways:
         operation: string
     }
 
-    methods IError for ArithmeticError {
+    methods ArithmeticError as self {
         error(): string { '${self.operation} ${self.message}' }
     }
 
@@ -862,14 +863,6 @@ Functions can indicate that an error might occur in a few primary ways:
         }
         return (numerator / denominator, null)
     }
-
-    // Usage: // Comment
-    // let (quotient, err_info) = safe_divide(10, 0) // Comment
-    // if err_info != null { // Comment
-    //     print('Error performing ${err_info.operation}: ${err_info.message}') // Comment
-    // } else { // Comment
-    //     print('Result: ${quotient}') // Comment
-    // } // Comment
     ```
 
 *   **Using `!` Suffix in Return Type**: A `!` suffix on a function's return type (e.g., `string!`, `User!`) signals that the function might fail and that this failure must be explicitly handled by the caller. This is often associated with an exception-like mechanism or a required check.
@@ -880,7 +873,7 @@ Functions can indicate that an error might occur in a few primary ways:
             return Error('Configuration file not found: ${filePath}') 
         }
         // ... logic to parse file ...
-        return AppConfig{serverUrl: 'http://api.example.com', timeoutMs: 5000}
+        AppConfig{serverUrl: 'http://api.example.com', timeoutMs: 5000}
     }
     ```
     The exact nature of what `!` implies (e.g., checked exceptions, monadic error type) needs to be fully specified in the language semantics.
@@ -891,7 +884,7 @@ try works on function call expressions that return a error type in go, one can u
 
 *   **`try` as an expression**: This allows `try` to be used in assignments, potentially unwrapping the success value or propagating the error.
     ```ms
-    fn fetch_data(): (string, OperationError) {
+    fn fetch_data() (string, OperationError) {
         // return ("User data", null) // example success
         return (null, OperationError(message: 'Network timeout', code: 504)) // example failure
     }
@@ -941,12 +934,11 @@ This is particularly useful for validating parameters or state at the beginning 
 
 Consider the Manuscript code:
 ```ms
-fn process_payment(amount: number, currency: string): string! { 
+fn process_payment(amount number, currency string) string! { 
     check amount > 0, 'Payment amount must be positive'
     check currency == 'USD' || currency == 'EUR', 'Unsupported currency: ${currency}'
 
-    // ... process payment logic ...
-    "Payment ID: XYZ123"
+    // process payment logic 
 }
 ```
 
@@ -962,5 +954,3 @@ if !(amount > 0) {
     return nil, fmt.Errorf("Payment amount must be positive")
 }
 ```
-
-The `check` keyword thus helps in writing cleaner code by handling guard conditions early and clearly, reducing nested `if` statements for error checking.
