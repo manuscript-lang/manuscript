@@ -356,10 +356,6 @@ func (v *BaseManuscriptVisitor) VisitSetLiteral(ctx *SetLiteralContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitTupleLiteral(ctx *TupleLiteralContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseManuscriptVisitor) VisitBreakStmt(ctx *BreakStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }

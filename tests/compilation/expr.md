@@ -161,6 +161,7 @@ fn main() {
     let dynamic = add(a, b)
     
     let expr_args = add(5 + 3, b - a)
+    return add(1, 2), add(4, 2)
 }
 ```
 
@@ -182,6 +183,7 @@ func main() {
     b := 20
     dynamic := add(a, b)
     expr_args := add(5+3, b-a)
+    return add(1, 2), add(4, 2)
 }
 ```
 

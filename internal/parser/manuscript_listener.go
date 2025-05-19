@@ -269,9 +269,6 @@ type ManuscriptListener interface {
 	// EnterSetLiteral is called when entering the setLiteral production.
 	EnterSetLiteral(c *SetLiteralContext)
 
-	// EnterTupleLiteral is called when entering the tupleLiteral production.
-	EnterTupleLiteral(c *TupleLiteralContext)
-
 	// EnterBreakStmt is called when entering the breakStmt production.
 	EnterBreakStmt(c *BreakStmtContext)
 
@@ -550,9 +547,6 @@ type ManuscriptListener interface {
 
 	// ExitSetLiteral is called when exiting the setLiteral production.
 	ExitSetLiteral(c *SetLiteralContext)
-
-	// ExitTupleLiteral is called when exiting the tupleLiteral production.
-	ExitTupleLiteral(c *TupleLiteralContext)
 
 	// ExitBreakStmt is called when exiting the breakStmt production.
 	ExitBreakStmt(c *BreakStmtContext)

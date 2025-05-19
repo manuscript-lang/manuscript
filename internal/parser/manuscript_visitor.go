@@ -269,9 +269,6 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#setLiteral.
 	VisitSetLiteral(ctx *SetLiteralContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#tupleLiteral.
-	VisitTupleLiteral(ctx *TupleLiteralContext) interface{}
-
 	// Visit a parse tree produced by Manuscript#breakStmt.
 	VisitBreakStmt(ctx *BreakStmtContext) interface{}
 

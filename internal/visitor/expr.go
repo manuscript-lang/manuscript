@@ -45,16 +45,16 @@ func (v *ManuscriptAstVisitor) VisitPrimaryExpr(ctx *parser.PrimaryExprContext) 
 	if ctx.SetLiteral() != nil {
 		return v.Visit(ctx.SetLiteral())
 	}
-	if ctx.TupleLiteral() != nil {
-		return v.Visit(ctx.TupleLiteral())
-	}
 	if ctx.TaggedBlockString() != nil {
 		return v.Visit(ctx.TaggedBlockString())
 	}
 	if ctx.StructInitExpr() != nil {
 		return v.Visit(ctx.StructInitExpr())
 	}
-	// TODO: Add cases for LambdaExpr, TryBlockExpr, MatchExpr
+	if ctx.MatchExpr() != nil {
+		return v.Visit(ctx.MatchExpr())
+	}
+	// TODO: Add cases for LambdaExpr, TryBlockExpr
 	// as their visitor methods are implemented.
 
 	v.addError("Unhandled primary expression type: "+ctx.GetText(), ctx.GetStart())

@@ -124,36 +124,3 @@ func (v *ManuscriptAstVisitor) VisitSetLiteral(ctx *parser.SetLiteralContext) in
 		Elts: elements,
 	}
 }
-
-// VisitTupleLiteral handles tuple literal expressions like (1, "hello", true)
-// Tuples don't exist natively in Go, so we'll translate them to slices of interface{}
-func (v *ManuscriptAstVisitor) VisitTupleLiteral(ctx *parser.TupleLiteralContext) interface{} {
-	// Create a []interface{} type for the tuple
-	tupleType := &ast.ArrayType{
-		Elt: ast.NewIdent("interface{}"),
-	}
-
-	// Process each tuple element
-	var elements []ast.Expr
-	if ctx.GetElements() != nil {
-		elements = make([]ast.Expr, 0, len(ctx.GetElements().AllExpr()))
-		for _, elemCtx := range ctx.GetElements().AllExpr() {
-			elemResult := v.Visit(elemCtx)
-			if elemExpr, ok := elemResult.(ast.Expr); ok {
-				elements = append(elements, elemExpr)
-			} else {
-				v.addError("Tuple element is not a valid expression: "+elemCtx.GetText(), elemCtx.GetStart())
-				// Add a nil for placeholder
-				elements = append(elements, &ast.BadExpr{})
-			}
-		}
-	} else {
-		elements = make([]ast.Expr, 0)
-	}
-
-	// Create the tuple composite literal (as a slice)
-	return &ast.CompositeLit{
-		Type: tupleType,
-		Elts: elements,
-	}
-}

@@ -547,12 +547,6 @@ func (s *BaseManuscriptListener) EnterSetLiteral(ctx *SetLiteralContext) {}
 // ExitSetLiteral is called when production setLiteral is exited.
 func (s *BaseManuscriptListener) ExitSetLiteral(ctx *SetLiteralContext) {}
 
-// EnterTupleLiteral is called when production tupleLiteral is entered.
-func (s *BaseManuscriptListener) EnterTupleLiteral(ctx *TupleLiteralContext) {}
-
-// ExitTupleLiteral is called when production tupleLiteral is exited.
-func (s *BaseManuscriptListener) ExitTupleLiteral(ctx *TupleLiteralContext) {}
-
 // EnterBreakStmt is called when production breakStmt is entered.
 func (s *BaseManuscriptListener) EnterBreakStmt(ctx *BreakStmtContext) {}
 

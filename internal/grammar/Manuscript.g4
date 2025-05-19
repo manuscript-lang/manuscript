@@ -258,7 +258,6 @@ primaryExpr:
 	| objectLiteral
 	| mapLiteral
 	| setLiteral
-	| tupleLiteral
 	| fnExpr
 	| matchExpr
 	| VOID
@@ -272,12 +271,13 @@ fnExpr:
 	)? block = codeBlock;
 
 matchExpr:
-	MATCH valueToMatch = expr LBRACE (
-		cs += caseClause (COMMA cs += caseClause)*
-	)? (def = defaultClause)? RBRACE;
+	MATCH valueToMatch = expr LBRACE
+		(cs += caseClause)*
+		(def = defaultClause)?
+	RBRACE;
 
 caseClause:
-	CASE pattern = expr (
+	pattern = expr (
 		COLON resultExpr = expr
 		| resultBlock = codeBlock
 	) SEMICOLON?;
@@ -355,8 +355,6 @@ setLiteral:
 	LT (
 		elements += expr (COMMA elements += expr)* (COMMA)?
 	)? GT;
-
-tupleLiteral: LPAREN elements = exprList? RPAREN;
 
 breakStmt: BREAK;
 continueStmt: CONTINUE;

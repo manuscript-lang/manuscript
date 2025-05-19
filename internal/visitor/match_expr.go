@@ -29,8 +29,8 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 		var currentPatternAST ast.Expr
 		var currentCaseBody []ast.Stmt
 
-		if caseClauseCtx.CASE() == nil || caseClauseCtx.GetPattern() == nil {
-			v.addError(fmt.Sprintf("Malformed case clause (missing CASE or pattern): %s", caseClauseCtx.GetText()), caseClauseCtx.GetStart())
+		if caseClauseCtx.GetPattern() == nil {
+			v.addError(fmt.Sprintf("Malformed case clause (missing pattern): %s", caseClauseCtx.GetText()), caseClauseCtx.GetStart())
 			badPattern := &ast.BadExpr{From: v.pos(caseClauseCtx.GetStart()), To: v.pos(caseClauseCtx.GetStart())}
 			astClauses = append(astClauses, &ast.CaseClause{List: []ast.Expr{badPattern}, Body: []ast.Stmt{&ast.EmptyStmt{}}})
 			continue
@@ -130,9 +130,20 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 	}
 
 	switchStmt := &ast.SwitchStmt{
-		Tag:    matchValueAST,
-		Body:   &ast.BlockStmt{List: astClauses, Lbrace: v.pos(ctx.LBRACE().GetSymbol())},
-		Switch: v.pos(ctx.MATCH().GetSymbol()),
+		Tag: matchValueAST,
+	}
+	if ctx.LBRACE() != nil && ctx.LBRACE().GetSymbol() != nil {
+		switchStmt.Body = &ast.BlockStmt{List: astClauses, Lbrace: v.pos(ctx.LBRACE().GetSymbol())}
+	} else {
+		v.addError("Match expression missing LBRACE token in AST context", ctx.GetStart())
+		switchStmt.Body = &ast.BlockStmt{List: astClauses}
+	}
+
+	if ctx.MATCH() != nil && ctx.MATCH().GetSymbol() != nil {
+		switchStmt.Switch = v.pos(ctx.MATCH().GetSymbol())
+	} else {
+		v.addError("Match expression missing MATCH token in AST context", ctx.GetStart())
+		// Potentially use ctx.GetStart() for switchStmt.Switch if a position is absolutely needed
 	}
 
 	returnResultVar := &ast.ReturnStmt{
@@ -155,12 +166,24 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 		Body: &ast.BlockStmt{List: iifeBodyStmts, Lbrace: v.pos(ctx.MATCH().GetSymbol())},
 	}
 
-	return &ast.CallExpr{
-		Fun:    iifeFuncLit,
-		Lparen: v.pos(ctx.MATCH().GetSymbol()),
-		// Rparen position would be after the entire conceptual block of the match expression
-		Rparen: v.pos(ctx.RBRACE().GetSymbol()),
+	callExpr := &ast.CallExpr{
+		Fun: iifeFuncLit,
 	}
+	if ctx.MATCH() != nil && ctx.MATCH().GetSymbol() != nil { // Position of the call can be start of match
+		callExpr.Lparen = v.pos(ctx.MATCH().GetSymbol())
+	} else {
+		// Fallback Lparen position if MATCH token is missing
+		callExpr.Lparen = v.pos(ctx.GetStart())
+	}
+
+	if ctx.RBRACE() != nil && ctx.RBRACE().GetSymbol() != nil {
+		callExpr.Rparen = v.pos(ctx.RBRACE().GetSymbol())
+	} else {
+		v.addError("Match expression missing RBRACE token in AST context", ctx.GetStop())
+		// Fallback Rparen position if RBRACE token is missing
+		callExpr.Rparen = v.pos(ctx.GetStop())
+	}
+	return callExpr
 }
 
 // VisitCaseClause handles individual case clauses in a match expression
