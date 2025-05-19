@@ -161,11 +161,13 @@ stmt:
 		| sBreak = breakStmt
 		| sContinue = continueStmt
 		| sCheck = checkStmt
+		| sDefer = deferStmt
 	) SEMICOLON?
 	| SEMICOLON;
 
 returnStmt: RETURN returnedValues = exprList?;
 yieldStmt: YIELD yieldedValues = exprList?;
+deferStmt: DEFER expr;
 exprList: expr (COMMA expr)* (COMMA)?;
 
 ifStmt:
@@ -247,7 +249,6 @@ postfixExpr:
 primaryExpr:
 	literal
 	| ID
-	| SELF
 	| LPAREN parenExpr = expr RPAREN
 	| arrayLiteral
 	| objectLiteral

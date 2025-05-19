@@ -164,6 +164,10 @@ func (v *BaseManuscriptVisitor) VisitYieldStmt(ctx *YieldStmtContext) interface{
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitDeferStmt(ctx *DeferStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitExprList(ctx *ExprListContext) interface{} {
 	return v.VisitChildren(ctx)
 }

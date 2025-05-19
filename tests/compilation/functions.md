@@ -157,3 +157,58 @@ func main() {
 }
 ```
 
+# Test simple defer statement
+```ms
+fn cleanup() {
+  print("cleaning up resources")
+}
+
+fn main() {
+  print("starting work")
+  defer cleanup()
+  print("doing work")
+}
+```
+```go
+package main
+
+func cleanup() {
+    print("cleaning up resources")
+}
+func main() {
+    print("starting work")
+    defer cleanup()
+    print("doing work")
+}
+```
+
+# Test defer with function call
+```ms
+fn main() {
+  let file = openFile("example.txt")
+  defer file.close()
+  
+  // Use file here
+  file.write("Hello, World!")
+}
+
+fn openFile(path string) File {
+  // Open file implementation
+  let file = File()
+  return file
+}
+```
+```go
+package main
+
+func main() {
+    file := openFile("example.txt")
+    defer file.close()
+    file.write("Hello, World!")
+}
+func openFile(path string) File {
+    file := File()
+    return file
+}
+```
+

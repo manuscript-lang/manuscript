@@ -125,6 +125,9 @@ type ManuscriptListener interface {
 	// EnterYieldStmt is called when entering the yieldStmt production.
 	EnterYieldStmt(c *YieldStmtContext)
 
+	// EnterDeferStmt is called when entering the deferStmt production.
+	EnterDeferStmt(c *DeferStmtContext)
+
 	// EnterExprList is called when entering the exprList production.
 	EnterExprList(c *ExprListContext)
 
@@ -400,6 +403,9 @@ type ManuscriptListener interface {
 
 	// ExitYieldStmt is called when exiting the yieldStmt production.
 	ExitYieldStmt(c *YieldStmtContext)
+
+	// ExitDeferStmt is called when exiting the deferStmt production.
+	ExitDeferStmt(c *DeferStmtContext)
 
 	// ExitExprList is called when exiting the exprList production.
 	ExitExprList(c *ExprListContext)

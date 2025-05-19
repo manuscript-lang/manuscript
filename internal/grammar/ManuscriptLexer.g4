@@ -36,10 +36,12 @@ CASE: 'case';
 ASYNC: 'async';
 AWAIT: 'await';
 METHODS: 'methods';
-SELF: 'self';
 BREAK: 'break';
 CONTINUE: 'continue';
 DEFAULT: 'default';
+
+// carry ons from go
+DEFER: 'defer';
 GO: 'go';
 
 // Punctuation (DEFAULT_MODE implicitly)

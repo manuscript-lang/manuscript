@@ -91,6 +91,14 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 		return nil
 	}
 
+	if deferStmtCtx := ctx.DeferStmt(); deferStmtCtx != nil {
+		if concreteCtx, ok := deferStmtCtx.(*parser.DeferStmtContext); ok {
+			return v.VisitDeferStmt(concreteCtx)
+		}
+		v.addError("Internal error: Failed to process defer statement structure: "+deferStmtCtx.GetText(), deferStmtCtx.GetStart())
+		return nil
+	}
+
 	if codeBlockCtx := ctx.CodeBlock(); codeBlockCtx != nil {
 		if concreteCtx, ok := codeBlockCtx.(*parser.CodeBlockContext); ok {
 			return v.VisitCodeBlock(concreteCtx)
@@ -199,4 +207,55 @@ func (v *ManuscriptAstVisitor) VisitReturnStmt(ctx *parser.ReturnStmtContext) in
 	}
 
 	return retStmt
+}
+
+// VisitDeferStmt handles defer statements.
+func (v *ManuscriptAstVisitor) VisitDeferStmt(ctx *parser.DeferStmtContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+
+	// Get the expression to be deferred
+	exprCtx := ctx.Expr()
+	if exprCtx == nil {
+		v.addError("Defer statement is missing an expression", ctx.DEFER().GetSymbol())
+		return &ast.BadStmt{}
+	}
+
+	// Visit the expression to get its Go AST representation
+	exprAst := v.Visit(exprCtx)
+	if exprAst == nil {
+		v.addError("Failed to process expression in defer statement", exprCtx.GetStart())
+		return &ast.BadStmt{}
+	}
+
+	// Check if the visited expression is an ast.Expr
+	expr, ok := exprAst.(ast.Expr)
+	if !ok {
+		v.addError("Expression in defer statement did not resolve to a valid Go expression", exprCtx.GetStart())
+		return &ast.BadStmt{}
+	}
+
+	// For defer, we need a function call expression
+	callExpr, isCall := expr.(*ast.CallExpr)
+	if !isCall {
+		// If it's not already a CallExpr, we need to convert it
+		// For example, if it's just an identifier like 'cleanup',
+		// we need to convert it to 'cleanup()'
+		if ident, isIdent := expr.(*ast.Ident); isIdent {
+			callExpr = &ast.CallExpr{
+				Fun:  ident,
+				Args: []ast.Expr{},
+			}
+		} else {
+			v.addError("Defer statement requires a function call", exprCtx.GetStart())
+			return &ast.BadStmt{}
+		}
+	}
+
+	// Create and return the defer statement
+	return &ast.DeferStmt{
+		Defer: v.pos(ctx.DEFER().GetSymbol()),
+		Call:  callExpr,
+	}
 }

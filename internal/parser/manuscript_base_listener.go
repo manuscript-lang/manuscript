@@ -259,6 +259,12 @@ func (s *BaseManuscriptListener) EnterYieldStmt(ctx *YieldStmtContext) {}
 // ExitYieldStmt is called when production yieldStmt is exited.
 func (s *BaseManuscriptListener) ExitYieldStmt(ctx *YieldStmtContext) {}
 
+// EnterDeferStmt is called when production deferStmt is entered.
+func (s *BaseManuscriptListener) EnterDeferStmt(ctx *DeferStmtContext) {}
+
+// ExitDeferStmt is called when production deferStmt is exited.
+func (s *BaseManuscriptListener) ExitDeferStmt(ctx *DeferStmtContext) {}
+
 // EnterExprList is called when production exprList is entered.
 func (s *BaseManuscriptListener) EnterExprList(ctx *ExprListContext) {}
 

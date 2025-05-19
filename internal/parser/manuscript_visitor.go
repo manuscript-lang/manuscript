@@ -125,6 +125,9 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#yieldStmt.
 	VisitYieldStmt(ctx *YieldStmtContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#deferStmt.
+	VisitDeferStmt(ctx *DeferStmtContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#exprList.
 	VisitExprList(ctx *ExprListContext) interface{}
 
