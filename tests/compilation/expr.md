@@ -114,6 +114,29 @@ func main() {
     nested := "Value: " + ("x" + "y" + "z")
 }
 ```
+# block let without comma
+
+```ms
+fn main() {
+    let (
+        name = "World"
+        greeting = "Hello, " + name + "!"
+        multi_part = "The sum of " + "2 and 3 is " + "5"
+        nested = "Value: " + ("x" + "y" + "z")
+    )
+}
+```
+
+```go
+package main
+
+func main() {
+    name := "World"
+    greeting := "Hello, " + name + "!"
+    multi_part := "The sum of " + "2 and 3 is " + "5"
+    nested := "Value: " + ("x" + "y" + "z")
+}
+```
 
 # Function Call Expressions
 

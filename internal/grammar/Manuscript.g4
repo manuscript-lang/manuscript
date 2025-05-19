@@ -66,7 +66,7 @@ letBlockItem:
 	| LSQBR lhsDestructuredIdsArr = typedIDList RSQBR EQUALS rhsExprArr = expr # letBlockItemDestructuredArray
 ;
 
-letBlock: LPAREN (items += letBlockItem (COMMA items += letBlockItem)* (COMMA)?)? RPAREN;
+letBlock: LPAREN (items += letBlockItem (items += letBlockItem)*)? RPAREN;
 
 letDestructuredObj:
 	LBRACE destructuredIds = typedIDList RBRACE EQUALS value = expr;
