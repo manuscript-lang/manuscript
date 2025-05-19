@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/printer"
 	"go/token"
-	"log"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -35,7 +34,7 @@ func (cg *CodeGenerator) Generate(astNode interface{}) (string, error) {
 
 	goAST, ok := visitedNode.(*ast.File)
 	if !ok || goAST == nil {
-		log.Printf("Error: Visiting the root node did not return a valid *ast.File. Got type: %T", visitedNode)
+
 		return "", fmt.Errorf("error: AST generation failed to produce a Go file node")
 	}
 

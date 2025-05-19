@@ -128,6 +128,10 @@ func (v *BaseManuscriptVisitor) VisitMethodsDecl(ctx *MethodsDeclContext) interf
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitMethodImpl(ctx *MethodImplContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitTypeAnnotation(ctx *TypeAnnotationContext) interface{} {
 	return v.VisitChildren(ctx)
 }

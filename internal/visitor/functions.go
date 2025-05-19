@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
 
@@ -253,7 +252,7 @@ func (v *ManuscriptAstVisitor) VisitIParam(ctx parser.IParamContext) interface{}
 
 	var defaultValueExpr ast.Expr
 	if ctx.EQUALS() != nil && ctx.Expr() != nil { // Check for EQUALS token before processing expression
-		log.Printf("VisitParam: Processing default value for '%s': %s", paramName.Name, ctx.Expr().GetText())
+
 		// v.Visit expects antlr.ParseTree, ctx.Expr() returns IExprContext which is a ParseTree
 		defaultValInterface := v.Visit(ctx.Expr())
 		if dvExpr, ok := defaultValInterface.(ast.Expr); ok {

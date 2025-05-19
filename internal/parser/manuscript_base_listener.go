@@ -205,6 +205,12 @@ func (s *BaseManuscriptListener) EnterMethodsDecl(ctx *MethodsDeclContext) {}
 // ExitMethodsDecl is called when production methodsDecl is exited.
 func (s *BaseManuscriptListener) ExitMethodsDecl(ctx *MethodsDeclContext) {}
 
+// EnterMethodImpl is called when production methodImpl is entered.
+func (s *BaseManuscriptListener) EnterMethodImpl(ctx *MethodImplContext) {}
+
+// ExitMethodImpl is called when production methodImpl is exited.
+func (s *BaseManuscriptListener) ExitMethodImpl(ctx *MethodImplContext) {}
+
 // EnterTypeAnnotation is called when production typeAnnotation is entered.
 func (s *BaseManuscriptListener) EnterTypeAnnotation(ctx *TypeAnnotationContext) {}
 

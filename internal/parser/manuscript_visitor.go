@@ -98,6 +98,9 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#methodsDecl.
 	VisitMethodsDecl(ctx *MethodsDeclContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#methodImpl.
+	VisitMethodImpl(ctx *MethodImplContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#typeAnnotation.
 	VisitTypeAnnotation(ctx *TypeAnnotationContext) interface{}
 

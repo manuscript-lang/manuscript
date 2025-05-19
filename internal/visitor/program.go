@@ -80,6 +80,8 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 					topLevelStatements = append(topLevelStatements, stmt)
 				}
 			}
+		case []ast.Decl:
+			file.Decls = append(file.Decls, node...)
 		case ast.Decl:
 			if node == nil {
 				continue
@@ -107,6 +109,13 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 			} else {
 				file.Decls = append(file.Decls, node) // Add other declarations
 			}
+		case *ast.TypeSpec:
+			// Handle TypeSpec returned from VisitInterfaceDecl
+			genDecl := &ast.GenDecl{
+				Tok:   token.TYPE,
+				Specs: []ast.Spec{node},
+			}
+			file.Decls = append(file.Decls, genDecl)
 		case nil:
 			// Log an error if we unexpectedly get nil from a child visit
 			text := itemCtx.GetText()

@@ -3,7 +3,6 @@ package visitor
 import (
 	"go/ast"
 	"go/token"
-	"log"
 	msParser "manuscript-co/manuscript/internal/parser"
 	"strconv"
 )
@@ -29,7 +28,7 @@ func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *msParser.LetDeclContext) interf
 	} else if blockLetCtx := ctx.LetBlock(); blockLetCtx != nil {
 		blockItems := blockLetCtx.AllLetBlockItem()
 		if len(blockItems) == 0 {
-			log.Printf("VisitLetDecl: Encountered an empty let block: %s", ctx.GetText())
+
 			return &ast.EmptyStmt{}
 		}
 		for _, itemCtx := range blockItems {

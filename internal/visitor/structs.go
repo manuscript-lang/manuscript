@@ -3,7 +3,6 @@ package visitor
 import (
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 	"reflect"
 
@@ -65,7 +64,6 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 			return nil // Error already added by helper
 		}
 
-		log.Printf("VisitTypeDecl: '%s' is a type alias for %T", typeNameStr, aliasTypeExpr)
 		// TODO: Handle EXTENDS constraintTypes = typeList for type aliases if needed in Go output
 		return &ast.GenDecl{
 			Tok: token.TYPE,
@@ -78,7 +76,7 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 		}
 	} else if typeDefBodyCtx := ctx.TypeDefBody(); typeDefBodyCtx != nil {
 		// This is a struct-like type definition
-		log.Printf("VisitTypeDecl: '%s' is a struct type", typeNameStr)
+
 		structFields := []*ast.Field{}
 
 		// Handle EXTENDS (embedded base types)
@@ -130,15 +128,6 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 				}
 				return nil
 			}
-
-			// Properly set field names
-			if len(astField.Names) > 0 {
-				fieldName := astField.Names[0].Name
-				log.Printf("Adding field '%s' to struct '%s'", fieldName, typeNameStr)
-			} else {
-				log.Printf("Adding unnamed field to struct '%s'", typeNameStr)
-			}
-
 			structFields = append(structFields, astField)
 		}
 
@@ -187,11 +176,11 @@ func (v *ManuscriptAstVisitor) VisitFieldDecl(ctx *parser.FieldDeclContext) inte
 		switch fieldType.(type) {
 		case *ast.Ident, *ast.SelectorExpr: // Simple types or qualified types that are not pointers
 			fieldType = &ast.StarExpr{X: fieldType}
-			log.Printf("VisitFieldDecl: Field '%s' is optional, converted type to pointer: %T", fieldName, fieldType)
+
 		case *ast.StarExpr, *ast.ArrayType, *ast.MapType, *ast.InterfaceType, *ast.FuncType:
-			log.Printf("VisitFieldDecl: Field '%s' is optional, but type %T is already a pointer/reference type.", fieldName, fieldType)
+
 		default:
-			log.Printf("VisitFieldDecl: Field '%s' is optional, but its type %T is not being converted to a pointer automatically. Consider manual pointer if needed.", fieldName, fieldType)
+
 		}
 	}
 

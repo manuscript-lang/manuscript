@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
 
@@ -31,7 +30,7 @@ func (v *ManuscriptAstVisitor) VisitObjectLiteral(ctx *parser.ObjectLiteralConte
 	for _, fieldInterface := range ctx.AllObjectField() {
 		fieldCtx, ok := fieldInterface.(*parser.ObjectFieldContext)
 		if !ok {
-			log.Printf("VisitObjectLiteral: could not cast to *parser.ObjectFieldContext: %T", fieldInterface)
+
 			continue
 		}
 

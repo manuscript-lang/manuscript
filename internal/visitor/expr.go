@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
 	"strings"
@@ -409,10 +408,10 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 			}
 
 			if _, isExprCtx := child.(parser.IExprContext); isExprCtx {
-				log.Printf("VisitPostfixExpr: Encountered unexpected non-terminal node %T: %s. Breaking postfix chain.", child, childText)
+
 				v.addError("Unexpected expression found in postfix operation chain: "+childText, childStartToken)
 			} else {
-				log.Printf("VisitPostfixExpr: Encountered unexpected non-terminal node type %T: %s. Breaking postfix chain.", child, childText)
+
 				v.addError("Malformed postfix operation sequence: "+childText, childStartToken)
 			}
 			break // Safety break

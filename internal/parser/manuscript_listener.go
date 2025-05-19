@@ -98,6 +98,9 @@ type ManuscriptListener interface {
 	// EnterMethodsDecl is called when entering the methodsDecl production.
 	EnterMethodsDecl(c *MethodsDeclContext)
 
+	// EnterMethodImpl is called when entering the methodImpl production.
+	EnterMethodImpl(c *MethodImplContext)
+
 	// EnterTypeAnnotation is called when entering the typeAnnotation production.
 	EnterTypeAnnotation(c *TypeAnnotationContext)
 
@@ -370,6 +373,9 @@ type ManuscriptListener interface {
 
 	// ExitMethodsDecl is called when exiting the methodsDecl production.
 	ExitMethodsDecl(c *MethodsDeclContext)
+
+	// ExitMethodImpl is called when exiting the methodImpl production.
+	ExitMethodImpl(c *MethodImplContext)
 
 	// ExitTypeAnnotation is called when exiting the typeAnnotation production.
 	ExitTypeAnnotation(c *TypeAnnotationContext)

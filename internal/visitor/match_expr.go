@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"log"
 	"manuscript-co/manuscript/internal/parser"
 )
 
@@ -22,7 +21,7 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 	for _, caseClauseInterface := range ctx.AllCaseClause() {
 		caseClauseCtx, castOk := caseClauseInterface.(*parser.CaseClauseContext)
 		if !castOk {
-			log.Printf("VisitMatchExpr: could not cast to *parser.CaseClauseContext: %T", caseClauseInterface)
+
 			v.addError(fmt.Sprintf("Internal error: expected CaseClauseContext, got %T", caseClauseInterface), ctx.GetStart())
 			continue
 		}

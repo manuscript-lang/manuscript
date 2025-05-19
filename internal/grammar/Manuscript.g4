@@ -121,9 +121,9 @@ interfaceMethod:
 	)? (returnsError = EXCLAMATION)?;
 
 methodsDecl:
-	METHODS (interface = typeAnnotation FOR)? targetStructName = ID LBRACE (
-		impls += fnDecl
-	)* RBRACE;
+	METHODS target = ID AS receiver = ID LBRACE (methodImpl)* RBRACE;
+
+methodImpl: method = interfaceMethod block = codeBlock;
 
 typeAnnotation:
 	(

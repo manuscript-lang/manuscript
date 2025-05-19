@@ -25,8 +25,6 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 			baseExpr = ast.NewIdent("float64")
 		case "bool":
 			baseExpr = ast.NewIdent("bool")
-		case "any":
-			baseExpr = ast.NewIdent("interface{}")
 		default:
 			baseExpr = ast.NewIdent(typeName) // User-defined types
 		}

@@ -11,8 +11,8 @@ interface IWriter {
 ```go
 package main
 
-interface IWriter interface {
-    write(Buffer)
+type IWriter interface {
+    write(data Buffer)
 }
 
 func main() {
@@ -32,11 +32,11 @@ interface IFileSystem {
 ```go
 package main
 
-interface IFileSystem interface {
-    readFile(string) Buffer
-    writeFile(string, Buffer)
-    exists(string) boolean
-    listDir(string) []string
+type IFileSystem interface {
+    readFile(path string) Buffer
+    writeFile(path string, data Buffer)
+    exists(path string) boolean
+    listDir(path string) []string
 }
 
 func main() {
