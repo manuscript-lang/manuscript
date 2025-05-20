@@ -223,24 +223,6 @@ func (s *BaseManuscriptListener) EnterTupleType(ctx *TupleTypeContext) {}
 // ExitTupleType is called when production tupleType is exited.
 func (s *BaseManuscriptListener) ExitTupleType(ctx *TupleTypeContext) {}
 
-// EnterObjectTypeAnnotation is called when production objectTypeAnnotation is entered.
-func (s *BaseManuscriptListener) EnterObjectTypeAnnotation(ctx *ObjectTypeAnnotationContext) {}
-
-// ExitObjectTypeAnnotation is called when production objectTypeAnnotation is exited.
-func (s *BaseManuscriptListener) ExitObjectTypeAnnotation(ctx *ObjectTypeAnnotationContext) {}
-
-// EnterMapTypeAnnotation is called when production mapTypeAnnotation is entered.
-func (s *BaseManuscriptListener) EnterMapTypeAnnotation(ctx *MapTypeAnnotationContext) {}
-
-// ExitMapTypeAnnotation is called when production mapTypeAnnotation is exited.
-func (s *BaseManuscriptListener) ExitMapTypeAnnotation(ctx *MapTypeAnnotationContext) {}
-
-// EnterSetTypeAnnotation is called when production setTypeAnnotation is entered.
-func (s *BaseManuscriptListener) EnterSetTypeAnnotation(ctx *SetTypeAnnotationContext) {}
-
-// ExitSetTypeAnnotation is called when production setTypeAnnotation is exited.
-func (s *BaseManuscriptListener) ExitSetTypeAnnotation(ctx *SetTypeAnnotationContext) {}
-
 // EnterStmt is called when production stmt is entered.
 func (s *BaseManuscriptListener) EnterStmt(ctx *StmtContext) {}
 

@@ -130,23 +130,10 @@ typeAnnotation:
 		idAsType = ID
 		| tupleAsType = tupleType
 		| funcAsType = fnSignature
-		| objAsType = objectTypeAnnotation
-		| mapAsType = mapTypeAnnotation
-		| setAsType = setTypeAnnotation
 		| VOID
 	) (isNullable = QUESTION)? (arrayMarker = LSQBR RSQBR)?;
 
 tupleType: LPAREN elements = typeList? RPAREN;
-
-objectTypeAnnotation:
-	LBRACE (
-		fields += fieldDecl (COMMA fields += fieldDecl)* (COMMA)?
-	)? RBRACE;
-
-mapTypeAnnotation:
-	LSQBR keyType = typeAnnotation COLON valueType = typeAnnotation RSQBR;
-
-setTypeAnnotation: LT elementType = typeAnnotation GT;
 
 stmt:
 	(

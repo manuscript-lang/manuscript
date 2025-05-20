@@ -107,15 +107,6 @@ type ManuscriptListener interface {
 	// EnterTupleType is called when entering the tupleType production.
 	EnterTupleType(c *TupleTypeContext)
 
-	// EnterObjectTypeAnnotation is called when entering the objectTypeAnnotation production.
-	EnterObjectTypeAnnotation(c *ObjectTypeAnnotationContext)
-
-	// EnterMapTypeAnnotation is called when entering the mapTypeAnnotation production.
-	EnterMapTypeAnnotation(c *MapTypeAnnotationContext)
-
-	// EnterSetTypeAnnotation is called when entering the setTypeAnnotation production.
-	EnterSetTypeAnnotation(c *SetTypeAnnotationContext)
-
 	// EnterStmt is called when entering the stmt production.
 	EnterStmt(c *StmtContext)
 
@@ -385,15 +376,6 @@ type ManuscriptListener interface {
 
 	// ExitTupleType is called when exiting the tupleType production.
 	ExitTupleType(c *TupleTypeContext)
-
-	// ExitObjectTypeAnnotation is called when exiting the objectTypeAnnotation production.
-	ExitObjectTypeAnnotation(c *ObjectTypeAnnotationContext)
-
-	// ExitMapTypeAnnotation is called when exiting the mapTypeAnnotation production.
-	ExitMapTypeAnnotation(c *MapTypeAnnotationContext)
-
-	// ExitSetTypeAnnotation is called when exiting the setTypeAnnotation production.
-	ExitSetTypeAnnotation(c *SetTypeAnnotationContext)
 
 	// ExitStmt is called when exiting the stmt production.
 	ExitStmt(c *StmtContext)

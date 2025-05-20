@@ -140,18 +140,6 @@ func (v *BaseManuscriptVisitor) VisitTupleType(ctx *TupleTypeContext) interface{
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitObjectTypeAnnotation(ctx *ObjectTypeAnnotationContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitMapTypeAnnotation(ctx *MapTypeAnnotationContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitSetTypeAnnotation(ctx *SetTypeAnnotationContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseManuscriptVisitor) VisitStmt(ctx *StmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }

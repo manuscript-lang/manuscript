@@ -107,15 +107,6 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#tupleType.
 	VisitTupleType(ctx *TupleTypeContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#objectTypeAnnotation.
-	VisitObjectTypeAnnotation(ctx *ObjectTypeAnnotationContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#mapTypeAnnotation.
-	VisitMapTypeAnnotation(ctx *MapTypeAnnotationContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#setTypeAnnotation.
-	VisitSetTypeAnnotation(ctx *SetTypeAnnotationContext) interface{}
-
 	// Visit a parse tree produced by Manuscript#stmt.
 	VisitStmt(ctx *StmtContext) interface{}
 
