@@ -17,7 +17,7 @@ func (v *ManuscriptAstVisitor) VisitLoopBody(ctx *parser.LoopBodyContext) interf
 
 	// Process all stmt nodes in the loop body
 	for _, stmtCtx := range ctx.AllStmt() {
-		visitedStmt := v.Visit(stmtCtx)
+		visitedStmt := v.VisitStmt(stmtCtx)
 		if stmt, ok := visitedStmt.(ast.Stmt); ok {
 			if stmt != nil { // Ensure we don't append nil statements
 				stmts = append(stmts, stmt)
@@ -82,44 +82,60 @@ func (v *ManuscriptAstVisitor) VisitWhileStmt(ctx *parser.WhileStmtContext) inte
 	return forStmtNode
 }
 
+// VisitForTrinity handles forTrinity: (letSingle | exprList)? SEMICOLON expr? SEMICOLON exprList? loopBody;
 func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) interface{} {
 	if ctx == nil {
 		return &ast.BadStmt{}
 	}
 
 	var initStmt ast.Stmt
-	if decl := ctx.GetInitializerDecl(); decl != nil {
-		if cinit := decl.(*parser.LetSingleContext); cinit != nil {
-			if stmt, ok := v.VisitLetSingle(cinit).(ast.Stmt); ok {
-				initStmt = stmt
+	var postStmt ast.Stmt
+	var condExpr ast.Expr
+
+	// --- Init ---
+	if forInit := ctx.ForInit(); forInit != nil {
+		if letSingle := forInit.LetSingle(); letSingle != nil {
+			if visited := v.Visit(letSingle); visited != nil {
+				if stmt, ok := visited.(ast.Stmt); ok {
+					initStmt = stmt
+				}
 			}
 		}
-	} else if exprs := ctx.GetInitializerExprs(); exprs != nil {
-		if stmt, ok := v.Visit(exprs).(ast.Stmt); ok {
-			initStmt = stmt
+	}
+
+	// --- Condition ---
+	if forCond := ctx.ForCond(); forCond != nil {
+		if expr := forCond.Expr(); expr != nil {
+			if visited := v.Visit(expr); visited != nil {
+				if e, ok := visited.(ast.Expr); ok {
+					condExpr = e
+				}
+			}
 		}
 	}
 
-	var condExpr ast.Expr
-	if cond := ctx.GetCondition(); cond != nil {
-		if expr, ok := v.Visit(cond).(ast.Expr); ok {
-			condExpr = expr
+	// --- Post ---
+	if forPost := ctx.ForPost(); forPost != nil {
+		if expr := forPost.Expr(); expr != nil {
+			if visited := v.Visit(expr); visited != nil {
+				if stmt, ok := visited.(ast.Stmt); ok {
+					postStmt = stmt
+				} else if e, ok := visited.(ast.Expr); ok {
+					postStmt = &ast.ExprStmt{X: e}
+				}
+			}
 		}
 	}
 
-	var postStmt ast.Stmt
-	if post := ctx.GetPostUpdate(); post != nil {
-		if stmt, ok := v.Visit(post).(ast.Stmt); ok {
-			postStmt = stmt
-		} else if expr, ok := v.Visit(post).(ast.Expr); ok {
-			postStmt = &ast.ExprStmt{X: expr}
-		}
-	}
-
+	// --- Body ---
 	var body *ast.BlockStmt
-	if b := ctx.GetBody(); b != nil {
-		if block, ok := v.VisitLoopBody(b.(*parser.LoopBodyContext)).(*ast.BlockStmt); ok {
-			body = block
+	if b := ctx.LoopBody(); b != nil {
+		if visitedBody := v.VisitLoopBody(b.(*parser.LoopBodyContext)); visitedBody != nil {
+			if block, ok := visitedBody.(*ast.BlockStmt); ok {
+				body = block
+			} else {
+				body = &ast.BlockStmt{}
+			}
 		} else {
 			body = &ast.BlockStmt{}
 		}
@@ -128,7 +144,7 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 	}
 
 	return &ast.ForStmt{
-		For:  0, // Position can be set by parent
+		For:  0, // Position set by parent VisitForStmt
 		Init: initStmt,
 		Cond: condExpr,
 		Post: postStmt,
@@ -136,28 +152,40 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 	}
 }
 
+// VisitForInLoop handles for-in loops: (ID (COMMA ID)?) IN expr loopBody;
 func (v *ManuscriptAstVisitor) VisitForInLoop(ctx *parser.ForInLoopContext) interface{} {
 	if ctx == nil {
 		return &ast.BadStmt{}
 	}
-	stmt := &ast.RangeStmt{Tok: gotoken.DEFINE}
-	if it := ctx.GetIterable(); it != nil {
+	stmt := &ast.RangeStmt{Tok: gotoken.DEFINE} // Use DEFINE for new vars
+	ids := ctx.AllID()
+
+	if len(ids) == 2 { // Manuscript: id_value, id_key (e.g., "value, index in items")
+		// Go expects: for key, value := range items
+		stmt.Key = ast.NewIdent(ids[1].GetText())   // Second ID in Manuscript is key for Go
+		stmt.Value = ast.NewIdent(ids[0].GetText()) // First ID in Manuscript is value for Go
+	} else if len(ids) == 1 { // Manuscript: id_value (e.g., "value in items")
+		// Go expects: for _, value := range items
+		stmt.Key = ast.NewIdent("_")
+		stmt.Value = ast.NewIdent(ids[0].GetText()) // The single ID in Manuscript is value for Go
+	} else {
+		// This case should ideally not be reached based on grammar: (ID (COMMA ID)?)
+		// which means 1 or 2 IDs.
+		v.addError("Invalid number of variables in for-in loop. Expected 1 or 2.", ctx.GetStart())
+		// Default to a safe state or return a BadStmt
+		stmt.Key = ast.NewIdent("_")   // Placeholder
+		stmt.Value = ast.NewIdent("_") // Placeholder to avoid nil, though it's unusual
+		return &ast.BadStmt{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+
+	if it := ctx.Expr(); it != nil {
 		if expr, ok := v.Visit(it).(ast.Expr); ok {
 			stmt.X = expr
 		} else {
 			stmt.X = &ast.BadExpr{}
 		}
 	}
-	key, val := ctx.GetKey(), ctx.GetVal()
-	if key == nil {
-		stmt.Key = ast.NewIdent("_")
-	} else if val != nil {
-		stmt.Key = ast.NewIdent(val.GetText())
-		stmt.Value = ast.NewIdent(key.GetText())
-	} else {
-		stmt.Key = ast.NewIdent("_")
-		stmt.Value = ast.NewIdent(key.GetText())
-	}
+
 	if b := ctx.LoopBody(); b != nil {
 		if block, ok := v.VisitLoopBody(b.(*parser.LoopBodyContext)).(*ast.BlockStmt); ok {
 			stmt.Body = block

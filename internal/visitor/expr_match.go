@@ -8,10 +8,10 @@ import (
 )
 
 func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) interface{} {
-	matchValueExprVisited := v.Visit(ctx.GetValueToMatch())
+	matchValueExprVisited := v.Visit(ctx.Expr())
 	matchValueAST, ok := matchValueExprVisited.(ast.Expr)
 	if !ok {
-		v.addError("Match expression value did not resolve to ast.Expr", ctx.GetValueToMatch().GetStart())
+		v.addError("Match expression value did not resolve to ast.Expr", ctx.Expr().GetStart())
 		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 
@@ -25,33 +25,103 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 			continue
 		}
 
-		// Inline patternExpr logic
-		patternCtx := caseClauseCtx.GetPattern()
+		allExprs := caseClauseCtx.AllExpr()
 		var patternAST ast.Expr
-		if patternCtx == nil {
-			patternAST = &ast.BadExpr{}
-		} else {
-			visited := v.Visit(patternCtx)
+		if len(allExprs) > 0 {
+			visited := v.Visit(allExprs[0])
 			if expr, ok := visited.(ast.Expr); ok {
 				patternAST = expr
 			} else {
-				v.addError("Case pattern did not resolve to ast.Expr: "+patternCtx.GetText(), patternCtx.GetStart())
-				patternAST = &ast.BadExpr{From: v.pos(patternCtx.GetStart()), To: v.pos(patternCtx.GetStop())}
+				v.addError("Case pattern did not resolve to ast.Expr: "+allExprs[0].GetText(), allExprs[0].GetStart())
+				patternAST = &ast.BadExpr{From: v.pos(allExprs[0].GetStart()), To: v.pos(allExprs[0].GetStop())}
 			}
+		} else {
+			patternAST = &ast.BadExpr{}
 		}
 
-		// Inline caseBody logic
 		var caseBody []ast.Stmt
-		visited := v.VisitCaseClause(caseClauseCtx)
-		if stmts, ok := visited.([]ast.Stmt); ok {
-			caseBody = stmts
+		if len(allExprs) > 1 {
+			// case pattern: expr COLON expr
+			caseBody = []ast.Stmt{
+				&ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(resultVarName)}, Tok: token.ASSIGN, Rhs: []ast.Expr{v.exprOrBad(allExprs[1])}},
+			}
+		} else if caseClauseCtx.CodeBlock() != nil {
+			visitedBlock := v.Visit(caseClauseCtx.CodeBlock())
+			if blockStmt, ok := visitedBlock.(*ast.BlockStmt); ok {
+				stmts := blockStmt.List
+				if len(stmts) > 0 {
+					if exprStmt, isExprStmt := stmts[len(stmts)-1].(*ast.ExprStmt); isExprStmt {
+						body := make([]ast.Stmt, len(stmts))
+						copy(body, stmts[:len(stmts)-1])
+						body[len(stmts)-1] = &ast.AssignStmt{
+							Lhs: []ast.Expr{ast.NewIdent(resultVarName)},
+							Tok: token.ASSIGN,
+							Rhs: []ast.Expr{exprStmt.X},
+						}
+						body = append(body, &ast.BranchStmt{Tok: token.BREAK})
+						caseBody = body
+					} else {
+						caseBody = append(stmts, &ast.BranchStmt{Tok: token.BREAK})
+					}
+				} else {
+					caseBody = []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}
+				}
+			} else {
+				v.addError("Case result block did not resolve to *ast.BlockStmt: "+caseClauseCtx.CodeBlock().GetText(), caseClauseCtx.CodeBlock().GetStart())
+				caseBody = []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}
+			}
 		} else {
-			caseBody = []ast.Stmt{&ast.EmptyStmt{}}
+			v.addError("Malformed case clause (missing result expression or block): "+caseClauseCtx.GetText(), caseClauseCtx.GetStart())
+			caseBody = []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}
 		}
 
 		astClauses = append(astClauses, &ast.CaseClause{
 			List: []ast.Expr{patternAST},
 			Body: caseBody,
+		})
+	}
+
+	// Handle default clause if present
+	if ctx.DefaultClause() != nil {
+		defaultCtx := ctx.DefaultClause()
+		var defaultBody []ast.Stmt
+		if defaultCtx.Expr() != nil {
+			defaultBody = []ast.Stmt{
+				&ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(resultVarName)}, Tok: token.ASSIGN, Rhs: []ast.Expr{v.exprOrBad(defaultCtx.Expr())}},
+				&ast.BranchStmt{Tok: token.BREAK},
+			}
+		} else if defaultCtx.CodeBlock() != nil {
+			visitedBlock := v.Visit(defaultCtx.CodeBlock())
+			if blockStmt, ok := visitedBlock.(*ast.BlockStmt); ok {
+				stmts := blockStmt.List
+				if len(stmts) > 0 {
+					if exprStmt, isExprStmt := stmts[len(stmts)-1].(*ast.ExprStmt); isExprStmt {
+						body := make([]ast.Stmt, len(stmts))
+						copy(body, stmts[:len(stmts)-1])
+						body[len(stmts)-1] = &ast.AssignStmt{
+							Lhs: []ast.Expr{ast.NewIdent(resultVarName)},
+							Tok: token.ASSIGN,
+							Rhs: []ast.Expr{exprStmt.X},
+						}
+						body = append(body, &ast.BranchStmt{Tok: token.BREAK})
+						defaultBody = body
+					} else {
+						defaultBody = append(stmts, &ast.BranchStmt{Tok: token.BREAK})
+					}
+				} else {
+					defaultBody = []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}
+				}
+			} else {
+				v.addError("Default result block did not resolve to *ast.BlockStmt: "+defaultCtx.CodeBlock().GetText(), defaultCtx.CodeBlock().GetStart())
+				defaultBody = []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}
+			}
+		} else {
+			v.addError("Malformed default clause (missing result expression or block): "+defaultCtx.GetText(), defaultCtx.GetStart())
+			defaultBody = []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}
+		}
+		astClauses = append(astClauses, &ast.CaseClause{
+			List: nil,
+			Body: defaultBody,
 		})
 	}
 
@@ -68,19 +138,8 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 	}
 
 	switchStmt := &ast.SwitchStmt{
-		Tag: matchValueAST,
-	}
-	if ctx.LBRACE() != nil && ctx.LBRACE().GetSymbol() != nil {
-		switchStmt.Body = &ast.BlockStmt{List: astClauses, Lbrace: v.pos(ctx.LBRACE().GetSymbol())}
-	} else {
-		v.addError("Match expression missing LBRACE token in AST context", ctx.GetStart())
-		switchStmt.Body = &ast.BlockStmt{List: astClauses}
-	}
-
-	if ctx.MATCH() != nil && ctx.MATCH().GetSymbol() != nil {
-		switchStmt.Switch = v.pos(ctx.MATCH().GetSymbol())
-	} else {
-		v.addError("Match expression missing MATCH token in AST context", ctx.GetStart())
+		Tag:  matchValueAST,
+		Body: &ast.BlockStmt{List: astClauses},
 	}
 
 	returnResultVar := &ast.ReturnStmt{
@@ -100,23 +159,11 @@ func (v *ManuscriptAstVisitor) VisitMatchExpr(ctx *parser.MatchExprContext) inte
 				List: []*ast.Field{{Type: ast.NewIdent("interface{}")}},
 			},
 		},
-		Body: &ast.BlockStmt{List: iifeBodyStmts, Lbrace: v.pos(ctx.MATCH().GetSymbol())},
+		Body: &ast.BlockStmt{List: iifeBodyStmts},
 	}
 
 	callExpr := &ast.CallExpr{
 		Fun: iifeFuncLit,
-	}
-	if ctx.MATCH() != nil && ctx.MATCH().GetSymbol() != nil {
-		callExpr.Lparen = v.pos(ctx.MATCH().GetSymbol())
-	} else {
-		callExpr.Lparen = v.pos(ctx.GetStart())
-	}
-
-	if ctx.RBRACE() != nil && ctx.RBRACE().GetSymbol() != nil {
-		callExpr.Rparen = v.pos(ctx.RBRACE().GetSymbol())
-	} else {
-		v.addError("Match expression missing RBRACE token in AST context", ctx.GetStop())
-		callExpr.Rparen = v.pos(ctx.GetStop())
 	}
 	return callExpr
 }
@@ -127,13 +174,15 @@ func (v *ManuscriptAstVisitor) VisitCaseClause(ctx *parser.CaseClauseContext) in
 		return []ast.Stmt{&ast.EmptyStmt{}}
 	}
 	resultVarName := "__match_result"
-	if ctx.GetResultExpr() != nil {
+	allExprs := ctx.AllExpr()
+	if len(allExprs) > 1 {
+		// case pattern: expr COLON expr
 		return []ast.Stmt{
-			&ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(resultVarName)}, Tok: token.ASSIGN, Rhs: []ast.Expr{v.exprOrBad(ctx.GetResultExpr())}},
+			&ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(resultVarName)}, Tok: token.ASSIGN, Rhs: []ast.Expr{v.exprOrBad(allExprs[1])}},
 		}
 	}
-	if ctx.GetResultBlock() != nil {
-		visitedBlock := v.Visit(ctx.GetResultBlock())
+	if ctx.CodeBlock() != nil {
+		visitedBlock := v.Visit(ctx.CodeBlock())
 		if blockStmt, ok := visitedBlock.(*ast.BlockStmt); ok {
 			stmts := blockStmt.List
 			if len(stmts) > 0 {
@@ -149,12 +198,12 @@ func (v *ManuscriptAstVisitor) VisitCaseClause(ctx *parser.CaseClauseContext) in
 				}
 				return stmts
 			}
-			v.addError("Case result block must end with an expression to produce a value.", ctx.GetResultBlock().GetStop())
+			v.addError("Case result block must end with an expression to produce a value.", ctx.CodeBlock().GetStop())
 		} else {
-			v.addError("Case result block did not resolve to *ast.BlockStmt: "+ctx.GetResultBlock().GetText(), ctx.GetResultBlock().GetStart())
+			v.addError("Case result block did not resolve to *ast.BlockStmt: "+ctx.CodeBlock().GetText(), ctx.CodeBlock().GetStart())
 		}
 		return []ast.Stmt{
-			&ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(resultVarName)}, Tok: token.ASSIGN, Rhs: []ast.Expr{&ast.BadExpr{From: v.pos(ctx.GetResultBlock().GetStart()), To: v.pos(ctx.GetResultBlock().GetStop())}}},
+			&ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(resultVarName)}, Tok: token.ASSIGN, Rhs: []ast.Expr{&ast.BadExpr{From: v.pos(ctx.CodeBlock().GetStart()), To: v.pos(ctx.CodeBlock().GetStop())}}},
 		}
 	}
 	v.addError("Malformed case clause (missing result expression or block): "+ctx.GetText(), ctx.GetStart())

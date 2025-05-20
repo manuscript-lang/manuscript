@@ -13,8 +13,10 @@ func (v *ManuscriptAstVisitor) VisitPrimaryExpr(ctx *parser.PrimaryExprContext) 
 		identName := ctx.ID().GetText()
 		return ast.NewIdent(identName)
 	}
-	if ctx.GetParenExpr() != nil {
-		return v.Visit(ctx.GetParenExpr())
+	if ctx.LPAREN() != nil {
+		if ctx.Expr() != nil {
+			return v.Visit(ctx.Expr())
+		}
 	}
 	if ctx.ArrayLiteral() != nil {
 		return v.Visit(ctx.ArrayLiteral())

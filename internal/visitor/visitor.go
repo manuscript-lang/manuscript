@@ -75,8 +75,11 @@ func (v *ManuscriptAstVisitor) VisitChildren(node antlr.RuleNode) interface{} {
 	var result interface{}
 	for i := 0; i < node.GetChildCount(); i++ {
 		child := node.GetChild(i)
+		if child == nil {
+			continue
+		}
 		if pt, ok := child.(antlr.ParseTree); ok {
-			childResult := pt.Accept(v)
+			childResult := v.Visit(pt)
 			if childResult != nil {
 				result = childResult // Keep the last non-nil result
 			}

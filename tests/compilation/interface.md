@@ -42,3 +42,24 @@ type IFileSystem interface {
 func main() {
 }
 ```
+
+# minimal interface with newlines
+```ms
+interface Minimal {
+    foo() void
+
+    bar() int
+}
+```
+
+```go
+package main
+
+type Minimal interface {
+    foo()
+    bar() int64
+}
+
+func main() {
+}
+```

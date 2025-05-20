@@ -31,18 +31,27 @@ func (v *ManuscriptAstVisitor) VisitMapLiteral(ctx *parser.MapLiteralContext) in
 		Value: ast.NewIdent("interface{}"),
 	}
 	var elts []ast.Expr
-	for _, f := range ctx.AllMapField() {
-		field := f.(*parser.MapFieldContext)
-		k, okk := v.Visit(field.GetKey()).(ast.Expr)
-		v_, okv := v.Visit(field.GetValue()).(ast.Expr)
-		if okk && okv {
-			elts = append(elts, &ast.KeyValueExpr{Key: k, Value: v_})
-		} else {
-			if !okk {
-				v.addError("Map key is not a valid expression: "+field.GetKey().GetText(), field.GetKey().GetStart())
+	if ctx.MapFieldList() != nil {
+		for _, f := range ctx.MapFieldList().AllMapField() {
+			field := f.(*parser.MapFieldContext)
+			allExprs := field.AllExpr()
+			var k, v_ ast.Expr
+			okk, okv := false, false
+			if len(allExprs) > 0 {
+				k, okk = v.Visit(allExprs[0]).(ast.Expr)
 			}
-			if !okv {
-				v.addError("Map value is not a valid expression: "+field.GetValue().GetText(), field.GetValue().GetStart())
+			if len(allExprs) > 1 {
+				v_, okv = v.Visit(allExprs[1]).(ast.Expr)
+			}
+			if okk && okv {
+				elts = append(elts, &ast.KeyValueExpr{Key: k, Value: v_})
+			} else {
+				if !okk && len(allExprs) > 0 {
+					v.addError("Map key is not a valid expression: "+allExprs[0].GetText(), allExprs[0].GetStart())
+				}
+				if !okv && len(allExprs) > 1 {
+					v.addError("Map value is not a valid expression: "+allExprs[1].GetText(), allExprs[1].GetStart())
+				}
 			}
 		}
 	}

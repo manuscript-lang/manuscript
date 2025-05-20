@@ -8,7 +8,7 @@ import (
 )
 
 func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprContext) interface{} {
-	leftAntlrExpr := ctx.GetLeft()
+	leftAntlrExpr := ctx.TernaryExpr()
 	if leftAntlrExpr == nil {
 		v.addError("Left-hand side of assignment is missing", ctx.GetStart())
 		return &ast.BadStmt{}
@@ -20,11 +20,12 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 		return &ast.BadStmt{}
 	}
 
-	if ctx.GetOp() != nil {
-		opType := ctx.GetOp().GetTokenType()
-		rightAntlrExpr := ctx.GetRight()
+	if ctx.AssignmentOp() != nil {
+		opNode := ctx.AssignmentOp()
+		opText := opNode.GetText()
+		rightAntlrExpr := ctx.AssignmentExpr()
 		if rightAntlrExpr == nil {
-			v.addError("Right-hand side of assignment is missing for operator "+ctx.GetOp().GetText(), ctx.GetOp())
+			v.addError("Right-hand side of assignment is missing for operator "+opText, opNode.GetStart())
 			return &ast.BadStmt{}
 		}
 		visitedRightExpr := v.Visit(rightAntlrExpr)
@@ -42,7 +43,7 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 				return &ast.BadStmt{}
 			}
 		}
-		if opType == parser.ManuscriptEQUALS {
+		if opNode.EQUALS() != nil {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{leftExpr},
 				Tok: token.ASSIGN,
@@ -50,21 +51,21 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 			}
 		}
 		var binaryOpToken token.Token
-		switch opType {
-		case parser.ManuscriptPLUS_EQUALS:
+		switch {
+		case opNode.PLUS_EQUALS() != nil:
 			binaryOpToken = token.ADD
-		case parser.ManuscriptMINUS_EQUALS:
+		case opNode.MINUS_EQUALS() != nil:
 			binaryOpToken = token.SUB
-		case parser.ManuscriptSTAR_EQUALS:
+		case opNode.STAR_EQUALS() != nil:
 			binaryOpToken = token.MUL
-		case parser.ManuscriptSLASH_EQUALS:
+		case opNode.SLASH_EQUALS() != nil:
 			binaryOpToken = token.QUO
-		case parser.ManuscriptMOD_EQUALS:
+		case opNode.MOD_EQUALS() != nil:
 			binaryOpToken = token.REM
-		case parser.ManuscriptCARET_EQUALS:
+		case opNode.CARET_EQUALS() != nil:
 			binaryOpToken = token.XOR
 		default:
-			v.addError("Unhandled assignment operator: "+ctx.GetOp().GetText(), ctx.GetOp())
+			v.addError("Unhandled assignment operator: "+opText, opNode.GetStart())
 			return &ast.BadStmt{}
 		}
 		rhsBinaryExpr := &ast.BinaryExpr{

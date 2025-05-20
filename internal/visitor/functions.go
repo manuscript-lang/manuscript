@@ -28,9 +28,9 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 	}
 	fnName := ""
 	fnNameToken := fnSig.GetStart()
-	if fnSig.NamedID() != nil && fnSig.NamedID().ID() != nil {
-		fnName = fnSig.NamedID().GetText()
-		fnNameToken = fnSig.NamedID().ID().GetSymbol()
+	if fnSig.ID() != nil {
+		fnName = fnSig.ID().GetText()
+		fnNameToken = fnSig.ID().GetSymbol()
 	}
 	paramsCtx := fnSig.Parameters()
 	typeAnnotation := fnSig.TypeAnnotation()
@@ -77,7 +77,24 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 	// Only convert last expression statement to return if function has a non-void return type
 	if resultsAST != nil && len(resultsAST.List) > 0 && len(bodyAST.List) > 0 {
 		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X != nil {
-			bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
+			// Special case: if the last expression is a match lowering (IIFE), wrap it in a return
+			if callExpr, isCall := exprStmt.X.(*ast.CallExpr); isCall {
+				if funcLit, isFuncLit := callExpr.Fun.(*ast.FuncLit); isFuncLit && len(funcLit.Body.List) > 0 {
+					// Heuristic: check if the first statement is a var decl for __match_result
+					if declStmt, isDecl := funcLit.Body.List[0].(*ast.DeclStmt); isDecl {
+						if genDecl, isGen := declStmt.Decl.(*ast.GenDecl); isGen && len(genDecl.Specs) > 0 {
+							if valSpec, isVal := genDecl.Specs[0].(*ast.ValueSpec); isVal && len(valSpec.Names) > 0 && valSpec.Names[0].Name == "__match_result" {
+								// Looks like a match lowering, emit as return
+								bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Results: []ast.Expr{exprStmt.X}}
+							}
+						}
+					}
+				}
+			}
+			// Otherwise, default: return last expr
+			if _, alreadyReturn := bodyAST.List[len(bodyAST.List)-1].(*ast.ReturnStmt); !alreadyReturn {
+				bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Results: []ast.Expr{exprStmt.X}}
+			}
 		}
 	}
 
@@ -122,8 +139,8 @@ func (v *ManuscriptAstVisitor) VisitIParam(ctx parser.IParamContext) interface{}
 	var paramName *ast.Ident
 	var paramNameToken antlr.Token
 
-	if ctx.NamedID() != nil && ctx.NamedID().ID() != nil {
-		paramNameToken = ctx.NamedID().ID().GetSymbol()
+	if ctx.ID() != nil {
+		paramNameToken = ctx.ID().GetSymbol()
 		paramName = ast.NewIdent(paramNameToken.GetText())
 	} else {
 		v.addError("Parameter must have a name", ctx.GetStart())

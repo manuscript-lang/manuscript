@@ -10,101 +10,118 @@ import (
 // e.g., VisitProgramItem, VisitStmt, VisitExprStmt, VisitLetDecl, VisitAssignmentExpr, etc.
 
 // VisitStmt handles different kinds of statements.
-func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitStmt(ctx parser.IStmtContext) interface{} {
 	if ctx == nil {
 		return nil
 	}
 
-	// Check for break statement
-	if ctx.GetSBreak() != nil {
-		if !v.isInLoop() {
-			v.addError("'break' statement found outside of a loop", ctx.GetSBreak().BREAK().GetSymbol())
+	switch c := ctx.(type) {
+	case *parser.StmtLetContext:
+		letCtx := c.LetDecl()
+		if letCtx != nil {
+			if concreteCtx, ok := letCtx.(*parser.LetDeclContext); ok {
+				return v.VisitLetDecl(concreteCtx)
+			}
+			v.addError("Internal error: Failed to process let declaration structure: "+letCtx.GetText(), letCtx.GetStart())
+			return nil
 		}
-		return &ast.BranchStmt{
-			TokPos: v.pos(ctx.GetSBreak().BREAK().GetSymbol()),
-			Tok:    token.BREAK,
+	case *parser.StmtExprContext:
+		exprCtx := c.Expr()
+		if exprCtx != nil {
+			visitedNodeRaw := v.Visit(exprCtx)
+			if stmt, ok := visitedNodeRaw.(ast.Stmt); ok {
+				return stmt
+			}
+			if expr, ok := visitedNodeRaw.(ast.Expr); ok {
+				return &ast.ExprStmt{X: expr}
+			}
+			v.addError("Expression in statement context did not resolve to a valid Go expression or statement: "+exprCtx.GetText(), exprCtx.GetStart())
+			return &ast.BadStmt{}
 		}
-	}
-
-	// Check for continue statement
-	if ctx.GetSContinue() != nil {
-		if !v.isInLoop() {
-			v.addError("'continue' statement found outside of a loop", ctx.GetSContinue().CONTINUE().GetSymbol())
+	case *parser.StmtReturnContext:
+		retCtx := c.ReturnStmt()
+		if retCtx != nil {
+			if concreteCtx, ok := retCtx.(*parser.ReturnStmtContext); ok {
+				return v.VisitReturnStmt(concreteCtx)
+			}
+			v.addError("Internal error: Failed to process return statement structure: "+retCtx.GetText(), retCtx.GetStart())
+			return nil
 		}
-		return &ast.BranchStmt{
-			TokPos: v.pos(ctx.GetSContinue().CONTINUE().GetSymbol()),
-			Tok:    token.CONTINUE,
-		}
-	}
-
-	if ctx.LetDecl() != nil {
-		if concreteCtx, ok := ctx.LetDecl().(*parser.LetDeclContext); ok {
-			return v.VisitLetDecl(concreteCtx)
-		}
-		v.addError("Internal error: Failed to process let declaration structure: "+ctx.LetDecl().GetText(), ctx.LetDecl().GetStart())
-		return nil
-	}
-
-	// Handle expression statements directly using ctx.Expr()
-	if exprCtx := ctx.Expr(); exprCtx != nil {
-		visitedNodeRaw := v.Visit(exprCtx) // exprCtx is IExprContext
-
-		if stmt, ok := visitedNodeRaw.(ast.Stmt); ok {
-			return stmt // e.g. ast.AssignStmt from VisitAssignmentExpr
-		}
-		if expr, ok := visitedNodeRaw.(ast.Expr); ok {
-			return &ast.ExprStmt{X: expr} // Wrap other expressions
-		}
-		v.addError("Expression in statement context did not resolve to a valid Go expression or statement: "+exprCtx.GetText(), exprCtx.GetStart())
+	case *parser.StmtYieldContext:
+		// Not implemented: yield
+		v.addError("'yield' statement not implemented", c.GetStart())
 		return &ast.BadStmt{}
-	}
-
-	if ifStmtCtx := ctx.IfStmt(); ifStmtCtx != nil {
-		if concreteCtx, ok := ifStmtCtx.(*parser.IfStmtContext); ok {
-			return v.VisitIfStmt(concreteCtx)
+	case *parser.StmtIfContext:
+		ifCtx := c.IfStmt()
+		if ifCtx != nil {
+			if concreteCtx, ok := ifCtx.(*parser.IfStmtContext); ok {
+				return v.VisitIfStmt(concreteCtx)
+			}
+			v.addError("Internal error: Failed to process if statement structure: "+ifCtx.GetText(), ifCtx.GetStart())
+			return nil
 		}
-		v.addError("Internal error: Failed to process if statement structure: "+ifStmtCtx.GetText(), ifStmtCtx.GetStart())
-		return nil
-	}
-
-	if whileStmtCtx := ctx.WhileStmt(); whileStmtCtx != nil {
-		if concreteCtx, ok := whileStmtCtx.(*parser.WhileStmtContext); ok {
-			return v.VisitWhileStmt(concreteCtx)
+	case *parser.StmtForContext:
+		forCtx := c.ForStmt()
+		if forCtx != nil {
+			if concreteCtx, ok := forCtx.(*parser.ForStmtContext); ok {
+				return v.VisitForStmt(concreteCtx)
+			}
+			v.addError("Internal error: Failed to process for statement structure: "+forCtx.GetText(), forCtx.GetStart())
+			return nil
 		}
-		v.addError("Internal error: Failed to process while statement structure: "+whileStmtCtx.GetText(), whileStmtCtx.GetStart())
-		return nil
-	}
-
-	if forStmtCtx := ctx.ForStmt(); forStmtCtx != nil {
-		if concreteCtx, ok := forStmtCtx.(*parser.ForStmtContext); ok {
-			return v.VisitForStmt(concreteCtx)
+	case *parser.StmtWhileContext:
+		whileCtx := c.WhileStmt()
+		if whileCtx != nil {
+			if concreteCtx, ok := whileCtx.(*parser.WhileStmtContext); ok {
+				return v.VisitWhileStmt(concreteCtx)
+			}
+			v.addError("Internal error: Failed to process while statement structure: "+whileCtx.GetText(), whileCtx.GetStart())
+			return nil
 		}
-		v.addError("Internal error: Failed to process for statement structure: "+forStmtCtx.GetText(), forStmtCtx.GetStart())
-		return nil
-	}
-
-	if returnStmtCtx := ctx.ReturnStmt(); returnStmtCtx != nil {
-		if concreteCtx, ok := returnStmtCtx.(*parser.ReturnStmtContext); ok {
-			return v.VisitReturnStmt(concreteCtx)
+	case *parser.StmtBlockContext:
+		blockCtx := c.CodeBlock()
+		if blockCtx != nil {
+			if concreteCtx, ok := blockCtx.(*parser.CodeBlockContext); ok {
+				return v.VisitCodeBlock(concreteCtx)
+			}
+			v.addError("Internal error: Failed to process code block structure: "+blockCtx.GetText(), blockCtx.GetStart())
+			return nil
 		}
-		v.addError("Internal error: Failed to process return statement structure: "+returnStmtCtx.GetText(), returnStmtCtx.GetStart())
-		return nil
-	}
-
-	if deferStmtCtx := ctx.DeferStmt(); deferStmtCtx != nil {
-		if concreteCtx, ok := deferStmtCtx.(*parser.DeferStmtContext); ok {
-			return v.VisitDeferStmt(concreteCtx)
+	case *parser.StmtBreakContext:
+		breakCtx := c.BreakStmt()
+		if breakCtx != nil {
+			if !v.isInLoop() {
+				v.addError("'break' statement found outside of a loop", breakCtx.GetStart())
+			}
+			return &ast.BranchStmt{
+				TokPos: v.pos(breakCtx.GetStart()),
+				Tok:    token.BREAK,
+			}
 		}
-		v.addError("Internal error: Failed to process defer statement structure: "+deferStmtCtx.GetText(), deferStmtCtx.GetStart())
-		return nil
-	}
-
-	if codeBlockCtx := ctx.CodeBlock(); codeBlockCtx != nil {
-		if concreteCtx, ok := codeBlockCtx.(*parser.CodeBlockContext); ok {
-			return v.VisitCodeBlock(concreteCtx)
+	case *parser.StmtContinueContext:
+		continueCtx := c.ContinueStmt()
+		if continueCtx != nil {
+			if !v.isInLoop() {
+				v.addError("'continue' statement found outside of a loop", continueCtx.GetStart())
+			}
+			return &ast.BranchStmt{
+				TokPos: v.pos(continueCtx.GetStart()),
+				Tok:    token.CONTINUE,
+			}
 		}
-		v.addError("Internal error: Failed to process code block structure: "+codeBlockCtx.GetText(), codeBlockCtx.GetStart())
-		return nil
+	case *parser.StmtCheckContext:
+		// Not implemented: check
+		v.addError("'check' statement not implemented", c.GetStart())
+		return &ast.BadStmt{}
+	case *parser.StmtDeferContext:
+		deferCtx := c.DeferStmt()
+		if deferCtx != nil {
+			if concreteCtx, ok := deferCtx.(*parser.DeferStmtContext); ok {
+				return v.VisitDeferStmt(concreteCtx)
+			}
+			v.addError("Internal error: Failed to process defer statement structure: "+deferCtx.GetText(), deferCtx.GetStart())
+			return nil
+		}
 	}
 
 	// Handle empty statement (just a separator)
@@ -166,12 +183,13 @@ func (v *ManuscriptAstVisitor) VisitIfStmt(ctx *parser.IfStmtContext) interface{
 func (v *ManuscriptAstVisitor) VisitCodeBlock(ctx *parser.CodeBlockContext) interface{} {
 	var stmts []ast.Stmt
 	for _, stmtCtx := range ctx.AllStmt() {
-		visitedNode := v.VisitStmt(stmtCtx.(*parser.StmtContext)) // VisitStmt returns interface{}
-
-		if visitedNode == nil {
-			continue // Skip nil results (e.g. from empty statements or errors handled deeper)
+		if stmtCtx == nil {
+			continue
 		}
-
+		visitedNode := v.VisitStmt(stmtCtx)
+		if visitedNode == nil {
+			continue
+		}
 		if singleStmt, ok := visitedNode.(ast.Stmt); ok {
 			if _, isEmpty := singleStmt.(*ast.EmptyStmt); !isEmpty {
 				stmts = append(stmts, singleStmt)
@@ -190,7 +208,6 @@ func (v *ManuscriptAstVisitor) VisitCodeBlock(ctx *parser.CodeBlockContext) inte
 	}
 	return &ast.BlockStmt{
 		List: stmts,
-		// Lbrace and Rbrace positions can be set if needed, e.g., ctx.LBRACE().GetSymbol().GetStart()
 	}
 }
 

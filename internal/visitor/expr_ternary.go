@@ -11,54 +11,53 @@ func (v *ManuscriptAstVisitor) VisitTernaryExpr(ctx *parser.TernaryExprContext) 
 		return &ast.BadExpr{}
 	}
 	if ctx.QUESTION() == nil {
-		if ctx.GetCondition() == nil {
+		if ctx.LogicalOrExpr() == nil {
 			v.addError("TernaryExprContext has no Condition (LogicalOrExpr) child when QUESTION is missing", ctx.GetStart())
 			return &ast.BadExpr{}
 		}
-		return v.Visit(ctx.GetCondition())
+		return v.Visit(ctx.LogicalOrExpr())
 	}
-	if ctx.GetCondition() == nil || ctx.GetTrueExpr() == nil || ctx.GetFalseExpr() == nil || ctx.COLON() == nil {
+	if ctx.LogicalOrExpr() == nil || ctx.Expr() == nil || ctx.TernaryExpr() == nil || ctx.COLON() == nil {
 		v.addError("Incomplete ternary expression", ctx.GetStart())
 		return &ast.BadExpr{}
 	}
-	condNode := v.Visit(ctx.GetCondition())
+	condNode := v.Visit(ctx.LogicalOrExpr())
 	condExpr, ok := condNode.(ast.Expr)
 	if !ok {
-		v.addError("Condition in ternary expression did not resolve to an ast.Expr", ctx.GetCondition().GetStart())
+		v.addError("Ternary condition did not resolve to ast.Expr", ctx.LogicalOrExpr().GetStart())
 		return &ast.BadExpr{}
 	}
-	trueNode := v.Visit(ctx.GetTrueExpr())
+	trueNode := v.Visit(ctx.Expr())
 	trueExpr, ok := trueNode.(ast.Expr)
 	if !ok {
-		v.addError("True expression in ternary did not resolve to an ast.Expr", ctx.GetTrueExpr().GetStart())
+		v.addError("Ternary true branch did not resolve to ast.Expr", ctx.Expr().GetStart())
 		return &ast.BadExpr{}
 	}
-	falseNode := v.Visit(ctx.GetFalseExpr())
+	falseNode := v.Visit(ctx.TernaryExpr())
 	falseExpr, ok := falseNode.(ast.Expr)
 	if !ok {
-		v.addError("False expression in ternary did not resolve to an ast.Expr", ctx.GetFalseExpr().GetStart())
+		v.addError("Ternary false branch did not resolve to ast.Expr", ctx.TernaryExpr().GetStart())
 		return &ast.BadExpr{}
 	}
-	ifStmt := &ast.IfStmt{
-		Cond: condExpr,
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{Results: []ast.Expr{trueExpr}},
+	// Lower to an IIFE (function literal) that returns the correct value
+	return &ast.CallExpr{
+		Fun: &ast.FuncLit{
+			Type: &ast.FuncType{
+				Params:  &ast.FieldList{},
+				Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("interface{}")}}},
 			},
+			Body: &ast.BlockStmt{List: []ast.Stmt{
+				&ast.IfStmt{
+					Cond: condExpr,
+					Body: &ast.BlockStmt{List: []ast.Stmt{
+						&ast.ReturnStmt{Results: []ast.Expr{trueExpr}},
+					}},
+					Else: &ast.BlockStmt{List: []ast.Stmt{
+						&ast.ReturnStmt{Results: []ast.Expr{falseExpr}},
+					}},
+				},
+			}},
 		},
-		Else: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{Results: []ast.Expr{falseExpr}},
-			},
-		},
+		Args: []ast.Expr{},
 	}
-	returnType := ast.NewIdent("interface{}")
-	funcLit := &ast.FuncLit{
-		Type: &ast.FuncType{
-			Params:  &ast.FieldList{},
-			Results: &ast.FieldList{List: []*ast.Field{{Type: returnType}}},
-		},
-		Body: &ast.BlockStmt{List: []ast.Stmt{ifStmt}},
-	}
-	return &ast.CallExpr{Fun: funcLit}
 }

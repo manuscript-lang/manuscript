@@ -42,8 +42,8 @@ func (v *ManuscriptAstVisitor) extractValueAfterColon(exprCtx parser.IExprContex
 	}
 	if ctx, ok := exprCtx.(*parser.ExprContext); ok {
 		if assignExpr, ok := ctx.AssignmentExpr().(*parser.AssignmentExprContext); ok {
-			if assignExpr.GetRight() != nil {
-				valueResult := v.Visit(assignExpr.GetRight())
+			if assignExpr.AssignmentExpr() != nil {
+				valueResult := v.Visit(assignExpr.AssignmentExpr())
 				if valueExpr, ok := valueResult.(ast.Expr); ok {
 					return valueExpr
 				}

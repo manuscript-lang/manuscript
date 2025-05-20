@@ -27,7 +27,7 @@ func (v *ManuscriptAstVisitor) VisitObjectLiteral(ctx *parser.ObjectLiteralConte
 		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 
-	for _, fieldInterface := range ctx.AllObjectField() {
+	for _, fieldInterface := range ctx.ObjectFieldList().AllObjectField() {
 		fieldCtx, ok := fieldInterface.(*parser.ObjectFieldContext)
 		if !ok {
 

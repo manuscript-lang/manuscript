@@ -4,18 +4,22 @@ import (
 	"fmt"
 	"go/ast"
 	"manuscript-co/manuscript/internal/parser"
+
+	gotoken "go/token"
+
+	"github.com/antlr4-go/antlr/v4"
 )
 
-// VisitTypeAnnotation handles type annotations based on the new grammar:
-// typeAnnotation: (idAsType=ID | tupleAsType=tupleType | funcAsType=fnSignature | VOID) (isNullable=QUESTION)? (arrayMarker=LSQBR RSQBR)?;
+// VisitTypeAnnotation handles type annotations based on the grammar:
+// typeAnnotation: ID | arrayType | tupleType | fnType | VOID;
 func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationContext) interface{} {
 	var baseExpr ast.Expr
 
 	if ctx.VOID() != nil {
 		// Void type is represented as nil ast.Expr
 		baseExpr = v.handleVoidType()
-	} else if ctx.GetIdAsType() != nil {
-		typeName := ctx.GetIdAsType().GetText()
+	} else if ctx.ID() != nil {
+		typeName := ctx.ID().GetText()
 		switch typeName {
 		case "string":
 			baseExpr = ast.NewIdent("string")
@@ -28,8 +32,8 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 		default:
 			baseExpr = ast.NewIdent(typeName) // User-defined types
 		}
-	} else if ctx.GetTupleAsType() != nil {
-		tupleTypeCtx := ctx.GetTupleAsType().(*parser.TupleTypeContext) // This is *parser.TupleTypeContext
+	} else if ctx.TupleType() != nil {
+		tupleTypeCtx := ctx.TupleType().(*parser.TupleTypeContext)
 		visitedTuple := v.VisitTupleType(tupleTypeCtx)
 		if vt, ok := visitedTuple.(ast.Expr); ok {
 			baseExpr = vt
@@ -37,13 +41,22 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 			v.addError("Tuple type annotation did not resolve to an expression: "+tupleTypeCtx.GetText(), tupleTypeCtx.GetStart())
 			return &ast.BadExpr{}
 		}
-	} else if ctx.GetFuncAsType() != nil {
-		fnSigCtx := ctx.GetFuncAsType().(*parser.FnSignatureContext) // This is *parser.FnSignatureContext
-		visitedFnSig := v.VisitFunctionType(fnSigCtx)
-		if ft, ok := visitedFnSig.(ast.Expr); ok { // *ast.FuncType is an ast.Expr
+	} else if ctx.ArrayType() != nil {
+		arrayTypeCtx := ctx.ArrayType().(*parser.ArrayTypeContext)
+		visitedArray := v.VisitArrayType(arrayTypeCtx)
+		if at, ok := visitedArray.(ast.Expr); ok {
+			baseExpr = at
+		} else {
+			v.addError("Array type annotation did not resolve to an expression: "+arrayTypeCtx.GetText(), arrayTypeCtx.GetStart())
+			return &ast.BadExpr{}
+		}
+	} else if ctx.FnType() != nil {
+		fnTypeCtx := ctx.FnType().(*parser.FnTypeContext)
+		visitedFn := v.VisitFnType(fnTypeCtx)
+		if ft, ok := visitedFn.(ast.Expr); ok {
 			baseExpr = ft
 		} else {
-			v.addError("Function type annotation (fnSignature) did not resolve to an ast.FuncType: "+fnSigCtx.GetText(), fnSigCtx.GetStart())
+			v.addError("Function type annotation did not resolve to an expression: "+fnTypeCtx.GetText(), fnTypeCtx.GetStart())
 			return &ast.BadExpr{}
 		}
 	} else {
@@ -51,76 +64,121 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 		return &ast.BadExpr{}
 	}
 
-	// Handle optional nullable marker '?'
-	if ctx.QUESTION() != nil {
-		if baseExpr == nil { // void?
-			v.addError("Cannot make void type nullable: "+ctx.GetText(), ctx.QUESTION().GetSymbol())
-			return &ast.BadExpr{}
-		}
+	return baseExpr // Return nil for void, or the ast.Expr
+}
 
-		isAlreadyNullableOrPointer := false
-		switch be := baseExpr.(type) {
-		case *ast.StarExpr: // Already a pointer *T
-			isAlreadyNullableOrPointer = true
-		case *ast.Ident:
-			if be.Name == "interface{}" { // interface{} is nullable
-				isAlreadyNullableOrPointer = true
-			}
-		case *ast.ArrayType: // Represents a slice Type[], which is nullable
-			isAlreadyNullableOrPointer = true
-		case *ast.MapType: // map[K]V is nullable
-			isAlreadyNullableOrPointer = true
-		case *ast.FuncType: // fn() is nullable
-			isAlreadyNullableOrPointer = true
-			// Note: ast.StructType is a value type and needs *ast.StarExpr if nullable.
-		}
-
-		if !isAlreadyNullableOrPointer {
-			baseExpr = &ast.StarExpr{X: baseExpr}
-		}
+// VisitArrayType handles array type signatures.
+// Grammar: arrayType: ID LSQBR RSQBR;
+func (v *ManuscriptAstVisitor) VisitArrayType(ctx *parser.ArrayTypeContext) interface{} {
+	var eltType ast.Expr
+	typeName := ctx.ID().GetText()
+	switch typeName {
+	case "string":
+		eltType = ast.NewIdent("string")
+	case "int":
+		eltType = ast.NewIdent("int64")
+	case "float":
+		eltType = ast.NewIdent("float64")
+	case "bool":
+		eltType = ast.NewIdent("bool")
+	default:
+		// For user-defined types or other built-ins not explicitly listed.
+		// This assumes typeName is a valid Go identifier or will be resolved later.
+		eltType = ast.NewIdent(typeName)
 	}
 
-	// Handle optional array marker '[]'
-	if ctx.LSQBR() != nil && ctx.RSQBR() != nil { // arrayMarker = LSQBR RSQBR
-		if baseExpr == nil { // Cannot have array of void, e.g. void[]
-			v.addError("Cannot create an array of void type: "+ctx.GetText(), ctx.LSQBR().GetSymbol())
-			return &ast.BadExpr{}
-		}
-		return &ast.ArrayType{Elt: baseExpr} // Represents a slice in Go AST if Len is nil
+	return &ast.ArrayType{
+		// Len: nil, // For slices in Go, Len is nil
+		Elt: eltType,
 	}
+}
 
-	return baseExpr // Return nil for void if not an array/nullable, or the ast.Expr
+// VisitFnType handles function type signatures from an FnTypeContext.
+// Grammar: fnType: FN LPAREN parameters? RPAREN typeAnnotation?;
+func (v *ManuscriptAstVisitor) VisitFnType(ctx *parser.FnTypeContext) interface{} {
+	return v.buildAstFuncType(
+		ctx.Parameters(),     // parser.IParametersContext or nil
+		ctx.TypeAnnotation(), // parser.ITypeAnnotationContext or nil
+		nil,                  // No ID for fnType
+		nil,                  // No EXCLAMATION for fnType
+		"anonymous function type",
+		ctx.GetStart(), // Pass token for error reporting if needed by buildAstFuncType
+	)
 }
 
 // VisitFunctionType now handles an FnSignatureContext directly to produce an *ast.FuncType.
 // This is used by TypeAnnotation for function types like `fn(int): string`.
+// It's also used for actual function signatures in fnDecl.
 func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext) interface{} {
 	var funcNameForError string
-	if ctx.NamedID() != nil {
-		funcNameForError = ctx.NamedID().GetText() + " (in type signature)"
+	var errorToken antlr.Token
+	if ctx.ID() != nil {
+		funcNameForError = ctx.ID().GetText() + " (in type signature)"
+		errorToken = ctx.ID().GetSymbol()
 	} else {
-		funcNameForError = "anonymous function type"
+		// This path might not be hit if ID is mandatory in FnSignature grammar.
+		funcNameForError = "function signature"
+		errorToken = ctx.GetStart()
 	}
 
+	return v.buildAstFuncType(
+		ctx.Parameters(),
+		ctx.TypeAnnotation(),
+		ctx.ID(),
+		ctx.EXCLAMATION(),
+		funcNameForError,
+		errorToken,
+	)
+}
+
+// buildAstFuncType is a helper to construct an *ast.FuncType from context parts.
+func (v *ManuscriptAstVisitor) buildAstFuncType(
+	paramsParserCtx parser.IParametersContext,
+	returnTypeParserCtx parser.ITypeAnnotationContext,
+	_ antlr.TerminalNode, // idNode, currently unused in this refactored helper but kept for signature consistency
+	exclamationNode antlr.TerminalNode,
+	errorContextName string,
+	errorToken antlr.Token, // Token for error reporting context
+) *ast.FuncType {
+
 	paramsAST := &ast.FieldList{List: []*ast.Field{}}
-	var paramDetails []ParamDetail
-	if ctx.Parameters() != nil {
-		if details, ok := v.VisitParameters(ctx.Parameters().(*parser.ParametersContext)).([]ParamDetail); ok {
-			paramDetails = details
-			for _, detail := range paramDetails {
-				if detail.DefaultValue != nil {
-					v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in function type signature.", detail.Name.Name), detail.NameToken)
+	if paramsParserCtx != nil {
+		if concreteParamsCtx, ok := paramsParserCtx.(*parser.ParametersContext); ok {
+			if paramDetails, okVisit := v.VisitParameters(concreteParamsCtx).([]ParamDetail); okVisit {
+				for _, detail := range paramDetails {
+					if detail.DefaultValue != nil {
+						v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in %s.", detail.Name.Name, errorContextName), detail.NameToken)
+					}
+					field := &ast.Field{Type: detail.Type}
+					if detail.Name != nil && detail.Name.Name != "" {
+						field.Names = []*ast.Ident{detail.Name}
+					}
+					paramsAST.List = append(paramsAST.List, field)
 				}
-				if detail.Name != nil && detail.Name.Name != "" {
-					paramsAST.List = append(paramsAST.List, &ast.Field{Names: []*ast.Ident{detail.Name}, Type: detail.Type})
-				} else {
-					paramsAST.List = append(paramsAST.List, &ast.Field{Type: detail.Type})
-				}
+			} else {
+				// VisitParameters should ideally always return []ParamDetail or an error handled within it.
+				// If it returns something else, that's an internal issue.
+				v.addError(fmt.Sprintf("Internal error: VisitParameters did not return []ParamDetail for %s", errorContextName), concreteParamsCtx.GetStart())
 			}
+		} else if !paramsParserCtx.IsEmpty() {
+			v.addError(fmt.Sprintf("Internal error: parameters context is not *parser.ParametersContext for %s", errorContextName), paramsParserCtx.GetStart())
+			// Using gotoken.NoPos for BadExpr positions
+			return &ast.FuncType{Params: &ast.FieldList{List: []*ast.Field{{Type: &ast.BadExpr{From: gotoken.NoPos, To: gotoken.NoPos}}}}}
 		}
 	}
 
-	resultsAST := v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), funcNameForError)
+	var concreteReturnTypeCtx *parser.TypeAnnotationContext
+	if returnTypeParserCtx != nil {
+		if c, ok := returnTypeParserCtx.(*parser.TypeAnnotationContext); ok {
+			concreteReturnTypeCtx = c
+		} else if !returnTypeParserCtx.IsEmpty() {
+			v.addError(fmt.Sprintf("Internal error: return type context is not *parser.TypeAnnotationContext for %s", errorContextName), returnTypeParserCtx.GetStart())
+			// Using gotoken.NoPos for BadExpr positions
+			return &ast.FuncType{Results: &ast.FieldList{List: []*ast.Field{{Type: &ast.BadExpr{From: gotoken.NoPos, To: gotoken.NoPos}}}}}
+		}
+	}
+
+	resultsAST := v.ProcessReturnType(concreteReturnTypeCtx, exclamationNode, errorContextName)
 
 	return &ast.FuncType{
 		Params:  paramsAST,
@@ -133,7 +191,7 @@ func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext)
 // Grammar for tupleType: LPAREN (typeAnnotation (COMMA typeAnnotation)*)? RPAREN;
 func (v *ManuscriptAstVisitor) VisitTupleType(ctx *parser.TupleTypeContext) interface{} {
 	fields := []*ast.Field{}
-	typeAnnotations := ctx.GetElements().GetTypes() // Assuming this is the correct accessor
+	typeAnnotations := ctx.TypeList().AllTypeAnnotation()
 
 	for i, typeAntlrCtxInterface := range typeAnnotations {
 		// Each element is an ITypeAnnotationContext

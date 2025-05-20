@@ -3,182 +3,117 @@ package visitor
 import (
 	"fmt"
 	"go/ast"
-	"go/token"
 	"manuscript-co/manuscript/internal/parser"
-
-	"github.com/antlr4-go/antlr/v4"
 )
 
 func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) interface{} {
 	if ctx.PrimaryExpr() == nil {
-		v.addError(
-			"Postfix expression is missing primary expression part",
-			ctx.GetStart(),
-		)
-		return &ast.BadExpr{
-			From: v.pos(ctx.GetStart()),
-			To:   v.pos(ctx.GetStop()),
-		}
+		v.addError("Postfix expression is missing primary expression part", ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 
 	currentAstNode := v.Visit(ctx.PrimaryExpr())
 	if currentAstNode == nil {
-		return &ast.BadExpr{
-			From: v.pos(ctx.GetStart()),
-			To:   v.pos(ctx.GetStop()),
-		}
+		// Error should be added by the specific primary expression visitor
+		return &ast.BadExpr{From: v.pos(ctx.PrimaryExpr().GetStart()), To: v.pos(ctx.PrimaryExpr().GetStop())}
 	}
 
-	currentGoExpr, ok := currentAstNode.(ast.Expr)
+	goExpr, ok := currentAstNode.(ast.Expr)
 	if !ok {
-		v.addError(
-			fmt.Sprintf(
-				"Primary expression did not resolve to ast.Expr, got %T",
-				currentAstNode,
-			),
-			ctx.PrimaryExpr().GetStart(),
-		)
-		return &ast.BadExpr{
-			From: v.pos(ctx.PrimaryExpr().GetStart()),
-			To:   v.pos(ctx.PrimaryExpr().GetStop()),
-		}
+		v.addError(fmt.Sprintf("Primary expression did not resolve to ast.Expr, got %T", currentAstNode), ctx.PrimaryExpr().GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.PrimaryExpr().GetStart()), To: v.pos(ctx.PrimaryExpr().GetStop())}
 	}
 
-	children := ctx.GetChildren()
+	for _, opCtx := range ctx.AllPostfixOp() { // Iterate through actual PostfixOpContexts
+		// opCtx is parser.IPostfixOpContext
+		concreteOpCtx, ok := opCtx.(*parser.PostfixOpContext)
+		if !ok {
+			v.addError("Internal error: PostfixOpContext has unexpected type", opCtx.GetStart())
+			return &ast.BadExpr{From: v.pos(opCtx.GetStart()), To: v.pos(opCtx.GetStop())}
+		}
 
-	var processPostfix func(expr ast.Expr, idx int) ast.Expr
-	processPostfix = func(expr ast.Expr, idx int) ast.Expr {
-		if idx >= len(children) {
-			return expr
-		}
-		child := children[idx]
-		termNode, isTerm := child.(antlr.TerminalNode)
-		if !isTerm {
-			return processPostfix(expr, idx+1)
-		}
-		tokenType := termNode.GetSymbol().GetTokenType()
-		switch tokenType {
-		case parser.ManuscriptDOT:
-			if idx+1 >= len(children) {
-				v.addError(
-					"Missing identifier after DOT for member access",
-					termNode.GetSymbol(),
-				)
-				return &ast.BadExpr{
-					From: v.pos(termNode.GetSymbol()),
-					To:   v.pos(ctx.GetStop()),
-				}
+		if concreteOpCtx.DOT() != nil && concreteOpCtx.ID() != nil { // Member access: .ID
+			goExpr = &ast.SelectorExpr{
+				X:   goExpr,
+				Sel: ast.NewIdent(concreteOpCtx.ID().GetText()),
 			}
-			idNode, ok := children[idx+1].(antlr.TerminalNode)
-			if !ok || idNode.GetSymbol().GetTokenType() != parser.ManuscriptID {
-				v.addError(
-					"Expected identifier after DOT for member access",
-					termNode.GetSymbol(),
-				)
-				return &ast.BadExpr{
-					From: v.pos(termNode.GetSymbol()),
-					To:   v.pos(ctx.GetStop()),
-				}
-			}
-			return processPostfix(&ast.SelectorExpr{
-				X:   expr,
-				Sel: ast.NewIdent(idNode.GetText()),
-			}, idx+2)
-		case parser.ManuscriptLPAREN:
-			lParenPos := v.pos(termNode.GetSymbol())
+		} else if concreteOpCtx.LPAREN() != nil && concreteOpCtx.RPAREN() != nil { // Function call: (exprList?)
 			args := []ast.Expr{}
-			rParenPos := token.NoPos
+			lParenPos := v.pos(concreteOpCtx.LPAREN().GetSymbol())
+			rParenPos := v.pos(concreteOpCtx.RPAREN().GetSymbol())
 
-			// Find closing parenthesis and process arguments
-			for j := idx + 1; j < len(children); j++ {
-				child := children[j]
-
-				// Check for closing parenthesis
-				if rParenNode, ok := child.(antlr.TerminalNode); ok && rParenNode.GetSymbol().GetTokenType() == parser.ManuscriptRPAREN {
-					rParenPos = v.pos(rParenNode.GetSymbol())
-					j++
-					break
-				}
-
-				// Process argument list
-				if exprListCtx, ok := child.(*parser.ExprListContext); ok {
-					for _, exprCtx := range exprListCtx.AllExpr() {
-						if argExpr, ok := v.Visit(exprCtx).(ast.Expr); ok {
-							args = append(args, argExpr)
-						} else {
-							v.addError(
-								"Invalid argument expression: "+exprCtx.GetText(),
-								exprCtx.GetStart(),
-							)
-							args = append(args, &ast.BadExpr{
-								From: v.pos(exprCtx.GetStart()),
-								To:   v.pos(exprCtx.GetStop()),
-							})
+			if concreteOpCtx.ExprList() != nil {
+				// The AllExpr() method is on the ExprListContext, not PostfixOpContext directly.
+				// concreteOpCtx.ExprList() returns parser.IExprListContext.
+				exprListInterface := concreteOpCtx.ExprList()
+				if exprListInterface != nil {
+					exprListCtx, castOk := exprListInterface.(*parser.ExprListContext)
+					if castOk {
+						for _, exprNode := range exprListCtx.AllExpr() { // exprNode is parser.IExprContext
+							if argAst, visitOk := v.Visit(exprNode).(ast.Expr); visitOk && argAst != nil {
+								args = append(args, argAst)
+							} else {
+								v.addError("Invalid argument expression in call: "+exprNode.GetText(), exprNode.GetStart())
+								args = append(args, &ast.BadExpr{From: v.pos(exprNode.GetStart()), To: v.pos(exprNode.GetStop())})
+							}
 						}
+					} else if !exprListInterface.IsEmpty() {
+						v.addError("Internal error: ExprList context is not *parser.ExprListContext", exprListInterface.GetStart())
 					}
 				}
 			}
-
-			// Handle missing closing parenthesis
-			if rParenPos == token.NoPos {
-				v.addError("Missing closing parenthesis", termNode.GetSymbol())
-				rParenPos = v.pos(ctx.GetStop())
-			}
-
-			return processPostfix(&ast.CallExpr{
-				Fun:    expr,
-				Args:   args,
+			goExpr = &ast.CallExpr{
+				Fun:    goExpr,
 				Lparen: lParenPos,
+				Args:   args,
 				Rparen: rParenPos,
-			}, idx+2)
-		case parser.ManuscriptLSQBR:
-			lSqbrPos := v.pos(termNode.GetSymbol())
-			if idx+2 >= len(children) {
-				v.addError("Malformed index access", termNode.GetSymbol())
-				return &ast.BadExpr{
-					From: lSqbrPos,
-					To:   v.pos(ctx.GetStop()),
-				}
+				// Ellipsis: token.NoPos, // For varargs, if needed
 			}
-			indexExprCtx, ok := children[idx+1].(parser.IExprContext)
-			if !ok {
-				v.addError("Expected expression for index access", termNode.GetSymbol())
-				return &ast.BadExpr{
-					From: lSqbrPos,
-					To:   v.pos(ctx.GetStop()),
+		} else if concreteOpCtx.LSQBR() != nil && concreteOpCtx.Expr() != nil && concreteOpCtx.RSQBR() != nil { // Index access: [expr]
+			// concreteOpCtx.Expr() returns parser.IExprContext
+			indexNode := concreteOpCtx.Expr()
+			indexAst := v.Visit(indexNode)
+			if indexExpr, castOk := indexAst.(ast.Expr); castOk && indexExpr != nil {
+				goExpr = &ast.IndexExpr{
+					X:      goExpr,
+					Lbrack: v.pos(concreteOpCtx.LSQBR().GetSymbol()),
+					Index:  indexExpr,
+					Rbrack: v.pos(concreteOpCtx.RSQBR().GetSymbol()),
 				}
+			} else {
+				v.addError("Invalid index expression: "+indexNode.GetText(), indexNode.GetStart())
+				goExpr = &ast.BadExpr{From: v.pos(concreteOpCtx.LSQBR().GetSymbol()), To: v.pos(concreteOpCtx.RSQBR().GetSymbol())}
 			}
-			visitedIndex := v.Visit(indexExprCtx)
-			indexAstExpr, astOk := visitedIndex.(ast.Expr)
-			if !astOk {
-				v.addError(
-					"Index did not evaluate to a valid expression: "+indexExprCtx.GetText(),
-					indexExprCtx.GetStart(),
-				)
-				return &ast.BadExpr{
-					From: lSqbrPos,
-					To:   v.pos(ctx.GetStop()),
-				}
-			}
-			rSqbrNode, ok := children[idx+2].(antlr.TerminalNode)
-			if !ok || rSqbrNode.GetSymbol().GetTokenType() != parser.ManuscriptRSQBR {
-				v.addError("Expected closing square bracket for index access", termNode.GetSymbol())
-				return &ast.BadExpr{
-					From: lSqbrPos,
-					To:   v.pos(ctx.GetStop()),
-				}
-			}
-			rSqbrPos := v.pos(rSqbrNode.GetSymbol())
-			return processPostfix(&ast.IndexExpr{
-				X:      expr,
-				Lbrack: lSqbrPos,
-				Index:  indexAstExpr,
-				Rbrack: rSqbrPos,
-			}, idx+3)
-		default:
-			return processPostfix(expr, idx+1)
+		} else {
+			// This case should ideally not be reached if the grammar ensures PostfixOpContext is always one of the valid forms.
+			v.addError("Unknown or malformed postfix operation: "+concreteOpCtx.GetText(), concreteOpCtx.GetStart())
+			return &ast.BadExpr{From: v.pos(concreteOpCtx.GetStart()), To: v.pos(concreteOpCtx.GetStop())}
 		}
 	}
-
-	return processPostfix(currentGoExpr, 1)
+	return goExpr
 }
+
+// isTypeName checks if the given name is a type name
+// This function might be needed if type conversions are handled via function-like calls to type names
+// and that syntax is parsed as a regular PostfixExpr.
+// For now, it is assumed that StructInitExpr handles explicit type constructions.
+func (v *ManuscriptAstVisitor) isTypeName(name string) bool {
+	// Check if it's a built-in type
+	switch name {
+	case "string", "int", "float", "bool": // Manuscript type names
+		return true
+	}
+	// Check against known user-defined types (if symbol table/type info is available)
+	// For example: if _, exists := v.typeInfo[name]; exists { return true }
+	return false
+}
+
+// Ensure v.pos is defined in visitor.go or a common utility, e.g.:
+// func (v *ManuscriptAstVisitor) pos(token antlr.Token) token.Pos {
+//  if token == nil { return gotoken.NoPos }
+//  // This is a placeholder. Actual mapping from ANTLR line/col to go/token.Pos
+//  // requires a token.FileSet and adding files to it.
+//  // For now, returning NoPos or a simplified offset if available.
+//  // return token.GetTokenIndex() // This is not a token.Pos
+//  return gotoken.NoPos // Fallback to NoPos if proper mapping isn't set up.
+// }
