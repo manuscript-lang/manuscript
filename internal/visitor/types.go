@@ -104,17 +104,18 @@ func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext)
 
 	paramsAST := &ast.FieldList{List: []*ast.Field{}}
 	var paramDetails []ParamDetail
-	paramDetailsRaw := v.Visit(ctx.Parameters())
-	if details, ok := paramDetailsRaw.([]ParamDetail); ok {
-		paramDetails = details
-		for _, detail := range paramDetails {
-			if detail.DefaultValue != nil {
-				v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in function type signature.", detail.Name.Name), detail.NameToken)
-			}
-			if detail.Name != nil && detail.Name.Name != "" {
-				paramsAST.List = append(paramsAST.List, &ast.Field{Names: []*ast.Ident{detail.Name}, Type: detail.Type})
-			} else {
-				paramsAST.List = append(paramsAST.List, &ast.Field{Type: detail.Type})
+	if ctx.Parameters() != nil {
+		if details, ok := v.VisitParameters(ctx.Parameters().(*parser.ParametersContext)).([]ParamDetail); ok {
+			paramDetails = details
+			for _, detail := range paramDetails {
+				if detail.DefaultValue != nil {
+					v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in function type signature.", detail.Name.Name), detail.NameToken)
+				}
+				if detail.Name != nil && detail.Name.Name != "" {
+					paramsAST.List = append(paramsAST.List, &ast.Field{Names: []*ast.Ident{detail.Name}, Type: detail.Type})
+				} else {
+					paramsAST.List = append(paramsAST.List, &ast.Field{Type: detail.Type})
+				}
 			}
 		}
 	}

@@ -139,3 +139,21 @@ func main() {
     printUserID(userID)
 }
 ```
+
+# func as type
+```ms
+
+fn filter(arr int[], filterFunc fn (item int) bool) int[] {
+  // .. body
+}
+```
+
+```go
+package main
+
+func filter(arr []int64, filterFunc func(item int64) bool) []int64 {
+}
+func main() {
+}
+```
+

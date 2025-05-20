@@ -21,17 +21,13 @@ importStmt: IMPORT moduleDecl;
 
 moduleDecl:
 	LBRACE (
-		items += importItem (COMMA items += importItem)* (
-			COMMA
-		)?
-	)? RBRACE FROM path = importStr							# DestructuredImport
-	| target = ID FROM path = importStr						# TargetImport
-	;
+		items += importItem (COMMA items += importItem)* (COMMA)?
+	)? RBRACE FROM path = importStr		# DestructuredImport
+	| target = ID FROM path = importStr	# TargetImport;
 importItem: name = ID (AS alias = ID)?;
 importStr: pathSingle = singleQuotedString;
 
-externStmt:
-	EXTERN moduleDecl;
+externStmt: EXTERN moduleDecl;
 
 exportStmt:
 	EXPORT (
@@ -52,12 +48,16 @@ letDecl:
 letSingle: typedID (EQUALS value = expr)?;
 
 letBlockItem:
-	  lhsTypedId = typedID EQUALS rhsExpr = expr             # letBlockItemSingle
-	| LBRACE lhsDestructuredIdsObj = typedIDList RBRACE EQUALS rhsExprObj = expr  # letBlockItemDestructuredObj
-	| LSQBR lhsDestructuredIdsArr = typedIDList RSQBR EQUALS rhsExprArr = expr # letBlockItemDestructuredArray
-;
+	lhsTypedId = typedID EQUALS rhsExpr = expr										# letBlockItemSingle
+	| LBRACE lhsDestructuredIdsObj = typedIDList RBRACE EQUALS rhsExprObj = expr	#
+		letBlockItemDestructuredObj
+	| LSQBR lhsDestructuredIdsArr = typedIDList RSQBR EQUALS rhsExprArr = expr #
+		letBlockItemDestructuredArray;
 
-letBlock: LPAREN (sep items += letBlockItem (sep items += letBlockItem)* sep)? RPAREN;
+letBlock:
+	LPAREN (
+		sep items += letBlockItem (sep items += letBlockItem)* sep
+	)? RPAREN;
 
 letDestructuredObj:
 	LBRACE destructuredIds = typedIDList RBRACE EQUALS value = expr;
@@ -66,13 +66,19 @@ letDestructuredArray:
 
 namedID: name = ID;
 typedID: namedID (type = typeAnnotation)?;
-typedIDList: sep names += typedID (sep COMMA sep names += typedID)* (sep COMMA)? sep;
-typeList: sep types += typeAnnotation (sep COMMA sep types += typeAnnotation)* (sep COMMA)? sep;
+typedIDList:
+	sep names += typedID (sep COMMA sep names += typedID)* (
+		sep COMMA
+	)? sep;
+typeList:
+	sep types += typeAnnotation (
+		sep COMMA sep types += typeAnnotation
+	)* (sep COMMA)? sep;
 
 fnDecl: signature = fnSignature block = codeBlock;
 
 fnSignature:
-	FN functionName = namedID LPAREN params = parameters? RPAREN (
+	FN (functionName = namedID)? LPAREN params = parameters? RPAREN (
 		returnType = typeAnnotation
 	)? (returnsError = EXCLAMATION)?;
 
@@ -85,10 +91,11 @@ param:
 typeDecl: TYPE typeName = namedID (typeDefBody | typeAlias);
 
 typeDefBody:
-	(EXTENDS extendedTypes = typeList)? LBRACE
-		sep
-		(fields += fieldDecl (sep COMMA sep fields += fieldDecl)* (sep COMMA)? sep)?
-	RBRACE;
+	(EXTENDS extendedTypes = typeList)? LBRACE sep (
+		fields += fieldDecl (sep COMMA sep fields += fieldDecl)* (
+			sep COMMA
+		)? sep
+	)? RBRACE;
 
 typeAlias:
 	EQUALS aliasTarget = typeAnnotation (
@@ -181,7 +188,9 @@ assignmentExpr:
 	)?;
 
 ternaryExpr:
-	condition = logicalOrExpr (QUESTION trueExpr = expr COLON falseExpr = ternaryExpr)?;
+	condition = logicalOrExpr (
+		QUESTION trueExpr = expr COLON falseExpr = ternaryExpr
+	)?;
 
 logicalOrExpr:
 	left = logicalAndExpr (op = PIPE_PIPE right = logicalAndExpr)*;
@@ -246,10 +255,9 @@ fnExpr:
 	)? block = codeBlock;
 
 matchExpr:
-	MATCH valueToMatch = expr LBRACE
-		(cs += caseClause)*
-		(def = defaultClause)?
-	RBRACE;
+	MATCH valueToMatch = expr LBRACE (cs += caseClause)* (
+		def = defaultClause
+	)? RBRACE;
 
 caseClause:
 	pattern = expr (
@@ -320,16 +328,12 @@ objectField: key = objectFieldName (COLON val = expr)?;
 mapLiteral:
 	LSQBR COLON RSQBR
 	| LSQBR (
-		fields += mapField (COMMA fields += mapField)* (
-			COMMA
-		)?
+		fields += mapField (COMMA fields += mapField)* (COMMA)?
 	)? RSQBR;
 mapField: key = expr COLON value = expr;
 
 setLiteral:
-	LT (
-		elements += expr (COMMA elements += expr)* (COMMA)?
-	)? GT;
+	LT (elements += expr (COMMA elements += expr)* (COMMA)?)? GT;
 
 breakStmt: BREAK;
 continueStmt: CONTINUE;
@@ -343,7 +347,12 @@ taggedBlockString:
 		| blockStrMultiDouble = multiDoubleQuotedString
 	);
 
-structInitExpr: ID LPAREN (fields += structField (COMMA fields += structField)* (COMMA)?)? RPAREN;
+structInitExpr:
+	ID LPAREN (
+		fields += structField (COMMA fields += structField)* (
+			COMMA
+		)?
+	)? RPAREN;
 structField: key = ID COLON val = expr;
 
 stmt_sep: SEMICOLON | NEWLINE;
