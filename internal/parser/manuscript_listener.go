@@ -17,6 +17,12 @@ type ManuscriptListener interface {
 	// EnterImportStmt is called when entering the importStmt production.
 	EnterImportStmt(c *ImportStmtContext)
 
+	// EnterDestructuredImport is called when entering the DestructuredImport production.
+	EnterDestructuredImport(c *DestructuredImportContext)
+
+	// EnterTargetImport is called when entering the TargetImport production.
+	EnterTargetImport(c *TargetImportContext)
+
 	// EnterImportItem is called when entering the importItem production.
 	EnterImportItem(c *ImportItemContext)
 
@@ -286,6 +292,12 @@ type ManuscriptListener interface {
 
 	// ExitImportStmt is called when exiting the importStmt production.
 	ExitImportStmt(c *ImportStmtContext)
+
+	// ExitDestructuredImport is called when exiting the DestructuredImport production.
+	ExitDestructuredImport(c *DestructuredImportContext)
+
+	// ExitTargetImport is called when exiting the TargetImport production.
+	ExitTargetImport(c *TargetImportContext)
 
 	// ExitImportItem is called when exiting the importItem production.
 	ExitImportItem(c *ImportItemContext)

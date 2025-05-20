@@ -39,6 +39,18 @@ func (s *BaseManuscriptListener) EnterImportStmt(ctx *ImportStmtContext) {}
 // ExitImportStmt is called when production importStmt is exited.
 func (s *BaseManuscriptListener) ExitImportStmt(ctx *ImportStmtContext) {}
 
+// EnterDestructuredImport is called when production DestructuredImport is entered.
+func (s *BaseManuscriptListener) EnterDestructuredImport(ctx *DestructuredImportContext) {}
+
+// ExitDestructuredImport is called when production DestructuredImport is exited.
+func (s *BaseManuscriptListener) ExitDestructuredImport(ctx *DestructuredImportContext) {}
+
+// EnterTargetImport is called when production TargetImport is entered.
+func (s *BaseManuscriptListener) EnterTargetImport(ctx *TargetImportContext) {}
+
+// ExitTargetImport is called when production TargetImport is exited.
+func (s *BaseManuscriptListener) ExitTargetImport(ctx *TargetImportContext) {}
+
 // EnterImportItem is called when production importItem is entered.
 func (s *BaseManuscriptListener) EnterImportItem(ctx *ImportItemContext) {}
 

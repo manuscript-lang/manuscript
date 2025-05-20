@@ -17,6 +17,12 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#importStmt.
 	VisitImportStmt(ctx *ImportStmtContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#DestructuredImport.
+	VisitDestructuredImport(ctx *DestructuredImportContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#TargetImport.
+	VisitTargetImport(ctx *TargetImportContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#importItem.
 	VisitImportItem(ctx *ImportItemContext) interface{}
 

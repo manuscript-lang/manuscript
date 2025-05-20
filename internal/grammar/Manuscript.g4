@@ -17,30 +17,21 @@ programItem:
 		| methodsDeclaration = methodsDecl
 	) SEMICOLON?;
 
-importStmt:
-	IMPORT (
-		LBRACE (
-			items += importItem (COMMA items += importItem)* (
-				COMMA
-			)?
-		)? RBRACE FROM path = importStr
-		| target = ID FROM path = importStr
-	);
-importItem: name = ID (AS alias = ID)?;
+importStmt: IMPORT moduleDecl;
 
-importStr:
-	pathSingle = singleQuotedString
-	| pathMulti = multiQuotedString;
+moduleDecl:
+	LBRACE (
+		items += importItem (COMMA items += importItem)* (
+			COMMA
+		)?
+	)? RBRACE FROM path = importStr							# DestructuredImport
+	| target = ID FROM path = importStr						# TargetImport
+	;
+importItem: name = ID (AS alias = ID)?;
+importStr: pathSingle = singleQuotedString;
 
 externStmt:
-	EXTERN (
-		LBRACE (
-			items += importItem (COMMA items += importItem)* (
-				COMMA
-			)?
-		)? RBRACE FROM path = importStr
-		| target = ID FROM path = importStr
-	);
+	EXTERN moduleDecl;
 
 exportStmt:
 	EXPORT (

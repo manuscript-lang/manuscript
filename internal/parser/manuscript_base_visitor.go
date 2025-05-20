@@ -20,6 +20,14 @@ func (v *BaseManuscriptVisitor) VisitImportStmt(ctx *ImportStmtContext) interfac
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitDestructuredImport(ctx *DestructuredImportContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitTargetImport(ctx *TargetImportContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitImportItem(ctx *ImportItemContext) interface{} {
 	return v.VisitChildren(ctx)
 }
