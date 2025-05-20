@@ -122,17 +122,15 @@ func (v *ManuscriptAstVisitor) VisitStringLiteral(ctx *parser.StringLiteralConte
 		return &ast.BadExpr{}
 	}
 
-	if stringParts != nil {
-		for _, part := range stringParts {
-			if sContent := part.SINGLE_STR_CONTENT(); sContent != nil {
-				rawContent += sContent.GetText()
-			} else if mContent := part.MULTI_STR_CONTENT(); mContent != nil {
-				rawContent += mContent.GetText()
-			} else if dContent := part.DOUBLE_STR_CONTENT(); dContent != nil {
-				rawContent += dContent.GetText()
-			} else if interpCtx := part.Interpolation(); interpCtx != nil {
-				v.addError("String interpolation is not yet supported: "+interpCtx.GetText(), interpCtx.GetStart())
-			}
+	for _, part := range stringParts {
+		if sContent := part.SINGLE_STR_CONTENT(); sContent != nil {
+			rawContent += sContent.GetText()
+		} else if mContent := part.MULTI_STR_CONTENT(); mContent != nil {
+			rawContent += mContent.GetText()
+		} else if dContent := part.DOUBLE_STR_CONTENT(); dContent != nil {
+			rawContent += dContent.GetText()
+		} else if interpCtx := part.Interpolation(); interpCtx != nil {
+			v.addError("String interpolation is not yet supported: "+interpCtx.GetText(), interpCtx.GetStart())
 		}
 	}
 

@@ -31,8 +31,7 @@ func (v *ManuscriptAstVisitor) processTypeAnnotationToExpr(
 		return nil, false
 	}
 
-	visitedNode := v.VisitTypeAnnotation(concreteTypeAnnCtx) // Visit the concrete type
-	expr, isExpr := visitedNode.(ast.Expr)
+	expr, isExpr := v.VisitTypeAnnotation(concreteTypeAnnCtx).(ast.Expr)
 	if !isExpr || expr == nil {
 		v.addError("Invalid type expression for "+contextDescription+": "+concreteTypeAnnCtx.GetText(), concreteTypeAnnCtx.GetStart())
 		return nil, false
@@ -82,20 +81,12 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 		// Handle EXTENDS (embedded base types)
 		if typeDefBodyCtx.EXTENDS() != nil {
 			extendedTypesListCtx := typeDefBodyCtx.GetExtendedTypes()
-			if extendedTypesListCtx == nil {
-				// This case should ideally not be reached if grammar ensures TypeList is present when EXTENDS exists.
-				v.addError("Type \""+typeNameStr+"\" has EXTENDS clause but no valid base types structure found.", typeDefBodyCtx.EXTENDS().GetSymbol())
-				return nil
-			}
-
-			baseTypesAntlr := extendedTypesListCtx.GetTypes() // This is []ITypeAnnotationContext
-			if len(baseTypesAntlr) == 0 {
-				// EXTENDS token present, but GetTypes() returned empty list
+			if extendedTypesListCtx == nil || len(extendedTypesListCtx.GetTypes()) == 0 {
 				v.addError("Type \""+typeNameStr+"\" has EXTENDS clause but no base types specified.", typeDefBodyCtx.EXTENDS().GetSymbol())
 				return nil
 			}
 
-			for _, baseTypeAntlrNode := range baseTypesAntlr {
+			for _, baseTypeAntlrNode := range extendedTypesListCtx.GetTypes() {
 				baseTypeExpr, ok := v.processTypeAnnotationToExpr(baseTypeAntlrNode, "base type for struct \""+typeNameStr+"\"")
 				if !ok {
 					return nil // Error added by helper
@@ -108,27 +99,21 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 		// Handle declared fields
 		// fields += fieldDecl (COMMA fields += fieldDecl)* (COMMA)?
 		for _, fieldDeclAntlrNode := range typeDefBodyCtx.GetFields() { // GetFields returns []IFieldDeclContext
-			fieldDeclCtx, isFieldDeclCtx := fieldDeclAntlrNode.(*parser.FieldDeclContext)
-			if !isFieldDeclCtx {
+			if fieldDeclCtx, ok := fieldDeclAntlrNode.(*parser.FieldDeclContext); ok {
+				if astField, ok := v.VisitFieldDecl(fieldDeclCtx).(*ast.Field); ok && astField != nil {
+					structFields = append(structFields, astField)
+				} else {
+					v.addError("Internal error: Field declaration processing for struct \""+typeNameStr+"\" returned unexpected type.", fieldDeclCtx.GetStart())
+					return nil
+				}
+			} else {
 				token := ctx.GetTypeName().GetStart() // Fallback
-				if prc, okPrc := fieldDeclAntlrNode.(antlr.ParserRuleContext); okPrc {
+				if prc, ok := fieldDeclAntlrNode.(antlr.ParserRuleContext); ok {
 					token = prc.GetStart()
 				}
 				v.addError("Internal error: Unexpected structure for field declaration in \""+typeNameStr+"\". Expected FieldDeclContext, got "+reflect.TypeOf(fieldDeclAntlrNode).String(), token)
 				return nil
 			}
-
-			visitedField := v.VisitFieldDecl(fieldDeclCtx)
-			astField, isAstField := visitedField.(*ast.Field)
-			if !isAstField || astField == nil {
-				// If visitedField was nil, VisitFieldDecl already added an error.
-				// If it was not nil but not *ast.Field, it's an internal error.
-				if visitedField != nil {
-					v.addError("Internal error: Field declaration processing for struct \""+typeNameStr+"\" returned unexpected type.", fieldDeclCtx.GetStart())
-				}
-				return nil
-			}
-			structFields = append(structFields, astField)
 		}
 
 		return &ast.GenDecl{
