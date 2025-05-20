@@ -70,15 +70,12 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 	}
 
 	var resultsAST *ast.FieldList
-	goFuncWillHaveReturn := false
 	if typeAnnotation != nil || fnSig.EXCLAMATION() != nil {
 		resultsAST = v.ProcessReturnType(typeAnnotation, fnSig.EXCLAMATION(), fnName)
-		if resultsAST != nil && len(resultsAST.List) > 0 {
-			goFuncWillHaveReturn = true
-		}
 	}
 
-	if goFuncWillHaveReturn && len(bodyAST.List) > 0 {
+	// Only convert last expression statement to return if function has a non-void return type
+	if resultsAST != nil && len(resultsAST.List) > 0 && len(bodyAST.List) > 0 {
 		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X != nil {
 			bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
 		}
@@ -122,12 +119,18 @@ func (v *ManuscriptAstVisitor) VisitParam(ctx *parser.ParamContext) interface{} 
 // param: (label=ID)? name=namedID COLON type_=typeAnnotation (EQUALS defaultValue=expr)?;\n// ctx is parser.IParamContext
 // This method is called by VisitParameters. It should return ParamDetail.
 func (v *ManuscriptAstVisitor) VisitIParam(ctx parser.IParamContext) interface{} {
-	if ctx.NamedID() == nil || ctx.NamedID().ID() == nil {
-		v.addError("Parameter name is missing.", ctx.GetStart())
+	var paramName *ast.Ident
+	var paramNameToken antlr.Token
+
+	if ctx.NamedID() != nil && ctx.NamedID().ID() != nil {
+		paramNameToken = ctx.NamedID().ID().GetSymbol()
+		paramName = ast.NewIdent(paramNameToken.GetText())
+	} else {
+		v.addError("Parameter must have a name", ctx.GetStart())
 		return nil
 	}
-	paramNameToken := ctx.NamedID().ID().GetSymbol()
-	paramName := ast.NewIdent(paramNameToken.GetText())
+
+	// Type Annotation
 	var paramType ast.Expr
 	if ctx.TypeAnnotation() != nil {
 		if pt, ok := v.Visit(ctx.TypeAnnotation()).(ast.Expr); ok {
@@ -345,6 +348,13 @@ func (v *ManuscriptAstVisitor) VisitFnExpr(ctx *parser.FnExprContext) interface{
 	var resultsAST *ast.FieldList
 	if typeAnnotation != nil {
 		resultsAST = v.ProcessReturnType(typeAnnotation, nil, "anonymous function expression")
+	}
+
+	// Only convert last expression statement to return if function has a non-void return type
+	if resultsAST != nil && len(resultsAST.List) > 0 && len(bodyAST.List) > 0 {
+		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X != nil {
+			bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
+		}
 	}
 
 	return &ast.FuncLit{

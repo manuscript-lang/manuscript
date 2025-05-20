@@ -283,4 +283,10 @@ type ManuscriptVisitor interface {
 
 	// Visit a parse tree produced by Manuscript#structField.
 	VisitStructField(ctx *StructFieldContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#stmt_sep.
+	VisitStmt_sep(ctx *Stmt_sepContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#sep.
+	VisitSep(ctx *SepContext) interface{}
 }

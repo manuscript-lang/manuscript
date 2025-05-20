@@ -107,8 +107,12 @@ func (v *ManuscriptAstVisitor) VisitStmt(ctx *parser.StmtContext) interface{} {
 		return nil
 	}
 
-	if ctx.SEMICOLON() != nil {
-		return &ast.EmptyStmt{Semicolon: getAntlrTokenPos(ctx.SEMICOLON().GetSymbol())}
+	// Handle empty statement (just a separator)
+	if ctx.GetChildCount() == 1 {
+		token := ctx.GetStart()
+		if token.GetTokenType() == parser.ManuscriptLexerNEWLINE || token.GetTokenType() == parser.ManuscriptLexerSEMICOLON {
+			return &ast.EmptyStmt{}
+		}
 	}
 
 	v.addError("Unhandled statement type in VisitStmt: "+ctx.GetText(), ctx.GetStart())

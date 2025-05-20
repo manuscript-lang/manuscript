@@ -1,7 +1,10 @@
 lexer grammar ManuscriptLexer;
 
-// Define whitespace first, so it has highest priority
-WS: [ \t\r\n\f]+ -> channel(HIDDEN);
+// Newline as statement separator (emit SEMICOLON for every newline outside strings/comments)
+NEWLINE: '\n';
+
+// Define whitespace (excluding newlines) first, so it has highest priority
+WS: [ \t\r\f]+ -> channel(HIDDEN);
 COMMENT: '//' ~[\r\n]* -> channel(HIDDEN);
 MULTI_LINE_COMMENT: '/*' .*? '*/' -> channel(HIDDEN);
 

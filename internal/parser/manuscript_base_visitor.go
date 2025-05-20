@@ -375,3 +375,11 @@ func (v *BaseManuscriptVisitor) VisitStructInitExpr(ctx *StructInitExprContext) 
 func (v *BaseManuscriptVisitor) VisitStructField(ctx *StructFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
+
+func (v *BaseManuscriptVisitor) VisitStmt_sep(ctx *Stmt_sepContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitSep(ctx *SepContext) interface{} {
+	return v.VisitChildren(ctx)
+}

@@ -576,3 +576,15 @@ func (s *BaseManuscriptListener) EnterStructField(ctx *StructFieldContext) {}
 
 // ExitStructField is called when production structField is exited.
 func (s *BaseManuscriptListener) ExitStructField(ctx *StructFieldContext) {}
+
+// EnterStmt_sep is called when production stmt_sep is entered.
+func (s *BaseManuscriptListener) EnterStmt_sep(ctx *Stmt_sepContext) {}
+
+// ExitStmt_sep is called when production stmt_sep is exited.
+func (s *BaseManuscriptListener) ExitStmt_sep(ctx *Stmt_sepContext) {}
+
+// EnterSep is called when production sep is entered.
+func (s *BaseManuscriptListener) EnterSep(ctx *SepContext) {}
+
+// ExitSep is called when production sep is exited.
+func (s *BaseManuscriptListener) ExitSep(ctx *SepContext) {}

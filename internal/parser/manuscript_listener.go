@@ -284,6 +284,12 @@ type ManuscriptListener interface {
 	// EnterStructField is called when entering the structField production.
 	EnterStructField(c *StructFieldContext)
 
+	// EnterStmt_sep is called when entering the stmt_sep production.
+	EnterStmt_sep(c *Stmt_sepContext)
+
+	// EnterSep is called when entering the sep production.
+	EnterSep(c *SepContext)
+
 	// ExitProgram is called when exiting the program production.
 	ExitProgram(c *ProgramContext)
 
@@ -559,4 +565,10 @@ type ManuscriptListener interface {
 
 	// ExitStructField is called when exiting the structField production.
 	ExitStructField(c *StructFieldContext)
+
+	// ExitStmt_sep is called when exiting the stmt_sep production.
+	ExitStmt_sep(c *Stmt_sepContext)
+
+	// ExitSep is called when exiting the sep production.
+	ExitSep(c *SepContext)
 }

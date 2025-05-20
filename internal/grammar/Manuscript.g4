@@ -57,7 +57,7 @@ letBlockItem:
 	| LSQBR lhsDestructuredIdsArr = typedIDList RSQBR EQUALS rhsExprArr = expr # letBlockItemDestructuredArray
 ;
 
-letBlock: LPAREN (items += letBlockItem (items += letBlockItem)*)? RPAREN;
+letBlock: LPAREN (sep items += letBlockItem (sep items += letBlockItem)* sep)? RPAREN;
 
 letDestructuredObj:
 	LBRACE destructuredIds = typedIDList RBRACE EQUALS value = expr;
@@ -66,12 +66,8 @@ letDestructuredArray:
 
 namedID: name = ID;
 typedID: namedID (type = typeAnnotation)?;
-typedIDList:
-	names += typedID (COMMA names += typedID)* (COMMA)?;
-typeList:
-	types += typeAnnotation (COMMA types += typeAnnotation)* (
-		COMMA
-	)?;
+typedIDList: sep names += typedID (sep COMMA sep names += typedID)* (sep COMMA)? sep;
+typeList: sep types += typeAnnotation (sep COMMA sep types += typeAnnotation)* (sep COMMA)? sep;
 
 fnDecl: signature = fnSignature block = codeBlock;
 
@@ -80,7 +76,7 @@ fnSignature:
 		returnType = typeAnnotation
 	)? (returnsError = EXCLAMATION)?;
 
-parameters: param (COMMA param)* (COMMA)?;
+parameters: sep param (sep COMMA sep param)* (sep COMMA)? sep;
 param:
 	paramName = namedID type = typeAnnotation (
 		EQUALS defaultValue = expr
@@ -89,9 +85,10 @@ param:
 typeDecl: TYPE typeName = namedID (typeDefBody | typeAlias);
 
 typeDefBody:
-	(EXTENDS extendedTypes = typeList)? LBRACE (
-		fields += fieldDecl (COMMA fields += fieldDecl)* (COMMA)?
-	)? RBRACE;
+	(EXTENDS extendedTypes = typeList)? LBRACE
+		sep
+		(fields += fieldDecl (sep COMMA sep fields += fieldDecl)* (sep COMMA)? sep)?
+	RBRACE;
 
 typeAlias:
 	EQUALS aliasTarget = typeAnnotation (
@@ -140,13 +137,13 @@ stmt:
 		| sContinue = continueStmt
 		| sCheck = checkStmt
 		| sDefer = deferStmt
-	) SEMICOLON?
-	| SEMICOLON;
+	) stmt_sep
+	| stmt_sep;
 
 returnStmt: RETURN returnedValues = exprList?;
 yieldStmt: YIELD yieldedValues = exprList?;
 deferStmt: DEFER expr;
-exprList: expr (COMMA expr)* (COMMA)?;
+exprList: sep expr (sep COMMA sep expr)* (sep COMMA)? sep;
 
 ifStmt:
 	IF condition = expr thenBlock = codeBlock (
@@ -258,10 +255,10 @@ caseClause:
 	pattern = expr (
 		COLON resultExpr = expr
 		| resultBlock = codeBlock
-	) SEMICOLON?;
+	) stmt_sep;
 
 defaultClause:
-	DEFAULT (COLON resultExpr = expr | resultBlock = codeBlock) SEMICOLON?;
+	DEFAULT (COLON resultExpr = expr | resultBlock = codeBlock) stmt_sep;
 
 // --- String Parsing Rules --- 
 singleQuotedString:
@@ -348,3 +345,8 @@ taggedBlockString:
 
 structInitExpr: ID LPAREN (fields += structField (COMMA fields += structField)* (COMMA)?)? RPAREN;
 structField: key = ID COLON val = expr;
+
+stmt_sep: SEMICOLON | NEWLINE;
+
+// Helper separator for lists: allows any number of newlines
+sep: NEWLINE*;
