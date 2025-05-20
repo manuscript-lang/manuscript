@@ -6,8 +6,6 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
-// VisitInterfaceDecl handles interface declarations.
-//
 //	interface MyInterface {
 //	  myMethod(a: TypeA): ReturnType
 //	}
@@ -28,8 +26,6 @@ func (v *ManuscriptAstVisitor) VisitInterfaceDecl(ctx *parser.InterfaceDeclConte
 		methodField := v.VisitInterfaceMethod(concreteSigCtx)
 		if field, ok := methodField.(*ast.Field); ok {
 			methods = append(methods, field)
-		} else {
-			// Error already added by VisitInterfaceMethod or it returned nil
 		}
 	}
 
@@ -46,7 +42,6 @@ func (v *ManuscriptAstVisitor) VisitInterfaceDecl(ctx *parser.InterfaceDeclConte
 	}
 }
 
-// VisitInterfaceMethod handles a method signature within an interface.
 // myMethod(a: TypeA): ReturnType -> Name: myMethod, Type: func(a TypeA) ReturnType
 func (v *ManuscriptAstVisitor) VisitInterfaceMethod(ctx *parser.InterfaceMethodContext) interface{} {
 	if ctx.NamedID() == nil || ctx.LPAREN() == nil || ctx.RPAREN() == nil {

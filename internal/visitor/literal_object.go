@@ -43,7 +43,6 @@ func (v *ManuscriptAstVisitor) VisitObjectLiteral(ctx *parser.ObjectLiteralConte
 			v.addError("Object field is missing a name/key part", fieldCtx.GetStart())
 			continue
 		}
-		keyErrorToken = keyNameCtx.GetStart() // Best guess for key errors
 
 		if idNode := keyNameCtx.ID(); idNode != nil {
 			keyStringValue = idNode.GetText()
@@ -57,7 +56,7 @@ func (v *ManuscriptAstVisitor) VisitObjectLiteral(ctx *parser.ObjectLiteralConte
 			} else {
 				keyStringValue = unquotedKey
 			}
-			keyErrorToken = strLitCtx.GetStart() // Use start of string literal for pos
+			keyErrorToken = strLitCtx.GetStart()
 		} else {
 			v.addError("Object field key is neither an ID nor a String: "+keyNameCtx.GetText(), keyNameCtx.GetStart())
 			continue

@@ -17,173 +17,112 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 	}
 
 	file := &ast.File{
-		Name:  ast.NewIdent("main"), // Default to main package
-		Decls: []ast.Decl{},         // Declarations will be added here
+		Name:  ast.NewIdent("main"),
+		Decls: []ast.Decl{},
 	}
-	var mainFunctionFound bool = false
-	var mainFuncBody *ast.BlockStmt // To store the body if main is found
+	mainFound := false
+	var mainFunc *ast.FuncDecl
+	var topLevelStmts []ast.Stmt
 
-	// Placeholder for statements that might need to go into main if not part of any explicit func
-	// This slice will remain empty given current grammar where ProgramItem are declarations.
-	var topLevelStatements []ast.Stmt
-
-	for _, itemCtx := range ctx.AllProgramItem() {
-		if itemCtx == nil {
+	for _, item := range ctx.AllProgramItem() {
+		if item == nil {
 			continue
 		}
-
-		var visitedItem interface{}
-
-		// Check for specific program item types based on the grammar rule for programItem
-		if importStmtCtx := itemCtx.ImportStmt(); importStmtCtx != nil {
-			visitedItem = v.Visit(importStmtCtx)
-		} else if exportStmtCtx := itemCtx.ExportStmt(); exportStmtCtx != nil {
-			visitedItem = v.Visit(exportStmtCtx)
-		} else if externStmtCtx := itemCtx.ExternStmt(); externStmtCtx != nil {
-			visitedItem = v.Visit(externStmtCtx)
-		} else if letDeclCtx := itemCtx.LetDecl(); letDeclCtx != nil {
-			visitedItem = v.Visit(letDeclCtx)
-		} else if typeDeclCtx := itemCtx.TypeDecl(); typeDeclCtx != nil {
-			visitedItem = v.Visit(typeDeclCtx)
-		} else if ifaceDeclCtx := itemCtx.InterfaceDecl(); ifaceDeclCtx != nil {
-			visitedItem = v.Visit(ifaceDeclCtx)
-		} else if fnDeclCtx := itemCtx.FnDecl(); fnDeclCtx != nil {
-			visitedItem = v.Visit(fnDeclCtx)
-		} else if methodsDeclCtx := itemCtx.MethodsDecl(); methodsDeclCtx != nil {
-			visitedItem = v.Visit(methodsDeclCtx)
-		} else {
-			text := itemCtx.GetText()
+		var node interface{}
+		switch {
+		case item.ImportStmt() != nil:
+			node = v.Visit(item.ImportStmt())
+		case item.ExportStmt() != nil:
+			node = v.Visit(item.ExportStmt())
+		case item.ExternStmt() != nil:
+			node = v.Visit(item.ExternStmt())
+		case item.LetDecl() != nil:
+			node = v.Visit(item.LetDecl())
+		case item.TypeDecl() != nil:
+			node = v.Visit(item.TypeDecl())
+		case item.InterfaceDecl() != nil:
+			node = v.Visit(item.InterfaceDecl())
+		case item.FnDecl() != nil:
+			node = v.Visit(item.FnDecl())
+		case item.MethodsDecl() != nil:
+			node = v.Visit(item.MethodsDecl())
+		default:
+			text := item.GetText()
 			if text != "" && text != "<EOF>" {
-				v.addError("VisitProgram: Unhandled program item alternative: "+text, itemCtx.GetStart())
+				v.addError("VisitProgram: Unhandled program item: "+text, item.GetStart())
 			}
 		}
 
-		switch node := visitedItem.(type) {
-		case ast.Stmt: // Should not be hit if programItem only yields Decls
-			if stmt, ok := node.(*ast.EmptyStmt); ok && stmt == nil {
-				// Skip nil empty statements
-				continue
-			} else if _, isEmpty := node.(*ast.EmptyStmt); isEmpty {
-				// Skip empty statements but log it
-				continue
-			} else {
-				// This logic path should ideally not be hit with current grammar
-				// as ProgramItems are expected to be declarations or module statements.
-				// If a ProgramItem somehow yields a Stmt, it would be added to topLevelStatements.
-				topLevelStatements = append(topLevelStatements, node)
-			}
-		case []ast.Stmt: // Should not be hit if programItem only yields Decls
-			for _, stmt := range node {
-				if _, isEmpty := stmt.(*ast.EmptyStmt); isEmpty {
-					continue
-				} else if stmt != nil {
-					topLevelStatements = append(topLevelStatements, stmt)
-				}
-			}
+		switch n := node.(type) {
 		case []ast.Decl:
-			file.Decls = append(file.Decls, node...)
+			file.Decls = append(file.Decls, n...)
 		case ast.Decl:
-			if node == nil {
+			if n == nil {
 				continue
 			}
-
-			if funcDecl, ok := node.(*ast.FuncDecl); ok && funcDecl.Name != nil && funcDecl.Name.Name == "main" {
-				if mainFunctionFound {
-					// Multiple main functions defined, this is an error in Go.
-					// Find the original token for the function name for error reporting.
-					var errorToken antlr.Token
-					if specificFnDeclCtx := itemCtx.FnDecl(); specificFnDeclCtx != nil &&
-						specificFnDeclCtx.FnSignature() != nil &&
-						specificFnDeclCtx.FnSignature().NamedID() != nil &&
-						specificFnDeclCtx.FnSignature().NamedID().ID() != nil {
-						errorToken = specificFnDeclCtx.FnSignature().NamedID().ID().GetSymbol()
+			if fn, ok := n.(*ast.FuncDecl); ok && fn.Name != nil && fn.Name.Name == "main" {
+				if mainFound {
+					var tok antlr.Token
+					if fnDecl := item.FnDecl(); fnDecl != nil &&
+						fnDecl.FnSignature() != nil &&
+						fnDecl.FnSignature().NamedID() != nil &&
+						fnDecl.FnSignature().NamedID().ID() != nil {
+						tok = fnDecl.FnSignature().NamedID().ID().GetSymbol()
 					} else {
-						errorToken = itemCtx.GetStart() // Fallback to the start of the program item
+						tok = item.GetStart()
 					}
-					v.addError("Multiple main functions defined.", errorToken)
-				} else {
-					file.Decls = append(file.Decls, node) // Add the user-defined main function
-					mainFunctionFound = true
-					mainFuncBody = funcDecl.Body // Store its body
+					v.addError("Multiple main functions defined.", tok)
+					continue
 				}
-			} else {
-				file.Decls = append(file.Decls, node) // Add other declarations
+				mainFound = true
+				mainFunc = n.(*ast.FuncDecl)
 			}
+			file.Decls = append(file.Decls, n)
 		case *ast.TypeSpec:
-			// Handle TypeSpec returned from VisitInterfaceDecl
-			genDecl := &ast.GenDecl{
-				Tok:   token.TYPE,
-				Specs: []ast.Spec{node},
+			file.Decls = append(file.Decls, &ast.GenDecl{Tok: token.TYPE, Specs: []ast.Spec{n}})
+		case ast.Stmt:
+			if n != nil {
+				topLevelStmts = append(topLevelStmts, n)
 			}
-			file.Decls = append(file.Decls, genDecl)
+		case []ast.Stmt:
+			for _, stmt := range n {
+				if stmt != nil {
+					topLevelStmts = append(topLevelStmts, stmt)
+				}
+			}
 		case nil:
-			// Log an error if we unexpectedly get nil from a child visit
-			text := itemCtx.GetText()
+			text := item.GetText()
 			if text != "" && text != "<EOF>" {
-				v.addError("VisitProgram: Child visit returned nil for: "+text, itemCtx.GetStart())
+				v.addError("VisitProgram: Child visit returned nil for: "+text, item.GetStart())
 			}
 		default:
-			v.addError("Internal error: Unhandled node type returned from program item processing for: "+itemCtx.GetText(), itemCtx.GetStart())
-			if expr, ok := node.(ast.Expr); ok { // Should not happen with current grammar
-				topLevelStatements = append(topLevelStatements, &ast.ExprStmt{X: expr})
-			}
+			v.addError("Internal error: Unhandled node type for: "+item.GetText(), item.GetStart())
 		}
 	}
 
-	// If there were top-level statements and no explicit main func body was found to put them in,
-	// this indicates an issue if the grammar was supposed to prevent this scenario.
-	// For now, if a main was found, and we also collected topLevelStatements (which shouldn't happen with decl-only programItems),
-	// we could try to merge them, but this suggests a grammar vs visitor logic mismatch.
-	if len(topLevelStatements) > 0 {
-		if mainFunctionFound && mainFuncBody != nil {
-			// Prepend topLevelStatements to the user-defined main's body
-			// This case is less likely with current grammar where programItem is only declarations.
-			mainFuncBody.List = append(topLevelStatements, mainFuncBody.List...)
-		} else if !mainFunctionFound {
-			// No main function found, and we have top-level statements.
-			// Create a main function for them.
-			defaultMain := &ast.FuncDecl{
-				Name: ast.NewIdent("main"),
-				Type: &ast.FuncType{Params: &ast.FieldList{}, Results: nil},
-				Body: &ast.BlockStmt{List: topLevelStatements},
-			}
-			file.Decls = append(file.Decls, defaultMain)
-			mainFunctionFound = true // We just created one.
-		}
-	}
-
-	// If no main function was found (neither user-defined nor created for top-level statements), add a default empty one.
-	if !mainFunctionFound {
-		defaultMain := &ast.FuncDecl{
+	if !mainFound {
+		file.Decls = append(file.Decls, &ast.FuncDecl{
 			Name: ast.NewIdent("main"),
-			Type: &ast.FuncType{Params: &ast.FieldList{}, Results: nil},
-			Body: &ast.BlockStmt{List: []ast.Stmt{}}, // Empty body
-		}
-		file.Decls = append(file.Decls, defaultMain)
+			Type: &ast.FuncType{Params: &ast.FieldList{}},
+			Body: &ast.BlockStmt{List: topLevelStmts},
+		})
+	} else if mainFunc != nil && len(topLevelStmts) > 0 {
+		mainFunc.Body.List = append(topLevelStmts, mainFunc.Body.List...)
 	}
 
-	// Add collected imports (ensure this happens after all other Decls are potentially added)
 	if len(v.goImports) > 0 {
-		var importSpecs []ast.Spec
-		for impPath := range v.goImports {
-			importSpec := &ast.ImportSpec{
+		var specs []ast.Spec
+		for path := range v.goImports {
+			specs = append(specs, &ast.ImportSpec{
 				Path: &ast.BasicLit{
 					Kind:  token.STRING,
-					Value: strconv.Quote(impPath),
+					Value: strconv.Quote(path),
 				},
-			}
-			importSpecs = append(importSpecs, importSpec)
+			})
 		}
-
-		importDecl := &ast.GenDecl{
-			Tok:   token.IMPORT,
-			Specs: importSpecs,
-		}
-		// Prepend imports to other declarations for conventional Go style.
-		file.Decls = append([]ast.Decl{importDecl}, file.Decls...)
+		file.Decls = append([]ast.Decl{&ast.GenDecl{Tok: token.IMPORT, Specs: specs}}, file.Decls...)
 	}
 
-	// Double check that we have a valid file to return
 	if file == nil {
 		v.addError("VisitProgram: Failed to produce a valid file", ctx.GetStart())
 		return createEmptyMainFile()

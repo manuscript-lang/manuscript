@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-// VisitLetDecl handles let declarations.
 // It can return a single ast.Stmt or a []ast.Stmt if the 'let' expands to multiple Go statements.
 func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *msParser.LetDeclContext) interface{} {
 	if singleLetCtx := ctx.LetSingle(); singleLetCtx != nil {
@@ -66,7 +65,6 @@ func (v *ManuscriptAstVisitor) VisitLetSingle(ctx *msParser.LetSingleContext) in
 	}
 }
 
-// VisitLetBlock handles block let declarations.
 // It can return a single ast.Stmt or a []ast.Stmt if the 'let' expands to multiple Go statements.
 func (v *ManuscriptAstVisitor) VisitLetBlock(ctx *msParser.LetBlockContext) interface{} {
 	blockItems := ctx.AllLetBlockItem()
@@ -194,7 +192,6 @@ func (v *ManuscriptAstVisitor) VisitLetDestructuredArray(ctx *msParser.LetDestru
 	}
 }
 
-// VisitTypedID handles a typed identifier, returning an *ast.Ident.
 // Type information is currently ignored for let LHS.
 func (v *ManuscriptAstVisitor) VisitTypedID(ctx *msParser.TypedIDContext) interface{} {
 	if ctx.NamedID() != nil {
@@ -204,7 +201,6 @@ func (v *ManuscriptAstVisitor) VisitTypedID(ctx *msParser.TypedIDContext) interf
 	return nil
 }
 
-// VisitNamedID handles a named identifier, returning an *ast.Ident.
 // This is part of the ANTLR generated visitor interface if NamedID is a parser rule.
 // We provide a concrete implementation.
 func (v *ManuscriptAstVisitor) VisitNamedID(ctx *msParser.NamedIDContext) interface{} {
@@ -215,8 +211,6 @@ func (v *ManuscriptAstVisitor) VisitNamedID(ctx *msParser.NamedIDContext) interf
 	return nil
 }
 
-// VisitTypedIDList if it's missing and helps.
-// For now, assuming AllTypedID() returns ITypedIDContext and Visit(ITypedIDContext) returns *ast.Ident.
 func (v *ManuscriptAstVisitor) VisitTypedIDList(ctx *msParser.TypedIDListContext) interface{} {
 	var idents []*ast.Ident
 	for _, typedIDCtx := range ctx.AllTypedID() {

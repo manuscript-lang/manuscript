@@ -7,7 +7,6 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
-// VisitLoopBody handles the body of a loop which can contain statements.
 // loopBody: LBRACE (stmt)* RBRACE;
 func (v *ManuscriptAstVisitor) VisitLoopBody(ctx *parser.LoopBodyContext) interface{} {
 	if ctx == nil {
@@ -35,7 +34,6 @@ func (v *ManuscriptAstVisitor) VisitLoopBody(ctx *parser.LoopBodyContext) interf
 	}
 }
 
-// VisitWhileStmt handles while loops.
 // Manuscript: while condition { body } -> while condition loopBody
 // Go: for condition { body }
 func (v *ManuscriptAstVisitor) VisitWhileStmt(ctx *parser.WhileStmtContext) interface{} {
@@ -48,12 +46,12 @@ func (v *ManuscriptAstVisitor) VisitWhileStmt(ctx *parser.WhileStmtContext) inte
 
 	// Condition is ctx.Expr() based on `whileStmt: WHILE condition = expr loopBody;`
 	if condCtx := ctx.Expr(); condCtx != nil {
-		condVisited := v.Visit(condCtx) // Use generic v.Visit
+		condVisited := v.Visit(condCtx)
 		if condExpr, ok := condVisited.(ast.Expr); ok {
 			forStmtNode.Cond = condExpr
 		} else if condVisited != nil {
 			v.addError(fmt.Sprintf("While loop condition was %T, expected ast.Expr", condVisited), condCtx.GetStart())
-		} else { // Should not happen if grammar is correct (condition is mandatory if Expr() not nil)
+		} else {
 			v.addError("While loop missing condition expression", condCtx.GetStart())
 		}
 	} else {
@@ -62,13 +60,11 @@ func (v *ManuscriptAstVisitor) VisitWhileStmt(ctx *parser.WhileStmtContext) inte
 
 	// Body is ctx.LoopBody() based on `whileStmt: WHILE condition = expr loopBody;`
 	if bodyRuleCtx := ctx.LoopBody(); bodyRuleCtx != nil {
-		// Create default empty block in case of errors
 		forStmtNode.Body = &ast.BlockStmt{
 			Lbrace: v.pos(bodyRuleCtx.GetStart()),
 			Rbrace: v.pos(bodyRuleCtx.GetStop()),
 		}
 
-		// Try to get concrete loop body context
 		if concreteLoopBodyCtx, ok := bodyRuleCtx.(*parser.LoopBodyContext); ok {
 			if bodyAst, ok := v.VisitLoopBody(concreteLoopBodyCtx).(*ast.BlockStmt); ok {
 				forStmtNode.Body = bodyAst
@@ -86,16 +82,13 @@ func (v *ManuscriptAstVisitor) VisitWhileStmt(ctx *parser.WhileStmtContext) inte
 	return forStmtNode
 }
 
-// VisitForTrinity handles C-style for loops (init; cond; post; body)
 func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) interface{} {
 	if ctx == nil {
 		return &ast.BadStmt{}
 	}
 
-	// Init
 	var initStmt ast.Stmt
 	if decl := ctx.GetInitializerDecl(); decl != nil {
-		// Always use := for for-loop init
 		if cinit := decl.(*parser.LetSingleContext); cinit != nil {
 			if stmt, ok := v.VisitLetSingle(cinit).(ast.Stmt); ok {
 				initStmt = stmt
@@ -107,7 +100,6 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 		}
 	}
 
-	// Cond
 	var condExpr ast.Expr
 	if cond := ctx.GetCondition(); cond != nil {
 		if expr, ok := v.Visit(cond).(ast.Expr); ok {
@@ -115,7 +107,6 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 		}
 	}
 
-	// Post
 	var postStmt ast.Stmt
 	if post := ctx.GetPostUpdate(); post != nil {
 		if stmt, ok := v.Visit(post).(ast.Stmt); ok {
@@ -125,7 +116,6 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 		}
 	}
 
-	// Body
 	var body *ast.BlockStmt
 	if b := ctx.GetBody(); b != nil {
 		if block, ok := v.VisitLoopBody(b.(*parser.LoopBodyContext)).(*ast.BlockStmt); ok {
@@ -146,13 +136,11 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 	}
 }
 
-// VisitForInLoop handles for-in loops
 func (v *ManuscriptAstVisitor) VisitForInLoop(ctx *parser.ForInLoopContext) interface{} {
 	if ctx == nil {
 		return &ast.BadStmt{}
 	}
 	stmt := &ast.RangeStmt{Tok: gotoken.DEFINE}
-	// Iterable
 	if it := ctx.GetIterable(); it != nil {
 		if expr, ok := v.Visit(it).(ast.Expr); ok {
 			stmt.X = expr
@@ -160,7 +148,6 @@ func (v *ManuscriptAstVisitor) VisitForInLoop(ctx *parser.ForInLoopContext) inte
 			stmt.X = &ast.BadExpr{}
 		}
 	}
-	// Vars
 	key, val := ctx.GetKey(), ctx.GetVal()
 	if key == nil {
 		stmt.Key = ast.NewIdent("_")
@@ -171,7 +158,6 @@ func (v *ManuscriptAstVisitor) VisitForInLoop(ctx *parser.ForInLoopContext) inte
 		stmt.Key = ast.NewIdent("_")
 		stmt.Value = ast.NewIdent(key.GetText())
 	}
-	// Body
 	if b := ctx.LoopBody(); b != nil {
 		if block, ok := v.VisitLoopBody(b.(*parser.LoopBodyContext)).(*ast.BlockStmt); ok {
 			stmt.Body = block
@@ -184,7 +170,6 @@ func (v *ManuscriptAstVisitor) VisitForInLoop(ctx *parser.ForInLoopContext) inte
 	return stmt
 }
 
-// VisitForStmt dispatches to the correct for-loop type
 func (v *ManuscriptAstVisitor) VisitForStmt(ctx *parser.ForStmtContext) interface{} {
 	v.enterLoop()
 	defer v.exitLoop()
