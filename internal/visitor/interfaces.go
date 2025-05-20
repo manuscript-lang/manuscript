@@ -55,32 +55,23 @@ func (v *ManuscriptAstVisitor) VisitInterfaceMethod(ctx *parser.InterfaceMethodC
 	}
 	methodName := ctx.NamedID().GetText()
 
-	paramsAST, _, paramDetails := v.ProcessParameters(ctx.Parameters())
-	for _, detail := range paramDetails {
-		if detail.DefaultValue != nil {
-			v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in interface method signature.", detail.Name.Name), detail.NameToken)
-		}
+	var paramDetails []ParamDetail
+	var paramsAST *ast.FieldList
+	paramDetailsRaw := v.Visit(ctx.Parameters())
+	if details, ok := paramDetailsRaw.([]ParamDetail); ok {
+		paramDetails = details
+		paramsAST, _ = v.buildParamsAST(paramDetails)
 	}
-
-	interfaceParamsList := []*ast.Field{}
-	if paramsAST != nil && paramsAST.List != nil {
-		for _, p := range paramsAST.List {
-			interfaceParamsList = append(
-				interfaceParamsList, &ast.Field{
-					Type:  p.Type,
-					Names: p.Names,
-				},
-			)
-		}
+	if paramsAST == nil {
+		paramsAST = &ast.FieldList{List: []*ast.Field{}}
 	}
-	finalParams := &ast.FieldList{List: interfaceParamsList}
 
 	resultsList := v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), methodName)
 
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(methodName)},
 		Type: &ast.FuncType{
-			Params:  finalParams,
+			Params:  paramsAST,
 			Results: resultsList,
 		},
 	}

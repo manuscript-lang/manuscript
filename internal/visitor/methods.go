@@ -48,25 +48,85 @@ func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) in
 		return nil
 	}
 	nameId := ctx.InterfaceMethod().NamedID()
-	parts, ok := v.buildFunctionEssentials(
-		nameId.GetText(),
-		nameId.ID().GetSymbol(),
-		ctx.InterfaceMethod().Parameters(),
-		ctx.InterfaceMethod().TypeAnnotation(),
-		ctx.InterfaceMethod().EXCLAMATION(),
-		ctx.CodeBlock(),
-		true,
-	)
-	if !ok {
-		v.addError("Failed to build function essentials for method "+nameId.GetText(), nameId.ID().GetSymbol())
+	paramsCtx := ctx.InterfaceMethod().Parameters()
+	typeAnnotation := ctx.InterfaceMethod().TypeAnnotation()
+	exclamation := ctx.InterfaceMethod().EXCLAMATION()
+
+	var paramDetailsList []ParamDetail
+	var paramsAST *ast.FieldList
+	var defaultAssignments []ast.Stmt
+	if paramsCtx != nil {
+		paramDetailsRaw := v.Visit(paramsCtx)
+		if paramDetails, ok := paramDetailsRaw.([]ParamDetail); ok {
+			paramDetailsList = paramDetails
+			paramsAST, defaultAssignments = v.buildParamsAST(paramDetailsList)
+		}
+	} else {
+		paramsAST = &ast.FieldList{List: []*ast.Field{}}
+	}
+
+	if ctx.CodeBlock() == nil {
+		v.addError("No code block found for method "+nameId.GetText(), nameId.ID().GetSymbol())
 		return nil
 	}
+	concreteCodeBlockCtx, ok := ctx.CodeBlock().(*parser.CodeBlockContext)
+	if !ok {
+		v.addError("Internal error: Unexpected context type for code block in method "+nameId.GetText(), ctx.CodeBlock().GetStart())
+		return nil
+	}
+	bodyInterface := v.Visit(concreteCodeBlockCtx)
+	b, okBody := bodyInterface.(*ast.BlockStmt)
+	if !okBody {
+		v.addError("Method "+nameId.GetText()+" must have a valid code block body.", ctx.CodeBlock().GetStart())
+		return nil
+	}
+	bodyAST := b
+	if len(defaultAssignments) > 0 {
+		newBodyList := append([]ast.Stmt{}, defaultAssignments...)
+		newBodyList = append(newBodyList, bodyAST.List...)
+		bodyAST.List = newBodyList
+	}
+
+	var lastExpr ast.Expr
+	if len(bodyAST.List) > 0 {
+		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok {
+			lastExpr = exprStmt.X
+		} else if retStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ReturnStmt); ok && len(retStmt.Results) > 0 {
+			lastExpr = retStmt.Results[0]
+		}
+	}
+
+	var resultsAST *ast.FieldList
+	goFuncWillHaveReturn := false
+	if typeAnnotation != nil || exclamation != nil {
+		resultsAST = v.ProcessReturnType(typeAnnotation, exclamation, nameId.GetText())
+		if resultsAST != nil && len(resultsAST.List) > 0 {
+			goFuncWillHaveReturn = true
+		}
+	} else if lastExpr != nil {
+		inferredType := v.inferTypeFromExpression(lastExpr, paramsAST)
+		if inferredType != nil {
+			resultsAST = &ast.FieldList{List: []*ast.Field{{Type: inferredType}}}
+			goFuncWillHaveReturn = true
+		}
+	}
+
+	if goFuncWillHaveReturn && len(bodyAST.List) > 0 {
+		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X == lastExpr {
+			bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
+		}
+	}
+
+	if bodyAST == nil {
+		bodyAST = &ast.BlockStmt{}
+	}
+
 	return &ast.FuncDecl{
 		Name: ast.NewIdent(nameId.GetText()),
 		Type: &ast.FuncType{
-			Params:  parts.paramsAST,
-			Results: parts.resultsAST,
+			Params:  paramsAST,
+			Results: resultsAST,
 		},
-		Body: parts.bodyAST,
+		Body: bodyAST,
 	}
 }

@@ -96,37 +96,33 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 // This is used by TypeAnnotation for function types like `fn(int): string`.
 func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext) interface{} {
 	var funcNameForError string
-	if ctx.NamedID() != nil { // fnSignature can have a name, but in type context it is anonymous
+	if ctx.NamedID() != nil {
 		funcNameForError = ctx.NamedID().GetText() + " (in type signature)"
 	} else {
 		funcNameForError = "anonymous function type"
 	}
 
-	// Assuming FnSignatureContext has Parameters() IParametersContext and TypeAnnotation() ITypeAnnotationContext
-	paramsAST, _, paramDetails := v.ProcessParameters(ctx.Parameters()) // Use existing helper
-
-	// Check for default values in function type parameters, which is usually not allowed.
-	for _, detail := range paramDetails {
-		if detail.DefaultValue != nil {
-			v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in function type signature.", detail.Name.Name), detail.NameToken)
-			// Depending on strictness, might return nil or BadExpr here
+	paramsAST := &ast.FieldList{List: []*ast.Field{}}
+	var paramDetails []ParamDetail
+	paramDetailsRaw := v.Visit(ctx.Parameters())
+	if details, ok := paramDetailsRaw.([]ParamDetail); ok {
+		paramDetails = details
+		for _, detail := range paramDetails {
+			if detail.DefaultValue != nil {
+				v.addError(fmt.Sprintf("Default value for parameter '%s' not allowed in function type signature.", detail.Name.Name), detail.NameToken)
+			}
+			if detail.Name != nil && detail.Name.Name != "" {
+				paramsAST.List = append(paramsAST.List, &ast.Field{Names: []*ast.Ident{detail.Name}, Type: detail.Type})
+			} else {
+				paramsAST.List = append(paramsAST.List, &ast.Field{Type: detail.Type})
+			}
 		}
 	}
 
-	// Interface methods in Go AST don't have parameter names, only types.
-	// Function types in Go also typically only care about types for matching.
-	// Create a new FieldList for Params with only types.
-	paramTypesOnlyAST := &ast.FieldList{List: []*ast.Field{}}
-	if paramsAST != nil {
-		for _, p := range paramsAST.List {
-			paramTypesOnlyAST.List = append(paramTypesOnlyAST.List, &ast.Field{Type: p.Type})
-		}
-	}
-
-	resultsAST := v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), funcNameForError) // Use existing helper
+	resultsAST := v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), funcNameForError)
 
 	return &ast.FuncType{
-		Params:  paramTypesOnlyAST,
+		Params:  paramsAST,
 		Results: resultsAST,
 	}
 }
