@@ -62,18 +62,21 @@ func (v *ManuscriptAstVisitor) VisitWhileStmt(ctx *parser.WhileStmtContext) inte
 
 	// Body is ctx.LoopBody() based on `whileStmt: WHILE condition = expr loopBody;`
 	if bodyRuleCtx := ctx.LoopBody(); bodyRuleCtx != nil {
-		// Ensure bodyRuleCtx is *parser.LoopBodyContext before calling VisitLoopBody
+		// Create default empty block in case of errors
+		forStmtNode.Body = &ast.BlockStmt{
+			Lbrace: v.pos(bodyRuleCtx.GetStart()),
+			Rbrace: v.pos(bodyRuleCtx.GetStop()),
+		}
+
+		// Try to get concrete loop body context
 		if concreteLoopBodyCtx, ok := bodyRuleCtx.(*parser.LoopBodyContext); ok {
-			visitedBody := v.VisitLoopBody(concreteLoopBodyCtx)
-			if bodyAst, bodyOk := visitedBody.(*ast.BlockStmt); bodyOk {
+			if bodyAst, ok := v.VisitLoopBody(concreteLoopBodyCtx).(*ast.BlockStmt); ok {
 				forStmtNode.Body = bodyAst
 			} else {
-				v.addError(fmt.Sprintf("While loop body did not resolve to *ast.BlockStmt, got %T", visitedBody), bodyRuleCtx.GetStart())
-				forStmtNode.Body = &ast.BlockStmt{Lbrace: v.pos(bodyRuleCtx.GetStart()), Rbrace: v.pos(bodyRuleCtx.GetStop())} // fallback
+				v.addError(fmt.Sprintf("While loop body did not resolve to *ast.BlockStmt, got %T", bodyRuleCtx), bodyRuleCtx.GetStart())
 			}
 		} else {
 			v.addError(fmt.Sprintf("While loop body was not *parser.LoopBodyContext, got %T", bodyRuleCtx), bodyRuleCtx.GetStart())
-			forStmtNode.Body = &ast.BlockStmt{Lbrace: v.pos(bodyRuleCtx.GetStart()), Rbrace: v.pos(bodyRuleCtx.GetStop())}
 		}
 	} else {
 		v.addError("While loop missing body (LoopBody)", ctx.GetStart())
@@ -93,7 +96,11 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 	var initStmt ast.Stmt
 	if decl := ctx.GetInitializerDecl(); decl != nil {
 		// Always use := for for-loop init
-		initStmt = v.visitLetSingleAssignment(decl)
+		if cinit := decl.(*parser.LetSingleContext); cinit != nil {
+			if stmt, ok := v.VisitLetSingle(cinit).(ast.Stmt); ok {
+				initStmt = stmt
+			}
+		}
 	} else if exprs := ctx.GetInitializerExprs(); exprs != nil {
 		if stmt, ok := v.Visit(exprs).(ast.Stmt); ok {
 			initStmt = stmt
