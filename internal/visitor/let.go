@@ -5,187 +5,109 @@ import (
 	"go/token"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
+
+	"github.com/antlr4-go/antlr/v4"
 )
 
-// It can return a single ast.Stmt or a []ast.Stmt if the 'let' expands to multiple Go statements.
-func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *parser.LetDeclContext) interface{} {
-	if singleLetCtx := ctx.LetSingle(); singleLetCtx != nil {
-		return v.Visit(singleLetCtx)
+// VisitLetDeclSingle handles 'let typedID = expr' or 'let typedID'
+func (v *ManuscriptAstVisitor) VisitLetDeclSingle(ctx *parser.LetDeclSingleContext) interface{} {
+	letSingle := ctx.LetSingle()
+	if letSingle == nil {
+		v.addError("Missing letSingle in let declaration: "+ctx.GetText(), ctx.GetStart())
+		return &ast.EmptyStmt{}
 	}
-	if blockLetCtx := ctx.LetBlock(); blockLetCtx != nil {
-		return v.Visit(blockLetCtx)
-	}
-	if destructuredObjCtx := ctx.LetDestructuredObj(); destructuredObjCtx != nil {
-		return v.Visit(destructuredObjCtx)
-	}
-	if destructuredArrayCtx := ctx.LetDestructuredArray(); destructuredArrayCtx != nil {
-		return v.Visit(destructuredArrayCtx)
-	}
-	v.addError("Unrecognized let declaration structure: "+ctx.GetText(), ctx.GetStart())
-	return &ast.EmptyStmt{}
+	return v.Visit(letSingle)
 }
 
-// VisitLetSingle handles 'let typedID = expr' or 'let typedID'
-// ctx is parser.ILetSingleContext
-func (v *ManuscriptAstVisitor) VisitLetSingle(ctx *parser.LetSingleContext) interface{} {
-	if ctx.TypedID() == nil {
-		v.addError("Missing pattern in single let assignment: "+ctx.GetText(), ctx.GetStart())
-		return &ast.EmptyStmt{}
+// VisitLetDeclBlock handles 'let ( ... )'
+func (v *ManuscriptAstVisitor) VisitLetDeclBlock(ctx *parser.LetDeclBlockContext) interface{} {
+	if ctx == nil {
+		v.addError("VisitLetBlock called with nil context", nil)
+		return []ast.Stmt{&ast.BadStmt{}}
 	}
-	patternRaw := v.Visit(ctx.TypedID())
-	ident, ok := patternRaw.(*ast.Ident)
-	if !ok {
-		v.addError("Pattern did not evaluate to an identifier: "+ctx.TypedID().GetText(), ctx.TypedID().GetStart())
-		return &ast.EmptyStmt{}
+	letBlock := ctx.LetBlock()
+	if letBlock == nil {
+		return []ast.Stmt{}
 	}
-	if ctx.EQUALS() != nil && ctx.Expr() != nil {
-		valueVisited := v.Visit(ctx.Expr())
-		sourceExpr, okVal := valueVisited.(ast.Expr)
-		if !okVal {
-			v.addError("Value did not evaluate to an expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
-			return &ast.EmptyStmt{}
-		}
-		return &ast.AssignStmt{
-			Lhs: []ast.Expr{ident},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{sourceExpr},
-		}
-	} else if ctx.EQUALS() != nil && ctx.Expr() == nil {
-		v.addError("Incomplete assignment in single let: "+ctx.GetText(), ctx.GetStart())
-		return &ast.EmptyStmt{}
-	} else {
-		return &ast.DeclStmt{
-			Decl: &ast.GenDecl{
-				Tok: token.VAR,
-				Specs: []ast.Spec{
-					&ast.ValueSpec{Names: []*ast.Ident{ident}},
-				},
-			},
-		}
+	itemList := letBlock.LetBlockItemList()
+	if itemList == nil {
+		return []ast.Stmt{}
 	}
+	return v.Visit(itemList)
 }
 
-// It can return a single ast.Stmt or a []ast.Stmt if the 'let' expands to multiple Go statements.
-func (v *ManuscriptAstVisitor) VisitLetBlock(ctx *parser.LetBlockContext) interface{} {
-	blockItemList := ctx.LetBlockItemList()
-	if blockItemList == nil {
+// VisitLetDeclDestructuredObj handles 'let {a, b} = expr'
+func (v *ManuscriptAstVisitor) VisitLetDeclDestructuredObj(ctx *parser.LetDeclDestructuredObjContext) interface{} {
+	letObj := ctx.LetDestructuredObj()
+	if letObj == nil {
+		v.addError("Missing LetDestructuredObj in let declaration: "+ctx.GetText(), ctx.GetStart())
 		return &ast.EmptyStmt{}
 	}
-	blockItems := blockItemList.AllLetBlockItem()
-	if len(blockItems) == 0 {
-		return &ast.EmptyStmt{}
-	}
-	var stmts []ast.Stmt
-	for _, itemCtx := range blockItems {
-		visitedItem := v.Visit(itemCtx)
-		if individualStmts, ok := visitedItem.([]ast.Stmt); ok {
-			stmts = append(stmts, individualStmts...)
-		}
-	}
-	if len(stmts) == 1 {
-		return stmts[0]
-	}
-	return stmts
+	return v.Visit(letObj)
 }
 
-// VisitLetDestructuredObj handles 'let {id1, id2} = expr' or 'let {id1, id2}'
-// ctx is parser.ILetDestructuredObjContext
-func (v *ManuscriptAstVisitor) VisitLetDestructuredObj(ctx *parser.LetDestructuredObjContext) interface{} {
-	if ctx.TypedIDList() == nil {
-		v.addError("Object destructuring pattern is malformed: "+ctx.GetText(), ctx.GetStart())
+// VisitLetDeclDestructuredArray handles 'let [a, b] = expr'
+func (v *ManuscriptAstVisitor) VisitLetDeclDestructuredArray(ctx *parser.LetDeclDestructuredArrayContext) interface{} {
+	letArr := ctx.LetDestructuredArray()
+	if letArr == nil {
+		v.addError("Missing LetDestructuredArray in let declaration: "+ctx.GetText(), ctx.GetStart())
+		return &ast.EmptyStmt{}
+	}
+	return v.Visit(letArr)
+}
+
+// DRY helper for destructured let (object/array)
+func (v *ManuscriptAstVisitor) destructuredLet(
+	typedIDListCtx parser.ITypedIDListContext,
+	rhsExprCtx parser.IExprContext,
+	isArray bool,
+	getRhs func(tempVar *ast.Ident, idx int, name string) ast.Expr,
+	ctx antlr.ParserRuleContext,
+) interface{} {
+	if typedIDListCtx == nil {
+		v.addError("Destructuring pattern is malformed: "+ctx.GetText(), ctx.GetStart())
 		return &ast.EmptyStmt{}
 	}
 	var lhsIdents []*ast.Ident
-	typedIDListCtx := ctx.TypedIDList().(*parser.TypedIDListContext)
-	for _, typedIDInterface := range typedIDListCtx.AllTypedID() {
-		idVisited := v.Visit(typedIDInterface)
-		if ident, isIdent := idVisited.(*ast.Ident); isIdent {
-			lhsIdents = append(lhsIdents, ident)
-		}
-	}
-	if len(lhsIdents) == 0 {
-		v.addError("Object destructuring pattern resulted in no LHS: "+ctx.GetText(), ctx.GetStart())
-		return &ast.EmptyStmt{}
-	}
-	if ctx.EQUALS() != nil && ctx.Expr() != nil {
-		rhsVisited := v.Visit(ctx.Expr())
-		rhsExpr, okExpr := rhsVisited.(ast.Expr)
-		if !okExpr {
-			v.addError("RHS of object destructuring is not an expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
-			return &ast.EmptyStmt{}
-		}
-		var generatedStmts []ast.Stmt
-		tempVarIdent := ast.NewIdent("__val" + v.nextTempVarCounter())
-		generatedStmts = append(generatedStmts, &ast.AssignStmt{
-			Lhs: []ast.Expr{tempVarIdent},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{rhsExpr},
-		})
-		for _, ident := range lhsIdents {
-			generatedStmts = append(generatedStmts, &ast.AssignStmt{
-				Lhs: []ast.Expr{ast.NewIdent(ident.Name)},
-				Tok: token.DEFINE,
-				Rhs: []ast.Expr{&ast.SelectorExpr{X: tempVarIdent, Sel: ast.NewIdent(ident.Name)}},
-			})
-		}
-		return &ast.BlockStmt{List: generatedStmts}
-	} else if ctx.EQUALS() != nil && ctx.Expr() == nil {
-		v.addError("Incomplete assignment in object destructuring: "+ctx.GetText(), ctx.GetStart())
-		return &ast.EmptyStmt{}
+	typedIDList := v.Visit(typedIDListCtx)
+	if idSlice, ok := typedIDList.([]*ast.Ident); ok {
+		lhsIdents = idSlice
 	} else {
-		return &ast.DeclStmt{
-			Decl: &ast.GenDecl{
-				Tok:   token.VAR,
-				Specs: []ast.Spec{&ast.ValueSpec{Names: lhsIdents}},
-			},
-		}
-	}
-}
-
-// VisitLetDestructuredArray handles 'let [id1, id2] = expr' or 'let [id1, id2]'
-// ctx is parser.ILetDestructuredArrayContext
-func (v *ManuscriptAstVisitor) VisitLetDestructuredArray(ctx *parser.LetDestructuredArrayContext) interface{} {
-	if ctx.TypedIDList() == nil {
-		v.addError("Array destructuring pattern is malformed: "+ctx.GetText(), ctx.GetStart())
+		v.addError("Destructuring pattern did not resolve to identifiers: "+typedIDListCtx.GetText(), typedIDListCtx.GetStart())
 		return &ast.EmptyStmt{}
-	}
-	var lhsIdents []*ast.Ident
-	typedIDListCtx := ctx.TypedIDList().(*parser.TypedIDListContext)
-	for _, typedIDInterface := range typedIDListCtx.AllTypedID() {
-		idVisited := v.Visit(typedIDInterface)
-		if ident, isIdent := idVisited.(*ast.Ident); isIdent {
-			lhsIdents = append(lhsIdents, ident)
-		}
 	}
 	if len(lhsIdents) == 0 {
-		v.addError("Array destructuring pattern resulted in no LHS: "+ctx.GetText(), ctx.GetStart())
+		v.addError("Destructuring pattern resulted in no LHS: "+ctx.GetText(), ctx.GetStart())
 		return &ast.EmptyStmt{}
 	}
-	if ctx.EQUALS() != nil && ctx.Expr() != nil {
-		rhsVisited := v.Visit(ctx.Expr())
+	if rhsExprCtx != nil {
+		rhsVisited := v.Visit(rhsExprCtx)
 		rhsExpr, okExpr := rhsVisited.(ast.Expr)
 		if !okExpr {
-			v.addError("RHS of array destructuring is not an expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
+			v.addError("RHS of destructuring is not an expression: "+rhsExprCtx.GetText(), rhsExprCtx.GetStart())
 			return &ast.EmptyStmt{}
 		}
-		var generatedStmts []ast.Stmt
 		tempVarIdent := ast.NewIdent("__val" + v.nextTempVarCounter())
-		generatedStmts = append(generatedStmts, &ast.AssignStmt{
+		var stmts []ast.Stmt
+		stmts = append(stmts, &ast.AssignStmt{
 			Lhs: []ast.Expr{tempVarIdent},
 			Tok: token.DEFINE,
 			Rhs: []ast.Expr{rhsExpr},
 		})
 		for i, ident := range lhsIdents {
-			generatedStmts = append(generatedStmts, &ast.AssignStmt{
+			var rhs ast.Expr
+			if isArray {
+				rhs = getRhs(tempVarIdent, i, ident.Name)
+			} else {
+				rhs = getRhs(tempVarIdent, i, ident.Name)
+			}
+			stmts = append(stmts, &ast.AssignStmt{
 				Lhs: []ast.Expr{ast.NewIdent(ident.Name)},
 				Tok: token.DEFINE,
-				Rhs: []ast.Expr{&ast.IndexExpr{X: tempVarIdent, Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)}}},
+				Rhs: []ast.Expr{rhs},
 			})
 		}
-		return &ast.BlockStmt{List: generatedStmts}
-	} else if ctx.EQUALS() != nil && ctx.Expr() == nil {
-		v.addError("Incomplete assignment in array destructuring: "+ctx.GetText(), ctx.GetStart())
-		return &ast.EmptyStmt{}
+		return &ast.BlockStmt{List: stmts}
 	} else {
 		return &ast.DeclStmt{
 			Decl: &ast.GenDecl{
@@ -194,6 +116,32 @@ func (v *ManuscriptAstVisitor) VisitLetDestructuredArray(ctx *parser.LetDestruct
 			},
 		}
 	}
+}
+
+// VisitLetDestructuredObj handles 'let {id1, id2} = expr' or 'let {id1, id2}'
+func (v *ManuscriptAstVisitor) VisitLetDestructuredObj(ctx *parser.LetDestructuredObjContext) interface{} {
+	return v.destructuredLet(
+		ctx.TypedIDList(),
+		ctx.Expr(),
+		false,
+		func(tempVar *ast.Ident, _ int, name string) ast.Expr {
+			return &ast.SelectorExpr{X: tempVar, Sel: ast.NewIdent(name)}
+		},
+		ctx,
+	)
+}
+
+// VisitLetDestructuredArray handles 'let [id1, id2] = expr' or 'let [id1, id2]'
+func (v *ManuscriptAstVisitor) VisitLetDestructuredArray(ctx *parser.LetDestructuredArrayContext) interface{} {
+	return v.destructuredLet(
+		ctx.TypedIDList(),
+		ctx.Expr(),
+		true,
+		func(tempVar *ast.Ident, idx int, _ string) ast.Expr {
+			return &ast.IndexExpr{X: tempVar, Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(idx)}}
+		},
+		ctx,
+	)
 }
 
 // Type information is currently ignored for let LHS.
@@ -303,6 +251,62 @@ func (v *ManuscriptAstVisitor) VisitLetBlockItemDestructuredArray(ctx *parser.Le
 			Lhs: []ast.Expr{ast.NewIdent(ident.Name)}, Tok: token.DEFINE,
 			Rhs: []ast.Expr{&ast.IndexExpr{X: tempVarIdent, Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)}}},
 		})
+	}
+	return stmts
+}
+
+// VisitLetSingle handles 'let typedID = expr' or 'let typedID'
+func (v *ManuscriptAstVisitor) VisitLetSingle(ctx *parser.LetSingleContext) interface{} {
+	if ctx.TypedID() == nil {
+		v.addError("Missing pattern in single let assignment: "+ctx.GetText(), ctx.GetStart())
+		return &ast.EmptyStmt{}
+	}
+	patternRaw := v.Visit(ctx.TypedID())
+	ident, ok := patternRaw.(*ast.Ident)
+	if !ok {
+		v.addError("Pattern did not evaluate to an identifier: "+ctx.TypedID().GetText(), ctx.TypedID().GetStart())
+		return &ast.EmptyStmt{}
+	}
+	if ctx.EQUALS() != nil && ctx.Expr() != nil {
+		valueVisited := v.Visit(ctx.Expr())
+		sourceExpr, okVal := valueVisited.(ast.Expr)
+		if !okVal {
+			v.addError("Value did not evaluate to an expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
+			return &ast.EmptyStmt{}
+		}
+		return &ast.AssignStmt{
+			Lhs: []ast.Expr{ident},
+			Tok: token.DEFINE,
+			Rhs: []ast.Expr{sourceExpr},
+		}
+	}
+	return &ast.DeclStmt{
+		Decl: &ast.GenDecl{
+			Tok:   token.VAR,
+			Specs: []ast.Spec{&ast.ValueSpec{Names: []*ast.Ident{ident}}},
+		},
+	}
+}
+
+// VisitLetBlockItemList aggregates all let block items into a flat []ast.Stmt
+func (v *ManuscriptAstVisitor) VisitLetBlockItemList(ctx *parser.LetBlockItemListContext) interface{} {
+	if ctx == nil {
+		v.addError("VisitLetBlockItemList called with nil context", nil)
+		return []ast.Stmt{&ast.BadStmt{}}
+	}
+	var stmts []ast.Stmt
+	for _, itemCtx := range ctx.AllLetBlockItem() {
+		itemResult := v.Visit(itemCtx)
+		if itemResult == nil {
+			continue
+		}
+		if stmt, ok := itemResult.(ast.Stmt); ok {
+			stmts = append(stmts, stmt)
+		} else if stmtList, ok := itemResult.([]ast.Stmt); ok {
+			stmts = append(stmts, stmtList...)
+		} else {
+			v.addError("LetBlockItem did not return ast.Stmt or []ast.Stmt", itemCtx.GetStart())
+		}
 	}
 	return stmts
 }

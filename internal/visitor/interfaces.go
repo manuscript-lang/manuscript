@@ -64,7 +64,6 @@ func (v *ManuscriptAstVisitor) VisitInterfaceMethod(ctx *parser.InterfaceMethodC
 		paramDetailsRaw := v.Visit(pCtx)
 		if details, ok := paramDetailsRaw.([]ParamDetail); ok {
 			paramDetails = details
-			// Assuming buildParamsAST can handle nil paramDetails or paramDetails is guaranteed non-nil if ok
 			tmpParamsAST, err := v.buildParamsAST(paramDetails) // Consider error handling for buildParamsAST
 			if err == nil && tmpParamsAST != nil {
 				paramsAST = tmpParamsAST
@@ -74,7 +73,13 @@ func (v *ManuscriptAstVisitor) VisitInterfaceMethod(ctx *parser.InterfaceMethodC
 		// If paramDetailsRaw was not []ParamDetail (e.g., ast.BadStmt), paramsAST also remains default.
 	}
 
-	resultsList := v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), methodName)
+	// Fix: If no return type annotation, treat as void (empty results list)
+	var resultsList *ast.FieldList
+	if ctx.TypeAnnotation() != nil || ctx.EXCLAMATION() != nil {
+		resultsList = v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), methodName)
+	} else {
+		resultsList = &ast.FieldList{List: []*ast.Field{}}
+	}
 
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(methodName)},

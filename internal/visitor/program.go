@@ -5,6 +5,8 @@ import (
 	"go/token"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
+
+	"github.com/antlr4-go/antlr/v4"
 )
 
 // VisitProgram handles the root of the parse tree (program rule).
@@ -28,12 +30,7 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 			continue
 		}
 		var node interface{}
-		if concreteDecl, ok := decl.(*parser.DeclarationContext); ok {
-			node = v.VisitDeclaration(concreteDecl)
-		} else {
-			v.addError("Internal error: Declaration is not *parser.DeclarationContext", decl.GetStart())
-			continue
-		}
+		node = v.VisitDeclaration(decl)
 
 		switch n := node.(type) {
 		case []ast.Decl:
@@ -73,7 +70,7 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 	if !mainFound {
 		file.Decls = append(file.Decls, &ast.FuncDecl{
 			Name: ast.NewIdent("main"),
-			Type: &ast.FuncType{Params: &ast.FieldList{}},
+			Type: &ast.FuncType{Params: &ast.FieldList{}, Results: nil},
 			Body: &ast.BlockStmt{List: topLevelStmts},
 		})
 	} else if mainFunc != nil && len(topLevelStmts) > 0 {
@@ -126,50 +123,35 @@ func createEmptyMainFile() *ast.File {
 	}
 }
 
-// VisitDeclaration handles the 'declaration' rule and dispatches to the correct declaration type.
-func (v *ManuscriptAstVisitor) VisitDeclaration(ctx *parser.DeclarationContext) interface{} {
+// VisitDeclaration handles the 'declaration' rule using the ANTLR visitor pattern.
+func (v *ManuscriptAstVisitor) VisitDeclaration(ctx parser.IDeclarationContext) interface{} {
 	if ctx == nil {
 		v.addError("Received nil declaration context", nil)
 		return nil
 	}
-
-	if importDecl := ctx.ImportDecl(); importDecl != nil {
-		if concreteImportDecl, ok := importDecl.(*parser.ImportDeclContext); ok {
-			return v.VisitImportDecl(concreteImportDecl)
+	// Only DeclLetContext has LetDecl method
+	if letCtx, ok := ctx.(*parser.DeclLetContext); ok {
+		letDecl := letCtx.LetDecl()
+		if letDecl != nil {
+			letResult := v.Visit(letDecl)
+			switch stmts := letResult.(type) {
+			case []ast.Stmt:
+				return stmts
+			case ast.Stmt:
+				return []ast.Stmt{stmts}
+			case *ast.BlockStmt:
+				return stmts.List
+			case nil:
+				return nil
+			default:
+				v.addError("LetDecl did not return ast.Stmt or []ast.Stmt", ctx.GetStart())
+				return nil
+			}
 		}
-		v.addError("Internal error: ImportDecl is not *parser.ImportDeclContext", importDecl.GetStart())
-		return nil
 	}
-	if exportDecl := ctx.ExportDecl(); exportDecl != nil {
-		if concreteExportDecl, ok := exportDecl.(*parser.ExportDeclContext); ok {
-			return v.VisitExportDecl(concreteExportDecl)
-		}
-		v.addError("Internal error: ExportDecl is not *parser.ExportDeclContext", exportDecl.GetStart())
-		return nil
+	if child, ok := ctx.GetChild(0).(antlr.ParseTree); ok {
+		return v.Visit(child)
 	}
-	if externDecl := ctx.ExternDecl(); externDecl != nil {
-		if concreteExternDecl, ok := externDecl.(*parser.ExternDeclContext); ok {
-			return v.VisitExternDecl(concreteExternDecl)
-		}
-		v.addError("Internal error: ExternDecl is not *parser.ExternDeclContext", externDecl.GetStart())
-		return nil
-	}
-	if letDecl := ctx.LetDecl(); letDecl != nil {
-		return v.Visit(letDecl)
-	}
-	if typeDecl := ctx.TypeDecl(); typeDecl != nil {
-		return v.Visit(typeDecl)
-	}
-	if interfaceDecl := ctx.InterfaceDecl(); interfaceDecl != nil {
-		return v.Visit(interfaceDecl)
-	}
-	if fnDecl := ctx.FnDecl(); fnDecl != nil {
-		return v.Visit(fnDecl)
-	}
-	if methodsDecl := ctx.MethodsDecl(); methodsDecl != nil {
-		return v.Visit(methodsDecl)
-	}
-
-	v.addError("Unhandled declaration type in VisitDeclaration: "+ctx.GetText(), ctx.GetStart())
+	v.addError("Declaration child is not a ParseTree: "+ctx.GetText(), ctx.GetStart())
 	return nil
 }

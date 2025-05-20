@@ -5,6 +5,8 @@ import (
 	"go/token"
 	"manuscript-co/manuscript/internal/parser"
 	"reflect"
+
+	"github.com/antlr4-go/antlr/v4"
 )
 
 // VisitTypeDecl handles type declarations (structs and aliases).
@@ -67,21 +69,22 @@ func (v *ManuscriptAstVisitor) processTypeAnnotationToExpr(typeAnnCtx parser.ITy
 		return nil, false
 	}
 
-	concreteTypeAnnCtx, ok := typeAnnCtx.(*parser.TypeAnnotationContext)
-	if !ok {
-		// This case means ITypeAnnotationContext was not its concrete *parser.TypeAnnotationContext.
-		// This should ideally not happen if the grammar and parser generation are consistent.
-		v.addError("Internal error: unexpected type for TypeAnnotation ("+reflect.TypeOf(typeAnnCtx).String()+") for "+contextDescription, typeAnnCtx.GetStart())
-		return nil, false
+	// Accept any context that implements Accept(antlr.ParseTreeVisitor)
+	if visitable, ok := typeAnnCtx.(interface {
+		Accept(antlr.ParseTreeVisitor) interface{}
+	}); ok {
+		visitedNode := visitable.Accept(v)
+		if expr, isExpr := visitedNode.(ast.Expr); isExpr && expr != nil {
+			return expr, true
+		} else {
+			v.addError("Invalid type expression for "+contextDescription, typeAnnCtx.GetStart())
+			return nil, false
+		}
 	}
 
-	visitedNode := v.VisitTypeAnnotation(concreteTypeAnnCtx) // Visit the concrete type
-	expr, isExpr := visitedNode.(ast.Expr)
-	if !isExpr || expr == nil {
-		v.addError("Invalid type expression for "+contextDescription+": "+concreteTypeAnnCtx.GetText(), concreteTypeAnnCtx.GetStart())
-		return nil, false
-	}
-	return expr, true
+	// Fallback: error
+	v.addError("Internal error: unexpected type for TypeAnnotation ("+reflect.TypeOf(typeAnnCtx).String()+") for "+contextDescription, typeAnnCtx.GetStart())
+	return nil, false
 }
 
 func typeDecl(name string, typ ast.Expr) *ast.GenDecl {
@@ -145,16 +148,36 @@ func (v *ManuscriptAstVisitor) fieldDeclToAstField(ctx *parser.FieldDeclContext)
 		return nil
 	}
 	fieldName := name.GetText()
-	typeAnn := ctx.TypeAnnotation()
-	typeAnnCtx, ok := typeAnn.(*parser.TypeAnnotationContext)
-	if !ok || typeAnnCtx == nil {
-		v.addError("Missing or invalid type annotation for field \""+fieldName+"\".", name.GetSymbol())
+	fieldTypeAnn := ctx.TypeAnnotation()
+	var expr ast.Expr
+	if fieldTypeAnn == nil {
+		v.addError("Missing type annotation for field \""+fieldName+"\".", name.GetSymbol())
 		return nil
 	}
-	expr, ok := v.VisitTypeAnnotation(typeAnnCtx).(ast.Expr)
-	if !ok || expr == nil {
-		v.addError("Invalid type expression for field \""+fieldName+"\": "+typeAnnCtx.GetText(), typeAnnCtx.GetStart())
-		return nil
+	if e, ok := fieldTypeAnn.(ast.Expr); ok && e != nil {
+		expr = e
+	} else if typeAnnCtx, ok := fieldTypeAnn.(*parser.TypeAnnotationContext); ok && typeAnnCtx != nil {
+		if e2, ok2 := v.VisitTypeAnnotation(typeAnnCtx).(ast.Expr); ok2 && e2 != nil {
+			expr = e2
+		} else {
+			v.addError("Invalid type expression for field \""+fieldName+"\": "+typeAnnCtx.GetText(), typeAnnCtx.GetStart())
+			return nil
+		}
+	} else {
+		// Try to visit if it has Accept method
+		if visitable, ok := fieldTypeAnn.(interface {
+			Accept(antlr.ParseTreeVisitor) interface{}
+		}); ok {
+			if e3, ok3 := visitable.Accept(v).(ast.Expr); ok3 && e3 != nil {
+				expr = e3
+			} else {
+				v.addError("Type annotation for field \""+fieldName+"\" has unexpected context type (Accept fallback).", name.GetSymbol())
+				return nil
+			}
+		} else {
+			v.addError("Type annotation for field \""+fieldName+"\" has unexpected context type (unhandled).", name.GetSymbol())
+			return nil
+		}
 	}
 	if ctx.QUESTION() != nil {
 		switch expr.(type) {

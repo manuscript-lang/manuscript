@@ -6,91 +6,113 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
+// VisitPostfixExpr handles left-recursive postfix expressions using the ANTLR visitor pattern.
 func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) interface{} {
-	if ctx.PrimaryExpr() == nil {
-		v.addError("Postfix expression is missing primary expression part", ctx.GetStart())
+	// Base case: just a primary expression
+	if ctx.PostfixExpr() == nil || ctx.PostfixOp() == nil {
+		primary := ctx.PrimaryExpr()
+		if primary == nil {
+			v.addError("PostfixExpr missing primary expression", ctx.GetStart())
+			return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+		}
+		res := v.Visit(primary)
+		if expr, ok := res.(ast.Expr); ok {
+			return expr
+		}
+		v.addError(fmt.Sprintf("PrimaryExpr did not resolve to ast.Expr, got %T", res), ctx.GetStart())
 		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 
-	currentAstNode := v.Visit(ctx.PrimaryExpr())
-	if currentAstNode == nil {
-		// Error should be added by the specific primary expression visitor
-		return &ast.BadExpr{From: v.pos(ctx.PrimaryExpr().GetStart()), To: v.pos(ctx.PrimaryExpr().GetStop())}
+	// Recursive case: left is a postfixExpr, right is a postfixOp
+	left := v.Visit(ctx.PostfixExpr())
+	if left == nil {
+		v.addError("Left side of PostfixExpr is nil", ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
-
-	goExpr, ok := currentAstNode.(ast.Expr)
+	leftExpr, ok := left.(ast.Expr)
 	if !ok {
-		v.addError(fmt.Sprintf("Primary expression did not resolve to ast.Expr, got %T", currentAstNode), ctx.PrimaryExpr().GetStart())
-		return &ast.BadExpr{From: v.pos(ctx.PrimaryExpr().GetStart()), To: v.pos(ctx.PrimaryExpr().GetStop())}
+		v.addError(fmt.Sprintf("Left side of PostfixExpr did not resolve to ast.Expr, got %T", left), ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 
-	for _, opCtx := range ctx.AllPostfixOp() { // Iterate through actual PostfixOpContexts
-		// opCtx is parser.IPostfixOpContext
-		concreteOpCtx, ok := opCtx.(*parser.PostfixOpContext)
-		if !ok {
-			v.addError("Internal error: PostfixOpContext has unexpected type", opCtx.GetStart())
-			return &ast.BadExpr{From: v.pos(opCtx.GetStart()), To: v.pos(opCtx.GetStop())}
-		}
+	right := ctx.PostfixOp()
+	if right == nil {
+		v.addError("PostfixExpr missing PostfixOp", ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+	// Use the visitor pattern for the postfix operation
+	return v.visitPostfixOp(right, leftExpr)
+}
 
-		if concreteOpCtx.DOT() != nil && concreteOpCtx.ID() != nil { // Member access: .ID
-			goExpr = &ast.SelectorExpr{
-				X:   goExpr,
-				Sel: ast.NewIdent(concreteOpCtx.ID().GetText()),
-			}
-		} else if concreteOpCtx.LPAREN() != nil && concreteOpCtx.RPAREN() != nil { // Function call: (exprList?)
-			args := []ast.Expr{}
-			lParenPos := v.pos(concreteOpCtx.LPAREN().GetSymbol())
-			rParenPos := v.pos(concreteOpCtx.RPAREN().GetSymbol())
+// visitPostfixOp dispatches to the correct postfix operation visitor.
+func (v *ManuscriptAstVisitor) visitPostfixOp(op parser.IPostfixOpContext, x ast.Expr) ast.Expr {
+	switch t := op.(type) {
+	case *parser.PostfixCallContext:
+		return v.VisitPostfixCallWithReceiver(t, x)
+	case *parser.PostfixDotContext:
+		return v.VisitPostfixDotWithReceiver(t, x)
+	case *parser.PostfixIndexContext:
+		return v.VisitPostfixIndexWithReceiver(t, x)
+	default:
+		v.addError("Unknown postfix operation type", op.GetStart())
+		return &ast.BadExpr{From: v.pos(op.GetStart()), To: v.pos(op.GetStop())}
+	}
+}
 
-			if concreteOpCtx.ExprList() != nil {
-				// The AllExpr() method is on the ExprListContext, not PostfixOpContext directly.
-				// concreteOpCtx.ExprList() returns parser.IExprListContext.
-				exprListInterface := concreteOpCtx.ExprList()
-				if exprListInterface != nil {
-					exprListCtx, castOk := exprListInterface.(*parser.ExprListContext)
-					if castOk {
-						for _, exprNode := range exprListCtx.AllExpr() { // exprNode is parser.IExprContext
-							if argAst, visitOk := v.Visit(exprNode).(ast.Expr); visitOk && argAst != nil {
-								args = append(args, argAst)
-							} else {
-								v.addError("Invalid argument expression in call: "+exprNode.GetText(), exprNode.GetStart())
-								args = append(args, &ast.BadExpr{From: v.pos(exprNode.GetStart()), To: v.pos(exprNode.GetStop())})
-							}
-						}
-					} else if !exprListInterface.IsEmpty() {
-						v.addError("Internal error: ExprList context is not *parser.ExprListContext", exprListInterface.GetStart())
-					}
+// VisitPostfixCallWithReceiver handles function calls: x(args...)
+func (v *ManuscriptAstVisitor) VisitPostfixCallWithReceiver(ctx *parser.PostfixCallContext, recv ast.Expr) ast.Expr {
+	args := []ast.Expr{}
+	if ctx.ExprList() != nil {
+		if exprListCtx, ok := ctx.ExprList().(*parser.ExprListContext); ok {
+			for _, exprNode := range exprListCtx.AllExpr() {
+				if argAst, visitOk := v.Visit(exprNode).(ast.Expr); visitOk && argAst != nil {
+					args = append(args, argAst)
+				} else {
+					v.addError("Invalid argument expression in call: "+exprNode.GetText(), exprNode.GetStart())
+					args = append(args, &ast.BadExpr{From: v.pos(exprNode.GetStart()), To: v.pos(exprNode.GetStop())})
 				}
 			}
-			goExpr = &ast.CallExpr{
-				Fun:    goExpr,
-				Lparen: lParenPos,
-				Args:   args,
-				Rparen: rParenPos,
-				// Ellipsis: token.NoPos, // For varargs, if needed
-			}
-		} else if concreteOpCtx.LSQBR() != nil && concreteOpCtx.Expr() != nil && concreteOpCtx.RSQBR() != nil { // Index access: [expr]
-			// concreteOpCtx.Expr() returns parser.IExprContext
-			indexNode := concreteOpCtx.Expr()
-			indexAst := v.Visit(indexNode)
-			if indexExpr, castOk := indexAst.(ast.Expr); castOk && indexExpr != nil {
-				goExpr = &ast.IndexExpr{
-					X:      goExpr,
-					Lbrack: v.pos(concreteOpCtx.LSQBR().GetSymbol()),
-					Index:  indexExpr,
-					Rbrack: v.pos(concreteOpCtx.RSQBR().GetSymbol()),
-				}
-			} else {
-				v.addError("Invalid index expression: "+indexNode.GetText(), indexNode.GetStart())
-				goExpr = &ast.BadExpr{From: v.pos(concreteOpCtx.LSQBR().GetSymbol()), To: v.pos(concreteOpCtx.RSQBR().GetSymbol())}
-			}
-		} else {
-			// This case should ideally not be reached if the grammar ensures PostfixOpContext is always one of the valid forms.
-			v.addError("Unknown or malformed postfix operation: "+concreteOpCtx.GetText(), concreteOpCtx.GetStart())
-			return &ast.BadExpr{From: v.pos(concreteOpCtx.GetStart()), To: v.pos(concreteOpCtx.GetStop())}
 		}
 	}
-	return goExpr
+	return &ast.CallExpr{
+		Fun:    recv,
+		Lparen: v.pos(ctx.LPAREN().GetSymbol()),
+		Args:   args,
+		Rparen: v.pos(ctx.RPAREN().GetSymbol()),
+	}
+}
+
+// VisitPostfixDotWithReceiver handles member access: x.y
+func (v *ManuscriptAstVisitor) VisitPostfixDotWithReceiver(ctx *parser.PostfixDotContext, recv ast.Expr) ast.Expr {
+	if ctx.DOT() == nil || ctx.ID() == nil {
+		v.addError("Malformed member access (dot) operation", ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+	return &ast.SelectorExpr{
+		X:   recv,
+		Sel: ast.NewIdent(ctx.ID().GetText()),
+	}
+}
+
+// VisitPostfixIndexWithReceiver handles index access: x[y]
+func (v *ManuscriptAstVisitor) VisitPostfixIndexWithReceiver(ctx *parser.PostfixIndexContext, recv ast.Expr) ast.Expr {
+	if ctx.LSQBR() == nil || ctx.RSQBR() == nil || ctx.Expr() == nil {
+		v.addError("Malformed index operation", ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+	indexNode := ctx.Expr()
+	indexAst := v.Visit(indexNode)
+	indexExpr, ok := indexAst.(ast.Expr)
+	if !ok || indexExpr == nil {
+		v.addError("Invalid index expression: "+indexNode.GetText(), indexNode.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.LSQBR().GetSymbol()), To: v.pos(ctx.RSQBR().GetSymbol())}
+	}
+	return &ast.IndexExpr{
+		X:      recv,
+		Lbrack: v.pos(ctx.LSQBR().GetSymbol()),
+		Index:  indexExpr,
+		Rbrack: v.pos(ctx.RSQBR().GetSymbol()),
+	}
 }
 
 // isTypeName checks if the given name is a type name

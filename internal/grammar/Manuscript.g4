@@ -8,44 +8,54 @@ options {
 program: (stmt_sep* declaration)* stmt_sep* EOF;
 
 declaration:
-	importDecl
-	| exportDecl
-	| externDecl
-	| letDecl
-	| typeDecl
-	| interfaceDecl
-	| fnDecl
-	| methodsDecl;
+	importDecl        #DeclImport
+	| exportDecl      #DeclExport
+	| externDecl      #DeclExtern
+	| letDecl         #DeclLet
+	| typeDecl        #DeclType
+	| interfaceDecl   #DeclInterface
+	| fnDecl          #DeclFn
+	| methodsDecl     #DeclMethods;
 
 // --- Imports/Exports/Extern ---
 importDecl: IMPORT moduleImport SEMICOLON?;
 exportDecl: EXPORT exportedItem SEMICOLON?;
 externDecl: EXTERN moduleImport SEMICOLON?;
 
-exportedItem: fnDecl | letDecl | typeDecl | interfaceDecl;
-moduleImport: destructuredImport | targetImport;
+exportedItem:
+    fnDecl          #ExportedFn
+    | letDecl       #ExportedLet
+    | typeDecl      #ExportedType
+    | interfaceDecl #ExportedInterface;
+moduleImport:
+    destructuredImport #ModuleImportDestructured
+    | targetImport     #ModuleImportTarget;
 destructuredImport:
 	LBRACE importItemList? RBRACE FROM importStr;
-targetImport: ID FROM importStr;
-importItemList: importItem (COMMA importItem)* (COMMA)?;
-importItem: ID (AS ID)?;
-importStr: singleQuotedString;
+targetImport:
+    ID FROM importStr;
+importItemList:
+    importItem (COMMA importItem)* (COMMA)?;
+importItem:
+    ID (AS ID)?;
+importStr:
+    singleQuotedString;
 
 // --- Let Declarations ---
 letDecl:
-	LET letSingle SEMICOLON?
-	| LET letBlock SEMICOLON?
-	| LET letDestructuredObj SEMICOLON?
-	| LET letDestructuredArray SEMICOLON?;
+	LET letSingle SEMICOLON?              #LetDeclSingle
+	| LET letBlock SEMICOLON?             #LetDeclBlock
+	| LET letDestructuredObj SEMICOLON?   #LetDeclDestructuredObj
+	| LET letDestructuredArray SEMICOLON? #LetDeclDestructuredArray;
 
 letSingle: typedID (EQUALS expr)?;
 letBlock: LPAREN letBlockItemList? RPAREN;
 letBlockItemList: letBlockItemSep* letBlockItem (letBlockItemSep+ letBlockItem)* letBlockItemSep*;
 letBlockItemSep: COMMA | stmt_sep;
 letBlockItem:
-	typedID EQUALS expr						# LetBlockItemSingle
-	| LBRACE typedIDList RBRACE EQUALS expr	# LetBlockItemDestructuredObj
-	| LSQBR typedIDList RSQBR EQUALS expr	# LetBlockItemDestructuredArray;
+	typedID EQUALS expr                        #LetBlockItemSingle
+	| LBRACE typedIDList RBRACE EQUALS expr    #LetBlockItemDestructuredObj
+	| LSQBR typedIDList RSQBR EQUALS expr      #LetBlockItemDestructuredArray;
 letDestructuredObj: LBRACE typedIDList RBRACE EQUALS expr;
 letDestructuredArray: LSQBR typedIDList RSQBR EQUALS expr;
 
@@ -82,18 +92,18 @@ methodImpl: interfaceMethod codeBlock;
 
 // --- Statements ---
 stmt:
-	letDecl			# StmtLet
-	| expr SEMICOLON?	# StmtExpr
-	| returnStmt	# StmtReturn
-	| yieldStmt		# StmtYield
-	| ifStmt		# StmtIf
-	| forStmt		# StmtFor
-	| whileStmt		# StmtWhile
-	| codeBlock		# StmtBlock
-	| breakStmt		# StmtBreak
-	| continueStmt	# StmtContinue
-	| checkStmt		# StmtCheck
-	| deferStmt		# StmtDefer;
+	letDecl         #StmtLet
+	| expr SEMICOLON?   #StmtExpr
+	| returnStmt    #StmtReturn
+	| yieldStmt     #StmtYield
+	| ifStmt        #StmtIf
+	| forStmt       #StmtFor
+	| whileStmt     #StmtWhile
+	| codeBlock     #StmtBlock
+	| breakStmt     #StmtBreak
+	| continueStmt  #StmtContinue
+	| checkStmt     #StmtCheck
+	| deferStmt     #StmtDefer;
 
 returnStmt: RETURN exprList? SEMICOLON?;
 yieldStmt: YIELD exprList? SEMICOLON?;
@@ -103,12 +113,12 @@ exprList: expr (COMMA expr)* (COMMA)?;
 ifStmt: IF expr codeBlock (ELSE codeBlock)?;
 forStmt: FOR forLoopType;
 forLoopType:
-	forTrinity							# ForLoop
-	| (ID (COMMA ID)?) IN expr loopBody	# ForInLoop;
+	forTrinity                          #ForLoop
+	| (ID (COMMA ID)?) IN expr loopBody #ForInLoop;
 forTrinity: forInit SEMICOLON forCond SEMICOLON forPost loopBody;
-forInit: letSingle | ;
-forCond: expr | ;
-forPost: expr | ;
+forInit: letSingle #ForInitLet | /* empty */ #ForInitEmpty;
+forCond: expr #ForCondExpr | /* empty */ #ForCondEmpty;
+forPost: expr #ForPostExpr | /* empty */ #ForPostEmpty;
 whileStmt: WHILE expr loopBody;
 loopBody: LBRACE (stmt_sep* stmt)* stmt_sep* RBRACE;
 codeBlock: LBRACE (stmt_sep* stmt)* stmt_sep* RBRACE;
@@ -117,49 +127,100 @@ continueStmt: CONTINUE SEMICOLON?;
 checkStmt: CHECK expr COMMA stringLiteral SEMICOLON?;
 
 // --- Expressions ---
+// Entry point for all expressions
 expr: assignmentExpr;
-assignmentExpr: ternaryExpr (assignmentOp assignmentExpr)?;
+
+// Assignment expressions (right-associative)
+assignmentExpr:
+    ternaryExpr
+  | left=ternaryExpr op=assignmentOp right=assignmentExpr;
 assignmentOp:
-	EQUALS
-	| PLUS_EQUALS
-	| MINUS_EQUALS
-	| STAR_EQUALS
-	| SLASH_EQUALS
-	| MOD_EQUALS
-	| CARET_EQUALS;
-ternaryExpr: logicalOrExpr (QUESTION expr COLON ternaryExpr)?;
-logicalOrExpr: logicalAndExpr (PIPE_PIPE logicalAndExpr)*;
-logicalAndExpr: bitwiseOrExpr (AMP_AMP bitwiseOrExpr)*;
-bitwiseOrExpr: bitwiseXorExpr (PIPE bitwiseXorExpr)*;
-bitwiseXorExpr: bitwiseAndExpr (CARET bitwiseAndExpr)*;
-bitwiseAndExpr: equalityExpr (AMP equalityExpr)*;
+    EQUALS         #AssignEq
+  | PLUS_EQUALS    #AssignPlusEq
+  | MINUS_EQUALS   #AssignMinusEq
+  | STAR_EQUALS    #AssignStarEq
+  | SLASH_EQUALS   #AssignSlashEq
+  | MOD_EQUALS     #AssignModEq
+  | CARET_EQUALS   #AssignCaretEq;
+
+// Ternary conditional expression
+ternaryExpr:
+    logicalOrExpr
+  | cond=logicalOrExpr QUESTION thenBranch=expr COLON elseExpr=ternaryExpr;
+
+// Logical expressions
+logicalOrExpr:
+    logicalAndExpr
+  | left=logicalOrExpr op=PIPE_PIPE right=logicalAndExpr;
+logicalAndExpr:
+    bitwiseOrExpr
+  | left=logicalAndExpr op=AMP_AMP right=bitwiseOrExpr;
+
+// Bitwise expressions
+bitwiseOrExpr:
+    bitwiseXorExpr
+  | left=bitwiseOrExpr op=PIPE right=bitwiseXorExpr;
+bitwiseXorExpr:
+    bitwiseAndExpr
+  | left=bitwiseXorExpr op=CARET right=bitwiseAndExpr;
+bitwiseAndExpr:
+    equalityExpr
+  | left=bitwiseAndExpr op=AMP right=equalityExpr;
+
+// Equality and comparison
 equalityExpr:
-	comparisonExpr ((EQUALS_EQUALS | NEQ) comparisonExpr)*;
+    comparisonExpr
+  | left=equalityExpr op=(EQUALS_EQUALS | NEQ) right=comparisonExpr;
+comparisonOp:
+    LT
+  | LT_EQUALS
+  | GT
+  | GT_EQUALS;
+
 comparisonExpr:
-	shiftExpr ((LT | LT_EQUALS | GT | GT_EQUALS) shiftExpr)*;
-shiftExpr: additiveExpr ((PLUS | MINUS) additiveExpr)*;
+    shiftExpr
+  | left=comparisonExpr op=comparisonOp right=shiftExpr;
+
+// Arithmetic expressions
+shiftExpr:
+    additiveExpr
+  | left=shiftExpr op=(PLUS | MINUS) right=additiveExpr;
 additiveExpr:
-	multiplicativeExpr ((PLUS | MINUS) multiplicativeExpr)*;
-multiplicativeExpr: unaryExpr ((STAR | SLASH | MOD) unaryExpr)*;
-unaryExpr: op = (PLUS | MINUS | EXCLAMATION | TRY) unaryExpr
-	| awaitExpr;
-awaitExpr: (TRY? AWAIT? ASYNC?) postfixExpr;
-postfixExpr: primaryExpr (postfixOp)*;
-postfixOp: LPAREN exprList? RPAREN | DOT ID | LSQBR expr RSQBR;
+    multiplicativeExpr
+  | left=additiveExpr op=(PLUS | MINUS) right=multiplicativeExpr;
+multiplicativeExpr:
+    unaryExpr
+  | left=multiplicativeExpr op=(STAR | SLASH | MOD) right=unaryExpr;
+
+// Unary and postfix expressions
+unaryExpr:
+    op=(PLUS | MINUS | EXCLAMATION | TRY) unary=unaryExpr #UnaryOpExpr
+  | awaitExpr #UnaryAwaitExpr;
+awaitExpr:
+    (TRY? AWAIT? ASYNC?) postfixExpr;
+postfixExpr:
+    primaryExpr
+  | postfixExpr postfixOp;
+postfixOp:
+    LPAREN exprList? RPAREN #PostfixCall
+  | DOT ID #PostfixDot
+  | LSQBR expr RSQBR #PostfixIndex;
+
+// Primary expressions (literals, identifiers, grouping, etc.)
 primaryExpr:
-	literal
-	| ID
-	| LPAREN expr RPAREN
-	| arrayLiteral
-	| objectLiteral
-	| mapLiteral
-	| setLiteral
-	| fnExpr
-	| matchExpr
-	| VOID
-	| NULL
-	| taggedBlockString
-	| structInitExpr;
+    literal              #PrimaryLiteral
+  | ID                  #PrimaryID
+  | LPAREN expr RPAREN  #PrimaryParen
+  | arrayLiteral        #PrimaryArray
+  | objectLiteral       #PrimaryObject
+  | mapLiteral          #PrimaryMap
+  | setLiteral          #PrimarySet
+  | fnExpr              #PrimaryFn
+  | matchExpr           #PrimaryMatch
+  | VOID                #PrimaryVoid
+  | NULL                #PrimaryNull
+  | taggedBlockString   #PrimaryTaggedBlock
+  | structInitExpr      #PrimaryStructInit;
 
 // --- Function Expressions ---
 fnExpr:
@@ -179,11 +240,11 @@ doubleQuotedString:
 multiDoubleQuotedString:
 	MULTI_DOUBLE_QUOTE_START stringPart* MULTI_DOUBLE_STR_END;
 stringPart:
-	SINGLE_STR_CONTENT
-	| MULTI_STR_CONTENT
-	| DOUBLE_STR_CONTENT
-	| MULTI_DOUBLE_STR_CONTENT
-	| interpolation;
+	SINGLE_STR_CONTENT #StringPartSingle
+	| MULTI_STR_CONTENT #StringPartMulti
+	| DOUBLE_STR_CONTENT #StringPartDouble
+	| MULTI_DOUBLE_STR_CONTENT #StringPartMultiDouble
+	| interpolation #StringPartInterp;
 interpolation: (
 		SINGLE_STR_INTERP_START
 		| MULTI_STR_INTERP_START
@@ -193,31 +254,31 @@ interpolation: (
 
 // --- Literals ---
 literal:
-	stringLiteral
-	| numberLiteral
-	| booleanLiteral
-	| NULL
-	| VOID;
+	stringLiteral   #LiteralString
+	| numberLiteral #LiteralNumber
+	| booleanLiteral #LiteralBool
+	| NULL          #LiteralNull
+	| VOID          #LiteralVoid;
 stringLiteral:
-	singleQuotedString
-	| multiQuotedString
-	| doubleQuotedString
-	| multiDoubleQuotedString;
+	singleQuotedString #StringLiteralSingle
+	| multiQuotedString #StringLiteralMulti
+	| doubleQuotedString #StringLiteralDouble
+	| multiDoubleQuotedString #StringLiteralMultiDouble;
 numberLiteral:
-	INTEGER
-	| FLOAT
-	| HEX_LITERAL
-	| BINARY_LITERAL
-	| OCTAL_LITERAL;
-booleanLiteral: TRUE | FALSE;
+	INTEGER        #NumberLiteralInt
+	| FLOAT        #NumberLiteralFloat
+	| HEX_LITERAL  #NumberLiteralHex
+	| BINARY_LITERAL #NumberLiteralBin
+	| OCTAL_LITERAL #NumberLiteralOct;
+booleanLiteral: TRUE #BoolLiteralTrue | FALSE #BoolLiteralFalse;
 
 // --- Collections ---
 arrayLiteral: LSQBR exprList? RSQBR;
 objectLiteral: LBRACE objectFieldList? RBRACE;
 objectFieldList: objectField (COMMA objectField)* (COMMA)?;
 objectField: objectFieldName (COLON expr)?;
-objectFieldName: ID | stringLiteral;
-mapLiteral: LSQBR COLON RSQBR | LSQBR mapFieldList? RSQBR;
+objectFieldName: ID #ObjectFieldNameID | stringLiteral #ObjectFieldNameStr;
+mapLiteral: LSQBR COLON RSQBR #MapLiteralEmpty | LSQBR mapFieldList? RSQBR #MapLiteralNonEmpty;
 mapFieldList: mapField (COMMA mapField)* (COMMA)?;
 mapField: expr COLON expr;
 setLiteral: LT (expr (COMMA expr)* (COMMA)?)? GT;
@@ -230,7 +291,7 @@ structFieldList: structField (COMMA structField)* (COMMA)?;
 structField: ID COLON expr;
 
 // --- Type Annotations ---
-typeAnnotation: ID | arrayType | tupleType | fnType | VOID;
+typeAnnotation: ID #TypeAnnID | arrayType #TypeAnnArray | tupleType #TypeAnnTuple | fnType #TypeAnnFn | VOID #TypeAnnVoid;
 tupleType: LPAREN typeList? RPAREN;
 arrayType: ID LSQBR RSQBR;
 fnType: FN LPAREN parameters? RPAREN typeAnnotation?;

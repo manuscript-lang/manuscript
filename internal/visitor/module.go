@@ -18,58 +18,39 @@ func capitalizeFirstLetter(s string) string {
 	return string(r)
 }
 
-// VisitImportDecl handles Manuscript import declarations.
+// DRY helper for import/extern
+func (v *ManuscriptAstVisitor) handleImportLikeDecl(mod parser.IModuleImportContext, errTok antlr.Token) interface{} {
+	if mod == nil {
+		v.addError("Module import is nil.", errTok)
+		return &ast.BadDecl{}
+	}
+	importSpecs, ok := v.resolveModuleImport(mod, errTok)
+	if !ok || len(importSpecs) == 0 {
+		return &ast.BadDecl{}
+	}
+	return &ast.GenDecl{
+		Tok:   token.IMPORT,
+		Specs: toSpecSlice(importSpecs),
+	}
+}
+
 func (v *ManuscriptAstVisitor) VisitImportDecl(ctx *parser.ImportDeclContext) interface{} {
 	if ctx == nil || ctx.ModuleImport() == nil {
 		v.addError("Import declaration is missing a module import.", ctx.GetStart())
 		return &ast.BadDecl{}
 	}
-	mod := ctx.ModuleImport()
-	importSpecs, ok := v.resolveModuleImport(mod, ctx.GetStart())
-	if !ok || len(importSpecs) == 0 {
-		return &ast.BadDecl{}
-	}
-	return &ast.GenDecl{
-		Tok:   token.IMPORT,
-		Specs: toSpecSlice(importSpecs),
-	}
+	return v.handleImportLikeDecl(ctx.ModuleImport(), ctx.GetStart())
 }
 
-// VisitImportItem is called when visiting an import item.
-// Currently, its information is used directly by VisitImportStmt for logging.
-func (v *ManuscriptAstVisitor) VisitImportItem(ctx *parser.ImportItemContext) interface{} {
-	// This method could return a struct/map if VisitImportStmt needed to aggregate complex data.
-	// For the current AST generation strategy, it's not strictly producing a node.
-	return nil
-}
-
-// VisitExternDecl handles Manuscript extern declarations.
 func (v *ManuscriptAstVisitor) VisitExternDecl(ctx *parser.ExternDeclContext) interface{} {
 	if ctx == nil || ctx.ModuleImport() == nil {
 		v.addError("Extern declaration is missing a module import.", ctx.GetStart())
 		return &ast.BadDecl{}
 	}
-	mod := ctx.ModuleImport()
-	importSpecs, ok := v.resolveModuleImport(mod, ctx.GetStart())
-	if !ok || len(importSpecs) == 0 {
-		return &ast.BadDecl{}
-	}
-	return &ast.GenDecl{
-		Tok:   token.IMPORT,
-		Specs: toSpecSlice(importSpecs),
-	}
+	return v.handleImportLikeDecl(ctx.ModuleImport(), ctx.GetStart())
 }
 
-// toSpecSlice converts []*ast.ImportSpec to []ast.Spec for GenDecl.
-func toSpecSlice(specs []*ast.ImportSpec) []ast.Spec {
-	out := make([]ast.Spec, len(specs))
-	for i, s := range specs {
-		out[i] = s
-	}
-	return out
-}
-
-// VisitExportDecl handles Manuscript export declarations.
+// VisitExportDecl handles Manuscript export declarations using the visitor pattern.
 func (v *ManuscriptAstVisitor) VisitExportDecl(ctx *parser.ExportDeclContext) interface{} {
 	if ctx == nil || ctx.ExportedItem() == nil {
 		v.addError("Export declaration is missing an exported item.", ctx.GetStart())
@@ -77,15 +58,32 @@ func (v *ManuscriptAstVisitor) VisitExportDecl(ctx *parser.ExportDeclContext) in
 	}
 	item := ctx.ExportedItem()
 	var visitedNode interface{}
-	if item.FnDecl() != nil {
-		visitedNode = v.Visit(item.FnDecl())
-	} else if item.LetDecl() != nil {
-		visitedNode = v.Visit(item.LetDecl())
-	} else if item.TypeDecl() != nil {
-		visitedNode = v.Visit(item.TypeDecl())
-	} else if item.InterfaceDecl() != nil {
-		visitedNode = v.Visit(item.InterfaceDecl())
-	} else {
+	switch t := item.(type) {
+	case *parser.ExportedFnContext:
+		if fn := t.FnDecl(); fn != nil {
+			if fnCtx, ok := fn.(*parser.FnDeclContext); ok {
+				visitedNode = v.VisitFnDecl(fnCtx)
+			}
+		}
+	case *parser.ExportedLetContext:
+		if let := t.LetDecl(); let != nil {
+			if letCtx, ok := let.(*parser.LetDeclContext); ok {
+				visitedNode = v.Visit(letCtx)
+			}
+		}
+	case *parser.ExportedTypeContext:
+		if typ := t.TypeDecl(); typ != nil {
+			if typCtx, ok := typ.(*parser.TypeDeclContext); ok {
+				visitedNode = v.VisitTypeDecl(typCtx)
+			}
+		}
+	case *parser.ExportedInterfaceContext:
+		if iface := t.InterfaceDecl(); iface != nil {
+			if ifaceCtx, ok := iface.(*parser.InterfaceDeclContext); ok {
+				visitedNode = v.VisitInterfaceDecl(ifaceCtx)
+			}
+		}
+	default:
 		v.addError("Exported item is not a recognized declaration.", ctx.GetStart())
 		return &ast.BadDecl{}
 	}
@@ -128,15 +126,21 @@ func (v *ManuscriptAstVisitor) resolveModuleImport(mod parser.IModuleImportConte
 		v.addError("Module import is nil.", errTok)
 		return nil, false
 	}
-	if destr := mod.DestructuredImport(); destr != nil {
-		pathCtx := destr.ImportStr()
+	// Destructured import: {a, b as c} from 'path'
+	if destr, ok := mod.(*parser.ModuleImportDestructuredContext); ok {
+		destructured := destr.DestructuredImport()
+		if destructured == nil {
+			v.addError("Destructured import/extern is missing destructuredImport.", errTok)
+			return nil, false
+		}
+		pathCtx := destructured.ImportStr()
 		if pathCtx == nil || pathCtx.SingleQuotedString() == nil {
 			v.addError("Destructured import/extern is missing a path.", errTok)
 			return nil, false
 		}
 		pathValue := pathCtx.SingleQuotedString().GetText()
-		items := destr.ImportItemList()
-		if destr.LBRACE() != nil && (items == nil || len(items.AllImportItem()) == 0) {
+		items := destructured.ImportItemList()
+		if destructured.LBRACE() != nil && (items == nil || len(items.AllImportItem()) == 0) {
 			// Side-effect import
 			specs := []*ast.ImportSpec{{
 				Name: ast.NewIdent("_"),
@@ -147,8 +151,9 @@ func (v *ManuscriptAstVisitor) resolveModuleImport(mod parser.IModuleImportConte
 			var specs []*ast.ImportSpec
 			for _, item := range items.AllImportItem() {
 				var name *ast.Ident
-				if item.AS() != nil && item.ID(1) != nil {
-					name = ast.NewIdent(item.ID(1).GetText())
+				ids := item.AllID()
+				if item.AS() != nil && len(ids) > 1 {
+					name = ast.NewIdent(ids[1].GetText())
 				}
 				specs = append(specs, &ast.ImportSpec{
 					Name: name, // nil if no alias
@@ -158,14 +163,20 @@ func (v *ManuscriptAstVisitor) resolveModuleImport(mod parser.IModuleImportConte
 			return specs, true
 		}
 	}
-	if target := mod.TargetImport(); target != nil {
-		pathCtx := target.ImportStr()
+	// Target import: foo from 'path'
+	if target, ok := mod.(*parser.ModuleImportTargetContext); ok {
+		targetImport := target.TargetImport()
+		if targetImport == nil {
+			v.addError("Target import/extern is missing targetImport.", errTok)
+			return nil, false
+		}
+		pathCtx := targetImport.ImportStr()
 		if pathCtx == nil || pathCtx.SingleQuotedString() == nil {
 			v.addError("Target import/extern is missing a path.", errTok)
 			return nil, false
 		}
 		pathValue := pathCtx.SingleQuotedString().GetText()
-		targetId := target.ID()
+		targetId := targetImport.ID()
 		var name *ast.Ident
 		if targetId != nil {
 			name = ast.NewIdent(targetId.GetText())

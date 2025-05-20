@@ -20,64 +20,69 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 		return &ast.BadStmt{}
 	}
 
-	if ctx.AssignmentOp() != nil {
-		opNode := ctx.AssignmentOp()
-		opText := opNode.GetText()
-		rightAntlrExpr := ctx.AssignmentExpr()
-		if rightAntlrExpr == nil {
-			v.addError("Right-hand side of assignment is missing for operator "+opText, opNode.GetStart())
+	opNode := ctx.AssignmentOp()
+	if opNode == nil {
+		return leftExpr
+	}
+
+	rightAntlrExpr := ctx.AssignmentExpr()
+	if rightAntlrExpr == nil {
+		v.addError("Right-hand side of assignment is missing for operator "+opNode.GetText(), opNode.GetStart())
+		return &ast.BadStmt{}
+	}
+	visitedRightExpr := v.Visit(rightAntlrExpr)
+	rightExpr, ok := visitedRightExpr.(ast.Expr)
+	if !ok {
+		rightText := rightAntlrExpr.GetText()
+		if _, err := strconv.Atoi(rightText); err == nil {
+			rightExpr = &ast.BasicLit{
+				Kind:  token.INT,
+				Value: rightText,
+			}
+			ok = true
+		} else {
+			v.addError("Right-hand side of assignment did not resolve to a valid expression: "+rightAntlrExpr.GetText(), rightAntlrExpr.GetStart())
 			return &ast.BadStmt{}
 		}
-		visitedRightExpr := v.Visit(rightAntlrExpr)
-		rightExpr, ok := visitedRightExpr.(ast.Expr)
-		if !ok {
-			rightText := rightAntlrExpr.GetText()
-			if _, err := strconv.Atoi(rightText); err == nil {
-				rightExpr = &ast.BasicLit{
-					Kind:  token.INT,
-					Value: rightText,
-				}
-				ok = true
-			} else {
-				v.addError("Right-hand side of assignment did not resolve to a valid expression: "+rightAntlrExpr.GetText(), rightAntlrExpr.GetStart())
-				return &ast.BadStmt{}
-			}
-		}
-		if opNode.EQUALS() != nil {
-			return &ast.AssignStmt{
-				Lhs: []ast.Expr{leftExpr},
-				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{rightExpr},
-			}
-		}
-		var binaryOpToken token.Token
-		switch {
-		case opNode.PLUS_EQUALS() != nil:
-			binaryOpToken = token.ADD
-		case opNode.MINUS_EQUALS() != nil:
-			binaryOpToken = token.SUB
-		case opNode.STAR_EQUALS() != nil:
-			binaryOpToken = token.MUL
-		case opNode.SLASH_EQUALS() != nil:
-			binaryOpToken = token.QUO
-		case opNode.MOD_EQUALS() != nil:
-			binaryOpToken = token.REM
-		case opNode.CARET_EQUALS() != nil:
-			binaryOpToken = token.XOR
-		default:
-			v.addError("Unhandled assignment operator: "+opText, opNode.GetStart())
-			return &ast.BadStmt{}
-		}
-		rhsBinaryExpr := &ast.BinaryExpr{
-			X:  leftExpr,
-			Op: binaryOpToken,
-			Y:  rightExpr,
-		}
+	}
+
+	binTok := mapAssignmentOpToGoToken(opNode)
+	if binTok == token.ILLEGAL {
 		return &ast.AssignStmt{
 			Lhs: []ast.Expr{leftExpr},
 			Tok: token.ASSIGN,
-			Rhs: []ast.Expr{rhsBinaryExpr},
+			Rhs: []ast.Expr{rightExpr},
 		}
 	}
-	return leftExpr
+	rhsBinaryExpr := &ast.BinaryExpr{
+		X:  leftExpr,
+		Op: binTok,
+		Y:  rightExpr,
+	}
+	return &ast.AssignStmt{
+		Lhs: []ast.Expr{leftExpr},
+		Tok: token.ASSIGN,
+		Rhs: []ast.Expr{rhsBinaryExpr},
+	}
+}
+
+func mapAssignmentOpToGoToken(op parser.IAssignmentOpContext) token.Token {
+	switch op.(type) {
+	case *parser.AssignEqContext:
+		return token.ILLEGAL
+	case *parser.AssignPlusEqContext:
+		return token.ADD
+	case *parser.AssignMinusEqContext:
+		return token.SUB
+	case *parser.AssignStarEqContext:
+		return token.MUL
+	case *parser.AssignSlashEqContext:
+		return token.QUO
+	case *parser.AssignModEqContext:
+		return token.REM
+	case *parser.AssignCaretEqContext:
+		return token.XOR
+	default:
+		return token.ILLEGAL
+	}
 }

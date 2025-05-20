@@ -11,8 +11,29 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#program.
 	VisitProgram(ctx *ProgramContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#declaration.
-	VisitDeclaration(ctx *DeclarationContext) interface{}
+	// Visit a parse tree produced by Manuscript#DeclImport.
+	VisitDeclImport(ctx *DeclImportContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#DeclExport.
+	VisitDeclExport(ctx *DeclExportContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#DeclExtern.
+	VisitDeclExtern(ctx *DeclExternContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#DeclLet.
+	VisitDeclLet(ctx *DeclLetContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#DeclType.
+	VisitDeclType(ctx *DeclTypeContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#DeclInterface.
+	VisitDeclInterface(ctx *DeclInterfaceContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#DeclFn.
+	VisitDeclFn(ctx *DeclFnContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#DeclMethods.
+	VisitDeclMethods(ctx *DeclMethodsContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#importDecl.
 	VisitImportDecl(ctx *ImportDeclContext) interface{}
@@ -23,11 +44,23 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#externDecl.
 	VisitExternDecl(ctx *ExternDeclContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#exportedItem.
-	VisitExportedItem(ctx *ExportedItemContext) interface{}
+	// Visit a parse tree produced by Manuscript#ExportedFn.
+	VisitExportedFn(ctx *ExportedFnContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#moduleImport.
-	VisitModuleImport(ctx *ModuleImportContext) interface{}
+	// Visit a parse tree produced by Manuscript#ExportedLet.
+	VisitExportedLet(ctx *ExportedLetContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#ExportedType.
+	VisitExportedType(ctx *ExportedTypeContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#ExportedInterface.
+	VisitExportedInterface(ctx *ExportedInterfaceContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#ModuleImportDestructured.
+	VisitModuleImportDestructured(ctx *ModuleImportDestructuredContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#ModuleImportTarget.
+	VisitModuleImportTarget(ctx *ModuleImportTargetContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#destructuredImport.
 	VisitDestructuredImport(ctx *DestructuredImportContext) interface{}
@@ -44,8 +77,17 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#importStr.
 	VisitImportStr(ctx *ImportStrContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#letDecl.
-	VisitLetDecl(ctx *LetDeclContext) interface{}
+	// Visit a parse tree produced by Manuscript#LetDeclSingle.
+	VisitLetDeclSingle(ctx *LetDeclSingleContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#LetDeclBlock.
+	VisitLetDeclBlock(ctx *LetDeclBlockContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#LetDeclDestructuredObj.
+	VisitLetDeclDestructuredObj(ctx *LetDeclDestructuredObjContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#LetDeclDestructuredArray.
+	VisitLetDeclDestructuredArray(ctx *LetDeclDestructuredArrayContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#letSingle.
 	VisitLetSingle(ctx *LetSingleContext) interface{}
@@ -191,14 +233,23 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#forTrinity.
 	VisitForTrinity(ctx *ForTrinityContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#forInit.
-	VisitForInit(ctx *ForInitContext) interface{}
+	// Visit a parse tree produced by Manuscript#ForInitLet.
+	VisitForInitLet(ctx *ForInitLetContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#forCond.
-	VisitForCond(ctx *ForCondContext) interface{}
+	// Visit a parse tree produced by Manuscript#ForInitEmpty.
+	VisitForInitEmpty(ctx *ForInitEmptyContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#forPost.
-	VisitForPost(ctx *ForPostContext) interface{}
+	// Visit a parse tree produced by Manuscript#ForCondExpr.
+	VisitForCondExpr(ctx *ForCondExprContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#ForCondEmpty.
+	VisitForCondEmpty(ctx *ForCondEmptyContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#ForPostExpr.
+	VisitForPostExpr(ctx *ForPostExprContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#ForPostEmpty.
+	VisitForPostEmpty(ctx *ForPostEmptyContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#whileStmt.
 	VisitWhileStmt(ctx *WhileStmtContext) interface{}
@@ -224,8 +275,26 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#assignmentExpr.
 	VisitAssignmentExpr(ctx *AssignmentExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#assignmentOp.
-	VisitAssignmentOp(ctx *AssignmentOpContext) interface{}
+	// Visit a parse tree produced by Manuscript#AssignEq.
+	VisitAssignEq(ctx *AssignEqContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#AssignPlusEq.
+	VisitAssignPlusEq(ctx *AssignPlusEqContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#AssignMinusEq.
+	VisitAssignMinusEq(ctx *AssignMinusEqContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#AssignStarEq.
+	VisitAssignStarEq(ctx *AssignStarEqContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#AssignSlashEq.
+	VisitAssignSlashEq(ctx *AssignSlashEqContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#AssignModEq.
+	VisitAssignModEq(ctx *AssignModEqContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#AssignCaretEq.
+	VisitAssignCaretEq(ctx *AssignCaretEqContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#ternaryExpr.
 	VisitTernaryExpr(ctx *TernaryExprContext) interface{}
@@ -248,6 +317,9 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#equalityExpr.
 	VisitEqualityExpr(ctx *EqualityExprContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#comparisonOp.
+	VisitComparisonOp(ctx *ComparisonOpContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#comparisonExpr.
 	VisitComparisonExpr(ctx *ComparisonExprContext) interface{}
 
@@ -260,8 +332,11 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#multiplicativeExpr.
 	VisitMultiplicativeExpr(ctx *MultiplicativeExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#unaryExpr.
-	VisitUnaryExpr(ctx *UnaryExprContext) interface{}
+	// Visit a parse tree produced by Manuscript#UnaryOpExpr.
+	VisitUnaryOpExpr(ctx *UnaryOpExprContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#UnaryAwaitExpr.
+	VisitUnaryAwaitExpr(ctx *UnaryAwaitExprContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#awaitExpr.
 	VisitAwaitExpr(ctx *AwaitExprContext) interface{}
@@ -269,11 +344,53 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#postfixExpr.
 	VisitPostfixExpr(ctx *PostfixExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#postfixOp.
-	VisitPostfixOp(ctx *PostfixOpContext) interface{}
+	// Visit a parse tree produced by Manuscript#PostfixCall.
+	VisitPostfixCall(ctx *PostfixCallContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#primaryExpr.
-	VisitPrimaryExpr(ctx *PrimaryExprContext) interface{}
+	// Visit a parse tree produced by Manuscript#PostfixDot.
+	VisitPostfixDot(ctx *PostfixDotContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PostfixIndex.
+	VisitPostfixIndex(ctx *PostfixIndexContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryLiteral.
+	VisitPrimaryLiteral(ctx *PrimaryLiteralContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryID.
+	VisitPrimaryID(ctx *PrimaryIDContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryParen.
+	VisitPrimaryParen(ctx *PrimaryParenContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryArray.
+	VisitPrimaryArray(ctx *PrimaryArrayContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryObject.
+	VisitPrimaryObject(ctx *PrimaryObjectContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryMap.
+	VisitPrimaryMap(ctx *PrimaryMapContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimarySet.
+	VisitPrimarySet(ctx *PrimarySetContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryFn.
+	VisitPrimaryFn(ctx *PrimaryFnContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryMatch.
+	VisitPrimaryMatch(ctx *PrimaryMatchContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryVoid.
+	VisitPrimaryVoid(ctx *PrimaryVoidContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryNull.
+	VisitPrimaryNull(ctx *PrimaryNullContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryTaggedBlock.
+	VisitPrimaryTaggedBlock(ctx *PrimaryTaggedBlockContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#PrimaryStructInit.
+	VisitPrimaryStructInit(ctx *PrimaryStructInitContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#fnExpr.
 	VisitFnExpr(ctx *FnExprContext) interface{}
@@ -299,23 +416,71 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#multiDoubleQuotedString.
 	VisitMultiDoubleQuotedString(ctx *MultiDoubleQuotedStringContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#stringPart.
-	VisitStringPart(ctx *StringPartContext) interface{}
+	// Visit a parse tree produced by Manuscript#StringPartSingle.
+	VisitStringPartSingle(ctx *StringPartSingleContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#StringPartMulti.
+	VisitStringPartMulti(ctx *StringPartMultiContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#StringPartDouble.
+	VisitStringPartDouble(ctx *StringPartDoubleContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#StringPartMultiDouble.
+	VisitStringPartMultiDouble(ctx *StringPartMultiDoubleContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#StringPartInterp.
+	VisitStringPartInterp(ctx *StringPartInterpContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#interpolation.
 	VisitInterpolation(ctx *InterpolationContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#literal.
-	VisitLiteral(ctx *LiteralContext) interface{}
+	// Visit a parse tree produced by Manuscript#LiteralString.
+	VisitLiteralString(ctx *LiteralStringContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#stringLiteral.
-	VisitStringLiteral(ctx *StringLiteralContext) interface{}
+	// Visit a parse tree produced by Manuscript#LiteralNumber.
+	VisitLiteralNumber(ctx *LiteralNumberContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#numberLiteral.
-	VisitNumberLiteral(ctx *NumberLiteralContext) interface{}
+	// Visit a parse tree produced by Manuscript#LiteralBool.
+	VisitLiteralBool(ctx *LiteralBoolContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#booleanLiteral.
-	VisitBooleanLiteral(ctx *BooleanLiteralContext) interface{}
+	// Visit a parse tree produced by Manuscript#LiteralNull.
+	VisitLiteralNull(ctx *LiteralNullContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#LiteralVoid.
+	VisitLiteralVoid(ctx *LiteralVoidContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#StringLiteralSingle.
+	VisitStringLiteralSingle(ctx *StringLiteralSingleContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#StringLiteralMulti.
+	VisitStringLiteralMulti(ctx *StringLiteralMultiContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#StringLiteralDouble.
+	VisitStringLiteralDouble(ctx *StringLiteralDoubleContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#StringLiteralMultiDouble.
+	VisitStringLiteralMultiDouble(ctx *StringLiteralMultiDoubleContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#NumberLiteralInt.
+	VisitNumberLiteralInt(ctx *NumberLiteralIntContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#NumberLiteralFloat.
+	VisitNumberLiteralFloat(ctx *NumberLiteralFloatContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#NumberLiteralHex.
+	VisitNumberLiteralHex(ctx *NumberLiteralHexContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#NumberLiteralBin.
+	VisitNumberLiteralBin(ctx *NumberLiteralBinContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#NumberLiteralOct.
+	VisitNumberLiteralOct(ctx *NumberLiteralOctContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#BoolLiteralTrue.
+	VisitBoolLiteralTrue(ctx *BoolLiteralTrueContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#BoolLiteralFalse.
+	VisitBoolLiteralFalse(ctx *BoolLiteralFalseContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#arrayLiteral.
 	VisitArrayLiteral(ctx *ArrayLiteralContext) interface{}
@@ -329,11 +494,17 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#objectField.
 	VisitObjectField(ctx *ObjectFieldContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#objectFieldName.
-	VisitObjectFieldName(ctx *ObjectFieldNameContext) interface{}
+	// Visit a parse tree produced by Manuscript#ObjectFieldNameID.
+	VisitObjectFieldNameID(ctx *ObjectFieldNameIDContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#mapLiteral.
-	VisitMapLiteral(ctx *MapLiteralContext) interface{}
+	// Visit a parse tree produced by Manuscript#ObjectFieldNameStr.
+	VisitObjectFieldNameStr(ctx *ObjectFieldNameStrContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#MapLiteralEmpty.
+	VisitMapLiteralEmpty(ctx *MapLiteralEmptyContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#MapLiteralNonEmpty.
+	VisitMapLiteralNonEmpty(ctx *MapLiteralNonEmptyContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#mapFieldList.
 	VisitMapFieldList(ctx *MapFieldListContext) interface{}
@@ -356,8 +527,20 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#structField.
 	VisitStructField(ctx *StructFieldContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#typeAnnotation.
-	VisitTypeAnnotation(ctx *TypeAnnotationContext) interface{}
+	// Visit a parse tree produced by Manuscript#TypeAnnID.
+	VisitTypeAnnID(ctx *TypeAnnIDContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#TypeAnnArray.
+	VisitTypeAnnArray(ctx *TypeAnnArrayContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#TypeAnnTuple.
+	VisitTypeAnnTuple(ctx *TypeAnnTupleContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#TypeAnnFn.
+	VisitTypeAnnFn(ctx *TypeAnnFnContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#TypeAnnVoid.
+	VisitTypeAnnVoid(ctx *TypeAnnVoidContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#tupleType.
 	VisitTupleType(ctx *TupleTypeContext) interface{}

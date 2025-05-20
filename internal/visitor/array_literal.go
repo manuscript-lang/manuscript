@@ -24,8 +24,17 @@ func (v *ManuscriptAstVisitor) VisitArrayLiteral(ctx *parser.ArrayLiteralContext
 	}
 }
 
-// VisitMapLiteral handles map literal expressions like [:] or [key1: value1, key2: value2]
-func (v *ManuscriptAstVisitor) VisitMapLiteral(ctx *parser.MapLiteralContext) interface{} {
+// VisitMapLiteralEmpty handles map literal expressions like [:]
+func (v *ManuscriptAstVisitor) VisitMapLiteralEmpty(ctx *parser.MapLiteralEmptyContext) interface{} {
+	mapType := &ast.MapType{
+		Key:   ast.NewIdent("interface{}"),
+		Value: ast.NewIdent("interface{}"),
+	}
+	return &ast.CompositeLit{Type: mapType, Elts: nil}
+}
+
+// VisitMapLiteralNonEmpty handles map literal expressions like [key1: value1, key2: value2]
+func (v *ManuscriptAstVisitor) VisitMapLiteralNonEmpty(ctx *parser.MapLiteralNonEmptyContext) interface{} {
 	mapType := &ast.MapType{
 		Key:   ast.NewIdent("interface{}"),
 		Value: ast.NewIdent("interface{}"),
@@ -33,23 +42,24 @@ func (v *ManuscriptAstVisitor) VisitMapLiteral(ctx *parser.MapLiteralContext) in
 	var elts []ast.Expr
 	if ctx.MapFieldList() != nil {
 		for _, f := range ctx.MapFieldList().AllMapField() {
-			field := f.(*parser.MapFieldContext)
-			allExprs := field.AllExpr()
-			var k, v_ ast.Expr
-			okk, okv := false, false
-			if len(allExprs) > 0 {
-				k, okk = v.Visit(allExprs[0]).(ast.Expr)
+			fieldCtx, ok := f.(*parser.MapFieldContext)
+			if !ok || fieldCtx == nil {
+				continue
 			}
-			if len(allExprs) > 1 {
-				v_, okv = v.Visit(allExprs[1]).(ast.Expr)
+			allExprs := fieldCtx.AllExpr()
+			if len(allExprs) != 2 {
+				v.addError("Map field must have exactly 2 expressions (key: value): "+fieldCtx.GetText(), fieldCtx.GetStart())
+				continue
 			}
-			if okk && okv {
-				elts = append(elts, &ast.KeyValueExpr{Key: k, Value: v_})
+			keyExpr, okKey := v.Visit(allExprs[0]).(ast.Expr)
+			valExpr, okVal := v.Visit(allExprs[1]).(ast.Expr)
+			if okKey && okVal {
+				elts = append(elts, &ast.KeyValueExpr{Key: keyExpr, Value: valExpr})
 			} else {
-				if !okk && len(allExprs) > 0 {
+				if !okKey {
 					v.addError("Map key is not a valid expression: "+allExprs[0].GetText(), allExprs[0].GetStart())
 				}
-				if !okv && len(allExprs) > 1 {
+				if !okVal {
 					v.addError("Map value is not a valid expression: "+allExprs[1].GetText(), allExprs[1].GetStart())
 				}
 			}

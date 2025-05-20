@@ -17,7 +17,7 @@ func (v *ManuscriptAstVisitor) VisitLoopBody(ctx *parser.LoopBodyContext) interf
 
 	// Process all stmt nodes in the loop body
 	for _, stmtCtx := range ctx.AllStmt() {
-		visitedStmt := v.VisitStmt(stmtCtx)
+		visitedStmt := v.Visit(stmtCtx)
 		if stmt, ok := visitedStmt.(ast.Stmt); ok {
 			if stmt != nil { // Ensure we don't append nil statements
 				stmts = append(stmts, stmt)
@@ -82,65 +82,21 @@ func (v *ManuscriptAstVisitor) VisitWhileStmt(ctx *parser.WhileStmtContext) inte
 	return forStmtNode
 }
 
-// VisitForTrinity handles forTrinity: (letSingle | exprList)? SEMICOLON expr? SEMICOLON exprList? loopBody;
+// VisitForTrinity handles forTrinity: forInit SEMICOLON forCond SEMICOLON forPost loopBody;
 func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) interface{} {
 	if ctx == nil {
 		return &ast.BadStmt{}
 	}
 
-	var initStmt ast.Stmt
-	var postStmt ast.Stmt
-	var condExpr ast.Expr
+	initStmt := v.asStmt(v.Visit(ctx.ForInit()))
+	condExpr := v.asExpr(v.Visit(ctx.ForCond()))
+	postStmt := v.asStmtOrExprStmt(v.Visit(ctx.ForPost()))
 
-	// --- Init ---
-	if forInit := ctx.ForInit(); forInit != nil {
-		if letSingle := forInit.LetSingle(); letSingle != nil {
-			if visited := v.Visit(letSingle); visited != nil {
-				if stmt, ok := visited.(ast.Stmt); ok {
-					initStmt = stmt
-				}
-			}
-		}
-	}
-
-	// --- Condition ---
-	if forCond := ctx.ForCond(); forCond != nil {
-		if expr := forCond.Expr(); expr != nil {
-			if visited := v.Visit(expr); visited != nil {
-				if e, ok := visited.(ast.Expr); ok {
-					condExpr = e
-				}
-			}
-		}
-	}
-
-	// --- Post ---
-	if forPost := ctx.ForPost(); forPost != nil {
-		if expr := forPost.Expr(); expr != nil {
-			if visited := v.Visit(expr); visited != nil {
-				if stmt, ok := visited.(ast.Stmt); ok {
-					postStmt = stmt
-				} else if e, ok := visited.(ast.Expr); ok {
-					postStmt = &ast.ExprStmt{X: e}
-				}
-			}
-		}
-	}
-
-	// --- Body ---
-	var body *ast.BlockStmt
+	body := &ast.BlockStmt{}
 	if b := ctx.LoopBody(); b != nil {
-		if visitedBody := v.VisitLoopBody(b.(*parser.LoopBodyContext)); visitedBody != nil {
-			if block, ok := visitedBody.(*ast.BlockStmt); ok {
-				body = block
-			} else {
-				body = &ast.BlockStmt{}
-			}
-		} else {
-			body = &ast.BlockStmt{}
+		if block, ok := v.VisitLoopBody(b.(*parser.LoopBodyContext)).(*ast.BlockStmt); ok && block != nil {
+			body = block
 		}
-	} else {
-		body = &ast.BlockStmt{}
 	}
 
 	return &ast.ForStmt{
@@ -152,49 +108,87 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 	}
 }
 
+// --- ANTLR visitor pattern for forInit, forCond, forPost ---
+
+func (v *ManuscriptAstVisitor) VisitForInitLet(ctx *parser.ForInitLetContext) interface{} {
+	if ctx == nil || ctx.LetSingle() == nil {
+		return &ast.EmptyStmt{}
+	}
+	return v.Visit(ctx.LetSingle())
+}
+
+func (v *ManuscriptAstVisitor) VisitForInitEmpty(ctx *parser.ForInitEmptyContext) interface{} {
+	return &ast.EmptyStmt{}
+}
+
+func (v *ManuscriptAstVisitor) VisitForCondExpr(ctx *parser.ForCondExprContext) interface{} {
+	if ctx == nil || ctx.Expr() == nil {
+		return nil
+	}
+	return v.Visit(ctx.Expr())
+}
+
+func (v *ManuscriptAstVisitor) VisitForCondEmpty(ctx *parser.ForCondEmptyContext) interface{} {
+	return nil
+}
+
+func (v *ManuscriptAstVisitor) VisitForPostExpr(ctx *parser.ForPostExprContext) interface{} {
+	if ctx == nil || ctx.Expr() == nil {
+		return nil
+	}
+	return v.Visit(ctx.Expr())
+}
+
+func (v *ManuscriptAstVisitor) VisitForPostEmpty(ctx *parser.ForPostEmptyContext) interface{} {
+	return nil
+}
+
 // VisitForInLoop handles for-in loops: (ID (COMMA ID)?) IN expr loopBody;
 func (v *ManuscriptAstVisitor) VisitForInLoop(ctx *parser.ForInLoopContext) interface{} {
 	if ctx == nil {
 		return &ast.BadStmt{}
 	}
-	stmt := &ast.RangeStmt{Tok: gotoken.DEFINE} // Use DEFINE for new vars
-	ids := ctx.AllID()
 
-	if len(ids) == 2 { // Manuscript: id_value, id_key (e.g., "value, index in items")
-		// Go expects: for key, value := range items
-		stmt.Key = ast.NewIdent(ids[1].GetText())   // Second ID in Manuscript is key for Go
-		stmt.Value = ast.NewIdent(ids[0].GetText()) // First ID in Manuscript is value for Go
-	} else if len(ids) == 1 { // Manuscript: id_value (e.g., "value in items")
-		// Go expects: for _, value := range items
+	stmt := &ast.RangeStmt{
+		Tok: gotoken.DEFINE, // Use := for new variables
+	}
+
+	ids := ctx.AllID()
+	switch len(ids) {
+	case 2:
+		// Manuscript: value, key in items
+		// Go: for key, value := range items
+		stmt.Key = ast.NewIdent(ids[1].GetText())   // key
+		stmt.Value = ast.NewIdent(ids[0].GetText()) // value
+	case 1:
+		// Manuscript: value in items
+		// Go: for _, value := range items
 		stmt.Key = ast.NewIdent("_")
-		stmt.Value = ast.NewIdent(ids[0].GetText()) // The single ID in Manuscript is value for Go
-	} else {
-		// This case should ideally not be reached based on grammar: (ID (COMMA ID)?)
-		// which means 1 or 2 IDs.
+		stmt.Value = ast.NewIdent(ids[0].GetText())
+	default:
 		v.addError("Invalid number of variables in for-in loop. Expected 1 or 2.", ctx.GetStart())
-		// Default to a safe state or return a BadStmt
-		stmt.Key = ast.NewIdent("_")   // Placeholder
-		stmt.Value = ast.NewIdent("_") // Placeholder to avoid nil, though it's unusual
+		stmt.Key = ast.NewIdent("_")
+		stmt.Value = ast.NewIdent("_")
 		return &ast.BadStmt{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 
-	if it := ctx.Expr(); it != nil {
-		if expr, ok := v.Visit(it).(ast.Expr); ok {
+	// Set the range expression (the iterable)
+	if exprCtx := ctx.Expr(); exprCtx != nil {
+		if expr, ok := v.Visit(exprCtx).(ast.Expr); ok {
 			stmt.X = expr
 		} else {
 			stmt.X = &ast.BadExpr{}
 		}
 	}
 
-	if b := ctx.LoopBody(); b != nil {
-		if block, ok := v.VisitLoopBody(b.(*parser.LoopBodyContext)).(*ast.BlockStmt); ok {
-			stmt.Body = block
-		} else {
-			stmt.Body = &ast.BlockStmt{}
+	// Set the loop body
+	stmt.Body = &ast.BlockStmt{}
+	if bodyCtx := ctx.LoopBody(); bodyCtx != nil {
+		if loopBody, ok := v.VisitLoopBody(bodyCtx.(*parser.LoopBodyContext)).(*ast.BlockStmt); ok {
+			stmt.Body = loopBody
 		}
-	} else {
-		stmt.Body = &ast.BlockStmt{}
 	}
+
 	return stmt
 }
 

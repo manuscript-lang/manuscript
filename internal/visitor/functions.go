@@ -281,21 +281,15 @@ func (v *ManuscriptAstVisitor) ProcessReturnType(typeAnnotationCtx parser.ITypeA
 	var results *ast.FieldList
 
 	if typeAnnotationCtx != nil {
-		// Ensure it's the concrete type *parser.TypeAnnotationContext if VisitTypeAnnotation expects it.
-		concreteTypeAnnotationCtx, ok := typeAnnotationCtx.(*parser.TypeAnnotationContext)
-		if !ok {
-			v.addError(fmt.Sprintf("Return type for function/method \"%s\" has unexpected context type.", funcName), typeAnnotationCtx.GetStart())
+		returnTypeInterface := typeAnnotationCtx.Accept(v)
+		if returnTypeExpr, okRT := returnTypeInterface.(ast.Expr); okRT && returnTypeExpr != nil {
+			field := &ast.Field{Type: returnTypeExpr}
+			results = &ast.FieldList{List: []*ast.Field{field}}
+		} else if returnTypeInterface == nil {
+			// For void return type, we create an empty results list
+			results = &ast.FieldList{List: []*ast.Field{}}
 		} else {
-			returnTypeInterface := v.Visit(concreteTypeAnnotationCtx)
-			if returnTypeExpr, okRT := returnTypeInterface.(ast.Expr); okRT && returnTypeExpr != nil {
-				field := &ast.Field{Type: returnTypeExpr}
-				results = &ast.FieldList{List: []*ast.Field{field}}
-			} else if returnTypeInterface == nil {
-				// For void return type, we create an empty results list
-				results = &ast.FieldList{List: []*ast.Field{}}
-			} else {
-				v.addError(fmt.Sprintf("Invalid return type for function/method \"%s\"", funcName), concreteTypeAnnotationCtx.GetStart())
-			}
+			v.addError(fmt.Sprintf("Invalid return type for function/method \"%s\"", funcName), typeAnnotationCtx.GetStart())
 		}
 	}
 
