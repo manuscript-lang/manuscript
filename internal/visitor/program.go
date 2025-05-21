@@ -61,7 +61,7 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 				}
 			}
 		case nil:
-			// skip
+			v.addError("Internal error: Unhandled node type for declaration", decl.GetStart())
 		default:
 			v.addError("Internal error: Unhandled node type for declaration", decl.GetStart())
 		}
