@@ -63,15 +63,11 @@ func (v *ManuscriptAstVisitor) visitPostfixOp(op parser.IPostfixOpContext, x ast
 func (v *ManuscriptAstVisitor) VisitPostfixCallWithReceiver(ctx *parser.PostfixCallContext, recv ast.Expr) ast.Expr {
 	args := []ast.Expr{}
 	if ctx.ExprList() != nil {
-		if exprListCtx, ok := ctx.ExprList().(*parser.ExprListContext); ok {
-			for _, exprNode := range exprListCtx.AllExpr() {
-				if argAst, visitOk := v.Visit(exprNode).(ast.Expr); visitOk && argAst != nil {
-					args = append(args, argAst)
-				} else {
-					v.addError("Invalid argument expression in call: "+exprNode.GetText(), exprNode.GetStart())
-					args = append(args, &ast.BadExpr{From: v.pos(exprNode.GetStart()), To: v.pos(exprNode.GetStop())})
-				}
-			}
+		visited := v.Visit(ctx.ExprList())
+		if exprs, ok := visited.([]ast.Expr); ok {
+			args = exprs
+		} else {
+			v.addError("ExprList in function call did not resolve to valid Go expressions", ctx.ExprList().GetStart())
 		}
 	}
 	return &ast.CallExpr{

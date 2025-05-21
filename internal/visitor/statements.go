@@ -203,26 +203,12 @@ func (v *ManuscriptAstVisitor) VisitReturnStmt(ctx *parser.ReturnStmtContext) in
 	}
 
 	if ctx.ExprList() != nil {
-		// VisitExprList should return []ast.Expr or a single ast.Expr if it's just one
-		// For now, let's assume VisitExprList correctly returns []ast.Expr
-		// The grammar is exprList: expr (COMMA expr)* (COMMA)?;
-		// So, v.Visit(ctx.ExprList()) might return that list.
-
-		// Let's refine how to get []ast.Expr from ExprListContext
-		// ExprListContext has AllExpr() []IExprContext
-		exprListCtx := ctx.ExprList().(*parser.ExprListContext) // Cast to concrete type
-		var results []ast.Expr
-		for _, exprNode := range exprListCtx.AllExpr() {
-			visitedExpr := v.Visit(exprNode)
-			if astExpr, ok := visitedExpr.(ast.Expr); ok {
-				results = append(results, astExpr)
-			} else {
-				v.addError("Return statement contains a non-expression.", exprNode.GetStart())
-				// Add a bad expression to signify error but keep arity if possible
-				results = append(results, &ast.BadExpr{From: v.pos(exprNode.GetStart()), To: v.pos(exprNode.GetStop())})
-			}
+		visited := v.Visit(ctx.ExprList())
+		if exprs, ok := visited.([]ast.Expr); ok {
+			retStmt.Results = exprs
+		} else {
+			v.addError("Return statement's exprList did not resolve to valid Go expressions", ctx.ExprList().GetStart())
 		}
-		retStmt.Results = results
 	}
 
 	return retStmt

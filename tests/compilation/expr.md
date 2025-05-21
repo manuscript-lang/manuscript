@@ -349,6 +349,7 @@ func main() {
 fn reassign() {
     let a = [1,2,3]
     let b = a[1]
+    let e = [f(), g(), h()]
     let c
     b = a[0]
     c = a[0]
@@ -361,6 +362,7 @@ package main
 func reassign() {
     a := []interface{}{1, 2, 3}
     b := a[1]
+    e := []interface{}{f(), g(), h()}
     var c
     b = a[0]
     c = a[0]
