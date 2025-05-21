@@ -339,12 +339,6 @@ func (s *BaseManuscriptListener) EnterMethodImplList(ctx *MethodImplListContext)
 // ExitMethodImplList is called when production methodImplList is exited.
 func (s *BaseManuscriptListener) ExitMethodImplList(ctx *MethodImplListContext) {}
 
-// EnterMethodImplSep is called when production methodImplSep is entered.
-func (s *BaseManuscriptListener) EnterMethodImplSep(ctx *MethodImplSepContext) {}
-
-// ExitMethodImplSep is called when production methodImplSep is exited.
-func (s *BaseManuscriptListener) ExitMethodImplSep(ctx *MethodImplSepContext) {}
-
 // EnterMethodImpl is called when production methodImpl is entered.
 func (s *BaseManuscriptListener) EnterMethodImpl(ctx *MethodImplContext) {}
 

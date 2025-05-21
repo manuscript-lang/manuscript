@@ -164,9 +164,6 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#methodImplList.
 	VisitMethodImplList(ctx *MethodImplListContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#methodImplSep.
-	VisitMethodImplSep(ctx *MethodImplSepContext) interface{}
-
 	// Visit a parse tree produced by Manuscript#methodImpl.
 	VisitMethodImpl(ctx *MethodImplContext) interface{}
 

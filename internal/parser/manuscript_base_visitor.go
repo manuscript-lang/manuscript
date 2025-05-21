@@ -216,10 +216,6 @@ func (v *BaseManuscriptVisitor) VisitMethodImplList(ctx *MethodImplListContext) 
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitMethodImplSep(ctx *MethodImplSepContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseManuscriptVisitor) VisitMethodImpl(ctx *MethodImplContext) interface{} {
 	return v.VisitChildren(ctx)
 }

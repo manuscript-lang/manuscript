@@ -164,9 +164,6 @@ type ManuscriptListener interface {
 	// EnterMethodImplList is called when entering the methodImplList production.
 	EnterMethodImplList(c *MethodImplListContext)
 
-	// EnterMethodImplSep is called when entering the methodImplSep production.
-	EnterMethodImplSep(c *MethodImplSepContext)
-
 	// EnterMethodImpl is called when entering the methodImpl production.
 	EnterMethodImpl(c *MethodImplContext)
 
@@ -709,9 +706,6 @@ type ManuscriptListener interface {
 
 	// ExitMethodImplList is called when exiting the methodImplList production.
 	ExitMethodImplList(c *MethodImplListContext)
-
-	// ExitMethodImplSep is called when exiting the methodImplSep production.
-	ExitMethodImplSep(c *MethodImplSepContext)
 
 	// ExitMethodImpl is called when exiting the methodImpl production.
 	ExitMethodImpl(c *MethodImplContext)
