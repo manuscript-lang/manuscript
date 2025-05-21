@@ -89,12 +89,6 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 		}
 		file.Decls = append([]ast.Decl{&ast.GenDecl{Tok: token.IMPORT, Specs: specs}}, file.Decls...)
 	}
-
-	if file == nil {
-		v.addError("VisitProgram: Failed to produce a valid file", ctx.GetStart())
-		return createEmptyMainFile()
-	}
-
 	return file
 }
 
@@ -137,10 +131,10 @@ func (v *ManuscriptAstVisitor) VisitDeclaration(ctx parser.IDeclarationContext) 
 			switch stmts := letResult.(type) {
 			case []ast.Stmt:
 				return stmts
+			case *ast.BlockStmt:
+				return stmts
 			case ast.Stmt:
 				return []ast.Stmt{stmts}
-			case *ast.BlockStmt:
-				return stmts.List
 			case nil:
 				return nil
 			default:

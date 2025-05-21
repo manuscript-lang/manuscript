@@ -119,10 +119,8 @@ func (v *ManuscriptAstVisitor) VisitFnType(ctx *parser.FnTypeContext) interface{
 	return v.buildAstFuncType(
 		ctx.Parameters(),     // parser.IParametersContext or nil
 		ctx.TypeAnnotation(), // parser.ITypeAnnotationContext or nil
-		nil,                  // No ID for fnType
 		nil,                  // No EXCLAMATION for fnType
 		"anonymous function type",
-		ctx.GetStart(), // Pass token for error reporting if needed by buildAstFuncType
 	)
 }
 
@@ -131,23 +129,18 @@ func (v *ManuscriptAstVisitor) VisitFnType(ctx *parser.FnTypeContext) interface{
 // It's also used for actual function signatures in fnDecl.
 func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext) interface{} {
 	var funcNameForError string
-	var errorToken antlr.Token
 	if ctx.ID() != nil {
 		funcNameForError = ctx.ID().GetText() + " (in type signature)"
-		errorToken = ctx.ID().GetSymbol()
 	} else {
 		// This path might not be hit if ID is mandatory in FnSignature grammar.
 		funcNameForError = "function signature"
-		errorToken = ctx.GetStart()
 	}
 
 	return v.buildAstFuncType(
 		ctx.Parameters(),
 		ctx.TypeAnnotation(),
-		ctx.ID(),
 		ctx.EXCLAMATION(),
 		funcNameForError,
-		errorToken,
 	)
 }
 
@@ -155,12 +148,8 @@ func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext)
 func (v *ManuscriptAstVisitor) buildAstFuncType(
 	paramsCtx parser.IParametersContext,
 	returnTypeCtx parser.ITypeAnnotationContext,
-	_ antlr.TerminalNode, // idNode, unused
 	exclNode antlr.TerminalNode,
-
 	desc string,
-
-	tok antlr.Token,
 ) *ast.FuncType {
 	params := v.buildFuncParams(paramsCtx, desc)
 	results := v.buildFuncResults(returnTypeCtx, exclNode, desc)

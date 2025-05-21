@@ -114,28 +114,3 @@ func (v *ManuscriptAstVisitor) VisitPostfixIndexWithReceiver(ctx *parser.Postfix
 		Rbrack: v.pos(ctx.RSQBR().GetSymbol()),
 	}
 }
-
-// isTypeName checks if the given name is a type name
-// This function might be needed if type conversions are handled via function-like calls to type names
-// and that syntax is parsed as a regular PostfixExpr.
-// For now, it is assumed that StructInitExpr handles explicit type constructions.
-func (v *ManuscriptAstVisitor) isTypeName(name string) bool {
-	// Check if it's a built-in type
-	switch name {
-	case "string", "int", "float", "bool": // Manuscript type names
-		return true
-	}
-	// Check against known user-defined types (if symbol table/type info is available)
-	// For example: if _, exists := v.typeInfo[name]; exists { return true }
-	return false
-}
-
-// Ensure v.pos is defined in visitor.go or a common utility, e.g.:
-// func (v *ManuscriptAstVisitor) pos(token antlr.Token) token.Pos {
-//  if token == nil { return gotoken.NoPos }
-//  // This is a placeholder. Actual mapping from ANTLR line/col to go/token.Pos
-//  // requires a token.FileSet and adding files to it.
-//  // For now, returning NoPos or a simplified offset if available.
-//  // return token.GetTokenIndex() // This is not a token.Pos
-//  return gotoken.NoPos // Fallback to NoPos if proper mapping isn't set up.
-// }

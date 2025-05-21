@@ -1,20 +1,13 @@
 package visitor
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
+	"strconv"
 
 	"github.com/antlr4-go/antlr/v4"
 )
-
-// getAntlrTokenPos converts an ANTLR token's start position to a go/token.Pos.
-// This is a simplification and might need refinement if precise FileSet mapping is required.
-func getAntlrTokenPos(tk antlr.Token) token.Pos {
-	if tk == nil {
-		return token.NoPos
-	}
-	return token.Pos(tk.GetStart())
-}
 
 func (v *ManuscriptAstVisitor) asStmt(val interface{}) ast.Stmt {
 	if stmt, ok := val.(ast.Stmt); ok {
@@ -46,4 +39,195 @@ func toSpecSlice(specs []*ast.ImportSpec) []ast.Spec {
 		out[i] = s
 	}
 	return out
+}
+
+// buildParamsAST builds the Go AST parameter list and default assignments from ParamDetail list.
+func (v *ManuscriptAstVisitor) buildParamsAST(paramDetailsList []ParamDetail) (*ast.FieldList, []ast.Stmt) {
+	paramsAST := &ast.FieldList{List: []*ast.Field{}}
+	var defaultAssignments []ast.Stmt
+	hasDefaultArg := false
+	firstDefaultArgIndex := -1
+	for i, pd := range paramDetailsList {
+		if pd.DefaultValue != nil {
+			hasDefaultArg = true
+			if firstDefaultArgIndex == -1 {
+				firstDefaultArgIndex = i
+			}
+		} else if hasDefaultArg {
+			v.addError(
+				fmt.Sprintf("Non-default argument '%s' follows default argument. Manuscript requires default arguments to be at the end of the parameter list.", pd.Name.Name),
+				pd.NameToken,
+			)
+		}
+	}
+	if hasDefaultArg {
+		paramsAST.List = []*ast.Field{{Names: []*ast.Ident{ast.NewIdent("args")}, Type: &ast.Ellipsis{Elt: ast.NewIdent("interface{}")}}}
+		for i, pd := range paramDetailsList {
+			paramIdent := pd.Name
+			if pd.DefaultValue != nil {
+				declStmt := &ast.DeclStmt{
+					Decl: &ast.GenDecl{
+						Tok: token.VAR,
+						Specs: []ast.Spec{
+							&ast.ValueSpec{
+								Names:  []*ast.Ident{paramIdent},
+								Type:   pd.Type,
+								Values: []ast.Expr{pd.DefaultValue},
+							},
+						},
+					},
+				}
+				defaultAssignments = append(defaultAssignments, declStmt)
+				ifStmt := &ast.IfStmt{
+					Cond: &ast.BinaryExpr{
+						X:  &ast.CallExpr{Fun: ast.NewIdent("len"), Args: []ast.Expr{ast.NewIdent("args")}},
+						Op: token.GTR,
+						Y:  &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)},
+					},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.AssignStmt{
+								Lhs: []ast.Expr{paramIdent},
+								Tok: token.ASSIGN,
+								Rhs: []ast.Expr{
+									&ast.TypeAssertExpr{
+										X: &ast.IndexExpr{
+											X:     ast.NewIdent("args"),
+											Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)},
+										},
+										Type: pd.Type,
+									},
+								},
+							},
+						},
+					},
+				}
+				defaultAssignments = append(defaultAssignments, ifStmt)
+			} else {
+				assignStmt := &ast.AssignStmt{
+					Lhs: []ast.Expr{paramIdent},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{
+						&ast.TypeAssertExpr{
+							X: &ast.IndexExpr{
+								X:     ast.NewIdent("args"),
+								Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)},
+							},
+							Type: pd.Type,
+						},
+					},
+				}
+				defaultAssignments = append(defaultAssignments, assignStmt)
+			}
+		}
+	} else {
+		for _, pd := range paramDetailsList {
+			paramsAST.List = append(paramsAST.List, &ast.Field{Names: []*ast.Ident{pd.Name}, Type: pd.Type})
+		}
+	}
+	return paramsAST, defaultAssignments
+}
+
+// inferTypeFromExpression attempts to infer a Go AST type from a given expression.
+// It's a basic inference, primarily for literals and simple cases.
+func (v *ManuscriptAstVisitor) inferTypeFromExpression(expr ast.Expr, funcParams *ast.FieldList) ast.Expr {
+	if expr == nil {
+		return nil
+	}
+	switch e := expr.(type) {
+	case *ast.BasicLit:
+		switch e.Kind {
+		case token.INT:
+			return ast.NewIdent("int64") // Manuscript 'int' typically maps to 'int64'
+		case token.FLOAT:
+			return ast.NewIdent("float64") // Manuscript 'float' typically maps to 'float64'
+		case token.STRING:
+			return ast.NewIdent("string")
+		default:
+			return nil
+		}
+	case *ast.Ident:
+		// Check for boolean literals (if Manuscript parses them as Idents)
+		// This needs to align with actual grammar for booleans.
+		// if e.Name == "true" || e.Name == "false" { // Assuming "true"/"false" are idents for bools
+		// 	return ast.NewIdent("bool")
+		// }
+
+		// Check if 'e' is a parameter name, and get its type from funcParams
+		if funcParams != nil {
+			for _, field := range funcParams.List {
+				for _, name := range field.Names {
+					if name.Name == e.Name {
+						// The field.Type is already an ast.Expr representing the type.
+						return field.Type
+					}
+				}
+			}
+		}
+		return nil // Cannot infer from other idents without a symbol table/type system
+	case *ast.BinaryExpr:
+		// Very basic inference: if operands can be inferred to the same type, assume that type.
+		// This doesn't handle type promotion (e.g., int + float = float) or complex cases.
+		leftType := v.inferTypeFromExpression(e.X, funcParams)
+		// rightType := v.inferTypeFromExpression(e.Y, funcParams) // Not used in simple model for now
+
+		// If left operand's type can be inferred, assume binary op results in same type.
+		// This is a major simplification, especially for ops like comparisons (-> bool)
+		// or mixed-type arithmetic.
+		// For `a + b + d`: if `a` is int64, this might infer `int64` if `a` is `e.X`.
+		if leftType != nil {
+			// Check if leftType is one of the numeric types we handle
+			if lt, ok := leftType.(*ast.Ident); ok {
+				if lt.Name == "int64" || lt.Name == "float64" { // Add other types if needed
+					// This assumes the binary operation preserves the type of the left operand.
+					// A more robust solution would check e.Op and types of both X and Y.
+					return ast.NewIdent(lt.Name)
+				}
+				// Could add bool for comparison operators, e.g.
+				// switch e.Op {
+				// case token.EQL, token.LSS, token.GTR, token.NEQ, token.LEQ, token.GEQ:
+				// return ast.NewIdent("bool")
+				// }
+			}
+		}
+		return nil
+	case *ast.CompositeLit:
+		// For composite literals like `[]int{1,2}` or `MyStruct{}{}`, e.Type is the AST node for the type.
+		return e.Type
+	case *ast.CallExpr:
+		// If the function being called is an identifier that represents a type (e.g. type conversion)
+		// like `string(x)`, `int(num)`, then e.Fun is that type.
+		if typeIdent, ok := e.Fun.(*ast.Ident); ok {
+			// Basic check: does it look like a built-in Go type?
+			// A more robust way would be to have a list of known types or a symbol table.
+			switch typeIdent.Name {
+			case "string", "int", "int8", "int16", "int32", "int64",
+				"uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+				"float32", "float64", "complex64", "complex128",
+				"bool", "byte", "rune", "error":
+				return typeIdent // The function name itself is the type.
+			}
+			// If it's not a known built-in type, we can't infer without a symbol table.
+			// For project-specific types or functions, this would need more info.
+			// For now, let's assume if it's not a basic Go type, we can't infer the return from the call expr alone.
+			// However, if the call is `MyType(arg)` and MyType is a defined type in Manuscript,
+			// then e.Fun might be an *ast.Ident{Name: "MyType"}.
+			// This requires knowing it's a type.
+		}
+		// If e.Fun is a more complex expression (e.g. a selector like `pkg.MyFunc()`),
+		// or if it's an identifier for a function whose return type isn't known here,
+		// we can't infer easily.
+		// TODO: A more advanced system would look up the function signature in a symbol table.
+		return nil
+	default:
+		return nil // Cannot infer by default
+	}
+}
+
+// ParamDetail holds extracted information about a function parameter, including any default value.
+type ParamDetail struct {
+	Name         *ast.Ident
+	NameToken    antlr.Token // Store the original token for error reporting
+	Type         ast.Expr
+	DefaultValue ast.Expr // nil if no default value
 }
