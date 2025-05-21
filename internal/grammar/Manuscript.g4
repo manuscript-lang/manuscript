@@ -5,7 +5,7 @@ options {
 }
 
 // --- Program Structure ---
-program: (stmt_sep* declaration)* stmt_sep* EOF;
+program: stmt_sep* (declaration (stmt_sep+ declaration)*)? stmt_sep* EOF;
 
 declaration:
 	importDecl        #DeclImport
@@ -120,8 +120,8 @@ forInit: letSingle #ForInitLet | /* empty */ #ForInitEmpty;
 forCond: expr #ForCondExpr | /* empty */ #ForCondEmpty;
 forPost: expr #ForPostExpr | /* empty */ #ForPostEmpty;
 whileStmt: WHILE expr loopBody;
-loopBody: LBRACE (stmt_sep* stmt)* stmt_sep* RBRACE;
-codeBlock: LBRACE (stmt_sep* stmt)* stmt_sep* RBRACE;
+loopBody: LBRACE stmt_sep* (stmt (stmt_sep+ stmt)*)? stmt_sep* RBRACE;
+codeBlock: LBRACE stmt_sep* (stmt (stmt_sep+ stmt)*)? stmt_sep* RBRACE;
 breakStmt: BREAK SEMICOLON?;
 continueStmt: CONTINUE SEMICOLON?;
 checkStmt: CHECK expr COMMA stringLiteral SEMICOLON?;
