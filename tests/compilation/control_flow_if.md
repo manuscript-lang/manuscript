@@ -188,7 +188,7 @@ func main() {
         s := 30
         print(s)
     }
-    print(s)
+    return print(s)
 }
 ```
 

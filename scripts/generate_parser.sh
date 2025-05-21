@@ -6,6 +6,7 @@ ANTLR_VERSION="4.13.1"
 ANTLR_JAR="antlr-$ANTLR_VERSION-complete.jar"
 if [ ! -f "build/$ANTLR_JAR" ]; then
     echo "Downloading ANTLR $ANTLR_VERSION..."
+    mkdir -p build # Ensure the build directory exists
     curl -o "build/$ANTLR_JAR" "https://www.antlr.org/download/$ANTLR_JAR"
 fi
 

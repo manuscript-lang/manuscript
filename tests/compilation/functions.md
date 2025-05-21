@@ -8,7 +8,7 @@ fn main() {
 package main
 
 func main() {
-    print("hello world")
+    return print("hello world")
 }
 ```
 ---
@@ -26,10 +26,10 @@ fn main() {
 package main
 
 func greet(name string) {
-    print("Hello, " + name)
+    return print("Hello, " + name)
 }
 func main() {
-    greet("World")
+    return greet("World")
 }
 ```
 ---
@@ -52,7 +52,7 @@ func get_pi() float64 {
 }
 func main() {
     x := get_pi()
-    print(x)
+    return print(x)
 }
 ```
 ---
@@ -77,7 +77,7 @@ func add(a int64, b int64) int64 {
 }
 func main() {
     sum := add(5, 3)
-    print(sum)
+    return print(sum)
 }
 ```
 
@@ -115,11 +115,11 @@ func greet(args ...interface{}) {
     if len(args) > 0 {
         name = args[0].(string)
     }
-    print("Hello, " + name)
+    return print("Hello, " + name)
 }
 func main() {
     greet()
-    greet("Test")
+    return greet("Test")
 }
 ```
 
@@ -148,12 +148,12 @@ func createUser(args ...interface{}) {
     if len(args) > 2 {
         retries = args[2].(int64)
     }
-    print(username + " " + string(isActive) + " " + string(retries))
+    return print(username + " " + string(isActive) + " " + string(retries))
 }
 func main() {
     createUser("user1")
     createUser("user2", false)
-    createUser("user3", true, 5)
+    return createUser("user3", true, 5)
 }
 ```
 
@@ -173,12 +173,12 @@ fn main() {
 package main
 
 func cleanup() {
-    print("cleaning up resources")
+    return print("cleaning up resources")
 }
 func main() {
     print("starting work")
     defer cleanup()
-    print("doing work")
+    return print("doing work")
 }
 ```
 
@@ -204,7 +204,7 @@ package main
 func main() {
     file := openFile("example.txt")
     defer file.close()
-    file.write("Hello, World!")
+    return file.write("Hello, World!")
 }
 func openFile(path string) File {
     file := File()
@@ -212,3 +212,48 @@ func openFile(path string) File {
 }
 ```
 
+# multiple return calls
+```ms
+fn doIt() {
+   return a(), b(), c()
+}
+```
+```go
+package main
+
+func doIt() {
+    return a(), b(), c()
+}
+func main() {
+}
+```
+
+# implicit returns
+```ms
+fn doIt() { 42 }
+fn fn1() { 'val' }
+fn fn2() { [] }
+fn fn3() { <> }
+fn fn4() { a() }
+```
+```go
+package main
+
+func doIt() {
+    return 42
+}
+func fn1() {
+    return "val"
+}
+func fn2() {
+    return []interface{}{}
+}
+func fn3() {
+    return map[interface{}]bool{}
+}
+func fn4() {
+    return a()
+}
+func main() {
+}
+```

@@ -17,26 +17,30 @@ func (v *ManuscriptAstVisitor) VisitStructInitExpr(ctx *parser.StructInitExprCon
 	structTypeName := ctx.ID().GetText()
 	structTypeExpr := ast.NewIdent(structTypeName)
 	keyValueElts := make([]ast.Expr, 0)
-	for _, fieldCtx := range ctx.AllStructField() {
-		if fieldCtx.GetKey() == nil {
-			v.addError("Struct field missing key", fieldCtx.GetStart())
-			continue
+	if ctx.StructFieldList() != nil {
+		for _, f := range ctx.StructFieldList().AllStructField() {
+			keyNode := f.ID()
+			valCtx := f.Expr()
+			if keyNode == nil {
+				v.addError("Struct field missing key", f.GetStart())
+				continue
+			}
+			fieldName := keyNode.GetText()
+			if valCtx == nil {
+				v.addError("Struct field missing value", f.GetStart())
+				continue
+			}
+			valueResult := v.Visit(valCtx)
+			valueExpr, ok := valueResult.(ast.Expr)
+			if !ok {
+				v.addError("Struct field value did not resolve to a valid expression", valCtx.GetStart())
+				continue
+			}
+			keyValueElts = append(keyValueElts, &ast.KeyValueExpr{
+				Key:   ast.NewIdent(fieldName),
+				Value: valueExpr,
+			})
 		}
-		fieldName := fieldCtx.GetKey().GetText()
-		if fieldCtx.GetVal() == nil {
-			v.addError("Struct field missing value", fieldCtx.GetStart())
-			continue
-		}
-		valueResult := v.Visit(fieldCtx.GetVal())
-		valueExpr, ok := valueResult.(ast.Expr)
-		if !ok {
-			v.addError("Struct field value did not resolve to a valid expression", fieldCtx.GetVal().GetStart())
-			continue
-		}
-		keyValueElts = append(keyValueElts, &ast.KeyValueExpr{
-			Key:   ast.NewIdent(fieldName),
-			Value: valueExpr,
-		})
 	}
 	return &ast.CompositeLit{
 		Type: structTypeExpr,

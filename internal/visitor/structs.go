@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 	"manuscript-co/manuscript/internal/parser"
+	"reflect"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -11,39 +12,79 @@ import (
 // VisitTypeDecl handles type declarations (structs and aliases).
 // type MyStruct { field: Type } or type MyAlias = AnotherType
 func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interface{} {
-	name := ctx.GetTypeName()
+	name := ctx.ID()
 	if name == nil || name.GetText() == "" {
 		v.addError("Type declaration is missing a name.", ctx.GetStart())
 		return nil
 	}
-	typeName := name.GetText()
+	typeNameStr := name.GetText()
 
-	if alias := ctx.TypeAlias(); alias != nil {
-		target := alias.GetAliasTarget()
-		typeAnn, ok := target.(*parser.TypeAnnotationContext)
-		if target == nil || !ok || typeAnn == nil {
-			v.addError("Malformed or missing alias target for \""+typeName+"\".", alias.GetStart())
+	// Check for type alias vs. struct definition
+	if typeAliasCtx := ctx.TypeAlias(); typeAliasCtx != nil {
+		// This is a type alias: type Name = AliasType
+		aliasTargetNode := typeAliasCtx.TypeAnnotation()
+		if aliasTargetNode == nil {
+			// Should not happen if grammar is `typeAlias: EQUALS aliasTarget=typeAnnotation`
+			v.addError("Malformed type alias for \""+typeNameStr+"\": missing alias target.", typeAliasCtx.GetStart())
 			return nil
 		}
-		expr, ok := v.VisitTypeAnnotation(typeAnn).(ast.Expr)
-		if !ok || expr == nil {
-			v.addError("Invalid type expression for alias target for \""+typeName+"\": "+typeAnn.GetText(), typeAnn.GetStart())
-			return nil
+
+		aliasTypeExpr, ok := v.processTypeAnnotationToExpr(aliasTargetNode, "alias target for \""+typeNameStr+"\"")
+		if !ok {
+			return nil // Error already added by helper
 		}
-		return typeDecl(typeName, expr)
+
+		// TODO: Handle EXTENDS constraintTypes = typeList for type aliases if needed in Go output
+		return &ast.GenDecl{
+			Tok: token.TYPE,
+			Specs: []ast.Spec{
+				&ast.TypeSpec{
+					Name: ast.NewIdent(typeNameStr),
+					Type: aliasTypeExpr,
+				},
+			},
+		}
 	}
 
-	bodyCtx, ok := ctx.TypeDefBody().(*parser.TypeDefBodyContext)
-	if ctx.TypeDefBody() == nil || !ok {
-		v.addError("Malformed type declaration for \""+typeName+"\": missing or invalid struct body.", name.GetStart())
+	body := ctx.TypeDefBody()
+	bodyCtx, ok := body.(*parser.TypeDefBodyContext)
+	if !ok || bodyCtx == nil {
+		v.addError("Malformed type declaration for \""+typeNameStr+"\": missing or invalid struct body.", name.GetSymbol())
 		return nil
 	}
 
-	fields := v.structFields(bodyCtx, typeName)
+	fields := v.structFields(bodyCtx, typeNameStr)
 	if fields == nil {
 		return nil
 	}
-	return typeDecl(typeName, &ast.StructType{Fields: &ast.FieldList{List: fields}})
+	return typeDecl(typeNameStr, &ast.StructType{Fields: &ast.FieldList{List: fields}})
+}
+
+// processTypeAnnotationToExpr is a helper function to process type annotations to Go AST expressions
+func (v *ManuscriptAstVisitor) processTypeAnnotationToExpr(typeAnnCtx parser.ITypeAnnotationContext, contextDescription string) (ast.Expr, bool) {
+	if typeAnnCtx == nil {
+		// This should ideally be caught by the caller before passing nil.
+		// Providing a generic token or nil if no specific token is available.
+		v.addError("Internal error: nil TypeAnnotation provided for "+contextDescription, nil)
+		return nil, false
+	}
+
+	// Accept any context that implements Accept(antlr.ParseTreeVisitor)
+	if visitable, ok := typeAnnCtx.(interface {
+		Accept(antlr.ParseTreeVisitor) interface{}
+	}); ok {
+		visitedNode := visitable.Accept(v)
+		if expr, isExpr := visitedNode.(ast.Expr); isExpr && expr != nil {
+			return expr, true
+		} else {
+			v.addError("Invalid type expression for "+contextDescription, typeAnnCtx.GetStart())
+			return nil, false
+		}
+	}
+
+	// Fallback: error
+	v.addError("Internal error: unexpected type for TypeAnnotation ("+reflect.TypeOf(typeAnnCtx).String()+") for "+contextDescription, typeAnnCtx.GetStart())
+	return nil, false
 }
 
 func typeDecl(name string, typ ast.Expr) *ast.GenDecl {
@@ -62,61 +103,81 @@ func (v *ManuscriptAstVisitor) structFields(body *parser.TypeDefBodyContext, typ
 	var fields []*ast.Field
 
 	if ext := body.EXTENDS(); ext != nil {
-		extList := body.GetExtendedTypes()
-		if extList == nil || len(extList.GetTypes()) == 0 {
+		typeList := body.TypeList()
+		if typeList == nil || len(typeList.AllTypeAnnotation()) == 0 {
 			v.addError("Type \""+typeName+"\" has EXTENDS clause but no base types specified.", ext.GetSymbol())
 			return nil
 		}
-		for _, base := range extList.GetTypes() {
-			typeAnn, ok := base.(*parser.TypeAnnotationContext)
-			if !ok || typeAnn == nil {
-				v.addError("Invalid or missing type annotation for base type for struct \""+typeName+"\"", nil)
+		for _, base := range typeList.AllTypeAnnotation() {
+			baseCtx, ok := base.(*parser.TypeAnnotationContext)
+			if !ok || baseCtx == nil {
+				v.addError("Invalid type annotation for base type for struct \""+typeName+"\".", nil)
 				return nil
 			}
-			expr, ok := v.VisitTypeAnnotation(typeAnn).(ast.Expr)
+			expr, ok := v.VisitTypeAnnotation(baseCtx).(ast.Expr)
 			if !ok || expr == nil {
-				v.addError("Invalid type expression for base type for struct \""+typeName+"\": "+typeAnn.GetText(), typeAnn.GetStart())
+				v.addError("Invalid type expression for base type for struct \""+typeName+"\": "+baseCtx.GetText(), baseCtx.GetStart())
 				return nil
 			}
 			fields = append(fields, &ast.Field{Type: expr})
 		}
 	}
 
-	for _, f := range body.GetFields() {
-		fd, ok := f.(*parser.FieldDeclContext)
-		if !ok {
-			tok := body.GetStart()
-			if prc, ok := f.(antlr.ParserRuleContext); ok {
-				tok = prc.GetStart()
+	allFieldDeclCtxs := body.AllFieldDecl()
+	if len(allFieldDeclCtxs) > 0 {
+		for _, f_inter := range allFieldDeclCtxs {
+			fdCtx, ok := f_inter.(*parser.FieldDeclContext)
+			if !ok || fdCtx == nil {
+				v.addError("Internal error: Unexpected structure for field declaration in \""+typeName+"\".", f_inter.GetStart())
+				return nil // critical error
 			}
-			v.addError("Internal error: Unexpected structure for field declaration in \""+typeName+"\".", tok)
-			return nil
+			astField := v.fieldDeclToAstField(fdCtx)
+			if astField == nil {
+				return nil // error in fieldDeclToAstField
+			}
+			fields = append(fields, astField)
 		}
-		astField := v.fieldDeclToAstField(fd)
-		if astField == nil {
-			return nil
-		}
-		fields = append(fields, astField)
 	}
 	return fields
 }
 
 func (v *ManuscriptAstVisitor) fieldDeclToAstField(ctx *parser.FieldDeclContext) *ast.Field {
-	name := ctx.GetFieldName()
-	if name == nil || name.GetName() == nil {
+	name := ctx.ID()
+	if name == nil {
 		v.addError("Field declaration is missing a name.", ctx.GetStart())
 		return nil
 	}
-	fieldName := name.GetName().GetText()
-	typeAnn, ok := ctx.GetType_().(*parser.TypeAnnotationContext)
-	if ctx.GetType_() == nil || !ok || typeAnn == nil {
-		v.addError("Missing or invalid type annotation for field \""+fieldName+"\".", name.GetName())
+	fieldName := name.GetText()
+	fieldTypeAnn := ctx.TypeAnnotation()
+	var expr ast.Expr
+	if fieldTypeAnn == nil {
+		v.addError("Missing type annotation for field \""+fieldName+"\".", name.GetSymbol())
 		return nil
 	}
-	expr, ok := v.VisitTypeAnnotation(typeAnn).(ast.Expr)
-	if !ok || expr == nil {
-		v.addError("Invalid type expression for field \""+fieldName+"\": "+typeAnn.GetText(), typeAnn.GetStart())
-		return nil
+	if e, ok := fieldTypeAnn.(ast.Expr); ok && e != nil {
+		expr = e
+	} else if typeAnnCtx, ok := fieldTypeAnn.(*parser.TypeAnnotationContext); ok && typeAnnCtx != nil {
+		if e2, ok2 := v.VisitTypeAnnotation(typeAnnCtx).(ast.Expr); ok2 && e2 != nil {
+			expr = e2
+		} else {
+			v.addError("Invalid type expression for field \""+fieldName+"\": "+typeAnnCtx.GetText(), typeAnnCtx.GetStart())
+			return nil
+		}
+	} else {
+		// Try to visit if it has Accept method
+		if visitable, ok := fieldTypeAnn.(interface {
+			Accept(antlr.ParseTreeVisitor) interface{}
+		}); ok {
+			if e3, ok3 := visitable.Accept(v).(ast.Expr); ok3 && e3 != nil {
+				expr = e3
+			} else {
+				v.addError("Type annotation for field \""+fieldName+"\" has unexpected context type (Accept fallback).", name.GetSymbol())
+				return nil
+			}
+		} else {
+			v.addError("Type annotation for field \""+fieldName+"\" has unexpected context type (unhandled).", name.GetSymbol())
+			return nil
+		}
 	}
 	if ctx.QUESTION() != nil {
 		switch expr.(type) {
@@ -131,7 +192,7 @@ func (v *ManuscriptAstVisitor) fieldDeclToAstField(ctx *parser.FieldDeclContext)
 }
 
 // VisitFieldDecl handles field declarations within a type (struct).
-// fieldDecl: fieldName = namedID (isOptionalField = QUESTION)? COLON type = typeAnnotation;
+// fieldDecl: ID (QUESTION)? typeAnnotation;
 func (v *ManuscriptAstVisitor) VisitFieldDecl(ctx *parser.FieldDeclContext) interface{} {
 	return v.fieldDeclToAstField(ctx)
 }

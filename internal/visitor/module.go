@@ -18,134 +18,75 @@ func capitalizeFirstLetter(s string) string {
 	return string(r)
 }
 
-// resolveModuleImportDecl processes a ModuleDecl (for import/extern) and returns Go ImportSpecs.
-func (v *ManuscriptAstVisitor) resolveModuleImportDecl(mod parser.IModuleDeclContext, errTok antlr.Token) ([]*ast.ImportSpec, bool) {
-	var specs []*ast.ImportSpec
+// DRY helper for import/extern
+func (v *ManuscriptAstVisitor) handleImportLikeDecl(mod parser.IModuleImportContext, errTok antlr.Token) interface{} {
+	if mod == nil {
+		v.addError("Module import is nil.", errTok)
+		return &ast.BadDecl{}
+	}
+	importSpecs, ok := v.resolveModuleImport(mod, errTok)
+	if !ok || len(importSpecs) == 0 {
+		return &ast.BadDecl{}
+	}
+	return &ast.GenDecl{
+		Tok:   token.IMPORT,
+		Specs: toSpecSlice(importSpecs),
+	}
+}
 
-	switch m := mod.(type) {
-	case *parser.DestructuredImportContext:
-		pathCtx := m.GetPath()
-		if pathCtx == nil || pathCtx.SingleQuotedString() == nil {
-			v.addError("Destructured import/extern is missing a path.", errTok)
-			return nil, false
-		}
-		pathValue := pathCtx.SingleQuotedString().GetText()
-		items := m.GetItems()
-		if m.LBRACE() != nil && len(items) == 0 {
-			// Side-effect import
-			specs = append(specs, &ast.ImportSpec{
-				Name: ast.NewIdent("_"),
-				Path: &ast.BasicLit{Kind: token.STRING, Value: pathValue},
-			})
-		} else {
-			for _, item := range items {
-				var name *ast.Ident
-				if item.GetAlias() != nil {
-					name = ast.NewIdent(item.GetAlias().GetText())
-				}
-				specs = append(specs, &ast.ImportSpec{
-					Name: name, // nil if no alias
-					Path: &ast.BasicLit{Kind: token.STRING, Value: pathValue},
-				})
+func (v *ManuscriptAstVisitor) VisitImportDecl(ctx *parser.ImportDeclContext) interface{} {
+	if ctx == nil || ctx.ModuleImport() == nil {
+		v.addError("Import declaration is missing a module import.", ctx.GetStart())
+		return &ast.BadDecl{}
+	}
+	return v.handleImportLikeDecl(ctx.ModuleImport(), ctx.GetStart())
+}
+
+func (v *ManuscriptAstVisitor) VisitExternDecl(ctx *parser.ExternDeclContext) interface{} {
+	if ctx == nil || ctx.ModuleImport() == nil {
+		v.addError("Extern declaration is missing a module import.", ctx.GetStart())
+		return &ast.BadDecl{}
+	}
+	return v.handleImportLikeDecl(ctx.ModuleImport(), ctx.GetStart())
+}
+
+// VisitExportDecl handles Manuscript export declarations using the visitor pattern.
+func (v *ManuscriptAstVisitor) VisitExportDecl(ctx *parser.ExportDeclContext) interface{} {
+	if ctx == nil || ctx.ExportedItem() == nil {
+		v.addError("Export declaration is missing an exported item.", ctx.GetStart())
+		return &ast.BadDecl{}
+	}
+	item := ctx.ExportedItem()
+	var visitedNode interface{}
+	switch t := item.(type) {
+	case *parser.ExportedFnContext:
+		if fn := t.FnDecl(); fn != nil {
+			if fnCtx, ok := fn.(*parser.FnDeclContext); ok {
+				visitedNode = v.VisitFnDecl(fnCtx)
 			}
 		}
-	case *parser.TargetImportContext:
-		pathCtx := m.GetPath()
-		if pathCtx == nil || pathCtx.SingleQuotedString() == nil {
-			v.addError("Target import/extern is missing a path.", errTok)
-			return nil, false
+	case *parser.ExportedLetContext:
+		if let := t.LetDecl(); let != nil {
+			if letCtx, ok := let.(*parser.LetDeclContext); ok {
+				visitedNode = v.Visit(letCtx)
+			}
 		}
-		pathValue := pathCtx.SingleQuotedString().GetText()
-		target := m.GetTarget()
-		var name *ast.Ident
-		if target != nil {
-			name = ast.NewIdent(target.GetText())
+	case *parser.ExportedTypeContext:
+		if typ := t.TypeDecl(); typ != nil {
+			if typCtx, ok := typ.(*parser.TypeDeclContext); ok {
+				visitedNode = v.VisitTypeDecl(typCtx)
+			}
 		}
-		specs = append(specs, &ast.ImportSpec{
-			Name: name, // nil if no alias
-			Path: &ast.BasicLit{Kind: token.STRING, Value: pathValue},
-		})
+	case *parser.ExportedInterfaceContext:
+		if iface := t.InterfaceDecl(); iface != nil {
+			if ifaceCtx, ok := iface.(*parser.InterfaceDeclContext); ok {
+				visitedNode = v.VisitInterfaceDecl(ifaceCtx)
+			}
+		}
 	default:
-		v.addError("Unknown module declaration in import/extern statement.", errTok)
-		return nil, false
-	}
-	return specs, true
-}
-
-// VisitImportStmt handles Manuscript import statements.
-// It translates them to Go import declarations.
-func (v *ManuscriptAstVisitor) VisitImportStmt(ctx *parser.ImportStmtContext) interface{} {
-	mod := ctx.ModuleDecl()
-	if mod == nil {
-		v.addError("Import statement is missing a module declaration.", ctx.GetStart())
+		v.addError("Exported item is not a recognized declaration.", ctx.GetStart())
 		return &ast.BadDecl{}
 	}
-	importSpecs, ok := v.resolveModuleImportDecl(mod, ctx.GetStart())
-	if !ok || len(importSpecs) == 0 {
-		return &ast.BadDecl{}
-	}
-	return &ast.GenDecl{
-		Tok:   token.IMPORT,
-		Specs: toSpecSlice(importSpecs),
-	}
-}
-
-// VisitImportItem is called when visiting an import item.
-// Currently, its information is used directly by VisitImportStmt for logging.
-func (v *ManuscriptAstVisitor) VisitImportItem(ctx *parser.ImportItemContext) interface{} {
-	// This method could return a struct/map if VisitImportStmt needed to aggregate complex data.
-	// For the current AST generation strategy, it's not strictly producing a node.
-	return nil
-}
-
-// VisitExternStmt handles Manuscript extern statements.
-// For Go AST generation, this is currently treated like an import.
-func (v *ManuscriptAstVisitor) VisitExternStmt(ctx *parser.ExternStmtContext) interface{} {
-	mod := ctx.ModuleDecl()
-	if mod == nil {
-		v.addError("Extern statement is missing a module declaration.", ctx.GetStart())
-		return &ast.BadDecl{}
-	}
-	importSpecs, ok := v.resolveModuleImportDecl(mod, ctx.GetStart())
-	if !ok || len(importSpecs) == 0 {
-		return &ast.BadDecl{}
-	}
-	return &ast.GenDecl{
-		Tok:   token.IMPORT,
-		Specs: toSpecSlice(importSpecs),
-	}
-}
-
-// toSpecSlice converts []*ast.ImportSpec to []ast.Spec for GenDecl.
-func toSpecSlice(specs []*ast.ImportSpec) []ast.Spec {
-	out := make([]ast.Spec, len(specs))
-	for i, s := range specs {
-		out[i] = s
-	}
-	return out
-}
-
-// VisitExportStmt handles export statements.
-// It visits the underlying declaration and modifies its AST
-// to ensure relevant identifiers are capitalized for Go export.
-// Assumes the visited declaration (fnDecl, letDecl, typeDecl, ifaceDecl)
-// returns an ast.Decl node.
-func (v *ManuscriptAstVisitor) VisitExportStmt(ctx *parser.ExportStmtContext) interface{} {
-	var visitedNode interface{}
-
-	if ctx.FnDecl() != nil {
-		visitedNode = v.Visit(ctx.FnDecl())
-	} else if ctx.LetDecl() != nil {
-		visitedNode = v.Visit(ctx.LetDecl())
-	} else if ctx.TypeDecl() != nil {
-		visitedNode = v.Visit(ctx.TypeDecl())
-	} else if ctx.InterfaceDecl() != nil {
-		visitedNode = v.Visit(ctx.InterfaceDecl())
-	} else {
-		v.addError("Export statement has no recognized declaration (function, let, type, or interface).", ctx.GetStart())
-		return &ast.BadDecl{}
-	}
-
 	decl, ok := visitedNode.(ast.Decl)
 	if !ok {
 		if visitedNode == nil {
@@ -156,8 +97,7 @@ func (v *ManuscriptAstVisitor) VisitExportStmt(ctx *parser.ExportStmtContext) in
 		}
 		return visitedNode
 	}
-
-	// Modify the declaration to make it exported
+	// Capitalize identifiers for Go export
 	switch d := decl.(type) {
 	case *ast.FuncDecl:
 		if d.Name != nil {
@@ -166,20 +106,87 @@ func (v *ManuscriptAstVisitor) VisitExportStmt(ctx *parser.ExportStmtContext) in
 	case *ast.GenDecl:
 		for _, spec := range d.Specs {
 			switch s := spec.(type) {
-			case *ast.ValueSpec: // From letDecl (var/const)
+			case *ast.ValueSpec:
 				for _, nameIdent := range s.Names {
 					nameIdent.Name = capitalizeFirstLetter(nameIdent.Name)
 				}
-			case *ast.TypeSpec: // From typeDecl or ifaceDecl
+			case *ast.TypeSpec:
 				if s.Name != nil {
 					s.Name.Name = capitalizeFirstLetter(s.Name.Name)
 				}
-			default:
-				v.addError("Internal warning: Unhandled specification type in exported generic declaration for: "+ctx.GetText(), ctx.GetStart())
 			}
 		}
-	default:
-		v.addError("Internal warning: Exporting an unhandled declaration type for: "+ctx.GetText(), ctx.GetStart())
 	}
 	return decl
+}
+
+// resolveModuleImport processes a moduleImport (for import/extern) and returns Go ImportSpecs.
+func (v *ManuscriptAstVisitor) resolveModuleImport(mod parser.IModuleImportContext, errTok antlr.Token) ([]*ast.ImportSpec, bool) {
+	if mod == nil {
+		v.addError("Module import is nil.", errTok)
+		return nil, false
+	}
+	// Destructured import: {a, b as c} from 'path'
+	if destr, ok := mod.(*parser.ModuleImportDestructuredContext); ok {
+		destructured := destr.DestructuredImport()
+		if destructured == nil {
+			v.addError("Destructured import/extern is missing destructuredImport.", errTok)
+			return nil, false
+		}
+		pathCtx := destructured.ImportStr()
+		if pathCtx == nil || pathCtx.SingleQuotedString() == nil {
+			v.addError("Destructured import/extern is missing a path.", errTok)
+			return nil, false
+		}
+		pathValue := pathCtx.SingleQuotedString().GetText()
+		items := destructured.ImportItemList()
+		if destructured.LBRACE() != nil && (items == nil || len(items.AllImportItem()) == 0) {
+			// Side-effect import
+			specs := []*ast.ImportSpec{{
+				Name: ast.NewIdent("_"),
+				Path: &ast.BasicLit{Kind: token.STRING, Value: pathValue},
+			}}
+			return specs, true
+		} else if items != nil {
+			var specs []*ast.ImportSpec
+			for _, item := range items.AllImportItem() {
+				var name *ast.Ident
+				ids := item.AllID()
+				if item.AS() != nil && len(ids) > 1 {
+					name = ast.NewIdent(ids[1].GetText())
+				}
+				specs = append(specs, &ast.ImportSpec{
+					Name: name, // nil if no alias
+					Path: &ast.BasicLit{Kind: token.STRING, Value: pathValue},
+				})
+			}
+			return specs, true
+		}
+	}
+	// Target import: foo from 'path'
+	if target, ok := mod.(*parser.ModuleImportTargetContext); ok {
+		targetImport := target.TargetImport()
+		if targetImport == nil {
+			v.addError("Target import/extern is missing targetImport.", errTok)
+			return nil, false
+		}
+		pathCtx := targetImport.ImportStr()
+		if pathCtx == nil || pathCtx.SingleQuotedString() == nil {
+			v.addError("Target import/extern is missing a path.", errTok)
+			return nil, false
+		}
+		pathValue := pathCtx.SingleQuotedString().GetText()
+		targetId := targetImport.ID()
+		var name *ast.Ident
+		if targetId != nil {
+			name = ast.NewIdent(targetId.GetText())
+		}
+		specs := []*ast.ImportSpec{{
+			Name: name, // nil if no alias
+			Path: &ast.BasicLit{Kind: token.STRING, Value: pathValue},
+		}}
+		return specs, true
+	}
+	v.addError("Unknown module import in import/extern statement.", errTok)
+	return nil, false
 }

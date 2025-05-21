@@ -18,22 +18,15 @@ type ManuscriptAstVisitor struct {
 	*msParser.BaseManuscriptVisitor // Embed the base visitor
 
 	Errors         []string
-	symbolTable    *SymbolTable
-	currentScope   *Scope
 	loopDepth      int    // To track if we are inside a loop for break/continue
 	currentPackage string // Name of the current Manuscript package/module
 	currentFile    string // Name of the current Manuscript file being processed
 
 	// For Go AST generation specific details
-	goPackageName string                // Target Go package name
-	goImports     map[string]string     // Map from import path to alias (if any, "" for no alias)
-	goFileSet     *gotoken.FileSet      // For position information in Go AST
-	goTypeSpecs   []*ast.TypeSpec       // For collecting type definitions
-	goFuncDecls   []*ast.FuncDecl       // For collecting function declarations
-	goVarDecls    []*ast.GenDecl        // For collecting global variable declarations
-	goStmtList    []ast.Stmt            // For collecting statements (e.g. in main or init)
-	deferredStmts map[string][]ast.Stmt // For defer statements, key might be function name or scope ID
-	tempVarCount  int                   // For unique temporary variables like __val1, __val2
+	goPackageName string            // Target Go package name
+	goImports     map[string]string // Map from import path to alias (if any, "" for no alias)
+	goFileSet     *gotoken.FileSet  // For position information in Go AST
+	tempVarCount  int               // For unique temporary variables like __val1, __val2
 }
 
 // NewManuscriptAstVisitor creates a new visitor instance.
@@ -43,16 +36,12 @@ func NewManuscriptAstVisitor(pkgName, fileName string) *ManuscriptAstVisitor {
 	return &ManuscriptAstVisitor{
 		BaseManuscriptVisitor: &msParser.BaseManuscriptVisitor{},
 		Errors:                []string{},
-		symbolTable:           NewSymbolTable(),
-		currentScope:          nil, // Will be set up with global scope
 		currentPackage:        pkgName,
 		currentFile:           fileName,
 		goPackageName:         "main", // Default, can be overridden
 		goImports:             make(map[string]string),
 		goFileSet:             fs,
-		// Initialize slices/maps
-		deferredStmts: make(map[string][]ast.Stmt),
-		tempVarCount:  0, // Initialize the counter
+		tempVarCount:          0, // Initialize the counter
 	}
 }
 
@@ -75,8 +64,11 @@ func (v *ManuscriptAstVisitor) VisitChildren(node antlr.RuleNode) interface{} {
 	var result interface{}
 	for i := 0; i < node.GetChildCount(); i++ {
 		child := node.GetChild(i)
+		if child == nil {
+			continue
+		}
 		if pt, ok := child.(antlr.ParseTree); ok {
-			childResult := pt.Accept(v)
+			childResult := v.Visit(pt)
 			if childResult != nil {
 				result = childResult // Keep the last non-nil result
 			}
@@ -113,7 +105,6 @@ func (v *ManuscriptAstVisitor) VisitErrorNode(node antlr.ErrorNode) interface{} 
 				Tok:    tok,
 			}
 		}
-		// If not in a loop, it's a genuine error handled by the generic message below.
 	}
 
 	v.addError("Error node encountered: "+node.GetText(), node.GetSymbol())
@@ -150,87 +141,6 @@ func (v *ManuscriptAstVisitor) exitLoop() {
 // isInLoop checks if the visitor is currently inside a loop construct
 func (v *ManuscriptAstVisitor) isInLoop() bool {
 	return v.loopDepth > 0
-}
-
-// Scope management (simplified)
-func (v *ManuscriptAstVisitor) enterScope() {
-	v.currentScope = NewScope(v.currentScope) // Create new scope with current as parent
-}
-
-func (v *ManuscriptAstVisitor) exitScope() {
-	if v.currentScope != nil && v.currentScope.parent != nil { // Don't exit global scope
-		v.currentScope = v.currentScope.parent
-	}
-}
-
-// --- Additional Semantic Analysis and Helper Methods would go here ---
-// e.g., type checking, symbol resolution helpers not part of ANTLR visitor overrides.
-
-// --- Symbol Table and Scope Definitions (Simplified) ---
-
-// SymbolKind defines the type of a symbol (variable, function, type, etc.)
-type SymbolKind int
-
-const (
-	VarSymbol SymbolKind = iota
-	FuncSymbol
-	TypeSymbol
-	PackageSymbol
-	// ... other kinds
-)
-
-// Symbol represents an entry in the symbol table
-type Symbol struct {
-	Name string
-	Kind SymbolKind
-	Type string // Type of the symbol (e.g., "int", "string", "MyStruct", "func(int) string")
-	// Add other info: e.g., a pointer to the AST node, scope where defined, etc.
-	Pos gotoken.Pos // Position of declaration
-}
-
-// Scope represents a lexical scope
-type Scope struct {
-	parent  *Scope
-	symbols map[string]*Symbol
-}
-
-func NewScope(parent *Scope) *Scope {
-	return &Scope{
-		parent:  parent,
-		symbols: make(map[string]*Symbol),
-	}
-}
-
-func (s *Scope) Define(name string, kind SymbolKind, symType string, pos gotoken.Pos) (*Symbol, error) {
-	if _, exists := s.symbols[name]; exists {
-		return nil, fmt.Errorf("symbol '%s' already defined in this scope", name)
-	}
-	sym := &Symbol{Name: name, Kind: kind, Type: symType, Pos: pos}
-	s.symbols[name] = sym
-	return sym, nil
-}
-
-func (s *Scope) Resolve(name string) (*Symbol, *Scope) {
-	for sc := s; sc != nil; sc = sc.parent {
-		if sym, found := sc.symbols[name]; found {
-			return sym, sc
-		}
-	}
-	return nil, nil
-}
-
-// SymbolTable manages scopes
-type SymbolTable struct {
-	Global *Scope
-	// current *Scope // Managed by visitor's currentScope
-}
-
-func NewSymbolTable() *SymbolTable {
-	globalScope := NewScope(nil)
-	// TODO: Add predefined symbols/types to global scope if any
-	return &SymbolTable{
-		Global: globalScope,
-	}
 }
 
 // nextTempVarCounter generates a unique string suffix for temporary variables.

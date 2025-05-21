@@ -7,83 +7,121 @@ import (
 	"strconv"
 )
 
-func (v *ManuscriptAstVisitor) VisitLiteral(ctx *parser.LiteralContext) interface{} {
-	switch {
-	case ctx.NumberLiteral() != nil:
-		return v.Visit(ctx.NumberLiteral())
-	case ctx.StringLiteral() != nil:
+// --- Literal Visitors ---
+
+func (v *ManuscriptAstVisitor) VisitLiteralString(ctx *parser.LiteralStringContext) interface{} {
+	if ctx.StringLiteral() != nil {
 		return v.Visit(ctx.StringLiteral())
-	case ctx.BooleanLiteral() != nil:
-		return v.Visit(ctx.BooleanLiteral())
-	case ctx.VOID() != nil, ctx.NULL() != nil:
-		return ast.NewIdent("nil")
-	default:
-		v.addError("Unhandled literal type: "+ctx.GetText(), ctx.GetStart())
-		return &ast.BadExpr{}
 	}
-}
-
-func (v *ManuscriptAstVisitor) VisitNumberLiteral(ctx *parser.NumberLiteralContext) interface{} {
-	switch {
-	case ctx.INTEGER() != nil:
-		return &ast.BasicLit{Kind: token.INT, Value: ctx.INTEGER().GetText()}
-	case ctx.FLOAT() != nil:
-		return &ast.BasicLit{Kind: token.FLOAT, Value: ctx.FLOAT().GetText()}
-	case ctx.HEX_LITERAL() != nil:
-		return &ast.BasicLit{Kind: token.INT, Value: ctx.HEX_LITERAL().GetText()}
-	case ctx.BINARY_LITERAL() != nil:
-		return &ast.BasicLit{Kind: token.INT, Value: ctx.BINARY_LITERAL().GetText()}
-	case ctx.OCTAL_LITERAL() != nil:
-		return &ast.BasicLit{Kind: token.INT, Value: ctx.OCTAL_LITERAL().GetText()}
-	}
-
-	text := ctx.GetText()
-	if text != "" {
-		if _, err := strconv.ParseInt(text, 0, 64); err == nil {
-			return &ast.BasicLit{Kind: token.INT, Value: text}
-		} else if _, err := strconv.ParseFloat(text, 64); err == nil {
-			return &ast.BasicLit{Kind: token.FLOAT, Value: text}
-		}
-	}
-	v.addError("Unhandled or invalid number literal: "+ctx.GetText(), ctx.GetStart())
+	v.addError("Unknown string literal type: "+ctx.GetText(), ctx.GetStart())
 	return &ast.BadExpr{}
 }
 
-func (v *ManuscriptAstVisitor) VisitStringLiteral(ctx *parser.StringLiteralContext) interface{} {
-	var parts []parser.IStringPartContext
-	switch {
-	case ctx.SingleQuotedString() != nil:
-		parts = ctx.SingleQuotedString().AllStringPart()
-	case ctx.MultiQuotedString() != nil:
-		parts = ctx.MultiQuotedString().AllStringPart()
-	case ctx.DoubleQuotedString() != nil:
-		parts = ctx.DoubleQuotedString().AllStringPart()
-	default:
-		v.addError("No known string type found in string literal: "+ctx.GetText(), ctx.GetStart())
-		return &ast.BadExpr{}
+func (v *ManuscriptAstVisitor) VisitLiteralNumber(ctx *parser.LiteralNumberContext) interface{} {
+	if ctx.NumberLiteral() != nil {
+		return v.Visit(ctx.NumberLiteral())
 	}
+	v.addError("Unknown number literal type: "+ctx.GetText(), ctx.GetStart())
+	return &ast.BadExpr{}
+}
 
+func (v *ManuscriptAstVisitor) VisitLiteralBool(ctx *parser.LiteralBoolContext) interface{} {
+	if ctx.BooleanLiteral() != nil {
+		return v.Visit(ctx.BooleanLiteral())
+	}
+	v.addError("Unknown boolean literal type: "+ctx.GetText(), ctx.GetStart())
+	return &ast.BadExpr{}
+}
+
+func (v *ManuscriptAstVisitor) VisitLiteralNull(ctx *parser.LiteralNullContext) interface{} {
+	return ast.NewIdent("nil")
+}
+
+func (v *ManuscriptAstVisitor) VisitLiteralVoid(ctx *parser.LiteralVoidContext) interface{} {
+	return ast.NewIdent("nil")
+}
+
+// --- Fine-grained String Literal Visitors ---
+
+func (v *ManuscriptAstVisitor) VisitStringLiteralSingle(ctx *parser.StringLiteralSingleContext) interface{} {
+	if ctx.SingleQuotedString() != nil {
+		return v.stringPartsToBasicLit(ctx.SingleQuotedString().AllStringPart())
+	}
+	v.addError("Malformed single-quoted string literal", ctx.GetStart())
+	return &ast.BadExpr{}
+}
+
+func (v *ManuscriptAstVisitor) VisitStringLiteralMulti(ctx *parser.StringLiteralMultiContext) interface{} {
+	if ctx.MultiQuotedString() != nil {
+		return v.stringPartsToBasicLit(ctx.MultiQuotedString().AllStringPart())
+	}
+	v.addError("Malformed multi-quoted string literal", ctx.GetStart())
+	return &ast.BadExpr{}
+}
+
+func (v *ManuscriptAstVisitor) VisitStringLiteralDouble(ctx *parser.StringLiteralDoubleContext) interface{} {
+	if ctx.DoubleQuotedString() != nil {
+		return v.stringPartsToBasicLit(ctx.DoubleQuotedString().AllStringPart())
+	}
+	v.addError("Malformed double-quoted string literal", ctx.GetStart())
+	return &ast.BadExpr{}
+}
+
+func (v *ManuscriptAstVisitor) VisitStringLiteralMultiDouble(ctx *parser.StringLiteralMultiDoubleContext) interface{} {
+	if ctx.MultiDoubleQuotedString() != nil {
+		return v.stringPartsToBasicLit(ctx.MultiDoubleQuotedString().AllStringPart())
+	}
+	v.addError("Malformed multi-double-quoted string literal", ctx.GetStart())
+	return &ast.BadExpr{}
+}
+
+func (v *ManuscriptAstVisitor) stringPartsToBasicLit(parts []parser.IStringPartContext) ast.Expr {
 	raw := ""
 	for _, p := range parts {
-		switch {
-		case p.SINGLE_STR_CONTENT() != nil:
-			raw += p.SINGLE_STR_CONTENT().GetText()
-		case p.MULTI_STR_CONTENT() != nil:
-			raw += p.MULTI_STR_CONTENT().GetText()
-		case p.DOUBLE_STR_CONTENT() != nil:
-			raw += p.DOUBLE_STR_CONTENT().GetText()
-		case p.Interpolation() != nil:
-			v.addError("String interpolation is not yet supported: "+p.Interpolation().GetText(), p.Interpolation().GetStart())
+		switch part := p.(type) {
+		case *parser.StringPartSingleContext:
+			raw += part.GetText()
+		case *parser.StringPartMultiContext:
+			raw += part.GetText()
+		case *parser.StringPartDoubleContext:
+			raw += part.GetText()
+		case *parser.StringPartMultiDoubleContext:
+			raw += part.GetText()
+		case *parser.StringPartInterpContext:
+			v.addError("String interpolation is not yet supported: "+part.GetText(), part.GetStart())
 		}
 	}
 	return &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(raw)}
 }
 
-func (v *ManuscriptAstVisitor) VisitBooleanLiteral(ctx *parser.BooleanLiteralContext) interface{} {
-	switch ctx.GetText() {
-	case "true", "false":
-		return ast.NewIdent(ctx.GetText())
-	default:
-		return &ast.BadExpr{}
-	}
+// --- Fine-grained Number Literal Visitors ---
+
+func (v *ManuscriptAstVisitor) VisitNumberLiteralInt(ctx *parser.NumberLiteralIntContext) interface{} {
+	return &ast.BasicLit{Kind: token.INT, Value: ctx.GetText()}
+}
+
+func (v *ManuscriptAstVisitor) VisitNumberLiteralFloat(ctx *parser.NumberLiteralFloatContext) interface{} {
+	return &ast.BasicLit{Kind: token.FLOAT, Value: ctx.GetText()}
+}
+
+func (v *ManuscriptAstVisitor) VisitNumberLiteralHex(ctx *parser.NumberLiteralHexContext) interface{} {
+	return &ast.BasicLit{Kind: token.INT, Value: ctx.GetText()}
+}
+
+func (v *ManuscriptAstVisitor) VisitNumberLiteralBin(ctx *parser.NumberLiteralBinContext) interface{} {
+	return &ast.BasicLit{Kind: token.INT, Value: ctx.GetText()}
+}
+
+func (v *ManuscriptAstVisitor) VisitNumberLiteralOct(ctx *parser.NumberLiteralOctContext) interface{} {
+	return &ast.BasicLit{Kind: token.INT, Value: ctx.GetText()}
+}
+
+// --- Fine-grained Boolean Literal Visitors ---
+
+func (v *ManuscriptAstVisitor) VisitBoolLiteralTrue(ctx *parser.BoolLiteralTrueContext) interface{} {
+	return ast.NewIdent("true")
+}
+
+func (v *ManuscriptAstVisitor) VisitBoolLiteralFalse(ctx *parser.BoolLiteralFalseContext) interface{} {
+	return ast.NewIdent("false")
 }

@@ -6,7 +6,7 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
 
-	antlr "github.com/antlr4-go/antlr/v4"
+	"github.com/antlr4-go/antlr/v4"
 )
 
 // VisitProgram handles the root of the parse tree (program rule).
@@ -20,38 +20,17 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 		Name:  ast.NewIdent("main"),
 		Decls: []ast.Decl{},
 	}
+
 	mainFound := false
 	var mainFunc *ast.FuncDecl
 	var topLevelStmts []ast.Stmt
 
-	for _, item := range ctx.AllProgramItem() {
-		if item == nil {
+	for _, decl := range ctx.AllDeclaration() {
+		if decl == nil {
 			continue
 		}
 		var node interface{}
-		switch {
-		case item.ImportStmt() != nil:
-			node = v.Visit(item.ImportStmt())
-		case item.ExportStmt() != nil:
-			node = v.Visit(item.ExportStmt())
-		case item.ExternStmt() != nil:
-			node = v.Visit(item.ExternStmt())
-		case item.LetDecl() != nil:
-			node = v.Visit(item.LetDecl())
-		case item.TypeDecl() != nil:
-			node = v.Visit(item.TypeDecl())
-		case item.InterfaceDecl() != nil:
-			node = v.Visit(item.InterfaceDecl())
-		case item.FnDecl() != nil:
-			node = v.Visit(item.FnDecl())
-		case item.MethodsDecl() != nil:
-			node = v.Visit(item.MethodsDecl())
-		default:
-			text := item.GetText()
-			if text != "" && text != "<EOF>" {
-				v.addError("VisitProgram: Unhandled program item: "+text, item.GetStart())
-			}
-		}
+		node = v.VisitDeclaration(decl)
 
 		switch n := node.(type) {
 		case []ast.Decl:
@@ -62,16 +41,7 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 			}
 			if fn, ok := n.(*ast.FuncDecl); ok && fn.Name != nil && fn.Name.Name == "main" {
 				if mainFound {
-					var tok antlr.Token
-					if fnDecl := item.FnDecl(); fnDecl != nil &&
-						fnDecl.FnSignature() != nil &&
-						fnDecl.FnSignature().NamedID() != nil &&
-						fnDecl.FnSignature().NamedID().ID() != nil {
-						tok = fnDecl.FnSignature().NamedID().ID().GetSymbol()
-					} else {
-						tok = item.GetStart()
-					}
-					v.addError("Multiple main functions defined.", tok)
+					v.addError("Multiple main functions defined.", decl.GetStart())
 					continue
 				}
 				mainFound = true
@@ -91,19 +61,16 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 				}
 			}
 		case nil:
-			text := item.GetText()
-			if text != "" && text != "<EOF>" {
-				v.addError("VisitProgram: Child visit returned nil for: "+text, item.GetStart())
-			}
+			// skip
 		default:
-			v.addError("Internal error: Unhandled node type for: "+item.GetText(), item.GetStart())
+			v.addError("Internal error: Unhandled node type for declaration", decl.GetStart())
 		}
 	}
 
 	if !mainFound {
 		file.Decls = append(file.Decls, &ast.FuncDecl{
 			Name: ast.NewIdent("main"),
-			Type: &ast.FuncType{Params: &ast.FieldList{}},
+			Type: &ast.FuncType{Params: &ast.FieldList{}, Results: nil},
 			Body: &ast.BlockStmt{List: topLevelStmts},
 		})
 	} else if mainFunc != nil && len(topLevelStmts) > 0 {
@@ -122,12 +89,6 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 		}
 		file.Decls = append([]ast.Decl{&ast.GenDecl{Tok: token.IMPORT, Specs: specs}}, file.Decls...)
 	}
-
-	if file == nil {
-		v.addError("VisitProgram: Failed to produce a valid file", ctx.GetStart())
-		return createEmptyMainFile()
-	}
-
 	return file
 }
 
@@ -154,4 +115,37 @@ func createEmptyMainFile() *ast.File {
 			},
 		},
 	}
+}
+
+// VisitDeclaration handles the 'declaration' rule using the ANTLR visitor pattern.
+func (v *ManuscriptAstVisitor) VisitDeclaration(ctx parser.IDeclarationContext) interface{} {
+	if ctx == nil {
+		v.addError("Received nil declaration context", nil)
+		return nil
+	}
+	// Only DeclLetContext has LetDecl method
+	if letCtx, ok := ctx.(*parser.DeclLetContext); ok {
+		letDecl := letCtx.LetDecl()
+		if letDecl != nil {
+			letResult := v.Visit(letDecl)
+			switch stmts := letResult.(type) {
+			case []ast.Stmt:
+				return stmts
+			case *ast.BlockStmt:
+				return stmts
+			case ast.Stmt:
+				return []ast.Stmt{stmts}
+			case nil:
+				return nil
+			default:
+				v.addError("LetDecl did not return ast.Stmt or []ast.Stmt", ctx.GetStart())
+				return nil
+			}
+		}
+	}
+	if child, ok := ctx.GetChild(0).(antlr.ParseTree); ok {
+		return v.Visit(child)
+	}
+	v.addError("Declaration child is not a ParseTree: "+ctx.GetText(), ctx.GetStart())
+	return nil
 }
