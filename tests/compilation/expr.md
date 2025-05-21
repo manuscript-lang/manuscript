@@ -328,3 +328,43 @@ func main() {
     }()
 }
 ``` 
+
+# indexed access
+```ms
+let a = [1,2,3]
+let b = a[1]
+```
+
+```go
+package main
+
+func main() {
+    a := []interface{}{1, 2, 3}
+    b := a[1]
+}
+```
+
+# assignment
+```ms
+fn reassign() {
+    let a = [1,2,3]
+    let b = a[1]
+    let c
+    b = a[0]
+    c = a[0]
+}
+```
+
+```go
+package main
+
+func reassign() {
+    a := []interface{}{1, 2, 3}
+    b := a[1]
+    var c
+    b = a[0]
+    c = a[0]
+}
+func main() {
+}
+```

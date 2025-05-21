@@ -27,10 +27,14 @@ test-file:
 		-run ^TestCompile$$ \
 		-timeout 30s \
 		-args \
-		$(if $(findstring debug,$(args)),-debug) \
-		$(if $(findstring update,$(args)),-update) \
+		-debug \
 		-file $(f))
 
 update-file:
 	@echo "Updating single file test: $(f)"
 	@(go test -v ./cmd/... -run ^TestCompile$$ -timeout 30s -args -update -file $(f))
+
+profile-test:
+	cd cmd && go test -c -o main.test
+	cd cmd && ./main.test -test.v -test.run ^TestCompile$$ -test.cpuprofile=cpu.prof
+	cd cmd && go tool pprof -http=:8080 ./main.test cpu.prof
