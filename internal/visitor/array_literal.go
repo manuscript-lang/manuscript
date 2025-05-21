@@ -17,6 +17,19 @@ func (v *ManuscriptAstVisitor) VisitArrayLiteral(ctx *parser.ArrayLiteralContext
 				elts = append(elts, &ast.BadExpr{})
 			}
 		}
+
+		// Check for trailing comma in multiline array literals
+		startLine := ctx.GetStart().GetLine()
+		stopLine := ctx.GetStop().GetLine()
+		if stopLine > startLine {
+			if len(exprList.AllExpr()) > 0 {
+				numExprs := len(exprList.AllExpr())
+				numCommas := len(exprList.AllCOMMA())
+				if numCommas < numExprs {
+					v.addError("Multiline array literals must have a trailing comma.", ctx.GetStart())
+				}
+			}
+		}
 	}
 	return &ast.CompositeLit{
 		Type: &ast.ArrayType{Elt: ast.NewIdent("interface{}")},
