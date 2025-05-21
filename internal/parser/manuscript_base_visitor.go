@@ -44,7 +44,7 @@ func (v *BaseManuscriptVisitor) VisitDeclMethods(ctx *DeclMethodsContext) interf
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmt_list(ctx *Stmt_listContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitStmt_list_items(ctx *Stmt_list_itemsContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

@@ -214,8 +214,8 @@ func (v *ManuscriptAstVisitor) VisitIfStmt(ctx *parser.IfStmtContext) interface{
 // { stmt1; stmt2; ... }
 func (v *ManuscriptAstVisitor) VisitCodeBlock(ctx *parser.CodeBlockContext) interface{} {
 	var stmts []ast.Stmt
-	if stmtList := ctx.Stmt_list(); stmtList != nil {
-		for _, stmtCtx := range stmtList.AllStmt() {
+	if stmtListItems := ctx.Stmt_list_items(); stmtListItems != nil {
+		for _, stmtCtx := range stmtListItems.AllStmt() {
 			if stmtCtx == nil {
 				continue
 			}

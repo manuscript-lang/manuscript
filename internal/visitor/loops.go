@@ -15,8 +15,8 @@ func (v *ManuscriptAstVisitor) VisitLoopBody(ctx *parser.LoopBodyContext) interf
 
 	var stmts []ast.Stmt
 
-	if stmtList := ctx.Stmt_list(); stmtList != nil {
-		for _, stmtCtx := range stmtList.AllStmt() {
+	if stmtListItems := ctx.Stmt_list_items(); stmtListItems != nil {
+		for _, stmtCtx := range stmtListItems.AllStmt() {
 			if stmtCtx == nil {
 				continue
 			}

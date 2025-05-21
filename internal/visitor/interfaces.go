@@ -17,9 +17,12 @@ func (v *ManuscriptAstVisitor) VisitInterfaceDecl(ctx *parser.InterfaceDeclConte
 	interfaceName := ctx.ID().GetText()
 	methods := []*ast.Field{}
 
-	if stmtList := ctx.Stmt_list(); stmtList != nil {
-		for _, stmtCtx := range stmtList.AllStmt() {
-			methodField := v.Visit(stmtCtx)
+	if stmtListItems := ctx.Stmt_list_items(); stmtListItems != nil {
+		for _, stmtCtx := range stmtListItems.AllStmt() {
+			// Ensure stmtCtx is parser.IStmtContext, v.Visit expects interface{}
+			// but the underlying type should be compatible with what VisitInterfaceMethod expects if it's a method.
+			// The original code was Visit(stmtCtx) which implies stmtCtx was already the correct type for dispatch.
+			methodField := v.Visit(stmtCtx) // existing logic
 			if field, ok := methodField.(*ast.Field); ok {
 				methods = append(methods, field)
 			}

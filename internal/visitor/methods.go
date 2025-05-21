@@ -23,9 +23,9 @@ func (v *ManuscriptAstVisitor) VisitMethodsDecl(ctx *parser.MethodsDeclContext) 
 	target := &ast.StarExpr{X: receiverType}
 	var decls []ast.Decl
 
-	if stmtList := ctx.Stmt_list(); stmtList != nil {
-		for _, stmtCtx := range stmtList.AllStmt() {
-			visited := v.Visit(stmtCtx)
+	if stmtListItems := ctx.Stmt_list_items(); stmtListItems != nil {
+		for _, stmtCtx := range stmtListItems.AllStmt() {
+			visited := v.Visit(stmtCtx) // Assuming Visit can handle IStmtContext and dispatch correctly
 			if methodImpl, ok := visited.(*parser.MethodImplContext); ok {
 				method := v.VisitMethodImplWithAlias(methodImpl, receiverAlias, receiverType.Name)
 				fn, ok := method.(*ast.FuncDecl)

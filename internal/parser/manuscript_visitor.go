@@ -35,8 +35,8 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#DeclMethods.
 	VisitDeclMethods(ctx *DeclMethodsContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#stmt_list.
-	VisitStmt_list(ctx *Stmt_listContext) interface{}
+	// Visit a parse tree produced by Manuscript#stmt_list_items.
+	VisitStmt_list_items(ctx *Stmt_list_itemsContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#importDecl.
 	VisitImportDecl(ctx *ImportDeclContext) interface{}

@@ -75,11 +75,11 @@ func (s *BaseManuscriptListener) EnterDeclMethods(ctx *DeclMethodsContext) {}
 // ExitDeclMethods is called when production DeclMethods is exited.
 func (s *BaseManuscriptListener) ExitDeclMethods(ctx *DeclMethodsContext) {}
 
-// EnterStmt_list is called when production stmt_list is entered.
-func (s *BaseManuscriptListener) EnterStmt_list(ctx *Stmt_listContext) {}
+// EnterStmt_list_items is called when production stmt_list_items is entered.
+func (s *BaseManuscriptListener) EnterStmt_list_items(ctx *Stmt_list_itemsContext) {}
 
-// ExitStmt_list is called when production stmt_list is exited.
-func (s *BaseManuscriptListener) ExitStmt_list(ctx *Stmt_listContext) {}
+// ExitStmt_list_items is called when production stmt_list_items is exited.
+func (s *BaseManuscriptListener) ExitStmt_list_items(ctx *Stmt_list_itemsContext) {}
 
 // EnterImportDecl is called when production importDecl is entered.
 func (s *BaseManuscriptListener) EnterImportDecl(ctx *ImportDeclContext) {}

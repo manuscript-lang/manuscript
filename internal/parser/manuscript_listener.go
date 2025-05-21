@@ -35,8 +35,8 @@ type ManuscriptListener interface {
 	// EnterDeclMethods is called when entering the DeclMethods production.
 	EnterDeclMethods(c *DeclMethodsContext)
 
-	// EnterStmt_list is called when entering the stmt_list production.
-	EnterStmt_list(c *Stmt_listContext)
+	// EnterStmt_list_items is called when entering the stmt_list_items production.
+	EnterStmt_list_items(c *Stmt_list_itemsContext)
 
 	// EnterImportDecl is called when entering the importDecl production.
 	EnterImportDecl(c *ImportDeclContext)
@@ -449,8 +449,8 @@ type ManuscriptListener interface {
 	// ExitDeclMethods is called when exiting the DeclMethods production.
 	ExitDeclMethods(c *DeclMethodsContext)
 
-	// ExitStmt_list is called when exiting the stmt_list production.
-	ExitStmt_list(c *Stmt_listContext)
+	// ExitStmt_list_items is called when exiting the stmt_list_items production.
+	ExitStmt_list_items(c *Stmt_list_itemsContext)
 
 	// ExitImportDecl is called when exiting the importDecl production.
 	ExitImportDecl(c *ImportDeclContext)

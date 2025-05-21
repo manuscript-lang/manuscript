@@ -18,7 +18,8 @@ declaration:
 	| methodsDecl	# DeclMethods;
 
 // --- Helper Rules ---
-stmt_list: (stmt stmt_sep)*;
+// stmt_list: (stmt (stmt_sep+ stmt)*)? (stmt_sep)*; // Original problematic rule
+stmt_list_items: stmt (stmt_sep+ stmt)*;
 
 // --- Imports/Exports/Extern ---
 importDecl: IMPORT moduleImport;
@@ -68,7 +69,7 @@ fieldDecl: ID (QUESTION)? typeAnnotation;
 
 typeList: typeAnnotation (COMMA typeAnnotation)*;
 
-interfaceDecl: INTERFACE ID (EXTENDS typeList)? LBRACE stmt_list RBRACE;
+interfaceDecl: INTERFACE ID (EXTENDS typeList)? LBRACE (stmt_sep* stmt_list_items)? stmt_sep* RBRACE;
 interfaceMethod: ID LPAREN parameters RPAREN typeAnnotation?;
 
 // --- Function & Methods ---
@@ -76,7 +77,7 @@ fnDecl: fnSignature codeBlock;
 fnSignature: FN ID LPAREN parameters? RPAREN typeAnnotation?;
 parameters: param (COMMA param)*;
 param: ID typeAnnotation (EQUALS expr)?;
-methodsDecl: METHODS ID AS ID LBRACE stmt_list RBRACE;
+methodsDecl: METHODS ID AS ID LBRACE (stmt_sep* stmt_list_items)? stmt_sep* RBRACE;
 methodImpl: interfaceMethod codeBlock;
 
 // --- Statements ---
@@ -108,8 +109,8 @@ forInit: letSingle | /* empty */;
 forCond: expr | /* empty */;
 forPost: expr | /* empty */;
 whileStmt: WHILE expr loopBody;
-loopBody: LBRACE stmt_list RBRACE;
-codeBlock: LBRACE stmt_list RBRACE;
+loopBody: LBRACE (stmt_sep* stmt_list_items)? stmt_sep* RBRACE;
+codeBlock: LBRACE (stmt_sep* stmt_list_items)? stmt_sep* RBRACE;
 breakStmt: BREAK stmt_sep;
 continueStmt: CONTINUE stmt_sep;
 checkStmt: CHECK expr COMMA stringLiteral stmt_sep;
