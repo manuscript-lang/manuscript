@@ -44,6 +44,10 @@ func (v *BaseManuscriptVisitor) VisitDeclMethods(ctx *DeclMethodsContext) interf
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitStmt_list(ctx *Stmt_listContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitImportDecl(ctx *ImportDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -100,19 +104,23 @@ func (v *BaseManuscriptVisitor) VisitImportStr(ctx *ImportStrContext) interface{
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetDeclSingle(ctx *LetDeclSingleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLetDecl(ctx *LetDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetDeclBlock(ctx *LetDeclBlockContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLetPatternSingle(ctx *LetPatternSingleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetDeclDestructuredObj(ctx *LetDeclDestructuredObjContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLetPatternBlock(ctx *LetPatternBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetDeclDestructuredArray(ctx *LetDeclDestructuredArrayContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLetPatternDestructuredObj(ctx *LetPatternDestructuredObjContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitLetPatternDestructuredArray(ctx *LetPatternDestructuredArrayContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -121,14 +129,6 @@ func (v *BaseManuscriptVisitor) VisitLetSingle(ctx *LetSingleContext) interface{
 }
 
 func (v *BaseManuscriptVisitor) VisitLetBlock(ctx *LetBlockContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLetBlockItemList(ctx *LetBlockItemListContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLetBlockItemSep(ctx *LetBlockItemSepContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -164,15 +164,15 @@ func (v *BaseManuscriptVisitor) VisitTypeDecl(ctx *TypeDeclContext) interface{} 
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitTypeVariants(ctx *TypeVariantsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitTypeDefBody(ctx *TypeDefBodyContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
 func (v *BaseManuscriptVisitor) VisitTypeAlias(ctx *TypeAliasContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitFieldList(ctx *FieldListContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -209,14 +209,6 @@ func (v *BaseManuscriptVisitor) VisitParam(ctx *ParamContext) interface{} {
 }
 
 func (v *BaseManuscriptVisitor) VisitMethodsDecl(ctx *MethodsDeclContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitMethodImplList(ctx *MethodImplListContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitMethodImplSep(ctx *MethodImplSepContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -296,11 +288,7 @@ func (v *BaseManuscriptVisitor) VisitForStmt(ctx *ForStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForLoop(ctx *ForLoopContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitForInLoop(ctx *ForInLoopContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitForLoopType(ctx *ForLoopTypeContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -308,27 +296,15 @@ func (v *BaseManuscriptVisitor) VisitForTrinity(ctx *ForTrinityContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForInitLet(ctx *ForInitLetContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitForInit(ctx *ForInitContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForInitEmpty(ctx *ForInitEmptyContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitForCond(ctx *ForCondContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForCondExpr(ctx *ForCondExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitForCondEmpty(ctx *ForCondEmptyContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitForPostExpr(ctx *ForPostExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitForPostEmpty(ctx *ForPostEmptyContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitForPost(ctx *ForPostContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -364,31 +340,7 @@ func (v *BaseManuscriptVisitor) VisitAssignmentExpr(ctx *AssignmentExprContext) 
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitAssignEq(ctx *AssignEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitAssignPlusEq(ctx *AssignPlusEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitAssignMinusEq(ctx *AssignMinusEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitAssignStarEq(ctx *AssignStarEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitAssignSlashEq(ctx *AssignSlashEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitAssignModEq(ctx *AssignModEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitAssignCaretEq(ctx *AssignCaretEqContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitAssignmentOp(ctx *AssignmentOpContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -420,10 +372,6 @@ func (v *BaseManuscriptVisitor) VisitEqualityExpr(ctx *EqualityExprContext) inte
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitComparisonOp(ctx *ComparisonOpContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseManuscriptVisitor) VisitComparisonExpr(ctx *ComparisonExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -440,11 +388,7 @@ func (v *BaseManuscriptVisitor) VisitMultiplicativeExpr(ctx *MultiplicativeExprC
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitUnaryOpExpr(ctx *UnaryOpExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitUnaryAwaitExpr(ctx *UnaryAwaitExprContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitUnaryExpr(ctx *UnaryExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -456,67 +400,11 @@ func (v *BaseManuscriptVisitor) VisitPostfixExpr(ctx *PostfixExprContext) interf
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPostfixCall(ctx *PostfixCallContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitPostfixOp(ctx *PostfixOpContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPostfixDot(ctx *PostfixDotContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPostfixIndex(ctx *PostfixIndexContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryLiteral(ctx *PrimaryLiteralContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryID(ctx *PrimaryIDContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryParen(ctx *PrimaryParenContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryArray(ctx *PrimaryArrayContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryObject(ctx *PrimaryObjectContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryMap(ctx *PrimaryMapContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimarySet(ctx *PrimarySetContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryFn(ctx *PrimaryFnContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryMatch(ctx *PrimaryMatchContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryVoid(ctx *PrimaryVoidContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryNull(ctx *PrimaryNullContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryTaggedBlock(ctx *PrimaryTaggedBlockContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitPrimaryStructInit(ctx *PrimaryStructInitContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitPrimaryExpr(ctx *PrimaryExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -552,23 +440,7 @@ func (v *BaseManuscriptVisitor) VisitMultiDoubleQuotedString(ctx *MultiDoubleQuo
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringPartSingle(ctx *StringPartSingleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitStringPartMulti(ctx *StringPartMultiContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitStringPartDouble(ctx *StringPartDoubleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitStringPartMultiDouble(ctx *StringPartMultiDoubleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitStringPartInterp(ctx *StringPartInterpContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitStringPart(ctx *StringPartContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -576,23 +448,7 @@ func (v *BaseManuscriptVisitor) VisitInterpolation(ctx *InterpolationContext) in
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLiteralString(ctx *LiteralStringContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLiteralNumber(ctx *LiteralNumberContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLiteralBool(ctx *LiteralBoolContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLiteralNull(ctx *LiteralNullContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLiteralVoid(ctx *LiteralVoidContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLiteral(ctx *LiteralContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -648,31 +504,15 @@ func (v *BaseManuscriptVisitor) VisitObjectLiteral(ctx *ObjectLiteralContext) in
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitObjectFieldList(ctx *ObjectFieldListContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseManuscriptVisitor) VisitObjectField(ctx *ObjectFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitObjectFieldNameID(ctx *ObjectFieldNameIDContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitObjectFieldName(ctx *ObjectFieldNameContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitObjectFieldNameStr(ctx *ObjectFieldNameStrContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitMapLiteralEmpty(ctx *MapLiteralEmptyContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitMapLiteralNonEmpty(ctx *MapLiteralNonEmptyContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitMapFieldList(ctx *MapFieldListContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitMapLiteral(ctx *MapLiteralContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -692,31 +532,15 @@ func (v *BaseManuscriptVisitor) VisitStructInitExpr(ctx *StructInitExprContext) 
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStructFieldList(ctx *StructFieldListContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseManuscriptVisitor) VisitStructField(ctx *StructFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitTypeAnnID(ctx *TypeAnnIDContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitTypeAnnotation(ctx *TypeAnnotationContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitTypeAnnArray(ctx *TypeAnnArrayContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitTypeAnnTuple(ctx *TypeAnnTupleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitTypeAnnFn(ctx *TypeAnnFnContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitTypeAnnVoid(ctx *TypeAnnVoidContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitTypeBase(ctx *TypeBaseContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

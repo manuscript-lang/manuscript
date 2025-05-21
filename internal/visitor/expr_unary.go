@@ -15,38 +15,46 @@ func (v *ManuscriptAstVisitor) VisitUnaryExpr(ctx *parser.UnaryExprContext) inte
 		v.addError("VisitUnaryExpr called with nil context", nil)
 		return &ast.BadExpr{}
 	}
-	return ctx.Accept(v)
-}
-
-// VisitUnaryOpExpr handles unary operator expressions: +, -, !, try
-func (v *ManuscriptAstVisitor) VisitUnaryOpExpr(ctx *parser.UnaryOpExprContext) interface{} {
-	opToken := ctx.GetOp()
-	if opToken == nil {
-		v.addError("Unary operator expression missing operator token", ctx.GetStart())
-		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	// Handle operator cases
+	if ctx.PLUS() != nil {
+		operand := v.Visit(ctx.UnaryExpr())
+		if expr, ok := operand.(ast.Expr); ok {
+			return &ast.UnaryExpr{Op: token.ADD, X: expr}
+		}
+		v.addError("Operand for unary plus did not resolve to ast.Expr", ctx.GetStart())
+		return &ast.BadExpr{}
 	}
-	operandCtx := ctx.UnaryExpr()
-	if operandCtx == nil {
-		v.addError(fmt.Sprintf("Unary operator '%s' found without an operand expression", opToken.GetText()), opToken)
-		return &ast.BadExpr{From: v.pos(opToken), To: v.pos(opToken)}
+	if ctx.MINUS() != nil {
+		operand := v.Visit(ctx.UnaryExpr())
+		if expr, ok := operand.(ast.Expr); ok {
+			return &ast.UnaryExpr{Op: token.SUB, X: expr}
+		}
+		v.addError("Operand for unary minus did not resolve to ast.Expr", ctx.GetStart())
+		return &ast.BadExpr{}
 	}
-	operandResult := v.Visit(operandCtx)
-	operandExpr, ok := operandResult.(ast.Expr)
-	if !ok {
-		v.addError(fmt.Sprintf("Operand for unary operator '%s' did not resolve to an ast.Expr. Got %T", opToken.GetText(), operandResult), opToken)
-		return &ast.BadExpr{From: v.pos(opToken), To: v.pos(opToken)}
+	if ctx.EXCLAMATION() != nil {
+		operand := v.Visit(ctx.UnaryExpr())
+		if expr, ok := operand.(ast.Expr); ok {
+			return &ast.UnaryExpr{Op: token.NOT, X: expr}
+		}
+		v.addError("Operand for logical not did not resolve to ast.Expr", ctx.GetStart())
+		return &ast.BadExpr{}
 	}
-	return v.buildUnaryOpExpr(opToken, operandExpr)
-}
-
-// VisitUnaryAwaitExpr handles await expressions (awaitExpr)
-func (v *ManuscriptAstVisitor) VisitUnaryAwaitExpr(ctx *parser.UnaryAwaitExprContext) interface{} {
-	awaitCtx := ctx.AwaitExpr()
-	if awaitCtx == nil {
-		v.addError("UnaryAwaitExpr missing AwaitExpr child", ctx.GetStart())
-		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	if ctx.TRY() != nil {
+		// Custom handling for try, as before
+		operand := v.Visit(ctx.UnaryExpr())
+		if expr, ok := operand.(ast.Expr); ok {
+			// Use the previous buildUnaryOpExpr logic for try
+			return v.buildUnaryOpExpr(ctx.TRY().GetSymbol(), expr)
+		}
+		v.addError("Operand for try did not resolve to ast.Expr", ctx.GetStart())
+		return &ast.BadExpr{}
 	}
-	return v.Visit(awaitCtx)
+	if ctx.AwaitExpr() != nil {
+		return v.Visit(ctx.AwaitExpr())
+	}
+	v.addError("Unknown or unsupported unary expression", ctx.GetStart())
+	return &ast.BadExpr{}
 }
 
 // buildUnaryOpExpr is a helper to construct Go AST for unary operators

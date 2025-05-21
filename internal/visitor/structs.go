@@ -19,22 +19,22 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 	}
 	typeNameStr := name.GetText()
 
-	// Check for type alias vs. struct definition
-	if typeAliasCtx := ctx.TypeAlias(); typeAliasCtx != nil {
-		// This is a type alias: type Name = AliasType
-		aliasTargetNode := typeAliasCtx.TypeAnnotation()
+	variants := ctx.TypeVariants()
+	if variants == nil {
+		v.addError("Type declaration missing typeVariants for '"+typeNameStr+"'", ctx.GetStart())
+		return nil
+	}
+
+	if alias := variants.TypeAlias(); alias != nil {
+		aliasTargetNode := alias.TypeAnnotation()
 		if aliasTargetNode == nil {
-			// Should not happen if grammar is `typeAlias: EQUALS aliasTarget=typeAnnotation`
-			v.addError("Malformed type alias for \""+typeNameStr+"\": missing alias target.", typeAliasCtx.GetStart())
+			v.addError("Malformed type alias for \""+typeNameStr+"\": missing alias target.", alias.GetStart())
 			return nil
 		}
-
 		aliasTypeExpr, ok := v.processTypeAnnotationToExpr(aliasTargetNode, "alias target for \""+typeNameStr+"\"")
 		if !ok {
 			return nil // Error already added by helper
 		}
-
-		// TODO: Handle EXTENDS constraintTypes = typeList for type aliases if needed in Go output
 		return &ast.GenDecl{
 			Tok: token.TYPE,
 			Specs: []ast.Spec{
@@ -46,18 +46,21 @@ func (v *ManuscriptAstVisitor) VisitTypeDecl(ctx *parser.TypeDeclContext) interf
 		}
 	}
 
-	body := ctx.TypeDefBody()
-	bodyCtx, ok := body.(*parser.TypeDefBodyContext)
-	if !ok || bodyCtx == nil {
-		v.addError("Malformed type declaration for \""+typeNameStr+"\": missing or invalid struct body.", name.GetSymbol())
-		return nil
+	if body := variants.TypeDefBody(); body != nil {
+		bodyCtx, ok := body.(*parser.TypeDefBodyContext)
+		if !ok || bodyCtx == nil {
+			v.addError("Malformed type declaration for \""+typeNameStr+"\": missing or invalid struct body.", name.GetSymbol())
+			return nil
+		}
+		fields := v.structFields(bodyCtx, typeNameStr)
+		if fields == nil {
+			return nil
+		}
+		return typeDecl(typeNameStr, &ast.StructType{Fields: &ast.FieldList{List: fields}})
 	}
 
-	fields := v.structFields(bodyCtx, typeNameStr)
-	if fields == nil {
-		return nil
-	}
-	return typeDecl(typeNameStr, &ast.StructType{Fields: &ast.FieldList{List: fields}})
+	v.addError("Type declaration for '"+typeNameStr+"' is neither alias nor struct.", ctx.GetStart())
+	return nil
 }
 
 // processTypeAnnotationToExpr is a helper function to process type annotations to Go AST expressions

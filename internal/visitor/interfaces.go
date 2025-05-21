@@ -17,18 +17,12 @@ func (v *ManuscriptAstVisitor) VisitInterfaceDecl(ctx *parser.InterfaceDeclConte
 	interfaceName := ctx.ID().GetText()
 	methods := []*ast.Field{}
 
-	for _, sigCtx := range ctx.AllInterfaceMethod() {
-		if sigCtx == nil {
-			continue
-		}
-		concreteSigCtx, ok := sigCtx.(*parser.InterfaceMethodContext)
-		if !ok || concreteSigCtx == nil {
-			v.addError(fmt.Sprintf("Method signature in interface has unexpected context type: %T, text: %v", sigCtx, sigCtx.GetText()), sigCtx.GetStart())
-			continue
-		}
-		methodField := v.VisitInterfaceMethod(concreteSigCtx)
-		if field, ok := methodField.(*ast.Field); ok {
-			methods = append(methods, field)
+	if stmtList := ctx.Stmt_list(); stmtList != nil {
+		for _, stmtCtx := range stmtList.AllStmt() {
+			methodField := v.Visit(stmtCtx)
+			if field, ok := methodField.(*ast.Field); ok {
+				methods = append(methods, field)
+			}
 		}
 	}
 
@@ -75,8 +69,8 @@ func (v *ManuscriptAstVisitor) VisitInterfaceMethod(ctx *parser.InterfaceMethodC
 
 	// Fix: If no return type annotation, treat as void (empty results list)
 	var resultsList *ast.FieldList
-	if ctx.TypeAnnotation() != nil || ctx.EXCLAMATION() != nil {
-		resultsList = v.ProcessReturnType(ctx.TypeAnnotation(), ctx.EXCLAMATION(), methodName)
+	if ctx.TypeAnnotation() != nil {
+		resultsList = v.ProcessReturnType(ctx.TypeAnnotation(), nil, methodName)
 	} else {
 		resultsList = &ast.FieldList{List: []*ast.Field{}}
 	}

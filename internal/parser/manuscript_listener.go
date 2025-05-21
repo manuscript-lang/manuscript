@@ -35,6 +35,9 @@ type ManuscriptListener interface {
 	// EnterDeclMethods is called when entering the DeclMethods production.
 	EnterDeclMethods(c *DeclMethodsContext)
 
+	// EnterStmt_list is called when entering the stmt_list production.
+	EnterStmt_list(c *Stmt_listContext)
+
 	// EnterImportDecl is called when entering the importDecl production.
 	EnterImportDecl(c *ImportDeclContext)
 
@@ -77,29 +80,26 @@ type ManuscriptListener interface {
 	// EnterImportStr is called when entering the importStr production.
 	EnterImportStr(c *ImportStrContext)
 
-	// EnterLetDeclSingle is called when entering the LetDeclSingle production.
-	EnterLetDeclSingle(c *LetDeclSingleContext)
+	// EnterLetDecl is called when entering the letDecl production.
+	EnterLetDecl(c *LetDeclContext)
 
-	// EnterLetDeclBlock is called when entering the LetDeclBlock production.
-	EnterLetDeclBlock(c *LetDeclBlockContext)
+	// EnterLetPatternSingle is called when entering the LetPatternSingle production.
+	EnterLetPatternSingle(c *LetPatternSingleContext)
 
-	// EnterLetDeclDestructuredObj is called when entering the LetDeclDestructuredObj production.
-	EnterLetDeclDestructuredObj(c *LetDeclDestructuredObjContext)
+	// EnterLetPatternBlock is called when entering the LetPatternBlock production.
+	EnterLetPatternBlock(c *LetPatternBlockContext)
 
-	// EnterLetDeclDestructuredArray is called when entering the LetDeclDestructuredArray production.
-	EnterLetDeclDestructuredArray(c *LetDeclDestructuredArrayContext)
+	// EnterLetPatternDestructuredObj is called when entering the LetPatternDestructuredObj production.
+	EnterLetPatternDestructuredObj(c *LetPatternDestructuredObjContext)
+
+	// EnterLetPatternDestructuredArray is called when entering the LetPatternDestructuredArray production.
+	EnterLetPatternDestructuredArray(c *LetPatternDestructuredArrayContext)
 
 	// EnterLetSingle is called when entering the letSingle production.
 	EnterLetSingle(c *LetSingleContext)
 
 	// EnterLetBlock is called when entering the letBlock production.
 	EnterLetBlock(c *LetBlockContext)
-
-	// EnterLetBlockItemList is called when entering the letBlockItemList production.
-	EnterLetBlockItemList(c *LetBlockItemListContext)
-
-	// EnterLetBlockItemSep is called when entering the letBlockItemSep production.
-	EnterLetBlockItemSep(c *LetBlockItemSepContext)
 
 	// EnterLetBlockItemSingle is called when entering the LetBlockItemSingle production.
 	EnterLetBlockItemSingle(c *LetBlockItemSingleContext)
@@ -125,14 +125,14 @@ type ManuscriptListener interface {
 	// EnterTypeDecl is called when entering the typeDecl production.
 	EnterTypeDecl(c *TypeDeclContext)
 
+	// EnterTypeVariants is called when entering the typeVariants production.
+	EnterTypeVariants(c *TypeVariantsContext)
+
 	// EnterTypeDefBody is called when entering the typeDefBody production.
 	EnterTypeDefBody(c *TypeDefBodyContext)
 
 	// EnterTypeAlias is called when entering the typeAlias production.
 	EnterTypeAlias(c *TypeAliasContext)
-
-	// EnterFieldList is called when entering the fieldList production.
-	EnterFieldList(c *FieldListContext)
 
 	// EnterFieldDecl is called when entering the fieldDecl production.
 	EnterFieldDecl(c *FieldDeclContext)
@@ -160,12 +160,6 @@ type ManuscriptListener interface {
 
 	// EnterMethodsDecl is called when entering the methodsDecl production.
 	EnterMethodsDecl(c *MethodsDeclContext)
-
-	// EnterMethodImplList is called when entering the methodImplList production.
-	EnterMethodImplList(c *MethodImplListContext)
-
-	// EnterMethodImplSep is called when entering the methodImplSep production.
-	EnterMethodImplSep(c *MethodImplSepContext)
 
 	// EnterMethodImpl is called when entering the methodImpl production.
 	EnterMethodImpl(c *MethodImplContext)
@@ -224,32 +218,20 @@ type ManuscriptListener interface {
 	// EnterForStmt is called when entering the forStmt production.
 	EnterForStmt(c *ForStmtContext)
 
-	// EnterForLoop is called when entering the ForLoop production.
-	EnterForLoop(c *ForLoopContext)
-
-	// EnterForInLoop is called when entering the ForInLoop production.
-	EnterForInLoop(c *ForInLoopContext)
+	// EnterForLoopType is called when entering the forLoopType production.
+	EnterForLoopType(c *ForLoopTypeContext)
 
 	// EnterForTrinity is called when entering the forTrinity production.
 	EnterForTrinity(c *ForTrinityContext)
 
-	// EnterForInitLet is called when entering the ForInitLet production.
-	EnterForInitLet(c *ForInitLetContext)
+	// EnterForInit is called when entering the forInit production.
+	EnterForInit(c *ForInitContext)
 
-	// EnterForInitEmpty is called when entering the ForInitEmpty production.
-	EnterForInitEmpty(c *ForInitEmptyContext)
+	// EnterForCond is called when entering the forCond production.
+	EnterForCond(c *ForCondContext)
 
-	// EnterForCondExpr is called when entering the ForCondExpr production.
-	EnterForCondExpr(c *ForCondExprContext)
-
-	// EnterForCondEmpty is called when entering the ForCondEmpty production.
-	EnterForCondEmpty(c *ForCondEmptyContext)
-
-	// EnterForPostExpr is called when entering the ForPostExpr production.
-	EnterForPostExpr(c *ForPostExprContext)
-
-	// EnterForPostEmpty is called when entering the ForPostEmpty production.
-	EnterForPostEmpty(c *ForPostEmptyContext)
+	// EnterForPost is called when entering the forPost production.
+	EnterForPost(c *ForPostContext)
 
 	// EnterWhileStmt is called when entering the whileStmt production.
 	EnterWhileStmt(c *WhileStmtContext)
@@ -275,26 +257,8 @@ type ManuscriptListener interface {
 	// EnterAssignmentExpr is called when entering the assignmentExpr production.
 	EnterAssignmentExpr(c *AssignmentExprContext)
 
-	// EnterAssignEq is called when entering the AssignEq production.
-	EnterAssignEq(c *AssignEqContext)
-
-	// EnterAssignPlusEq is called when entering the AssignPlusEq production.
-	EnterAssignPlusEq(c *AssignPlusEqContext)
-
-	// EnterAssignMinusEq is called when entering the AssignMinusEq production.
-	EnterAssignMinusEq(c *AssignMinusEqContext)
-
-	// EnterAssignStarEq is called when entering the AssignStarEq production.
-	EnterAssignStarEq(c *AssignStarEqContext)
-
-	// EnterAssignSlashEq is called when entering the AssignSlashEq production.
-	EnterAssignSlashEq(c *AssignSlashEqContext)
-
-	// EnterAssignModEq is called when entering the AssignModEq production.
-	EnterAssignModEq(c *AssignModEqContext)
-
-	// EnterAssignCaretEq is called when entering the AssignCaretEq production.
-	EnterAssignCaretEq(c *AssignCaretEqContext)
+	// EnterAssignmentOp is called when entering the assignmentOp production.
+	EnterAssignmentOp(c *AssignmentOpContext)
 
 	// EnterTernaryExpr is called when entering the ternaryExpr production.
 	EnterTernaryExpr(c *TernaryExprContext)
@@ -317,9 +281,6 @@ type ManuscriptListener interface {
 	// EnterEqualityExpr is called when entering the equalityExpr production.
 	EnterEqualityExpr(c *EqualityExprContext)
 
-	// EnterComparisonOp is called when entering the comparisonOp production.
-	EnterComparisonOp(c *ComparisonOpContext)
-
 	// EnterComparisonExpr is called when entering the comparisonExpr production.
 	EnterComparisonExpr(c *ComparisonExprContext)
 
@@ -332,11 +293,8 @@ type ManuscriptListener interface {
 	// EnterMultiplicativeExpr is called when entering the multiplicativeExpr production.
 	EnterMultiplicativeExpr(c *MultiplicativeExprContext)
 
-	// EnterUnaryOpExpr is called when entering the UnaryOpExpr production.
-	EnterUnaryOpExpr(c *UnaryOpExprContext)
-
-	// EnterUnaryAwaitExpr is called when entering the UnaryAwaitExpr production.
-	EnterUnaryAwaitExpr(c *UnaryAwaitExprContext)
+	// EnterUnaryExpr is called when entering the unaryExpr production.
+	EnterUnaryExpr(c *UnaryExprContext)
 
 	// EnterAwaitExpr is called when entering the awaitExpr production.
 	EnterAwaitExpr(c *AwaitExprContext)
@@ -344,53 +302,11 @@ type ManuscriptListener interface {
 	// EnterPostfixExpr is called when entering the postfixExpr production.
 	EnterPostfixExpr(c *PostfixExprContext)
 
-	// EnterPostfixCall is called when entering the PostfixCall production.
-	EnterPostfixCall(c *PostfixCallContext)
+	// EnterPostfixOp is called when entering the postfixOp production.
+	EnterPostfixOp(c *PostfixOpContext)
 
-	// EnterPostfixDot is called when entering the PostfixDot production.
-	EnterPostfixDot(c *PostfixDotContext)
-
-	// EnterPostfixIndex is called when entering the PostfixIndex production.
-	EnterPostfixIndex(c *PostfixIndexContext)
-
-	// EnterPrimaryLiteral is called when entering the PrimaryLiteral production.
-	EnterPrimaryLiteral(c *PrimaryLiteralContext)
-
-	// EnterPrimaryID is called when entering the PrimaryID production.
-	EnterPrimaryID(c *PrimaryIDContext)
-
-	// EnterPrimaryParen is called when entering the PrimaryParen production.
-	EnterPrimaryParen(c *PrimaryParenContext)
-
-	// EnterPrimaryArray is called when entering the PrimaryArray production.
-	EnterPrimaryArray(c *PrimaryArrayContext)
-
-	// EnterPrimaryObject is called when entering the PrimaryObject production.
-	EnterPrimaryObject(c *PrimaryObjectContext)
-
-	// EnterPrimaryMap is called when entering the PrimaryMap production.
-	EnterPrimaryMap(c *PrimaryMapContext)
-
-	// EnterPrimarySet is called when entering the PrimarySet production.
-	EnterPrimarySet(c *PrimarySetContext)
-
-	// EnterPrimaryFn is called when entering the PrimaryFn production.
-	EnterPrimaryFn(c *PrimaryFnContext)
-
-	// EnterPrimaryMatch is called when entering the PrimaryMatch production.
-	EnterPrimaryMatch(c *PrimaryMatchContext)
-
-	// EnterPrimaryVoid is called when entering the PrimaryVoid production.
-	EnterPrimaryVoid(c *PrimaryVoidContext)
-
-	// EnterPrimaryNull is called when entering the PrimaryNull production.
-	EnterPrimaryNull(c *PrimaryNullContext)
-
-	// EnterPrimaryTaggedBlock is called when entering the PrimaryTaggedBlock production.
-	EnterPrimaryTaggedBlock(c *PrimaryTaggedBlockContext)
-
-	// EnterPrimaryStructInit is called when entering the PrimaryStructInit production.
-	EnterPrimaryStructInit(c *PrimaryStructInitContext)
+	// EnterPrimaryExpr is called when entering the primaryExpr production.
+	EnterPrimaryExpr(c *PrimaryExprContext)
 
 	// EnterFnExpr is called when entering the fnExpr production.
 	EnterFnExpr(c *FnExprContext)
@@ -416,38 +332,14 @@ type ManuscriptListener interface {
 	// EnterMultiDoubleQuotedString is called when entering the multiDoubleQuotedString production.
 	EnterMultiDoubleQuotedString(c *MultiDoubleQuotedStringContext)
 
-	// EnterStringPartSingle is called when entering the StringPartSingle production.
-	EnterStringPartSingle(c *StringPartSingleContext)
-
-	// EnterStringPartMulti is called when entering the StringPartMulti production.
-	EnterStringPartMulti(c *StringPartMultiContext)
-
-	// EnterStringPartDouble is called when entering the StringPartDouble production.
-	EnterStringPartDouble(c *StringPartDoubleContext)
-
-	// EnterStringPartMultiDouble is called when entering the StringPartMultiDouble production.
-	EnterStringPartMultiDouble(c *StringPartMultiDoubleContext)
-
-	// EnterStringPartInterp is called when entering the StringPartInterp production.
-	EnterStringPartInterp(c *StringPartInterpContext)
+	// EnterStringPart is called when entering the stringPart production.
+	EnterStringPart(c *StringPartContext)
 
 	// EnterInterpolation is called when entering the interpolation production.
 	EnterInterpolation(c *InterpolationContext)
 
-	// EnterLiteralString is called when entering the LiteralString production.
-	EnterLiteralString(c *LiteralStringContext)
-
-	// EnterLiteralNumber is called when entering the LiteralNumber production.
-	EnterLiteralNumber(c *LiteralNumberContext)
-
-	// EnterLiteralBool is called when entering the LiteralBool production.
-	EnterLiteralBool(c *LiteralBoolContext)
-
-	// EnterLiteralNull is called when entering the LiteralNull production.
-	EnterLiteralNull(c *LiteralNullContext)
-
-	// EnterLiteralVoid is called when entering the LiteralVoid production.
-	EnterLiteralVoid(c *LiteralVoidContext)
+	// EnterLiteral is called when entering the literal production.
+	EnterLiteral(c *LiteralContext)
 
 	// EnterStringLiteralSingle is called when entering the StringLiteralSingle production.
 	EnterStringLiteralSingle(c *StringLiteralSingleContext)
@@ -488,26 +380,14 @@ type ManuscriptListener interface {
 	// EnterObjectLiteral is called when entering the objectLiteral production.
 	EnterObjectLiteral(c *ObjectLiteralContext)
 
-	// EnterObjectFieldList is called when entering the objectFieldList production.
-	EnterObjectFieldList(c *ObjectFieldListContext)
-
 	// EnterObjectField is called when entering the objectField production.
 	EnterObjectField(c *ObjectFieldContext)
 
-	// EnterObjectFieldNameID is called when entering the ObjectFieldNameID production.
-	EnterObjectFieldNameID(c *ObjectFieldNameIDContext)
+	// EnterObjectFieldName is called when entering the objectFieldName production.
+	EnterObjectFieldName(c *ObjectFieldNameContext)
 
-	// EnterObjectFieldNameStr is called when entering the ObjectFieldNameStr production.
-	EnterObjectFieldNameStr(c *ObjectFieldNameStrContext)
-
-	// EnterMapLiteralEmpty is called when entering the MapLiteralEmpty production.
-	EnterMapLiteralEmpty(c *MapLiteralEmptyContext)
-
-	// EnterMapLiteralNonEmpty is called when entering the MapLiteralNonEmpty production.
-	EnterMapLiteralNonEmpty(c *MapLiteralNonEmptyContext)
-
-	// EnterMapFieldList is called when entering the mapFieldList production.
-	EnterMapFieldList(c *MapFieldListContext)
+	// EnterMapLiteral is called when entering the mapLiteral production.
+	EnterMapLiteral(c *MapLiteralContext)
 
 	// EnterMapField is called when entering the mapField production.
 	EnterMapField(c *MapFieldContext)
@@ -521,26 +401,14 @@ type ManuscriptListener interface {
 	// EnterStructInitExpr is called when entering the structInitExpr production.
 	EnterStructInitExpr(c *StructInitExprContext)
 
-	// EnterStructFieldList is called when entering the structFieldList production.
-	EnterStructFieldList(c *StructFieldListContext)
-
 	// EnterStructField is called when entering the structField production.
 	EnterStructField(c *StructFieldContext)
 
-	// EnterTypeAnnID is called when entering the TypeAnnID production.
-	EnterTypeAnnID(c *TypeAnnIDContext)
+	// EnterTypeAnnotation is called when entering the typeAnnotation production.
+	EnterTypeAnnotation(c *TypeAnnotationContext)
 
-	// EnterTypeAnnArray is called when entering the TypeAnnArray production.
-	EnterTypeAnnArray(c *TypeAnnArrayContext)
-
-	// EnterTypeAnnTuple is called when entering the TypeAnnTuple production.
-	EnterTypeAnnTuple(c *TypeAnnTupleContext)
-
-	// EnterTypeAnnFn is called when entering the TypeAnnFn production.
-	EnterTypeAnnFn(c *TypeAnnFnContext)
-
-	// EnterTypeAnnVoid is called when entering the TypeAnnVoid production.
-	EnterTypeAnnVoid(c *TypeAnnVoidContext)
+	// EnterTypeBase is called when entering the typeBase production.
+	EnterTypeBase(c *TypeBaseContext)
 
 	// EnterTupleType is called when entering the tupleType production.
 	EnterTupleType(c *TupleTypeContext)
@@ -580,6 +448,9 @@ type ManuscriptListener interface {
 
 	// ExitDeclMethods is called when exiting the DeclMethods production.
 	ExitDeclMethods(c *DeclMethodsContext)
+
+	// ExitStmt_list is called when exiting the stmt_list production.
+	ExitStmt_list(c *Stmt_listContext)
 
 	// ExitImportDecl is called when exiting the importDecl production.
 	ExitImportDecl(c *ImportDeclContext)
@@ -623,29 +494,26 @@ type ManuscriptListener interface {
 	// ExitImportStr is called when exiting the importStr production.
 	ExitImportStr(c *ImportStrContext)
 
-	// ExitLetDeclSingle is called when exiting the LetDeclSingle production.
-	ExitLetDeclSingle(c *LetDeclSingleContext)
+	// ExitLetDecl is called when exiting the letDecl production.
+	ExitLetDecl(c *LetDeclContext)
 
-	// ExitLetDeclBlock is called when exiting the LetDeclBlock production.
-	ExitLetDeclBlock(c *LetDeclBlockContext)
+	// ExitLetPatternSingle is called when exiting the LetPatternSingle production.
+	ExitLetPatternSingle(c *LetPatternSingleContext)
 
-	// ExitLetDeclDestructuredObj is called when exiting the LetDeclDestructuredObj production.
-	ExitLetDeclDestructuredObj(c *LetDeclDestructuredObjContext)
+	// ExitLetPatternBlock is called when exiting the LetPatternBlock production.
+	ExitLetPatternBlock(c *LetPatternBlockContext)
 
-	// ExitLetDeclDestructuredArray is called when exiting the LetDeclDestructuredArray production.
-	ExitLetDeclDestructuredArray(c *LetDeclDestructuredArrayContext)
+	// ExitLetPatternDestructuredObj is called when exiting the LetPatternDestructuredObj production.
+	ExitLetPatternDestructuredObj(c *LetPatternDestructuredObjContext)
+
+	// ExitLetPatternDestructuredArray is called when exiting the LetPatternDestructuredArray production.
+	ExitLetPatternDestructuredArray(c *LetPatternDestructuredArrayContext)
 
 	// ExitLetSingle is called when exiting the letSingle production.
 	ExitLetSingle(c *LetSingleContext)
 
 	// ExitLetBlock is called when exiting the letBlock production.
 	ExitLetBlock(c *LetBlockContext)
-
-	// ExitLetBlockItemList is called when exiting the letBlockItemList production.
-	ExitLetBlockItemList(c *LetBlockItemListContext)
-
-	// ExitLetBlockItemSep is called when exiting the letBlockItemSep production.
-	ExitLetBlockItemSep(c *LetBlockItemSepContext)
 
 	// ExitLetBlockItemSingle is called when exiting the LetBlockItemSingle production.
 	ExitLetBlockItemSingle(c *LetBlockItemSingleContext)
@@ -671,14 +539,14 @@ type ManuscriptListener interface {
 	// ExitTypeDecl is called when exiting the typeDecl production.
 	ExitTypeDecl(c *TypeDeclContext)
 
+	// ExitTypeVariants is called when exiting the typeVariants production.
+	ExitTypeVariants(c *TypeVariantsContext)
+
 	// ExitTypeDefBody is called when exiting the typeDefBody production.
 	ExitTypeDefBody(c *TypeDefBodyContext)
 
 	// ExitTypeAlias is called when exiting the typeAlias production.
 	ExitTypeAlias(c *TypeAliasContext)
-
-	// ExitFieldList is called when exiting the fieldList production.
-	ExitFieldList(c *FieldListContext)
 
 	// ExitFieldDecl is called when exiting the fieldDecl production.
 	ExitFieldDecl(c *FieldDeclContext)
@@ -706,12 +574,6 @@ type ManuscriptListener interface {
 
 	// ExitMethodsDecl is called when exiting the methodsDecl production.
 	ExitMethodsDecl(c *MethodsDeclContext)
-
-	// ExitMethodImplList is called when exiting the methodImplList production.
-	ExitMethodImplList(c *MethodImplListContext)
-
-	// ExitMethodImplSep is called when exiting the methodImplSep production.
-	ExitMethodImplSep(c *MethodImplSepContext)
 
 	// ExitMethodImpl is called when exiting the methodImpl production.
 	ExitMethodImpl(c *MethodImplContext)
@@ -770,32 +632,20 @@ type ManuscriptListener interface {
 	// ExitForStmt is called when exiting the forStmt production.
 	ExitForStmt(c *ForStmtContext)
 
-	// ExitForLoop is called when exiting the ForLoop production.
-	ExitForLoop(c *ForLoopContext)
-
-	// ExitForInLoop is called when exiting the ForInLoop production.
-	ExitForInLoop(c *ForInLoopContext)
+	// ExitForLoopType is called when exiting the forLoopType production.
+	ExitForLoopType(c *ForLoopTypeContext)
 
 	// ExitForTrinity is called when exiting the forTrinity production.
 	ExitForTrinity(c *ForTrinityContext)
 
-	// ExitForInitLet is called when exiting the ForInitLet production.
-	ExitForInitLet(c *ForInitLetContext)
+	// ExitForInit is called when exiting the forInit production.
+	ExitForInit(c *ForInitContext)
 
-	// ExitForInitEmpty is called when exiting the ForInitEmpty production.
-	ExitForInitEmpty(c *ForInitEmptyContext)
+	// ExitForCond is called when exiting the forCond production.
+	ExitForCond(c *ForCondContext)
 
-	// ExitForCondExpr is called when exiting the ForCondExpr production.
-	ExitForCondExpr(c *ForCondExprContext)
-
-	// ExitForCondEmpty is called when exiting the ForCondEmpty production.
-	ExitForCondEmpty(c *ForCondEmptyContext)
-
-	// ExitForPostExpr is called when exiting the ForPostExpr production.
-	ExitForPostExpr(c *ForPostExprContext)
-
-	// ExitForPostEmpty is called when exiting the ForPostEmpty production.
-	ExitForPostEmpty(c *ForPostEmptyContext)
+	// ExitForPost is called when exiting the forPost production.
+	ExitForPost(c *ForPostContext)
 
 	// ExitWhileStmt is called when exiting the whileStmt production.
 	ExitWhileStmt(c *WhileStmtContext)
@@ -821,26 +671,8 @@ type ManuscriptListener interface {
 	// ExitAssignmentExpr is called when exiting the assignmentExpr production.
 	ExitAssignmentExpr(c *AssignmentExprContext)
 
-	// ExitAssignEq is called when exiting the AssignEq production.
-	ExitAssignEq(c *AssignEqContext)
-
-	// ExitAssignPlusEq is called when exiting the AssignPlusEq production.
-	ExitAssignPlusEq(c *AssignPlusEqContext)
-
-	// ExitAssignMinusEq is called when exiting the AssignMinusEq production.
-	ExitAssignMinusEq(c *AssignMinusEqContext)
-
-	// ExitAssignStarEq is called when exiting the AssignStarEq production.
-	ExitAssignStarEq(c *AssignStarEqContext)
-
-	// ExitAssignSlashEq is called when exiting the AssignSlashEq production.
-	ExitAssignSlashEq(c *AssignSlashEqContext)
-
-	// ExitAssignModEq is called when exiting the AssignModEq production.
-	ExitAssignModEq(c *AssignModEqContext)
-
-	// ExitAssignCaretEq is called when exiting the AssignCaretEq production.
-	ExitAssignCaretEq(c *AssignCaretEqContext)
+	// ExitAssignmentOp is called when exiting the assignmentOp production.
+	ExitAssignmentOp(c *AssignmentOpContext)
 
 	// ExitTernaryExpr is called when exiting the ternaryExpr production.
 	ExitTernaryExpr(c *TernaryExprContext)
@@ -863,9 +695,6 @@ type ManuscriptListener interface {
 	// ExitEqualityExpr is called when exiting the equalityExpr production.
 	ExitEqualityExpr(c *EqualityExprContext)
 
-	// ExitComparisonOp is called when exiting the comparisonOp production.
-	ExitComparisonOp(c *ComparisonOpContext)
-
 	// ExitComparisonExpr is called when exiting the comparisonExpr production.
 	ExitComparisonExpr(c *ComparisonExprContext)
 
@@ -878,11 +707,8 @@ type ManuscriptListener interface {
 	// ExitMultiplicativeExpr is called when exiting the multiplicativeExpr production.
 	ExitMultiplicativeExpr(c *MultiplicativeExprContext)
 
-	// ExitUnaryOpExpr is called when exiting the UnaryOpExpr production.
-	ExitUnaryOpExpr(c *UnaryOpExprContext)
-
-	// ExitUnaryAwaitExpr is called when exiting the UnaryAwaitExpr production.
-	ExitUnaryAwaitExpr(c *UnaryAwaitExprContext)
+	// ExitUnaryExpr is called when exiting the unaryExpr production.
+	ExitUnaryExpr(c *UnaryExprContext)
 
 	// ExitAwaitExpr is called when exiting the awaitExpr production.
 	ExitAwaitExpr(c *AwaitExprContext)
@@ -890,53 +716,11 @@ type ManuscriptListener interface {
 	// ExitPostfixExpr is called when exiting the postfixExpr production.
 	ExitPostfixExpr(c *PostfixExprContext)
 
-	// ExitPostfixCall is called when exiting the PostfixCall production.
-	ExitPostfixCall(c *PostfixCallContext)
+	// ExitPostfixOp is called when exiting the postfixOp production.
+	ExitPostfixOp(c *PostfixOpContext)
 
-	// ExitPostfixDot is called when exiting the PostfixDot production.
-	ExitPostfixDot(c *PostfixDotContext)
-
-	// ExitPostfixIndex is called when exiting the PostfixIndex production.
-	ExitPostfixIndex(c *PostfixIndexContext)
-
-	// ExitPrimaryLiteral is called when exiting the PrimaryLiteral production.
-	ExitPrimaryLiteral(c *PrimaryLiteralContext)
-
-	// ExitPrimaryID is called when exiting the PrimaryID production.
-	ExitPrimaryID(c *PrimaryIDContext)
-
-	// ExitPrimaryParen is called when exiting the PrimaryParen production.
-	ExitPrimaryParen(c *PrimaryParenContext)
-
-	// ExitPrimaryArray is called when exiting the PrimaryArray production.
-	ExitPrimaryArray(c *PrimaryArrayContext)
-
-	// ExitPrimaryObject is called when exiting the PrimaryObject production.
-	ExitPrimaryObject(c *PrimaryObjectContext)
-
-	// ExitPrimaryMap is called when exiting the PrimaryMap production.
-	ExitPrimaryMap(c *PrimaryMapContext)
-
-	// ExitPrimarySet is called when exiting the PrimarySet production.
-	ExitPrimarySet(c *PrimarySetContext)
-
-	// ExitPrimaryFn is called when exiting the PrimaryFn production.
-	ExitPrimaryFn(c *PrimaryFnContext)
-
-	// ExitPrimaryMatch is called when exiting the PrimaryMatch production.
-	ExitPrimaryMatch(c *PrimaryMatchContext)
-
-	// ExitPrimaryVoid is called when exiting the PrimaryVoid production.
-	ExitPrimaryVoid(c *PrimaryVoidContext)
-
-	// ExitPrimaryNull is called when exiting the PrimaryNull production.
-	ExitPrimaryNull(c *PrimaryNullContext)
-
-	// ExitPrimaryTaggedBlock is called when exiting the PrimaryTaggedBlock production.
-	ExitPrimaryTaggedBlock(c *PrimaryTaggedBlockContext)
-
-	// ExitPrimaryStructInit is called when exiting the PrimaryStructInit production.
-	ExitPrimaryStructInit(c *PrimaryStructInitContext)
+	// ExitPrimaryExpr is called when exiting the primaryExpr production.
+	ExitPrimaryExpr(c *PrimaryExprContext)
 
 	// ExitFnExpr is called when exiting the fnExpr production.
 	ExitFnExpr(c *FnExprContext)
@@ -962,38 +746,14 @@ type ManuscriptListener interface {
 	// ExitMultiDoubleQuotedString is called when exiting the multiDoubleQuotedString production.
 	ExitMultiDoubleQuotedString(c *MultiDoubleQuotedStringContext)
 
-	// ExitStringPartSingle is called when exiting the StringPartSingle production.
-	ExitStringPartSingle(c *StringPartSingleContext)
-
-	// ExitStringPartMulti is called when exiting the StringPartMulti production.
-	ExitStringPartMulti(c *StringPartMultiContext)
-
-	// ExitStringPartDouble is called when exiting the StringPartDouble production.
-	ExitStringPartDouble(c *StringPartDoubleContext)
-
-	// ExitStringPartMultiDouble is called when exiting the StringPartMultiDouble production.
-	ExitStringPartMultiDouble(c *StringPartMultiDoubleContext)
-
-	// ExitStringPartInterp is called when exiting the StringPartInterp production.
-	ExitStringPartInterp(c *StringPartInterpContext)
+	// ExitStringPart is called when exiting the stringPart production.
+	ExitStringPart(c *StringPartContext)
 
 	// ExitInterpolation is called when exiting the interpolation production.
 	ExitInterpolation(c *InterpolationContext)
 
-	// ExitLiteralString is called when exiting the LiteralString production.
-	ExitLiteralString(c *LiteralStringContext)
-
-	// ExitLiteralNumber is called when exiting the LiteralNumber production.
-	ExitLiteralNumber(c *LiteralNumberContext)
-
-	// ExitLiteralBool is called when exiting the LiteralBool production.
-	ExitLiteralBool(c *LiteralBoolContext)
-
-	// ExitLiteralNull is called when exiting the LiteralNull production.
-	ExitLiteralNull(c *LiteralNullContext)
-
-	// ExitLiteralVoid is called when exiting the LiteralVoid production.
-	ExitLiteralVoid(c *LiteralVoidContext)
+	// ExitLiteral is called when exiting the literal production.
+	ExitLiteral(c *LiteralContext)
 
 	// ExitStringLiteralSingle is called when exiting the StringLiteralSingle production.
 	ExitStringLiteralSingle(c *StringLiteralSingleContext)
@@ -1034,26 +794,14 @@ type ManuscriptListener interface {
 	// ExitObjectLiteral is called when exiting the objectLiteral production.
 	ExitObjectLiteral(c *ObjectLiteralContext)
 
-	// ExitObjectFieldList is called when exiting the objectFieldList production.
-	ExitObjectFieldList(c *ObjectFieldListContext)
-
 	// ExitObjectField is called when exiting the objectField production.
 	ExitObjectField(c *ObjectFieldContext)
 
-	// ExitObjectFieldNameID is called when exiting the ObjectFieldNameID production.
-	ExitObjectFieldNameID(c *ObjectFieldNameIDContext)
+	// ExitObjectFieldName is called when exiting the objectFieldName production.
+	ExitObjectFieldName(c *ObjectFieldNameContext)
 
-	// ExitObjectFieldNameStr is called when exiting the ObjectFieldNameStr production.
-	ExitObjectFieldNameStr(c *ObjectFieldNameStrContext)
-
-	// ExitMapLiteralEmpty is called when exiting the MapLiteralEmpty production.
-	ExitMapLiteralEmpty(c *MapLiteralEmptyContext)
-
-	// ExitMapLiteralNonEmpty is called when exiting the MapLiteralNonEmpty production.
-	ExitMapLiteralNonEmpty(c *MapLiteralNonEmptyContext)
-
-	// ExitMapFieldList is called when exiting the mapFieldList production.
-	ExitMapFieldList(c *MapFieldListContext)
+	// ExitMapLiteral is called when exiting the mapLiteral production.
+	ExitMapLiteral(c *MapLiteralContext)
 
 	// ExitMapField is called when exiting the mapField production.
 	ExitMapField(c *MapFieldContext)
@@ -1067,26 +815,14 @@ type ManuscriptListener interface {
 	// ExitStructInitExpr is called when exiting the structInitExpr production.
 	ExitStructInitExpr(c *StructInitExprContext)
 
-	// ExitStructFieldList is called when exiting the structFieldList production.
-	ExitStructFieldList(c *StructFieldListContext)
-
 	// ExitStructField is called when exiting the structField production.
 	ExitStructField(c *StructFieldContext)
 
-	// ExitTypeAnnID is called when exiting the TypeAnnID production.
-	ExitTypeAnnID(c *TypeAnnIDContext)
+	// ExitTypeAnnotation is called when exiting the typeAnnotation production.
+	ExitTypeAnnotation(c *TypeAnnotationContext)
 
-	// ExitTypeAnnArray is called when exiting the TypeAnnArray production.
-	ExitTypeAnnArray(c *TypeAnnArrayContext)
-
-	// ExitTypeAnnTuple is called when exiting the TypeAnnTuple production.
-	ExitTypeAnnTuple(c *TypeAnnTupleContext)
-
-	// ExitTypeAnnFn is called when exiting the TypeAnnFn production.
-	ExitTypeAnnFn(c *TypeAnnFnContext)
-
-	// ExitTypeAnnVoid is called when exiting the TypeAnnVoid production.
-	ExitTypeAnnVoid(c *TypeAnnVoidContext)
+	// ExitTypeBase is called when exiting the typeBase production.
+	ExitTypeBase(c *TypeBaseContext)
 
 	// ExitTupleType is called when exiting the tupleType production.
 	ExitTupleType(c *TupleTypeContext)

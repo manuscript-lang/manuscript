@@ -14,77 +14,44 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 		v.addError("VisitTypeAnnotation called with nil context", nil)
 		return &ast.BadExpr{}
 	}
-	return ctx.Accept(v)
-}
-
-// VisitTypeAnnID handles simple identifier type annotations (e.g., int, string, MyType).
-func (v *ManuscriptAstVisitor) VisitTypeAnnID(ctx *parser.TypeAnnIDContext) interface{} {
-	if ctx == nil || ctx.ID() == nil {
-		v.addError("TypeAnnID missing ID", ctx.GetStart())
+	typeBase := ctx.TypeBase()
+	if typeBase == nil {
+		v.addError("TypeAnnotation missing typeBase", ctx.GetStart())
 		return &ast.BadExpr{}
 	}
-	switch name := ctx.ID().GetText(); name {
-	case "string":
-		return ast.NewIdent("string")
-	case "int":
-		return ast.NewIdent("int64")
-	case "float":
-		return ast.NewIdent("float64")
-	case "bool":
-		return ast.NewIdent("bool")
-	default:
-		return ast.NewIdent(name)
-	}
+	return v.Visit(typeBase)
 }
 
-// VisitTypeAnnArray handles array type annotations (e.g., int[]).
-func (v *ManuscriptAstVisitor) VisitTypeAnnArray(ctx *parser.TypeAnnArrayContext) interface{} {
-	arrayTypeCtx, ok := ctx.ArrayType().(*parser.ArrayTypeContext)
-	if ctx == nil || !ok || arrayTypeCtx == nil {
-		v.addError("TypeAnnArray missing or invalid ArrayType", ctx.GetStart())
-		return &ast.BadExpr{}
+// VisitTypeBase dispatches to the correct type base handler.
+func (v *ManuscriptAstVisitor) VisitTypeBase(ctx *parser.TypeBaseContext) interface{} {
+	if ctx.ID() != nil {
+		switch name := ctx.ID().GetText(); name {
+		case "string":
+			return ast.NewIdent("string")
+		case "int":
+			return ast.NewIdent("int64")
+		case "float":
+			return ast.NewIdent("float64")
+		case "bool":
+			return ast.NewIdent("bool")
+		default:
+			return ast.NewIdent(name)
+		}
 	}
-	result := v.VisitArrayType(arrayTypeCtx)
-	if expr, ok := result.(ast.Expr); ok {
-		return expr
+	if ctx.ArrayType() != nil {
+		return v.Visit(ctx.ArrayType())
 	}
-	v.addError("Array type annotation did not resolve to an expression", ctx.GetStart())
+	if ctx.TupleType() != nil {
+		return v.Visit(ctx.TupleType())
+	}
+	if ctx.FnType() != nil {
+		return v.Visit(ctx.FnType())
+	}
+	if ctx.VOID() != nil {
+		return v.handleVoidType()
+	}
+	v.addError("Unknown type base: "+ctx.GetText(), ctx.GetStart())
 	return &ast.BadExpr{}
-}
-
-// VisitTypeAnnTuple handles tuple type annotations (e.g., (int, string)).
-func (v *ManuscriptAstVisitor) VisitTypeAnnTuple(ctx *parser.TypeAnnTupleContext) interface{} {
-	tupleTypeCtx, ok := ctx.TupleType().(*parser.TupleTypeContext)
-	if ctx == nil || !ok || tupleTypeCtx == nil {
-		v.addError("TypeAnnTuple missing or invalid TupleType", ctx.GetStart())
-		return &ast.BadExpr{}
-	}
-	result := v.VisitTupleType(tupleTypeCtx)
-	if expr, ok := result.(ast.Expr); ok {
-		return expr
-	}
-	v.addError("Tuple type annotation did not resolve to an expression", ctx.GetStart())
-	return &ast.BadExpr{}
-}
-
-// VisitTypeAnnFn handles function type annotations (e.g., fn(int): string).
-func (v *ManuscriptAstVisitor) VisitTypeAnnFn(ctx *parser.TypeAnnFnContext) interface{} {
-	fnTypeCtx, ok := ctx.FnType().(*parser.FnTypeContext)
-	if ctx == nil || !ok || fnTypeCtx == nil {
-		v.addError("TypeAnnFn missing or invalid FnType", ctx.GetStart())
-		return &ast.BadExpr{}
-	}
-	result := v.VisitFnType(fnTypeCtx)
-	if expr, ok := result.(ast.Expr); ok {
-		return expr
-	}
-	v.addError("Function type annotation did not resolve to an expression", ctx.GetStart())
-	return &ast.BadExpr{}
-}
-
-// VisitTypeAnnVoid handles the void type annotation.
-func (v *ManuscriptAstVisitor) VisitTypeAnnVoid(ctx *parser.TypeAnnVoidContext) interface{} {
-	return v.handleVoidType()
 }
 
 // VisitArrayType handles array type signatures.
@@ -117,12 +84,10 @@ func (v *ManuscriptAstVisitor) VisitArrayType(ctx *parser.ArrayTypeContext) inte
 // Grammar: fnType: FN LPAREN parameters? RPAREN typeAnnotation?;
 func (v *ManuscriptAstVisitor) VisitFnType(ctx *parser.FnTypeContext) interface{} {
 	return v.buildAstFuncType(
-		ctx.Parameters(),     // parser.IParametersContext or nil
-		ctx.TypeAnnotation(), // parser.ITypeAnnotationContext or nil
-		nil,                  // No ID for fnType
-		nil,                  // No EXCLAMATION for fnType
+		ctx.Parameters(),
+		ctx.TypeAnnotation(),
 		"anonymous function type",
-		ctx.GetStart(), // Pass token for error reporting if needed by buildAstFuncType
+		ctx.GetStart(),
 	)
 }
 
@@ -136,7 +101,6 @@ func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext)
 		funcNameForError = ctx.ID().GetText() + " (in type signature)"
 		errorToken = ctx.ID().GetSymbol()
 	} else {
-		// This path might not be hit if ID is mandatory in FnSignature grammar.
 		funcNameForError = "function signature"
 		errorToken = ctx.GetStart()
 	}
@@ -144,8 +108,6 @@ func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext)
 	return v.buildAstFuncType(
 		ctx.Parameters(),
 		ctx.TypeAnnotation(),
-		ctx.ID(),
-		ctx.EXCLAMATION(),
 		funcNameForError,
 		errorToken,
 	)
@@ -155,15 +117,11 @@ func (v *ManuscriptAstVisitor) VisitFunctionType(ctx *parser.FnSignatureContext)
 func (v *ManuscriptAstVisitor) buildAstFuncType(
 	paramsCtx parser.IParametersContext,
 	returnTypeCtx parser.ITypeAnnotationContext,
-	_ antlr.TerminalNode, // idNode, unused
-	exclNode antlr.TerminalNode,
-
 	desc string,
-
 	tok antlr.Token,
 ) *ast.FuncType {
 	params := v.buildFuncParams(paramsCtx, desc)
-	results := v.buildFuncResults(returnTypeCtx, exclNode, desc)
+	results := v.buildFuncResults(returnTypeCtx, desc)
 	return &ast.FuncType{Params: params, Results: results}
 }
 
@@ -205,11 +163,10 @@ func (v *ManuscriptAstVisitor) buildFuncParams(paramsCtx parser.IParametersConte
 // buildFuncResults processes the return type context into a Go AST FieldList.
 func (v *ManuscriptAstVisitor) buildFuncResults(
 	returnTypeCtx parser.ITypeAnnotationContext,
-	exclNode antlr.TerminalNode,
 	desc string,
 ) *ast.FieldList {
 	// Always use the visitor pattern for return type
-	return v.ProcessReturnType(returnTypeCtx, exclNode, desc)
+	return v.ProcessReturnType(returnTypeCtx, nil, desc)
 }
 
 // VisitTupleType handles tuple type signatures.

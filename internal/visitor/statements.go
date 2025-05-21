@@ -6,6 +6,41 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
+// VisitStmt handles all statement types using a type switch, following the ANTLR visitor pattern and keeping the code DRY.
+func (v *ManuscriptAstVisitor) VisitStmt(ctx parser.IStmtContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+	switch c := ctx.(type) {
+	case *parser.StmtLetContext:
+		return v.VisitStmtLet(c)
+	case *parser.StmtExprContext:
+		return v.VisitStmtExpr(c)
+	case *parser.StmtReturnContext:
+		return v.VisitStmtReturn(c)
+	case *parser.StmtYieldContext:
+		return v.VisitStmtYield(c)
+	case *parser.StmtIfContext:
+		return v.VisitStmtIf(c)
+	case *parser.StmtForContext:
+		return v.VisitStmtFor(c)
+	case *parser.StmtWhileContext:
+		return v.VisitStmtWhile(c)
+	case *parser.StmtBlockContext:
+		return v.VisitStmtBlock(c)
+	case *parser.StmtBreakContext:
+		return v.VisitStmtBreak(c)
+	case *parser.StmtContinueContext:
+		return v.VisitStmtContinue(c)
+	case *parser.StmtCheckContext:
+		return v.VisitStmtCheck(c)
+	case *parser.StmtDeferContext:
+		return v.VisitStmtDefer(c)
+	default:
+		return nil
+	}
+}
+
 // VisitStmtLet handles let statements using the ANTLR visitor pattern.
 func (v *ManuscriptAstVisitor) VisitStmtLet(ctx *parser.StmtLetContext) interface{} {
 	if ctx == nil || ctx.LetDecl() == nil {
@@ -76,6 +111,7 @@ func (v *ManuscriptAstVisitor) VisitStmtWhile(ctx *parser.StmtWhileContext) inte
 }
 
 // VisitStmtBlock handles code blocks as statements.
+// { stmt1; stmt2; ... }
 func (v *ManuscriptAstVisitor) VisitStmtBlock(ctx *parser.StmtBlockContext) interface{} {
 	if ctx == nil || ctx.CodeBlock() == nil {
 		v.addError("block statement missing codeBlock", ctx.GetStart())
@@ -136,10 +172,15 @@ func (v *ManuscriptAstVisitor) VisitIfStmt(ctx *parser.IfStmtContext) interface{
 	// Visit the "then" block
 	thenBlockRaw := v.Visit(ctx.CodeBlock(0))
 	var thenBlock *ast.BlockStmt
-	if block, ok := thenBlockRaw.(*ast.BlockStmt); ok {
-		thenBlock = block
-	} else {
-		v.addError("If body did not resolve to a valid block: "+ctx.CodeBlock(0).GetText(), ctx.CodeBlock(0).GetStart())
+	switch t := thenBlockRaw.(type) {
+	case *ast.BlockStmt:
+		thenBlock = t
+	case []ast.Stmt:
+		thenBlock = &ast.BlockStmt{List: t}
+	case ast.Stmt:
+		thenBlock = &ast.BlockStmt{List: []ast.Stmt{t}}
+	default:
+		v.addError("If body did not resolve to a valid block or statement: "+ctx.CodeBlock(0).GetText(), ctx.CodeBlock(0).GetStart())
 		return nil
 	}
 
@@ -151,13 +192,19 @@ func (v *ManuscriptAstVisitor) VisitIfStmt(ctx *parser.IfStmtContext) interface{
 
 	// Handle the else clause if it exists
 	if ctx.ELSE() != nil {
-		// Get the else block (second code block)
 		elseBlockRaw := v.Visit(ctx.CodeBlock(1))
-		if elseBlock, ok := elseBlockRaw.(*ast.BlockStmt); ok {
-			ifStmt.Else = elseBlock
-		} else {
-			v.addError("Else body did not resolve to a valid block", ctx.GetStart())
+		var elseBlock *ast.BlockStmt
+		switch e := elseBlockRaw.(type) {
+		case *ast.BlockStmt:
+			elseBlock = e
+		case []ast.Stmt:
+			elseBlock = &ast.BlockStmt{List: e}
+		case ast.Stmt:
+			elseBlock = &ast.BlockStmt{List: []ast.Stmt{e}}
+		default:
+			v.addError("Else body did not resolve to a valid block or statement", ctx.GetStart())
 		}
+		ifStmt.Else = elseBlock
 	}
 
 	return ifStmt
@@ -167,28 +214,38 @@ func (v *ManuscriptAstVisitor) VisitIfStmt(ctx *parser.IfStmtContext) interface{
 // { stmt1; stmt2; ... }
 func (v *ManuscriptAstVisitor) VisitCodeBlock(ctx *parser.CodeBlockContext) interface{} {
 	var stmts []ast.Stmt
-	for _, stmtCtx := range ctx.AllStmt() {
-		if stmtCtx == nil {
-			continue
-		}
-		visitedNode := v.Visit(stmtCtx)
-		if visitedNode == nil {
-			continue
-		}
-		if singleStmt, ok := visitedNode.(ast.Stmt); ok {
-			if _, isEmpty := singleStmt.(*ast.EmptyStmt); !isEmpty {
-				stmts = append(stmts, singleStmt)
+	if stmtList := ctx.Stmt_list(); stmtList != nil {
+		for _, stmtCtx := range stmtList.AllStmt() {
+			if stmtCtx == nil {
+				continue
 			}
-		} else if multiStmts, ok := visitedNode.([]ast.Stmt); ok {
-			for _, stmt := range multiStmts {
-				if stmt != nil {
-					if _, isEmpty := stmt.(*ast.EmptyStmt); !isEmpty {
-						stmts = append(stmts, stmt)
+			visitedNode := v.Visit(stmtCtx)
+			if visitedNode == nil {
+				continue
+			}
+			if singleStmt, ok := visitedNode.(ast.Stmt); ok {
+				if _, isEmpty := singleStmt.(*ast.EmptyStmt); !isEmpty {
+					stmts = append(stmts, singleStmt)
+				}
+			} else if multiStmts, ok := visitedNode.([]ast.Stmt); ok {
+				for _, stmt := range multiStmts {
+					if stmt != nil {
+						if _, isEmpty := stmt.(*ast.EmptyStmt); !isEmpty {
+							stmts = append(stmts, stmt)
+						}
 					}
 				}
+			} else if block, ok := visitedNode.(*ast.BlockStmt); ok {
+				for _, stmt := range block.List {
+					if stmt != nil {
+						if _, isEmpty := stmt.(*ast.EmptyStmt); !isEmpty {
+							stmts = append(stmts, stmt)
+						}
+					}
+				}
+			} else if visitedNode != nil {
+				v.addError("Internal error: Statement in code block did not resolve to ast.Stmt, []ast.Stmt, or *ast.BlockStmt", nil)
 			}
-		} else {
-			v.addError("Internal error: Statement processing in code block returned unexpected type for: "+stmtCtx.GetText(), stmtCtx.GetStart())
 		}
 	}
 	return &ast.BlockStmt{

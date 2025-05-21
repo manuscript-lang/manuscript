@@ -67,22 +67,28 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 }
 
 func mapAssignmentOpToGoToken(op parser.IAssignmentOpContext) token.Token {
-	switch op.(type) {
-	case *parser.AssignEqContext:
-		return token.ILLEGAL
-	case *parser.AssignPlusEqContext:
-		return token.ADD
-	case *parser.AssignMinusEqContext:
-		return token.SUB
-	case *parser.AssignStarEqContext:
-		return token.MUL
-	case *parser.AssignSlashEqContext:
-		return token.QUO
-	case *parser.AssignModEqContext:
-		return token.REM
-	case *parser.AssignCaretEqContext:
-		return token.XOR
-	default:
+	if op == nil {
 		return token.ILLEGAL
 	}
+	if ctx, ok := op.(*parser.AssignmentOpContext); ok {
+		switch {
+		case ctx.EQUALS() != nil:
+			return token.ILLEGAL
+		case ctx.PLUS_EQUALS() != nil:
+			return token.ADD
+		case ctx.MINUS_EQUALS() != nil:
+			return token.SUB
+		case ctx.STAR_EQUALS() != nil:
+			return token.MUL
+		case ctx.SLASH_EQUALS() != nil:
+			return token.QUO
+		case ctx.MOD_EQUALS() != nil:
+			return token.REM
+		case ctx.CARET_EQUALS() != nil:
+			return token.XOR
+		default:
+			return token.ILLEGAL
+		}
+	}
+	return token.ILLEGAL
 }

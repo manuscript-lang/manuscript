@@ -70,8 +70,8 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 	}
 
 	var resultsAST *ast.FieldList
-	if typeAnnotation != nil || fnSig.EXCLAMATION() != nil {
-		resultsAST = v.ProcessReturnType(typeAnnotation, fnSig.EXCLAMATION(), fnName)
+	if typeAnnotation != nil {
+		resultsAST = v.ProcessReturnType(typeAnnotation, nil, fnName)
 	}
 
 	// Only convert last expression statement to return if function has a non-void return type
