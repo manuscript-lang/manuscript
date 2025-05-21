@@ -9,14 +9,14 @@ program:
 	stmt_sep* (declaration (stmt_sep+ declaration)*)? stmt_sep* EOF;
 
 declaration:
-	importDecl		  # DeclImport
-	| exportDecl	  # DeclExport
-	| externDecl	  # DeclExtern
-	| letDecl		    # DeclLet
-	| typeDecl		  # DeclType
+	importDecl		# DeclImport
+	| exportDecl	# DeclExport
+	| externDecl	# DeclExtern
+	| letDecl		# DeclLet
+	| typeDecl		# DeclType
 	| interfaceDecl	# DeclInterface
-	| fnDecl		    # DeclFn
-	| methodsDecl	  # DeclMethods;
+	| fnDecl		# DeclFn
+	| methodsDecl	# DeclMethods;
 
 // --- Imports/Exports/Extern ---
 importDecl: IMPORT moduleImport SEMICOLON?;
@@ -24,13 +24,13 @@ exportDecl: EXPORT exportedItem SEMICOLON?;
 externDecl: EXTERN moduleImport SEMICOLON?;
 
 exportedItem:
-	fnDecl			    # ExportedFn
-	| letDecl		    # ExportedLet
-	| typeDecl		  # ExportedType
+	fnDecl			# ExportedFn
+	| letDecl		# ExportedLet
+	| typeDecl		# ExportedType
 	| interfaceDecl	# ExportedInterface;
 moduleImport:
 	destructuredImport	# ModuleImportDestructured
-	| targetImport		  # ModuleImportTarget;
+	| targetImport		# ModuleImportTarget;
 destructuredImport:
 	LBRACE importItemList? RBRACE FROM importStr;
 targetImport: ID FROM importStr;
