@@ -28,24 +28,22 @@ func (v *ManuscriptAstVisitor) VisitExprList(ctx *parser.ExprListContext) interf
 		return nil
 	}
 
-	var stmts []ast.Stmt
+	var exprs []ast.Expr
 	for i, exprCtx := range allExprs {
 		if exprCtx == nil {
 			v.addError(fmt.Sprintf("Expression %d in ExprList is nil", i), ctx.GetStart())
 			continue
 		}
 		visitedNode := v.Visit(exprCtx)
-		if stmt, ok := visitedNode.(ast.Stmt); ok {
-			stmts = append(stmts, stmt)
-		} else if expr, ok := visitedNode.(ast.Expr); ok {
-			stmts = append(stmts, &ast.ExprStmt{X: expr})
+		if expr, ok := visitedNode.(ast.Expr); ok {
+			exprs = append(exprs, expr)
 		} else if visitedNode == nil {
 			v.addError(fmt.Sprintf("Visiting expression %d in ExprList returned nil: %s", i, exprCtx.GetText()), exprCtx.GetStart())
-			stmts = append(stmts, &ast.BadStmt{From: v.pos(exprCtx.GetStart()), To: v.pos(exprCtx.GetStop())})
+			exprs = append(exprs, &ast.BadExpr{})
 		} else {
 			v.addError(fmt.Sprintf("Expression %d in ExprList resolved to unexpected type %T: %s", i, visitedNode, exprCtx.GetText()), exprCtx.GetStart())
-			stmts = append(stmts, &ast.BadStmt{From: v.pos(exprCtx.GetStart()), To: v.pos(exprCtx.GetStop())})
+			exprs = append(exprs, &ast.BadExpr{})
 		}
 	}
-	return stmts
+	return exprs
 }

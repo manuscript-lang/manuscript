@@ -94,7 +94,7 @@ func main() {
     for false {
         print("unreachable")
     }
-    print("done")
+    return print("done")
 }
 ```
 ---
@@ -229,7 +229,7 @@ func main() {
     i := 0
     for ; i < 3; i = i + 1 {
     }
-    print(i)
+    return print(i)
 }
 ```
 ---

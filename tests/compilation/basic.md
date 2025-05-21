@@ -36,6 +36,18 @@ It can contain multiple lines of text.
   let multiLine2 = 'This is another multi-line string. 
 It can also contain multiple lines of text.
 '
+  let dq = "double quoted"
+  let dtq = """
+  double triple quoted
+  """
+
+  let bin = 0b010101
+  let hex = 0xFFF
+  let oct = 0o1023
+  let (
+    n = null
+    v = void
+  )
 }
 ```
 
@@ -47,6 +59,13 @@ func main() {
     message := "hello"
     multiLine := "\nThis is a multi-line string.\nIt can contain multiple lines of text.\n"
     multiLine2 := "This is another multi-line string. \nIt can also contain multiple lines of text.\n"
+    dq := "double quoted"
+    dtq := "\n  double triple quoted\n  "
+    bin := 0b010101
+    hex := 0xFFF
+    oct := 0o1023
+    n := nil
+    v := nil
 }
 ``` 
 

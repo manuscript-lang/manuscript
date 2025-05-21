@@ -22,76 +22,17 @@ func (v *ManuscriptAstVisitor) VisitFnDecl(ctx *parser.FnDeclContext) interface{
 		fnName = fnSig.ID().GetText()
 		fnNameToken = fnSig.ID().GetSymbol()
 	}
-	paramsCtx := fnSig.Parameters()
-	typeAnnotation := fnSig.TypeAnnotation()
-
-	var paramDetailsList []ParamDetail
-	var paramsAST *ast.FieldList
-	var defaultAssignments []ast.Stmt
-	if paramsCtx != nil {
-		if details, ok := v.VisitParameters(paramsCtx.(*parser.ParametersContext)).([]ParamDetail); ok {
-			paramDetailsList = details
-			paramsAST, defaultAssignments = v.buildParamsAST(paramDetailsList)
-		}
-	} else {
-		paramsAST = &ast.FieldList{List: []*ast.Field{}}
-	}
-
-	if ctx.CodeBlock() == nil {
-		v.addError(fmt.Sprintf("No code block found for function '%s'.", fnName), fnNameToken)
+	paramsAST, bodyAST, resultsAST, err := v.buildFunctionAst(
+		fnSig.Parameters(),
+		fnSig.TypeAnnotation(),
+		fnSig.EXCLAMATION(),
+		ctx.CodeBlock(),
+		fnName,
+		fnNameToken,
+	)
+	if err != nil {
 		return nil
 	}
-	concreteCodeBlockCtx, ok := ctx.CodeBlock().(*parser.CodeBlockContext)
-	if !ok {
-		v.addError(fmt.Sprintf("Internal error: Unexpected context type for code block in function '%s'.", fnName), ctx.CodeBlock().GetStart())
-		return nil
-	}
-	bodyInterface := v.Visit(concreteCodeBlockCtx)
-	b, okBody := bodyInterface.(*ast.BlockStmt)
-	if !okBody {
-		v.addError(fmt.Sprintf("Function '%s' must have a valid code block body.", fnName), ctx.CodeBlock().GetStart())
-		return nil
-	}
-	bodyAST := b
-	if len(defaultAssignments) > 0 {
-		newBodyList := append([]ast.Stmt{}, defaultAssignments...)
-		newBodyList = append(newBodyList, bodyAST.List...)
-		bodyAST.List = newBodyList
-	}
-
-	var resultsAST *ast.FieldList
-	if typeAnnotation != nil || fnSig.EXCLAMATION() != nil {
-		resultsAST = v.ProcessReturnType(typeAnnotation, fnSig.EXCLAMATION(), fnName)
-	}
-
-	// Only convert last expression statement to return if function has a non-void return type
-	if resultsAST != nil && len(resultsAST.List) > 0 && len(bodyAST.List) > 0 {
-		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X != nil {
-			// Special case: if the last expression is a match lowering (IIFE), wrap it in a return
-			if callExpr, isCall := exprStmt.X.(*ast.CallExpr); isCall {
-				if funcLit, isFuncLit := callExpr.Fun.(*ast.FuncLit); isFuncLit && len(funcLit.Body.List) > 0 {
-					// Heuristic: check if the first statement is a var decl for __match_result
-					if declStmt, isDecl := funcLit.Body.List[0].(*ast.DeclStmt); isDecl {
-						if genDecl, isGen := declStmt.Decl.(*ast.GenDecl); isGen && len(genDecl.Specs) > 0 {
-							if valSpec, isVal := genDecl.Specs[0].(*ast.ValueSpec); isVal && len(valSpec.Names) > 0 && valSpec.Names[0].Name == "__match_result" {
-								// Looks like a match lowering, emit as return
-								bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Results: []ast.Expr{exprStmt.X}}
-							}
-						}
-					}
-				}
-			}
-			// Otherwise, default: return last expr
-			if _, alreadyReturn := bodyAST.List[len(bodyAST.List)-1].(*ast.ReturnStmt); !alreadyReturn {
-				bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Results: []ast.Expr{exprStmt.X}}
-			}
-		}
-	}
-
-	if bodyAST == nil {
-		bodyAST = &ast.BlockStmt{}
-	}
-
 	return &ast.FuncDecl{
 		Name: ast.NewIdent(fnName),
 		Type: &ast.FuncType{
@@ -209,15 +150,18 @@ func (v *ManuscriptAstVisitor) ProcessReturnType(typeAnnotationCtx parser.ITypeA
 	return results
 }
 
-// VisitFnExpr handles function expressions (anonymous functions).
-// fnExpr: FN LPAREN Parameters? RPAREN (COLON TypeAnnotation)? CodeBlock;
-// (ASYNC and EXCLAMATION are not directly on FnExprContext based on current findings)
-func (v *ManuscriptAstVisitor) VisitFnExpr(ctx *parser.FnExprContext) interface{} {
-	paramsCtx := ctx.Parameters()
-	typeAnnotation := ctx.TypeAnnotation()
-
+// buildFunctionAst processes function/closure logic shared by VisitFnDecl and VisitFnExpr.
+// It returns paramsAST, bodyAST, resultsAST, and any error encountered.
+func (v *ManuscriptAstVisitor) buildFunctionAst(
+	paramsCtx parser.IParametersContext,
+	typeAnnotation parser.ITypeAnnotationContext,
+	exclamation antlr.TerminalNode,
+	codeBlockCtx antlr.ParserRuleContext,
+	nameForError string,
+	fnToken antlr.Token, // for error reporting
+) (paramsAST *ast.FieldList, bodyAST *ast.BlockStmt, resultsAST *ast.FieldList, err error) {
+	// --- Parameters and defaults ---
 	var paramDetailsList []ParamDetail
-	var paramsAST *ast.FieldList
 	var defaultAssignments []ast.Stmt
 	if paramsCtx != nil {
 		if details, ok := v.VisitParameters(paramsCtx.(*parser.ParametersContext)).([]ParamDetail); ok {
@@ -228,40 +172,131 @@ func (v *ManuscriptAstVisitor) VisitFnExpr(ctx *parser.FnExprContext) interface{
 		paramsAST = &ast.FieldList{List: []*ast.Field{}}
 	}
 
-	if ctx.CodeBlock() == nil {
-		v.addError("No code block found for anonymous function expression.", ctx.FN().GetSymbol())
-		return nil
+	// --- Code block ---
+	if codeBlockCtx == nil {
+		err = fmt.Errorf("no code block found for function '%s'", nameForError)
+		v.addError(err.Error(), fnToken)
+		return
 	}
-	concreteCodeBlockCtx, ok := ctx.CodeBlock().(*parser.CodeBlockContext)
+	concreteCodeBlockCtx, ok := codeBlockCtx.(*parser.CodeBlockContext)
 	if !ok {
-		v.addError("Internal error: Unexpected context type for code block in anonymous function expression.", ctx.CodeBlock().GetStart())
-		return nil
+		err = fmt.Errorf("internal error: unexpected context type for code block in function '%s'", nameForError)
+		v.addError(err.Error(), codeBlockCtx.GetStart())
+		return
 	}
 	bodyInterface := v.Visit(concreteCodeBlockCtx)
 	b, okBody := bodyInterface.(*ast.BlockStmt)
 	if !okBody {
-		v.addError("Anonymous function expression must have a valid code block body.", ctx.CodeBlock().GetStart())
-		return nil
+		err = fmt.Errorf("function must have a valid code block body. '%s'", nameForError)
+		v.addError(err.Error(), codeBlockCtx.GetStart())
+		return
 	}
-	bodyAST := b
+	bodyAST = b
+
+	// --- Prepend default assignments ---
 	if len(defaultAssignments) > 0 {
 		newBodyList := append([]ast.Stmt{}, defaultAssignments...)
 		newBodyList = append(newBodyList, bodyAST.List...)
 		bodyAST.List = newBodyList
 	}
 
-	var resultsAST *ast.FieldList
-	if typeAnnotation != nil {
-		resultsAST = v.ProcessReturnType(typeAnnotation, nil, "anonymous function expression")
+	// --- Return type ---
+	if typeAnnotation != nil || exclamation != nil {
+		resultsAST = v.ProcessReturnType(typeAnnotation, exclamation, nameForError)
 	}
 
-	// Only convert last expression statement to return if function has a non-void return type
-	if resultsAST != nil && len(resultsAST.List) > 0 && len(bodyAST.List) > 0 {
-		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X != nil {
-			bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
+	// --- Ensure last statement is a return if it's an expression ---
+	v.ensureLastExprIsReturn(bodyAST)
+
+	if bodyAST == nil {
+		bodyAST = &ast.BlockStmt{}
+	}
+	return
+}
+
+// ensureLastExprIsReturn converts the last statement to a return if it's an expression statement.
+func (v *ManuscriptAstVisitor) ensureLastExprIsReturn(bodyAST *ast.BlockStmt) {
+	if bodyAST == nil || len(bodyAST.List) == 0 {
+		return
+	}
+
+	// Only generate a multi-value return if the body is a single ExprStmt whose expression is an ExprList
+	if len(bodyAST.List) == 1 {
+		if exprStmt, ok := bodyAST.List[0].(*ast.ExprStmt); ok && exprStmt.X != nil {
+			if exprListCtx, ok := exprStmt.X.(parser.IExprListContext); ok {
+				var results []ast.Expr
+				for _, exprNode := range exprListCtx.AllExpr() {
+					visitedExpr := v.Visit(exprNode)
+					if astExpr, ok := visitedExpr.(ast.Expr); ok {
+						results = append(results, astExpr)
+					} else {
+						results = append(results, &ast.BadExpr{})
+					}
+				}
+				bodyAST.List[0] = &ast.ReturnStmt{Results: results}
+				return
+			}
 		}
 	}
 
+	lastIdx := len(bodyAST.List) - 1
+	lastStmt := bodyAST.List[lastIdx]
+
+	exprStmt, ok := lastStmt.(*ast.ExprStmt)
+	if !ok || exprStmt.X == nil {
+		return
+	}
+
+	// If the last expression is an ExprList, always return all values
+	if exprListCtx, ok := exprStmt.X.(parser.IExprListContext); ok {
+		var results []ast.Expr
+		for _, exprNode := range exprListCtx.AllExpr() {
+			visitedExpr := v.Visit(exprNode)
+			if astExpr, ok := visitedExpr.(ast.Expr); ok {
+				results = append(results, astExpr)
+			} else {
+				results = append(results, &ast.BadExpr{})
+			}
+		}
+		bodyAST.List[lastIdx] = &ast.ReturnStmt{Results: results}
+		return
+	}
+
+	// Special case: if the last expression is a match lowering (IIFE), wrap it in a return
+	if callExpr, isCall := exprStmt.X.(*ast.CallExpr); isCall {
+		if funcLit, isFuncLit := callExpr.Fun.(*ast.FuncLit); isFuncLit && len(funcLit.Body.List) > 0 {
+			if declStmt, isDecl := funcLit.Body.List[0].(*ast.DeclStmt); isDecl {
+				if genDecl, isGen := declStmt.Decl.(*ast.GenDecl); isGen && len(genDecl.Specs) > 0 {
+					if valSpec, isVal := genDecl.Specs[0].(*ast.ValueSpec); isVal && len(valSpec.Names) > 0 && valSpec.Names[0].Name == "__match_result" {
+						bodyAST.List[lastIdx] = &ast.ReturnStmt{Results: []ast.Expr{exprStmt.X}}
+						return
+					}
+				}
+			}
+		}
+	}
+
+	// Otherwise, default: return last expr
+	if _, alreadyReturn := bodyAST.List[lastIdx].(*ast.ReturnStmt); !alreadyReturn {
+		bodyAST.List[lastIdx] = &ast.ReturnStmt{Results: []ast.Expr{exprStmt.X}}
+	}
+}
+
+// VisitFnExpr handles function expressions (anonymous functions).
+// fnExpr: FN LPAREN Parameters? RPAREN (COLON TypeAnnotation)? CodeBlock;
+// (ASYNC and EXCLAMATION are not directly on FnExprContext based on current findings)
+func (v *ManuscriptAstVisitor) VisitFnExpr(ctx *parser.FnExprContext) interface{} {
+	paramsAST, bodyAST, resultsAST, err := v.buildFunctionAst(
+		ctx.Parameters(),
+		ctx.TypeAnnotation(),
+		nil, // no exclamation for fnExpr
+		ctx.CodeBlock(),
+		"anonymous function expression",
+		ctx.FN().GetSymbol(),
+	)
+	if err != nil {
+		return nil
+	}
 	return &ast.FuncLit{
 		Type: &ast.FuncType{
 			Func:    v.pos(ctx.FN().GetSymbol()),

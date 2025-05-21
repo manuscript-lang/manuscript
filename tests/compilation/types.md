@@ -28,11 +28,11 @@ type Point struct {
 
 func printPoint(p Point) {
     print(p.x)
-    print(p.y)
+    return print(p.y)
 }
 func main() {
     pt := Point{x: 1, y: 2}
-    printPoint(pt)
+    return printPoint(pt)
 }
 ```
 
@@ -70,7 +70,7 @@ func createUser(id int64, name string) User {
 func main() {
     u := createUser(1, "Test User")
     print(u.id)
-    print(u.name)
+    return print(u.name)
 }
 ```
 
@@ -108,7 +108,7 @@ func main() {
     vec := Vector{dx: 1.0, dy: 2.5}
     scaledVec := scaleVector(vec, 2.0)
     print(scaledVec.dx)
-    print(scaledVec.dy)
+    return print(scaledVec.dy)
 }
 ```
 
@@ -132,11 +132,11 @@ package main
 type UserID int64
 
 func printUserID(id UserID) {
-    print(id)
+    return print(id)
 }
 func main() {
     userID := 123
-    printUserID(userID)
+    return printUserID(userID)
 }
 ```
 
