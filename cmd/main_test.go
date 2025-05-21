@@ -175,38 +175,3 @@ func parseMarkdownTest(content string) []TestPair {
 	}
 	return testPairs
 }
-
-func BenchmarkParseSlowFile(b *testing.B) {
-	filePath := filepath.Join("../tests/compilation", "benchmark_slow.md")
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		b.Fatalf("Failed to read benchmark file %s: %v", filePath, err)
-	}
-
-	// Crude parsing of the markdown to get the 'ms' block.
-	// This can be made more robust if needed, similar to parseMarkdownTest.
-	// For simplicity, we'll assume a basic structure for now.
-	// A more robust approach would be to reuse or adapt parts of parseMarkdownTest.
-	// However, parseMarkdownTest returns pairs, and for benchmarking a single large input,
-	// a simpler extraction might suffice initially.
-
-	// Simplified extraction: find the first ```ms block
-	// Escaped \s and \n for Go's interpreted string literals
-	msCodeBlockRegex := regexp.MustCompile("(?s)```ms\\s*\\n(.*?)\\n```")
-	matches := msCodeBlockRegex.FindStringSubmatch(string(content))
-	if len(matches) < 2 {
-		b.Fatalf("Could not find ```ms block in %s", filePath)
-	}
-	msCode := matches[1]
-
-	b.ResetTimer() // Start timing after setup
-	for i := 0; i < b.N; i++ {
-		_, err := manuscriptToGo(msCode, false) // debug is false
-		if err != nil {
-			// In a benchmark, we might not want to fail on error if the error
-			// is expected due to intentionally "bad" but parsable syntax,
-			// but for now, we'll consider an error a failure.
-			b.Fatalf("manuscriptToGo failed during benchmark: %v", err)
-		}
-	}
-}
