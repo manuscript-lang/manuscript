@@ -5,391 +5,308 @@ import (
 	"go/token"
 	"manuscript-co/manuscript/internal/parser"
 	"strconv"
+
+	"github.com/antlr4-go/antlr/v4"
 )
 
-// VisitLetDecl handles variable declarations starting with 'let' keyword.
-// let x = 5, let {a, b} = obj, etc.
-func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *parser.LetDeclContext) interface{} {
+// VisitLetDeclSingle handles 'let typedID = expr' or 'let typedID'
+func (v *ManuscriptAstVisitor) VisitLetDeclSingle(ctx *parser.LetDeclSingleContext) interface{} {
+	letSingle := ctx.LetSingle()
+	if letSingle == nil {
+		v.addError("Missing letSingle in let declaration: "+ctx.GetText(), ctx.GetStart())
+		return &ast.EmptyStmt{}
+	}
+	return v.Visit(letSingle)
+}
+
+// VisitLetDeclBlock handles 'let ( ... )'
+func (v *ManuscriptAstVisitor) VisitLetDeclBlock(ctx *parser.LetDeclBlockContext) interface{} {
 	if ctx == nil {
-		v.addError("VisitLetDecl called with nil context", nil)
+		v.addError("VisitLetBlock called with nil context", nil)
+		return []ast.Stmt{&ast.BadStmt{}}
+	}
+	letBlock := ctx.LetBlock()
+	if letBlock == nil {
+		return []ast.Stmt{}
+	}
+	itemList := letBlock.LetBlockItemList()
+	if itemList == nil {
+		return []ast.Stmt{}
+	}
+	return v.Visit(itemList)
+}
+
+// VisitLetDeclDestructuredObj handles 'let {a, b} = expr'
+func (v *ManuscriptAstVisitor) VisitLetDeclDestructuredObj(ctx *parser.LetDeclDestructuredObjContext) interface{} {
+	letObj := ctx.LetDestructuredObj()
+	if letObj == nil {
+		v.addError("Missing LetDestructuredObj in let declaration: "+ctx.GetText(), ctx.GetStart())
 		return &ast.EmptyStmt{}
 	}
+	return v.Visit(letObj)
+}
 
-	letPattern := ctx.LetPattern()
-	if letPattern == nil {
-		v.addError("Let declaration missing pattern: "+ctx.GetText(), ctx.GetStart())
+// VisitLetDeclDestructuredArray handles 'let [a, b] = expr'
+func (v *ManuscriptAstVisitor) VisitLetDeclDestructuredArray(ctx *parser.LetDeclDestructuredArrayContext) interface{} {
+	letArr := ctx.LetDestructuredArray()
+	if letArr == nil {
+		v.addError("Missing LetDestructuredArray in let declaration: "+ctx.GetText(), ctx.GetStart())
 		return &ast.EmptyStmt{}
 	}
-
-	return v.Visit(letPattern)
+	return v.Visit(letArr)
 }
 
-// VisitLetPatternSingle handles the simple variable declaration:
-// let x = 5, let y: int
-func (v *ManuscriptAstVisitor) VisitLetPatternSingle(ctx *parser.LetPatternSingleContext) interface{} {
-	if ctx.LetSingle() == nil {
-		v.addError("LetPatternSingle missing LetSingle", ctx.GetStart())
-		return []ast.Stmt{&ast.EmptyStmt{}}
+// DRY helper for destructured let (object/array)
+func (v *ManuscriptAstVisitor) destructuredLet(
+	typedIDListCtx parser.ITypedIDListContext,
+	rhsExprCtx parser.IExprContext,
+	isArray bool,
+	getRhs func(tempVar *ast.Ident, idx int, name string) ast.Expr,
+	ctx antlr.ParserRuleContext,
+) interface{} {
+	if typedIDListCtx == nil {
+		v.addError("Destructuring pattern is malformed: "+ctx.GetText(), ctx.GetStart())
+		return &ast.EmptyStmt{}
 	}
-
-	return v.Visit(ctx.LetSingle())
-}
-
-// VisitLetPatternBlock handles grouped variable declarations:
-// let (x = 1, y = 2)
-func (v *ManuscriptAstVisitor) VisitLetPatternBlock(ctx *parser.LetPatternBlockContext) interface{} {
-	if ctx.LetBlock() == nil {
-		v.addError("LetPatternBlock missing LetBlock", ctx.GetStart())
-		return []ast.Stmt{&ast.EmptyStmt{}}
+	var lhsIdents []*ast.Ident
+	typedIDList := v.Visit(typedIDListCtx)
+	if idSlice, ok := typedIDList.([]*ast.Ident); ok {
+		lhsIdents = idSlice
+	} else {
+		v.addError("Destructuring pattern did not resolve to identifiers: "+typedIDListCtx.GetText(), typedIDListCtx.GetStart())
+		return &ast.EmptyStmt{}
 	}
-
-	return v.Visit(ctx.LetBlock())
-}
-
-// VisitLetPatternDestructuredObj handles object destructuring:
-// let {x, y} = point
-func (v *ManuscriptAstVisitor) VisitLetPatternDestructuredObj(ctx *parser.LetPatternDestructuredObjContext) interface{} {
-	if ctx.LetDestructuredObj() == nil {
-		v.addError("LetPatternDestructuredObj missing LetDestructuredObj", ctx.GetStart())
-		return []ast.Stmt{&ast.EmptyStmt{}}
+	if len(lhsIdents) == 0 {
+		v.addError("Destructuring pattern resulted in no LHS: "+ctx.GetText(), ctx.GetStart())
+		return &ast.EmptyStmt{}
 	}
-
-	return v.Visit(ctx.LetDestructuredObj())
-}
-
-// VisitLetPatternDestructuredArray handles array destructuring:
-// let [first, second] = arr
-func (v *ManuscriptAstVisitor) VisitLetPatternDestructuredArray(ctx *parser.LetPatternDestructuredArrayContext) interface{} {
-	if ctx.LetDestructuredArray() == nil {
-		v.addError("LetPatternDestructuredArray missing LetDestructuredArray", ctx.GetStart())
-		return []ast.Stmt{&ast.EmptyStmt{}}
-	}
-
-	return v.Visit(ctx.LetDestructuredArray())
-}
-
-// VisitTypedID processes a variable identifier with optional type annotation
-// Variable types are currently handled separately from the identifier
-func (v *ManuscriptAstVisitor) VisitTypedID(ctx *parser.TypedIDContext) interface{} {
-	if ctx.ID() == nil {
-		v.addError("Variable declaration missing identifier", ctx.GetStart())
-		return nil
-	}
-
-	// Create an identifier node from the variable name
-	return ast.NewIdent(ctx.ID().GetText())
-}
-
-// VisitTypedIDList processes a list of typed identifiers
-// e.g., x: int, y: string
-func (v *ManuscriptAstVisitor) VisitTypedIDList(ctx *parser.TypedIDListContext) interface{} {
-	var idents []*ast.Ident
-
-	for _, typedIDCtx := range ctx.AllTypedID() {
-		result := v.Visit(typedIDCtx)
-		if ident, ok := result.(*ast.Ident); ok {
-			idents = append(idents, ident)
-		} else {
-			v.addError("Expected identifier in variable list", typedIDCtx.GetStart())
+	if rhsExprCtx != nil {
+		rhsVisited := v.Visit(rhsExprCtx)
+		rhsExpr, okExpr := rhsVisited.(ast.Expr)
+		if !okExpr {
+			v.addError("RHS of destructuring is not an expression: "+rhsExprCtx.GetText(), rhsExprCtx.GetStart())
+			return &ast.EmptyStmt{}
+		}
+		tempVarIdent := ast.NewIdent("__val" + v.nextTempVarCounter())
+		var stmts []ast.Stmt
+		stmts = append(stmts, &ast.AssignStmt{
+			Lhs: []ast.Expr{tempVarIdent},
+			Tok: token.DEFINE,
+			Rhs: []ast.Expr{rhsExpr},
+		})
+		for i, ident := range lhsIdents {
+			var rhs ast.Expr
+			if isArray {
+				rhs = getRhs(tempVarIdent, i, ident.Name)
+			} else {
+				rhs = getRhs(tempVarIdent, i, ident.Name)
+			}
+			stmts = append(stmts, &ast.AssignStmt{
+				Lhs: []ast.Expr{ast.NewIdent(ident.Name)},
+				Tok: token.DEFINE,
+				Rhs: []ast.Expr{rhs},
+			})
+		}
+		return &ast.BlockStmt{List: stmts}
+	} else {
+		return &ast.DeclStmt{
+			Decl: &ast.GenDecl{
+				Tok:   token.VAR,
+				Specs: []ast.Spec{&ast.ValueSpec{Names: lhsIdents}},
+			},
 		}
 	}
+}
 
+// VisitLetDestructuredObj handles 'let {id1, id2} = expr' or 'let {id1, id2}'
+func (v *ManuscriptAstVisitor) VisitLetDestructuredObj(ctx *parser.LetDestructuredObjContext) interface{} {
+	return v.destructuredLet(
+		ctx.TypedIDList(),
+		ctx.Expr(),
+		false,
+		func(tempVar *ast.Ident, _ int, name string) ast.Expr {
+			return &ast.SelectorExpr{X: tempVar, Sel: ast.NewIdent(name)}
+		},
+		ctx,
+	)
+}
+
+// VisitLetDestructuredArray handles 'let [id1, id2] = expr' or 'let [id1, id2]'
+func (v *ManuscriptAstVisitor) VisitLetDestructuredArray(ctx *parser.LetDestructuredArrayContext) interface{} {
+	return v.destructuredLet(
+		ctx.TypedIDList(),
+		ctx.Expr(),
+		true,
+		func(tempVar *ast.Ident, idx int, _ string) ast.Expr {
+			return &ast.IndexExpr{X: tempVar, Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(idx)}}
+		},
+		ctx,
+	)
+}
+
+// Type information is currently ignored for let LHS.
+func (v *ManuscriptAstVisitor) VisitTypedID(ctx *parser.TypedIDContext) interface{} {
+	if ctx.ID() != nil {
+		return ast.NewIdent(ctx.ID().GetText())
+	}
+	v.addError("NamedID does not have an ID: "+ctx.GetText(), ctx.GetStart())
+	return nil
+}
+
+func (v *ManuscriptAstVisitor) VisitTypedIDList(ctx *parser.TypedIDListContext) interface{} {
+	var idents []*ast.Ident
+	for _, typedIDCtx := range ctx.AllTypedID() {
+		visitedIdent := v.Visit(typedIDCtx)
+		if ident, ok := visitedIdent.(*ast.Ident); ok {
+			idents = append(idents, ident)
+		}
+	}
 	return idents
 }
 
-// VisitLetBlockItemSingle handles a single variable declaration in a let block
-// e.g., x = 5 in let (x = 5, y = 10)
+// VisitLetBlockItemSingle handles: lhsTypedId = typedID EQUALS rhsExpr = expr
 func (v *ManuscriptAstVisitor) VisitLetBlockItemSingle(ctx *parser.LetBlockItemSingleContext) interface{} {
-	// Get the left-hand side identifier
-	lhsResult := v.Visit(ctx.TypedID())
-	lhsIdent, ok := lhsResult.(*ast.Ident)
-	if !ok {
-		v.addError("Left side of assignment is not a valid identifier", ctx.TypedID().GetStart())
+	lhsVisited := v.Visit(ctx.TypedID())
+	lhsIdent, okLHS := lhsVisited.(*ast.Ident)
+	if !okLHS {
+		v.addError("LHS of let block item is not an identifier: "+ctx.TypedID().GetText(), ctx.TypedID().GetStart())
 		return []ast.Stmt{&ast.BadStmt{}}
 	}
+	rhsVisited := v.Visit(ctx.Expr())
+	rhsExpr, okRHS := rhsVisited.(ast.Expr)
+	if !okRHS {
+		v.addError("RHS of let block item is not an expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
+		return []ast.Stmt{&ast.BadStmt{}}
+	}
+	return []ast.Stmt{
+		&ast.AssignStmt{
+			Lhs: []ast.Expr{lhsIdent}, Tok: token.DEFINE, Rhs: []ast.Expr{rhsExpr},
+		},
+	}
+}
 
-	// Process right-hand side expression if present
-	if ctx.Expr() != nil {
-		rhsResult := v.Visit(ctx.Expr())
-		if rhsExpr, ok := rhsResult.(ast.Expr); ok {
-			// Return a short variable declaration (`:=`)
-			return []ast.Stmt{
-				&ast.AssignStmt{
-					Lhs: []ast.Expr{lhsIdent},
-					Tok: token.DEFINE,
-					Rhs: []ast.Expr{rhsExpr},
-				},
-			}
+// VisitLetBlockItemDestructuredObj handles: LBRACE TypedIDList RBRACE EQUALS expr
+func (v *ManuscriptAstVisitor) VisitLetBlockItemDestructuredObj(ctx *parser.LetBlockItemDestructuredObjContext) interface{} {
+	var lhsIdents []*ast.Ident
+	typedIDListCtx := ctx.TypedIDList().(*parser.TypedIDListContext)
+	for _, typedIDInterface := range typedIDListCtx.AllTypedID() {
+		idVisited := v.Visit(typedIDInterface)
+		if ident, isIdent := idVisited.(*ast.Ident); isIdent {
+			lhsIdents = append(lhsIdents, ident)
 		}
 	}
-
-	// If no expression or expression didn't evaluate properly,
-	// create a variable declaration without initialization
-	return []ast.Stmt{
-		&ast.DeclStmt{
-			Decl: &ast.GenDecl{
-				Tok:   token.VAR,
-				Specs: []ast.Spec{&ast.ValueSpec{Names: []*ast.Ident{lhsIdent}}},
-			},
-		},
-	}
-}
-
-// VisitLetBlockItemDestructuredObj handles object destructuring in a let block
-// e.g., {x, y} = point in let ({x, y} = point)
-func (v *ManuscriptAstVisitor) VisitLetBlockItemDestructuredObj(ctx *parser.LetBlockItemDestructuredObjContext) interface{} {
-	// Get list of variables to assign from destructuring
-	typedIDListResult := v.Visit(ctx.TypedIDList())
-	lhsIdents, ok := typedIDListResult.([]*ast.Ident)
-	if !ok || len(lhsIdents) == 0 {
-		v.addError("Object destructuring has no valid identifiers", ctx.TypedIDList().GetStart())
+	if len(lhsIdents) == 0 {
+		v.addError("Let block object destructuring no LHS: "+ctx.TypedIDList().GetText(), ctx.TypedIDList().GetStart())
 		return []ast.Stmt{&ast.BadStmt{}}
 	}
-
-	// Get the expression to destructure
-	rhsResult := v.Visit(ctx.Expr())
-	rhsExpr, ok := rhsResult.(ast.Expr)
-	if !ok {
-		v.addError("Invalid expression in object destructuring", ctx.Expr().GetStart())
+	rhsVisited := v.Visit(ctx.Expr())
+	rhsExpr, okRHS := rhsVisited.(ast.Expr)
+	if !okRHS {
+		v.addError("RHS of let block object destructuring not expr: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
 		return []ast.Stmt{&ast.BadStmt{}}
 	}
-
-	// Create a temporary variable to hold the object
-	tempVarName := "__val" + v.nextTempVarCounter()
-	tempVarIdent := ast.NewIdent(tempVarName)
-
-	// Create statements for destructuring
+	tempVarIdent := ast.NewIdent("__val" + v.nextTempVarCounter())
 	stmts := []ast.Stmt{
-		// First assign the object to a temp variable
 		&ast.AssignStmt{
-			Lhs: []ast.Expr{tempVarIdent},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{rhsExpr},
+			Lhs: []ast.Expr{tempVarIdent}, Tok: token.DEFINE, Rhs: []ast.Expr{rhsExpr},
 		},
 	}
-
-	// Create an assignment for each field to extract
 	for _, ident := range lhsIdents {
 		stmts = append(stmts, &ast.AssignStmt{
-			Lhs: []ast.Expr{ast.NewIdent(ident.Name)},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{
-				&ast.SelectorExpr{
-					X:   tempVarIdent,
-					Sel: ast.NewIdent(ident.Name),
-				},
-			},
+			Lhs: []ast.Expr{ast.NewIdent(ident.Name)}, Tok: token.DEFINE,
+			Rhs: []ast.Expr{&ast.SelectorExpr{X: tempVarIdent, Sel: ast.NewIdent(ident.Name)}},
 		})
 	}
-
 	return stmts
 }
 
-// VisitLetBlockItemDestructuredArray handles array destructuring in a let block
-// e.g., [first, second] = arr in let ([first, second] = arr)
+// VisitLetBlockItemDestructuredArray handles: LSQBR TypedIDList RSQBR EQUALS expr
 func (v *ManuscriptAstVisitor) VisitLetBlockItemDestructuredArray(ctx *parser.LetBlockItemDestructuredArrayContext) interface{} {
-	// Get list of variables to assign from destructuring
-	typedIDListResult := v.Visit(ctx.TypedIDList())
-	lhsIdents, ok := typedIDListResult.([]*ast.Ident)
-	if !ok || len(lhsIdents) == 0 {
-		v.addError("Array destructuring has no valid identifiers", ctx.TypedIDList().GetStart())
+	var lhsIdents []*ast.Ident
+	typedIDListCtx := ctx.TypedIDList().(*parser.TypedIDListContext)
+	for _, typedIDInterface := range typedIDListCtx.AllTypedID() {
+		idVisited := v.Visit(typedIDInterface)
+		if ident, isIdent := idVisited.(*ast.Ident); isIdent {
+			lhsIdents = append(lhsIdents, ident)
+		}
+	}
+	if len(lhsIdents) == 0 {
+		v.addError("Let block array destructuring no LHS: "+ctx.TypedIDList().GetText(), ctx.TypedIDList().GetStart())
 		return []ast.Stmt{&ast.BadStmt{}}
 	}
-
-	// Get the expression to destructure
-	rhsResult := v.Visit(ctx.Expr())
-	rhsExpr, ok := rhsResult.(ast.Expr)
-	if !ok {
-		v.addError("Invalid expression in array destructuring", ctx.Expr().GetStart())
+	rhsVisited := v.Visit(ctx.Expr())
+	rhsExpr, okRHS := rhsVisited.(ast.Expr)
+	if !okRHS {
+		v.addError("RHS of let block array destructuring not expr: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
 		return []ast.Stmt{&ast.BadStmt{}}
 	}
-
-	// Create a temporary variable to hold the array
-	tempVarName := "__val" + v.nextTempVarCounter()
-	tempVarIdent := ast.NewIdent(tempVarName)
-
-	// Create statements for destructuring
+	tempVarIdent := ast.NewIdent("__val" + v.nextTempVarCounter())
 	stmts := []ast.Stmt{
-		// First assign the array to a temp variable
 		&ast.AssignStmt{
-			Lhs: []ast.Expr{tempVarIdent},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{rhsExpr},
+			Lhs: []ast.Expr{tempVarIdent}, Tok: token.DEFINE, Rhs: []ast.Expr{rhsExpr},
 		},
 	}
-
-	// Create an assignment for each element to extract by index
 	for i, ident := range lhsIdents {
 		stmts = append(stmts, &ast.AssignStmt{
-			Lhs: []ast.Expr{ast.NewIdent(ident.Name)},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{
-				&ast.IndexExpr{
-					X:     tempVarIdent,
-					Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)},
-				},
-			},
+			Lhs: []ast.Expr{ast.NewIdent(ident.Name)}, Tok: token.DEFINE,
+			Rhs: []ast.Expr{&ast.IndexExpr{X: tempVarIdent, Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)}}},
 		})
 	}
-
 	return stmts
 }
 
-// VisitLetSingle handles a standalone variable declaration
-// let x = 5 or let y: int
+// VisitLetSingle handles 'let typedID = expr' or 'let typedID'
 func (v *ManuscriptAstVisitor) VisitLetSingle(ctx *parser.LetSingleContext) interface{} {
 	if ctx.TypedID() == nil {
-		v.addError("Variable declaration missing identifier", ctx.GetStart())
-		return []ast.Stmt{&ast.EmptyStmt{}}
+		v.addError("Missing pattern in single let assignment: "+ctx.GetText(), ctx.GetStart())
+		return &ast.EmptyStmt{}
 	}
-
-	// Get the variable identifier
-	identResult := v.Visit(ctx.TypedID())
-	ident, ok := identResult.(*ast.Ident)
+	patternRaw := v.Visit(ctx.TypedID())
+	ident, ok := patternRaw.(*ast.Ident)
 	if !ok {
-		v.addError("Invalid identifier in variable declaration", ctx.TypedID().GetStart())
-		return []ast.Stmt{&ast.EmptyStmt{}}
+		v.addError("Pattern did not evaluate to an identifier: "+ctx.TypedID().GetText(), ctx.TypedID().GetStart())
+		return &ast.EmptyStmt{}
 	}
-
-	// If there's an initializer expression
 	if ctx.EQUALS() != nil && ctx.Expr() != nil {
-		valueResult := v.Visit(ctx.Expr())
-		if sourceExpr, ok := valueResult.(ast.Expr); ok {
-			// Create a short variable declaration (`:=`)
-			return []ast.Stmt{
-				&ast.AssignStmt{
-					Lhs: []ast.Expr{ident},
-					Tok: token.DEFINE,
-					Rhs: []ast.Expr{sourceExpr},
-				},
-			}
-		} else {
-			v.addError("Invalid expression in variable initialization", ctx.Expr().GetStart())
+		valueVisited := v.Visit(ctx.Expr())
+		sourceExpr, okVal := valueVisited.(ast.Expr)
+		if !okVal {
+			v.addError("Value did not evaluate to an expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
+			return &ast.EmptyStmt{}
+		}
+		return &ast.AssignStmt{
+			Lhs: []ast.Expr{ident},
+			Tok: token.DEFINE,
+			Rhs: []ast.Expr{sourceExpr},
 		}
 	}
-
-	// If no initializer or it failed, create a variable declaration without initialization
-	return []ast.Stmt{
-		&ast.DeclStmt{
-			Decl: &ast.GenDecl{
-				Tok: token.VAR,
-				Specs: []ast.Spec{
-					&ast.ValueSpec{
-						Names: []*ast.Ident{ident},
-					},
-				},
-			},
+	return &ast.DeclStmt{
+		Decl: &ast.GenDecl{
+			Tok:   token.VAR,
+			Specs: []ast.Spec{&ast.ValueSpec{Names: []*ast.Ident{ident}}},
 		},
 	}
 }
 
-// VisitLetBlock handles a group of variable declarations
-// let (x = 1, y = 2, {a, b} = obj)
-func (v *ManuscriptAstVisitor) VisitLetBlock(ctx *parser.LetBlockContext) interface{} {
+// VisitLetBlockItemList aggregates all let block items into a flat []ast.Stmt
+func (v *ManuscriptAstVisitor) VisitLetBlockItemList(ctx *parser.LetBlockItemListContext) interface{} {
+	if ctx == nil {
+		v.addError("VisitLetBlockItemList called with nil context", nil)
+		return []ast.Stmt{&ast.BadStmt{}}
+	}
 	var stmts []ast.Stmt
-
 	for _, itemCtx := range ctx.AllLetBlockItem() {
-		result := v.Visit(itemCtx)
-		if itemStmts, ok := result.([]ast.Stmt); ok {
-			stmts = append(stmts, itemStmts...)
+		itemResult := v.Visit(itemCtx)
+		if itemResult == nil {
+			continue
+		}
+		if stmt, ok := itemResult.(ast.Stmt); ok {
+			stmts = append(stmts, stmt)
+		} else if stmtList, ok := itemResult.([]ast.Stmt); ok {
+			stmts = append(stmts, stmtList...)
 		} else {
-			v.addError("Invalid let block item", itemCtx.GetStart())
+			v.addError("LetBlockItem did not return ast.Stmt or []ast.Stmt", itemCtx.GetStart())
 		}
 	}
-
-	return stmts
-}
-
-// VisitLetDestructuredObj handles object destructuring at the top level
-// let {x, y} = point
-func (v *ManuscriptAstVisitor) VisitLetDestructuredObj(ctx *parser.LetDestructuredObjContext) interface{} {
-	// Get list of variables to assign from destructuring
-	typedIDListResult := v.Visit(ctx.TypedIDList())
-	lhsIdents, ok := typedIDListResult.([]*ast.Ident)
-	if !ok || len(lhsIdents) == 0 {
-		v.addError("Object destructuring has no valid identifiers", ctx.TypedIDList().GetStart())
-		return []ast.Stmt{&ast.BadStmt{}}
-	}
-
-	// Get the expression to destructure
-	rhsResult := v.Visit(ctx.Expr())
-	rhsExpr, ok := rhsResult.(ast.Expr)
-	if !ok {
-		v.addError("Invalid expression in object destructuring", ctx.Expr().GetStart())
-		return []ast.Stmt{&ast.BadStmt{}}
-	}
-
-	// Create statements for destructuring similar to VisitLetBlockItemDestructuredObj
-	tempVarName := "__val" + v.nextTempVarCounter()
-	tempVarIdent := ast.NewIdent(tempVarName)
-
-	stmts := []ast.Stmt{
-		&ast.AssignStmt{
-			Lhs: []ast.Expr{tempVarIdent},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{rhsExpr},
-		},
-	}
-
-	for _, ident := range lhsIdents {
-		stmts = append(stmts, &ast.AssignStmt{
-			Lhs: []ast.Expr{ast.NewIdent(ident.Name)},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{
-				&ast.SelectorExpr{
-					X:   tempVarIdent,
-					Sel: ast.NewIdent(ident.Name),
-				},
-			},
-		})
-	}
-
-	return stmts
-}
-
-// VisitLetDestructuredArray handles array destructuring at the top level
-// let [first, second] = arr
-func (v *ManuscriptAstVisitor) VisitLetDestructuredArray(ctx *parser.LetDestructuredArrayContext) interface{} {
-	// Get list of variables to assign from destructuring
-	typedIDListResult := v.Visit(ctx.TypedIDList())
-	lhsIdents, ok := typedIDListResult.([]*ast.Ident)
-	if !ok || len(lhsIdents) == 0 {
-		v.addError("Array destructuring has no valid identifiers", ctx.TypedIDList().GetStart())
-		return []ast.Stmt{&ast.BadStmt{}}
-	}
-
-	// Get the expression to destructure
-	rhsResult := v.Visit(ctx.Expr())
-	rhsExpr, ok := rhsResult.(ast.Expr)
-	if !ok {
-		v.addError("Invalid expression in array destructuring", ctx.Expr().GetStart())
-		return []ast.Stmt{&ast.BadStmt{}}
-	}
-
-	// Create statements for destructuring similar to VisitLetBlockItemDestructuredArray
-	tempVarName := "__val" + v.nextTempVarCounter()
-	tempVarIdent := ast.NewIdent(tempVarName)
-
-	stmts := []ast.Stmt{
-		&ast.AssignStmt{
-			Lhs: []ast.Expr{tempVarIdent},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{rhsExpr},
-		},
-	}
-
-	for i, ident := range lhsIdents {
-		stmts = append(stmts, &ast.AssignStmt{
-			Lhs: []ast.Expr{ast.NewIdent(ident.Name)},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{
-				&ast.IndexExpr{
-					X:     tempVarIdent,
-					Index: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(i)},
-				},
-			},
-		})
-	}
-
 	return stmts
 }

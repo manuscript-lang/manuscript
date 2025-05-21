@@ -1,7 +1,6 @@
 package visitor
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"manuscript-co/manuscript/internal/parser"
@@ -186,13 +185,13 @@ func (v *ManuscriptAstVisitor) flattenComparisonChain(ctx *parser.ComparisonExpr
 			recur(left.(*parser.ComparisonExprContext))
 			// Extract the actual operator token from op (IComparisonOpContext)
 			var opToken antlr.Token
-			switch t := op.(type) {
-			case antlr.TerminalNode:
-				opToken = t.GetSymbol()
-			case antlr.Token:
-				opToken = t
-			default:
-				v.addError("Comparison operator is not a TerminalNode or Token, got "+fmt.Sprintf("%T", op), c.GetStart())
+			if opNode, ok := op.(*parser.ComparisonOpContext); ok {
+				for i := 0; i < opNode.GetChildCount(); i++ {
+					if tn, ok := opNode.GetChild(i).(antlr.TerminalNode); ok {
+						opToken = tn.GetSymbol()
+						break
+					}
+				}
 			}
 			goOp, knownOp := v.mapComparisonOpToken(opToken)
 			if !knownOp {
@@ -200,13 +199,11 @@ func (v *ManuscriptAstVisitor) flattenComparisonChain(ctx *parser.ComparisonExpr
 			} else {
 				ops = append(ops, goOp)
 			}
-			// right operand
 			visited := v.Visit(right)
 			if expr, ok := visited.(ast.Expr); ok {
 				operands = append(operands, expr)
 			}
 		} else {
-			// base case: just a shiftExpr
 			visited := v.Visit(c.ShiftExpr())
 			if expr, ok := visited.(ast.Expr); ok {
 				operands = append(operands, expr)
@@ -253,9 +250,6 @@ func (v *ManuscriptAstVisitor) VisitEqualityExpr(ctx *parser.EqualityExprContext
 
 // mapComparisonOpToken maps Manuscript comparison operator tokens to Go's token.Token
 func (v *ManuscriptAstVisitor) mapComparisonOpToken(msOpToken antlr.Token) (token.Token, bool) {
-	if msOpToken == nil {
-		return token.ILLEGAL, false
-	}
 	switch msOpToken.GetTokenType() {
 	case parser.ManuscriptLT:
 		return token.LSS, true

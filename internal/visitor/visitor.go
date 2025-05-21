@@ -17,66 +17,77 @@ import (
 type ManuscriptAstVisitor struct {
 	*msParser.BaseManuscriptVisitor // Embed the base visitor
 
-	// Error handling
-	Errors []string
-
-	// Symbol management
+	Errors         []string
 	symbolTable    *SymbolTable
 	currentScope   *Scope
-	loopDepth      int    // Track nesting level inside loops for break/continue
+	loopDepth      int    // To track if we are inside a loop for break/continue
 	currentPackage string // Name of the current Manuscript package/module
 	currentFile    string // Name of the current Manuscript file being processed
 
-	// Go AST generation
+	// For Go AST generation specific details
 	goPackageName string                // Target Go package name
-	goImports     map[string]string     // Map from import path to alias (or "" for no alias)
+	goImports     map[string]string     // Map from import path to alias (if any, "" for no alias)
 	goFileSet     *gotoken.FileSet      // For position information in Go AST
-	goTypeSpecs   []*ast.TypeSpec       // Collected type definitions
-	goFuncDecls   []*ast.FuncDecl       // Collected function declarations
-	goVarDecls    []*ast.GenDecl        // Collected global variable declarations
-	goStmtList    []ast.Stmt            // Collected statements (e.g. in main or init)
-	deferredStmts map[string][]ast.Stmt // For defer statements, key is function name or scope ID
-	tempVarCount  int                   // Counter for generating unique temporary variables
+	goTypeSpecs   []*ast.TypeSpec       // For collecting type definitions
+	goFuncDecls   []*ast.FuncDecl       // For collecting function declarations
+	goVarDecls    []*ast.GenDecl        // For collecting global variable declarations
+	goStmtList    []ast.Stmt            // For collecting statements (e.g. in main or init)
+	deferredStmts map[string][]ast.Stmt // For defer statements, key might be function name or scope ID
+	tempVarCount  int                   // For unique temporary variables like __val1, __val2
 }
 
-// NewManuscriptAstVisitor creates a new visitor instance with initialized fields.
+// NewManuscriptAstVisitor creates a new visitor instance.
 func NewManuscriptAstVisitor(pkgName, fileName string) *ManuscriptAstVisitor {
+	fs := gotoken.NewFileSet()
+	// Initialize other fields as necessary, e.g., symbolTable
 	return &ManuscriptAstVisitor{
 		BaseManuscriptVisitor: &msParser.BaseManuscriptVisitor{},
 		Errors:                []string{},
 		symbolTable:           NewSymbolTable(),
-		currentScope:          nil, // Will be set to global scope during initialization
-		loopDepth:             0,
+		currentScope:          nil, // Will be set up with global scope
 		currentPackage:        pkgName,
 		currentFile:           fileName,
 		goPackageName:         "main", // Default, can be overridden
 		goImports:             make(map[string]string),
-		goFileSet:             gotoken.NewFileSet(),
-		goTypeSpecs:           make([]*ast.TypeSpec, 0),
-		goFuncDecls:           make([]*ast.FuncDecl, 0),
-		goVarDecls:            make([]*ast.GenDecl, 0),
-		goStmtList:            make([]ast.Stmt, 0),
-		deferredStmts:         make(map[string][]ast.Stmt),
-		tempVarCount:          0,
+		goFileSet:             fs,
+		// Initialize slices/maps
+		deferredStmts: make(map[string][]ast.Stmt),
+		tempVarCount:  0, // Initialize the counter
 	}
 }
 
-// addError adds an error with position information if available
+// Helper to add an error with position information if available
 func (v *ManuscriptAstVisitor) addError(message string, token antlr.Token) {
-	var line, column int
+	line := 0
+	column := 0
 	if token != nil {
 		line = token.GetLine()
 		column = token.GetColumn()
 	}
-
-	errMsg := fmt.Sprintf("Error: %s (file: %s, line: %d, col: %d)",
-		message, v.currentFile, line, column)
-	v.Errors = append(v.Errors, errMsg)
+	fullMessage := fmt.Sprintf("Error: %s (file: %s, line: %d, col: %d)", message, v.currentFile, line, column)
+	v.Errors = append(v.Errors, fullMessage)
 }
 
-// ANTLR Visitor Pattern Core Methods
+// General Visit methods (delegation and error handling)
+// VisitChildren visits the children of a node.
+// It returns the result of visiting the last child, or nil if no children produce a result.
+func (v *ManuscriptAstVisitor) VisitChildren(node antlr.RuleNode) interface{} {
+	var result interface{}
+	for i := 0; i < node.GetChildCount(); i++ {
+		child := node.GetChild(i)
+		if child == nil {
+			continue
+		}
+		if pt, ok := child.(antlr.ParseTree); ok {
+			childResult := v.Visit(pt)
+			if childResult != nil {
+				result = childResult // Keep the last non-nil result
+			}
+		}
+	}
+	return result
+}
 
-// Visit dispatches to the appropriate visitor method based on the node type
 func (v *ManuscriptAstVisitor) Visit(tree antlr.ParseTree) interface{} {
 	if tree == nil {
 		v.addError("Attempted to visit a nil tree node", nil)
@@ -85,104 +96,82 @@ func (v *ManuscriptAstVisitor) Visit(tree antlr.ParseTree) interface{} {
 	return tree.Accept(v)
 }
 
-// VisitChildren visits all child nodes of the given node
-// Returns the result of the last non-nil child visit
-func (v *ManuscriptAstVisitor) VisitChildren(node antlr.RuleNode) interface{} {
-	var result interface{}
-
-	for i := 0; i < node.GetChildCount(); i++ {
-		child := node.GetChild(i)
-		if child == nil {
-			continue
-		}
-
-		if parseTree, ok := child.(antlr.ParseTree); ok {
-			childResult := v.Visit(parseTree)
-			if childResult != nil {
-				result = childResult
-			}
-		}
-	}
-
-	return result
-}
-
-// VisitErrorNode handles ANTLR error nodes
 func (v *ManuscriptAstVisitor) VisitErrorNode(node antlr.ErrorNode) interface{} {
 	text := node.GetText()
-	pos := v.pos(node.GetSymbol())
-
-	// Handle special cases
-	if text == "<EOF>" {
-		v.addError("Unexpected EOF or extra input", node.GetSymbol())
-		return &ast.BadStmt{From: pos, To: pos}
+	// Check for common ANTLR error node texts that might be ignorable or handled differently
+	if text == "<EOF>" { // Often an error node at the end if parsing didn't consume all input
+		v.addError(fmt.Sprintf("Encountered unexpected EOF or extra input near: %s", text), node.GetSymbol())
+		return &ast.BadStmt{From: v.pos(node.GetSymbol()), To: v.pos(node.GetSymbol())}
 	}
 
-	// Handle break/continue keywords correctly when in loop context
-	if (text == "break" || text == "continue") && v.isInLoop() {
-		tok := gotoken.BREAK
-		if text == "continue" {
-			tok = gotoken.CONTINUE
+	// Special handling for break and continue error nodes - but only when within proper context
+	if text == "break" || text == "continue" {
+		if v.isInLoop() {
+			tok := gotoken.BREAK
+			if text == "continue" {
+				tok = gotoken.CONTINUE
+			}
+			return &ast.BranchStmt{
+				TokPos: v.pos(node.GetSymbol()),
+				Tok:    tok,
+			}
 		}
-		return &ast.BranchStmt{
-			TokPos: pos,
-			Tok:    tok,
-		}
+		// If not in a loop, it's a genuine error handled by the generic message below.
 	}
 
-	v.addError("Error node encountered: "+text, node.GetSymbol())
-	return &ast.BadStmt{From: pos, To: pos}
+	v.addError("Error node encountered: "+node.GetText(), node.GetSymbol())
+	return &ast.BadStmt{From: v.pos(node.GetSymbol()), To: v.pos(node.GetSymbol())}
 }
 
-// Position Utilities
-
-// pos converts an ANTLR token position to a Go token position
+// pos function to convert ANTLR token positions to Go token positions
+// For this simplified example, we'll use a placeholder.
+// A real implementation would need a more robust way to map line/column or use a token.FileSet.
 func (v *ManuscriptAstVisitor) pos(token antlr.Token) gotoken.Pos {
 	if token == nil || v.goFileSet == nil {
 		return gotoken.NoPos
 	}
-
-	// TODO: Implement proper position mapping with line/column information
-	// This is a temporary implementation that uses token indices
+	// This is a very rough approximation. A proper implementation would add files
+	// to the FileSet and use their line/offset information.
+	// For now, using TokenIndex as a pseudo-offset.
+	// The +1 is because gotoken.Pos(0) is NoPos.
+	// This will not give correct line numbers in Go output.
+	// TODO: Properly map ANTLR token positions to Go token.Pos using goFileSet.
 	return gotoken.Pos(token.GetTokenIndex() + 1)
 }
 
-// Context Tracking Methods
-
-// enterLoop increments the loop nesting counter
+// enterLoop and exitLoop manage the loop depth counter
 func (v *ManuscriptAstVisitor) enterLoop() {
 	v.loopDepth++
 }
 
-// exitLoop decrements the loop nesting counter
 func (v *ManuscriptAstVisitor) exitLoop() {
 	if v.loopDepth > 0 {
 		v.loopDepth--
 	}
 }
 
-// isInLoop checks if currently inside a loop construct
+// isInLoop checks if the visitor is currently inside a loop construct
 func (v *ManuscriptAstVisitor) isInLoop() bool {
 	return v.loopDepth > 0
 }
 
-// Scope Management
-
-// enterScope creates a new scope with the current scope as parent
+// Scope management (simplified)
 func (v *ManuscriptAstVisitor) enterScope() {
-	v.currentScope = NewScope(v.currentScope)
+	v.currentScope = NewScope(v.currentScope) // Create new scope with current as parent
 }
 
-// exitScope returns to the parent scope
 func (v *ManuscriptAstVisitor) exitScope() {
-	if v.currentScope != nil && v.currentScope.parent != nil {
+	if v.currentScope != nil && v.currentScope.parent != nil { // Don't exit global scope
 		v.currentScope = v.currentScope.parent
 	}
 }
 
-// Symbol Table Types and Methods
+// --- Additional Semantic Analysis and Helper Methods would go here ---
+// e.g., type checking, symbol resolution helpers not part of ANTLR visitor overrides.
 
-// SymbolKind defines the type of a symbol
+// --- Symbol Table and Scope Definitions (Simplified) ---
+
+// SymbolKind defines the type of a symbol (variable, function, type, etc.)
 type SymbolKind int
 
 const (
@@ -190,15 +179,16 @@ const (
 	FuncSymbol
 	TypeSymbol
 	PackageSymbol
-	// Add other kinds as needed
+	// ... other kinds
 )
 
 // Symbol represents an entry in the symbol table
 type Symbol struct {
 	Name string
 	Kind SymbolKind
-	Type string // Type name e.g., "int", "string", "MyStruct"
-	Pos  gotoken.Pos
+	Type string // Type of the symbol (e.g., "int", "string", "MyStruct", "func(int) string")
+	// Add other info: e.g., a pointer to the AST node, scope where defined, etc.
+	Pos gotoken.Pos // Position of declaration
 }
 
 // Scope represents a lexical scope
@@ -207,7 +197,6 @@ type Scope struct {
 	symbols map[string]*Symbol
 }
 
-// NewScope creates a new scope with the given parent
 func NewScope(parent *Scope) *Scope {
 	return &Scope{
 		parent:  parent,
@@ -215,50 +204,40 @@ func NewScope(parent *Scope) *Scope {
 	}
 }
 
-// Define adds a symbol to the current scope
 func (s *Scope) Define(name string, kind SymbolKind, symType string, pos gotoken.Pos) (*Symbol, error) {
 	if _, exists := s.symbols[name]; exists {
 		return nil, fmt.Errorf("symbol '%s' already defined in this scope", name)
 	}
-
-	sym := &Symbol{
-		Name: name,
-		Kind: kind,
-		Type: symType,
-		Pos:  pos,
-	}
+	sym := &Symbol{Name: name, Kind: kind, Type: symType, Pos: pos}
 	s.symbols[name] = sym
 	return sym, nil
 }
 
-// Resolve looks up a symbol by name in the current scope and parent scopes
 func (s *Scope) Resolve(name string) (*Symbol, *Scope) {
-	for scope := s; scope != nil; scope = scope.parent {
-		if sym, found := scope.symbols[name]; found {
-			return sym, scope
+	for sc := s; sc != nil; sc = sc.parent {
+		if sym, found := sc.symbols[name]; found {
+			return sym, sc
 		}
 	}
 	return nil, nil
 }
 
-// SymbolTable manages the global scope
+// SymbolTable manages scopes
 type SymbolTable struct {
 	Global *Scope
+	// current *Scope // Managed by visitor's currentScope
 }
 
-// NewSymbolTable creates a new symbol table with initialized global scope
 func NewSymbolTable() *SymbolTable {
 	globalScope := NewScope(nil)
-	// Add predefined symbols/types to global scope if needed
+	// TODO: Add predefined symbols/types to global scope if any
 	return &SymbolTable{
 		Global: globalScope,
 	}
 }
 
-// Utility Methods
-
-// nextTempVarCounter generates a unique sequential identifier for temporary variables
+// nextTempVarCounter generates a unique string suffix for temporary variables.
 func (v *ManuscriptAstVisitor) nextTempVarCounter() string {
 	v.tempVarCount++
-	return strconv.Itoa(v.tempVarCount)
+	return strconv.Itoa(v.tempVarCount) // strconv needs to be imported in this file if not already.
 }

@@ -46,26 +46,21 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 
 // visitPostfixOp dispatches to the correct postfix operation visitor.
 func (v *ManuscriptAstVisitor) visitPostfixOp(op parser.IPostfixOpContext, x ast.Expr) ast.Expr {
-	ctx, ok := op.(*parser.PostfixOpContext)
-	if !ok {
+	switch t := op.(type) {
+	case *parser.PostfixCallContext:
+		return v.VisitPostfixCallWithReceiver(t, x)
+	case *parser.PostfixDotContext:
+		return v.VisitPostfixDotWithReceiver(t, x)
+	case *parser.PostfixIndexContext:
+		return v.VisitPostfixIndexWithReceiver(t, x)
+	default:
 		v.addError("Unknown postfix operation type", op.GetStart())
 		return &ast.BadExpr{From: v.pos(op.GetStart()), To: v.pos(op.GetStop())}
 	}
-	if ctx.LPAREN() != nil {
-		return v.VisitPostfixCallWithReceiver(ctx, x)
-	}
-	if ctx.DOT() != nil {
-		return v.VisitPostfixDotWithReceiver(ctx, x)
-	}
-	if ctx.LSQBR() != nil {
-		return v.VisitPostfixIndexWithReceiver(ctx, x)
-	}
-	v.addError("Unknown postfix operation type", op.GetStart())
-	return &ast.BadExpr{From: v.pos(op.GetStart()), To: v.pos(op.GetStop())}
 }
 
 // VisitPostfixCallWithReceiver handles function calls: x(args...)
-func (v *ManuscriptAstVisitor) VisitPostfixCallWithReceiver(ctx *parser.PostfixOpContext, recv ast.Expr) ast.Expr {
+func (v *ManuscriptAstVisitor) VisitPostfixCallWithReceiver(ctx *parser.PostfixCallContext, recv ast.Expr) ast.Expr {
 	args := []ast.Expr{}
 	if ctx.ExprList() != nil {
 		if exprListCtx, ok := ctx.ExprList().(*parser.ExprListContext); ok {
@@ -88,7 +83,7 @@ func (v *ManuscriptAstVisitor) VisitPostfixCallWithReceiver(ctx *parser.PostfixO
 }
 
 // VisitPostfixDotWithReceiver handles member access: x.y
-func (v *ManuscriptAstVisitor) VisitPostfixDotWithReceiver(ctx *parser.PostfixOpContext, recv ast.Expr) ast.Expr {
+func (v *ManuscriptAstVisitor) VisitPostfixDotWithReceiver(ctx *parser.PostfixDotContext, recv ast.Expr) ast.Expr {
 	if ctx.DOT() == nil || ctx.ID() == nil {
 		v.addError("Malformed member access (dot) operation", ctx.GetStart())
 		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
@@ -100,7 +95,7 @@ func (v *ManuscriptAstVisitor) VisitPostfixDotWithReceiver(ctx *parser.PostfixOp
 }
 
 // VisitPostfixIndexWithReceiver handles index access: x[y]
-func (v *ManuscriptAstVisitor) VisitPostfixIndexWithReceiver(ctx *parser.PostfixOpContext, recv ast.Expr) ast.Expr {
+func (v *ManuscriptAstVisitor) VisitPostfixIndexWithReceiver(ctx *parser.PostfixIndexContext, recv ast.Expr) ast.Expr {
 	if ctx.LSQBR() == nil || ctx.RSQBR() == nil || ctx.Expr() == nil {
 		v.addError("Malformed index operation", ctx.GetStart())
 		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}

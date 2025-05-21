@@ -23,21 +23,23 @@ func (v *ManuscriptAstVisitor) VisitMethodsDecl(ctx *parser.MethodsDeclContext) 
 	target := &ast.StarExpr{X: receiverType}
 	var decls []ast.Decl
 
-	if stmtList := ctx.Stmt_list(); stmtList != nil {
-		for _, stmtCtx := range stmtList.AllStmt() {
-			visited := v.Visit(stmtCtx)
-			if methodImpl, ok := visited.(*parser.MethodImplContext); ok {
-				method := v.VisitMethodImplWithAlias(methodImpl, receiverAlias, receiverType.Name)
-				fn, ok := method.(*ast.FuncDecl)
-				if !ok || fn == nil {
-					v.addError("Method implementation did not return a valid Go function", stmtCtx.GetStart())
-					continue
-				}
-				fn.Recv = &ast.FieldList{
-					List: []*ast.Field{{Names: []*ast.Ident{ast.NewIdent(receiverAlias)}, Type: target}},
-				}
-				decls = append(decls, fn)
+	if ctx.MethodImplList() != nil {
+		for _, m := range ctx.MethodImplList().AllMethodImpl() {
+			methodCtx, ok := m.(*parser.MethodImplContext)
+			if !ok || methodCtx == nil {
+				v.addError("Invalid method implementation context in methods declaration", ctx.GetStart())
+				continue
 			}
+			method := v.VisitMethodImplWithAlias(methodCtx, receiverAlias, receiverType.Name)
+			fn, ok := method.(*ast.FuncDecl)
+			if !ok || fn == nil {
+				v.addError("Method implementation did not return a valid Go function", methodCtx.GetStart())
+				continue
+			}
+			fn.Recv = &ast.FieldList{
+				List: []*ast.Field{{Names: []*ast.Ident{ast.NewIdent(receiverAlias)}, Type: target}},
+			}
+			decls = append(decls, fn)
 		}
 	}
 	return decls
@@ -51,6 +53,7 @@ func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) in
 	nameId := ctx.InterfaceMethod().ID()
 	paramsCtx := ctx.InterfaceMethod().Parameters()
 	typeAnnotation := ctx.InterfaceMethod().TypeAnnotation()
+	exclamation := ctx.InterfaceMethod().EXCLAMATION()
 
 	var paramDetailsList []ParamDetail
 	var paramsAST *ast.FieldList
@@ -98,8 +101,8 @@ func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) in
 
 	var resultsAST *ast.FieldList
 	goFuncWillHaveReturn := false
-	if typeAnnotation != nil {
-		resultsAST = v.ProcessReturnType(typeAnnotation, nil, nameId.GetText())
+	if typeAnnotation != nil || exclamation != nil {
+		resultsAST = v.ProcessReturnType(typeAnnotation, exclamation, nameId.GetText())
 		if resultsAST != nil && len(resultsAST.List) > 0 {
 			goFuncWillHaveReturn = true
 		}
@@ -150,6 +153,7 @@ func (v *ManuscriptAstVisitor) VisitMethodImplWithAlias(ctx *parser.MethodImplCo
 	nameId := ctx.InterfaceMethod().ID()
 	paramsCtx := ctx.InterfaceMethod().Parameters()
 	typeAnnotation := ctx.InterfaceMethod().TypeAnnotation()
+	exclamation := ctx.InterfaceMethod().EXCLAMATION()
 
 	var paramDetailsList []ParamDetail
 	var paramsAST *ast.FieldList
@@ -197,8 +201,8 @@ func (v *ManuscriptAstVisitor) VisitMethodImplWithAlias(ctx *parser.MethodImplCo
 
 	var resultsAST *ast.FieldList
 	goFuncWillHaveReturn := false
-	if typeAnnotation != nil {
-		resultsAST = v.ProcessReturnType(typeAnnotation, nil, nameId.GetText())
+	if typeAnnotation != nil || exclamation != nil {
+		resultsAST = v.ProcessReturnType(typeAnnotation, exclamation, nameId.GetText())
 		if resultsAST != nil && len(resultsAST.List) > 0 {
 			goFuncWillHaveReturn = true
 		}

@@ -75,12 +75,6 @@ func (s *BaseManuscriptListener) EnterDeclMethods(ctx *DeclMethodsContext) {}
 // ExitDeclMethods is called when production DeclMethods is exited.
 func (s *BaseManuscriptListener) ExitDeclMethods(ctx *DeclMethodsContext) {}
 
-// EnterStmt_list is called when production stmt_list is entered.
-func (s *BaseManuscriptListener) EnterStmt_list(ctx *Stmt_listContext) {}
-
-// ExitStmt_list is called when production stmt_list is exited.
-func (s *BaseManuscriptListener) ExitStmt_list(ctx *Stmt_listContext) {}
-
 // EnterImportDecl is called when production importDecl is entered.
 func (s *BaseManuscriptListener) EnterImportDecl(ctx *ImportDeclContext) {}
 
@@ -166,39 +160,30 @@ func (s *BaseManuscriptListener) EnterImportStr(ctx *ImportStrContext) {}
 // ExitImportStr is called when production importStr is exited.
 func (s *BaseManuscriptListener) ExitImportStr(ctx *ImportStrContext) {}
 
-// EnterLetDecl is called when production letDecl is entered.
-func (s *BaseManuscriptListener) EnterLetDecl(ctx *LetDeclContext) {}
+// EnterLetDeclSingle is called when production LetDeclSingle is entered.
+func (s *BaseManuscriptListener) EnterLetDeclSingle(ctx *LetDeclSingleContext) {}
 
-// ExitLetDecl is called when production letDecl is exited.
-func (s *BaseManuscriptListener) ExitLetDecl(ctx *LetDeclContext) {}
+// ExitLetDeclSingle is called when production LetDeclSingle is exited.
+func (s *BaseManuscriptListener) ExitLetDeclSingle(ctx *LetDeclSingleContext) {}
 
-// EnterLetPatternSingle is called when production LetPatternSingle is entered.
-func (s *BaseManuscriptListener) EnterLetPatternSingle(ctx *LetPatternSingleContext) {}
+// EnterLetDeclBlock is called when production LetDeclBlock is entered.
+func (s *BaseManuscriptListener) EnterLetDeclBlock(ctx *LetDeclBlockContext) {}
 
-// ExitLetPatternSingle is called when production LetPatternSingle is exited.
-func (s *BaseManuscriptListener) ExitLetPatternSingle(ctx *LetPatternSingleContext) {}
+// ExitLetDeclBlock is called when production LetDeclBlock is exited.
+func (s *BaseManuscriptListener) ExitLetDeclBlock(ctx *LetDeclBlockContext) {}
 
-// EnterLetPatternBlock is called when production LetPatternBlock is entered.
-func (s *BaseManuscriptListener) EnterLetPatternBlock(ctx *LetPatternBlockContext) {}
+// EnterLetDeclDestructuredObj is called when production LetDeclDestructuredObj is entered.
+func (s *BaseManuscriptListener) EnterLetDeclDestructuredObj(ctx *LetDeclDestructuredObjContext) {}
 
-// ExitLetPatternBlock is called when production LetPatternBlock is exited.
-func (s *BaseManuscriptListener) ExitLetPatternBlock(ctx *LetPatternBlockContext) {}
+// ExitLetDeclDestructuredObj is called when production LetDeclDestructuredObj is exited.
+func (s *BaseManuscriptListener) ExitLetDeclDestructuredObj(ctx *LetDeclDestructuredObjContext) {}
 
-// EnterLetPatternDestructuredObj is called when production LetPatternDestructuredObj is entered.
-func (s *BaseManuscriptListener) EnterLetPatternDestructuredObj(ctx *LetPatternDestructuredObjContext) {
+// EnterLetDeclDestructuredArray is called when production LetDeclDestructuredArray is entered.
+func (s *BaseManuscriptListener) EnterLetDeclDestructuredArray(ctx *LetDeclDestructuredArrayContext) {
 }
 
-// ExitLetPatternDestructuredObj is called when production LetPatternDestructuredObj is exited.
-func (s *BaseManuscriptListener) ExitLetPatternDestructuredObj(ctx *LetPatternDestructuredObjContext) {
-}
-
-// EnterLetPatternDestructuredArray is called when production LetPatternDestructuredArray is entered.
-func (s *BaseManuscriptListener) EnterLetPatternDestructuredArray(ctx *LetPatternDestructuredArrayContext) {
-}
-
-// ExitLetPatternDestructuredArray is called when production LetPatternDestructuredArray is exited.
-func (s *BaseManuscriptListener) ExitLetPatternDestructuredArray(ctx *LetPatternDestructuredArrayContext) {
-}
+// ExitLetDeclDestructuredArray is called when production LetDeclDestructuredArray is exited.
+func (s *BaseManuscriptListener) ExitLetDeclDestructuredArray(ctx *LetDeclDestructuredArrayContext) {}
 
 // EnterLetSingle is called when production letSingle is entered.
 func (s *BaseManuscriptListener) EnterLetSingle(ctx *LetSingleContext) {}
@@ -211,6 +196,18 @@ func (s *BaseManuscriptListener) EnterLetBlock(ctx *LetBlockContext) {}
 
 // ExitLetBlock is called when production letBlock is exited.
 func (s *BaseManuscriptListener) ExitLetBlock(ctx *LetBlockContext) {}
+
+// EnterLetBlockItemList is called when production letBlockItemList is entered.
+func (s *BaseManuscriptListener) EnterLetBlockItemList(ctx *LetBlockItemListContext) {}
+
+// ExitLetBlockItemList is called when production letBlockItemList is exited.
+func (s *BaseManuscriptListener) ExitLetBlockItemList(ctx *LetBlockItemListContext) {}
+
+// EnterLetBlockItemSep is called when production letBlockItemSep is entered.
+func (s *BaseManuscriptListener) EnterLetBlockItemSep(ctx *LetBlockItemSepContext) {}
+
+// ExitLetBlockItemSep is called when production letBlockItemSep is exited.
+func (s *BaseManuscriptListener) ExitLetBlockItemSep(ctx *LetBlockItemSepContext) {}
 
 // EnterLetBlockItemSingle is called when production LetBlockItemSingle is entered.
 func (s *BaseManuscriptListener) EnterLetBlockItemSingle(ctx *LetBlockItemSingleContext) {}
@@ -264,12 +261,6 @@ func (s *BaseManuscriptListener) EnterTypeDecl(ctx *TypeDeclContext) {}
 // ExitTypeDecl is called when production typeDecl is exited.
 func (s *BaseManuscriptListener) ExitTypeDecl(ctx *TypeDeclContext) {}
 
-// EnterTypeVariants is called when production typeVariants is entered.
-func (s *BaseManuscriptListener) EnterTypeVariants(ctx *TypeVariantsContext) {}
-
-// ExitTypeVariants is called when production typeVariants is exited.
-func (s *BaseManuscriptListener) ExitTypeVariants(ctx *TypeVariantsContext) {}
-
 // EnterTypeDefBody is called when production typeDefBody is entered.
 func (s *BaseManuscriptListener) EnterTypeDefBody(ctx *TypeDefBodyContext) {}
 
@@ -281,6 +272,12 @@ func (s *BaseManuscriptListener) EnterTypeAlias(ctx *TypeAliasContext) {}
 
 // ExitTypeAlias is called when production typeAlias is exited.
 func (s *BaseManuscriptListener) ExitTypeAlias(ctx *TypeAliasContext) {}
+
+// EnterFieldList is called when production fieldList is entered.
+func (s *BaseManuscriptListener) EnterFieldList(ctx *FieldListContext) {}
+
+// ExitFieldList is called when production fieldList is exited.
+func (s *BaseManuscriptListener) ExitFieldList(ctx *FieldListContext) {}
 
 // EnterFieldDecl is called when production fieldDecl is entered.
 func (s *BaseManuscriptListener) EnterFieldDecl(ctx *FieldDeclContext) {}
@@ -335,6 +332,18 @@ func (s *BaseManuscriptListener) EnterMethodsDecl(ctx *MethodsDeclContext) {}
 
 // ExitMethodsDecl is called when production methodsDecl is exited.
 func (s *BaseManuscriptListener) ExitMethodsDecl(ctx *MethodsDeclContext) {}
+
+// EnterMethodImplList is called when production methodImplList is entered.
+func (s *BaseManuscriptListener) EnterMethodImplList(ctx *MethodImplListContext) {}
+
+// ExitMethodImplList is called when production methodImplList is exited.
+func (s *BaseManuscriptListener) ExitMethodImplList(ctx *MethodImplListContext) {}
+
+// EnterMethodImplSep is called when production methodImplSep is entered.
+func (s *BaseManuscriptListener) EnterMethodImplSep(ctx *MethodImplSepContext) {}
+
+// ExitMethodImplSep is called when production methodImplSep is exited.
+func (s *BaseManuscriptListener) ExitMethodImplSep(ctx *MethodImplSepContext) {}
 
 // EnterMethodImpl is called when production methodImpl is entered.
 func (s *BaseManuscriptListener) EnterMethodImpl(ctx *MethodImplContext) {}
@@ -450,11 +459,17 @@ func (s *BaseManuscriptListener) EnterForStmt(ctx *ForStmtContext) {}
 // ExitForStmt is called when production forStmt is exited.
 func (s *BaseManuscriptListener) ExitForStmt(ctx *ForStmtContext) {}
 
-// EnterForLoopType is called when production forLoopType is entered.
-func (s *BaseManuscriptListener) EnterForLoopType(ctx *ForLoopTypeContext) {}
+// EnterForLoop is called when production ForLoop is entered.
+func (s *BaseManuscriptListener) EnterForLoop(ctx *ForLoopContext) {}
 
-// ExitForLoopType is called when production forLoopType is exited.
-func (s *BaseManuscriptListener) ExitForLoopType(ctx *ForLoopTypeContext) {}
+// ExitForLoop is called when production ForLoop is exited.
+func (s *BaseManuscriptListener) ExitForLoop(ctx *ForLoopContext) {}
+
+// EnterForInLoop is called when production ForInLoop is entered.
+func (s *BaseManuscriptListener) EnterForInLoop(ctx *ForInLoopContext) {}
+
+// ExitForInLoop is called when production ForInLoop is exited.
+func (s *BaseManuscriptListener) ExitForInLoop(ctx *ForInLoopContext) {}
 
 // EnterForTrinity is called when production forTrinity is entered.
 func (s *BaseManuscriptListener) EnterForTrinity(ctx *ForTrinityContext) {}
@@ -462,23 +477,41 @@ func (s *BaseManuscriptListener) EnterForTrinity(ctx *ForTrinityContext) {}
 // ExitForTrinity is called when production forTrinity is exited.
 func (s *BaseManuscriptListener) ExitForTrinity(ctx *ForTrinityContext) {}
 
-// EnterForInit is called when production forInit is entered.
-func (s *BaseManuscriptListener) EnterForInit(ctx *ForInitContext) {}
+// EnterForInitLet is called when production ForInitLet is entered.
+func (s *BaseManuscriptListener) EnterForInitLet(ctx *ForInitLetContext) {}
 
-// ExitForInit is called when production forInit is exited.
-func (s *BaseManuscriptListener) ExitForInit(ctx *ForInitContext) {}
+// ExitForInitLet is called when production ForInitLet is exited.
+func (s *BaseManuscriptListener) ExitForInitLet(ctx *ForInitLetContext) {}
 
-// EnterForCond is called when production forCond is entered.
-func (s *BaseManuscriptListener) EnterForCond(ctx *ForCondContext) {}
+// EnterForInitEmpty is called when production ForInitEmpty is entered.
+func (s *BaseManuscriptListener) EnterForInitEmpty(ctx *ForInitEmptyContext) {}
 
-// ExitForCond is called when production forCond is exited.
-func (s *BaseManuscriptListener) ExitForCond(ctx *ForCondContext) {}
+// ExitForInitEmpty is called when production ForInitEmpty is exited.
+func (s *BaseManuscriptListener) ExitForInitEmpty(ctx *ForInitEmptyContext) {}
 
-// EnterForPost is called when production forPost is entered.
-func (s *BaseManuscriptListener) EnterForPost(ctx *ForPostContext) {}
+// EnterForCondExpr is called when production ForCondExpr is entered.
+func (s *BaseManuscriptListener) EnterForCondExpr(ctx *ForCondExprContext) {}
 
-// ExitForPost is called when production forPost is exited.
-func (s *BaseManuscriptListener) ExitForPost(ctx *ForPostContext) {}
+// ExitForCondExpr is called when production ForCondExpr is exited.
+func (s *BaseManuscriptListener) ExitForCondExpr(ctx *ForCondExprContext) {}
+
+// EnterForCondEmpty is called when production ForCondEmpty is entered.
+func (s *BaseManuscriptListener) EnterForCondEmpty(ctx *ForCondEmptyContext) {}
+
+// ExitForCondEmpty is called when production ForCondEmpty is exited.
+func (s *BaseManuscriptListener) ExitForCondEmpty(ctx *ForCondEmptyContext) {}
+
+// EnterForPostExpr is called when production ForPostExpr is entered.
+func (s *BaseManuscriptListener) EnterForPostExpr(ctx *ForPostExprContext) {}
+
+// ExitForPostExpr is called when production ForPostExpr is exited.
+func (s *BaseManuscriptListener) ExitForPostExpr(ctx *ForPostExprContext) {}
+
+// EnterForPostEmpty is called when production ForPostEmpty is entered.
+func (s *BaseManuscriptListener) EnterForPostEmpty(ctx *ForPostEmptyContext) {}
+
+// ExitForPostEmpty is called when production ForPostEmpty is exited.
+func (s *BaseManuscriptListener) ExitForPostEmpty(ctx *ForPostEmptyContext) {}
 
 // EnterWhileStmt is called when production whileStmt is entered.
 func (s *BaseManuscriptListener) EnterWhileStmt(ctx *WhileStmtContext) {}
@@ -528,11 +561,47 @@ func (s *BaseManuscriptListener) EnterAssignmentExpr(ctx *AssignmentExprContext)
 // ExitAssignmentExpr is called when production assignmentExpr is exited.
 func (s *BaseManuscriptListener) ExitAssignmentExpr(ctx *AssignmentExprContext) {}
 
-// EnterAssignmentOp is called when production assignmentOp is entered.
-func (s *BaseManuscriptListener) EnterAssignmentOp(ctx *AssignmentOpContext) {}
+// EnterAssignEq is called when production AssignEq is entered.
+func (s *BaseManuscriptListener) EnterAssignEq(ctx *AssignEqContext) {}
 
-// ExitAssignmentOp is called when production assignmentOp is exited.
-func (s *BaseManuscriptListener) ExitAssignmentOp(ctx *AssignmentOpContext) {}
+// ExitAssignEq is called when production AssignEq is exited.
+func (s *BaseManuscriptListener) ExitAssignEq(ctx *AssignEqContext) {}
+
+// EnterAssignPlusEq is called when production AssignPlusEq is entered.
+func (s *BaseManuscriptListener) EnterAssignPlusEq(ctx *AssignPlusEqContext) {}
+
+// ExitAssignPlusEq is called when production AssignPlusEq is exited.
+func (s *BaseManuscriptListener) ExitAssignPlusEq(ctx *AssignPlusEqContext) {}
+
+// EnterAssignMinusEq is called when production AssignMinusEq is entered.
+func (s *BaseManuscriptListener) EnterAssignMinusEq(ctx *AssignMinusEqContext) {}
+
+// ExitAssignMinusEq is called when production AssignMinusEq is exited.
+func (s *BaseManuscriptListener) ExitAssignMinusEq(ctx *AssignMinusEqContext) {}
+
+// EnterAssignStarEq is called when production AssignStarEq is entered.
+func (s *BaseManuscriptListener) EnterAssignStarEq(ctx *AssignStarEqContext) {}
+
+// ExitAssignStarEq is called when production AssignStarEq is exited.
+func (s *BaseManuscriptListener) ExitAssignStarEq(ctx *AssignStarEqContext) {}
+
+// EnterAssignSlashEq is called when production AssignSlashEq is entered.
+func (s *BaseManuscriptListener) EnterAssignSlashEq(ctx *AssignSlashEqContext) {}
+
+// ExitAssignSlashEq is called when production AssignSlashEq is exited.
+func (s *BaseManuscriptListener) ExitAssignSlashEq(ctx *AssignSlashEqContext) {}
+
+// EnterAssignModEq is called when production AssignModEq is entered.
+func (s *BaseManuscriptListener) EnterAssignModEq(ctx *AssignModEqContext) {}
+
+// ExitAssignModEq is called when production AssignModEq is exited.
+func (s *BaseManuscriptListener) ExitAssignModEq(ctx *AssignModEqContext) {}
+
+// EnterAssignCaretEq is called when production AssignCaretEq is entered.
+func (s *BaseManuscriptListener) EnterAssignCaretEq(ctx *AssignCaretEqContext) {}
+
+// ExitAssignCaretEq is called when production AssignCaretEq is exited.
+func (s *BaseManuscriptListener) ExitAssignCaretEq(ctx *AssignCaretEqContext) {}
 
 // EnterTernaryExpr is called when production ternaryExpr is entered.
 func (s *BaseManuscriptListener) EnterTernaryExpr(ctx *TernaryExprContext) {}
@@ -576,6 +645,12 @@ func (s *BaseManuscriptListener) EnterEqualityExpr(ctx *EqualityExprContext) {}
 // ExitEqualityExpr is called when production equalityExpr is exited.
 func (s *BaseManuscriptListener) ExitEqualityExpr(ctx *EqualityExprContext) {}
 
+// EnterComparisonOp is called when production comparisonOp is entered.
+func (s *BaseManuscriptListener) EnterComparisonOp(ctx *ComparisonOpContext) {}
+
+// ExitComparisonOp is called when production comparisonOp is exited.
+func (s *BaseManuscriptListener) ExitComparisonOp(ctx *ComparisonOpContext) {}
+
 // EnterComparisonExpr is called when production comparisonExpr is entered.
 func (s *BaseManuscriptListener) EnterComparisonExpr(ctx *ComparisonExprContext) {}
 
@@ -600,11 +675,17 @@ func (s *BaseManuscriptListener) EnterMultiplicativeExpr(ctx *MultiplicativeExpr
 // ExitMultiplicativeExpr is called when production multiplicativeExpr is exited.
 func (s *BaseManuscriptListener) ExitMultiplicativeExpr(ctx *MultiplicativeExprContext) {}
 
-// EnterUnaryExpr is called when production unaryExpr is entered.
-func (s *BaseManuscriptListener) EnterUnaryExpr(ctx *UnaryExprContext) {}
+// EnterUnaryOpExpr is called when production UnaryOpExpr is entered.
+func (s *BaseManuscriptListener) EnterUnaryOpExpr(ctx *UnaryOpExprContext) {}
 
-// ExitUnaryExpr is called when production unaryExpr is exited.
-func (s *BaseManuscriptListener) ExitUnaryExpr(ctx *UnaryExprContext) {}
+// ExitUnaryOpExpr is called when production UnaryOpExpr is exited.
+func (s *BaseManuscriptListener) ExitUnaryOpExpr(ctx *UnaryOpExprContext) {}
+
+// EnterUnaryAwaitExpr is called when production UnaryAwaitExpr is entered.
+func (s *BaseManuscriptListener) EnterUnaryAwaitExpr(ctx *UnaryAwaitExprContext) {}
+
+// ExitUnaryAwaitExpr is called when production UnaryAwaitExpr is exited.
+func (s *BaseManuscriptListener) ExitUnaryAwaitExpr(ctx *UnaryAwaitExprContext) {}
 
 // EnterAwaitExpr is called when production awaitExpr is entered.
 func (s *BaseManuscriptListener) EnterAwaitExpr(ctx *AwaitExprContext) {}
@@ -618,17 +699,101 @@ func (s *BaseManuscriptListener) EnterPostfixExpr(ctx *PostfixExprContext) {}
 // ExitPostfixExpr is called when production postfixExpr is exited.
 func (s *BaseManuscriptListener) ExitPostfixExpr(ctx *PostfixExprContext) {}
 
-// EnterPostfixOp is called when production postfixOp is entered.
-func (s *BaseManuscriptListener) EnterPostfixOp(ctx *PostfixOpContext) {}
+// EnterPostfixCall is called when production PostfixCall is entered.
+func (s *BaseManuscriptListener) EnterPostfixCall(ctx *PostfixCallContext) {}
 
-// ExitPostfixOp is called when production postfixOp is exited.
-func (s *BaseManuscriptListener) ExitPostfixOp(ctx *PostfixOpContext) {}
+// ExitPostfixCall is called when production PostfixCall is exited.
+func (s *BaseManuscriptListener) ExitPostfixCall(ctx *PostfixCallContext) {}
 
-// EnterPrimaryExpr is called when production primaryExpr is entered.
-func (s *BaseManuscriptListener) EnterPrimaryExpr(ctx *PrimaryExprContext) {}
+// EnterPostfixDot is called when production PostfixDot is entered.
+func (s *BaseManuscriptListener) EnterPostfixDot(ctx *PostfixDotContext) {}
 
-// ExitPrimaryExpr is called when production primaryExpr is exited.
-func (s *BaseManuscriptListener) ExitPrimaryExpr(ctx *PrimaryExprContext) {}
+// ExitPostfixDot is called when production PostfixDot is exited.
+func (s *BaseManuscriptListener) ExitPostfixDot(ctx *PostfixDotContext) {}
+
+// EnterPostfixIndex is called when production PostfixIndex is entered.
+func (s *BaseManuscriptListener) EnterPostfixIndex(ctx *PostfixIndexContext) {}
+
+// ExitPostfixIndex is called when production PostfixIndex is exited.
+func (s *BaseManuscriptListener) ExitPostfixIndex(ctx *PostfixIndexContext) {}
+
+// EnterPrimaryLiteral is called when production PrimaryLiteral is entered.
+func (s *BaseManuscriptListener) EnterPrimaryLiteral(ctx *PrimaryLiteralContext) {}
+
+// ExitPrimaryLiteral is called when production PrimaryLiteral is exited.
+func (s *BaseManuscriptListener) ExitPrimaryLiteral(ctx *PrimaryLiteralContext) {}
+
+// EnterPrimaryID is called when production PrimaryID is entered.
+func (s *BaseManuscriptListener) EnterPrimaryID(ctx *PrimaryIDContext) {}
+
+// ExitPrimaryID is called when production PrimaryID is exited.
+func (s *BaseManuscriptListener) ExitPrimaryID(ctx *PrimaryIDContext) {}
+
+// EnterPrimaryParen is called when production PrimaryParen is entered.
+func (s *BaseManuscriptListener) EnterPrimaryParen(ctx *PrimaryParenContext) {}
+
+// ExitPrimaryParen is called when production PrimaryParen is exited.
+func (s *BaseManuscriptListener) ExitPrimaryParen(ctx *PrimaryParenContext) {}
+
+// EnterPrimaryArray is called when production PrimaryArray is entered.
+func (s *BaseManuscriptListener) EnterPrimaryArray(ctx *PrimaryArrayContext) {}
+
+// ExitPrimaryArray is called when production PrimaryArray is exited.
+func (s *BaseManuscriptListener) ExitPrimaryArray(ctx *PrimaryArrayContext) {}
+
+// EnterPrimaryObject is called when production PrimaryObject is entered.
+func (s *BaseManuscriptListener) EnterPrimaryObject(ctx *PrimaryObjectContext) {}
+
+// ExitPrimaryObject is called when production PrimaryObject is exited.
+func (s *BaseManuscriptListener) ExitPrimaryObject(ctx *PrimaryObjectContext) {}
+
+// EnterPrimaryMap is called when production PrimaryMap is entered.
+func (s *BaseManuscriptListener) EnterPrimaryMap(ctx *PrimaryMapContext) {}
+
+// ExitPrimaryMap is called when production PrimaryMap is exited.
+func (s *BaseManuscriptListener) ExitPrimaryMap(ctx *PrimaryMapContext) {}
+
+// EnterPrimarySet is called when production PrimarySet is entered.
+func (s *BaseManuscriptListener) EnterPrimarySet(ctx *PrimarySetContext) {}
+
+// ExitPrimarySet is called when production PrimarySet is exited.
+func (s *BaseManuscriptListener) ExitPrimarySet(ctx *PrimarySetContext) {}
+
+// EnterPrimaryFn is called when production PrimaryFn is entered.
+func (s *BaseManuscriptListener) EnterPrimaryFn(ctx *PrimaryFnContext) {}
+
+// ExitPrimaryFn is called when production PrimaryFn is exited.
+func (s *BaseManuscriptListener) ExitPrimaryFn(ctx *PrimaryFnContext) {}
+
+// EnterPrimaryMatch is called when production PrimaryMatch is entered.
+func (s *BaseManuscriptListener) EnterPrimaryMatch(ctx *PrimaryMatchContext) {}
+
+// ExitPrimaryMatch is called when production PrimaryMatch is exited.
+func (s *BaseManuscriptListener) ExitPrimaryMatch(ctx *PrimaryMatchContext) {}
+
+// EnterPrimaryVoid is called when production PrimaryVoid is entered.
+func (s *BaseManuscriptListener) EnterPrimaryVoid(ctx *PrimaryVoidContext) {}
+
+// ExitPrimaryVoid is called when production PrimaryVoid is exited.
+func (s *BaseManuscriptListener) ExitPrimaryVoid(ctx *PrimaryVoidContext) {}
+
+// EnterPrimaryNull is called when production PrimaryNull is entered.
+func (s *BaseManuscriptListener) EnterPrimaryNull(ctx *PrimaryNullContext) {}
+
+// ExitPrimaryNull is called when production PrimaryNull is exited.
+func (s *BaseManuscriptListener) ExitPrimaryNull(ctx *PrimaryNullContext) {}
+
+// EnterPrimaryTaggedBlock is called when production PrimaryTaggedBlock is entered.
+func (s *BaseManuscriptListener) EnterPrimaryTaggedBlock(ctx *PrimaryTaggedBlockContext) {}
+
+// ExitPrimaryTaggedBlock is called when production PrimaryTaggedBlock is exited.
+func (s *BaseManuscriptListener) ExitPrimaryTaggedBlock(ctx *PrimaryTaggedBlockContext) {}
+
+// EnterPrimaryStructInit is called when production PrimaryStructInit is entered.
+func (s *BaseManuscriptListener) EnterPrimaryStructInit(ctx *PrimaryStructInitContext) {}
+
+// ExitPrimaryStructInit is called when production PrimaryStructInit is exited.
+func (s *BaseManuscriptListener) ExitPrimaryStructInit(ctx *PrimaryStructInitContext) {}
 
 // EnterFnExpr is called when production fnExpr is entered.
 func (s *BaseManuscriptListener) EnterFnExpr(ctx *FnExprContext) {}
@@ -678,11 +843,35 @@ func (s *BaseManuscriptListener) EnterMultiDoubleQuotedString(ctx *MultiDoubleQu
 // ExitMultiDoubleQuotedString is called when production multiDoubleQuotedString is exited.
 func (s *BaseManuscriptListener) ExitMultiDoubleQuotedString(ctx *MultiDoubleQuotedStringContext) {}
 
-// EnterStringPart is called when production stringPart is entered.
-func (s *BaseManuscriptListener) EnterStringPart(ctx *StringPartContext) {}
+// EnterStringPartSingle is called when production StringPartSingle is entered.
+func (s *BaseManuscriptListener) EnterStringPartSingle(ctx *StringPartSingleContext) {}
 
-// ExitStringPart is called when production stringPart is exited.
-func (s *BaseManuscriptListener) ExitStringPart(ctx *StringPartContext) {}
+// ExitStringPartSingle is called when production StringPartSingle is exited.
+func (s *BaseManuscriptListener) ExitStringPartSingle(ctx *StringPartSingleContext) {}
+
+// EnterStringPartMulti is called when production StringPartMulti is entered.
+func (s *BaseManuscriptListener) EnterStringPartMulti(ctx *StringPartMultiContext) {}
+
+// ExitStringPartMulti is called when production StringPartMulti is exited.
+func (s *BaseManuscriptListener) ExitStringPartMulti(ctx *StringPartMultiContext) {}
+
+// EnterStringPartDouble is called when production StringPartDouble is entered.
+func (s *BaseManuscriptListener) EnterStringPartDouble(ctx *StringPartDoubleContext) {}
+
+// ExitStringPartDouble is called when production StringPartDouble is exited.
+func (s *BaseManuscriptListener) ExitStringPartDouble(ctx *StringPartDoubleContext) {}
+
+// EnterStringPartMultiDouble is called when production StringPartMultiDouble is entered.
+func (s *BaseManuscriptListener) EnterStringPartMultiDouble(ctx *StringPartMultiDoubleContext) {}
+
+// ExitStringPartMultiDouble is called when production StringPartMultiDouble is exited.
+func (s *BaseManuscriptListener) ExitStringPartMultiDouble(ctx *StringPartMultiDoubleContext) {}
+
+// EnterStringPartInterp is called when production StringPartInterp is entered.
+func (s *BaseManuscriptListener) EnterStringPartInterp(ctx *StringPartInterpContext) {}
+
+// ExitStringPartInterp is called when production StringPartInterp is exited.
+func (s *BaseManuscriptListener) ExitStringPartInterp(ctx *StringPartInterpContext) {}
 
 // EnterInterpolation is called when production interpolation is entered.
 func (s *BaseManuscriptListener) EnterInterpolation(ctx *InterpolationContext) {}
@@ -690,11 +879,35 @@ func (s *BaseManuscriptListener) EnterInterpolation(ctx *InterpolationContext) {
 // ExitInterpolation is called when production interpolation is exited.
 func (s *BaseManuscriptListener) ExitInterpolation(ctx *InterpolationContext) {}
 
-// EnterLiteral is called when production literal is entered.
-func (s *BaseManuscriptListener) EnterLiteral(ctx *LiteralContext) {}
+// EnterLiteralString is called when production LiteralString is entered.
+func (s *BaseManuscriptListener) EnterLiteralString(ctx *LiteralStringContext) {}
 
-// ExitLiteral is called when production literal is exited.
-func (s *BaseManuscriptListener) ExitLiteral(ctx *LiteralContext) {}
+// ExitLiteralString is called when production LiteralString is exited.
+func (s *BaseManuscriptListener) ExitLiteralString(ctx *LiteralStringContext) {}
+
+// EnterLiteralNumber is called when production LiteralNumber is entered.
+func (s *BaseManuscriptListener) EnterLiteralNumber(ctx *LiteralNumberContext) {}
+
+// ExitLiteralNumber is called when production LiteralNumber is exited.
+func (s *BaseManuscriptListener) ExitLiteralNumber(ctx *LiteralNumberContext) {}
+
+// EnterLiteralBool is called when production LiteralBool is entered.
+func (s *BaseManuscriptListener) EnterLiteralBool(ctx *LiteralBoolContext) {}
+
+// ExitLiteralBool is called when production LiteralBool is exited.
+func (s *BaseManuscriptListener) ExitLiteralBool(ctx *LiteralBoolContext) {}
+
+// EnterLiteralNull is called when production LiteralNull is entered.
+func (s *BaseManuscriptListener) EnterLiteralNull(ctx *LiteralNullContext) {}
+
+// ExitLiteralNull is called when production LiteralNull is exited.
+func (s *BaseManuscriptListener) ExitLiteralNull(ctx *LiteralNullContext) {}
+
+// EnterLiteralVoid is called when production LiteralVoid is entered.
+func (s *BaseManuscriptListener) EnterLiteralVoid(ctx *LiteralVoidContext) {}
+
+// ExitLiteralVoid is called when production LiteralVoid is exited.
+func (s *BaseManuscriptListener) ExitLiteralVoid(ctx *LiteralVoidContext) {}
 
 // EnterStringLiteralSingle is called when production StringLiteralSingle is entered.
 func (s *BaseManuscriptListener) EnterStringLiteralSingle(ctx *StringLiteralSingleContext) {}
@@ -775,23 +988,47 @@ func (s *BaseManuscriptListener) EnterObjectLiteral(ctx *ObjectLiteralContext) {
 // ExitObjectLiteral is called when production objectLiteral is exited.
 func (s *BaseManuscriptListener) ExitObjectLiteral(ctx *ObjectLiteralContext) {}
 
+// EnterObjectFieldList is called when production objectFieldList is entered.
+func (s *BaseManuscriptListener) EnterObjectFieldList(ctx *ObjectFieldListContext) {}
+
+// ExitObjectFieldList is called when production objectFieldList is exited.
+func (s *BaseManuscriptListener) ExitObjectFieldList(ctx *ObjectFieldListContext) {}
+
 // EnterObjectField is called when production objectField is entered.
 func (s *BaseManuscriptListener) EnterObjectField(ctx *ObjectFieldContext) {}
 
 // ExitObjectField is called when production objectField is exited.
 func (s *BaseManuscriptListener) ExitObjectField(ctx *ObjectFieldContext) {}
 
-// EnterObjectFieldName is called when production objectFieldName is entered.
-func (s *BaseManuscriptListener) EnterObjectFieldName(ctx *ObjectFieldNameContext) {}
+// EnterObjectFieldNameID is called when production ObjectFieldNameID is entered.
+func (s *BaseManuscriptListener) EnterObjectFieldNameID(ctx *ObjectFieldNameIDContext) {}
 
-// ExitObjectFieldName is called when production objectFieldName is exited.
-func (s *BaseManuscriptListener) ExitObjectFieldName(ctx *ObjectFieldNameContext) {}
+// ExitObjectFieldNameID is called when production ObjectFieldNameID is exited.
+func (s *BaseManuscriptListener) ExitObjectFieldNameID(ctx *ObjectFieldNameIDContext) {}
 
-// EnterMapLiteral is called when production mapLiteral is entered.
-func (s *BaseManuscriptListener) EnterMapLiteral(ctx *MapLiteralContext) {}
+// EnterObjectFieldNameStr is called when production ObjectFieldNameStr is entered.
+func (s *BaseManuscriptListener) EnterObjectFieldNameStr(ctx *ObjectFieldNameStrContext) {}
 
-// ExitMapLiteral is called when production mapLiteral is exited.
-func (s *BaseManuscriptListener) ExitMapLiteral(ctx *MapLiteralContext) {}
+// ExitObjectFieldNameStr is called when production ObjectFieldNameStr is exited.
+func (s *BaseManuscriptListener) ExitObjectFieldNameStr(ctx *ObjectFieldNameStrContext) {}
+
+// EnterMapLiteralEmpty is called when production MapLiteralEmpty is entered.
+func (s *BaseManuscriptListener) EnterMapLiteralEmpty(ctx *MapLiteralEmptyContext) {}
+
+// ExitMapLiteralEmpty is called when production MapLiteralEmpty is exited.
+func (s *BaseManuscriptListener) ExitMapLiteralEmpty(ctx *MapLiteralEmptyContext) {}
+
+// EnterMapLiteralNonEmpty is called when production MapLiteralNonEmpty is entered.
+func (s *BaseManuscriptListener) EnterMapLiteralNonEmpty(ctx *MapLiteralNonEmptyContext) {}
+
+// ExitMapLiteralNonEmpty is called when production MapLiteralNonEmpty is exited.
+func (s *BaseManuscriptListener) ExitMapLiteralNonEmpty(ctx *MapLiteralNonEmptyContext) {}
+
+// EnterMapFieldList is called when production mapFieldList is entered.
+func (s *BaseManuscriptListener) EnterMapFieldList(ctx *MapFieldListContext) {}
+
+// ExitMapFieldList is called when production mapFieldList is exited.
+func (s *BaseManuscriptListener) ExitMapFieldList(ctx *MapFieldListContext) {}
 
 // EnterMapField is called when production mapField is entered.
 func (s *BaseManuscriptListener) EnterMapField(ctx *MapFieldContext) {}
@@ -817,23 +1054,47 @@ func (s *BaseManuscriptListener) EnterStructInitExpr(ctx *StructInitExprContext)
 // ExitStructInitExpr is called when production structInitExpr is exited.
 func (s *BaseManuscriptListener) ExitStructInitExpr(ctx *StructInitExprContext) {}
 
+// EnterStructFieldList is called when production structFieldList is entered.
+func (s *BaseManuscriptListener) EnterStructFieldList(ctx *StructFieldListContext) {}
+
+// ExitStructFieldList is called when production structFieldList is exited.
+func (s *BaseManuscriptListener) ExitStructFieldList(ctx *StructFieldListContext) {}
+
 // EnterStructField is called when production structField is entered.
 func (s *BaseManuscriptListener) EnterStructField(ctx *StructFieldContext) {}
 
 // ExitStructField is called when production structField is exited.
 func (s *BaseManuscriptListener) ExitStructField(ctx *StructFieldContext) {}
 
-// EnterTypeAnnotation is called when production typeAnnotation is entered.
-func (s *BaseManuscriptListener) EnterTypeAnnotation(ctx *TypeAnnotationContext) {}
+// EnterTypeAnnID is called when production TypeAnnID is entered.
+func (s *BaseManuscriptListener) EnterTypeAnnID(ctx *TypeAnnIDContext) {}
 
-// ExitTypeAnnotation is called when production typeAnnotation is exited.
-func (s *BaseManuscriptListener) ExitTypeAnnotation(ctx *TypeAnnotationContext) {}
+// ExitTypeAnnID is called when production TypeAnnID is exited.
+func (s *BaseManuscriptListener) ExitTypeAnnID(ctx *TypeAnnIDContext) {}
 
-// EnterTypeBase is called when production typeBase is entered.
-func (s *BaseManuscriptListener) EnterTypeBase(ctx *TypeBaseContext) {}
+// EnterTypeAnnArray is called when production TypeAnnArray is entered.
+func (s *BaseManuscriptListener) EnterTypeAnnArray(ctx *TypeAnnArrayContext) {}
 
-// ExitTypeBase is called when production typeBase is exited.
-func (s *BaseManuscriptListener) ExitTypeBase(ctx *TypeBaseContext) {}
+// ExitTypeAnnArray is called when production TypeAnnArray is exited.
+func (s *BaseManuscriptListener) ExitTypeAnnArray(ctx *TypeAnnArrayContext) {}
+
+// EnterTypeAnnTuple is called when production TypeAnnTuple is entered.
+func (s *BaseManuscriptListener) EnterTypeAnnTuple(ctx *TypeAnnTupleContext) {}
+
+// ExitTypeAnnTuple is called when production TypeAnnTuple is exited.
+func (s *BaseManuscriptListener) ExitTypeAnnTuple(ctx *TypeAnnTupleContext) {}
+
+// EnterTypeAnnFn is called when production TypeAnnFn is entered.
+func (s *BaseManuscriptListener) EnterTypeAnnFn(ctx *TypeAnnFnContext) {}
+
+// ExitTypeAnnFn is called when production TypeAnnFn is exited.
+func (s *BaseManuscriptListener) ExitTypeAnnFn(ctx *TypeAnnFnContext) {}
+
+// EnterTypeAnnVoid is called when production TypeAnnVoid is entered.
+func (s *BaseManuscriptListener) EnterTypeAnnVoid(ctx *TypeAnnVoidContext) {}
+
+// ExitTypeAnnVoid is called when production TypeAnnVoid is exited.
+func (s *BaseManuscriptListener) ExitTypeAnnVoid(ctx *TypeAnnVoidContext) {}
 
 // EnterTupleType is called when production tupleType is entered.
 func (s *BaseManuscriptListener) EnterTupleType(ctx *TupleTypeContext) {}

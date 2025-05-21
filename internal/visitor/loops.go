@@ -15,33 +15,22 @@ func (v *ManuscriptAstVisitor) VisitLoopBody(ctx *parser.LoopBodyContext) interf
 
 	var stmts []ast.Stmt
 
-	if stmtList := ctx.Stmt_list(); stmtList != nil {
-		for _, stmtCtx := range stmtList.AllStmt() {
-			if stmtCtx == nil {
-				continue
+	// Process all stmt nodes in the loop body
+	for _, stmtCtx := range ctx.AllStmt() {
+		visitedStmt := v.Visit(stmtCtx)
+		if stmt, ok := visitedStmt.(ast.Stmt); ok {
+			if stmt != nil { // Ensure we don't append nil statements
+				stmts = append(stmts, stmt)
 			}
-			visitedStmt := v.VisitStmt(stmtCtx)
-			if stmt, ok := visitedStmt.(ast.Stmt); ok {
-				if stmt != nil {
-					stmts = append(stmts, stmt)
-				}
-			} else if visitedStmt != nil {
-				v.addError(fmt.Sprintf("Loop body statement did not resolve to ast.Stmt, got %T", visitedStmt), stmtCtx.GetStart())
-			}
+		} else if visitedStmt != nil {
+			v.addError(fmt.Sprintf("Loop body statement did not resolve to ast.Stmt, got %T", visitedStmt), stmtCtx.GetStart())
 		}
 	}
 
-	var lbrace, rbrace gotoken.Pos
-	if ctx.LBRACE() != nil {
-		lbrace = v.pos(ctx.LBRACE().GetSymbol())
-	}
-	if ctx.RBRACE() != nil {
-		rbrace = v.pos(ctx.RBRACE().GetSymbol())
-	}
 	return &ast.BlockStmt{
-		Lbrace: lbrace,
+		Lbrace: v.pos(ctx.LBRACE().GetSymbol()),
 		List:   stmts,
-		Rbrace: rbrace,
+		Rbrace: v.pos(ctx.RBRACE().GetSymbol()),
 	}
 }
 
@@ -71,20 +60,20 @@ func (v *ManuscriptAstVisitor) VisitWhileStmt(ctx *parser.WhileStmtContext) inte
 
 	// Body is ctx.LoopBody() based on `whileStmt: WHILE condition = expr loopBody;`
 	if bodyRuleCtx := ctx.LoopBody(); bodyRuleCtx != nil {
-		bodyRaw := v.VisitLoopBody(bodyRuleCtx.(*parser.LoopBodyContext))
-		var bodyBlock *ast.BlockStmt
-		switch b := bodyRaw.(type) {
-		case *ast.BlockStmt:
-			bodyBlock = b
-		case []ast.Stmt:
-			bodyBlock = &ast.BlockStmt{List: b}
-		case ast.Stmt:
-			bodyBlock = &ast.BlockStmt{List: []ast.Stmt{b}}
-		default:
-			v.addError("While loop body did not resolve to a valid block or statement", bodyRuleCtx.GetStart())
-			bodyBlock = &ast.BlockStmt{}
+		forStmtNode.Body = &ast.BlockStmt{
+			Lbrace: v.pos(bodyRuleCtx.GetStart()),
+			Rbrace: v.pos(bodyRuleCtx.GetStop()),
 		}
-		forStmtNode.Body = bodyBlock
+
+		if concreteLoopBodyCtx, ok := bodyRuleCtx.(*parser.LoopBodyContext); ok {
+			if bodyAst, ok := v.VisitLoopBody(concreteLoopBodyCtx).(*ast.BlockStmt); ok {
+				forStmtNode.Body = bodyAst
+			} else {
+				v.addError(fmt.Sprintf("While loop body did not resolve to *ast.BlockStmt, got %T", bodyRuleCtx), bodyRuleCtx.GetStart())
+			}
+		} else {
+			v.addError(fmt.Sprintf("While loop body was not *parser.LoopBodyContext, got %T", bodyRuleCtx), bodyRuleCtx.GetStart())
+		}
 	} else {
 		v.addError("While loop missing body (LoopBody)", ctx.GetStart())
 		return &ast.BadStmt{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
@@ -99,30 +88,14 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 		return &ast.BadStmt{}
 	}
 
-	initVal := v.Visit(ctx.ForInit())
-	initStmt := v.asStmtOrExprStmt(initVal)
-	if _, isEmpty := initVal.(*ast.EmptyStmt); isEmpty {
-		initStmt = nil
-	}
+	initStmt := v.asStmt(v.Visit(ctx.ForInit()))
 	condExpr := v.asExpr(v.Visit(ctx.ForCond()))
-	postVal := v.Visit(ctx.ForPost())
-	postStmt := v.asStmtOrExprStmt(postVal)
-	if _, isEmpty := postVal.(*ast.EmptyStmt); isEmpty {
-		postStmt = nil
-	}
+	postStmt := v.asStmtOrExprStmt(v.Visit(ctx.ForPost()))
 
 	body := &ast.BlockStmt{}
 	if b := ctx.LoopBody(); b != nil {
-		bodyRaw := v.VisitLoopBody(b.(*parser.LoopBodyContext))
-		switch bb := bodyRaw.(type) {
-		case *ast.BlockStmt:
-			body = bb
-		case []ast.Stmt:
-			body = &ast.BlockStmt{List: bb}
-		case ast.Stmt:
-			body = &ast.BlockStmt{List: []ast.Stmt{bb}}
-		default:
-			v.addError("For loop body did not resolve to a valid block or statement", b.GetStart())
+		if block, ok := v.VisitLoopBody(b.(*parser.LoopBodyContext)).(*ast.BlockStmt); ok && block != nil {
+			body = block
 		}
 	}
 
@@ -135,45 +108,61 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 	}
 }
 
-// VisitForInit handles forInit alternatives.
-func (v *ManuscriptAstVisitor) VisitForInit(ctx *parser.ForInitContext) interface{} {
-	if ctx.LetSingle() != nil {
-		return v.Visit(ctx.LetSingle())
+// --- ANTLR visitor pattern for forInit, forCond, forPost ---
+
+func (v *ManuscriptAstVisitor) VisitForInitLet(ctx *parser.ForInitLetContext) interface{} {
+	if ctx == nil || ctx.LetSingle() == nil {
+		return &ast.EmptyStmt{}
 	}
+	return v.Visit(ctx.LetSingle())
+}
+
+func (v *ManuscriptAstVisitor) VisitForInitEmpty(ctx *parser.ForInitEmptyContext) interface{} {
 	return &ast.EmptyStmt{}
 }
 
-// VisitForCond handles forCond alternatives.
-func (v *ManuscriptAstVisitor) VisitForCond(ctx *parser.ForCondContext) interface{} {
-	if ctx.Expr() != nil {
-		return v.Visit(ctx.Expr())
+func (v *ManuscriptAstVisitor) VisitForCondExpr(ctx *parser.ForCondExprContext) interface{} {
+	if ctx == nil || ctx.Expr() == nil {
+		return nil
 	}
+	return v.Visit(ctx.Expr())
+}
+
+func (v *ManuscriptAstVisitor) VisitForCondEmpty(ctx *parser.ForCondEmptyContext) interface{} {
 	return nil
 }
 
-// VisitForPost handles forPost alternatives.
-func (v *ManuscriptAstVisitor) VisitForPost(ctx *parser.ForPostContext) interface{} {
-	if ctx.Expr() != nil {
-		return v.Visit(ctx.Expr())
+func (v *ManuscriptAstVisitor) VisitForPostExpr(ctx *parser.ForPostExprContext) interface{} {
+	if ctx == nil || ctx.Expr() == nil {
+		return nil
 	}
+	return v.Visit(ctx.Expr())
+}
+
+func (v *ManuscriptAstVisitor) VisitForPostEmpty(ctx *parser.ForPostEmptyContext) interface{} {
 	return nil
 }
 
-// VisitForIn handles for-in loops: (ID (COMMA ID)?) IN expr loopBody;
-func (v *ManuscriptAstVisitor) VisitForIn(ctx parser.IForLoopTypeContext) interface{} {
+// VisitForInLoop handles for-in loops: (ID (COMMA ID)?) IN expr loopBody;
+func (v *ManuscriptAstVisitor) VisitForInLoop(ctx *parser.ForInLoopContext) interface{} {
 	if ctx == nil {
 		return &ast.BadStmt{}
 	}
 
-	ids := ctx.AllID()
 	stmt := &ast.RangeStmt{
 		Tok: gotoken.DEFINE, // Use := for new variables
 	}
+
+	ids := ctx.AllID()
 	switch len(ids) {
 	case 2:
-		stmt.Key = ast.NewIdent(ids[1].GetText())
-		stmt.Value = ast.NewIdent(ids[0].GetText())
+		// Manuscript: value, key in items
+		// Go: for key, value := range items
+		stmt.Key = ast.NewIdent(ids[1].GetText())   // key
+		stmt.Value = ast.NewIdent(ids[0].GetText()) // value
 	case 1:
+		// Manuscript: value in items
+		// Go: for _, value := range items
 		stmt.Key = ast.NewIdent("_")
 		stmt.Value = ast.NewIdent(ids[0].GetText())
 	default:
@@ -183,6 +172,7 @@ func (v *ManuscriptAstVisitor) VisitForIn(ctx parser.IForLoopTypeContext) interf
 		return &ast.BadStmt{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 
+	// Set the range expression (the iterable)
 	if exprCtx := ctx.Expr(); exprCtx != nil {
 		if expr, ok := v.Visit(exprCtx).(ast.Expr); ok {
 			stmt.X = expr
@@ -191,18 +181,11 @@ func (v *ManuscriptAstVisitor) VisitForIn(ctx parser.IForLoopTypeContext) interf
 		}
 	}
 
+	// Set the loop body
 	stmt.Body = &ast.BlockStmt{}
 	if bodyCtx := ctx.LoopBody(); bodyCtx != nil {
-		bodyRaw := v.VisitLoopBody(bodyCtx.(*parser.LoopBodyContext))
-		switch bb := bodyRaw.(type) {
-		case *ast.BlockStmt:
-			stmt.Body = bb
-		case []ast.Stmt:
-			stmt.Body = &ast.BlockStmt{List: bb}
-		case ast.Stmt:
-			stmt.Body = &ast.BlockStmt{List: []ast.Stmt{bb}}
-		default:
-			v.addError("For-in loop body did not resolve to a valid block or statement", bodyCtx.GetStart())
+		if loopBody, ok := v.VisitLoopBody(bodyCtx.(*parser.LoopBodyContext)).(*ast.BlockStmt); ok {
+			stmt.Body = loopBody
 		}
 	}
 
@@ -217,20 +200,26 @@ func (v *ManuscriptAstVisitor) VisitForStmt(ctx *parser.ForStmtContext) interfac
 		return &ast.BadStmt{}
 	}
 
-	forLoopType := ctx.ForLoopType()
-	if forLoopType.ForTrinity() != nil {
-		stmt := v.Visit(forLoopType.ForTrinity())
+	switch t := ctx.ForLoopType().(type) {
+	case *parser.ForLoopContext:
+		forTrinity := t.ForTrinity()
+		if forTrinity == nil {
+			return &ast.BadStmt{}
+		}
+		stmt := v.VisitForTrinity(forTrinity.(*parser.ForTrinityContext))
 		if fs, ok := stmt.(*ast.ForStmt); ok {
 			fs.For = v.pos(ctx.FOR().GetSymbol())
 			return fs
 		}
 		return stmt
+	case *parser.ForInLoopContext:
+		stmt := v.VisitForInLoop(t)
+		if rs, ok := stmt.(*ast.RangeStmt); ok {
+			rs.For = v.pos(ctx.FOR().GetSymbol())
+			return rs
+		}
+		return stmt
+	default:
+		return &ast.BadStmt{}
 	}
-	// Otherwise, treat as for-in loop
-	stmt := v.VisitForIn(forLoopType)
-	if rs, ok := stmt.(*ast.RangeStmt); ok {
-		rs.For = v.pos(ctx.FOR().GetSymbol())
-		return rs
-	}
-	return stmt
 }

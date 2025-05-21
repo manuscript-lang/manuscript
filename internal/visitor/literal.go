@@ -9,24 +9,36 @@ import (
 
 // --- Literal Visitors ---
 
-func (v *ManuscriptAstVisitor) VisitLiteral(ctx *parser.LiteralContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLiteralString(ctx *parser.LiteralStringContext) interface{} {
 	if ctx.StringLiteral() != nil {
 		return v.Visit(ctx.StringLiteral())
 	}
+	v.addError("Unknown string literal type: "+ctx.GetText(), ctx.GetStart())
+	return &ast.BadExpr{}
+}
+
+func (v *ManuscriptAstVisitor) VisitLiteralNumber(ctx *parser.LiteralNumberContext) interface{} {
 	if ctx.NumberLiteral() != nil {
 		return v.Visit(ctx.NumberLiteral())
 	}
+	v.addError("Unknown number literal type: "+ctx.GetText(), ctx.GetStart())
+	return &ast.BadExpr{}
+}
+
+func (v *ManuscriptAstVisitor) VisitLiteralBool(ctx *parser.LiteralBoolContext) interface{} {
 	if ctx.BooleanLiteral() != nil {
 		return v.Visit(ctx.BooleanLiteral())
 	}
-	if ctx.NULL() != nil {
-		return ast.NewIdent("nil")
-	}
-	if ctx.VOID() != nil {
-		return ast.NewIdent("nil")
-	}
-	v.addError("Unknown literal type: "+ctx.GetText(), ctx.GetStart())
+	v.addError("Unknown boolean literal type: "+ctx.GetText(), ctx.GetStart())
 	return &ast.BadExpr{}
+}
+
+func (v *ManuscriptAstVisitor) VisitLiteralNull(ctx *parser.LiteralNullContext) interface{} {
+	return ast.NewIdent("nil")
+}
+
+func (v *ManuscriptAstVisitor) VisitLiteralVoid(ctx *parser.LiteralVoidContext) interface{} {
+	return ast.NewIdent("nil")
 }
 
 // --- Fine-grained String Literal Visitors ---
@@ -66,12 +78,17 @@ func (v *ManuscriptAstVisitor) VisitStringLiteralMultiDouble(ctx *parser.StringL
 func (v *ManuscriptAstVisitor) stringPartsToBasicLit(parts []parser.IStringPartContext) ast.Expr {
 	raw := ""
 	for _, p := range parts {
-		// Only handle plain text parts for now
-		text := p.GetText()
-		if text != "" {
-			raw += text
-		} else {
-			v.addError("Unknown or unsupported string part: "+p.GetText(), p.GetStart())
+		switch part := p.(type) {
+		case *parser.StringPartSingleContext:
+			raw += part.GetText()
+		case *parser.StringPartMultiContext:
+			raw += part.GetText()
+		case *parser.StringPartDoubleContext:
+			raw += part.GetText()
+		case *parser.StringPartMultiDoubleContext:
+			raw += part.GetText()
+		case *parser.StringPartInterpContext:
+			v.addError("String interpolation is not yet supported: "+part.GetText(), part.GetStart())
 		}
 	}
 	return &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(raw)}

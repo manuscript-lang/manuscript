@@ -5,47 +5,75 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
-// VisitPrimaryExpr handles all primary expressions.
-func (v *ManuscriptAstVisitor) VisitPrimaryExpr(ctx *parser.PrimaryExprContext) interface{} {
-	if ctx.Literal() != nil {
-		return v.Visit(ctx.Literal())
-	}
+// VisitPrimaryLiteral handles literal primary expressions.
+func (v *ManuscriptAstVisitor) VisitPrimaryLiteral(ctx *parser.PrimaryLiteralContext) interface{} {
+	return v.Visit(ctx.Literal())
+}
+
+// VisitPrimaryID handles identifier primary expressions.
+func (v *ManuscriptAstVisitor) VisitPrimaryID(ctx *parser.PrimaryIDContext) interface{} {
 	if ctx.ID() != nil {
 		return ast.NewIdent(ctx.ID().GetText())
 	}
-	if ctx.LPAREN() != nil && ctx.Expr() != nil && ctx.RPAREN() != nil {
+	v.addError("PrimaryID missing ID", ctx.GetStart())
+	return &ast.BadExpr{}
+}
+
+// VisitPrimaryParen handles parenthesized expressions.
+func (v *ManuscriptAstVisitor) VisitPrimaryParen(ctx *parser.PrimaryParenContext) interface{} {
+	if ctx.Expr() != nil {
 		return v.Visit(ctx.Expr())
 	}
-	if ctx.ArrayLiteral() != nil {
-		return v.Visit(ctx.ArrayLiteral())
-	}
-	if ctx.ObjectLiteral() != nil {
-		return v.Visit(ctx.ObjectLiteral())
-	}
-	if ctx.MapLiteral() != nil {
-		return v.Visit(ctx.MapLiteral())
-	}
-	if ctx.SetLiteral() != nil {
-		return v.Visit(ctx.SetLiteral())
-	}
-	if ctx.FnExpr() != nil {
-		return v.Visit(ctx.FnExpr())
-	}
-	if ctx.MatchExpr() != nil {
-		return v.Visit(ctx.MatchExpr())
-	}
-	if ctx.VOID() != nil {
-		return ast.NewIdent("nil")
-	}
-	if ctx.NULL() != nil {
-		return ast.NewIdent("nil")
-	}
-	if ctx.TaggedBlockString() != nil {
-		return v.Visit(ctx.TaggedBlockString())
-	}
-	if ctx.StructInitExpr() != nil {
-		return v.Visit(ctx.StructInitExpr())
-	}
-	v.addError("Unknown or unsupported primary expression", ctx.GetStart())
+	v.addError("PrimaryParen missing Expr", ctx.GetStart())
 	return &ast.BadExpr{}
+}
+
+// VisitPrimaryArray handles array literals.
+func (v *ManuscriptAstVisitor) VisitPrimaryArray(ctx *parser.PrimaryArrayContext) interface{} {
+	return v.Visit(ctx.ArrayLiteral())
+}
+
+// VisitPrimaryObject handles object literals.
+func (v *ManuscriptAstVisitor) VisitPrimaryObject(ctx *parser.PrimaryObjectContext) interface{} {
+	return v.Visit(ctx.ObjectLiteral())
+}
+
+// VisitPrimaryMap handles map literals.
+func (v *ManuscriptAstVisitor) VisitPrimaryMap(ctx *parser.PrimaryMapContext) interface{} {
+	return v.Visit(ctx.MapLiteral())
+}
+
+// VisitPrimarySet handles set literals.
+func (v *ManuscriptAstVisitor) VisitPrimarySet(ctx *parser.PrimarySetContext) interface{} {
+	return v.Visit(ctx.SetLiteral())
+}
+
+// VisitPrimaryFn handles function expressions.
+func (v *ManuscriptAstVisitor) VisitPrimaryFn(ctx *parser.PrimaryFnContext) interface{} {
+	return v.Visit(ctx.FnExpr())
+}
+
+// VisitPrimaryMatch handles match expressions.
+func (v *ManuscriptAstVisitor) VisitPrimaryMatch(ctx *parser.PrimaryMatchContext) interface{} {
+	return v.Visit(ctx.MatchExpr())
+}
+
+// VisitPrimaryVoid handles the void literal.
+func (v *ManuscriptAstVisitor) VisitPrimaryVoid(ctx *parser.PrimaryVoidContext) interface{} {
+	return ast.NewIdent("nil")
+}
+
+// VisitPrimaryNull handles the null literal.
+func (v *ManuscriptAstVisitor) VisitPrimaryNull(ctx *parser.PrimaryNullContext) interface{} {
+	return ast.NewIdent("nil")
+}
+
+// VisitPrimaryTaggedBlock handles tagged block strings.
+func (v *ManuscriptAstVisitor) VisitPrimaryTaggedBlock(ctx *parser.PrimaryTaggedBlockContext) interface{} {
+	return v.Visit(ctx.TaggedBlockString())
+}
+
+// VisitPrimaryStructInit handles struct initialization expressions.
+func (v *ManuscriptAstVisitor) VisitPrimaryStructInit(ctx *parser.PrimaryStructInitContext) interface{} {
+	return v.Visit(ctx.StructInitExpr())
 }
