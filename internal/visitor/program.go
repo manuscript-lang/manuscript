@@ -4,7 +4,6 @@ import (
 	"go/ast"
 	"go/token"
 	"manuscript-co/manuscript/internal/parser"
-	"strconv"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -79,15 +78,13 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 
 	if len(v.goImports) > 0 {
 		var specs []ast.Spec
-		for path := range v.goImports {
-			specs = append(specs, &ast.ImportSpec{
-				Path: &ast.BasicLit{
-					Kind:  token.STRING,
-					Value: strconv.Quote(path),
-				},
-			})
+		for _, importSpec := range v.goImports {
+			specs = append(specs, importSpec)
 		}
-		file.Decls = append([]ast.Decl{&ast.GenDecl{Tok: token.IMPORT, Specs: specs}}, file.Decls...)
+		file.Decls = append([]ast.Decl{&ast.GenDecl{
+			Tok:   token.IMPORT,
+			Specs: specs,
+		}}, file.Decls...)
 	}
 	return file
 }
@@ -142,6 +139,9 @@ func (v *ManuscriptAstVisitor) VisitDeclaration(ctx parser.IDeclarationContext) 
 				return nil
 			}
 		}
+	}
+	if importCtx, ok := ctx.(*parser.DeclImportContext); ok {
+		return v.VisitDeclImport(importCtx)
 	}
 	if child, ok := ctx.GetChild(0).(antlr.ParseTree); ok {
 		return v.Visit(child)

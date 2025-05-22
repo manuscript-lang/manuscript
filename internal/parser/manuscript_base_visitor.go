@@ -96,10 +96,6 @@ func (v *BaseManuscriptVisitor) VisitImportItem(ctx *ImportItemContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitImportStr(ctx *ImportStrContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseManuscriptVisitor) VisitLetDeclSingle(ctx *LetDeclSingleContext) interface{} {
 	return v.VisitChildren(ctx)
 }

@@ -74,9 +74,6 @@ type ManuscriptListener interface {
 	// EnterImportItem is called when entering the importItem production.
 	EnterImportItem(c *ImportItemContext)
 
-	// EnterImportStr is called when entering the importStr production.
-	EnterImportStr(c *ImportStrContext)
-
 	// EnterLetDeclSingle is called when entering the LetDeclSingle production.
 	EnterLetDeclSingle(c *LetDeclSingleContext)
 
@@ -616,9 +613,6 @@ type ManuscriptListener interface {
 
 	// ExitImportItem is called when exiting the importItem production.
 	ExitImportItem(c *ImportItemContext)
-
-	// ExitImportStr is called when exiting the importStr production.
-	ExitImportStr(c *ImportStrContext)
 
 	// ExitLetDeclSingle is called when exiting the LetDeclSingle production.
 	ExitLetDeclSingle(c *LetDeclSingleContext)

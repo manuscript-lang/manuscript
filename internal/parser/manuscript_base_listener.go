@@ -154,12 +154,6 @@ func (s *BaseManuscriptListener) EnterImportItem(ctx *ImportItemContext) {}
 // ExitImportItem is called when production importItem is exited.
 func (s *BaseManuscriptListener) ExitImportItem(ctx *ImportItemContext) {}
 
-// EnterImportStr is called when production importStr is entered.
-func (s *BaseManuscriptListener) EnterImportStr(ctx *ImportStrContext) {}
-
-// ExitImportStr is called when production importStr is exited.
-func (s *BaseManuscriptListener) ExitImportStr(ctx *ImportStrContext) {}
-
 // EnterLetDeclSingle is called when production LetDeclSingle is entered.
 func (s *BaseManuscriptListener) EnterLetDeclSingle(ctx *LetDeclSingleContext) {}
 

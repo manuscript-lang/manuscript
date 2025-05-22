@@ -32,11 +32,10 @@ moduleImport:
 	destructuredImport	# ModuleImportDestructured
 	| targetImport		# ModuleImportTarget;
 destructuredImport:
-	LBRACE importItemList? RBRACE FROM importStr;
-targetImport: ID FROM importStr;
+	LBRACE importItemList? RBRACE FROM singleQuotedString;
+targetImport: ID FROM singleQuotedString;
 importItemList: importItem (COMMA importItem)* (COMMA)?;
 importItem: ID (AS ID)?;
-importStr: singleQuotedString;
 
 // --- Let Declarations ---
 letDecl:

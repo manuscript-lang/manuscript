@@ -51,3 +51,35 @@ func (v *ManuscriptAstVisitor) VisitLetDeclDestructuredArray(ctx *parser.LetDecl
 	}
 	return v.Visit(letArr)
 }
+
+// VisitImportDecl handles import declarations and lowers them to Go imports and variable assignments
+func (v *ManuscriptAstVisitor) VisitImportDecl(ctx *parser.ImportDeclContext) interface{} {
+	modImport := ctx.ModuleImport()
+	if modImport == nil {
+		return nil
+	}
+
+	switch t := modImport.(type) {
+	case *parser.ModuleImportTargetContext:
+		return v.VisitModuleImportTarget(t)
+	case *parser.ModuleImportDestructuredContext:
+		return v.VisitModuleImportDestructured(t)
+	default:
+		v.addError("Unknown module import type", ctx.GetStart())
+		return nil
+	}
+}
+
+// VisitDeclImport handles the DeclImport context and dispatches to VisitImportDecl
+func (v *ManuscriptAstVisitor) VisitDeclImport(ctx *parser.DeclImportContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+	importDecl := ctx.ImportDecl()
+	if importDecl != nil {
+		if importDeclCtx, ok := importDecl.(*parser.ImportDeclContext); ok {
+			return v.VisitImportDecl(importDeclCtx)
+		}
+	}
+	return nil
+}

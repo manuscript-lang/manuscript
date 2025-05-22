@@ -74,9 +74,6 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#importItem.
 	VisitImportItem(ctx *ImportItemContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#importStr.
-	VisitImportStr(ctx *ImportStrContext) interface{}
-
 	// Visit a parse tree produced by Manuscript#LetDeclSingle.
 	VisitLetDeclSingle(ctx *LetDeclSingleContext) interface{}
 
