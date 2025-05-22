@@ -12,35 +12,35 @@ func (v *BaseManuscriptVisitor) VisitProgram(ctx *ProgramContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitDeclImport(ctx *DeclImportContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelDeclImport(ctx *LabelDeclImportContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitDeclExport(ctx *DeclExportContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelDeclExport(ctx *LabelDeclExportContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitDeclExtern(ctx *DeclExternContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelDeclExtern(ctx *LabelDeclExternContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitDeclLet(ctx *DeclLetContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelDeclLet(ctx *LabelDeclLetContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitDeclType(ctx *DeclTypeContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelDeclType(ctx *LabelDeclTypeContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitDeclInterface(ctx *DeclInterfaceContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelDeclInterface(ctx *LabelDeclInterfaceContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitDeclFn(ctx *DeclFnContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelDeclFn(ctx *LabelDeclFnContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitDeclMethods(ctx *DeclMethodsContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelDeclMethods(ctx *LabelDeclMethodsContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -56,27 +56,27 @@ func (v *BaseManuscriptVisitor) VisitExternDecl(ctx *ExternDeclContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitExportedFn(ctx *ExportedFnContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelExportedFn(ctx *LabelExportedFnContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitExportedLet(ctx *ExportedLetContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelExportedLet(ctx *LabelExportedLetContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitExportedType(ctx *ExportedTypeContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelExportedType(ctx *LabelExportedTypeContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitExportedInterface(ctx *ExportedInterfaceContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelExportedInterface(ctx *LabelExportedInterfaceContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitModuleImportDestructured(ctx *ModuleImportDestructuredContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelModuleImportDestructured(ctx *LabelModuleImportDestructuredContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitModuleImportTarget(ctx *ModuleImportTargetContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelModuleImportTarget(ctx *LabelModuleImportTargetContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -96,19 +96,19 @@ func (v *BaseManuscriptVisitor) VisitImportItem(ctx *ImportItemContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetDeclSingle(ctx *LetDeclSingleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLetDeclSingle(ctx *LabelLetDeclSingleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetDeclBlock(ctx *LetDeclBlockContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLetDeclBlock(ctx *LabelLetDeclBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetDeclDestructuredObj(ctx *LetDeclDestructuredObjContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLetDeclDestructuredObj(ctx *LabelLetDeclDestructuredObjContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetDeclDestructuredArray(ctx *LetDeclDestructuredArrayContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLetDeclDestructuredArray(ctx *LabelLetDeclDestructuredArrayContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -128,15 +128,15 @@ func (v *BaseManuscriptVisitor) VisitLetBlockItemSep(ctx *LetBlockItemSepContext
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetBlockItemSingle(ctx *LetBlockItemSingleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLetBlockItemSingle(ctx *LabelLetBlockItemSingleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetBlockItemDestructuredObj(ctx *LetBlockItemDestructuredObjContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLetBlockItemDestructuredObj(ctx *LabelLetBlockItemDestructuredObjContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLetBlockItemDestructuredArray(ctx *LetBlockItemDestructuredArrayContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLetBlockItemDestructuredArray(ctx *LabelLetBlockItemDestructuredArrayContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -216,51 +216,51 @@ func (v *BaseManuscriptVisitor) VisitMethodImpl(ctx *MethodImplContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtLet(ctx *StmtLetContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtLet(ctx *LabelStmtLetContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtExpr(ctx *StmtExprContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtExpr(ctx *LabelStmtExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtReturn(ctx *StmtReturnContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtReturn(ctx *LabelStmtReturnContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtYield(ctx *StmtYieldContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtYield(ctx *LabelStmtYieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtIf(ctx *StmtIfContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtIf(ctx *LabelStmtIfContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtFor(ctx *StmtForContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtFor(ctx *LabelStmtForContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtWhile(ctx *StmtWhileContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtWhile(ctx *LabelStmtWhileContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtBlock(ctx *StmtBlockContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtBlock(ctx *LabelStmtBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtBreak(ctx *StmtBreakContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtBreak(ctx *LabelStmtBreakContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtContinue(ctx *StmtContinueContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtContinue(ctx *LabelStmtContinueContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtCheck(ctx *StmtCheckContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtCheck(ctx *LabelStmtCheckContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStmtDefer(ctx *StmtDeferContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStmtDefer(ctx *LabelStmtDeferContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -288,11 +288,11 @@ func (v *BaseManuscriptVisitor) VisitForStmt(ctx *ForStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForLoop(ctx *ForLoopContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelForLoop(ctx *LabelForLoopContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForInLoop(ctx *ForInLoopContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelForInLoop(ctx *LabelForInLoopContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -300,27 +300,27 @@ func (v *BaseManuscriptVisitor) VisitForTrinity(ctx *ForTrinityContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForInitLet(ctx *ForInitLetContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelForInitLet(ctx *LabelForInitLetContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForInitEmpty(ctx *ForInitEmptyContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelForInitEmpty(ctx *LabelForInitEmptyContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForCondExpr(ctx *ForCondExprContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelForCondExpr(ctx *LabelForCondExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForCondEmpty(ctx *ForCondEmptyContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelForCondEmpty(ctx *LabelForCondEmptyContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForPostExpr(ctx *ForPostExprContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelForPostExpr(ctx *LabelForPostExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitForPostEmpty(ctx *ForPostEmptyContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelForPostEmpty(ctx *LabelForPostEmptyContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -356,31 +356,31 @@ func (v *BaseManuscriptVisitor) VisitAssignmentExpr(ctx *AssignmentExprContext) 
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitAssignEq(ctx *AssignEqContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelAssignEq(ctx *LabelAssignEqContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitAssignPlusEq(ctx *AssignPlusEqContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelAssignPlusEq(ctx *LabelAssignPlusEqContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitAssignMinusEq(ctx *AssignMinusEqContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelAssignMinusEq(ctx *LabelAssignMinusEqContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitAssignStarEq(ctx *AssignStarEqContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelAssignStarEq(ctx *LabelAssignStarEqContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitAssignSlashEq(ctx *AssignSlashEqContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelAssignSlashEq(ctx *LabelAssignSlashEqContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitAssignModEq(ctx *AssignModEqContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelAssignModEq(ctx *LabelAssignModEqContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitAssignCaretEq(ctx *AssignCaretEqContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelAssignCaretEq(ctx *LabelAssignCaretEqContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -432,11 +432,11 @@ func (v *BaseManuscriptVisitor) VisitMultiplicativeExpr(ctx *MultiplicativeExprC
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitUnaryOpExpr(ctx *UnaryOpExprContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelUnaryOpExpr(ctx *LabelUnaryOpExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitUnaryAwaitExpr(ctx *UnaryAwaitExprContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelUnaryAwaitExpr(ctx *LabelUnaryAwaitExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -448,67 +448,67 @@ func (v *BaseManuscriptVisitor) VisitPostfixExpr(ctx *PostfixExprContext) interf
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPostfixCall(ctx *PostfixCallContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPostfixCall(ctx *LabelPostfixCallContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPostfixDot(ctx *PostfixDotContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPostfixDot(ctx *LabelPostfixDotContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPostfixIndex(ctx *PostfixIndexContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPostfixIndex(ctx *LabelPostfixIndexContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryLiteral(ctx *PrimaryLiteralContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryLiteral(ctx *LabelPrimaryLiteralContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryID(ctx *PrimaryIDContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryID(ctx *LabelPrimaryIDContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryParen(ctx *PrimaryParenContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryParen(ctx *LabelPrimaryParenContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryArray(ctx *PrimaryArrayContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryArray(ctx *LabelPrimaryArrayContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryObject(ctx *PrimaryObjectContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryObject(ctx *LabelPrimaryObjectContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryMap(ctx *PrimaryMapContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryMap(ctx *LabelPrimaryMapContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimarySet(ctx *PrimarySetContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimarySet(ctx *LabelPrimarySetContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryFn(ctx *PrimaryFnContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryFn(ctx *LabelPrimaryFnContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryMatch(ctx *PrimaryMatchContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryMatch(ctx *LabelPrimaryMatchContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryVoid(ctx *PrimaryVoidContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryVoid(ctx *LabelPrimaryVoidContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryNull(ctx *PrimaryNullContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryNull(ctx *LabelPrimaryNullContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryTaggedBlock(ctx *PrimaryTaggedBlockContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryTaggedBlock(ctx *LabelPrimaryTaggedBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitPrimaryStructInit(ctx *PrimaryStructInitContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryStructInit(ctx *LabelPrimaryStructInitContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -544,23 +544,23 @@ func (v *BaseManuscriptVisitor) VisitMultiDoubleQuotedString(ctx *MultiDoubleQuo
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringPartSingle(ctx *StringPartSingleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStringPartSingle(ctx *LabelStringPartSingleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringPartMulti(ctx *StringPartMultiContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStringPartMulti(ctx *LabelStringPartMultiContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringPartDouble(ctx *StringPartDoubleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStringPartDouble(ctx *LabelStringPartDoubleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringPartMultiDouble(ctx *StringPartMultiDoubleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStringPartMultiDouble(ctx *LabelStringPartMultiDoubleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringPartInterp(ctx *StringPartInterpContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStringPartInterp(ctx *LabelStringPartInterpContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -568,67 +568,67 @@ func (v *BaseManuscriptVisitor) VisitInterpolation(ctx *InterpolationContext) in
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLiteralString(ctx *LiteralStringContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLiteralString(ctx *LabelLiteralStringContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLiteralNumber(ctx *LiteralNumberContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLiteralNumber(ctx *LabelLiteralNumberContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLiteralBool(ctx *LiteralBoolContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLiteralBool(ctx *LabelLiteralBoolContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLiteralNull(ctx *LiteralNullContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLiteralNull(ctx *LabelLiteralNullContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLiteralVoid(ctx *LiteralVoidContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelLiteralVoid(ctx *LabelLiteralVoidContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringLiteralSingle(ctx *StringLiteralSingleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStringLiteralSingle(ctx *LabelStringLiteralSingleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringLiteralMulti(ctx *StringLiteralMultiContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStringLiteralMulti(ctx *LabelStringLiteralMultiContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringLiteralDouble(ctx *StringLiteralDoubleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStringLiteralDouble(ctx *LabelStringLiteralDoubleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitStringLiteralMultiDouble(ctx *StringLiteralMultiDoubleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelStringLiteralMultiDouble(ctx *LabelStringLiteralMultiDoubleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitNumberLiteralInt(ctx *NumberLiteralIntContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelNumberLiteralInt(ctx *LabelNumberLiteralIntContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitNumberLiteralFloat(ctx *NumberLiteralFloatContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelNumberLiteralFloat(ctx *LabelNumberLiteralFloatContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitNumberLiteralHex(ctx *NumberLiteralHexContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelNumberLiteralHex(ctx *LabelNumberLiteralHexContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitNumberLiteralBin(ctx *NumberLiteralBinContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelNumberLiteralBin(ctx *LabelNumberLiteralBinContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitNumberLiteralOct(ctx *NumberLiteralOctContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelNumberLiteralOct(ctx *LabelNumberLiteralOctContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitBoolLiteralTrue(ctx *BoolLiteralTrueContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelBoolLiteralTrue(ctx *LabelBoolLiteralTrueContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitBoolLiteralFalse(ctx *BoolLiteralFalseContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelBoolLiteralFalse(ctx *LabelBoolLiteralFalseContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -648,19 +648,19 @@ func (v *BaseManuscriptVisitor) VisitObjectField(ctx *ObjectFieldContext) interf
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitObjectFieldNameID(ctx *ObjectFieldNameIDContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelObjectFieldNameID(ctx *LabelObjectFieldNameIDContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitObjectFieldNameStr(ctx *ObjectFieldNameStrContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelObjectFieldNameStr(ctx *LabelObjectFieldNameStrContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitMapLiteralEmpty(ctx *MapLiteralEmptyContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelMapLiteralEmpty(ctx *LabelMapLiteralEmptyContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitMapLiteralNonEmpty(ctx *MapLiteralNonEmptyContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelMapLiteralNonEmpty(ctx *LabelMapLiteralNonEmptyContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -692,23 +692,23 @@ func (v *BaseManuscriptVisitor) VisitStructField(ctx *StructFieldContext) interf
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitTypeAnnID(ctx *TypeAnnIDContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelTypeAnnID(ctx *LabelTypeAnnIDContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitTypeAnnArray(ctx *TypeAnnArrayContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelTypeAnnArray(ctx *LabelTypeAnnArrayContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitTypeAnnTuple(ctx *TypeAnnTupleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelTypeAnnTuple(ctx *LabelTypeAnnTupleContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitTypeAnnFn(ctx *TypeAnnFnContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelTypeAnnFn(ctx *LabelTypeAnnFnContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitTypeAnnVoid(ctx *TypeAnnVoidContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelTypeAnnVoid(ctx *LabelTypeAnnVoidContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

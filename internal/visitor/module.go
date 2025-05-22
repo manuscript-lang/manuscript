@@ -7,7 +7,7 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
-func (v *ManuscriptAstVisitor) VisitModuleImportTarget(ctx *parser.ModuleImportTargetContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelModuleImportTarget(ctx *parser.LabelModuleImportTargetContext) interface{} {
 	target := ctx.TargetImport()
 	if target == nil {
 		v.addError("Malformed import: missing target", ctx.GetStart())
@@ -35,7 +35,7 @@ func (v *ManuscriptAstVisitor) VisitModuleImportTarget(ctx *parser.ModuleImportT
 	return []ast.Decl{}
 }
 
-func (v *ManuscriptAstVisitor) VisitModuleImportDestructured(ctx *parser.ModuleImportDestructuredContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelModuleImportDestructured(ctx *parser.LabelModuleImportDestructuredContext) interface{} {
 	destr := ctx.DestructuredImport()
 	if destr == nil {
 		v.addError("Malformed destructured import: missing destructured import", ctx.GetStart())

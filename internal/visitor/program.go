@@ -121,7 +121,7 @@ func (v *ManuscriptAstVisitor) VisitDeclaration(ctx parser.IDeclarationContext) 
 		return nil
 	}
 	// Only DeclLetContext has LetDecl method
-	if letCtx, ok := ctx.(*parser.DeclLetContext); ok {
+	if letCtx, ok := ctx.(*parser.LabelDeclLetContext); ok {
 		letDecl := letCtx.LetDecl()
 		if letDecl != nil {
 			letResult := v.Visit(letDecl)
@@ -140,11 +140,11 @@ func (v *ManuscriptAstVisitor) VisitDeclaration(ctx parser.IDeclarationContext) 
 			}
 		}
 	}
-	if importCtx, ok := ctx.(*parser.DeclImportContext); ok {
-		return v.VisitDeclImport(importCtx)
+	if importCtx, ok := ctx.(*parser.LabelDeclImportContext); ok {
+		return v.VisitLabelDeclImport(importCtx)
 	}
-	if exportCtx, ok := ctx.(*parser.DeclExportContext); ok {
-		return v.VisitDeclExport(exportCtx)
+	if exportCtx, ok := ctx.(*parser.LabelDeclExportContext); ok {
+		return v.VisitLabelDeclExport(exportCtx)
 	}
 	if child, ok := ctx.GetChild(0).(antlr.ParseTree); ok {
 		return v.Visit(child)

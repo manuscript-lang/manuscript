@@ -6,7 +6,7 @@ import (
 )
 
 // VisitLetDeclSingle handles 'let typedID = expr' or 'let typedID'
-func (v *ManuscriptAstVisitor) VisitLetDeclSingle(ctx *parser.LetDeclSingleContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLetDeclSingle(ctx *parser.LabelLetDeclSingleContext) interface{} {
 	letSingle := ctx.LetSingle()
 	if letSingle == nil {
 		v.addError("Missing letSingle in let declaration: "+ctx.GetText(), ctx.GetStart())
@@ -16,7 +16,7 @@ func (v *ManuscriptAstVisitor) VisitLetDeclSingle(ctx *parser.LetDeclSingleConte
 }
 
 // VisitLetDeclBlock handles 'let ( ... )'
-func (v *ManuscriptAstVisitor) VisitLetDeclBlock(ctx *parser.LetDeclBlockContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLetDeclBlock(ctx *parser.LabelLetDeclBlockContext) interface{} {
 	if ctx == nil {
 		v.addError("VisitLetBlock called with nil context", nil)
 		return []ast.Stmt{&ast.BadStmt{}}
@@ -33,7 +33,7 @@ func (v *ManuscriptAstVisitor) VisitLetDeclBlock(ctx *parser.LetDeclBlockContext
 }
 
 // VisitLetDeclDestructuredObj handles 'let {a, b} = expr'
-func (v *ManuscriptAstVisitor) VisitLetDeclDestructuredObj(ctx *parser.LetDeclDestructuredObjContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLetDeclDestructuredObj(ctx *parser.LabelLetDeclDestructuredObjContext) interface{} {
 	letObj := ctx.LetDestructuredObj()
 	if letObj == nil {
 		v.addError("Missing LetDestructuredObj in let declaration: "+ctx.GetText(), ctx.GetStart())
@@ -43,7 +43,7 @@ func (v *ManuscriptAstVisitor) VisitLetDeclDestructuredObj(ctx *parser.LetDeclDe
 }
 
 // VisitLetDeclDestructuredArray handles 'let [a, b] = expr'
-func (v *ManuscriptAstVisitor) VisitLetDeclDestructuredArray(ctx *parser.LetDeclDestructuredArrayContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLetDeclDestructuredArray(ctx *parser.LabelLetDeclDestructuredArrayContext) interface{} {
 	letArr := ctx.LetDestructuredArray()
 	if letArr == nil {
 		v.addError("Missing LetDestructuredArray in let declaration: "+ctx.GetText(), ctx.GetStart())
@@ -60,10 +60,10 @@ func (v *ManuscriptAstVisitor) VisitImportDecl(ctx *parser.ImportDeclContext) in
 	}
 
 	switch t := modImport.(type) {
-	case *parser.ModuleImportTargetContext:
-		return v.VisitModuleImportTarget(t)
-	case *parser.ModuleImportDestructuredContext:
-		return v.VisitModuleImportDestructured(t)
+	case *parser.LabelModuleImportTargetContext:
+		return v.VisitLabelModuleImportTarget(t)
+	case *parser.LabelModuleImportDestructuredContext:
+		return v.VisitLabelModuleImportDestructured(t)
 	default:
 		v.addError("Unknown module import type", ctx.GetStart())
 		return nil
@@ -71,7 +71,7 @@ func (v *ManuscriptAstVisitor) VisitImportDecl(ctx *parser.ImportDeclContext) in
 }
 
 // VisitDeclImport handles the DeclImport context and dispatches to VisitImportDecl
-func (v *ManuscriptAstVisitor) VisitDeclImport(ctx *parser.DeclImportContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelDeclImport(ctx *parser.LabelDeclImportContext) interface{} {
 	if ctx == nil {
 		return nil
 	}
@@ -85,7 +85,7 @@ func (v *ManuscriptAstVisitor) VisitDeclImport(ctx *parser.DeclImportContext) in
 }
 
 // VisitDeclExport handles the DeclExport context and dispatches to VisitExportDecl, ensuring Go export naming
-func (v *ManuscriptAstVisitor) VisitDeclExport(ctx *parser.DeclExportContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelDeclExport(ctx *parser.LabelDeclExportContext) interface{} {
 	if ctx == nil {
 		return nil
 	}
@@ -154,7 +154,7 @@ func (v *ManuscriptAstVisitor) VisitExternDecl(ctx *parser.ExternDeclContext) in
 }
 
 // VisitExportedFn delegates to VisitFnDecl
-func (v *ManuscriptAstVisitor) VisitExportedFn(ctx *parser.ExportedFnContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelExportedFn(ctx *parser.LabelExportedFnContext) interface{} {
 	if ctx == nil || ctx.FnDecl() == nil {
 		return nil
 	}
@@ -165,7 +165,7 @@ func (v *ManuscriptAstVisitor) VisitExportedFn(ctx *parser.ExportedFnContext) in
 }
 
 // VisitExportedLet delegates to VisitLetDecl
-func (v *ManuscriptAstVisitor) VisitExportedLet(ctx *parser.ExportedLetContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelExportedLet(ctx *parser.LabelExportedLetContext) interface{} {
 	if ctx == nil || ctx.LetDecl() == nil {
 		return nil
 	}
@@ -176,7 +176,7 @@ func (v *ManuscriptAstVisitor) VisitExportedLet(ctx *parser.ExportedLetContext) 
 }
 
 // VisitExportedType delegates to VisitTypeDecl
-func (v *ManuscriptAstVisitor) VisitExportedType(ctx *parser.ExportedTypeContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelExportedType(ctx *parser.LabelExportedTypeContext) interface{} {
 	if ctx == nil || ctx.TypeDecl() == nil {
 		return nil
 	}
@@ -187,7 +187,7 @@ func (v *ManuscriptAstVisitor) VisitExportedType(ctx *parser.ExportedTypeContext
 }
 
 // VisitExportedInterface delegates to VisitInterfaceDecl
-func (v *ManuscriptAstVisitor) VisitExportedInterface(ctx *parser.ExportedInterfaceContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelExportedInterface(ctx *parser.LabelExportedInterfaceContext) interface{} {
 	if ctx == nil || ctx.InterfaceDecl() == nil {
 		return nil
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 // VisitStmtLet handles let statements using the ANTLR visitor pattern.
-func (v *ManuscriptAstVisitor) VisitStmtLet(ctx *parser.StmtLetContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtLet(ctx *parser.LabelStmtLetContext) interface{} {
 	if ctx == nil || ctx.LetDecl() == nil {
 		v.addError("let statement missing letDecl", ctx.GetStart())
 		return &ast.EmptyStmt{}
@@ -16,7 +16,7 @@ func (v *ManuscriptAstVisitor) VisitStmtLet(ctx *parser.StmtLetContext) interfac
 }
 
 // VisitStmtExpr handles expression statements.
-func (v *ManuscriptAstVisitor) VisitStmtExpr(ctx *parser.StmtExprContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtExpr(ctx *parser.LabelStmtExprContext) interface{} {
 	exprCtx := ctx.Expr()
 	if exprCtx == nil {
 		v.addError("expression statement missing expr", ctx.GetStart())
@@ -34,7 +34,7 @@ func (v *ManuscriptAstVisitor) VisitStmtExpr(ctx *parser.StmtExprContext) interf
 }
 
 // VisitStmtReturn handles return statements.
-func (v *ManuscriptAstVisitor) VisitStmtReturn(ctx *parser.StmtReturnContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtReturn(ctx *parser.LabelStmtReturnContext) interface{} {
 	if ctx == nil || ctx.ReturnStmt() == nil {
 		v.addError("return statement missing returnStmt", ctx.GetStart())
 		return &ast.BadStmt{}
@@ -43,13 +43,13 @@ func (v *ManuscriptAstVisitor) VisitStmtReturn(ctx *parser.StmtReturnContext) in
 }
 
 // VisitStmtYield handles yield statements (not implemented).
-func (v *ManuscriptAstVisitor) VisitStmtYield(ctx *parser.StmtYieldContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtYield(ctx *parser.LabelStmtYieldContext) interface{} {
 	v.addError("'yield' statement not implemented", ctx.GetStart())
 	return &ast.BadStmt{}
 }
 
 // VisitStmtIf handles if statements.
-func (v *ManuscriptAstVisitor) VisitStmtIf(ctx *parser.StmtIfContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtIf(ctx *parser.LabelStmtIfContext) interface{} {
 	if ctx == nil || ctx.IfStmt() == nil {
 		v.addError("if statement missing ifStmt", ctx.GetStart())
 		return &ast.BadStmt{}
@@ -58,7 +58,7 @@ func (v *ManuscriptAstVisitor) VisitStmtIf(ctx *parser.StmtIfContext) interface{
 }
 
 // VisitStmtFor handles for statements.
-func (v *ManuscriptAstVisitor) VisitStmtFor(ctx *parser.StmtForContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtFor(ctx *parser.LabelStmtForContext) interface{} {
 	if ctx == nil || ctx.ForStmt() == nil {
 		v.addError("for statement missing forStmt", ctx.GetStart())
 		return &ast.BadStmt{}
@@ -67,7 +67,7 @@ func (v *ManuscriptAstVisitor) VisitStmtFor(ctx *parser.StmtForContext) interfac
 }
 
 // VisitStmtWhile handles while statements.
-func (v *ManuscriptAstVisitor) VisitStmtWhile(ctx *parser.StmtWhileContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtWhile(ctx *parser.LabelStmtWhileContext) interface{} {
 	if ctx == nil || ctx.WhileStmt() == nil {
 		v.addError("while statement missing whileStmt", ctx.GetStart())
 		return &ast.BadStmt{}
@@ -76,7 +76,7 @@ func (v *ManuscriptAstVisitor) VisitStmtWhile(ctx *parser.StmtWhileContext) inte
 }
 
 // VisitStmtBlock handles code blocks as statements.
-func (v *ManuscriptAstVisitor) VisitStmtBlock(ctx *parser.StmtBlockContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtBlock(ctx *parser.LabelStmtBlockContext) interface{} {
 	if ctx == nil || ctx.CodeBlock() == nil {
 		v.addError("block statement missing codeBlock", ctx.GetStart())
 		return &ast.BadStmt{}
@@ -85,7 +85,7 @@ func (v *ManuscriptAstVisitor) VisitStmtBlock(ctx *parser.StmtBlockContext) inte
 }
 
 // VisitStmtBreak handles break statements.
-func (v *ManuscriptAstVisitor) VisitStmtBreak(ctx *parser.StmtBreakContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtBreak(ctx *parser.LabelStmtBreakContext) interface{} {
 	if !v.isInLoop() {
 		v.addError("'break' statement found outside of a loop", ctx.GetStart())
 	}
@@ -96,7 +96,7 @@ func (v *ManuscriptAstVisitor) VisitStmtBreak(ctx *parser.StmtBreakContext) inte
 }
 
 // VisitStmtContinue handles continue statements.
-func (v *ManuscriptAstVisitor) VisitStmtContinue(ctx *parser.StmtContinueContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtContinue(ctx *parser.LabelStmtContinueContext) interface{} {
 	if !v.isInLoop() {
 		v.addError("'continue' statement found outside of a loop", ctx.GetStart())
 	}
@@ -107,13 +107,13 @@ func (v *ManuscriptAstVisitor) VisitStmtContinue(ctx *parser.StmtContinueContext
 }
 
 // VisitStmtCheck handles check statements (not implemented).
-func (v *ManuscriptAstVisitor) VisitStmtCheck(ctx *parser.StmtCheckContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtCheck(ctx *parser.LabelStmtCheckContext) interface{} {
 	v.addError("'check' statement not implemented", ctx.GetStart())
 	return &ast.BadStmt{}
 }
 
 // VisitStmtDefer handles defer statements.
-func (v *ManuscriptAstVisitor) VisitStmtDefer(ctx *parser.StmtDeferContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStmtDefer(ctx *parser.LabelStmtDeferContext) interface{} {
 	if ctx == nil || ctx.DeferStmt() == nil {
 		v.addError("defer statement missing deferStmt", ctx.GetStart())
 		return &ast.BadStmt{}

@@ -62,8 +62,7 @@ func (v *ManuscriptAstVisitor) addError(message string, token antlr.Token) {
 // It returns the result of visiting the last child, or nil if no children produce a result.
 func (v *ManuscriptAstVisitor) VisitChildren(node antlr.RuleNode) interface{} {
 	var result interface{}
-	for i := 0; i < node.GetChildCount(); i++ {
-		child := node.GetChild(i)
+	for _, child := range node.GetRuleContext().GetChildren() {
 		if child == nil {
 			continue
 		}

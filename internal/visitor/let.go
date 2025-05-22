@@ -118,7 +118,7 @@ func (v *ManuscriptAstVisitor) VisitTypedIDList(ctx *parser.TypedIDListContext) 
 }
 
 // VisitLetBlockItemSingle handles: lhsTypedId = typedID EQUALS rhsExpr = expr
-func (v *ManuscriptAstVisitor) VisitLetBlockItemSingle(ctx *parser.LetBlockItemSingleContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLetBlockItemSingle(ctx *parser.LabelLetBlockItemSingleContext) interface{} {
 	lhsVisited := v.Visit(ctx.TypedID())
 	lhsIdent, okLHS := lhsVisited.(*ast.Ident)
 	if !okLHS {
@@ -139,7 +139,7 @@ func (v *ManuscriptAstVisitor) VisitLetBlockItemSingle(ctx *parser.LetBlockItemS
 }
 
 // VisitLetBlockItemDestructuredObj handles: LBRACE TypedIDList RBRACE EQUALS expr
-func (v *ManuscriptAstVisitor) VisitLetBlockItemDestructuredObj(ctx *parser.LetBlockItemDestructuredObjContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLetBlockItemDestructuredObj(ctx *parser.LabelLetBlockItemDestructuredObjContext) interface{} {
 	var lhsIdents []*ast.Ident
 	typedIDListCtx := ctx.TypedIDList().(*parser.TypedIDListContext)
 	for _, typedIDInterface := range typedIDListCtx.AllTypedID() {
@@ -174,7 +174,7 @@ func (v *ManuscriptAstVisitor) VisitLetBlockItemDestructuredObj(ctx *parser.LetB
 }
 
 // VisitLetBlockItemDestructuredArray handles: LSQBR TypedIDList RSQBR EQUALS expr
-func (v *ManuscriptAstVisitor) VisitLetBlockItemDestructuredArray(ctx *parser.LetBlockItemDestructuredArrayContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLetBlockItemDestructuredArray(ctx *parser.LabelLetBlockItemDestructuredArrayContext) interface{} {
 	var lhsIdents []*ast.Ident
 	typedIDListCtx := ctx.TypedIDList().(*parser.TypedIDListContext)
 	for _, typedIDInterface := range typedIDListCtx.AllTypedID() {

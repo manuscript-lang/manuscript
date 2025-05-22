@@ -22,7 +22,7 @@ func (v *ManuscriptAstVisitor) VisitArrayLiteral(ctx *parser.ArrayLiteralContext
 }
 
 // VisitMapLiteralEmpty handles map literal expressions: [:]
-func (v *ManuscriptAstVisitor) VisitMapLiteralEmpty(ctx *parser.MapLiteralEmptyContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelMapLiteralEmpty(ctx *parser.LabelMapLiteralEmptyContext) interface{} {
 	return &ast.CompositeLit{
 		Type: &ast.MapType{
 			Key:   ast.NewIdent("interface{}"),
@@ -33,7 +33,7 @@ func (v *ManuscriptAstVisitor) VisitMapLiteralEmpty(ctx *parser.MapLiteralEmptyC
 }
 
 // VisitMapLiteralNonEmpty handles map literal expressions: [key: value, ...]
-func (v *ManuscriptAstVisitor) VisitMapLiteralNonEmpty(ctx *parser.MapLiteralNonEmptyContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelMapLiteralNonEmpty(ctx *parser.LabelMapLiteralNonEmptyContext) interface{} {
 	var elts []ast.Expr
 	if mfl := ctx.MapFieldList(); mfl != nil {
 		for _, f := range mfl.AllMapField() {

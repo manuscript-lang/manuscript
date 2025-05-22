@@ -1281,12 +1281,12 @@ func (s *DeclarationContext) ToStringTree(ruleNames []string, recog antlr.Recogn
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type DeclImportContext struct {
+type LabelDeclTypeContext struct {
 	DeclarationContext
 }
 
-func NewDeclImportContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *DeclImportContext {
-	var p = new(DeclImportContext)
+func NewLabelDeclTypeContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelDeclTypeContext {
+	var p = new(LabelDeclTypeContext)
 
 	InitEmptyDeclarationContext(&p.DeclarationContext)
 	p.parser = parser
@@ -1295,291 +1295,11 @@ func NewDeclImportContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Dec
 	return p
 }
 
-func (s *DeclImportContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelDeclTypeContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *DeclImportContext) ImportDecl() IImportDeclContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IImportDeclContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IImportDeclContext)
-}
-
-func (s *DeclImportContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterDeclImport(s)
-	}
-}
-
-func (s *DeclImportContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitDeclImport(s)
-	}
-}
-
-func (s *DeclImportContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitDeclImport(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type DeclMethodsContext struct {
-	DeclarationContext
-}
-
-func NewDeclMethodsContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *DeclMethodsContext {
-	var p = new(DeclMethodsContext)
-
-	InitEmptyDeclarationContext(&p.DeclarationContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*DeclarationContext))
-
-	return p
-}
-
-func (s *DeclMethodsContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *DeclMethodsContext) MethodsDecl() IMethodsDeclContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IMethodsDeclContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IMethodsDeclContext)
-}
-
-func (s *DeclMethodsContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterDeclMethods(s)
-	}
-}
-
-func (s *DeclMethodsContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitDeclMethods(s)
-	}
-}
-
-func (s *DeclMethodsContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitDeclMethods(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type DeclFnContext struct {
-	DeclarationContext
-}
-
-func NewDeclFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *DeclFnContext {
-	var p = new(DeclFnContext)
-
-	InitEmptyDeclarationContext(&p.DeclarationContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*DeclarationContext))
-
-	return p
-}
-
-func (s *DeclFnContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *DeclFnContext) FnDecl() IFnDeclContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IFnDeclContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IFnDeclContext)
-}
-
-func (s *DeclFnContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterDeclFn(s)
-	}
-}
-
-func (s *DeclFnContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitDeclFn(s)
-	}
-}
-
-func (s *DeclFnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitDeclFn(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type DeclLetContext struct {
-	DeclarationContext
-}
-
-func NewDeclLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *DeclLetContext {
-	var p = new(DeclLetContext)
-
-	InitEmptyDeclarationContext(&p.DeclarationContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*DeclarationContext))
-
-	return p
-}
-
-func (s *DeclLetContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *DeclLetContext) LetDecl() ILetDeclContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ILetDeclContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ILetDeclContext)
-}
-
-func (s *DeclLetContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterDeclLet(s)
-	}
-}
-
-func (s *DeclLetContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitDeclLet(s)
-	}
-}
-
-func (s *DeclLetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitDeclLet(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type DeclInterfaceContext struct {
-	DeclarationContext
-}
-
-func NewDeclInterfaceContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *DeclInterfaceContext {
-	var p = new(DeclInterfaceContext)
-
-	InitEmptyDeclarationContext(&p.DeclarationContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*DeclarationContext))
-
-	return p
-}
-
-func (s *DeclInterfaceContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *DeclInterfaceContext) InterfaceDecl() IInterfaceDeclContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IInterfaceDeclContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IInterfaceDeclContext)
-}
-
-func (s *DeclInterfaceContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterDeclInterface(s)
-	}
-}
-
-func (s *DeclInterfaceContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitDeclInterface(s)
-	}
-}
-
-func (s *DeclInterfaceContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitDeclInterface(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type DeclTypeContext struct {
-	DeclarationContext
-}
-
-func NewDeclTypeContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *DeclTypeContext {
-	var p = new(DeclTypeContext)
-
-	InitEmptyDeclarationContext(&p.DeclarationContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*DeclarationContext))
-
-	return p
-}
-
-func (s *DeclTypeContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *DeclTypeContext) TypeDecl() ITypeDeclContext {
+func (s *LabelDeclTypeContext) TypeDecl() ITypeDeclContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ITypeDeclContext); ok {
@@ -1595,34 +1315,34 @@ func (s *DeclTypeContext) TypeDecl() ITypeDeclContext {
 	return t.(ITypeDeclContext)
 }
 
-func (s *DeclTypeContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelDeclTypeContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterDeclType(s)
+		listenerT.EnterLabelDeclType(s)
 	}
 }
 
-func (s *DeclTypeContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelDeclTypeContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitDeclType(s)
+		listenerT.ExitLabelDeclType(s)
 	}
 }
 
-func (s *DeclTypeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelDeclTypeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitDeclType(s)
+		return t.VisitLabelDeclType(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type DeclExportContext struct {
+type LabelDeclExternContext struct {
 	DeclarationContext
 }
 
-func NewDeclExportContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *DeclExportContext {
-	var p = new(DeclExportContext)
+func NewLabelDeclExternContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelDeclExternContext {
+	var p = new(LabelDeclExternContext)
 
 	InitEmptyDeclarationContext(&p.DeclarationContext)
 	p.parser = parser
@@ -1631,67 +1351,11 @@ func NewDeclExportContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Dec
 	return p
 }
 
-func (s *DeclExportContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelDeclExternContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *DeclExportContext) ExportDecl() IExportDeclContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IExportDeclContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IExportDeclContext)
-}
-
-func (s *DeclExportContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterDeclExport(s)
-	}
-}
-
-func (s *DeclExportContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitDeclExport(s)
-	}
-}
-
-func (s *DeclExportContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitDeclExport(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type DeclExternContext struct {
-	DeclarationContext
-}
-
-func NewDeclExternContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *DeclExternContext {
-	var p = new(DeclExternContext)
-
-	InitEmptyDeclarationContext(&p.DeclarationContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*DeclarationContext))
-
-	return p
-}
-
-func (s *DeclExternContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *DeclExternContext) ExternDecl() IExternDeclContext {
+func (s *LabelDeclExternContext) ExternDecl() IExternDeclContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IExternDeclContext); ok {
@@ -1707,22 +1371,358 @@ func (s *DeclExternContext) ExternDecl() IExternDeclContext {
 	return t.(IExternDeclContext)
 }
 
-func (s *DeclExternContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelDeclExternContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterDeclExtern(s)
+		listenerT.EnterLabelDeclExtern(s)
 	}
 }
 
-func (s *DeclExternContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelDeclExternContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitDeclExtern(s)
+		listenerT.ExitLabelDeclExtern(s)
 	}
 }
 
-func (s *DeclExternContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelDeclExternContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitDeclExtern(s)
+		return t.VisitLabelDeclExtern(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelDeclMethodsContext struct {
+	DeclarationContext
+}
+
+func NewLabelDeclMethodsContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelDeclMethodsContext {
+	var p = new(LabelDeclMethodsContext)
+
+	InitEmptyDeclarationContext(&p.DeclarationContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*DeclarationContext))
+
+	return p
+}
+
+func (s *LabelDeclMethodsContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelDeclMethodsContext) MethodsDecl() IMethodsDeclContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IMethodsDeclContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IMethodsDeclContext)
+}
+
+func (s *LabelDeclMethodsContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelDeclMethods(s)
+	}
+}
+
+func (s *LabelDeclMethodsContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelDeclMethods(s)
+	}
+}
+
+func (s *LabelDeclMethodsContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelDeclMethods(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelDeclInterfaceContext struct {
+	DeclarationContext
+}
+
+func NewLabelDeclInterfaceContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelDeclInterfaceContext {
+	var p = new(LabelDeclInterfaceContext)
+
+	InitEmptyDeclarationContext(&p.DeclarationContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*DeclarationContext))
+
+	return p
+}
+
+func (s *LabelDeclInterfaceContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelDeclInterfaceContext) InterfaceDecl() IInterfaceDeclContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IInterfaceDeclContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IInterfaceDeclContext)
+}
+
+func (s *LabelDeclInterfaceContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelDeclInterface(s)
+	}
+}
+
+func (s *LabelDeclInterfaceContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelDeclInterface(s)
+	}
+}
+
+func (s *LabelDeclInterfaceContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelDeclInterface(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelDeclImportContext struct {
+	DeclarationContext
+}
+
+func NewLabelDeclImportContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelDeclImportContext {
+	var p = new(LabelDeclImportContext)
+
+	InitEmptyDeclarationContext(&p.DeclarationContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*DeclarationContext))
+
+	return p
+}
+
+func (s *LabelDeclImportContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelDeclImportContext) ImportDecl() IImportDeclContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IImportDeclContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IImportDeclContext)
+}
+
+func (s *LabelDeclImportContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelDeclImport(s)
+	}
+}
+
+func (s *LabelDeclImportContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelDeclImport(s)
+	}
+}
+
+func (s *LabelDeclImportContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelDeclImport(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelDeclLetContext struct {
+	DeclarationContext
+}
+
+func NewLabelDeclLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelDeclLetContext {
+	var p = new(LabelDeclLetContext)
+
+	InitEmptyDeclarationContext(&p.DeclarationContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*DeclarationContext))
+
+	return p
+}
+
+func (s *LabelDeclLetContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelDeclLetContext) LetDecl() ILetDeclContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ILetDeclContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ILetDeclContext)
+}
+
+func (s *LabelDeclLetContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelDeclLet(s)
+	}
+}
+
+func (s *LabelDeclLetContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelDeclLet(s)
+	}
+}
+
+func (s *LabelDeclLetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelDeclLet(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelDeclFnContext struct {
+	DeclarationContext
+}
+
+func NewLabelDeclFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelDeclFnContext {
+	var p = new(LabelDeclFnContext)
+
+	InitEmptyDeclarationContext(&p.DeclarationContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*DeclarationContext))
+
+	return p
+}
+
+func (s *LabelDeclFnContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelDeclFnContext) FnDecl() IFnDeclContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IFnDeclContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IFnDeclContext)
+}
+
+func (s *LabelDeclFnContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelDeclFn(s)
+	}
+}
+
+func (s *LabelDeclFnContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelDeclFn(s)
+	}
+}
+
+func (s *LabelDeclFnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelDeclFn(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelDeclExportContext struct {
+	DeclarationContext
+}
+
+func NewLabelDeclExportContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelDeclExportContext {
+	var p = new(LabelDeclExportContext)
+
+	InitEmptyDeclarationContext(&p.DeclarationContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*DeclarationContext))
+
+	return p
+}
+
+func (s *LabelDeclExportContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelDeclExportContext) ExportDecl() IExportDeclContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IExportDeclContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IExportDeclContext)
+}
+
+func (s *LabelDeclExportContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelDeclExport(s)
+	}
+}
+
+func (s *LabelDeclExportContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelDeclExport(s)
+	}
+}
+
+func (s *LabelDeclExportContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelDeclExport(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -1740,7 +1740,7 @@ func (p *Manuscript) Declaration() (localctx IDeclarationContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptIMPORT:
-		localctx = NewDeclImportContext(p, localctx)
+		localctx = NewLabelDeclImportContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(241)
@@ -1748,7 +1748,7 @@ func (p *Manuscript) Declaration() (localctx IDeclarationContext) {
 		}
 
 	case ManuscriptEXPORT:
-		localctx = NewDeclExportContext(p, localctx)
+		localctx = NewLabelDeclExportContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(242)
@@ -1756,7 +1756,7 @@ func (p *Manuscript) Declaration() (localctx IDeclarationContext) {
 		}
 
 	case ManuscriptEXTERN:
-		localctx = NewDeclExternContext(p, localctx)
+		localctx = NewLabelDeclExternContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(243)
@@ -1764,7 +1764,7 @@ func (p *Manuscript) Declaration() (localctx IDeclarationContext) {
 		}
 
 	case ManuscriptLET:
-		localctx = NewDeclLetContext(p, localctx)
+		localctx = NewLabelDeclLetContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(244)
@@ -1772,7 +1772,7 @@ func (p *Manuscript) Declaration() (localctx IDeclarationContext) {
 		}
 
 	case ManuscriptTYPE:
-		localctx = NewDeclTypeContext(p, localctx)
+		localctx = NewLabelDeclTypeContext(p, localctx)
 		p.EnterOuterAlt(localctx, 5)
 		{
 			p.SetState(245)
@@ -1780,7 +1780,7 @@ func (p *Manuscript) Declaration() (localctx IDeclarationContext) {
 		}
 
 	case ManuscriptINTERFACE:
-		localctx = NewDeclInterfaceContext(p, localctx)
+		localctx = NewLabelDeclInterfaceContext(p, localctx)
 		p.EnterOuterAlt(localctx, 6)
 		{
 			p.SetState(246)
@@ -1788,7 +1788,7 @@ func (p *Manuscript) Declaration() (localctx IDeclarationContext) {
 		}
 
 	case ManuscriptFN:
-		localctx = NewDeclFnContext(p, localctx)
+		localctx = NewLabelDeclFnContext(p, localctx)
 		p.EnterOuterAlt(localctx, 7)
 		{
 			p.SetState(247)
@@ -1796,7 +1796,7 @@ func (p *Manuscript) Declaration() (localctx IDeclarationContext) {
 		}
 
 	case ManuscriptMETHODS:
-		localctx = NewDeclMethodsContext(p, localctx)
+		localctx = NewLabelDeclMethodsContext(p, localctx)
 		p.EnterOuterAlt(localctx, 8)
 		{
 			p.SetState(248)
@@ -2319,12 +2319,12 @@ func (s *ExportedItemContext) ToStringTree(ruleNames []string, recog antlr.Recog
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type ExportedLetContext struct {
+type LabelExportedLetContext struct {
 	ExportedItemContext
 }
 
-func NewExportedLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ExportedLetContext {
-	var p = new(ExportedLetContext)
+func NewLabelExportedLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelExportedLetContext {
+	var p = new(LabelExportedLetContext)
 
 	InitEmptyExportedItemContext(&p.ExportedItemContext)
 	p.parser = parser
@@ -2333,11 +2333,11 @@ func NewExportedLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Ex
 	return p
 }
 
-func (s *ExportedLetContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelExportedLetContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ExportedLetContext) LetDecl() ILetDeclContext {
+func (s *LabelExportedLetContext) LetDecl() ILetDeclContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ILetDeclContext); ok {
@@ -2353,34 +2353,34 @@ func (s *ExportedLetContext) LetDecl() ILetDeclContext {
 	return t.(ILetDeclContext)
 }
 
-func (s *ExportedLetContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelExportedLetContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterExportedLet(s)
+		listenerT.EnterLabelExportedLet(s)
 	}
 }
 
-func (s *ExportedLetContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelExportedLetContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitExportedLet(s)
+		listenerT.ExitLabelExportedLet(s)
 	}
 }
 
-func (s *ExportedLetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelExportedLetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitExportedLet(s)
+		return t.VisitLabelExportedLet(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type ExportedTypeContext struct {
+type LabelExportedTypeContext struct {
 	ExportedItemContext
 }
 
-func NewExportedTypeContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ExportedTypeContext {
-	var p = new(ExportedTypeContext)
+func NewLabelExportedTypeContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelExportedTypeContext {
+	var p = new(LabelExportedTypeContext)
 
 	InitEmptyExportedItemContext(&p.ExportedItemContext)
 	p.parser = parser
@@ -2389,11 +2389,11 @@ func NewExportedTypeContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *E
 	return p
 }
 
-func (s *ExportedTypeContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelExportedTypeContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ExportedTypeContext) TypeDecl() ITypeDeclContext {
+func (s *LabelExportedTypeContext) TypeDecl() ITypeDeclContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ITypeDeclContext); ok {
@@ -2409,34 +2409,34 @@ func (s *ExportedTypeContext) TypeDecl() ITypeDeclContext {
 	return t.(ITypeDeclContext)
 }
 
-func (s *ExportedTypeContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelExportedTypeContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterExportedType(s)
+		listenerT.EnterLabelExportedType(s)
 	}
 }
 
-func (s *ExportedTypeContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelExportedTypeContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitExportedType(s)
+		listenerT.ExitLabelExportedType(s)
 	}
 }
 
-func (s *ExportedTypeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelExportedTypeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitExportedType(s)
+		return t.VisitLabelExportedType(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type ExportedFnContext struct {
+type LabelExportedFnContext struct {
 	ExportedItemContext
 }
 
-func NewExportedFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ExportedFnContext {
-	var p = new(ExportedFnContext)
+func NewLabelExportedFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelExportedFnContext {
+	var p = new(LabelExportedFnContext)
 
 	InitEmptyExportedItemContext(&p.ExportedItemContext)
 	p.parser = parser
@@ -2445,11 +2445,11 @@ func NewExportedFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Exp
 	return p
 }
 
-func (s *ExportedFnContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelExportedFnContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ExportedFnContext) FnDecl() IFnDeclContext {
+func (s *LabelExportedFnContext) FnDecl() IFnDeclContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IFnDeclContext); ok {
@@ -2465,34 +2465,34 @@ func (s *ExportedFnContext) FnDecl() IFnDeclContext {
 	return t.(IFnDeclContext)
 }
 
-func (s *ExportedFnContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelExportedFnContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterExportedFn(s)
+		listenerT.EnterLabelExportedFn(s)
 	}
 }
 
-func (s *ExportedFnContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelExportedFnContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitExportedFn(s)
+		listenerT.ExitLabelExportedFn(s)
 	}
 }
 
-func (s *ExportedFnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelExportedFnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitExportedFn(s)
+		return t.VisitLabelExportedFn(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type ExportedInterfaceContext struct {
+type LabelExportedInterfaceContext struct {
 	ExportedItemContext
 }
 
-func NewExportedInterfaceContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ExportedInterfaceContext {
-	var p = new(ExportedInterfaceContext)
+func NewLabelExportedInterfaceContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelExportedInterfaceContext {
+	var p = new(LabelExportedInterfaceContext)
 
 	InitEmptyExportedItemContext(&p.ExportedItemContext)
 	p.parser = parser
@@ -2501,11 +2501,11 @@ func NewExportedInterfaceContext(parser antlr.Parser, ctx antlr.ParserRuleContex
 	return p
 }
 
-func (s *ExportedInterfaceContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelExportedInterfaceContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ExportedInterfaceContext) InterfaceDecl() IInterfaceDeclContext {
+func (s *LabelExportedInterfaceContext) InterfaceDecl() IInterfaceDeclContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IInterfaceDeclContext); ok {
@@ -2521,22 +2521,22 @@ func (s *ExportedInterfaceContext) InterfaceDecl() IInterfaceDeclContext {
 	return t.(IInterfaceDeclContext)
 }
 
-func (s *ExportedInterfaceContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelExportedInterfaceContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterExportedInterface(s)
+		listenerT.EnterLabelExportedInterface(s)
 	}
 }
 
-func (s *ExportedInterfaceContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelExportedInterfaceContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitExportedInterface(s)
+		listenerT.ExitLabelExportedInterface(s)
 	}
 }
 
-func (s *ExportedInterfaceContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelExportedInterfaceContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitExportedInterface(s)
+		return t.VisitLabelExportedInterface(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -2554,7 +2554,7 @@ func (p *Manuscript) ExportedItem() (localctx IExportedItemContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptFN:
-		localctx = NewExportedFnContext(p, localctx)
+		localctx = NewLabelExportedFnContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(266)
@@ -2562,7 +2562,7 @@ func (p *Manuscript) ExportedItem() (localctx IExportedItemContext) {
 		}
 
 	case ManuscriptLET:
-		localctx = NewExportedLetContext(p, localctx)
+		localctx = NewLabelExportedLetContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(267)
@@ -2570,7 +2570,7 @@ func (p *Manuscript) ExportedItem() (localctx IExportedItemContext) {
 		}
 
 	case ManuscriptTYPE:
-		localctx = NewExportedTypeContext(p, localctx)
+		localctx = NewLabelExportedTypeContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(268)
@@ -2578,7 +2578,7 @@ func (p *Manuscript) ExportedItem() (localctx IExportedItemContext) {
 		}
 
 	case ManuscriptINTERFACE:
-		localctx = NewExportedInterfaceContext(p, localctx)
+		localctx = NewLabelExportedInterfaceContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(269)
@@ -2657,12 +2657,12 @@ func (s *ModuleImportContext) ToStringTree(ruleNames []string, recog antlr.Recog
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type ModuleImportDestructuredContext struct {
+type LabelModuleImportDestructuredContext struct {
 	ModuleImportContext
 }
 
-func NewModuleImportDestructuredContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ModuleImportDestructuredContext {
-	var p = new(ModuleImportDestructuredContext)
+func NewLabelModuleImportDestructuredContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelModuleImportDestructuredContext {
+	var p = new(LabelModuleImportDestructuredContext)
 
 	InitEmptyModuleImportContext(&p.ModuleImportContext)
 	p.parser = parser
@@ -2671,11 +2671,11 @@ func NewModuleImportDestructuredContext(parser antlr.Parser, ctx antlr.ParserRul
 	return p
 }
 
-func (s *ModuleImportDestructuredContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelModuleImportDestructuredContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ModuleImportDestructuredContext) DestructuredImport() IDestructuredImportContext {
+func (s *LabelModuleImportDestructuredContext) DestructuredImport() IDestructuredImportContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IDestructuredImportContext); ok {
@@ -2691,34 +2691,34 @@ func (s *ModuleImportDestructuredContext) DestructuredImport() IDestructuredImpo
 	return t.(IDestructuredImportContext)
 }
 
-func (s *ModuleImportDestructuredContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelModuleImportDestructuredContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterModuleImportDestructured(s)
+		listenerT.EnterLabelModuleImportDestructured(s)
 	}
 }
 
-func (s *ModuleImportDestructuredContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelModuleImportDestructuredContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitModuleImportDestructured(s)
+		listenerT.ExitLabelModuleImportDestructured(s)
 	}
 }
 
-func (s *ModuleImportDestructuredContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelModuleImportDestructuredContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitModuleImportDestructured(s)
+		return t.VisitLabelModuleImportDestructured(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type ModuleImportTargetContext struct {
+type LabelModuleImportTargetContext struct {
 	ModuleImportContext
 }
 
-func NewModuleImportTargetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ModuleImportTargetContext {
-	var p = new(ModuleImportTargetContext)
+func NewLabelModuleImportTargetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelModuleImportTargetContext {
+	var p = new(LabelModuleImportTargetContext)
 
 	InitEmptyModuleImportContext(&p.ModuleImportContext)
 	p.parser = parser
@@ -2727,11 +2727,11 @@ func NewModuleImportTargetContext(parser antlr.Parser, ctx antlr.ParserRuleConte
 	return p
 }
 
-func (s *ModuleImportTargetContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelModuleImportTargetContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ModuleImportTargetContext) TargetImport() ITargetImportContext {
+func (s *LabelModuleImportTargetContext) TargetImport() ITargetImportContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ITargetImportContext); ok {
@@ -2747,22 +2747,22 @@ func (s *ModuleImportTargetContext) TargetImport() ITargetImportContext {
 	return t.(ITargetImportContext)
 }
 
-func (s *ModuleImportTargetContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelModuleImportTargetContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterModuleImportTarget(s)
+		listenerT.EnterLabelModuleImportTarget(s)
 	}
 }
 
-func (s *ModuleImportTargetContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelModuleImportTargetContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitModuleImportTarget(s)
+		listenerT.ExitLabelModuleImportTarget(s)
 	}
 }
 
-func (s *ModuleImportTargetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelModuleImportTargetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitModuleImportTarget(s)
+		return t.VisitLabelModuleImportTarget(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -2780,7 +2780,7 @@ func (p *Manuscript) ModuleImport() (localctx IModuleImportContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptLBRACE:
-		localctx = NewModuleImportDestructuredContext(p, localctx)
+		localctx = NewLabelModuleImportDestructuredContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(272)
@@ -2788,7 +2788,7 @@ func (p *Manuscript) ModuleImport() (localctx IModuleImportContext) {
 		}
 
 	case ManuscriptID:
-		localctx = NewModuleImportTargetContext(p, localctx)
+		localctx = NewLabelModuleImportTargetContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(273)
@@ -3544,12 +3544,12 @@ func (s *LetDeclContext) ToStringTree(ruleNames []string, recog antlr.Recognizer
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type LetDeclBlockContext struct {
+type LabelLetDeclDestructuredObjContext struct {
 	LetDeclContext
 }
 
-func NewLetDeclBlockContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LetDeclBlockContext {
-	var p = new(LetDeclBlockContext)
+func NewLabelLetDeclDestructuredObjContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetDeclDestructuredObjContext {
+	var p = new(LabelLetDeclDestructuredObjContext)
 
 	InitEmptyLetDeclContext(&p.LetDeclContext)
 	p.parser = parser
@@ -3558,79 +3558,15 @@ func NewLetDeclBlockContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *L
 	return p
 }
 
-func (s *LetDeclBlockContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelLetDeclDestructuredObjContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *LetDeclBlockContext) LET() antlr.TerminalNode {
+func (s *LabelLetDeclDestructuredObjContext) LET() antlr.TerminalNode {
 	return s.GetToken(ManuscriptLET, 0)
 }
 
-func (s *LetDeclBlockContext) LetBlock() ILetBlockContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ILetBlockContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ILetBlockContext)
-}
-
-func (s *LetDeclBlockContext) SEMICOLON() antlr.TerminalNode {
-	return s.GetToken(ManuscriptSEMICOLON, 0)
-}
-
-func (s *LetDeclBlockContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLetDeclBlock(s)
-	}
-}
-
-func (s *LetDeclBlockContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLetDeclBlock(s)
-	}
-}
-
-func (s *LetDeclBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLetDeclBlock(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type LetDeclDestructuredObjContext struct {
-	LetDeclContext
-}
-
-func NewLetDeclDestructuredObjContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LetDeclDestructuredObjContext {
-	var p = new(LetDeclDestructuredObjContext)
-
-	InitEmptyLetDeclContext(&p.LetDeclContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*LetDeclContext))
-
-	return p
-}
-
-func (s *LetDeclDestructuredObjContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LetDeclDestructuredObjContext) LET() antlr.TerminalNode {
-	return s.GetToken(ManuscriptLET, 0)
-}
-
-func (s *LetDeclDestructuredObjContext) LetDestructuredObj() ILetDestructuredObjContext {
+func (s *LabelLetDeclDestructuredObjContext) LetDestructuredObj() ILetDestructuredObjContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ILetDestructuredObjContext); ok {
@@ -3646,38 +3582,38 @@ func (s *LetDeclDestructuredObjContext) LetDestructuredObj() ILetDestructuredObj
 	return t.(ILetDestructuredObjContext)
 }
 
-func (s *LetDeclDestructuredObjContext) SEMICOLON() antlr.TerminalNode {
+func (s *LabelLetDeclDestructuredObjContext) SEMICOLON() antlr.TerminalNode {
 	return s.GetToken(ManuscriptSEMICOLON, 0)
 }
 
-func (s *LetDeclDestructuredObjContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetDeclDestructuredObjContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLetDeclDestructuredObj(s)
+		listenerT.EnterLabelLetDeclDestructuredObj(s)
 	}
 }
 
-func (s *LetDeclDestructuredObjContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetDeclDestructuredObjContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLetDeclDestructuredObj(s)
+		listenerT.ExitLabelLetDeclDestructuredObj(s)
 	}
 }
 
-func (s *LetDeclDestructuredObjContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelLetDeclDestructuredObjContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLetDeclDestructuredObj(s)
+		return t.VisitLabelLetDeclDestructuredObj(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type LetDeclDestructuredArrayContext struct {
+type LabelLetDeclBlockContext struct {
 	LetDeclContext
 }
 
-func NewLetDeclDestructuredArrayContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LetDeclDestructuredArrayContext {
-	var p = new(LetDeclDestructuredArrayContext)
+func NewLabelLetDeclBlockContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetDeclBlockContext {
+	var p = new(LabelLetDeclBlockContext)
 
 	InitEmptyLetDeclContext(&p.LetDeclContext)
 	p.parser = parser
@@ -3686,15 +3622,79 @@ func NewLetDeclDestructuredArrayContext(parser antlr.Parser, ctx antlr.ParserRul
 	return p
 }
 
-func (s *LetDeclDestructuredArrayContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelLetDeclBlockContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *LetDeclDestructuredArrayContext) LET() antlr.TerminalNode {
+func (s *LabelLetDeclBlockContext) LET() antlr.TerminalNode {
 	return s.GetToken(ManuscriptLET, 0)
 }
 
-func (s *LetDeclDestructuredArrayContext) LetDestructuredArray() ILetDestructuredArrayContext {
+func (s *LabelLetDeclBlockContext) LetBlock() ILetBlockContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ILetBlockContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ILetBlockContext)
+}
+
+func (s *LabelLetDeclBlockContext) SEMICOLON() antlr.TerminalNode {
+	return s.GetToken(ManuscriptSEMICOLON, 0)
+}
+
+func (s *LabelLetDeclBlockContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelLetDeclBlock(s)
+	}
+}
+
+func (s *LabelLetDeclBlockContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelLetDeclBlock(s)
+	}
+}
+
+func (s *LabelLetDeclBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelLetDeclBlock(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelLetDeclDestructuredArrayContext struct {
+	LetDeclContext
+}
+
+func NewLabelLetDeclDestructuredArrayContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetDeclDestructuredArrayContext {
+	var p = new(LabelLetDeclDestructuredArrayContext)
+
+	InitEmptyLetDeclContext(&p.LetDeclContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*LetDeclContext))
+
+	return p
+}
+
+func (s *LabelLetDeclDestructuredArrayContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelLetDeclDestructuredArrayContext) LET() antlr.TerminalNode {
+	return s.GetToken(ManuscriptLET, 0)
+}
+
+func (s *LabelLetDeclDestructuredArrayContext) LetDestructuredArray() ILetDestructuredArrayContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ILetDestructuredArrayContext); ok {
@@ -3710,38 +3710,38 @@ func (s *LetDeclDestructuredArrayContext) LetDestructuredArray() ILetDestructure
 	return t.(ILetDestructuredArrayContext)
 }
 
-func (s *LetDeclDestructuredArrayContext) SEMICOLON() antlr.TerminalNode {
+func (s *LabelLetDeclDestructuredArrayContext) SEMICOLON() antlr.TerminalNode {
 	return s.GetToken(ManuscriptSEMICOLON, 0)
 }
 
-func (s *LetDeclDestructuredArrayContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetDeclDestructuredArrayContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLetDeclDestructuredArray(s)
+		listenerT.EnterLabelLetDeclDestructuredArray(s)
 	}
 }
 
-func (s *LetDeclDestructuredArrayContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetDeclDestructuredArrayContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLetDeclDestructuredArray(s)
+		listenerT.ExitLabelLetDeclDestructuredArray(s)
 	}
 }
 
-func (s *LetDeclDestructuredArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelLetDeclDestructuredArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLetDeclDestructuredArray(s)
+		return t.VisitLabelLetDeclDestructuredArray(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type LetDeclSingleContext struct {
+type LabelLetDeclSingleContext struct {
 	LetDeclContext
 }
 
-func NewLetDeclSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LetDeclSingleContext {
-	var p = new(LetDeclSingleContext)
+func NewLabelLetDeclSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetDeclSingleContext {
+	var p = new(LabelLetDeclSingleContext)
 
 	InitEmptyLetDeclContext(&p.LetDeclContext)
 	p.parser = parser
@@ -3750,15 +3750,15 @@ func NewLetDeclSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *
 	return p
 }
 
-func (s *LetDeclSingleContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelLetDeclSingleContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *LetDeclSingleContext) LET() antlr.TerminalNode {
+func (s *LabelLetDeclSingleContext) LET() antlr.TerminalNode {
 	return s.GetToken(ManuscriptLET, 0)
 }
 
-func (s *LetDeclSingleContext) LetSingle() ILetSingleContext {
+func (s *LabelLetDeclSingleContext) LetSingle() ILetSingleContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ILetSingleContext); ok {
@@ -3774,26 +3774,26 @@ func (s *LetDeclSingleContext) LetSingle() ILetSingleContext {
 	return t.(ILetSingleContext)
 }
 
-func (s *LetDeclSingleContext) SEMICOLON() antlr.TerminalNode {
+func (s *LabelLetDeclSingleContext) SEMICOLON() antlr.TerminalNode {
 	return s.GetToken(ManuscriptSEMICOLON, 0)
 }
 
-func (s *LetDeclSingleContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetDeclSingleContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLetDeclSingle(s)
+		listenerT.EnterLabelLetDeclSingle(s)
 	}
 }
 
-func (s *LetDeclSingleContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetDeclSingleContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLetDeclSingle(s)
+		listenerT.ExitLabelLetDeclSingle(s)
 	}
 }
 
-func (s *LetDeclSingleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelLetDeclSingleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLetDeclSingle(s)
+		return t.VisitLabelLetDeclSingle(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -3811,7 +3811,7 @@ func (p *Manuscript) LetDecl() (localctx ILetDeclContext) {
 
 	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 19, p.GetParserRuleContext()) {
 	case 1:
-		localctx = NewLetDeclSingleContext(p, localctx)
+		localctx = NewLabelLetDeclSingleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(304)
@@ -3843,7 +3843,7 @@ func (p *Manuscript) LetDecl() (localctx ILetDeclContext) {
 		}
 
 	case 2:
-		localctx = NewLetDeclBlockContext(p, localctx)
+		localctx = NewLabelLetDeclBlockContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(309)
@@ -3875,7 +3875,7 @@ func (p *Manuscript) LetDecl() (localctx ILetDeclContext) {
 		}
 
 	case 3:
-		localctx = NewLetDeclDestructuredObjContext(p, localctx)
+		localctx = NewLabelLetDeclDestructuredObjContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(314)
@@ -3907,7 +3907,7 @@ func (p *Manuscript) LetDecl() (localctx ILetDeclContext) {
 		}
 
 	case 4:
-		localctx = NewLetDeclDestructuredArrayContext(p, localctx)
+		localctx = NewLabelLetDeclDestructuredArrayContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(319)
@@ -4738,12 +4738,12 @@ func (s *LetBlockItemContext) ToStringTree(ruleNames []string, recog antlr.Recog
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type LetBlockItemDestructuredObjContext struct {
+type LabelLetBlockItemDestructuredObjContext struct {
 	LetBlockItemContext
 }
 
-func NewLetBlockItemDestructuredObjContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LetBlockItemDestructuredObjContext {
-	var p = new(LetBlockItemDestructuredObjContext)
+func NewLabelLetBlockItemDestructuredObjContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetBlockItemDestructuredObjContext {
+	var p = new(LabelLetBlockItemDestructuredObjContext)
 
 	InitEmptyLetBlockItemContext(&p.LetBlockItemContext)
 	p.parser = parser
@@ -4752,15 +4752,15 @@ func NewLetBlockItemDestructuredObjContext(parser antlr.Parser, ctx antlr.Parser
 	return p
 }
 
-func (s *LetBlockItemDestructuredObjContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelLetBlockItemDestructuredObjContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *LetBlockItemDestructuredObjContext) LBRACE() antlr.TerminalNode {
+func (s *LabelLetBlockItemDestructuredObjContext) LBRACE() antlr.TerminalNode {
 	return s.GetToken(ManuscriptLBRACE, 0)
 }
 
-func (s *LetBlockItemDestructuredObjContext) TypedIDList() ITypedIDListContext {
+func (s *LabelLetBlockItemDestructuredObjContext) TypedIDList() ITypedIDListContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ITypedIDListContext); ok {
@@ -4776,15 +4776,15 @@ func (s *LetBlockItemDestructuredObjContext) TypedIDList() ITypedIDListContext {
 	return t.(ITypedIDListContext)
 }
 
-func (s *LetBlockItemDestructuredObjContext) RBRACE() antlr.TerminalNode {
+func (s *LabelLetBlockItemDestructuredObjContext) RBRACE() antlr.TerminalNode {
 	return s.GetToken(ManuscriptRBRACE, 0)
 }
 
-func (s *LetBlockItemDestructuredObjContext) EQUALS() antlr.TerminalNode {
+func (s *LabelLetBlockItemDestructuredObjContext) EQUALS() antlr.TerminalNode {
 	return s.GetToken(ManuscriptEQUALS, 0)
 }
 
-func (s *LetBlockItemDestructuredObjContext) Expr() IExprContext {
+func (s *LabelLetBlockItemDestructuredObjContext) Expr() IExprContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IExprContext); ok {
@@ -4800,34 +4800,34 @@ func (s *LetBlockItemDestructuredObjContext) Expr() IExprContext {
 	return t.(IExprContext)
 }
 
-func (s *LetBlockItemDestructuredObjContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetBlockItemDestructuredObjContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLetBlockItemDestructuredObj(s)
+		listenerT.EnterLabelLetBlockItemDestructuredObj(s)
 	}
 }
 
-func (s *LetBlockItemDestructuredObjContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetBlockItemDestructuredObjContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLetBlockItemDestructuredObj(s)
+		listenerT.ExitLabelLetBlockItemDestructuredObj(s)
 	}
 }
 
-func (s *LetBlockItemDestructuredObjContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelLetBlockItemDestructuredObjContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLetBlockItemDestructuredObj(s)
+		return t.VisitLabelLetBlockItemDestructuredObj(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type LetBlockItemDestructuredArrayContext struct {
+type LabelLetBlockItemDestructuredArrayContext struct {
 	LetBlockItemContext
 }
 
-func NewLetBlockItemDestructuredArrayContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LetBlockItemDestructuredArrayContext {
-	var p = new(LetBlockItemDestructuredArrayContext)
+func NewLabelLetBlockItemDestructuredArrayContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetBlockItemDestructuredArrayContext {
+	var p = new(LabelLetBlockItemDestructuredArrayContext)
 
 	InitEmptyLetBlockItemContext(&p.LetBlockItemContext)
 	p.parser = parser
@@ -4836,15 +4836,15 @@ func NewLetBlockItemDestructuredArrayContext(parser antlr.Parser, ctx antlr.Pars
 	return p
 }
 
-func (s *LetBlockItemDestructuredArrayContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelLetBlockItemDestructuredArrayContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *LetBlockItemDestructuredArrayContext) LSQBR() antlr.TerminalNode {
+func (s *LabelLetBlockItemDestructuredArrayContext) LSQBR() antlr.TerminalNode {
 	return s.GetToken(ManuscriptLSQBR, 0)
 }
 
-func (s *LetBlockItemDestructuredArrayContext) TypedIDList() ITypedIDListContext {
+func (s *LabelLetBlockItemDestructuredArrayContext) TypedIDList() ITypedIDListContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ITypedIDListContext); ok {
@@ -4860,15 +4860,15 @@ func (s *LetBlockItemDestructuredArrayContext) TypedIDList() ITypedIDListContext
 	return t.(ITypedIDListContext)
 }
 
-func (s *LetBlockItemDestructuredArrayContext) RSQBR() antlr.TerminalNode {
+func (s *LabelLetBlockItemDestructuredArrayContext) RSQBR() antlr.TerminalNode {
 	return s.GetToken(ManuscriptRSQBR, 0)
 }
 
-func (s *LetBlockItemDestructuredArrayContext) EQUALS() antlr.TerminalNode {
+func (s *LabelLetBlockItemDestructuredArrayContext) EQUALS() antlr.TerminalNode {
 	return s.GetToken(ManuscriptEQUALS, 0)
 }
 
-func (s *LetBlockItemDestructuredArrayContext) Expr() IExprContext {
+func (s *LabelLetBlockItemDestructuredArrayContext) Expr() IExprContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IExprContext); ok {
@@ -4884,34 +4884,34 @@ func (s *LetBlockItemDestructuredArrayContext) Expr() IExprContext {
 	return t.(IExprContext)
 }
 
-func (s *LetBlockItemDestructuredArrayContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetBlockItemDestructuredArrayContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLetBlockItemDestructuredArray(s)
+		listenerT.EnterLabelLetBlockItemDestructuredArray(s)
 	}
 }
 
-func (s *LetBlockItemDestructuredArrayContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetBlockItemDestructuredArrayContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLetBlockItemDestructuredArray(s)
+		listenerT.ExitLabelLetBlockItemDestructuredArray(s)
 	}
 }
 
-func (s *LetBlockItemDestructuredArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelLetBlockItemDestructuredArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLetBlockItemDestructuredArray(s)
+		return t.VisitLabelLetBlockItemDestructuredArray(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type LetBlockItemSingleContext struct {
+type LabelLetBlockItemSingleContext struct {
 	LetBlockItemContext
 }
 
-func NewLetBlockItemSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LetBlockItemSingleContext {
-	var p = new(LetBlockItemSingleContext)
+func NewLabelLetBlockItemSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetBlockItemSingleContext {
+	var p = new(LabelLetBlockItemSingleContext)
 
 	InitEmptyLetBlockItemContext(&p.LetBlockItemContext)
 	p.parser = parser
@@ -4920,11 +4920,11 @@ func NewLetBlockItemSingleContext(parser antlr.Parser, ctx antlr.ParserRuleConte
 	return p
 }
 
-func (s *LetBlockItemSingleContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelLetBlockItemSingleContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *LetBlockItemSingleContext) TypedID() ITypedIDContext {
+func (s *LabelLetBlockItemSingleContext) TypedID() ITypedIDContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ITypedIDContext); ok {
@@ -4940,11 +4940,11 @@ func (s *LetBlockItemSingleContext) TypedID() ITypedIDContext {
 	return t.(ITypedIDContext)
 }
 
-func (s *LetBlockItemSingleContext) EQUALS() antlr.TerminalNode {
+func (s *LabelLetBlockItemSingleContext) EQUALS() antlr.TerminalNode {
 	return s.GetToken(ManuscriptEQUALS, 0)
 }
 
-func (s *LetBlockItemSingleContext) Expr() IExprContext {
+func (s *LabelLetBlockItemSingleContext) Expr() IExprContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IExprContext); ok {
@@ -4960,22 +4960,22 @@ func (s *LetBlockItemSingleContext) Expr() IExprContext {
 	return t.(IExprContext)
 }
 
-func (s *LetBlockItemSingleContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetBlockItemSingleContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLetBlockItemSingle(s)
+		listenerT.EnterLabelLetBlockItemSingle(s)
 	}
 }
 
-func (s *LetBlockItemSingleContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelLetBlockItemSingleContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLetBlockItemSingle(s)
+		listenerT.ExitLabelLetBlockItemSingle(s)
 	}
 }
 
-func (s *LetBlockItemSingleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelLetBlockItemSingleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLetBlockItemSingle(s)
+		return t.VisitLabelLetBlockItemSingle(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -4993,7 +4993,7 @@ func (p *Manuscript) LetBlockItem() (localctx ILetBlockItemContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptID:
-		localctx = NewLetBlockItemSingleContext(p, localctx)
+		localctx = NewLabelLetBlockItemSingleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(366)
@@ -5013,7 +5013,7 @@ func (p *Manuscript) LetBlockItem() (localctx ILetBlockItemContext) {
 		}
 
 	case ManuscriptLBRACE:
-		localctx = NewLetBlockItemDestructuredObjContext(p, localctx)
+		localctx = NewLabelLetBlockItemDestructuredObjContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(370)
@@ -5049,7 +5049,7 @@ func (p *Manuscript) LetBlockItem() (localctx ILetBlockItemContext) {
 		}
 
 	case ManuscriptLSQBR:
-		localctx = NewLetBlockItemDestructuredArrayContext(p, localctx)
+		localctx = NewLabelLetBlockItemDestructuredArrayContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(376)
@@ -9116,12 +9116,12 @@ func (s *StmtContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) s
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type StmtReturnContext struct {
+type LabelStmtLetContext struct {
 	StmtContext
 }
 
-func NewStmtReturnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtReturnContext {
-	var p = new(StmtReturnContext)
+func NewLabelStmtLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtLetContext {
+	var p = new(LabelStmtLetContext)
 
 	InitEmptyStmtContext(&p.StmtContext)
 	p.parser = parser
@@ -9130,575 +9130,11 @@ func NewStmtReturnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Stm
 	return p
 }
 
-func (s *StmtReturnContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelStmtLetContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *StmtReturnContext) ReturnStmt() IReturnStmtContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IReturnStmtContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IReturnStmtContext)
-}
-
-func (s *StmtReturnContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtReturn(s)
-	}
-}
-
-func (s *StmtReturnContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtReturn(s)
-	}
-}
-
-func (s *StmtReturnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtReturn(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtCheckContext struct {
-	StmtContext
-}
-
-func NewStmtCheckContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtCheckContext {
-	var p = new(StmtCheckContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtCheckContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtCheckContext) CheckStmt() ICheckStmtContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ICheckStmtContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ICheckStmtContext)
-}
-
-func (s *StmtCheckContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtCheck(s)
-	}
-}
-
-func (s *StmtCheckContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtCheck(s)
-	}
-}
-
-func (s *StmtCheckContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtCheck(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtBlockContext struct {
-	StmtContext
-}
-
-func NewStmtBlockContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtBlockContext {
-	var p = new(StmtBlockContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtBlockContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtBlockContext) CodeBlock() ICodeBlockContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ICodeBlockContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ICodeBlockContext)
-}
-
-func (s *StmtBlockContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtBlock(s)
-	}
-}
-
-func (s *StmtBlockContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtBlock(s)
-	}
-}
-
-func (s *StmtBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtBlock(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtContinueContext struct {
-	StmtContext
-}
-
-func NewStmtContinueContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtContinueContext {
-	var p = new(StmtContinueContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtContinueContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtContinueContext) ContinueStmt() IContinueStmtContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IContinueStmtContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IContinueStmtContext)
-}
-
-func (s *StmtContinueContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtContinue(s)
-	}
-}
-
-func (s *StmtContinueContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtContinue(s)
-	}
-}
-
-func (s *StmtContinueContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtContinue(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtExprContext struct {
-	StmtContext
-}
-
-func NewStmtExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtExprContext {
-	var p = new(StmtExprContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtExprContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtExprContext) Expr() IExprContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IExprContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IExprContext)
-}
-
-func (s *StmtExprContext) SEMICOLON() antlr.TerminalNode {
-	return s.GetToken(ManuscriptSEMICOLON, 0)
-}
-
-func (s *StmtExprContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtExpr(s)
-	}
-}
-
-func (s *StmtExprContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtExpr(s)
-	}
-}
-
-func (s *StmtExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtExpr(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtWhileContext struct {
-	StmtContext
-}
-
-func NewStmtWhileContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtWhileContext {
-	var p = new(StmtWhileContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtWhileContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtWhileContext) WhileStmt() IWhileStmtContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IWhileStmtContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IWhileStmtContext)
-}
-
-func (s *StmtWhileContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtWhile(s)
-	}
-}
-
-func (s *StmtWhileContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtWhile(s)
-	}
-}
-
-func (s *StmtWhileContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtWhile(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtDeferContext struct {
-	StmtContext
-}
-
-func NewStmtDeferContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtDeferContext {
-	var p = new(StmtDeferContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtDeferContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtDeferContext) DeferStmt() IDeferStmtContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IDeferStmtContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IDeferStmtContext)
-}
-
-func (s *StmtDeferContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtDefer(s)
-	}
-}
-
-func (s *StmtDeferContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtDefer(s)
-	}
-}
-
-func (s *StmtDeferContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtDefer(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtYieldContext struct {
-	StmtContext
-}
-
-func NewStmtYieldContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtYieldContext {
-	var p = new(StmtYieldContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtYieldContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtYieldContext) YieldStmt() IYieldStmtContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IYieldStmtContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IYieldStmtContext)
-}
-
-func (s *StmtYieldContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtYield(s)
-	}
-}
-
-func (s *StmtYieldContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtYield(s)
-	}
-}
-
-func (s *StmtYieldContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtYield(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtForContext struct {
-	StmtContext
-}
-
-func NewStmtForContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtForContext {
-	var p = new(StmtForContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtForContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtForContext) ForStmt() IForStmtContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IForStmtContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IForStmtContext)
-}
-
-func (s *StmtForContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtFor(s)
-	}
-}
-
-func (s *StmtForContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtFor(s)
-	}
-}
-
-func (s *StmtForContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtFor(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtIfContext struct {
-	StmtContext
-}
-
-func NewStmtIfContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtIfContext {
-	var p = new(StmtIfContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtIfContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtIfContext) IfStmt() IIfStmtContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IIfStmtContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IIfStmtContext)
-}
-
-func (s *StmtIfContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtIf(s)
-	}
-}
-
-func (s *StmtIfContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtIf(s)
-	}
-}
-
-func (s *StmtIfContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStmtIf(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StmtLetContext struct {
-	StmtContext
-}
-
-func NewStmtLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtLetContext {
-	var p = new(StmtLetContext)
-
-	InitEmptyStmtContext(&p.StmtContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StmtContext))
-
-	return p
-}
-
-func (s *StmtLetContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StmtLetContext) LetDecl() ILetDeclContext {
+func (s *LabelStmtLetContext) LetDecl() ILetDeclContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ILetDeclContext); ok {
@@ -9714,34 +9150,34 @@ func (s *StmtLetContext) LetDecl() ILetDeclContext {
 	return t.(ILetDeclContext)
 }
 
-func (s *StmtLetContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelStmtLetContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtLet(s)
+		listenerT.EnterLabelStmtLet(s)
 	}
 }
 
-func (s *StmtLetContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelStmtLetContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtLet(s)
+		listenerT.ExitLabelStmtLet(s)
 	}
 }
 
-func (s *StmtLetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelStmtLetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitStmtLet(s)
+		return t.VisitLabelStmtLet(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type StmtBreakContext struct {
+type LabelStmtIfContext struct {
 	StmtContext
 }
 
-func NewStmtBreakContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StmtBreakContext {
-	var p = new(StmtBreakContext)
+func NewLabelStmtIfContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtIfContext {
+	var p = new(LabelStmtIfContext)
 
 	InitEmptyStmtContext(&p.StmtContext)
 	p.parser = parser
@@ -9750,11 +9186,519 @@ func NewStmtBreakContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Stmt
 	return p
 }
 
-func (s *StmtBreakContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelStmtIfContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *StmtBreakContext) BreakStmt() IBreakStmtContext {
+func (s *LabelStmtIfContext) IfStmt() IIfStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IIfStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IIfStmtContext)
+}
+
+func (s *LabelStmtIfContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtIf(s)
+	}
+}
+
+func (s *LabelStmtIfContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtIf(s)
+	}
+}
+
+func (s *LabelStmtIfContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtIf(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtDeferContext struct {
+	StmtContext
+}
+
+func NewLabelStmtDeferContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtDeferContext {
+	var p = new(LabelStmtDeferContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtDeferContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtDeferContext) DeferStmt() IDeferStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IDeferStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IDeferStmtContext)
+}
+
+func (s *LabelStmtDeferContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtDefer(s)
+	}
+}
+
+func (s *LabelStmtDeferContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtDefer(s)
+	}
+}
+
+func (s *LabelStmtDeferContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtDefer(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtExprContext struct {
+	StmtContext
+}
+
+func NewLabelStmtExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtExprContext {
+	var p = new(LabelStmtExprContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtExprContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtExprContext) Expr() IExprContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IExprContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IExprContext)
+}
+
+func (s *LabelStmtExprContext) SEMICOLON() antlr.TerminalNode {
+	return s.GetToken(ManuscriptSEMICOLON, 0)
+}
+
+func (s *LabelStmtExprContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtExpr(s)
+	}
+}
+
+func (s *LabelStmtExprContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtExpr(s)
+	}
+}
+
+func (s *LabelStmtExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtExpr(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtReturnContext struct {
+	StmtContext
+}
+
+func NewLabelStmtReturnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtReturnContext {
+	var p = new(LabelStmtReturnContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtReturnContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtReturnContext) ReturnStmt() IReturnStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IReturnStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IReturnStmtContext)
+}
+
+func (s *LabelStmtReturnContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtReturn(s)
+	}
+}
+
+func (s *LabelStmtReturnContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtReturn(s)
+	}
+}
+
+func (s *LabelStmtReturnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtReturn(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtForContext struct {
+	StmtContext
+}
+
+func NewLabelStmtForContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtForContext {
+	var p = new(LabelStmtForContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtForContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtForContext) ForStmt() IForStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IForStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IForStmtContext)
+}
+
+func (s *LabelStmtForContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtFor(s)
+	}
+}
+
+func (s *LabelStmtForContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtFor(s)
+	}
+}
+
+func (s *LabelStmtForContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtFor(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtWhileContext struct {
+	StmtContext
+}
+
+func NewLabelStmtWhileContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtWhileContext {
+	var p = new(LabelStmtWhileContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtWhileContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtWhileContext) WhileStmt() IWhileStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IWhileStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IWhileStmtContext)
+}
+
+func (s *LabelStmtWhileContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtWhile(s)
+	}
+}
+
+func (s *LabelStmtWhileContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtWhile(s)
+	}
+}
+
+func (s *LabelStmtWhileContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtWhile(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtContinueContext struct {
+	StmtContext
+}
+
+func NewLabelStmtContinueContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtContinueContext {
+	var p = new(LabelStmtContinueContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtContinueContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtContinueContext) ContinueStmt() IContinueStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IContinueStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IContinueStmtContext)
+}
+
+func (s *LabelStmtContinueContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtContinue(s)
+	}
+}
+
+func (s *LabelStmtContinueContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtContinue(s)
+	}
+}
+
+func (s *LabelStmtContinueContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtContinue(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtBlockContext struct {
+	StmtContext
+}
+
+func NewLabelStmtBlockContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtBlockContext {
+	var p = new(LabelStmtBlockContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtBlockContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtBlockContext) CodeBlock() ICodeBlockContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ICodeBlockContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ICodeBlockContext)
+}
+
+func (s *LabelStmtBlockContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtBlock(s)
+	}
+}
+
+func (s *LabelStmtBlockContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtBlock(s)
+	}
+}
+
+func (s *LabelStmtBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtBlock(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtCheckContext struct {
+	StmtContext
+}
+
+func NewLabelStmtCheckContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtCheckContext {
+	var p = new(LabelStmtCheckContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtCheckContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtCheckContext) CheckStmt() ICheckStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ICheckStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ICheckStmtContext)
+}
+
+func (s *LabelStmtCheckContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtCheck(s)
+	}
+}
+
+func (s *LabelStmtCheckContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtCheck(s)
+	}
+}
+
+func (s *LabelStmtCheckContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtCheck(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtBreakContext struct {
+	StmtContext
+}
+
+func NewLabelStmtBreakContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtBreakContext {
+	var p = new(LabelStmtBreakContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtBreakContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtBreakContext) BreakStmt() IBreakStmtContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IBreakStmtContext); ok {
@@ -9770,22 +9714,78 @@ func (s *StmtBreakContext) BreakStmt() IBreakStmtContext {
 	return t.(IBreakStmtContext)
 }
 
-func (s *StmtBreakContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelStmtBreakContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStmtBreak(s)
+		listenerT.EnterLabelStmtBreak(s)
 	}
 }
 
-func (s *StmtBreakContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelStmtBreakContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStmtBreak(s)
+		listenerT.ExitLabelStmtBreak(s)
 	}
 }
 
-func (s *StmtBreakContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelStmtBreakContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitStmtBreak(s)
+		return t.VisitLabelStmtBreak(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStmtYieldContext struct {
+	StmtContext
+}
+
+func NewLabelStmtYieldContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStmtYieldContext {
+	var p = new(LabelStmtYieldContext)
+
+	InitEmptyStmtContext(&p.StmtContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StmtContext))
+
+	return p
+}
+
+func (s *LabelStmtYieldContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStmtYieldContext) YieldStmt() IYieldStmtContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IYieldStmtContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IYieldStmtContext)
+}
+
+func (s *LabelStmtYieldContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStmtYield(s)
+	}
+}
+
+func (s *LabelStmtYieldContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStmtYield(s)
+	}
+}
+
+func (s *LabelStmtYieldContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStmtYield(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -9803,7 +9803,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 
 	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 66, p.GetParserRuleContext()) {
 	case 1:
-		localctx = NewStmtLetContext(p, localctx)
+		localctx = NewLabelStmtLetContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(610)
@@ -9811,7 +9811,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 2:
-		localctx = NewStmtExprContext(p, localctx)
+		localctx = NewLabelStmtExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(611)
@@ -9835,7 +9835,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 3:
-		localctx = NewStmtReturnContext(p, localctx)
+		localctx = NewLabelStmtReturnContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(615)
@@ -9843,7 +9843,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 4:
-		localctx = NewStmtYieldContext(p, localctx)
+		localctx = NewLabelStmtYieldContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(616)
@@ -9851,7 +9851,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 5:
-		localctx = NewStmtIfContext(p, localctx)
+		localctx = NewLabelStmtIfContext(p, localctx)
 		p.EnterOuterAlt(localctx, 5)
 		{
 			p.SetState(617)
@@ -9859,7 +9859,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 6:
-		localctx = NewStmtForContext(p, localctx)
+		localctx = NewLabelStmtForContext(p, localctx)
 		p.EnterOuterAlt(localctx, 6)
 		{
 			p.SetState(618)
@@ -9867,7 +9867,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 7:
-		localctx = NewStmtWhileContext(p, localctx)
+		localctx = NewLabelStmtWhileContext(p, localctx)
 		p.EnterOuterAlt(localctx, 7)
 		{
 			p.SetState(619)
@@ -9875,7 +9875,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 8:
-		localctx = NewStmtBlockContext(p, localctx)
+		localctx = NewLabelStmtBlockContext(p, localctx)
 		p.EnterOuterAlt(localctx, 8)
 		{
 			p.SetState(620)
@@ -9883,7 +9883,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 9:
-		localctx = NewStmtBreakContext(p, localctx)
+		localctx = NewLabelStmtBreakContext(p, localctx)
 		p.EnterOuterAlt(localctx, 9)
 		{
 			p.SetState(621)
@@ -9891,7 +9891,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 10:
-		localctx = NewStmtContinueContext(p, localctx)
+		localctx = NewLabelStmtContinueContext(p, localctx)
 		p.EnterOuterAlt(localctx, 10)
 		{
 			p.SetState(622)
@@ -9899,7 +9899,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 11:
-		localctx = NewStmtCheckContext(p, localctx)
+		localctx = NewLabelStmtCheckContext(p, localctx)
 		p.EnterOuterAlt(localctx, 11)
 		{
 			p.SetState(623)
@@ -9907,7 +9907,7 @@ func (p *Manuscript) Stmt() (localctx IStmtContext) {
 		}
 
 	case 12:
-		localctx = NewStmtDeferContext(p, localctx)
+		localctx = NewLabelStmtDeferContext(p, localctx)
 		p.EnterOuterAlt(localctx, 12)
 		{
 			p.SetState(624)
@@ -10990,12 +10990,12 @@ func (s *ForLoopTypeContext) ToStringTree(ruleNames []string, recog antlr.Recogn
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type ForInLoopContext struct {
+type LabelForLoopContext struct {
 	ForLoopTypeContext
 }
 
-func NewForInLoopContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ForInLoopContext {
-	var p = new(ForInLoopContext)
+func NewLabelForLoopContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelForLoopContext {
+	var p = new(LabelForLoopContext)
 
 	InitEmptyForLoopTypeContext(&p.ForLoopTypeContext)
 	p.parser = parser
@@ -11004,99 +11004,11 @@ func NewForInLoopContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ForI
 	return p
 }
 
-func (s *ForInLoopContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelForLoopContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ForInLoopContext) IN() antlr.TerminalNode {
-	return s.GetToken(ManuscriptIN, 0)
-}
-
-func (s *ForInLoopContext) Expr() IExprContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IExprContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IExprContext)
-}
-
-func (s *ForInLoopContext) LoopBody() ILoopBodyContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ILoopBodyContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ILoopBodyContext)
-}
-
-func (s *ForInLoopContext) AllID() []antlr.TerminalNode {
-	return s.GetTokens(ManuscriptID)
-}
-
-func (s *ForInLoopContext) ID(i int) antlr.TerminalNode {
-	return s.GetToken(ManuscriptID, i)
-}
-
-func (s *ForInLoopContext) COMMA() antlr.TerminalNode {
-	return s.GetToken(ManuscriptCOMMA, 0)
-}
-
-func (s *ForInLoopContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterForInLoop(s)
-	}
-}
-
-func (s *ForInLoopContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitForInLoop(s)
-	}
-}
-
-func (s *ForInLoopContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitForInLoop(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type ForLoopContext struct {
-	ForLoopTypeContext
-}
-
-func NewForLoopContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ForLoopContext {
-	var p = new(ForLoopContext)
-
-	InitEmptyForLoopTypeContext(&p.ForLoopTypeContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ForLoopTypeContext))
-
-	return p
-}
-
-func (s *ForLoopContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *ForLoopContext) ForTrinity() IForTrinityContext {
+func (s *LabelForLoopContext) ForTrinity() IForTrinityContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IForTrinityContext); ok {
@@ -11112,22 +11024,110 @@ func (s *ForLoopContext) ForTrinity() IForTrinityContext {
 	return t.(IForTrinityContext)
 }
 
-func (s *ForLoopContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelForLoopContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterForLoop(s)
+		listenerT.EnterLabelForLoop(s)
 	}
 }
 
-func (s *ForLoopContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelForLoopContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitForLoop(s)
+		listenerT.ExitLabelForLoop(s)
 	}
 }
 
-func (s *ForLoopContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelForLoopContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitForLoop(s)
+		return t.VisitLabelForLoop(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelForInLoopContext struct {
+	ForLoopTypeContext
+}
+
+func NewLabelForInLoopContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelForInLoopContext {
+	var p = new(LabelForInLoopContext)
+
+	InitEmptyForLoopTypeContext(&p.ForLoopTypeContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*ForLoopTypeContext))
+
+	return p
+}
+
+func (s *LabelForInLoopContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelForInLoopContext) IN() antlr.TerminalNode {
+	return s.GetToken(ManuscriptIN, 0)
+}
+
+func (s *LabelForInLoopContext) Expr() IExprContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IExprContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IExprContext)
+}
+
+func (s *LabelForInLoopContext) LoopBody() ILoopBodyContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ILoopBodyContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ILoopBodyContext)
+}
+
+func (s *LabelForInLoopContext) AllID() []antlr.TerminalNode {
+	return s.GetTokens(ManuscriptID)
+}
+
+func (s *LabelForInLoopContext) ID(i int) antlr.TerminalNode {
+	return s.GetToken(ManuscriptID, i)
+}
+
+func (s *LabelForInLoopContext) COMMA() antlr.TerminalNode {
+	return s.GetToken(ManuscriptCOMMA, 0)
+}
+
+func (s *LabelForInLoopContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelForInLoop(s)
+	}
+}
+
+func (s *LabelForInLoopContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelForInLoop(s)
+	}
+}
+
+func (s *LabelForInLoopContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelForInLoop(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -11147,7 +11147,7 @@ func (p *Manuscript) ForLoopType() (localctx IForLoopTypeContext) {
 
 	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 76, p.GetParserRuleContext()) {
 	case 1:
-		localctx = NewForLoopContext(p, localctx)
+		localctx = NewLabelForLoopContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(667)
@@ -11155,7 +11155,7 @@ func (p *Manuscript) ForLoopType() (localctx IForLoopTypeContext) {
 		}
 
 	case 2:
-		localctx = NewForInLoopContext(p, localctx)
+		localctx = NewLabelForInLoopContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(668)
@@ -11483,12 +11483,12 @@ func (s *ForInitContext) ToStringTree(ruleNames []string, recog antlr.Recognizer
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type ForInitLetContext struct {
+type LabelForInitLetContext struct {
 	ForInitContext
 }
 
-func NewForInitLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ForInitLetContext {
-	var p = new(ForInitLetContext)
+func NewLabelForInitLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelForInitLetContext {
+	var p = new(LabelForInitLetContext)
 
 	InitEmptyForInitContext(&p.ForInitContext)
 	p.parser = parser
@@ -11497,11 +11497,11 @@ func NewForInitLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *For
 	return p
 }
 
-func (s *ForInitLetContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelForInitLetContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ForInitLetContext) LetSingle() ILetSingleContext {
+func (s *LabelForInitLetContext) LetSingle() ILetSingleContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ILetSingleContext); ok {
@@ -11517,34 +11517,34 @@ func (s *ForInitLetContext) LetSingle() ILetSingleContext {
 	return t.(ILetSingleContext)
 }
 
-func (s *ForInitLetContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelForInitLetContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterForInitLet(s)
+		listenerT.EnterLabelForInitLet(s)
 	}
 }
 
-func (s *ForInitLetContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelForInitLetContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitForInitLet(s)
+		listenerT.ExitLabelForInitLet(s)
 	}
 }
 
-func (s *ForInitLetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelForInitLetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitForInitLet(s)
+		return t.VisitLabelForInitLet(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type ForInitEmptyContext struct {
+type LabelForInitEmptyContext struct {
 	ForInitContext
 }
 
-func NewForInitEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ForInitEmptyContext {
-	var p = new(ForInitEmptyContext)
+func NewLabelForInitEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelForInitEmptyContext {
+	var p = new(LabelForInitEmptyContext)
 
 	InitEmptyForInitContext(&p.ForInitContext)
 	p.parser = parser
@@ -11553,26 +11553,26 @@ func NewForInitEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *F
 	return p
 }
 
-func (s *ForInitEmptyContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelForInitEmptyContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ForInitEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelForInitEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterForInitEmpty(s)
+		listenerT.EnterLabelForInitEmpty(s)
 	}
 }
 
-func (s *ForInitEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelForInitEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitForInitEmpty(s)
+		listenerT.ExitLabelForInitEmpty(s)
 	}
 }
 
-func (s *ForInitEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelForInitEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitForInitEmpty(s)
+		return t.VisitLabelForInitEmpty(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -11590,7 +11590,7 @@ func (p *Manuscript) ForInit() (localctx IForInitContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptID:
-		localctx = NewForInitLetContext(p, localctx)
+		localctx = NewLabelForInitLetContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(686)
@@ -11598,7 +11598,7 @@ func (p *Manuscript) ForInit() (localctx IForInitContext) {
 		}
 
 	case ManuscriptSEMICOLON:
-		localctx = NewForInitEmptyContext(p, localctx)
+		localctx = NewLabelForInitEmptyContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 
 	default:
@@ -11673,12 +11673,12 @@ func (s *ForCondContext) ToStringTree(ruleNames []string, recog antlr.Recognizer
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type ForCondExprContext struct {
+type LabelForCondEmptyContext struct {
 	ForCondContext
 }
 
-func NewForCondExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ForCondExprContext {
-	var p = new(ForCondExprContext)
+func NewLabelForCondEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelForCondEmptyContext {
+	var p = new(LabelForCondEmptyContext)
 
 	InitEmptyForCondContext(&p.ForCondContext)
 	p.parser = parser
@@ -11687,11 +11687,51 @@ func NewForCondExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Fo
 	return p
 }
 
-func (s *ForCondExprContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelForCondEmptyContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ForCondExprContext) Expr() IExprContext {
+func (s *LabelForCondEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelForCondEmpty(s)
+	}
+}
+
+func (s *LabelForCondEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelForCondEmpty(s)
+	}
+}
+
+func (s *LabelForCondEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelForCondEmpty(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelForCondExprContext struct {
+	ForCondContext
+}
+
+func NewLabelForCondExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelForCondExprContext {
+	var p = new(LabelForCondExprContext)
+
+	InitEmptyForCondContext(&p.ForCondContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*ForCondContext))
+
+	return p
+}
+
+func (s *LabelForCondExprContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelForCondExprContext) Expr() IExprContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IExprContext); ok {
@@ -11707,62 +11747,22 @@ func (s *ForCondExprContext) Expr() IExprContext {
 	return t.(IExprContext)
 }
 
-func (s *ForCondExprContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelForCondExprContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterForCondExpr(s)
+		listenerT.EnterLabelForCondExpr(s)
 	}
 }
 
-func (s *ForCondExprContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelForCondExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitForCondExpr(s)
+		listenerT.ExitLabelForCondExpr(s)
 	}
 }
 
-func (s *ForCondExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelForCondExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitForCondExpr(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type ForCondEmptyContext struct {
-	ForCondContext
-}
-
-func NewForCondEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ForCondEmptyContext {
-	var p = new(ForCondEmptyContext)
-
-	InitEmptyForCondContext(&p.ForCondContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ForCondContext))
-
-	return p
-}
-
-func (s *ForCondEmptyContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *ForCondEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterForCondEmpty(s)
-	}
-}
-
-func (s *ForCondEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitForCondEmpty(s)
-	}
-}
-
-func (s *ForCondEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitForCondEmpty(s)
+		return t.VisitLabelForCondExpr(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -11780,7 +11780,7 @@ func (p *Manuscript) ForCond() (localctx IForCondContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptFN, ManuscriptVOID, ManuscriptTRY, ManuscriptNULL, ManuscriptTRUE, ManuscriptFALSE, ManuscriptMATCH, ManuscriptASYNC, ManuscriptAWAIT, ManuscriptLBRACE, ManuscriptLSQBR, ManuscriptLPAREN, ManuscriptLT, ManuscriptPLUS, ManuscriptMINUS, ManuscriptEXCLAMATION, ManuscriptHEX_LITERAL, ManuscriptBINARY_LITERAL, ManuscriptOCTAL_LITERAL, ManuscriptFLOAT, ManuscriptINTEGER, ManuscriptID, ManuscriptSINGLE_QUOTE_START, ManuscriptMULTI_QUOTE_START, ManuscriptDOUBLE_QUOTE_START, ManuscriptMULTI_DOUBLE_QUOTE_START:
-		localctx = NewForCondExprContext(p, localctx)
+		localctx = NewLabelForCondExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(690)
@@ -11788,7 +11788,7 @@ func (p *Manuscript) ForCond() (localctx IForCondContext) {
 		}
 
 	case ManuscriptSEMICOLON:
-		localctx = NewForCondEmptyContext(p, localctx)
+		localctx = NewLabelForCondEmptyContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 
 	default:
@@ -11863,12 +11863,12 @@ func (s *ForPostContext) ToStringTree(ruleNames []string, recog antlr.Recognizer
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type ForPostEmptyContext struct {
+type LabelForPostExprContext struct {
 	ForPostContext
 }
 
-func NewForPostEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ForPostEmptyContext {
-	var p = new(ForPostEmptyContext)
+func NewLabelForPostExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelForPostExprContext {
+	var p = new(LabelForPostExprContext)
 
 	InitEmptyForPostContext(&p.ForPostContext)
 	p.parser = parser
@@ -11877,51 +11877,11 @@ func NewForPostEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *F
 	return p
 }
 
-func (s *ForPostEmptyContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelForPostExprContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ForPostEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterForPostEmpty(s)
-	}
-}
-
-func (s *ForPostEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitForPostEmpty(s)
-	}
-}
-
-func (s *ForPostEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitForPostEmpty(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type ForPostExprContext struct {
-	ForPostContext
-}
-
-func NewForPostExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ForPostExprContext {
-	var p = new(ForPostExprContext)
-
-	InitEmptyForPostContext(&p.ForPostContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ForPostContext))
-
-	return p
-}
-
-func (s *ForPostExprContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *ForPostExprContext) Expr() IExprContext {
+func (s *LabelForPostExprContext) Expr() IExprContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IExprContext); ok {
@@ -11937,22 +11897,62 @@ func (s *ForPostExprContext) Expr() IExprContext {
 	return t.(IExprContext)
 }
 
-func (s *ForPostExprContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelForPostExprContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterForPostExpr(s)
+		listenerT.EnterLabelForPostExpr(s)
 	}
 }
 
-func (s *ForPostExprContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelForPostExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitForPostExpr(s)
+		listenerT.ExitLabelForPostExpr(s)
 	}
 }
 
-func (s *ForPostExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelForPostExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitForPostExpr(s)
+		return t.VisitLabelForPostExpr(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelForPostEmptyContext struct {
+	ForPostContext
+}
+
+func NewLabelForPostEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelForPostEmptyContext {
+	var p = new(LabelForPostEmptyContext)
+
+	InitEmptyForPostContext(&p.ForPostContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*ForPostContext))
+
+	return p
+}
+
+func (s *LabelForPostEmptyContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelForPostEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelForPostEmpty(s)
+	}
+}
+
+func (s *LabelForPostEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelForPostEmpty(s)
+	}
+}
+
+func (s *LabelForPostEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelForPostEmpty(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -11970,7 +11970,7 @@ func (p *Manuscript) ForPost() (localctx IForPostContext) {
 
 	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 79, p.GetParserRuleContext()) {
 	case 1:
-		localctx = NewForPostExprContext(p, localctx)
+		localctx = NewLabelForPostExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(694)
@@ -11978,7 +11978,7 @@ func (p *Manuscript) ForPost() (localctx IForPostContext) {
 		}
 
 	case 2:
-		localctx = NewForPostEmptyContext(p, localctx)
+		localctx = NewLabelForPostEmptyContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 
 	case antlr.ATNInvalidAltNumber:
@@ -13601,12 +13601,12 @@ func (s *AssignmentOpContext) ToStringTree(ruleNames []string, recog antlr.Recog
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type AssignStarEqContext struct {
+type LabelAssignCaretEqContext struct {
 	AssignmentOpContext
 }
 
-func NewAssignStarEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *AssignStarEqContext {
-	var p = new(AssignStarEqContext)
+func NewLabelAssignCaretEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelAssignCaretEqContext {
+	var p = new(LabelAssignCaretEqContext)
 
 	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
 	p.parser = parser
@@ -13615,174 +13615,42 @@ func NewAssignStarEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *A
 	return p
 }
 
-func (s *AssignStarEqContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelAssignCaretEqContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *AssignStarEqContext) STAR_EQUALS() antlr.TerminalNode {
-	return s.GetToken(ManuscriptSTAR_EQUALS, 0)
-}
-
-func (s *AssignStarEqContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterAssignStarEq(s)
-	}
-}
-
-func (s *AssignStarEqContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitAssignStarEq(s)
-	}
-}
-
-func (s *AssignStarEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitAssignStarEq(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type AssignMinusEqContext struct {
-	AssignmentOpContext
-}
-
-func NewAssignMinusEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *AssignMinusEqContext {
-	var p = new(AssignMinusEqContext)
-
-	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*AssignmentOpContext))
-
-	return p
-}
-
-func (s *AssignMinusEqContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *AssignMinusEqContext) MINUS_EQUALS() antlr.TerminalNode {
-	return s.GetToken(ManuscriptMINUS_EQUALS, 0)
-}
-
-func (s *AssignMinusEqContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterAssignMinusEq(s)
-	}
-}
-
-func (s *AssignMinusEqContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitAssignMinusEq(s)
-	}
-}
-
-func (s *AssignMinusEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitAssignMinusEq(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type AssignEqContext struct {
-	AssignmentOpContext
-}
-
-func NewAssignEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *AssignEqContext {
-	var p = new(AssignEqContext)
-
-	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*AssignmentOpContext))
-
-	return p
-}
-
-func (s *AssignEqContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *AssignEqContext) EQUALS() antlr.TerminalNode {
-	return s.GetToken(ManuscriptEQUALS, 0)
-}
-
-func (s *AssignEqContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterAssignEq(s)
-	}
-}
-
-func (s *AssignEqContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitAssignEq(s)
-	}
-}
-
-func (s *AssignEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitAssignEq(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type AssignCaretEqContext struct {
-	AssignmentOpContext
-}
-
-func NewAssignCaretEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *AssignCaretEqContext {
-	var p = new(AssignCaretEqContext)
-
-	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*AssignmentOpContext))
-
-	return p
-}
-
-func (s *AssignCaretEqContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *AssignCaretEqContext) CARET_EQUALS() antlr.TerminalNode {
+func (s *LabelAssignCaretEqContext) CARET_EQUALS() antlr.TerminalNode {
 	return s.GetToken(ManuscriptCARET_EQUALS, 0)
 }
 
-func (s *AssignCaretEqContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelAssignCaretEqContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterAssignCaretEq(s)
+		listenerT.EnterLabelAssignCaretEq(s)
 	}
 }
 
-func (s *AssignCaretEqContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelAssignCaretEqContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitAssignCaretEq(s)
+		listenerT.ExitLabelAssignCaretEq(s)
 	}
 }
 
-func (s *AssignCaretEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelAssignCaretEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitAssignCaretEq(s)
+		return t.VisitLabelAssignCaretEq(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type AssignPlusEqContext struct {
+type LabelAssignEqContext struct {
 	AssignmentOpContext
 }
 
-func NewAssignPlusEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *AssignPlusEqContext {
-	var p = new(AssignPlusEqContext)
+func NewLabelAssignEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelAssignEqContext {
+	var p = new(LabelAssignEqContext)
 
 	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
 	p.parser = parser
@@ -13791,42 +13659,42 @@ func NewAssignPlusEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *A
 	return p
 }
 
-func (s *AssignPlusEqContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelAssignEqContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *AssignPlusEqContext) PLUS_EQUALS() antlr.TerminalNode {
-	return s.GetToken(ManuscriptPLUS_EQUALS, 0)
+func (s *LabelAssignEqContext) EQUALS() antlr.TerminalNode {
+	return s.GetToken(ManuscriptEQUALS, 0)
 }
 
-func (s *AssignPlusEqContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelAssignEqContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterAssignPlusEq(s)
+		listenerT.EnterLabelAssignEq(s)
 	}
 }
 
-func (s *AssignPlusEqContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelAssignEqContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitAssignPlusEq(s)
+		listenerT.ExitLabelAssignEq(s)
 	}
 }
 
-func (s *AssignPlusEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelAssignEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitAssignPlusEq(s)
+		return t.VisitLabelAssignEq(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type AssignSlashEqContext struct {
+type LabelAssignMinusEqContext struct {
 	AssignmentOpContext
 }
 
-func NewAssignSlashEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *AssignSlashEqContext {
-	var p = new(AssignSlashEqContext)
+func NewLabelAssignMinusEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelAssignMinusEqContext {
+	var p = new(LabelAssignMinusEqContext)
 
 	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
 	p.parser = parser
@@ -13835,42 +13703,42 @@ func NewAssignSlashEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *
 	return p
 }
 
-func (s *AssignSlashEqContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelAssignMinusEqContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *AssignSlashEqContext) SLASH_EQUALS() antlr.TerminalNode {
-	return s.GetToken(ManuscriptSLASH_EQUALS, 0)
+func (s *LabelAssignMinusEqContext) MINUS_EQUALS() antlr.TerminalNode {
+	return s.GetToken(ManuscriptMINUS_EQUALS, 0)
 }
 
-func (s *AssignSlashEqContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelAssignMinusEqContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterAssignSlashEq(s)
+		listenerT.EnterLabelAssignMinusEq(s)
 	}
 }
 
-func (s *AssignSlashEqContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelAssignMinusEqContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitAssignSlashEq(s)
+		listenerT.ExitLabelAssignMinusEq(s)
 	}
 }
 
-func (s *AssignSlashEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelAssignMinusEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitAssignSlashEq(s)
+		return t.VisitLabelAssignMinusEq(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type AssignModEqContext struct {
+type LabelAssignModEqContext struct {
 	AssignmentOpContext
 }
 
-func NewAssignModEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *AssignModEqContext {
-	var p = new(AssignModEqContext)
+func NewLabelAssignModEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelAssignModEqContext {
+	var p = new(LabelAssignModEqContext)
 
 	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
 	p.parser = parser
@@ -13879,30 +13747,162 @@ func NewAssignModEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *As
 	return p
 }
 
-func (s *AssignModEqContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelAssignModEqContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *AssignModEqContext) MOD_EQUALS() antlr.TerminalNode {
+func (s *LabelAssignModEqContext) MOD_EQUALS() antlr.TerminalNode {
 	return s.GetToken(ManuscriptMOD_EQUALS, 0)
 }
 
-func (s *AssignModEqContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelAssignModEqContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterAssignModEq(s)
+		listenerT.EnterLabelAssignModEq(s)
 	}
 }
 
-func (s *AssignModEqContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelAssignModEqContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitAssignModEq(s)
+		listenerT.ExitLabelAssignModEq(s)
 	}
 }
 
-func (s *AssignModEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelAssignModEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitAssignModEq(s)
+		return t.VisitLabelAssignModEq(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelAssignStarEqContext struct {
+	AssignmentOpContext
+}
+
+func NewLabelAssignStarEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelAssignStarEqContext {
+	var p = new(LabelAssignStarEqContext)
+
+	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*AssignmentOpContext))
+
+	return p
+}
+
+func (s *LabelAssignStarEqContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelAssignStarEqContext) STAR_EQUALS() antlr.TerminalNode {
+	return s.GetToken(ManuscriptSTAR_EQUALS, 0)
+}
+
+func (s *LabelAssignStarEqContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelAssignStarEq(s)
+	}
+}
+
+func (s *LabelAssignStarEqContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelAssignStarEq(s)
+	}
+}
+
+func (s *LabelAssignStarEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelAssignStarEq(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelAssignPlusEqContext struct {
+	AssignmentOpContext
+}
+
+func NewLabelAssignPlusEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelAssignPlusEqContext {
+	var p = new(LabelAssignPlusEqContext)
+
+	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*AssignmentOpContext))
+
+	return p
+}
+
+func (s *LabelAssignPlusEqContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelAssignPlusEqContext) PLUS_EQUALS() antlr.TerminalNode {
+	return s.GetToken(ManuscriptPLUS_EQUALS, 0)
+}
+
+func (s *LabelAssignPlusEqContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelAssignPlusEq(s)
+	}
+}
+
+func (s *LabelAssignPlusEqContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelAssignPlusEq(s)
+	}
+}
+
+func (s *LabelAssignPlusEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelAssignPlusEq(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelAssignSlashEqContext struct {
+	AssignmentOpContext
+}
+
+func NewLabelAssignSlashEqContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelAssignSlashEqContext {
+	var p = new(LabelAssignSlashEqContext)
+
+	InitEmptyAssignmentOpContext(&p.AssignmentOpContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*AssignmentOpContext))
+
+	return p
+}
+
+func (s *LabelAssignSlashEqContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelAssignSlashEqContext) SLASH_EQUALS() antlr.TerminalNode {
+	return s.GetToken(ManuscriptSLASH_EQUALS, 0)
+}
+
+func (s *LabelAssignSlashEqContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelAssignSlashEq(s)
+	}
+}
+
+func (s *LabelAssignSlashEqContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelAssignSlashEq(s)
+	}
+}
+
+func (s *LabelAssignSlashEqContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelAssignSlashEq(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -13920,7 +13920,7 @@ func (p *Manuscript) AssignmentOp() (localctx IAssignmentOpContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptEQUALS:
-		localctx = NewAssignEqContext(p, localctx)
+		localctx = NewLabelAssignEqContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(786)
@@ -13932,7 +13932,7 @@ func (p *Manuscript) AssignmentOp() (localctx IAssignmentOpContext) {
 		}
 
 	case ManuscriptPLUS_EQUALS:
-		localctx = NewAssignPlusEqContext(p, localctx)
+		localctx = NewLabelAssignPlusEqContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(787)
@@ -13944,7 +13944,7 @@ func (p *Manuscript) AssignmentOp() (localctx IAssignmentOpContext) {
 		}
 
 	case ManuscriptMINUS_EQUALS:
-		localctx = NewAssignMinusEqContext(p, localctx)
+		localctx = NewLabelAssignMinusEqContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(788)
@@ -13956,7 +13956,7 @@ func (p *Manuscript) AssignmentOp() (localctx IAssignmentOpContext) {
 		}
 
 	case ManuscriptSTAR_EQUALS:
-		localctx = NewAssignStarEqContext(p, localctx)
+		localctx = NewLabelAssignStarEqContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(789)
@@ -13968,7 +13968,7 @@ func (p *Manuscript) AssignmentOp() (localctx IAssignmentOpContext) {
 		}
 
 	case ManuscriptSLASH_EQUALS:
-		localctx = NewAssignSlashEqContext(p, localctx)
+		localctx = NewLabelAssignSlashEqContext(p, localctx)
 		p.EnterOuterAlt(localctx, 5)
 		{
 			p.SetState(790)
@@ -13980,7 +13980,7 @@ func (p *Manuscript) AssignmentOp() (localctx IAssignmentOpContext) {
 		}
 
 	case ManuscriptMOD_EQUALS:
-		localctx = NewAssignModEqContext(p, localctx)
+		localctx = NewLabelAssignModEqContext(p, localctx)
 		p.EnterOuterAlt(localctx, 6)
 		{
 			p.SetState(791)
@@ -13992,7 +13992,7 @@ func (p *Manuscript) AssignmentOp() (localctx IAssignmentOpContext) {
 		}
 
 	case ManuscriptCARET_EQUALS:
-		localctx = NewAssignCaretEqContext(p, localctx)
+		localctx = NewLabelAssignCaretEqContext(p, localctx)
 		p.EnterOuterAlt(localctx, 7)
 		{
 			p.SetState(792)
@@ -16883,14 +16883,12 @@ func (s *UnaryExprContext) ToStringTree(ruleNames []string, recog antlr.Recogniz
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type UnaryOpExprContext struct {
+type LabelUnaryAwaitExprContext struct {
 	UnaryExprContext
-	op    antlr.Token
-	unary IUnaryExprContext
 }
 
-func NewUnaryOpExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *UnaryOpExprContext {
-	var p = new(UnaryOpExprContext)
+func NewLabelUnaryAwaitExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelUnaryAwaitExprContext {
+	var p = new(LabelUnaryAwaitExprContext)
 
 	InitEmptyUnaryExprContext(&p.UnaryExprContext)
 	p.parser = parser
@@ -16899,91 +16897,11 @@ func NewUnaryOpExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Un
 	return p
 }
 
-func (s *UnaryOpExprContext) GetOp() antlr.Token { return s.op }
-
-func (s *UnaryOpExprContext) SetOp(v antlr.Token) { s.op = v }
-
-func (s *UnaryOpExprContext) GetUnary() IUnaryExprContext { return s.unary }
-
-func (s *UnaryOpExprContext) SetUnary(v IUnaryExprContext) { s.unary = v }
-
-func (s *UnaryOpExprContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelUnaryAwaitExprContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *UnaryOpExprContext) UnaryExpr() IUnaryExprContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IUnaryExprContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IUnaryExprContext)
-}
-
-func (s *UnaryOpExprContext) PLUS() antlr.TerminalNode {
-	return s.GetToken(ManuscriptPLUS, 0)
-}
-
-func (s *UnaryOpExprContext) MINUS() antlr.TerminalNode {
-	return s.GetToken(ManuscriptMINUS, 0)
-}
-
-func (s *UnaryOpExprContext) EXCLAMATION() antlr.TerminalNode {
-	return s.GetToken(ManuscriptEXCLAMATION, 0)
-}
-
-func (s *UnaryOpExprContext) TRY() antlr.TerminalNode {
-	return s.GetToken(ManuscriptTRY, 0)
-}
-
-func (s *UnaryOpExprContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterUnaryOpExpr(s)
-	}
-}
-
-func (s *UnaryOpExprContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitUnaryOpExpr(s)
-	}
-}
-
-func (s *UnaryOpExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitUnaryOpExpr(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type UnaryAwaitExprContext struct {
-	UnaryExprContext
-}
-
-func NewUnaryAwaitExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *UnaryAwaitExprContext {
-	var p = new(UnaryAwaitExprContext)
-
-	InitEmptyUnaryExprContext(&p.UnaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*UnaryExprContext))
-
-	return p
-}
-
-func (s *UnaryAwaitExprContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *UnaryAwaitExprContext) AwaitExpr() IAwaitExprContext {
+func (s *LabelUnaryAwaitExprContext) AwaitExpr() IAwaitExprContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IAwaitExprContext); ok {
@@ -16999,22 +16917,104 @@ func (s *UnaryAwaitExprContext) AwaitExpr() IAwaitExprContext {
 	return t.(IAwaitExprContext)
 }
 
-func (s *UnaryAwaitExprContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelUnaryAwaitExprContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterUnaryAwaitExpr(s)
+		listenerT.EnterLabelUnaryAwaitExpr(s)
 	}
 }
 
-func (s *UnaryAwaitExprContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelUnaryAwaitExprContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitUnaryAwaitExpr(s)
+		listenerT.ExitLabelUnaryAwaitExpr(s)
 	}
 }
 
-func (s *UnaryAwaitExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelUnaryAwaitExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitUnaryAwaitExpr(s)
+		return t.VisitLabelUnaryAwaitExpr(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelUnaryOpExprContext struct {
+	UnaryExprContext
+	op    antlr.Token
+	unary IUnaryExprContext
+}
+
+func NewLabelUnaryOpExprContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelUnaryOpExprContext {
+	var p = new(LabelUnaryOpExprContext)
+
+	InitEmptyUnaryExprContext(&p.UnaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*UnaryExprContext))
+
+	return p
+}
+
+func (s *LabelUnaryOpExprContext) GetOp() antlr.Token { return s.op }
+
+func (s *LabelUnaryOpExprContext) SetOp(v antlr.Token) { s.op = v }
+
+func (s *LabelUnaryOpExprContext) GetUnary() IUnaryExprContext { return s.unary }
+
+func (s *LabelUnaryOpExprContext) SetUnary(v IUnaryExprContext) { s.unary = v }
+
+func (s *LabelUnaryOpExprContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelUnaryOpExprContext) UnaryExpr() IUnaryExprContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IUnaryExprContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IUnaryExprContext)
+}
+
+func (s *LabelUnaryOpExprContext) PLUS() antlr.TerminalNode {
+	return s.GetToken(ManuscriptPLUS, 0)
+}
+
+func (s *LabelUnaryOpExprContext) MINUS() antlr.TerminalNode {
+	return s.GetToken(ManuscriptMINUS, 0)
+}
+
+func (s *LabelUnaryOpExprContext) EXCLAMATION() antlr.TerminalNode {
+	return s.GetToken(ManuscriptEXCLAMATION, 0)
+}
+
+func (s *LabelUnaryOpExprContext) TRY() antlr.TerminalNode {
+	return s.GetToken(ManuscriptTRY, 0)
+}
+
+func (s *LabelUnaryOpExprContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelUnaryOpExpr(s)
+	}
+}
+
+func (s *LabelUnaryOpExprContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelUnaryOpExpr(s)
+	}
+}
+
+func (s *LabelUnaryOpExprContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelUnaryOpExpr(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -17034,21 +17034,21 @@ func (p *Manuscript) UnaryExpr() (localctx IUnaryExprContext) {
 
 	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 106, p.GetParserRuleContext()) {
 	case 1:
-		localctx = NewUnaryOpExprContext(p, localctx)
+		localctx = NewLabelUnaryOpExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(917)
 
 			var _lt = p.GetTokenStream().LT(1)
 
-			localctx.(*UnaryOpExprContext).op = _lt
+			localctx.(*LabelUnaryOpExprContext).op = _lt
 
 			_la = p.GetTokenStream().LA(1)
 
 			if !((int64((_la-16)) & ^0x3f) == 0 && ((int64(1)<<(_la-16))&283124244152321) != 0) {
 				var _ri = p.GetErrorHandler().RecoverInline(p)
 
-				localctx.(*UnaryOpExprContext).op = _ri
+				localctx.(*LabelUnaryOpExprContext).op = _ri
 			} else {
 				p.GetErrorHandler().ReportMatch(p)
 				p.Consume()
@@ -17059,11 +17059,11 @@ func (p *Manuscript) UnaryExpr() (localctx IUnaryExprContext) {
 
 			var _x = p.UnaryExpr()
 
-			localctx.(*UnaryOpExprContext).unary = _x
+			localctx.(*LabelUnaryOpExprContext).unary = _x
 		}
 
 	case 2:
-		localctx = NewUnaryAwaitExprContext(p, localctx)
+		localctx = NewLabelUnaryAwaitExprContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(919)
@@ -17528,12 +17528,12 @@ func (s *PostfixOpContext) ToStringTree(ruleNames []string, recog antlr.Recogniz
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type PostfixDotContext struct {
+type LabelPostfixDotContext struct {
 	PostfixOpContext
 }
 
-func NewPostfixDotContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PostfixDotContext {
-	var p = new(PostfixDotContext)
+func NewLabelPostfixDotContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPostfixDotContext {
+	var p = new(LabelPostfixDotContext)
 
 	InitEmptyPostfixOpContext(&p.PostfixOpContext)
 	p.parser = parser
@@ -17542,46 +17542,46 @@ func NewPostfixDotContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Pos
 	return p
 }
 
-func (s *PostfixDotContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelPostfixDotContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *PostfixDotContext) DOT() antlr.TerminalNode {
+func (s *LabelPostfixDotContext) DOT() antlr.TerminalNode {
 	return s.GetToken(ManuscriptDOT, 0)
 }
 
-func (s *PostfixDotContext) ID() antlr.TerminalNode {
+func (s *LabelPostfixDotContext) ID() antlr.TerminalNode {
 	return s.GetToken(ManuscriptID, 0)
 }
 
-func (s *PostfixDotContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelPostfixDotContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPostfixDot(s)
+		listenerT.EnterLabelPostfixDot(s)
 	}
 }
 
-func (s *PostfixDotContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelPostfixDotContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPostfixDot(s)
+		listenerT.ExitLabelPostfixDot(s)
 	}
 }
 
-func (s *PostfixDotContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelPostfixDotContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitPostfixDot(s)
+		return t.VisitLabelPostfixDot(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type PostfixCallContext struct {
+type LabelPostfixCallContext struct {
 	PostfixOpContext
 }
 
-func NewPostfixCallContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PostfixCallContext {
-	var p = new(PostfixCallContext)
+func NewLabelPostfixCallContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPostfixCallContext {
+	var p = new(LabelPostfixCallContext)
 
 	InitEmptyPostfixOpContext(&p.PostfixOpContext)
 	p.parser = parser
@@ -17590,19 +17590,19 @@ func NewPostfixCallContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Po
 	return p
 }
 
-func (s *PostfixCallContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelPostfixCallContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *PostfixCallContext) LPAREN() antlr.TerminalNode {
+func (s *LabelPostfixCallContext) LPAREN() antlr.TerminalNode {
 	return s.GetToken(ManuscriptLPAREN, 0)
 }
 
-func (s *PostfixCallContext) RPAREN() antlr.TerminalNode {
+func (s *LabelPostfixCallContext) RPAREN() antlr.TerminalNode {
 	return s.GetToken(ManuscriptRPAREN, 0)
 }
 
-func (s *PostfixCallContext) ExprList() IExprListContext {
+func (s *LabelPostfixCallContext) ExprList() IExprListContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IExprListContext); ok {
@@ -17618,34 +17618,34 @@ func (s *PostfixCallContext) ExprList() IExprListContext {
 	return t.(IExprListContext)
 }
 
-func (s *PostfixCallContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelPostfixCallContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPostfixCall(s)
+		listenerT.EnterLabelPostfixCall(s)
 	}
 }
 
-func (s *PostfixCallContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelPostfixCallContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPostfixCall(s)
+		listenerT.ExitLabelPostfixCall(s)
 	}
 }
 
-func (s *PostfixCallContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelPostfixCallContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitPostfixCall(s)
+		return t.VisitLabelPostfixCall(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type PostfixIndexContext struct {
+type LabelPostfixIndexContext struct {
 	PostfixOpContext
 }
 
-func NewPostfixIndexContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PostfixIndexContext {
-	var p = new(PostfixIndexContext)
+func NewLabelPostfixIndexContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPostfixIndexContext {
+	var p = new(LabelPostfixIndexContext)
 
 	InitEmptyPostfixOpContext(&p.PostfixOpContext)
 	p.parser = parser
@@ -17654,15 +17654,15 @@ func NewPostfixIndexContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *P
 	return p
 }
 
-func (s *PostfixIndexContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelPostfixIndexContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *PostfixIndexContext) LSQBR() antlr.TerminalNode {
+func (s *LabelPostfixIndexContext) LSQBR() antlr.TerminalNode {
 	return s.GetToken(ManuscriptLSQBR, 0)
 }
 
-func (s *PostfixIndexContext) Expr() IExprContext {
+func (s *LabelPostfixIndexContext) Expr() IExprContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IExprContext); ok {
@@ -17678,26 +17678,26 @@ func (s *PostfixIndexContext) Expr() IExprContext {
 	return t.(IExprContext)
 }
 
-func (s *PostfixIndexContext) RSQBR() antlr.TerminalNode {
+func (s *LabelPostfixIndexContext) RSQBR() antlr.TerminalNode {
 	return s.GetToken(ManuscriptRSQBR, 0)
 }
 
-func (s *PostfixIndexContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelPostfixIndexContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPostfixIndex(s)
+		listenerT.EnterLabelPostfixIndex(s)
 	}
 }
 
-func (s *PostfixIndexContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelPostfixIndexContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPostfixIndex(s)
+		listenerT.ExitLabelPostfixIndex(s)
 	}
 }
 
-func (s *PostfixIndexContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelPostfixIndexContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitPostfixIndex(s)
+		return t.VisitLabelPostfixIndex(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -17717,7 +17717,7 @@ func (p *Manuscript) PostfixOp() (localctx IPostfixOpContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptLPAREN:
-		localctx = NewPostfixCallContext(p, localctx)
+		localctx = NewLabelPostfixCallContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(943)
@@ -17751,7 +17751,7 @@ func (p *Manuscript) PostfixOp() (localctx IPostfixOpContext) {
 		}
 
 	case ManuscriptDOT:
-		localctx = NewPostfixDotContext(p, localctx)
+		localctx = NewLabelPostfixDotContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(948)
@@ -17771,7 +17771,7 @@ func (p *Manuscript) PostfixOp() (localctx IPostfixOpContext) {
 		}
 
 	case ManuscriptLSQBR:
-		localctx = NewPostfixIndexContext(p, localctx)
+		localctx = NewLabelPostfixIndexContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(950)
@@ -17866,12 +17866,12 @@ func (s *PrimaryExprContext) ToStringTree(ruleNames []string, recog antlr.Recogn
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type PrimaryVoidContext struct {
+type LabelPrimaryTaggedBlockContext struct {
 	PrimaryExprContext
 }
 
-func NewPrimaryVoidContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryVoidContext {
-	var p = new(PrimaryVoidContext)
+func NewLabelPrimaryTaggedBlockContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryTaggedBlockContext {
+	var p = new(LabelPrimaryTaggedBlockContext)
 
 	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
 	p.parser = parser
@@ -17880,611 +17880,11 @@ func NewPrimaryVoidContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Pr
 	return p
 }
 
-func (s *PrimaryVoidContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelPrimaryTaggedBlockContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *PrimaryVoidContext) VOID() antlr.TerminalNode {
-	return s.GetToken(ManuscriptVOID, 0)
-}
-
-func (s *PrimaryVoidContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryVoid(s)
-	}
-}
-
-func (s *PrimaryVoidContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryVoid(s)
-	}
-}
-
-func (s *PrimaryVoidContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryVoid(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryFnContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryFnContext {
-	var p = new(PrimaryFnContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryFnContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryFnContext) FnExpr() IFnExprContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IFnExprContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IFnExprContext)
-}
-
-func (s *PrimaryFnContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryFn(s)
-	}
-}
-
-func (s *PrimaryFnContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryFn(s)
-	}
-}
-
-func (s *PrimaryFnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryFn(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryObjectContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryObjectContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryObjectContext {
-	var p = new(PrimaryObjectContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryObjectContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryObjectContext) ObjectLiteral() IObjectLiteralContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IObjectLiteralContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IObjectLiteralContext)
-}
-
-func (s *PrimaryObjectContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryObject(s)
-	}
-}
-
-func (s *PrimaryObjectContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryObject(s)
-	}
-}
-
-func (s *PrimaryObjectContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryObject(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryParenContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryParenContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryParenContext {
-	var p = new(PrimaryParenContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryParenContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryParenContext) LPAREN() antlr.TerminalNode {
-	return s.GetToken(ManuscriptLPAREN, 0)
-}
-
-func (s *PrimaryParenContext) Expr() IExprContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IExprContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IExprContext)
-}
-
-func (s *PrimaryParenContext) RPAREN() antlr.TerminalNode {
-	return s.GetToken(ManuscriptRPAREN, 0)
-}
-
-func (s *PrimaryParenContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryParen(s)
-	}
-}
-
-func (s *PrimaryParenContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryParen(s)
-	}
-}
-
-func (s *PrimaryParenContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryParen(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryArrayContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryArrayContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryArrayContext {
-	var p = new(PrimaryArrayContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryArrayContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryArrayContext) ArrayLiteral() IArrayLiteralContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IArrayLiteralContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IArrayLiteralContext)
-}
-
-func (s *PrimaryArrayContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryArray(s)
-	}
-}
-
-func (s *PrimaryArrayContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryArray(s)
-	}
-}
-
-func (s *PrimaryArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryArray(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryMapContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryMapContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryMapContext {
-	var p = new(PrimaryMapContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryMapContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryMapContext) MapLiteral() IMapLiteralContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IMapLiteralContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IMapLiteralContext)
-}
-
-func (s *PrimaryMapContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryMap(s)
-	}
-}
-
-func (s *PrimaryMapContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryMap(s)
-	}
-}
-
-func (s *PrimaryMapContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryMap(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryStructInitContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryStructInitContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryStructInitContext {
-	var p = new(PrimaryStructInitContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryStructInitContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryStructInitContext) StructInitExpr() IStructInitExprContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IStructInitExprContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IStructInitExprContext)
-}
-
-func (s *PrimaryStructInitContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryStructInit(s)
-	}
-}
-
-func (s *PrimaryStructInitContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryStructInit(s)
-	}
-}
-
-func (s *PrimaryStructInitContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryStructInit(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryLiteralContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryLiteralContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryLiteralContext {
-	var p = new(PrimaryLiteralContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryLiteralContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryLiteralContext) Literal() ILiteralContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ILiteralContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ILiteralContext)
-}
-
-func (s *PrimaryLiteralContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryLiteral(s)
-	}
-}
-
-func (s *PrimaryLiteralContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryLiteral(s)
-	}
-}
-
-func (s *PrimaryLiteralContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryLiteral(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimarySetContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimarySetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimarySetContext {
-	var p = new(PrimarySetContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimarySetContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimarySetContext) SetLiteral() ISetLiteralContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ISetLiteralContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ISetLiteralContext)
-}
-
-func (s *PrimarySetContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimarySet(s)
-	}
-}
-
-func (s *PrimarySetContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimarySet(s)
-	}
-}
-
-func (s *PrimarySetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimarySet(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryMatchContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryMatchContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryMatchContext {
-	var p = new(PrimaryMatchContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryMatchContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryMatchContext) MatchExpr() IMatchExprContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IMatchExprContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IMatchExprContext)
-}
-
-func (s *PrimaryMatchContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryMatch(s)
-	}
-}
-
-func (s *PrimaryMatchContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryMatch(s)
-	}
-}
-
-func (s *PrimaryMatchContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryMatch(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryNullContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryNullContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryNullContext {
-	var p = new(PrimaryNullContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryNullContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryNullContext) NULL() antlr.TerminalNode {
-	return s.GetToken(ManuscriptNULL, 0)
-}
-
-func (s *PrimaryNullContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryNull(s)
-	}
-}
-
-func (s *PrimaryNullContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryNull(s)
-	}
-}
-
-func (s *PrimaryNullContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitPrimaryNull(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type PrimaryTaggedBlockContext struct {
-	PrimaryExprContext
-}
-
-func NewPrimaryTaggedBlockContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryTaggedBlockContext {
-	var p = new(PrimaryTaggedBlockContext)
-
-	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*PrimaryExprContext))
-
-	return p
-}
-
-func (s *PrimaryTaggedBlockContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *PrimaryTaggedBlockContext) TaggedBlockString() ITaggedBlockStringContext {
+func (s *LabelPrimaryTaggedBlockContext) TaggedBlockString() ITaggedBlockStringContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ITaggedBlockStringContext); ok {
@@ -18500,34 +17900,34 @@ func (s *PrimaryTaggedBlockContext) TaggedBlockString() ITaggedBlockStringContex
 	return t.(ITaggedBlockStringContext)
 }
 
-func (s *PrimaryTaggedBlockContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelPrimaryTaggedBlockContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryTaggedBlock(s)
+		listenerT.EnterLabelPrimaryTaggedBlock(s)
 	}
 }
 
-func (s *PrimaryTaggedBlockContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelPrimaryTaggedBlockContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryTaggedBlock(s)
+		listenerT.ExitLabelPrimaryTaggedBlock(s)
 	}
 }
 
-func (s *PrimaryTaggedBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelPrimaryTaggedBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitPrimaryTaggedBlock(s)
+		return t.VisitLabelPrimaryTaggedBlock(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type PrimaryIDContext struct {
+type LabelPrimaryParenContext struct {
 	PrimaryExprContext
 }
 
-func NewPrimaryIDContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *PrimaryIDContext {
-	var p = new(PrimaryIDContext)
+func NewLabelPrimaryParenContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryParenContext {
+	var p = new(LabelPrimaryParenContext)
 
 	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
 	p.parser = parser
@@ -18536,30 +17936,630 @@ func NewPrimaryIDContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Prim
 	return p
 }
 
-func (s *PrimaryIDContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelPrimaryParenContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *PrimaryIDContext) ID() antlr.TerminalNode {
+func (s *LabelPrimaryParenContext) LPAREN() antlr.TerminalNode {
+	return s.GetToken(ManuscriptLPAREN, 0)
+}
+
+func (s *LabelPrimaryParenContext) Expr() IExprContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IExprContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IExprContext)
+}
+
+func (s *LabelPrimaryParenContext) RPAREN() antlr.TerminalNode {
+	return s.GetToken(ManuscriptRPAREN, 0)
+}
+
+func (s *LabelPrimaryParenContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryParen(s)
+	}
+}
+
+func (s *LabelPrimaryParenContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryParen(s)
+	}
+}
+
+func (s *LabelPrimaryParenContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryParen(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryMatchContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryMatchContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryMatchContext {
+	var p = new(LabelPrimaryMatchContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryMatchContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryMatchContext) MatchExpr() IMatchExprContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IMatchExprContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IMatchExprContext)
+}
+
+func (s *LabelPrimaryMatchContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryMatch(s)
+	}
+}
+
+func (s *LabelPrimaryMatchContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryMatch(s)
+	}
+}
+
+func (s *LabelPrimaryMatchContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryMatch(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryStructInitContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryStructInitContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryStructInitContext {
+	var p = new(LabelPrimaryStructInitContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryStructInitContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryStructInitContext) StructInitExpr() IStructInitExprContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IStructInitExprContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IStructInitExprContext)
+}
+
+func (s *LabelPrimaryStructInitContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryStructInit(s)
+	}
+}
+
+func (s *LabelPrimaryStructInitContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryStructInit(s)
+	}
+}
+
+func (s *LabelPrimaryStructInitContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryStructInit(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryFnContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryFnContext {
+	var p = new(LabelPrimaryFnContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryFnContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryFnContext) FnExpr() IFnExprContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IFnExprContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IFnExprContext)
+}
+
+func (s *LabelPrimaryFnContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryFn(s)
+	}
+}
+
+func (s *LabelPrimaryFnContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryFn(s)
+	}
+}
+
+func (s *LabelPrimaryFnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryFn(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimarySetContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimarySetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimarySetContext {
+	var p = new(LabelPrimarySetContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimarySetContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimarySetContext) SetLiteral() ISetLiteralContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ISetLiteralContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ISetLiteralContext)
+}
+
+func (s *LabelPrimarySetContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimarySet(s)
+	}
+}
+
+func (s *LabelPrimarySetContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimarySet(s)
+	}
+}
+
+func (s *LabelPrimarySetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimarySet(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryIDContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryIDContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryIDContext {
+	var p = new(LabelPrimaryIDContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryIDContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryIDContext) ID() antlr.TerminalNode {
 	return s.GetToken(ManuscriptID, 0)
 }
 
-func (s *PrimaryIDContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelPrimaryIDContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterPrimaryID(s)
+		listenerT.EnterLabelPrimaryID(s)
 	}
 }
 
-func (s *PrimaryIDContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelPrimaryIDContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitPrimaryID(s)
+		listenerT.ExitLabelPrimaryID(s)
 	}
 }
 
-func (s *PrimaryIDContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelPrimaryIDContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitPrimaryID(s)
+		return t.VisitLabelPrimaryID(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryVoidContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryVoidContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryVoidContext {
+	var p = new(LabelPrimaryVoidContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryVoidContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryVoidContext) VOID() antlr.TerminalNode {
+	return s.GetToken(ManuscriptVOID, 0)
+}
+
+func (s *LabelPrimaryVoidContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryVoid(s)
+	}
+}
+
+func (s *LabelPrimaryVoidContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryVoid(s)
+	}
+}
+
+func (s *LabelPrimaryVoidContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryVoid(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryMapContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryMapContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryMapContext {
+	var p = new(LabelPrimaryMapContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryMapContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryMapContext) MapLiteral() IMapLiteralContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IMapLiteralContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IMapLiteralContext)
+}
+
+func (s *LabelPrimaryMapContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryMap(s)
+	}
+}
+
+func (s *LabelPrimaryMapContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryMap(s)
+	}
+}
+
+func (s *LabelPrimaryMapContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryMap(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryLiteralContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryLiteralContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryLiteralContext {
+	var p = new(LabelPrimaryLiteralContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryLiteralContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryLiteralContext) Literal() ILiteralContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ILiteralContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ILiteralContext)
+}
+
+func (s *LabelPrimaryLiteralContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryLiteral(s)
+	}
+}
+
+func (s *LabelPrimaryLiteralContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryLiteral(s)
+	}
+}
+
+func (s *LabelPrimaryLiteralContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryLiteral(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryArrayContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryArrayContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryArrayContext {
+	var p = new(LabelPrimaryArrayContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryArrayContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryArrayContext) ArrayLiteral() IArrayLiteralContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IArrayLiteralContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IArrayLiteralContext)
+}
+
+func (s *LabelPrimaryArrayContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryArray(s)
+	}
+}
+
+func (s *LabelPrimaryArrayContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryArray(s)
+	}
+}
+
+func (s *LabelPrimaryArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryArray(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryNullContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryNullContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryNullContext {
+	var p = new(LabelPrimaryNullContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryNullContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryNullContext) NULL() antlr.TerminalNode {
+	return s.GetToken(ManuscriptNULL, 0)
+}
+
+func (s *LabelPrimaryNullContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryNull(s)
+	}
+}
+
+func (s *LabelPrimaryNullContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryNull(s)
+	}
+}
+
+func (s *LabelPrimaryNullContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryNull(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelPrimaryObjectContext struct {
+	PrimaryExprContext
+}
+
+func NewLabelPrimaryObjectContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelPrimaryObjectContext {
+	var p = new(LabelPrimaryObjectContext)
+
+	InitEmptyPrimaryExprContext(&p.PrimaryExprContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*PrimaryExprContext))
+
+	return p
+}
+
+func (s *LabelPrimaryObjectContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelPrimaryObjectContext) ObjectLiteral() IObjectLiteralContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IObjectLiteralContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IObjectLiteralContext)
+}
+
+func (s *LabelPrimaryObjectContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelPrimaryObject(s)
+	}
+}
+
+func (s *LabelPrimaryObjectContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelPrimaryObject(s)
+	}
+}
+
+func (s *LabelPrimaryObjectContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelPrimaryObject(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -18577,7 +18577,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 
 	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 113, p.GetParserRuleContext()) {
 	case 1:
-		localctx = NewPrimaryLiteralContext(p, localctx)
+		localctx = NewLabelPrimaryLiteralContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(956)
@@ -18585,7 +18585,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 2:
-		localctx = NewPrimaryIDContext(p, localctx)
+		localctx = NewLabelPrimaryIDContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(957)
@@ -18597,7 +18597,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 3:
-		localctx = NewPrimaryParenContext(p, localctx)
+		localctx = NewLabelPrimaryParenContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(958)
@@ -18621,7 +18621,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 4:
-		localctx = NewPrimaryArrayContext(p, localctx)
+		localctx = NewLabelPrimaryArrayContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(962)
@@ -18629,7 +18629,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 5:
-		localctx = NewPrimaryObjectContext(p, localctx)
+		localctx = NewLabelPrimaryObjectContext(p, localctx)
 		p.EnterOuterAlt(localctx, 5)
 		{
 			p.SetState(963)
@@ -18637,7 +18637,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 6:
-		localctx = NewPrimaryMapContext(p, localctx)
+		localctx = NewLabelPrimaryMapContext(p, localctx)
 		p.EnterOuterAlt(localctx, 6)
 		{
 			p.SetState(964)
@@ -18645,7 +18645,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 7:
-		localctx = NewPrimarySetContext(p, localctx)
+		localctx = NewLabelPrimarySetContext(p, localctx)
 		p.EnterOuterAlt(localctx, 7)
 		{
 			p.SetState(965)
@@ -18653,7 +18653,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 8:
-		localctx = NewPrimaryFnContext(p, localctx)
+		localctx = NewLabelPrimaryFnContext(p, localctx)
 		p.EnterOuterAlt(localctx, 8)
 		{
 			p.SetState(966)
@@ -18661,7 +18661,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 9:
-		localctx = NewPrimaryMatchContext(p, localctx)
+		localctx = NewLabelPrimaryMatchContext(p, localctx)
 		p.EnterOuterAlt(localctx, 9)
 		{
 			p.SetState(967)
@@ -18669,7 +18669,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 10:
-		localctx = NewPrimaryVoidContext(p, localctx)
+		localctx = NewLabelPrimaryVoidContext(p, localctx)
 		p.EnterOuterAlt(localctx, 10)
 		{
 			p.SetState(968)
@@ -18681,7 +18681,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 11:
-		localctx = NewPrimaryNullContext(p, localctx)
+		localctx = NewLabelPrimaryNullContext(p, localctx)
 		p.EnterOuterAlt(localctx, 11)
 		{
 			p.SetState(969)
@@ -18693,7 +18693,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 12:
-		localctx = NewPrimaryTaggedBlockContext(p, localctx)
+		localctx = NewLabelPrimaryTaggedBlockContext(p, localctx)
 		p.EnterOuterAlt(localctx, 12)
 		{
 			p.SetState(970)
@@ -18701,7 +18701,7 @@ func (p *Manuscript) PrimaryExpr() (localctx IPrimaryExprContext) {
 		}
 
 	case 13:
-		localctx = NewPrimaryStructInitContext(p, localctx)
+		localctx = NewLabelPrimaryStructInitContext(p, localctx)
 		p.EnterOuterAlt(localctx, 13)
 		{
 			p.SetState(971)
@@ -20512,12 +20512,12 @@ func (s *StringPartContext) ToStringTree(ruleNames []string, recog antlr.Recogni
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type StringPartSingleContext struct {
+type LabelStringPartInterpContext struct {
 	StringPartContext
 }
 
-func NewStringPartSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StringPartSingleContext {
-	var p = new(StringPartSingleContext)
+func NewLabelStringPartInterpContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStringPartInterpContext {
+	var p = new(LabelStringPartInterpContext)
 
 	InitEmptyStringPartContext(&p.StringPartContext)
 	p.parser = parser
@@ -20526,99 +20526,11 @@ func NewStringPartSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext
 	return p
 }
 
-func (s *StringPartSingleContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelStringPartInterpContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *StringPartSingleContext) SINGLE_STR_CONTENT() antlr.TerminalNode {
-	return s.GetToken(ManuscriptSINGLE_STR_CONTENT, 0)
-}
-
-func (s *StringPartSingleContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStringPartSingle(s)
-	}
-}
-
-func (s *StringPartSingleContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStringPartSingle(s)
-	}
-}
-
-func (s *StringPartSingleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStringPartSingle(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StringPartMultiDoubleContext struct {
-	StringPartContext
-}
-
-func NewStringPartMultiDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StringPartMultiDoubleContext {
-	var p = new(StringPartMultiDoubleContext)
-
-	InitEmptyStringPartContext(&p.StringPartContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StringPartContext))
-
-	return p
-}
-
-func (s *StringPartMultiDoubleContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StringPartMultiDoubleContext) MULTI_DOUBLE_STR_CONTENT() antlr.TerminalNode {
-	return s.GetToken(ManuscriptMULTI_DOUBLE_STR_CONTENT, 0)
-}
-
-func (s *StringPartMultiDoubleContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStringPartMultiDouble(s)
-	}
-}
-
-func (s *StringPartMultiDoubleContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStringPartMultiDouble(s)
-	}
-}
-
-func (s *StringPartMultiDoubleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitStringPartMultiDouble(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type StringPartInterpContext struct {
-	StringPartContext
-}
-
-func NewStringPartInterpContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StringPartInterpContext {
-	var p = new(StringPartInterpContext)
-
-	InitEmptyStringPartContext(&p.StringPartContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*StringPartContext))
-
-	return p
-}
-
-func (s *StringPartInterpContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *StringPartInterpContext) Interpolation() IInterpolationContext {
+func (s *LabelStringPartInterpContext) Interpolation() IInterpolationContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IInterpolationContext); ok {
@@ -20634,34 +20546,34 @@ func (s *StringPartInterpContext) Interpolation() IInterpolationContext {
 	return t.(IInterpolationContext)
 }
 
-func (s *StringPartInterpContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringPartInterpContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStringPartInterp(s)
+		listenerT.EnterLabelStringPartInterp(s)
 	}
 }
 
-func (s *StringPartInterpContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringPartInterpContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStringPartInterp(s)
+		listenerT.ExitLabelStringPartInterp(s)
 	}
 }
 
-func (s *StringPartInterpContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelStringPartInterpContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitStringPartInterp(s)
+		return t.VisitLabelStringPartInterp(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type StringPartDoubleContext struct {
+type LabelStringPartSingleContext struct {
 	StringPartContext
 }
 
-func NewStringPartDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StringPartDoubleContext {
-	var p = new(StringPartDoubleContext)
+func NewLabelStringPartSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStringPartSingleContext {
+	var p = new(LabelStringPartSingleContext)
 
 	InitEmptyStringPartContext(&p.StringPartContext)
 	p.parser = parser
@@ -20670,42 +20582,42 @@ func NewStringPartDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleContext
 	return p
 }
 
-func (s *StringPartDoubleContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelStringPartSingleContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *StringPartDoubleContext) DOUBLE_STR_CONTENT() antlr.TerminalNode {
-	return s.GetToken(ManuscriptDOUBLE_STR_CONTENT, 0)
+func (s *LabelStringPartSingleContext) SINGLE_STR_CONTENT() antlr.TerminalNode {
+	return s.GetToken(ManuscriptSINGLE_STR_CONTENT, 0)
 }
 
-func (s *StringPartDoubleContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringPartSingleContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStringPartDouble(s)
+		listenerT.EnterLabelStringPartSingle(s)
 	}
 }
 
-func (s *StringPartDoubleContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringPartSingleContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStringPartDouble(s)
+		listenerT.ExitLabelStringPartSingle(s)
 	}
 }
 
-func (s *StringPartDoubleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelStringPartSingleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitStringPartDouble(s)
+		return t.VisitLabelStringPartSingle(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type StringPartMultiContext struct {
+type LabelStringPartMultiDoubleContext struct {
 	StringPartContext
 }
 
-func NewStringPartMultiContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StringPartMultiContext {
-	var p = new(StringPartMultiContext)
+func NewLabelStringPartMultiDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStringPartMultiDoubleContext {
+	var p = new(LabelStringPartMultiDoubleContext)
 
 	InitEmptyStringPartContext(&p.StringPartContext)
 	p.parser = parser
@@ -20714,30 +20626,118 @@ func NewStringPartMultiContext(parser antlr.Parser, ctx antlr.ParserRuleContext)
 	return p
 }
 
-func (s *StringPartMultiContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelStringPartMultiDoubleContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *StringPartMultiContext) MULTI_STR_CONTENT() antlr.TerminalNode {
+func (s *LabelStringPartMultiDoubleContext) MULTI_DOUBLE_STR_CONTENT() antlr.TerminalNode {
+	return s.GetToken(ManuscriptMULTI_DOUBLE_STR_CONTENT, 0)
+}
+
+func (s *LabelStringPartMultiDoubleContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStringPartMultiDouble(s)
+	}
+}
+
+func (s *LabelStringPartMultiDoubleContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStringPartMultiDouble(s)
+	}
+}
+
+func (s *LabelStringPartMultiDoubleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStringPartMultiDouble(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStringPartMultiContext struct {
+	StringPartContext
+}
+
+func NewLabelStringPartMultiContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStringPartMultiContext {
+	var p = new(LabelStringPartMultiContext)
+
+	InitEmptyStringPartContext(&p.StringPartContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StringPartContext))
+
+	return p
+}
+
+func (s *LabelStringPartMultiContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStringPartMultiContext) MULTI_STR_CONTENT() antlr.TerminalNode {
 	return s.GetToken(ManuscriptMULTI_STR_CONTENT, 0)
 }
 
-func (s *StringPartMultiContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringPartMultiContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStringPartMulti(s)
+		listenerT.EnterLabelStringPartMulti(s)
 	}
 }
 
-func (s *StringPartMultiContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringPartMultiContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStringPartMulti(s)
+		listenerT.ExitLabelStringPartMulti(s)
 	}
 }
 
-func (s *StringPartMultiContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelStringPartMultiContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitStringPartMulti(s)
+		return t.VisitLabelStringPartMulti(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelStringPartDoubleContext struct {
+	StringPartContext
+}
+
+func NewLabelStringPartDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStringPartDoubleContext {
+	var p = new(LabelStringPartDoubleContext)
+
+	InitEmptyStringPartContext(&p.StringPartContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*StringPartContext))
+
+	return p
+}
+
+func (s *LabelStringPartDoubleContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelStringPartDoubleContext) DOUBLE_STR_CONTENT() antlr.TerminalNode {
+	return s.GetToken(ManuscriptDOUBLE_STR_CONTENT, 0)
+}
+
+func (s *LabelStringPartDoubleContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelStringPartDouble(s)
+	}
+}
+
+func (s *LabelStringPartDoubleContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelStringPartDouble(s)
+	}
+}
+
+func (s *LabelStringPartDoubleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelStringPartDouble(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -20755,7 +20755,7 @@ func (p *Manuscript) StringPart() (localctx IStringPartContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptSINGLE_STR_CONTENT:
-		localctx = NewStringPartSingleContext(p, localctx)
+		localctx = NewLabelStringPartSingleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1072)
@@ -20767,7 +20767,7 @@ func (p *Manuscript) StringPart() (localctx IStringPartContext) {
 		}
 
 	case ManuscriptMULTI_STR_CONTENT:
-		localctx = NewStringPartMultiContext(p, localctx)
+		localctx = NewLabelStringPartMultiContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(1073)
@@ -20779,7 +20779,7 @@ func (p *Manuscript) StringPart() (localctx IStringPartContext) {
 		}
 
 	case ManuscriptDOUBLE_STR_CONTENT:
-		localctx = NewStringPartDoubleContext(p, localctx)
+		localctx = NewLabelStringPartDoubleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(1074)
@@ -20791,7 +20791,7 @@ func (p *Manuscript) StringPart() (localctx IStringPartContext) {
 		}
 
 	case ManuscriptMULTI_DOUBLE_STR_CONTENT:
-		localctx = NewStringPartMultiDoubleContext(p, localctx)
+		localctx = NewLabelStringPartMultiDoubleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(1075)
@@ -20803,7 +20803,7 @@ func (p *Manuscript) StringPart() (localctx IStringPartContext) {
 		}
 
 	case ManuscriptSINGLE_STR_INTERP_START, ManuscriptMULTI_STR_INTERP_START, ManuscriptDOUBLE_STR_INTERP_START, ManuscriptMULTI_DOUBLE_STR_INTERP_START:
-		localctx = NewStringPartInterpContext(p, localctx)
+		localctx = NewLabelStringPartInterpContext(p, localctx)
 		p.EnterOuterAlt(localctx, 5)
 		{
 			p.SetState(1076)
@@ -21042,12 +21042,12 @@ func (s *LiteralContext) ToStringTree(ruleNames []string, recog antlr.Recognizer
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type LiteralBoolContext struct {
+type LabelLiteralBoolContext struct {
 	LiteralContext
 }
 
-func NewLiteralBoolContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LiteralBoolContext {
-	var p = new(LiteralBoolContext)
+func NewLabelLiteralBoolContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLiteralBoolContext {
+	var p = new(LabelLiteralBoolContext)
 
 	InitEmptyLiteralContext(&p.LiteralContext)
 	p.parser = parser
@@ -21056,11 +21056,11 @@ func NewLiteralBoolContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Li
 	return p
 }
 
-func (s *LiteralBoolContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelLiteralBoolContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *LiteralBoolContext) BooleanLiteral() IBooleanLiteralContext {
+func (s *LabelLiteralBoolContext) BooleanLiteral() IBooleanLiteralContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IBooleanLiteralContext); ok {
@@ -21076,34 +21076,34 @@ func (s *LiteralBoolContext) BooleanLiteral() IBooleanLiteralContext {
 	return t.(IBooleanLiteralContext)
 }
 
-func (s *LiteralBoolContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelLiteralBoolContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLiteralBool(s)
+		listenerT.EnterLabelLiteralBool(s)
 	}
 }
 
-func (s *LiteralBoolContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelLiteralBoolContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLiteralBool(s)
+		listenerT.ExitLabelLiteralBool(s)
 	}
 }
 
-func (s *LiteralBoolContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelLiteralBoolContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLiteralBool(s)
+		return t.VisitLabelLiteralBool(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type LiteralStringContext struct {
+type LabelLiteralStringContext struct {
 	LiteralContext
 }
 
-func NewLiteralStringContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LiteralStringContext {
-	var p = new(LiteralStringContext)
+func NewLabelLiteralStringContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLiteralStringContext {
+	var p = new(LabelLiteralStringContext)
 
 	InitEmptyLiteralContext(&p.LiteralContext)
 	p.parser = parser
@@ -21112,11 +21112,11 @@ func NewLiteralStringContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *
 	return p
 }
 
-func (s *LiteralStringContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelLiteralStringContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *LiteralStringContext) StringLiteral() IStringLiteralContext {
+func (s *LabelLiteralStringContext) StringLiteral() IStringLiteralContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IStringLiteralContext); ok {
@@ -21132,34 +21132,34 @@ func (s *LiteralStringContext) StringLiteral() IStringLiteralContext {
 	return t.(IStringLiteralContext)
 }
 
-func (s *LiteralStringContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelLiteralStringContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLiteralString(s)
+		listenerT.EnterLabelLiteralString(s)
 	}
 }
 
-func (s *LiteralStringContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelLiteralStringContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLiteralString(s)
+		listenerT.ExitLabelLiteralString(s)
 	}
 }
 
-func (s *LiteralStringContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelLiteralStringContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLiteralString(s)
+		return t.VisitLabelLiteralString(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type LiteralNullContext struct {
+type LabelLiteralNumberContext struct {
 	LiteralContext
 }
 
-func NewLiteralNullContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LiteralNullContext {
-	var p = new(LiteralNullContext)
+func NewLabelLiteralNumberContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLiteralNumberContext {
+	var p = new(LabelLiteralNumberContext)
 
 	InitEmptyLiteralContext(&p.LiteralContext)
 	p.parser = parser
@@ -21168,99 +21168,11 @@ func NewLiteralNullContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Li
 	return p
 }
 
-func (s *LiteralNullContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelLiteralNumberContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *LiteralNullContext) NULL() antlr.TerminalNode {
-	return s.GetToken(ManuscriptNULL, 0)
-}
-
-func (s *LiteralNullContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLiteralNull(s)
-	}
-}
-
-func (s *LiteralNullContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLiteralNull(s)
-	}
-}
-
-func (s *LiteralNullContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLiteralNull(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type LiteralVoidContext struct {
-	LiteralContext
-}
-
-func NewLiteralVoidContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LiteralVoidContext {
-	var p = new(LiteralVoidContext)
-
-	InitEmptyLiteralContext(&p.LiteralContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*LiteralContext))
-
-	return p
-}
-
-func (s *LiteralVoidContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LiteralVoidContext) VOID() antlr.TerminalNode {
-	return s.GetToken(ManuscriptVOID, 0)
-}
-
-func (s *LiteralVoidContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLiteralVoid(s)
-	}
-}
-
-func (s *LiteralVoidContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLiteralVoid(s)
-	}
-}
-
-func (s *LiteralVoidContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLiteralVoid(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type LiteralNumberContext struct {
-	LiteralContext
-}
-
-func NewLiteralNumberContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LiteralNumberContext {
-	var p = new(LiteralNumberContext)
-
-	InitEmptyLiteralContext(&p.LiteralContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*LiteralContext))
-
-	return p
-}
-
-func (s *LiteralNumberContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LiteralNumberContext) NumberLiteral() INumberLiteralContext {
+func (s *LabelLiteralNumberContext) NumberLiteral() INumberLiteralContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(INumberLiteralContext); ok {
@@ -21276,22 +21188,110 @@ func (s *LiteralNumberContext) NumberLiteral() INumberLiteralContext {
 	return t.(INumberLiteralContext)
 }
 
-func (s *LiteralNumberContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelLiteralNumberContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLiteralNumber(s)
+		listenerT.EnterLabelLiteralNumber(s)
 	}
 }
 
-func (s *LiteralNumberContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelLiteralNumberContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLiteralNumber(s)
+		listenerT.ExitLabelLiteralNumber(s)
 	}
 }
 
-func (s *LiteralNumberContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelLiteralNumberContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLiteralNumber(s)
+		return t.VisitLabelLiteralNumber(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelLiteralNullContext struct {
+	LiteralContext
+}
+
+func NewLabelLiteralNullContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLiteralNullContext {
+	var p = new(LabelLiteralNullContext)
+
+	InitEmptyLiteralContext(&p.LiteralContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*LiteralContext))
+
+	return p
+}
+
+func (s *LabelLiteralNullContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelLiteralNullContext) NULL() antlr.TerminalNode {
+	return s.GetToken(ManuscriptNULL, 0)
+}
+
+func (s *LabelLiteralNullContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelLiteralNull(s)
+	}
+}
+
+func (s *LabelLiteralNullContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelLiteralNull(s)
+	}
+}
+
+func (s *LabelLiteralNullContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelLiteralNull(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelLiteralVoidContext struct {
+	LiteralContext
+}
+
+func NewLabelLiteralVoidContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLiteralVoidContext {
+	var p = new(LabelLiteralVoidContext)
+
+	InitEmptyLiteralContext(&p.LiteralContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*LiteralContext))
+
+	return p
+}
+
+func (s *LabelLiteralVoidContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelLiteralVoidContext) VOID() antlr.TerminalNode {
+	return s.GetToken(ManuscriptVOID, 0)
+}
+
+func (s *LabelLiteralVoidContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelLiteralVoid(s)
+	}
+}
+
+func (s *LabelLiteralVoidContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelLiteralVoid(s)
+	}
+}
+
+func (s *LabelLiteralVoidContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelLiteralVoid(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -21309,7 +21309,7 @@ func (p *Manuscript) Literal() (localctx ILiteralContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptSINGLE_QUOTE_START, ManuscriptMULTI_QUOTE_START, ManuscriptDOUBLE_QUOTE_START, ManuscriptMULTI_DOUBLE_QUOTE_START:
-		localctx = NewLiteralStringContext(p, localctx)
+		localctx = NewLabelLiteralStringContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1083)
@@ -21317,7 +21317,7 @@ func (p *Manuscript) Literal() (localctx ILiteralContext) {
 		}
 
 	case ManuscriptHEX_LITERAL, ManuscriptBINARY_LITERAL, ManuscriptOCTAL_LITERAL, ManuscriptFLOAT, ManuscriptINTEGER:
-		localctx = NewLiteralNumberContext(p, localctx)
+		localctx = NewLabelLiteralNumberContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(1084)
@@ -21325,7 +21325,7 @@ func (p *Manuscript) Literal() (localctx ILiteralContext) {
 		}
 
 	case ManuscriptTRUE, ManuscriptFALSE:
-		localctx = NewLiteralBoolContext(p, localctx)
+		localctx = NewLabelLiteralBoolContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(1085)
@@ -21333,7 +21333,7 @@ func (p *Manuscript) Literal() (localctx ILiteralContext) {
 		}
 
 	case ManuscriptNULL:
-		localctx = NewLiteralNullContext(p, localctx)
+		localctx = NewLabelLiteralNullContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(1086)
@@ -21345,7 +21345,7 @@ func (p *Manuscript) Literal() (localctx ILiteralContext) {
 		}
 
 	case ManuscriptVOID:
-		localctx = NewLiteralVoidContext(p, localctx)
+		localctx = NewLabelLiteralVoidContext(p, localctx)
 		p.EnterOuterAlt(localctx, 5)
 		{
 			p.SetState(1087)
@@ -21428,12 +21428,12 @@ func (s *StringLiteralContext) ToStringTree(ruleNames []string, recog antlr.Reco
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type StringLiteralMultiContext struct {
+type LabelStringLiteralMultiContext struct {
 	StringLiteralContext
 }
 
-func NewStringLiteralMultiContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StringLiteralMultiContext {
-	var p = new(StringLiteralMultiContext)
+func NewLabelStringLiteralMultiContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStringLiteralMultiContext {
+	var p = new(LabelStringLiteralMultiContext)
 
 	InitEmptyStringLiteralContext(&p.StringLiteralContext)
 	p.parser = parser
@@ -21442,11 +21442,11 @@ func NewStringLiteralMultiContext(parser antlr.Parser, ctx antlr.ParserRuleConte
 	return p
 }
 
-func (s *StringLiteralMultiContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelStringLiteralMultiContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *StringLiteralMultiContext) MultiQuotedString() IMultiQuotedStringContext {
+func (s *LabelStringLiteralMultiContext) MultiQuotedString() IMultiQuotedStringContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IMultiQuotedStringContext); ok {
@@ -21462,34 +21462,34 @@ func (s *StringLiteralMultiContext) MultiQuotedString() IMultiQuotedStringContex
 	return t.(IMultiQuotedStringContext)
 }
 
-func (s *StringLiteralMultiContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringLiteralMultiContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStringLiteralMulti(s)
+		listenerT.EnterLabelStringLiteralMulti(s)
 	}
 }
 
-func (s *StringLiteralMultiContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringLiteralMultiContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStringLiteralMulti(s)
+		listenerT.ExitLabelStringLiteralMulti(s)
 	}
 }
 
-func (s *StringLiteralMultiContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelStringLiteralMultiContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitStringLiteralMulti(s)
+		return t.VisitLabelStringLiteralMulti(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type StringLiteralDoubleContext struct {
+type LabelStringLiteralDoubleContext struct {
 	StringLiteralContext
 }
 
-func NewStringLiteralDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StringLiteralDoubleContext {
-	var p = new(StringLiteralDoubleContext)
+func NewLabelStringLiteralDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStringLiteralDoubleContext {
+	var p = new(LabelStringLiteralDoubleContext)
 
 	InitEmptyStringLiteralContext(&p.StringLiteralContext)
 	p.parser = parser
@@ -21498,11 +21498,11 @@ func NewStringLiteralDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleCont
 	return p
 }
 
-func (s *StringLiteralDoubleContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelStringLiteralDoubleContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *StringLiteralDoubleContext) DoubleQuotedString() IDoubleQuotedStringContext {
+func (s *LabelStringLiteralDoubleContext) DoubleQuotedString() IDoubleQuotedStringContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IDoubleQuotedStringContext); ok {
@@ -21518,34 +21518,34 @@ func (s *StringLiteralDoubleContext) DoubleQuotedString() IDoubleQuotedStringCon
 	return t.(IDoubleQuotedStringContext)
 }
 
-func (s *StringLiteralDoubleContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringLiteralDoubleContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStringLiteralDouble(s)
+		listenerT.EnterLabelStringLiteralDouble(s)
 	}
 }
 
-func (s *StringLiteralDoubleContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringLiteralDoubleContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStringLiteralDouble(s)
+		listenerT.ExitLabelStringLiteralDouble(s)
 	}
 }
 
-func (s *StringLiteralDoubleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelStringLiteralDoubleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitStringLiteralDouble(s)
+		return t.VisitLabelStringLiteralDouble(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type StringLiteralMultiDoubleContext struct {
+type LabelStringLiteralMultiDoubleContext struct {
 	StringLiteralContext
 }
 
-func NewStringLiteralMultiDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StringLiteralMultiDoubleContext {
-	var p = new(StringLiteralMultiDoubleContext)
+func NewLabelStringLiteralMultiDoubleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStringLiteralMultiDoubleContext {
+	var p = new(LabelStringLiteralMultiDoubleContext)
 
 	InitEmptyStringLiteralContext(&p.StringLiteralContext)
 	p.parser = parser
@@ -21554,11 +21554,11 @@ func NewStringLiteralMultiDoubleContext(parser antlr.Parser, ctx antlr.ParserRul
 	return p
 }
 
-func (s *StringLiteralMultiDoubleContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelStringLiteralMultiDoubleContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *StringLiteralMultiDoubleContext) MultiDoubleQuotedString() IMultiDoubleQuotedStringContext {
+func (s *LabelStringLiteralMultiDoubleContext) MultiDoubleQuotedString() IMultiDoubleQuotedStringContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IMultiDoubleQuotedStringContext); ok {
@@ -21574,34 +21574,34 @@ func (s *StringLiteralMultiDoubleContext) MultiDoubleQuotedString() IMultiDouble
 	return t.(IMultiDoubleQuotedStringContext)
 }
 
-func (s *StringLiteralMultiDoubleContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringLiteralMultiDoubleContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStringLiteralMultiDouble(s)
+		listenerT.EnterLabelStringLiteralMultiDouble(s)
 	}
 }
 
-func (s *StringLiteralMultiDoubleContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringLiteralMultiDoubleContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStringLiteralMultiDouble(s)
+		listenerT.ExitLabelStringLiteralMultiDouble(s)
 	}
 }
 
-func (s *StringLiteralMultiDoubleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelStringLiteralMultiDoubleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitStringLiteralMultiDouble(s)
+		return t.VisitLabelStringLiteralMultiDouble(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type StringLiteralSingleContext struct {
+type LabelStringLiteralSingleContext struct {
 	StringLiteralContext
 }
 
-func NewStringLiteralSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *StringLiteralSingleContext {
-	var p = new(StringLiteralSingleContext)
+func NewLabelStringLiteralSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelStringLiteralSingleContext {
+	var p = new(LabelStringLiteralSingleContext)
 
 	InitEmptyStringLiteralContext(&p.StringLiteralContext)
 	p.parser = parser
@@ -21610,11 +21610,11 @@ func NewStringLiteralSingleContext(parser antlr.Parser, ctx antlr.ParserRuleCont
 	return p
 }
 
-func (s *StringLiteralSingleContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelStringLiteralSingleContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *StringLiteralSingleContext) SingleQuotedString() ISingleQuotedStringContext {
+func (s *LabelStringLiteralSingleContext) SingleQuotedString() ISingleQuotedStringContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ISingleQuotedStringContext); ok {
@@ -21630,22 +21630,22 @@ func (s *StringLiteralSingleContext) SingleQuotedString() ISingleQuotedStringCon
 	return t.(ISingleQuotedStringContext)
 }
 
-func (s *StringLiteralSingleContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringLiteralSingleContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterStringLiteralSingle(s)
+		listenerT.EnterLabelStringLiteralSingle(s)
 	}
 }
 
-func (s *StringLiteralSingleContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelStringLiteralSingleContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitStringLiteralSingle(s)
+		listenerT.ExitLabelStringLiteralSingle(s)
 	}
 }
 
-func (s *StringLiteralSingleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelStringLiteralSingleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitStringLiteralSingle(s)
+		return t.VisitLabelStringLiteralSingle(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -21663,7 +21663,7 @@ func (p *Manuscript) StringLiteral() (localctx IStringLiteralContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptSINGLE_QUOTE_START:
-		localctx = NewStringLiteralSingleContext(p, localctx)
+		localctx = NewLabelStringLiteralSingleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1090)
@@ -21671,7 +21671,7 @@ func (p *Manuscript) StringLiteral() (localctx IStringLiteralContext) {
 		}
 
 	case ManuscriptMULTI_QUOTE_START:
-		localctx = NewStringLiteralMultiContext(p, localctx)
+		localctx = NewLabelStringLiteralMultiContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(1091)
@@ -21679,7 +21679,7 @@ func (p *Manuscript) StringLiteral() (localctx IStringLiteralContext) {
 		}
 
 	case ManuscriptDOUBLE_QUOTE_START:
-		localctx = NewStringLiteralDoubleContext(p, localctx)
+		localctx = NewLabelStringLiteralDoubleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(1092)
@@ -21687,7 +21687,7 @@ func (p *Manuscript) StringLiteral() (localctx IStringLiteralContext) {
 		}
 
 	case ManuscriptMULTI_DOUBLE_QUOTE_START:
-		localctx = NewStringLiteralMultiDoubleContext(p, localctx)
+		localctx = NewLabelStringLiteralMultiDoubleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(1093)
@@ -21766,12 +21766,12 @@ func (s *NumberLiteralContext) ToStringTree(ruleNames []string, recog antlr.Reco
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type NumberLiteralFloatContext struct {
+type LabelNumberLiteralHexContext struct {
 	NumberLiteralContext
 }
 
-func NewNumberLiteralFloatContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *NumberLiteralFloatContext {
-	var p = new(NumberLiteralFloatContext)
+func NewLabelNumberLiteralHexContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelNumberLiteralHexContext {
+	var p = new(LabelNumberLiteralHexContext)
 
 	InitEmptyNumberLiteralContext(&p.NumberLiteralContext)
 	p.parser = parser
@@ -21780,174 +21780,42 @@ func NewNumberLiteralFloatContext(parser antlr.Parser, ctx antlr.ParserRuleConte
 	return p
 }
 
-func (s *NumberLiteralFloatContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelNumberLiteralHexContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *NumberLiteralFloatContext) FLOAT() antlr.TerminalNode {
-	return s.GetToken(ManuscriptFLOAT, 0)
-}
-
-func (s *NumberLiteralFloatContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterNumberLiteralFloat(s)
-	}
-}
-
-func (s *NumberLiteralFloatContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitNumberLiteralFloat(s)
-	}
-}
-
-func (s *NumberLiteralFloatContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitNumberLiteralFloat(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type NumberLiteralIntContext struct {
-	NumberLiteralContext
-}
-
-func NewNumberLiteralIntContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *NumberLiteralIntContext {
-	var p = new(NumberLiteralIntContext)
-
-	InitEmptyNumberLiteralContext(&p.NumberLiteralContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*NumberLiteralContext))
-
-	return p
-}
-
-func (s *NumberLiteralIntContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *NumberLiteralIntContext) INTEGER() antlr.TerminalNode {
-	return s.GetToken(ManuscriptINTEGER, 0)
-}
-
-func (s *NumberLiteralIntContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterNumberLiteralInt(s)
-	}
-}
-
-func (s *NumberLiteralIntContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitNumberLiteralInt(s)
-	}
-}
-
-func (s *NumberLiteralIntContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitNumberLiteralInt(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type NumberLiteralOctContext struct {
-	NumberLiteralContext
-}
-
-func NewNumberLiteralOctContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *NumberLiteralOctContext {
-	var p = new(NumberLiteralOctContext)
-
-	InitEmptyNumberLiteralContext(&p.NumberLiteralContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*NumberLiteralContext))
-
-	return p
-}
-
-func (s *NumberLiteralOctContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *NumberLiteralOctContext) OCTAL_LITERAL() antlr.TerminalNode {
-	return s.GetToken(ManuscriptOCTAL_LITERAL, 0)
-}
-
-func (s *NumberLiteralOctContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterNumberLiteralOct(s)
-	}
-}
-
-func (s *NumberLiteralOctContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitNumberLiteralOct(s)
-	}
-}
-
-func (s *NumberLiteralOctContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitNumberLiteralOct(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type NumberLiteralHexContext struct {
-	NumberLiteralContext
-}
-
-func NewNumberLiteralHexContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *NumberLiteralHexContext {
-	var p = new(NumberLiteralHexContext)
-
-	InitEmptyNumberLiteralContext(&p.NumberLiteralContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*NumberLiteralContext))
-
-	return p
-}
-
-func (s *NumberLiteralHexContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *NumberLiteralHexContext) HEX_LITERAL() antlr.TerminalNode {
+func (s *LabelNumberLiteralHexContext) HEX_LITERAL() antlr.TerminalNode {
 	return s.GetToken(ManuscriptHEX_LITERAL, 0)
 }
 
-func (s *NumberLiteralHexContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelNumberLiteralHexContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterNumberLiteralHex(s)
+		listenerT.EnterLabelNumberLiteralHex(s)
 	}
 }
 
-func (s *NumberLiteralHexContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelNumberLiteralHexContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitNumberLiteralHex(s)
+		listenerT.ExitLabelNumberLiteralHex(s)
 	}
 }
 
-func (s *NumberLiteralHexContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelNumberLiteralHexContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitNumberLiteralHex(s)
+		return t.VisitLabelNumberLiteralHex(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type NumberLiteralBinContext struct {
+type LabelNumberLiteralIntContext struct {
 	NumberLiteralContext
 }
 
-func NewNumberLiteralBinContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *NumberLiteralBinContext {
-	var p = new(NumberLiteralBinContext)
+func NewLabelNumberLiteralIntContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelNumberLiteralIntContext {
+	var p = new(LabelNumberLiteralIntContext)
 
 	InitEmptyNumberLiteralContext(&p.NumberLiteralContext)
 	p.parser = parser
@@ -21956,30 +21824,162 @@ func NewNumberLiteralBinContext(parser antlr.Parser, ctx antlr.ParserRuleContext
 	return p
 }
 
-func (s *NumberLiteralBinContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelNumberLiteralIntContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *NumberLiteralBinContext) BINARY_LITERAL() antlr.TerminalNode {
+func (s *LabelNumberLiteralIntContext) INTEGER() antlr.TerminalNode {
+	return s.GetToken(ManuscriptINTEGER, 0)
+}
+
+func (s *LabelNumberLiteralIntContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelNumberLiteralInt(s)
+	}
+}
+
+func (s *LabelNumberLiteralIntContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelNumberLiteralInt(s)
+	}
+}
+
+func (s *LabelNumberLiteralIntContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelNumberLiteralInt(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelNumberLiteralOctContext struct {
+	NumberLiteralContext
+}
+
+func NewLabelNumberLiteralOctContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelNumberLiteralOctContext {
+	var p = new(LabelNumberLiteralOctContext)
+
+	InitEmptyNumberLiteralContext(&p.NumberLiteralContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*NumberLiteralContext))
+
+	return p
+}
+
+func (s *LabelNumberLiteralOctContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelNumberLiteralOctContext) OCTAL_LITERAL() antlr.TerminalNode {
+	return s.GetToken(ManuscriptOCTAL_LITERAL, 0)
+}
+
+func (s *LabelNumberLiteralOctContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelNumberLiteralOct(s)
+	}
+}
+
+func (s *LabelNumberLiteralOctContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelNumberLiteralOct(s)
+	}
+}
+
+func (s *LabelNumberLiteralOctContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelNumberLiteralOct(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelNumberLiteralFloatContext struct {
+	NumberLiteralContext
+}
+
+func NewLabelNumberLiteralFloatContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelNumberLiteralFloatContext {
+	var p = new(LabelNumberLiteralFloatContext)
+
+	InitEmptyNumberLiteralContext(&p.NumberLiteralContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*NumberLiteralContext))
+
+	return p
+}
+
+func (s *LabelNumberLiteralFloatContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelNumberLiteralFloatContext) FLOAT() antlr.TerminalNode {
+	return s.GetToken(ManuscriptFLOAT, 0)
+}
+
+func (s *LabelNumberLiteralFloatContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelNumberLiteralFloat(s)
+	}
+}
+
+func (s *LabelNumberLiteralFloatContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelNumberLiteralFloat(s)
+	}
+}
+
+func (s *LabelNumberLiteralFloatContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelNumberLiteralFloat(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelNumberLiteralBinContext struct {
+	NumberLiteralContext
+}
+
+func NewLabelNumberLiteralBinContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelNumberLiteralBinContext {
+	var p = new(LabelNumberLiteralBinContext)
+
+	InitEmptyNumberLiteralContext(&p.NumberLiteralContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*NumberLiteralContext))
+
+	return p
+}
+
+func (s *LabelNumberLiteralBinContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelNumberLiteralBinContext) BINARY_LITERAL() antlr.TerminalNode {
 	return s.GetToken(ManuscriptBINARY_LITERAL, 0)
 }
 
-func (s *NumberLiteralBinContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelNumberLiteralBinContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterNumberLiteralBin(s)
+		listenerT.EnterLabelNumberLiteralBin(s)
 	}
 }
 
-func (s *NumberLiteralBinContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelNumberLiteralBinContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitNumberLiteralBin(s)
+		listenerT.ExitLabelNumberLiteralBin(s)
 	}
 }
 
-func (s *NumberLiteralBinContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelNumberLiteralBinContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitNumberLiteralBin(s)
+		return t.VisitLabelNumberLiteralBin(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -21997,7 +21997,7 @@ func (p *Manuscript) NumberLiteral() (localctx INumberLiteralContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptINTEGER:
-		localctx = NewNumberLiteralIntContext(p, localctx)
+		localctx = NewLabelNumberLiteralIntContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1096)
@@ -22009,7 +22009,7 @@ func (p *Manuscript) NumberLiteral() (localctx INumberLiteralContext) {
 		}
 
 	case ManuscriptFLOAT:
-		localctx = NewNumberLiteralFloatContext(p, localctx)
+		localctx = NewLabelNumberLiteralFloatContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(1097)
@@ -22021,7 +22021,7 @@ func (p *Manuscript) NumberLiteral() (localctx INumberLiteralContext) {
 		}
 
 	case ManuscriptHEX_LITERAL:
-		localctx = NewNumberLiteralHexContext(p, localctx)
+		localctx = NewLabelNumberLiteralHexContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(1098)
@@ -22033,7 +22033,7 @@ func (p *Manuscript) NumberLiteral() (localctx INumberLiteralContext) {
 		}
 
 	case ManuscriptBINARY_LITERAL:
-		localctx = NewNumberLiteralBinContext(p, localctx)
+		localctx = NewLabelNumberLiteralBinContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(1099)
@@ -22045,7 +22045,7 @@ func (p *Manuscript) NumberLiteral() (localctx INumberLiteralContext) {
 		}
 
 	case ManuscriptOCTAL_LITERAL:
-		localctx = NewNumberLiteralOctContext(p, localctx)
+		localctx = NewLabelNumberLiteralOctContext(p, localctx)
 		p.EnterOuterAlt(localctx, 5)
 		{
 			p.SetState(1100)
@@ -22128,12 +22128,12 @@ func (s *BooleanLiteralContext) ToStringTree(ruleNames []string, recog antlr.Rec
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type BoolLiteralTrueContext struct {
+type LabelBoolLiteralFalseContext struct {
 	BooleanLiteralContext
 }
 
-func NewBoolLiteralTrueContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *BoolLiteralTrueContext {
-	var p = new(BoolLiteralTrueContext)
+func NewLabelBoolLiteralFalseContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelBoolLiteralFalseContext {
+	var p = new(LabelBoolLiteralFalseContext)
 
 	InitEmptyBooleanLiteralContext(&p.BooleanLiteralContext)
 	p.parser = parser
@@ -22142,42 +22142,42 @@ func NewBoolLiteralTrueContext(parser antlr.Parser, ctx antlr.ParserRuleContext)
 	return p
 }
 
-func (s *BoolLiteralTrueContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelBoolLiteralFalseContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *BoolLiteralTrueContext) TRUE() antlr.TerminalNode {
-	return s.GetToken(ManuscriptTRUE, 0)
+func (s *LabelBoolLiteralFalseContext) FALSE() antlr.TerminalNode {
+	return s.GetToken(ManuscriptFALSE, 0)
 }
 
-func (s *BoolLiteralTrueContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelBoolLiteralFalseContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterBoolLiteralTrue(s)
+		listenerT.EnterLabelBoolLiteralFalse(s)
 	}
 }
 
-func (s *BoolLiteralTrueContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelBoolLiteralFalseContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitBoolLiteralTrue(s)
+		listenerT.ExitLabelBoolLiteralFalse(s)
 	}
 }
 
-func (s *BoolLiteralTrueContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelBoolLiteralFalseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitBoolLiteralTrue(s)
+		return t.VisitLabelBoolLiteralFalse(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type BoolLiteralFalseContext struct {
+type LabelBoolLiteralTrueContext struct {
 	BooleanLiteralContext
 }
 
-func NewBoolLiteralFalseContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *BoolLiteralFalseContext {
-	var p = new(BoolLiteralFalseContext)
+func NewLabelBoolLiteralTrueContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelBoolLiteralTrueContext {
+	var p = new(LabelBoolLiteralTrueContext)
 
 	InitEmptyBooleanLiteralContext(&p.BooleanLiteralContext)
 	p.parser = parser
@@ -22186,30 +22186,30 @@ func NewBoolLiteralFalseContext(parser antlr.Parser, ctx antlr.ParserRuleContext
 	return p
 }
 
-func (s *BoolLiteralFalseContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelBoolLiteralTrueContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *BoolLiteralFalseContext) FALSE() antlr.TerminalNode {
-	return s.GetToken(ManuscriptFALSE, 0)
+func (s *LabelBoolLiteralTrueContext) TRUE() antlr.TerminalNode {
+	return s.GetToken(ManuscriptTRUE, 0)
 }
 
-func (s *BoolLiteralFalseContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelBoolLiteralTrueContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterBoolLiteralFalse(s)
+		listenerT.EnterLabelBoolLiteralTrue(s)
 	}
 }
 
-func (s *BoolLiteralFalseContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelBoolLiteralTrueContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitBoolLiteralFalse(s)
+		listenerT.ExitLabelBoolLiteralTrue(s)
 	}
 }
 
-func (s *BoolLiteralFalseContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelBoolLiteralTrueContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitBoolLiteralFalse(s)
+		return t.VisitLabelBoolLiteralTrue(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -22227,7 +22227,7 @@ func (p *Manuscript) BooleanLiteral() (localctx IBooleanLiteralContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptTRUE:
-		localctx = NewBoolLiteralTrueContext(p, localctx)
+		localctx = NewLabelBoolLiteralTrueContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1103)
@@ -22239,7 +22239,7 @@ func (p *Manuscript) BooleanLiteral() (localctx IBooleanLiteralContext) {
 		}
 
 	case ManuscriptFALSE:
-		localctx = NewBoolLiteralFalseContext(p, localctx)
+		localctx = NewLabelBoolLiteralFalseContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(1104)
@@ -22993,12 +22993,12 @@ func (s *ObjectFieldNameContext) ToStringTree(ruleNames []string, recog antlr.Re
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type ObjectFieldNameIDContext struct {
+type LabelObjectFieldNameStrContext struct {
 	ObjectFieldNameContext
 }
 
-func NewObjectFieldNameIDContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ObjectFieldNameIDContext {
-	var p = new(ObjectFieldNameIDContext)
+func NewLabelObjectFieldNameStrContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelObjectFieldNameStrContext {
+	var p = new(LabelObjectFieldNameStrContext)
 
 	InitEmptyObjectFieldNameContext(&p.ObjectFieldNameContext)
 	p.parser = parser
@@ -23007,55 +23007,11 @@ func NewObjectFieldNameIDContext(parser antlr.Parser, ctx antlr.ParserRuleContex
 	return p
 }
 
-func (s *ObjectFieldNameIDContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelObjectFieldNameStrContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *ObjectFieldNameIDContext) ID() antlr.TerminalNode {
-	return s.GetToken(ManuscriptID, 0)
-}
-
-func (s *ObjectFieldNameIDContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterObjectFieldNameID(s)
-	}
-}
-
-func (s *ObjectFieldNameIDContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitObjectFieldNameID(s)
-	}
-}
-
-func (s *ObjectFieldNameIDContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitObjectFieldNameID(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type ObjectFieldNameStrContext struct {
-	ObjectFieldNameContext
-}
-
-func NewObjectFieldNameStrContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *ObjectFieldNameStrContext {
-	var p = new(ObjectFieldNameStrContext)
-
-	InitEmptyObjectFieldNameContext(&p.ObjectFieldNameContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ObjectFieldNameContext))
-
-	return p
-}
-
-func (s *ObjectFieldNameStrContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *ObjectFieldNameStrContext) StringLiteral() IStringLiteralContext {
+func (s *LabelObjectFieldNameStrContext) StringLiteral() IStringLiteralContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IStringLiteralContext); ok {
@@ -23071,22 +23027,66 @@ func (s *ObjectFieldNameStrContext) StringLiteral() IStringLiteralContext {
 	return t.(IStringLiteralContext)
 }
 
-func (s *ObjectFieldNameStrContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelObjectFieldNameStrContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterObjectFieldNameStr(s)
+		listenerT.EnterLabelObjectFieldNameStr(s)
 	}
 }
 
-func (s *ObjectFieldNameStrContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelObjectFieldNameStrContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitObjectFieldNameStr(s)
+		listenerT.ExitLabelObjectFieldNameStr(s)
 	}
 }
 
-func (s *ObjectFieldNameStrContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelObjectFieldNameStrContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitObjectFieldNameStr(s)
+		return t.VisitLabelObjectFieldNameStr(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelObjectFieldNameIDContext struct {
+	ObjectFieldNameContext
+}
+
+func NewLabelObjectFieldNameIDContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelObjectFieldNameIDContext {
+	var p = new(LabelObjectFieldNameIDContext)
+
+	InitEmptyObjectFieldNameContext(&p.ObjectFieldNameContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*ObjectFieldNameContext))
+
+	return p
+}
+
+func (s *LabelObjectFieldNameIDContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelObjectFieldNameIDContext) ID() antlr.TerminalNode {
+	return s.GetToken(ManuscriptID, 0)
+}
+
+func (s *LabelObjectFieldNameIDContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelObjectFieldNameID(s)
+	}
+}
+
+func (s *LabelObjectFieldNameIDContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelObjectFieldNameID(s)
+	}
+}
+
+func (s *LabelObjectFieldNameIDContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelObjectFieldNameID(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -23104,7 +23104,7 @@ func (p *Manuscript) ObjectFieldName() (localctx IObjectFieldNameContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptID:
-		localctx = NewObjectFieldNameIDContext(p, localctx)
+		localctx = NewLabelObjectFieldNameIDContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1135)
@@ -23116,7 +23116,7 @@ func (p *Manuscript) ObjectFieldName() (localctx IObjectFieldNameContext) {
 		}
 
 	case ManuscriptSINGLE_QUOTE_START, ManuscriptMULTI_QUOTE_START, ManuscriptDOUBLE_QUOTE_START, ManuscriptMULTI_DOUBLE_QUOTE_START:
-		localctx = NewObjectFieldNameStrContext(p, localctx)
+		localctx = NewLabelObjectFieldNameStrContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(1136)
@@ -23195,12 +23195,12 @@ func (s *MapLiteralContext) ToStringTree(ruleNames []string, recog antlr.Recogni
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type MapLiteralEmptyContext struct {
+type LabelMapLiteralNonEmptyContext struct {
 	MapLiteralContext
 }
 
-func NewMapLiteralEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *MapLiteralEmptyContext {
-	var p = new(MapLiteralEmptyContext)
+func NewLabelMapLiteralNonEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelMapLiteralNonEmptyContext {
+	var p = new(LabelMapLiteralNonEmptyContext)
 
 	InitEmptyMapLiteralContext(&p.MapLiteralContext)
 	p.parser = parser
@@ -23209,71 +23209,19 @@ func NewMapLiteralEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext)
 	return p
 }
 
-func (s *MapLiteralEmptyContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelMapLiteralNonEmptyContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *MapLiteralEmptyContext) LSQBR() antlr.TerminalNode {
+func (s *LabelMapLiteralNonEmptyContext) LSQBR() antlr.TerminalNode {
 	return s.GetToken(ManuscriptLSQBR, 0)
 }
 
-func (s *MapLiteralEmptyContext) COLON() antlr.TerminalNode {
-	return s.GetToken(ManuscriptCOLON, 0)
-}
-
-func (s *MapLiteralEmptyContext) RSQBR() antlr.TerminalNode {
+func (s *LabelMapLiteralNonEmptyContext) RSQBR() antlr.TerminalNode {
 	return s.GetToken(ManuscriptRSQBR, 0)
 }
 
-func (s *MapLiteralEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterMapLiteralEmpty(s)
-	}
-}
-
-func (s *MapLiteralEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitMapLiteralEmpty(s)
-	}
-}
-
-func (s *MapLiteralEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitMapLiteralEmpty(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type MapLiteralNonEmptyContext struct {
-	MapLiteralContext
-}
-
-func NewMapLiteralNonEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *MapLiteralNonEmptyContext {
-	var p = new(MapLiteralNonEmptyContext)
-
-	InitEmptyMapLiteralContext(&p.MapLiteralContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*MapLiteralContext))
-
-	return p
-}
-
-func (s *MapLiteralNonEmptyContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *MapLiteralNonEmptyContext) LSQBR() antlr.TerminalNode {
-	return s.GetToken(ManuscriptLSQBR, 0)
-}
-
-func (s *MapLiteralNonEmptyContext) RSQBR() antlr.TerminalNode {
-	return s.GetToken(ManuscriptRSQBR, 0)
-}
-
-func (s *MapLiteralNonEmptyContext) MapFieldList() IMapFieldListContext {
+func (s *LabelMapLiteralNonEmptyContext) MapFieldList() IMapFieldListContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IMapFieldListContext); ok {
@@ -23289,22 +23237,74 @@ func (s *MapLiteralNonEmptyContext) MapFieldList() IMapFieldListContext {
 	return t.(IMapFieldListContext)
 }
 
-func (s *MapLiteralNonEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelMapLiteralNonEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterMapLiteralNonEmpty(s)
+		listenerT.EnterLabelMapLiteralNonEmpty(s)
 	}
 }
 
-func (s *MapLiteralNonEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelMapLiteralNonEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitMapLiteralNonEmpty(s)
+		listenerT.ExitLabelMapLiteralNonEmpty(s)
 	}
 }
 
-func (s *MapLiteralNonEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelMapLiteralNonEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitMapLiteralNonEmpty(s)
+		return t.VisitLabelMapLiteralNonEmpty(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelMapLiteralEmptyContext struct {
+	MapLiteralContext
+}
+
+func NewLabelMapLiteralEmptyContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelMapLiteralEmptyContext {
+	var p = new(LabelMapLiteralEmptyContext)
+
+	InitEmptyMapLiteralContext(&p.MapLiteralContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*MapLiteralContext))
+
+	return p
+}
+
+func (s *LabelMapLiteralEmptyContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelMapLiteralEmptyContext) LSQBR() antlr.TerminalNode {
+	return s.GetToken(ManuscriptLSQBR, 0)
+}
+
+func (s *LabelMapLiteralEmptyContext) COLON() antlr.TerminalNode {
+	return s.GetToken(ManuscriptCOLON, 0)
+}
+
+func (s *LabelMapLiteralEmptyContext) RSQBR() antlr.TerminalNode {
+	return s.GetToken(ManuscriptRSQBR, 0)
+}
+
+func (s *LabelMapLiteralEmptyContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelMapLiteralEmpty(s)
+	}
+}
+
+func (s *LabelMapLiteralEmptyContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelMapLiteralEmpty(s)
+	}
+}
+
+func (s *LabelMapLiteralEmptyContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelMapLiteralEmpty(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -23324,7 +23324,7 @@ func (p *Manuscript) MapLiteral() (localctx IMapLiteralContext) {
 
 	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 141, p.GetParserRuleContext()) {
 	case 1:
-		localctx = NewMapLiteralEmptyContext(p, localctx)
+		localctx = NewLabelMapLiteralEmptyContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1139)
@@ -23352,7 +23352,7 @@ func (p *Manuscript) MapLiteral() (localctx IMapLiteralContext) {
 		}
 
 	case 2:
-		localctx = NewMapLiteralNonEmptyContext(p, localctx)
+		localctx = NewLabelMapLiteralNonEmptyContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(1142)
@@ -24738,12 +24738,12 @@ func (s *TypeAnnotationContext) ToStringTree(ruleNames []string, recog antlr.Rec
 	return antlr.TreesStringTree(s, ruleNames, recog)
 }
 
-type TypeAnnFnContext struct {
+type LabelTypeAnnVoidContext struct {
 	TypeAnnotationContext
 }
 
-func NewTypeAnnFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *TypeAnnFnContext {
-	var p = new(TypeAnnFnContext)
+func NewLabelTypeAnnVoidContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelTypeAnnVoidContext {
+	var p = new(LabelTypeAnnVoidContext)
 
 	InitEmptyTypeAnnotationContext(&p.TypeAnnotationContext)
 	p.parser = parser
@@ -24752,98 +24752,42 @@ func NewTypeAnnFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Type
 	return p
 }
 
-func (s *TypeAnnFnContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelTypeAnnVoidContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *TypeAnnFnContext) FnType() IFnTypeContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(IFnTypeContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(IFnTypeContext)
-}
-
-func (s *TypeAnnFnContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterTypeAnnFn(s)
-	}
-}
-
-func (s *TypeAnnFnContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitTypeAnnFn(s)
-	}
-}
-
-func (s *TypeAnnFnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitTypeAnnFn(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type TypeAnnVoidContext struct {
-	TypeAnnotationContext
-}
-
-func NewTypeAnnVoidContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *TypeAnnVoidContext {
-	var p = new(TypeAnnVoidContext)
-
-	InitEmptyTypeAnnotationContext(&p.TypeAnnotationContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*TypeAnnotationContext))
-
-	return p
-}
-
-func (s *TypeAnnVoidContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *TypeAnnVoidContext) VOID() antlr.TerminalNode {
+func (s *LabelTypeAnnVoidContext) VOID() antlr.TerminalNode {
 	return s.GetToken(ManuscriptVOID, 0)
 }
 
-func (s *TypeAnnVoidContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelTypeAnnVoidContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterTypeAnnVoid(s)
+		listenerT.EnterLabelTypeAnnVoid(s)
 	}
 }
 
-func (s *TypeAnnVoidContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelTypeAnnVoidContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitTypeAnnVoid(s)
+		listenerT.ExitLabelTypeAnnVoid(s)
 	}
 }
 
-func (s *TypeAnnVoidContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelTypeAnnVoidContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitTypeAnnVoid(s)
+		return t.VisitLabelTypeAnnVoid(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type TypeAnnTupleContext struct {
+type LabelTypeAnnArrayContext struct {
 	TypeAnnotationContext
 }
 
-func NewTypeAnnTupleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *TypeAnnTupleContext {
-	var p = new(TypeAnnTupleContext)
+func NewLabelTypeAnnArrayContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelTypeAnnArrayContext {
+	var p = new(LabelTypeAnnArrayContext)
 
 	InitEmptyTypeAnnotationContext(&p.TypeAnnotationContext)
 	p.parser = parser
@@ -24852,67 +24796,11 @@ func NewTypeAnnTupleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *T
 	return p
 }
 
-func (s *TypeAnnTupleContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelTypeAnnArrayContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *TypeAnnTupleContext) TupleType() ITupleTypeContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ITupleTypeContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ITupleTypeContext)
-}
-
-func (s *TypeAnnTupleContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterTypeAnnTuple(s)
-	}
-}
-
-func (s *TypeAnnTupleContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitTypeAnnTuple(s)
-	}
-}
-
-func (s *TypeAnnTupleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitTypeAnnTuple(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type TypeAnnArrayContext struct {
-	TypeAnnotationContext
-}
-
-func NewTypeAnnArrayContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *TypeAnnArrayContext {
-	var p = new(TypeAnnArrayContext)
-
-	InitEmptyTypeAnnotationContext(&p.TypeAnnotationContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*TypeAnnotationContext))
-
-	return p
-}
-
-func (s *TypeAnnArrayContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *TypeAnnArrayContext) ArrayType() IArrayTypeContext {
+func (s *LabelTypeAnnArrayContext) ArrayType() IArrayTypeContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IArrayTypeContext); ok {
@@ -24928,34 +24816,34 @@ func (s *TypeAnnArrayContext) ArrayType() IArrayTypeContext {
 	return t.(IArrayTypeContext)
 }
 
-func (s *TypeAnnArrayContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelTypeAnnArrayContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterTypeAnnArray(s)
+		listenerT.EnterLabelTypeAnnArray(s)
 	}
 }
 
-func (s *TypeAnnArrayContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelTypeAnnArrayContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitTypeAnnArray(s)
+		listenerT.ExitLabelTypeAnnArray(s)
 	}
 }
 
-func (s *TypeAnnArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelTypeAnnArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitTypeAnnArray(s)
+		return t.VisitLabelTypeAnnArray(s)
 
 	default:
 		return t.VisitChildren(s)
 	}
 }
 
-type TypeAnnIDContext struct {
+type LabelTypeAnnTupleContext struct {
 	TypeAnnotationContext
 }
 
-func NewTypeAnnIDContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *TypeAnnIDContext {
-	var p = new(TypeAnnIDContext)
+func NewLabelTypeAnnTupleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelTypeAnnTupleContext {
+	var p = new(LabelTypeAnnTupleContext)
 
 	InitEmptyTypeAnnotationContext(&p.TypeAnnotationContext)
 	p.parser = parser
@@ -24964,30 +24852,142 @@ func NewTypeAnnIDContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *Type
 	return p
 }
 
-func (s *TypeAnnIDContext) GetRuleContext() antlr.RuleContext {
+func (s *LabelTypeAnnTupleContext) GetRuleContext() antlr.RuleContext {
 	return s
 }
 
-func (s *TypeAnnIDContext) ID() antlr.TerminalNode {
+func (s *LabelTypeAnnTupleContext) TupleType() ITupleTypeContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ITupleTypeContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ITupleTypeContext)
+}
+
+func (s *LabelTypeAnnTupleContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelTypeAnnTuple(s)
+	}
+}
+
+func (s *LabelTypeAnnTupleContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelTypeAnnTuple(s)
+	}
+}
+
+func (s *LabelTypeAnnTupleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelTypeAnnTuple(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelTypeAnnFnContext struct {
+	TypeAnnotationContext
+}
+
+func NewLabelTypeAnnFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelTypeAnnFnContext {
+	var p = new(LabelTypeAnnFnContext)
+
+	InitEmptyTypeAnnotationContext(&p.TypeAnnotationContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*TypeAnnotationContext))
+
+	return p
+}
+
+func (s *LabelTypeAnnFnContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelTypeAnnFnContext) FnType() IFnTypeContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(IFnTypeContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(IFnTypeContext)
+}
+
+func (s *LabelTypeAnnFnContext) EnterRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.EnterLabelTypeAnnFn(s)
+	}
+}
+
+func (s *LabelTypeAnnFnContext) ExitRule(listener antlr.ParseTreeListener) {
+	if listenerT, ok := listener.(ManuscriptListener); ok {
+		listenerT.ExitLabelTypeAnnFn(s)
+	}
+}
+
+func (s *LabelTypeAnnFnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+	switch t := visitor.(type) {
+	case ManuscriptVisitor:
+		return t.VisitLabelTypeAnnFn(s)
+
+	default:
+		return t.VisitChildren(s)
+	}
+}
+
+type LabelTypeAnnIDContext struct {
+	TypeAnnotationContext
+}
+
+func NewLabelTypeAnnIDContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelTypeAnnIDContext {
+	var p = new(LabelTypeAnnIDContext)
+
+	InitEmptyTypeAnnotationContext(&p.TypeAnnotationContext)
+	p.parser = parser
+	p.CopyAll(ctx.(*TypeAnnotationContext))
+
+	return p
+}
+
+func (s *LabelTypeAnnIDContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LabelTypeAnnIDContext) ID() antlr.TerminalNode {
 	return s.GetToken(ManuscriptID, 0)
 }
 
-func (s *TypeAnnIDContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LabelTypeAnnIDContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterTypeAnnID(s)
+		listenerT.EnterLabelTypeAnnID(s)
 	}
 }
 
-func (s *TypeAnnIDContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LabelTypeAnnIDContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitTypeAnnID(s)
+		listenerT.ExitLabelTypeAnnID(s)
 	}
 }
 
-func (s *TypeAnnIDContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LabelTypeAnnIDContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitTypeAnnID(s)
+		return t.VisitLabelTypeAnnID(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -25005,7 +25005,7 @@ func (p *Manuscript) TypeAnnotation() (localctx ITypeAnnotationContext) {
 
 	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 151, p.GetParserRuleContext()) {
 	case 1:
-		localctx = NewTypeAnnIDContext(p, localctx)
+		localctx = NewLabelTypeAnnIDContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(1207)
@@ -25017,7 +25017,7 @@ func (p *Manuscript) TypeAnnotation() (localctx ITypeAnnotationContext) {
 		}
 
 	case 2:
-		localctx = NewTypeAnnArrayContext(p, localctx)
+		localctx = NewLabelTypeAnnArrayContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(1208)
@@ -25025,7 +25025,7 @@ func (p *Manuscript) TypeAnnotation() (localctx ITypeAnnotationContext) {
 		}
 
 	case 3:
-		localctx = NewTypeAnnTupleContext(p, localctx)
+		localctx = NewLabelTypeAnnTupleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(1209)
@@ -25033,7 +25033,7 @@ func (p *Manuscript) TypeAnnotation() (localctx ITypeAnnotationContext) {
 		}
 
 	case 4:
-		localctx = NewTypeAnnFnContext(p, localctx)
+		localctx = NewLabelTypeAnnFnContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(1210)
@@ -25041,7 +25041,7 @@ func (p *Manuscript) TypeAnnotation() (localctx ITypeAnnotationContext) {
 		}
 
 	case 5:
-		localctx = NewTypeAnnVoidContext(p, localctx)
+		localctx = NewLabelTypeAnnVoidContext(p, localctx)
 		p.EnterOuterAlt(localctx, 5)
 		{
 			p.SetState(1211)

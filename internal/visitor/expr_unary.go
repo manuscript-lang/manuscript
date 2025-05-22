@@ -19,7 +19,7 @@ func (v *ManuscriptAstVisitor) VisitUnaryExpr(ctx *parser.UnaryExprContext) inte
 }
 
 // VisitUnaryOpExpr handles unary operator expressions: +, -, !, try
-func (v *ManuscriptAstVisitor) VisitUnaryOpExpr(ctx *parser.UnaryOpExprContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelUnaryOpExpr(ctx *parser.LabelUnaryOpExprContext) interface{} {
 	opToken := ctx.GetOp()
 	if opToken == nil {
 		v.addError("Unary operator expression missing operator token", ctx.GetStart())
@@ -40,7 +40,7 @@ func (v *ManuscriptAstVisitor) VisitUnaryOpExpr(ctx *parser.UnaryOpExprContext) 
 }
 
 // VisitUnaryAwaitExpr handles await expressions (awaitExpr)
-func (v *ManuscriptAstVisitor) VisitUnaryAwaitExpr(ctx *parser.UnaryAwaitExprContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelUnaryAwaitExpr(ctx *parser.LabelUnaryAwaitExprContext) interface{} {
 	awaitCtx := ctx.AwaitExpr()
 	if awaitCtx == nil {
 		v.addError("UnaryAwaitExpr missing AwaitExpr child", ctx.GetStart())

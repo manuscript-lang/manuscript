@@ -11,29 +11,29 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#program.
 	VisitProgram(ctx *ProgramContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#DeclImport.
-	VisitDeclImport(ctx *DeclImportContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelDeclImport.
+	VisitLabelDeclImport(ctx *LabelDeclImportContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#DeclExport.
-	VisitDeclExport(ctx *DeclExportContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelDeclExport.
+	VisitLabelDeclExport(ctx *LabelDeclExportContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#DeclExtern.
-	VisitDeclExtern(ctx *DeclExternContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelDeclExtern.
+	VisitLabelDeclExtern(ctx *LabelDeclExternContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#DeclLet.
-	VisitDeclLet(ctx *DeclLetContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelDeclLet.
+	VisitLabelDeclLet(ctx *LabelDeclLetContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#DeclType.
-	VisitDeclType(ctx *DeclTypeContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelDeclType.
+	VisitLabelDeclType(ctx *LabelDeclTypeContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#DeclInterface.
-	VisitDeclInterface(ctx *DeclInterfaceContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelDeclInterface.
+	VisitLabelDeclInterface(ctx *LabelDeclInterfaceContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#DeclFn.
-	VisitDeclFn(ctx *DeclFnContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelDeclFn.
+	VisitLabelDeclFn(ctx *LabelDeclFnContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#DeclMethods.
-	VisitDeclMethods(ctx *DeclMethodsContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelDeclMethods.
+	VisitLabelDeclMethods(ctx *LabelDeclMethodsContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#importDecl.
 	VisitImportDecl(ctx *ImportDeclContext) interface{}
@@ -44,23 +44,23 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#externDecl.
 	VisitExternDecl(ctx *ExternDeclContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ExportedFn.
-	VisitExportedFn(ctx *ExportedFnContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelExportedFn.
+	VisitLabelExportedFn(ctx *LabelExportedFnContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ExportedLet.
-	VisitExportedLet(ctx *ExportedLetContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelExportedLet.
+	VisitLabelExportedLet(ctx *LabelExportedLetContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ExportedType.
-	VisitExportedType(ctx *ExportedTypeContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelExportedType.
+	VisitLabelExportedType(ctx *LabelExportedTypeContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ExportedInterface.
-	VisitExportedInterface(ctx *ExportedInterfaceContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelExportedInterface.
+	VisitLabelExportedInterface(ctx *LabelExportedInterfaceContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ModuleImportDestructured.
-	VisitModuleImportDestructured(ctx *ModuleImportDestructuredContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelModuleImportDestructured.
+	VisitLabelModuleImportDestructured(ctx *LabelModuleImportDestructuredContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ModuleImportTarget.
-	VisitModuleImportTarget(ctx *ModuleImportTargetContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelModuleImportTarget.
+	VisitLabelModuleImportTarget(ctx *LabelModuleImportTargetContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#destructuredImport.
 	VisitDestructuredImport(ctx *DestructuredImportContext) interface{}
@@ -74,17 +74,17 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#importItem.
 	VisitImportItem(ctx *ImportItemContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LetDeclSingle.
-	VisitLetDeclSingle(ctx *LetDeclSingleContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLetDeclSingle.
+	VisitLabelLetDeclSingle(ctx *LabelLetDeclSingleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LetDeclBlock.
-	VisitLetDeclBlock(ctx *LetDeclBlockContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLetDeclBlock.
+	VisitLabelLetDeclBlock(ctx *LabelLetDeclBlockContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LetDeclDestructuredObj.
-	VisitLetDeclDestructuredObj(ctx *LetDeclDestructuredObjContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLetDeclDestructuredObj.
+	VisitLabelLetDeclDestructuredObj(ctx *LabelLetDeclDestructuredObjContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LetDeclDestructuredArray.
-	VisitLetDeclDestructuredArray(ctx *LetDeclDestructuredArrayContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLetDeclDestructuredArray.
+	VisitLabelLetDeclDestructuredArray(ctx *LabelLetDeclDestructuredArrayContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#letSingle.
 	VisitLetSingle(ctx *LetSingleContext) interface{}
@@ -98,14 +98,14 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#letBlockItemSep.
 	VisitLetBlockItemSep(ctx *LetBlockItemSepContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LetBlockItemSingle.
-	VisitLetBlockItemSingle(ctx *LetBlockItemSingleContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLetBlockItemSingle.
+	VisitLabelLetBlockItemSingle(ctx *LabelLetBlockItemSingleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LetBlockItemDestructuredObj.
-	VisitLetBlockItemDestructuredObj(ctx *LetBlockItemDestructuredObjContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLetBlockItemDestructuredObj.
+	VisitLabelLetBlockItemDestructuredObj(ctx *LabelLetBlockItemDestructuredObjContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LetBlockItemDestructuredArray.
-	VisitLetBlockItemDestructuredArray(ctx *LetBlockItemDestructuredArrayContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLetBlockItemDestructuredArray.
+	VisitLabelLetBlockItemDestructuredArray(ctx *LabelLetBlockItemDestructuredArrayContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#letDestructuredObj.
 	VisitLetDestructuredObj(ctx *LetDestructuredObjContext) interface{}
@@ -164,41 +164,41 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#methodImpl.
 	VisitMethodImpl(ctx *MethodImplContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtLet.
-	VisitStmtLet(ctx *StmtLetContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtLet.
+	VisitLabelStmtLet(ctx *LabelStmtLetContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtExpr.
-	VisitStmtExpr(ctx *StmtExprContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtExpr.
+	VisitLabelStmtExpr(ctx *LabelStmtExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtReturn.
-	VisitStmtReturn(ctx *StmtReturnContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtReturn.
+	VisitLabelStmtReturn(ctx *LabelStmtReturnContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtYield.
-	VisitStmtYield(ctx *StmtYieldContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtYield.
+	VisitLabelStmtYield(ctx *LabelStmtYieldContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtIf.
-	VisitStmtIf(ctx *StmtIfContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtIf.
+	VisitLabelStmtIf(ctx *LabelStmtIfContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtFor.
-	VisitStmtFor(ctx *StmtForContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtFor.
+	VisitLabelStmtFor(ctx *LabelStmtForContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtWhile.
-	VisitStmtWhile(ctx *StmtWhileContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtWhile.
+	VisitLabelStmtWhile(ctx *LabelStmtWhileContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtBlock.
-	VisitStmtBlock(ctx *StmtBlockContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtBlock.
+	VisitLabelStmtBlock(ctx *LabelStmtBlockContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtBreak.
-	VisitStmtBreak(ctx *StmtBreakContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtBreak.
+	VisitLabelStmtBreak(ctx *LabelStmtBreakContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtContinue.
-	VisitStmtContinue(ctx *StmtContinueContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtContinue.
+	VisitLabelStmtContinue(ctx *LabelStmtContinueContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtCheck.
-	VisitStmtCheck(ctx *StmtCheckContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtCheck.
+	VisitLabelStmtCheck(ctx *LabelStmtCheckContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StmtDefer.
-	VisitStmtDefer(ctx *StmtDeferContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStmtDefer.
+	VisitLabelStmtDefer(ctx *LabelStmtDeferContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#returnStmt.
 	VisitReturnStmt(ctx *ReturnStmtContext) interface{}
@@ -218,32 +218,32 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#forStmt.
 	VisitForStmt(ctx *ForStmtContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ForLoop.
-	VisitForLoop(ctx *ForLoopContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelForLoop.
+	VisitLabelForLoop(ctx *LabelForLoopContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ForInLoop.
-	VisitForInLoop(ctx *ForInLoopContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelForInLoop.
+	VisitLabelForInLoop(ctx *LabelForInLoopContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#forTrinity.
 	VisitForTrinity(ctx *ForTrinityContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ForInitLet.
-	VisitForInitLet(ctx *ForInitLetContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelForInitLet.
+	VisitLabelForInitLet(ctx *LabelForInitLetContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ForInitEmpty.
-	VisitForInitEmpty(ctx *ForInitEmptyContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelForInitEmpty.
+	VisitLabelForInitEmpty(ctx *LabelForInitEmptyContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ForCondExpr.
-	VisitForCondExpr(ctx *ForCondExprContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelForCondExpr.
+	VisitLabelForCondExpr(ctx *LabelForCondExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ForCondEmpty.
-	VisitForCondEmpty(ctx *ForCondEmptyContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelForCondEmpty.
+	VisitLabelForCondEmpty(ctx *LabelForCondEmptyContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ForPostExpr.
-	VisitForPostExpr(ctx *ForPostExprContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelForPostExpr.
+	VisitLabelForPostExpr(ctx *LabelForPostExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ForPostEmpty.
-	VisitForPostEmpty(ctx *ForPostEmptyContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelForPostEmpty.
+	VisitLabelForPostEmpty(ctx *LabelForPostEmptyContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#whileStmt.
 	VisitWhileStmt(ctx *WhileStmtContext) interface{}
@@ -269,26 +269,26 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#assignmentExpr.
 	VisitAssignmentExpr(ctx *AssignmentExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#AssignEq.
-	VisitAssignEq(ctx *AssignEqContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelAssignEq.
+	VisitLabelAssignEq(ctx *LabelAssignEqContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#AssignPlusEq.
-	VisitAssignPlusEq(ctx *AssignPlusEqContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelAssignPlusEq.
+	VisitLabelAssignPlusEq(ctx *LabelAssignPlusEqContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#AssignMinusEq.
-	VisitAssignMinusEq(ctx *AssignMinusEqContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelAssignMinusEq.
+	VisitLabelAssignMinusEq(ctx *LabelAssignMinusEqContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#AssignStarEq.
-	VisitAssignStarEq(ctx *AssignStarEqContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelAssignStarEq.
+	VisitLabelAssignStarEq(ctx *LabelAssignStarEqContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#AssignSlashEq.
-	VisitAssignSlashEq(ctx *AssignSlashEqContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelAssignSlashEq.
+	VisitLabelAssignSlashEq(ctx *LabelAssignSlashEqContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#AssignModEq.
-	VisitAssignModEq(ctx *AssignModEqContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelAssignModEq.
+	VisitLabelAssignModEq(ctx *LabelAssignModEqContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#AssignCaretEq.
-	VisitAssignCaretEq(ctx *AssignCaretEqContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelAssignCaretEq.
+	VisitLabelAssignCaretEq(ctx *LabelAssignCaretEqContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#ternaryExpr.
 	VisitTernaryExpr(ctx *TernaryExprContext) interface{}
@@ -326,11 +326,11 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#multiplicativeExpr.
 	VisitMultiplicativeExpr(ctx *MultiplicativeExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#UnaryOpExpr.
-	VisitUnaryOpExpr(ctx *UnaryOpExprContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelUnaryOpExpr.
+	VisitLabelUnaryOpExpr(ctx *LabelUnaryOpExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#UnaryAwaitExpr.
-	VisitUnaryAwaitExpr(ctx *UnaryAwaitExprContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelUnaryAwaitExpr.
+	VisitLabelUnaryAwaitExpr(ctx *LabelUnaryAwaitExprContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#awaitExpr.
 	VisitAwaitExpr(ctx *AwaitExprContext) interface{}
@@ -338,53 +338,53 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#postfixExpr.
 	VisitPostfixExpr(ctx *PostfixExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PostfixCall.
-	VisitPostfixCall(ctx *PostfixCallContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPostfixCall.
+	VisitLabelPostfixCall(ctx *LabelPostfixCallContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PostfixDot.
-	VisitPostfixDot(ctx *PostfixDotContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPostfixDot.
+	VisitLabelPostfixDot(ctx *LabelPostfixDotContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PostfixIndex.
-	VisitPostfixIndex(ctx *PostfixIndexContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPostfixIndex.
+	VisitLabelPostfixIndex(ctx *LabelPostfixIndexContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryLiteral.
-	VisitPrimaryLiteral(ctx *PrimaryLiteralContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryLiteral.
+	VisitLabelPrimaryLiteral(ctx *LabelPrimaryLiteralContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryID.
-	VisitPrimaryID(ctx *PrimaryIDContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryID.
+	VisitLabelPrimaryID(ctx *LabelPrimaryIDContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryParen.
-	VisitPrimaryParen(ctx *PrimaryParenContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryParen.
+	VisitLabelPrimaryParen(ctx *LabelPrimaryParenContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryArray.
-	VisitPrimaryArray(ctx *PrimaryArrayContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryArray.
+	VisitLabelPrimaryArray(ctx *LabelPrimaryArrayContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryObject.
-	VisitPrimaryObject(ctx *PrimaryObjectContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryObject.
+	VisitLabelPrimaryObject(ctx *LabelPrimaryObjectContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryMap.
-	VisitPrimaryMap(ctx *PrimaryMapContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryMap.
+	VisitLabelPrimaryMap(ctx *LabelPrimaryMapContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimarySet.
-	VisitPrimarySet(ctx *PrimarySetContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimarySet.
+	VisitLabelPrimarySet(ctx *LabelPrimarySetContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryFn.
-	VisitPrimaryFn(ctx *PrimaryFnContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryFn.
+	VisitLabelPrimaryFn(ctx *LabelPrimaryFnContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryMatch.
-	VisitPrimaryMatch(ctx *PrimaryMatchContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryMatch.
+	VisitLabelPrimaryMatch(ctx *LabelPrimaryMatchContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryVoid.
-	VisitPrimaryVoid(ctx *PrimaryVoidContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryVoid.
+	VisitLabelPrimaryVoid(ctx *LabelPrimaryVoidContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryNull.
-	VisitPrimaryNull(ctx *PrimaryNullContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryNull.
+	VisitLabelPrimaryNull(ctx *LabelPrimaryNullContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryTaggedBlock.
-	VisitPrimaryTaggedBlock(ctx *PrimaryTaggedBlockContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryTaggedBlock.
+	VisitLabelPrimaryTaggedBlock(ctx *LabelPrimaryTaggedBlockContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#PrimaryStructInit.
-	VisitPrimaryStructInit(ctx *PrimaryStructInitContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryStructInit.
+	VisitLabelPrimaryStructInit(ctx *LabelPrimaryStructInitContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#fnExpr.
 	VisitFnExpr(ctx *FnExprContext) interface{}
@@ -410,71 +410,71 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#multiDoubleQuotedString.
 	VisitMultiDoubleQuotedString(ctx *MultiDoubleQuotedStringContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StringPartSingle.
-	VisitStringPartSingle(ctx *StringPartSingleContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStringPartSingle.
+	VisitLabelStringPartSingle(ctx *LabelStringPartSingleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StringPartMulti.
-	VisitStringPartMulti(ctx *StringPartMultiContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStringPartMulti.
+	VisitLabelStringPartMulti(ctx *LabelStringPartMultiContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StringPartDouble.
-	VisitStringPartDouble(ctx *StringPartDoubleContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStringPartDouble.
+	VisitLabelStringPartDouble(ctx *LabelStringPartDoubleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StringPartMultiDouble.
-	VisitStringPartMultiDouble(ctx *StringPartMultiDoubleContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStringPartMultiDouble.
+	VisitLabelStringPartMultiDouble(ctx *LabelStringPartMultiDoubleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StringPartInterp.
-	VisitStringPartInterp(ctx *StringPartInterpContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStringPartInterp.
+	VisitLabelStringPartInterp(ctx *LabelStringPartInterpContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#interpolation.
 	VisitInterpolation(ctx *InterpolationContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LiteralString.
-	VisitLiteralString(ctx *LiteralStringContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLiteralString.
+	VisitLabelLiteralString(ctx *LabelLiteralStringContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LiteralNumber.
-	VisitLiteralNumber(ctx *LiteralNumberContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLiteralNumber.
+	VisitLabelLiteralNumber(ctx *LabelLiteralNumberContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LiteralBool.
-	VisitLiteralBool(ctx *LiteralBoolContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLiteralBool.
+	VisitLabelLiteralBool(ctx *LabelLiteralBoolContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LiteralNull.
-	VisitLiteralNull(ctx *LiteralNullContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLiteralNull.
+	VisitLabelLiteralNull(ctx *LabelLiteralNullContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LiteralVoid.
-	VisitLiteralVoid(ctx *LiteralVoidContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelLiteralVoid.
+	VisitLabelLiteralVoid(ctx *LabelLiteralVoidContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StringLiteralSingle.
-	VisitStringLiteralSingle(ctx *StringLiteralSingleContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStringLiteralSingle.
+	VisitLabelStringLiteralSingle(ctx *LabelStringLiteralSingleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StringLiteralMulti.
-	VisitStringLiteralMulti(ctx *StringLiteralMultiContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStringLiteralMulti.
+	VisitLabelStringLiteralMulti(ctx *LabelStringLiteralMultiContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StringLiteralDouble.
-	VisitStringLiteralDouble(ctx *StringLiteralDoubleContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStringLiteralDouble.
+	VisitLabelStringLiteralDouble(ctx *LabelStringLiteralDoubleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#StringLiteralMultiDouble.
-	VisitStringLiteralMultiDouble(ctx *StringLiteralMultiDoubleContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelStringLiteralMultiDouble.
+	VisitLabelStringLiteralMultiDouble(ctx *LabelStringLiteralMultiDoubleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#NumberLiteralInt.
-	VisitNumberLiteralInt(ctx *NumberLiteralIntContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelNumberLiteralInt.
+	VisitLabelNumberLiteralInt(ctx *LabelNumberLiteralIntContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#NumberLiteralFloat.
-	VisitNumberLiteralFloat(ctx *NumberLiteralFloatContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelNumberLiteralFloat.
+	VisitLabelNumberLiteralFloat(ctx *LabelNumberLiteralFloatContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#NumberLiteralHex.
-	VisitNumberLiteralHex(ctx *NumberLiteralHexContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelNumberLiteralHex.
+	VisitLabelNumberLiteralHex(ctx *LabelNumberLiteralHexContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#NumberLiteralBin.
-	VisitNumberLiteralBin(ctx *NumberLiteralBinContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelNumberLiteralBin.
+	VisitLabelNumberLiteralBin(ctx *LabelNumberLiteralBinContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#NumberLiteralOct.
-	VisitNumberLiteralOct(ctx *NumberLiteralOctContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelNumberLiteralOct.
+	VisitLabelNumberLiteralOct(ctx *LabelNumberLiteralOctContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#BoolLiteralTrue.
-	VisitBoolLiteralTrue(ctx *BoolLiteralTrueContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelBoolLiteralTrue.
+	VisitLabelBoolLiteralTrue(ctx *LabelBoolLiteralTrueContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#BoolLiteralFalse.
-	VisitBoolLiteralFalse(ctx *BoolLiteralFalseContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelBoolLiteralFalse.
+	VisitLabelBoolLiteralFalse(ctx *LabelBoolLiteralFalseContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#arrayLiteral.
 	VisitArrayLiteral(ctx *ArrayLiteralContext) interface{}
@@ -488,17 +488,17 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#objectField.
 	VisitObjectField(ctx *ObjectFieldContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ObjectFieldNameID.
-	VisitObjectFieldNameID(ctx *ObjectFieldNameIDContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelObjectFieldNameID.
+	VisitLabelObjectFieldNameID(ctx *LabelObjectFieldNameIDContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#ObjectFieldNameStr.
-	VisitObjectFieldNameStr(ctx *ObjectFieldNameStrContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelObjectFieldNameStr.
+	VisitLabelObjectFieldNameStr(ctx *LabelObjectFieldNameStrContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#MapLiteralEmpty.
-	VisitMapLiteralEmpty(ctx *MapLiteralEmptyContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelMapLiteralEmpty.
+	VisitLabelMapLiteralEmpty(ctx *LabelMapLiteralEmptyContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#MapLiteralNonEmpty.
-	VisitMapLiteralNonEmpty(ctx *MapLiteralNonEmptyContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelMapLiteralNonEmpty.
+	VisitLabelMapLiteralNonEmpty(ctx *LabelMapLiteralNonEmptyContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#mapFieldList.
 	VisitMapFieldList(ctx *MapFieldListContext) interface{}
@@ -521,20 +521,20 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#structField.
 	VisitStructField(ctx *StructFieldContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#TypeAnnID.
-	VisitTypeAnnID(ctx *TypeAnnIDContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelTypeAnnID.
+	VisitLabelTypeAnnID(ctx *LabelTypeAnnIDContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#TypeAnnArray.
-	VisitTypeAnnArray(ctx *TypeAnnArrayContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelTypeAnnArray.
+	VisitLabelTypeAnnArray(ctx *LabelTypeAnnArrayContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#TypeAnnTuple.
-	VisitTypeAnnTuple(ctx *TypeAnnTupleContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelTypeAnnTuple.
+	VisitLabelTypeAnnTuple(ctx *LabelTypeAnnTupleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#TypeAnnFn.
-	VisitTypeAnnFn(ctx *TypeAnnFnContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelTypeAnnFn.
+	VisitLabelTypeAnnFn(ctx *LabelTypeAnnFnContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#TypeAnnVoid.
-	VisitTypeAnnVoid(ctx *TypeAnnVoidContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelTypeAnnVoid.
+	VisitLabelTypeAnnVoid(ctx *LabelTypeAnnVoidContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#tupleType.
 	VisitTupleType(ctx *TupleTypeContext) interface{}
