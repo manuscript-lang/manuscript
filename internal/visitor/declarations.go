@@ -7,12 +7,7 @@ import (
 
 // VisitLetDeclSingle handles 'let typedID = expr' or 'let typedID'
 func (v *ManuscriptAstVisitor) VisitLabelLetDeclSingle(ctx *parser.LabelLetDeclSingleContext) interface{} {
-	letSingle := ctx.LetSingle()
-	if letSingle == nil {
-		v.addError("Missing letSingle in let declaration: "+ctx.GetText(), ctx.GetStart())
-		return &ast.EmptyStmt{}
-	}
-	return v.Visit(letSingle)
+	return v.VisitChildren(ctx)
 }
 
 // VisitLetDeclBlock handles 'let ( ... )'
@@ -34,40 +29,17 @@ func (v *ManuscriptAstVisitor) VisitLabelLetDeclBlock(ctx *parser.LabelLetDeclBl
 
 // VisitLetDeclDestructuredObj handles 'let {a, b} = expr'
 func (v *ManuscriptAstVisitor) VisitLabelLetDeclDestructuredObj(ctx *parser.LabelLetDeclDestructuredObjContext) interface{} {
-	letObj := ctx.LetDestructuredObj()
-	if letObj == nil {
-		v.addError("Missing LetDestructuredObj in let declaration: "+ctx.GetText(), ctx.GetStart())
-		return &ast.EmptyStmt{}
-	}
-	return v.Visit(letObj)
+	return v.VisitChildren(ctx)
 }
 
 // VisitLetDeclDestructuredArray handles 'let [a, b] = expr'
 func (v *ManuscriptAstVisitor) VisitLabelLetDeclDestructuredArray(ctx *parser.LabelLetDeclDestructuredArrayContext) interface{} {
-	letArr := ctx.LetDestructuredArray()
-	if letArr == nil {
-		v.addError("Missing LetDestructuredArray in let declaration: "+ctx.GetText(), ctx.GetStart())
-		return &ast.EmptyStmt{}
-	}
-	return v.Visit(letArr)
+	return v.VisitChildren(ctx)
 }
 
 // VisitImportDecl handles import declarations and lowers them to Go imports and variable assignments
 func (v *ManuscriptAstVisitor) VisitImportDecl(ctx *parser.ImportDeclContext) interface{} {
-	modImport := ctx.ModuleImport()
-	if modImport == nil {
-		return nil
-	}
-
-	switch t := modImport.(type) {
-	case *parser.LabelModuleImportTargetContext:
-		return v.VisitLabelModuleImportTarget(t)
-	case *parser.LabelModuleImportDestructuredContext:
-		return v.VisitLabelModuleImportDestructured(t)
-	default:
-		v.addError("Unknown module import type", ctx.GetStart())
-		return nil
-	}
+	return v.VisitChildren(ctx)
 }
 
 // VisitExportDecl expects the exported item visitor methods to be implemented and return Go AST nodes.
@@ -118,53 +90,5 @@ func toUpper(r rune) rune {
 }
 
 func (v *ManuscriptAstVisitor) VisitExternDecl(ctx *parser.ExternDeclContext) interface{} {
-	modImport := ctx.ModuleImport()
-	if modImport != nil {
-		return v.Visit(modImport)
-	}
-	return nil
-}
-
-// VisitExportedFn delegates to VisitFnDecl
-func (v *ManuscriptAstVisitor) VisitLabelExportedFn(ctx *parser.LabelExportedFnContext) interface{} {
-	if ctx == nil || ctx.FnDecl() == nil {
-		return nil
-	}
-	if fnCtx, ok := ctx.FnDecl().(*parser.FnDeclContext); ok {
-		return v.VisitFnDecl(fnCtx)
-	}
-	return nil
-}
-
-// VisitExportedLet delegates to VisitLetDecl
-func (v *ManuscriptAstVisitor) VisitLabelExportedLet(ctx *parser.LabelExportedLetContext) interface{} {
-	if ctx == nil || ctx.LetDecl() == nil {
-		return nil
-	}
-	if letCtx, ok := ctx.LetDecl().(*parser.LetDeclContext); ok {
-		return v.Visit(letCtx)
-	}
-	return nil
-}
-
-// VisitExportedType delegates to VisitTypeDecl
-func (v *ManuscriptAstVisitor) VisitLabelExportedType(ctx *parser.LabelExportedTypeContext) interface{} {
-	if ctx == nil || ctx.TypeDecl() == nil {
-		return nil
-	}
-	if typeCtx, ok := ctx.TypeDecl().(*parser.TypeDeclContext); ok {
-		return v.VisitTypeDecl(typeCtx)
-	}
-	return nil
-}
-
-// VisitExportedInterface delegates to VisitInterfaceDecl
-func (v *ManuscriptAstVisitor) VisitLabelExportedInterface(ctx *parser.LabelExportedInterfaceContext) interface{} {
-	if ctx == nil || ctx.InterfaceDecl() == nil {
-		return nil
-	}
-	if ifaceCtx, ok := ctx.InterfaceDecl().(*parser.InterfaceDeclContext); ok {
-		return v.VisitInterfaceDecl(ifaceCtx)
-	}
-	return nil
+	return v.VisitChildren(ctx)
 }

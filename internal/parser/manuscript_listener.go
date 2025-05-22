@@ -23,23 +23,11 @@ type ManuscriptListener interface {
 	// EnterExternDecl is called when entering the externDecl production.
 	EnterExternDecl(c *ExternDeclContext)
 
-	// EnterLabelExportedFn is called when entering the LabelExportedFn production.
-	EnterLabelExportedFn(c *LabelExportedFnContext)
+	// EnterExportedItem is called when entering the exportedItem production.
+	EnterExportedItem(c *ExportedItemContext)
 
-	// EnterLabelExportedLet is called when entering the LabelExportedLet production.
-	EnterLabelExportedLet(c *LabelExportedLetContext)
-
-	// EnterLabelExportedType is called when entering the LabelExportedType production.
-	EnterLabelExportedType(c *LabelExportedTypeContext)
-
-	// EnterLabelExportedInterface is called when entering the LabelExportedInterface production.
-	EnterLabelExportedInterface(c *LabelExportedInterfaceContext)
-
-	// EnterLabelModuleImportDestructured is called when entering the LabelModuleImportDestructured production.
-	EnterLabelModuleImportDestructured(c *LabelModuleImportDestructuredContext)
-
-	// EnterLabelModuleImportTarget is called when entering the LabelModuleImportTarget production.
-	EnterLabelModuleImportTarget(c *LabelModuleImportTargetContext)
+	// EnterModuleImport is called when entering the moduleImport production.
+	EnterModuleImport(c *ModuleImportContext)
 
 	// EnterDestructuredImport is called when entering the destructuredImport production.
 	EnterDestructuredImport(c *DestructuredImportContext)
@@ -542,23 +530,11 @@ type ManuscriptListener interface {
 	// ExitExternDecl is called when exiting the externDecl production.
 	ExitExternDecl(c *ExternDeclContext)
 
-	// ExitLabelExportedFn is called when exiting the LabelExportedFn production.
-	ExitLabelExportedFn(c *LabelExportedFnContext)
+	// ExitExportedItem is called when exiting the exportedItem production.
+	ExitExportedItem(c *ExportedItemContext)
 
-	// ExitLabelExportedLet is called when exiting the LabelExportedLet production.
-	ExitLabelExportedLet(c *LabelExportedLetContext)
-
-	// ExitLabelExportedType is called when exiting the LabelExportedType production.
-	ExitLabelExportedType(c *LabelExportedTypeContext)
-
-	// ExitLabelExportedInterface is called when exiting the LabelExportedInterface production.
-	ExitLabelExportedInterface(c *LabelExportedInterfaceContext)
-
-	// ExitLabelModuleImportDestructured is called when exiting the LabelModuleImportDestructured production.
-	ExitLabelModuleImportDestructured(c *LabelModuleImportDestructuredContext)
-
-	// ExitLabelModuleImportTarget is called when exiting the LabelModuleImportTarget production.
-	ExitLabelModuleImportTarget(c *LabelModuleImportTargetContext)
+	// ExitModuleImport is called when exiting the moduleImport production.
+	ExitModuleImport(c *ModuleImportContext)
 
 	// ExitDestructuredImport is called when exiting the destructuredImport production.
 	ExitDestructuredImport(c *DestructuredImportContext)

@@ -23,23 +23,11 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#externDecl.
 	VisitExternDecl(ctx *ExternDeclContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelExportedFn.
-	VisitLabelExportedFn(ctx *LabelExportedFnContext) interface{}
+	// Visit a parse tree produced by Manuscript#exportedItem.
+	VisitExportedItem(ctx *ExportedItemContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelExportedLet.
-	VisitLabelExportedLet(ctx *LabelExportedLetContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelExportedType.
-	VisitLabelExportedType(ctx *LabelExportedTypeContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelExportedInterface.
-	VisitLabelExportedInterface(ctx *LabelExportedInterfaceContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelModuleImportDestructured.
-	VisitLabelModuleImportDestructured(ctx *LabelModuleImportDestructuredContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelModuleImportTarget.
-	VisitLabelModuleImportTarget(ctx *LabelModuleImportTargetContext) interface{}
+	// Visit a parse tree produced by Manuscript#moduleImport.
+	VisitModuleImport(ctx *ModuleImportContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#destructuredImport.
 	VisitDestructuredImport(ctx *DestructuredImportContext) interface{}

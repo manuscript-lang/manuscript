@@ -1972,6 +1972,13 @@ type IExportedItemContext interface {
 
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
+
+	// Getter signatures
+	FnDecl() IFnDeclContext
+	LetDecl() ILetDeclContext
+	TypeDecl() ITypeDeclContext
+	InterfaceDecl() IInterfaceDeclContext
+
 	// IsExportedItemContext differentiates from other interfaces.
 	IsExportedItemContext()
 }
@@ -2008,149 +2015,7 @@ func NewExportedItemContext(parser antlr.Parser, parent antlr.ParserRuleContext,
 
 func (s *ExportedItemContext) GetParser() antlr.Parser { return s.parser }
 
-func (s *ExportedItemContext) CopyAll(ctx *ExportedItemContext) {
-	s.CopyFrom(&ctx.BaseParserRuleContext)
-}
-
-func (s *ExportedItemContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *ExportedItemContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
-	return antlr.TreesStringTree(s, ruleNames, recog)
-}
-
-type LabelExportedLetContext struct {
-	ExportedItemContext
-}
-
-func NewLabelExportedLetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelExportedLetContext {
-	var p = new(LabelExportedLetContext)
-
-	InitEmptyExportedItemContext(&p.ExportedItemContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ExportedItemContext))
-
-	return p
-}
-
-func (s *LabelExportedLetContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelExportedLetContext) LetDecl() ILetDeclContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ILetDeclContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ILetDeclContext)
-}
-
-func (s *LabelExportedLetContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelExportedLet(s)
-	}
-}
-
-func (s *LabelExportedLetContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelExportedLet(s)
-	}
-}
-
-func (s *LabelExportedLetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLabelExportedLet(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type LabelExportedTypeContext struct {
-	ExportedItemContext
-}
-
-func NewLabelExportedTypeContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelExportedTypeContext {
-	var p = new(LabelExportedTypeContext)
-
-	InitEmptyExportedItemContext(&p.ExportedItemContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ExportedItemContext))
-
-	return p
-}
-
-func (s *LabelExportedTypeContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelExportedTypeContext) TypeDecl() ITypeDeclContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ITypeDeclContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ITypeDeclContext)
-}
-
-func (s *LabelExportedTypeContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelExportedType(s)
-	}
-}
-
-func (s *LabelExportedTypeContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelExportedType(s)
-	}
-}
-
-func (s *LabelExportedTypeContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLabelExportedType(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type LabelExportedFnContext struct {
-	ExportedItemContext
-}
-
-func NewLabelExportedFnContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelExportedFnContext {
-	var p = new(LabelExportedFnContext)
-
-	InitEmptyExportedItemContext(&p.ExportedItemContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ExportedItemContext))
-
-	return p
-}
-
-func (s *LabelExportedFnContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelExportedFnContext) FnDecl() IFnDeclContext {
+func (s *ExportedItemContext) FnDecl() IFnDeclContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IFnDeclContext); ok {
@@ -2166,47 +2031,39 @@ func (s *LabelExportedFnContext) FnDecl() IFnDeclContext {
 	return t.(IFnDeclContext)
 }
 
-func (s *LabelExportedFnContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelExportedFn(s)
+func (s *ExportedItemContext) LetDecl() ILetDeclContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ILetDeclContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
 	}
-}
 
-func (s *LabelExportedFnContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelExportedFn(s)
+	if t == nil {
+		return nil
 	}
+
+	return t.(ILetDeclContext)
 }
 
-func (s *LabelExportedFnContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLabelExportedFn(s)
-
-	default:
-		return t.VisitChildren(s)
+func (s *ExportedItemContext) TypeDecl() ITypeDeclContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ITypeDeclContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
 	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ITypeDeclContext)
 }
 
-type LabelExportedInterfaceContext struct {
-	ExportedItemContext
-}
-
-func NewLabelExportedInterfaceContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelExportedInterfaceContext {
-	var p = new(LabelExportedInterfaceContext)
-
-	InitEmptyExportedItemContext(&p.ExportedItemContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ExportedItemContext))
-
-	return p
-}
-
-func (s *LabelExportedInterfaceContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelExportedInterfaceContext) InterfaceDecl() IInterfaceDeclContext {
+func (s *ExportedItemContext) InterfaceDecl() IInterfaceDeclContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IInterfaceDeclContext); ok {
@@ -2222,22 +2079,30 @@ func (s *LabelExportedInterfaceContext) InterfaceDecl() IInterfaceDeclContext {
 	return t.(IInterfaceDeclContext)
 }
 
-func (s *LabelExportedInterfaceContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *ExportedItemContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *ExportedItemContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *ExportedItemContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelExportedInterface(s)
+		listenerT.EnterExportedItem(s)
 	}
 }
 
-func (s *LabelExportedInterfaceContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *ExportedItemContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelExportedInterface(s)
+		listenerT.ExitExportedItem(s)
 	}
 }
 
-func (s *LabelExportedInterfaceContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *ExportedItemContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLabelExportedInterface(s)
+		return t.VisitExportedItem(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -2255,7 +2120,6 @@ func (p *Manuscript) ExportedItem() (localctx IExportedItemContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptFN:
-		localctx = NewLabelExportedFnContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(266)
@@ -2263,7 +2127,6 @@ func (p *Manuscript) ExportedItem() (localctx IExportedItemContext) {
 		}
 
 	case ManuscriptLET:
-		localctx = NewLabelExportedLetContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(267)
@@ -2271,7 +2134,6 @@ func (p *Manuscript) ExportedItem() (localctx IExportedItemContext) {
 		}
 
 	case ManuscriptTYPE:
-		localctx = NewLabelExportedTypeContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(268)
@@ -2279,7 +2141,6 @@ func (p *Manuscript) ExportedItem() (localctx IExportedItemContext) {
 		}
 
 	case ManuscriptINTERFACE:
-		localctx = NewLabelExportedInterfaceContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(269)
@@ -2310,6 +2171,11 @@ type IModuleImportContext interface {
 
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
+
+	// Getter signatures
+	DestructuredImport() IDestructuredImportContext
+	TargetImport() ITargetImportContext
+
 	// IsModuleImportContext differentiates from other interfaces.
 	IsModuleImportContext()
 }
@@ -2346,37 +2212,7 @@ func NewModuleImportContext(parser antlr.Parser, parent antlr.ParserRuleContext,
 
 func (s *ModuleImportContext) GetParser() antlr.Parser { return s.parser }
 
-func (s *ModuleImportContext) CopyAll(ctx *ModuleImportContext) {
-	s.CopyFrom(&ctx.BaseParserRuleContext)
-}
-
-func (s *ModuleImportContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *ModuleImportContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
-	return antlr.TreesStringTree(s, ruleNames, recog)
-}
-
-type LabelModuleImportDestructuredContext struct {
-	ModuleImportContext
-}
-
-func NewLabelModuleImportDestructuredContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelModuleImportDestructuredContext {
-	var p = new(LabelModuleImportDestructuredContext)
-
-	InitEmptyModuleImportContext(&p.ModuleImportContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ModuleImportContext))
-
-	return p
-}
-
-func (s *LabelModuleImportDestructuredContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelModuleImportDestructuredContext) DestructuredImport() IDestructuredImportContext {
+func (s *ModuleImportContext) DestructuredImport() IDestructuredImportContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(IDestructuredImportContext); ok {
@@ -2392,47 +2228,7 @@ func (s *LabelModuleImportDestructuredContext) DestructuredImport() IDestructure
 	return t.(IDestructuredImportContext)
 }
 
-func (s *LabelModuleImportDestructuredContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelModuleImportDestructured(s)
-	}
-}
-
-func (s *LabelModuleImportDestructuredContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelModuleImportDestructured(s)
-	}
-}
-
-func (s *LabelModuleImportDestructuredContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLabelModuleImportDestructured(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type LabelModuleImportTargetContext struct {
-	ModuleImportContext
-}
-
-func NewLabelModuleImportTargetContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelModuleImportTargetContext {
-	var p = new(LabelModuleImportTargetContext)
-
-	InitEmptyModuleImportContext(&p.ModuleImportContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*ModuleImportContext))
-
-	return p
-}
-
-func (s *LabelModuleImportTargetContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelModuleImportTargetContext) TargetImport() ITargetImportContext {
+func (s *ModuleImportContext) TargetImport() ITargetImportContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ITargetImportContext); ok {
@@ -2448,22 +2244,30 @@ func (s *LabelModuleImportTargetContext) TargetImport() ITargetImportContext {
 	return t.(ITargetImportContext)
 }
 
-func (s *LabelModuleImportTargetContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *ModuleImportContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *ModuleImportContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *ModuleImportContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelModuleImportTarget(s)
+		listenerT.EnterModuleImport(s)
 	}
 }
 
-func (s *LabelModuleImportTargetContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *ModuleImportContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelModuleImportTarget(s)
+		listenerT.ExitModuleImport(s)
 	}
 }
 
-func (s *LabelModuleImportTargetContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *ModuleImportContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLabelModuleImportTarget(s)
+		return t.VisitModuleImport(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -2481,7 +2285,6 @@ func (p *Manuscript) ModuleImport() (localctx IModuleImportContext) {
 
 	switch p.GetTokenStream().LA(1) {
 	case ManuscriptLBRACE:
-		localctx = NewLabelModuleImportDestructuredContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(272)
@@ -2489,7 +2292,6 @@ func (p *Manuscript) ModuleImport() (localctx IModuleImportContext) {
 		}
 
 	case ManuscriptID:
-		localctx = NewLabelModuleImportTargetContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(273)

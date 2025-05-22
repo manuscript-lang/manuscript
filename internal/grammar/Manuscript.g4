@@ -25,13 +25,13 @@ exportDecl: EXPORT exportedItem SEMICOLON?;
 externDecl: EXTERN moduleImport SEMICOLON?;
 
 exportedItem:
-	fnDecl			# LabelExportedFn
-	| letDecl		# LabelExportedLet
-	| typeDecl		# LabelExportedType
-	| interfaceDecl	# LabelExportedInterface;
+	fnDecl			
+	| letDecl		
+	| typeDecl		
+	| interfaceDecl;
 moduleImport:
-	destructuredImport	# LabelModuleImportDestructured
-	| targetImport		# LabelModuleImportTarget;
+	destructuredImport	
+	| targetImport;
 destructuredImport:
 	LBRACE importItemList? RBRACE FROM singleQuotedString;
 targetImport: ID FROM singleQuotedString;

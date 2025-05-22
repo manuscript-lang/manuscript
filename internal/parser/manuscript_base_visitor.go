@@ -28,27 +28,11 @@ func (v *BaseManuscriptVisitor) VisitExternDecl(ctx *ExternDeclContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelExportedFn(ctx *LabelExportedFnContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitExportedItem(ctx *ExportedItemContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelExportedLet(ctx *LabelExportedLetContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelExportedType(ctx *LabelExportedTypeContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelExportedInterface(ctx *LabelExportedInterfaceContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelModuleImportDestructured(ctx *LabelModuleImportDestructuredContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelModuleImportTarget(ctx *LabelModuleImportTargetContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitModuleImport(ctx *ModuleImportContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

@@ -7,18 +7,17 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
-func (v *ManuscriptAstVisitor) VisitLabelModuleImportTarget(ctx *parser.LabelModuleImportTargetContext) interface{} {
-	target := ctx.TargetImport()
-	if target == nil {
+func (v *ManuscriptAstVisitor) VisitTargetImport(ctx *parser.TargetImportContext) interface{} {
+	if ctx == nil {
 		v.addError("Malformed import: missing target", ctx.GetStart())
 		return nil
 	}
 	var alias string
-	if id := target.ID(); id != nil {
+	if id := ctx.ID(); id != nil {
 		alias = id.GetText()
 	}
 	var importLt *ast.BasicLit
-	if a := v.stringPartsToBasicLit(target.SingleQuotedString().AllStringPart()); a != nil {
+	if a := v.stringPartsToBasicLit(ctx.SingleQuotedString().AllStringPart()); a != nil {
 		lt, ok := a.(*ast.BasicLit)
 		if ok {
 			importLt = lt
@@ -35,14 +34,13 @@ func (v *ManuscriptAstVisitor) VisitLabelModuleImportTarget(ctx *parser.LabelMod
 	return []ast.Decl{}
 }
 
-func (v *ManuscriptAstVisitor) VisitLabelModuleImportDestructured(ctx *parser.LabelModuleImportDestructuredContext) interface{} {
-	destr := ctx.DestructuredImport()
-	if destr == nil {
+func (v *ManuscriptAstVisitor) VisitDestructuredImport(ctx *parser.DestructuredImportContext) interface{} {
+	if ctx == nil {
 		v.addError("Malformed destructured import: missing destructured import", ctx.GetStart())
 		return nil
 	}
 	var importLt *ast.BasicLit
-	if a := v.stringPartsToBasicLit(destr.SingleQuotedString().AllStringPart()); a != nil {
+	if a := v.stringPartsToBasicLit(ctx.SingleQuotedString().AllStringPart()); a != nil {
 		lt, ok := a.(*ast.BasicLit)
 		if ok {
 			importLt = lt
@@ -58,8 +56,8 @@ func (v *ManuscriptAstVisitor) VisitLabelModuleImportDestructured(ctx *parser.La
 		Name: ast.NewIdent(alias),
 	})
 	decls := []ast.Decl{}
-	if destr.ImportItemList() != nil {
-		for _, item := range destr.ImportItemList().AllImportItem() {
+	if ctx.ImportItemList() != nil {
+		for _, item := range ctx.ImportItemList().AllImportItem() {
 			var orig, as string
 			if item.ID(0) != nil {
 				orig = item.ID(0).GetText()
@@ -84,4 +82,20 @@ func (v *ManuscriptAstVisitor) VisitLabelModuleImportDestructured(ctx *parser.La
 		}
 	}
 	return decls
+}
+
+func (v *ManuscriptAstVisitor) VisitModuleImport(ctx *parser.ModuleImportContext) interface{} {
+	if ctx == nil {
+		v.addError("Malformed module import: missing module import", nil)
+		return nil
+	}
+	return v.VisitChildren(ctx)
+}
+
+func (v *ManuscriptAstVisitor) VisitExportedItem(ctx *parser.ExportedItemContext) interface{} {
+	if ctx == nil {
+		v.addError("Malformed exported item: missing exported item", nil)
+		return nil
+	}
+	return v.VisitChildren(ctx)
 }

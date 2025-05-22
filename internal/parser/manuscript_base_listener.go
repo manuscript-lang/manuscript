@@ -51,43 +51,17 @@ func (s *BaseManuscriptListener) EnterExternDecl(ctx *ExternDeclContext) {}
 // ExitExternDecl is called when production externDecl is exited.
 func (s *BaseManuscriptListener) ExitExternDecl(ctx *ExternDeclContext) {}
 
-// EnterLabelExportedFn is called when production LabelExportedFn is entered.
-func (s *BaseManuscriptListener) EnterLabelExportedFn(ctx *LabelExportedFnContext) {}
+// EnterExportedItem is called when production exportedItem is entered.
+func (s *BaseManuscriptListener) EnterExportedItem(ctx *ExportedItemContext) {}
 
-// ExitLabelExportedFn is called when production LabelExportedFn is exited.
-func (s *BaseManuscriptListener) ExitLabelExportedFn(ctx *LabelExportedFnContext) {}
+// ExitExportedItem is called when production exportedItem is exited.
+func (s *BaseManuscriptListener) ExitExportedItem(ctx *ExportedItemContext) {}
 
-// EnterLabelExportedLet is called when production LabelExportedLet is entered.
-func (s *BaseManuscriptListener) EnterLabelExportedLet(ctx *LabelExportedLetContext) {}
+// EnterModuleImport is called when production moduleImport is entered.
+func (s *BaseManuscriptListener) EnterModuleImport(ctx *ModuleImportContext) {}
 
-// ExitLabelExportedLet is called when production LabelExportedLet is exited.
-func (s *BaseManuscriptListener) ExitLabelExportedLet(ctx *LabelExportedLetContext) {}
-
-// EnterLabelExportedType is called when production LabelExportedType is entered.
-func (s *BaseManuscriptListener) EnterLabelExportedType(ctx *LabelExportedTypeContext) {}
-
-// ExitLabelExportedType is called when production LabelExportedType is exited.
-func (s *BaseManuscriptListener) ExitLabelExportedType(ctx *LabelExportedTypeContext) {}
-
-// EnterLabelExportedInterface is called when production LabelExportedInterface is entered.
-func (s *BaseManuscriptListener) EnterLabelExportedInterface(ctx *LabelExportedInterfaceContext) {}
-
-// ExitLabelExportedInterface is called when production LabelExportedInterface is exited.
-func (s *BaseManuscriptListener) ExitLabelExportedInterface(ctx *LabelExportedInterfaceContext) {}
-
-// EnterLabelModuleImportDestructured is called when production LabelModuleImportDestructured is entered.
-func (s *BaseManuscriptListener) EnterLabelModuleImportDestructured(ctx *LabelModuleImportDestructuredContext) {
-}
-
-// ExitLabelModuleImportDestructured is called when production LabelModuleImportDestructured is exited.
-func (s *BaseManuscriptListener) ExitLabelModuleImportDestructured(ctx *LabelModuleImportDestructuredContext) {
-}
-
-// EnterLabelModuleImportTarget is called when production LabelModuleImportTarget is entered.
-func (s *BaseManuscriptListener) EnterLabelModuleImportTarget(ctx *LabelModuleImportTargetContext) {}
-
-// ExitLabelModuleImportTarget is called when production LabelModuleImportTarget is exited.
-func (s *BaseManuscriptListener) ExitLabelModuleImportTarget(ctx *LabelModuleImportTargetContext) {}
+// ExitModuleImport is called when production moduleImport is exited.
+func (s *BaseManuscriptListener) ExitModuleImport(ctx *ModuleImportContext) {}
 
 // EnterDestructuredImport is called when production destructuredImport is entered.
 func (s *BaseManuscriptListener) EnterDestructuredImport(ctx *DestructuredImportContext) {}
