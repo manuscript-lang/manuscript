@@ -24,3 +24,16 @@ var D = __import2.C3
 func main() {
 }
 ```
+
+# should extern
+```ms
+extern os from 'os'
+```
+```go
+package main
+
+import os "os"
+
+func main() {
+}
+```

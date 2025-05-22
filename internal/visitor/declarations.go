@@ -83,3 +83,11 @@ func (v *ManuscriptAstVisitor) VisitDeclImport(ctx *parser.DeclImportContext) in
 	}
 	return nil
 }
+
+func (v *ManuscriptAstVisitor) VisitExternDecl(ctx *parser.ExternDeclContext) interface{} {
+	modImport := ctx.ModuleImport()
+	if modImport != nil {
+		return v.Visit(modImport)
+	}
+	return nil
+}
