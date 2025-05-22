@@ -2999,6 +2999,15 @@ type ILetDeclContext interface {
 
 	// GetParser returns the parser.
 	GetParser() antlr.Parser
+
+	// Getter signatures
+	LET() antlr.TerminalNode
+	LetSingle() ILetSingleContext
+	SEMICOLON() antlr.TerminalNode
+	LetBlock() ILetBlockContext
+	LetDestructuredObj() ILetDestructuredObjContext
+	LetDestructuredArray() ILetDestructuredArrayContext
+
 	// IsLetDeclContext differentiates from other interfaces.
 	IsLetDeclContext()
 }
@@ -3035,233 +3044,11 @@ func NewLetDeclContext(parser antlr.Parser, parent antlr.ParserRuleContext, invo
 
 func (s *LetDeclContext) GetParser() antlr.Parser { return s.parser }
 
-func (s *LetDeclContext) CopyAll(ctx *LetDeclContext) {
-	s.CopyFrom(&ctx.BaseParserRuleContext)
-}
-
-func (s *LetDeclContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LetDeclContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
-	return antlr.TreesStringTree(s, ruleNames, recog)
-}
-
-type LabelLetDeclDestructuredObjContext struct {
-	LetDeclContext
-}
-
-func NewLabelLetDeclDestructuredObjContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetDeclDestructuredObjContext {
-	var p = new(LabelLetDeclDestructuredObjContext)
-
-	InitEmptyLetDeclContext(&p.LetDeclContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*LetDeclContext))
-
-	return p
-}
-
-func (s *LabelLetDeclDestructuredObjContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelLetDeclDestructuredObjContext) LET() antlr.TerminalNode {
+func (s *LetDeclContext) LET() antlr.TerminalNode {
 	return s.GetToken(ManuscriptLET, 0)
 }
 
-func (s *LabelLetDeclDestructuredObjContext) LetDestructuredObj() ILetDestructuredObjContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ILetDestructuredObjContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ILetDestructuredObjContext)
-}
-
-func (s *LabelLetDeclDestructuredObjContext) SEMICOLON() antlr.TerminalNode {
-	return s.GetToken(ManuscriptSEMICOLON, 0)
-}
-
-func (s *LabelLetDeclDestructuredObjContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelLetDeclDestructuredObj(s)
-	}
-}
-
-func (s *LabelLetDeclDestructuredObjContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelLetDeclDestructuredObj(s)
-	}
-}
-
-func (s *LabelLetDeclDestructuredObjContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLabelLetDeclDestructuredObj(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type LabelLetDeclBlockContext struct {
-	LetDeclContext
-}
-
-func NewLabelLetDeclBlockContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetDeclBlockContext {
-	var p = new(LabelLetDeclBlockContext)
-
-	InitEmptyLetDeclContext(&p.LetDeclContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*LetDeclContext))
-
-	return p
-}
-
-func (s *LabelLetDeclBlockContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelLetDeclBlockContext) LET() antlr.TerminalNode {
-	return s.GetToken(ManuscriptLET, 0)
-}
-
-func (s *LabelLetDeclBlockContext) LetBlock() ILetBlockContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ILetBlockContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ILetBlockContext)
-}
-
-func (s *LabelLetDeclBlockContext) SEMICOLON() antlr.TerminalNode {
-	return s.GetToken(ManuscriptSEMICOLON, 0)
-}
-
-func (s *LabelLetDeclBlockContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelLetDeclBlock(s)
-	}
-}
-
-func (s *LabelLetDeclBlockContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelLetDeclBlock(s)
-	}
-}
-
-func (s *LabelLetDeclBlockContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLabelLetDeclBlock(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type LabelLetDeclDestructuredArrayContext struct {
-	LetDeclContext
-}
-
-func NewLabelLetDeclDestructuredArrayContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetDeclDestructuredArrayContext {
-	var p = new(LabelLetDeclDestructuredArrayContext)
-
-	InitEmptyLetDeclContext(&p.LetDeclContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*LetDeclContext))
-
-	return p
-}
-
-func (s *LabelLetDeclDestructuredArrayContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelLetDeclDestructuredArrayContext) LET() antlr.TerminalNode {
-	return s.GetToken(ManuscriptLET, 0)
-}
-
-func (s *LabelLetDeclDestructuredArrayContext) LetDestructuredArray() ILetDestructuredArrayContext {
-	var t antlr.RuleContext
-	for _, ctx := range s.GetChildren() {
-		if _, ok := ctx.(ILetDestructuredArrayContext); ok {
-			t = ctx.(antlr.RuleContext)
-			break
-		}
-	}
-
-	if t == nil {
-		return nil
-	}
-
-	return t.(ILetDestructuredArrayContext)
-}
-
-func (s *LabelLetDeclDestructuredArrayContext) SEMICOLON() antlr.TerminalNode {
-	return s.GetToken(ManuscriptSEMICOLON, 0)
-}
-
-func (s *LabelLetDeclDestructuredArrayContext) EnterRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelLetDeclDestructuredArray(s)
-	}
-}
-
-func (s *LabelLetDeclDestructuredArrayContext) ExitRule(listener antlr.ParseTreeListener) {
-	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelLetDeclDestructuredArray(s)
-	}
-}
-
-func (s *LabelLetDeclDestructuredArrayContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
-	switch t := visitor.(type) {
-	case ManuscriptVisitor:
-		return t.VisitLabelLetDeclDestructuredArray(s)
-
-	default:
-		return t.VisitChildren(s)
-	}
-}
-
-type LabelLetDeclSingleContext struct {
-	LetDeclContext
-}
-
-func NewLabelLetDeclSingleContext(parser antlr.Parser, ctx antlr.ParserRuleContext) *LabelLetDeclSingleContext {
-	var p = new(LabelLetDeclSingleContext)
-
-	InitEmptyLetDeclContext(&p.LetDeclContext)
-	p.parser = parser
-	p.CopyAll(ctx.(*LetDeclContext))
-
-	return p
-}
-
-func (s *LabelLetDeclSingleContext) GetRuleContext() antlr.RuleContext {
-	return s
-}
-
-func (s *LabelLetDeclSingleContext) LET() antlr.TerminalNode {
-	return s.GetToken(ManuscriptLET, 0)
-}
-
-func (s *LabelLetDeclSingleContext) LetSingle() ILetSingleContext {
+func (s *LetDeclContext) LetSingle() ILetSingleContext {
 	var t antlr.RuleContext
 	for _, ctx := range s.GetChildren() {
 		if _, ok := ctx.(ILetSingleContext); ok {
@@ -3277,26 +3064,82 @@ func (s *LabelLetDeclSingleContext) LetSingle() ILetSingleContext {
 	return t.(ILetSingleContext)
 }
 
-func (s *LabelLetDeclSingleContext) SEMICOLON() antlr.TerminalNode {
+func (s *LetDeclContext) SEMICOLON() antlr.TerminalNode {
 	return s.GetToken(ManuscriptSEMICOLON, 0)
 }
 
-func (s *LabelLetDeclSingleContext) EnterRule(listener antlr.ParseTreeListener) {
+func (s *LetDeclContext) LetBlock() ILetBlockContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ILetBlockContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ILetBlockContext)
+}
+
+func (s *LetDeclContext) LetDestructuredObj() ILetDestructuredObjContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ILetDestructuredObjContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ILetDestructuredObjContext)
+}
+
+func (s *LetDeclContext) LetDestructuredArray() ILetDestructuredArrayContext {
+	var t antlr.RuleContext
+	for _, ctx := range s.GetChildren() {
+		if _, ok := ctx.(ILetDestructuredArrayContext); ok {
+			t = ctx.(antlr.RuleContext)
+			break
+		}
+	}
+
+	if t == nil {
+		return nil
+	}
+
+	return t.(ILetDestructuredArrayContext)
+}
+
+func (s *LetDeclContext) GetRuleContext() antlr.RuleContext {
+	return s
+}
+
+func (s *LetDeclContext) ToStringTree(ruleNames []string, recog antlr.Recognizer) string {
+	return antlr.TreesStringTree(s, ruleNames, recog)
+}
+
+func (s *LetDeclContext) EnterRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.EnterLabelLetDeclSingle(s)
+		listenerT.EnterLetDecl(s)
 	}
 }
 
-func (s *LabelLetDeclSingleContext) ExitRule(listener antlr.ParseTreeListener) {
+func (s *LetDeclContext) ExitRule(listener antlr.ParseTreeListener) {
 	if listenerT, ok := listener.(ManuscriptListener); ok {
-		listenerT.ExitLabelLetDeclSingle(s)
+		listenerT.ExitLetDecl(s)
 	}
 }
 
-func (s *LabelLetDeclSingleContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
+func (s *LetDeclContext) Accept(visitor antlr.ParseTreeVisitor) interface{} {
 	switch t := visitor.(type) {
 	case ManuscriptVisitor:
-		return t.VisitLabelLetDeclSingle(s)
+		return t.VisitLetDecl(s)
 
 	default:
 		return t.VisitChildren(s)
@@ -3314,7 +3157,6 @@ func (p *Manuscript) LetDecl() (localctx ILetDeclContext) {
 
 	switch p.GetInterpreter().AdaptivePredict(p.BaseParser, p.GetTokenStream(), 19, p.GetParserRuleContext()) {
 	case 1:
-		localctx = NewLabelLetDeclSingleContext(p, localctx)
 		p.EnterOuterAlt(localctx, 1)
 		{
 			p.SetState(304)
@@ -3346,7 +3188,6 @@ func (p *Manuscript) LetDecl() (localctx ILetDeclContext) {
 		}
 
 	case 2:
-		localctx = NewLabelLetDeclBlockContext(p, localctx)
 		p.EnterOuterAlt(localctx, 2)
 		{
 			p.SetState(309)
@@ -3378,7 +3219,6 @@ func (p *Manuscript) LetDecl() (localctx ILetDeclContext) {
 		}
 
 	case 3:
-		localctx = NewLabelLetDeclDestructuredObjContext(p, localctx)
 		p.EnterOuterAlt(localctx, 3)
 		{
 			p.SetState(314)
@@ -3410,7 +3250,6 @@ func (p *Manuscript) LetDecl() (localctx ILetDeclContext) {
 		}
 
 	case 4:
-		localctx = NewLabelLetDeclDestructuredArrayContext(p, localctx)
 		p.EnterOuterAlt(localctx, 4)
 		{
 			p.SetState(319)

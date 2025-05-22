@@ -41,17 +41,8 @@ type ManuscriptListener interface {
 	// EnterImportItem is called when entering the importItem production.
 	EnterImportItem(c *ImportItemContext)
 
-	// EnterLabelLetDeclSingle is called when entering the LabelLetDeclSingle production.
-	EnterLabelLetDeclSingle(c *LabelLetDeclSingleContext)
-
-	// EnterLabelLetDeclBlock is called when entering the LabelLetDeclBlock production.
-	EnterLabelLetDeclBlock(c *LabelLetDeclBlockContext)
-
-	// EnterLabelLetDeclDestructuredObj is called when entering the LabelLetDeclDestructuredObj production.
-	EnterLabelLetDeclDestructuredObj(c *LabelLetDeclDestructuredObjContext)
-
-	// EnterLabelLetDeclDestructuredArray is called when entering the LabelLetDeclDestructuredArray production.
-	EnterLabelLetDeclDestructuredArray(c *LabelLetDeclDestructuredArrayContext)
+	// EnterLetDecl is called when entering the letDecl production.
+	EnterLetDecl(c *LetDeclContext)
 
 	// EnterLetSingle is called when entering the letSingle production.
 	EnterLetSingle(c *LetSingleContext)
@@ -548,17 +539,8 @@ type ManuscriptListener interface {
 	// ExitImportItem is called when exiting the importItem production.
 	ExitImportItem(c *ImportItemContext)
 
-	// ExitLabelLetDeclSingle is called when exiting the LabelLetDeclSingle production.
-	ExitLabelLetDeclSingle(c *LabelLetDeclSingleContext)
-
-	// ExitLabelLetDeclBlock is called when exiting the LabelLetDeclBlock production.
-	ExitLabelLetDeclBlock(c *LabelLetDeclBlockContext)
-
-	// ExitLabelLetDeclDestructuredObj is called when exiting the LabelLetDeclDestructuredObj production.
-	ExitLabelLetDeclDestructuredObj(c *LabelLetDeclDestructuredObjContext)
-
-	// ExitLabelLetDeclDestructuredArray is called when exiting the LabelLetDeclDestructuredArray production.
-	ExitLabelLetDeclDestructuredArray(c *LabelLetDeclDestructuredArrayContext)
+	// ExitLetDecl is called when exiting the letDecl production.
+	ExitLetDecl(c *LetDeclContext)
 
 	// ExitLetSingle is called when exiting the letSingle production.
 	ExitLetSingle(c *LetSingleContext)

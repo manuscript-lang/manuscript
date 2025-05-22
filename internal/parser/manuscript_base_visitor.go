@@ -52,19 +52,7 @@ func (v *BaseManuscriptVisitor) VisitImportItem(ctx *ImportItemContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelLetDeclSingle(ctx *LabelLetDeclSingleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelLetDeclBlock(ctx *LabelLetDeclBlockContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelLetDeclDestructuredObj(ctx *LabelLetDeclDestructuredObjContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelLetDeclDestructuredArray(ctx *LabelLetDeclDestructuredArrayContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLetDecl(ctx *LetDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

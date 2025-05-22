@@ -87,33 +87,11 @@ func (s *BaseManuscriptListener) EnterImportItem(ctx *ImportItemContext) {}
 // ExitImportItem is called when production importItem is exited.
 func (s *BaseManuscriptListener) ExitImportItem(ctx *ImportItemContext) {}
 
-// EnterLabelLetDeclSingle is called when production LabelLetDeclSingle is entered.
-func (s *BaseManuscriptListener) EnterLabelLetDeclSingle(ctx *LabelLetDeclSingleContext) {}
+// EnterLetDecl is called when production letDecl is entered.
+func (s *BaseManuscriptListener) EnterLetDecl(ctx *LetDeclContext) {}
 
-// ExitLabelLetDeclSingle is called when production LabelLetDeclSingle is exited.
-func (s *BaseManuscriptListener) ExitLabelLetDeclSingle(ctx *LabelLetDeclSingleContext) {}
-
-// EnterLabelLetDeclBlock is called when production LabelLetDeclBlock is entered.
-func (s *BaseManuscriptListener) EnterLabelLetDeclBlock(ctx *LabelLetDeclBlockContext) {}
-
-// ExitLabelLetDeclBlock is called when production LabelLetDeclBlock is exited.
-func (s *BaseManuscriptListener) ExitLabelLetDeclBlock(ctx *LabelLetDeclBlockContext) {}
-
-// EnterLabelLetDeclDestructuredObj is called when production LabelLetDeclDestructuredObj is entered.
-func (s *BaseManuscriptListener) EnterLabelLetDeclDestructuredObj(ctx *LabelLetDeclDestructuredObjContext) {
-}
-
-// ExitLabelLetDeclDestructuredObj is called when production LabelLetDeclDestructuredObj is exited.
-func (s *BaseManuscriptListener) ExitLabelLetDeclDestructuredObj(ctx *LabelLetDeclDestructuredObjContext) {
-}
-
-// EnterLabelLetDeclDestructuredArray is called when production LabelLetDeclDestructuredArray is entered.
-func (s *BaseManuscriptListener) EnterLabelLetDeclDestructuredArray(ctx *LabelLetDeclDestructuredArrayContext) {
-}
-
-// ExitLabelLetDeclDestructuredArray is called when production LabelLetDeclDestructuredArray is exited.
-func (s *BaseManuscriptListener) ExitLabelLetDeclDestructuredArray(ctx *LabelLetDeclDestructuredArrayContext) {
-}
+// ExitLetDecl is called when production letDecl is exited.
+func (s *BaseManuscriptListener) ExitLetDecl(ctx *LetDeclContext) {}
 
 // EnterLetSingle is called when production letSingle is entered.
 func (s *BaseManuscriptListener) EnterLetSingle(ctx *LetSingleContext) {}

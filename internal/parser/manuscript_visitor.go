@@ -41,17 +41,8 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#importItem.
 	VisitImportItem(ctx *ImportItemContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelLetDeclSingle.
-	VisitLabelLetDeclSingle(ctx *LabelLetDeclSingleContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelLetDeclBlock.
-	VisitLabelLetDeclBlock(ctx *LabelLetDeclBlockContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelLetDeclDestructuredObj.
-	VisitLabelLetDeclDestructuredObj(ctx *LabelLetDeclDestructuredObjContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelLetDeclDestructuredArray.
-	VisitLabelLetDeclDestructuredArray(ctx *LabelLetDeclDestructuredArrayContext) interface{}
+	// Visit a parse tree produced by Manuscript#letDecl.
+	VisitLetDecl(ctx *LetDeclContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#letSingle.
 	VisitLetSingle(ctx *LetSingleContext) interface{}

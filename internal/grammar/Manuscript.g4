@@ -40,10 +40,10 @@ importItem: ID (AS ID)?;
 
 // --- Let Declarations ---
 letDecl:
-	LET letSingle SEMICOLON?				# LabelLetDeclSingle
-	| LET letBlock SEMICOLON?				# LabelLetDeclBlock
-	| LET letDestructuredObj SEMICOLON?		# LabelLetDeclDestructuredObj
-	| LET letDestructuredArray SEMICOLON?	# LabelLetDeclDestructuredArray;
+	LET letSingle SEMICOLON?				
+	| LET letBlock SEMICOLON?			
+	| LET letDestructuredObj SEMICOLON?	
+	| LET letDestructuredArray SEMICOLON?;
 
 letSingle: typedID (EQUALS expr)?;
 letBlock: LPAREN letBlockItemList? RPAREN;
