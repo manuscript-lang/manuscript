@@ -27,53 +27,11 @@ func (s *BaseManuscriptListener) EnterProgram(ctx *ProgramContext) {}
 // ExitProgram is called when production program is exited.
 func (s *BaseManuscriptListener) ExitProgram(ctx *ProgramContext) {}
 
-// EnterLabelDeclImport is called when production LabelDeclImport is entered.
-func (s *BaseManuscriptListener) EnterLabelDeclImport(ctx *LabelDeclImportContext) {}
+// EnterDeclaration is called when production declaration is entered.
+func (s *BaseManuscriptListener) EnterDeclaration(ctx *DeclarationContext) {}
 
-// ExitLabelDeclImport is called when production LabelDeclImport is exited.
-func (s *BaseManuscriptListener) ExitLabelDeclImport(ctx *LabelDeclImportContext) {}
-
-// EnterLabelDeclExport is called when production LabelDeclExport is entered.
-func (s *BaseManuscriptListener) EnterLabelDeclExport(ctx *LabelDeclExportContext) {}
-
-// ExitLabelDeclExport is called when production LabelDeclExport is exited.
-func (s *BaseManuscriptListener) ExitLabelDeclExport(ctx *LabelDeclExportContext) {}
-
-// EnterLabelDeclExtern is called when production LabelDeclExtern is entered.
-func (s *BaseManuscriptListener) EnterLabelDeclExtern(ctx *LabelDeclExternContext) {}
-
-// ExitLabelDeclExtern is called when production LabelDeclExtern is exited.
-func (s *BaseManuscriptListener) ExitLabelDeclExtern(ctx *LabelDeclExternContext) {}
-
-// EnterLabelDeclLet is called when production LabelDeclLet is entered.
-func (s *BaseManuscriptListener) EnterLabelDeclLet(ctx *LabelDeclLetContext) {}
-
-// ExitLabelDeclLet is called when production LabelDeclLet is exited.
-func (s *BaseManuscriptListener) ExitLabelDeclLet(ctx *LabelDeclLetContext) {}
-
-// EnterLabelDeclType is called when production LabelDeclType is entered.
-func (s *BaseManuscriptListener) EnterLabelDeclType(ctx *LabelDeclTypeContext) {}
-
-// ExitLabelDeclType is called when production LabelDeclType is exited.
-func (s *BaseManuscriptListener) ExitLabelDeclType(ctx *LabelDeclTypeContext) {}
-
-// EnterLabelDeclInterface is called when production LabelDeclInterface is entered.
-func (s *BaseManuscriptListener) EnterLabelDeclInterface(ctx *LabelDeclInterfaceContext) {}
-
-// ExitLabelDeclInterface is called when production LabelDeclInterface is exited.
-func (s *BaseManuscriptListener) ExitLabelDeclInterface(ctx *LabelDeclInterfaceContext) {}
-
-// EnterLabelDeclFn is called when production LabelDeclFn is entered.
-func (s *BaseManuscriptListener) EnterLabelDeclFn(ctx *LabelDeclFnContext) {}
-
-// ExitLabelDeclFn is called when production LabelDeclFn is exited.
-func (s *BaseManuscriptListener) ExitLabelDeclFn(ctx *LabelDeclFnContext) {}
-
-// EnterLabelDeclMethods is called when production LabelDeclMethods is entered.
-func (s *BaseManuscriptListener) EnterLabelDeclMethods(ctx *LabelDeclMethodsContext) {}
-
-// ExitLabelDeclMethods is called when production LabelDeclMethods is exited.
-func (s *BaseManuscriptListener) ExitLabelDeclMethods(ctx *LabelDeclMethodsContext) {}
+// ExitDeclaration is called when production declaration is exited.
+func (s *BaseManuscriptListener) ExitDeclaration(ctx *DeclarationContext) {}
 
 // EnterImportDecl is called when production importDecl is entered.
 func (s *BaseManuscriptListener) EnterImportDecl(ctx *ImportDeclContext) {}

@@ -11,29 +11,8 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#program.
 	VisitProgram(ctx *ProgramContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelDeclImport.
-	VisitLabelDeclImport(ctx *LabelDeclImportContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelDeclExport.
-	VisitLabelDeclExport(ctx *LabelDeclExportContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelDeclExtern.
-	VisitLabelDeclExtern(ctx *LabelDeclExternContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelDeclLet.
-	VisitLabelDeclLet(ctx *LabelDeclLetContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelDeclType.
-	VisitLabelDeclType(ctx *LabelDeclTypeContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelDeclInterface.
-	VisitLabelDeclInterface(ctx *LabelDeclInterfaceContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelDeclFn.
-	VisitLabelDeclFn(ctx *LabelDeclFnContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelDeclMethods.
-	VisitLabelDeclMethods(ctx *LabelDeclMethodsContext) interface{}
+	// Visit a parse tree produced by Manuscript#declaration.
+	VisitDeclaration(ctx *DeclarationContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#importDecl.
 	VisitImportDecl(ctx *ImportDeclContext) interface{}

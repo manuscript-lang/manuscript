@@ -9,14 +9,15 @@ program:
 	stmt_sep* (declaration (stmt_sep+ declaration)*)? stmt_sep* EOF;
 
 declaration:
-	importDecl		# LabelDeclImport
-	| exportDecl	# LabelDeclExport
-	| externDecl	# LabelDeclExtern
-	| letDecl		# LabelDeclLet
-	| typeDecl		# LabelDeclType
-	| interfaceDecl	# LabelDeclInterface
-	| fnDecl		# LabelDeclFn
-	| methodsDecl	# LabelDeclMethods;
+	importDecl		
+	| exportDecl	
+	| externDecl	
+	| letDecl		
+	| typeDecl		
+	| interfaceDecl	
+	| fnDecl		
+	| methodsDecl	
+	;
 
 // --- Imports/Exports/Extern ---
 importDecl: IMPORT moduleImport SEMICOLON?;

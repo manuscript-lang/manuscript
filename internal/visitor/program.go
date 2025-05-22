@@ -28,8 +28,7 @@ func (v *ManuscriptAstVisitor) VisitProgram(ctx *parser.ProgramContext) interfac
 		if decl == nil {
 			continue
 		}
-		var node interface{}
-		node = v.VisitDeclaration(decl)
+		node := v.Visit(decl)
 
 		switch n := node.(type) {
 		case []ast.Decl:
@@ -115,36 +114,34 @@ func createEmptyMainFile() *ast.File {
 }
 
 // VisitDeclaration handles the 'declaration' rule using the ANTLR visitor pattern.
-func (v *ManuscriptAstVisitor) VisitDeclaration(ctx parser.IDeclarationContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitDeclaration(ctx *parser.DeclarationContext) interface{} {
 	if ctx == nil {
 		v.addError("Received nil declaration context", nil)
 		return nil
 	}
 	// Only DeclLetContext has LetDecl method
-	if letCtx, ok := ctx.(*parser.LabelDeclLetContext); ok {
-		letDecl := letCtx.LetDecl()
-		if letDecl != nil {
-			letResult := v.Visit(letDecl)
-			switch stmts := letResult.(type) {
-			case []ast.Stmt:
-				return stmts
-			case *ast.BlockStmt:
-				return stmts
-			case ast.Stmt:
-				return []ast.Stmt{stmts}
-			case nil:
-				return nil
-			default:
-				v.addError("LetDecl did not return ast.Stmt or []ast.Stmt", ctx.GetStart())
-				return nil
-			}
+
+	if letDecl := ctx.LetDecl(); letDecl != nil {
+		letResult := v.Visit(letDecl)
+		switch stmts := letResult.(type) {
+		case []ast.Stmt:
+			return stmts
+		case *ast.BlockStmt:
+			return stmts
+		case ast.Stmt:
+			return []ast.Stmt{stmts}
+		case nil:
+			return nil
+		default:
+			v.addError("LetDecl did not return ast.Stmt or []ast.Stmt", ctx.GetStart())
+			return nil
 		}
 	}
-	if importCtx, ok := ctx.(*parser.LabelDeclImportContext); ok {
-		return v.VisitLabelDeclImport(importCtx)
+	if importCtx := ctx.ImportDecl(); importCtx != nil {
+		return v.Visit(importCtx)
 	}
-	if exportCtx, ok := ctx.(*parser.LabelDeclExportContext); ok {
-		return v.VisitLabelDeclExport(exportCtx)
+	if exportCtx := ctx.ExportDecl(); exportCtx != nil {
+		return v.Visit(exportCtx)
 	}
 	if child, ok := ctx.GetChild(0).(antlr.ParseTree); ok {
 		return v.Visit(child)

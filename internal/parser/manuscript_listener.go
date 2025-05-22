@@ -11,29 +11,8 @@ type ManuscriptListener interface {
 	// EnterProgram is called when entering the program production.
 	EnterProgram(c *ProgramContext)
 
-	// EnterLabelDeclImport is called when entering the LabelDeclImport production.
-	EnterLabelDeclImport(c *LabelDeclImportContext)
-
-	// EnterLabelDeclExport is called when entering the LabelDeclExport production.
-	EnterLabelDeclExport(c *LabelDeclExportContext)
-
-	// EnterLabelDeclExtern is called when entering the LabelDeclExtern production.
-	EnterLabelDeclExtern(c *LabelDeclExternContext)
-
-	// EnterLabelDeclLet is called when entering the LabelDeclLet production.
-	EnterLabelDeclLet(c *LabelDeclLetContext)
-
-	// EnterLabelDeclType is called when entering the LabelDeclType production.
-	EnterLabelDeclType(c *LabelDeclTypeContext)
-
-	// EnterLabelDeclInterface is called when entering the LabelDeclInterface production.
-	EnterLabelDeclInterface(c *LabelDeclInterfaceContext)
-
-	// EnterLabelDeclFn is called when entering the LabelDeclFn production.
-	EnterLabelDeclFn(c *LabelDeclFnContext)
-
-	// EnterLabelDeclMethods is called when entering the LabelDeclMethods production.
-	EnterLabelDeclMethods(c *LabelDeclMethodsContext)
+	// EnterDeclaration is called when entering the declaration production.
+	EnterDeclaration(c *DeclarationContext)
 
 	// EnterImportDecl is called when entering the importDecl production.
 	EnterImportDecl(c *ImportDeclContext)
@@ -551,29 +530,8 @@ type ManuscriptListener interface {
 	// ExitProgram is called when exiting the program production.
 	ExitProgram(c *ProgramContext)
 
-	// ExitLabelDeclImport is called when exiting the LabelDeclImport production.
-	ExitLabelDeclImport(c *LabelDeclImportContext)
-
-	// ExitLabelDeclExport is called when exiting the LabelDeclExport production.
-	ExitLabelDeclExport(c *LabelDeclExportContext)
-
-	// ExitLabelDeclExtern is called when exiting the LabelDeclExtern production.
-	ExitLabelDeclExtern(c *LabelDeclExternContext)
-
-	// ExitLabelDeclLet is called when exiting the LabelDeclLet production.
-	ExitLabelDeclLet(c *LabelDeclLetContext)
-
-	// ExitLabelDeclType is called when exiting the LabelDeclType production.
-	ExitLabelDeclType(c *LabelDeclTypeContext)
-
-	// ExitLabelDeclInterface is called when exiting the LabelDeclInterface production.
-	ExitLabelDeclInterface(c *LabelDeclInterfaceContext)
-
-	// ExitLabelDeclFn is called when exiting the LabelDeclFn production.
-	ExitLabelDeclFn(c *LabelDeclFnContext)
-
-	// ExitLabelDeclMethods is called when exiting the LabelDeclMethods production.
-	ExitLabelDeclMethods(c *LabelDeclMethodsContext)
+	// ExitDeclaration is called when exiting the declaration production.
+	ExitDeclaration(c *DeclarationContext)
 
 	// ExitImportDecl is called when exiting the importDecl production.
 	ExitImportDecl(c *ImportDeclContext)

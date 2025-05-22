@@ -70,34 +70,6 @@ func (v *ManuscriptAstVisitor) VisitImportDecl(ctx *parser.ImportDeclContext) in
 	}
 }
 
-// VisitDeclImport handles the DeclImport context and dispatches to VisitImportDecl
-func (v *ManuscriptAstVisitor) VisitLabelDeclImport(ctx *parser.LabelDeclImportContext) interface{} {
-	if ctx == nil {
-		return nil
-	}
-	importDecl := ctx.ImportDecl()
-	if importDecl != nil {
-		if importDeclCtx, ok := importDecl.(*parser.ImportDeclContext); ok {
-			return v.VisitImportDecl(importDeclCtx)
-		}
-	}
-	return nil
-}
-
-// VisitDeclExport handles the DeclExport context and dispatches to VisitExportDecl, ensuring Go export naming
-func (v *ManuscriptAstVisitor) VisitLabelDeclExport(ctx *parser.LabelDeclExportContext) interface{} {
-	if ctx == nil {
-		return nil
-	}
-	exportDecl := ctx.ExportDecl()
-	if exportDecl != nil {
-		if exportDeclCtx, ok := exportDecl.(*parser.ExportDeclContext); ok {
-			return v.VisitExportDecl(exportDeclCtx)
-		}
-	}
-	return nil
-}
-
 // VisitExportDecl expects the exported item visitor methods to be implemented and return Go AST nodes.
 func (v *ManuscriptAstVisitor) VisitExportDecl(ctx *parser.ExportDeclContext) interface{} {
 	if ctx == nil || ctx.ExportedItem() == nil {

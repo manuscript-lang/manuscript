@@ -12,35 +12,7 @@ func (v *BaseManuscriptVisitor) VisitProgram(ctx *ProgramContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelDeclImport(ctx *LabelDeclImportContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelDeclExport(ctx *LabelDeclExportContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelDeclExtern(ctx *LabelDeclExternContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelDeclLet(ctx *LabelDeclLetContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelDeclType(ctx *LabelDeclTypeContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelDeclInterface(ctx *LabelDeclInterfaceContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelDeclFn(ctx *LabelDeclFnContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelDeclMethods(ctx *LabelDeclMethodsContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitDeclaration(ctx *DeclarationContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
