@@ -38,3 +38,11 @@ profile-test:
 	cd cmd && go test -c -o main.test
 	cd cmd && ./main.test -test.v -test.run ^TestCompile$$ -test.cpuprofile=cpu.prof
 	cd cmd && go tool pprof -http=:8080 ./main.test cpu.prof
+
+DIR = tests/minimal
+minimal-generate-parser:
+	cd $(DIR)/grammar && java -jar "../../../build/antlr-4.13.1-complete.jar" -Dlanguage=Go -o ../parser -visitor -listener ToyLexer.g4 Toy.g4
+	echo "Done!" 
+
+minimal-run:
+	cd $(DIR) && go run main/main.go
