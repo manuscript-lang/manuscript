@@ -185,8 +185,7 @@ comparisonExpr:
 
 // Arithmetic expressions
 shiftExpr:
-	additiveExpr
-	| left = shiftExpr op = (PLUS | MINUS) right = additiveExpr;
+	additiveExpr;
 additiveExpr:
 	multiplicativeExpr
 	| left = additiveExpr op = (PLUS | MINUS) right = multiplicativeExpr;
@@ -197,8 +196,8 @@ multiplicativeExpr:
 // Unary and postfix expressions
 unaryExpr:
 	op = (PLUS | MINUS | EXCLAMATION | TRY) unary = unaryExpr	# LabelUnaryOpExpr
-	| awaitExpr													# LabelUnaryAwaitExpr;
-awaitExpr: (TRY? AWAIT? ASYNC?) postfixExpr;
+	| awaitExpr									# LabelUnaryAwaitExpr;
+awaitExpr: (AWAIT? ASYNC?) postfixExpr;
 postfixExpr: primaryExpr | postfixExpr postfixOp;
 postfixOp:
 	LPAREN exprList? RPAREN	# LabelPostfixCall

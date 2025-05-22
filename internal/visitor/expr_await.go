@@ -5,9 +5,6 @@ import (
 )
 
 func (v *ManuscriptAstVisitor) VisitAwaitExpr(ctx *parser.AwaitExprContext) interface{} {
-	if ctx.TRY() != nil {
-		v.addError("Semantic translation for 'try' prefix in awaitExpr not fully implemented: "+ctx.GetText(), ctx.GetStart())
-	}
 	if ctx.AWAIT() != nil {
 		v.addError("Semantic translation for 'await' prefix in awaitExpr not fully implemented: "+ctx.GetText(), ctx.GetStart())
 	}
