@@ -1,6 +1,6 @@
-clean_install: clean install
+clean_install: clean build-msc
 
-install: 
+build-msc: 
 	go build -ldflags '-s -w' -o build/msc cmd/main.go 
 
 clean: 
@@ -18,7 +18,7 @@ generate_parser:
 	@./scripts/generate_parser.sh
 	@go mod tidy
 
-build: generate_parser install
+build: generate_parser build-msc
 
 .PHONY: test-file
 test-file:
@@ -38,6 +38,16 @@ profile-test:
 	cd cmd && go test -c -o main.test
 	cd cmd && ./main.test -test.v -test.run ^TestCompile$$ -test.cpuprofile=cpu.prof
 	cd cmd && go tool pprof -http=:8080 ./main.test cpu.prof
+
+build-lsp:
+	go build -ldflags '-s -w' -o build/msc-lsp tools/lsp/main.go
+
+build-vscode-extension: build-lsp
+	cp build/msc-lsp tools/manuscript-vscode-extension/msc-lsp
+	cd tools/manuscript-vscode-extension && npm run build
+
+build-all: build-msc build-lsp build-vscode-extension
+
 
 DIR = tests/minimal
 minimal-generate-parser:

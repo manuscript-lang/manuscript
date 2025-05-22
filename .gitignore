@@ -28,3 +28,8 @@ build/
 
 # ANTLR generated files
 .antlr/
+
+node_modules/
+
+msc-lsp
+msc

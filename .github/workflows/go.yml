@@ -19,7 +19,7 @@ jobs:
         cache: true
 
     - name: test
-      run: go test ./... -coverprofile=./cover.out -covermode=atomic -coverpkg=./...
+      run: make test-cov
 
     - name: check test coverage
       uses: vladopajic/go-test-coverage@v2
@@ -27,4 +27,4 @@ jobs:
         profile: cover.out
 
     - name: build
-      run: make install 
+      run: make build
