@@ -37,3 +37,16 @@ import os "os"
 func main() {
 }
 ```
+
+# should export
+```ms
+export fn doSomething() {}
+```
+```go
+package main
+
+func DoSomething() {
+}
+func main() {
+}
+```

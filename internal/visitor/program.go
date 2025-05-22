@@ -143,6 +143,9 @@ func (v *ManuscriptAstVisitor) VisitDeclaration(ctx parser.IDeclarationContext) 
 	if importCtx, ok := ctx.(*parser.DeclImportContext); ok {
 		return v.VisitDeclImport(importCtx)
 	}
+	if exportCtx, ok := ctx.(*parser.DeclExportContext); ok {
+		return v.VisitDeclExport(exportCtx)
+	}
 	if child, ok := ctx.GetChild(0).(antlr.ParseTree); ok {
 		return v.Visit(child)
 	}

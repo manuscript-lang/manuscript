@@ -84,6 +84,96 @@ func (v *ManuscriptAstVisitor) VisitDeclImport(ctx *parser.DeclImportContext) in
 	return nil
 }
 
+// VisitDeclExport handles the DeclExport context and dispatches to VisitExportDecl, ensuring Go export naming
+func (v *ManuscriptAstVisitor) VisitDeclExport(ctx *parser.DeclExportContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+	exportDecl := ctx.ExportDecl()
+	if exportDecl != nil {
+		if exportDeclCtx, ok := exportDecl.(*parser.ExportDeclContext); ok {
+			return v.VisitExportDecl(exportDeclCtx)
+		}
+	}
+	return nil
+}
+
+// VisitExportDecl handles export declarations and ensures Go export naming
+func (v *ManuscriptAstVisitor) VisitExportDecl(ctx *parser.ExportDeclContext) interface{} {
+	if ctx == nil || ctx.ExportedItem() == nil {
+		v.addError("Export declaration is missing an exported item.", ctx.GetStart())
+		return &ast.BadDecl{}
+	}
+	item := ctx.ExportedItem()
+	var visitedNode interface{}
+	switch t := item.(type) {
+	case *parser.ExportedFnContext:
+		if fn := t.FnDecl(); fn != nil {
+			if fnCtx, ok := fn.(*parser.FnDeclContext); ok {
+				visitedNode = v.VisitFnDecl(fnCtx)
+			}
+		}
+	case *parser.ExportedLetContext:
+		if let := t.LetDecl(); let != nil {
+			if letCtx, ok := let.(*parser.LetDeclContext); ok {
+				visitedNode = v.Visit(letCtx)
+			}
+		}
+	case *parser.ExportedTypeContext:
+		if typ := t.TypeDecl(); typ != nil {
+			if typCtx, ok := typ.(*parser.TypeDeclContext); ok {
+				visitedNode = v.VisitTypeDecl(typCtx)
+			}
+		}
+	case *parser.ExportedInterfaceContext:
+		if iface := t.InterfaceDecl(); iface != nil {
+			if ifaceCtx, ok := iface.(*parser.InterfaceDeclContext); ok {
+				visitedNode = v.VisitInterfaceDecl(ifaceCtx)
+			}
+		}
+	default:
+		v.addError("Exported item is not a recognized declaration.", ctx.GetStart())
+		return &ast.BadDecl{}
+	}
+	// Capitalize identifiers for Go export
+	if decl, ok := visitedNode.(*ast.FuncDecl); ok && decl.Name != nil {
+		decl.Name = ast.NewIdent(capitalize(decl.Name.Name))
+		return decl
+	}
+	if decl, ok := visitedNode.(*ast.GenDecl); ok && len(decl.Specs) > 0 {
+		for _, spec := range decl.Specs {
+			switch s := spec.(type) {
+			case *ast.TypeSpec:
+				s.Name = ast.NewIdent(capitalize(s.Name.Name))
+			case *ast.ValueSpec:
+				for i, n := range s.Names {
+					s.Names[i] = ast.NewIdent(capitalize(n.Name))
+				}
+			}
+		}
+		return decl
+	}
+	return visitedNode
+}
+
+// capitalize returns the string with the first letter uppercased (for Go export)
+func capitalize(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	r := []rune(s)
+	r[0] = toUpper(r[0])
+	return string(r)
+}
+
+// toUpper converts a rune to upper case if it's a lower case ASCII letter
+func toUpper(r rune) rune {
+	if r >= 'a' && r <= 'z' {
+		return r - 'a' + 'A'
+	}
+	return r
+}
+
 func (v *ManuscriptAstVisitor) VisitExternDecl(ctx *parser.ExternDeclContext) interface{} {
 	modImport := ctx.ModuleImport()
 	if modImport != nil {
