@@ -2,35 +2,6 @@
     "scopeName": "source.ms",
     "name": "Manuscript",
     "patterns": [
-        {
-            "name": "markup.fenced_code.block.markdown.manuscript",
-            "begin": "(^|\\G)(\\s*)(`{3,}|~{3,})\\s*(?i:ms|manuscript)\\s*$",
-            "end": "(^|\\G)(\\2|\\s{0,3})(\\3)\\s*$", 
-            "beginCaptures": {
-                "3": { "name": "punctuation.definition.fenced.markdown.ms" },
-                "4": { "name": "variable.language.fenced.markdown.ms" }
-            },
-            "endCaptures": {
-                "3": { "name": "punctuation.definition.fenced.markdown.ms" }
-            },
-            "patterns": [
-                {
-                    "begin": "(^|\\G)", 
-                    "while": "(^|\\G)(?!\\s*(\\3)\\s*$)", 
-                    "contentName": "meta.embedded.manuscript.in.markdown",
-                    "patterns": [
-                        { "include": "#comments" },
-                        { "include": "#keywords" },
-                        { "include": "#strings" },
-                        { "include": "#numbers" },
-                        { "include": "#operators" },
-                        { "include": "#punctuation" },
-                        { "include": "#variables" },
-                        { "include": "#constants" }
-                    ]
-                }
-            ]
-        },
         { "include": "#comments" },
         { "include": "#keywords" },
         { "include": "#strings" },
@@ -65,7 +36,7 @@
                 },
                 {
                     "name": "keyword.declaration.ms",
-                    "match": "\\b(let|fn|type|interface|extends|import|export|extern|methods|as)\\b"
+                    "match": "\\b(let|fn|type|interface|extends|import|export|extern|methods|as|from)\\b"
                 },
                 {
                     "name": "keyword.operator.word.ms",
@@ -218,7 +189,7 @@
                 },
                 {
                     "name": "keyword.operator.null-coalescing.ms",
-                    "match": "\\\\\\?\\."
+                    "match": "\\?\\."
                 },
                  {
                     "name": "keyword.operator.error-indication.ms",
@@ -241,16 +212,12 @@
         "variables": {
             "patterns": [
                 {
-                    "name": "variable.language.self.ms",
-                    "match": "\\bself\\b"
+                    "name": "variable.other.ms",
+                    "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
                 },
                 {
                     "name": "variable.parameter.ms",
-                     "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\\s*([a-zA-Z_][a-zA-Z0-9_]*(\\[\\]|\\?)?))"
-                },
-                {
-                    "name": "variable.other.ms",
-                    "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+                    "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\\s*([a-zA-Z_][a-zA-Z0-9_]*(\\[\\]|\\?)?))"
                 }
             ]
         },
