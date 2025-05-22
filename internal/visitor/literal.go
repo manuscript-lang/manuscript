@@ -7,8 +7,7 @@ import (
 	"strconv"
 )
 
-// --- Literal Visitors ---
-
+// --- string literal visitors ---
 func (v *ManuscriptAstVisitor) VisitLabelLiteralString(ctx *parser.LabelLiteralStringContext) interface{} {
 	if ctx.StringLiteral() != nil {
 		return v.Visit(ctx.StringLiteral())
@@ -17,13 +16,52 @@ func (v *ManuscriptAstVisitor) VisitLabelLiteralString(ctx *parser.LabelLiteralS
 	return &ast.BadExpr{}
 }
 
-func (v *ManuscriptAstVisitor) VisitLabelLiteralNumber(ctx *parser.LabelLiteralNumberContext) interface{} {
-	if ctx.NumberLiteral() != nil {
-		return v.Visit(ctx.NumberLiteral())
+func (v *ManuscriptAstVisitor) VisitStringLiteral(ctx *parser.StringLiteralContext) interface{} {
+	var parts []parser.IStringPartContext
+	if ctx.SingleQuotedString() != nil {
+		parts = ctx.SingleQuotedString().AllStringPart()
+	} else if ctx.MultiQuotedString() != nil {
+		parts = ctx.MultiQuotedString().AllStringPart()
+	} else if ctx.DoubleQuotedString() != nil {
+		parts = ctx.DoubleQuotedString().AllStringPart()
+	} else if ctx.MultiDoubleQuotedString() != nil {
+		parts = ctx.MultiDoubleQuotedString().AllStringPart()
 	}
-	v.addError("Unknown number literal type: "+ctx.GetText(), ctx.GetStart())
-	return &ast.BadExpr{}
+	return stringPartToLit(parts, v)
 }
+
+func (v *ManuscriptAstVisitor) VisitSingleQuotedString(ctx *parser.SingleQuotedStringContext) interface{} {
+	return stringPartToLit(ctx.AllStringPart(), v)
+}
+
+func stringPartToLit(parts []parser.IStringPartContext, v *ManuscriptAstVisitor) interface{} {
+	raw := ""
+	for _, part := range parts {
+		raw += v.Visit(part).(string)
+	}
+	return &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(raw)}
+}
+
+func (v *ManuscriptAstVisitor) VisitStringPart(ctx *parser.StringPartContext) interface{} {
+	if ctx.SINGLE_STR_CONTENT() != nil {
+		return ctx.SINGLE_STR_CONTENT().GetText()
+	}
+	if ctx.MULTI_STR_CONTENT() != nil {
+		return ctx.MULTI_STR_CONTENT().GetText()
+	}
+	if ctx.DOUBLE_STR_CONTENT() != nil {
+		return ctx.DOUBLE_STR_CONTENT().GetText()
+	}
+	if ctx.MULTI_DOUBLE_STR_CONTENT() != nil {
+		return ctx.MULTI_DOUBLE_STR_CONTENT().GetText()
+	}
+	if ctx.Interpolation() != nil {
+		return v.Visit(ctx.Interpolation())
+	}
+	return ""
+}
+
+// bool, null, void
 
 func (v *ManuscriptAstVisitor) VisitLabelLiteralBool(ctx *parser.LabelLiteralBoolContext) interface{} {
 	if ctx.BooleanLiteral() != nil {
@@ -41,60 +79,14 @@ func (v *ManuscriptAstVisitor) VisitLabelLiteralVoid(ctx *parser.LabelLiteralVoi
 	return ast.NewIdent("nil")
 }
 
-// --- Fine-grained String Literal Visitors ---
-
-func (v *ManuscriptAstVisitor) VisitLabelStringLiteralSingle(ctx *parser.LabelStringLiteralSingleContext) interface{} {
-	if ctx.SingleQuotedString() != nil {
-		return v.stringPartsToBasicLit(ctx.SingleQuotedString().AllStringPart())
-	}
-	v.addError("Malformed single-quoted string literal", ctx.GetStart())
-	return &ast.BadExpr{}
-}
-
-func (v *ManuscriptAstVisitor) VisitLabelStringLiteralMulti(ctx *parser.LabelStringLiteralMultiContext) interface{} {
-	if ctx.MultiQuotedString() != nil {
-		return v.stringPartsToBasicLit(ctx.MultiQuotedString().AllStringPart())
-	}
-	v.addError("Malformed multi-quoted string literal", ctx.GetStart())
-	return &ast.BadExpr{}
-}
-
-func (v *ManuscriptAstVisitor) VisitLabelStringLiteralDouble(ctx *parser.LabelStringLiteralDoubleContext) interface{} {
-	if ctx.DoubleQuotedString() != nil {
-		return v.stringPartsToBasicLit(ctx.DoubleQuotedString().AllStringPart())
-	}
-	v.addError("Malformed double-quoted string literal", ctx.GetStart())
-	return &ast.BadExpr{}
-}
-
-func (v *ManuscriptAstVisitor) VisitLabelStringLiteralMultiDouble(ctx *parser.LabelStringLiteralMultiDoubleContext) interface{} {
-	if ctx.MultiDoubleQuotedString() != nil {
-		return v.stringPartsToBasicLit(ctx.MultiDoubleQuotedString().AllStringPart())
-	}
-	v.addError("Malformed multi-double-quoted string literal", ctx.GetStart())
-	return &ast.BadExpr{}
-}
-
-func (v *ManuscriptAstVisitor) stringPartsToBasicLit(parts []parser.IStringPartContext) ast.Expr {
-	raw := ""
-	for _, p := range parts {
-		switch part := p.(type) {
-		case *parser.LabelStringPartSingleContext:
-			raw += part.GetText()
-		case *parser.LabelStringPartMultiContext:
-			raw += part.GetText()
-		case *parser.LabelStringPartDoubleContext:
-			raw += part.GetText()
-		case *parser.LabelStringPartMultiDoubleContext:
-			raw += part.GetText()
-		case *parser.LabelStringPartInterpContext:
-			v.addError("String interpolation is not yet supported: "+part.GetText(), part.GetStart())
-		}
-	}
-	return &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(raw)}
-}
-
 // --- Fine-grained Number Literal Visitors ---
+func (v *ManuscriptAstVisitor) VisitLabelLiteralNumber(ctx *parser.LabelLiteralNumberContext) interface{} {
+	if ctx.NumberLiteral() != nil {
+		return v.Visit(ctx.NumberLiteral())
+	}
+	v.addError("Unknown number literal type: "+ctx.GetText(), ctx.GetStart())
+	return &ast.BadExpr{}
+}
 
 func (v *ManuscriptAstVisitor) VisitLabelNumberLiteralInt(ctx *parser.LabelNumberLiteralIntContext) interface{} {
 	return &ast.BasicLit{Kind: token.INT, Value: ctx.GetText()}

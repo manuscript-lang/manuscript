@@ -5,40 +5,28 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
-// VisitLetDeclSingle handles 'let typedID = expr' or 'let typedID'
-func (v *ManuscriptAstVisitor) VisitLabelLetDeclSingle(ctx *parser.LabelLetDeclSingleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-// VisitLetDeclBlock handles 'let ( ... )'
-func (v *ManuscriptAstVisitor) VisitLabelLetDeclBlock(ctx *parser.LabelLetDeclBlockContext) interface{} {
-	if ctx == nil {
-		v.addError("VisitLetBlock called with nil context", nil)
-		return []ast.Stmt{&ast.BadStmt{}}
-	}
-	letBlock := ctx.LetBlock()
-	if letBlock == nil {
-		return []ast.Stmt{}
-	}
-	itemList := letBlock.LetBlockItemList()
-	if itemList == nil {
-		return []ast.Stmt{}
-	}
-	return v.Visit(itemList)
-}
-
-// VisitLetDeclDestructuredObj handles 'let {a, b} = expr'
-func (v *ManuscriptAstVisitor) VisitLabelLetDeclDestructuredObj(ctx *parser.LabelLetDeclDestructuredObjContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-// VisitLetDeclDestructuredArray handles 'let [a, b] = expr'
-func (v *ManuscriptAstVisitor) VisitLabelLetDeclDestructuredArray(ctx *parser.LabelLetDeclDestructuredArrayContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 // VisitImportDecl handles import declarations and lowers them to Go imports and variable assignments
 func (v *ManuscriptAstVisitor) VisitImportDecl(ctx *parser.ImportDeclContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *ManuscriptAstVisitor) VisitLetDecl(ctx *parser.LetDeclContext) interface{} {
+	if ctx.LetSingle() != nil {
+		return v.Visit(ctx.LetSingle())
+	}
+	if ctx.LetBlock() != nil {
+		return v.Visit(ctx.LetBlock())
+	}
+	if ctx.LetDestructuredObj() != nil {
+		return v.Visit(ctx.LetDestructuredObj())
+	}
+	if ctx.LetDestructuredArray() != nil {
+		return v.Visit(ctx.LetDestructuredArray())
+	}
+	return &ast.BadDecl{}
+}
+
+func (v *ManuscriptAstVisitor) VisitLetBlock(ctx *parser.LetBlockContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

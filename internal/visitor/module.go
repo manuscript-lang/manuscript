@@ -16,21 +16,16 @@ func (v *ManuscriptAstVisitor) VisitTargetImport(ctx *parser.TargetImportContext
 	if id := ctx.ID(); id != nil {
 		alias = id.GetText()
 	}
-	var importLt *ast.BasicLit
-	if a := v.stringPartsToBasicLit(ctx.SingleQuotedString().AllStringPart()); a != nil {
-		lt, ok := a.(*ast.BasicLit)
-		if ok {
-			importLt = lt
-		} else {
-			v.addError("Malformed import: missing import path", ctx.GetStart())
-			return nil
+	if ctx.SingleQuotedString() != nil {
+		importLt := v.Visit(ctx.SingleQuotedString()).(*ast.BasicLit)
+		importSpec := &ast.ImportSpec{Path: importLt}
+		if alias != "" {
+			importSpec.Name = ast.NewIdent(alias)
 		}
+		v.goImports = append(v.goImports, importSpec)
+	} else {
+		v.addError("Malformed import: missing import", ctx.GetStart())
 	}
-	importSpec := &ast.ImportSpec{Path: importLt}
-	if alias != "" {
-		importSpec.Name = ast.NewIdent(alias)
-	}
-	v.goImports = append(v.goImports, importSpec)
 	return []ast.Decl{}
 }
 
@@ -39,16 +34,8 @@ func (v *ManuscriptAstVisitor) VisitDestructuredImport(ctx *parser.DestructuredI
 		v.addError("Malformed destructured import: missing destructured import", ctx.GetStart())
 		return nil
 	}
-	var importLt *ast.BasicLit
-	if a := v.stringPartsToBasicLit(ctx.SingleQuotedString().AllStringPart()); a != nil {
-		lt, ok := a.(*ast.BasicLit)
-		if ok {
-			importLt = lt
-		} else {
-			v.addError("Malformed destructured import: missing import path", ctx.GetStart())
-			return nil
-		}
-	}
+	importLt := v.Visit(ctx.SingleQuotedString()).(*ast.BasicLit)
+
 	// Find if this importPath already has an alias
 	alias := fmt.Sprintf("__import%s", v.nextTempVarCounter())
 	v.goImports = append(v.goImports, &ast.ImportSpec{

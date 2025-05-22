@@ -52,19 +52,7 @@ func (v *BaseManuscriptVisitor) VisitImportItem(ctx *ImportItemContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelLetDeclSingle(ctx *LabelLetDeclSingleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelLetDeclBlock(ctx *LabelLetDeclBlockContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelLetDeclDestructuredObj(ctx *LabelLetDeclDestructuredObjContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelLetDeclDestructuredArray(ctx *LabelLetDeclDestructuredArrayContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLetDecl(ctx *LetDeclContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -312,31 +300,7 @@ func (v *BaseManuscriptVisitor) VisitAssignmentExpr(ctx *AssignmentExprContext) 
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelAssignEq(ctx *LabelAssignEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelAssignPlusEq(ctx *LabelAssignPlusEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelAssignMinusEq(ctx *LabelAssignMinusEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelAssignStarEq(ctx *LabelAssignStarEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelAssignSlashEq(ctx *LabelAssignSlashEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelAssignModEq(ctx *LabelAssignModEqContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelAssignCaretEq(ctx *LabelAssignCaretEqContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitAssignmentOp(ctx *AssignmentOpContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -500,23 +464,7 @@ func (v *BaseManuscriptVisitor) VisitMultiDoubleQuotedString(ctx *MultiDoubleQuo
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelStringPartSingle(ctx *LabelStringPartSingleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelStringPartMulti(ctx *LabelStringPartMultiContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelStringPartDouble(ctx *LabelStringPartDoubleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelStringPartMultiDouble(ctx *LabelStringPartMultiDoubleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelStringPartInterp(ctx *LabelStringPartInterpContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitStringPart(ctx *StringPartContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -544,19 +492,7 @@ func (v *BaseManuscriptVisitor) VisitLabelLiteralVoid(ctx *LabelLiteralVoidConte
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelStringLiteralSingle(ctx *LabelStringLiteralSingleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelStringLiteralMulti(ctx *LabelStringLiteralMultiContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelStringLiteralDouble(ctx *LabelStringLiteralDoubleContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelStringLiteralMultiDouble(ctx *LabelStringLiteralMultiDoubleContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitStringLiteral(ctx *StringLiteralContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

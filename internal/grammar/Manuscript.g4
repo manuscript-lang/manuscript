@@ -40,10 +40,10 @@ importItem: ID (AS ID)?;
 
 // --- Let Declarations ---
 letDecl:
-	LET letSingle SEMICOLON?				# LabelLetDeclSingle
-	| LET letBlock SEMICOLON?				# LabelLetDeclBlock
-	| LET letDestructuredObj SEMICOLON?		# LabelLetDeclDestructuredObj
-	| LET letDestructuredArray SEMICOLON?	# LabelLetDeclDestructuredArray;
+	LET letSingle SEMICOLON?				
+	| LET letBlock SEMICOLON?			
+	| LET letDestructuredObj SEMICOLON?	
+	| LET letDestructuredArray SEMICOLON?;
 
 letSingle: typedID (EQUALS expr)?;
 letBlock: LPAREN letBlockItemList? RPAREN;
@@ -141,13 +141,13 @@ assignmentExpr:
 	ternaryExpr
 	| left = ternaryExpr op = assignmentOp right = assignmentExpr;
 assignmentOp:
-	EQUALS			# LabelAssignEq
-	| PLUS_EQUALS	# LabelAssignPlusEq
-	| MINUS_EQUALS	# LabelAssignMinusEq
-	| STAR_EQUALS	# LabelAssignStarEq
-	| SLASH_EQUALS	# LabelAssignSlashEq
-	| MOD_EQUALS	# LabelAssignModEq
-	| CARET_EQUALS	# LabelAssignCaretEq;
+	EQUALS		
+	| PLUS_EQUALS
+	| MINUS_EQUALS
+	| STAR_EQUALS
+	| SLASH_EQUALS
+	| MOD_EQUALS
+	| CARET_EQUALS;
 
 // Ternary conditional expression
 ternaryExpr:
@@ -240,11 +240,11 @@ doubleQuotedString:
 multiDoubleQuotedString:
 	MULTI_DOUBLE_QUOTE_START stringPart* MULTI_DOUBLE_STR_END;
 stringPart:
-	SINGLE_STR_CONTENT			# LabelStringPartSingle
-	| MULTI_STR_CONTENT			# LabelStringPartMulti
-	| DOUBLE_STR_CONTENT		# LabelStringPartDouble
-	| MULTI_DOUBLE_STR_CONTENT	# LabelStringPartMultiDouble
-	| interpolation				# LabelStringPartInterp;
+	SINGLE_STR_CONTENT		
+	| MULTI_STR_CONTENT		
+	| DOUBLE_STR_CONTENT	
+	| MULTI_DOUBLE_STR_CONTENT	
+	| interpolation;
 interpolation: (
 		SINGLE_STR_INTERP_START
 		| MULTI_STR_INTERP_START
@@ -260,10 +260,10 @@ literal:
 	| NULL				# LabelLiteralNull
 	| VOID				# LabelLiteralVoid;
 stringLiteral:
-	singleQuotedString			# LabelStringLiteralSingle
-	| multiQuotedString			# LabelStringLiteralMulti
-	| doubleQuotedString		# LabelStringLiteralDouble
-	| multiDoubleQuotedString	# LabelStringLiteralMultiDouble;
+	singleQuotedString		
+	| multiQuotedString		
+	| doubleQuotedString	
+	| multiDoubleQuotedString;
 numberLiteral:
 	INTEGER				# LabelNumberLiteralInt
 	| FLOAT				# LabelNumberLiteralFloat

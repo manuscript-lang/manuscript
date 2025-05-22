@@ -61,7 +61,6 @@ func (v *ManuscriptAstVisitor) addError(message string, token antlr.Token) {
 // VisitChildren visits the children of a node.
 // It returns the result of visiting the last child, or nil if no children produce a result.
 func (v *ManuscriptAstVisitor) VisitChildren(node antlr.RuleNode) interface{} {
-	var result interface{}
 	for _, child := range node.GetRuleContext().GetChildren() {
 		if child == nil {
 			continue
@@ -69,11 +68,11 @@ func (v *ManuscriptAstVisitor) VisitChildren(node antlr.RuleNode) interface{} {
 		if pt, ok := child.(antlr.ParseTree); ok {
 			childResult := v.Visit(pt)
 			if childResult != nil {
-				result = childResult // Keep the last non-nil result
+				return childResult
 			}
 		}
 	}
-	return result
+	return nil
 }
 
 func (v *ManuscriptAstVisitor) Visit(tree antlr.ParseTree) interface{} {
