@@ -227,26 +227,8 @@ type ManuscriptListener interface {
 	// EnterAssignmentExpr is called when entering the assignmentExpr production.
 	EnterAssignmentExpr(c *AssignmentExprContext)
 
-	// EnterLabelAssignEq is called when entering the LabelAssignEq production.
-	EnterLabelAssignEq(c *LabelAssignEqContext)
-
-	// EnterLabelAssignPlusEq is called when entering the LabelAssignPlusEq production.
-	EnterLabelAssignPlusEq(c *LabelAssignPlusEqContext)
-
-	// EnterLabelAssignMinusEq is called when entering the LabelAssignMinusEq production.
-	EnterLabelAssignMinusEq(c *LabelAssignMinusEqContext)
-
-	// EnterLabelAssignStarEq is called when entering the LabelAssignStarEq production.
-	EnterLabelAssignStarEq(c *LabelAssignStarEqContext)
-
-	// EnterLabelAssignSlashEq is called when entering the LabelAssignSlashEq production.
-	EnterLabelAssignSlashEq(c *LabelAssignSlashEqContext)
-
-	// EnterLabelAssignModEq is called when entering the LabelAssignModEq production.
-	EnterLabelAssignModEq(c *LabelAssignModEqContext)
-
-	// EnterLabelAssignCaretEq is called when entering the LabelAssignCaretEq production.
-	EnterLabelAssignCaretEq(c *LabelAssignCaretEqContext)
+	// EnterAssignmentOp is called when entering the assignmentOp production.
+	EnterAssignmentOp(c *AssignmentOpContext)
 
 	// EnterTernaryExpr is called when entering the ternaryExpr production.
 	EnterTernaryExpr(c *TernaryExprContext)
@@ -368,20 +350,8 @@ type ManuscriptListener interface {
 	// EnterMultiDoubleQuotedString is called when entering the multiDoubleQuotedString production.
 	EnterMultiDoubleQuotedString(c *MultiDoubleQuotedStringContext)
 
-	// EnterLabelStringPartSingle is called when entering the LabelStringPartSingle production.
-	EnterLabelStringPartSingle(c *LabelStringPartSingleContext)
-
-	// EnterLabelStringPartMulti is called when entering the LabelStringPartMulti production.
-	EnterLabelStringPartMulti(c *LabelStringPartMultiContext)
-
-	// EnterLabelStringPartDouble is called when entering the LabelStringPartDouble production.
-	EnterLabelStringPartDouble(c *LabelStringPartDoubleContext)
-
-	// EnterLabelStringPartMultiDouble is called when entering the LabelStringPartMultiDouble production.
-	EnterLabelStringPartMultiDouble(c *LabelStringPartMultiDoubleContext)
-
-	// EnterLabelStringPartInterp is called when entering the LabelStringPartInterp production.
-	EnterLabelStringPartInterp(c *LabelStringPartInterpContext)
+	// EnterStringPart is called when entering the stringPart production.
+	EnterStringPart(c *StringPartContext)
 
 	// EnterInterpolation is called when entering the interpolation production.
 	EnterInterpolation(c *InterpolationContext)
@@ -401,17 +371,8 @@ type ManuscriptListener interface {
 	// EnterLabelLiteralVoid is called when entering the LabelLiteralVoid production.
 	EnterLabelLiteralVoid(c *LabelLiteralVoidContext)
 
-	// EnterLabelStringLiteralSingle is called when entering the LabelStringLiteralSingle production.
-	EnterLabelStringLiteralSingle(c *LabelStringLiteralSingleContext)
-
-	// EnterLabelStringLiteralMulti is called when entering the LabelStringLiteralMulti production.
-	EnterLabelStringLiteralMulti(c *LabelStringLiteralMultiContext)
-
-	// EnterLabelStringLiteralDouble is called when entering the LabelStringLiteralDouble production.
-	EnterLabelStringLiteralDouble(c *LabelStringLiteralDoubleContext)
-
-	// EnterLabelStringLiteralMultiDouble is called when entering the LabelStringLiteralMultiDouble production.
-	EnterLabelStringLiteralMultiDouble(c *LabelStringLiteralMultiDoubleContext)
+	// EnterStringLiteral is called when entering the stringLiteral production.
+	EnterStringLiteral(c *StringLiteralContext)
 
 	// EnterLabelNumberLiteralInt is called when entering the LabelNumberLiteralInt production.
 	EnterLabelNumberLiteralInt(c *LabelNumberLiteralIntContext)
@@ -725,26 +686,8 @@ type ManuscriptListener interface {
 	// ExitAssignmentExpr is called when exiting the assignmentExpr production.
 	ExitAssignmentExpr(c *AssignmentExprContext)
 
-	// ExitLabelAssignEq is called when exiting the LabelAssignEq production.
-	ExitLabelAssignEq(c *LabelAssignEqContext)
-
-	// ExitLabelAssignPlusEq is called when exiting the LabelAssignPlusEq production.
-	ExitLabelAssignPlusEq(c *LabelAssignPlusEqContext)
-
-	// ExitLabelAssignMinusEq is called when exiting the LabelAssignMinusEq production.
-	ExitLabelAssignMinusEq(c *LabelAssignMinusEqContext)
-
-	// ExitLabelAssignStarEq is called when exiting the LabelAssignStarEq production.
-	ExitLabelAssignStarEq(c *LabelAssignStarEqContext)
-
-	// ExitLabelAssignSlashEq is called when exiting the LabelAssignSlashEq production.
-	ExitLabelAssignSlashEq(c *LabelAssignSlashEqContext)
-
-	// ExitLabelAssignModEq is called when exiting the LabelAssignModEq production.
-	ExitLabelAssignModEq(c *LabelAssignModEqContext)
-
-	// ExitLabelAssignCaretEq is called when exiting the LabelAssignCaretEq production.
-	ExitLabelAssignCaretEq(c *LabelAssignCaretEqContext)
+	// ExitAssignmentOp is called when exiting the assignmentOp production.
+	ExitAssignmentOp(c *AssignmentOpContext)
 
 	// ExitTernaryExpr is called when exiting the ternaryExpr production.
 	ExitTernaryExpr(c *TernaryExprContext)
@@ -866,20 +809,8 @@ type ManuscriptListener interface {
 	// ExitMultiDoubleQuotedString is called when exiting the multiDoubleQuotedString production.
 	ExitMultiDoubleQuotedString(c *MultiDoubleQuotedStringContext)
 
-	// ExitLabelStringPartSingle is called when exiting the LabelStringPartSingle production.
-	ExitLabelStringPartSingle(c *LabelStringPartSingleContext)
-
-	// ExitLabelStringPartMulti is called when exiting the LabelStringPartMulti production.
-	ExitLabelStringPartMulti(c *LabelStringPartMultiContext)
-
-	// ExitLabelStringPartDouble is called when exiting the LabelStringPartDouble production.
-	ExitLabelStringPartDouble(c *LabelStringPartDoubleContext)
-
-	// ExitLabelStringPartMultiDouble is called when exiting the LabelStringPartMultiDouble production.
-	ExitLabelStringPartMultiDouble(c *LabelStringPartMultiDoubleContext)
-
-	// ExitLabelStringPartInterp is called when exiting the LabelStringPartInterp production.
-	ExitLabelStringPartInterp(c *LabelStringPartInterpContext)
+	// ExitStringPart is called when exiting the stringPart production.
+	ExitStringPart(c *StringPartContext)
 
 	// ExitInterpolation is called when exiting the interpolation production.
 	ExitInterpolation(c *InterpolationContext)
@@ -899,17 +830,8 @@ type ManuscriptListener interface {
 	// ExitLabelLiteralVoid is called when exiting the LabelLiteralVoid production.
 	ExitLabelLiteralVoid(c *LabelLiteralVoidContext)
 
-	// ExitLabelStringLiteralSingle is called when exiting the LabelStringLiteralSingle production.
-	ExitLabelStringLiteralSingle(c *LabelStringLiteralSingleContext)
-
-	// ExitLabelStringLiteralMulti is called when exiting the LabelStringLiteralMulti production.
-	ExitLabelStringLiteralMulti(c *LabelStringLiteralMultiContext)
-
-	// ExitLabelStringLiteralDouble is called when exiting the LabelStringLiteralDouble production.
-	ExitLabelStringLiteralDouble(c *LabelStringLiteralDoubleContext)
-
-	// ExitLabelStringLiteralMultiDouble is called when exiting the LabelStringLiteralMultiDouble production.
-	ExitLabelStringLiteralMultiDouble(c *LabelStringLiteralMultiDoubleContext)
+	// ExitStringLiteral is called when exiting the stringLiteral production.
+	ExitStringLiteral(c *StringLiteralContext)
 
 	// ExitLabelNumberLiteralInt is called when exiting the LabelNumberLiteralInt production.
 	ExitLabelNumberLiteralInt(c *LabelNumberLiteralIntContext)

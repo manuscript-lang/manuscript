@@ -227,26 +227,8 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#assignmentExpr.
 	VisitAssignmentExpr(ctx *AssignmentExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelAssignEq.
-	VisitLabelAssignEq(ctx *LabelAssignEqContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelAssignPlusEq.
-	VisitLabelAssignPlusEq(ctx *LabelAssignPlusEqContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelAssignMinusEq.
-	VisitLabelAssignMinusEq(ctx *LabelAssignMinusEqContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelAssignStarEq.
-	VisitLabelAssignStarEq(ctx *LabelAssignStarEqContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelAssignSlashEq.
-	VisitLabelAssignSlashEq(ctx *LabelAssignSlashEqContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelAssignModEq.
-	VisitLabelAssignModEq(ctx *LabelAssignModEqContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelAssignCaretEq.
-	VisitLabelAssignCaretEq(ctx *LabelAssignCaretEqContext) interface{}
+	// Visit a parse tree produced by Manuscript#assignmentOp.
+	VisitAssignmentOp(ctx *AssignmentOpContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#ternaryExpr.
 	VisitTernaryExpr(ctx *TernaryExprContext) interface{}
@@ -368,20 +350,8 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#multiDoubleQuotedString.
 	VisitMultiDoubleQuotedString(ctx *MultiDoubleQuotedStringContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelStringPartSingle.
-	VisitLabelStringPartSingle(ctx *LabelStringPartSingleContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelStringPartMulti.
-	VisitLabelStringPartMulti(ctx *LabelStringPartMultiContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelStringPartDouble.
-	VisitLabelStringPartDouble(ctx *LabelStringPartDoubleContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelStringPartMultiDouble.
-	VisitLabelStringPartMultiDouble(ctx *LabelStringPartMultiDoubleContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelStringPartInterp.
-	VisitLabelStringPartInterp(ctx *LabelStringPartInterpContext) interface{}
+	// Visit a parse tree produced by Manuscript#stringPart.
+	VisitStringPart(ctx *StringPartContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#interpolation.
 	VisitInterpolation(ctx *InterpolationContext) interface{}
@@ -401,17 +371,8 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#LabelLiteralVoid.
 	VisitLabelLiteralVoid(ctx *LabelLiteralVoidContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelStringLiteralSingle.
-	VisitLabelStringLiteralSingle(ctx *LabelStringLiteralSingleContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelStringLiteralMulti.
-	VisitLabelStringLiteralMulti(ctx *LabelStringLiteralMultiContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelStringLiteralDouble.
-	VisitLabelStringLiteralDouble(ctx *LabelStringLiteralDoubleContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelStringLiteralMultiDouble.
-	VisitLabelStringLiteralMultiDouble(ctx *LabelStringLiteralMultiDoubleContext) interface{}
+	// Visit a parse tree produced by Manuscript#stringLiteral.
+	VisitStringLiteral(ctx *StringLiteralContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#LabelNumberLiteralInt.
 	VisitLabelNumberLiteralInt(ctx *LabelNumberLiteralIntContext) interface{}

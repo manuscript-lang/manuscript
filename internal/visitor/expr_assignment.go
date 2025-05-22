@@ -46,8 +46,8 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 		}
 	}
 
-	binTok := mapAssignmentOpToGoToken(opNode)
-	if binTok == token.ILLEGAL {
+	binTok := v.Visit(opNode).(token.Token)
+	if binTok == token.ASSIGN {
 		return &ast.AssignStmt{
 			Lhs: []ast.Expr{leftExpr},
 			Tok: token.ASSIGN,
@@ -66,21 +66,21 @@ func (v *ManuscriptAstVisitor) VisitAssignmentExpr(ctx *parser.AssignmentExprCon
 	}
 }
 
-func mapAssignmentOpToGoToken(op parser.IAssignmentOpContext) token.Token {
-	switch op.(type) {
-	case *parser.LabelAssignEqContext:
-		return token.ILLEGAL
-	case *parser.LabelAssignPlusEqContext:
+func (v *ManuscriptAstVisitor) VisitAssignmentOp(ctx *parser.AssignmentOpContext) interface{} {
+	switch {
+	case ctx.EQUALS() != nil:
+		return token.ASSIGN
+	case ctx.PLUS_EQUALS() != nil:
 		return token.ADD
-	case *parser.LabelAssignMinusEqContext:
+	case ctx.MINUS_EQUALS() != nil:
 		return token.SUB
-	case *parser.LabelAssignStarEqContext:
+	case ctx.STAR_EQUALS() != nil:
 		return token.MUL
-	case *parser.LabelAssignSlashEqContext:
+	case ctx.SLASH_EQUALS() != nil:
 		return token.QUO
-	case *parser.LabelAssignModEqContext:
+	case ctx.MOD_EQUALS() != nil:
 		return token.REM
-	case *parser.LabelAssignCaretEqContext:
+	case ctx.CARET_EQUALS() != nil:
 		return token.XOR
 	default:
 		return token.ILLEGAL
