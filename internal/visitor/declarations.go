@@ -98,43 +98,14 @@ func (v *ManuscriptAstVisitor) VisitDeclExport(ctx *parser.DeclExportContext) in
 	return nil
 }
 
-// VisitExportDecl handles export declarations and ensures Go export naming
+// VisitExportDecl expects the exported item visitor methods to be implemented and return Go AST nodes.
 func (v *ManuscriptAstVisitor) VisitExportDecl(ctx *parser.ExportDeclContext) interface{} {
 	if ctx == nil || ctx.ExportedItem() == nil {
 		v.addError("Export declaration is missing an exported item.", ctx.GetStart())
 		return &ast.BadDecl{}
 	}
-	item := ctx.ExportedItem()
-	var visitedNode interface{}
-	switch t := item.(type) {
-	case *parser.ExportedFnContext:
-		if fn := t.FnDecl(); fn != nil {
-			if fnCtx, ok := fn.(*parser.FnDeclContext); ok {
-				visitedNode = v.VisitFnDecl(fnCtx)
-			}
-		}
-	case *parser.ExportedLetContext:
-		if let := t.LetDecl(); let != nil {
-			if letCtx, ok := let.(*parser.LetDeclContext); ok {
-				visitedNode = v.Visit(letCtx)
-			}
-		}
-	case *parser.ExportedTypeContext:
-		if typ := t.TypeDecl(); typ != nil {
-			if typCtx, ok := typ.(*parser.TypeDeclContext); ok {
-				visitedNode = v.VisitTypeDecl(typCtx)
-			}
-		}
-	case *parser.ExportedInterfaceContext:
-		if iface := t.InterfaceDecl(); iface != nil {
-			if ifaceCtx, ok := iface.(*parser.InterfaceDeclContext); ok {
-				visitedNode = v.VisitInterfaceDecl(ifaceCtx)
-			}
-		}
-	default:
-		v.addError("Exported item is not a recognized declaration.", ctx.GetStart())
-		return &ast.BadDecl{}
-	}
+	// Use Accept to visit the exported item, leveraging the grammar structure
+	visitedNode := ctx.ExportedItem().Accept(v)
 	// Capitalize identifiers for Go export
 	if decl, ok := visitedNode.(*ast.FuncDecl); ok && decl.Name != nil {
 		decl.Name = ast.NewIdent(capitalize(decl.Name.Name))
@@ -178,6 +149,50 @@ func (v *ManuscriptAstVisitor) VisitExternDecl(ctx *parser.ExternDeclContext) in
 	modImport := ctx.ModuleImport()
 	if modImport != nil {
 		return v.Visit(modImport)
+	}
+	return nil
+}
+
+// VisitExportedFn delegates to VisitFnDecl
+func (v *ManuscriptAstVisitor) VisitExportedFn(ctx *parser.ExportedFnContext) interface{} {
+	if ctx == nil || ctx.FnDecl() == nil {
+		return nil
+	}
+	if fnCtx, ok := ctx.FnDecl().(*parser.FnDeclContext); ok {
+		return v.VisitFnDecl(fnCtx)
+	}
+	return nil
+}
+
+// VisitExportedLet delegates to VisitLetDecl
+func (v *ManuscriptAstVisitor) VisitExportedLet(ctx *parser.ExportedLetContext) interface{} {
+	if ctx == nil || ctx.LetDecl() == nil {
+		return nil
+	}
+	if letCtx, ok := ctx.LetDecl().(*parser.LetDeclContext); ok {
+		return v.Visit(letCtx)
+	}
+	return nil
+}
+
+// VisitExportedType delegates to VisitTypeDecl
+func (v *ManuscriptAstVisitor) VisitExportedType(ctx *parser.ExportedTypeContext) interface{} {
+	if ctx == nil || ctx.TypeDecl() == nil {
+		return nil
+	}
+	if typeCtx, ok := ctx.TypeDecl().(*parser.TypeDeclContext); ok {
+		return v.VisitTypeDecl(typeCtx)
+	}
+	return nil
+}
+
+// VisitExportedInterface delegates to VisitInterfaceDecl
+func (v *ManuscriptAstVisitor) VisitExportedInterface(ctx *parser.ExportedInterfaceContext) interface{} {
+	if ctx == nil || ctx.InterfaceDecl() == nil {
+		return nil
+	}
+	if ifaceCtx, ok := ctx.InterfaceDecl().(*parser.InterfaceDeclContext); ok {
+		return v.VisitInterfaceDecl(ifaceCtx)
 	}
 	return nil
 }
