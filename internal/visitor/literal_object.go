@@ -82,13 +82,13 @@ func (v *ManuscriptAstVisitor) VisitObjectLiteral(ctx *parser.ObjectLiteralConte
 // Returns (key, token, isIdent) where isIdent is true if the key is an identifier.
 func (v *ManuscriptAstVisitor) extractObjectFieldKey(ctx parser.IObjectFieldNameContext) (string, antlr.Token, bool) {
 	switch c := ctx.(type) {
-	case *parser.ObjectFieldNameIDContext:
+	case *parser.LabelObjectFieldNameIDContext:
 		if c.ID() != nil {
 			return c.ID().GetText(), c.ID().GetSymbol(), true
 		}
 		v.addError("Object field ID is missing", c.GetStart())
 		return "", c.GetStart(), false
-	case *parser.ObjectFieldNameStrContext:
+	case *parser.LabelObjectFieldNameStrContext:
 		if c.StringLiteral() != nil {
 			// Use the string literal visitor to get the Go string value
 			val := v.Visit(c.StringLiteral())

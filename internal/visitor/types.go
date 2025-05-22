@@ -17,8 +17,8 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnotation(ctx *parser.TypeAnnotationCon
 	return ctx.Accept(v)
 }
 
-// VisitTypeAnnID handles simple identifier type annotations (e.g., int, string, MyType).
-func (v *ManuscriptAstVisitor) VisitTypeAnnID(ctx *parser.TypeAnnIDContext) interface{} {
+// VisitLabelTypeAnnID handles simple identifier type annotations (e.g., int, string, MyType).
+func (v *ManuscriptAstVisitor) VisitLabelTypeAnnID(ctx *parser.LabelTypeAnnIDContext) interface{} {
 	if ctx == nil || ctx.ID() == nil {
 		v.addError("TypeAnnID missing ID", ctx.GetStart())
 		return &ast.BadExpr{}
@@ -37,8 +37,8 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnID(ctx *parser.TypeAnnIDContext) inte
 	}
 }
 
-// VisitTypeAnnArray handles array type annotations (e.g., int[]).
-func (v *ManuscriptAstVisitor) VisitTypeAnnArray(ctx *parser.TypeAnnArrayContext) interface{} {
+// VisitLabelTypeAnnArray handles array type annotations (e.g., int[]).
+func (v *ManuscriptAstVisitor) VisitLabelTypeAnnArray(ctx *parser.LabelTypeAnnArrayContext) interface{} {
 	arrayTypeCtx, ok := ctx.ArrayType().(*parser.ArrayTypeContext)
 	if ctx == nil || !ok || arrayTypeCtx == nil {
 		v.addError("TypeAnnArray missing or invalid ArrayType", ctx.GetStart())
@@ -52,8 +52,8 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnArray(ctx *parser.TypeAnnArrayContext
 	return &ast.BadExpr{}
 }
 
-// VisitTypeAnnTuple handles tuple type annotations (e.g., (int, string)).
-func (v *ManuscriptAstVisitor) VisitTypeAnnTuple(ctx *parser.TypeAnnTupleContext) interface{} {
+// VisitLabelTypeAnnTuple handles tuple type annotations (e.g., (int, string)).
+func (v *ManuscriptAstVisitor) VisitLabelTypeAnnTuple(ctx *parser.LabelTypeAnnTupleContext) interface{} {
 	tupleTypeCtx, ok := ctx.TupleType().(*parser.TupleTypeContext)
 	if ctx == nil || !ok || tupleTypeCtx == nil {
 		v.addError("TypeAnnTuple missing or invalid TupleType", ctx.GetStart())
@@ -67,8 +67,8 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnTuple(ctx *parser.TypeAnnTupleContext
 	return &ast.BadExpr{}
 }
 
-// VisitTypeAnnFn handles function type annotations (e.g., fn(int): string).
-func (v *ManuscriptAstVisitor) VisitTypeAnnFn(ctx *parser.TypeAnnFnContext) interface{} {
+// VisitLabelTypeAnnFn handles function type annotations (e.g., fn(int): string).
+func (v *ManuscriptAstVisitor) VisitLabelTypeAnnFn(ctx *parser.LabelTypeAnnFnContext) interface{} {
 	fnTypeCtx, ok := ctx.FnType().(*parser.FnTypeContext)
 	if ctx == nil || !ok || fnTypeCtx == nil {
 		v.addError("TypeAnnFn missing or invalid FnType", ctx.GetStart())
@@ -82,8 +82,8 @@ func (v *ManuscriptAstVisitor) VisitTypeAnnFn(ctx *parser.TypeAnnFnContext) inte
 	return &ast.BadExpr{}
 }
 
-// VisitTypeAnnVoid handles the void type annotation.
-func (v *ManuscriptAstVisitor) VisitTypeAnnVoid(ctx *parser.TypeAnnVoidContext) interface{} {
+// VisitLabelTypeAnnVoid handles the void type annotation.
+func (v *ManuscriptAstVisitor) VisitLabelTypeAnnVoid(ctx *parser.LabelTypeAnnVoidContext) interface{} {
 	return v.handleVoidType()
 }
 

@@ -9,14 +9,14 @@ program:
 	stmt_sep* (declaration (stmt_sep+ declaration)*)? stmt_sep* EOF;
 
 declaration:
-	importDecl		# DeclImport
-	| exportDecl	# DeclExport
-	| externDecl	# DeclExtern
-	| letDecl		# DeclLet
-	| typeDecl		# DeclType
-	| interfaceDecl	# DeclInterface
-	| fnDecl		# DeclFn
-	| methodsDecl	# DeclMethods;
+	importDecl		# LabelDeclImport
+	| exportDecl	# LabelDeclExport
+	| externDecl	# LabelDeclExtern
+	| letDecl		# LabelDeclLet
+	| typeDecl		# LabelDeclType
+	| interfaceDecl	# LabelDeclInterface
+	| fnDecl		# LabelDeclFn
+	| methodsDecl	# LabelDeclMethods;
 
 // --- Imports/Exports/Extern ---
 importDecl: IMPORT moduleImport SEMICOLON?;
@@ -24,26 +24,25 @@ exportDecl: EXPORT exportedItem SEMICOLON?;
 externDecl: EXTERN moduleImport SEMICOLON?;
 
 exportedItem:
-	fnDecl			# ExportedFn
-	| letDecl		# ExportedLet
-	| typeDecl		# ExportedType
-	| interfaceDecl	# ExportedInterface;
+	fnDecl			# LabelExportedFn
+	| letDecl		# LabelExportedLet
+	| typeDecl		# LabelExportedType
+	| interfaceDecl	# LabelExportedInterface;
 moduleImport:
-	destructuredImport	# ModuleImportDestructured
-	| targetImport		# ModuleImportTarget;
+	destructuredImport	# LabelModuleImportDestructured
+	| targetImport		# LabelModuleImportTarget;
 destructuredImport:
-	LBRACE importItemList? RBRACE FROM importStr;
-targetImport: ID FROM importStr;
+	LBRACE importItemList? RBRACE FROM singleQuotedString;
+targetImport: ID FROM singleQuotedString;
 importItemList: importItem (COMMA importItem)* (COMMA)?;
 importItem: ID (AS ID)?;
-importStr: singleQuotedString;
 
 // --- Let Declarations ---
 letDecl:
-	LET letSingle SEMICOLON?				# LetDeclSingle
-	| LET letBlock SEMICOLON?				# LetDeclBlock
-	| LET letDestructuredObj SEMICOLON?		# LetDeclDestructuredObj
-	| LET letDestructuredArray SEMICOLON?	# LetDeclDestructuredArray;
+	LET letSingle SEMICOLON?				# LabelLetDeclSingle
+	| LET letBlock SEMICOLON?				# LabelLetDeclBlock
+	| LET letDestructuredObj SEMICOLON?		# LabelLetDeclDestructuredObj
+	| LET letDestructuredArray SEMICOLON?	# LabelLetDeclDestructuredArray;
 
 letSingle: typedID (EQUALS expr)?;
 letBlock: LPAREN letBlockItemList? RPAREN;
@@ -51,9 +50,9 @@ letBlockItemList:
 	letBlockItemSep* letBlockItem (letBlockItemSep+ letBlockItem)* letBlockItemSep*;
 letBlockItemSep: COMMA | stmt_sep;
 letBlockItem:
-	typedID EQUALS expr						# LetBlockItemSingle
-	| LBRACE typedIDList RBRACE EQUALS expr	# LetBlockItemDestructuredObj
-	| LSQBR typedIDList RSQBR EQUALS expr	# LetBlockItemDestructuredArray;
+	typedID EQUALS expr						# LabelLetBlockItemSingle
+	| LBRACE typedIDList RBRACE EQUALS expr	# LabelLetBlockItemDestructuredObj
+	| LSQBR typedIDList RSQBR EQUALS expr	# LabelLetBlockItemDestructuredArray;
 letDestructuredObj: LBRACE typedIDList RBRACE EQUALS expr;
 letDestructuredArray: LSQBR typedIDList RSQBR EQUALS expr;
 
@@ -96,18 +95,18 @@ methodImpl: interfaceMethod codeBlock;
 
 // --- Statements ---
 stmt:
-	letDecl				# StmtLet
-	| expr SEMICOLON?	# StmtExpr
-	| returnStmt		# StmtReturn
-	| yieldStmt			# StmtYield
-	| ifStmt			# StmtIf
-	| forStmt			# StmtFor
-	| whileStmt			# StmtWhile
-	| codeBlock			# StmtBlock
-	| breakStmt			# StmtBreak
-	| continueStmt		# StmtContinue
-	| checkStmt			# StmtCheck
-	| deferStmt			# StmtDefer;
+	letDecl				# LabelStmtLet
+	| expr SEMICOLON?	# LabelStmtExpr
+	| returnStmt		# LabelStmtReturn
+	| yieldStmt			# LabelStmtYield
+	| ifStmt			# LabelStmtIf
+	| forStmt			# LabelStmtFor
+	| whileStmt			# LabelStmtWhile
+	| codeBlock			# LabelStmtBlock
+	| breakStmt			# LabelStmtBreak
+	| continueStmt		# LabelStmtContinue
+	| checkStmt			# LabelStmtCheck
+	| deferStmt			# LabelStmtDefer;
 
 returnStmt: RETURN exprList? SEMICOLON?;
 yieldStmt: YIELD exprList? SEMICOLON?;
@@ -117,13 +116,13 @@ exprList: expr (COMMA expr)* (COMMA)?;
 ifStmt: IF expr codeBlock (ELSE codeBlock)?;
 forStmt: FOR forLoopType;
 forLoopType:
-	forTrinity							# ForLoop
-	| (ID (COMMA ID)?) IN expr loopBody	# ForInLoop;
+	forTrinity							# LabelForLoop
+	| (ID (COMMA ID)?) IN expr loopBody	# LabelForInLoop;
 forTrinity:
 	forInit SEMICOLON forCond SEMICOLON forPost loopBody;
-forInit: letSingle # ForInitLet | /* empty */ # ForInitEmpty;
-forCond: expr # ForCondExpr | /* empty */ # ForCondEmpty;
-forPost: expr # ForPostExpr | /* empty */ # ForPostEmpty;
+forInit: letSingle # LabelForInitLet | /* empty */ # LabelForInitEmpty;
+forCond: expr # LabelForCondExpr | /* empty */ # LabelForCondEmpty;
+forPost: expr # LabelForPostExpr | /* empty */ # LabelForPostEmpty;
 whileStmt: WHILE expr loopBody;
 loopBody:
 	LBRACE stmt_sep* (stmt (stmt_sep+ stmt)*)? stmt_sep* RBRACE;
@@ -141,13 +140,13 @@ assignmentExpr:
 	ternaryExpr
 	| left = ternaryExpr op = assignmentOp right = assignmentExpr;
 assignmentOp:
-	EQUALS			# AssignEq
-	| PLUS_EQUALS	# AssignPlusEq
-	| MINUS_EQUALS	# AssignMinusEq
-	| STAR_EQUALS	# AssignStarEq
-	| SLASH_EQUALS	# AssignSlashEq
-	| MOD_EQUALS	# AssignModEq
-	| CARET_EQUALS	# AssignCaretEq;
+	EQUALS			# LabelAssignEq
+	| PLUS_EQUALS	# LabelAssignPlusEq
+	| MINUS_EQUALS	# LabelAssignMinusEq
+	| STAR_EQUALS	# LabelAssignStarEq
+	| SLASH_EQUALS	# LabelAssignSlashEq
+	| MOD_EQUALS	# LabelAssignModEq
+	| CARET_EQUALS	# LabelAssignCaretEq;
 
 // Ternary conditional expression
 ternaryExpr:
@@ -196,30 +195,30 @@ multiplicativeExpr:
 
 // Unary and postfix expressions
 unaryExpr:
-	op = (PLUS | MINUS | EXCLAMATION | TRY) unary = unaryExpr	# UnaryOpExpr
-	| awaitExpr													# UnaryAwaitExpr;
+	op = (PLUS | MINUS | EXCLAMATION | TRY) unary = unaryExpr	# LabelUnaryOpExpr
+	| awaitExpr													# LabelUnaryAwaitExpr;
 awaitExpr: (TRY? AWAIT? ASYNC?) postfixExpr;
 postfixExpr: primaryExpr | postfixExpr postfixOp;
 postfixOp:
-	LPAREN exprList? RPAREN	# PostfixCall
-	| DOT ID				# PostfixDot
-	| LSQBR expr RSQBR		# PostfixIndex;
+	LPAREN exprList? RPAREN	# LabelPostfixCall
+	| DOT ID				# LabelPostfixDot
+	| LSQBR expr RSQBR		# LabelPostfixIndex;
 
 // Primary expressions (literals, identifiers, grouping, etc.)
 primaryExpr:
-	literal					# PrimaryLiteral
-	| ID					# PrimaryID
-	| LPAREN expr RPAREN	# PrimaryParen
-	| arrayLiteral			# PrimaryArray
-	| objectLiteral			# PrimaryObject
-	| mapLiteral			# PrimaryMap
-	| setLiteral			# PrimarySet
-	| fnExpr				# PrimaryFn
-	| matchExpr				# PrimaryMatch
-	| VOID					# PrimaryVoid
-	| NULL					# PrimaryNull
-	| taggedBlockString		# PrimaryTaggedBlock
-	| structInitExpr		# PrimaryStructInit;
+	literal					# LabelPrimaryLiteral
+	| ID					# LabelPrimaryID
+	| LPAREN expr RPAREN	# LabelPrimaryParen
+	| arrayLiteral			# LabelPrimaryArray
+	| objectLiteral			# LabelPrimaryObject
+	| mapLiteral			# LabelPrimaryMap
+	| setLiteral			# LabelPrimarySet
+	| fnExpr				# LabelPrimaryFn
+	| matchExpr				# LabelPrimaryMatch
+	| VOID					# LabelPrimaryVoid
+	| NULL					# LabelPrimaryNull
+	| taggedBlockString		# LabelPrimaryTaggedBlock
+	| structInitExpr		# LabelPrimaryStructInit;
 
 // --- Function Expressions ---
 fnExpr:
@@ -240,11 +239,11 @@ doubleQuotedString:
 multiDoubleQuotedString:
 	MULTI_DOUBLE_QUOTE_START stringPart* MULTI_DOUBLE_STR_END;
 stringPart:
-	SINGLE_STR_CONTENT			# StringPartSingle
-	| MULTI_STR_CONTENT			# StringPartMulti
-	| DOUBLE_STR_CONTENT		# StringPartDouble
-	| MULTI_DOUBLE_STR_CONTENT	# StringPartMultiDouble
-	| interpolation				# StringPartInterp;
+	SINGLE_STR_CONTENT			# LabelStringPartSingle
+	| MULTI_STR_CONTENT			# LabelStringPartMulti
+	| DOUBLE_STR_CONTENT		# LabelStringPartDouble
+	| MULTI_DOUBLE_STR_CONTENT	# LabelStringPartMultiDouble
+	| interpolation				# LabelStringPartInterp;
 interpolation: (
 		SINGLE_STR_INTERP_START
 		| MULTI_STR_INTERP_START
@@ -254,25 +253,25 @@ interpolation: (
 
 // --- Literals ---
 literal:
-	stringLiteral		# LiteralString
-	| numberLiteral		# LiteralNumber
-	| booleanLiteral	# LiteralBool
-	| NULL				# LiteralNull
-	| VOID				# LiteralVoid;
+	stringLiteral		# LabelLiteralString
+	| numberLiteral		# LabelLiteralNumber
+	| booleanLiteral	# LabelLiteralBool
+	| NULL				# LabelLiteralNull
+	| VOID				# LabelLiteralVoid;
 stringLiteral:
-	singleQuotedString			# StringLiteralSingle
-	| multiQuotedString			# StringLiteralMulti
-	| doubleQuotedString		# StringLiteralDouble
-	| multiDoubleQuotedString	# StringLiteralMultiDouble;
+	singleQuotedString			# LabelStringLiteralSingle
+	| multiQuotedString			# LabelStringLiteralMulti
+	| doubleQuotedString		# LabelStringLiteralDouble
+	| multiDoubleQuotedString	# LabelStringLiteralMultiDouble;
 numberLiteral:
-	INTEGER				# NumberLiteralInt
-	| FLOAT				# NumberLiteralFloat
-	| HEX_LITERAL		# NumberLiteralHex
-	| BINARY_LITERAL	# NumberLiteralBin
-	| OCTAL_LITERAL		# NumberLiteralOct;
+	INTEGER				# LabelNumberLiteralInt
+	| FLOAT				# LabelNumberLiteralFloat
+	| HEX_LITERAL		# LabelNumberLiteralHex
+	| BINARY_LITERAL	# LabelNumberLiteralBin
+	| OCTAL_LITERAL		# LabelNumberLiteralOct;
 booleanLiteral:
-	TRUE	# BoolLiteralTrue
-	| FALSE	# BoolLiteralFalse;
+	TRUE	# LabelBoolLiteralTrue
+	| FALSE	# LabelBoolLiteralFalse;
 
 // --- Collections ---
 arrayLiteral: LSQBR exprList? RSQBR;
@@ -280,11 +279,11 @@ objectLiteral: LBRACE objectFieldList? RBRACE;
 objectFieldList: objectField (COMMA objectField)* (COMMA)?;
 objectField: objectFieldName (COLON expr)?;
 objectFieldName:
-	ID				# ObjectFieldNameID
-	| stringLiteral	# ObjectFieldNameStr;
+	ID				# LabelObjectFieldNameID
+	| stringLiteral	# LabelObjectFieldNameStr;
 mapLiteral:
-	LSQBR COLON RSQBR			# MapLiteralEmpty
-	| LSQBR mapFieldList? RSQBR	# MapLiteralNonEmpty;
+	LSQBR COLON RSQBR			# LabelMapLiteralEmpty
+	| LSQBR mapFieldList? RSQBR	# LabelMapLiteralNonEmpty;
 mapFieldList: mapField (COMMA mapField)* (COMMA)?;
 mapField: expr COLON expr;
 setLiteral: LT (expr (COMMA expr)* (COMMA)?)? GT;
@@ -298,11 +297,11 @@ structField: ID COLON expr;
 
 // --- Type Annotations ---
 typeAnnotation:
-	ID			# TypeAnnID
-	| arrayType	# TypeAnnArray
-	| tupleType	# TypeAnnTuple
-	| fnType	# TypeAnnFn
-	| VOID		# TypeAnnVoid;
+	ID			# LabelTypeAnnID
+	| arrayType	# LabelTypeAnnArray
+	| tupleType	# LabelTypeAnnTuple
+	| fnType	# LabelTypeAnnFn
+	| VOID		# LabelTypeAnnVoid;
 tupleType: LPAREN typeList? RPAREN;
 arrayType: ID LSQBR RSQBR;
 fnType: FN LPAREN parameters? RPAREN typeAnnotation?;

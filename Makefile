@@ -47,3 +47,12 @@ build-vscode-extension: build-lsp
 	cd tools/manuscript-vscode-extension && npm run build
 
 build-all: build-msc build-lsp build-vscode-extension
+
+
+DIR = tests/minimal
+minimal-generate-parser:
+	cd $(DIR)/grammar && java -jar "../../../build/antlr-4.13.1-complete.jar" -Dlanguage=Go -o ../parser -visitor -listener ToyLexer.g4 Toy.g4
+	echo "Done!" 
+
+minimal-run:
+	cd $(DIR) && go run main/main.go

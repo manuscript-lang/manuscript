@@ -110,41 +110,41 @@ func (v *ManuscriptAstVisitor) VisitForTrinity(ctx *parser.ForTrinityContext) in
 
 // --- ANTLR visitor pattern for forInit, forCond, forPost ---
 
-func (v *ManuscriptAstVisitor) VisitForInitLet(ctx *parser.ForInitLetContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelForInitLet(ctx *parser.LabelForInitLetContext) interface{} {
 	if ctx == nil || ctx.LetSingle() == nil {
 		return &ast.EmptyStmt{}
 	}
 	return v.Visit(ctx.LetSingle())
 }
 
-func (v *ManuscriptAstVisitor) VisitForInitEmpty(ctx *parser.ForInitEmptyContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelForInitEmpty(ctx *parser.LabelForInitEmptyContext) interface{} {
 	return &ast.EmptyStmt{}
 }
 
-func (v *ManuscriptAstVisitor) VisitForCondExpr(ctx *parser.ForCondExprContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelForCondExpr(ctx *parser.LabelForCondExprContext) interface{} {
 	if ctx == nil || ctx.Expr() == nil {
 		return nil
 	}
 	return v.Visit(ctx.Expr())
 }
 
-func (v *ManuscriptAstVisitor) VisitForCondEmpty(ctx *parser.ForCondEmptyContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitForCondEmpty(ctx *parser.LabelForCondEmptyContext) interface{} {
 	return nil
 }
 
-func (v *ManuscriptAstVisitor) VisitForPostExpr(ctx *parser.ForPostExprContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelForPostExpr(ctx *parser.LabelForPostExprContext) interface{} {
 	if ctx == nil || ctx.Expr() == nil {
 		return nil
 	}
 	return v.Visit(ctx.Expr())
 }
 
-func (v *ManuscriptAstVisitor) VisitForPostEmpty(ctx *parser.ForPostEmptyContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelForPostEmpty(ctx *parser.LabelForPostEmptyContext) interface{} {
 	return nil
 }
 
 // VisitForInLoop handles for-in loops: (ID (COMMA ID)?) IN expr loopBody;
-func (v *ManuscriptAstVisitor) VisitForInLoop(ctx *parser.ForInLoopContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelForInLoop(ctx *parser.LabelForInLoopContext) interface{} {
 	if ctx == nil {
 		return &ast.BadStmt{}
 	}
@@ -201,7 +201,7 @@ func (v *ManuscriptAstVisitor) VisitForStmt(ctx *parser.ForStmtContext) interfac
 	}
 
 	switch t := ctx.ForLoopType().(type) {
-	case *parser.ForLoopContext:
+	case *parser.LabelForLoopContext:
 		forTrinity := t.ForTrinity()
 		if forTrinity == nil {
 			return &ast.BadStmt{}
@@ -212,8 +212,8 @@ func (v *ManuscriptAstVisitor) VisitForStmt(ctx *parser.ForStmtContext) interfac
 			return fs
 		}
 		return stmt
-	case *parser.ForInLoopContext:
-		stmt := v.VisitForInLoop(t)
+	case *parser.LabelForInLoopContext:
+		stmt := v.VisitLabelForInLoop(t)
 		if rs, ok := stmt.(*ast.RangeStmt); ok {
 			rs.For = v.pos(ctx.FOR().GetSymbol())
 			return rs

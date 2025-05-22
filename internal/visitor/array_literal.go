@@ -5,16 +5,13 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
-// VisitArrayLiteral handles array literal expressions like [1, 2, 3]
+// VisitArrayLiteral handles array literal expressions: [expr, ...]
 func (v *ManuscriptAstVisitor) VisitArrayLiteral(ctx *parser.ArrayLiteralContext) interface{} {
 	var elts []ast.Expr
-	if exprList := ctx.ExprList(); exprList != nil {
-		for _, e := range exprList.AllExpr() {
-			if expr, ok := v.Visit(e).(ast.Expr); ok {
-				elts = append(elts, expr)
-			} else {
-				v.addError("Array element is not a valid expression: "+e.GetText(), e.GetStart())
-				elts = append(elts, &ast.BadExpr{})
+	if ctx.ExprList() != nil {
+		if exprListCtx, ok := ctx.ExprList().(*parser.ExprListContext); ok {
+			if exprs, ok := v.VisitExprList(exprListCtx).([]ast.Expr); ok {
+				elts = exprs
 			}
 		}
 	}
@@ -24,24 +21,22 @@ func (v *ManuscriptAstVisitor) VisitArrayLiteral(ctx *parser.ArrayLiteralContext
 	}
 }
 
-// VisitMapLiteralEmpty handles map literal expressions like [:]
-func (v *ManuscriptAstVisitor) VisitMapLiteralEmpty(ctx *parser.MapLiteralEmptyContext) interface{} {
-	mapType := &ast.MapType{
-		Key:   ast.NewIdent("interface{}"),
-		Value: ast.NewIdent("interface{}"),
+// VisitMapLiteralEmpty handles map literal expressions: [:]
+func (v *ManuscriptAstVisitor) VisitLabelMapLiteralEmpty(ctx *parser.LabelMapLiteralEmptyContext) interface{} {
+	return &ast.CompositeLit{
+		Type: &ast.MapType{
+			Key:   ast.NewIdent("interface{}"),
+			Value: ast.NewIdent("interface{}"),
+		},
+		Elts: nil,
 	}
-	return &ast.CompositeLit{Type: mapType, Elts: nil}
 }
 
-// VisitMapLiteralNonEmpty handles map literal expressions like [key1: value1, key2: value2]
-func (v *ManuscriptAstVisitor) VisitMapLiteralNonEmpty(ctx *parser.MapLiteralNonEmptyContext) interface{} {
-	mapType := &ast.MapType{
-		Key:   ast.NewIdent("interface{}"),
-		Value: ast.NewIdent("interface{}"),
-	}
+// VisitMapLiteralNonEmpty handles map literal expressions: [key: value, ...]
+func (v *ManuscriptAstVisitor) VisitLabelMapLiteralNonEmpty(ctx *parser.LabelMapLiteralNonEmptyContext) interface{} {
 	var elts []ast.Expr
-	if ctx.MapFieldList() != nil {
-		for _, f := range ctx.MapFieldList().AllMapField() {
+	if mfl := ctx.MapFieldList(); mfl != nil {
+		for _, f := range mfl.AllMapField() {
 			fieldCtx, ok := f.(*parser.MapFieldContext)
 			if !ok || fieldCtx == nil {
 				continue
@@ -65,16 +60,18 @@ func (v *ManuscriptAstVisitor) VisitMapLiteralNonEmpty(ctx *parser.MapLiteralNon
 			}
 		}
 	}
-	return &ast.CompositeLit{Type: mapType, Elts: elts}
+	return &ast.CompositeLit{
+		Type: &ast.MapType{
+			Key:   ast.NewIdent("interface{}"),
+			Value: ast.NewIdent("interface{}"),
+		},
+		Elts: elts,
+	}
 }
 
-// VisitSetLiteral handles set literal expressions like <1, 2, 3>
-// Sets don't exist natively in Go, so we'll translate them to maps with bool values
+// VisitSetLiteral handles set literal expressions: <expr, ...>
+// Sets are translated to map[interface{}]bool in Go.
 func (v *ManuscriptAstVisitor) VisitSetLiteral(ctx *parser.SetLiteralContext) interface{} {
-	setType := &ast.MapType{
-		Key:   ast.NewIdent("interface{}"),
-		Value: ast.NewIdent("bool"),
-	}
 	var elts []ast.Expr
 	for _, e := range ctx.AllExpr() {
 		if expr, ok := v.Visit(e).(ast.Expr); ok {
@@ -83,5 +80,11 @@ func (v *ManuscriptAstVisitor) VisitSetLiteral(ctx *parser.SetLiteralContext) in
 			v.addError("Set element is not a valid expression: "+e.GetText(), e.GetStart())
 		}
 	}
-	return &ast.CompositeLit{Type: setType, Elts: elts}
+	return &ast.CompositeLit{
+		Type: &ast.MapType{
+			Key:   ast.NewIdent("interface{}"),
+			Value: ast.NewIdent("bool"),
+		},
+		Elts: elts,
+	}
 }

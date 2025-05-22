@@ -47,11 +47,11 @@ func (v *ManuscriptAstVisitor) VisitPostfixExpr(ctx *parser.PostfixExprContext) 
 // visitPostfixOp dispatches to the correct postfix operation visitor.
 func (v *ManuscriptAstVisitor) visitPostfixOp(op parser.IPostfixOpContext, x ast.Expr) ast.Expr {
 	switch t := op.(type) {
-	case *parser.PostfixCallContext:
+	case *parser.LabelPostfixCallContext:
 		return v.VisitPostfixCallWithReceiver(t, x)
-	case *parser.PostfixDotContext:
+	case *parser.LabelPostfixDotContext:
 		return v.VisitPostfixDotWithReceiver(t, x)
-	case *parser.PostfixIndexContext:
+	case *parser.LabelPostfixIndexContext:
 		return v.VisitPostfixIndexWithReceiver(t, x)
 	default:
 		v.addError("Unknown postfix operation type", op.GetStart())
@@ -60,7 +60,7 @@ func (v *ManuscriptAstVisitor) visitPostfixOp(op parser.IPostfixOpContext, x ast
 }
 
 // VisitPostfixCallWithReceiver handles function calls: x(args...)
-func (v *ManuscriptAstVisitor) VisitPostfixCallWithReceiver(ctx *parser.PostfixCallContext, recv ast.Expr) ast.Expr {
+func (v *ManuscriptAstVisitor) VisitPostfixCallWithReceiver(ctx *parser.LabelPostfixCallContext, recv ast.Expr) ast.Expr {
 	args := []ast.Expr{}
 	if ctx.ExprList() != nil {
 		visited := v.Visit(ctx.ExprList())
@@ -79,7 +79,7 @@ func (v *ManuscriptAstVisitor) VisitPostfixCallWithReceiver(ctx *parser.PostfixC
 }
 
 // VisitPostfixDotWithReceiver handles member access: x.y
-func (v *ManuscriptAstVisitor) VisitPostfixDotWithReceiver(ctx *parser.PostfixDotContext, recv ast.Expr) ast.Expr {
+func (v *ManuscriptAstVisitor) VisitPostfixDotWithReceiver(ctx *parser.LabelPostfixDotContext, recv ast.Expr) ast.Expr {
 	if ctx.DOT() == nil || ctx.ID() == nil {
 		v.addError("Malformed member access (dot) operation", ctx.GetStart())
 		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
@@ -91,7 +91,7 @@ func (v *ManuscriptAstVisitor) VisitPostfixDotWithReceiver(ctx *parser.PostfixDo
 }
 
 // VisitPostfixIndexWithReceiver handles index access: x[y]
-func (v *ManuscriptAstVisitor) VisitPostfixIndexWithReceiver(ctx *parser.PostfixIndexContext, recv ast.Expr) ast.Expr {
+func (v *ManuscriptAstVisitor) VisitPostfixIndexWithReceiver(ctx *parser.LabelPostfixIndexContext, recv ast.Expr) ast.Expr {
 	if ctx.LSQBR() == nil || ctx.RSQBR() == nil || ctx.Expr() == nil {
 		v.addError("Malformed index operation", ctx.GetStart())
 		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}

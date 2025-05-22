@@ -6,12 +6,12 @@ import (
 )
 
 // VisitPrimaryLiteral handles literal primary expressions.
-func (v *ManuscriptAstVisitor) VisitPrimaryLiteral(ctx *parser.PrimaryLiteralContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryLiteral(ctx *parser.LabelPrimaryLiteralContext) interface{} {
 	return v.Visit(ctx.Literal())
 }
 
 // VisitPrimaryID handles identifier primary expressions.
-func (v *ManuscriptAstVisitor) VisitPrimaryID(ctx *parser.PrimaryIDContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryID(ctx *parser.LabelPrimaryIDContext) interface{} {
 	if ctx.ID() != nil {
 		return ast.NewIdent(ctx.ID().GetText())
 	}
@@ -20,7 +20,7 @@ func (v *ManuscriptAstVisitor) VisitPrimaryID(ctx *parser.PrimaryIDContext) inte
 }
 
 // VisitPrimaryParen handles parenthesized expressions.
-func (v *ManuscriptAstVisitor) VisitPrimaryParen(ctx *parser.PrimaryParenContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryParen(ctx *parser.LabelPrimaryParenContext) interface{} {
 	if ctx.Expr() != nil {
 		return v.Visit(ctx.Expr())
 	}
@@ -29,51 +29,51 @@ func (v *ManuscriptAstVisitor) VisitPrimaryParen(ctx *parser.PrimaryParenContext
 }
 
 // VisitPrimaryArray handles array literals.
-func (v *ManuscriptAstVisitor) VisitPrimaryArray(ctx *parser.PrimaryArrayContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryArray(ctx *parser.LabelPrimaryArrayContext) interface{} {
 	return v.Visit(ctx.ArrayLiteral())
 }
 
 // VisitPrimaryObject handles object literals.
-func (v *ManuscriptAstVisitor) VisitPrimaryObject(ctx *parser.PrimaryObjectContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryObject(ctx *parser.LabelPrimaryObjectContext) interface{} {
 	return v.Visit(ctx.ObjectLiteral())
 }
 
 // VisitPrimaryMap handles map literals.
-func (v *ManuscriptAstVisitor) VisitPrimaryMap(ctx *parser.PrimaryMapContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryMap(ctx *parser.LabelPrimaryMapContext) interface{} {
 	return v.Visit(ctx.MapLiteral())
 }
 
 // VisitPrimarySet handles set literals.
-func (v *ManuscriptAstVisitor) VisitPrimarySet(ctx *parser.PrimarySetContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimarySet(ctx *parser.LabelPrimarySetContext) interface{} {
 	return v.Visit(ctx.SetLiteral())
 }
 
 // VisitPrimaryFn handles function expressions.
-func (v *ManuscriptAstVisitor) VisitPrimaryFn(ctx *parser.PrimaryFnContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryFn(ctx *parser.LabelPrimaryFnContext) interface{} {
 	return v.Visit(ctx.FnExpr())
 }
 
 // VisitPrimaryMatch handles match expressions.
-func (v *ManuscriptAstVisitor) VisitPrimaryMatch(ctx *parser.PrimaryMatchContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryMatch(ctx *parser.LabelPrimaryMatchContext) interface{} {
 	return v.Visit(ctx.MatchExpr())
 }
 
 // VisitPrimaryVoid handles the void literal.
-func (v *ManuscriptAstVisitor) VisitPrimaryVoid(ctx *parser.PrimaryVoidContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryVoid(ctx *parser.LabelPrimaryVoidContext) interface{} {
 	return ast.NewIdent("nil")
 }
 
 // VisitPrimaryNull handles the null literal.
-func (v *ManuscriptAstVisitor) VisitPrimaryNull(ctx *parser.PrimaryNullContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryNull(ctx *parser.LabelPrimaryNullContext) interface{} {
 	return ast.NewIdent("nil")
 }
 
 // VisitPrimaryTaggedBlock handles tagged block strings.
-func (v *ManuscriptAstVisitor) VisitPrimaryTaggedBlock(ctx *parser.PrimaryTaggedBlockContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryTaggedBlock(ctx *parser.LabelPrimaryTaggedBlockContext) interface{} {
 	return v.Visit(ctx.TaggedBlockString())
 }
 
 // VisitPrimaryStructInit handles struct initialization expressions.
-func (v *ManuscriptAstVisitor) VisitPrimaryStructInit(ctx *parser.PrimaryStructInitContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelPrimaryStructInit(ctx *parser.LabelPrimaryStructInitContext) interface{} {
 	return v.Visit(ctx.StructInitExpr())
 }

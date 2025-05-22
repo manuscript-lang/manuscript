@@ -9,7 +9,7 @@ import (
 
 // --- Literal Visitors ---
 
-func (v *ManuscriptAstVisitor) VisitLiteralString(ctx *parser.LiteralStringContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLiteralString(ctx *parser.LabelLiteralStringContext) interface{} {
 	if ctx.StringLiteral() != nil {
 		return v.Visit(ctx.StringLiteral())
 	}
@@ -17,7 +17,7 @@ func (v *ManuscriptAstVisitor) VisitLiteralString(ctx *parser.LiteralStringConte
 	return &ast.BadExpr{}
 }
 
-func (v *ManuscriptAstVisitor) VisitLiteralNumber(ctx *parser.LiteralNumberContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLiteralNumber(ctx *parser.LabelLiteralNumberContext) interface{} {
 	if ctx.NumberLiteral() != nil {
 		return v.Visit(ctx.NumberLiteral())
 	}
@@ -25,7 +25,7 @@ func (v *ManuscriptAstVisitor) VisitLiteralNumber(ctx *parser.LiteralNumberConte
 	return &ast.BadExpr{}
 }
 
-func (v *ManuscriptAstVisitor) VisitLiteralBool(ctx *parser.LiteralBoolContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLiteralBool(ctx *parser.LabelLiteralBoolContext) interface{} {
 	if ctx.BooleanLiteral() != nil {
 		return v.Visit(ctx.BooleanLiteral())
 	}
@@ -33,17 +33,17 @@ func (v *ManuscriptAstVisitor) VisitLiteralBool(ctx *parser.LiteralBoolContext) 
 	return &ast.BadExpr{}
 }
 
-func (v *ManuscriptAstVisitor) VisitLiteralNull(ctx *parser.LiteralNullContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLiteralNull(ctx *parser.LabelLiteralNullContext) interface{} {
 	return ast.NewIdent("nil")
 }
 
-func (v *ManuscriptAstVisitor) VisitLiteralVoid(ctx *parser.LiteralVoidContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelLiteralVoid(ctx *parser.LabelLiteralVoidContext) interface{} {
 	return ast.NewIdent("nil")
 }
 
 // --- Fine-grained String Literal Visitors ---
 
-func (v *ManuscriptAstVisitor) VisitStringLiteralSingle(ctx *parser.StringLiteralSingleContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStringLiteralSingle(ctx *parser.LabelStringLiteralSingleContext) interface{} {
 	if ctx.SingleQuotedString() != nil {
 		return v.stringPartsToBasicLit(ctx.SingleQuotedString().AllStringPart())
 	}
@@ -51,7 +51,7 @@ func (v *ManuscriptAstVisitor) VisitStringLiteralSingle(ctx *parser.StringLitera
 	return &ast.BadExpr{}
 }
 
-func (v *ManuscriptAstVisitor) VisitStringLiteralMulti(ctx *parser.StringLiteralMultiContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStringLiteralMulti(ctx *parser.LabelStringLiteralMultiContext) interface{} {
 	if ctx.MultiQuotedString() != nil {
 		return v.stringPartsToBasicLit(ctx.MultiQuotedString().AllStringPart())
 	}
@@ -59,7 +59,7 @@ func (v *ManuscriptAstVisitor) VisitStringLiteralMulti(ctx *parser.StringLiteral
 	return &ast.BadExpr{}
 }
 
-func (v *ManuscriptAstVisitor) VisitStringLiteralDouble(ctx *parser.StringLiteralDoubleContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStringLiteralDouble(ctx *parser.LabelStringLiteralDoubleContext) interface{} {
 	if ctx.DoubleQuotedString() != nil {
 		return v.stringPartsToBasicLit(ctx.DoubleQuotedString().AllStringPart())
 	}
@@ -67,7 +67,7 @@ func (v *ManuscriptAstVisitor) VisitStringLiteralDouble(ctx *parser.StringLitera
 	return &ast.BadExpr{}
 }
 
-func (v *ManuscriptAstVisitor) VisitStringLiteralMultiDouble(ctx *parser.StringLiteralMultiDoubleContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelStringLiteralMultiDouble(ctx *parser.LabelStringLiteralMultiDoubleContext) interface{} {
 	if ctx.MultiDoubleQuotedString() != nil {
 		return v.stringPartsToBasicLit(ctx.MultiDoubleQuotedString().AllStringPart())
 	}
@@ -79,15 +79,15 @@ func (v *ManuscriptAstVisitor) stringPartsToBasicLit(parts []parser.IStringPartC
 	raw := ""
 	for _, p := range parts {
 		switch part := p.(type) {
-		case *parser.StringPartSingleContext:
+		case *parser.LabelStringPartSingleContext:
 			raw += part.GetText()
-		case *parser.StringPartMultiContext:
+		case *parser.LabelStringPartMultiContext:
 			raw += part.GetText()
-		case *parser.StringPartDoubleContext:
+		case *parser.LabelStringPartDoubleContext:
 			raw += part.GetText()
-		case *parser.StringPartMultiDoubleContext:
+		case *parser.LabelStringPartMultiDoubleContext:
 			raw += part.GetText()
-		case *parser.StringPartInterpContext:
+		case *parser.LabelStringPartInterpContext:
 			v.addError("String interpolation is not yet supported: "+part.GetText(), part.GetStart())
 		}
 	}
@@ -96,32 +96,32 @@ func (v *ManuscriptAstVisitor) stringPartsToBasicLit(parts []parser.IStringPartC
 
 // --- Fine-grained Number Literal Visitors ---
 
-func (v *ManuscriptAstVisitor) VisitNumberLiteralInt(ctx *parser.NumberLiteralIntContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelNumberLiteralInt(ctx *parser.LabelNumberLiteralIntContext) interface{} {
 	return &ast.BasicLit{Kind: token.INT, Value: ctx.GetText()}
 }
 
-func (v *ManuscriptAstVisitor) VisitNumberLiteralFloat(ctx *parser.NumberLiteralFloatContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelNumberLiteralFloat(ctx *parser.LabelNumberLiteralFloatContext) interface{} {
 	return &ast.BasicLit{Kind: token.FLOAT, Value: ctx.GetText()}
 }
 
-func (v *ManuscriptAstVisitor) VisitNumberLiteralHex(ctx *parser.NumberLiteralHexContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelNumberLiteralHex(ctx *parser.LabelNumberLiteralHexContext) interface{} {
 	return &ast.BasicLit{Kind: token.INT, Value: ctx.GetText()}
 }
 
-func (v *ManuscriptAstVisitor) VisitNumberLiteralBin(ctx *parser.NumberLiteralBinContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelNumberLiteralBin(ctx *parser.LabelNumberLiteralBinContext) interface{} {
 	return &ast.BasicLit{Kind: token.INT, Value: ctx.GetText()}
 }
 
-func (v *ManuscriptAstVisitor) VisitNumberLiteralOct(ctx *parser.NumberLiteralOctContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelNumberLiteralOct(ctx *parser.LabelNumberLiteralOctContext) interface{} {
 	return &ast.BasicLit{Kind: token.INT, Value: ctx.GetText()}
 }
 
 // --- Fine-grained Boolean Literal Visitors ---
 
-func (v *ManuscriptAstVisitor) VisitBoolLiteralTrue(ctx *parser.BoolLiteralTrueContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelBoolLiteralTrue(ctx *parser.LabelBoolLiteralTrueContext) interface{} {
 	return ast.NewIdent("true")
 }
 
-func (v *ManuscriptAstVisitor) VisitBoolLiteralFalse(ctx *parser.BoolLiteralFalseContext) interface{} {
+func (v *ManuscriptAstVisitor) VisitLabelBoolLiteralFalse(ctx *parser.LabelBoolLiteralFalseContext) interface{} {
 	return ast.NewIdent("false")
 }

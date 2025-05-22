@@ -19,6 +19,7 @@ alwaysApply: true
 - DO use short names for variables
 - DO create utility function and extract common logic
 - ALWAYS use VisitXXX methods when possible, top level visitors are always prefered
+- DO NOT read parser code, it is large, instead infer name from grammar definition 
 
 # How to write manuscript code
 - DO refer language-design.md for understanding available constructs

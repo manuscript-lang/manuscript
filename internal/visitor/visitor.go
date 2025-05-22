@@ -23,10 +23,10 @@ type ManuscriptAstVisitor struct {
 	currentFile    string // Name of the current Manuscript file being processed
 
 	// For Go AST generation specific details
-	goPackageName string            // Target Go package name
-	goImports     map[string]string // Map from import path to alias (if any, "" for no alias)
-	goFileSet     *gotoken.FileSet  // For position information in Go AST
-	tempVarCount  int               // For unique temporary variables like __val1, __val2
+	goPackageName string // Target Go package name
+	goImports     []*ast.ImportSpec
+	goFileSet     *gotoken.FileSet // For position information in Go AST
+	tempVarCount  int              // For unique temporary variables like __val1, __val2
 }
 
 // NewManuscriptAstVisitor creates a new visitor instance.
@@ -39,7 +39,7 @@ func NewManuscriptAstVisitor(pkgName, fileName string) *ManuscriptAstVisitor {
 		currentPackage:        pkgName,
 		currentFile:           fileName,
 		goPackageName:         "main", // Default, can be overridden
-		goImports:             make(map[string]string),
+		goImports:             []*ast.ImportSpec{},
 		goFileSet:             fs,
 		tempVarCount:          0, // Initialize the counter
 	}
@@ -62,8 +62,7 @@ func (v *ManuscriptAstVisitor) addError(message string, token antlr.Token) {
 // It returns the result of visiting the last child, or nil if no children produce a result.
 func (v *ManuscriptAstVisitor) VisitChildren(node antlr.RuleNode) interface{} {
 	var result interface{}
-	for i := 0; i < node.GetChildCount(); i++ {
-		child := node.GetChild(i)
+	for _, child := range node.GetRuleContext().GetChildren() {
 		if child == nil {
 			continue
 		}

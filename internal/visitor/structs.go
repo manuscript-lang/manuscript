@@ -149,36 +149,18 @@ func (v *ManuscriptAstVisitor) fieldDeclToAstField(ctx *parser.FieldDeclContext)
 	}
 	fieldName := name.GetText()
 	fieldTypeAnn := ctx.TypeAnnotation()
-	var expr ast.Expr
 	if fieldTypeAnn == nil {
 		v.addError("Missing type annotation for field \""+fieldName+"\".", name.GetSymbol())
 		return nil
 	}
-	if e, ok := fieldTypeAnn.(ast.Expr); ok && e != nil {
-		expr = e
-	} else if typeAnnCtx, ok := fieldTypeAnn.(*parser.TypeAnnotationContext); ok && typeAnnCtx != nil {
-		if e2, ok2 := v.VisitTypeAnnotation(typeAnnCtx).(ast.Expr); ok2 && e2 != nil {
-			expr = e2
-		} else {
-			v.addError("Invalid type expression for field \""+fieldName+"\": "+typeAnnCtx.GetText(), typeAnnCtx.GetStart())
-			return nil
-		}
-	} else {
-		// Try to visit if it has Accept method
-		if visitable, ok := fieldTypeAnn.(interface {
-			Accept(antlr.ParseTreeVisitor) interface{}
-		}); ok {
-			if e3, ok3 := visitable.Accept(v).(ast.Expr); ok3 && e3 != nil {
-				expr = e3
-			} else {
-				v.addError("Type annotation for field \""+fieldName+"\" has unexpected context type (Accept fallback).", name.GetSymbol())
-				return nil
-			}
-		} else {
-			v.addError("Type annotation for field \""+fieldName+"\" has unexpected context type (unhandled).", name.GetSymbol())
-			return nil
-		}
+
+	// Use processTypeAnnotationToExpr for all type annotation forms
+	var expr ast.Expr
+	expr, ok := v.processTypeAnnotationToExpr(fieldTypeAnn, "field \""+fieldName+"\"")
+	if !ok {
+		return nil
 	}
+
 	if ctx.QUESTION() != nil {
 		switch expr.(type) {
 		case *ast.Ident, *ast.SelectorExpr:
