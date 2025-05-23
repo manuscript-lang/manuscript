@@ -158,6 +158,9 @@ type ManuscriptListener interface {
 	// EnterLabelStmtDefer is called when entering the LabelStmtDefer production.
 	EnterLabelStmtDefer(c *LabelStmtDeferContext)
 
+	// EnterLabelStmtTry is called when entering the LabelStmtTry production.
+	EnterLabelStmtTry(c *LabelStmtTryContext)
+
 	// EnterReturnStmt is called when entering the returnStmt production.
 	EnterReturnStmt(c *ReturnStmtContext)
 
@@ -325,6 +328,9 @@ type ManuscriptListener interface {
 
 	// EnterLabelPrimaryStructInit is called when entering the LabelPrimaryStructInit production.
 	EnterLabelPrimaryStructInit(c *LabelPrimaryStructInitContext)
+
+	// EnterTryExpr is called when entering the tryExpr production.
+	EnterTryExpr(c *TryExprContext)
 
 	// EnterFnExpr is called when entering the fnExpr production.
 	EnterFnExpr(c *FnExprContext)
@@ -617,6 +623,9 @@ type ManuscriptListener interface {
 	// ExitLabelStmtDefer is called when exiting the LabelStmtDefer production.
 	ExitLabelStmtDefer(c *LabelStmtDeferContext)
 
+	// ExitLabelStmtTry is called when exiting the LabelStmtTry production.
+	ExitLabelStmtTry(c *LabelStmtTryContext)
+
 	// ExitReturnStmt is called when exiting the returnStmt production.
 	ExitReturnStmt(c *ReturnStmtContext)
 
@@ -784,6 +793,9 @@ type ManuscriptListener interface {
 
 	// ExitLabelPrimaryStructInit is called when exiting the LabelPrimaryStructInit production.
 	ExitLabelPrimaryStructInit(c *LabelPrimaryStructInitContext)
+
+	// ExitTryExpr is called when exiting the tryExpr production.
+	ExitTryExpr(c *TryExprContext)
 
 	// ExitFnExpr is called when exiting the fnExpr production.
 	ExitFnExpr(c *FnExprContext)

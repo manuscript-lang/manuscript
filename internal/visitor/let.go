@@ -214,39 +214,52 @@ func (v *ManuscriptAstVisitor) VisitLetSingle(ctx *parser.LetSingleContext) inte
 		v.addError("Missing pattern in single let assignment: "+ctx.GetText(), ctx.GetStart())
 		return &ast.EmptyStmt{}
 	}
-	patternRaw := v.Visit(ctx.TypedID())
-	ident, ok := patternRaw.(*ast.Ident)
+
+	lhsVisited := v.Visit(ctx.TypedID())
+	lhsIdent, ok := lhsVisited.(*ast.Ident)
 	if !ok {
-		v.addError("Pattern did not evaluate to an identifier: "+ctx.TypedID().GetText(), ctx.TypedID().GetStart())
-		return &ast.EmptyStmt{}
+		v.addError("LHS of let single is not an identifier: "+ctx.TypedID().GetText(), ctx.TypedID().GetStart())
+		return &ast.BadDecl{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 
-	if ctx.EQUALS() != nil && ctx.Expr() != nil {
-		valueVisited := v.Visit(ctx.Expr())
-		sourceExpr, okVal := valueVisited.(ast.Expr)
-		if !okVal {
-			v.addError("Value did not evaluate to an expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
-			return &ast.EmptyStmt{}
+	if ctx.EQUALS() != nil {
+		if ctx.TryExpr() != nil {
+			// Handle 'let x = try expr'
+			rhsVisited := v.Visit(ctx.TryExpr())
+			tryMarker, okTryMarker := rhsVisited.(*TryMarkerExpr)
+			if !okTryMarker {
+				v.addError("RHS of let single (try) did not resolve to TryMarkerExpr: "+ctx.TryExpr().GetText(), ctx.TryExpr().GetStart())
+				return &ast.BadDecl{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+			}
+			return v.buildTryLogic(lhsIdent, tryMarker.OriginalExpr)
+		} else if ctx.Expr() != nil {
+			// Handle 'let x = expr'
+			rhsVisited := v.Visit(ctx.Expr())
+			rhsExpr, okExpr := rhsVisited.(ast.Expr)
+			if !okExpr {
+				v.addError("RHS of let single is not an expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
+				return &ast.BadDecl{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+			}
+			return &ast.AssignStmt{
+				Lhs: []ast.Expr{lhsIdent},
+				Tok: token.DEFINE,
+				Rhs: []ast.Expr{rhsExpr},
+			}
 		}
-
-		if tryMarker, ok := sourceExpr.(*TryMarkerExpr); ok {
-			actualSourceExpr := tryMarker.OriginalExpr
-			return v.buildTryLogic(ident, actualSourceExpr)
-		}
-
-		return &ast.AssignStmt{
-			Lhs: []ast.Expr{ident},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{sourceExpr},
+	} else {
+		// Declaration without assignment: 'let x'
+		return &ast.DeclStmt{
+			Decl: &ast.GenDecl{
+				Tok: token.VAR,
+				Specs: []ast.Spec{
+					&ast.ValueSpec{
+						Names: []*ast.Ident{lhsIdent},
+					},
+				},
+			},
 		}
 	}
-
-	return &ast.DeclStmt{
-		Decl: &ast.GenDecl{
-			Tok:   token.VAR,
-			Specs: []ast.Spec{&ast.ValueSpec{Names: []*ast.Ident{ident}}},
-		},
-	}
+	return &ast.BadDecl{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 }
 
 // VisitLetBlockItemList aggregates all let block items into a flat []ast.Stmt

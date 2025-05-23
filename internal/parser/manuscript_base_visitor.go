@@ -208,6 +208,10 @@ func (v *BaseManuscriptVisitor) VisitLabelStmtDefer(ctx *LabelStmtDeferContext) 
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitLabelStmtTry(ctx *LabelStmtTryContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitReturnStmt(ctx *ReturnStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -429,6 +433,10 @@ func (v *BaseManuscriptVisitor) VisitLabelPrimaryTaggedBlock(ctx *LabelPrimaryTa
 }
 
 func (v *BaseManuscriptVisitor) VisitLabelPrimaryStructInit(ctx *LabelPrimaryStructInitContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitTryExpr(ctx *TryExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

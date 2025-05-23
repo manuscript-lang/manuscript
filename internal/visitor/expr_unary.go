@@ -113,8 +113,6 @@ func (v *ManuscriptAstVisitor) VisitLabelUnaryAwaitExpr(ctx *parser.LabelUnaryAw
 func (v *ManuscriptAstVisitor) buildUnaryOpExpr(opToken antlr.Token, operandExpr ast.Expr) ast.Expr {
 	opPos := v.pos(opToken)
 	switch opToken.GetTokenType() {
-	case parser.ManuscriptTRY:
-		return &TryMarkerExpr{OriginalExpr: operandExpr, TryPos: opPos}
 	case parser.ManuscriptPLUS:
 		return &ast.UnaryExpr{OpPos: opPos, Op: token.ADD, X: operandExpr}
 	case parser.ManuscriptMINUS:

@@ -6,6 +6,8 @@ import (
 	"manuscript-co/manuscript/internal/parser"
 )
 
+// VisitExpr is the general entry point for expression visitation.
+// It dispatches to more specific Visit<RuleName> methods based on the context type.
 func (v *ManuscriptAstVisitor) VisitExpr(ctx *parser.ExprContext) interface{} {
 	if ctx == nil {
 		v.addError("VisitExpr called with nil context", nil)
@@ -18,6 +20,24 @@ func (v *ManuscriptAstVisitor) VisitExpr(ctx *parser.ExprContext) interface{} {
 	return v.Visit(ctx.AssignmentExpr())
 }
 
+func (v *ManuscriptAstVisitor) VisitTryExpr(ctx *parser.TryExprContext) interface{} {
+	if ctx == nil || ctx.Expr() == nil {
+		v.addError("Try expression is missing its underlying expression", ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+
+	operandResult := v.Visit(ctx.Expr())
+	operandExpr, ok := operandResult.(ast.Expr)
+	if !ok {
+		v.addError("Operand for try did not resolve to an ast.Expr", ctx.Expr().GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+
+	return &TryMarkerExpr{OriginalExpr: operandExpr, TryPos: v.pos(ctx.TRY().GetSymbol())}
+}
+
+// VisitExprList handles a list of expressions, like in a function call or return statement.
+// It returns a slice of ast.Expr.
 func (v *ManuscriptAstVisitor) VisitExprList(ctx *parser.ExprListContext) interface{} {
 	if ctx == nil {
 		v.addError("VisitExprList called with nil context", nil)

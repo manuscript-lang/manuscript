@@ -128,6 +128,20 @@ func (v *ManuscriptAstVisitor) VisitLabelStmtDefer(ctx *parser.LabelStmtDeferCon
 	return v.Visit(ctx.DeferStmt())
 }
 
+func (v *ManuscriptAstVisitor) VisitLabelStmtTry(ctx *parser.LabelStmtTryContext) interface{} {
+	if ctx == nil || ctx.TryExpr() == nil {
+		v.addError("try statement missing tryExpr", ctx.GetStart())
+		return &ast.BadStmt{}
+	}
+	visited := v.Visit(ctx.TryExpr())
+	tryMarker, ok := visited.(*TryMarkerExpr)
+	if !ok {
+		v.addError("try statement did not resolve to a TryMarkerExpr", ctx.TryExpr().GetStart())
+		return &ast.BadStmt{}
+	}
+	return v.buildTryLogic(ast.NewIdent("_"), tryMarker.OriginalExpr)
+}
+
 // VisitIfStmt processes an if statement, including any else or else-if branches.
 func (v *ManuscriptAstVisitor) VisitIfStmt(ctx *parser.IfStmtContext) interface{} {
 	// Visit the condition expression

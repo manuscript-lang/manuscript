@@ -325,6 +325,12 @@ func (s *BaseManuscriptListener) EnterLabelStmtDefer(ctx *LabelStmtDeferContext)
 // ExitLabelStmtDefer is called when production LabelStmtDefer is exited.
 func (s *BaseManuscriptListener) ExitLabelStmtDefer(ctx *LabelStmtDeferContext) {}
 
+// EnterLabelStmtTry is called when production LabelStmtTry is entered.
+func (s *BaseManuscriptListener) EnterLabelStmtTry(ctx *LabelStmtTryContext) {}
+
+// ExitLabelStmtTry is called when production LabelStmtTry is exited.
+func (s *BaseManuscriptListener) ExitLabelStmtTry(ctx *LabelStmtTryContext) {}
+
 // EnterReturnStmt is called when production returnStmt is entered.
 func (s *BaseManuscriptListener) EnterReturnStmt(ctx *ReturnStmtContext) {}
 
@@ -660,6 +666,12 @@ func (s *BaseManuscriptListener) EnterLabelPrimaryStructInit(ctx *LabelPrimarySt
 
 // ExitLabelPrimaryStructInit is called when production LabelPrimaryStructInit is exited.
 func (s *BaseManuscriptListener) ExitLabelPrimaryStructInit(ctx *LabelPrimaryStructInitContext) {}
+
+// EnterTryExpr is called when production tryExpr is entered.
+func (s *BaseManuscriptListener) EnterTryExpr(ctx *TryExprContext) {}
+
+// ExitTryExpr is called when production tryExpr is exited.
+func (s *BaseManuscriptListener) ExitTryExpr(ctx *TryExprContext) {}
 
 // EnterFnExpr is called when production fnExpr is entered.
 func (s *BaseManuscriptListener) EnterFnExpr(ctx *FnExprContext) {}

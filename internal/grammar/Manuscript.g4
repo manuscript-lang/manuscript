@@ -45,7 +45,7 @@ letDecl:
 	| LET letDestructuredObj SEMICOLON?	
 	| LET letDestructuredArray SEMICOLON?;
 
-letSingle: typedID (EQUALS expr)?;
+letSingle: typedID (EQUALS (expr | tryExpr))?;
 letBlock: LPAREN letBlockItemList? RPAREN;
 letBlockItemList:
 	letBlockItemSep* letBlockItem (letBlockItemSep+ letBlockItem)* letBlockItemSep*;
@@ -107,7 +107,8 @@ stmt:
 	| breakStmt			# LabelStmtBreak
 	| continueStmt		# LabelStmtContinue
 	| checkStmt			# LabelStmtCheck
-	| deferStmt			# LabelStmtDefer;
+	| deferStmt			# LabelStmtDefer
+	| tryExpr SEMICOLON?	# LabelStmtTry;
 
 returnStmt: RETURN exprList? SEMICOLON?;
 yieldStmt: YIELD exprList? SEMICOLON?;
@@ -195,7 +196,7 @@ multiplicativeExpr:
 
 // Unary and postfix expressions
 unaryExpr:
-	op = (PLUS | MINUS | EXCLAMATION | TRY) unary = unaryExpr	# LabelUnaryOpExpr
+	op = (PLUS | MINUS | EXCLAMATION) unary = unaryExpr	# LabelUnaryOpExpr
 	| awaitExpr									# LabelUnaryAwaitExpr;
 awaitExpr: (AWAIT? ASYNC?) postfixExpr;
 postfixExpr: primaryExpr | postfixExpr postfixOp;
@@ -219,6 +220,9 @@ primaryExpr:
 	| NULL					# LabelPrimaryNull
 	| taggedBlockString		# LabelPrimaryTaggedBlock
 	| structInitExpr		# LabelPrimaryStructInit;
+
+// --- Try Expressions ---
+tryExpr: TRY expr;
 
 // --- Function Expressions ---
 fnExpr:
