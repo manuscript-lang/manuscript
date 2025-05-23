@@ -1,0 +1,22 @@
+{{ define "main" }}
+<div class="container">
+    <div class="sidebar">
+        {{ partial "sidebar.html" . }}
+    </div>
+    <div class="content">
+        <article>
+            <h1>{{ .Title }}</h1>
+            <div class="content-body">
+                {{ .Content }}
+            </div>
+            {{ if .Params.github }}
+            <div class="edit-page">
+                <a href="{{ .Site.Params.github.repo }}/edit/{{ .Site.Params.github.branch }}/{{ .File.Path }}" target="_blank">
+                    Edit this page on GitHub
+                </a>
+            </div>
+            {{ end }}
+        </article>
+    </div>
+</div>
+{{ end }} 

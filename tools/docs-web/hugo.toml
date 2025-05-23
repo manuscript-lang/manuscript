@@ -1,0 +1,59 @@
+baseURL = "https://manuscript-lang.dev"
+languageCode = "en-us"
+title = "Manuscript Programming Language"
+theme = "manuscript"
+
+# Content directory
+contentDir = "content"
+dataDir = "data"
+layoutDir = "layouts"
+staticDir = "static"
+
+# Output directory (will be overridden by Makefile)
+publishDir = "public"
+
+# Markup configuration
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+  [markup.highlight]
+    style = "github"
+    lineNos = true
+
+# Menu configuration
+[menu]
+  [[menu.main]]
+    name = "Docs"
+    url = "/docs/"
+    weight = 10
+  [[menu.main]]
+    name = "Downloads"
+    url = "/downloads/"
+    weight = 20
+  [[menu.main]]
+    name = "Community"
+    url = "/community/"
+    weight = 30
+
+# Site parameters
+[params]
+  version = "0.1.0"
+  github_repo = "https://github.com/manuscript-co/manuscript"
+  github_branch = "main"
+  
+  # UI configuration
+  [params.ui]
+    sidebar_menu_compact = true
+    breadcrumb_disable = false
+    taxonomy_taxonomyterm_disable = true
+    
+  # GitHub configuration for edit links
+  [params.github]
+    repo = "https://github.com/manuscript-co/manuscript"
+    branch = "main"
+
+# Taxonomies
+[taxonomies]
+  tag = "tags"
+  category = "categories" 
