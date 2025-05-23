@@ -184,12 +184,10 @@ equalityExpr:
 comparisonOp: LT | LT_EQUALS | GT | GT_EQUALS;
 
 comparisonExpr:
-	shiftExpr
-	| left = comparisonExpr op = comparisonOp right = shiftExpr;
+	additiveExpr
+	| left = comparisonExpr op = comparisonOp right = additiveExpr;
 
 // Arithmetic expressions
-shiftExpr:
-	additiveExpr;
 additiveExpr:
 	multiplicativeExpr
 	| left = additiveExpr op = (PLUS | MINUS) right = multiplicativeExpr;
@@ -200,8 +198,7 @@ multiplicativeExpr:
 // Unary and postfix expressions
 unaryExpr:
 	op = (PLUS | MINUS | EXCLAMATION) unary = unaryExpr	# LabelUnaryOpExpr
-	| awaitExpr									# LabelUnaryAwaitExpr;
-awaitExpr: postfixExpr;
+	| postfixExpr									# LabelUnaryPostfixExpr;
 postfixExpr: primaryExpr | postfixExpr postfixOp;
 postfixOp:
 	LPAREN exprList? RPAREN	# LabelPostfixCall

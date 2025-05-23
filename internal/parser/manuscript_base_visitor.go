@@ -356,10 +356,6 @@ func (v *BaseManuscriptVisitor) VisitComparisonExpr(ctx *ComparisonExprContext) 
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitShiftExpr(ctx *ShiftExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseManuscriptVisitor) VisitAdditiveExpr(ctx *AdditiveExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -372,11 +368,7 @@ func (v *BaseManuscriptVisitor) VisitLabelUnaryOpExpr(ctx *LabelUnaryOpExprConte
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelUnaryAwaitExpr(ctx *LabelUnaryAwaitExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitAwaitExpr(ctx *AwaitExprContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelUnaryPostfixExpr(ctx *LabelUnaryPostfixExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
