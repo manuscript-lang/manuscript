@@ -48,6 +48,11 @@ build-vscode-extension: build-lsp
 
 build-all: build-msc build-lsp build-vscode-extension
 
+build-docs:
+	@echo "Building Manuscript documentation website..."
+	hugo -s tools/docs-web -d ../../build/docs-website
+	@echo "Website built in build/docs-website"
+
 
 DIR = tests/minimal
 minimal-generate-parser:

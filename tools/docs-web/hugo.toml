@@ -1,0 +1,4 @@
+baseURL = 'https://example.org/'
+languageCode = 'en-us'
+title = 'Manuscript Language Docs'
+theme = "ananke" # Using a placeholder theme for initial setup.
