@@ -1,12 +1,14 @@
 # Manuscript Documentation Website
 
-This directory contains the Hugo-based documentation website for the Manuscript programming language.
+This directory contains the Hugo-based documentation website for the Manuscript programming language, built using the [Docsy](https://www.docsy.dev/) theme via Hugo modules.
 
 ## Structure
 
 ```
 tools/docs-web/
 ├── hugo.toml              # Hugo configuration
+├── go.mod                 # Hugo modules configuration
+├── go.sum                 # Hugo modules checksums
 ├── content/               # Markdown content files
 │   ├── _index.md         # Homepage
 │   ├── docs/             # Documentation section
@@ -16,10 +18,7 @@ tools/docs-web/
 │   │   ├── tools/        # Development tools
 │   │   ├── examples/     # Code examples
 │   │   ├── tutorials/    # Tutorials
-│   │   └── best-practices/
-│   ├── downloads/        # Download section
 │   └── community/        # Community section
-├── themes/manuscript/    # Custom Hugo theme
 ├── static/               # Static assets
 ├── layouts/              # Custom layouts (if needed)
 ├── data/                 # Data files
@@ -30,8 +29,9 @@ tools/docs-web/
 
 ### Prerequisites
 
-- Hugo (extended version) installed globally
-- No additional dependencies required
+- Hugo (extended version 0.75.0 or later) installed globally
+- Go (for Hugo modules)
+- No additional theme installation required - Docsy is downloaded automatically via Hugo modules
 
 ### Build Commands
 
@@ -66,6 +66,21 @@ To develop the documentation:
 
 3. Edit content files in `content/` - Hugo will automatically reload
 
+### Hugo Modules
+
+This site uses Hugo modules to manage the Docsy theme and its dependencies. The modules are configured in:
+
+- `go.mod` - Defines the module dependencies
+- `hugo.toml` - Contains the module import configuration
+
+To update the Docsy theme:
+
+```bash
+cd tools/docs-web
+hugo mod get -u github.com/google/docsy
+hugo mod tidy
+```
+
 ### Adding Content
 
 #### New Documentation Page
@@ -84,23 +99,24 @@ hugo new docs/tutorials/tutorial-name.md
 
 ### Theme Customization
 
-The custom `manuscript` theme is located in `themes/manuscript/`. Key files:
+The site uses the [Docsy](https://www.docsy.dev/) theme. Customizations can be made by:
 
-- `layouts/_default/baseof.html` - Base template
-- `layouts/_default/single.html` - Single page template
-- `layouts/_default/list.html` - List page template
-- `layouts/index.html` - Homepage template
-- `layouts/partials/` - Reusable components
-- `static/css/style.css` - Stylesheet
+- Adding custom CSS in `assets/scss/_custom.scss` 
+- Creating custom layouts in `layouts/` to override Docsy's defaults
+- Adding custom partials in `layouts/partials/`
+- Configuring theme parameters in `hugo.toml`
+
+For more information, see the [Docsy documentation](https://www.docsy.dev/docs/).
 
 ### Configuration
 
 Main configuration is in `hugo.toml`. Key settings:
 
 - `baseURL` - Production website URL
-- `theme` - Theme name (manuscript)
+- `module` - Hugo modules configuration for Docsy
 - `menu` - Navigation menu structure
-- `params` - Site parameters and GitHub integration
+- `params` - Site parameters including Docsy theme configuration
+- `params.github` - GitHub integration settings
 
 ## Deployment
 
@@ -118,4 +134,5 @@ The website is built to `build/docs-web/` and can be deployed to any static host
 - Include code examples where appropriate
 - Follow the existing structure and style
 - Add appropriate front matter to new pages
-- Use relative links for internal navigation 
+- Use relative links for internal navigation
+- Follow [Docsy's content guidelines](https://www.docsy.dev/docs/adding-content/) where applicable 

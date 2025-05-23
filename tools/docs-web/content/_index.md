@@ -1,37 +1,69 @@
 ---
 title: "Manuscript Programming Language"
-linkTitle: "Home"
+linkTitle: "Manuscript"
 ---
 
-# Manuscript Programming Language
+{{< blocks/cover title="Manuscript Programming Language" image_anchor="top" height="full" >}}
+<a class="btn btn-lg btn-primary me-3 mb-4" href="/docs/">
+  Learn More <i class="fas fa-arrow-alt-circle-right ms-2"></i>
+</a>
+<a class="btn btn-lg btn-secondary me-3 mb-4" href="/downloads/">
+  Download <i class="fab fa-github ms-2 "></i>
+</a>
+<p class="lead mt-5">A modern, expressive language designed for clarity and productivity</p>
+{{< /blocks/cover >}}
 
-Welcome to the official documentation for the Manuscript programming language - a modern, expressive language designed for clarity and productivity.
+{{% blocks/lead color="primary" %}}
+Manuscript is a programming language that prioritizes readability and simplicity while maintaining powerful features for modern software development.
 
+**Get started with Manuscript in minutes!**
+{{% /blocks/lead %}}
+
+{{% blocks/section color="dark" type="row" %}}
+{{% blocks/feature icon="fa-lightbulb" title="Simple Syntax" %}}
+Clean, readable code that expresses intent clearly. Write less boilerplate, focus more on logic.
+{{% /blocks/feature %}}
+
+{{% blocks/feature icon="fa-shield-alt" title="Type Safety" %}}
+Strong typing system that catches errors at compile time, helping you build reliable software.
+{{% /blocks/feature %}}
+
+{{% blocks/feature icon="fa-tools" title="Modern Tooling" %}}
+Built-in language server, IDE support, and development tools for a smooth coding experience.
+{{% /blocks/feature %}}
+{{% /blocks/section %}}
+
+{{% blocks/section %}}
 ## Quick Start
 
 Get started with Manuscript in minutes:
 
 ```bash
-# Install Manuscript
-go build -o msc cmd/main.go
+# Clone and build
+git clone https://github.com/manuscript-co/manuscript.git
+cd manuscript
+make build-msc
 
 # Create your first program
 echo 'print("Hello, Manuscript!")' > hello.ms
 
 # Run it
-./msc hello.ms
+./build/msc hello.ms
 ```
 
-## Key Features
+Ready to learn more? Check out our [documentation](/docs/) or join the [community](/community/).
+{{% /blocks/section %}}
 
-- **Simple Syntax**: Clean, readable code that expresses intent clearly
-- **Type Safety**: Strong typing system that catches errors at compile time
-- **Modern Tooling**: Built-in language server and IDE support
-- **Performance**: Compiles to efficient Go code
+{{% blocks/section type="row" %}}
+{{% blocks/feature icon="fab fa-github" title="Contributions welcome!" url="https://github.com/manuscript-co/manuscript" %}}
+We do a [Pull Request](https://github.com/manuscript-co/manuscript/pulls) contributions workflow on **GitHub**. New users are always welcome!
+{{% /blocks/feature %}}
 
-## Get Involved
+{{% blocks/feature icon="fab fa-twitter" title="Follow us on Twitter!" url="https://twitter.com/manuscript_lang" %}}
+For announcement of latest features etc.
+{{% /blocks/feature %}}
 
-- [Download](/downloads/) the latest release
-- Read the [documentation](/docs/) to learn the language
-- Join our [community](/community/) discussions
-- Contribute on [GitHub](https://github.com/manuscript-co/manuscript) 
+{{% blocks/feature icon="fa-envelope" title="Join the discussion!" url="https://github.com/manuscript-co/manuscript/discussions" %}}
+Ask questions, share ideas, and connect with other Manuscript developers.
+{{% /blocks/feature %}}
+{{% /blocks/section %}} 

@@ -2,6 +2,8 @@
 title: "Functions"
 linkTitle: "Functions"
 weight: 20
+description: >
+  Learn how to define and use functions in Manuscript.
 ---
 
 # Functions

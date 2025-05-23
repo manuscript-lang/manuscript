@@ -1,30 +1,40 @@
 baseURL = "https://manuscript-lang.dev"
 languageCode = "en-us"
 title = "Manuscript Programming Language"
-theme = "manuscript"
 
-# Content directory
+# Language settings
 contentDir = "content"
-dataDir = "data"
-layoutDir = "layouts"
-staticDir = "static"
+defaultContentLanguage = "en"
+defaultContentLanguageInSubdir = false
+enableRobotsTXT = true
 
-# Output directory (will be overridden by Makefile)
-publishDir = "public"
+# Hugo modules
+[module]
+  [module.hugoVersion]
+    extended = true
+    min = "0.75.0"
+  [[module.imports]]
+    path = "github.com/google/docsy"
+    disable = false
+  [[module.imports]]
+    path = "github.com/google/docsy/dependencies"
+    disable = false
 
 # Markup configuration
 [markup]
   [markup.goldmark]
+    [markup.goldmark.parser.attribute]
+      block = true
     [markup.goldmark.renderer]
       unsafe = true
   [markup.highlight]
     style = "github"
-    lineNos = true
+    lineNos = false
 
-# Menu configuration
+# Navigation
 [menu]
   [[menu.main]]
-    name = "Docs"
+    name = "Documentation"
     url = "/docs/"
     weight = 10
   [[menu.main]]
@@ -36,22 +46,75 @@ publishDir = "public"
     url = "/community/"
     weight = 30
 
-# Site parameters
+# Site parameters for Docsy
 [params]
-  version = "0.1.0"
+  # Repository
   github_repo = "https://github.com/manuscript-co/manuscript"
   github_branch = "main"
   
-  # UI configuration
+  # Docsy theme parameters
+  version_menu = "Releases"
+  archived_version = false
+  version = "0.1.0"
+  url_latest_version = "https://manuscript-lang.dev"
+  
+  # User interface configuration
   [params.ui]
-    sidebar_menu_compact = true
+    sidebar_menu_compact = false
+    sidebar_menu_foldable = true
+    sidebar_cache_limit = 10
     breadcrumb_disable = false
     taxonomy_taxonomyterm_disable = true
+    feedback_enable = true
+    feedback_yes = 'Glad to hear it! Please <a href="https://github.com/manuscript-co/manuscript/issues/new">tell us how we can improve</a>.'
+    feedback_no = 'Sorry to hear that. Please <a href="https://github.com/manuscript-co/manuscript/issues/new">tell us how we can improve</a>.'
+    readingtime_enable = false
     
-  # GitHub configuration for edit links
+  [params.ui.navbar_logo]
+    enable = true
+  
+  # Links to user documentation
+  [params.links]
+    [[params.links.user]]
+      name = "User mailing list"
+      url = "https://github.com/manuscript-co/manuscript/discussions"
+      icon = "fa fa-envelope"
+      desc = "Discussion and help from your fellow users"
+    [[params.links.user]]
+      name ="Twitter"
+      url = "https://twitter.com/manuscript_lang"
+      icon = "fab fa-twitter"
+      desc = "Follow us on Twitter to get the latest news!"
+    [[params.links.user]]
+      name = "Stack Overflow"
+      url = "https://stackoverflow.com/questions/tagged/manuscript"
+      icon = "fab fa-stack-overflow"
+      desc = "Practical questions and curated answers"
+  
+  # Links to developer resources
+  [[params.links.developer]]
+    name = "GitHub"
+    url = "https://github.com/manuscript-co/manuscript"
+    icon = "fab fa-github"
+    desc = "Development takes place here!"
+  [[params.links.developer]]
+    name = "Slack"
+    url = "https://manuscript-lang.slack.com"
+    icon = "fab fa-slack"
+    desc = "Chat with other project developers"
+
+  # GitHub repository configuration (for edit links)
   [params.github]
     repo = "https://github.com/manuscript-co/manuscript"
     branch = "main"
+    subdir = "tools/docs-web"
+
+# Privacy configuration
+[privacy]
+  [privacy.x]
+    disabled = false
+    enableDNT = true
+    simple = true
 
 # Taxonomies
 [taxonomies]

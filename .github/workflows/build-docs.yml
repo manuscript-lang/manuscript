@@ -1,0 +1,31 @@
+name: Build Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'tools/docs-web/**'
+      - '.github/workflows/build-docs.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'tools/docs-web/**'
+      - '.github/workflows/build-docs.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: 'latest'
+          extended: true
+
+      - name: Build Documentation
+        run: |
+          cd tools/docs-web
+          hugo mod tidy
+          hugo --destination ../../build/docs-web

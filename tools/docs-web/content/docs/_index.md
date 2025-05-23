@@ -1,8 +1,14 @@
 ---
 title: "Documentation"
-linkTitle: "Docs"
-weight: 10
+linkTitle: "Documentation"
+weight: 20
+cascade:
+- type: "docs"
 ---
+
+{{% pageinfo %}}
+This documentation covers the Manuscript programming language - from getting started to advanced features.
+{{% /pageinfo %}}
 
 # Manuscript Programming Language Documentation
 

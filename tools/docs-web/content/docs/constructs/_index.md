@@ -1,8 +1,14 @@
 ---
 title: "Language Constructs"
 linkTitle: "Constructs"
-weight: 20
+weight: 30
+description: >
+  Learn about the core language constructs and features that make up Manuscript.
 ---
+
+{{% pageinfo %}}
+This section covers all the language constructs available in Manuscript, from basic variables to advanced features.
+{{% /pageinfo %}}
 
 # Manuscript Language Constructs
 

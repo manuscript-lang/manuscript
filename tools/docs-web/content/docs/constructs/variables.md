@@ -2,6 +2,8 @@
 title: "Variables and Types"
 linkTitle: "Variables"
 weight: 10
+description: >
+  Learn how to declare variables and work with Manuscript's type system.
 ---
 
 # Variables and Types

@@ -46,7 +46,24 @@ build-vscode-extension: build-lsp
 	cp build/msc-lsp tools/manuscript-vscode-extension/msc-lsp
 	cd tools/manuscript-vscode-extension && npm run build
 
-build-all: build-msc build-lsp build-vscode-extension
+# Documentation website targets
+build-docs:
+	@echo "Updating Hugo modules..."
+	@cd tools/docs-web && hugo mod tidy
+	@echo "Building documentation website..."
+	@cd tools/docs-web && hugo --destination ../../build/docs-web
+
+serve-docs:
+	@echo "Updating Hugo modules..."
+	@cd tools/docs-web && hugo mod tidy
+	@echo "Serving documentation website locally..."
+	@cd tools/docs-web && hugo server --bind 0.0.0.0 --port 1313
+
+clean-docs:
+	@echo "Cleaning documentation build..."
+	@rm -rf build/docs-web
+
+build-all: build-msc build-lsp build-vscode-extension build-docs
 
 
 DIR = tests/minimal
