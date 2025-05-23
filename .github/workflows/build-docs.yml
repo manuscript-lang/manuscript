@@ -32,7 +32,8 @@ jobs:
       - name: Install PostCSS
         run: |
           cd tools/docs-web
-          npm install -g postcss postcss-cli autoprefixer
+          npm init -y
+          npm install postcss postcss-cli autoprefixer --save-dev
 
       - name: Build Documentation
         run: |
