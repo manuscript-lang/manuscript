@@ -331,6 +331,12 @@ func (s *BaseManuscriptListener) EnterLabelStmtTry(ctx *LabelStmtTryContext) {}
 // ExitLabelStmtTry is called when production LabelStmtTry is exited.
 func (s *BaseManuscriptListener) ExitLabelStmtTry(ctx *LabelStmtTryContext) {}
 
+// EnterLabelStmtPiped is called when production LabelStmtPiped is entered.
+func (s *BaseManuscriptListener) EnterLabelStmtPiped(ctx *LabelStmtPipedContext) {}
+
+// ExitLabelStmtPiped is called when production LabelStmtPiped is exited.
+func (s *BaseManuscriptListener) ExitLabelStmtPiped(ctx *LabelStmtPipedContext) {}
+
 // EnterReturnStmt is called when production returnStmt is entered.
 func (s *BaseManuscriptListener) EnterReturnStmt(ctx *ReturnStmtContext) {}
 
@@ -457,6 +463,24 @@ func (s *BaseManuscriptListener) EnterCheckStmt(ctx *CheckStmtContext) {}
 // ExitCheckStmt is called when production checkStmt is exited.
 func (s *BaseManuscriptListener) ExitCheckStmt(ctx *CheckStmtContext) {}
 
+// EnterPipedStmt is called when production pipedStmt is entered.
+func (s *BaseManuscriptListener) EnterPipedStmt(ctx *PipedStmtContext) {}
+
+// ExitPipedStmt is called when production pipedStmt is exited.
+func (s *BaseManuscriptListener) ExitPipedStmt(ctx *PipedStmtContext) {}
+
+// EnterPipedArgs is called when production pipedArgs is entered.
+func (s *BaseManuscriptListener) EnterPipedArgs(ctx *PipedArgsContext) {}
+
+// ExitPipedArgs is called when production pipedArgs is exited.
+func (s *BaseManuscriptListener) ExitPipedArgs(ctx *PipedArgsContext) {}
+
+// EnterPipedArg is called when production pipedArg is entered.
+func (s *BaseManuscriptListener) EnterPipedArg(ctx *PipedArgContext) {}
+
+// ExitPipedArg is called when production pipedArg is exited.
+func (s *BaseManuscriptListener) ExitPipedArg(ctx *PipedArgContext) {}
+
 // EnterExpr is called when production expr is entered.
 func (s *BaseManuscriptListener) EnterExpr(ctx *ExprContext) {}
 
@@ -492,12 +516,6 @@ func (s *BaseManuscriptListener) EnterLogicalAndExpr(ctx *LogicalAndExprContext)
 
 // ExitLogicalAndExpr is called when production logicalAndExpr is exited.
 func (s *BaseManuscriptListener) ExitLogicalAndExpr(ctx *LogicalAndExprContext) {}
-
-// EnterBitwiseOrExpr is called when production bitwiseOrExpr is entered.
-func (s *BaseManuscriptListener) EnterBitwiseOrExpr(ctx *BitwiseOrExprContext) {}
-
-// ExitBitwiseOrExpr is called when production bitwiseOrExpr is exited.
-func (s *BaseManuscriptListener) ExitBitwiseOrExpr(ctx *BitwiseOrExprContext) {}
 
 // EnterBitwiseXorExpr is called when production bitwiseXorExpr is entered.
 func (s *BaseManuscriptListener) EnterBitwiseXorExpr(ctx *BitwiseXorExprContext) {}

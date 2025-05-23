@@ -161,6 +161,9 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#LabelStmtTry.
 	VisitLabelStmtTry(ctx *LabelStmtTryContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#LabelStmtPiped.
+	VisitLabelStmtPiped(ctx *LabelStmtPipedContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#returnStmt.
 	VisitReturnStmt(ctx *ReturnStmtContext) interface{}
 
@@ -224,6 +227,15 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#checkStmt.
 	VisitCheckStmt(ctx *CheckStmtContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#pipedStmt.
+	VisitPipedStmt(ctx *PipedStmtContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#pipedArgs.
+	VisitPipedArgs(ctx *PipedArgsContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#pipedArg.
+	VisitPipedArg(ctx *PipedArgContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#expr.
 	VisitExpr(ctx *ExprContext) interface{}
 
@@ -241,9 +253,6 @@ type ManuscriptVisitor interface {
 
 	// Visit a parse tree produced by Manuscript#logicalAndExpr.
 	VisitLogicalAndExpr(ctx *LogicalAndExprContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#bitwiseOrExpr.
-	VisitBitwiseOrExpr(ctx *BitwiseOrExprContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#bitwiseXorExpr.
 	VisitBitwiseXorExpr(ctx *BitwiseXorExprContext) interface{}

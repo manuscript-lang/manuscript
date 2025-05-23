@@ -35,28 +35,11 @@ func (v *ManuscriptAstVisitor) VisitLogicalAndExpr(ctx *parser.LogicalAndExprCon
 		if c, ok := prc.(parser.ILogicalAndExprContext); ok {
 			return c, true
 		}
-		if c, ok := prc.(parser.IBitwiseOrExprContext); ok {
-			return c, true
-		}
-		return nil, false
-	}, parser.ManuscriptAMP_AMP, token.LAND, "logical AND", ctx.GetStart())
-}
-
-// VisitBitwiseOrExpr handles bitwise OR expressions (|)
-func (v *ManuscriptAstVisitor) VisitBitwiseOrExpr(ctx *parser.BitwiseOrExprContext) interface{} {
-	return v.buildChainedBinaryExpr(ctx.GetChildren(), func(child antlr.Tree) (antlr.ParserRuleContext, bool) {
-		prc, ok := child.(antlr.ParserRuleContext)
-		if !ok {
-			return nil, false
-		}
-		if c, ok := prc.(parser.IBitwiseOrExprContext); ok {
-			return c, true
-		}
 		if c, ok := prc.(parser.IBitwiseXorExprContext); ok {
 			return c, true
 		}
 		return nil, false
-	}, parser.ManuscriptPIPE, token.OR, "bitwise OR", ctx.GetStart())
+	}, parser.ManuscriptAMP_AMP, token.LAND, "logical AND", ctx.GetStart())
 }
 
 // VisitBitwiseXorExpr handles bitwise XOR expressions (^)

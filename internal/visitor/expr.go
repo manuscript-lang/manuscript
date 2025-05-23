@@ -21,8 +21,14 @@ func (v *ManuscriptAstVisitor) VisitExpr(ctx *parser.ExprContext) interface{} {
 }
 
 func (v *ManuscriptAstVisitor) VisitTryExpr(ctx *parser.TryExprContext) interface{} {
-	if ctx == nil || ctx.Expr() == nil {
-		v.addError("Try expression is missing its underlying expression", ctx.GetStart())
+	if ctx == nil {
+		v.addError("Try expression is missing", ctx.GetStart())
+		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+	}
+
+	// Get the expression to wrap with try
+	if ctx.Expr() == nil {
+		v.addError("Try expression has no expression", ctx.GetStart())
 		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
 

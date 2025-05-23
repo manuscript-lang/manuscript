@@ -226,12 +226,14 @@ func (v *ManuscriptAstVisitor) VisitLetSingle(ctx *parser.LetSingleContext) inte
 		if ctx.TryExpr() != nil {
 			// Handle 'let x = try expr'
 			rhsVisited := v.Visit(ctx.TryExpr())
-			tryMarker, okTryMarker := rhsVisited.(*TryMarkerExpr)
-			if !okTryMarker {
-				v.addError("RHS of let single (try) did not resolve to TryMarkerExpr: "+ctx.TryExpr().GetText(), ctx.TryExpr().GetStart())
-				return &ast.BadDecl{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
+
+			// Handle regular try expressions
+			if tryMarker, okTryMarker := rhsVisited.(*TryMarkerExpr); okTryMarker {
+				return v.buildTryLogic(lhsIdent, tryMarker.OriginalExpr)
 			}
-			return v.buildTryLogic(lhsIdent, tryMarker.OriginalExpr)
+
+			v.addError("RHS of let single (try) did not resolve to valid try marker: "+ctx.TryExpr().GetText(), ctx.TryExpr().GetStart())
+			return &ast.BadDecl{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 		} else if ctx.Expr() != nil {
 			// Handle 'let x = expr'
 			rhsVisited := v.Visit(ctx.Expr())

@@ -231,3 +231,139 @@ type ParamDetail struct {
 	Type         ast.Expr
 	DefaultValue ast.Expr // nil if no default value
 }
+
+// PipedArg represents an argument in a piped function call
+type PipedArg struct {
+	Name  string
+	Value ast.Expr
+}
+
+// PipedCall represents a function or method call in a piped statement
+type PipedCall struct {
+	TargetExpr ast.Expr   // The expression that evaluates to the function/method to call
+	Args       []PipedArg // Named arguments for the pipeline call
+}
+
+// IsMethodCall returns true if this is a method call (has an object)
+func (pc *PipedCall) IsMethodCall() bool {
+	return pc.TargetExpr != nil
+}
+
+// buildPipedStatement generates Go AST for a piped statement
+// Creates processor variables for each function and a for-range loop
+func (v *ManuscriptAstVisitor) buildPipedStatement(sourceExpr ast.Expr, pipedCalls []PipedCall) ast.Stmt {
+	var stmts []ast.Stmt
+
+	// Create processor variables for each piped function/method
+	for i, call := range pipedCalls {
+		procVarName := fmt.Sprintf("proc%d", i+1)
+
+		var procAssignRhs ast.Expr
+
+		// Build the function call arguments
+		var args []ast.Expr
+		for _, arg := range call.Args {
+			args = append(args, arg.Value)
+		}
+
+		// If the target expression is already a function call, use it directly with additional args
+		// If not (e.g., just an identifier), wrap it in a function call
+		if callExpr, isCall := call.TargetExpr.(*ast.CallExpr); isCall {
+			// The target is already a function call, add our pipeline arguments to it
+			allArgs := append(callExpr.Args, args...)
+			procAssignRhs = &ast.CallExpr{
+				Fun:  callExpr.Fun,
+				Args: allArgs,
+			}
+		} else if len(args) > 0 {
+			// The target has pipeline arguments, so we need to create a function call with those args
+			procAssignRhs = &ast.CallExpr{
+				Fun:  call.TargetExpr,
+				Args: args,
+			}
+		} else {
+			// No pipeline arguments, and target is not a function call
+			// Different handling based on expression type:
+			switch call.TargetExpr.(type) {
+			case *ast.IndexExpr:
+				// Array access (arr[0]) - use as processor directly
+				procAssignRhs = call.TargetExpr
+			case *ast.SelectorExpr:
+				// Method call (obj.method) - use as processor directly (no parentheses)
+				procAssignRhs = call.TargetExpr
+			default:
+				// Identifier or other - wrap in function call
+				procAssignRhs = &ast.CallExpr{
+					Fun:  call.TargetExpr,
+					Args: []ast.Expr{},
+				}
+			}
+		}
+
+		// Create the processor assignment
+		procAssign := &ast.AssignStmt{
+			Lhs: []ast.Expr{ast.NewIdent(procVarName)},
+			Tok: token.DEFINE,
+			Rhs: []ast.Expr{procAssignRhs},
+		}
+		stmts = append(stmts, procAssign)
+	}
+
+	// Create the for-range loop
+	var loopBody []ast.Stmt
+
+	// First assignment: a1 := v
+	currentVar := "a1"
+	loopBody = append(loopBody, &ast.AssignStmt{
+		Lhs: []ast.Expr{ast.NewIdent(currentVar)},
+		Tok: token.DEFINE,
+		Rhs: []ast.Expr{ast.NewIdent("v")},
+	})
+
+	// Chain the processor calls
+	for i := range pipedCalls {
+		nextVar := fmt.Sprintf("a%d", i+2)
+		procVar := fmt.Sprintf("proc%d", i+1)
+
+		loopBody = append(loopBody, &ast.AssignStmt{
+			Lhs: []ast.Expr{ast.NewIdent(nextVar)},
+			Tok: token.DEFINE,
+			Rhs: []ast.Expr{
+				&ast.CallExpr{
+					Fun:  ast.NewIdent(procVar),
+					Args: []ast.Expr{ast.NewIdent(currentVar)},
+				},
+			},
+		})
+		currentVar = nextVar
+	}
+
+	// Create the source function call
+	var sourceCall ast.Expr
+	if callExpr, ok := sourceExpr.(*ast.CallExpr); ok {
+		sourceCall = callExpr
+	} else {
+		// If source is not a function call, make it one
+		sourceCall = &ast.CallExpr{
+			Fun:  sourceExpr,
+			Args: []ast.Expr{},
+		}
+	}
+
+	// Create the for-range statement
+	forStmt := &ast.RangeStmt{
+		Key: ast.NewIdent("v"),
+		Tok: token.DEFINE,
+		X:   sourceCall,
+		Body: &ast.BlockStmt{
+			List: loopBody,
+		},
+	}
+
+	stmts = append(stmts, forStmt)
+
+	// Return a block statement containing all the statements
+	return &ast.BlockStmt{
+		List: stmts,
+	}
+}
