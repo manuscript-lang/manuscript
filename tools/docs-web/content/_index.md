@@ -40,7 +40,7 @@ Get started with Manuscript in minutes:
 
 ```bash
 # Clone and build
-git clone https://github.com/manuscript-co/manuscript.git
+git clone https://github.com/manuscript-lang/manuscript.git
 cd manuscript
 make build-msc
 
@@ -55,15 +55,15 @@ Ready to learn more? Check out our [documentation](/docs/) or join the [communit
 {{% /blocks/section %}}
 
 {{% blocks/section type="row" %}}
-{{% blocks/feature icon="fab fa-github" title="Contributions welcome!" url="https://github.com/manuscript-co/manuscript" %}}
-We do a [Pull Request](https://github.com/manuscript-co/manuscript/pulls) contributions workflow on **GitHub**. New users are always welcome!
+{{% blocks/feature icon="fab fa-github" title="Contributions welcome!" url="https://github.com/manuscript-lang/manuscript" %}}
+We do a [Pull Request](https://github.com/manuscript-lang/manuscript/pulls) contributions workflow on **GitHub**. New users are always welcome!
 {{% /blocks/feature %}}
 
 {{% blocks/feature icon="fab fa-twitter" title="Follow us on Twitter!" url="https://twitter.com/manuscript_lang" %}}
 For announcement of latest features etc.
 {{% /blocks/feature %}}
 
-{{% blocks/feature icon="fa-envelope" title="Join the discussion!" url="https://github.com/manuscript-co/manuscript/discussions" %}}
+{{% blocks/feature icon="fa-envelope" title="Join the discussion!" url="https://github.com/manuscript-lang/manuscript/discussions" %}}
 Ask questions, share ideas, and connect with other Manuscript developers.
 {{% /blocks/feature %}}
 {{% /blocks/section %}} 

@@ -14,7 +14,7 @@ Join the growing community of Manuscript developers and contributors.
 
 The primary hub for Manuscript development:
 
-- **Repository**: [manuscript-co/manuscript](https://github.com/manuscript-co/manuscript)
+- **Repository**: [manuscript-lang/manuscript](https://github.com/manuscript-lang/manuscript)
 - **Issues**: Report bugs, request features, ask questions
 - **Pull Requests**: Contribute code, documentation, and improvements
 - **Discussions**: General discussions and Q&A
@@ -57,7 +57,7 @@ When reporting bugs, please include:
 
 ```bash
 # Clone the repository
-git clone https://github.com/manuscript-co/manuscript.git
+git clone https://github.com/manuscript-lang/manuscript.git
 cd manuscript
 
 # Build the compiler
@@ -72,7 +72,7 @@ make generate_parser
 
 ### Development Workflow
 
-1. Read the [language design document](https://github.com/manuscript-co/manuscript/blob/main/docs/language-design.md)
+1. Read the [language design document](https://github.com/manuscript-lang/manuscript/blob/main/docs/language-design.md)
 2. Check existing issues and discussions
 3. Create an issue for new features
 4. Follow the contribution guidelines
@@ -90,8 +90,8 @@ We are committed to providing a welcoming and inclusive environment for all cont
 
 ## Roadmap
 
-Check out our [project roadmap](https://github.com/manuscript-co/manuscript/projects) to see what's planned for future releases.
+Check out our [project roadmap](https://github.com/manuscript-lang/manuscript/projects) to see what's planned for future releases.
 
 ## License
 
-Manuscript is open source software licensed under the [MIT License](https://github.com/manuscript-co/manuscript/blob/main/LICENSE). 
+Manuscript is open source software licensed under the [MIT License](https://github.com/manuscript-lang/manuscript/blob/main/LICENSE). 

@@ -16,7 +16,7 @@ Currently, Manuscript is in active development. You can build from source:
 
 ```bash
 # Clone the repository
-git clone https://github.com/manuscript-co/manuscript.git
+git clone https://github.com/manuscript-lang/manuscript.git
 cd manuscript
 
 # Build the compiler
@@ -37,7 +37,7 @@ make build-msc
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/manuscript-co/manuscript.git
+   git clone https://github.com/manuscript-lang/manuscript.git
    cd manuscript
    ```
 
