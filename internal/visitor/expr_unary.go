@@ -99,14 +99,14 @@ func (v *ManuscriptAstVisitor) VisitLabelUnaryOpExpr(ctx *parser.LabelUnaryOpExp
 	return v.buildUnaryOpExpr(opToken, operandExpr)
 }
 
-// VisitUnaryAwaitExpr handles await expressions (awaitExpr)
-func (v *ManuscriptAstVisitor) VisitLabelUnaryAwaitExpr(ctx *parser.LabelUnaryAwaitExprContext) interface{} {
-	awaitCtx := ctx.AwaitExpr()
-	if awaitCtx == nil {
-		v.addError("UnaryAwaitExpr missing AwaitExpr child", ctx.GetStart())
+// VisitUnaryPostfixExpr handles postfix expressions in unary context
+func (v *ManuscriptAstVisitor) VisitLabelUnaryPostfixExpr(ctx *parser.LabelUnaryPostfixExprContext) interface{} {
+	postfixCtx := ctx.PostfixExpr()
+	if postfixCtx == nil {
+		v.addError("UnaryPostfixExpr missing PostfixExpr child", ctx.GetStart())
 		return &ast.BadExpr{From: v.pos(ctx.GetStart()), To: v.pos(ctx.GetStop())}
 	}
-	return v.Visit(awaitCtx)
+	return v.Visit(postfixCtx)
 }
 
 // buildUnaryOpExpr is a helper to construct Go AST for unary operators

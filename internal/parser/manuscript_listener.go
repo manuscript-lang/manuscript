@@ -260,9 +260,6 @@ type ManuscriptListener interface {
 	// EnterComparisonExpr is called when entering the comparisonExpr production.
 	EnterComparisonExpr(c *ComparisonExprContext)
 
-	// EnterShiftExpr is called when entering the shiftExpr production.
-	EnterShiftExpr(c *ShiftExprContext)
-
 	// EnterAdditiveExpr is called when entering the additiveExpr production.
 	EnterAdditiveExpr(c *AdditiveExprContext)
 
@@ -272,11 +269,8 @@ type ManuscriptListener interface {
 	// EnterLabelUnaryOpExpr is called when entering the LabelUnaryOpExpr production.
 	EnterLabelUnaryOpExpr(c *LabelUnaryOpExprContext)
 
-	// EnterLabelUnaryAwaitExpr is called when entering the LabelUnaryAwaitExpr production.
-	EnterLabelUnaryAwaitExpr(c *LabelUnaryAwaitExprContext)
-
-	// EnterAwaitExpr is called when entering the awaitExpr production.
-	EnterAwaitExpr(c *AwaitExprContext)
+	// EnterLabelUnaryPostfixExpr is called when entering the LabelUnaryPostfixExpr production.
+	EnterLabelUnaryPostfixExpr(c *LabelUnaryPostfixExprContext)
 
 	// EnterPostfixExpr is called when entering the postfixExpr production.
 	EnterPostfixExpr(c *PostfixExprContext)
@@ -725,9 +719,6 @@ type ManuscriptListener interface {
 	// ExitComparisonExpr is called when exiting the comparisonExpr production.
 	ExitComparisonExpr(c *ComparisonExprContext)
 
-	// ExitShiftExpr is called when exiting the shiftExpr production.
-	ExitShiftExpr(c *ShiftExprContext)
-
 	// ExitAdditiveExpr is called when exiting the additiveExpr production.
 	ExitAdditiveExpr(c *AdditiveExprContext)
 
@@ -737,11 +728,8 @@ type ManuscriptListener interface {
 	// ExitLabelUnaryOpExpr is called when exiting the LabelUnaryOpExpr production.
 	ExitLabelUnaryOpExpr(c *LabelUnaryOpExprContext)
 
-	// ExitLabelUnaryAwaitExpr is called when exiting the LabelUnaryAwaitExpr production.
-	ExitLabelUnaryAwaitExpr(c *LabelUnaryAwaitExprContext)
-
-	// ExitAwaitExpr is called when exiting the awaitExpr production.
-	ExitAwaitExpr(c *AwaitExprContext)
+	// ExitLabelUnaryPostfixExpr is called when exiting the LabelUnaryPostfixExpr production.
+	ExitLabelUnaryPostfixExpr(c *LabelUnaryPostfixExprContext)
 
 	// ExitPostfixExpr is called when exiting the postfixExpr production.
 	ExitPostfixExpr(c *PostfixExprContext)

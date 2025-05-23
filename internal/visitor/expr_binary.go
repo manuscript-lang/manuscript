@@ -161,26 +161,6 @@ func (v *ManuscriptAstVisitor) VisitComparisonExpr(ctx *parser.ComparisonExprCon
 	return expr
 }
 
-// VisitShiftExpr handles shift expressions (<<, >>)
-func (v *ManuscriptAstVisitor) VisitShiftExpr(ctx *parser.ShiftExprContext) interface{} {
-	return v.buildChainedBinaryExprMultiOp(ctx.GetChildren(), func(child antlr.Tree) (antlr.ParserRuleContext, bool) {
-		prc, ok := child.(antlr.ParserRuleContext)
-		if !ok {
-			return nil, false
-		}
-		if c, ok := prc.(parser.IShiftExprContext); ok {
-			return c, true
-		}
-		if c, ok := prc.(parser.IAdditiveExprContext); ok {
-			return c, true
-		}
-		return nil, false
-	}, map[int]token.Token{
-		parser.ManuscriptLSHIFT: token.SHL,
-		parser.ManuscriptRSHIFT: token.SHR,
-	}, "shift", ctx.GetStart())
-}
-
 // VisitAdditiveExpr handles additive expressions (+, -)
 func (v *ManuscriptAstVisitor) VisitAdditiveExpr(ctx *parser.AdditiveExprContext) interface{} {
 	return v.buildChainedBinaryExprMultiOp(ctx.GetChildren(), func(child antlr.Tree) (antlr.ParserRuleContext, bool) {

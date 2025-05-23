@@ -225,7 +225,7 @@ func (v *ManuscriptAstVisitor) flattenComparisonChain(ctx *parser.ComparisonExpr
 				operands = append(operands, expr)
 			}
 		} else {
-			visited := v.Visit(c.ShiftExpr())
+			visited := v.Visit(c.AdditiveExpr())
 			if expr, ok := visited.(ast.Expr); ok {
 				operands = append(operands, expr)
 			}

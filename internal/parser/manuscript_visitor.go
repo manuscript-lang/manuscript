@@ -260,9 +260,6 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#comparisonExpr.
 	VisitComparisonExpr(ctx *ComparisonExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#shiftExpr.
-	VisitShiftExpr(ctx *ShiftExprContext) interface{}
-
 	// Visit a parse tree produced by Manuscript#additiveExpr.
 	VisitAdditiveExpr(ctx *AdditiveExprContext) interface{}
 
@@ -272,11 +269,8 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#LabelUnaryOpExpr.
 	VisitLabelUnaryOpExpr(ctx *LabelUnaryOpExprContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelUnaryAwaitExpr.
-	VisitLabelUnaryAwaitExpr(ctx *LabelUnaryAwaitExprContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#awaitExpr.
-	VisitAwaitExpr(ctx *AwaitExprContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelUnaryPostfixExpr.
+	VisitLabelUnaryPostfixExpr(ctx *LabelUnaryPostfixExprContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#postfixExpr.
 	VisitPostfixExpr(ctx *PostfixExprContext) interface{}

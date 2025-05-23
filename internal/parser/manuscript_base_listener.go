@@ -529,12 +529,6 @@ func (s *BaseManuscriptListener) EnterComparisonExpr(ctx *ComparisonExprContext)
 // ExitComparisonExpr is called when production comparisonExpr is exited.
 func (s *BaseManuscriptListener) ExitComparisonExpr(ctx *ComparisonExprContext) {}
 
-// EnterShiftExpr is called when production shiftExpr is entered.
-func (s *BaseManuscriptListener) EnterShiftExpr(ctx *ShiftExprContext) {}
-
-// ExitShiftExpr is called when production shiftExpr is exited.
-func (s *BaseManuscriptListener) ExitShiftExpr(ctx *ShiftExprContext) {}
-
 // EnterAdditiveExpr is called when production additiveExpr is entered.
 func (s *BaseManuscriptListener) EnterAdditiveExpr(ctx *AdditiveExprContext) {}
 
@@ -553,17 +547,11 @@ func (s *BaseManuscriptListener) EnterLabelUnaryOpExpr(ctx *LabelUnaryOpExprCont
 // ExitLabelUnaryOpExpr is called when production LabelUnaryOpExpr is exited.
 func (s *BaseManuscriptListener) ExitLabelUnaryOpExpr(ctx *LabelUnaryOpExprContext) {}
 
-// EnterLabelUnaryAwaitExpr is called when production LabelUnaryAwaitExpr is entered.
-func (s *BaseManuscriptListener) EnterLabelUnaryAwaitExpr(ctx *LabelUnaryAwaitExprContext) {}
+// EnterLabelUnaryPostfixExpr is called when production LabelUnaryPostfixExpr is entered.
+func (s *BaseManuscriptListener) EnterLabelUnaryPostfixExpr(ctx *LabelUnaryPostfixExprContext) {}
 
-// ExitLabelUnaryAwaitExpr is called when production LabelUnaryAwaitExpr is exited.
-func (s *BaseManuscriptListener) ExitLabelUnaryAwaitExpr(ctx *LabelUnaryAwaitExprContext) {}
-
-// EnterAwaitExpr is called when production awaitExpr is entered.
-func (s *BaseManuscriptListener) EnterAwaitExpr(ctx *AwaitExprContext) {}
-
-// ExitAwaitExpr is called when production awaitExpr is exited.
-func (s *BaseManuscriptListener) ExitAwaitExpr(ctx *AwaitExprContext) {}
+// ExitLabelUnaryPostfixExpr is called when production LabelUnaryPostfixExpr is exited.
+func (s *BaseManuscriptListener) ExitLabelUnaryPostfixExpr(ctx *LabelUnaryPostfixExprContext) {}
 
 // EnterPostfixExpr is called when production postfixExpr is entered.
 func (s *BaseManuscriptListener) EnterPostfixExpr(ctx *PostfixExprContext) {}
