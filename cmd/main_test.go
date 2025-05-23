@@ -91,20 +91,32 @@ func TestCompile(t *testing.T) {
 					testSubName = fmt.Sprintf("pair_%d", i+1) // 1-indexed for readability
 				}
 
-				t.Run(testSubName, func(t *testing.T) {
+				executeTest := func(t *testing.T) {
 					actualGo, err := manuscriptToGo(pair.MsCode, *debug)
-					if err != nil {
-						t.Fatalf("manuscriptToGo failed: %v", err)
-					}
-					if *update && pair.GoCode != actualGo {
-						content = []byte(strings.Replace(string(content), pair.GoCode, actualGo, 1))
-						err = os.WriteFile(filePath, content, 0644)
-						if err != nil {
-							t.Fatalf("Failed to update test file %s: %v", filePath, err)
+					expectSyntaxErr := strings.TrimSpace(pair.GoCode) == "// SYNTAX ERROR"
+
+					switch {
+					case err != nil && expectSyntaxErr:
+						if strings.Contains(err.Error(), "syntax error") {
+							t.Logf("Correctly failed with syntax error: %v", err)
+						} else {
+							t.Fatalf("Expected syntax error, got: %v", err)
 						}
+					case err != nil && !expectSyntaxErr:
+						t.Fatalf("manuscriptToGo failed: %v", err)
+					case err == nil && expectSyntaxErr:
+						t.Fatalf("Expected syntax error, but got output:\n%s", actualGo)
+					default:
+						if *update && pair.GoCode != actualGo {
+							content = []byte(strings.Replace(string(content), pair.GoCode, actualGo, 1))
+							if err := os.WriteFile(filePath, content, 0644); err != nil {
+								t.Fatalf("Failed to update test file %s: %v", filePath, err)
+							}
+						}
+						assertGoCode(t, actualGo, pair.GoCode)
 					}
-					assertGoCode(t, actualGo, pair.GoCode)
-				})
+				}
+				t.Run(testSubName, executeTest)
 			}
 		})
 	}

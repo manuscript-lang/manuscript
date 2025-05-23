@@ -12,6 +12,22 @@ import (
 	"github.com/antlr4-go/antlr/v4"
 )
 
+// SyntaxErrorListener captures syntax errors from the ANTLR parser.
+type SyntaxErrorListener struct {
+	*antlr.DefaultErrorListener
+	Errors []string
+}
+
+// NewSyntaxErrorListener creates a new instance of SyntaxErrorListener.
+func NewSyntaxErrorListener() *SyntaxErrorListener {
+	return &SyntaxErrorListener{Errors: make([]string, 0)}
+}
+
+// SyntaxError is called by ANTLR when a syntax error is encountered.
+func (l *SyntaxErrorListener) SyntaxError(recognizer antlr.Recognizer, offendingSymbol interface{}, line, column int, msg string, e antlr.RecognitionException) {
+	l.Errors = append(l.Errors, fmt.Sprintf("line %d:%d %s", line, column, msg))
+}
+
 func manuscriptToGo(input string, debug bool) (string, error) {
 	inputStream := antlr.NewInputStream(input)
 	lexer := parser.NewManuscriptLexer(inputStream)
@@ -22,8 +38,17 @@ func manuscriptToGo(input string, debug bool) (string, error) {
 	}
 
 	p := parser.NewManuscript(tokenStream)
+	p.RemoveErrorListeners() // Remove default console error listener
+	errorListener := NewSyntaxErrorListener()
+	p.AddErrorListener(errorListener)
+
 	p.GetInterpreter().SetPredictionMode(antlr.PredictionModeSLL)
 	tree := p.Program()
+
+	if len(errorListener.Errors) > 0 {
+		return "", fmt.Errorf("syntax error(s): %s", strings.Join(errorListener.Errors, "; "))
+	}
+
 	codeGen := codegen.NewCodeGenerator()
 	goCode, err := codeGen.Generate(tree)
 	if err != nil {
