@@ -57,8 +57,7 @@ serve-docs:
 	@echo "Updating Hugo modules..."
 	@cd tools/docs-web && hugo mod tidy
 	@echo "Serving documentation website locally..."
-	@cd tools/docs-web && hugo server --bind 0.0.0.0 --port 1313
-
+	@cd tools/docs-web && hugo server --bind 0.0.0.0 --port 1313 --destination ../../build/docs-web
 clean-docs:
 	@echo "Cleaning documentation build..."
 	@rm -rf build/docs-web
