@@ -229,6 +229,7 @@ func main() {
 ```
 
 # implicit returns
+
 ```ms
 fn doIt() { 42 }
 fn fn1() { 'val' }
@@ -253,6 +254,35 @@ func fn3() {
 }
 func fn4() {
     return a()
+}
+func main() {
+}
+```
+
+# try 
+```ms
+fn f1() {
+  let a = try f2()
+  let b = try f3()
+  try f4()
+}
+```
+```go
+package main
+
+func f1() {
+    a, err := f2()
+    if err != nil {
+        return nil, err
+    }
+    b, err := f3()
+    if err != nil {
+        return nil, err
+    }
+    _, err := f4()
+    if err != nil {
+        return nil, err
+    }
 }
 func main() {
 }

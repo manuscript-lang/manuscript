@@ -23,6 +23,13 @@ func (v *ManuscriptAstVisitor) VisitLabelStmtExpr(ctx *parser.LabelStmtExprConte
 		return &ast.BadStmt{}
 	}
 	visited := v.Visit(exprCtx)
+
+	if tryMarker, ok := visited.(*TryMarkerExpr); ok {
+		actualSourceExpr := tryMarker.OriginalExpr
+		underscoreIdent := ast.NewIdent("_") // For standalone try, assign value to _
+		return v.buildTryLogic(underscoreIdent, actualSourceExpr)
+	}
+
 	if stmt, ok := visited.(ast.Stmt); ok {
 		return stmt
 	}

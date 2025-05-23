@@ -220,6 +220,7 @@ func (v *ManuscriptAstVisitor) VisitLetSingle(ctx *parser.LetSingleContext) inte
 		v.addError("Pattern did not evaluate to an identifier: "+ctx.TypedID().GetText(), ctx.TypedID().GetStart())
 		return &ast.EmptyStmt{}
 	}
+
 	if ctx.EQUALS() != nil && ctx.Expr() != nil {
 		valueVisited := v.Visit(ctx.Expr())
 		sourceExpr, okVal := valueVisited.(ast.Expr)
@@ -227,12 +228,19 @@ func (v *ManuscriptAstVisitor) VisitLetSingle(ctx *parser.LetSingleContext) inte
 			v.addError("Value did not evaluate to an expression: "+ctx.Expr().GetText(), ctx.Expr().GetStart())
 			return &ast.EmptyStmt{}
 		}
+
+		if tryMarker, ok := sourceExpr.(*TryMarkerExpr); ok {
+			actualSourceExpr := tryMarker.OriginalExpr
+			return v.buildTryLogic(ident, actualSourceExpr)
+		}
+
 		return &ast.AssignStmt{
 			Lhs: []ast.Expr{ident},
 			Tok: token.DEFINE,
 			Rhs: []ast.Expr{sourceExpr},
 		}
 	}
+
 	return &ast.DeclStmt{
 		Decl: &ast.GenDecl{
 			Tok:   token.VAR,

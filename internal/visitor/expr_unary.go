@@ -9,6 +9,66 @@ import (
 	"github.com/antlr4-go/antlr/v4"
 )
 
+// TryMarkerExpr is a special ast.Expr node to indicate that an expression
+// was originally a 'try' expression. This helps the visitor for 'let' statements
+// generate the correct error handling code.
+type TryMarkerExpr struct {
+	ast.BadExpr  // Embed ast.BadExpr to satisfy ast.Expr interface (including unexported methods)
+	OriginalExpr ast.Expr
+	TryPos       token.Pos // Position of the 'try' keyword
+}
+
+func (t *TryMarkerExpr) Pos() token.Pos { return t.TryPos }
+func (t *TryMarkerExpr) End() token.Pos {
+	// End position should be the end of the original expression
+	if t.OriginalExpr != nil {
+		return t.OriginalExpr.End()
+	}
+	return t.TryPos // Fallback
+}
+
+// exprNode() makes it satisfy the ast.Expr interface.
+// func (t *TryMarkerExpr) exprNode() {} // No longer needed if ast.BadExpr is embedded
+
+// Ensure TryMarkerExpr implements ast.Expr (compile-time check)
+var _ ast.Expr = (*TryMarkerExpr)(nil)
+
+// buildTryLogic encapsulates the common AST generation for try-catch patterns.
+// lhsValueExpr is the identifier for the value (e.g., 'a' in 'let a = try f()'), or underscore for standalone try.
+// triedExpr is the actual expression that was wrapped by 'try'.
+func (v *ManuscriptAstVisitor) buildTryLogic(lhsValueExpr ast.Expr, triedExpr ast.Expr) []ast.Stmt {
+	errIdent := ast.NewIdent("err")
+
+	assignLHS := []ast.Expr{lhsValueExpr, errIdent}
+	// If lhsValueExpr is nil or explicitly underscore, it means we don't care about the value part.
+	// However, Go's `:=` requires a new variable on the LHS. If triedExpr only returns an error,
+	// this would be `err := triedExpr`. If it returns (val, err), it's `val, err` or `_, err`.
+	// For simplicity, we assume triedExpr *might* return a value, so `lhsValueExpr, err` is the general form.
+	// If lhsValueExpr is ast.NewIdent("_"), it correctly becomes `_, err`.
+
+	assignStmt := &ast.AssignStmt{
+		Lhs: assignLHS,
+		Tok: token.DEFINE,
+		Rhs: []ast.Expr{triedExpr},
+	}
+
+	ifStmt := &ast.IfStmt{
+		Cond: &ast.BinaryExpr{
+			X:  errIdent,
+			Op: token.NEQ,
+			Y:  ast.NewIdent("nil"),
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.ReturnStmt{
+					Results: []ast.Expr{ast.NewIdent("nil"), errIdent},
+				},
+			},
+		},
+	}
+	return []ast.Stmt{assignStmt, ifStmt}
+}
+
 // VisitUnaryExpr is the main entry for unary expressions, dispatching to the correct sub-visitor.
 func (v *ManuscriptAstVisitor) VisitUnaryExpr(ctx *parser.UnaryExprContext) interface{} {
 	if ctx == nil {
@@ -54,64 +114,7 @@ func (v *ManuscriptAstVisitor) buildUnaryOpExpr(opToken antlr.Token, operandExpr
 	opPos := v.pos(opToken)
 	switch opToken.GetTokenType() {
 	case parser.ManuscriptTRY:
-		recoverFuncBody := &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.IfStmt{
-					Init: &ast.AssignStmt{
-						Lhs: []ast.Expr{ast.NewIdent("r")},
-						Tok: token.DEFINE,
-						Rhs: []ast.Expr{&ast.CallExpr{Fun: ast.NewIdent("recover")}},
-					},
-					Cond: &ast.BinaryExpr{X: ast.NewIdent("r"), Op: token.NEQ, Y: ast.NewIdent("nil")},
-					Body: &ast.BlockStmt{
-						List: []ast.Stmt{
-							&ast.AssignStmt{
-								Lhs: []ast.Expr{ast.NewIdent("err")},
-								Tok: token.ASSIGN,
-								Rhs: []ast.Expr{&ast.CallExpr{
-									Fun:  &ast.SelectorExpr{X: ast.NewIdent("fmt"), Sel: ast.NewIdent("Errorf")},
-									Args: []ast.Expr{&ast.BasicLit{Kind: token.STRING, Value: `"panic: %v"`}, ast.NewIdent("r")},
-								}},
-							},
-						},
-					},
-				},
-			},
-		}
-		deferStmt := &ast.DeferStmt{
-			Call: &ast.CallExpr{
-				Fun: &ast.FuncLit{Type: &ast.FuncType{Params: &ast.FieldList{}}, Body: recoverFuncBody},
-			},
-		}
-		assignValStmt := &ast.AssignStmt{
-			Lhs: []ast.Expr{ast.NewIdent("val")},
-			Tok: token.ASSIGN,
-			Rhs: []ast.Expr{operandExpr},
-		}
-		happyReturnStmt := &ast.ReturnStmt{
-			Results: []ast.Expr{ast.NewIdent("val"), ast.NewIdent("nil")},
-		}
-		iifeBodyStmts := []ast.Stmt{
-			deferStmt,
-			assignValStmt,
-			happyReturnStmt,
-		}
-		iifeFuncLit := &ast.FuncLit{
-			Type: &ast.FuncType{
-				Params: &ast.FieldList{},
-				Results: &ast.FieldList{
-					List: []*ast.Field{
-						{Names: []*ast.Ident{ast.NewIdent("val")}, Type: ast.NewIdent("interface{}")},
-						{Names: []*ast.Ident{ast.NewIdent("err")}, Type: ast.NewIdent("error")},
-					},
-				},
-			},
-			Body: &ast.BlockStmt{List: iifeBodyStmts, Lbrace: opPos},
-		}
-		return &ast.CallExpr{
-			Fun:    iifeFuncLit,
-			Lparen: opPos,
-		}
+		return &TryMarkerExpr{OriginalExpr: operandExpr, TryPos: opPos}
 	case parser.ManuscriptPLUS:
 		return &ast.UnaryExpr{OpPos: opPos, Op: token.ADD, X: operandExpr}
 	case parser.ManuscriptMINUS:
