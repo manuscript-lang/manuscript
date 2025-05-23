@@ -198,7 +198,7 @@ multiplicativeExpr:
 unaryExpr:
 	op = (PLUS | MINUS | EXCLAMATION) unary = unaryExpr	# LabelUnaryOpExpr
 	| awaitExpr									# LabelUnaryAwaitExpr;
-awaitExpr: (AWAIT? ASYNC?) postfixExpr;
+awaitExpr: postfixExpr;
 postfixExpr: primaryExpr | postfixExpr postfixOp;
 postfixOp:
 	LPAREN exprList? RPAREN	# LabelPostfixCall
