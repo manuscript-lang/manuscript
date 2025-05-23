@@ -22,6 +22,7 @@ func manuscriptToGo(input string, debug bool) (string, error) {
 	}
 
 	p := parser.NewManuscript(tokenStream)
+	p.GetInterpreter().SetPredictionMode(antlr.PredictionModeSLL)
 	tree := p.Program()
 	codeGen := codegen.NewCodeGenerator()
 	goCode, err := codeGen.Generate(tree)

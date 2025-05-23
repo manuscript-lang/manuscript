@@ -110,6 +110,19 @@ func TestCompile(t *testing.T) {
 	}
 }
 
+func TestDumpTokens(t *testing.T) {
+	content := `
+	let x = 1
+	`
+	actualGo, err := manuscriptToGo(content, true)
+	if err != nil {
+		t.Fatalf("manuscriptToGo failed: %v", err)
+	}
+	if !strings.HasPrefix(actualGo, "package main") {
+		t.Fatalf("manuscriptToGo should return package main: %s", actualGo)
+	}
+}
+
 // findTitleForMsBlock searches for the most relevant title for a manuscript code block.
 // It looks for a title that appears after the last processed Go block and before the current ms block.
 // If multiple such titles exist, the one closest to the ms block is chosen.
