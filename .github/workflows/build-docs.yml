@@ -31,12 +31,12 @@ jobs:
 
       - name: Install PostCSS
         run: |
-          cd tools/docs-web
+          cd publish/docs-web
           npm init -y
           npm i
 
       - name: Build Documentation
         run: |
-          cd tools/docs-web
+          cd publish/docs-web
           hugo mod tidy
           hugo --destination ../../build/docs-web
