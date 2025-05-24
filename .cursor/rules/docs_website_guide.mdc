@@ -48,3 +48,4 @@ Key settings in [tools/docs-web/hugo.yaml](mdc:tools/docs-web/hugo.yaml):
 1. Make content changes in `docs/manuscript/`
 3. Build final site with `make build-docs`
 4. Generated site will be in `build/docs-web/`
+
