@@ -27,6 +27,28 @@ markup:
   highlight:
     style: "github-dark"
     lineNos: false
+    # Disable Chroma for manuscript/ms languages to allow Highlight.js to handle them
+    noClasses: true
+    hl_Lines: ""
+    hl_inline: false
+    anchorLineNos: false
+    codeFences: true
+    guessSyntax: false
+    lineAnchors: ""
+    lineNoStart: 1
+    lineNumbers: false
+    lineNumbersInTable: true
+    tabWidth: 4
+
+# Build configuration
+build:
+  buildStats:
+    enable: true
+  cachebusters:
+    - source: "assets/.*\\.(js|ts|jsx|tsx)"
+      target: "js"
+    - source: "assets/.*\\.(.*)$"
+      target: "$1"
 
 menu:
   main:
