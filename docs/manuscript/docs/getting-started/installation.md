@@ -1,7 +1,6 @@
 ---
 title: "Installation"
 linkTitle: "Installation"
-weight: 1
 description: >
   Install manuscript and set up your development environment.
 ---

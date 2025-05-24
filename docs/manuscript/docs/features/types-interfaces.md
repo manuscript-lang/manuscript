@@ -1,7 +1,7 @@
 ---
 title: "Types and Interfaces"
 linkTitle: "Types & Interfaces"
-weight: 70
+
 description: >
   Custom types, interfaces, methods, and type system features in manuscript.
 ---

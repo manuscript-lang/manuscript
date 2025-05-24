@@ -1,7 +1,7 @@
 ---
 title: "Community"
 linkTitle: "Community"
-weight: 40
+
 ---
 
 # manuscript Community

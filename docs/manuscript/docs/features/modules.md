@@ -1,7 +1,7 @@
 ---
 title: "Modules"
 linkTitle: "Modules"
-weight: 60
+
 description: >
   Module system, imports, exports, and code organization in manuscript.
 ---

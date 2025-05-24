@@ -1,7 +1,7 @@
 ---
 title: "Variables and Types"
 linkTitle: "Variables and Types"
-weight: 1
+
 description: >
   Learn how to declare variables, work with different data types, and understand type inference in Manuscript.
 ---

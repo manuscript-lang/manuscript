@@ -1,7 +1,7 @@
 ---
 title: "Grammar"
 linkTitle: "Grammar"
-weight: 10
+
 description: >
   Complete formal grammar definition for manuscript in ANTLR4 format.
 ---

@@ -1,7 +1,7 @@
 ---
 title: "Keywords"
 linkTitle: "Keywords" 
-weight: 20
+
 description: >
   All reserved words and keywords in manuscript with usage examples.
 ---

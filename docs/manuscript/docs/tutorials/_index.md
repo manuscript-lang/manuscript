@@ -1,7 +1,7 @@
 ---
 title: "Tutorials"
 linkTitle: "Tutorials"
-weight: 50
+
 description: >
   Step-by-step guides to build real applications with Manuscript. Learn through practical examples from beginner to advanced levels.
 ---

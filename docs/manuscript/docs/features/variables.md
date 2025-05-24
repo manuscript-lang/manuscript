@@ -1,7 +1,7 @@
 ---
 title: "Variables"
 linkTitle: "Variables"
-weight: 10
+
 description: >
   Variable declarations, type annotations, and the manuscript type system.
 ---

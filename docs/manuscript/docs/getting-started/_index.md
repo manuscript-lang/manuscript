@@ -1,7 +1,6 @@
 ---
 title: "Getting Started"
 linkTitle: "Getting Started"
-weight: 10
 ---
 
 This guide will help you get up and running with the Manuscript programming language.

@@ -1,7 +1,7 @@
 ---
 title: "Built-in Types"
 linkTitle: "Types"
-weight: 30
+
 description: >
   Complete reference for all built-in types in manuscript.
 ---

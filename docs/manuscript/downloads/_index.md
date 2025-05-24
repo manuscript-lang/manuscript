@@ -1,7 +1,7 @@
 ---
 title: "Downloads"
 linkTitle: "Downloads"
-weight: 30
+
 ---
 
 Get the manuscript programming language compiler and tools for your platform.

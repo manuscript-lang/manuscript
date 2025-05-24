@@ -1,0 +1,104 @@
+baseURL: "https://manuscript-lang.dev"
+languageCode: "en-us"
+title: "manuscript"
+
+contentDir: "../../docs/manuscript"
+defaultContentLanguage: "en"
+defaultContentLanguageInSubdir: false
+enableRobotsTXT: true
+
+module:
+  hugoVersion:
+    extended: true
+    min: "0.75.0"
+  imports:
+    - path: "github.com/google/docsy"
+      disable: false
+    - path: "github.com/google/docsy/dependencies"
+      disable: false
+
+markup:
+  goldmark:
+    parser:
+      attribute:
+        block: true
+    renderer:
+      unsafe: true
+  highlight:
+    style: "github-dark"
+    lineNos: false
+
+menu:
+  main:
+    - name: "Documentation"
+      url: "/docs/"
+      weight: 10
+    - name: "Downloads"
+      url: "/downloads/"
+      weight: 20
+    - name: "Community"
+      url: "/community/"
+      weight: 30
+
+params:
+  github_repo: "https://github.com/manuscript-lang/manuscript"
+  github_branch: "main"
+  
+  # Docsy theme parameters
+  version_menu: "Releases"
+  archived_version: false
+  version: "0.1.0"
+  url_latest_version: "https://manuscript-lang.dev"
+  
+
+  ui:
+    sidebar_menu_compact: false
+    sidebar_menu_foldable: true
+    sidebar_cache_limit: 10
+    breadcrumb_disable: false
+    taxonomy_taxonomyterm_disable: true
+    feedback_enable: true
+    feedback_yes: 'Glad to hear it! Please <a href="https://github.com/manuscript-lang/manuscript/issues/new">tell us how we can improve</a>.'
+    feedback_no: 'Sorry to hear that. Please <a href="https://github.com/manuscript-lang/manuscript/issues/new">tell us how we can improve</a>.'
+    readingtime_enable: false
+    navbar_logo:
+      enable: true
+  
+  links:
+    user:
+      - name: "Community Discussions"
+        url: "https://github.com/manuscript-lang/manuscript/discussions"
+        icon: "fa fa-comments"
+        desc: "Discussion and help from the community"
+      - name: "Stack Overflow"
+        url: "https://stackoverflow.com/questions/tagged/manuscript-lang"
+        icon: "fab fa-stack-overflow"
+        desc: "Questions and answers about manuscript"
+    
+    developer:
+      - name: "GitHub"
+        url: "https://github.com/manuscript-lang/manuscript"
+        icon: "fab fa-github"
+        desc: "Development takes place here!"
+      - name: "Issues"
+        url: "https://github.com/manuscript-lang/manuscript/issues"
+        icon: "fa fa-bug"
+        desc: "Report bugs and request features"
+
+  # GitHub repository configuration (for edit links)
+  github:
+    repo: "https://github.com/manuscript-lang/manuscript"
+    branch: "main"
+    subdir: "tools/docs-web"
+
+# Privacy configuration
+privacy:
+  x:
+    disabled: false
+    enableDNT: true
+    simple: true
+
+# Taxonomies
+taxonomies:
+  tag: "tags"
+  category: "categories" 

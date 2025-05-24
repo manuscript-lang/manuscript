@@ -1,7 +1,7 @@
 ---
 title: "Building a CLI Tool"
 linkTitle: "CLI Tool"
-weight: 1
+
 description: >
   Learn to build a complete command-line tool with Manuscript, covering argument parsing, file operations, and error handling.
 ---

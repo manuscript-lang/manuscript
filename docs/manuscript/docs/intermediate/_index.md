@@ -1,7 +1,7 @@
 ---
 title: "Intermediate Guide"
 linkTitle: "Intermediate"
-weight: 20
+
 description: >
   Dive deeper into Manuscript's unique features and advanced programming concepts.
 ---

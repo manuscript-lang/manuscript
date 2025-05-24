@@ -1,7 +1,6 @@
 ---
 title: "Language Overview"
 linkTitle: "Overview"
-weight: 3
 description: >
   Learn about manuscript's design philosophy, key features, and what makes it unique.
 ---

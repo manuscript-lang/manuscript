@@ -1,7 +1,7 @@
 ---
 title: "Reference"
 linkTitle: "Reference"
-weight: 50
+
 description: >
   Complete technical reference for manuscript syntax, grammar, and built-in features.
 ---

@@ -1,7 +1,7 @@
 ---
 title: "Error Handling"
 linkTitle: "Error Handling"
-weight: 50
+
 description: >
   Error handling with bang functions, try expressions, and check statements in manuscript.
 ---

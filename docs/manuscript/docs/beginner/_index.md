@@ -1,11 +1,9 @@
 ---
 title: "Beginner Guide"
 linkTitle: "Beginner"
-weight: 10
 description: >
   Learn the fundamental concepts of Manuscript programming. Perfect for new programmers or those new to Manuscript.
 ---
-
 Welcome to the Beginner Guide! This section covers all the fundamental concepts you need to start programming effectively in Manuscript. Whether you're new to programming or coming from another language, these guides will give you a solid foundation.
 
 ## What You'll Learn

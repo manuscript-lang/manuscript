@@ -1,7 +1,7 @@
 ---
 title: "Operators"
 linkTitle: "Operators"
-weight: 25
+
 description: >
   Complete reference for all operators in manuscript with precedence and examples.
 ---

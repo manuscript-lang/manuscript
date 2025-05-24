@@ -1,7 +1,7 @@
 ---
 title: "Functions"
 linkTitle: "Functions"
-weight: 20
+
 description: >
   Function definitions, parameters, return types, and error handling in manuscript.
 ---

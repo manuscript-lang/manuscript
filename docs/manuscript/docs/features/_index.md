@@ -1,11 +1,10 @@
 ---
 title: "Language Features"
 linkTitle: "Features"
-weight: 30
+
 description: >
   Complete guide to all manuscript language constructs and features.
 ---
-
 # manuscript language features
 
 This section covers all the core language constructs available in manuscript, organized by category.

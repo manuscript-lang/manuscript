@@ -1,7 +1,7 @@
 ---
 title: "Data Structures"
 linkTitle: "Data Structures"
-weight: 40
+
 description: >
   Arrays, objects, maps, sets, and custom types in manuscript.
 ---

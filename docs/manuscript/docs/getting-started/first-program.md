@@ -1,7 +1,6 @@
 ---
 title: "Your First Program"
 linkTitle: "First Program"
-weight: 2
 description: >
   Write and run your first manuscript program step by step.
 ---

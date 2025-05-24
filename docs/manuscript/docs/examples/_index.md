@@ -1,7 +1,7 @@
 ---
 title: "Examples"
 linkTitle: "Examples"
-weight: 60
+
 description: >
   Practical code examples demonstrating Manuscript features and best practices.
 ---

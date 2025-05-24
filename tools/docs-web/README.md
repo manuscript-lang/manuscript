@@ -6,7 +6,7 @@ This directory contains the Hugo-based documentation website for the Manuscript 
 
 ```
 tools/docs-web/
-├── hugo.toml              # Hugo configuration
+├── hugo.yaml              # Hugo configuration
 ├── go.mod                 # Hugo modules configuration
 ├── go.sum                 # Hugo modules checksums
 ├── content/               # Markdown content files
@@ -71,7 +71,7 @@ To develop the documentation:
 This site uses Hugo modules to manage the Docsy theme and its dependencies. The modules are configured in:
 
 - `go.mod` - Defines the module dependencies
-- `hugo.toml` - Contains the module import configuration
+- `hugo.yaml` - Contains the module import configuration
 
 To update the Docsy theme:
 

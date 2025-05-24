@@ -1,7 +1,7 @@
 ---
 title: "Control Flow"
 linkTitle: "Control Flow"
-weight: 30
+
 description: >
   Conditional statements, loops, pattern matching, and flow control in manuscript.
 ---

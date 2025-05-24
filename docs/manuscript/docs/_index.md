@@ -1,9 +1,8 @@
 ---
 title: "Docs"
-linkTitle: "Resource for learning manuscript"
-weight: 20
----
+linkTitle: "Learn manuscript"
 
+---
 manuscript is a modern programming language that compiles to Go, designed for readability and simplicity.
 
 ## Quick Example
@@ -50,7 +49,6 @@ let name = "Alice"        // string (inferred)
 let age int = 25          // explicit type
 let active = true         // bool (inferred)
 ```
-
 ### Functions
 ```ms
 fn greet(name string) string {
