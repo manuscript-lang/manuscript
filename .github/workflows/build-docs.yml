@@ -1,4 +1,4 @@
-name: Build Documentation
+name: Docs
 
 on:
   push:
@@ -33,7 +33,7 @@ jobs:
         run: |
           cd tools/docs-web
           npm init -y
-          npm install postcss postcss-cli autoprefixer --save-dev
+          npm i
 
       - name: Build Documentation
         run: |
