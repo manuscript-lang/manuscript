@@ -4,8 +4,6 @@ linkTitle: "Getting Started"
 weight: 10
 ---
 
-# Getting Started with Manuscript
-
 This guide will help you get up and running with the Manuscript programming language.
 
 ## Installation

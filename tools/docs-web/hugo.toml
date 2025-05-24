@@ -1,9 +1,9 @@
 baseURL = "https://manuscript-lang.dev"
 languageCode = "en-us"
-title = "Manuscript Programming Language"
+title = "manuscript"
 
 # Language settings
-contentDir = "content"
+contentDir = "../../docs/manuscript"
 defaultContentLanguage = "en"
 defaultContentLanguageInSubdir = false
 enableRobotsTXT = true
@@ -28,7 +28,7 @@ enableRobotsTXT = true
     [markup.goldmark.renderer]
       unsafe = true
   [markup.highlight]
-    style = "github"
+    style = "github-dark"
     lineNos = false
 
 # Navigation
@@ -76,20 +76,15 @@ enableRobotsTXT = true
   # Links to user documentation
   [params.links]
     [[params.links.user]]
-      name = "User mailing list"
+      name = "Community Discussions"
       url = "https://github.com/manuscript-lang/manuscript/discussions"
-      icon = "fa fa-envelope"
-      desc = "Discussion and help from your fellow users"
-    [[params.links.user]]
-      name ="Twitter"
-      url = "https://twitter.com/manuscript_lang"
-      icon = "fab fa-twitter"
-      desc = "Follow us on Twitter to get the latest news!"
+      icon = "fa fa-comments"
+      desc = "Discussion and help from the community"
     [[params.links.user]]
       name = "Stack Overflow"
-      url = "https://stackoverflow.com/questions/tagged/manuscript"
+      url = "https://stackoverflow.com/questions/tagged/manuscript-lang"
       icon = "fab fa-stack-overflow"
-      desc = "Practical questions and curated answers"
+      desc = "Questions and answers about manuscript"
   
   # Links to developer resources
   [[params.links.developer]]
@@ -98,10 +93,10 @@ enableRobotsTXT = true
     icon = "fab fa-github"
     desc = "Development takes place here!"
   [[params.links.developer]]
-    name = "Slack"
-    url = "https://manuscript-lang.slack.com"
-    icon = "fab fa-slack"
-    desc = "Chat with other project developers"
+    name = "Issues"
+    url = "https://github.com/manuscript-lang/manuscript/issues"
+    icon = "fa fa-bug"
+    desc = "Report bugs and request features"
 
   # GitHub repository configuration (for edit links)
   [params.github]

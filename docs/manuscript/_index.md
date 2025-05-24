@@ -7,7 +7,7 @@ linkTitle: "manuscript"
 <div class="col-12">
   <div class="hero-content">
     <h1 class="display-1 hero-title">manuscript</h1>
-    <p class="lead hero-subtitle">A programming language</p>
+    <p class="lead hero-subtitle">a programming language</p>
     <div class="hero-buttons mt-5">
       <a class="btn btn-primary btn-lg me-3 gradient-btn" href="/docs/">
         <i class="fas fa-rocket me-2"></i>Get Started
@@ -24,10 +24,10 @@ linkTitle: "manuscript"
 <div class="container">
   <div class="row justify-content-center">
     <div class="col-lg-10 col-xl-8">
-      <div class="example-section text-center">
-        <h2 class="display-4 mb-4">Simple. Readable. Powerful.</h2>
-        <pre tabindex="0">
-          <code class="lanaguage-ts" data-lang="ts">
+      <div class="example-section">
+        <h2 class="display-4 mb-4 text-center">Simple. Readable. Powerful.</h2>
+        <div class="code-example-container">
+{{< highlight ms >}}
 fn fibonacci(n int) int {
   match {
     n <= 1: n
@@ -40,8 +40,8 @@ fn main() {
     print("fib($i) = $(fibonacci(i))")
   }
 }
-          </code>
-        </pre>
+{{< /highlight >}}
+        </div>
       </div>
     </div>
   </div>

@@ -47,17 +47,26 @@ build-vscode-extension: build-lsp
 	cd tools/manuscript-vscode-extension && npm run build
 
 # Documentation website targets
+HUGO_BIN := $(shell [ -x build/hugo ] && echo ../../build/hugo || echo hugo)
+
+download-hugo-darwin:
+	@curl -L https://github.com/gohugoio/hugo/releases/download/v0.125.7/hugo_extended_0.125.7_darwin-universal.tar.gz -o build/hugo.tar.gz
+	@tar -xzf build/hugo.tar.gz -C build/
+	@rm build/hugo.tar.gz
+	build/hugo version
+
 build-docs:
 	@echo "Updating Hugo modules..."
-	@cd tools/docs-web && hugo mod tidy
+	@cd tools/docs-web && $(HUGO_BIN) mod tidy
 	@echo "Building documentation website..."
-	@cd tools/docs-web && hugo --destination ../../build/docs-web
+	@cd tools/docs-web && $(HUGO_BIN) --destination ../../build/docs-web
 
 serve-docs:
 	@echo "Updating Hugo modules..."
-	@cd tools/docs-web && hugo mod tidy
+	@cd tools/docs-web && $(HUGO_BIN) mod tidy
 	@echo "Serving documentation website locally..."
-	@cd tools/docs-web && hugo server --bind 0.0.0.0 --port 1313 --destination ../../build/docs-web
+	@cd tools/docs-web && $(HUGO_BIN) server --bind 0.0.0.0 --port 1313 --destination ../../build/docs-web
+
 clean-docs:
 	@echo "Cleaning documentation build..."
 	@rm -rf build/docs-web
