@@ -1,0 +1,42 @@
+name: Docs
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'tools/docs-web/**'
+      - '.github/workflows/build-docs.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'tools/docs-web/**'
+      - '.github/workflows/build-docs.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: '0.125.7'
+          extended: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install PostCSS
+        run: |
+          cd tools/docs-web
+          npm init -y
+          npm i
+
+      - name: Build Documentation
+        run: |
+          cd tools/docs-web
+          hugo mod tidy
+          hugo --destination ../../build/docs-web

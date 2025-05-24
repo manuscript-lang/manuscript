@@ -1,0 +1,81 @@
+/*
+manuscript theme customization
+Clean, readable design with teal accent colors complementary to coral-yellow gradient
+*/
+
+// Brand colors - complementary to coral-yellow gradient
+$primary: #16a085 !default;        // Teal - perfect complement to coral
+$secondary: #2980b9 !default;      // Deep blue - complements yellow
+$success: #27ae60 !default;        // Green success
+$info: #3498db !default;           // Bright blue for info
+$warning: #f39c12 !default;        // Orange warning (harmonious with gradient)
+$danger: #e74c3c !default;         // Red danger (harmonious with coral)
+$light: #ecf0f1 !default;          // Cool light gray
+$dark: #2c3e50 !default;           // Deep blue-gray
+
+// Typography - Better readability fonts
+$font-family-sans-serif: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !default;
+$font-family-monospace: "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !default;
+
+// Font sizes for better hierarchy
+$font-size-base: 1rem !default;
+$font-size-lg: 1.125rem !default;
+$font-size-sm: 0.875rem !default;
+$h1-font-size: 2.5rem !default;
+$h2-font-size: 2rem !default;
+$h3-font-size: 1.75rem !default;
+$h4-font-size: 1.5rem !default;
+$h5-font-size: 1.25rem !default;
+$h6-font-size: 1rem !default;
+
+// Line heights for readability
+$line-height-base: 1.6 !default;
+$line-height-sm: 1.25 !default;
+$line-height-lg: 2 !default;
+
+// Customize code highlighting with teal accent
+$code-color: #e67e22 !default;        // Orange to complement teal
+$code-bg: rgba($primary, 0.08) !default; // Light teal background
+
+// Navbar with teal theme
+$navbar-light-color: rgba($dark, 0.8) !default;
+$navbar-light-hover-color: $primary !default;
+$navbar-light-active-color: $primary !default;
+$navbar-light-brand-color: $primary !default;
+$navbar-light-brand-hover-color: darken($primary, 10%) !default;
+
+// Links with teal accent
+$link-color: $primary !default;
+$link-hover-color: darken($primary, 15%) !default;
+$link-decoration: none !default;
+$link-hover-decoration: underline !default;
+
+// Sidebar with cool theme
+$sidebar-bg: #ffffff !default;
+$sidebar-border: rgba($primary, 0.15) !default;
+
+// Cards and panels
+$card-border-radius: 8px !default;
+$border-radius: 6px !default;
+$border-radius-sm: 4px !default;
+$border-radius-lg: 10px !default;
+
+// Shadows for depth
+$box-shadow-sm: 0 0.125rem 0.25rem rgba(44, 62, 80, 0.075) !default;
+$box-shadow: 0 0.5rem 1rem rgba(44, 62, 80, 0.15) !default;
+$box-shadow-lg: 0 1rem 3rem rgba(44, 62, 80, 0.175) !default;
+
+// Body and content with cool undertones
+$body-bg: #ffffff !default;
+$body-color: #2c3e50 !default;        // Deep blue-gray for better contrast
+$text-muted: #7f8c8d !default;        // Cool gray
+
+// Custom manuscript colors - complementary palette
+$manuscript-teal: #16a085;
+$manuscript-light-teal: #d5f4f0;
+$manuscript-dark-teal: #138d75;
+$manuscript-blue: #2980b9;
+$manuscript-light-blue: #ebf3fd;
+$manuscript-dark-blue: #21618c;
+$manuscript-slate: #34495e;
+$manuscript-light-gray: #ecf0f1; 

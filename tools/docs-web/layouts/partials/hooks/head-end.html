@@ -1,0 +1,245 @@
+{{/* Custom Manuscript Syntax Highlighting with Highlight.js via CDN */}}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+{{/* Load our custom Manuscript language definition */}}
+<script>
+
+function manuscriptLanguage(hljs) {
+  const KEYWORDS = [
+    'if', 'else', 'for', 'while', 'in', 'match', 'case', 'default', 'return', 'yield', 'break', 'continue',
+    'let', 'fn', 'type', 'interface', 'extends', 'import', 'export', 'extern', 'methods', 'as', 'from',
+    'check', 'try', 'go', 'defer'
+  ];
+
+  const TYPES = [
+    'bool', 'string', 'void', 'number', 'i8', 'i16', 'i32', 'i64', 'int', 
+    'uint8', 'uint16', 'uint32', 'uint64', 'f32', 'f64', 'long', 'double'
+  ];
+
+  const LITERALS = ['true', 'false', 'null'];
+
+  return {
+    name: 'Manuscript',
+    aliases: ['ms', 'manuscript'],
+    keywords: {
+      keyword: KEYWORDS,
+      type: TYPES,
+      literal: LITERALS
+    },
+    contains: [
+      // Line comments
+      hljs.COMMENT('//', '$'),
+      
+      // Block comments
+      hljs.COMMENT('/\\*', '\\*/', {
+        contains: ['self']
+      }),
+
+      // Strings
+      {
+        className: 'string',
+        begin: '"',
+        end: '"',
+        contains: [
+          hljs.BACKSLASH_ESCAPE,
+          {
+            className: 'subst',
+            begin: '\\$\\{',
+            end: '\\}',
+            contains: ['self']
+          }
+        ]
+      },
+      {
+        className: 'string',
+        begin: "'",
+        end: "'",
+        contains: [
+          hljs.BACKSLASH_ESCAPE,
+          {
+            className: 'subst',
+            begin: '\\$\\{',
+            end: '\\}',
+            contains: ['self']
+          }
+        ]
+      },
+
+      // Triple-quoted strings (block strings)
+      {
+        className: 'string',
+        begin: '"""',
+        end: '"""',
+        contains: [
+          {
+            className: 'subst',
+            begin: '\\$\\{',
+            end: '\\}',
+            contains: ['self']
+          }
+        ]
+      },
+      {
+        className: 'string',
+        begin: "'''",
+        end: "'''",
+        contains: [
+          {
+            className: 'subst',
+            begin: '\\$\\{',
+            end: '\\}',
+            contains: ['self']
+          }
+        ]
+      },
+
+      // Tagged template strings
+      {
+        className: 'string',
+        begin: /[a-zA-Z_][a-zA-Z0-9_]*\s*('''|""")/,
+        end: /\3/,
+        contains: [
+          {
+            className: 'subst',
+            begin: '\\$\\{',
+            end: '\\}',
+            contains: ['self']
+          }
+        ]
+      },
+
+      // Numbers
+      {
+        className: 'number',
+        variants: [
+          // Float
+          { begin: '\\b[0-9]+\\.[0-9]+([eE][+-]?[0-9]+)?(f32|f64)?\\b' },
+          // Binary
+          { begin: '\\b0b[01_]+(i8|i16|i32|i64|int|u8|u16|u32|u64)?\\b' },
+          // Octal
+          { begin: '\\b0o[0-7_]+(i8|i16|i32|i64|int|u8|u16|u32|u64)?\\b' },
+          // Hex
+          { begin: '\\b0x[0-9a-fA-F_]+(i8|i16|i32|i64|int|u8|u16|u32|u64)?\\b' },
+          // Decimal
+          { begin: '\\b[0-9_]+(i8|i16|i32|i64|int|u8|u16|u32|u64)?\\b' }
+        ]
+      },
+
+      // Function definitions
+      {
+        className: 'function',
+        beginKeywords: 'fn',
+        end: '\\{',
+        excludeEnd: true,
+        contains: [
+          {
+            className: 'title',
+            begin: /[a-zA-Z_][a-zA-Z0-9_]*/
+          },
+          {
+            className: 'params',
+            begin: '\\(',
+            end: '\\)',
+            contains: [
+              {
+                className: 'variable',
+                begin: /[a-zA-Z_][a-zA-Z0-9_]*/
+              },
+              {
+                className: 'class',
+                begin: /[a-zA-Z_][a-zA-Z0-9_]*/
+              },
+              hljs.COMMENT('//', '$'),
+              hljs.COMMENT('/\\*', '\\*/')
+            ]
+          }
+        ]
+      },
+
+      // Type definitions
+      {
+        className: 'class',
+        beginKeywords: 'type interface',
+        end: '\\{',
+        excludeEnd: true,
+        contains: [
+          {
+            className: 'title',
+            begin: /[a-zA-Z_][a-zA-Z0-9_]*/
+          }
+        ]
+      },
+
+      // Operators
+      {
+        className: 'operator',
+        begin: /(\+\+|--|==|!=|<=|>=|&&|\|\||[\+\-\*\/%<>=!&\|\^])/
+      }
+    ]
+  };
+}
+
+// Register the language
+hljs.registerLanguage('manuscript', manuscriptLanguage);
+hljs.registerLanguage('ms', manuscriptLanguage);
+
+// Initialize highlighting when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Target all possible manuscript code block selectors
+  const selectors = [
+    'p code',
+    'code[data-lang="ms"]',
+    'code[data-lang="manuscript"]', 
+    'code.language-ms',
+    'code.language-manuscript',
+    '.highlight[data-lang="ms"] code',
+    '.highlight .language-ms',
+    '.chroma .language-ms',
+    'pre.chroma code', // Hugo's Chroma output
+    '.highlight pre code' // Alternative Hugo structure
+  ];
+  
+  const manuscriptBlocks = document.querySelectorAll(selectors.join(', '));
+  
+  manuscriptBlocks.forEach(block => {
+    // Check if this is likely a manuscript code block
+    const parent = block.closest('.highlight, .chroma, pre');
+    const dataLang = block.getAttribute('data-lang') || 
+                     (parent && parent.getAttribute('data-lang')) ||
+                     (block.className.includes('language-ms')) ||
+                     (parent && parent.className.includes('language-ms'));
+    
+    if (dataLang === 'ms' || dataLang === 'manuscript' || 
+        block.className.includes('language-ms') || 
+        (parent && (parent.className.includes('language-ms') || parent.getAttribute('data-lang') === 'ms'))) {
+      
+      // Clear existing highlighting classes
+      block.className = block.className.replace(/chroma|highlight|language-\w+/g, '').trim();
+      block.classList.add('language-manuscript');
+      
+      // Remove any child highlighting spans that Chroma might have added
+      const spans = block.querySelectorAll('span[class*="c"], span[class*="k"], span[class*="n"]');
+      spans.forEach(span => {
+        const text = span.textContent;
+        span.replaceWith(document.createTextNode(text));
+      });
+      
+      // Re-highlight with our Manuscript highlighter
+      hljs.highlightElement(block);
+    }
+  });
+  
+  // For any regular markdown code blocks
+  document.querySelectorAll('code[data-lang="ms"]:not(.hljs), code[data-lang="manuscript"]:not(.hljs)').forEach(block => {
+    block.className = 'language-manuscript';
+    hljs.highlightElement(block);
+  });
+});
+</script>
+
+{{/* Enhanced CSS for smooth Manuscript highlighting */}}
+<style>
+
+</style> 

@@ -1,0 +1,51 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Documentation Website Guide
+
+## Main Documentation Location
+The documentation website is built using Hugo and located in [tools/docs-web](mdc:tools/docs-web).
+
+## Key Configuration Files
+- **Hugo Configuration**: [tools/docs-web/hugo.yaml](mdc:tools/docs-web/hugo.yaml) - Main site configuration, theme settings, and build parameters
+- **Package Dependencies**: [tools/docs-web/package.json](mdc:tools/docs-web/package.json) - Node.js dependencies for the website
+- **Hugo Modules**: [tools/docs-web/go.mod](mdc:tools/docs-web/go.mod) - Hugo module dependencies (Docsy theme)
+
+## Content Structure
+- **Content Directory**: `docs/manuscript` (referenced in hugo.yaml as `contentDir: "../../docs/manuscript"`)
+- **Layouts**: `tools/docs-web/layouts/` - Custom Hugo layout files
+- **Assets**: `tools/docs-web/assets/` - Static assets (CSS, JS, images)
+- **Public**: `tools/docs-web/public/` - Generated website output
+
+## Documentation Build Process
+All documentation commands are defined in [Makefile](mdc:Makefile):
+
+### Building Documentation
+- **Build docs**: `make build-docs` - Builds the static website to `build/docs-web`
+- **Serve locally**: `make serve-docs` - Runs development server at localhost:1313
+- **Clean build**: `make clean-docs` - Removes generated documentation files
+- **Build all**: `make build-all` - Builds everything including documentation
+
+### Hugo Binary Management
+- **Download Hugo**: `make download-hugo-darwin` - Downloads Hugo extended for macOS
+- The Makefile automatically uses `build/hugo` if available, otherwise falls back to system `hugo`
+
+## Theme and Styling
+- Uses **Docsy theme** (Google's documentation theme)
+- Theme imported via Hugo modules in [tools/docs-web/go.mod](mdc:tools/docs-web/go.mod)
+- Custom styling can be added in `tools/docs-web/assets/`
+- Syntax highlighting uses higlight.js with a custom layout
+
+## Site Configuration
+Key settings in [tools/docs-web/hugo.yaml](mdc:tools/docs-web/hugo.yaml):
+- **GitHub integration**: Configured for edit links and feedback
+- **Navigation menus**: Documentation, Downloads, Community
+- **Version**: Currently set to "0.1.0"
+
+## Development Workflow
+1. Make content changes in `docs/manuscript/`
+3. Build final site with `make build-docs`
+4. Generated site will be in `build/docs-web/`
+
