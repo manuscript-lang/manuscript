@@ -212,6 +212,10 @@ func (v *BaseManuscriptVisitor) VisitLabelStmtTry(ctx *LabelStmtTryContext) inte
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitLabelStmtPiped(ctx *LabelStmtPipedContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitReturnStmt(ctx *ReturnStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -296,6 +300,18 @@ func (v *BaseManuscriptVisitor) VisitCheckStmt(ctx *CheckStmtContext) interface{
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitPipedStmt(ctx *PipedStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitPipedArgs(ctx *PipedArgsContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitPipedArg(ctx *PipedArgContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitExpr(ctx *ExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -317,10 +333,6 @@ func (v *BaseManuscriptVisitor) VisitLogicalOrExpr(ctx *LogicalOrExprContext) in
 }
 
 func (v *BaseManuscriptVisitor) VisitLogicalAndExpr(ctx *LogicalAndExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitBitwiseOrExpr(ctx *BitwiseOrExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

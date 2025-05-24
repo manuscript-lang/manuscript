@@ -161,6 +161,9 @@ type ManuscriptListener interface {
 	// EnterLabelStmtTry is called when entering the LabelStmtTry production.
 	EnterLabelStmtTry(c *LabelStmtTryContext)
 
+	// EnterLabelStmtPiped is called when entering the LabelStmtPiped production.
+	EnterLabelStmtPiped(c *LabelStmtPipedContext)
+
 	// EnterReturnStmt is called when entering the returnStmt production.
 	EnterReturnStmt(c *ReturnStmtContext)
 
@@ -224,6 +227,15 @@ type ManuscriptListener interface {
 	// EnterCheckStmt is called when entering the checkStmt production.
 	EnterCheckStmt(c *CheckStmtContext)
 
+	// EnterPipedStmt is called when entering the pipedStmt production.
+	EnterPipedStmt(c *PipedStmtContext)
+
+	// EnterPipedArgs is called when entering the pipedArgs production.
+	EnterPipedArgs(c *PipedArgsContext)
+
+	// EnterPipedArg is called when entering the pipedArg production.
+	EnterPipedArg(c *PipedArgContext)
+
 	// EnterExpr is called when entering the expr production.
 	EnterExpr(c *ExprContext)
 
@@ -241,9 +253,6 @@ type ManuscriptListener interface {
 
 	// EnterLogicalAndExpr is called when entering the logicalAndExpr production.
 	EnterLogicalAndExpr(c *LogicalAndExprContext)
-
-	// EnterBitwiseOrExpr is called when entering the bitwiseOrExpr production.
-	EnterBitwiseOrExpr(c *BitwiseOrExprContext)
 
 	// EnterBitwiseXorExpr is called when entering the bitwiseXorExpr production.
 	EnterBitwiseXorExpr(c *BitwiseXorExprContext)
@@ -620,6 +629,9 @@ type ManuscriptListener interface {
 	// ExitLabelStmtTry is called when exiting the LabelStmtTry production.
 	ExitLabelStmtTry(c *LabelStmtTryContext)
 
+	// ExitLabelStmtPiped is called when exiting the LabelStmtPiped production.
+	ExitLabelStmtPiped(c *LabelStmtPipedContext)
+
 	// ExitReturnStmt is called when exiting the returnStmt production.
 	ExitReturnStmt(c *ReturnStmtContext)
 
@@ -683,6 +695,15 @@ type ManuscriptListener interface {
 	// ExitCheckStmt is called when exiting the checkStmt production.
 	ExitCheckStmt(c *CheckStmtContext)
 
+	// ExitPipedStmt is called when exiting the pipedStmt production.
+	ExitPipedStmt(c *PipedStmtContext)
+
+	// ExitPipedArgs is called when exiting the pipedArgs production.
+	ExitPipedArgs(c *PipedArgsContext)
+
+	// ExitPipedArg is called when exiting the pipedArg production.
+	ExitPipedArg(c *PipedArgContext)
+
 	// ExitExpr is called when exiting the expr production.
 	ExitExpr(c *ExprContext)
 
@@ -700,9 +721,6 @@ type ManuscriptListener interface {
 
 	// ExitLogicalAndExpr is called when exiting the logicalAndExpr production.
 	ExitLogicalAndExpr(c *LogicalAndExprContext)
-
-	// ExitBitwiseOrExpr is called when exiting the bitwiseOrExpr production.
-	ExitBitwiseOrExpr(c *BitwiseOrExprContext)
 
 	// ExitBitwiseXorExpr is called when exiting the bitwiseXorExpr production.
 	ExitBitwiseXorExpr(c *BitwiseXorExprContext)

@@ -108,7 +108,8 @@ stmt:
 	| continueStmt		# LabelStmtContinue
 	| checkStmt			# LabelStmtCheck
 	| deferStmt			# LabelStmtDefer
-	| tryExpr SEMICOLON?	# LabelStmtTry;
+	| tryExpr SEMICOLON?	# LabelStmtTry
+	| pipedStmt			# LabelStmtPiped;
 
 returnStmt: RETURN exprList? SEMICOLON?;
 yieldStmt: YIELD exprList? SEMICOLON?;
@@ -133,6 +134,11 @@ codeBlock:
 breakStmt: BREAK SEMICOLON?;
 continueStmt: CONTINUE SEMICOLON?;
 checkStmt: CHECK expr COMMA stringLiteral SEMICOLON?;
+
+// --- Piped Statements ---
+pipedStmt: postfixExpr (PIPE postfixExpr pipedArgs?)+ SEMICOLON?;
+pipedArgs: pipedArg+;
+pipedArg: ID EQUALS expr;
 
 // --- Expressions --- Entry point for all expressions
 expr: assignmentExpr;
@@ -160,13 +166,10 @@ logicalOrExpr:
 	logicalAndExpr
 	| left = logicalOrExpr op = PIPE_PIPE right = logicalAndExpr;
 logicalAndExpr:
-	bitwiseOrExpr
-	| left = logicalAndExpr op = AMP_AMP right = bitwiseOrExpr;
+	bitwiseXorExpr
+	| left = logicalAndExpr op = AMP_AMP right = bitwiseXorExpr;
 
 // Bitwise expressions
-bitwiseOrExpr:
-	bitwiseXorExpr
-	| left = bitwiseOrExpr op = PIPE right = bitwiseXorExpr;
 bitwiseXorExpr:
 	bitwiseAndExpr
 	| left = bitwiseXorExpr op = CARET right = bitwiseAndExpr;
