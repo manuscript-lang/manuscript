@@ -1,31 +1,20 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	"go/ast"
-	"go/printer"
-	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
-	mast "manuscript-co/manuscript/internal/ast"
-	"manuscript-co/manuscript/internal/msparse"
-	"manuscript-co/manuscript/internal/parser"
-	"manuscript-co/manuscript/internal/transpiler"
-
-	"github.com/antlr4-go/antlr/v4"
 	"kr.dev/diff"
 )
 
 const (
-	testDir         = "../tests/compilation"
-	syntaxErrorCode = "// SYNTAX ERROR"
-	packageMain     = "package main"
+	testDir     = "../tests/compilation"
+	packageMain = "package main"
 )
 
 var (
@@ -56,10 +45,6 @@ type TestPairContext struct {
 	Content  []byte
 }
 
-func TestCompile(t *testing.T) {
-	runTestsOnMarkdownFiles(t, runCompileTest)
-}
-
 func TestParseAllManuscriptCode(t *testing.T) {
 	runTestsOnMarkdownFiles(t, runParseTest)
 }
@@ -75,51 +60,15 @@ func TestDumpTokens(t *testing.T) {
 	}
 }
 
-func runCompileTest(t *testing.T, ctx *TestPairContext) {
-	pair := ctx.Pair
-	actualGo, err := manuscriptToGo(pair.MsCode, *debug)
-	expectSyntaxErr := strings.TrimSpace(pair.GoCode) == syntaxErrorCode
-
-	handleCompileResult(t, ctx, actualGo, err, expectSyntaxErr)
-}
-
 func runParseTest(t *testing.T, ctx *TestPairContext) {
-	goCode := parseManuscriptAST(t, ctx.Pair.MsCode)
-	assertGoCode(t, goCode, ctx.Pair.GoCode)
-}
-
-func handleCompileResult(
-	t *testing.T,
-	ctx *TestPairContext,
-	actualGo string,
-	err error,
-	expectSyntaxErr bool,
-) {
-	switch {
-	case err != nil && expectSyntaxErr:
-		validateSyntaxError(t, err)
-	case err != nil && !expectSyntaxErr:
+	goCode, err := manuscriptToGo(ctx.Pair.MsCode, *debug)
+	if err != nil {
+		if err.Error() == syntaxErrorCode && ctx.Pair.GoCode == syntaxErrorCode {
+			return
+		}
 		t.Fatalf("manuscriptToGo failed: %v", err)
-	case err == nil && expectSyntaxErr:
-		t.Fatalf("Expected syntax error, but got output:\n%s", actualGo)
-	default:
-		handleSuccessfulCompile(t, ctx, actualGo)
 	}
-}
-
-func validateSyntaxError(t *testing.T, err error) {
-	if strings.Contains(err.Error(), "syntax error") {
-		t.Logf("Correctly failed with syntax error: %v", err)
-	} else {
-		t.Fatalf("Expected syntax error, got: %v", err)
-	}
-}
-
-func handleSuccessfulCompile(t *testing.T, ctx *TestPairContext, actualGo string) {
-	if *update && ctx.Pair.GoCode != actualGo {
-		updateTestFile(t, ctx, actualGo)
-	}
-	assertGoCode(t, actualGo, ctx.Pair.GoCode)
+	assertGoCode(t, goCode, ctx.Pair.GoCode)
 }
 
 func updateTestFile(t *testing.T, ctx *TestPairContext, actualGo string) {
@@ -290,64 +239,4 @@ func findTitleForMsBlock(
 	}
 
 	return bestTitle
-}
-
-func parseManuscriptAST(t *testing.T, msCode string) string {
-	tree, hasErrors := parseManuscriptCode(msCode)
-	if hasErrors {
-		t.Logf("Parsing failed with syntax errors (as expected for some test cases)")
-		return syntaxErrorCode
-	}
-
-	return convertToGoCode(t, tree)
-}
-
-func parseManuscriptCode(msCode string) (parser.IProgramContext, bool) {
-	inputStream := antlr.NewInputStream(msCode)
-	lexer := parser.NewManuscriptLexer(inputStream)
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-	p := parser.NewManuscript(stream)
-
-	errorListener := NewSyntaxErrorListener()
-	p.RemoveErrorListeners()
-	p.AddErrorListener(errorListener)
-
-	tree := p.Program()
-	return tree, len(errorListener.Errors) > 0
-}
-
-func convertToGoCode(t *testing.T, tree parser.IProgramContext) string {
-	visitor := msparse.NewParseTreeToAST()
-	result := tree.Accept(visitor)
-
-	mnode, ok := result.(*mast.Program)
-	if !ok {
-		t.Errorf("Failed to convert parse tree to AST program")
-		return ""
-	}
-
-	transpiler := transpiler.NewGoTranspiler("main")
-	goNode := transpiler.Visit(mnode)
-	if goNode == nil {
-		t.Errorf("Failed to convert parse tree to AST program")
-		return ""
-	}
-
-	return printGoAst(goNode)
-}
-
-func printGoAst(visitedNode ast.Node) string {
-	goAST, ok := visitedNode.(*ast.File)
-	if !ok || goAST == nil {
-		return ""
-	}
-
-	fileSet := token.NewFileSet()
-	var buf bytes.Buffer
-	config := printer.Config{Mode: printer.UseSpaces, Tabwidth: 4}
-	if err := config.Fprint(&buf, fileSet, goAST); err != nil {
-		return ""
-	}
-
-	return strings.TrimSpace(buf.String())
 }
