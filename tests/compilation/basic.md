@@ -92,3 +92,29 @@ func main() {
     z := 20
 }
 ```
+
+```ms
+fn main() {
+  let decimal = 1_000_000
+  let hex = 0xFF_FF_FF
+  let binary = 0b1010_1010_1010_1010
+  let octal = 0o777_777
+  let float1 = 3.14_159
+  let float2 = 1_000.5_5
+  let scientific = 1_000e+3
+}
+```
+
+```go
+package main
+
+func main() {
+    decimal := 1_000_000
+    hex := 0xFF_FF_FF
+    binary := 0b1010_1010_1010_1010
+    octal := 0o777_777
+    float1 := 3.14_159
+    float2 := 1_000.5_5
+    scientific := 1_000e+3
+}
+```

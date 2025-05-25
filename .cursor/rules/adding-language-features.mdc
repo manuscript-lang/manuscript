@@ -1,0 +1,184 @@
+---
+description: This rule provides a comprehensive guide for adding new language features to the Manuscript programming language.
+globs: 
+alwaysApply: false
+---
+# Adding New Language Features to Manuscript
+
+This rule provides a comprehensive guide for adding new language features to the Manuscript programming language.
+
+## Overview
+
+Adding a new language feature involves updating the grammar, regenerating the parser, updating visitors, and adding comprehensive tests. Follow these steps in order to ensure proper implementation.
+
+## Step-by-Step Process
+
+### 1. Update Grammar Files
+
+**Lexer Changes (if needed):**
+- Edit [internal/grammar/ManuscriptLexer.g4](mdc:internal/grammar/ManuscriptLexer.g4)
+- **IMPORTANT:** Lexer rules are order-sensitive - place more specific rules before general ones
+- Add new tokens, keywords, or operators as needed
+- Use fragments for reusable patterns (e.g., `fragment DEC_DIGIT: [0-9];`)
+
+**Parser Changes:**
+- Edit [internal/grammar/Manuscript.g4](mdc:internal/grammar/Manuscript.g4)
+- Add new grammar rules for your language feature
+- Follow existing patterns for rule naming and structure
+- Use labels (e.g., `# LabelName`) for visitor method generation
+
+### 2. Regenerate Parser
+
+```bash
+make generate_parser
+```
+
+This runs [scripts/generate_parser.sh](mdc:scripts/generate_parser.sh) which uses ANTLR to generate Go parser code.
+
+### 3. Update AST Definitions
+
+- Check [internal/ast/](mdc:internal/ast) for existing AST node types
+- Add new AST node types if your feature requires them
+- Follow existing patterns for node structure and interfaces
+
+### 4. Update MAST Builder Visitor
+
+**Main visitor file:** [internal/visitors/mast-builder/visitor.go](mdc:internal/visitors/mast-builder/visitor.go)
+
+**Feature-specific files:**
+- [internal/visitors/mast-builder/statements.go](mdc:internal/visitors/mast-builder/statements.go) - for statement-level features
+- [internal/visitors/mast-builder/expr.go](mdc:internal/visitors/mast-builder/expr.go) - for expression-level features  
+- [internal/visitors/mast-builder/literals.go](mdc:internal/visitors/mast-builder/literals.go) - for literal types
+- [internal/visitors/mast-builder/types.go](mdc:internal/visitors/mast-builder/types.go) - for type system features
+- [internal/visitors/mast-builder/functions.go](mdc:internal/visitors/mast-builder/functions.go) - for function-related features
+- [internal/visitors/mast-builder/let.go](mdc:internal/visitors/mast-builder/let.go) - for variable declarations
+- [internal/visitors/mast-builder/module.go](mdc:internal/visitors/mast-builder/module.go) - for module system features
+
+**Implementation guidelines:**
+- Always use `VisitXXX` methods when possible - top-level visitors are preferred
+- Use helper methods like `createTypedNode()`, `createNamedNode()` for consistency
+- Handle nil cases gracefully
+- Use `acceptOptional()` for optional grammar elements
+
+### 5. Update Go Transpiler Visitor
+
+**Main transpiler file:** [internal/visitors/go-transpiler/transpiler.go](mdc:internal/visitors/go-transpiler/transpiler.go)
+
+**Feature-specific files:**
+- [internal/visitors/go-transpiler/statements.go](mdc:internal/visitors/go-transpiler/statements.go) - for statement transpilation
+- [internal/visitors/go-transpiler/expressions.go](mdc:internal/visitors/go-transpiler/expressions.go) - for expression transpilation
+- [internal/visitors/go-transpiler/literal.go](mdc:internal/visitors/go-transpiler/literal.go) - for literal transpilation
+- [internal/visitors/go-transpiler/declarations.go](mdc:internal/visitors/go-transpiler/declarations.go) - for declarations
+- [internal/visitors/go-transpiler/let.go](mdc:internal/visitors/go-transpiler/let.go) - for variable declarations
+- [internal/visitors/go-transpiler/loops.go](mdc:internal/visitors/go-transpiler/loops.go) - for loop constructs
+- [internal/visitors/go-transpiler/match.go](mdc:internal/visitors/go-transpiler/match.go) - for match expressions
+- [internal/visitors/go-transpiler/modules.go](mdc:internal/visitors/go-transpiler/modules.go) - for module system
+- [internal/visitors/go-transpiler/utils.go](mdc:internal/visitors/go-transpiler/utils.go) - for utility functions
+
+**Implementation guidelines:**
+- Return Go AST nodes (`go/ast` package types)
+- Use `go/token` constants for token types
+- Output Go code in canonical form (as `go/ast` would generate)
+- Handle edge cases and provide sensible defaults
+- Use utility functions from [internal/visitors/go-transpiler/utils.go](mdc:internal/visitors/go-transpiler/utils.go)
+
+### 6. Add Comprehensive Tests
+
+**Test location:** [tests/compilation/](mdc:tests/compilation)
+
+**Test file structure:**
+- Create or update relevant `.md` files (e.g., [tests/compilation/basic.md](mdc:tests/compilation/basic.md))
+- Follow the established test format with alternating `ms` and `go` code blocks
+- Use 4-space indents for Go code, 2-space indents for Manuscript code
+- Add descriptive section headers with `#` for test organization
+
+**Test guidelines:**
+- Add lots of tests with complete coverage
+- Test boundary conditions and invalid inputs
+- Test edge cases and error scenarios
+- Do NOT add comments in expected Go code
+- Ensure tests cover all variations of your feature
+
+**Test structure example:**
+```markdown
+# Feature Description
+
+```ms
+// manuscript code
+```
+
+```go
+// expected go code
+```
+```
+
+### 7. Run and Validate Tests
+
+```bash
+# Run all compilation tests
+cd cmd && go test -v -run TestParseAllManuscriptCode
+
+# Run specific test file
+cd cmd && go test -v -run TestParseAllManuscriptCode -args -file your_test_file
+
+# Run with debug output
+cd cmd && go test -v -run TestParseAllManuscriptCode -args -file your_test_file -debug
+
+# Update test expectations (if needed)
+cd cmd && go test -v -run TestParseAllManuscriptCode -args -file your_test_file -update
+```
+
+### 8. Validation Checklist
+
+- [ ] Grammar changes are syntactically correct
+- [ ] Parser regenerated successfully
+- [ ] MAST builder handles all new grammar rules
+- [ ] Go transpiler produces valid Go code
+- [ ] All tests pass
+- [ ] Edge cases are covered
+- [ ] Error handling is implemented
+- [ ] Code follows existing patterns and conventions
+
+## Common Patterns and Best Practices
+
+### Grammar Design
+- Use consistent naming conventions
+- Group related rules together
+- Use fragments for reusable lexer patterns
+- Consider operator precedence carefully
+
+### Visitor Implementation
+- Always check for nil contexts
+- Use existing helper methods when possible
+- Follow the DRY principle
+- Extract common logic into utility functions
+- Prefer composition over inheritance
+
+### Testing Strategy
+- Test the happy path first
+- Add negative test cases
+- Test with various input combinations
+- Verify generated Go code compiles and runs correctly
+
+### Code Organization
+- Keep related functionality in the same file
+- Use descriptive method and variable names
+- Add minimal but insightful comments about reasoning
+- Follow the existing code style and patterns
+
+## Debugging Tips
+
+1. Use `-debug` flag to see token dumps
+2. Check lexer token types and boundaries
+3. Verify grammar rule matching with ANTLR tools
+4. Test incremental changes to isolate issues
+5. Compare with similar existing features
+
+## Reference Files
+
+Key files to reference when implementing new features:
+- [internal/grammar/ManuscriptLexer.g4](mdc:internal/grammar/ManuscriptLexer.g4) - Lexer rules and tokens
+- [internal/grammar/Manuscript.g4](mdc:internal/grammar/Manuscript.g4) - Parser grammar
+- [cmd/main_test.go](mdc:cmd/main_test.go) - Test infrastructure
+- [tests/compilation/basic.md](mdc:tests/compilation/basic.md) - Basic test examples
+- [Makefile](mdc:Makefile) - Build and test commands
