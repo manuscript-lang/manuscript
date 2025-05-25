@@ -68,6 +68,10 @@ func runParseTest(t *testing.T, ctx *TestPairContext) {
 		}
 		t.Fatalf("manuscriptToGo failed: %v", err)
 	}
+	if *update {
+		updateTestFile(t, ctx, goCode)
+		return
+	}
 	assertGoCode(t, goCode, ctx.Pair.GoCode)
 }
 
