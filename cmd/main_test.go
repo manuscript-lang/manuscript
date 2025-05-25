@@ -42,10 +42,10 @@ type TestPair struct {
 type TestPairContext struct {
 	Pair     TestPair
 	FilePath string
-	Content  []byte
+	Content  *[]byte // Pointer to shared content that gets updated
 }
 
-func TestParseAllManuscriptCode(t *testing.T) {
+func TestManuscriptTranspile(t *testing.T) {
 	runTestsOnMarkdownFiles(t, runParseTest)
 }
 
@@ -69,17 +69,16 @@ func runParseTest(t *testing.T, ctx *TestPairContext) {
 		t.Fatalf("manuscriptToGo failed: %v", err)
 	}
 	if *update {
-		updateTestFile(t, ctx, goCode)
+		updateTestContent(ctx, goCode)
 		return
 	}
 	assertGoCode(t, goCode, ctx.Pair.GoCode)
 }
 
-func updateTestFile(t *testing.T, ctx *TestPairContext, actualGo string) {
-	content := []byte(strings.Replace(string(ctx.Content), ctx.Pair.GoCode, actualGo, 1))
-	if err := os.WriteFile(ctx.FilePath, content, 0644); err != nil {
-		t.Fatalf("Failed to update test file %s: %v", ctx.FilePath, err)
-	}
+func updateTestContent(ctx *TestPairContext, actualGo string) {
+	// Update the shared content in memory
+	updatedContent := strings.Replace(string(*ctx.Content), ctx.Pair.GoCode, actualGo, 1)
+	*ctx.Content = []byte(updatedContent)
 }
 
 func assertGoCode(t *testing.T, actual, expected string) {
@@ -158,16 +157,26 @@ func runTestsInFile(
 		return
 	}
 
+	// Shared state for all tests in this file
+	sharedContent := content
+
 	for i, pair := range testPairs {
 		testName := getTestName(pair, i)
 		t.Run(testName, func(t *testing.T) {
 			ctx := &TestPairContext{
 				Pair:     pair,
 				FilePath: filePath,
-				Content:  content,
+				Content:  &sharedContent,
 			}
 			testFunc(t, ctx)
 		})
+	}
+
+	// Write the file back if any updates were made
+	if *update {
+		if err := os.WriteFile(filePath, sharedContent, 0644); err != nil {
+			t.Fatalf("Failed to update test file %s: %v", filePath, err)
+		}
 	}
 }
 

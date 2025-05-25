@@ -21,15 +21,13 @@ fn main() {
 ```go
 package main
 
-func generator() chan interface {
-} {
-    ch := make(chan interface {
-    }, 1)
+func generator() chan any {
+    ch := make(chan any)
     go func() {
+        defer close(ch)
         ch <- 1
         ch <- 2
         ch <- 3
-        close(ch)
     }()
     return ch
 }
@@ -63,17 +61,15 @@ fn main() {
 ```go
 package main
 
-func numberGenerator(start int64, end int64) chan interface {
-} {
-    ch := make(chan interface {
-    }, 1)
+func numberGenerator(start int64, end int64) chan any {
+    ch := make(chan any)
     go func() {
+        defer close(ch)
         i := start
         for i <= end {
             ch <- i
             i = i + 1
         }
-        close(ch)
     }()
     return ch
 }
@@ -105,18 +101,16 @@ fn main() {
 ```go
 package main
 
-func pairGenerator() chan interface {
-} {
-    ch := make(chan interface {
-    }, 1)
+func pairGenerator() chan any {
+    ch := make(chan any)
     go func() {
+        defer close(ch)
         ch <- []interface {
         }{1, "first"}
         ch <- []interface {
         }{2, "second"}
         ch <- []interface {
         }{3, "third"}
-        close(ch)
     }()
     return ch
 }
@@ -157,18 +151,16 @@ fn main() {
 ```go
 package main
 
-func conditionalGenerator(flag bool) chan interface {
-} {
-    ch := make(chan interface {
-    }, 1)
+func conditionalGenerator(flag bool) chan any {
+    ch := make(chan any)
     go func() {
+        defer close(ch)
         if flag {
             ch <- "true case"
         } else {
             ch <- "false case"
         }
         ch <- "always"
-        close(ch)
     }()
     return ch
 }
@@ -212,11 +204,10 @@ fn main() {
 ```go
 package main
 
-func fibonacciGenerator(n int64) chan interface {
-} {
-    ch := make(chan interface {
-    }, 1)
+func fibonacciGenerator(n int64) chan any {
+    ch := make(chan any)
     go func() {
+        defer close(ch)
         a := 0
         b := 1
         i := 0
@@ -227,7 +218,6 @@ func fibonacciGenerator(n int64) chan interface {
             b = temp
             i = i + 1
         }
-        close(ch)
     }()
     return ch
 }
@@ -258,14 +248,12 @@ fn main() {
 ```go
 package main
 
-func emptyYieldGenerator() chan interface {
-} {
-    ch := make(chan interface {
-    }, 1)
+func emptyYieldGenerator() chan any {
+    ch := make(chan any)
     go func() {
+        defer close(ch)
         ch <- nil
         ch <- nil
-        close(ch)
     }()
     return ch
 }
@@ -298,16 +286,14 @@ fn main() {
 ```go
 package main
 
-func expressionGenerator() chan interface {
-} {
-    ch := make(chan interface {
-    }, 1)
+func expressionGenerator() chan any {
+    ch := make(chan any)
     go func() {
+        defer close(ch)
         x := 5
         ch <- x*2
         ch <- x+10
         ch <- x-3
-        close(ch)
     }()
     return ch
 }
@@ -349,11 +335,10 @@ fn main() {
 ```go
 package main
 
-func mixedGenerator(shouldYield bool) chan interface {
-} {
-    ch := make(chan interface {
-    }, 1)
+func mixedGenerator(shouldYield bool) chan any {
+    ch := make(chan any)
     go func() {
+        defer close(ch)
         if shouldYield {
             ch <- "yielding"
             ch <- "more values"
@@ -362,7 +347,6 @@ func mixedGenerator(shouldYield bool) chan interface {
             return
         }
         ch <- "final value"
-        close(ch)
     }()
     return ch
 }

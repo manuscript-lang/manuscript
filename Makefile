@@ -24,7 +24,7 @@ build: generate_parser build-msc
 test-file:
 	@echo "Running single file test: $(f)"
 	@(go test -v ./cmd/... \
-		-run ^TestCompile$$ \
+		-run ^TestManuscriptTranspile$$ \
 		-timeout 30s \
 		-args \
 		-debug \
@@ -32,11 +32,11 @@ test-file:
 
 update-file:
 	@echo "Updating single file test: $(f)"
-	@(go test -v ./cmd/... -run ^TestCompile$$ -timeout 30s -args -update -file $(f))
+	@(go test -v ./cmd/... -run ^TestManuscriptTranspile$$ -timeout 30s -args -update -file $(f))
 
 profile-test:
 	cd cmd && go test -c -o main.test
-	cd cmd && ./main.test -test.v -test.run ^TestCompile$$ -test.cpuprofile=cpu.prof
+	cd cmd && ./main.test -test.v -test.run ^TestManuscriptTranspile$$ -test.cpuprofile=cpu.prof
 	cd cmd && go tool pprof -http=:8080 ./main.test cpu.prof
 
 build-lsp:

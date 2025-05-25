@@ -197,7 +197,7 @@ func (t *GoTranspiler) buildGeneratorFunction(
 	body *ast.BlockStmt,
 ) ast.Node {
 	// Determine the yield type - for now use interface{} but could be improved
-	yieldType := &ast.InterfaceType{Methods: &ast.FieldList{}}
+	yieldType := ast.NewIdent("any")
 
 	// Create channel type: chan interface{}
 	channelType := &ast.ChanType{
@@ -240,10 +240,6 @@ func (t *GoTranspiler) buildGeneratorBody(
 						Dir:   ast.SEND | ast.RECV,
 						Value: yieldType,
 					},
-					&ast.BasicLit{
-						Kind:  token.INT,
-						Value: "1",
-					},
 				},
 			},
 		},
@@ -252,13 +248,16 @@ func (t *GoTranspiler) buildGeneratorBody(
 	// Create goroutine that runs the original function body
 	goroutineBody := t.transformYieldCalls(originalBody)
 
-	// Add close(ch) at the end of the goroutine
-	goroutineBody.List = append(goroutineBody.List, &ast.ExprStmt{
-		X: &ast.CallExpr{
+	// Add defer close(ch) at the beginning of the goroutine
+	deferCloseStmt := &ast.DeferStmt{
+		Call: &ast.CallExpr{
 			Fun:  &ast.Ident{Name: "close"},
 			Args: []ast.Expr{&ast.Ident{Name: "ch"}},
 		},
-	})
+	}
+
+	// Prepend defer statement to the goroutine body
+	goroutineBody.List = append([]ast.Stmt{deferCloseStmt}, goroutineBody.List...)
 
 	// Create go statement: go func() { ... }()
 	goStmt := &ast.GoStmt{
