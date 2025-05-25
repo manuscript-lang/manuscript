@@ -84,6 +84,7 @@ func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) in
 		return nil
 	}
 	bodyAST := b
+
 	if len(defaultAssignments) > 0 {
 		newBodyList := append([]ast.Stmt{}, defaultAssignments...)
 		newBodyList = append(newBodyList, bodyAST.List...)
@@ -106,15 +107,16 @@ func (v *ManuscriptAstVisitor) VisitMethodImpl(ctx *parser.MethodImplContext) in
 		if resultsAST != nil && len(resultsAST.List) > 0 {
 			goFuncWillHaveReturn = true
 		}
-	} else if lastExpr != nil {
-		inferredType := v.inferTypeFromExpression(lastExpr, paramsAST)
-		if inferredType != nil {
-			resultsAST = &ast.FieldList{List: []*ast.Field{{Type: inferredType}}}
-			goFuncWillHaveReturn = true
-		}
 	}
 
 	if goFuncWillHaveReturn && len(bodyAST.List) > 0 {
+		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X == lastExpr {
+			bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
+		}
+	}
+
+	// Always convert last expression to return statement for methods
+	if !goFuncWillHaveReturn && len(bodyAST.List) > 0 {
 		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X == lastExpr {
 			bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
 		}
@@ -184,6 +186,7 @@ func (v *ManuscriptAstVisitor) VisitMethodImplWithAlias(ctx *parser.MethodImplCo
 		return nil
 	}
 	bodyAST := b
+
 	if len(defaultAssignments) > 0 {
 		newBodyList := append([]ast.Stmt{}, defaultAssignments...)
 		newBodyList = append(newBodyList, bodyAST.List...)
@@ -206,15 +209,16 @@ func (v *ManuscriptAstVisitor) VisitMethodImplWithAlias(ctx *parser.MethodImplCo
 		if resultsAST != nil && len(resultsAST.List) > 0 {
 			goFuncWillHaveReturn = true
 		}
-	} else if lastExpr != nil {
-		inferredType := v.inferTypeFromExpression(lastExpr, paramsAST)
-		if inferredType != nil {
-			resultsAST = &ast.FieldList{List: []*ast.Field{{Type: inferredType}}}
-			goFuncWillHaveReturn = true
-		}
 	}
 
 	if goFuncWillHaveReturn && len(bodyAST.List) > 0 {
+		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X == lastExpr {
+			bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
+		}
+	}
+
+	// Always convert last expression to return statement for methods
+	if !goFuncWillHaveReturn && len(bodyAST.List) > 0 {
 		if exprStmt, ok := bodyAST.List[len(bodyAST.List)-1].(*ast.ExprStmt); ok && exprStmt.X == lastExpr {
 			bodyAST.List[len(bodyAST.List)-1] = &ast.ReturnStmt{Return: exprStmt.X.Pos(), Results: []ast.Expr{exprStmt.X}}
 		}

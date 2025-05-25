@@ -34,7 +34,6 @@ func (cg *CodeGenerator) Generate(astNode interface{}) (string, error) {
 
 	goAST, ok := visitedNode.(*ast.File)
 	if !ok || goAST == nil {
-
 		return "", fmt.Errorf("error: AST generation failed to produce a Go file node")
 	}
 

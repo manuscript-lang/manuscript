@@ -97,15 +97,7 @@ func (t *GoTranspiler) VisitLetDecl(node *msast.LetDecl) ast.Node {
 			// Standalone destructuring - preserve the wrapper as a statement
 			statements = append(statements, v)
 		case *ast.BlockStmt:
-			// Check if this is from a let block
-			switch item.(type) {
-			case *msast.LetBlock:
-				// Let block - flatten the statements
-				statements = append(statements, v.List...)
-			default:
-				// Other block statements - flatten
-				statements = append(statements, v.List...)
-			}
+			statements = append(statements, v.List...)
 		case ast.Stmt:
 			statements = append(statements, v)
 		case nil:
@@ -200,140 +192,100 @@ func (t *GoTranspiler) VisitFnDecl(node *msast.FnDecl) ast.Node {
 		return nil
 	}
 
-	// Check if any parameters have default values
-	hasDefaultParams := false
-	for i := range node.Parameters {
-		param := &node.Parameters[i]
-		if param.DefaultValue != nil {
-			hasDefaultParams = true
-			break
-		}
-	}
+	params, paramExtractionStmts := t.buildFunctionParams(node.Parameters)
+	results := t.buildReturnType(node.ReturnType, node.CanThrow)
+	body := t.buildFunctionBody(node.Body, paramExtractionStmts)
+	t.handleImplicitReturn(body, node.ReturnType)
 
-	// Build parameter list and parameter extraction logic
-	var params []*ast.Field
-	var paramExtractionStmts []ast.Stmt
+	return &ast.FuncDecl{
+		Name: &ast.Ident{Name: t.generateVarName(node.Name)},
+		Type: &ast.FuncType{
+			Params:  &ast.FieldList{List: params},
+			Results: results,
+		},
+		Body: body,
+	}
+}
+
+// buildFunctionParams builds parameter list and extraction statements for functions
+func (t *GoTranspiler) buildFunctionParams(parameters []msast.Parameter) ([]*ast.Field, []ast.Stmt) {
+	hasDefaultParams := t.hasDefaultParameters(parameters)
 
 	if hasDefaultParams {
-		// Use variadic approach for functions with default parameters
-		params = []*ast.Field{{
-			Names: []*ast.Ident{{Name: "args"}},
-			Type: &ast.Ellipsis{
-				Elt: &ast.Ident{Name: "interface{}"},
-			},
-		}}
+		return t.buildVariadicParams(parameters)
+	}
+	return t.buildRegularParams(parameters), nil
+}
 
-		// Generate parameter extraction statements
-		for i, param := range node.Parameters {
-			paramName := t.generateVarName(param.Name)
-
-			// Get parameter type
-			var paramType ast.Expr
-			if param.Type != nil {
-				typeResult := t.Visit(param.Type)
-				if typeExpr, ok := typeResult.(ast.Expr); ok {
-					paramType = typeExpr
-				} else {
-					paramType = &ast.Ident{Name: "interface{}"}
-				}
-			} else {
-				paramType = &ast.Ident{Name: "interface{}"}
-			}
-
-			if param.DefaultValue != nil {
-				// Parameter with default value: var name Type = defaultValue
-				defaultExpr := t.Visit(param.DefaultValue)
-				if defaultValue, ok := defaultExpr.(ast.Expr); ok {
-					// Variable declaration with default value
-					varDecl := &ast.DeclStmt{
-						Decl: &ast.GenDecl{
-							Tok: token.VAR,
-							Specs: []ast.Spec{
-								&ast.ValueSpec{
-									Names:  []*ast.Ident{{Name: paramName}},
-									Type:   paramType,
-									Values: []ast.Expr{defaultValue},
-								},
-							},
-						},
-					}
-					paramExtractionStmts = append(paramExtractionStmts, varDecl)
-
-					// Conditional assignment: if len(args) > i { name = args[i].(Type) }
-					ifStmt := &ast.IfStmt{
-						Cond: &ast.BinaryExpr{
-							X: &ast.CallExpr{
-								Fun:  &ast.Ident{Name: "len"},
-								Args: []ast.Expr{&ast.Ident{Name: "args"}},
-							},
-							Op: token.GTR,
-							Y:  &ast.BasicLit{Kind: token.INT, Value: fmt.Sprintf("%d", i)},
-						},
-						Body: &ast.BlockStmt{
-							List: []ast.Stmt{
-								&ast.AssignStmt{
-									Lhs: []ast.Expr{&ast.Ident{Name: paramName}},
-									Tok: token.ASSIGN,
-									Rhs: []ast.Expr{
-										&ast.TypeAssertExpr{
-											X: &ast.IndexExpr{
-												X:     &ast.Ident{Name: "args"},
-												Index: &ast.BasicLit{Kind: token.INT, Value: fmt.Sprintf("%d", i)},
-											},
-											Type: paramType,
-										},
-									},
-								},
-							},
-						},
-					}
-					paramExtractionStmts = append(paramExtractionStmts, ifStmt)
-				}
-			} else {
-				// Parameter without default value: name := args[i].(Type)
-				assignStmt := &ast.AssignStmt{
-					Lhs: []ast.Expr{&ast.Ident{Name: paramName}},
-					Tok: token.DEFINE,
-					Rhs: []ast.Expr{
-						&ast.TypeAssertExpr{
-							X: &ast.IndexExpr{
-								X:     &ast.Ident{Name: "args"},
-								Index: &ast.BasicLit{Kind: token.INT, Value: fmt.Sprintf("%d", i)},
-							},
-							Type: paramType,
-						},
-					},
-				}
-				paramExtractionStmts = append(paramExtractionStmts, assignStmt)
-			}
-		}
-	} else {
-		// Regular parameters (no defaults)
-		for i := range node.Parameters {
-			param := &node.Parameters[i]
-			field := t.Visit(param)
-			if astField, ok := field.(*ast.Field); ok {
-				params = append(params, astField)
-			}
+// hasDefaultParameters checks if any parameters have default values
+func (t *GoTranspiler) hasDefaultParameters(parameters []msast.Parameter) bool {
+	for i := range parameters {
+		if parameters[i].DefaultValue != nil {
+			return true
 		}
 	}
+	return false
+}
 
-	// Build return type
+// buildVariadicParams builds variadic parameters for functions with default values
+func (t *GoTranspiler) buildVariadicParams(parameters []msast.Parameter) ([]*ast.Field, []ast.Stmt) {
+	params := []*ast.Field{{
+		Names: []*ast.Ident{{Name: "args"}},
+		Type: &ast.Ellipsis{
+			Elt: &ast.Ident{Name: "interface{}"},
+		},
+	}}
+
+	var paramExtractionStmts []ast.Stmt
+	for i, param := range parameters {
+		paramName := t.generateVarName(param.Name)
+		paramType := t.getParameterType(param.Type)
+		extractionStmts := t.generateParameterExtraction(&param, i, paramName, paramType)
+		paramExtractionStmts = append(paramExtractionStmts, extractionStmts...)
+	}
+
+	return params, paramExtractionStmts
+}
+
+// buildRegularParams builds regular parameters (no defaults)
+func (t *GoTranspiler) buildRegularParams(parameters []msast.Parameter) []*ast.Field {
+	var params []*ast.Field
+	for i := range parameters {
+		param := &parameters[i]
+		field := t.Visit(param)
+		if astField, ok := field.(*ast.Field); ok {
+			params = append(params, astField)
+		}
+	}
+	return params
+}
+
+// getParameterType gets the Go type expression for a parameter
+func (t *GoTranspiler) getParameterType(paramType msast.Node) ast.Expr {
+	if paramType != nil {
+		typeResult := t.Visit(paramType)
+		if typeExpr, ok := typeResult.(ast.Expr); ok {
+			return typeExpr
+		}
+	}
+	return &ast.Ident{Name: "interface{}"}
+}
+
+// buildReturnType builds the return type field list
+func (t *GoTranspiler) buildReturnType(returnType msast.Node, canThrow bool) *ast.FieldList {
 	var results *ast.FieldList
-	if node.ReturnType != nil {
-		returnType := t.Visit(node.ReturnType)
-		if returnExpr, ok := returnType.(ast.Expr); ok {
+
+	if returnType != nil {
+		returnTypeExpr := t.Visit(returnType)
+		if returnExpr, ok := returnTypeExpr.(ast.Expr); ok {
 			results = &ast.FieldList{
 				List: []*ast.Field{{Type: returnExpr}},
 			}
 		}
 	}
 
-	// Handle error return if function can throw
-	if node.CanThrow {
-		errorField := &ast.Field{
-			Type: &ast.Ident{Name: "error"},
-		}
+	if canThrow {
+		errorField := &ast.Field{Type: &ast.Ident{Name: "error"}}
 		if results == nil {
 			results = &ast.FieldList{List: []*ast.Field{errorField}}
 		} else {
@@ -341,10 +293,15 @@ func (t *GoTranspiler) VisitFnDecl(node *msast.FnDecl) ast.Node {
 		}
 	}
 
-	// Build function body
+	return results
+}
+
+// buildFunctionBody builds the function body with optional parameter extraction statements
+func (t *GoTranspiler) buildFunctionBody(bodyNode msast.Node, paramExtractionStmts []ast.Stmt) *ast.BlockStmt {
 	var body *ast.BlockStmt
-	if node.Body != nil {
-		bodyResult := t.Visit(node.Body)
+
+	if bodyNode != nil {
+		bodyResult := t.Visit(bodyNode)
 		if blockStmt, ok := bodyResult.(*ast.BlockStmt); ok {
 			body = blockStmt
 		} else {
@@ -354,34 +311,26 @@ func (t *GoTranspiler) VisitFnDecl(node *msast.FnDecl) ast.Node {
 		body = &ast.BlockStmt{List: []ast.Stmt{}}
 	}
 
-	// Prepend parameter extraction statements to the function body
+	// Prepend parameter extraction statements
 	if len(paramExtractionStmts) > 0 {
 		newBodyList := append([]ast.Stmt{}, paramExtractionStmts...)
 		newBodyList = append(newBodyList, body.List...)
 		body.List = newBodyList
 	}
 
-	// Add implicit return for functions with explicit non-void return types
-	if node.ReturnType != nil {
-		// Check if the return type is void
-		if typeSpec, ok := node.ReturnType.(*msast.TypeSpec); ok && typeSpec.Kind == msast.VoidType {
-			// Do not add implicit return for void functions
-		} else {
-			// Add implicit return for functions with actual return types
-			t.ensureLastExprIsReturn(body)
-		}
-	} else {
-		// Add implicit return for functions with actual return types
-		t.ensureLastExprIsReturn(body)
-	}
+	return body
+}
 
-	return &ast.FuncDecl{
-		Name: &ast.Ident{Name: t.generateVarName(node.Name)},
-		Type: &ast.FuncType{
-			Params:  &ast.FieldList{List: params},
-			Results: results,
-		},
-		Body: body,
+// handleImplicitReturn adds implicit return for functions with explicit non-void return types
+func (t *GoTranspiler) handleImplicitReturn(body *ast.BlockStmt, returnType msast.Node) {
+	if returnType != nil {
+		// Check if the return type is void
+		if typeSpec, ok := returnType.(*msast.TypeSpec); ok && typeSpec.Kind == msast.VoidType {
+			return // Do not add implicit return for void functions
+		}
+		t.ensureLastExprIsReturn(body)
+	} else {
+		t.ensureLastExprIsReturn(body)
 	}
 }
 
@@ -398,10 +347,17 @@ func (t *GoTranspiler) VisitMethodsDecl(node *msast.MethodsDecl) ast.Node {
 
 	for i := range node.Methods {
 		method := &node.Methods[i]
-		// Pass both the type name and the receiver alias (stored in Interface field)
-		methodDecl := t.visitMethodImpl(method, node.TypeName, node.Interface)
-		if methodDecl != nil {
-			decls = append(decls, methodDecl)
+		// Use the standard visitor pattern
+		methodResult := t.Visit(method)
+		if funcDecl, ok := methodResult.(*ast.FuncDecl); ok {
+			// Add receiver to the function declaration
+			receiverType := &ast.StarExpr{X: &ast.Ident{Name: t.generateVarName(node.TypeName)}}
+			receiver := &ast.Field{
+				Names: []*ast.Ident{{Name: node.Interface}},
+				Type:  receiverType,
+			}
+			funcDecl.Recv = &ast.FieldList{List: []*ast.Field{receiver}}
+			decls = append(decls, funcDecl)
 		}
 	}
 
@@ -412,89 +368,6 @@ func (t *GoTranspiler) VisitMethodsDecl(node *msast.MethodsDecl) ast.Node {
 	}
 
 	return nil
-}
-
-// visitMethodImpl helper to transpile a method implementation
-func (t *GoTranspiler) visitMethodImpl(method *msast.MethodImpl, typeName string, receiverAlias string) *ast.FuncDecl {
-	if method == nil || method.Name == "" {
-		return nil
-	}
-
-	// Build parameter list (including receiver)
-	var params []*ast.Field
-
-	// Add receiver parameter using the specified alias name
-	receiverType := &ast.StarExpr{X: &ast.Ident{Name: t.generateVarName(typeName)}}
-	receiver := &ast.Field{
-		Names: []*ast.Ident{{Name: receiverAlias}},
-		Type:  receiverType,
-	}
-
-	// Build other parameters
-	for i := range method.Parameters {
-		param := &method.Parameters[i]
-		field := t.Visit(param)
-		if astField, ok := field.(*ast.Field); ok {
-			params = append(params, astField)
-		}
-	}
-
-	// Build return type
-	var results *ast.FieldList
-	if method.ReturnType != nil {
-		returnType := t.Visit(method.ReturnType)
-		if returnExpr, ok := returnType.(ast.Expr); ok {
-			results = &ast.FieldList{
-				List: []*ast.Field{{Type: returnExpr}},
-			}
-		}
-	}
-
-	// Handle error return if method can throw
-	if method.CanThrow {
-		errorField := &ast.Field{
-			Type: &ast.Ident{Name: "error"},
-		}
-		if results == nil {
-			results = &ast.FieldList{List: []*ast.Field{errorField}}
-		} else {
-			results.List = append(results.List, errorField)
-		}
-	}
-
-	// Build method body
-	var body *ast.BlockStmt
-	if method.Body != nil {
-		bodyResult := t.Visit(method.Body)
-		if blockStmt, ok := bodyResult.(*ast.BlockStmt); ok {
-			body = blockStmt
-		} else {
-			body = &ast.BlockStmt{List: []ast.Stmt{}}
-		}
-	} else {
-		body = &ast.BlockStmt{List: []ast.Stmt{}}
-	}
-
-	// Add implicit return for methods with explicit return types (same as functions)
-	if method.ReturnType != nil {
-		// Check if the return type is void
-		if typeSpec, ok := method.ReturnType.(*msast.TypeSpec); ok && typeSpec.Kind == msast.VoidType {
-			// Do not add implicit return for void methods
-		} else {
-			// Add implicit return for methods with actual return types
-			t.ensureLastExprIsReturn(body)
-		}
-	}
-
-	return &ast.FuncDecl{
-		Name: &ast.Ident{Name: t.generateVarName(method.Name)},
-		Recv: &ast.FieldList{List: []*ast.Field{receiver}},
-		Type: &ast.FuncType{
-			Params:  &ast.FieldList{List: params},
-			Results: results,
-		},
-		Body: body,
-	}
 }
 
 // capitalizeForExport capitalizes the first letter for Go exports
@@ -561,5 +434,91 @@ func (t *GoTranspiler) VisitFieldDecl(node *msast.FieldDecl) ast.Node {
 	return &ast.Field{
 		Names: []*ast.Ident{{Name: fieldName}},
 		Type:  fieldType,
+	}
+}
+
+// generateParameterExtraction creates parameter extraction statements for functions with default parameters
+func (t *GoTranspiler) generateParameterExtraction(param *msast.Parameter, paramIndex int, paramName string, paramType ast.Expr) []ast.Stmt {
+	if param.DefaultValue != nil {
+		return t.createDefaultParameterStmts(param, paramIndex, paramName, paramType)
+	}
+	return t.createRequiredParameterStmts(paramIndex, paramName, paramType)
+}
+
+// createDefaultParameterStmts creates statements for parameters with default values
+func (t *GoTranspiler) createDefaultParameterStmts(param *msast.Parameter, paramIndex int, paramName string, paramType ast.Expr) []ast.Stmt {
+	defaultExpr := t.Visit(param.DefaultValue)
+	defaultValue, ok := defaultExpr.(ast.Expr)
+	if !ok {
+		return nil
+	}
+
+	// Variable declaration with default value
+	varDecl := t.createVarDecl(paramName, paramType, defaultValue)
+
+	// Conditional assignment: if len(args) > i { name = args[i].(Type) }
+	ifStmt := t.createConditionalAssignment(paramIndex, paramName, paramType)
+
+	return []ast.Stmt{varDecl, ifStmt}
+}
+
+// createRequiredParameterStmts creates statements for required parameters
+func (t *GoTranspiler) createRequiredParameterStmts(paramIndex int, paramName string, paramType ast.Expr) []ast.Stmt {
+	// Parameter without default value: name := args[i].(Type)
+	assignStmt := &ast.AssignStmt{
+		Lhs: []ast.Expr{&ast.Ident{Name: paramName}},
+		Tok: token.DEFINE,
+		Rhs: []ast.Expr{t.createArgsTypeAssertion(paramIndex, paramType)},
+	}
+	return []ast.Stmt{assignStmt}
+}
+
+// createVarDecl creates a variable declaration statement
+func (t *GoTranspiler) createVarDecl(paramName string, paramType ast.Expr, defaultValue ast.Expr) *ast.DeclStmt {
+	return &ast.DeclStmt{
+		Decl: &ast.GenDecl{
+			Tok: token.VAR,
+			Specs: []ast.Spec{
+				&ast.ValueSpec{
+					Names:  []*ast.Ident{{Name: paramName}},
+					Type:   paramType,
+					Values: []ast.Expr{defaultValue},
+				},
+			},
+		},
+	}
+}
+
+// createConditionalAssignment creates an if statement for conditional parameter assignment
+func (t *GoTranspiler) createConditionalAssignment(paramIndex int, paramName string, paramType ast.Expr) *ast.IfStmt {
+	return &ast.IfStmt{
+		Cond: &ast.BinaryExpr{
+			X: &ast.CallExpr{
+				Fun:  &ast.Ident{Name: "len"},
+				Args: []ast.Expr{&ast.Ident{Name: "args"}},
+			},
+			Op: token.GTR,
+			Y:  &ast.BasicLit{Kind: token.INT, Value: fmt.Sprintf("%d", paramIndex)},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{&ast.Ident{Name: paramName}},
+					Tok: token.ASSIGN,
+					Rhs: []ast.Expr{t.createArgsTypeAssertion(paramIndex, paramType)},
+				},
+			},
+		},
+	}
+}
+
+// createArgsTypeAssertion creates a type assertion expression for args[i].(Type)
+func (t *GoTranspiler) createArgsTypeAssertion(paramIndex int, paramType ast.Expr) *ast.TypeAssertExpr {
+	return &ast.TypeAssertExpr{
+		X: &ast.IndexExpr{
+			X:     &ast.Ident{Name: "args"},
+			Index: &ast.BasicLit{Kind: token.INT, Value: fmt.Sprintf("%d", paramIndex)},
+		},
+		Type: paramType,
 	}
 }

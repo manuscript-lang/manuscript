@@ -277,6 +277,9 @@ func (t *GoTranspiler) VisitMethodImpl(node *msast.MethodImpl) ast.Node {
 		body = &ast.BlockStmt{List: []ast.Stmt{}}
 	}
 
+	// Methods should always have implicit returns for last expressions
+	t.ensureLastExprIsReturn(body)
+
 	// For method implementations, we return a function declaration
 	// The receiver will be handled by the parent MethodsDecl
 	return &ast.FuncDecl{

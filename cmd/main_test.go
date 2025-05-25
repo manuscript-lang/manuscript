@@ -288,18 +288,6 @@ func printGoAst(visitedNode ast.Node) string {
 		return ""
 	}
 
-	// Debug: print the AST structure for for-loops
-	for _, decl := range goAST.Decls {
-		if funcDecl, ok := decl.(*ast.FuncDecl); ok && funcDecl.Name.Name == "main" {
-			for i, stmt := range funcDecl.Body.List {
-				if forStmt, ok := stmt.(*ast.ForStmt); ok {
-					fmt.Printf("DEBUG: printGoAst - ForStmt[%d] - Init: %v (%T), Cond: %v (%T), Post: %v (%T)\n",
-						i, forStmt.Init, forStmt.Init, forStmt.Cond, forStmt.Cond, forStmt.Post, forStmt.Post)
-				}
-			}
-		}
-	}
-
 	fileSet := token.NewFileSet()
 	var buf bytes.Buffer
 	config := printer.Config{Mode: printer.UseSpaces, Tabwidth: 4}
