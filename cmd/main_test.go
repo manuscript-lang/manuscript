@@ -12,15 +12,70 @@ import (
 	"kr.dev/diff"
 )
 
+const (
+	testDir     = "../tests/compilation"
+	packageMain = "package main"
+)
+
 var (
 	fileFilter = flag.String("file", "", "Filter test files by a suffix of their name (without .md extension)")
 	debug      = flag.Bool("debug", false, "Enable token dumping for debugging")
 	update     = flag.Bool("update", false, "Update Go code snapshots in markdown test files")
 )
 
+var (
+	codeBlockRegex = regexp.MustCompile("(?s)```\\s*(\\w+)\\s*\\n(.*?)\\n```")
+	titleRegex     = regexp.MustCompile(`(?m)^#\s+(.*)$`)
+)
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 	os.Exit(m.Run())
+}
+
+type TestPair struct {
+	Title  string
+	MsCode string
+	GoCode string
+}
+
+type TestPairContext struct {
+	Pair     TestPair
+	FilePath string
+	Content  []byte
+}
+
+func TestParseAllManuscriptCode(t *testing.T) {
+	runTestsOnMarkdownFiles(t, runParseTest)
+}
+
+func TestDumpTokens(t *testing.T) {
+	content := `let x = 1`
+	actualGo, err := manuscriptToGo(content, true)
+	if err != nil {
+		t.Fatalf("manuscriptToGo failed: %v", err)
+	}
+	if !strings.HasPrefix(actualGo, packageMain) {
+		t.Fatalf("manuscriptToGo should return package main: %s", actualGo)
+	}
+}
+
+func runParseTest(t *testing.T, ctx *TestPairContext) {
+	goCode, err := manuscriptToGo(ctx.Pair.MsCode, *debug)
+	if err != nil {
+		if err.Error() == syntaxErrorCode && ctx.Pair.GoCode == syntaxErrorCode {
+			return
+		}
+		t.Fatalf("manuscriptToGo failed: %v", err)
+	}
+	assertGoCode(t, goCode, ctx.Pair.GoCode)
+}
+
+func updateTestFile(t *testing.T, ctx *TestPairContext, actualGo string) {
+	content := []byte(strings.Replace(string(ctx.Content), ctx.Pair.GoCode, actualGo, 1))
+	if err := os.WriteFile(ctx.FilePath, content, 0644); err != nil {
+		t.Fatalf("Failed to update test file %s: %v", ctx.FilePath, err)
+	}
 }
 
 func assertGoCode(t *testing.T, actual, expected string) {
@@ -29,144 +84,97 @@ func assertGoCode(t *testing.T, actual, expected string) {
 	}
 }
 
-// TestPair holds a single test case parsed from a markdown file,
-// consisting of a title, a manuscript code block, and its expected Go code output.
-type TestPair struct {
-	Title  string
-	MsCode string
-	GoCode string
+func runTestsOnMarkdownFiles(
+	t *testing.T,
+	testFunc func(*testing.T, *TestPairContext),
+) {
+	testFiles := getTestFiles(t)
+
+	for _, file := range testFiles {
+		t.Run(file.Name(), func(t *testing.T) {
+			runTestsInFile(t, file, testFunc)
+		})
+	}
 }
 
-func TestCompile(t *testing.T) {
-	testDir := "../tests/compilation"
+func getTestFiles(t *testing.T) []os.DirEntry {
 	allFiles, err := os.ReadDir(testDir)
 	if err != nil {
 		t.Fatalf("Failed to read test directory %s: %v", testDir, err)
 	}
 
-	var testFilesToRun []os.DirEntry
+	var testFiles []os.DirEntry
 	for _, file := range allFiles {
-		if file.IsDir() || !strings.HasSuffix(file.Name(), ".md") {
-			continue
-		}
-		if *fileFilter != "" {
-			nameWithoutExt := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
-			if strings.HasSuffix(nameWithoutExt, *fileFilter) {
-				testFilesToRun = append(testFilesToRun, file)
-			}
-		} else {
-			testFilesToRun = append(testFilesToRun, file)
+		if shouldIncludeFile(file) {
+			testFiles = append(testFiles, file)
 		}
 	}
 
-	if len(testFilesToRun) == 0 {
+	validateTestFiles(t, testFiles)
+	return testFiles
+}
+
+func shouldIncludeFile(file os.DirEntry) bool {
+	if file.IsDir() || !strings.HasSuffix(file.Name(), ".md") {
+		return false
+	}
+
+	if *fileFilter == "" {
+		return true
+	}
+
+	nameWithoutExt := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+	return strings.HasSuffix(nameWithoutExt, *fileFilter)
+}
+
+func validateTestFiles(t *testing.T, testFiles []os.DirEntry) {
+	if len(testFiles) == 0 {
 		if *fileFilter != "" {
 			t.Fatalf("No .md files matching filter '%s' found in %s", *fileFilter, testDir)
 		} else {
 			t.Logf("No .md files found in %s to test.", testDir)
-			return
 		}
 	}
+}
 
-	for _, file := range testFilesToRun {
-		t.Run(file.Name(), func(t *testing.T) {
-			filePath := filepath.Join(testDir, file.Name())
-			content, err := os.ReadFile(filePath)
-			if err != nil {
-				t.Fatalf("Failed to read test file %s: %v", filePath, err)
+func runTestsInFile(
+	t *testing.T,
+	file os.DirEntry,
+	testFunc func(*testing.T, *TestPairContext),
+) {
+	filePath := filepath.Join(testDir, file.Name())
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("Failed to read test file %s: %v", filePath, err)
+	}
+
+	testPairs := parseMarkdownTest(string(content))
+	if len(testPairs) == 0 {
+		t.Logf("No manuscript/go test pairs found in %s", file.Name())
+		return
+	}
+
+	for i, pair := range testPairs {
+		testName := getTestName(pair, i)
+		t.Run(testName, func(t *testing.T) {
+			ctx := &TestPairContext{
+				Pair:     pair,
+				FilePath: filePath,
+				Content:  content,
 			}
-
-			testPairs := parseMarkdownTest(string(content))
-
-			if len(testPairs) == 0 {
-				t.Logf("No manuscript/go test pairs found in %s", file.Name())
-				return
-			}
-
-			for i, pair := range testPairs {
-				testSubName := ""
-				if pair.Title != "" {
-					testSubName = pair.Title
-				} else {
-					testSubName = fmt.Sprintf("pair_%d", i+1) // 1-indexed for readability
-				}
-
-				executeTest := func(t *testing.T) {
-					actualGo, err := manuscriptToGo(pair.MsCode, *debug)
-					expectSyntaxErr := strings.TrimSpace(pair.GoCode) == "// SYNTAX ERROR"
-
-					switch {
-					case err != nil && expectSyntaxErr:
-						if strings.Contains(err.Error(), "syntax error") {
-							t.Logf("Correctly failed with syntax error: %v", err)
-						} else {
-							t.Fatalf("Expected syntax error, got: %v", err)
-						}
-					case err != nil && !expectSyntaxErr:
-						t.Fatalf("manuscriptToGo failed: %v", err)
-					case err == nil && expectSyntaxErr:
-						t.Fatalf("Expected syntax error, but got output:\n%s", actualGo)
-					default:
-						if *update && pair.GoCode != actualGo {
-							content = []byte(strings.Replace(string(content), pair.GoCode, actualGo, 1))
-							if err := os.WriteFile(filePath, content, 0644); err != nil {
-								t.Fatalf("Failed to update test file %s: %v", filePath, err)
-							}
-						}
-						assertGoCode(t, actualGo, pair.GoCode)
-					}
-				}
-				t.Run(testSubName, executeTest)
-			}
+			testFunc(t, ctx)
 		})
 	}
 }
 
-func TestDumpTokens(t *testing.T) {
-	content := `
-	let x = 1
-	`
-	actualGo, err := manuscriptToGo(content, true)
-	if err != nil {
-		t.Fatalf("manuscriptToGo failed: %v", err)
+func getTestName(pair TestPair, index int) string {
+	if pair.Title != "" {
+		return pair.Title
 	}
-	if !strings.HasPrefix(actualGo, "package main") {
-		t.Fatalf("manuscriptToGo should return package main: %s", actualGo)
-	}
+	return fmt.Sprintf("pair_%d", index+1)
 }
 
-// findTitleForMsBlock searches for the most relevant title for a manuscript code block.
-// It looks for a title that appears after the last processed Go block and before the current ms block.
-// If multiple such titles exist, the one closest to the ms block is chosen.
-func findTitleForMsBlock(msBlockStartOffset int, lastGoBlockEndOffset int, allTitleMatches [][]int, markdownContent string) string {
-	currentPairTitle := ""
-	bestTitleStartForPair := -1
-
-	for _, titleMatchIndices := range allTitleMatches {
-		titleText := strings.TrimSpace(markdownContent[titleMatchIndices[2]:titleMatchIndices[3]])
-		titleStartOffset := titleMatchIndices[0]
-		titleEndOffset := titleMatchIndices[1]
-
-		// Title must be after the last go block and before the current ms block
-		if titleStartOffset >= lastGoBlockEndOffset && titleEndOffset < msBlockStartOffset {
-			// If multiple titles fit, choose the latest one (closest to ms block)
-			if titleStartOffset > bestTitleStartForPair {
-				bestTitleStartForPair = titleStartOffset
-				currentPairTitle = titleText
-			}
-		}
-	}
-	return currentPairTitle
-}
-
-// parseMarkdownTest extracts ordered pairs of manuscript and go code blocks,
-// along with their preceding titles.
 func parseMarkdownTest(content string) []TestPair {
-	// Regex to find fenced code blocks and capture the language tag and the body
-	codeBlockRegex := regexp.MustCompile("(?s)```\\s*(\\w+)\\s*\n(.*?)\n```")
-	// Regex to find titles (lines starting with #)
-	titleRegex := regexp.MustCompile("(?m)^#\\s+(.*)$")
-
 	matches := codeBlockRegex.FindAllStringSubmatchIndex(content, -1)
 	allTitleMatches := titleRegex.FindAllStringSubmatchIndex(content, -1)
 
@@ -174,29 +182,61 @@ func parseMarkdownTest(content string) []TestPair {
 	lastGoBlockEndOffset := 0
 
 	for i := 0; i < len(matches)-1; i++ {
-		b1Indices := matches[i]
-		b2Indices := matches[i+1]
-
-		lang1 := strings.TrimSpace(content[b1Indices[2]:b1Indices[3]])
-		msBody := strings.TrimSpace(content[b1Indices[4]:b1Indices[5]])
-
-		lang2 := strings.TrimSpace(content[b2Indices[2]:b2Indices[3]])
-		goBody := strings.TrimSpace(content[b2Indices[4]:b2Indices[5]])
-
-		if lang1 == "ms" && lang2 == "go" {
-			msBlockStartOffset := b1Indices[0]
-
-			currentPairTitle := findTitleForMsBlock(msBlockStartOffset, lastGoBlockEndOffset, allTitleMatches, content)
-
-			testPairs = append(testPairs, TestPair{
-				Title:  currentPairTitle,
-				MsCode: msBody,
-				GoCode: goBody,
-			})
-
-			lastGoBlockEndOffset = b2Indices[1] // Update for the next search window for titles
-			i++                                 // Consumed two blocks, advance main loop index
+		if pair, newOffset, consumed := tryParseTestPair(content, matches, i, lastGoBlockEndOffset, allTitleMatches); consumed {
+			testPairs = append(testPairs, pair)
+			lastGoBlockEndOffset = newOffset
+			i++ // Skip the next match since we consumed two blocks
 		}
 	}
 	return testPairs
+}
+
+func tryParseTestPair(
+	content string,
+	matches [][]int,
+	index, lastGoBlockEndOffset int,
+	allTitleMatches [][]int,
+) (TestPair, int, bool) {
+	b1Indices := matches[index]
+	b2Indices := matches[index+1]
+
+	lang1 := strings.TrimSpace(content[b1Indices[2]:b1Indices[3]])
+	lang2 := strings.TrimSpace(content[b2Indices[2]:b2Indices[3]])
+
+	if lang1 != "ms" || lang2 != "go" {
+		return TestPair{}, 0, false
+	}
+
+	msBody := strings.TrimSpace(content[b1Indices[4]:b1Indices[5]])
+	goBody := strings.TrimSpace(content[b2Indices[4]:b2Indices[5]])
+	title := findTitleForMsBlock(b1Indices[0], lastGoBlockEndOffset, allTitleMatches, content)
+
+	pair := TestPair{
+		Title:  title,
+		MsCode: msBody,
+		GoCode: goBody,
+	}
+
+	return pair, b2Indices[1], true
+}
+
+func findTitleForMsBlock(
+	msBlockStartOffset, lastGoBlockEndOffset int,
+	allTitleMatches [][]int,
+	content string,
+) string {
+	var bestTitle string
+	bestTitleStart := -1
+
+	for _, titleMatch := range allTitleMatches {
+		titleStart := titleMatch[0]
+		titleEnd := titleMatch[1]
+
+		if titleStart >= lastGoBlockEndOffset && titleEnd < msBlockStartOffset && titleStart > bestTitleStart {
+			bestTitleStart = titleStart
+			bestTitle = strings.TrimSpace(content[titleMatch[2]:titleMatch[3]])
+		}
+	}
+
+	return bestTitle
 }

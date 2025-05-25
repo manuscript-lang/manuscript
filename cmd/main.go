@@ -1,15 +1,28 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/printer"
+	"go/token"
 	"log"
+
+	mast "manuscript-co/manuscript/internal/ast"
 	parser "manuscript-co/manuscript/internal/parser"
-	codegen "manuscript-co/manuscript/internal/visitor"
+	transpiler "manuscript-co/manuscript/internal/visitors/go-transpiler"
+	mastb "manuscript-co/manuscript/internal/visitors/mast-builder"
+
 	"os"
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
+)
+
+const (
+	syntaxErrorCode = "// SYNTAX ERROR"
 )
 
 // SyntaxErrorListener captures syntax errors from the ANTLR parser.
@@ -29,38 +42,65 @@ func (l *SyntaxErrorListener) SyntaxError(recognizer antlr.Recognizer, offending
 }
 
 func manuscriptToGo(input string, debug bool) (string, error) {
-	inputStream := antlr.NewInputStream(input)
-	lexer := parser.NewManuscriptLexer(inputStream)
-	tokenStream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-
-	if debug {
-		dumpTokens(tokenStream, debug)
+	tree, hasErrors := parseManuscriptCode(input, debug)
+	if hasErrors {
+		return "", errors.New(syntaxErrorCode)
 	}
 
-	p := parser.NewManuscript(tokenStream)
-	p.RemoveErrorListeners() // Remove default console error listener
-	errorListener := NewSyntaxErrorListener()
-	p.AddErrorListener(errorListener)
-
-	p.GetInterpreter().SetPredictionMode(antlr.PredictionModeSLL)
-	tree := p.Program()
-
-	if len(errorListener.Errors) > 0 {
-		return "", fmt.Errorf("syntax error(s): %s", strings.Join(errorListener.Errors, "; "))
-	}
-
-	codeGen := codegen.NewCodeGenerator()
-	goCode, err := codeGen.Generate(tree)
-	if err != nil {
-		return "", fmt.Errorf("codeGen.Generate failed: %w", err)
-	}
-	return strings.TrimSpace(goCode), nil
+	return convertToGoCode(tree), nil
 }
 
-func dumpTokens(stream *antlr.CommonTokenStream, debug bool) {
-	if !debug {
-		return
+func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, bool) {
+	inputStream := antlr.NewInputStream(msCode)
+	lexer := parser.NewManuscriptLexer(inputStream)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+	p := parser.NewManuscript(stream)
+	if debug {
+		dumpTokens(stream)
 	}
+	errorListener := NewSyntaxErrorListener()
+	p.RemoveErrorListeners()
+	p.AddErrorListener(errorListener)
+
+	tree := p.Program()
+	return tree, len(errorListener.Errors) > 0
+}
+
+func convertToGoCode(tree parser.IProgramContext) string {
+	visitor := mastb.NewParseTreeToAST()
+	result := tree.Accept(visitor)
+
+	mnode, ok := result.(*mast.Program)
+	if !ok {
+		return ""
+	}
+
+	transpiler := transpiler.NewGoTranspiler("main")
+	goNode := transpiler.Visit(mnode)
+	if goNode == nil {
+		return ""
+	}
+
+	return printGoAst(goNode)
+}
+
+func printGoAst(visitedNode ast.Node) string {
+	goAST, ok := visitedNode.(*ast.File)
+	if !ok || goAST == nil {
+		return ""
+	}
+
+	fileSet := token.NewFileSet()
+	var buf bytes.Buffer
+	config := printer.Config{Mode: printer.UseSpaces, Tabwidth: 4}
+	if err := config.Fprint(&buf, fileSet, goAST); err != nil {
+		return ""
+	}
+
+	return strings.TrimSpace(buf.String())
+}
+
+func dumpTokens(stream *antlr.CommonTokenStream) {
 	log.Println("--- Lexer Token Dump Start ---")
 	stream.Fill()
 	for i, token := range stream.GetAllTokens() {

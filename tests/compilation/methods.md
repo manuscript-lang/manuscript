@@ -35,7 +35,7 @@ type ILogger interface {
 
 func (r *Logger) log(message string, args any) {
     a := 10
-    r.messages.push(10)
+    return r.messages.push(10)
 }
 func (l *Logger) rotateFile() (bool, error) {
 }
