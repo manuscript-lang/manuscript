@@ -1,4 +1,4 @@
-package msparse
+package mastb
 
 import (
 	"manuscript-co/manuscript/internal/ast"

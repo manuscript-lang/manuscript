@@ -9,10 +9,12 @@ import (
 	"go/printer"
 	"go/token"
 	"log"
+
 	mast "manuscript-co/manuscript/internal/ast"
 	parser "manuscript-co/manuscript/internal/parser"
+	transpiler "manuscript-co/manuscript/internal/visitors/go-transpiler"
 	mastb "manuscript-co/manuscript/internal/visitors/mast-builder"
-	"manuscript-co/manuscript/internal/visitors/transpiler"
+
 	"os"
 	"strings"
 

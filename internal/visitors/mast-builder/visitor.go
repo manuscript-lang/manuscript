@@ -1,4 +1,4 @@
-package msparse
+package mastb
 
 import (
 	"strings"
