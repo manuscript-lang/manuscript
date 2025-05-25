@@ -9,88 +9,103 @@ import (
 
 // String literals and interpolation
 
-func (v *ParseTreeToAST) VisitSingleQuotedString(ctx *parser.SingleQuotedStringContext) interface{} {
-	stringLit := &ast.StringLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Kind:      ast.SingleQuoted,
-	}
+func (v *ParseTreeToAST) createTypedNode(ctx antlr.ParserRuleContext) ast.TypedNode {
+	return ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}}
+}
 
-	for _, partCtx := range ctx.AllStringPart() {
+func (v *ParseTreeToAST) createNamedNode(ctx antlr.ParserRuleContext, name string) ast.NamedNode {
+	return ast.NamedNode{
+		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Name:     name,
+	}
+}
+
+func (v *ParseTreeToAST) createStringLiteral(ctx antlr.ParserRuleContext, kind ast.StringKind) *ast.StringLiteral {
+	return &ast.StringLiteral{
+		TypedNode: v.createTypedNode(ctx),
+		Kind:      kind,
+	}
+}
+
+func (v *ParseTreeToAST) addStringParts(stringLit *ast.StringLiteral, parts []parser.IStringPartContext) {
+	for _, partCtx := range parts {
 		if part := partCtx.Accept(v); part != nil {
 			stringLit.Parts = append(stringLit.Parts, part.(ast.StringPart))
 		}
 	}
+}
 
+func (v *ParseTreeToAST) createStringContent(ctx antlr.ParserRuleContext, content string) *ast.StringContent {
+	return &ast.StringContent{
+		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Content:  content,
+	}
+}
+
+func (v *ParseTreeToAST) createNumberLiteral(ctx antlr.ParserRuleContext, value string, kind ast.NumberKind) *ast.NumberLiteral {
+	return &ast.NumberLiteral{
+		TypedNode: v.createTypedNode(ctx),
+		Value:     value,
+		Kind:      kind,
+	}
+}
+
+func (v *ParseTreeToAST) createBooleanLiteral(ctx antlr.ParserRuleContext, value bool) *ast.BooleanLiteral {
+	return &ast.BooleanLiteral{
+		TypedNode: v.createTypedNode(ctx),
+		Value:     value,
+	}
+}
+
+func (v *ParseTreeToAST) delegateToChild(ctx antlr.ParserRuleContext) interface{} {
+	for _, child := range ctx.GetChildren() {
+		if ruleCtx, ok := child.(antlr.RuleContext); ok {
+			return ruleCtx.Accept(v)
+		}
+	}
+	return nil
+}
+
+func (v *ParseTreeToAST) acceptOptional(ctx antlr.ParserRuleContext) interface{} {
+	if ctx != nil {
+		return ctx.Accept(v)
+	}
+	return nil
+}
+
+func (v *ParseTreeToAST) createStringLiteralWithParts(ctx antlr.ParserRuleContext, kind ast.StringKind, parts []parser.IStringPartContext) *ast.StringLiteral {
+	stringLit := v.createStringLiteral(ctx, kind)
+	v.addStringParts(stringLit, parts)
 	return stringLit
+}
+
+func (v *ParseTreeToAST) VisitSingleQuotedString(ctx *parser.SingleQuotedStringContext) interface{} {
+	return v.createStringLiteralWithParts(ctx, ast.SingleQuoted, ctx.AllStringPart())
 }
 
 func (v *ParseTreeToAST) VisitMultiQuotedString(ctx *parser.MultiQuotedStringContext) interface{} {
-	stringLit := &ast.StringLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Kind:      ast.MultiQuoted,
-	}
-
-	for _, partCtx := range ctx.AllStringPart() {
-		if part := partCtx.Accept(v); part != nil {
-			stringLit.Parts = append(stringLit.Parts, part.(ast.StringPart))
-		}
-	}
-
-	return stringLit
+	return v.createStringLiteralWithParts(ctx, ast.MultiQuoted, ctx.AllStringPart())
 }
 
 func (v *ParseTreeToAST) VisitDoubleQuotedString(ctx *parser.DoubleQuotedStringContext) interface{} {
-	stringLit := &ast.StringLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Kind:      ast.DoubleQuoted,
-	}
-
-	for _, partCtx := range ctx.AllStringPart() {
-		if part := partCtx.Accept(v); part != nil {
-			stringLit.Parts = append(stringLit.Parts, part.(ast.StringPart))
-		}
-	}
-
-	return stringLit
+	return v.createStringLiteralWithParts(ctx, ast.DoubleQuoted, ctx.AllStringPart())
 }
 
 func (v *ParseTreeToAST) VisitMultiDoubleQuotedString(ctx *parser.MultiDoubleQuotedStringContext) interface{} {
-	stringLit := &ast.StringLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Kind:      ast.MultiDoubleQuoted,
-	}
-
-	for _, partCtx := range ctx.AllStringPart() {
-		if part := partCtx.Accept(v); part != nil {
-			stringLit.Parts = append(stringLit.Parts, part.(ast.StringPart))
-		}
-	}
-
-	return stringLit
+	return v.createStringLiteralWithParts(ctx, ast.MultiDoubleQuoted, ctx.AllStringPart())
 }
 
 func (v *ParseTreeToAST) VisitStringPart(ctx *parser.StringPartContext) interface{} {
-	if ctx.SINGLE_STR_CONTENT() != nil {
-		return &ast.StringContent{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-			Content:  ctx.SINGLE_STR_CONTENT().GetText(),
-		}
-	} else if ctx.MULTI_STR_CONTENT() != nil {
-		return &ast.StringContent{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-			Content:  ctx.MULTI_STR_CONTENT().GetText(),
-		}
-	} else if ctx.DOUBLE_STR_CONTENT() != nil {
-		return &ast.StringContent{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-			Content:  ctx.DOUBLE_STR_CONTENT().GetText(),
-		}
-	} else if ctx.MULTI_DOUBLE_STR_CONTENT() != nil {
-		return &ast.StringContent{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-			Content:  ctx.MULTI_DOUBLE_STR_CONTENT().GetText(),
-		}
-	} else if ctx.Interpolation() != nil {
+	switch {
+	case ctx.SINGLE_STR_CONTENT() != nil:
+		return v.createStringContent(ctx, ctx.SINGLE_STR_CONTENT().GetText())
+	case ctx.MULTI_STR_CONTENT() != nil:
+		return v.createStringContent(ctx, ctx.MULTI_STR_CONTENT().GetText())
+	case ctx.DOUBLE_STR_CONTENT() != nil:
+		return v.createStringContent(ctx, ctx.DOUBLE_STR_CONTENT().GetText())
+	case ctx.MULTI_DOUBLE_STR_CONTENT() != nil:
+		return v.createStringContent(ctx, ctx.MULTI_DOUBLE_STR_CONTENT().GetText())
+	case ctx.Interpolation() != nil:
 		return ctx.Interpolation().Accept(v)
 	}
 	return nil
@@ -101,10 +116,8 @@ func (v *ParseTreeToAST) VisitInterpolation(ctx *parser.InterpolationContext) in
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
 	}
 
-	if ctx.Expr() != nil {
-		if expr := ctx.Expr().Accept(v); expr != nil {
-			interpolation.Expr = expr.(ast.Expression)
-		}
+	if expr := v.acceptOptional(ctx.Expr()); expr != nil {
+		interpolation.Expr = expr.(ast.Expression)
 	}
 
 	return interpolation
@@ -125,25 +138,22 @@ func (v *ParseTreeToAST) VisitLabelLiteralBool(ctx *parser.LabelLiteralBoolConte
 }
 
 func (v *ParseTreeToAST) VisitLabelLiteralNull(ctx *parser.LabelLiteralNullContext) interface{} {
-	return &ast.NullLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-	}
+	return &ast.NullLiteral{TypedNode: v.createTypedNode(ctx)}
 }
 
 func (v *ParseTreeToAST) VisitLabelLiteralVoid(ctx *parser.LabelLiteralVoidContext) interface{} {
-	return &ast.VoidLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-	}
+	return &ast.VoidLiteral{TypedNode: v.createTypedNode(ctx)}
 }
 
 func (v *ParseTreeToAST) VisitStringLiteral(ctx *parser.StringLiteralContext) interface{} {
-	if ctx.SingleQuotedString() != nil {
+	switch {
+	case ctx.SingleQuotedString() != nil:
 		return ctx.SingleQuotedString().Accept(v)
-	} else if ctx.MultiQuotedString() != nil {
+	case ctx.MultiQuotedString() != nil:
 		return ctx.MultiQuotedString().Accept(v)
-	} else if ctx.DoubleQuotedString() != nil {
+	case ctx.DoubleQuotedString() != nil:
 		return ctx.DoubleQuotedString().Accept(v)
-	} else if ctx.MultiDoubleQuotedString() != nil {
+	case ctx.MultiDoubleQuotedString() != nil:
 		return ctx.MultiDoubleQuotedString().Accept(v)
 	}
 	return nil
@@ -152,86 +162,52 @@ func (v *ParseTreeToAST) VisitStringLiteral(ctx *parser.StringLiteralContext) in
 // Number literals
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralInt(ctx *parser.LabelNumberLiteralIntContext) interface{} {
-	return &ast.NumberLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Value:     ctx.INTEGER().GetText(),
-		Kind:      ast.Integer,
-	}
+	return v.createNumberLiteral(ctx, ctx.INTEGER().GetText(), ast.Integer)
 }
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralFloat(ctx *parser.LabelNumberLiteralFloatContext) interface{} {
-	return &ast.NumberLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Value:     ctx.FLOAT().GetText(),
-		Kind:      ast.Float,
-	}
+	return v.createNumberLiteral(ctx, ctx.FLOAT().GetText(), ast.Float)
 }
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralHex(ctx *parser.LabelNumberLiteralHexContext) interface{} {
-	return &ast.NumberLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Value:     ctx.HEX_LITERAL().GetText(),
-		Kind:      ast.Hex,
-	}
+	return v.createNumberLiteral(ctx, ctx.HEX_LITERAL().GetText(), ast.Hex)
 }
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralBin(ctx *parser.LabelNumberLiteralBinContext) interface{} {
-	return &ast.NumberLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Value:     ctx.BINARY_LITERAL().GetText(),
-		Kind:      ast.Binary,
-	}
+	return v.createNumberLiteral(ctx, ctx.BINARY_LITERAL().GetText(), ast.Binary)
 }
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralOct(ctx *parser.LabelNumberLiteralOctContext) interface{} {
-	return &ast.NumberLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Value:     ctx.OCTAL_LITERAL().GetText(),
-		Kind:      ast.Octal,
-	}
+	return v.createNumberLiteral(ctx, ctx.OCTAL_LITERAL().GetText(), ast.Octal)
 }
 
 // Boolean literals
 
 func (v *ParseTreeToAST) VisitLabelBoolLiteralTrue(ctx *parser.LabelBoolLiteralTrueContext) interface{} {
-	return &ast.BooleanLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Value:     true,
-	}
+	return v.createBooleanLiteral(ctx, true)
 }
 
 func (v *ParseTreeToAST) VisitLabelBoolLiteralFalse(ctx *parser.LabelBoolLiteralFalseContext) interface{} {
-	return &ast.BooleanLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-		Value:     false,
-	}
+	return v.createBooleanLiteral(ctx, false)
 }
 
 // Collection literals
 
 func (v *ParseTreeToAST) VisitArrayLiteral(ctx *parser.ArrayLiteralContext) interface{} {
-	arrayLit := &ast.ArrayLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-	}
+	arrayLit := &ast.ArrayLiteral{TypedNode: v.createTypedNode(ctx)}
 
-	if ctx.ExprList() != nil {
-		if exprList := ctx.ExprList().Accept(v); exprList != nil {
-			arrayLit.Elements = exprList.([]ast.Expression)
-		}
+	if exprList := v.acceptOptional(ctx.ExprList()); exprList != nil {
+		arrayLit.Elements = exprList.([]ast.Expression)
 	}
 
 	return arrayLit
 }
 
 func (v *ParseTreeToAST) VisitObjectLiteral(ctx *parser.ObjectLiteralContext) interface{} {
-	objectLit := &ast.ObjectLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-	}
+	objectLit := &ast.ObjectLiteral{TypedNode: v.createTypedNode(ctx)}
 
-	if ctx.ObjectFieldList() != nil {
-		if fieldList := ctx.ObjectFieldList().Accept(v); fieldList != nil {
-			objectLit.Fields = fieldList.([]ast.ObjectField)
-		}
+	if fieldList := v.acceptOptional(ctx.ObjectFieldList()); fieldList != nil {
+		objectLit.Fields = fieldList.([]ast.ObjectField)
 	}
 
 	return objectLit
@@ -252,16 +228,12 @@ func (v *ParseTreeToAST) VisitObjectField(ctx *parser.ObjectFieldContext) interf
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
 	}
 
-	if ctx.ObjectFieldName() != nil {
-		if name := ctx.ObjectFieldName().Accept(v); name != nil {
-			field.Name = name.(ast.ObjectFieldName)
-		}
+	if name := v.acceptOptional(ctx.ObjectFieldName()); name != nil {
+		field.Name = name.(ast.ObjectFieldName)
 	}
 
-	if ctx.Expr() != nil {
-		if expr := ctx.Expr().Accept(v); expr != nil {
-			field.Value = expr.(ast.Expression)
-		}
+	if expr := v.acceptOptional(ctx.Expr()); expr != nil {
+		field.Value = expr.(ast.Expression)
 	}
 
 	return field
@@ -269,10 +241,7 @@ func (v *ParseTreeToAST) VisitObjectField(ctx *parser.ObjectFieldContext) interf
 
 func (v *ParseTreeToAST) VisitLabelObjectFieldNameID(ctx *parser.LabelObjectFieldNameIDContext) interface{} {
 	return &ast.ObjectFieldID{
-		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-			Name:     ctx.ID().GetText(),
-		},
+		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
 	}
 }
 
@@ -281,48 +250,34 @@ func (v *ParseTreeToAST) VisitLabelObjectFieldNameStr(ctx *parser.LabelObjectFie
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
 	}
 
-	if ctx.StringLiteral() != nil {
-		if strLit := ctx.StringLiteral().Accept(v); strLit != nil {
-			fieldName.Literal = strLit.(*ast.StringLiteral)
-		}
+	if strLit := v.acceptOptional(ctx.StringLiteral()); strLit != nil {
+		fieldName.Literal = strLit.(*ast.StringLiteral)
 	}
 
 	return fieldName
 }
 
-// ObjectFieldName visitor - was missing
 func (v *ParseTreeToAST) VisitObjectFieldName(ctx *parser.ObjectFieldNameContext) interface{} {
-	// The ObjectFieldName context is a base type that gets specialized into specific labeled contexts
-	// We need to handle it by checking the children and delegating
-	for _, child := range ctx.GetChildren() {
-		if child != nil {
-			if ruleCtx, ok := child.(antlr.RuleContext); ok {
-				return ruleCtx.Accept(v)
-			}
-		}
-	}
-	return nil
+	return v.delegateToChild(ctx)
 }
 
 // Map literals
 
 func (v *ParseTreeToAST) VisitLabelMapLiteralEmpty(ctx *parser.LabelMapLiteralEmptyContext) interface{} {
 	return &ast.MapLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
+		TypedNode: v.createTypedNode(ctx),
 		IsEmpty:   true,
 	}
 }
 
 func (v *ParseTreeToAST) VisitLabelMapLiteralNonEmpty(ctx *parser.LabelMapLiteralNonEmptyContext) interface{} {
 	mapLit := &ast.MapLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
+		TypedNode: v.createTypedNode(ctx),
 		IsEmpty:   false,
 	}
 
-	if ctx.MapFieldList() != nil {
-		if fieldList := ctx.MapFieldList().Accept(v); fieldList != nil {
-			mapLit.Fields = fieldList.([]ast.MapField)
-		}
+	if fieldList := v.acceptOptional(ctx.MapFieldList()); fieldList != nil {
+		mapLit.Fields = fieldList.([]ast.MapField)
 	}
 
 	return mapLit
@@ -357,9 +312,7 @@ func (v *ParseTreeToAST) VisitMapField(ctx *parser.MapFieldContext) interface{} 
 }
 
 func (v *ParseTreeToAST) VisitSetLiteral(ctx *parser.SetLiteralContext) interface{} {
-	setLit := &ast.SetLiteral{
-		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPosition(ctx)}},
-	}
+	setLit := &ast.SetLiteral{TypedNode: v.createTypedNode(ctx)}
 
 	for _, exprCtx := range ctx.AllExpr() {
 		if expr := exprCtx.Accept(v); expr != nil {
@@ -370,35 +323,23 @@ func (v *ParseTreeToAST) VisitSetLiteral(ctx *parser.SetLiteralContext) interfac
 	return setLit
 }
 
-// MapLiteral visitor - was missing
 func (v *ParseTreeToAST) VisitMapLiteral(ctx *parser.MapLiteralContext) interface{} {
-	// The MapLiteral context is a base type that gets specialized into specific labeled contexts
-	// We need to handle it by checking the children and delegating
-	for _, child := range ctx.GetChildren() {
-		if child != nil {
-			if ruleCtx, ok := child.(antlr.RuleContext); ok {
-				return ruleCtx.Accept(v)
-			}
-		}
-	}
-	return nil
+	return v.delegateToChild(ctx)
 }
 
 // Tagged block strings
 
 func (v *ParseTreeToAST) VisitTaggedBlockString(ctx *parser.TaggedBlockStringContext) interface{} {
 	taggedBlock := &ast.TaggedBlockString{
-		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-			Name:     ctx.ID().GetText(),
-		},
+		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
 	}
 
-	if ctx.MultiQuotedString() != nil {
+	switch {
+	case ctx.MultiQuotedString() != nil:
 		if content := ctx.MultiQuotedString().Accept(v); content != nil {
 			taggedBlock.Content = content.(*ast.StringLiteral)
 		}
-	} else if ctx.MultiDoubleQuotedString() != nil {
+	case ctx.MultiDoubleQuotedString() != nil:
 		if content := ctx.MultiDoubleQuotedString().Accept(v); content != nil {
 			taggedBlock.Content = content.(*ast.StringLiteral)
 		}
@@ -411,16 +352,11 @@ func (v *ParseTreeToAST) VisitTaggedBlockString(ctx *parser.TaggedBlockStringCon
 
 func (v *ParseTreeToAST) VisitStructInitExpr(ctx *parser.StructInitExprContext) interface{} {
 	structInit := &ast.StructInitExpr{
-		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-			Name:     ctx.ID().GetText(),
-		},
+		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
 	}
 
-	if ctx.StructFieldList() != nil {
-		if fieldList := ctx.StructFieldList().Accept(v); fieldList != nil {
-			structInit.Fields = fieldList.([]ast.StructField)
-		}
+	if fieldList := v.acceptOptional(ctx.StructFieldList()); fieldList != nil {
+		structInit.Fields = fieldList.([]ast.StructField)
 	}
 
 	return structInit
@@ -434,10 +370,7 @@ func (v *ParseTreeToAST) VisitStructFieldList(ctx *parser.StructFieldListContext
 		if field := fieldCtx.Accept(v); field != nil {
 			structField := field.(ast.StructField)
 
-			// Check for duplicate field names
 			if fieldNames[structField.Name] {
-				// Note: In a real implementation, we might want to collect errors
-				// For now, we'll skip duplicate fields
 				continue
 			}
 			fieldNames[structField.Name] = true
@@ -450,16 +383,11 @@ func (v *ParseTreeToAST) VisitStructFieldList(ctx *parser.StructFieldListContext
 
 func (v *ParseTreeToAST) VisitStructField(ctx *parser.StructFieldContext) interface{} {
 	field := ast.StructField{
-		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-			Name:     ctx.ID().GetText(),
-		},
+		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
 	}
 
-	if ctx.Expr() != nil {
-		if expr := ctx.Expr().Accept(v); expr != nil {
-			field.Value = expr.(ast.Expression)
-		}
+	if expr := v.acceptOptional(ctx.Expr()); expr != nil {
+		field.Value = expr.(ast.Expression)
 	}
 
 	return field
@@ -469,12 +397,10 @@ func (v *ParseTreeToAST) VisitStructField(ctx *parser.StructFieldContext) interf
 // Helper visitors for rules that don't directly map to AST
 
 func (v *ParseTreeToAST) VisitStmt_sep(ctx *parser.Stmt_sepContext) interface{} {
-	// Statement separators don't need AST representation
 	return nil
 }
 
 func (v *ParseTreeToAST) VisitLetBlockItemSep(ctx *parser.LetBlockItemSepContext) interface{} {
-	// Item separators don't need AST representation
 	return nil
 }
 
@@ -488,44 +414,14 @@ func (v *ParseTreeToAST) VisitFieldList(ctx *parser.FieldListContext) interface{
 	return fields
 }
 
-// NumberLiteral visitor - was missing
 func (v *ParseTreeToAST) VisitNumberLiteral(ctx *parser.NumberLiteralContext) interface{} {
-	// The NumberLiteral context is a base type that gets specialized into specific labeled contexts
-	// We need to handle it by checking the children and delegating
-	for _, child := range ctx.GetChildren() {
-		if child != nil {
-			if ruleCtx, ok := child.(antlr.RuleContext); ok {
-				return ruleCtx.Accept(v)
-			}
-		}
-	}
-	return nil
+	return v.delegateToChild(ctx)
 }
 
-// BooleanLiteral visitor - was missing
 func (v *ParseTreeToAST) VisitBooleanLiteral(ctx *parser.BooleanLiteralContext) interface{} {
-	// The BooleanLiteral context is a base type that gets specialized into specific labeled contexts
-	// We need to handle it by checking the children and delegating
-	for _, child := range ctx.GetChildren() {
-		if child != nil {
-			if ruleCtx, ok := child.(antlr.RuleContext); ok {
-				return ruleCtx.Accept(v)
-			}
-		}
-	}
-	return nil
+	return v.delegateToChild(ctx)
 }
 
-// Literal visitor - was missing
 func (v *ParseTreeToAST) VisitLiteral(ctx *parser.LiteralContext) interface{} {
-	// The Literal context is a base type that gets specialized into specific labeled contexts
-	// We need to handle it by checking the children and delegating
-	for _, child := range ctx.GetChildren() {
-		if child != nil {
-			if ruleCtx, ok := child.(antlr.RuleContext); ok {
-				return ruleCtx.Accept(v)
-			}
-		}
-	}
-	return nil
+	return v.delegateToChild(ctx)
 }

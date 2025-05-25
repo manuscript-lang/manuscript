@@ -169,117 +169,58 @@ func (t *TypeSpec) String() string {
 
 // Equals checks if two types are equal
 func (t *TypeSpec) Equals(other Type) bool {
-	if otherSpec, ok := other.(*TypeSpec); ok {
-		if t.Kind != otherSpec.Kind {
-			return false
-		}
+	otherSpec, ok := other.(*TypeSpec)
+	if !ok || t.Kind != otherSpec.Kind {
+		return false
+	}
 
-		switch t.Kind {
-		case SimpleType:
-			return t.Name == otherSpec.Name
-		case ArrayType:
-			if t.ElementType == nil || otherSpec.ElementType == nil {
-				return t.ElementType == otherSpec.ElementType
-			}
-			return t.ElementType.(*TypeSpec).Equals(otherSpec.ElementType.(*TypeSpec))
-		case FunctionType:
-			// Check parameters
-			if len(t.Parameters) != len(otherSpec.Parameters) {
-				return false
-			}
-			for i, param := range t.Parameters {
-				if !param.Type.(*TypeSpec).Equals(otherSpec.Parameters[i].Type.(*TypeSpec)) {
-					return false
-				}
-			}
-			// Check return type
-			if t.ReturnType == nil && otherSpec.ReturnType == nil {
-				return t.CanThrow == otherSpec.CanThrow
-			}
-			if t.ReturnType != nil && otherSpec.ReturnType != nil {
-				return t.ReturnType.(*TypeSpec).Equals(otherSpec.ReturnType.(*TypeSpec)) &&
-					t.CanThrow == otherSpec.CanThrow
-			}
-			return false
-		case TupleType:
-			if len(t.ElementTypes) != len(otherSpec.ElementTypes) {
-				return false
-			}
-			for i, elem := range t.ElementTypes {
-				if !elem.(*TypeSpec).Equals(otherSpec.ElementTypes[i].(*TypeSpec)) {
-					return false
-				}
-			}
-			return true
-		case VoidType:
-			return true
+	switch t.Kind {
+	case SimpleType:
+		return t.Name == otherSpec.Name
+	case ArrayType:
+		if t.ElementType == nil || otherSpec.ElementType == nil {
+			return t.ElementType == otherSpec.ElementType
 		}
+		return t.ElementType.(*TypeSpec).Equals(otherSpec.ElementType.(*TypeSpec))
+	case FunctionType:
+		if len(t.Parameters) != len(otherSpec.Parameters) {
+			return false
+		}
+		for i, param := range t.Parameters {
+			if !param.Type.(*TypeSpec).Equals(otherSpec.Parameters[i].Type.(*TypeSpec)) {
+				return false
+			}
+		}
+		if t.ReturnType == nil && otherSpec.ReturnType == nil {
+			return t.CanThrow == otherSpec.CanThrow
+		}
+		if t.ReturnType != nil && otherSpec.ReturnType != nil {
+			return t.ReturnType.(*TypeSpec).Equals(otherSpec.ReturnType.(*TypeSpec)) &&
+				t.CanThrow == otherSpec.CanThrow
+		}
+		return false
+	case TupleType:
+		if len(t.ElementTypes) != len(otherSpec.ElementTypes) {
+			return false
+		}
+		for i, elem := range t.ElementTypes {
+			if !elem.(*TypeSpec).Equals(otherSpec.ElementTypes[i].(*TypeSpec)) {
+				return false
+			}
+		}
+		return true
+	case VoidType:
+		return true
 	}
 	return false
 }
 
 // IsAssignableTo checks if this type can be assigned to another type
 func (t *TypeSpec) IsAssignableTo(other Type) bool {
-	// For now, use strict equality - can be enhanced for inheritance/subtyping
 	return t.Equals(other)
 }
 
 // IsCompatibleWith checks if this type is compatible with another type
 func (t *TypeSpec) IsCompatibleWith(other Type) bool {
-	// For now, use strict equality - can be enhanced for implicit conversions
 	return t.Equals(other)
-}
-
-// Utility functions for working with TypeSpec
-
-// IsNumericType checks if a TypeSpec represents a numeric type
-func (t *TypeSpec) IsNumericType() bool {
-	return t.Kind == SimpleType && (t.Name == "int" || t.Name == "float")
-}
-
-// IsBooleanType checks if a TypeSpec represents a boolean type
-func (t *TypeSpec) IsBooleanType() bool {
-	return t.Kind == SimpleType && t.Name == "bool"
-}
-
-// IsStringType checks if a TypeSpec represents a string type
-func (t *TypeSpec) IsStringType() bool {
-	return t.Kind == SimpleType && t.Name == "string"
-}
-
-// IsErrorType checks if a TypeSpec can throw errors
-func (t *TypeSpec) IsErrorType() bool {
-	return t.CanThrow
-}
-
-// IsArrayType checks if a TypeSpec is an array type
-func (t *TypeSpec) IsArrayType() bool {
-	return t.Kind == ArrayType
-}
-
-// GetElementType returns the element type for array types
-func (t *TypeSpec) GetElementType() Type {
-	if t.Kind == ArrayType && t.ElementType != nil {
-		return t.ElementType.(*TypeSpec)
-	}
-	return nil
-}
-
-// Utility functions for creating common types
-
-// GetBuiltinType creates a TypeSpec for built-in types
-func GetBuiltinType(name string) *TypeSpec {
-	return NewSimpleType(name)
-}
-
-// GetOptionalBuiltinType creates an optional TypeSpec for built-in types
-func GetOptionalBuiltinType(name string) *TypeSpec {
-	baseType := NewSimpleType(name)
-	return NewOptionalType(baseType)
-}
-
-// GetThrowingBuiltinType creates a throwing TypeSpec for built-in types
-func GetThrowingBuiltinType(name string) *TypeSpec {
-	baseType := NewSimpleType(name)
-	return NewThrowingType(baseType)
 }

@@ -5,42 +5,33 @@ package ast
 type FnDecl struct {
 	NamedNode
 	Parameters []Parameter
-	ReturnType TypeAnnotation // Optional, nil if no return type
-	CanThrow   bool           // true if function has ! modifier
+	ReturnType TypeAnnotation
+	CanThrow   bool // true if function has ! modifier
 	Body       *CodeBlock
 }
 
 func (d *FnDecl) Accept(v Visitor) {
 	if v = v.Visit(d); v != nil {
-		for _, param := range d.Parameters {
-			param.Accept(v)
-		}
-		if d.ReturnType != nil {
-			d.ReturnType.Accept(v)
-		}
-		if d.Body != nil {
-			d.Body.Accept(v)
-		}
+		acceptParameters(v, d.Parameters)
+		acceptOptional(v, d.ReturnType)
+		acceptOptional(v, d.Body)
 	}
 }
 
 type Parameter struct {
 	NamedNode
 	Type         TypeAnnotation
-	DefaultValue Expression // Optional, nil if no default value
+	DefaultValue Expression
 }
 
 func (p *Parameter) Accept(v Visitor) {
 	if v = v.Visit(p); v != nil {
 		p.Type.Accept(v)
-		if p.DefaultValue != nil {
-			p.DefaultValue.Accept(v)
-		}
+		acceptOptional(v, p.DefaultValue)
 	}
 }
 
 // Method Declarations
-
 type MethodsDecl struct {
 	BaseNode
 	TypeName  string // The type these methods are for
@@ -59,44 +50,43 @@ func (d *MethodsDecl) Accept(v Visitor) {
 type MethodImpl struct {
 	NamedNode
 	Parameters []Parameter
-	ReturnType TypeAnnotation // Optional, nil if no return type
-	CanThrow   bool           // true if method has ! modifier
+	ReturnType TypeAnnotation
+	CanThrow   bool // true if method has ! modifier
 	Body       *CodeBlock
 }
 
 func (m *MethodImpl) Accept(v Visitor) {
 	if v = v.Visit(m); v != nil {
-		for _, param := range m.Parameters {
-			param.Accept(v)
-		}
-		if m.ReturnType != nil {
-			m.ReturnType.Accept(v)
-		}
-		if m.Body != nil {
-			m.Body.Accept(v)
-		}
+		acceptParameters(v, m.Parameters)
+		acceptOptional(v, m.ReturnType)
+		acceptOptional(v, m.Body)
 	}
 }
 
 // Function Expression
-
 type FnExpr struct {
 	TypedNode
 	Parameters []Parameter
-	ReturnType TypeAnnotation // Optional, nil if no return type
+	ReturnType TypeAnnotation
 	Body       *CodeBlock
 }
 
 func (f *FnExpr) Accept(v Visitor) {
 	if v = v.Visit(f); v != nil {
-		for _, param := range f.Parameters {
-			param.Accept(v)
-		}
-		if f.ReturnType != nil {
-			f.ReturnType.Accept(v)
-		}
-		if f.Body != nil {
-			f.Body.Accept(v)
-		}
+		acceptParameters(v, f.Parameters)
+		acceptOptional(v, f.ReturnType)
+		acceptOptional(v, f.Body)
+	}
+}
+
+func acceptParameters(v Visitor, params []Parameter) {
+	for _, param := range params {
+		param.Accept(v)
+	}
+}
+
+func acceptOptional(v Visitor, node Node) {
+	if node != nil {
+		node.Accept(v)
 	}
 }

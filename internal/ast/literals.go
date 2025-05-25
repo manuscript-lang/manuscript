@@ -125,7 +125,7 @@ func (l *ObjectLiteral) Accept(v Visitor) {
 type ObjectField struct {
 	BaseNode
 	Name  ObjectFieldName
-	Value Expression // Optional, nil for shorthand
+	Value Expression
 }
 
 func (f *ObjectField) Accept(v Visitor) {
@@ -163,7 +163,7 @@ func (n *ObjectFieldString) Accept(v Visitor) {
 type MapLiteral struct {
 	TypedNode
 	Fields  []MapField
-	IsEmpty bool // true for [:] empty map literal
+	IsEmpty bool
 }
 
 func (l *MapLiteral) Accept(v Visitor) {
@@ -205,7 +205,7 @@ func (l *SetLiteral) Accept(v Visitor) {
 type TaggedBlockString struct {
 	NamedNode
 	Content      *StringLiteral
-	InferredType Type // Add explicit type field since NamedNode doesn't have it
+	InferredType Type
 }
 
 func (t *TaggedBlockString) GetInferredType() Type {

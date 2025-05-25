@@ -23,8 +23,8 @@ type LetItem interface {
 type LetSingle struct {
 	BaseNode
 	ID    TypedID
-	Value Expression // Optional, nil if no assignment
-	IsTry bool       // true if using try expression
+	Value Expression
+	IsTry bool
 }
 
 func (l *LetSingle) Accept(v Visitor) {
@@ -129,7 +129,7 @@ func (l *LetDestructuredArray) Accept(v Visitor) {
 // TypedID represents an identifier with optional type annotation
 type TypedID struct {
 	NamedNode
-	Type TypeAnnotation // Optional, nil if no type annotation
+	Type TypeAnnotation
 }
 
 func (t *TypedID) Accept(v Visitor) {
@@ -159,7 +159,7 @@ type TypeBody interface {
 
 type TypeDefBody struct {
 	BaseNode
-	Extends []TypeAnnotation // Optional extends clause
+	Extends []TypeAnnotation
 	Fields  []FieldDecl
 }
 
@@ -177,7 +177,7 @@ func (t *TypeDefBody) Accept(v Visitor) {
 type TypeAlias struct {
 	BaseNode
 	Type    TypeAnnotation
-	Extends []TypeAnnotation // Optional extends clause
+	Extends []TypeAnnotation
 }
 
 func (t *TypeAlias) Accept(v Visitor) {
@@ -203,7 +203,7 @@ func (f *FieldDecl) Accept(v Visitor) {
 
 type InterfaceDecl struct {
 	NamedNode
-	Extends []TypeAnnotation // Optional extends clause
+	Extends []TypeAnnotation
 	Methods []InterfaceMethod
 }
 
@@ -221,8 +221,8 @@ func (d *InterfaceDecl) Accept(v Visitor) {
 type InterfaceMethod struct {
 	NamedNode
 	Parameters []Parameter
-	ReturnType TypeAnnotation // Optional, nil if no return type
-	CanThrow   bool           // true if method has ! modifier
+	ReturnType TypeAnnotation
+	CanThrow   bool // true if method has ! modifier
 }
 
 func (m *InterfaceMethod) Accept(v Visitor) {

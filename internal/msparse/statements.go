@@ -1,19 +1,13 @@
 package msparse
 
 import (
-	"fmt"
 	"manuscript-co/manuscript/internal/ast"
 	"manuscript-co/manuscript/internal/parser"
 
 	"github.com/antlr4-go/antlr/v4"
 )
 
-// Statement visitors
-
-// Stmt visitor - was missing
-func (v *ParseTreeToAST) VisitStmt(ctx *parser.StmtContext) interface{} {
-	// The Stmt context is a base type that gets specialized into specific labeled contexts
-	// We need to handle it by checking the children and delegating
+func (v *ParseTreeToAST) visitFirstChild(ctx antlr.RuleContext) interface{} {
 	for _, child := range ctx.GetChildren() {
 		if child != nil {
 			if ruleCtx, ok := child.(antlr.RuleContext); ok {
@@ -24,6 +18,30 @@ func (v *ParseTreeToAST) VisitStmt(ctx *parser.StmtContext) interface{} {
 	return nil
 }
 
+func (v *ParseTreeToAST) visitExprIfPresent(ctx interface{ Expr() parser.IExprContext }) ast.Expression {
+	if ctx.Expr() != nil {
+		if expr := ctx.Expr().Accept(v); expr != nil {
+			return expr.(ast.Expression)
+		}
+	}
+	return nil
+}
+
+func (v *ParseTreeToAST) visitExprListIfPresent(ctx interface {
+	ExprList() parser.IExprListContext
+}) []ast.Expression {
+	if ctx.ExprList() != nil {
+		if exprList := ctx.ExprList().Accept(v); exprList != nil {
+			return exprList.([]ast.Expression)
+		}
+	}
+	return nil
+}
+
+func (v *ParseTreeToAST) VisitStmt(ctx *parser.StmtContext) interface{} {
+	return v.visitFirstChild(ctx)
+}
+
 func (v *ParseTreeToAST) VisitLabelStmtLet(ctx *parser.LabelStmtLetContext) interface{} {
 	if ctx.LetDecl() != nil {
 		return ctx.LetDecl().Accept(v)
@@ -32,17 +50,10 @@ func (v *ParseTreeToAST) VisitLabelStmtLet(ctx *parser.LabelStmtLetContext) inte
 }
 
 func (v *ParseTreeToAST) VisitLabelStmtExpr(ctx *parser.LabelStmtExprContext) interface{} {
-	exprStmt := &ast.ExprStmt{
+	return &ast.ExprStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Expr:     v.visitExprIfPresent(ctx),
 	}
-
-	if ctx.Expr() != nil {
-		if expr := ctx.Expr().Accept(v); expr != nil {
-			exprStmt.Expr = expr.(ast.Expression)
-		}
-	}
-
-	return exprStmt
 }
 
 func (v *ParseTreeToAST) VisitLabelStmtReturn(ctx *parser.LabelStmtReturnContext) interface{} {
@@ -104,45 +115,24 @@ func (v *ParseTreeToAST) VisitLabelStmtPiped(ctx *parser.LabelStmtPipedContext) 
 }
 
 func (v *ParseTreeToAST) VisitReturnStmt(ctx *parser.ReturnStmtContext) interface{} {
-	returnStmt := &ast.ReturnStmt{
+	return &ast.ReturnStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Values:   v.visitExprListIfPresent(ctx),
 	}
-
-	if ctx.ExprList() != nil {
-		if exprList := ctx.ExprList().Accept(v); exprList != nil {
-			returnStmt.Values = exprList.([]ast.Expression)
-		}
-	}
-
-	return returnStmt
 }
 
 func (v *ParseTreeToAST) VisitYieldStmt(ctx *parser.YieldStmtContext) interface{} {
-	yieldStmt := &ast.YieldStmt{
+	return &ast.YieldStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Values:   v.visitExprListIfPresent(ctx),
 	}
-
-	if ctx.ExprList() != nil {
-		if exprList := ctx.ExprList().Accept(v); exprList != nil {
-			yieldStmt.Values = exprList.([]ast.Expression)
-		}
-	}
-
-	return yieldStmt
 }
 
 func (v *ParseTreeToAST) VisitDeferStmt(ctx *parser.DeferStmtContext) interface{} {
-	deferStmt := &ast.DeferStmt{
+	return &ast.DeferStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Expr:     v.visitExprIfPresent(ctx),
 	}
-
-	if ctx.Expr() != nil {
-		if expr := ctx.Expr().Accept(v); expr != nil {
-			deferStmt.Expr = expr.(ast.Expression)
-		}
-	}
-
-	return deferStmt
 }
 
 func (v *ParseTreeToAST) VisitExprList(ctx *parser.ExprListContext) interface{} {
@@ -158,12 +148,7 @@ func (v *ParseTreeToAST) VisitExprList(ctx *parser.ExprListContext) interface{} 
 func (v *ParseTreeToAST) VisitIfStmt(ctx *parser.IfStmtContext) interface{} {
 	ifStmt := &ast.IfStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-	}
-
-	if ctx.Expr() != nil {
-		if expr := ctx.Expr().Accept(v); expr != nil {
-			ifStmt.Cond = expr.(ast.Expression)
-		}
+		Cond:     v.visitExprIfPresent(ctx),
 	}
 
 	codeBlocks := ctx.AllCodeBlock()
@@ -197,14 +182,7 @@ func (v *ParseTreeToAST) VisitForStmt(ctx *parser.ForStmtContext) interface{} {
 }
 
 func (v *ParseTreeToAST) VisitForLoopType(ctx *parser.ForLoopTypeContext) interface{} {
-	for _, child := range ctx.GetChildren() {
-		if child != nil {
-			if ruleCtx, ok := child.(antlr.RuleContext); ok {
-				return ruleCtx.Accept(v)
-			}
-		}
-	}
-	return nil
+	return v.visitFirstChild(ctx)
 }
 
 func (v *ParseTreeToAST) VisitLabelForLoop(ctx *parser.LabelForLoopContext) interface{} {
@@ -214,6 +192,7 @@ func (v *ParseTreeToAST) VisitLabelForLoop(ctx *parser.LabelForLoopContext) inte
 func (v *ParseTreeToAST) VisitLabelForInLoop(ctx *parser.LabelForInLoopContext) interface{} {
 	forInLoop := &ast.ForInLoop{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Iterable: v.visitExprIfPresent(ctx),
 	}
 
 	ids := ctx.AllID()
@@ -222,12 +201,6 @@ func (v *ParseTreeToAST) VisitLabelForInLoop(ctx *parser.LabelForInLoopContext) 
 	} else if len(ids) == 2 {
 		forInLoop.Key = ids[0].GetText()
 		forInLoop.Value = ids[1].GetText()
-	}
-
-	if ctx.Expr() != nil {
-		if expr := ctx.Expr().Accept(v); expr != nil {
-			forInLoop.Iterable = expr.(ast.Expression)
-		}
 	}
 
 	if ctx.LoopBody() != nil {
@@ -246,13 +219,8 @@ func (v *ParseTreeToAST) VisitForTrinity(ctx *parser.ForTrinityContext) interfac
 
 	if ctx.ForInit() != nil {
 		if init := ctx.ForInit().Accept(v); init != nil {
-			fmt.Printf("DEBUG: VisitForTrinity - init is not nil: %T\n", init)
 			forLoop.Init = init.(ast.ForInit)
-		} else {
-			fmt.Printf("DEBUG: VisitForTrinity - init is nil\n")
 		}
-	} else {
-		fmt.Printf("DEBUG: VisitForTrinity - ForInit() context is nil\n")
 	}
 
 	if ctx.ForCond() != nil {
@@ -273,41 +241,19 @@ func (v *ParseTreeToAST) VisitForTrinity(ctx *parser.ForTrinityContext) interfac
 		}
 	}
 
-	fmt.Printf("DEBUG: VisitForTrinity - final forLoop.Init: %v\n", forLoop.Init)
 	return forLoop
 }
 
 func (v *ParseTreeToAST) VisitForInit(ctx *parser.ForInitContext) interface{} {
-	for _, child := range ctx.GetChildren() {
-		if child != nil {
-			if ruleCtx, ok := child.(antlr.RuleContext); ok {
-				return ruleCtx.Accept(v)
-			}
-		}
-	}
-	return nil
+	return v.visitFirstChild(ctx)
 }
 
 func (v *ParseTreeToAST) VisitForCond(ctx *parser.ForCondContext) interface{} {
-	for _, child := range ctx.GetChildren() {
-		if child != nil {
-			if ruleCtx, ok := child.(antlr.RuleContext); ok {
-				return ruleCtx.Accept(v)
-			}
-		}
-	}
-	return nil
+	return v.visitFirstChild(ctx)
 }
 
 func (v *ParseTreeToAST) VisitForPost(ctx *parser.ForPostContext) interface{} {
-	for _, child := range ctx.GetChildren() {
-		if child != nil {
-			if ruleCtx, ok := child.(antlr.RuleContext); ok {
-				return ruleCtx.Accept(v)
-			}
-		}
-	}
-	return nil
+	return v.visitFirstChild(ctx)
 }
 
 func (v *ParseTreeToAST) VisitLabelForInitLet(ctx *parser.LabelForInitLetContext) interface{} {
@@ -325,7 +271,6 @@ func (v *ParseTreeToAST) VisitLabelForInitLet(ctx *parser.LabelForInitLetContext
 }
 
 func (v *ParseTreeToAST) VisitLabelForInitEmpty(ctx *parser.LabelForInitEmptyContext) interface{} {
-	fmt.Printf("DEBUG: VisitLabelForInitEmpty called, returning nil\n")
 	return nil
 }
 
@@ -348,12 +293,7 @@ func (v *ParseTreeToAST) VisitLabelForPostEmpty(ctx *parser.LabelForPostEmptyCon
 func (v *ParseTreeToAST) VisitWhileStmt(ctx *parser.WhileStmtContext) interface{} {
 	whileStmt := &ast.WhileStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-	}
-
-	if ctx.Expr() != nil {
-		if expr := ctx.Expr().Accept(v); expr != nil {
-			whileStmt.Cond = expr.(ast.Expression)
-		}
+		Cond:     v.visitExprIfPresent(ctx),
 	}
 
 	if ctx.LoopBody() != nil {
@@ -365,32 +305,28 @@ func (v *ParseTreeToAST) VisitWhileStmt(ctx *parser.WhileStmtContext) interface{
 	return whileStmt
 }
 
-func (v *ParseTreeToAST) VisitLoopBody(ctx *parser.LoopBodyContext) interface{} {
-	loopBody := &ast.LoopBody{
-		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-	}
-
-	for _, stmtCtx := range ctx.AllStmt() {
+func (v *ParseTreeToAST) visitStmtList(stmts []parser.IStmtContext) []ast.Statement {
+	var result []ast.Statement
+	for _, stmtCtx := range stmts {
 		if stmt := stmtCtx.Accept(v); stmt != nil {
-			loopBody.Stmts = append(loopBody.Stmts, stmt.(ast.Statement))
+			result = append(result, stmt.(ast.Statement))
 		}
 	}
+	return result
+}
 
-	return loopBody
+func (v *ParseTreeToAST) VisitLoopBody(ctx *parser.LoopBodyContext) interface{} {
+	return &ast.LoopBody{
+		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Stmts:    v.visitStmtList(ctx.AllStmt()),
+	}
 }
 
 func (v *ParseTreeToAST) VisitCodeBlock(ctx *parser.CodeBlockContext) interface{} {
-	codeBlock := &ast.CodeBlock{
+	return &ast.CodeBlock{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Stmts:    v.visitStmtList(ctx.AllStmt()),
 	}
-
-	for _, stmtCtx := range ctx.AllStmt() {
-		if stmt := stmtCtx.Accept(v); stmt != nil {
-			codeBlock.Stmts = append(codeBlock.Stmts, stmt.(ast.Statement))
-		}
-	}
-
-	return codeBlock
 }
 
 func (v *ParseTreeToAST) VisitBreakStmt(ctx *parser.BreakStmtContext) interface{} {
@@ -408,12 +344,7 @@ func (v *ParseTreeToAST) VisitContinueStmt(ctx *parser.ContinueStmtContext) inte
 func (v *ParseTreeToAST) VisitCheckStmt(ctx *parser.CheckStmtContext) interface{} {
 	checkStmt := &ast.CheckStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-	}
-
-	if ctx.Expr() != nil {
-		if expr := ctx.Expr().Accept(v); expr != nil {
-			checkStmt.Expr = expr.(ast.Expression)
-		}
+		Expr:     v.visitExprIfPresent(ctx),
 	}
 
 	if ctx.StringLiteral() != nil {
@@ -427,14 +358,11 @@ func (v *ParseTreeToAST) VisitCheckStmt(ctx *parser.CheckStmtContext) interface{
 	return checkStmt
 }
 
-// Piped statements
-
 func (v *ParseTreeToAST) VisitPipedStmt(ctx *parser.PipedStmtContext) interface{} {
 	pipedStmt := &ast.PipedStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
 	}
 
-	// First expression is the source (no arguments)
 	postfixExprs := ctx.AllPostfixExpr()
 	pipedArgsCtxs := ctx.AllPipedArgs()
 
@@ -447,10 +375,8 @@ func (v *ParseTreeToAST) VisitPipedStmt(ctx *parser.PipedStmtContext) interface{
 			pipedCall.Expr = expr.(ast.Expression)
 		}
 
-		// Associate piped args with the correct function
-		// pipedArgs come after postfixExprs in order, but the first postfixExpr (source) has no args
-		if i > 0 { // Skip source (first expr)
-			argIndex := i - 1 // Adjust index since pipedArgs start after the source
+		if i > 0 {
+			argIndex := i - 1
 			if argIndex < len(pipedArgsCtxs) && pipedArgsCtxs[argIndex] != nil {
 				if args := pipedArgsCtxs[argIndex].Accept(v); args != nil {
 					pipedCall.Args = args.([]ast.PipedArg)

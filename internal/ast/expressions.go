@@ -158,7 +158,7 @@ func (e *IndexExpr) Accept(v Visitor) {
 
 type Identifier struct {
 	NamedNode
-	InferredType Type // Add explicit type field since NamedNode doesn't have it
+	InferredType Type
 }
 
 func (e *Identifier) GetInferredType() Type {
@@ -219,7 +219,7 @@ type MatchExpr struct {
 	TypedNode
 	Expr    Expression
 	Cases   []CaseClause
-	Default *DefaultClause // Optional, nil if no default
+	Default *DefaultClause
 }
 
 func (e *MatchExpr) Accept(v Visitor) {
@@ -289,7 +289,7 @@ func (c *CaseBlock) Accept(v Visitor) {
 type StructInitExpr struct {
 	NamedNode
 	Fields       []StructField
-	InferredType Type // Add explicit type field since NamedNode doesn't have it
+	InferredType Type
 }
 
 func (e *StructInitExpr) GetInferredType() Type {
