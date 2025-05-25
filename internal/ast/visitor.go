@@ -470,7 +470,3 @@ func (v *BaseManuscriptVisitor[T]) VisitObjectFieldString(node *ObjectFieldStrin
 	var zero T
 	return zero
 }
-
-// Backward compatibility type aliases for existing code
-type LegacyManuscriptVisitor = ManuscriptVisitor[any]
-type LegacyBaseManuscriptVisitor = BaseManuscriptVisitor[any]

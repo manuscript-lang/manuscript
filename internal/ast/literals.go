@@ -8,14 +8,6 @@ type StringLiteral struct {
 	Kind  StringKind
 }
 
-func (l *StringLiteral) Accept(v Visitor) {
-	if v = v.Visit(l); v != nil {
-		for _, part := range l.Parts {
-			part.Accept(v)
-		}
-	}
-}
-
 type StringKind int
 
 const (
@@ -30,19 +22,9 @@ type StringContent struct {
 	Content string
 }
 
-func (s *StringContent) Accept(v Visitor) {
-	v.Visit(s)
-}
-
 type StringInterpolation struct {
 	BaseNode
 	Expr Expression
-}
-
-func (s *StringInterpolation) Accept(v Visitor) {
-	if v = v.Visit(s); v != nil {
-		s.Expr.Accept(v)
-	}
 }
 
 // Number literals
@@ -51,10 +33,6 @@ type NumberLiteral struct {
 	TypedNode
 	Value string
 	Kind  NumberKind
-}
-
-func (l *NumberLiteral) Accept(v Visitor) {
-	v.Visit(l)
 }
 
 type NumberKind int
@@ -74,24 +52,12 @@ type BooleanLiteral struct {
 	Value bool
 }
 
-func (l *BooleanLiteral) Accept(v Visitor) {
-	v.Visit(l)
-}
-
 type NullLiteral struct {
 	TypedNode
 }
 
-func (l *NullLiteral) Accept(v Visitor) {
-	v.Visit(l)
-}
-
 type VoidLiteral struct {
 	TypedNode
-}
-
-func (l *VoidLiteral) Accept(v Visitor) {
-	v.Visit(l)
 }
 
 // Collection literals
@@ -101,40 +67,15 @@ type ArrayLiteral struct {
 	Elements []Expression
 }
 
-func (l *ArrayLiteral) Accept(v Visitor) {
-	if v = v.Visit(l); v != nil {
-		for _, elem := range l.Elements {
-			elem.Accept(v)
-		}
-	}
-}
-
 type ObjectLiteral struct {
 	TypedNode
 	Fields []ObjectField
-}
-
-func (l *ObjectLiteral) Accept(v Visitor) {
-	if v = v.Visit(l); v != nil {
-		for _, field := range l.Fields {
-			field.Accept(v)
-		}
-	}
 }
 
 type ObjectField struct {
 	BaseNode
 	Name  ObjectFieldName
 	Value Expression
-}
-
-func (f *ObjectField) Accept(v Visitor) {
-	if v = v.Visit(f); v != nil {
-		f.Name.Accept(v)
-		if f.Value != nil {
-			f.Value.Accept(v)
-		}
-	}
 }
 
 type ObjectFieldName interface {
@@ -145,19 +86,9 @@ type ObjectFieldID struct {
 	NamedNode
 }
 
-func (n *ObjectFieldID) Accept(v Visitor) {
-	v.Visit(n)
-}
-
 type ObjectFieldString struct {
 	BaseNode
 	Literal *StringLiteral
-}
-
-func (n *ObjectFieldString) Accept(v Visitor) {
-	if v = v.Visit(n); v != nil {
-		n.Literal.Accept(v)
-	}
 }
 
 type MapLiteral struct {
@@ -166,38 +97,15 @@ type MapLiteral struct {
 	IsEmpty bool
 }
 
-func (l *MapLiteral) Accept(v Visitor) {
-	if v = v.Visit(l); v != nil {
-		for _, field := range l.Fields {
-			field.Accept(v)
-		}
-	}
-}
-
 type MapField struct {
 	BaseNode
 	Key   Expression
 	Value Expression
 }
 
-func (f *MapField) Accept(v Visitor) {
-	if v = v.Visit(f); v != nil {
-		f.Key.Accept(v)
-		f.Value.Accept(v)
-	}
-}
-
 type SetLiteral struct {
 	TypedNode
 	Elements []Expression
-}
-
-func (l *SetLiteral) Accept(v Visitor) {
-	if v = v.Visit(l); v != nil {
-		for _, elem := range l.Elements {
-			elem.Accept(v)
-		}
-	}
 }
 
 // Tagged block strings
@@ -208,16 +116,6 @@ type TaggedBlockString struct {
 	InferredType Type
 }
 
-func (t *TaggedBlockString) GetInferredType() Type {
-	return t.InferredType
-}
-
 func (t *TaggedBlockString) SetInferredType(typ Type) {
 	t.InferredType = typ
-}
-
-func (t *TaggedBlockString) Accept(v Visitor) {
-	if v = v.Visit(t); v != nil {
-		t.Content.Accept(v)
-	}
 }

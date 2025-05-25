@@ -58,7 +58,6 @@ type Visitor interface {
 // Node is the base interface for all AST nodes
 type Node interface {
 	Pos() Position
-	Accept(v Visitor)
 }
 
 // Declaration represents all top-level declarations
@@ -91,22 +90,4 @@ type Literal interface {
 // StringPart represents parts of string literals (content or interpolation)
 type StringPart interface {
 	Node
-}
-
-// Helper function to walk child nodes
-func walkChildren(v Visitor, children ...Node) {
-	for _, child := range children {
-		if child != nil {
-			child.Accept(v)
-		}
-	}
-}
-
-// Helper function to walk slices of nodes
-func walkNodeSlice(v Visitor, slice []Node) {
-	for _, item := range slice {
-		if item != nil {
-			item.Accept(v)
-		}
-	}
 }

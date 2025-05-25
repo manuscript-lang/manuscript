@@ -9,13 +9,6 @@ type AssignmentExpr struct {
 	Right Expression
 }
 
-func (e *AssignmentExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Left.Accept(v)
-		e.Right.Accept(v)
-	}
-}
-
 type AssignmentOp int
 
 const (
@@ -37,14 +30,6 @@ type TernaryExpr struct {
 	Else Expression
 }
 
-func (e *TernaryExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Cond.Accept(v)
-		e.Then.Accept(v)
-		e.Else.Accept(v)
-	}
-}
-
 // Binary expressions
 
 type BinaryExpr struct {
@@ -52,13 +37,6 @@ type BinaryExpr struct {
 	Left  Expression
 	Op    BinaryOp
 	Right Expression
-}
-
-func (e *BinaryExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Left.Accept(v)
-		e.Right.Accept(v)
-	}
 }
 
 type BinaryOp int
@@ -98,12 +76,6 @@ type UnaryExpr struct {
 	Expr Expression
 }
 
-func (e *UnaryExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Expr.Accept(v)
-	}
-}
-
 type UnaryOp int
 
 const (
@@ -120,38 +92,16 @@ type CallExpr struct {
 	Args []Expression
 }
 
-func (e *CallExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Func.Accept(v)
-		for _, arg := range e.Args {
-			arg.Accept(v)
-		}
-	}
-}
-
 type DotExpr struct {
 	TypedNode
 	Expr  Expression
 	Field string
 }
 
-func (e *DotExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Expr.Accept(v)
-	}
-}
-
 type IndexExpr struct {
 	TypedNode
 	Expr  Expression
 	Index Expression
-}
-
-func (e *IndexExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Expr.Accept(v)
-		e.Index.Accept(v)
-	}
 }
 
 // Primary expressions
@@ -169,35 +119,17 @@ func (e *Identifier) SetInferredType(t Type) {
 	e.InferredType = t
 }
 
-func (e *Identifier) Accept(v Visitor) {
-	v.Visit(e)
-}
-
 type ParenExpr struct {
 	TypedNode
 	Expr Expression
-}
-
-func (e *ParenExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Expr.Accept(v)
-	}
 }
 
 type VoidExpr struct {
 	TypedNode
 }
 
-func (e *VoidExpr) Accept(v Visitor) {
-	v.Visit(e)
-}
-
 type NullExpr struct {
 	TypedNode
-}
-
-func (e *NullExpr) Accept(v Visitor) {
-	v.Visit(e)
 }
 
 // Try expression
@@ -205,12 +137,6 @@ func (e *NullExpr) Accept(v Visitor) {
 type TryExpr struct {
 	TypedNode
 	Expr Expression
-}
-
-func (e *TryExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Expr.Accept(v)
-	}
 }
 
 // Match expression
@@ -222,40 +148,15 @@ type MatchExpr struct {
 	Default *DefaultClause
 }
 
-func (e *MatchExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		e.Expr.Accept(v)
-		for _, c := range e.Cases {
-			c.Accept(v)
-		}
-		if e.Default != nil {
-			e.Default.Accept(v)
-		}
-	}
-}
-
 type CaseClause struct {
 	BaseNode
 	Pattern Expression
 	Body    CaseBody
 }
 
-func (c *CaseClause) Accept(v Visitor) {
-	if v = v.Visit(c); v != nil {
-		c.Pattern.Accept(v)
-		c.Body.Accept(v)
-	}
-}
-
 type DefaultClause struct {
 	BaseNode
 	Body CaseBody
-}
-
-func (c *DefaultClause) Accept(v Visitor) {
-	if v = v.Visit(c); v != nil {
-		c.Body.Accept(v)
-	}
 }
 
 type CaseBody interface {
@@ -267,21 +168,9 @@ type CaseExpr struct {
 	Expr Expression
 }
 
-func (c *CaseExpr) Accept(v Visitor) {
-	if v = v.Visit(c); v != nil {
-		c.Expr.Accept(v)
-	}
-}
-
 type CaseBlock struct {
 	BaseNode
 	Block *CodeBlock
-}
-
-func (c *CaseBlock) Accept(v Visitor) {
-	if v = v.Visit(c); v != nil {
-		c.Block.Accept(v)
-	}
 }
 
 // Struct initialization
@@ -300,21 +189,7 @@ func (e *StructInitExpr) SetInferredType(t Type) {
 	e.InferredType = t
 }
 
-func (e *StructInitExpr) Accept(v Visitor) {
-	if v = v.Visit(e); v != nil {
-		for _, field := range e.Fields {
-			field.Accept(v)
-		}
-	}
-}
-
 type StructField struct {
 	NamedNode
 	Value Expression
-}
-
-func (f *StructField) Accept(v Visitor) {
-	if v = v.Visit(f); v != nil {
-		f.Value.Accept(v)
-	}
 }

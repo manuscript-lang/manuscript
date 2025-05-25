@@ -7,8 +7,6 @@ import (
 	msast "manuscript-co/manuscript/internal/ast"
 )
 
-// Missing visitor methods for the transpiler
-
 // VisitParameter transpiles function parameters
 func (t *GoTranspiler) VisitParameter(node *msast.Parameter) ast.Node {
 	if node == nil || node.Name == "" {
