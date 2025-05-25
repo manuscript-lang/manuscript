@@ -10,9 +10,9 @@ import (
 	"go/token"
 	"log"
 	mast "manuscript-co/manuscript/internal/ast"
-	"manuscript-co/manuscript/internal/msparse"
 	parser "manuscript-co/manuscript/internal/parser"
-	"manuscript-co/manuscript/internal/transpiler"
+	mastb "manuscript-co/manuscript/internal/visitors/mast-builder"
+	"manuscript-co/manuscript/internal/visitors/transpiler"
 	"os"
 	"strings"
 
@@ -65,7 +65,7 @@ func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, boo
 }
 
 func convertToGoCode(tree parser.IProgramContext) string {
-	visitor := msparse.NewParseTreeToAST()
+	visitor := mastb.NewParseTreeToAST()
 	result := tree.Accept(visitor)
 
 	mnode, ok := result.(*mast.Program)
