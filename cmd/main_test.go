@@ -1,14 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/printer"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
+	mast "manuscript-co/manuscript/internal/ast"
+	"manuscript-co/manuscript/internal/msparse"
+	"manuscript-co/manuscript/internal/parser"
+	"manuscript-co/manuscript/internal/transpiler"
+
+	"github.com/antlr4-go/antlr/v4"
 	"kr.dev/diff"
 )
 
@@ -37,7 +47,16 @@ type TestPair struct {
 	GoCode string
 }
 
-func TestCompile(t *testing.T) {
+// TestPairContext holds a test pair along with context needed for file updates
+type TestPairContext struct {
+	Pair     TestPair
+	FilePath string
+	Content  []byte
+}
+
+// runTestsOnMarkdownFiles reads all markdown files from the compilation test directory,
+// applies optional filtering, parses test pairs, and runs the provided test function on each pair.
+func runTestsOnMarkdownFiles(t *testing.T, testFunc func(*testing.T, *TestPairContext)) {
 	testDir := "../tests/compilation"
 	allFiles, err := os.ReadDir(testDir)
 	if err != nil {
@@ -91,35 +110,46 @@ func TestCompile(t *testing.T) {
 					testSubName = fmt.Sprintf("pair_%d", i+1) // 1-indexed for readability
 				}
 
-				executeTest := func(t *testing.T) {
-					actualGo, err := manuscriptToGo(pair.MsCode, *debug)
-					expectSyntaxErr := strings.TrimSpace(pair.GoCode) == "// SYNTAX ERROR"
-
-					switch {
-					case err != nil && expectSyntaxErr:
-						if strings.Contains(err.Error(), "syntax error") {
-							t.Logf("Correctly failed with syntax error: %v", err)
-						} else {
-							t.Fatalf("Expected syntax error, got: %v", err)
-						}
-					case err != nil && !expectSyntaxErr:
-						t.Fatalf("manuscriptToGo failed: %v", err)
-					case err == nil && expectSyntaxErr:
-						t.Fatalf("Expected syntax error, but got output:\n%s", actualGo)
-					default:
-						if *update && pair.GoCode != actualGo {
-							content = []byte(strings.Replace(string(content), pair.GoCode, actualGo, 1))
-							if err := os.WriteFile(filePath, content, 0644); err != nil {
-								t.Fatalf("Failed to update test file %s: %v", filePath, err)
-							}
-						}
-						assertGoCode(t, actualGo, pair.GoCode)
+				t.Run(testSubName, func(t *testing.T) {
+					ctx := &TestPairContext{
+						Pair:     pair,
+						FilePath: filePath,
+						Content:  content,
 					}
-				}
-				t.Run(testSubName, executeTest)
+					testFunc(t, ctx)
+				})
 			}
 		})
 	}
+}
+
+func TestCompile(t *testing.T) {
+	runTestsOnMarkdownFiles(t, func(t *testing.T, ctx *TestPairContext) {
+		pair := ctx.Pair
+		actualGo, err := manuscriptToGo(pair.MsCode, *debug)
+		expectSyntaxErr := strings.TrimSpace(pair.GoCode) == "// SYNTAX ERROR"
+
+		switch {
+		case err != nil && expectSyntaxErr:
+			if strings.Contains(err.Error(), "syntax error") {
+				t.Logf("Correctly failed with syntax error: %v", err)
+			} else {
+				t.Fatalf("Expected syntax error, got: %v", err)
+			}
+		case err != nil && !expectSyntaxErr:
+			t.Fatalf("manuscriptToGo failed: %v", err)
+		case err == nil && expectSyntaxErr:
+			t.Fatalf("Expected syntax error, but got output:\n%s", actualGo)
+		default:
+			if *update && pair.GoCode != actualGo {
+				content := []byte(strings.Replace(string(ctx.Content), pair.GoCode, actualGo, 1))
+				if err := os.WriteFile(ctx.FilePath, content, 0644); err != nil {
+					t.Fatalf("Failed to update test file %s: %v", ctx.FilePath, err)
+				}
+			}
+			assertGoCode(t, actualGo, pair.GoCode)
+		}
+	})
 }
 
 func TestDumpTokens(t *testing.T) {
@@ -199,4 +229,87 @@ func parseMarkdownTest(content string) []TestPair {
 		}
 	}
 	return testPairs
+}
+
+func TestParseAllManuscriptCode(t *testing.T) {
+	runTestsOnMarkdownFiles(t, func(t *testing.T, ctx *TestPairContext) {
+		goCode := parseManuscriptAST(t, ctx.Pair.MsCode)
+		assertGoCode(t, goCode, ctx.Pair.GoCode)
+	})
+}
+
+func parseManuscriptAST(t *testing.T, msCode string) string {
+	// Create input stream from source code
+	inputStream := antlr.NewInputStream(msCode)
+
+	// Create lexer
+	lexer := parser.NewManuscriptLexer(inputStream)
+
+	// Create token stream
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+
+	// Create parser
+	p := parser.NewManuscript(stream)
+
+	// Add error listener to capture any parsing errors
+	errorListener := NewSyntaxErrorListener()
+	p.RemoveErrorListeners()
+	p.AddErrorListener(errorListener)
+
+	// Parse starting from the program rule
+	tree := p.Program()
+
+	// Check for syntax errors
+	if len(errorListener.Errors) > 0 {
+		t.Logf("Parsing failed with syntax errors (as expected for some test cases): %s", strings.Join(errorListener.Errors, "; "))
+		return "// SYNTAX ERROR"
+	}
+
+	// Create visitor and convert to AST
+	visitor := msparse.NewParseTreeToAST()
+	result := tree.Accept(visitor)
+
+	golower := transpiler.NewGoTranspiler("main")
+	if mnode, ok := result.(*mast.Program); ok {
+		if r := golower.Visit(mnode); r != nil {
+			return printGoAst(r)
+		} else {
+			t.Errorf("Failed to convert parse tree to AST program")
+		}
+	} else {
+		t.Errorf("Failed to convert parse tree to AST program")
+	}
+	return ""
+}
+
+func printGoAst(visitedNode ast.Node) string {
+	goAST, ok := visitedNode.(*ast.File)
+	if !ok || goAST == nil {
+		return ""
+	}
+
+	// Debug: print the AST structure for for-loops
+	for _, decl := range goAST.Decls {
+		if funcDecl, ok := decl.(*ast.FuncDecl); ok && funcDecl.Name.Name == "main" {
+			for i, stmt := range funcDecl.Body.List {
+				if forStmt, ok := stmt.(*ast.ForStmt); ok {
+					fmt.Printf("DEBUG: printGoAst - ForStmt[%d] - Init: %v (%T), Cond: %v (%T), Post: %v (%T)\n",
+						i, forStmt.Init, forStmt.Init, forStmt.Cond, forStmt.Cond, forStmt.Post, forStmt.Post)
+				}
+			}
+		}
+	}
+
+	fileSet := token.NewFileSet()
+	var buf bytes.Buffer
+	config := printer.Config{Mode: printer.UseSpaces, Tabwidth: 4}
+	if err := config.Fprint(&buf, fileSet, goAST); err != nil {
+		return ""
+	}
+	result := buf.String()
+
+	// Trim whitespace to match test expectations from markdown
+	result = strings.TrimSpace(result)
+
+	return result
 }

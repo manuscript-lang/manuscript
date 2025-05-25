@@ -12,7 +12,7 @@ func main() {
         proc1 := fn1(val1, val2)
         proc2 := fn2(val1)
         proc3 := fn3()
-        for v := range source() {
+        for _, v := range source() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -34,7 +34,7 @@ package main
 func main() {
     {
         proc1 := process()
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
         }
@@ -55,7 +55,7 @@ func main() {
     {
         proc1 := transform()
         proc2 := filter()
-        for v := range getData() {
+        for _, v := range getData() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -78,7 +78,7 @@ func main() {
         proc1 := multiply(2)
         proc2 := add(10)
         proc3 := format(2)
-        for v := range numbers() {
+        for _, v := range numbers() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -101,7 +101,7 @@ func main() {
     {
         proc1 := filter(x > 5)
         proc2 := map(x * 2)
-        for v := range items() {
+        for _, v := range items() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -122,7 +122,7 @@ package main
 func main() {
     {
         proc1 := clean()
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
         }
@@ -144,7 +144,7 @@ func main() {
         proc1 := validate()
         proc2 := normalize()
         proc3 := save()
-        for v := range stream() {
+        for _, v := range stream() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -168,7 +168,7 @@ func main() {
         proc1 := filter(2)
         proc2 := transform()
         proc3 := output()
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -191,7 +191,7 @@ func main() {
     {
         proc1 := scale(getMultiplier())
         proc2 := offset(base + delta)
-        for v := range values() {
+        for _, v := range values() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -213,7 +213,7 @@ func main() {
     {
         proc1 := process(getMode(), max*0.8)
         proc2 := format(getTemplate())
-        for v := range items() {
+        for _, v := range items() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -235,7 +235,7 @@ func main() {
     {
         proc1 := transform(createTransformer(config))
         proc2 := validate(getRules(strict))
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -258,7 +258,7 @@ func main() {
         proc1 := split(",")
         proc2 := limit(100)
         proc3 := join("|")
-        for v := range text() {
+        for _, v := range text() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -282,7 +282,7 @@ func main() {
         proc1 := filter(true)
         proc2 := validate(false)
         proc3 := save(enabled)
-        for v := range records() {
+        for _, v := range records() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -308,7 +308,7 @@ func main() {
         proc3 := stage3()
         proc4 := stage4()
         proc5 := stage5()
-        for v := range input() {
+        for _, v := range input() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -332,7 +332,7 @@ package main
 func main() {
     {
         proc1 := transform(x)
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
         }
@@ -354,7 +354,7 @@ func main() {
         proc1 := filter(isValid)
         proc2 := map(toUpper)
         proc3 := reduce(sum)
-        for v := range stream() {
+        for _, v := range stream() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -376,7 +376,7 @@ package main
 func main() {
     {
         proc1 := process(42, 3.14, true, "test")
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
         }
@@ -397,7 +397,7 @@ func main() {
     {
         proc1 := filter(getValue(key) > threshold*factor)
         proc2 := transform(createMapper(config.mode))
-        for v := range items() {
+        for _, v := range items() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -427,7 +427,7 @@ func main() {
         proc8 := step8()
         proc9 := step9()
         proc10 := step10()
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -457,7 +457,7 @@ func main() {
     {
         proc1 := validate()
         proc2 := process()
-        for v := range getDataSource(config, mode) {
+        for _, v := range getDataSource(config, mode) {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -478,7 +478,7 @@ package main
 func main() {
     {
         proc1 := transform(arr[0], map[key])
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
         }
@@ -499,7 +499,7 @@ func main() {
     {
         proc1 := filter(obj.isValid())
         proc2 := map(obj.transform())
-        for v := range stream() {
+        for _, v := range stream() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -520,7 +520,7 @@ package main
 func main() {
     {
         proc1 := process(1, getValue(), "text", true)
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
         }
@@ -541,7 +541,7 @@ func main() {
     {
         proc1 := transform()
         proc2 := validate()
-        for v := range []interface{}{1, 2, 3}() {
+        for _, v := range []interface{}{1, 2, 3}() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -563,7 +563,7 @@ func main() {
     {
         proc1 := filter()
         proc2 := process()
-        for v := range (getItems() + moreItems)() {
+        for _, v := range (getItems() + moreItems)() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -585,7 +585,7 @@ func main() {
     {
         proc1 := transform()
         proc2 := save()
-        for v := range obj.getData() {
+        for _, v := range obj.getData() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -607,7 +607,7 @@ func main() {
     {
         proc1 := processor.transform
         proc2 := validate()
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -630,7 +630,7 @@ func main() {
         proc1 := parser.extract
         proc2 := validator.validate
         proc3 := formatter.output
-        for v := range source() {
+        for _, v := range source() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -654,7 +654,7 @@ func main() {
         proc1 := transform()
         proc2 := processor.validate
         proc3 := save()
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -677,7 +677,7 @@ func main() {
     {
         proc1 := processor.filter(x > 5)
         proc2 := transform()
-        for v := range items() {
+        for _, v := range items() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -699,7 +699,7 @@ func main() {
     {
         proc1 := transform()
         proc2 := save()
-        for v := range obj.getProcessor().getData() {
+        for _, v := range obj.getProcessor().getData() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -721,7 +721,7 @@ func main() {
     {
         proc1 := factory.createProcessor()
         proc2 := utils.getValidator()
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -743,7 +743,7 @@ func main() {
     {
         proc1 := processor.chain().withConfig()
         proc2 := validator.strict().enabled()
-        for v := range source() {
+        for _, v := range source() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -765,7 +765,7 @@ func main() {
     {
         proc1 := createFilter(strict)
         proc2 := buildValidator(mode)
-        for v := range data() {
+        for _, v := range data() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)
@@ -787,7 +787,7 @@ func main() {
     {
         proc1 := processors[0]
         proc2 := validators[active]
-        for v := range items() {
+        for _, v := range items() {
             a1 := v
             a2 := proc1(a1)
             a3 := proc2(a2)

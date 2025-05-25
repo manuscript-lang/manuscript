@@ -352,9 +352,10 @@ func (v *ManuscriptAstVisitor) buildPipedStatement(sourceExpr ast.Expr, pipedCal
 
 	// Create the for-range statement
 	forStmt := &ast.RangeStmt{
-		Key: ast.NewIdent("v"),
-		Tok: token.DEFINE,
-		X:   sourceCall,
+		Key:   ast.NewIdent("_"),
+		Value: ast.NewIdent("v"),
+		Tok:   token.DEFINE,
+		X:     sourceCall,
 		Body: &ast.BlockStmt{
 			List: loopBody,
 		},

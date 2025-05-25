@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	parser "manuscript-co/manuscript/internal/parser"
-	codegen "manuscript-co/manuscript/internal/visitor"
+	"manuscript-co/manuscript/internal/visitor"
 	"os"
 	"strings"
 
@@ -49,7 +49,7 @@ func manuscriptToGo(input string, debug bool) (string, error) {
 		return "", fmt.Errorf("syntax error(s): %s", strings.Join(errorListener.Errors, "; "))
 	}
 
-	codeGen := codegen.NewCodeGenerator()
+	codeGen := visitor.NewCodeGenerator()
 	goCode, err := codeGen.Generate(tree)
 	if err != nil {
 		return "", fmt.Errorf("codeGen.Generate failed: %w", err)

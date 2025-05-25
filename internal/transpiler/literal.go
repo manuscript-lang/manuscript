@@ -1,0 +1,413 @@
+package transpiler
+
+import (
+	"go/ast"
+	"go/token"
+	msast "manuscript-co/manuscript/internal/ast"
+	"strconv"
+	"strings"
+)
+
+// VisitObjectField transpiles object field declarations
+func (t *GoTranspiler) VisitObjectField(node *msast.ObjectField) ast.Node {
+	if node == nil {
+		return nil
+	}
+
+	// Get the field name
+	var keyExpr ast.Expr
+	if node.Name != nil {
+		nameResult := t.Visit(node.Name)
+		if ident, ok := nameResult.(*ast.Ident); ok {
+			keyExpr = &ast.BasicLit{
+				Kind:  token.STRING,
+				Value: strconv.Quote(ident.Name),
+			}
+		} else if str, ok := nameResult.(*ast.BasicLit); ok && str.Kind == token.STRING {
+			keyExpr = str
+		} else {
+			keyExpr = &ast.BasicLit{
+				Kind:  token.STRING,
+				Value: `"unknown"`,
+			}
+		}
+	} else {
+		keyExpr = &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: `"unknown"`,
+		}
+	}
+
+	// Get the field value
+	var valueExpr ast.Expr
+	if node.Value != nil {
+		valueResult := t.Visit(node.Value)
+		if expr, ok := valueResult.(ast.Expr); ok {
+			valueExpr = expr
+		} else {
+			valueExpr = &ast.Ident{Name: "nil"}
+		}
+	} else {
+		// Shorthand property - use the key name as value
+		if basicLit, ok := keyExpr.(*ast.BasicLit); ok {
+			if unquoted, err := strconv.Unquote(basicLit.Value); err == nil {
+				valueExpr = &ast.Ident{Name: t.generateVarName(unquoted)}
+			} else {
+				valueExpr = &ast.Ident{Name: "nil"}
+			}
+		} else {
+			valueExpr = &ast.Ident{Name: "nil"}
+		}
+	}
+
+	return &ast.KeyValueExpr{
+		Key:   keyExpr,
+		Value: valueExpr,
+	}
+}
+
+// VisitMapField transpiles map field declarations
+func (t *GoTranspiler) VisitMapField(node *msast.MapField) ast.Node {
+	if node == nil {
+		return nil
+	}
+
+	var keyExpr, valueExpr ast.Expr
+
+	if node.Key != nil {
+		keyResult := t.Visit(node.Key)
+		if expr, ok := keyResult.(ast.Expr); ok {
+			keyExpr = expr
+		} else {
+			keyExpr = &ast.Ident{Name: "nil"}
+		}
+	} else {
+		keyExpr = &ast.Ident{Name: "nil"}
+	}
+
+	if node.Value != nil {
+		valueResult := t.Visit(node.Value)
+		if expr, ok := valueResult.(ast.Expr); ok {
+			valueExpr = expr
+		} else {
+			valueExpr = &ast.Ident{Name: "nil"}
+		}
+	} else {
+		valueExpr = &ast.Ident{Name: "nil"}
+	}
+
+	return &ast.KeyValueExpr{
+		Key:   keyExpr,
+		Value: valueExpr,
+	}
+}
+
+// VisitObjectFieldID transpiles object field IDs
+func (t *GoTranspiler) VisitObjectFieldID(node *msast.ObjectFieldID) ast.Node {
+	if node == nil || node.Name == "" {
+		return &ast.Ident{Name: "unknown"}
+	}
+
+	return &ast.Ident{Name: t.generateVarName(node.Name)}
+}
+
+// VisitObjectFieldString transpiles object field string declarations
+func (t *GoTranspiler) VisitObjectFieldString(node *msast.ObjectFieldString) ast.Node {
+	if node == nil {
+		return nil
+	}
+
+	// Visit the string literal and return it
+	if node.Literal != nil {
+		return t.Visit(node.Literal)
+	}
+
+	// Fallback to empty string
+	return &ast.BasicLit{
+		Kind:  token.STRING,
+		Value: `""`,
+	}
+}
+
+// VisitStructField transpiles struct fields
+func (t *GoTranspiler) VisitStructField(node *msast.StructField) ast.Node {
+	if node == nil {
+		return &ast.KeyValueExpr{
+			Key:   &ast.Ident{Name: "unknown"},
+			Value: &ast.Ident{Name: "nil"},
+		}
+	}
+
+	// Get field name
+	var keyExpr ast.Expr
+	if node.Name != "" {
+		keyExpr = &ast.Ident{Name: t.generateVarName(node.Name)}
+	} else {
+		keyExpr = &ast.Ident{Name: "unknown"}
+	}
+
+	// Get field value
+	var valueExpr ast.Expr
+	if node.Value != nil {
+		valueResult := t.Visit(node.Value)
+		if expr, ok := valueResult.(ast.Expr); ok {
+			valueExpr = expr
+		} else {
+			valueExpr = &ast.Ident{Name: "nil"}
+		}
+	} else {
+		valueExpr = &ast.Ident{Name: "nil"}
+	}
+
+	return &ast.KeyValueExpr{
+		Key:   keyExpr,
+		Value: valueExpr,
+	}
+}
+
+// VisitStructInitExpr transpiles struct initialization expressions
+func (t *GoTranspiler) VisitStructInitExpr(node *msast.StructInitExpr) ast.Node {
+	if node == nil {
+		return &ast.Ident{Name: "nil"}
+	}
+
+	// Get the struct type from the name
+	var structType ast.Expr
+	if node.Name != "" {
+		structType = &ast.Ident{Name: t.generateVarName(node.Name)}
+	} else {
+		structType = &ast.Ident{Name: "interface{}"}
+	}
+
+	// Build field list
+	var fields []ast.Expr
+	for _, field := range node.Fields {
+		fieldResult := t.Visit(&field)
+		if keyValueExpr, ok := fieldResult.(*ast.KeyValueExpr); ok {
+			fields = append(fields, keyValueExpr)
+		}
+	}
+
+	return &ast.CompositeLit{
+		Type: structType,
+		Elts: fields,
+	}
+}
+
+// VisitStringContent transpiles string content
+func (t *GoTranspiler) VisitStringContent(node *msast.StringContent) ast.Node {
+	if node == nil || node.Content == "" {
+		return &ast.BasicLit{Kind: token.STRING, Value: `""`}
+	}
+
+	return &ast.BasicLit{
+		Kind:  token.STRING,
+		Value: strconv.Quote(node.Content),
+	}
+}
+
+// VisitStringInterpolation transpiles string interpolation
+func (t *GoTranspiler) VisitStringInterpolation(node *msast.StringInterpolation) ast.Node {
+	if node == nil {
+		return &ast.BasicLit{Kind: token.STRING, Value: `""`}
+	}
+
+	// Convert string interpolation to fmt.Sprintf call with the expression
+	if node.Expr != nil {
+		exprResult := t.Visit(node.Expr)
+		if goExpr, ok := exprResult.(ast.Expr); ok {
+			// Create fmt.Sprintf("%v", expr)
+			return &ast.CallExpr{
+				Fun: &ast.SelectorExpr{
+					X:   &ast.Ident{Name: "fmt"},
+					Sel: &ast.Ident{Name: "Sprintf"},
+				},
+				Args: []ast.Expr{
+					&ast.BasicLit{Kind: token.STRING, Value: `"%v"`},
+					goExpr,
+				},
+			}
+		}
+	}
+
+	return &ast.BasicLit{Kind: token.STRING, Value: `""`}
+}
+
+// VisitStringLiteral transpiles string literals
+func (t *GoTranspiler) VisitStringLiteral(node *msast.StringLiteral) ast.Node {
+	if node == nil {
+		return &ast.BasicLit{Kind: token.STRING, Value: `""`}
+	}
+
+	// For simple strings, concatenate all parts
+	var parts []string
+	for _, part := range node.Parts {
+		if content, ok := part.(*msast.StringContent); ok {
+			parts = append(parts, content.Content)
+		}
+	}
+
+	result := strings.Join(parts, "")
+	return &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(result)}
+}
+
+// VisitNumberLiteral transpiles number literals
+func (t *GoTranspiler) VisitNumberLiteral(node *msast.NumberLiteral) ast.Node {
+	if node == nil {
+		return &ast.BasicLit{Kind: token.INT, Value: "0"}
+	}
+
+	// Determine the kind based on the string value
+	kind := token.INT
+	if node.Kind == msast.Float {
+		kind = token.FLOAT
+	}
+
+	return &ast.BasicLit{
+		Kind:  kind,
+		Value: node.Value,
+	}
+}
+
+// VisitBooleanLiteral transpiles boolean literals
+func (t *GoTranspiler) VisitBooleanLiteral(node *msast.BooleanLiteral) ast.Node {
+	if node == nil {
+		return &ast.Ident{Name: "false"}
+	}
+
+	if node.Value {
+		return &ast.Ident{Name: "true"}
+	} else {
+		return &ast.Ident{Name: "false"}
+	}
+}
+
+// VisitNullLiteral transpiles null literals
+func (t *GoTranspiler) VisitNullLiteral(node *msast.NullLiteral) ast.Node {
+	return &ast.Ident{Name: "nil"}
+}
+
+// VisitVoidLiteral transpiles void literals
+func (t *GoTranspiler) VisitVoidLiteral(node *msast.VoidLiteral) ast.Node {
+	return &ast.Ident{Name: "nil"}
+}
+
+// VisitArrayLiteral transpiles array literals
+func (t *GoTranspiler) VisitArrayLiteral(node *msast.ArrayLiteral) ast.Node {
+	if node == nil {
+		return &ast.CompositeLit{
+			Type: &ast.ArrayType{Elt: &ast.Ident{Name: "interface{}"}},
+		}
+	}
+
+	var elements []ast.Expr
+	for _, elem := range node.Elements {
+		if elem == nil {
+			continue
+		}
+
+		elemResult := t.Visit(elem)
+		if elemExpr, ok := elemResult.(ast.Expr); ok {
+			elements = append(elements, elemExpr)
+		}
+	}
+
+	return &ast.CompositeLit{
+		Type: &ast.ArrayType{
+			Elt: &ast.Ident{Name: "interface{}"},
+		},
+		Elts: elements,
+	}
+}
+
+// VisitObjectLiteral transpiles object literals to Go structs
+func (t *GoTranspiler) VisitObjectLiteral(node *msast.ObjectLiteral) ast.Node {
+	if node == nil {
+		return &ast.CompositeLit{
+			Type: &ast.MapType{
+				Key:   &ast.Ident{Name: "string"},
+				Value: &ast.Ident{Name: "interface{}"},
+			},
+		}
+	}
+
+	var fields []ast.Expr
+	for _, prop := range node.Fields {
+		propResult := t.Visit(&prop)
+		if propExpr, ok := propResult.(ast.Expr); ok {
+			fields = append(fields, propExpr)
+		}
+	}
+
+	return &ast.CompositeLit{
+		Type: &ast.MapType{
+			Key:   &ast.Ident{Name: "string"},
+			Value: &ast.Ident{Name: "interface{}"},
+		},
+		Elts: fields,
+	}
+}
+
+// VisitMapLiteral transpiles map literals
+func (t *GoTranspiler) VisitMapLiteral(node *msast.MapLiteral) ast.Node {
+	if node == nil {
+		return &ast.CompositeLit{
+			Type: &ast.MapType{
+				Key:   &ast.Ident{Name: "interface{}"},
+				Value: &ast.Ident{Name: "interface{}"},
+			},
+		}
+	}
+
+	var elements []ast.Expr
+	for _, pair := range node.Fields {
+		pairResult := t.Visit(&pair)
+		if pairExpr, ok := pairResult.(ast.Expr); ok {
+			elements = append(elements, pairExpr)
+		}
+	}
+
+	return &ast.CompositeLit{
+		Type: &ast.MapType{
+			Key:   &ast.Ident{Name: "interface{}"},
+			Value: &ast.Ident{Name: "interface{}"},
+		},
+		Elts: elements,
+	}
+}
+
+// VisitSetLiteral transpiles set literals to Go maps
+func (t *GoTranspiler) VisitSetLiteral(node *msast.SetLiteral) ast.Node {
+	if node == nil {
+		return &ast.CompositeLit{
+			Type: &ast.MapType{
+				Key:   &ast.Ident{Name: "interface{}"},
+				Value: &ast.Ident{Name: "bool"},
+			},
+		}
+	}
+
+	var elements []ast.Expr
+	for _, elem := range node.Elements {
+		if elem == nil {
+			continue
+		}
+
+		elemResult := t.Visit(elem)
+		if elemExpr, ok := elemResult.(ast.Expr); ok {
+			// For sets, create key-value pairs where value is true
+			elements = append(elements, &ast.KeyValueExpr{
+				Key:   elemExpr,
+				Value: &ast.Ident{Name: "true"},
+			})
+		}
+	}
+
+	return &ast.CompositeLit{
+		Type: &ast.MapType{
+			Key:   &ast.Ident{Name: "interface{}"},
+			Value: &ast.Ident{Name: "bool"},
+		},
+		Elts: elements,
+	}
+}
