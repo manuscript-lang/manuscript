@@ -124,7 +124,7 @@ If you get stuck:
 
 1. **Check the examples** - Each concept has working code examples
 2. **Experiment** - Try variations to understand behavior
-3. **Ask questions** - Use [GitHub Discussions](https://github.com/manuscript-co/manuscript/discussions)
+3. **Ask questions** - Use [GitHub Discussions](https://github.com/manuscript-lang/manuscript/discussions)
 4. **Read ahead** - Sometimes later sections clarify earlier concepts
 
 ## What's Next?

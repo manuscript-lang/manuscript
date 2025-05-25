@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 
-	mast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-lang/manuscript/internal/ast"
 )
 
 // VisitIdentifier transpiles identifier expressions

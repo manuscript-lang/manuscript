@@ -3,7 +3,7 @@ package transpiler
 import (
 	"go/ast"
 	"go/token"
-	mast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-lang/manuscript/internal/ast"
 )
 
 // VisitForTrinityLoop transpiles trinity for loops (init; cond; post)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	mast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-lang/manuscript/internal/ast"
 )
 
 // Additional missing visitor methods to complete the interface

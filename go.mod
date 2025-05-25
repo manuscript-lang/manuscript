@@ -1,4 +1,4 @@
-module manuscript-co/manuscript
+module manuscript-lang/manuscript
 
 go 1.23.0
 

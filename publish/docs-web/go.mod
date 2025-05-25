@@ -1,4 +1,4 @@
-module github.com/manuscript-co/manuscript/docs
+module github.com/manuscript-lang/manuscript/docs
 
 go 1.24.3
 

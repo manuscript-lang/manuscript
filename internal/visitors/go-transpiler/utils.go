@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 
-	mast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-lang/manuscript/internal/ast"
 )
 
 // VisitParameter transpiles function parameters

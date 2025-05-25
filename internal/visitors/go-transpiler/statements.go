@@ -5,7 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 
-	mast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-lang/manuscript/internal/ast"
 )
 
 // VisitCodeBlock transpiles code blocks to Go block statements

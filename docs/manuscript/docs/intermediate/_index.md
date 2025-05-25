@@ -404,7 +404,7 @@ If you encounter challenges:
 
 1. **Review examples** - Each concept includes working code
 2. **Check reference docs** - [Language Reference](../reference/)
-3. **Ask questions** - [GitHub Discussions](https://github.com/manuscript-co/manuscript/discussions)
+3. **Ask questions** - [GitHub Discussions](https://github.com/manuscript-lang/manuscript/discussions)
 4. **Join the community** - [Discord](https://discord.gg/manuscript)
 
 {{% alert title="Level Up Your Skills" %}}

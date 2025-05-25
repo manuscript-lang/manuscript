@@ -3,8 +3,8 @@ package mastb
 import (
 	"strings"
 
-	"manuscript-co/manuscript/internal/ast"
-	"manuscript-co/manuscript/internal/parser"
+	"manuscript-lang/manuscript/internal/ast"
+	"manuscript-lang/manuscript/internal/parser"
 
 	"github.com/antlr4-go/antlr/v4"
 )

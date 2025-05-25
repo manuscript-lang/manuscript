@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"manuscript-co/manuscript/tests/minimal/parser"
+	"manuscript-lang/manuscript/tests/minimal/parser"
 
 	"github.com/antlr4-go/antlr/v4"
 )

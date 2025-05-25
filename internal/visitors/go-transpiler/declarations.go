@@ -6,7 +6,7 @@ import (
 	"go/token"
 	"strings"
 
-	mast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-lang/manuscript/internal/ast"
 )
 
 // VisitImportDecl transpiles import declarations

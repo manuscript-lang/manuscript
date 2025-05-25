@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 
-	mast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-lang/manuscript/internal/ast"
 )
 
 // VisitProgram transpiles the root Program node to a Go file

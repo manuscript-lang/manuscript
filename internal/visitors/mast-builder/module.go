@@ -1,8 +1,8 @@
 package mastb
 
 import (
-	"manuscript-co/manuscript/internal/ast"
-	"manuscript-co/manuscript/internal/parser"
+	"manuscript-lang/manuscript/internal/ast"
+	"manuscript-lang/manuscript/internal/parser"
 )
 
 func (v *ParseTreeToAST) VisitImportDecl(ctx *parser.ImportDeclContext) interface{} {

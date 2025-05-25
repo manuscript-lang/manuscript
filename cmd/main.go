@@ -10,10 +10,10 @@ import (
 	"go/token"
 	"log"
 
-	mast "manuscript-co/manuscript/internal/ast"
-	parser "manuscript-co/manuscript/internal/parser"
-	transpiler "manuscript-co/manuscript/internal/visitors/go-transpiler"
-	mastb "manuscript-co/manuscript/internal/visitors/mast-builder"
+	mast "manuscript-lang/manuscript/internal/ast"
+	parser "manuscript-lang/manuscript/internal/parser"
+	transpiler "manuscript-lang/manuscript/internal/visitors/go-transpiler"
+	mastb "manuscript-lang/manuscript/internal/visitors/mast-builder"
 
 	"os"
 	"strings"

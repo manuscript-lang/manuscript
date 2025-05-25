@@ -6,7 +6,7 @@ import (
 	"go/token"
 	"strings"
 
-	mast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-lang/manuscript/internal/ast"
 )
 
 // GoTranspiler converts Manuscript AST to Go AST

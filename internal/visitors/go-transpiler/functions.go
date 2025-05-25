@@ -3,7 +3,7 @@ package transpiler
 import (
 	"go/ast"
 
-	mast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-lang/manuscript/internal/ast"
 )
 
 // VisitFnDecl transpiles function declarations

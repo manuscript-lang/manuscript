@@ -352,7 +352,7 @@ We welcome example contributions! Good examples:
 - **Follow best practices** - Demonstrate good Manuscript style
 - **Include test data** - Provide sample inputs when needed
 
-See our [Contributing Guide](https://github.com/manuscript-co/manuscript/blob/main/CONTRIBUTING.md) for details.
+See our [Contributing Guide](https://github.com/manuscript-lang/manuscript/blob/main/CONTRIBUTING.md) for details.
 
 {{% alert title="Interactive Learning" %}}
 The best way to learn is by doing! Copy these examples, run them, modify them, and see what happens.
