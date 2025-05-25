@@ -130,10 +130,18 @@ func (t *GoTranspiler) VisitReturnStmt(node *msast.ReturnStmt) ast.Node {
 	return &ast.ReturnStmt{Results: results}
 }
 
-// VisitYieldStmt transpiles yield statements (converted to return in Go)
+// VisitYieldStmt transpiles yield statements to generator pattern using channels
 func (t *GoTranspiler) VisitYieldStmt(node *msast.YieldStmt) ast.Node {
 	if node == nil {
-		return &ast.ReturnStmt{}
+		// Empty yield - send nil to channel and continue
+		return &ast.ExprStmt{
+			X: &ast.CallExpr{
+				Fun: &ast.Ident{Name: "__yield"},
+				Args: []ast.Expr{
+					&ast.Ident{Name: "nil"},
+				},
+			},
+		}
 	}
 
 	var results []ast.Expr
@@ -149,7 +157,42 @@ func (t *GoTranspiler) VisitYieldStmt(node *msast.YieldStmt) ast.Node {
 		}
 	}
 
-	return &ast.ReturnStmt{Results: results}
+	// If no values, yield nil
+	if len(results) == 0 {
+		return &ast.ExprStmt{
+			X: &ast.CallExpr{
+				Fun: &ast.Ident{Name: "__yield"},
+				Args: []ast.Expr{
+					&ast.Ident{Name: "nil"},
+				},
+			},
+		}
+	}
+
+	// If single value, yield it directly
+	if len(results) == 1 {
+		return &ast.ExprStmt{
+			X: &ast.CallExpr{
+				Fun:  &ast.Ident{Name: "__yield"},
+				Args: []ast.Expr{results[0]},
+			},
+		}
+	}
+
+	// If multiple values, yield as slice
+	sliceExpr := &ast.CompositeLit{
+		Type: &ast.ArrayType{
+			Elt: &ast.InterfaceType{Methods: &ast.FieldList{}},
+		},
+		Elts: results,
+	}
+
+	return &ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun:  &ast.Ident{Name: "__yield"},
+			Args: []ast.Expr{sliceExpr},
+		},
+	}
 }
 
 // VisitDeferStmt transpiles defer statements
