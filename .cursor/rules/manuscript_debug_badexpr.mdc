@@ -1,5 +1,5 @@
 ---
-description: 
+description: Debugging `BadExpr` in Manuscript Compilation
 globs: 
 alwaysApply: false
 ---

@@ -1,5 +1,5 @@
 ---
-description: 
+description: This guide provides common patterns and solutions for issues encountered when working with the Manuscript to Go AST visitor.
 globs: 
 alwaysApply: false
 ---
