@@ -6,11 +6,11 @@ import (
 	"go/token"
 	"strings"
 
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // VisitImportDecl transpiles import declarations
-func (t *GoTranspiler) VisitImportDecl(node *msast.ImportDecl) ast.Node {
+func (t *GoTranspiler) VisitImportDecl(node *mast.ImportDecl) ast.Node {
 	if node == nil || node.Import == nil {
 		t.addError("invalid import declaration", nil)
 		return nil
@@ -23,7 +23,7 @@ func (t *GoTranspiler) VisitImportDecl(node *msast.ImportDecl) ast.Node {
 }
 
 // VisitExportDecl transpiles export declarations
-func (t *GoTranspiler) VisitExportDecl(node *msast.ExportDecl) ast.Node {
+func (t *GoTranspiler) VisitExportDecl(node *mast.ExportDecl) ast.Node {
 	if node == nil || node.Item == nil {
 		t.addError("invalid export declaration", node)
 		return nil
@@ -65,7 +65,7 @@ func (t *GoTranspiler) VisitExportDecl(node *msast.ExportDecl) ast.Node {
 }
 
 // VisitExternDecl transpiles extern declarations (similar to imports)
-func (t *GoTranspiler) VisitExternDecl(node *msast.ExternDecl) ast.Node {
+func (t *GoTranspiler) VisitExternDecl(node *mast.ExternDecl) ast.Node {
 	if node == nil || node.Import == nil {
 		t.addError("invalid extern declaration", node)
 		return nil
@@ -79,7 +79,7 @@ func (t *GoTranspiler) VisitExternDecl(node *msast.ExternDecl) ast.Node {
 }
 
 // VisitLetDecl transpiles let declarations to Go variable declarations or assignment statements
-func (t *GoTranspiler) VisitLetDecl(node *msast.LetDecl) ast.Node {
+func (t *GoTranspiler) VisitLetDecl(node *mast.LetDecl) ast.Node {
 	if node == nil {
 		t.addError("received nil let declaration", nil)
 		return nil
@@ -119,7 +119,7 @@ func (t *GoTranspiler) VisitLetDecl(node *msast.LetDecl) ast.Node {
 }
 
 // VisitTypeDecl transpiles type declarations
-func (t *GoTranspiler) VisitTypeDecl(node *msast.TypeDecl) ast.Node {
+func (t *GoTranspiler) VisitTypeDecl(node *mast.TypeDecl) ast.Node {
 	if node == nil || node.Name == "" {
 		t.addError("invalid type declaration", node)
 		return nil
@@ -153,7 +153,7 @@ func (t *GoTranspiler) VisitTypeDecl(node *msast.TypeDecl) ast.Node {
 }
 
 // VisitInterfaceDecl transpiles interface declarations
-func (t *GoTranspiler) VisitInterfaceDecl(node *msast.InterfaceDecl) ast.Node {
+func (t *GoTranspiler) VisitInterfaceDecl(node *mast.InterfaceDecl) ast.Node {
 	if node == nil || node.Name == "" {
 		t.addError("invalid interface declaration", node)
 		return nil

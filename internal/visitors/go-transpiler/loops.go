@@ -3,11 +3,11 @@ package transpiler
 import (
 	"go/ast"
 	"go/token"
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // VisitForTrinityLoop transpiles trinity for loops (init; cond; post)
-func (t *GoTranspiler) VisitForTrinityLoop(node *msast.ForTrinityLoop) ast.Node {
+func (t *GoTranspiler) VisitForTrinityLoop(node *mast.ForTrinityLoop) ast.Node {
 	if node == nil {
 		return &ast.ForStmt{Body: &ast.BlockStmt{List: []ast.Stmt{}}}
 	}
@@ -72,7 +72,7 @@ func (t *GoTranspiler) VisitForTrinityLoop(node *msast.ForTrinityLoop) ast.Node 
 }
 
 // VisitForInLoop transpiles for-in loops to Go range statements
-func (t *GoTranspiler) VisitForInLoop(node *msast.ForInLoop) ast.Node {
+func (t *GoTranspiler) VisitForInLoop(node *mast.ForInLoop) ast.Node {
 	if node == nil {
 		return &ast.ForStmt{Body: &ast.BlockStmt{List: []ast.Stmt{}}}
 	}
@@ -145,7 +145,7 @@ func (t *GoTranspiler) VisitForInLoop(node *msast.ForInLoop) ast.Node {
 }
 
 // VisitForInitLet transpiles for loop let initializers
-func (t *GoTranspiler) VisitForInitLet(node *msast.ForInitLet) ast.Node {
+func (t *GoTranspiler) VisitForInitLet(node *mast.ForInitLet) ast.Node {
 	if node == nil || node.Let == nil {
 		return nil
 	}

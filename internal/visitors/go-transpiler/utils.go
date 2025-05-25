@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"go/ast"
 
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // VisitParameter transpiles function parameters
-func (t *GoTranspiler) VisitParameter(node *msast.Parameter) ast.Node {
+func (t *GoTranspiler) VisitParameter(node *mast.Parameter) ast.Node {
 	if node == nil || node.Name == "" {
 		t.addError("invalid parameter", node)
 		return nil
@@ -33,7 +33,7 @@ func (t *GoTranspiler) VisitParameter(node *msast.Parameter) ast.Node {
 }
 
 // VisitInterfaceMethod transpiles interface method declarations
-func (t *GoTranspiler) VisitInterfaceMethod(node *msast.InterfaceMethod) ast.Node {
+func (t *GoTranspiler) VisitInterfaceMethod(node *mast.InterfaceMethod) ast.Node {
 	if node == nil || node.Name == "" {
 		t.addError("invalid interface method", node)
 		return nil
@@ -53,7 +53,7 @@ func (t *GoTranspiler) VisitInterfaceMethod(node *msast.InterfaceMethod) ast.Nod
 	var results *ast.FieldList
 	if node.ReturnType != nil {
 		// Check if the return type is void
-		if typeSpec, ok := node.ReturnType.(*msast.TypeSpec); ok && typeSpec.Kind == msast.VoidType {
+		if typeSpec, ok := node.ReturnType.(*mast.TypeSpec); ok && typeSpec.Kind == mast.VoidType {
 			// For void return types, don't set any return type (results remains nil)
 		} else {
 			returnType := t.Visit(node.ReturnType)
@@ -87,7 +87,7 @@ func (t *GoTranspiler) VisitInterfaceMethod(node *msast.InterfaceMethod) ast.Nod
 }
 
 // VisitTypedID transpiles typed identifiers
-func (t *GoTranspiler) VisitTypedID(node *msast.TypedID) ast.Node {
+func (t *GoTranspiler) VisitTypedID(node *mast.TypedID) ast.Node {
 	if node == nil {
 		return nil
 	}
@@ -98,13 +98,13 @@ func (t *GoTranspiler) VisitTypedID(node *msast.TypedID) ast.Node {
 }
 
 // VisitTypeSpec transpiles type specifications
-func (t *GoTranspiler) VisitTypeSpec(node *msast.TypeSpec) ast.Node {
+func (t *GoTranspiler) VisitTypeSpec(node *mast.TypeSpec) ast.Node {
 	if node == nil {
 		return &ast.Ident{Name: "interface{}"}
 	}
 
 	switch node.Kind {
-	case msast.SimpleType:
+	case mast.SimpleType:
 		// Map manuscript types to Go types
 		switch node.Name {
 		case "int":
@@ -123,7 +123,7 @@ func (t *GoTranspiler) VisitTypeSpec(node *msast.TypeSpec) ast.Node {
 			return &ast.Ident{Name: t.generateVarName(node.Name)}
 		}
 
-	case msast.ArrayType:
+	case mast.ArrayType:
 		// Handle array types
 		if node.ElementType != nil {
 			elemTypeResult := t.Visit(node.ElementType)
@@ -137,7 +137,7 @@ func (t *GoTranspiler) VisitTypeSpec(node *msast.TypeSpec) ast.Node {
 			Elt: &ast.Ident{Name: "interface{}"},
 		}
 
-	case msast.FunctionType:
+	case mast.FunctionType:
 		// Handle function types
 		var params []*ast.Field
 		for i := range node.Parameters {
@@ -163,7 +163,7 @@ func (t *GoTranspiler) VisitTypeSpec(node *msast.TypeSpec) ast.Node {
 			Results: results,
 		}
 
-	case msast.TupleType:
+	case mast.TupleType:
 		// Handle tuple types - in Go, we use structs with numbered fields
 		var fields []*ast.Field
 		for i, elemType := range node.ElementTypes {
@@ -181,7 +181,7 @@ func (t *GoTranspiler) VisitTypeSpec(node *msast.TypeSpec) ast.Node {
 			Fields: &ast.FieldList{List: fields},
 		}
 
-	case msast.VoidType:
+	case mast.VoidType:
 		// Void type in Go is represented as no return type
 		return &ast.Ident{Name: "interface{}"}
 
@@ -191,7 +191,7 @@ func (t *GoTranspiler) VisitTypeSpec(node *msast.TypeSpec) ast.Node {
 }
 
 // VisitTypeDefBody transpiles type definition bodies
-func (t *GoTranspiler) VisitTypeDefBody(node *msast.TypeDefBody) ast.Node {
+func (t *GoTranspiler) VisitTypeDefBody(node *mast.TypeDefBody) ast.Node {
 	if node == nil {
 		return &ast.StructType{Fields: &ast.FieldList{}}
 	}
@@ -210,7 +210,7 @@ func (t *GoTranspiler) VisitTypeDefBody(node *msast.TypeDefBody) ast.Node {
 }
 
 // VisitTypeAlias transpiles type aliases
-func (t *GoTranspiler) VisitTypeAlias(node *msast.TypeAlias) ast.Node {
+func (t *GoTranspiler) VisitTypeAlias(node *mast.TypeAlias) ast.Node {
 	if node == nil {
 		return &ast.Ident{Name: "interface{}"}
 	}
@@ -223,7 +223,7 @@ func (t *GoTranspiler) VisitTypeAlias(node *msast.TypeAlias) ast.Node {
 }
 
 // VisitMethodImpl transpiles method implementations
-func (t *GoTranspiler) VisitMethodImpl(node *msast.MethodImpl) ast.Node {
+func (t *GoTranspiler) VisitMethodImpl(node *mast.MethodImpl) ast.Node {
 	if node == nil || node.Name == "" {
 		t.addError("invalid method implementation", node)
 		return nil

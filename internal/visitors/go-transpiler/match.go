@@ -3,11 +3,11 @@ package transpiler
 import (
 	"go/ast"
 	"go/token"
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // VisitMatchExpr transpiles match expressions
-func (t *GoTranspiler) VisitMatchExpr(node *msast.MatchExpr) ast.Node {
+func (t *GoTranspiler) VisitMatchExpr(node *mast.MatchExpr) ast.Node {
 	if node == nil {
 		return &ast.Ident{Name: "nil"}
 	}
@@ -92,7 +92,7 @@ func (t *GoTranspiler) VisitMatchExpr(node *msast.MatchExpr) ast.Node {
 }
 
 // VisitCaseClause transpiles case clauses
-func (t *GoTranspiler) VisitCaseClause(node *msast.CaseClause) ast.Node {
+func (t *GoTranspiler) VisitCaseClause(node *mast.CaseClause) ast.Node {
 	if node == nil {
 		return &ast.CaseClause{List: []ast.Expr{}, Body: []ast.Stmt{}}
 	}
@@ -112,7 +112,7 @@ func (t *GoTranspiler) VisitCaseClause(node *msast.CaseClause) ast.Node {
 	var body []ast.Stmt
 	if node.Body != nil {
 		switch caseBody := node.Body.(type) {
-		case *msast.CaseExpr:
+		case *mast.CaseExpr:
 			// Simple expression case - assign to result variable, NO break statement
 			if caseBody.Expr != nil {
 				exprResult := t.Visit(caseBody.Expr)
@@ -126,7 +126,7 @@ func (t *GoTranspiler) VisitCaseClause(node *msast.CaseClause) ast.Node {
 					}
 				}
 			}
-		case *msast.CaseBlock:
+		case *mast.CaseBlock:
 			// Block case - need to handle the last statement as a return value, WITH break
 			if caseBody.Block != nil {
 				blockResult := t.Visit(caseBody.Block)
@@ -161,7 +161,7 @@ func (t *GoTranspiler) VisitCaseClause(node *msast.CaseClause) ast.Node {
 }
 
 // VisitDefaultClause transpiles default clauses
-func (t *GoTranspiler) VisitDefaultClause(node *msast.DefaultClause) ast.Node {
+func (t *GoTranspiler) VisitDefaultClause(node *mast.DefaultClause) ast.Node {
 	if node == nil {
 		return &ast.CaseClause{List: nil, Body: []ast.Stmt{}}
 	}
@@ -172,7 +172,7 @@ func (t *GoTranspiler) VisitDefaultClause(node *msast.DefaultClause) ast.Node {
 	var body []ast.Stmt
 	if node.Body != nil {
 		switch caseBody := node.Body.(type) {
-		case *msast.CaseExpr:
+		case *mast.CaseExpr:
 			// Simple expression case - assign to result variable, NO break statement
 			if caseBody.Expr != nil {
 				exprResult := t.Visit(caseBody.Expr)
@@ -186,7 +186,7 @@ func (t *GoTranspiler) VisitDefaultClause(node *msast.DefaultClause) ast.Node {
 					}
 				}
 			}
-		case *msast.CaseBlock:
+		case *mast.CaseBlock:
 			// Block case - need to handle the last statement as a return value, WITH break
 			if caseBody.Block != nil {
 				blockResult := t.Visit(caseBody.Block)
@@ -221,7 +221,7 @@ func (t *GoTranspiler) VisitDefaultClause(node *msast.DefaultClause) ast.Node {
 }
 
 // VisitCaseExpr transpiles case expressions
-func (t *GoTranspiler) VisitCaseExpr(node *msast.CaseExpr) ast.Node {
+func (t *GoTranspiler) VisitCaseExpr(node *mast.CaseExpr) ast.Node {
 	if node == nil || node.Expr == nil {
 		return &ast.Ident{Name: "nil"}
 	}
@@ -230,7 +230,7 @@ func (t *GoTranspiler) VisitCaseExpr(node *msast.CaseExpr) ast.Node {
 }
 
 // VisitCaseBlock transpiles case blocks
-func (t *GoTranspiler) VisitCaseBlock(node *msast.CaseBlock) ast.Node {
+func (t *GoTranspiler) VisitCaseBlock(node *mast.CaseBlock) ast.Node {
 	if node == nil {
 		return &ast.BlockStmt{List: []ast.Stmt{}}
 	}

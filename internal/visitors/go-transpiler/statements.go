@@ -5,11 +5,11 @@ import (
 	"go/ast"
 	"go/token"
 
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // VisitCodeBlock transpiles code blocks to Go block statements
-func (t *GoTranspiler) VisitCodeBlock(node *msast.CodeBlock) ast.Node {
+func (t *GoTranspiler) VisitCodeBlock(node *mast.CodeBlock) ast.Node {
 	if node == nil {
 		return &ast.BlockStmt{List: []ast.Stmt{}}
 	}
@@ -53,7 +53,7 @@ func (t *GoTranspiler) VisitCodeBlock(node *msast.CodeBlock) ast.Node {
 }
 
 // VisitLoopBody transpiles loop bodies to Go block statements
-func (t *GoTranspiler) VisitLoopBody(node *msast.LoopBody) ast.Node {
+func (t *GoTranspiler) VisitLoopBody(node *mast.LoopBody) ast.Node {
 	if node == nil {
 		return &ast.BlockStmt{List: []ast.Stmt{}}
 	}
@@ -88,7 +88,7 @@ func (t *GoTranspiler) VisitLoopBody(node *msast.LoopBody) ast.Node {
 }
 
 // VisitExprStmt transpiles expression statements
-func (t *GoTranspiler) VisitExprStmt(node *msast.ExprStmt) ast.Node {
+func (t *GoTranspiler) VisitExprStmt(node *mast.ExprStmt) ast.Node {
 	if node == nil || node.Expr == nil {
 		return nil
 	}
@@ -109,7 +109,7 @@ func (t *GoTranspiler) VisitExprStmt(node *msast.ExprStmt) ast.Node {
 }
 
 // VisitReturnStmt transpiles return statements
-func (t *GoTranspiler) VisitReturnStmt(node *msast.ReturnStmt) ast.Node {
+func (t *GoTranspiler) VisitReturnStmt(node *mast.ReturnStmt) ast.Node {
 	if node == nil {
 		return &ast.ReturnStmt{}
 	}
@@ -131,7 +131,7 @@ func (t *GoTranspiler) VisitReturnStmt(node *msast.ReturnStmt) ast.Node {
 }
 
 // VisitYieldStmt transpiles yield statements to generator pattern using channels
-func (t *GoTranspiler) VisitYieldStmt(node *msast.YieldStmt) ast.Node {
+func (t *GoTranspiler) VisitYieldStmt(node *mast.YieldStmt) ast.Node {
 	if node == nil {
 		// Empty yield - send nil to channel and continue
 		return &ast.ExprStmt{
@@ -196,7 +196,7 @@ func (t *GoTranspiler) VisitYieldStmt(node *msast.YieldStmt) ast.Node {
 }
 
 // VisitDeferStmt transpiles defer statements
-func (t *GoTranspiler) VisitDeferStmt(node *msast.DeferStmt) ast.Node {
+func (t *GoTranspiler) VisitDeferStmt(node *mast.DeferStmt) ast.Node {
 	if node == nil || node.Expr == nil {
 		return nil
 	}
@@ -223,7 +223,7 @@ func (t *GoTranspiler) VisitDeferStmt(node *msast.DeferStmt) ast.Node {
 }
 
 // VisitBreakStmt transpiles break statements
-func (t *GoTranspiler) VisitBreakStmt(node *msast.BreakStmt) ast.Node {
+func (t *GoTranspiler) VisitBreakStmt(node *mast.BreakStmt) ast.Node {
 	if !t.isInLoop() {
 		t.addError("break statement outside of loop", node)
 		return nil
@@ -235,7 +235,7 @@ func (t *GoTranspiler) VisitBreakStmt(node *msast.BreakStmt) ast.Node {
 }
 
 // VisitContinueStmt transpiles continue statements
-func (t *GoTranspiler) VisitContinueStmt(node *msast.ContinueStmt) ast.Node {
+func (t *GoTranspiler) VisitContinueStmt(node *mast.ContinueStmt) ast.Node {
 	if !t.isInLoop() {
 		t.addError("continue statement outside of loop", node)
 		return nil
@@ -247,7 +247,7 @@ func (t *GoTranspiler) VisitContinueStmt(node *msast.ContinueStmt) ast.Node {
 }
 
 // VisitCheckStmt transpiles check statements (error checking)
-func (t *GoTranspiler) VisitCheckStmt(node *msast.CheckStmt) ast.Node {
+func (t *GoTranspiler) VisitCheckStmt(node *mast.CheckStmt) ast.Node {
 	if node == nil || node.Expr == nil {
 		t.addError("invalid check statement", node)
 		return nil
@@ -304,7 +304,7 @@ func (t *GoTranspiler) VisitCheckStmt(node *msast.CheckStmt) ast.Node {
 }
 
 // VisitTryStmt transpiles try statements
-func (t *GoTranspiler) VisitTryStmt(node *msast.TryStmt) ast.Node {
+func (t *GoTranspiler) VisitTryStmt(node *mast.TryStmt) ast.Node {
 	if node == nil || node.Expr == nil {
 		t.addError("invalid try statement", node)
 		return nil
@@ -357,7 +357,7 @@ func (t *GoTranspiler) VisitTryStmt(node *msast.TryStmt) ast.Node {
 }
 
 // VisitIfStmt transpiles if statements
-func (t *GoTranspiler) VisitIfStmt(node *msast.IfStmt) ast.Node {
+func (t *GoTranspiler) VisitIfStmt(node *mast.IfStmt) ast.Node {
 	if node == nil || node.Cond == nil {
 		t.addError("invalid if statement", node)
 		return nil
@@ -402,7 +402,7 @@ func (t *GoTranspiler) VisitIfStmt(node *msast.IfStmt) ast.Node {
 }
 
 // VisitForStmt transpiles for statements
-func (t *GoTranspiler) VisitForStmt(node *msast.ForStmt) ast.Node {
+func (t *GoTranspiler) VisitForStmt(node *mast.ForStmt) ast.Node {
 	if node == nil {
 		t.addError("invalid for statement", node)
 		return nil
@@ -426,7 +426,7 @@ func (t *GoTranspiler) VisitForStmt(node *msast.ForStmt) ast.Node {
 }
 
 // VisitWhileStmt transpiles while statements
-func (t *GoTranspiler) VisitWhileStmt(node *msast.WhileStmt) ast.Node {
+func (t *GoTranspiler) VisitWhileStmt(node *mast.WhileStmt) ast.Node {
 	if node == nil {
 		t.addError("invalid while statement", node)
 		return nil
@@ -462,7 +462,7 @@ func (t *GoTranspiler) VisitWhileStmt(node *msast.WhileStmt) ast.Node {
 }
 
 // VisitPipedStmt transpiles piped statements to the proper pipeline loop structure
-func (t *GoTranspiler) VisitPipedStmt(node *msast.PipedStmt) ast.Node {
+func (t *GoTranspiler) VisitPipedStmt(node *mast.PipedStmt) ast.Node {
 	if node == nil || len(node.Calls) < 2 {
 		t.addError("invalid piped statement - need at least source and one target", node)
 		return nil
@@ -630,7 +630,7 @@ func (t *GoTranspiler) VisitPipedStmt(node *msast.PipedStmt) ast.Node {
 }
 
 // VisitPipedCall transpiles piped call expressions
-func (t *GoTranspiler) VisitPipedCall(node *msast.PipedCall) ast.Node {
+func (t *GoTranspiler) VisitPipedCall(node *mast.PipedCall) ast.Node {
 	if node == nil {
 		return nil
 	}
@@ -665,7 +665,7 @@ func (t *GoTranspiler) VisitPipedCall(node *msast.PipedCall) ast.Node {
 }
 
 // VisitPipedArg transpiles piped arguments
-func (t *GoTranspiler) VisitPipedArg(node *msast.PipedArg) ast.Node {
+func (t *GoTranspiler) VisitPipedArg(node *mast.PipedArg) ast.Node {
 	if node == nil || node.Value == nil {
 		return nil
 	}

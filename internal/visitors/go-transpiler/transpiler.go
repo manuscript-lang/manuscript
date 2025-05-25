@@ -6,7 +6,7 @@ import (
 	"go/token"
 	"strings"
 
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // GoTranspiler converts Manuscript AST to Go AST
@@ -79,12 +79,12 @@ func NewGoTranspiler(packageName string) *GoTranspiler {
 }
 
 // Visit implements the visitor pattern using the reusable dispatch function
-func (t *GoTranspiler) Visit(node msast.Node) ast.Node {
-	return msast.DispatchVisit(t, node)
+func (t *GoTranspiler) Visit(node mast.Node) ast.Node {
+	return mast.DispatchVisit(t, node)
 }
 
 // TranspileProgram transpiles a Manuscript program to Go AST
-func (t *GoTranspiler) TranspileProgram(program *msast.Program) (*ast.File, error) {
+func (t *GoTranspiler) TranspileProgram(program *mast.Program) (*ast.File, error) {
 	// Reset state
 	t.errors = []error{}
 	t.currentDecls = []ast.Decl{}
@@ -112,7 +112,7 @@ func (t *GoTranspiler) TranspileProgram(program *msast.Program) (*ast.File, erro
 }
 
 // Error handling
-func (t *GoTranspiler) addError(msg string, node msast.Node) {
+func (t *GoTranspiler) addError(msg string, node mast.Node) {
 	pos := ""
 	if node != nil {
 		pos = fmt.Sprintf(" at %s", node.Pos())
@@ -127,7 +127,7 @@ func (t *GoTranspiler) nextTempVar() string {
 }
 
 // Position utilities
-func (t *GoTranspiler) pos(node msast.Node) token.Pos {
+func (t *GoTranspiler) pos(node mast.Node) token.Pos {
 	if node == nil {
 		return token.NoPos
 	}
@@ -210,7 +210,7 @@ func (t *GoTranspiler) optimizeStringConcat(left, right ast.Expr) ast.Expr {
 }
 
 // Type conversion utilities
-func (t *GoTranspiler) manuscriptTypeToGoType(msType msast.Type) ast.Expr {
+func (t *GoTranspiler) manuscriptTypeToGoType(msType mast.Type) ast.Expr {
 	if msType == nil {
 		return &ast.Ident{Name: "interface{}"}
 	}

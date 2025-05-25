@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // generateParameterExtraction creates parameter extraction statements for functions with default parameters
 func (t *GoTranspiler) generateParameterExtraction(
-	param *msast.Parameter,
+	param *mast.Parameter,
 	paramIndex int,
 	paramName string,
 	paramType ast.Expr,
@@ -22,7 +22,7 @@ func (t *GoTranspiler) generateParameterExtraction(
 
 // createDefaultParameterStmts creates statements for parameters with default values
 func (t *GoTranspiler) createDefaultParameterStmts(
-	param *msast.Parameter,
+	param *mast.Parameter,
 	paramIndex int,
 	paramName string,
 	paramType ast.Expr,
@@ -120,13 +120,13 @@ func (t *GoTranspiler) createArgsTypeAssertion(
 
 // manuscriptBodyContainsYield checks if a CodeBlock contains yield statements
 func (t *GoTranspiler) manuscriptBodyContainsYield(
-	body msast.Node,
+	body mast.Node,
 ) bool {
 	if body == nil {
 		return false
 	}
 
-	codeBlock, ok := body.(*msast.CodeBlock)
+	codeBlock, ok := body.(*mast.CodeBlock)
 	if !ok {
 		return false
 	}
@@ -140,20 +140,20 @@ func (t *GoTranspiler) manuscriptBodyContainsYield(
 }
 
 // stmtContainsYield recursively checks if a statement contains yield statements
-func (t *GoTranspiler) stmtContainsYield(stmt msast.Statement) bool {
+func (t *GoTranspiler) stmtContainsYield(stmt mast.Statement) bool {
 	if stmt == nil {
 		return false
 	}
 
 	switch node := stmt.(type) {
-	case *msast.YieldStmt:
+	case *mast.YieldStmt:
 		return true
-	case *msast.IfStmt:
+	case *mast.IfStmt:
 		return (node.Then != nil && t.manuscriptBodyContainsYield(node.Then)) ||
 			(node.Else != nil && t.manuscriptBodyContainsYield(node.Else))
-	case *msast.WhileStmt:
+	case *mast.WhileStmt:
 		return node.Body != nil && t.loopBodyContainsYield(node.Body)
-	case *msast.ForStmt:
+	case *mast.ForStmt:
 		return node.Loop != nil && t.forLoopContainsYield(node.Loop)
 	default:
 		return false
@@ -161,7 +161,7 @@ func (t *GoTranspiler) stmtContainsYield(stmt msast.Statement) bool {
 }
 
 // loopBodyContainsYield checks if a LoopBody contains yield statements
-func (t *GoTranspiler) loopBodyContainsYield(body *msast.LoopBody) bool {
+func (t *GoTranspiler) loopBodyContainsYield(body *mast.LoopBody) bool {
 	if body == nil {
 		return false
 	}
@@ -175,15 +175,15 @@ func (t *GoTranspiler) loopBodyContainsYield(body *msast.LoopBody) bool {
 }
 
 // forLoopContainsYield checks if a ForLoop contains yield statements
-func (t *GoTranspiler) forLoopContainsYield(loop msast.ForLoop) bool {
+func (t *GoTranspiler) forLoopContainsYield(loop mast.ForLoop) bool {
 	if loop == nil {
 		return false
 	}
 
 	switch loopNode := loop.(type) {
-	case *msast.ForTrinityLoop:
+	case *mast.ForTrinityLoop:
 		return t.loopBodyContainsYield(loopNode.Body)
-	case *msast.ForInLoop:
+	case *mast.ForInLoop:
 		return t.loopBodyContainsYield(loopNode.Body)
 	default:
 		return false

@@ -3,13 +3,13 @@ package transpiler
 import (
 	"go/ast"
 	"go/token"
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 	"strconv"
 	"strings"
 )
 
 // VisitObjectField transpiles object field declarations
-func (t *GoTranspiler) VisitObjectField(node *msast.ObjectField) ast.Node {
+func (t *GoTranspiler) VisitObjectField(node *mast.ObjectField) ast.Node {
 	if node == nil {
 		return nil
 	}
@@ -67,7 +67,7 @@ func (t *GoTranspiler) VisitObjectField(node *msast.ObjectField) ast.Node {
 }
 
 // VisitMapField transpiles map field declarations
-func (t *GoTranspiler) VisitMapField(node *msast.MapField) ast.Node {
+func (t *GoTranspiler) VisitMapField(node *mast.MapField) ast.Node {
 	if node == nil {
 		return nil
 	}
@@ -103,7 +103,7 @@ func (t *GoTranspiler) VisitMapField(node *msast.MapField) ast.Node {
 }
 
 // VisitObjectFieldID transpiles object field IDs
-func (t *GoTranspiler) VisitObjectFieldID(node *msast.ObjectFieldID) ast.Node {
+func (t *GoTranspiler) VisitObjectFieldID(node *mast.ObjectFieldID) ast.Node {
 	if node == nil || node.Name == "" {
 		return &ast.Ident{Name: "unknown"}
 	}
@@ -112,7 +112,7 @@ func (t *GoTranspiler) VisitObjectFieldID(node *msast.ObjectFieldID) ast.Node {
 }
 
 // VisitObjectFieldString transpiles object field string declarations
-func (t *GoTranspiler) VisitObjectFieldString(node *msast.ObjectFieldString) ast.Node {
+func (t *GoTranspiler) VisitObjectFieldString(node *mast.ObjectFieldString) ast.Node {
 	if node == nil {
 		return nil
 	}
@@ -130,7 +130,7 @@ func (t *GoTranspiler) VisitObjectFieldString(node *msast.ObjectFieldString) ast
 }
 
 // VisitStructField transpiles struct fields
-func (t *GoTranspiler) VisitStructField(node *msast.StructField) ast.Node {
+func (t *GoTranspiler) VisitStructField(node *mast.StructField) ast.Node {
 	if node == nil {
 		return &ast.KeyValueExpr{
 			Key:   &ast.Ident{Name: "unknown"},
@@ -166,7 +166,7 @@ func (t *GoTranspiler) VisitStructField(node *msast.StructField) ast.Node {
 }
 
 // VisitStructInitExpr transpiles struct initialization expressions
-func (t *GoTranspiler) VisitStructInitExpr(node *msast.StructInitExpr) ast.Node {
+func (t *GoTranspiler) VisitStructInitExpr(node *mast.StructInitExpr) ast.Node {
 	if node == nil {
 		return &ast.Ident{Name: "nil"}
 	}
@@ -195,7 +195,7 @@ func (t *GoTranspiler) VisitStructInitExpr(node *msast.StructInitExpr) ast.Node 
 }
 
 // VisitStringContent transpiles string content
-func (t *GoTranspiler) VisitStringContent(node *msast.StringContent) ast.Node {
+func (t *GoTranspiler) VisitStringContent(node *mast.StringContent) ast.Node {
 	if node == nil || node.Content == "" {
 		return &ast.BasicLit{Kind: token.STRING, Value: `""`}
 	}
@@ -207,7 +207,7 @@ func (t *GoTranspiler) VisitStringContent(node *msast.StringContent) ast.Node {
 }
 
 // VisitStringInterpolation transpiles string interpolation
-func (t *GoTranspiler) VisitStringInterpolation(node *msast.StringInterpolation) ast.Node {
+func (t *GoTranspiler) VisitStringInterpolation(node *mast.StringInterpolation) ast.Node {
 	if node == nil {
 		return &ast.BasicLit{Kind: token.STRING, Value: `""`}
 	}
@@ -234,7 +234,7 @@ func (t *GoTranspiler) VisitStringInterpolation(node *msast.StringInterpolation)
 }
 
 // VisitStringLiteral transpiles string literals
-func (t *GoTranspiler) VisitStringLiteral(node *msast.StringLiteral) ast.Node {
+func (t *GoTranspiler) VisitStringLiteral(node *mast.StringLiteral) ast.Node {
 	if node == nil {
 		return &ast.BasicLit{Kind: token.STRING, Value: `""`}
 	}
@@ -242,7 +242,7 @@ func (t *GoTranspiler) VisitStringLiteral(node *msast.StringLiteral) ast.Node {
 	// For simple strings, concatenate all parts
 	var parts []string
 	for _, part := range node.Parts {
-		if content, ok := part.(*msast.StringContent); ok {
+		if content, ok := part.(*mast.StringContent); ok {
 			parts = append(parts, content.Content)
 		}
 	}
@@ -252,14 +252,14 @@ func (t *GoTranspiler) VisitStringLiteral(node *msast.StringLiteral) ast.Node {
 }
 
 // VisitNumberLiteral transpiles number literals
-func (t *GoTranspiler) VisitNumberLiteral(node *msast.NumberLiteral) ast.Node {
+func (t *GoTranspiler) VisitNumberLiteral(node *mast.NumberLiteral) ast.Node {
 	if node == nil {
 		return &ast.BasicLit{Kind: token.INT, Value: "0"}
 	}
 
 	// Determine the kind based on the string value
 	kind := token.INT
-	if node.Kind == msast.Float {
+	if node.Kind == mast.Float {
 		kind = token.FLOAT
 	}
 
@@ -270,7 +270,7 @@ func (t *GoTranspiler) VisitNumberLiteral(node *msast.NumberLiteral) ast.Node {
 }
 
 // VisitBooleanLiteral transpiles boolean literals
-func (t *GoTranspiler) VisitBooleanLiteral(node *msast.BooleanLiteral) ast.Node {
+func (t *GoTranspiler) VisitBooleanLiteral(node *mast.BooleanLiteral) ast.Node {
 	if node == nil {
 		return &ast.Ident{Name: "false"}
 	}
@@ -283,17 +283,17 @@ func (t *GoTranspiler) VisitBooleanLiteral(node *msast.BooleanLiteral) ast.Node 
 }
 
 // VisitNullLiteral transpiles null literals
-func (t *GoTranspiler) VisitNullLiteral(node *msast.NullLiteral) ast.Node {
+func (t *GoTranspiler) VisitNullLiteral(node *mast.NullLiteral) ast.Node {
 	return &ast.Ident{Name: "nil"}
 }
 
 // VisitVoidLiteral transpiles void literals
-func (t *GoTranspiler) VisitVoidLiteral(node *msast.VoidLiteral) ast.Node {
+func (t *GoTranspiler) VisitVoidLiteral(node *mast.VoidLiteral) ast.Node {
 	return &ast.Ident{Name: "nil"}
 }
 
 // VisitArrayLiteral transpiles array literals
-func (t *GoTranspiler) VisitArrayLiteral(node *msast.ArrayLiteral) ast.Node {
+func (t *GoTranspiler) VisitArrayLiteral(node *mast.ArrayLiteral) ast.Node {
 	if node == nil {
 		return &ast.CompositeLit{
 			Type: &ast.ArrayType{Elt: &ast.Ident{Name: "interface{}"}},
@@ -321,7 +321,7 @@ func (t *GoTranspiler) VisitArrayLiteral(node *msast.ArrayLiteral) ast.Node {
 }
 
 // VisitObjectLiteral transpiles object literals to Go structs
-func (t *GoTranspiler) VisitObjectLiteral(node *msast.ObjectLiteral) ast.Node {
+func (t *GoTranspiler) VisitObjectLiteral(node *mast.ObjectLiteral) ast.Node {
 	if node == nil {
 		return &ast.CompositeLit{
 			Type: &ast.MapType{
@@ -349,7 +349,7 @@ func (t *GoTranspiler) VisitObjectLiteral(node *msast.ObjectLiteral) ast.Node {
 }
 
 // VisitMapLiteral transpiles map literals
-func (t *GoTranspiler) VisitMapLiteral(node *msast.MapLiteral) ast.Node {
+func (t *GoTranspiler) VisitMapLiteral(node *mast.MapLiteral) ast.Node {
 	if node == nil {
 		return &ast.CompositeLit{
 			Type: &ast.MapType{
@@ -377,7 +377,7 @@ func (t *GoTranspiler) VisitMapLiteral(node *msast.MapLiteral) ast.Node {
 }
 
 // VisitSetLiteral transpiles set literals to Go maps
-func (t *GoTranspiler) VisitSetLiteral(node *msast.SetLiteral) ast.Node {
+func (t *GoTranspiler) VisitSetLiteral(node *mast.SetLiteral) ast.Node {
 	if node == nil {
 		return &ast.CompositeLit{
 			Type: &ast.MapType{

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // Additional missing visitor methods to complete the interface
 
 // VisitDestructuredImport transpiles destructured imports
-func (t *GoTranspiler) VisitDestructuredImport(node *msast.DestructuredImport) ast.Node {
+func (t *GoTranspiler) VisitDestructuredImport(node *mast.DestructuredImport) ast.Node {
 	if node == nil || node.Module == "" {
 		t.addError("invalid destructured import", nil)
 		return nil
@@ -68,7 +68,7 @@ func (t *GoTranspiler) VisitDestructuredImport(node *msast.DestructuredImport) a
 }
 
 // VisitTargetImport transpiles target imports (import name from 'module')
-func (t *GoTranspiler) VisitTargetImport(node *msast.TargetImport) ast.Node {
+func (t *GoTranspiler) VisitTargetImport(node *mast.TargetImport) ast.Node {
 	if node == nil || node.Module == "" {
 		t.addError("invalid target import", nil)
 		return nil
@@ -88,7 +88,7 @@ func (t *GoTranspiler) VisitTargetImport(node *msast.TargetImport) ast.Node {
 }
 
 // VisitImportItem transpiles import items
-func (t *GoTranspiler) VisitImportItem(node *msast.ImportItem) ast.Node {
+func (t *GoTranspiler) VisitImportItem(node *mast.ImportItem) ast.Node {
 	if node == nil {
 		return nil
 	}
@@ -98,7 +98,7 @@ func (t *GoTranspiler) VisitImportItem(node *msast.ImportItem) ast.Node {
 }
 
 // VisitModuleImport transpiles module imports
-func (t *GoTranspiler) VisitModuleImport(node *msast.ModuleImport) ast.Node {
+func (t *GoTranspiler) VisitModuleImport(node *mast.ModuleImport) ast.Node {
 	if node == nil {
 		t.addError("invalid module import", nil)
 		return nil
@@ -106,9 +106,9 @@ func (t *GoTranspiler) VisitModuleImport(node *msast.ModuleImport) ast.Node {
 
 	// ModuleImport is an interface, dispatch to specific implementations
 	switch importNode := (*node).(type) {
-	case *msast.DestructuredImport:
+	case *mast.DestructuredImport:
 		return t.VisitDestructuredImport(importNode)
-	case *msast.TargetImport:
+	case *mast.TargetImport:
 		return t.VisitTargetImport(importNode)
 	default:
 		t.addError("unknown module import type", nil)

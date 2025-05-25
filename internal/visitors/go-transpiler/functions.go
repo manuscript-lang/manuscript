@@ -3,11 +3,11 @@ package transpiler
 import (
 	"go/ast"
 
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // VisitFnDecl transpiles function declarations
-func (t *GoTranspiler) VisitFnDecl(node *msast.FnDecl) ast.Node {
+func (t *GoTranspiler) VisitFnDecl(node *mast.FnDecl) ast.Node {
 	if node == nil || node.Name == "" {
 		t.addError("invalid function declaration", node)
 		return nil
@@ -34,7 +34,7 @@ func (t *GoTranspiler) VisitFnDecl(node *msast.FnDecl) ast.Node {
 }
 
 // buildFunctionParams builds parameter list and extraction statements for functions
-func (t *GoTranspiler) buildFunctionParams(parameters []msast.Parameter) ([]*ast.Field, []ast.Stmt) {
+func (t *GoTranspiler) buildFunctionParams(parameters []mast.Parameter) ([]*ast.Field, []ast.Stmt) {
 	for _, param := range parameters {
 		if param.DefaultValue != nil {
 			return t.buildVariadicParams(parameters)
@@ -53,7 +53,7 @@ func (t *GoTranspiler) buildFunctionParams(parameters []msast.Parameter) ([]*ast
 }
 
 // buildVariadicParams builds variadic parameters for functions with default values
-func (t *GoTranspiler) buildVariadicParams(parameters []msast.Parameter) ([]*ast.Field, []ast.Stmt) {
+func (t *GoTranspiler) buildVariadicParams(parameters []mast.Parameter) ([]*ast.Field, []ast.Stmt) {
 	params := []*ast.Field{{
 		Names: []*ast.Ident{{Name: "args"}},
 		Type:  &ast.Ellipsis{Elt: &ast.Ident{Name: "interface{}"}},
@@ -71,7 +71,7 @@ func (t *GoTranspiler) buildVariadicParams(parameters []msast.Parameter) ([]*ast
 }
 
 // getParameterType gets the Go type expression for a parameter
-func (t *GoTranspiler) getParameterType(paramType msast.Node) ast.Expr {
+func (t *GoTranspiler) getParameterType(paramType mast.Node) ast.Expr {
 	if paramType != nil {
 		if typeExpr, ok := t.Visit(paramType).(ast.Expr); ok {
 			return typeExpr
@@ -81,7 +81,7 @@ func (t *GoTranspiler) getParameterType(paramType msast.Node) ast.Expr {
 }
 
 // buildReturnType builds the return type field list
-func (t *GoTranspiler) buildReturnType(returnType msast.Node, canThrow bool) *ast.FieldList {
+func (t *GoTranspiler) buildReturnType(returnType mast.Node, canThrow bool) *ast.FieldList {
 	var results *ast.FieldList
 
 	if returnType != nil {
@@ -103,7 +103,7 @@ func (t *GoTranspiler) buildReturnType(returnType msast.Node, canThrow bool) *as
 }
 
 // buildFunctionBody builds the function body with optional parameter extraction statements
-func (t *GoTranspiler) buildFunctionBody(bodyNode msast.Node, paramExtractionStmts []ast.Stmt) *ast.BlockStmt {
+func (t *GoTranspiler) buildFunctionBody(bodyNode mast.Node, paramExtractionStmts []ast.Stmt) *ast.BlockStmt {
 	body := &ast.BlockStmt{List: []ast.Stmt{}}
 
 	if bodyNode != nil {
@@ -120,10 +120,10 @@ func (t *GoTranspiler) buildFunctionBody(bodyNode msast.Node, paramExtractionStm
 }
 
 // handleImplicitReturn adds implicit return for functions with explicit non-void return types
-func (t *GoTranspiler) handleImplicitReturn(body *ast.BlockStmt, returnType msast.Node) {
+func (t *GoTranspiler) handleImplicitReturn(body *ast.BlockStmt, returnType mast.Node) {
 	if returnType != nil {
 		// Check if the return type is void
-		if typeSpec, ok := returnType.(*msast.TypeSpec); ok && typeSpec.Kind == msast.VoidType {
+		if typeSpec, ok := returnType.(*mast.TypeSpec); ok && typeSpec.Kind == mast.VoidType {
 			return // Do not add implicit return for void functions
 		}
 		t.ensureLastExprIsReturn(body)
@@ -133,7 +133,7 @@ func (t *GoTranspiler) handleImplicitReturn(body *ast.BlockStmt, returnType msas
 }
 
 // VisitMethodsDecl transpiles methods declarations
-func (t *GoTranspiler) VisitMethodsDecl(node *msast.MethodsDecl) ast.Node {
+func (t *GoTranspiler) VisitMethodsDecl(node *mast.MethodsDecl) ast.Node {
 	if node == nil {
 		t.addError("invalid methods declaration", node)
 		return nil
@@ -160,7 +160,7 @@ func (t *GoTranspiler) VisitMethodsDecl(node *msast.MethodsDecl) ast.Node {
 }
 
 // VisitFieldDecl transpiles field declarations
-func (t *GoTranspiler) VisitFieldDecl(node *msast.FieldDecl) ast.Node {
+func (t *GoTranspiler) VisitFieldDecl(node *mast.FieldDecl) ast.Node {
 	if node == nil {
 		return &ast.Field{
 			Names: []*ast.Ident{{Name: "unknown"}},

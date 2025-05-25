@@ -4,11 +4,11 @@ import (
 	"go/ast"
 	"go/token"
 
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // VisitIdentifier transpiles identifier expressions
-func (t *GoTranspiler) VisitIdentifier(node *msast.Identifier) ast.Node {
+func (t *GoTranspiler) VisitIdentifier(node *mast.Identifier) ast.Node {
 	if node == nil || node.Name == "" {
 		t.addError("invalid identifier", node)
 		return &ast.Ident{Name: "_"}
@@ -18,7 +18,7 @@ func (t *GoTranspiler) VisitIdentifier(node *msast.Identifier) ast.Node {
 }
 
 // VisitBinaryExpr transpiles binary expressions
-func (t *GoTranspiler) VisitBinaryExpr(node *msast.BinaryExpr) ast.Node {
+func (t *GoTranspiler) VisitBinaryExpr(node *mast.BinaryExpr) ast.Node {
 	if node == nil {
 		t.addError("invalid binary expression", node)
 		return nil
@@ -38,35 +38,35 @@ func (t *GoTranspiler) VisitBinaryExpr(node *msast.BinaryExpr) ast.Node {
 	// Map manuscript operators to Go operators
 	var goOp token.Token
 	switch node.Op {
-	case msast.Add:
+	case mast.Add:
 		goOp = token.ADD
-	case msast.Subtract:
+	case mast.Subtract:
 		goOp = token.SUB
-	case msast.Multiply:
+	case mast.Multiply:
 		goOp = token.MUL
-	case msast.Divide:
+	case mast.Divide:
 		goOp = token.QUO
-	case msast.Modulo:
+	case mast.Modulo:
 		goOp = token.REM
-	case msast.Equal:
+	case mast.Equal:
 		goOp = token.EQL
-	case msast.NotEqual:
+	case mast.NotEqual:
 		goOp = token.NEQ
-	case msast.Less:
+	case mast.Less:
 		goOp = token.LSS
-	case msast.LessEqual:
+	case mast.LessEqual:
 		goOp = token.LEQ
-	case msast.Greater:
+	case mast.Greater:
 		goOp = token.GTR
-	case msast.GreaterEqual:
+	case mast.GreaterEqual:
 		goOp = token.GEQ
-	case msast.LogicalAnd:
+	case mast.LogicalAnd:
 		goOp = token.LAND
-	case msast.LogicalOr:
+	case mast.LogicalOr:
 		goOp = token.LOR
-	case msast.BitwiseAnd:
+	case mast.BitwiseAnd:
 		goOp = token.AND
-	case msast.BitwiseXor:
+	case mast.BitwiseXor:
 		goOp = token.XOR
 	default:
 		t.addError("unsupported binary operator", node)
@@ -86,7 +86,7 @@ func (t *GoTranspiler) VisitBinaryExpr(node *msast.BinaryExpr) ast.Node {
 }
 
 // VisitUnaryExpr transpiles unary expressions
-func (t *GoTranspiler) VisitUnaryExpr(node *msast.UnaryExpr) ast.Node {
+func (t *GoTranspiler) VisitUnaryExpr(node *mast.UnaryExpr) ast.Node {
 	if node == nil {
 		t.addError("invalid unary expression", node)
 		return nil
@@ -102,11 +102,11 @@ func (t *GoTranspiler) VisitUnaryExpr(node *msast.UnaryExpr) ast.Node {
 	// Map manuscript unary operators to Go operators
 	var goOp token.Token
 	switch node.Op {
-	case msast.UnaryNot:
+	case mast.UnaryNot:
 		goOp = token.NOT
-	case msast.UnaryMinus:
+	case mast.UnaryMinus:
 		goOp = token.SUB
-	case msast.UnaryPlus:
+	case mast.UnaryPlus:
 		goOp = token.ADD
 	default:
 		t.addError("unsupported unary operator", node)
@@ -120,7 +120,7 @@ func (t *GoTranspiler) VisitUnaryExpr(node *msast.UnaryExpr) ast.Node {
 }
 
 // VisitCallExpr transpiles function call expressions
-func (t *GoTranspiler) VisitCallExpr(node *msast.CallExpr) ast.Node {
+func (t *GoTranspiler) VisitCallExpr(node *mast.CallExpr) ast.Node {
 	if node == nil {
 		t.addError("invalid call expression", node)
 		return nil
@@ -152,7 +152,7 @@ func (t *GoTranspiler) VisitCallExpr(node *msast.CallExpr) ast.Node {
 }
 
 // VisitIndexExpr transpiles index expressions (array/object access)
-func (t *GoTranspiler) VisitIndexExpr(node *msast.IndexExpr) ast.Node {
+func (t *GoTranspiler) VisitIndexExpr(node *mast.IndexExpr) ast.Node {
 	if node == nil {
 		t.addError("invalid index expression", node)
 		return nil
@@ -176,7 +176,7 @@ func (t *GoTranspiler) VisitIndexExpr(node *msast.IndexExpr) ast.Node {
 }
 
 // VisitDotExpr transpiles member access expressions
-func (t *GoTranspiler) VisitDotExpr(node *msast.DotExpr) ast.Node {
+func (t *GoTranspiler) VisitDotExpr(node *mast.DotExpr) ast.Node {
 	if node == nil {
 		t.addError("invalid dot expression", node)
 		return nil
@@ -196,7 +196,7 @@ func (t *GoTranspiler) VisitDotExpr(node *msast.DotExpr) ast.Node {
 }
 
 // VisitFnExpr transpiles function expressions
-func (t *GoTranspiler) VisitFnExpr(node *msast.FnExpr) ast.Node {
+func (t *GoTranspiler) VisitFnExpr(node *mast.FnExpr) ast.Node {
 	if node == nil {
 		t.addError("invalid function expression", node)
 		return nil
@@ -246,7 +246,7 @@ func (t *GoTranspiler) VisitFnExpr(node *msast.FnExpr) ast.Node {
 }
 
 // VisitTernaryExpr transpiles ternary expressions to if expressions
-func (t *GoTranspiler) VisitTernaryExpr(node *msast.TernaryExpr) ast.Node {
+func (t *GoTranspiler) VisitTernaryExpr(node *mast.TernaryExpr) ast.Node {
 	if node == nil {
 		t.addError("invalid ternary expression", node)
 		return nil
@@ -297,7 +297,7 @@ func (t *GoTranspiler) VisitTernaryExpr(node *msast.TernaryExpr) ast.Node {
 }
 
 // VisitAssignmentExpr transpiles assignment expressions
-func (t *GoTranspiler) VisitAssignmentExpr(node *msast.AssignmentExpr) ast.Node {
+func (t *GoTranspiler) VisitAssignmentExpr(node *mast.AssignmentExpr) ast.Node {
 	if node == nil {
 		t.addError("invalid assignment expression", node)
 		return nil
@@ -317,25 +317,25 @@ func (t *GoTranspiler) VisitAssignmentExpr(node *msast.AssignmentExpr) ast.Node 
 	// For compound assignments, expand them to binary expressions
 	var rhsExpr ast.Expr
 	switch node.Op {
-	case msast.AssignEq:
+	case mast.AssignEq:
 		// Simple assignment: x = y
 		rhsExpr = rightExpr
-	case msast.AssignPlusEq:
+	case mast.AssignPlusEq:
 		// x += y becomes x = x + y
 		rhsExpr = &ast.BinaryExpr{X: leftExpr, Op: token.ADD, Y: rightExpr}
-	case msast.AssignMinusEq:
+	case mast.AssignMinusEq:
 		// x -= y becomes x = x - y
 		rhsExpr = &ast.BinaryExpr{X: leftExpr, Op: token.SUB, Y: rightExpr}
-	case msast.AssignStarEq:
+	case mast.AssignStarEq:
 		// x *= y becomes x = x * y
 		rhsExpr = &ast.BinaryExpr{X: leftExpr, Op: token.MUL, Y: rightExpr}
-	case msast.AssignSlashEq:
+	case mast.AssignSlashEq:
 		// x /= y becomes x = x / y
 		rhsExpr = &ast.BinaryExpr{X: leftExpr, Op: token.QUO, Y: rightExpr}
-	case msast.AssignModEq:
+	case mast.AssignModEq:
 		// x %= y becomes x = x % y
 		rhsExpr = &ast.BinaryExpr{X: leftExpr, Op: token.REM, Y: rightExpr}
-	case msast.AssignCaretEq:
+	case mast.AssignCaretEq:
 		// x ^= y becomes x = x ^ y
 		rhsExpr = &ast.BinaryExpr{X: leftExpr, Op: token.XOR, Y: rightExpr}
 	default:
@@ -351,7 +351,7 @@ func (t *GoTranspiler) VisitAssignmentExpr(node *msast.AssignmentExpr) ast.Node 
 }
 
 // VisitParenExpr transpiles parenthesized expressions
-func (t *GoTranspiler) VisitParenExpr(node *msast.ParenExpr) ast.Node {
+func (t *GoTranspiler) VisitParenExpr(node *mast.ParenExpr) ast.Node {
 	if node == nil {
 		return &ast.Ident{Name: "nil"}
 	}
@@ -364,17 +364,17 @@ func (t *GoTranspiler) VisitParenExpr(node *msast.ParenExpr) ast.Node {
 }
 
 // VisitVoidExpr transpiles void expressions
-func (t *GoTranspiler) VisitVoidExpr(node *msast.VoidExpr) ast.Node {
+func (t *GoTranspiler) VisitVoidExpr(node *mast.VoidExpr) ast.Node {
 	return &ast.Ident{Name: "nil"}
 }
 
 // VisitNullExpr transpiles null expressions
-func (t *GoTranspiler) VisitNullExpr(node *msast.NullExpr) ast.Node {
+func (t *GoTranspiler) VisitNullExpr(node *mast.NullExpr) ast.Node {
 	return &ast.Ident{Name: "nil"}
 }
 
 // VisitTryExpr transpiles try expressions
-func (t *GoTranspiler) VisitTryExpr(node *msast.TryExpr) ast.Node {
+func (t *GoTranspiler) VisitTryExpr(node *mast.TryExpr) ast.Node {
 	if node == nil {
 		return &ast.Ident{Name: "nil"}
 	}

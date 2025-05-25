@@ -4,11 +4,11 @@ import (
 	"go/ast"
 	"go/token"
 
-	msast "manuscript-co/manuscript/internal/ast"
+	mast "manuscript-co/manuscript/internal/ast"
 )
 
 // VisitProgram transpiles the root Program node to a Go file
-func (t *GoTranspiler) VisitProgram(node *msast.Program) ast.Node {
+func (t *GoTranspiler) VisitProgram(node *mast.Program) ast.Node {
 	if node == nil {
 		t.addError("received nil program node", nil)
 		return t.createEmptyGoFile()
