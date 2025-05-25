@@ -210,10 +210,13 @@ func (t *GoTranspiler) VisitCheckStmt(node *msast.CheckStmt) ast.Node {
 		return nil
 	}
 
-	// Convert check to if statement that panics/returns error
+	// Add errors import if not already present
+	t.addErrorsImport()
+
+	// Convert check to if statement that returns error
 	condition := t.Visit(node.Expr)
 	if condExpr, ok := condition.(ast.Expr); ok {
-		// Create: if !condition { panic("check failed") }
+		// Create: if !condition { return nil, errors.New("error message") }
 		notCondition := &ast.UnaryExpr{
 			Op: token.NOT,
 			X:  condExpr,
@@ -224,8 +227,12 @@ func (t *GoTranspiler) VisitCheckStmt(node *msast.CheckStmt) ast.Node {
 			message = "check failed"
 		}
 
-		panicCall := &ast.CallExpr{
-			Fun: &ast.Ident{Name: "panic"},
+		// Create errors.New("message") call
+		errorsNewCall := &ast.CallExpr{
+			Fun: &ast.SelectorExpr{
+				X:   &ast.Ident{Name: "errors"},
+				Sel: &ast.Ident{Name: "New"},
+			},
 			Args: []ast.Expr{
 				&ast.BasicLit{
 					Kind:  token.STRING,
@@ -234,12 +241,18 @@ func (t *GoTranspiler) VisitCheckStmt(node *msast.CheckStmt) ast.Node {
 			},
 		}
 
+		// Create return statement: return nil, errors.New("message")
+		returnStmt := &ast.ReturnStmt{
+			Results: []ast.Expr{
+				&ast.Ident{Name: "nil"},
+				errorsNewCall,
+			},
+		}
+
 		return &ast.IfStmt{
 			Cond: notCondition,
 			Body: &ast.BlockStmt{
-				List: []ast.Stmt{
-					&ast.ExprStmt{X: panicCall},
-				},
+				List: []ast.Stmt{returnStmt},
 			},
 		}
 	}

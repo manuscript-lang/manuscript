@@ -150,6 +150,25 @@ func (t *GoTranspiler) isInLoop() bool {
 	return t.loopDepth > 0
 }
 
+// addErrorsImport adds the "errors" import if not already present
+func (t *GoTranspiler) addErrorsImport() {
+	// Check if errors import already exists
+	for _, importSpec := range t.Imports {
+		if importSpec.Path != nil && importSpec.Path.Value == `"errors"` {
+			return // Already imported
+		}
+	}
+
+	// Add errors import
+	errorsImport := &ast.ImportSpec{
+		Path: &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: `"errors"`,
+		},
+	}
+	t.Imports = append(t.Imports, errorsImport)
+}
+
 // Generate better variable names
 func (t *GoTranspiler) generateVarName(base string) string {
 	if base == "" {
