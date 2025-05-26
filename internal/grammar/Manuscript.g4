@@ -219,7 +219,8 @@ primaryExpr:
 	| VOID					# LabelPrimaryVoid
 	| NULL					# LabelPrimaryNull
 	| taggedBlockString		# LabelPrimaryTaggedBlock
-	| structInitExpr		# LabelPrimaryStructInit;
+	| structInitExpr		# LabelPrimaryStructInit
+	| typedObjectLiteral	# LabelPrimaryTypedObject;
 
 // --- Try Expressions ---
 tryExpr: TRY expr;
@@ -280,7 +281,12 @@ booleanLiteral:
 // --- Collections ---
 arrayLiteral: LSQBR exprList? RSQBR;
 objectLiteral: LBRACE objectFieldList? RBRACE;
-objectFieldList: objectField (COMMA objectField)* (COMMA)?;
+
+objectFieldList: 
+	NEWLINE* objectField 
+	((NEWLINE | COMMA | COMMA NEWLINE) objectField)* 
+	(COMMA)? 
+	NEWLINE*;
 objectField: objectFieldName (COLON expr)?;
 objectFieldName:
 	ID				# LabelObjectFieldNameID
@@ -298,6 +304,8 @@ taggedBlockString:
 structInitExpr: ID LPAREN structFieldList? RPAREN;
 structFieldList: structField (COMMA structField)* (COMMA)?;
 structField: ID COLON expr;
+
+typedObjectLiteral: ID LBRACE objectFieldList? RBRACE;
 
 // --- Type Annotations ---
 typeAnnotation:

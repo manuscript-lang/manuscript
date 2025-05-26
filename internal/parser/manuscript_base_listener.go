@@ -673,6 +673,12 @@ func (s *BaseManuscriptListener) EnterLabelPrimaryStructInit(ctx *LabelPrimarySt
 // ExitLabelPrimaryStructInit is called when production LabelPrimaryStructInit is exited.
 func (s *BaseManuscriptListener) ExitLabelPrimaryStructInit(ctx *LabelPrimaryStructInitContext) {}
 
+// EnterLabelPrimaryTypedObject is called when production LabelPrimaryTypedObject is entered.
+func (s *BaseManuscriptListener) EnterLabelPrimaryTypedObject(ctx *LabelPrimaryTypedObjectContext) {}
+
+// ExitLabelPrimaryTypedObject is called when production LabelPrimaryTypedObject is exited.
+func (s *BaseManuscriptListener) ExitLabelPrimaryTypedObject(ctx *LabelPrimaryTypedObjectContext) {}
+
 // EnterTryExpr is called when production tryExpr is entered.
 func (s *BaseManuscriptListener) EnterTryExpr(ctx *TryExprContext) {}
 
@@ -906,6 +912,12 @@ func (s *BaseManuscriptListener) EnterStructField(ctx *StructFieldContext) {}
 
 // ExitStructField is called when production structField is exited.
 func (s *BaseManuscriptListener) ExitStructField(ctx *StructFieldContext) {}
+
+// EnterTypedObjectLiteral is called when production typedObjectLiteral is entered.
+func (s *BaseManuscriptListener) EnterTypedObjectLiteral(ctx *TypedObjectLiteralContext) {}
+
+// ExitTypedObjectLiteral is called when production typedObjectLiteral is exited.
+func (s *BaseManuscriptListener) ExitTypedObjectLiteral(ctx *TypedObjectLiteralContext) {}
 
 // EnterLabelTypeAnnID is called when production LabelTypeAnnID is entered.
 func (s *BaseManuscriptListener) EnterLabelTypeAnnID(ctx *LabelTypeAnnIDContext) {}

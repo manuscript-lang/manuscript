@@ -59,6 +59,7 @@ type ManuscriptVisitor[T any] interface {
 	VisitTryExpr(node *TryExpr) T
 	VisitMatchExpr(node *MatchExpr) T
 	VisitStructInitExpr(node *StructInitExpr) T
+	VisitTypedObjectLiteral(node *TypedObjectLiteral) T
 
 	// Match expression visitors
 	VisitCaseClause(node *CaseClause) T
@@ -259,6 +260,8 @@ func DispatchVisit[T any](visitor ManuscriptVisitor[T], node Node) T {
 		return visitor.VisitMatchExpr(n)
 	case *StructInitExpr:
 		return visitor.VisitStructInitExpr(n)
+	case *TypedObjectLiteral:
+		return visitor.VisitTypedObjectLiteral(n)
 
 	// Match expression components
 	case *CaseClause:
@@ -399,6 +402,10 @@ func (v *BaseManuscriptVisitor[T]) VisitNullExpr(node *NullExpr) T   { var zero 
 func (v *BaseManuscriptVisitor[T]) VisitTryExpr(node *TryExpr) T     { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitMatchExpr(node *MatchExpr) T { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitStructInitExpr(node *StructInitExpr) T {
+	var zero T
+	return zero
+}
+func (v *BaseManuscriptVisitor[T]) VisitTypedObjectLiteral(node *TypedObjectLiteral) T {
 	var zero T
 	return zero
 }

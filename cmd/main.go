@@ -42,15 +42,18 @@ func (l *SyntaxErrorListener) SyntaxError(recognizer antlr.Recognizer, offending
 }
 
 func manuscriptToGo(input string, debug bool) (string, error) {
-	tree, hasErrors := parseManuscriptCode(input, debug)
-	if hasErrors {
+	tree, errorListener := parseManuscriptCode(input, debug)
+	if len(errorListener.Errors) > 0 {
+		for _, err := range errorListener.Errors {
+			fmt.Printf("Syntax error: %s\n", err)
+		}
 		return "", errors.New(syntaxErrorCode)
 	}
 
 	return convertToGoCode(tree), nil
 }
 
-func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, bool) {
+func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, *SyntaxErrorListener) {
 	inputStream := antlr.NewInputStream(msCode)
 	lexer := parser.NewManuscriptLexer(inputStream)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
@@ -63,7 +66,7 @@ func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, boo
 	p.AddErrorListener(errorListener)
 
 	tree := p.Program()
-	return tree, len(errorListener.Errors) > 0
+	return tree, errorListener
 }
 
 func convertToGoCode(tree parser.IProgramContext) string {

@@ -440,6 +440,10 @@ func (v *BaseManuscriptVisitor) VisitLabelPrimaryStructInit(ctx *LabelPrimaryStr
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryTypedObject(ctx *LabelPrimaryTypedObjectContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitTryExpr(ctx *TryExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -593,6 +597,10 @@ func (v *BaseManuscriptVisitor) VisitStructFieldList(ctx *StructFieldListContext
 }
 
 func (v *BaseManuscriptVisitor) VisitStructField(ctx *StructFieldContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitTypedObjectLiteral(ctx *TypedObjectLiteralContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

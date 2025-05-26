@@ -332,6 +332,9 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#LabelPrimaryStructInit.
 	VisitLabelPrimaryStructInit(ctx *LabelPrimaryStructInitContext) interface{}
 
+	// Visit a parse tree produced by Manuscript#LabelPrimaryTypedObject.
+	VisitLabelPrimaryTypedObject(ctx *LabelPrimaryTypedObjectContext) interface{}
+
 	// Visit a parse tree produced by Manuscript#tryExpr.
 	VisitTryExpr(ctx *TryExprContext) interface{}
 
@@ -448,6 +451,9 @@ type ManuscriptVisitor interface {
 
 	// Visit a parse tree produced by Manuscript#structField.
 	VisitStructField(ctx *StructFieldContext) interface{}
+
+	// Visit a parse tree produced by Manuscript#typedObjectLiteral.
+	VisitTypedObjectLiteral(ctx *TypedObjectLiteralContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#LabelTypeAnnID.
 	VisitLabelTypeAnnID(ctx *LabelTypeAnnIDContext) interface{}

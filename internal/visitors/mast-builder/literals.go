@@ -393,6 +393,20 @@ func (v *ParseTreeToAST) VisitStructField(ctx *parser.StructFieldContext) interf
 	return field
 }
 
+// Typed object literal
+
+func (v *ParseTreeToAST) VisitTypedObjectLiteral(ctx *parser.TypedObjectLiteralContext) interface{} {
+	typedObjLit := &ast.TypedObjectLiteral{
+		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
+	}
+
+	if fieldList := v.acceptOptional(ctx.ObjectFieldList()); fieldList != nil {
+		typedObjLit.Fields = fieldList.([]ast.ObjectField)
+	}
+
+	return typedObjLit
+}
+
 // Type annotations
 // Helper visitors for rules that don't directly map to AST
 

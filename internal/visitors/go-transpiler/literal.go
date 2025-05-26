@@ -194,6 +194,87 @@ func (t *GoTranspiler) VisitStructInitExpr(node *mast.StructInitExpr) ast.Node {
 	}
 }
 
+// VisitTypedObjectLiteral transpiles typed object literals to Go pointer assignments
+func (t *GoTranspiler) VisitTypedObjectLiteral(node *mast.TypedObjectLiteral) ast.Node {
+	if node == nil {
+		return &ast.Ident{Name: "nil"}
+	}
+
+	structType := t.getStructType(node.Name)
+	fields := t.buildStructFields(node.Fields)
+
+	return &ast.UnaryExpr{
+		Op: token.AND,
+		X: &ast.CompositeLit{
+			Type: structType,
+			Elts: fields,
+		},
+	}
+}
+
+// getStructType returns the struct type expression for the given name
+func (t *GoTranspiler) getStructType(name string) ast.Expr {
+	if name != "" {
+		return &ast.Ident{Name: t.generateVarName(name)}
+	}
+	return &ast.Ident{Name: "interface{}"}
+}
+
+// buildStructFields converts object fields to struct field expressions
+func (t *GoTranspiler) buildStructFields(fields []mast.ObjectField) []ast.Expr {
+	var result []ast.Expr
+	for _, field := range fields {
+		keyExpr := t.getFieldKey(field.Name)
+		valueExpr := t.getFieldValue(field.Value, keyExpr)
+
+		result = append(result, &ast.KeyValueExpr{
+			Key:   keyExpr,
+			Value: valueExpr,
+		})
+	}
+	return result
+}
+
+// getFieldKey extracts the field key as an unquoted identifier
+func (t *GoTranspiler) getFieldKey(name mast.Node) ast.Expr {
+	if name == nil {
+		return &ast.Ident{Name: "unknown"}
+	}
+
+	nameResult := t.Visit(name)
+
+	if ident, ok := nameResult.(*ast.Ident); ok {
+		return &ast.Ident{Name: ident.Name}
+	}
+
+	if str, ok := nameResult.(*ast.BasicLit); ok && str.Kind == token.STRING {
+		if unquoted, err := strconv.Unquote(str.Value); err == nil {
+			return &ast.Ident{Name: unquoted}
+		}
+	}
+
+	return &ast.Ident{Name: "unknown"}
+}
+
+// getFieldValue gets the field value expression, handling shorthand properties
+func (t *GoTranspiler) getFieldValue(value mast.Node, keyExpr ast.Expr) ast.Expr {
+	if value != nil {
+		if valueResult := t.Visit(value); valueResult != nil {
+			if expr, ok := valueResult.(ast.Expr); ok {
+				return expr
+			}
+		}
+		return &ast.Ident{Name: "nil"}
+	}
+
+	// Shorthand property - use the key name as value
+	if ident, ok := keyExpr.(*ast.Ident); ok {
+		return &ast.Ident{Name: t.generateVarName(ident.Name)}
+	}
+
+	return &ast.Ident{Name: "nil"}
+}
+
 // VisitStringContent transpiles string content
 func (t *GoTranspiler) VisitStringContent(node *mast.StringContent) ast.Node {
 	if node == nil || node.Content == "" {

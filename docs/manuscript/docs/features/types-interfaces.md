@@ -20,15 +20,84 @@ type User {
 }
 ```
 
-### Creating Type Instances
+### Type Instantiation Syntax
+
+manuscript supports flexible comma usage in type instantiation:
+
+- **Multi-line format**: Commas are optional when each field is on a separate line
+- **Single-line format**: Commas are required to separate fields
+
 ```ms
-let user = User{
-  name: "Alice Johnson",
-  email: "alice@example.com", 
-  age: 30,
+// Multi-line: no commas needed
+let user1 = User{
+  name: "Alice"
+  email: "alice@example.com"
+  age: 30
+  active: true
+}
+
+// Single-line: commas required
+let user2 = User{name: "Bob", email: "bob@example.com", age: 25, active: false}
+
+// Mixed format: commas required when multiple fields on same line
+let user3 = User{
+  name: "Charlie", email: "charlie@example.com"
+  age: 35
   active: true
 }
 ```
+
+### Typed vs Untyped Literals
+
+manuscript supports both typed and untyped literal syntax for creating instances:
+
+#### Typed Literals
+Explicitly specify the type name when creating instances:
+
+```ms
+// Typed literal - type is explicitly specified
+let user = User{
+  name: "Alice"
+  email: "alice@example.com"
+  age: 30
+}
+
+// Typed literal with single-line syntax
+let product = Product{name: "Laptop", price: 999.99}
+```
+
+#### Untyped Literals
+Create instances without specifying the type name when the type can be inferred:
+
+```ms
+let a = {
+  name: "Bob"
+  email: "bob@example.com"
+  age: 25
+}
+
+// Variable with explicit type annotation
+let user  = User {
+  name: "Charlie"
+  email: "charlie@example.com"
+  age: 35
+}
+
+// Array of typed elements
+let users User[] = [
+  {name: "Alice", email: "alice@example.com", age: 30},
+  {
+    name: "Bob"
+    email: "bob@example.com"
+    age: 25
+  }
+]
+```
+
+#### When to Use Each
+
+- **Typed literals**: For storing strucuted data quickly, needed only for a small part of the code
+- **Untyped literals**: Use when type is clear from context (function parameters, variable annotations, etc.)
 
 ### Optional Fields
 ```ms
@@ -39,11 +108,15 @@ type Product {
   category string?     // optional field
 }
 
+// Multi-line: commas optional
 let product = Product{
-  name: "Laptop",
+  name: "Laptop"
   price: 999.99
   // description and category are optional
 }
+
+// Single-line: commas required
+let product2 = Product{name: "Mouse", price: 29.99}
 ```
 
 ## Type Extension
@@ -86,9 +159,7 @@ type Coordinates = (float, float)
 
 ### Complex Aliases
 ```ms
-type UserMap = map[string]User
 type EventHandler = fn(Event) void
-type Result[T] = T | Error
 ```
 
 ## Interfaces
@@ -126,7 +197,7 @@ type Rectangle {
   height float
 }
 
-methods Rectangle as Drawable {
+methods Rectangle as this {
   draw() void {
     print("Drawing rectangle: " + string(this.width) + "x" + string(this.height))
   }
@@ -143,7 +214,7 @@ methods Rectangle as Drawable {
 
 ### Multiple Interface Implementation
 ```ms
-methods Rectangle as Serializable {
+methods Rectangle as this {
   serialize() string {
     return "Rectangle{" + string(this.width) + "," + string(this.height) + "}"
   }
@@ -163,10 +234,14 @@ type Container[T] {
   metadata map[string]string
 }
 
+// Multi-line: commas optional
 let stringContainer = Container[string]{
-  value: "hello",
+  value: "hello"
   metadata: ["type": "text"]
 }
+
+// Single-line: commas required  
+let intContainer = Container[int]{value: 42, metadata: ["type": "number"]}
 ```
 
 ### Union Types

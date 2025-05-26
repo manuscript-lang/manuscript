@@ -292,6 +292,10 @@ func (v *ParseTreeToAST) VisitLabelPrimaryStructInit(ctx *parser.LabelPrimaryStr
 	return ctx.StructInitExpr().Accept(v)
 }
 
+func (v *ParseTreeToAST) VisitLabelPrimaryTypedObject(ctx *parser.LabelPrimaryTypedObjectContext) interface{} {
+	return ctx.TypedObjectLiteral().Accept(v)
+}
+
 // Try expressions
 
 func (v *ParseTreeToAST) VisitTryExpr(ctx *parser.TryExprContext) interface{} {

@@ -193,3 +193,19 @@ type StructField struct {
 	NamedNode
 	Value Expression
 }
+
+// Typed object literal
+
+type TypedObjectLiteral struct {
+	NamedNode
+	Fields       []ObjectField
+	InferredType Type
+}
+
+func (e *TypedObjectLiteral) GetInferredType() Type {
+	return e.InferredType
+}
+
+func (e *TypedObjectLiteral) SetInferredType(t Type) {
+	e.InferredType = t
+}

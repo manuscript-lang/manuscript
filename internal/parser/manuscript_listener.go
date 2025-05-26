@@ -332,6 +332,9 @@ type ManuscriptListener interface {
 	// EnterLabelPrimaryStructInit is called when entering the LabelPrimaryStructInit production.
 	EnterLabelPrimaryStructInit(c *LabelPrimaryStructInitContext)
 
+	// EnterLabelPrimaryTypedObject is called when entering the LabelPrimaryTypedObject production.
+	EnterLabelPrimaryTypedObject(c *LabelPrimaryTypedObjectContext)
+
 	// EnterTryExpr is called when entering the tryExpr production.
 	EnterTryExpr(c *TryExprContext)
 
@@ -448,6 +451,9 @@ type ManuscriptListener interface {
 
 	// EnterStructField is called when entering the structField production.
 	EnterStructField(c *StructFieldContext)
+
+	// EnterTypedObjectLiteral is called when entering the typedObjectLiteral production.
+	EnterTypedObjectLiteral(c *TypedObjectLiteralContext)
 
 	// EnterLabelTypeAnnID is called when entering the LabelTypeAnnID production.
 	EnterLabelTypeAnnID(c *LabelTypeAnnIDContext)
@@ -800,6 +806,9 @@ type ManuscriptListener interface {
 	// ExitLabelPrimaryStructInit is called when exiting the LabelPrimaryStructInit production.
 	ExitLabelPrimaryStructInit(c *LabelPrimaryStructInitContext)
 
+	// ExitLabelPrimaryTypedObject is called when exiting the LabelPrimaryTypedObject production.
+	ExitLabelPrimaryTypedObject(c *LabelPrimaryTypedObjectContext)
+
 	// ExitTryExpr is called when exiting the tryExpr production.
 	ExitTryExpr(c *TryExprContext)
 
@@ -916,6 +925,9 @@ type ManuscriptListener interface {
 
 	// ExitStructField is called when exiting the structField production.
 	ExitStructField(c *StructFieldContext)
+
+	// ExitTypedObjectLiteral is called when exiting the typedObjectLiteral production.
+	ExitTypedObjectLiteral(c *TypedObjectLiteralContext)
 
 	// ExitLabelTypeAnnID is called when exiting the LabelTypeAnnID production.
 	ExitLabelTypeAnnID(c *LabelTypeAnnIDContext)
