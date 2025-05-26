@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"manuscript-lang/manuscript/internal/compile"
 	"manuscript-lang/manuscript/internal/config"
 
 	"kr.dev/diff"
@@ -55,7 +56,7 @@ func TestManuscriptTranspile(t *testing.T) {
 func TestDumpTokens(t *testing.T) {
 	content := `let x = 1`
 	ctx := createTestContext(t)
-	actualGo, err := manuscriptToGo(content, ctx)
+	actualGo, err := compile.CompileManuscriptFromString(content, ctx)
 	if err != nil {
 		t.Fatalf("manuscriptToGo failed: %v", err)
 	}
@@ -65,26 +66,17 @@ func TestDumpTokens(t *testing.T) {
 }
 
 func createTestContext(t *testing.T) *config.CompilerContext {
-	// Try to load configuration from tests/compilation directory
-	testConfigDir, err := filepath.Abs(testDir)
+	ctx, err := config.NewCompilerContextFromFile("test.ms", "", "")
 	if err != nil {
-		t.Logf("Failed to get absolute path for test directory: %v", err)
-		// Fall back to default config
-		return config.NewCompilerContextWithConfig(config.DefaultCompilerOptions(), ".")
+		t.Fatalf("Failed to create test context: %v", err)
 	}
 
-	cfg, err := config.LoadConfig(testConfigDir)
-	if err != nil {
-		t.Logf("No configuration found in test directory, using defaults: %v", err)
-		cfg = config.DefaultCompilerOptions()
-	}
-
-	// Override with test-specific settings
+	// Set debug flag if the test flag is enabled
 	if *debug {
-		cfg.Debug = true
+		ctx.Debug = true
 	}
 
-	return config.NewCompilerContextWithConfig(cfg, testConfigDir)
+	return ctx
 }
 
 func runParseTest(t *testing.T, ctx *TestPairContext) {
@@ -96,12 +88,12 @@ func runParseTest(t *testing.T, ctx *TestPairContext) {
 		compilerCtx.Config.Merge(ctx.Config)
 	}
 
-	goCode, err := manuscriptToGo(ctx.Pair.MsCode, compilerCtx)
+	goCode, err := compile.CompileManuscriptFromString(ctx.Pair.MsCode, compilerCtx)
 	if err != nil {
-		if err.Error() == syntaxErrorCode && ctx.Pair.GoCode == syntaxErrorCode {
+		if err.Error() == compile.SyntaxErrorCode && ctx.Pair.GoCode == compile.SyntaxErrorCode {
 			return
 		}
-		t.Fatalf("manuscriptToGo failed: %v", err)
+		t.Fatalf("CompileManuscriptFromString failed: %v", err)
 	}
 	if *update {
 		updateTestContent(ctx, goCode)
