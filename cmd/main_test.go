@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"manuscript-lang/manuscript/internal/config"
+
 	"kr.dev/diff"
 )
 
@@ -42,7 +44,8 @@ type TestPair struct {
 type TestPairContext struct {
 	Pair     TestPair
 	FilePath string
-	Content  *[]byte // Pointer to shared content that gets updated
+	Content  *[]byte                 // Pointer to shared content that gets updated
+	Config   *config.CompilerOptions // Test-specific configuration
 }
 
 func TestManuscriptTranspile(t *testing.T) {
@@ -51,7 +54,8 @@ func TestManuscriptTranspile(t *testing.T) {
 
 func TestDumpTokens(t *testing.T) {
 	content := `let x = 1`
-	actualGo, err := manuscriptToGo(content, true)
+	ctx := createTestContext(t)
+	actualGo, err := manuscriptToGo(content, ctx)
 	if err != nil {
 		t.Fatalf("manuscriptToGo failed: %v", err)
 	}
@@ -60,8 +64,39 @@ func TestDumpTokens(t *testing.T) {
 	}
 }
 
+func createTestContext(t *testing.T) *config.CompilerContext {
+	// Try to load configuration from tests/compilation directory
+	testConfigDir, err := filepath.Abs(testDir)
+	if err != nil {
+		t.Logf("Failed to get absolute path for test directory: %v", err)
+		// Fall back to default config
+		return config.NewCompilerContextWithConfig(config.DefaultCompilerOptions(), ".")
+	}
+
+	cfg, err := config.LoadConfig(testConfigDir)
+	if err != nil {
+		t.Logf("No configuration found in test directory, using defaults: %v", err)
+		cfg = config.DefaultCompilerOptions()
+	}
+
+	// Override with test-specific settings
+	if *debug {
+		cfg.Debug = true
+	}
+
+	return config.NewCompilerContextWithConfig(cfg, testConfigDir)
+}
+
 func runParseTest(t *testing.T, ctx *TestPairContext) {
-	goCode, err := manuscriptToGo(ctx.Pair.MsCode, *debug)
+	// Create compiler context for this test
+	compilerCtx := createTestContext(t)
+
+	// If test has specific config, merge it
+	if ctx.Config != nil {
+		compilerCtx.Config.Merge(ctx.Config)
+	}
+
+	goCode, err := manuscriptToGo(ctx.Pair.MsCode, compilerCtx)
 	if err != nil {
 		if err.Error() == syntaxErrorCode && ctx.Pair.GoCode == syntaxErrorCode {
 			return

@@ -9,16 +9,17 @@ import (
 	"go/printer"
 	"go/token"
 	"log"
-
-	mast "manuscript-lang/manuscript/internal/ast"
-	parser "manuscript-lang/manuscript/internal/parser"
-	transpiler "manuscript-lang/manuscript/internal/visitors/go-transpiler"
-	mastb "manuscript-lang/manuscript/internal/visitors/mast-builder"
-
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
+
+	mast "manuscript-lang/manuscript/internal/ast"
+	"manuscript-lang/manuscript/internal/config"
+	parser "manuscript-lang/manuscript/internal/parser"
+	transpiler "manuscript-lang/manuscript/internal/visitors/go-transpiler"
+	mastb "manuscript-lang/manuscript/internal/visitors/mast-builder"
 )
 
 const (
@@ -41,8 +42,8 @@ func (l *SyntaxErrorListener) SyntaxError(recognizer antlr.Recognizer, offending
 	l.Errors = append(l.Errors, fmt.Sprintf("line %d:%d %s", line, column, msg))
 }
 
-func manuscriptToGo(input string, debug bool) (string, error) {
-	tree, errorListener := parseManuscriptCode(input, debug)
+func manuscriptToGo(input string, ctx *config.CompilerContext) (string, error) {
+	tree, errorListener := parseManuscriptCode(input, ctx.Config.Debug)
 	if len(errorListener.Errors) > 0 {
 		for _, err := range errorListener.Errors {
 			fmt.Printf("Syntax error: %s\n", err)
@@ -50,7 +51,7 @@ func manuscriptToGo(input string, debug bool) (string, error) {
 		return "", errors.New(syntaxErrorCode)
 	}
 
-	return convertToGoCode(tree), nil
+	return convertToGoCode(tree, ctx), nil
 }
 
 func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, *SyntaxErrorListener) {
@@ -69,7 +70,7 @@ func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, *Sy
 	return tree, errorListener
 }
 
-func convertToGoCode(tree parser.IProgramContext) string {
+func convertToGoCode(tree parser.IProgramContext, ctx *config.CompilerContext) string {
 	visitor := mastb.NewParseTreeToAST()
 	result := tree.Accept(visitor)
 
@@ -78,7 +79,7 @@ func convertToGoCode(tree parser.IProgramContext) string {
 		return ""
 	}
 
-	transpiler := transpiler.NewGoTranspiler("main")
+	transpiler := transpiler.NewGoTranspiler(ctx.Config.PackageName)
 	goNode := transpiler.Visit(mnode)
 	if goNode == nil {
 		return ""
@@ -117,16 +118,75 @@ func dumpTokens(stream *antlr.CommonTokenStream) {
 func main() {
 	// Define command line flags
 	debugFlag := flag.Bool("debug", false, "Enable token dumping for debugging")
+	configFlag := flag.String("config", "", "Path to configuration file (ms.yml)")
+	outputFlag := flag.String("output", "", "Output directory")
+	packageFlag := flag.String("package", "", "Package name for generated Go code")
 	flag.BoolVar(debugFlag, "d", false, "Enable token dumping for debugging (shorthand)")
 	flag.Parse()
 
 	args := flag.Args()
 	if len(args) < 1 {
-		fmt.Println("Usage: msc [-debug] <filename>")
+		fmt.Println("Usage: msc [-debug] [-config path] [-output dir] [-package name] <filename>")
 		return
 	}
 
 	filename := args[0]
+
+	// Get working directory
+	workingDir, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("failed to get working directory: %v\n", err)
+		return
+	}
+
+	// Create compiler context
+	var ctx *config.CompilerContext
+	if *configFlag != "" {
+		cfg, err := config.LoadConfigFromPath(*configFlag)
+		if err != nil {
+			fmt.Printf("failed to load config file %s: %v\n", *configFlag, err)
+			return
+		}
+		ctx = config.NewCompilerContextWithConfig(cfg, workingDir)
+	} else {
+		ctx, err = config.NewCompilerContext(workingDir)
+		if err != nil {
+			fmt.Printf("failed to create compiler context: %v\n", err)
+			return
+		}
+	}
+
+	// Set source file and load local config
+	absFilename, err := filepath.Abs(filename)
+	if err != nil {
+		fmt.Printf("failed to get absolute path for %s: %v\n", filename, err)
+		return
+	}
+
+	err = ctx.SetSourceFile(absFilename)
+	if err != nil {
+		fmt.Printf("failed to set source file: %v\n", err)
+		return
+	}
+
+	// Override config with command line flags (highest precedence)
+	if *debugFlag {
+		ctx.Config.Debug = true
+	}
+	if *outputFlag != "" {
+		ctx.Config.OutputDir = *outputFlag
+	}
+	if *packageFlag != "" {
+		ctx.Config.PackageName = *packageFlag
+	}
+
+	// Validate configuration
+	err = ctx.Config.Validate()
+	if err != nil {
+		fmt.Printf("invalid configuration: %v\n", err)
+		return
+	}
+
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		fmt.Printf("failed to read file %s: %v\n", filename, err)
@@ -134,7 +194,7 @@ func main() {
 	}
 
 	program := string(content)
-	goCode, err := manuscriptToGo(program, *debugFlag)
+	goCode, err := manuscriptToGo(program, ctx)
 	if err != nil {
 		fmt.Printf("failed to compile program: %v\n", err)
 		return
