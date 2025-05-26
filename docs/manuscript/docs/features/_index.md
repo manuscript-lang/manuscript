@@ -23,6 +23,9 @@ Conditional statements, loops, and pattern matching.
 ### [Data Structures](data-structures/)
 Arrays, objects, maps, and custom types.
 
+### [Piped Syntax](piped-syntax/)
+Chain function calls using pipeline syntax for data processing workflows.
+
 ### [Error Handling](error-handling/)
 Error types, handling patterns, and result types.
 
@@ -65,6 +68,9 @@ for item in collection {
   // code
 }
 
+// Piped Syntax
+data | transform | validate | save
+
 // Types
 type CustomType {
   field string
@@ -80,6 +86,7 @@ The following features are currently implemented and documented:
 - ✅ Functions and parameters
 - ✅ Control flow (if/else, loops)
 - ✅ Basic data structures
+- ✅ Piped syntax for function chaining
 - ✅ Error handling with bang functions
 - ✅ Pattern matching
 - ✅ Module imports

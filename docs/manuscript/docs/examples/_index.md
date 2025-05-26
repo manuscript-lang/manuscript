@@ -205,7 +205,7 @@ fn main() {
 ```
 
 ### Data Processing Pipeline
-Example showing data transformation and processing:
+Example showing data transformation and processing with piped syntax:
 
 ```ms
 import { readFile, writeFile } from 'os'
@@ -219,34 +219,31 @@ type Sale {
   customer string
 }
 
-fn parseSalesData(content string) []Sale! {
-  let lines = split(content, "\n")
-  let sales = []Sale
-  
-  for i, line in lines {
-    if i == 0 || trim(line) == "" {
-      continue  // Skip header and empty lines
-    }
-    
-    let fields = split(line, ",")
-    if len(fields) != 4 {
-      return error("Invalid format at line ${i + 1}")
-    }
-    
-    let amount = try parseFloat(trim(fields[2]))
-    
-    sales.append(Sale{
-      date: trim(fields[0])
-      product: trim(fields[1])
-      amount: amount
-      customer: trim(fields[3])
-    })
+fn parseLine(line string, index int) Sale! {
+  if index == 0 || trim(line) == "" {
+    return error("Skip header or empty line")
   }
   
-  return sales
+  let fields = split(line, ",")
+  if len(fields) != 4 {
+    return error("Invalid format at line ${index + 1}")
+  }
+  
+  let amount = try parseFloat(trim(fields[2]))
+  
+  return Sale{
+    date: trim(fields[0])
+    product: trim(fields[1])
+    amount: amount
+    customer: trim(fields[3])
+  }
 }
 
-fn generateReport(sales []Sale) string {
+fn filterValidSales(sale Sale) bool {
+  return sale.amount > 0
+}
+
+fn calculateTotals(sales []Sale) (float, [:]float, [:]float) {
   let totalSales = 0.0
   let productTotals = [:]float
   let customerTotals = [:]float
@@ -257,6 +254,10 @@ fn generateReport(sales []Sale) string {
     customerTotals[sale.customer] = customerTotals[sale.customer] + sale.amount
   }
   
+  return totalSales, productTotals, customerTotals
+}
+
+fn formatReport(totalSales float, sales []Sale, productTotals [:]float) string {
   let report = []string{
     "Sales Report"
     "============"
@@ -268,7 +269,6 @@ fn generateReport(sales []Sale) string {
     "Top Products:"
   }
   
-  // Add top products (simplified)
   for product, total in productTotals {
     report.append("  ${product}: $${total}")
   }
@@ -277,17 +277,35 @@ fn generateReport(sales []Sale) string {
 }
 
 fn main() {
+  // Traditional approach
   let content = try readFile("sales.csv") else {
     print("Error reading file: ${error}")
     return
   }
   
-  let sales = try parseSalesData(content) else {
-    print("Error parsing data: ${error}")
-    return
+  let lines = split(content, "\n")
+  let sales = []Sale
+  
+  for i, line in lines {
+    let sale = try parseLine(line, i) else { continue }
+    if filterValidSales(sale) {
+      sales.append(sale)
+    }
   }
   
-  let report = generateReport(sales)
+  let totalSales, productTotals, customerTotals = calculateTotals(sales)
+  let report = formatReport(totalSales, sales, productTotals)
+  
+  // Using piped syntax for cleaner data processing
+  fn processWithPipeline() {
+    readFile("sales.csv") 
+      | split content="\n"
+      | parseLine 
+      | filterValidSales 
+      | calculateTotals 
+      | formatReport 
+      | writeFile filename="report.txt"
+  }
   
   try writeFile("report.txt", report) else {
     print("Error writing report: ${error}")

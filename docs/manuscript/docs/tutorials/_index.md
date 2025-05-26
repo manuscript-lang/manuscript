@@ -63,7 +63,7 @@ Create a robust configuration file parser demonstrating advanced data handling.
 *Coming soon*
 {{< /card >}}
 
-{{< card header="**Data Processing Pipeline**" >}}
+{{< card header="**[Data Processing Pipeline](data-processing-pipeline)**" >}}
 Build a data transformation tool showcasing functional programming patterns.
 - File parsing and processing
 - Data transformation pipelines
@@ -71,7 +71,7 @@ Build a data transformation tool showcasing functional programming patterns.
 - Performance optimization
 - Batch processing
 
-*Coming soon*
+*Available now*
 {{< /card >}}
 {{< /cardpane >}}
 
