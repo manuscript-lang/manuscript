@@ -40,11 +40,11 @@ profile-test:
 	cd cmd && go tool pprof -http=:8080 ./main.test cpu.prof
 
 build-lsp:
-	go build -ldflags '-s -w' -o build/msc-lsp tools/lsp/main.go
+	go build -ldflags '-s -w' -o build/msc-lsp publish/lsp/main.go
 
 build-vscode-extension: build-lsp
-	cp build/msc-lsp tools/manuscript-vscode-extension/msc-lsp
-	cd tools/manuscript-vscode-extension && npm run build
+	cp build/msc-lsp publish/manuscript-vscode-extension/msc-lsp
+	cd publish/manuscript-vscode-extension && npm run build
 
 # Documentation website targets
 HUGO_BIN := $(shell [ -x build/hugo ] && echo ../../build/hugo || echo hugo)
@@ -57,15 +57,15 @@ download-hugo-darwin:
 
 build-docs:
 	@echo "Updating Hugo modules..."
-	@cd tools/docs-web && $(HUGO_BIN) mod tidy
+	@cd publish/docs-web && $(HUGO_BIN) mod tidy
 	@echo "Building documentation website..."
-	@cd tools/docs-web && $(HUGO_BIN) --destination ../../build/docs-web
+	@cd publish/docs-web && $(HUGO_BIN) --destination ../../build/docs-web
 
 serve-docs:
 	@echo "Updating Hugo modules..."
-	@cd tools/docs-web && $(HUGO_BIN) mod tidy
+	@cd publish/docs-web && $(HUGO_BIN) mod tidy
 	@echo "Serving documentation website locally..."
-	@cd tools/docs-web && $(HUGO_BIN) server --bind 0.0.0.0 --port 1313 --destination ../../build/docs-web
+	@cd publish/docs-web && $(HUGO_BIN) server --bind 0.0.0.0 --port 1313 --destination ../../build/docs-web
 
 clean-docs:
 	@echo "Cleaning documentation build..."
