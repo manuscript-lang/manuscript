@@ -2,115 +2,115 @@
 
 # Bug reports
 bug:
-  - '\b(bug|error|issue|problem|broken|fail|crash|exception)\b'
-  - '\b(not working|doesn''t work|does not work)\b'
-  - '\b(unexpected behavior|incorrect|wrong)\b'
+  - '(bug|error|issue|problem|broken|fail|crash|exception)'
+  - '(not working|doesn''t work|does not work)'
+  - '(unexpected behavior|incorrect|wrong)'
 
 # Feature requests
 enhancement:
-  - '\b(feature|enhancement|improvement|suggestion)\b'
-  - '\b(add|implement|support|would like|wish|want)\b'
-  - '\b(new feature|feature request)\b'
+  - '(feature|enhancement|improvement|suggestion)'
+  - '(add|implement|support|would like|wish|want)'
+  - '(new feature|feature request)'
 
 # Documentation related
 documentation:
-  - '\b(doc|docs|documentation|readme|guide|tutorial)\b'
-  - '\b(example|examples|sample)\b'
+  - '(doc|docs|documentation|readme|guide|tutorial)'
+  - '(example|examples|sample)'
   - 'docs/'
   - 'README'
-  - '\b(typo|spelling|grammar)\b'
+  - '(typo|spelling|grammar)'
 
 # Language features and grammar
 language:
-  - '\b(grammar|syntax|parser|lexer|ast)\b'
-  - '\b(language feature|language construct)\b'
-  - '\b(keyword|operator|expression)\b'
+  - '(grammar|syntax|parser|lexer|ast)'
+  - '(language feature|language construct)'
+  - '(keyword|operator|expression)'
   - 'internal/grammar'
   - 'internal/parser'
   - 'internal/ast'
 
 # Compiler and transpiler
 compiler:
-  - '\b(compiler|compilation|transpiler|transpilation)\b'
-  - '\b(code generation|codegen|generate)\b'
+  - '(compiler|compilation|transpiler|transpilation)'
+  - '(code generation|codegen|generate)'
   - 'internal/compile'
   - 'visitors/go-transpiler'
 
 # Standard library
 stdlib:
-  - '\b(stdlib|standard library|builtin|builtins)\b'
+  - '(stdlib|standard library|builtin|builtins)'
   - 'stdlib/'
   - 'internal/builtins'
 
 # Testing
 testing:
-  - '\b(test|testing|spec|coverage)\b'
+  - '(test|testing|spec|coverage)'
   - 'tests/'
-  - '\b(unit test|integration test)\b'
+  - '(unit test|integration test)'
 
 # Performance
 performance:
-  - '\b(performance|speed|slow|fast|optimization|optimize)\b'
-  - '\b(memory|cpu|benchmark)\b'
+  - '(performance|speed|slow|fast|optimization|optimize)'
+  - '(memory|cpu|benchmark)'
 
 # CLI and tooling
 cli:
-  - '\b(cli|command line|tool|binary)\b'
+  - '(cli|command line|tool|binary)'
   - 'cmd/'
-  - '\b(flag|argument|option)\b'
+  - '(flag|argument|option)'
 
 # Editor support
 editor:
-  - '\b(editor|vscode|syntax highlighting|lsp)\b'
+  - '(editor|vscode|syntax highlighting|lsp)'
   - 'manuscript-vscode-extension'
   - 'publish/lsp'
-  - '\b(intellisense|autocomplete|completion)\b'
+  - '(intellisense|autocomplete|completion)'
 
 # Configuration
 config:
-  - '\b(config|configuration|settings)\b'
+  - '(config|configuration|settings)'
   - 'internal/config'
-  - '\b(yaml|yml|json|toml)\b'
+  - '(yaml|yml|json|toml)'
 
 # Build and CI/CD
 build:
-  - '\b(build|ci|cd|github actions|workflow)\b'
+  - '(build|ci|cd|github actions|workflow)'
   - 'Makefile'
   - '\.github/'
-  - '\b(docker|container)\b'
+  - '(docker|container)'
 
 # Good first issue (for newcomers)
 "good first issue":
-  - '\b(good first issue|beginner|easy|starter)\b'
-  - '\b(newcomer|first contribution)\b'
+  - '(good first issue|beginner|easy|starter)'
+  - '(newcomer|first contribution)'
 
 # Help wanted
 "help wanted":
-  - '\b(help wanted|help needed|assistance)\b'
-  - '\b(looking for help|need help)\b'
+  - '(help wanted|help needed|assistance)'
+  - '(looking for help|need help)'
 
 # Question
 question:
-  - '\b(question|how to|how do|help)\b'
+  - '(question|how to|how do|help)'
   - '\?'
-  - '\b(confused|unclear|understand)\b'
+  - '(confused|unclear|understand)'
 
 # Duplicate
 duplicate:
-  - '\b(duplicate|already reported|same as)\b'
+  - '(duplicate|already reported|same as)'
 
 # Invalid
 invalid:
-  - '\b(invalid|not a bug|not an issue)\b'
-  - '\b(user error|misunderstanding)\b'
+  - '(invalid|not a bug|not an issue)'
+  - '(user error|misunderstanding)'
 
 # Priority labels
 "priority/high":
-  - '\b(urgent|critical|high priority|blocker)\b'
-  - '\b(security|vulnerability)\b'
+  - '(urgent|critical|high priority|blocker)'
+  - '(security|vulnerability)'
 
 "priority/medium":
-  - '\b(medium priority|important)\b'
+  - '(medium priority|important)'
 
 "priority/low":
-  - '\b(low priority|nice to have|minor)\b' 
+  - '(low priority|nice to have|minor)' 
