@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"testing"
 
 	"manuscript-lang/manuscript/internal/compile"
@@ -27,12 +26,6 @@ var (
 var (
 	codeBlockRegex = regexp.MustCompile("(?s)```\\s*(\\w+)\\s*\\n(.*?)\\n```")
 	titleRegex     = regexp.MustCompile(`(?m)^#\s+(.*)$`)
-)
-
-// Cache for compiler context to avoid repeated creation
-var (
-	contextCache     *config.CompilerContext
-	contextCacheOnce sync.Once
 )
 
 func TestMain(m *testing.M) {
@@ -64,31 +57,25 @@ func TestManuscriptTranspile(t *testing.T) {
 }
 
 func createTestContext(t *testing.T) *config.CompilerContext {
-	contextCacheOnce.Do(func() {
-		ctx, err := config.NewCompilerContextFromFile("test.ms", "", "")
-		if err != nil {
-			t.Fatalf("Failed to create test context: %v", err)
-		}
-		contextCache = ctx
-	})
-
-	// Create a copy of the cached context for this test
-	ctx := &config.CompilerContext{
-		SourceFile:     contextCache.SourceFile,
-		Config:         contextCache.Config,
-		ModuleResolver: contextCache.ModuleResolver,
-		Debug:          *debug || contextCache.Debug,
+	cfg := &config.MsConfig{
+		CompilerOptions: config.CompilerOptions{
+			OutputDir: "./build",
+			EntryFile: "",
+		},
 	}
+
+	ctx, err := config.NewCompilerContext(cfg, ".", "test.ms")
+	if err != nil {
+		t.Fatalf("Failed to create test context: %v", err)
+	}
+
+	ctx.Debug = *debug
 
 	return ctx
 }
 
 func runParseTest(t *testing.T, ctx *TestPairContext) {
 	compilerCtx := createTestContext(t)
-
-	if ctx.Config != nil {
-		compilerCtx.Config.Merge(ctx.Config)
-	}
 
 	goCode, err := compile.CompileManuscriptFromString(ctx.Pair.MsCode, compilerCtx)
 	if err != nil {

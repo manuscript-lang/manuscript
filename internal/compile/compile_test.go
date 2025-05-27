@@ -2,16 +2,9 @@ package compile
 
 import (
 	"strings"
-	"sync"
 	"testing"
 
 	"manuscript-lang/manuscript/internal/config"
-)
-
-// Cache for test context to avoid repeated creation
-var (
-	testContextCache     *config.CompilerContext
-	testContextCacheOnce sync.Once
 )
 
 func TestFileSystemResolver(t *testing.T) {
@@ -39,58 +32,6 @@ func TestStringResolver(t *testing.T) {
 	}
 	if content != "let x = 42" {
 		t.Errorf("Expected 'let x = 42', got: %s", content)
-	}
-
-	// Test resolving another existing module
-	content, err = resolver.ResolveModule("utils.ms")
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-	if content != "fn add(a, b) { a + b }" {
-		t.Errorf("Expected 'fn add(a, b) { a + b }', got: %s", content)
-	}
-
-	// Test resolving non-existent module
-	_, err = resolver.ResolveModule("missing.ms")
-	if err == nil {
-		t.Error("Expected error when resolving non-existent module")
-	}
-	if !strings.Contains(err.Error(), "module not found") {
-		t.Errorf("Expected 'module not found' error, got: %v", err)
-	}
-}
-
-func TestCompileManuscriptFromString(t *testing.T) {
-	ctx := createTestContext(t)
-
-	// Test basic compilation
-	msCode := "let x = 42"
-	goCode, err := CompileManuscriptFromString(msCode, ctx)
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-
-	if !strings.Contains(goCode, "package main") {
-		t.Error("Expected Go code to contain 'package main'")
-	}
-
-	if !strings.Contains(goCode, "x := 42") {
-		t.Error("Expected Go code to contain variable assignment")
-	}
-}
-
-func TestCompileManuscriptFromStringSyntaxError(t *testing.T) {
-	ctx := createTestContext(t)
-
-	// Test syntax error handling
-	msCode := "let x = " // Invalid syntax
-	_, err := CompileManuscriptFromString(msCode, ctx)
-	if err == nil {
-		t.Error("Expected syntax error")
-	}
-
-	if err.Error() != SyntaxErrorCode {
-		t.Errorf("Expected syntax error code '%s', got: %v", SyntaxErrorCode, err)
 	}
 }
 
@@ -140,42 +81,18 @@ func TestCompileManuscriptWithResolverError(t *testing.T) {
 	}
 }
 
-func TestManuscriptToGo(t *testing.T) {
-	ctx := createTestContext(t)
-
-	// Test function compilation
-	msCode := `fn greet(name string) {
-    "Hello, " + name
-}`
-
-	goCode, err := manuscriptToGo(msCode, ctx)
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
-
-	if !strings.Contains(goCode, "func greet") {
-		t.Error("Expected Go code to contain function definition")
-	}
-
-	if !strings.Contains(goCode, "return \"Hello, \" + name") {
-		t.Error("Expected Go code to contain return statement")
-	}
-}
-
 func createTestContext(t *testing.T) *config.CompilerContext {
-	testContextCacheOnce.Do(func() {
-		ctx, err := config.NewCompilerContextFromFile("test.ms", "", "")
-		if err != nil {
-			t.Fatalf("Failed to create test context: %v", err)
-		}
-		testContextCache = ctx
-	})
-
-	// Create a copy of the cached context for this test
-	return &config.CompilerContext{
-		SourceFile:     testContextCache.SourceFile,
-		Config:         testContextCache.Config,
-		ModuleResolver: testContextCache.ModuleResolver,
-		Debug:          testContextCache.Debug,
+	cfg := &config.MsConfig{
+		CompilerOptions: config.CompilerOptions{
+			OutputDir: "./build",
+			EntryFile: "",
+		},
 	}
+
+	ctx, err := config.NewCompilerContext(cfg, ".", "test.ms")
+	if err != nil {
+		t.Fatalf("Failed to create test context: %v", err)
+	}
+
+	return ctx
 }

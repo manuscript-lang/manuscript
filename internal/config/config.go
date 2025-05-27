@@ -16,26 +16,33 @@ type CompilerOptions struct {
 	EntryFile string `yaml:"entryFile" json:"entryFile"`
 }
 
-// DefaultCompilerOptions returns the default compiler configuration
-func DefaultCompilerOptions() *CompilerOptions {
-	return &CompilerOptions{
-		OutputDir: "./build",
-		EntryFile: "",
+// MsConfig represents the top-level configuration structure
+type MsConfig struct {
+	CompilerOptions CompilerOptions `yaml:"compilerOptions" json:"compilerOptions"`
+}
+
+// DefaultConfig returns the default configuration
+func DefaultConfig() *MsConfig {
+	return &MsConfig{
+		CompilerOptions: CompilerOptions{
+			OutputDir: "./build",
+			EntryFile: "",
+		},
 	}
 }
 
-// LoadCompilerOptions loads configuration from file, with optional config path from env var
-func LoadCompilerOptions(path string) (*CompilerOptions, error) {
-	if envPath := os.Getenv("MS_CONFIG_FILE"); envPath != "" {
-		path = envPath
-	}
-	if path == "" {
-		path = "."
+// LoadConfig loads configuration from a file path
+func LoadConfig(configPath string) (*MsConfig, error) {
+	if configPath == "" {
+		return DefaultConfig(), nil
 	}
 
-	configPath := findConfig(path)
-	if configPath == "" {
-		return DefaultCompilerOptions(), nil
+	// If path is a directory, look for config files in it
+	if stat, err := os.Stat(configPath); err == nil && stat.IsDir() {
+		configPath = findConfigInDir(configPath)
+		if configPath == "" {
+			return DefaultConfig(), nil
+		}
 	}
 
 	data, err := os.ReadFile(configPath)
@@ -43,7 +50,7 @@ func LoadCompilerOptions(path string) (*CompilerOptions, error) {
 		return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
 	}
 
-	config := &CompilerOptions{}
+	config := &MsConfig{}
 	if strings.HasSuffix(configPath, ".json") {
 		err = json.Unmarshal(data, config)
 	} else {
@@ -54,57 +61,23 @@ func LoadCompilerOptions(path string) (*CompilerOptions, error) {
 	}
 
 	// Apply defaults for empty fields
-	if config.OutputDir == "" {
-		config.OutputDir = "./build"
+	if config.CompilerOptions.OutputDir == "" {
+		config.CompilerOptions.OutputDir = "./build"
 	}
 
 	return config, nil
 }
 
-// findConfig finds the config file path, returns empty string if not found
-func findConfig(path string) string {
-	// If path is a file, return it directly
-	if stat, err := os.Stat(path); err == nil && !stat.IsDir() {
-		return path
-	}
-
-	dir, err := filepath.Abs(path)
-	if err != nil {
-		return ""
-	}
-
-	// Limit traversal to avoid infinite loops and improve performance
-	maxDepth := 10
-	depth := 0
-
+// findConfigInDir finds a config file in the specified directory
+func findConfigInDir(dir string) string {
 	configNames := []string{"ms.yml", "ms.yaml", "ms.json"}
 
-	for depth < maxDepth {
-		// Check all config files in current directory in one pass
-		for _, name := range configNames {
-			configPath := filepath.Join(dir, name)
-			if _, err := os.Stat(configPath); err == nil {
-				return configPath
-			}
+	for _, name := range configNames {
+		configPath := filepath.Join(dir, name)
+		if _, err := os.Stat(configPath); err == nil {
+			return configPath
 		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			// Reached filesystem root
-			break
-		}
-		dir = parent
-		depth++
 	}
 
 	return ""
-}
-
-// Merge merges another configuration into this one, with the other config taking precedence
-func (c *CompilerOptions) Merge(other *CompilerOptions) {
-	if other.OutputDir != "" {
-		c.OutputDir = other.OutputDir
-	}
-	if other.EntryFile != "" {
-		c.EntryFile = other.EntryFile
-	}
 }

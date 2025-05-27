@@ -24,13 +24,6 @@ type CompileResult struct {
 	Error  error
 }
 
-type CompileOptions struct {
-	Filename   string
-	ConfigPath string
-	OutDir     string
-	Debug      bool
-}
-
 const SyntaxErrorCode = "// SYNTAX ERROR"
 
 type SyntaxErrorListener struct {
@@ -52,8 +45,25 @@ func (l *SyntaxErrorListener) SyntaxError(
 	l.Errors = append(l.Errors, fmt.Sprintf("line %d:%d %s", line, column, msg))
 }
 
-func CompileFile(opts CompileOptions) {
-	ctx, err := createCompilerContext(opts)
+// RunFile compiles and runs a manuscript file
+func RunFile(filename string, cfg *config.MsConfig) {
+	ctx, err := createCompilerContext(filename, cfg, false)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	result := CompileManuscript(ctx)
+	if result.Error != nil {
+		fmt.Printf("Error: %v\n", result.Error)
+		return
+	}
+	fmt.Print(result.GoCode)
+}
+
+// BuildFile compiles a manuscript file for building
+func BuildFile(filename string, cfg *config.MsConfig, debug bool) {
+	ctx, err := createCompilerContext(filename, cfg, debug)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
@@ -85,64 +95,29 @@ func CompileManuscriptFromString(msCode string, ctx *config.CompilerContext) (st
 	return manuscriptToGo(msCode, ctx)
 }
 
-func RunFile(filename string) {
-	CompileFile(CompileOptions{Filename: filename})
-}
-
-func BuildFile(filename, configPath, outdir string, debug bool) {
-	CompileFile(CompileOptions{
-		Filename:   filename,
-		ConfigPath: configPath,
-		OutDir:     outdir,
-		Debug:      debug,
-	})
-}
-
-func createCompilerContext(opts CompileOptions) (*config.CompilerContext, error) {
-	var ctx *config.CompilerContext
-	var err error
-
-	if opts.Filename == "" {
-		ctx, err = createContextFromConfig(opts.ConfigPath)
-	} else {
-		ctx, err = config.NewCompilerContextFromFile(opts.Filename, "", opts.ConfigPath)
+// createCompilerContext creates a context with the provided config
+func createCompilerContext(filename string, cfg *config.MsConfig, debug bool) (*config.CompilerContext, error) {
+	sourceFile := filename
+	if sourceFile == "" && cfg.CompilerOptions.EntryFile != "" {
+		sourceFile = cfg.CompilerOptions.EntryFile
 	}
 
+	if sourceFile == "" {
+		return nil, errors.New("no source file specified")
+	}
+
+	workingDir := filepath.Dir(sourceFile)
+
+	ctx, err := config.NewCompilerContext(cfg, workingDir, sourceFile)
 	if err != nil {
 		return nil, err
 	}
 
-	if opts.Debug {
+	if debug {
 		ctx.Debug = true
-	}
-	if opts.OutDir != "" {
-		ctx.Config.OutputDir = opts.OutDir
 	}
 
 	return ctx, nil
-}
-
-func createContextFromConfig(configPath string) (*config.CompilerContext, error) {
-	workingDir := "."
-	if configPath != "" {
-		workingDir = filepath.Dir(configPath)
-	}
-
-	cfg, err := config.LoadCompilerOptions(configPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if cfg.EntryFile == "" {
-		return nil, errors.New("entryFile not defined in configuration")
-	}
-
-	entryFilePath := cfg.EntryFile
-	if !filepath.IsAbs(entryFilePath) {
-		entryFilePath = filepath.Join(workingDir, entryFilePath)
-	}
-
-	return config.NewCompilerContextFromFile(entryFilePath, workingDir, configPath)
 }
 
 func manuscriptToGo(input string, ctx *config.CompilerContext) (string, error) {
