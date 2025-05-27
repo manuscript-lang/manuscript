@@ -24,70 +24,61 @@ func DefaultCompilerOptions() *CompilerOptions {
 	}
 }
 
-// LoadConfig loads configuration with precedence: file -> env vars
-func LoadConfig(path string) (*CompilerOptions, error) {
-	config := DefaultCompilerOptions()
-
+// LoadCompilerOptions loads configuration from file, with optional config path from env var
+func LoadCompilerOptions(path string) (*CompilerOptions, error) {
+	if envPath := os.Getenv("MS_CONFIG_FILE"); envPath != "" {
+		path = envPath
+	}
 	if path == "" {
 		path = "."
 	}
 
-	stat, err := os.Stat(path)
-	if err == nil {
-		if stat.IsDir() {
-			if configPath, err := findConfigFile(path); err == nil {
-				path = configPath
-			} else {
-				path = ""
-			}
-		}
+	configPath := findConfig(path)
+	if configPath == "" {
+		return DefaultCompilerOptions(), nil
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
+	}
+
+	config := &CompilerOptions{}
+	if strings.HasSuffix(configPath, ".json") {
+		err = json.Unmarshal(data, config)
 	} else {
-		path = ""
+		err = yaml.Unmarshal(data, config)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse config file %s: %w", configPath, err)
 	}
 
-	if path != "" {
-		if err := loadFromFile(path, config); err != nil {
-			return nil, err
-		}
+	// Apply defaults for empty fields
+	if config.OutputDir == "" {
+		config.OutputDir = "./build"
 	}
 
-	loadFromEnv(config)
 	return config, nil
 }
 
-// loadFromEnv loads configuration values from environment variables
-func loadFromEnv(config *CompilerOptions) {
-	if val := os.Getenv("MS_OUTPUT_DIR"); val != "" {
-		config.OutputDir = val
+// findConfig finds the config file path, returns empty string if not found
+func findConfig(path string) string {
+	if stat, err := os.Stat(path); err == nil && !stat.IsDir() {
+		return path
 	}
-	if val := os.Getenv("MS_ENTRY_FILE"); val != "" {
-		config.EntryFile = val
-	}
-}
 
-func splitAndTrim(s string) []string {
-	parts := strings.Split(s, ",")
-	for i, part := range parts {
-		parts[i] = strings.TrimSpace(part)
-	}
-	return parts
-}
-
-// findConfigFile searches for ms.yml starting from the given directory and walking up
-func findConfigFile(startDir string) (string, error) {
-	dir, err := filepath.Abs(startDir)
+	dir, err := filepath.Abs(path)
 	if err != nil {
-		return "", err
+		return ""
 	}
 
 	for {
-		for _, name := range []string{"ms.yml", "ms.yaml"} {
+		for _, name := range []string{"ms.yml", "ms.yaml", "ms.json"} {
 			configPath := filepath.Join(dir, name)
 			if _, err := os.Stat(configPath); err == nil {
-				return configPath, nil
+				return configPath
 			}
 		}
-
 		parent := filepath.Dir(dir)
 		if parent == dir {
 			break
@@ -95,28 +86,7 @@ func findConfigFile(startDir string) (string, error) {
 		dir = parent
 	}
 
-	return "", fmt.Errorf("no ms.yml or ms.yaml file found")
-}
-
-// loadFromFile loads and parses the configuration file
-func loadFromFile(configPath string, config *CompilerOptions) error {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config file %s: %w", configPath, err)
-	}
-
-	ext := strings.ToLower(filepath.Ext(configPath))
-	if ext == ".json" {
-		err = json.Unmarshal(data, config)
-	} else {
-		err = yaml.Unmarshal(data, config)
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to parse config file %s: %w", configPath, err)
-	}
-
-	return nil
+	return ""
 }
 
 // Merge merges another configuration into this one, with the other config taking precedence
@@ -127,12 +97,4 @@ func (c *CompilerOptions) Merge(other *CompilerOptions) {
 	if other.EntryFile != "" {
 		c.EntryFile = other.EntryFile
 	}
-}
-
-// Validate validates the configuration options
-func (c *CompilerOptions) Validate() error {
-	if c.OutputDir == "" {
-		return fmt.Errorf("outputDir cannot be empty")
-	}
-	return nil
 }

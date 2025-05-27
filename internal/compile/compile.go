@@ -13,6 +13,7 @@ import (
 	"manuscript-lang/manuscript/internal/parser"
 	"manuscript-lang/manuscript/internal/visitors/go-transpiler"
 	mastb "manuscript-lang/manuscript/internal/visitors/mast-builder"
+	"path/filepath"
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
@@ -23,56 +24,15 @@ type CompileResult struct {
 	Error  error
 }
 
-const (
-	SyntaxErrorCode = "// SYNTAX ERROR"
-)
-
-func CompileManuscript(ctx *config.CompilerContext) CompileResult {
-	if err := ctx.Config.Validate(); err != nil {
-		return CompileResult{Error: fmt.Errorf("invalid configuration: %v", err)}
-	}
-
-	content, err := ctx.ModuleResolver.ResolveModule(ctx.SourceFile)
-	if err != nil {
-		return CompileResult{Error: fmt.Errorf("failed to read file %s: %v", ctx.SourceFile, err)}
-	}
-
-	goCode, err := CompileManuscriptFromString(string(content), ctx)
-	if err != nil {
-		return CompileResult{Error: fmt.Errorf("failed to compile program: %v", err)}
-	}
-
-	return CompileResult{GoCode: goCode}
+type CompileOptions struct {
+	Filename   string
+	ConfigPath string
+	OutDir     string
+	Debug      bool
 }
 
-// CompileManuscriptFromString compiles manuscript code from a string
-func CompileManuscriptFromString(msCode string, ctx *config.CompilerContext) (string, error) {
-	return manuscriptToGo(msCode, ctx)
-}
+const SyntaxErrorCode = "// SYNTAX ERROR"
 
-func BuildFile(filename, configPath, outdir string, debug bool) {
-	ctx, err := config.NewCompilerContextFromFile(filename, "", configPath)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
-	}
-
-	if debug {
-		ctx.Debug = true
-	}
-	if outdir != "" {
-		ctx.Config.OutputDir = outdir
-	}
-
-	result := CompileManuscript(ctx)
-	if result.Error != nil {
-		fmt.Printf("Error: %v\n", result.Error)
-		return
-	}
-	fmt.Print(result.GoCode)
-}
-
-// SyntaxErrorListener captures syntax errors from the ANTLR parser.
 type SyntaxErrorListener struct {
 	*antlr.DefaultErrorListener
 	Errors []string
@@ -89,10 +49,100 @@ func (l *SyntaxErrorListener) SyntaxError(
 	msg string,
 	e antlr.RecognitionException,
 ) {
-	l.Errors = append(
-		l.Errors,
-		fmt.Sprintf("line %d:%d %s", line, column, msg),
-	)
+	l.Errors = append(l.Errors, fmt.Sprintf("line %d:%d %s", line, column, msg))
+}
+
+func CompileFile(opts CompileOptions) {
+	ctx, err := createCompilerContext(opts)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	result := CompileManuscript(ctx)
+	if result.Error != nil {
+		fmt.Printf("Error: %v\n", result.Error)
+		return
+	}
+	fmt.Print(result.GoCode)
+}
+
+func CompileManuscript(ctx *config.CompilerContext) CompileResult {
+	content, err := ctx.ModuleResolver.ResolveModule(ctx.SourceFile)
+	if err != nil {
+		return CompileResult{Error: fmt.Errorf("failed to read file %s: %v", ctx.SourceFile, err)}
+	}
+
+	goCode, err := manuscriptToGo(string(content), ctx)
+	if err != nil {
+		return CompileResult{Error: fmt.Errorf("failed to compile program: %v", err)}
+	}
+
+	return CompileResult{GoCode: goCode}
+}
+
+func CompileManuscriptFromString(msCode string, ctx *config.CompilerContext) (string, error) {
+	return manuscriptToGo(msCode, ctx)
+}
+
+func RunFile(filename string) {
+	CompileFile(CompileOptions{Filename: filename})
+}
+
+func BuildFile(filename, configPath, outdir string, debug bool) {
+	CompileFile(CompileOptions{
+		Filename:   filename,
+		ConfigPath: configPath,
+		OutDir:     outdir,
+		Debug:      debug,
+	})
+}
+
+func createCompilerContext(opts CompileOptions) (*config.CompilerContext, error) {
+	var ctx *config.CompilerContext
+	var err error
+
+	if opts.Filename == "" {
+		ctx, err = createContextFromConfig(opts.ConfigPath)
+	} else {
+		ctx, err = config.NewCompilerContextFromFile(opts.Filename, "", opts.ConfigPath)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.Debug {
+		ctx.Debug = true
+	}
+	if opts.OutDir != "" {
+		ctx.Config.OutputDir = opts.OutDir
+	}
+
+	return ctx, nil
+}
+
+func createContextFromConfig(configPath string) (*config.CompilerContext, error) {
+	workingDir := "."
+	if configPath != "" {
+		workingDir = filepath.Dir(configPath)
+	}
+
+	cfg, err := config.LoadCompilerOptions(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.EntryFile == "" {
+		return nil, errors.New("entryFile not defined in configuration")
+	}
+
+	entryFilePath := cfg.EntryFile
+	if !filepath.IsAbs(entryFilePath) {
+		entryFilePath = filepath.Join(workingDir, entryFilePath)
+	}
+
+	return config.NewCompilerContextFromFile(entryFilePath, workingDir, configPath)
 }
 
 func manuscriptToGo(input string, ctx *config.CompilerContext) (string, error) {
@@ -104,7 +154,7 @@ func manuscriptToGo(input string, ctx *config.CompilerContext) (string, error) {
 		return "", errors.New(SyntaxErrorCode)
 	}
 
-	return convertToGoCode(tree, ctx), nil
+	return convertToGoCode(tree), nil
 }
 
 func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, *SyntaxErrorListener) {
@@ -112,18 +162,20 @@ func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, *Sy
 	lexer := parser.NewManuscriptLexer(inputStream)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 	p := parser.NewManuscript(stream)
+	p.GetInterpreter().SetPredictionMode(antlr.PredictionModeSLL)
+
 	if debug {
 		dumpTokens(stream)
 	}
+
 	errorListener := NewSyntaxErrorListener()
 	p.RemoveErrorListeners()
 	p.AddErrorListener(errorListener)
 
-	tree := p.Program()
-	return tree, errorListener
+	return p.Program(), errorListener
 }
 
-func convertToGoCode(tree parser.IProgramContext, ctx *config.CompilerContext) string {
+func convertToGoCode(tree parser.IProgramContext) string {
 	visitor := mastb.NewParseTreeToAST()
 	result := tree.Accept(visitor)
 
@@ -165,5 +217,5 @@ func dumpTokens(stream *antlr.CommonTokenStream) {
 			i, token.GetTokenType(), token.GetText(), token.GetLine(), token.GetColumn())
 	}
 	log.Println("--- Lexer Token Dump End ---")
-	stream.Seek(0) // Reset stream for parser
+	stream.Seek(0)
 }

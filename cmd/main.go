@@ -9,20 +9,17 @@ import (
 )
 
 func main() {
-	// Check for build subcommand
 	if len(os.Args) > 1 && os.Args[1] == "build" {
 		handleBuildCommand()
 		return
 	}
 
-	// Default run command
 	if len(os.Args) != 2 {
-		fmt.Println("Usage: msc <file.ms> or msc build [options] <file.ms>")
+		fmt.Println("Usage: msc <file.ms> or msc build [options] [file.ms]")
 		return
 	}
 
-	filename := os.Args[1]
-	compile.RunFile(filename)
+	compile.RunFile(os.Args[1])
 }
 
 func handleBuildCommand() {
@@ -32,17 +29,16 @@ func handleBuildCommand() {
 	debug := buildCmd.Bool("d", false, "Print token stream")
 	buildCmd.Parse(os.Args[2:])
 
-	if buildCmd.NArg() < 1 {
-		buildCmd.Usage()
-		return
-	}
-
 	if *config != "" && *outdir != "" {
 		fmt.Println("Error: -config cannot be used with -outdir")
 		buildCmd.Usage()
 		return
 	}
 
-	filename := buildCmd.Arg(0)
+	var filename string
+	if buildCmd.NArg() >= 1 {
+		filename = buildCmd.Arg(0)
+	}
+
 	compile.BuildFile(filename, *config, *outdir, *debug)
 }

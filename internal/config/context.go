@@ -56,7 +56,7 @@ func NewCompilerContext(workingDir, sourceFile string) (*CompilerContext, error)
 		return nil, err
 	}
 
-	config, err := LoadConfig(workingDir)
+	config, err := LoadCompilerOptions(workingDir)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func NewCompilerContext(workingDir, sourceFile string) (*CompilerContext, error)
 
 	// Load local configuration from source file directory
 	sourceDir := filepath.Dir(absSourceFile)
-	localConfig, err := LoadConfig(sourceDir)
+	localConfig, err := LoadCompilerOptions(sourceDir)
 	if err == nil {
 		ctx.Config.Merge(localConfig)
 	}
@@ -94,7 +94,7 @@ func NewCompilerContextWithConfig(config *CompilerOptions, workingDir, sourceFil
 
 	// Load local configuration from source file directory
 	sourceDir := filepath.Dir(absSourceFile)
-	localConfig, err := LoadConfig(sourceDir)
+	localConfig, err := LoadCompilerOptions(sourceDir)
 	if err == nil {
 		ctx.Config.Merge(localConfig)
 	}
@@ -109,7 +109,7 @@ func NewCompilerContextWithResolver(workingDir, sourceFile string, resolver Modu
 		return nil, err
 	}
 
-	config, err := LoadConfig(workingDir)
+	config, err := LoadCompilerOptions(workingDir)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func NewCompilerContextWithResolver(workingDir, sourceFile string, resolver Modu
 
 	// Load local configuration from source file directory
 	sourceDir := filepath.Dir(absSourceFile)
-	localConfig, err := LoadConfig(sourceDir)
+	localConfig, err := LoadCompilerOptions(sourceDir)
 	if err == nil {
 		ctx.Config.Merge(localConfig)
 	}
@@ -141,7 +141,7 @@ func (ctx *CompilerContext) SetSourceFile(sourceFile string) error {
 	ctx.SourceFile = absSourceFile
 
 	sourceDir := filepath.Dir(absSourceFile)
-	localConfig, err := LoadConfig(sourceDir)
+	localConfig, err := LoadCompilerOptions(sourceDir)
 	if err != nil {
 		return nil
 	}
@@ -191,17 +191,20 @@ func NewCompilerContextFromFile(sourceFile, workingDir, configPath string) (*Com
 	var config *CompilerOptions
 	if configPath != "" {
 		// Load specific config file
-		config, err = LoadConfig(configPath)
+		fullConfig, err := LoadCompilerOptions(configPath)
 		if err != nil {
 			return nil, err
 		}
+		config = fullConfig
 	} else {
 		// Search for config starting from source file directory
 		sourceDir := filepath.Dir(absSourceFile)
-		config, err = LoadConfig(sourceDir)
+		fullConfig, err := LoadCompilerOptions(sourceDir)
 		if err != nil {
 			// Fall back to default config if no config file found
 			config = DefaultCompilerOptions()
+		} else {
+			config = fullConfig
 		}
 	}
 
@@ -216,7 +219,7 @@ func NewCompilerContextFromFile(sourceFile, workingDir, configPath string) (*Com
 	// Load local configuration from source file directory if different from config location
 	sourceDir := filepath.Dir(absSourceFile)
 	if configPath == "" || filepath.Dir(configPath) != sourceDir {
-		localConfig, err := LoadConfig(sourceDir)
+		localConfig, err := LoadCompilerOptions(sourceDir)
 		if err == nil {
 			ctx.Config.Merge(localConfig)
 		}
