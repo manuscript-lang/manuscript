@@ -14,7 +14,10 @@ func (t *GoTranspiler) VisitIdentifier(node *mast.Identifier) ast.Node {
 		return &ast.Ident{Name: "_"}
 	}
 
-	return &ast.Ident{Name: t.generateVarName(node.Name)}
+	return &ast.Ident{
+		Name:    t.generateVarName(node.Name),
+		NamePos: t.posWithName(node, node.Name),
+	}
 }
 
 // VisitBinaryExpr transpiles binary expressions
@@ -35,7 +38,7 @@ func (t *GoTranspiler) VisitBinaryExpr(node *mast.BinaryExpr) ast.Node {
 		return nil
 	}
 
-	// Map manuscript operators to Go operators
+	// Map manuscript binary operators to Go operators
 	var goOp token.Token
 	switch node.Op {
 	case mast.Add:
@@ -73,15 +76,11 @@ func (t *GoTranspiler) VisitBinaryExpr(node *mast.BinaryExpr) ast.Node {
 		goOp = token.ADD // fallback
 	}
 
-	// Handle string concatenation optimization
-	if goOp == token.ADD {
-		return t.optimizeStringConcat(leftExpr, rightExpr)
-	}
-
 	return &ast.BinaryExpr{
-		X:  leftExpr,
-		Op: goOp,
-		Y:  rightExpr,
+		X:     leftExpr,
+		OpPos: t.pos(node),
+		Op:    goOp,
+		Y:     rightExpr,
 	}
 }
 
@@ -114,8 +113,9 @@ func (t *GoTranspiler) VisitUnaryExpr(node *mast.UnaryExpr) ast.Node {
 	}
 
 	return &ast.UnaryExpr{
-		Op: goOp,
-		X:  operandExpr,
+		OpPos: t.pos(node),
+		Op:    goOp,
+		X:     operandExpr,
 	}
 }
 
@@ -141,13 +141,20 @@ func (t *GoTranspiler) VisitCallExpr(node *mast.CallExpr) ast.Node {
 
 		argResult := t.Visit(arg)
 		if argExpr, ok := argResult.(ast.Expr); ok {
+			// Ensure the argument expression has the correct position
+			// This is crucial for source map accuracy
+			if ident, isIdent := argExpr.(*ast.Ident); isIdent {
+				// For identifiers, make sure the NamePos is set correctly
+				ident.NamePos = t.posWithName(arg, ident.Name)
+			}
 			args = append(args, argExpr)
 		}
 	}
 
 	return &ast.CallExpr{
-		Fun:  funcExpr,
-		Args: args,
+		Fun:    funcExpr,
+		Lparen: t.pos(node),
+		Args:   args,
 	}
 }
 
@@ -170,8 +177,9 @@ func (t *GoTranspiler) VisitIndexExpr(node *mast.IndexExpr) ast.Node {
 	}
 
 	return &ast.IndexExpr{
-		X:     objectExpr,
-		Index: indexExpr,
+		X:      objectExpr,
+		Lbrack: t.pos(node),
+		Index:  indexExpr,
 	}
 }
 
@@ -190,8 +198,11 @@ func (t *GoTranspiler) VisitDotExpr(node *mast.DotExpr) ast.Node {
 	}
 
 	return &ast.SelectorExpr{
-		X:   objectExpr,
-		Sel: &ast.Ident{Name: t.generateVarName(node.Field)},
+		X: objectExpr,
+		Sel: &ast.Ident{
+			Name:    t.generateVarName(node.Field),
+			NamePos: t.pos(node),
+		},
 	}
 }
 

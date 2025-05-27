@@ -142,13 +142,17 @@ func (t *GoTranspiler) VisitTypeDecl(node *mast.TypeDecl) ast.Node {
 	}
 
 	typeSpec := &ast.TypeSpec{
-		Name: &ast.Ident{Name: t.generateVarName(node.Name)},
+		Name: &ast.Ident{
+			Name:    t.generateVarName(node.Name),
+			NamePos: t.posWithName(node, node.Name),
+		},
 		Type: goType,
 	}
 
 	return &ast.GenDecl{
-		Tok:   token.TYPE,
-		Specs: []ast.Spec{typeSpec},
+		TokPos: t.pos(node),
+		Tok:    token.TYPE,
+		Specs:  []ast.Spec{typeSpec},
 	}
 }
 

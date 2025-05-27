@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	mast "manuscript-lang/manuscript/internal/ast"
+	"manuscript-lang/manuscript/internal/sourcemap"
 )
 
 // GoTranspiler converts Manuscript AST to Go AST
@@ -16,14 +17,19 @@ type GoTranspiler struct {
 	Imports     []*ast.ImportSpec // import specifications
 
 	// State management
-	fileSet      *token.FileSet
-	errors       []error
-	tempVarCount int
-	loopDepth    int
+	fileSet         *token.FileSet
+	errors          []error
+	tempVarCount    int
+	loopDepth       int
+	positionCounter int // Counter for generating unique positions
 
 	// Current context
-	currentFile  *ast.File
-	currentDecls []ast.Decl
+	currentFile      *ast.File
+	currentDecls     []ast.Decl
+	currentTokenFile *token.File
+
+	// Sourcemap support
+	sourcemapBuilder *sourcemap.Builder
 
 	// Optimizations
 	stringConcat   bool // Enable efficient string concatenation
@@ -68,14 +74,31 @@ func (m *MultipleDeclarations) End() token.Pos {
 // NewGoTranspiler creates a new transpiler instance
 func NewGoTranspiler(packageName string) *GoTranspiler {
 	return &GoTranspiler{
-		PackageName:    packageName,
-		Imports:        []*ast.ImportSpec{},
-		fileSet:        token.NewFileSet(),
-		errors:         []error{},
-		stringConcat:   true,
-		sliceOptimized: true,
-		memOptimized:   true,
+		PackageName:     packageName,
+		Imports:         []*ast.ImportSpec{},
+		fileSet:         token.NewFileSet(),
+		errors:          []error{},
+		positionCounter: 1, // Start position counter at 1
+		stringConcat:    true,
+		sliceOptimized:  true,
+		memOptimized:    true,
 	}
+}
+
+// NewGoTranspilerWithSourceMap creates a new transpiler instance with sourcemap support
+func NewGoTranspilerWithSourceMap(packageName string, sourcemapBuilder *sourcemap.Builder) *GoTranspiler {
+	transpiler := &GoTranspiler{
+		PackageName:      packageName,
+		Imports:          []*ast.ImportSpec{},
+		fileSet:          sourcemapBuilder.GetFileSet(), // Use the sourcemap builder's file set
+		errors:           []error{},
+		positionCounter:  1, // Start position counter at 1
+		sourcemapBuilder: sourcemapBuilder,
+		stringConcat:     true,
+		sliceOptimized:   true,
+		memOptimized:     true,
+	}
+	return transpiler
 }
 
 // Visit implements the visitor pattern using the reusable dispatch function
@@ -131,8 +154,61 @@ func (t *GoTranspiler) pos(node mast.Node) token.Pos {
 	if node == nil {
 		return token.NoPos
 	}
-	// For now return NoPos, in a real implementation we'd map positions
-	return token.NoPos
+
+	// Create a position in the file set
+	if t.currentTokenFile == nil {
+		t.currentTokenFile = t.fileSet.AddFile("generated.go", -1, 1000000)
+	}
+
+	// Use a consistent position calculation based on manuscript source position
+	// This ensures that related nodes get nearby positions
+	offset := node.Pos().Offset
+	if offset <= 0 {
+		offset = t.positionCounter
+		t.positionCounter++
+	}
+
+	pos := t.currentTokenFile.Pos(offset)
+
+	// Add sourcemap mapping if builder is available
+	if t.sourcemapBuilder != nil {
+		t.sourcemapBuilder.AddMapping(pos, node.Pos(), "")
+	}
+
+	return pos
+}
+
+// posWithName creates a position and adds a sourcemap entry with a name
+func (t *GoTranspiler) posWithName(node mast.Node, name string) token.Pos {
+	if node == nil {
+		return token.NoPos
+	}
+
+	// Create a position in the file set
+	if t.currentTokenFile == nil {
+		t.currentTokenFile = t.fileSet.AddFile("generated.go", -1, 1000000)
+	}
+
+	// Use a consistent position calculation based on manuscript source position
+	// For named nodes, we want to ensure they get unique positions for source mapping
+	offset := node.Pos().Offset
+	if offset <= 0 {
+		offset = t.positionCounter
+		t.positionCounter++
+	} else {
+		// For named nodes, add a small offset to ensure uniqueness
+		offset += t.positionCounter % 100
+		t.positionCounter++
+	}
+
+	pos := t.currentTokenFile.Pos(offset)
+
+	// Add sourcemap mapping if builder is available
+	if t.sourcemapBuilder != nil {
+		t.sourcemapBuilder.AddMapping(pos, node.Pos(), name)
+	}
+
+	return pos
 }
 
 // Loop management

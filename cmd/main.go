@@ -42,6 +42,7 @@ func handleBuildCommand() {
 	configPath := buildCmd.String("config", "", "Path to configuration file (ms.yml)")
 	outdir := buildCmd.String("outdir", "", "Output directory")
 	debug := buildCmd.Bool("d", false, "Print token stream")
+	sourcemap := buildCmd.Bool("sourcemap", false, "Generate source maps")
 	buildCmd.Parse(os.Args[2:])
 
 	if *configPath != "" && *outdir != "" {
@@ -68,7 +69,11 @@ func handleBuildCommand() {
 	}
 
 	// 3. Config object is constructed, now pass to compile pipeline
-	compile.BuildFile(filename, cfg, *debug)
+	if *sourcemap {
+		compile.BuildFileWithSourceMap(filename, cfg, *debug, cfg.CompilerOptions.OutputDir)
+	} else {
+		compile.BuildFile(filename, cfg, *debug)
+	}
 }
 
 func resolveConfig(configPath *string, filename string) (*config.MsConfig, error) {

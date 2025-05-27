@@ -63,7 +63,7 @@ func (t *GoTranspiler) VisitForTrinityLoop(node *mast.ForTrinityLoop) ast.Node {
 	// Always use verbose for-loop format with semicolons
 
 	return &ast.ForStmt{
-		For:  0, // Position set by parent VisitForStmt
+		For:  t.pos(node), // Position set by parent VisitForStmt
 		Init: init,
 		Cond: cond,
 		Post: post,
@@ -136,6 +136,7 @@ func (t *GoTranspiler) VisitForInLoop(node *mast.ForInLoop) ast.Node {
 	}
 
 	return &ast.RangeStmt{
+		For:   t.pos(node),
 		Key:   key,
 		Value: value,
 		Tok:   token.DEFINE,

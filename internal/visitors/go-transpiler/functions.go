@@ -24,8 +24,12 @@ func (t *GoTranspiler) VisitFnDecl(node *mast.FnDecl) ast.Node {
 	t.handleImplicitReturn(body, node.ReturnType)
 
 	return &ast.FuncDecl{
-		Name: &ast.Ident{Name: t.generateVarName(node.Name)},
+		Name: &ast.Ident{
+			Name:    t.generateVarName(node.Name),
+			NamePos: t.posWithName(node, node.Name),
+		},
 		Type: &ast.FuncType{
+			Func:    t.pos(node),
 			Params:  &ast.FieldList{List: params},
 			Results: results,
 		},

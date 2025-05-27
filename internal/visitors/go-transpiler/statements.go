@@ -111,7 +111,7 @@ func (t *GoTranspiler) VisitExprStmt(node *mast.ExprStmt) ast.Node {
 // VisitReturnStmt transpiles return statements
 func (t *GoTranspiler) VisitReturnStmt(node *mast.ReturnStmt) ast.Node {
 	if node == nil {
-		return &ast.ReturnStmt{}
+		return &ast.ReturnStmt{Return: t.pos(node)}
 	}
 
 	var results []ast.Expr
@@ -127,7 +127,10 @@ func (t *GoTranspiler) VisitReturnStmt(node *mast.ReturnStmt) ast.Node {
 		}
 	}
 
-	return &ast.ReturnStmt{Results: results}
+	return &ast.ReturnStmt{
+		Return:  t.pos(node),
+		Results: results,
+	}
 }
 
 // VisitYieldStmt transpiles yield statements to generator pattern using channels
@@ -230,7 +233,8 @@ func (t *GoTranspiler) VisitBreakStmt(node *mast.BreakStmt) ast.Node {
 	}
 
 	return &ast.BranchStmt{
-		Tok: token.BREAK,
+		TokPos: t.pos(node),
+		Tok:    token.BREAK,
 	}
 }
 
@@ -242,7 +246,8 @@ func (t *GoTranspiler) VisitContinueStmt(node *mast.ContinueStmt) ast.Node {
 	}
 
 	return &ast.BranchStmt{
-		Tok: token.CONTINUE,
+		TokPos: t.pos(node),
+		Tok:    token.CONTINUE,
 	}
 }
 
@@ -395,6 +400,7 @@ func (t *GoTranspiler) VisitIfStmt(node *mast.IfStmt) ast.Node {
 	}
 
 	return &ast.IfStmt{
+		If:   t.pos(node),
 		Cond: condExpr,
 		Body: thenBlock,
 		Else: elseStmt,
@@ -415,14 +421,19 @@ func (t *GoTranspiler) VisitForStmt(node *mast.ForStmt) ast.Node {
 	if node.Loop != nil {
 		loopResult := t.Visit(node.Loop)
 		if rangeStmt, ok := loopResult.(*ast.RangeStmt); ok {
+			rangeStmt.For = t.pos(node)
 			return rangeStmt
 		} else if forStmt, ok := loopResult.(*ast.ForStmt); ok {
+			forStmt.For = t.pos(node)
 			return forStmt
 		}
 	}
 
 	// Default: infinite loop
-	return &ast.ForStmt{Body: &ast.BlockStmt{List: []ast.Stmt{}}}
+	return &ast.ForStmt{
+		For:  t.pos(node),
+		Body: &ast.BlockStmt{List: []ast.Stmt{}},
+	}
 }
 
 // VisitWhileStmt transpiles while statements
@@ -456,6 +467,7 @@ func (t *GoTranspiler) VisitWhileStmt(node *mast.WhileStmt) ast.Node {
 	}
 
 	return &ast.ForStmt{
+		For:  t.pos(node),
 		Cond: condition,
 		Body: body,
 	}

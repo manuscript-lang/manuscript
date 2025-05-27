@@ -329,7 +329,11 @@ func (t *GoTranspiler) VisitStringLiteral(node *mast.StringLiteral) ast.Node {
 	}
 
 	result := strings.Join(parts, "")
-	return &ast.BasicLit{Kind: token.STRING, Value: strconv.Quote(result)}
+	return &ast.BasicLit{
+		Kind:     token.STRING,
+		Value:    strconv.Quote(result),
+		ValuePos: t.pos(node),
+	}
 }
 
 // VisitNumberLiteral transpiles number literals
@@ -345,8 +349,9 @@ func (t *GoTranspiler) VisitNumberLiteral(node *mast.NumberLiteral) ast.Node {
 	}
 
 	return &ast.BasicLit{
-		Kind:  kind,
-		Value: node.Value,
+		Kind:     kind,
+		Value:    node.Value,
+		ValuePos: t.pos(node),
 	}
 }
 
@@ -356,21 +361,31 @@ func (t *GoTranspiler) VisitBooleanLiteral(node *mast.BooleanLiteral) ast.Node {
 		return &ast.Ident{Name: "false"}
 	}
 
+	name := "false"
 	if node.Value {
-		return &ast.Ident{Name: "true"}
-	} else {
-		return &ast.Ident{Name: "false"}
+		name = "true"
+	}
+
+	return &ast.Ident{
+		Name:    name,
+		NamePos: t.pos(node),
 	}
 }
 
 // VisitNullLiteral transpiles null literals
 func (t *GoTranspiler) VisitNullLiteral(node *mast.NullLiteral) ast.Node {
-	return &ast.Ident{Name: "nil"}
+	return &ast.Ident{
+		Name:    "nil",
+		NamePos: t.pos(node),
+	}
 }
 
 // VisitVoidLiteral transpiles void literals
 func (t *GoTranspiler) VisitVoidLiteral(node *mast.VoidLiteral) ast.Node {
-	return &ast.Ident{Name: "nil"}
+	return &ast.Ident{
+		Name:    "nil",
+		NamePos: t.pos(node),
+	}
 }
 
 // VisitArrayLiteral transpiles array literals
@@ -397,7 +412,8 @@ func (t *GoTranspiler) VisitArrayLiteral(node *mast.ArrayLiteral) ast.Node {
 		Type: &ast.ArrayType{
 			Elt: &ast.Ident{Name: "interface{}"},
 		},
-		Elts: elements,
+		Lbrace: t.pos(node),
+		Elts:   elements,
 	}
 }
 
@@ -425,7 +441,8 @@ func (t *GoTranspiler) VisitObjectLiteral(node *mast.ObjectLiteral) ast.Node {
 			Key:   &ast.Ident{Name: "string"},
 			Value: &ast.Ident{Name: "interface{}"},
 		},
-		Elts: fields,
+		Lbrace: t.pos(node),
+		Elts:   fields,
 	}
 }
 
