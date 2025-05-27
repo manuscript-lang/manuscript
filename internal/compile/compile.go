@@ -13,6 +13,8 @@ import (
 	"manuscript-lang/manuscript/internal/parser"
 	"manuscript-lang/manuscript/internal/visitors/go-transpiler"
 	mastb "manuscript-lang/manuscript/internal/visitors/mast-builder"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -49,16 +51,42 @@ func (l *SyntaxErrorListener) SyntaxError(
 func RunFile(filename string, cfg *config.MsConfig) {
 	ctx, err := createCompilerContext(filename, cfg, false)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		fmt.Printf("Error creating compiler context: %v\n", err)
 		return
 	}
 
 	result := CompileManuscript(ctx)
 	if result.Error != nil {
-		fmt.Printf("Error: %v\n", result.Error)
+		fmt.Printf("Error compiling Manuscript: %v\n", result.Error)
 		return
 	}
-	fmt.Print(result.GoCode)
+
+	// Create a temporary Go file
+	tmpFile, err := os.CreateTemp("", "manuscript_run_*.go")
+	if err != nil {
+		fmt.Printf("Error creating temporary file: %v\n", err)
+		return
+	}
+
+	if _, err := tmpFile.WriteString(result.GoCode); err != nil {
+		fmt.Printf("Error writing to temporary file: %v\n", err)
+		tmpFile.Close()
+		return
+	}
+	if err := tmpFile.Close(); err != nil {
+		fmt.Printf("Error closing temporary file: %v\n", err)
+		return
+	}
+
+	cmd := exec.Command("go", "run", "-json", tmpFile.Name())
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Run()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Manuscript execution finished with error: %v\n", err)
+		return
+	}
 }
 
 // BuildFile compiles a manuscript file for building
