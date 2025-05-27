@@ -3,7 +3,7 @@
 # Bug reports
 bug:
   - '\b(bug|error|issue|problem|broken|fail|crash|exception)\b'
-  - '\b(not working|doesn\'t work|does not work)\b'
+  - '\b(not working|doesn''t work|does not work)\b'
   - '\b(unexpected behavior|incorrect|wrong)\b'
 
 # Feature requests
@@ -76,16 +76,16 @@ config:
 build:
   - '\b(build|ci|cd|github actions|workflow)\b'
   - 'Makefile'
-  - '.github/'
+  - '\.github/'
   - '\b(docker|container)\b'
 
 # Good first issue (for newcomers)
-good first issue:
+"good first issue":
   - '\b(good first issue|beginner|easy|starter)\b'
   - '\b(newcomer|first contribution)\b'
 
 # Help wanted
-help wanted:
+"help wanted":
   - '\b(help wanted|help needed|assistance)\b'
   - '\b(looking for help|need help)\b'
 
@@ -105,28 +105,28 @@ invalid:
   - '\b(user error|misunderstanding)\b'
 
 # Priority labels
-priority/high:
+"priority/high":
   - '\b(urgent|critical|high priority|blocker)\b'
   - '\b(security|vulnerability)\b'
 
-priority/medium:
+"priority/medium":
   - '\b(medium priority|important)\b'
 
-priority/low:
+"priority/low":
   - '\b(low priority|nice to have|minor)\b'
 
 # Size labels for PRs
-size/XS:
+"size/XS":
   - '1-10 lines changed'
 
-size/S:
+"size/S":
   - '11-50 lines changed'
 
-size/M:
+"size/M":
   - '51-200 lines changed'
 
-size/L:
+"size/L":
   - '201-500 lines changed'
 
-size/XL:
+"size/XL":
   - '500+ lines changed' 
