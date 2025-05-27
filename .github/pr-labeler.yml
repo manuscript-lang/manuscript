@@ -1,0 +1,65 @@
+# PR Labeler Configuration for Manuscript Programming Language
+# Labels PRs based on which files are changed
+
+# Documentation changes
+documentation:
+  - 'docs/**/*'
+  - 'publish/docs-web/**/*'
+  - 'README.md'
+  - '*.md'
+
+# Language and grammar changes
+language:
+  - 'internal/grammar/**/*'
+  - 'internal/parser/**/*'
+  - 'internal/ast/**/*'
+  - '**/*.g4'
+
+# Compiler changes
+compiler:
+  - 'internal/compile/**/*'
+  - 'internal/visitors/**/*'
+
+# Standard library changes
+stdlib:
+  - 'stdlib/**/*'
+  - 'internal/builtins/**/*'
+
+# Testing changes
+testing:
+  - 'tests/**/*'
+  - '**/*_test.go'
+  - '**/test_*.go'
+
+# CLI changes
+cli:
+  - 'cmd/**/*'
+
+# Editor support changes
+editor:
+  - 'publish/manuscript-vscode-extension/**/*'
+  - 'publish/lsp/**/*'
+  - 'publish/editor-rules/**/*'
+
+# Configuration changes
+config:
+  - 'internal/config/**/*'
+  - '*.yml'
+  - '*.yaml'
+  - '*.json'
+  - '*.toml'
+
+# Build and CI changes
+build:
+  - '.github/**/*'
+  - 'Makefile'
+  - 'go.mod'
+  - 'go.sum'
+  - 'scripts/**/*'
+
+# Dependencies
+dependencies:
+  - 'go.mod'
+  - 'go.sum'
+  - 'package.json'
+  - 'package-lock.json' 

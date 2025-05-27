@@ -1,0 +1,132 @@
+# Issue Labeler Configuration for Manuscript Programming Language
+
+# Bug reports
+bug:
+  - '\b(bug|error|issue|problem|broken|fail|crash|exception)\b'
+  - '\b(not working|doesn\'t work|does not work)\b'
+  - '\b(unexpected behavior|incorrect|wrong)\b'
+
+# Feature requests
+enhancement:
+  - '\b(feature|enhancement|improvement|suggestion)\b'
+  - '\b(add|implement|support|would like|wish|want)\b'
+  - '\b(new feature|feature request)\b'
+
+# Documentation related
+documentation:
+  - '\b(doc|docs|documentation|readme|guide|tutorial)\b'
+  - '\b(example|examples|sample)\b'
+  - 'docs/'
+  - 'README'
+  - '\b(typo|spelling|grammar)\b'
+
+# Language features and grammar
+language:
+  - '\b(grammar|syntax|parser|lexer|ast)\b'
+  - '\b(language feature|language construct)\b'
+  - '\b(keyword|operator|expression)\b'
+  - 'internal/grammar'
+  - 'internal/parser'
+  - 'internal/ast'
+
+# Compiler and transpiler
+compiler:
+  - '\b(compiler|compilation|transpiler|transpilation)\b'
+  - '\b(code generation|codegen|generate)\b'
+  - 'internal/compile'
+  - 'visitors/go-transpiler'
+
+# Standard library
+stdlib:
+  - '\b(stdlib|standard library|builtin|builtins)\b'
+  - 'stdlib/'
+  - 'internal/builtins'
+
+# Testing
+testing:
+  - '\b(test|testing|spec|coverage)\b'
+  - 'tests/'
+  - '\b(unit test|integration test)\b'
+
+# Performance
+performance:
+  - '\b(performance|speed|slow|fast|optimization|optimize)\b'
+  - '\b(memory|cpu|benchmark)\b'
+
+# CLI and tooling
+cli:
+  - '\b(cli|command line|tool|binary)\b'
+  - 'cmd/'
+  - '\b(flag|argument|option)\b'
+
+# Editor support
+editor:
+  - '\b(editor|vscode|syntax highlighting|lsp)\b'
+  - 'manuscript-vscode-extension'
+  - 'publish/lsp'
+  - '\b(intellisense|autocomplete|completion)\b'
+
+# Configuration
+config:
+  - '\b(config|configuration|settings)\b'
+  - 'internal/config'
+  - '\b(yaml|yml|json|toml)\b'
+
+# Build and CI/CD
+build:
+  - '\b(build|ci|cd|github actions|workflow)\b'
+  - 'Makefile'
+  - '.github/'
+  - '\b(docker|container)\b'
+
+# Good first issue (for newcomers)
+good first issue:
+  - '\b(good first issue|beginner|easy|starter)\b'
+  - '\b(newcomer|first contribution)\b'
+
+# Help wanted
+help wanted:
+  - '\b(help wanted|help needed|assistance)\b'
+  - '\b(looking for help|need help)\b'
+
+# Question
+question:
+  - '\b(question|how to|how do|help)\b'
+  - '\?'
+  - '\b(confused|unclear|understand)\b'
+
+# Duplicate
+duplicate:
+  - '\b(duplicate|already reported|same as)\b'
+
+# Invalid
+invalid:
+  - '\b(invalid|not a bug|not an issue)\b'
+  - '\b(user error|misunderstanding)\b'
+
+# Priority labels
+priority/high:
+  - '\b(urgent|critical|high priority|blocker)\b'
+  - '\b(security|vulnerability)\b'
+
+priority/medium:
+  - '\b(medium priority|important)\b'
+
+priority/low:
+  - '\b(low priority|nice to have|minor)\b'
+
+# Size labels for PRs
+size/XS:
+  - '1-10 lines changed'
+
+size/S:
+  - '11-50 lines changed'
+
+size/M:
+  - '51-200 lines changed'
+
+size/L:
+  - '201-500 lines changed'
+
+size/XL:
+  - '500+ lines changed' 
