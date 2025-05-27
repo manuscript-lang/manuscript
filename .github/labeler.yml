@@ -113,20 +113,4 @@ invalid:
   - '\b(medium priority|important)\b'
 
 "priority/low":
-  - '\b(low priority|nice to have|minor)\b'
-
-# Size labels for PRs
-"size/XS":
-  - '1-10 lines changed'
-
-"size/S":
-  - '11-50 lines changed'
-
-"size/M":
-  - '51-200 lines changed'
-
-"size/L":
-  - '201-500 lines changed'
-
-"size/XL":
-  - '500+ lines changed' 
+  - '\b(low priority|nice to have|minor)\b' 
