@@ -72,8 +72,17 @@ func TestLoadWithEnvVar(t *testing.T) {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
+	// Store original env var and restore after test
+	originalEnv := os.Getenv("MS_CONFIG_FILE")
+	defer func() {
+		if originalEnv == "" {
+			os.Unsetenv("MS_CONFIG_FILE")
+		} else {
+			os.Setenv("MS_CONFIG_FILE", originalEnv)
+		}
+	}()
+
 	os.Setenv("MS_CONFIG_FILE", configPath)
-	defer os.Unsetenv("MS_CONFIG_FILE")
 
 	config, err := LoadCompilerOptions("")
 	if err != nil {
@@ -112,33 +121,40 @@ func TestFindConfigFile(t *testing.T) {
 		t.Fatalf("Failed to create subdirectory: %v", err)
 	}
 
-	tests := []string{"ms.yml", "ms.yaml", "ms.json"}
-	for _, filename := range tests {
-		configPath := filepath.Join(tempDir, filename)
-		var content string
-		if filename == "ms.json" {
-			content = `{"outputDir": "./test"}`
-		} else {
-			content = "outputDir: ./test"
-		}
+	tests := []struct {
+		name     string
+		filename string
+		content  string
+	}{
+		{"YAML config", "ms.yml", "outputDir: ./test"},
+		{"YAML config alt", "ms.yaml", "outputDir: ./test"},
+		{"JSON config", "ms.json", `{"outputDir": "./test"}`},
+	}
 
-		err = os.WriteFile(configPath, []byte(content), 0644)
-		if err != nil {
-			t.Fatalf("Failed to write config file: %v", err)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configPath := filepath.Join(tempDir, tt.filename)
 
+			err := os.WriteFile(configPath, []byte(tt.content), 0644)
+			if err != nil {
+				t.Fatalf("Failed to write config file: %v", err)
+			}
+			defer os.Remove(configPath)
+
+			foundPath := findConfig(subDir)
+			if foundPath != configPath {
+				t.Errorf("Expected config path '%s', got '%s'", configPath, foundPath)
+			}
+		})
+	}
+
+	// Test when no config file exists
+	t.Run("no config file", func(t *testing.T) {
 		foundPath := findConfig(subDir)
-		if foundPath != configPath {
-			t.Errorf("Expected config path '%s', got '%s'", configPath, foundPath)
+		if foundPath != "" {
+			t.Errorf("Expected empty path when config file not found, got '%s'", foundPath)
 		}
-
-		os.Remove(configPath)
-	}
-
-	foundPath := findConfig(subDir)
-	if foundPath != "" {
-		t.Errorf("Expected empty path when config file not found, got '%s'", foundPath)
-	}
+	})
 }
 
 func TestLoadInvalidFiles(t *testing.T) {

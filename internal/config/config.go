@@ -63,6 +63,7 @@ func LoadCompilerOptions(path string) (*CompilerOptions, error) {
 
 // findConfig finds the config file path, returns empty string if not found
 func findConfig(path string) string {
+	// If path is a file, return it directly
 	if stat, err := os.Stat(path); err == nil && !stat.IsDir() {
 		return path
 	}
@@ -72,8 +73,15 @@ func findConfig(path string) string {
 		return ""
 	}
 
-	for {
-		for _, name := range []string{"ms.yml", "ms.yaml", "ms.json"} {
+	// Limit traversal to avoid infinite loops and improve performance
+	maxDepth := 10
+	depth := 0
+
+	configNames := []string{"ms.yml", "ms.yaml", "ms.json"}
+
+	for depth < maxDepth {
+		// Check all config files in current directory in one pass
+		for _, name := range configNames {
 			configPath := filepath.Join(dir, name)
 			if _, err := os.Stat(configPath); err == nil {
 				return configPath
@@ -81,9 +89,11 @@ func findConfig(path string) string {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
+			// Reached filesystem root
 			break
 		}
 		dir = parent
+		depth++
 	}
 
 	return ""

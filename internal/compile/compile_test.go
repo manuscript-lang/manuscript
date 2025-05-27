@@ -2,9 +2,16 @@ package compile
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
 	"manuscript-lang/manuscript/internal/config"
+)
+
+// Cache for test context to avoid repeated creation
+var (
+	testContextCache     *config.CompilerContext
+	testContextCacheOnce sync.Once
 )
 
 func TestFileSystemResolver(t *testing.T) {
@@ -156,9 +163,19 @@ func TestManuscriptToGo(t *testing.T) {
 }
 
 func createTestContext(t *testing.T) *config.CompilerContext {
-	ctx, err := config.NewCompilerContextFromFile("test.ms", "", "")
-	if err != nil {
-		t.Fatalf("Failed to create test context: %v", err)
+	testContextCacheOnce.Do(func() {
+		ctx, err := config.NewCompilerContextFromFile("test.ms", "", "")
+		if err != nil {
+			t.Fatalf("Failed to create test context: %v", err)
+		}
+		testContextCache = ctx
+	})
+
+	// Create a copy of the cached context for this test
+	return &config.CompilerContext{
+		SourceFile:     testContextCache.SourceFile,
+		Config:         testContextCache.Config,
+		ModuleResolver: testContextCache.ModuleResolver,
+		Debug:          testContextCache.Debug,
 	}
-	return ctx
 }

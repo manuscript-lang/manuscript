@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"manuscript-lang/manuscript/internal/compile"
@@ -26,6 +27,12 @@ var (
 var (
 	codeBlockRegex = regexp.MustCompile("(?s)```\\s*(\\w+)\\s*\\n(.*?)\\n```")
 	titleRegex     = regexp.MustCompile(`(?m)^#\s+(.*)$`)
+)
+
+// Cache for compiler context to avoid repeated creation
+var (
+	contextCache     *config.CompilerContext
+	contextCacheOnce sync.Once
 )
 
 func TestMain(m *testing.M) {
@@ -57,13 +64,20 @@ func TestManuscriptTranspile(t *testing.T) {
 }
 
 func createTestContext(t *testing.T) *config.CompilerContext {
-	ctx, err := config.NewCompilerContextFromFile("test.ms", "", "")
-	if err != nil {
-		t.Fatalf("Failed to create test context: %v", err)
-	}
+	contextCacheOnce.Do(func() {
+		ctx, err := config.NewCompilerContextFromFile("test.ms", "", "")
+		if err != nil {
+			t.Fatalf("Failed to create test context: %v", err)
+		}
+		contextCache = ctx
+	})
 
-	if *debug {
-		ctx.Debug = true
+	// Create a copy of the cached context for this test
+	ctx := &config.CompilerContext{
+		SourceFile:     contextCache.SourceFile,
+		Config:         contextCache.Config,
+		ModuleResolver: contextCache.ModuleResolver,
+		Debug:          *debug || contextCache.Debug,
 	}
 
 	return ctx
@@ -170,7 +184,8 @@ func parseMarkdownTest(content string) []TestPair {
 	matches := codeBlockRegex.FindAllStringSubmatchIndex(content, -1)
 	allTitleMatches := titleRegex.FindAllStringSubmatchIndex(content, -1)
 
-	var testPairs []TestPair
+	// Pre-allocate slice with estimated capacity
+	testPairs := make([]TestPair, 0, len(matches)/2)
 	lastGoBlockEndOffset := 0
 
 	for i := 0; i < len(matches)-1; i++ {
