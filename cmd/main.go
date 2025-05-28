@@ -68,7 +68,7 @@ func handleBuildCommand() {
 	}
 
 	// 3. Config object is constructed, now pass to compile pipeline
-	compile.BuildFileWithSourceMap(filename, cfg, *debug)
+	compile.BuildFile(filename, cfg, *debug)
 }
 
 func resolveConfig(configPath *string, filename string) (*config.MsConfig, error) {

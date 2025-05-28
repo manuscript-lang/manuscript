@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	mast "manuscript-lang/manuscript/internal/ast"
-	"manuscript-lang/manuscript/internal/utils/vlq"
 )
 
 // SourceMap represents a source map for mapping between Manuscript and Go code
@@ -70,37 +69,6 @@ func NewBuilder(msSourceFile string, goFileName string) *Builder {
 	return builder
 }
 
-// AddMapping adds a position mapping between Manuscript and Go code (pre-print approach)
-func (b *Builder) AddMapping(goPos token.Pos, msPos mast.Position, name string) {
-	// Ensure we have a go file for position calculations
-	if b.goFile == nil {
-		// Create a temporary file for position tracking during transpilation
-		b.goFile = b.fileSet.AddFile("generated.go", -1, 1000000)
-	}
-
-	goPosition := b.fileSet.Position(goPos)
-
-	// Get or add source file index
-	sourceIndex := b.getOrAddSource(b.msSourceFile)
-
-	// Get or add name index
-	nameIndex := -1
-	if name != "" {
-		nameIndex = b.getOrAddName(name)
-	}
-
-	mapping := Mapping{
-		GeneratedLine:   goPosition.Line - 1,   // Convert to 0-based
-		GeneratedColumn: goPosition.Column - 1, // Convert to 0-based
-		SourceIndex:     sourceIndex,
-		SourceLine:      msPos.Line - 1,   // Convert to 0-based
-		SourceColumn:    msPos.Column - 1, // Convert to 0-based
-		NameIndex:       nameIndex,
-	}
-
-	b.sourceMap.mappings = append(b.sourceMap.mappings, mapping)
-}
-
 // RegisterNodeMapping registers a mapping between a Go AST node and Manuscript AST node (post-print approach)
 func (b *Builder) RegisterNodeMapping(goNode ast.Node, msNode mast.Node) {
 	if goNode != nil && msNode != nil {
@@ -111,162 +79,9 @@ func (b *Builder) RegisterNodeMapping(goNode ast.Node, msNode mast.Node) {
 	}
 }
 
-// BuildFromPrintedCode creates a source map by analyzing the printed Go code (post-print approach)
-func (b *Builder) BuildFromPrintedCode(goCode string, goAST *ast.File, fileSet *token.FileSet) *SourceMap {
-	// Split the printed code into lines for analysis
-	lines := strings.Split(goCode, "\n")
-
-	// Create a list of nodes with their manuscript positions, sorted by manuscript position
-	type nodeMapping struct {
-		node     ast.Node
-		msPos    mast.Position
-		nodeText string
-	}
-
-	var nodeMappings []nodeMapping
-
-	// Collect all nodes that have mappings
-	for node, msBaseNode := range b.nodeMap {
-		if msBaseNode == nil {
-			continue
-		}
-
-		var nodeText string
-		if ident, ok := node.(*ast.Ident); ok {
-			nodeText = ident.Name
-		} else {
-			// For non-identifier nodes, we might not have text to search for
-			continue
-		}
-
-		nodeMappings = append(nodeMappings, nodeMapping{
-			node:     node,
-			msPos:    msBaseNode.Position,
-			nodeText: nodeText,
-		})
-	}
-
-	// Sort by manuscript position (line, then column)
-	sort.Slice(nodeMappings, func(i, j int) bool {
-		if nodeMappings[i].msPos.Line != nodeMappings[j].msPos.Line {
-			return nodeMappings[i].msPos.Line < nodeMappings[j].msPos.Line
-		}
-		return nodeMappings[i].msPos.Column < nodeMappings[j].msPos.Column
-	})
-
-	// Track used positions to avoid duplicate mappings
-	usedPositions := make(map[string]bool)
-
-	// Now find each node in the printed code, searching in order
-	for _, mapping := range nodeMappings {
-		found := false
-
-		// Search through the printed code for this identifier
-		for lineIdx, line := range lines {
-			// Find all occurrences of this text in the line
-			searchStart := 0
-			for {
-				colIdx := strings.Index(line[searchStart:], mapping.nodeText)
-				if colIdx < 0 {
-					break
-				}
-
-				actualColIdx := searchStart + colIdx
-				posKey := fmt.Sprintf("%d:%d", lineIdx, actualColIdx)
-
-				// Check if this position is already used
-				if !usedPositions[posKey] {
-					// Check if this looks like a valid identifier position
-					// (not part of a larger word)
-					isValidPos := true
-					if actualColIdx > 0 {
-						prevChar := line[actualColIdx-1]
-						if (prevChar >= 'a' && prevChar <= 'z') ||
-							(prevChar >= 'A' && prevChar <= 'Z') ||
-							(prevChar >= '0' && prevChar <= '9') ||
-							prevChar == '_' {
-							isValidPos = false
-						}
-					}
-					if actualColIdx+len(mapping.nodeText) < len(line) {
-						nextChar := line[actualColIdx+len(mapping.nodeText)]
-						if (nextChar >= 'a' && nextChar <= 'z') ||
-							(nextChar >= 'A' && nextChar <= 'Z') ||
-							(nextChar >= '0' && nextChar <= '9') ||
-							nextChar == '_' {
-							isValidPos = false
-						}
-					}
-
-					if isValidPos {
-						// Found a valid position, add mapping
-						b.addMappingDirect(
-							lineIdx,                // 0-based line
-							actualColIdx,           // 0-based column
-							mapping.msPos.Line-1,   // Convert to 0-based
-							mapping.msPos.Column-1, // Convert to 0-based
-							mapping.nodeText,       // Use the node text as name
-						)
-						usedPositions[posKey] = true
-						found = true
-						break
-					}
-				}
-
-				searchStart += colIdx + 1
-			}
-
-			if found {
-				break
-			}
-		}
-
-		// If we didn't find it, add a fallback mapping
-		if !found {
-			b.addMappingDirect(
-				0,                      // 0-based line
-				0,                      // 0-based column
-				mapping.msPos.Line-1,   // Convert to 0-based
-				mapping.msPos.Column-1, // Convert to 0-based
-				mapping.nodeText,       // Use the node text as name
-			)
-		}
-	}
-
-	return b.Build()
-}
-
-// addMappingDirect adds a mapping with direct line/column values
-func (b *Builder) addMappingDirect(goLine, goColumn, msLine, msColumn int, name string) {
-	sourceIndex := b.getOrAddSource(b.msSourceFile)
-
-	nameIndex := -1
-	if name != "" {
-		nameIndex = b.getOrAddName(name)
-	}
-
-	mapping := Mapping{
-		GeneratedLine:   goLine,
-		GeneratedColumn: goColumn,
-		SourceIndex:     sourceIndex,
-		SourceLine:      msLine,
-		SourceColumn:    msColumn,
-		NameIndex:       nameIndex,
-	}
-
-	b.sourceMap.mappings = append(b.sourceMap.mappings, mapping)
-}
-
 // SetGoFile sets the Go file for position calculations
 func (b *Builder) SetGoFile(file *token.File) {
 	b.goFile = file
-}
-
-// SetGoFileContent sets the Go file content for position calculations
-func (b *Builder) SetGoFileContent(content string) {
-	if b.goFile == nil {
-		b.goFile = b.fileSet.AddFile("generated.go", -1, len(content))
-	}
 }
 
 // getOrAddSource gets or adds a source file to the sources array
@@ -278,18 +93,6 @@ func (b *Builder) getOrAddSource(sourcePath string) int {
 	index := len(b.sourceMap.Sources)
 	b.sourceMap.Sources = append(b.sourceMap.Sources, sourcePath)
 	b.sourceFiles[sourcePath] = index
-	return index
-}
-
-// getOrAddName gets or adds a name to the names array
-func (b *Builder) getOrAddName(name string) int {
-	if index, exists := b.names[name]; exists {
-		return index
-	}
-
-	index := len(b.sourceMap.Names)
-	b.sourceMap.Names = append(b.sourceMap.Names, name)
-	b.names[name] = index
 	return index
 }
 
@@ -351,7 +154,7 @@ func (b *Builder) encodeMappings() string {
 		}
 
 		for _, value := range values {
-			result.WriteString(vlq.Encode(value))
+			result.WriteString(VLQEncode(value))
 		}
 
 		// Update previous values
@@ -482,7 +285,7 @@ func (sm *SourceMap) parseMappings() error {
 				continue
 			}
 
-			values, err := vlq.DecodeMultiple(segment)
+			values, err := VLQDecodeMultiple(segment)
 			if err != nil {
 				return fmt.Errorf("failed to decode VLQ segment '%s': %v", segment, err)
 			}

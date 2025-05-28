@@ -1,4 +1,4 @@
-package vlq
+package sourcemap
 
 import (
 	"strings"
@@ -16,8 +16,8 @@ const VLQ_BASE_MASK = VLQ_BASE - 1
 // VLQ_CONTINUATION_BIT is the continuation bit (32)
 const VLQ_CONTINUATION_BIT = VLQ_BASE
 
-// Encode encodes an integer using VLQ encoding
-func Encode(value int) string {
+// VLQEncode encodes an integer using VLQ encoding
+func VLQEncode(value int) string {
 	var result strings.Builder
 
 	// Convert to unsigned representation
@@ -41,8 +41,8 @@ func Encode(value int) string {
 	return result.String()
 }
 
-// Decode decodes a VLQ-encoded string to an integer
-func Decode(encoded string) (int, int, error) {
+// VLQDecode decodes a VLQ-encoded string to an integer
+func VLQDecode(encoded string) (int, int, error) {
 	var result int
 	var shift uint
 	var continuation bool
@@ -71,13 +71,13 @@ func Decode(encoded string) (int, int, error) {
 	return fromVLQSigned(result), i, nil
 }
 
-// DecodeMultiple decodes multiple VLQ values from a string
-func DecodeMultiple(encoded string) ([]int, error) {
+// VLQDecodeMultiple decodes multiple VLQ values from a string
+func VLQDecodeMultiple(encoded string) ([]int, error) {
 	var values []int
 	pos := 0
 
 	for pos < len(encoded) {
-		value, consumed, err := Decode(encoded[pos:])
+		value, consumed, err := VLQDecode(encoded[pos:])
 		if err != nil {
 			return nil, err
 		}
