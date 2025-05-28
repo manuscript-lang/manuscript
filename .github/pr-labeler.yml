@@ -3,63 +3,83 @@
 
 # Documentation changes
 documentation:
-  - 'docs/**/*'
-  - 'publish/docs-web/**/*'
-  - 'README.md'
-  - '*.md'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'docs/**/*'
+      - 'publish/docs-web/**/*'
+      - 'README.md'
+      - '**/*.md'
 
 # Language and grammar changes
 language:
-  - 'internal/grammar/**/*'
-  - 'internal/parser/**/*'
-  - 'internal/ast/**/*'
-  - '**/*.g4'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'internal/grammar/**/*'
+      - 'internal/parser/**/*'
+      - 'internal/ast/**/*'
+      - '**/*.g4'
 
 # Compiler changes
 compiler:
-  - 'internal/compile/**/*'
-  - 'internal/visitors/**/*'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'internal/compile/**/*'
+      - 'internal/visitors/**/*'
 
 # Standard library changes
 stdlib:
-  - 'stdlib/**/*'
-  - 'internal/builtins/**/*'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'stdlib/**/*'
+      - 'internal/builtins/**/*'
 
 # Testing changes
 testing:
-  - 'tests/**/*'
-  - '**/*_test.go'
-  - '**/test_*.go'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'tests/**/*'
+      - '**/*_test.go'
+      - '**/test_*.go'
 
 # CLI changes
 cli:
-  - 'cmd/**/*'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'cmd/**/*'
 
 # Editor support changes
 editor:
-  - 'publish/manuscript-vscode-extension/**/*'
-  - 'publish/lsp/**/*'
-  - 'publish/editor-rules/**/*'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'publish/manuscript-vscode-extension/**/*'
+      - 'publish/lsp/**/*'
+      - 'publish/editor-rules/**/*'
 
 # Configuration changes
 config:
-  - 'internal/config/**/*'
-  - '*.yml'
-  - '*.yaml'
-  - '*.json'
-  - '*.toml'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'internal/config/**/*'
+      - '*.yml'
+      - '*.yaml'
+      - '*.json'
+      - '*.toml'
 
 # Build and CI changes
 build:
-  - '.github/**/*'
-  - 'Makefile'
-  - 'go.mod'
-  - 'go.sum'
-  - 'scripts/**/*'
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/**/*'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
+      - 'scripts/**/*'
 
 # Dependencies
 dependencies:
-  - 'go.mod'
-  - 'go.sum'
-  - 'package.json'
-  - 'package-lock.json' 
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'go.mod'
+      - 'go.sum'
+      - 'package.json'
+      - 'package-lock.json' 

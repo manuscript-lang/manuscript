@@ -1,116 +1,101 @@
 # Issue Labeler Configuration for Manuscript Programming Language
+# Labels issues based on content using regex patterns
 
 # Bug reports
 bug:
-  - '(?i)(bug|error|issue|problem|broken|fail|crash|exception)'
-  - '(?i)(not working|doesn''t work|does not work)'
-  - '(?i)(unexpected behavior|incorrect|wrong)'
+  - '(bug|error|issue|problem|broken|fail|crash|exception)'
+  - '(not working|doesnt work|does not work)'
+  - '(unexpected behavior|incorrect|wrong)'
 
 # Feature requests
 enhancement:
-  - '(?i)(feature|enhancement|improvement|suggestion)'
-  - '(?i)(add|implement|support|would like|wish|want)'
-  - '(?i)(new feature|feature request)'
+  - '(feature|enhancement|improvement|suggestion)'
+  - '(add|implement|support|would like|wish|want)'
+  - '(new feature|feature request)'
 
 # Documentation related
 documentation:
-  - '(?i)(doc|docs|documentation|readme|guide|tutorial)'
-  - '(?i)(example|examples|sample)'
-  - '(?i)docs/'
-  - '(?i)README'
-  - '(?i)(typo|spelling|grammar)'
+  - '(doc|docs|documentation|readme|guide|tutorial)'
+  - '(example|examples|sample)'
+  - '(typo|spelling|grammar)'
 
 # Language features and grammar
 language:
-  - '(?i)(grammar|syntax|parser|lexer|ast)'
-  - '(?i)(language feature|language construct)'
-  - '(?i)(keyword|operator|expression)'
-  - '(?i)internal/grammar'
-  - '(?i)internal/parser'
-  - '(?i)internal/ast'
+  - '(grammar|syntax|parser|lexer|ast)'
+  - '(language feature|language construct)'
+  - '(keyword|operator|expression)'
 
 # Compiler and transpiler
 compiler:
-  - '(?i)(compiler|compilation|transpiler|transpilation)'
-  - '(?i)(code generation|codegen|generate)'
-  - '(?i)internal/compile'
-  - '(?i)visitors/go-transpiler'
+  - '(compiler|compilation|transpiler|transpilation)'
+  - '(code generation|codegen|generate)'
 
 # Standard library
 stdlib:
-  - '(?i)(stdlib|standard library|builtin|builtins)'
-  - '(?i)stdlib/'
-  - '(?i)internal/builtins'
+  - '(stdlib|standard library|builtin|builtins)'
 
 # Testing
 testing:
-  - '(?i)(test|testing|spec|coverage)'
-  - '(?i)tests/'
-  - '(?i)(unit test|integration test)'
+  - '(test|testing|spec|coverage)'
+  - '(unit test|integration test)'
 
 # Performance
 performance:
-  - '(?i)(performance|speed|slow|fast|optimization|optimize)'
-  - '(?i)(memory|cpu|benchmark)'
+  - '(performance|speed|slow|fast|optimization|optimize)'
+  - '(memory|cpu|benchmark)'
 
 # CLI and tooling
 cli:
-  - '(?i)(cli|command line|tool|binary)'
-  - '(?i)cmd/'
-  - '(?i)(flag|argument|option)'
+  - '(cli|command line|tool|binary)'
+  - '(flag|argument|option)'
 
 # Editor support
 editor:
-  - '(?i)(editor|vscode|syntax highlighting|lsp)'
-  - '(?i)manuscript-vscode-extension'
-  - '(?i)publish/lsp'
-  - '(?i)(intellisense|autocomplete|completion)'
+  - '(editor|vscode|syntax highlighting|lsp)'
+  - '(intellisense|autocomplete|completion)'
 
 # Configuration
 config:
-  - '(?i)(config|configuration|settings)'
-  - '(?i)internal/config'
-  - '(?i)(yaml|yml|json|toml)'
+  - '(config|configuration|settings)'
+  - '(yaml|yml|json|toml)'
 
 # Build and CI/CD
 build:
-  - '(?i)(build|ci|cd|github actions|workflow)'
-  - '(?i)Makefile'
-  - '(?i)\.github/'
-  - '(?i)(docker|container)'
+  - '(build|ci|cd|github actions|workflow)'
+  - '(docker|container)'
 
 # Good first issue (for newcomers)
 "good first issue":
-  - '(?i)(good first issue|beginner|easy|starter)'
-  - '(?i)(newcomer|first contribution)'
+  - '(good first issue|beginner|easy|starter)'
+  - '(newcomer|first contribution)'
 
 # Help wanted
 "help wanted":
-  - '(?i)(help wanted|help needed|assistance)'
-  - '(?i)(looking for help|need help)'
+  - '(help wanted|help needed|assistance)'
+  - '(looking for help|need help)'
 
 # Question
 question:
-  - '(?i)(question|how to|how do|help)'
-  - '(?i)\?'
-  - '(?i)(confused|unclear|understand)'
+  - '(question|how to|how do|help)'
+  - '\?'
+  - '(confused|unclear|understand)'
 
 # Duplicate
 duplicate:
-  - '(?i)(duplicate|already reported|same as)'
+  - '(duplicate|already reported|same as)'
 
 # Invalid
 invalid:
-  - '(?i)(invalid|not a bug|not an issue)'
-  - '(?i)(user error|misunderstanding)'
+  - '(invalid|not a bug|not an issue)'
+  - '(user error|misunderstanding)'
 
 # Priority labels
 "priority/high":
-  - '(?i)(urgent|critical|high priority|blocker)'
-  - '(?i)(security|vulnerability)'
+  - '(urgent|critical|high priority|blocker)'
+  - '(security|vulnerability)'
 
 "priority/medium":
-  - '(?i)(medium priority|important)'
+  - '(medium priority|important)'
 
 "priority/low":
-  - '(?i)(low priority|nice to have|minor)' 
+  - '(low priority|nice to have|minor)' 

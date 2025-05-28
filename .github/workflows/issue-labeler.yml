@@ -3,20 +3,16 @@ name: Issue Labeler
 on:
   issues:
     types: [opened, edited]
-  pull_request:
-    types: [opened, edited, synchronize]
 
 permissions:
   issues: write
-  pull-requests: write
   contents: read
 
 jobs:
   label:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Label issues and PRs
+      - name: Label issues based on content
         uses: github/issue-labeler@v3.3
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
