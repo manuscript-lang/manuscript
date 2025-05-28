@@ -111,7 +111,7 @@ func (t *GoTranspiler) VisitExprStmt(node *mast.ExprStmt) ast.Node {
 // VisitReturnStmt transpiles return statements
 func (t *GoTranspiler) VisitReturnStmt(node *mast.ReturnStmt) ast.Node {
 	if node == nil {
-		return &ast.ReturnStmt{}
+		return &ast.ReturnStmt{Return: t.pos(node)}
 	}
 
 	var results []ast.Expr
@@ -127,70 +127,51 @@ func (t *GoTranspiler) VisitReturnStmt(node *mast.ReturnStmt) ast.Node {
 		}
 	}
 
-	return &ast.ReturnStmt{Results: results}
+	returnStmt := &ast.ReturnStmt{
+		Return:  t.pos(node),
+		Results: results,
+	}
+
+	t.registerNodeMapping(returnStmt, node)
+	return returnStmt
 }
 
 // VisitYieldStmt transpiles yield statements to generator pattern using channels
 func (t *GoTranspiler) VisitYieldStmt(node *mast.YieldStmt) ast.Node {
-	if node == nil {
-		// Empty yield - send nil to channel and continue
-		return &ast.ExprStmt{
-			X: &ast.CallExpr{
-				Fun: &ast.Ident{Name: "__yield"},
-				Args: []ast.Expr{
-					&ast.Ident{Name: "nil"},
+	var yieldArg ast.Expr = &ast.Ident{Name: "nil"}
+
+	if node != nil && len(node.Values) > 0 {
+		var results []ast.Expr
+		for _, value := range node.Values {
+			if value == nil {
+				continue
+			}
+			if result := t.Visit(value); result != nil {
+				if goExpr, ok := result.(ast.Expr); ok {
+					results = append(results, goExpr)
+				}
+			}
+		}
+
+		switch len(results) {
+		case 0:
+			// yieldArg already set to nil
+		case 1:
+			yieldArg = results[0]
+		default:
+			yieldArg = &ast.CompositeLit{
+				Type: &ast.ArrayType{
+					Elt: &ast.InterfaceType{Methods: &ast.FieldList{}},
 				},
-			},
+				Elts: results,
+			}
 		}
-	}
-
-	var results []ast.Expr
-
-	for _, value := range node.Values {
-		if value == nil {
-			continue
-		}
-
-		result := t.Visit(value)
-		if goExpr, ok := result.(ast.Expr); ok {
-			results = append(results, goExpr)
-		}
-	}
-
-	// If no values, yield nil
-	if len(results) == 0 {
-		return &ast.ExprStmt{
-			X: &ast.CallExpr{
-				Fun: &ast.Ident{Name: "__yield"},
-				Args: []ast.Expr{
-					&ast.Ident{Name: "nil"},
-				},
-			},
-		}
-	}
-
-	// If single value, yield it directly
-	if len(results) == 1 {
-		return &ast.ExprStmt{
-			X: &ast.CallExpr{
-				Fun:  &ast.Ident{Name: "__yield"},
-				Args: []ast.Expr{results[0]},
-			},
-		}
-	}
-
-	// If multiple values, yield as slice
-	sliceExpr := &ast.CompositeLit{
-		Type: &ast.ArrayType{
-			Elt: &ast.InterfaceType{Methods: &ast.FieldList{}},
-		},
-		Elts: results,
 	}
 
 	return &ast.ExprStmt{
 		X: &ast.CallExpr{
 			Fun:  &ast.Ident{Name: "__yield"},
-			Args: []ast.Expr{sliceExpr},
+			Args: []ast.Expr{yieldArg},
 		},
 	}
 }
@@ -224,26 +205,28 @@ func (t *GoTranspiler) VisitDeferStmt(node *mast.DeferStmt) ast.Node {
 
 // VisitBreakStmt transpiles break statements
 func (t *GoTranspiler) VisitBreakStmt(node *mast.BreakStmt) ast.Node {
-	if !t.isInLoop() {
-		t.addError("break statement outside of loop", node)
-		return nil
-	}
-
-	return &ast.BranchStmt{
-		Tok: token.BREAK,
-	}
+	return t.createBranchStmt(node, token.BREAK, "break statement outside of loop")
 }
 
 // VisitContinueStmt transpiles continue statements
 func (t *GoTranspiler) VisitContinueStmt(node *mast.ContinueStmt) ast.Node {
+	return t.createBranchStmt(node, token.CONTINUE, "continue statement outside of loop")
+}
+
+// createBranchStmt creates a branch statement (break/continue) with loop validation
+func (t *GoTranspiler) createBranchStmt(node mast.Node, tok token.Token, errorMsg string) ast.Node {
 	if !t.isInLoop() {
-		t.addError("continue statement outside of loop", node)
+		t.addError(errorMsg, node)
 		return nil
 	}
 
-	return &ast.BranchStmt{
-		Tok: token.CONTINUE,
+	branchStmt := &ast.BranchStmt{
+		TokPos: t.pos(node),
+		Tok:    tok,
 	}
+
+	t.registerNodeMapping(branchStmt, node)
+	return branchStmt
 }
 
 // VisitCheckStmt transpiles check statements (error checking)
@@ -394,11 +377,15 @@ func (t *GoTranspiler) VisitIfStmt(node *mast.IfStmt) ast.Node {
 		}
 	}
 
-	return &ast.IfStmt{
+	ifStmt := &ast.IfStmt{
+		If:   t.pos(node),
 		Cond: condExpr,
 		Body: thenBlock,
 		Else: elseStmt,
 	}
+
+	t.registerNodeMapping(ifStmt, node)
+	return ifStmt
 }
 
 // VisitForStmt transpiles for statements
@@ -415,14 +402,22 @@ func (t *GoTranspiler) VisitForStmt(node *mast.ForStmt) ast.Node {
 	if node.Loop != nil {
 		loopResult := t.Visit(node.Loop)
 		if rangeStmt, ok := loopResult.(*ast.RangeStmt); ok {
+			rangeStmt.For = t.pos(node)
 			return rangeStmt
 		} else if forStmt, ok := loopResult.(*ast.ForStmt); ok {
+			forStmt.For = t.pos(node)
 			return forStmt
 		}
 	}
 
 	// Default: infinite loop
-	return &ast.ForStmt{Body: &ast.BlockStmt{List: []ast.Stmt{}}}
+	forStmt := &ast.ForStmt{
+		For:  t.pos(node),
+		Body: &ast.BlockStmt{List: []ast.Stmt{}},
+	}
+
+	t.registerNodeMapping(forStmt, node)
+	return forStmt
 }
 
 // VisitWhileStmt transpiles while statements
@@ -456,6 +451,7 @@ func (t *GoTranspiler) VisitWhileStmt(node *mast.WhileStmt) ast.Node {
 	}
 
 	return &ast.ForStmt{
+		For:  t.pos(node),
 		Cond: condition,
 		Body: body,
 	}

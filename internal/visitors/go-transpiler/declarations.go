@@ -94,9 +94,10 @@ func (t *GoTranspiler) VisitLetDecl(node *mast.LetDecl) ast.Node {
 		// Handle different result types
 		switch v := result.(type) {
 		case *DestructuringBlockStmt:
-			// Standalone destructuring - preserve the wrapper as a statement
-			statements = append(statements, v)
+			// Standalone destructuring - unwrap to the underlying BlockStmt
+			statements = append(statements, v.BlockStmt)
 		case *ast.BlockStmt:
+			// Flatten block statements (including let blocks)
 			statements = append(statements, v.List...)
 		case ast.Stmt:
 			statements = append(statements, v)
@@ -108,14 +109,19 @@ func (t *GoTranspiler) VisitLetDecl(node *mast.LetDecl) ast.Node {
 		}
 	}
 
-	// If we have multiple statements, return as a block
+	// Register mapping only for the primary node
+	var result ast.Node
 	if len(statements) > 1 {
-		return &ast.BlockStmt{List: statements}
+		result = &ast.BlockStmt{List: statements}
 	} else if len(statements) == 1 {
-		return statements[0]
+		result = statements[0]
+	} else {
+		return nil
 	}
 
-	return nil
+	// Register mapping for the primary result only
+	t.registerNodeMapping(result, node)
+	return result
 }
 
 // VisitTypeDecl transpiles type declarations
@@ -142,13 +148,17 @@ func (t *GoTranspiler) VisitTypeDecl(node *mast.TypeDecl) ast.Node {
 	}
 
 	typeSpec := &ast.TypeSpec{
-		Name: &ast.Ident{Name: t.generateVarName(node.Name)},
+		Name: &ast.Ident{
+			Name:    t.generateVarName(node.Name),
+			NamePos: t.pos(node),
+		},
 		Type: goType,
 	}
 
 	return &ast.GenDecl{
-		Tok:   token.TYPE,
-		Specs: []ast.Spec{typeSpec},
+		TokPos: t.pos(node),
+		Tok:    token.TYPE,
+		Specs:  []ast.Spec{typeSpec},
 	}
 }
 

@@ -62,13 +62,16 @@ func (t *GoTranspiler) VisitForTrinityLoop(node *mast.ForTrinityLoop) ast.Node {
 
 	// Always use verbose for-loop format with semicolons
 
-	return &ast.ForStmt{
-		For:  0, // Position set by parent VisitForStmt
+	forStmt := &ast.ForStmt{
+		For:  t.pos(node), // Position set by parent VisitForStmt
 		Init: init,
 		Cond: cond,
 		Post: post,
 		Body: body,
 	}
+
+	t.registerNodeMapping(forStmt, node)
+	return forStmt
 }
 
 // VisitForInLoop transpiles for-in loops to Go range statements
@@ -135,13 +138,17 @@ func (t *GoTranspiler) VisitForInLoop(node *mast.ForInLoop) ast.Node {
 		body = &ast.BlockStmt{List: []ast.Stmt{}}
 	}
 
-	return &ast.RangeStmt{
+	rangeStmt := &ast.RangeStmt{
+		For:   t.pos(node),
 		Key:   key,
 		Value: value,
 		Tok:   token.DEFINE,
 		X:     iterable,
 		Body:  body,
 	}
+
+	t.registerNodeMapping(rangeStmt, node)
+	return rangeStmt
 }
 
 // VisitForInitLet transpiles for loop let initializers

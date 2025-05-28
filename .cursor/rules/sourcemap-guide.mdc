@@ -1,0 +1,244 @@
+---
+description: Sourcemap Guide for Manuscript Transpiler
+globs: 
+alwaysApply: false
+---
+# Sourcemap Guide for Manuscript Transpiler
+
+## Overview
+
+The Manuscript transpiler generates sourcemaps to enable debugging and error tracing between the original Manuscript source code and the transpiled Go code. This guide explains how the sourcemap system works and provides troubleshooting tips.
+
+## How Sourcemaps Work
+
+### Core Components
+
+1. **Sourcemap Builder**: [internal/sourcemap/builder.go](mdc:internal/sourcemap/builder.go) - Central component that manages sourcemap generation
+2. **Go Transpiler**: [internal/visitors/go-transpiler/transpiler.go](mdc:internal/visitors/go-transpiler/transpiler.go) - Registers node mappings during transpilation
+3. **Position Tracking**: Each AST node tracks its position in the original source code
+
+### Node Mapping Registration
+
+Every visitor method in the go-transpiler that creates primary AST nodes should call `registerNodeMapping`:
+
+```go
+// Example from VisitFnDecl
+funcDecl := &ast.FuncDecl{
+    Name: &ast.Ident{Name: t.generateVarName(node.Name)},
+    // ... other fields
+}
+t.registerNodeMapping(funcDecl, node)
+return funcDecl
+```
+
+### Key Files with Node Mapping
+
+- **Functions**: [internal/visitors/go-transpiler/functions.go](mdc:internal/visitors/go-transpiler/functions.go)
+- **Statements**: [internal/visitors/go-transpiler/statements.go](mdc:internal/visitors/go-transpiler/statements.go)
+- **Expressions**: [internal/visitors/go-transpiler/expressions.go](mdc:internal/visitors/go-transpiler/expressions.go)
+- **Literals**: [internal/visitors/go-transpiler/literal.go](mdc:internal/visitors/go-transpiler/literal.go)
+- **Loops**: [internal/visitors/go-transpiler/loops.go](mdc:internal/visitors/go-transpiler/loops.go)
+- **Match**: [internal/visitors/go-transpiler/match.go](mdc:internal/visitors/go-transpiler/match.go)
+- **Utils**: [internal/visitors/go-transpiler/utils.go](mdc:internal/visitors/go-transpiler/utils.go)
+- **Modules**: [internal/visitors/go-transpiler/modules.go](mdc:internal/visitors/go-transpiler/modules.go)
+
+## Position Management
+
+### Position Creation Methods
+
+1. **`t.pos(node)`**: Creates a position for any AST node
+2. **`t.posWithName(node, name)`**: Creates a position with a name for identifiers
+
+Both methods automatically register sourcemap mappings when `sourcemapBuilder` is available.
+
+### Position Counter
+
+The transpiler maintains a `positionCounter` to ensure unique positions for generated nodes:
+
+```go
+// From transpiler.go
+positionCounter int // Counter for generating unique positions
+```
+
+## Troubleshooting Sourcemaps
+
+### Common Issues
+
+#### 1. Missing Node Mappings
+
+**Symptom**: Debugging shows incorrect source locations or no source mapping
+**Solution**: Ensure all visitor methods that create primary AST nodes call `registerNodeMapping`
+
+**Check**: Search for `return &ast.` patterns without corresponding `registerNodeMapping` calls:
+```bash
+grep -n "return &ast\." internal/visitors/go-transpiler/*.go
+```
+
+#### 2. Nil Sourcemap Builder
+
+**Symptom**: No sourcemap generation despite proper node mapping calls
+**Solution**: Verify transpiler is created with sourcemap support:
+
+```go
+// Correct initialization
+transpiler := NewGoTranspilerWithSourceMap(packageName, sourcemapBuilder)
+// or
+transpiler := NewGoTranspilerWithPostPrintSourceMap(packageName, sourcemapBuilder)
+```
+
+#### 3. Position Conflicts
+
+**Symptom**: Multiple Go nodes mapping to the same source position
+**Solution**: Use `posWithName` for named nodes to ensure uniqueness:
+
+```go
+// For identifiers and named elements
+ident.NamePos = t.posWithName(node, node.Name)
+```
+
+#### 4. Missing Position Information
+
+**Symptom**: Generated Go code has `token.NoPos` positions
+**Solution**: Ensure the original Manuscript AST nodes have valid position information
+
+### Debugging Tips
+
+#### 1. Enable Sourcemap Logging
+
+Add debug logging to track node mapping registration:
+
+```go
+func (t *GoTranspiler) registerNodeMapping(goNode ast.Node, msNode mast.Node) {
+    if t.sourcemapBuilder != nil {
+        fmt.Printf("Mapping Go node %T at %v to MS node %T at %v\n", 
+                   goNode, goNode.Pos(), msNode, msNode.Pos())
+        t.sourcemapBuilder.RegisterNodeMapping(goNode, msNode)
+    }
+}
+```
+
+#### 2. Verify Node Coverage
+
+Check that all major visitor methods have node mapping:
+
+```bash
+# Find visitor methods
+grep -n "func (t \*GoTranspiler) Visit" internal/visitors/go-transpiler/*.go
+
+# Check for registerNodeMapping in each file
+grep -n "registerNodeMapping" internal/visitors/go-transpiler/*.go
+```
+
+#### 3. Test Sourcemap Generation
+
+Create a simple test to verify sourcemap generation:
+
+```go
+func TestSourcemapGeneration(t *testing.T) {
+    builder := sourcemap.NewBuilder()
+    transpiler := NewGoTranspilerWithSourceMap("main", builder)
+    
+    // Transpile some code
+    result := transpiler.TranspileProgram(program)
+    
+    // Verify sourcemap was generated
+    sourcemap := builder.Generate()
+    assert.NotEmpty(t, sourcemap)
+}
+```
+
+## Best Practices
+
+### When to Register Node Mappings
+
+**DO register mappings for**:
+- Function declarations (`VisitFnDecl`)
+- Variable declarations (`VisitLetDecl`)
+- Statements (`VisitReturnStmt`, `VisitIfStmt`, etc.)
+- Expressions (`VisitBinaryExpr`, `VisitCallExpr`, etc.)
+- Literals (`VisitStringLiteral`, `VisitNumberLiteral`, etc.)
+
+**DON'T register mappings for**:
+- Error/fallback cases (`node == nil`)
+- Type annotations (`&ast.Ident{Name: "interface{}"`)
+- Intermediate helper nodes
+- Utility functions (non-visitor methods)
+
+### Code Pattern
+
+Always follow this pattern in visitor methods:
+
+```go
+func (t *GoTranspiler) VisitSomeNode(node *mast.SomeNode) ast.Node {
+    if node == nil {
+        // Handle error case - no mapping needed
+        return &ast.Ident{Name: "nil"}
+    }
+    
+    // Create the Go AST node
+    goNode := &ast.SomeGoNode{
+        // ... populate fields
+        SomePos: t.pos(node), // or t.posWithName(node, name)
+    }
+    
+    // Register the mapping
+    t.registerNodeMapping(goNode, node)
+    return goNode
+}
+```
+
+### File Organization
+
+Keep sourcemap-related code organized:
+- Core logic in [internal/sourcemap/](mdc:internal/sourcemap)
+- Node mapping registration in visitor methods
+- Position utilities in [internal/visitors/go-transpiler/transpiler.go](mdc:internal/visitors/go-transpiler/transpiler.go)
+
+## Testing Sourcemaps
+
+### Unit Tests
+
+Test individual visitor methods to ensure they register mappings:
+
+```go
+func TestVisitorNodeMapping(t *testing.T) {
+    builder := sourcemap.NewBuilder()
+    transpiler := NewGoTranspilerWithSourceMap("test", builder)
+    
+    // Create test node with position
+    msNode := &mast.SomeNode{/* ... */}
+    
+    // Visit the node
+    goNode := transpiler.VisitSomeNode(msNode)
+    
+    // Verify mapping was registered
+    // (implementation depends on sourcemap builder interface)
+}
+```
+
+### Integration Tests
+
+Test complete transpilation with sourcemap generation:
+
+```go
+func TestFullTranspilationWithSourcemap(t *testing.T) {
+    source := `
+    fn main() {
+        let x = 42
+        return x
+    }
+    `
+    
+    // Parse and transpile with sourcemap
+    program := parser.Parse(source)
+    builder := sourcemap.NewBuilder()
+    transpiler := NewGoTranspilerWithSourceMap("main", builder)
+    
+    goFile := transpiler.TranspileProgram(program)
+    sourcemap := builder.Generate()
+    
+    // Verify both Go code and sourcemap are generated
+    assert.NotNil(t, goFile)
+    assert.NotEmpty(t, sourcemap)
+}
+```

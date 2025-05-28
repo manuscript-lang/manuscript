@@ -11,33 +11,27 @@ import (
 )
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "build" {
-		handleBuildCommand()
-		return
-	}
-
-	if len(os.Args) != 2 {
+	if len(os.Args) < 2 {
 		fmt.Println("Usage: msc <file.ms> or msc build [options] [file.ms]")
 		return
 	}
 
-	// 1. Parse CLI options (filename from args)
-	filename := os.Args[1]
+	if os.Args[1] == "build" {
+		handleBuildCommand()
+		return
+	}
 
-	// 2. Resolve config file contents (search from source file directory)
-	sourceDir := filepath.Dir(filename)
-	cfg, err := config.LoadConfig(sourceDir)
+	filename := os.Args[1]
+	cfg, err := loadConfigFromFile(filename)
 	if err != nil {
 		fmt.Printf("Error loading config: %v\n", err)
 		return
 	}
 
-	// 3. Config object is constructed, now pass to compile pipeline
 	compile.RunFile(filename, cfg)
 }
 
 func handleBuildCommand() {
-	// 1. Parse CLI options
 	buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
 	configPath := buildCmd.String("config", "", "Path to configuration file (ms.yml)")
 	outdir := buildCmd.String("outdir", "", "Output directory")
@@ -55,40 +49,29 @@ func handleBuildCommand() {
 		filename = buildCmd.Arg(0)
 	}
 
-	// 2. Resolve config file contents
-	cfg, err := resolveConfig(configPath, filename)
+	cfg, err := resolveConfig(*configPath, filename)
 	if err != nil {
 		fmt.Printf("Error loading config: %v\n", err)
 		return
 	}
 
-	// Override with command line options
 	if *outdir != "" {
 		cfg.CompilerOptions.OutputDir = *outdir
 	}
 
-	// 3. Config object is constructed, now pass to compile pipeline
 	compile.BuildFile(filename, cfg, *debug)
 }
 
-func resolveConfig(configPath *string, filename string) (*config.MsConfig, error) {
-	var cfg *config.MsConfig
-	var err error
+func loadConfigFromFile(filename string) (*config.MsConfig, error) {
+	return config.LoadConfig(filepath.Dir(filename))
+}
 
-	if *configPath != "" {
-		// Load specific config file
-		cfg, err = config.LoadConfig(*configPath)
-	} else if filename != "" {
-		// Search for config starting from source file directory
-		sourceDir := filepath.Dir(filename)
-		cfg, err = config.LoadConfig(sourceDir)
-	} else {
-		// Use default config
-		cfg = config.DefaultConfig()
+func resolveConfig(configPath, filename string) (*config.MsConfig, error) {
+	if configPath != "" {
+		return config.LoadConfig(configPath)
 	}
-
-	if err != nil {
-		return nil, err
+	if filename != "" {
+		return loadConfigFromFile(filename)
 	}
-	return cfg, nil
+	return config.DefaultConfig(), nil
 }

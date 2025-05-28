@@ -401,9 +401,11 @@ func (v *ParseTreeToAST) VisitPipedArgs(ctx *parser.PipedArgsContext) interface{
 }
 
 func (v *ParseTreeToAST) VisitPipedArg(ctx *parser.PipedArgContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	pipedArg := ast.PipedArg{
 		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+			BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idToken)},
 			Name:     ctx.ID().GetText(),
 		},
 	}

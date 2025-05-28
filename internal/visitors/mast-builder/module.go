@@ -130,14 +130,15 @@ func (v *ParseTreeToAST) VisitImportItemList(ctx *parser.ImportItemListContext) 
 }
 
 func (v *ParseTreeToAST) VisitImportItem(ctx *parser.ImportItemContext) interface{} {
+	// Use the first ID token for more precise positioning
+	idToken := ctx.AllID()[0].GetSymbol()
 	item := ast.ImportItem{
 		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+			BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idToken)},
 			Name:     ctx.AllID()[0].GetText(),
 		},
 	}
 
-	// Check for alias
 	if len(ctx.AllID()) > 1 {
 		item.Alias = ctx.AllID()[1].GetText()
 	}

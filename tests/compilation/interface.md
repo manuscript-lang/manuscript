@@ -57,7 +57,7 @@ package main
 
 type Minimal interface {
     foo()
-    bar() int64
+    bar() int
 }
 
 func main() {

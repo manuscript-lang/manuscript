@@ -61,7 +61,7 @@ fn main() {
 ```go
 package main
 
-func numberGenerator(start int64, end int64) chan any {
+func numberGenerator(start int, end int) chan any {
     ch := make(chan any)
     go func() {
         defer close(ch)
@@ -204,7 +204,7 @@ fn main() {
 ```go
 package main
 
-func fibonacciGenerator(n int64) chan any {
+func fibonacciGenerator(n int) chan any {
     ch := make(chan any)
     go func() {
         defer close(ch)

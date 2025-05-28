@@ -168,10 +168,10 @@ fn main() {
 ```go
 package main
 
-func add(a int64, b int64) int64 {
+func add(a int, b int) int {
     return a + b
 }
-func mul(a int64, b int64) int64 {
+func mul(a int, b int) int {
     return a * b
 }
 func main() {
@@ -227,7 +227,7 @@ package main
 
 type User struct {
     name string
-    age  int64
+    age  int
 }
 
 func (u *User) getName() string {

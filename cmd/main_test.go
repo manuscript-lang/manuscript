@@ -26,6 +26,8 @@ var (
 var (
 	codeBlockRegex = regexp.MustCompile("(?s)```\\s*(\\w+)\\s*\\n(.*?)\\n```")
 	titleRegex     = regexp.MustCompile(`(?m)^#\s+(.*)$`)
+	// Regex to match sourcemap comments
+	sourcemapCommentRegex = regexp.MustCompile(`(?m)^//# sourceMappingURL=.*$`)
 )
 
 func TestMain(m *testing.M) {
@@ -61,6 +63,7 @@ func createTestContext(t *testing.T) *config.CompilerContext {
 		CompilerOptions: config.CompilerOptions{
 			OutputDir: "./build",
 			EntryFile: "",
+			Sourcemap: false,
 		},
 	}
 
@@ -85,6 +88,9 @@ func runParseTest(t *testing.T, ctx *TestPairContext) {
 		t.Fatalf("CompileManuscriptFromString failed: %v", err)
 	}
 
+	// Strip sourcemap comments from generated Go code for comparison
+	goCode = stripSourcemapComments(goCode)
+
 	if *update {
 		updatedContent := strings.Replace(string(*ctx.Content), ctx.Pair.GoCode, goCode, 1)
 		*ctx.Content = []byte(updatedContent)
@@ -94,6 +100,13 @@ func runParseTest(t *testing.T, ctx *TestPairContext) {
 	if goCode != ctx.Pair.GoCode {
 		diff.Test(t, t.Errorf, ctx.Pair.GoCode, goCode)
 	}
+}
+
+// stripSourcemapComments removes sourcemap comments from Go code
+func stripSourcemapComments(goCode string) string {
+	// Remove sourcemap comments and any trailing newlines they might leave
+	result := sourcemapCommentRegex.ReplaceAllString(goCode, "")
+	return strings.TrimSpace(result)
 }
 
 func getTestFiles(t *testing.T) []os.DirEntry {

@@ -8,7 +8,7 @@ fn main() {
 package main
 
 func main() {
-    return print("hello world")
+    print("hello world")
 }
 ```
 ---
@@ -29,7 +29,7 @@ func greet(name string) {
     return print("Hello, " + name)
 }
 func main() {
-    return greet("World")
+    greet("World")
 }
 ```
 ---
@@ -52,7 +52,7 @@ func get_pi() float64 {
 }
 func main() {
     x := get_pi()
-    return print(x)
+    print(x)
 }
 ```
 ---
@@ -71,13 +71,13 @@ fn main() {
 ```go
 package main
 
-func add(a int64, b int64) int64 {
+func add(a int, b int) int {
     d := 10
     return a + b + d
 }
 func main() {
     sum := add(5, 3)
-    return print(sum)
+    print(sum)
 }
 ```
 
@@ -119,7 +119,7 @@ func greet(args ...interface{}) {
 }
 func main() {
     greet()
-    return greet("Test")
+    greet("Test")
 }
 ```
 
@@ -144,16 +144,16 @@ func createUser(args ...interface{}) {
     if len(args) > 1 {
         isActive = args[1].(bool)
     }
-    var retries int64 = 3
+    var retries int = 3
     if len(args) > 2 {
-        retries = args[2].(int64)
+        retries = args[2].(int)
     }
     return print(username + " " + string(isActive) + " " + string(retries))
 }
 func main() {
     createUser("user1")
     createUser("user2", false)
-    return createUser("user3", true, 5)
+    createUser("user3", true, 5)
 }
 ```
 
@@ -178,7 +178,7 @@ func cleanup() {
 func main() {
     print("starting work")
     defer cleanup()
-    return print("doing work")
+    print("doing work")
 }
 ```
 
@@ -204,7 +204,7 @@ package main
 func main() {
     file := openFile("example.txt")
     defer file.close()
-    return file.write("Hello, World!")
+    file.write("Hello, World!")
 }
 func openFile(path string) File {
     file := File()

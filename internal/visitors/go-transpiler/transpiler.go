@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	mast "manuscript-lang/manuscript/internal/ast"
+	"manuscript-lang/manuscript/internal/sourcemap"
 )
 
 // GoTranspiler converts Manuscript AST to Go AST
@@ -22,13 +23,12 @@ type GoTranspiler struct {
 	loopDepth    int
 
 	// Current context
-	currentFile  *ast.File
-	currentDecls []ast.Decl
+	currentFile      *ast.File
+	currentDecls     []ast.Decl
+	currentTokenFile *token.File
 
-	// Optimizations
-	stringConcat   bool // Enable efficient string concatenation
-	sliceOptimized bool // Enable slice optimizations
-	memOptimized   bool // Enable memory allocation optimizations
+	// Sourcemap support
+	sourcemapBuilder *sourcemap.Builder
 }
 
 // PipelineBlockStmt represents a pipeline block that should not be flattened
@@ -68,14 +68,23 @@ func (m *MultipleDeclarations) End() token.Pos {
 // NewGoTranspiler creates a new transpiler instance
 func NewGoTranspiler(packageName string) *GoTranspiler {
 	return &GoTranspiler{
-		PackageName:    packageName,
-		Imports:        []*ast.ImportSpec{},
-		fileSet:        token.NewFileSet(),
-		errors:         []error{},
-		stringConcat:   true,
-		sliceOptimized: true,
-		memOptimized:   true,
+		PackageName: packageName,
+		Imports:     []*ast.ImportSpec{},
+		fileSet:     token.NewFileSet(),
+		errors:      []error{},
 	}
+}
+
+// NewGoTranspilerWithSourceMap creates a new transpiler instance with sourcemap support
+func NewGoTranspilerWithSourceMap(packageName string, sourcemapBuilder *sourcemap.Builder) *GoTranspiler {
+	transpiler := &GoTranspiler{
+		PackageName:      packageName,
+		Imports:          []*ast.ImportSpec{},
+		fileSet:          sourcemapBuilder.GetFileSet(), // Use the sourcemap builder's file set
+		errors:           []error{},
+		sourcemapBuilder: sourcemapBuilder,
+	}
+	return transpiler
 }
 
 // Visit implements the visitor pattern using the reusable dispatch function
@@ -131,8 +140,8 @@ func (t *GoTranspiler) pos(node mast.Node) token.Pos {
 	if node == nil {
 		return token.NoPos
 	}
-	// For now return NoPos, in a real implementation we'd map positions
-	return token.NoPos
+	// Return a simple position - the sourcemap handles the actual mapping
+	return token.Pos(1)
 }
 
 // Loop management
@@ -152,30 +161,26 @@ func (t *GoTranspiler) isInLoop() bool {
 
 // addErrorsImport adds the "errors" import if not already present
 func (t *GoTranspiler) addErrorsImport() {
-	// Check if errors import already exists
 	for _, importSpec := range t.Imports {
 		if importSpec.Path != nil && importSpec.Path.Value == `"errors"` {
-			return // Already imported
+			return
 		}
 	}
 
-	// Add errors import
-	errorsImport := &ast.ImportSpec{
+	t.Imports = append(t.Imports, &ast.ImportSpec{
 		Path: &ast.BasicLit{
 			Kind:  token.STRING,
 			Value: `"errors"`,
 		},
-	}
-	t.Imports = append(t.Imports, errorsImport)
+	})
 }
 
-// Generate better variable names
+// generateVarName generates Go-compliant variable names
 func (t *GoTranspiler) generateVarName(base string) string {
 	if base == "" {
 		return t.nextTempVar()
 	}
 
-	// Clean up the base name to be Go-compliant
 	cleaned := strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
 			return r
@@ -190,45 +195,9 @@ func (t *GoTranspiler) generateVarName(base string) string {
 	return cleaned
 }
 
-// String concatenation optimization
-func (t *GoTranspiler) optimizeStringConcat(left, right ast.Expr) ast.Expr {
-	if !t.stringConcat {
-		return &ast.BinaryExpr{
-			X:  left,
-			Op: token.ADD,
-			Y:  right,
-		}
+// registerNodeMapping registers a mapping between Go and Manuscript AST nodes for post-print source mapping
+func (t *GoTranspiler) registerNodeMapping(goNode ast.Node, msNode mast.Node) {
+	if t.sourcemapBuilder != nil {
+		t.sourcemapBuilder.RegisterNodeMapping(goNode, msNode)
 	}
-
-	// Use strings.Builder for multiple concatenations
-	// For now, just return simple concatenation
-	return &ast.BinaryExpr{
-		X:  left,
-		Op: token.ADD,
-		Y:  right,
-	}
-}
-
-// Type conversion utilities
-func (t *GoTranspiler) manuscriptTypeToGoType(msType mast.Type) ast.Expr {
-	if msType == nil {
-		return &ast.Ident{Name: "interface{}"}
-	}
-
-	// This would need to be implemented based on the Manuscript type system
-	// For now, return a placeholder
-	return &ast.Ident{Name: "interface{}"}
-}
-
-// Helper to convert expressions to statements
-func (t *GoTranspiler) exprToStmt(expr ast.Expr) ast.Stmt {
-	if expr == nil {
-		return nil
-	}
-	return &ast.ExprStmt{X: expr}
-}
-
-// Helper to convert manuscript identifier to Go identifier
-func (t *GoTranspiler) convertIdentifier(name string) *ast.Ident {
-	return &ast.Ident{Name: t.generateVarName(name)}
 }

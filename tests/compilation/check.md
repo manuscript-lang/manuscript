@@ -185,7 +185,7 @@ func validateAge(age number) {
     }
 }
 func main() {
-    return validateAge(25)
+    validateAge(25)
 }
 ```
 

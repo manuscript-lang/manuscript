@@ -8,7 +8,7 @@ import (
 )
 
 func (v *ParseTreeToAST) VisitLabelTypeAnnID(ctx *parser.LabelTypeAnnIDContext) interface{} {
-	return ast.NewSimpleType(ctx.ID().GetText())
+	return ast.NewSimpleTypeWithPos(ctx.ID().GetText(), v.getPositionFromToken(ctx.ID().GetSymbol()))
 }
 
 func (v *ParseTreeToAST) VisitLabelTypeAnnArray(ctx *parser.LabelTypeAnnArrayContext) interface{} {
@@ -24,7 +24,7 @@ func (v *ParseTreeToAST) VisitLabelTypeAnnFn(ctx *parser.LabelTypeAnnFnContext) 
 }
 
 func (v *ParseTreeToAST) VisitLabelTypeAnnVoid(ctx *parser.LabelTypeAnnVoidContext) interface{} {
-	return ast.NewVoidType()
+	return ast.NewVoidTypeWithPos(v.getPositionFromToken(ctx.VOID().GetSymbol()))
 }
 
 func (v *ParseTreeToAST) VisitTupleType(ctx *parser.TupleTypeContext) interface{} {
@@ -32,12 +32,12 @@ func (v *ParseTreeToAST) VisitTupleType(ctx *parser.TupleTypeContext) interface{
 	if ctx.TypeList() != nil {
 		elementTypes = ctx.TypeList().Accept(v).([]ast.TypeAnnotation)
 	}
-	return ast.NewTupleType(elementTypes)
+	return ast.NewTupleTypeWithPos(elementTypes, v.getPosition(ctx))
 }
 
 func (v *ParseTreeToAST) VisitArrayType(ctx *parser.ArrayTypeContext) interface{} {
-	baseType := ast.NewSimpleType(ctx.ID().GetText())
-	return ast.NewArrayType(baseType)
+	baseType := ast.NewSimpleTypeWithPos(ctx.ID().GetText(), v.getPositionFromToken(ctx.ID().GetSymbol()))
+	return ast.NewArrayTypeWithPos(baseType, v.getPosition(ctx))
 }
 
 func (v *ParseTreeToAST) VisitFnType(ctx *parser.FnTypeContext) interface{} {
@@ -51,7 +51,7 @@ func (v *ParseTreeToAST) VisitFnType(ctx *parser.FnTypeContext) interface{} {
 		returnType = ctx.TypeAnnotation().Accept(v).(ast.TypeAnnotation)
 	}
 
-	return ast.NewFunctionType(params, returnType)
+	return ast.NewFunctionTypeWithPos(params, returnType, v.getPosition(ctx))
 }
 
 func (v *ParseTreeToAST) VisitTypeAnnotation(ctx *parser.TypeAnnotationContext) interface{} {
@@ -64,9 +64,11 @@ func (v *ParseTreeToAST) VisitTypeAnnotation(ctx *parser.TypeAnnotationContext) 
 }
 
 func (v *ParseTreeToAST) VisitTypeDecl(ctx *parser.TypeDeclContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	typeDecl := &ast.TypeDecl{
 		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+			BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idToken)},
 			Name:     ctx.ID().GetText(),
 		},
 	}
@@ -113,9 +115,11 @@ func (v *ParseTreeToAST) VisitTypeAlias(ctx *parser.TypeAliasContext) interface{
 }
 
 func (v *ParseTreeToAST) VisitFieldDecl(ctx *parser.FieldDeclContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	field := ast.FieldDecl{
 		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+			BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idToken)},
 			Name:     ctx.ID().GetText(),
 		},
 		Optional: ctx.QUESTION() != nil,

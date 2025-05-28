@@ -23,14 +23,61 @@ func NewParseTreeToAST() *ParseTreeToAST {
 
 // Helper function to extract position from ANTLR context
 func (v *ParseTreeToAST) getPosition(ctx antlr.ParserRuleContext) ast.Position {
+	if ctx == nil {
+		return ast.Position{}
+	}
+
 	token := ctx.GetStart()
 	if token == nil {
 		return ast.Position{}
 	}
+
 	return ast.Position{
 		Line:   token.GetLine(),
 		Column: token.GetColumn(),
 		Offset: token.GetStart(),
+	}
+}
+
+// Helper function to extract position from a specific token
+func (v *ParseTreeToAST) getPositionFromToken(token antlr.Token) ast.Position {
+	if token == nil {
+		return ast.Position{}
+	}
+
+	return ast.Position{
+		Line:   token.GetLine(),
+		Column: token.GetColumn(),
+		Offset: token.GetStart(),
+	}
+}
+
+// Helper function to get position from terminal node (for more precise positioning)
+func (v *ParseTreeToAST) getPositionFromTerminal(terminal antlr.TerminalNode) ast.Position {
+	if terminal == nil {
+		return ast.Position{}
+	}
+
+	return v.getPositionFromToken(terminal.GetSymbol())
+}
+
+// Helper function to get position range from context (start to end)
+func (v *ParseTreeToAST) getPositionRange(ctx antlr.ParserRuleContext) ast.Position {
+	if ctx == nil {
+		return ast.Position{}
+	}
+
+	startToken := ctx.GetStart()
+	if startToken == nil {
+		return ast.Position{}
+	}
+
+	// For now, we return the start position
+	// In the future, we could extend Position to include end information
+	return ast.Position{
+		Line:   startToken.GetLine(),
+		Column: startToken.GetColumn(),
+		Offset: startToken.GetStart(),
 	}
 }
 
@@ -107,21 +154,4 @@ func (v *ParseTreeToAST) VisitTypedIDList(ctx *parser.TypedIDListContext) interf
 		}
 	}
 	return typedIDs
-}
-
-func (v *ParseTreeToAST) VisitTypedID(ctx *parser.TypedIDContext) interface{} {
-	typedID := ast.TypedID{
-		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-			Name:     ctx.ID().GetText(),
-		},
-	}
-
-	if ctx.TypeAnnotation() != nil {
-		if typeAnn := ctx.TypeAnnotation().Accept(v); typeAnn != nil {
-			typedID.Type = typeAnn.(ast.TypeAnnotation)
-		}
-	}
-
-	return typedID
 }
