@@ -14,6 +14,7 @@ import (
 type CompilerOptions struct {
 	OutputDir string `yaml:"outputDir" json:"outputDir"`
 	EntryFile string `yaml:"entryFile" json:"entryFile"`
+	Sourcemap bool   `yaml:"sourcemap" json:"sourcemap"`
 }
 
 // MsConfig represents the top-level configuration structure
@@ -27,6 +28,7 @@ func DefaultConfig() *MsConfig {
 		CompilerOptions: CompilerOptions{
 			OutputDir: "./build",
 			EntryFile: "",
+			Sourcemap: true, // Enable sourcemaps by default
 		},
 	}
 }

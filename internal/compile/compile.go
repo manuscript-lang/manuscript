@@ -107,8 +107,8 @@ func BuildFile(filename string, cfg *config.MsConfig, debug bool) {
 	fmt.Print(result.GoCode)
 }
 
-// BuildFileWithSourceMap compiles a manuscript file and generates a sourcemap
-func BuildFileWithSourceMap(filename string, cfg *config.MsConfig, debug bool, outputDir string) {
+// BuildFileWithSourceMap compiles a manuscript file and optionally generates a sourcemap based on config
+func BuildFileWithSourceMap(filename string, cfg *config.MsConfig, debug bool) {
 	result := compileFile(filename, cfg, debug)
 	if result.Error != nil {
 		fmt.Printf("Error: %v\n", result.Error)
@@ -117,11 +117,11 @@ func BuildFileWithSourceMap(filename string, cfg *config.MsConfig, debug bool, o
 
 	fmt.Print(result.GoCode)
 
-	// Write sourcemap if available
-	if result.SourceMap != nil && outputDir != "" {
+	// Write sourcemap if enabled in config and available
+	if cfg.CompilerOptions.Sourcemap && result.SourceMap != nil && cfg.CompilerOptions.OutputDir != "" {
 		baseName := filepath.Base(filename)
 		baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
-		sourcemapFile := filepath.Join(outputDir, baseName+".go.map")
+		sourcemapFile := filepath.Join(cfg.CompilerOptions.OutputDir, baseName+".go.map")
 
 		if err := result.SourceMap.WriteToFile(sourcemapFile); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to write sourcemap: %v\n", err)
@@ -187,7 +187,7 @@ func manuscriptToGoWithSourceMap(input string, ctx *config.CompilerContext) (str
 		return "", nil, errors.New(SyntaxErrorCode)
 	}
 
-	return convertToGoCodeWithSourceMap(tree, ctx.SourceFile)
+	return convertToGoCodeWithSourceMap(tree, ctx)
 }
 
 func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, *SyntaxErrorListener) {
@@ -208,7 +208,7 @@ func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, *Sy
 	return p.Program(), errorListener
 }
 
-func convertToGoCodeWithSourceMap(tree parser.IProgramContext, sourceFile string) (string, *sourcemap.SourceMap, error) {
+func convertToGoCodeWithSourceMap(tree parser.IProgramContext, ctx *config.CompilerContext) (string, *sourcemap.SourceMap, error) {
 	visitor := mastb.NewParseTreeToAST()
 	result := tree.Accept(visitor)
 
@@ -222,8 +222,9 @@ func convertToGoCodeWithSourceMap(tree parser.IProgramContext, sourceFile string
 	var sourceMap *sourcemap.SourceMap
 	var sourcemapBuilder *sourcemap.Builder
 
-	if sourceFile != "" {
-		sourcemapBuilder = sourcemap.NewBuilder(sourceFile, "generated.go")
+	// Only create sourcemap builder if sourcemap generation is enabled
+	if ctx.Config.CompilerOptions.Sourcemap && ctx.SourceFile != "" {
+		sourcemapBuilder = sourcemap.NewBuilder(ctx.SourceFile, "generated.go")
 		goTranspiler = transpiler.NewGoTranspilerWithPostPrintSourceMap("main", sourcemapBuilder)
 	} else {
 		goTranspiler = transpiler.NewGoTranspiler("main")
@@ -237,7 +238,7 @@ func convertToGoCodeWithSourceMap(tree parser.IProgramContext, sourceFile string
 	goCode := printGoAst(visitedNode)
 
 	// Build source map if we have a sourcemap builder
-	if sourceFile != "" && sourcemapBuilder != nil {
+	if ctx.Config.CompilerOptions.Sourcemap && sourcemapBuilder != nil {
 		goAST, ok := visitedNode.(*ast.File)
 		if ok && goAST != nil {
 			// Create a file set that matches what printGoAst used
@@ -245,7 +246,7 @@ func convertToGoCodeWithSourceMap(tree parser.IProgramContext, sourceFile string
 			sourceMap = sourcemapBuilder.BuildFromPrintedCode(goCode, goAST, fileSet)
 
 			// Add sourcemap comment
-			sourcemapComment := sourcemap.GetSourceMapComment(sourceFile + ".map")
+			sourcemapComment := sourcemap.GetSourceMapComment(ctx.SourceFile + ".map")
 			goCode += "\n" + sourcemapComment
 		}
 	}

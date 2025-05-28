@@ -14,6 +14,9 @@ func TestDefault(t *testing.T) {
 	if cfg.CompilerOptions.EntryFile != "" {
 		t.Errorf("Expected entryFile '', got '%s'", cfg.CompilerOptions.EntryFile)
 	}
+	if !cfg.CompilerOptions.Sourcemap {
+		t.Errorf("Expected sourcemap true, got %v", cfg.CompilerOptions.Sourcemap)
+	}
 }
 
 func TestLoadFromFile(t *testing.T) {
@@ -27,13 +30,25 @@ func TestLoadFromFile(t *testing.T) {
 			name:     "YAML config",
 			filename: "ms.yml",
 			content:  "compilerOptions:\n  outputDir: ./output\n  entryFile: main.ms",
-			expected: &MsConfig{CompilerOptions: CompilerOptions{OutputDir: "./output", EntryFile: "main.ms"}},
+			expected: &MsConfig{CompilerOptions: CompilerOptions{OutputDir: "./output", EntryFile: "main.ms", Sourcemap: false}},
 		},
 		{
 			name:     "JSON config",
 			filename: "ms.json",
 			content:  `{"compilerOptions": {"outputDir": "./json-output", "entryFile": "app.ms"}}`,
-			expected: &MsConfig{CompilerOptions: CompilerOptions{OutputDir: "./json-output", EntryFile: "app.ms"}},
+			expected: &MsConfig{CompilerOptions: CompilerOptions{OutputDir: "./json-output", EntryFile: "app.ms", Sourcemap: false}},
+		},
+		{
+			name:     "YAML config with sourcemap enabled",
+			filename: "ms.yml",
+			content:  "compilerOptions:\n  outputDir: ./output\n  entryFile: main.ms\n  sourcemap: true",
+			expected: &MsConfig{CompilerOptions: CompilerOptions{OutputDir: "./output", EntryFile: "main.ms", Sourcemap: true}},
+		},
+		{
+			name:     "JSON config with sourcemap disabled",
+			filename: "ms.json",
+			content:  `{"compilerOptions": {"outputDir": "./json-output", "entryFile": "app.ms", "sourcemap": false}}`,
+			expected: &MsConfig{CompilerOptions: CompilerOptions{OutputDir: "./json-output", EntryFile: "app.ms", Sourcemap: false}},
 		},
 	}
 
@@ -58,6 +73,9 @@ func TestLoadFromFile(t *testing.T) {
 			if config.CompilerOptions.EntryFile != tt.expected.CompilerOptions.EntryFile {
 				t.Errorf("Expected entryFile '%s', got '%s'", tt.expected.CompilerOptions.EntryFile, config.CompilerOptions.EntryFile)
 			}
+			if config.CompilerOptions.Sourcemap != tt.expected.CompilerOptions.Sourcemap {
+				t.Errorf("Expected sourcemap %v, got %v", tt.expected.CompilerOptions.Sourcemap, config.CompilerOptions.Sourcemap)
+			}
 		})
 	}
 }
@@ -75,6 +93,9 @@ func TestLoadNotFound(t *testing.T) {
 	}
 	if config.CompilerOptions.EntryFile != defaultConfig.CompilerOptions.EntryFile {
 		t.Errorf("Expected default entryFile '%s', got '%s'", defaultConfig.CompilerOptions.EntryFile, config.CompilerOptions.EntryFile)
+	}
+	if config.CompilerOptions.Sourcemap != defaultConfig.CompilerOptions.Sourcemap {
+		t.Errorf("Expected default sourcemap %v, got %v", defaultConfig.CompilerOptions.Sourcemap, config.CompilerOptions.Sourcemap)
 	}
 }
 

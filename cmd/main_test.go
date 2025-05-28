@@ -63,6 +63,7 @@ func createTestContext(t *testing.T) *config.CompilerContext {
 		CompilerOptions: config.CompilerOptions{
 			OutputDir: "./build",
 			EntryFile: "",
+			Sourcemap: false,
 		},
 	}
 
