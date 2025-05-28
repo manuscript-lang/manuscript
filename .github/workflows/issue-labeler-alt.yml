@@ -1,0 +1,53 @@
+name: Alternative Issue Labeler
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Label issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+            const text = title + ' ' + body;
+            
+            const labels = [];
+            
+            if (text.includes('bug') || text.includes('error') || text.includes('broken')) {
+              labels.push('bug');
+            }
+            
+            if (text.includes('feature') || text.includes('enhancement')) {
+              labels.push('enhancement');
+            }
+            
+            if (text.includes('docs') || text.includes('documentation')) {
+              labels.push('documentation');
+            }
+            
+            if (text.includes('question') || text.includes('?')) {
+              labels.push('question');
+            }
+            
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+              console.log(`Added labels: ${labels.join(', ')}`);
+            } else {
+              console.log('No matching labels found');
+            } 

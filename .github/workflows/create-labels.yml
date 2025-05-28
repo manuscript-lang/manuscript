@@ -1,0 +1,51 @@
+name: Create Labels
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  create-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              { name: 'bug', color: 'd73a4a', description: 'Something isn\'t working' },
+              { name: 'enhancement', color: 'a2eeef', description: 'New feature or request' },
+              { name: 'documentation', color: '0075ca', description: 'Improvements or additions to documentation' },
+              { name: 'question', color: 'd876e3', description: 'Further information is requested' },
+              { name: 'language', color: 'f9d71c', description: 'Language features and grammar' },
+              { name: 'compiler', color: 'e99695', description: 'Compiler and transpiler related' },
+              { name: 'stdlib', color: 'c5def5', description: 'Standard library related' },
+              { name: 'testing', color: 'bfd4f2', description: 'Testing related' },
+              { name: 'performance', color: 'ff6b6b', description: 'Performance improvements' },
+              { name: 'cli', color: '4ecdc4', description: 'CLI and tooling' },
+              { name: 'editor', color: '45b7d1', description: 'Editor support' },
+              { name: 'config', color: 'f39c12', description: 'Configuration related' },
+              { name: 'build', color: '95a5a6', description: 'Build and CI/CD' }
+            ];
+
+            for (const label of labels) {
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                  color: label.color,
+                  description: label.description
+                });
+                console.log(`Created label: ${label.name}`);
+              } catch (error) {
+                if (error.status === 422) {
+                  console.log(`Label already exists: ${label.name}`);
+                } else {
+                  console.error(`Error creating label ${label.name}:`, error);
+                }
+              }
+            } 

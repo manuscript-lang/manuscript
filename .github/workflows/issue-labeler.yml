@@ -8,17 +8,20 @@ permissions:
   issues: write
   contents: read
 
+env:
+  ACTIONS_STEP_DEBUG: true
+
 jobs:
   label:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Label issues based on content
-        uses: github/issue-labeler@v3.3
+        uses: github/issue-labeler@v3.4
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           configuration-path: .github/labeler.yml
-          include-title: true
-          include-body: true
+          include-title: 1
+          include-body: 1
           sync-labels: 1
           enable-versioned-regex: 0 

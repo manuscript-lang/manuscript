@@ -3,21 +3,15 @@
 
 # Bug reports
 bug:
-  - '(bug|error|issue|problem|broken|fail|crash|exception)'
-  - '(not working|doesnt work|does not work)'
-  - '(unexpected behavior|incorrect|wrong)'
+  - 'bug'
 
 # Feature requests
 enhancement:
-  - '(feature|enhancement|improvement|suggestion)'
-  - '(add|implement|support|would like|wish|want)'
-  - '(new feature|feature request)'
+  - 'feature'
 
 # Documentation related
 documentation:
-  - '(doc|docs|documentation|readme|guide|tutorial)'
-  - '(example|examples|sample)'
-  - '(typo|spelling|grammar)'
+  - 'docs'
 
 # Language features and grammar
 language:
@@ -76,9 +70,7 @@ build:
 
 # Question
 question:
-  - '(question|how to|how do|help)'
-  - '\?'
-  - '(confused|unclear|understand)'
+  - 'question'
 
 # Duplicate
 duplicate:
