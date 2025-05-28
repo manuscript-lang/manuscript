@@ -57,7 +57,6 @@ func RunFile(filename string, cfg *config.MsConfig) {
 		return
 	}
 
-	// Create and run temporary Go file
 	tmpFile, err := os.CreateTemp("", "manuscript_run_*.go")
 	if err != nil {
 		fmt.Printf("Error creating temporary file: %v\n", err)
@@ -81,18 +80,15 @@ func RunFile(filename string, cfg *config.MsConfig) {
 	err = cmd.Run()
 	stderrOutput := stderrBuf.String()
 
-	if err != nil {
-		if stderrOutput != "" && result.SourceMap != nil {
-			mapAndDisplayGoErrors(stderrOutput, result.SourceMap)
-		} else if stderrOutput != "" {
-			fmt.Fprintf(os.Stderr, "Compilation errors:\n%s", stderrOutput)
-		} else {
-			fmt.Fprintf(os.Stderr, "Manuscript execution finished with error: %v\n", err)
-		}
-		return
+	if err != nil && stderrOutput != "" && result.SourceMap != nil {
+		mapAndDisplayGoErrors(stderrOutput, result.SourceMap)
+	} else if err != nil && stderrOutput != "" {
+		fmt.Fprintf(os.Stderr, "Compilation errors:\n%s", stderrOutput)
+	} else if err != nil {
+		fmt.Fprintf(os.Stderr, "Manuscript execution finished with error: %v\n", err)
 	}
 
-	if stderrOutput != "" {
+	if stderrOutput != "" && err == nil {
 		fmt.Fprint(os.Stderr, stderrOutput)
 	}
 }
@@ -115,19 +111,28 @@ func BuildFile(filename string, cfg *config.MsConfig, debug bool) {
 	}
 }
 
-// compileFile is the core compilation function used by all public methods
+// compileFile is the core compilation function
 func compileFile(filename string, cfg *config.MsConfig, debug bool) CompileResult {
-	ctx, err := createCompilerContext(filename, cfg, debug)
+	sourceFile := filename
+	if sourceFile == "" {
+		sourceFile = cfg.CompilerOptions.EntryFile
+	}
+	if sourceFile == "" {
+		return CompileResult{Error: errors.New("no source file specified")}
+	}
+
+	ctx, err := config.NewCompilerContext(cfg, filepath.Dir(sourceFile), sourceFile)
 	if err != nil {
 		return CompileResult{Error: err}
 	}
+	ctx.Debug = debug
 
 	content, err := ctx.ModuleResolver.ResolveModule(ctx.SourceFile)
 	if err != nil {
 		return CompileResult{Error: fmt.Errorf("failed to read file %s: %v", ctx.SourceFile, err)}
 	}
 
-	goCode, sourceMap, err := manuscriptToGoWithSourceMap(string(content), ctx)
+	goCode, sourceMap, err := manuscriptToGo(string(content), ctx)
 	if err != nil {
 		return CompileResult{Error: fmt.Errorf("failed to compile program: %v", err)}
 	}
@@ -137,48 +142,18 @@ func compileFile(filename string, cfg *config.MsConfig, debug bool) CompileResul
 
 // CompileManuscriptFromString compiles manuscript code from a string
 func CompileManuscriptFromString(msCode string, ctx *config.CompilerContext) (string, error) {
-	goCode, _, err := manuscriptToGoWithSourceMap(msCode, ctx)
+	goCode, _, err := manuscriptToGo(msCode, ctx)
 	return goCode, err
 }
 
-func createCompilerContext(filename string, cfg *config.MsConfig, debug bool) (*config.CompilerContext, error) {
-	sourceFile := filename
-	if sourceFile == "" {
-		sourceFile = cfg.CompilerOptions.EntryFile
-	}
-	if sourceFile == "" {
-		return nil, errors.New("no source file specified")
-	}
-
-	ctx, err := config.NewCompilerContext(cfg, filepath.Dir(sourceFile), sourceFile)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.Debug = debug
-	return ctx, nil
-}
-
-func manuscriptToGoWithSourceMap(input string, ctx *config.CompilerContext) (string, *sourcemap.SourceMap, error) {
-	tree, errorListener := parseManuscriptCode(input, ctx.Debug)
-	if len(errorListener.Errors) > 0 {
-		for _, err := range errorListener.Errors {
-			fmt.Printf("Syntax error: %s\n", err)
-		}
-		return "", nil, errors.New(SyntaxErrorCode)
-	}
-
-	return convertToGoCodeWithSourceMap(tree, ctx)
-}
-
-func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, *SyntaxErrorListener) {
-	inputStream := antlr.NewInputStream(msCode)
+func manuscriptToGo(input string, ctx *config.CompilerContext) (string, *sourcemap.SourceMap, error) {
+	inputStream := antlr.NewInputStream(input)
 	lexer := parser.NewManuscriptLexer(inputStream)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 	p := parser.NewManuscript(stream)
 	p.GetInterpreter().SetPredictionMode(antlr.PredictionModeSLL)
 
-	if debug {
+	if ctx.Debug {
 		dumpTokens(stream)
 	}
 
@@ -186,10 +161,14 @@ func parseManuscriptCode(msCode string, debug bool) (parser.IProgramContext, *Sy
 	p.RemoveErrorListeners()
 	p.AddErrorListener(errorListener)
 
-	return p.Program(), errorListener
-}
+	tree := p.Program()
+	if len(errorListener.Errors) > 0 {
+		for _, err := range errorListener.Errors {
+			fmt.Printf("Syntax error: %s\n", err)
+		}
+		return "", nil, errors.New(SyntaxErrorCode)
+	}
 
-func convertToGoCodeWithSourceMap(tree parser.IProgramContext, ctx *config.CompilerContext) (string, *sourcemap.SourceMap, error) {
 	visitor := mastb.NewParseTreeToAST()
 	result := tree.Accept(visitor)
 
@@ -213,30 +192,26 @@ func convertToGoCodeWithSourceMap(tree parser.IProgramContext, ctx *config.Compi
 		return "", nil, fmt.Errorf("failed to transpile AST")
 	}
 
-	goCode := printGoAst(visitedNode)
+	goAST, ok := visitedNode.(*ast.File)
+	if !ok || goAST == nil {
+		return "", nil, fmt.Errorf("transpiler did not return a valid Go file")
+	}
 
+	var buf bytes.Buffer
+	config := printer.Config{Mode: printer.UseSpaces, Tabwidth: 4}
+	if err := config.Fprint(&buf, token.NewFileSet(), goAST); err != nil {
+		return "", nil, fmt.Errorf("failed to print Go AST: %v", err)
+	}
+
+	goCode := strings.TrimSpace(buf.String())
 	var sourceMap *sourcemap.SourceMap
+
 	if sourcemapBuilder != nil {
 		sourceMap = sourcemapBuilder.Build()
 		goCode += "\n" + sourcemap.GetSourceMapComment(ctx.SourceFile+".map")
 	}
 
 	return goCode, sourceMap, nil
-}
-
-func printGoAst(visitedNode ast.Node) string {
-	goAST, ok := visitedNode.(*ast.File)
-	if !ok || goAST == nil {
-		return ""
-	}
-
-	var buf bytes.Buffer
-	config := printer.Config{Mode: printer.UseSpaces, Tabwidth: 4}
-	if err := config.Fprint(&buf, token.NewFileSet(), goAST); err != nil {
-		return ""
-	}
-
-	return strings.TrimSpace(buf.String())
 }
 
 func dumpTokens(stream *antlr.CommonTokenStream) {
@@ -250,45 +225,49 @@ func dumpTokens(stream *antlr.CommonTokenStream) {
 	stream.Seek(0)
 }
 
-func mapAndDisplayGoErrors(
-	goErrorOutput string,
-	sourceMap *sourcemap.SourceMap,
-) {
+func mapAndDisplayGoErrors(goErrorOutput string, sourceMap *sourcemap.SourceMap) {
 	for _, line := range strings.Split(strings.TrimSpace(goErrorOutput), "\n") {
-		if strings.TrimSpace(line) == "" {
+		line = strings.TrimSpace(line)
+		if line == "" {
 			continue
 		}
 
-		goError, err := sourcemap.ParseGoError(line)
+		_, goLine, goColumn, message, err := sourcemap.ParseGoError(line)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", line)
 			continue
 		}
 
-		msFile, msLine, msColumn, err := sourceMap.MapGoErrorToManuscript(goError.Line, goError.Column)
+		msFile, msLine, msColumn, err := sourceMap.MapGoErrorToManuscript(goLine, goColumn)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error in generated Go code (line %d:%d): %s\n", goError.Line, goError.Column, goError.Message)
-			fmt.Fprintf(os.Stderr, "Sourcemap mapping error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error in generated Go code (line %d:%d): %s\n", goLine, goColumn, message)
 			continue
 		}
 
-		PrintManuscriptErrorWithContext(msFile, msLine, msColumn, goError.Message)
+		printManuscriptError(msFile, msLine, msColumn, message)
 	}
 }
 
-func PrintManuscriptErrorWithContext(file string, line, column int, message string) {
+func printManuscriptError(file string, line, column int, message string) {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s:%d:%d: %s\n", file, line, column, message)
 		return
 	}
+
 	lines := strings.Split(string(data), "\n")
 	if line-1 < 0 || line-1 >= len(lines) {
 		fmt.Fprintf(os.Stderr, "%s:%d:%d: %s\n", file, line, column, message)
 		return
 	}
+
 	codeLine := lines[line-1]
-	arrow := strings.Repeat(" ", column-1) + "^"
+	arrowColumn := column - 1
+	if arrowColumn < 0 {
+		arrowColumn = 0
+	}
+	arrow := strings.Repeat(" ", arrowColumn) + "^"
+
 	fmt.Fprintf(os.Stderr, "\nError in %s at line %d, column %d:\n%s\n%s\n%s\n\n",
 		file, line, column, codeLine, arrow, message)
 }

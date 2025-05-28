@@ -26,7 +26,7 @@ func (t *GoTranspiler) VisitFnDecl(node *mast.FnDecl) ast.Node {
 	funcDecl := &ast.FuncDecl{
 		Name: &ast.Ident{
 			Name:    t.generateVarName(node.Name),
-			NamePos: t.posWithName(node, node.Name),
+			NamePos: t.pos(node),
 		},
 		Type: &ast.FuncType{
 			Func:    t.pos(node),

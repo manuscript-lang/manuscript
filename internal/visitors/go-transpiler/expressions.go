@@ -16,7 +16,7 @@ func (t *GoTranspiler) VisitIdentifier(node *mast.Identifier) ast.Node {
 
 	ident := &ast.Ident{
 		Name:    t.generateVarName(node.Name),
-		NamePos: t.posWithName(node, node.Name),
+		NamePos: t.pos(node),
 	}
 
 	// Register node mapping for post-print source mapping
@@ -160,7 +160,7 @@ func (t *GoTranspiler) VisitCallExpr(node *mast.CallExpr) ast.Node {
 			// This is crucial for source map accuracy
 			if ident, isIdent := argExpr.(*ast.Ident); isIdent {
 				// For identifiers, make sure the NamePos is set correctly
-				ident.NamePos = t.posWithName(arg, ident.Name)
+				ident.NamePos = t.pos(arg)
 			}
 			args = append(args, argExpr)
 		}

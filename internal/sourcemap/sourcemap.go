@@ -7,13 +7,15 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	mast "manuscript-lang/manuscript/internal/ast"
 )
 
-// SourceMap represents a source map for mapping between Manuscript and Go code
+// SourceMap represents a standard Source Map v3 for mapping between Manuscript and Go code
 type SourceMap struct {
 	Version    int      `json:"version"`
 	Sources    []string `json:"sources"`
@@ -36,15 +38,13 @@ type Mapping struct {
 	NameIndex       int // Index into Names array (-1 if no name)
 }
 
-// Builder helps build source maps during transpilation and after printing
+// Builder helps build source maps during transpilation
 type Builder struct {
 	sourceMap    *SourceMap
 	sourceFiles  map[string]int // Map source file paths to indices
 	names        map[string]int // Map names to indices
 	fileSet      *token.FileSet
-	goFile       *token.File
 	msSourceFile string
-	nodeMap      map[ast.Node]*mast.BaseNode // Maps Go AST nodes to Manuscript AST nodes for post-print mapping
 }
 
 // NewBuilder creates a new source map builder
@@ -61,7 +61,6 @@ func NewBuilder(msSourceFile string, goFileName string) *Builder {
 		names:        make(map[string]int),
 		fileSet:      token.NewFileSet(),
 		msSourceFile: msSourceFile,
-		nodeMap:      make(map[ast.Node]*mast.BaseNode),
 	}
 
 	// Pre-add the source file
@@ -69,19 +68,53 @@ func NewBuilder(msSourceFile string, goFileName string) *Builder {
 	return builder
 }
 
-// RegisterNodeMapping registers a mapping between a Go AST node and Manuscript AST node (post-print approach)
+// RegisterNodeMapping registers a mapping between a Go AST node and Manuscript AST node
 func (b *Builder) RegisterNodeMapping(goNode ast.Node, msNode mast.Node) {
-	if goNode != nil && msNode != nil {
-		// Extract position from the manuscript node
-		pos := msNode.Pos()
-		baseNode := &mast.BaseNode{Position: pos}
-		b.nodeMap[goNode] = baseNode
+	if goNode == nil || msNode == nil {
+		return
 	}
-}
 
-// SetGoFile sets the Go file for position calculations
-func (b *Builder) SetGoFile(file *token.File) {
-	b.goFile = file
+	msPos := msNode.Pos()
+	if msPos.Line == 0 && msPos.Column == 0 {
+		return
+	}
+
+	sourceIndex := b.getOrAddSource(b.msSourceFile)
+	nameIndex := -1
+
+	// For named nodes, add the name to the names array
+	if ident, ok := goNode.(*ast.Ident); ok && ident.Name != "" {
+		nameIndex = b.getOrAddName(ident.Name)
+	} else if fn, ok := goNode.(*ast.FuncDecl); ok && fn.Name != nil {
+		nameIndex = b.getOrAddName(fn.Name.Name)
+	}
+
+	// Simple heuristic: map manuscript lines to Go lines with offset
+	// This works because our transpiler generates code in a predictable pattern
+	var generatedLine, generatedColumn int
+
+	// Account for package declaration and imports (typically 2-3 lines)
+	generatedLine = msPos.Line + 1 // Add offset for package and func declaration
+
+	// For identifiers in assignments, the Go compiler reports errors at the
+	// position of the variable name in the generated code, which is typically
+	// at column 5 (after 4 spaces of indentation)
+	if _, ok := goNode.(*ast.Ident); ok {
+		generatedColumn = 4 // 4 spaces of indentation + 1 for the identifier (0-based)
+	} else {
+		generatedColumn = msPos.Column
+	}
+
+	mapping := Mapping{
+		GeneratedLine:   generatedLine,
+		GeneratedColumn: generatedColumn,
+		SourceIndex:     sourceIndex,
+		SourceLine:      msPos.Line - 1, // Convert to 0-based
+		SourceColumn:    msPos.Column,   // Keep as-is since ANTLR already provides 0-based
+		NameIndex:       nameIndex,
+	}
+
+	b.sourceMap.mappings = append(b.sourceMap.mappings, mapping)
 }
 
 // getOrAddSource gets or adds a source file to the sources array
@@ -96,7 +129,19 @@ func (b *Builder) getOrAddSource(sourcePath string) int {
 	return index
 }
 
-// Build finalizes the source map and generates the mappings string
+// getOrAddName gets or adds a name to the names array
+func (b *Builder) getOrAddName(name string) int {
+	if index, exists := b.names[name]; exists {
+		return index
+	}
+
+	index := len(b.sourceMap.Names)
+	b.sourceMap.Names = append(b.sourceMap.Names, name)
+	b.names[name] = index
+	return index
+}
+
+// Build finalizes the source map and generates the VLQ-encoded mappings string
 func (b *Builder) Build() *SourceMap {
 	// Sort mappings by generated position
 	sort.Slice(b.sourceMap.mappings, func(i, j int) bool {
@@ -109,7 +154,6 @@ func (b *Builder) Build() *SourceMap {
 
 	// Generate VLQ-encoded mappings string
 	b.sourceMap.Mappings = b.encodeMappings()
-
 	return b.sourceMap
 }
 
@@ -208,46 +252,46 @@ func (sm *SourceMap) MapGoErrorToManuscript(goLine, goColumn int) (string, int, 
 		}
 	}
 
+	if len(sm.mappings) == 0 {
+		return "", 0, 0, fmt.Errorf("no mappings available")
+	}
+
 	// Find the best mapping for this position
-	// We want to find the mapping that is closest to the error position
 	var bestMapping *Mapping
-	minDistance := int(^uint(0) >> 1) // Max int
 
-	for _, mapping := range sm.mappings {
-		// Skip mappings on different lines
-		if mapping.GeneratedLine != goLine-1 {
-			continue
-		}
+	// Convert to 0-based for comparison
+	goLine0 := goLine - 1
+	goColumn0 := goColumn - 1
 
-		// Calculate distance from error position
-		distance := mapping.GeneratedColumn - (goColumn - 1)
-		if distance < 0 {
-			distance = -distance
-		}
-
-		// If this mapping is closer to the error position, use it
-		if distance < minDistance {
-			minDistance = distance
-			bestMapping = &mapping
+	// First, try to find a mapping on the same line with the closest column
+	for i := range sm.mappings {
+		mapping := &sm.mappings[i]
+		if mapping.GeneratedLine == goLine0 {
+			// If we find a mapping on the same line, prefer the one closest to but not exceeding the column
+			if bestMapping == nil ||
+				(mapping.GeneratedColumn <= goColumn0 && mapping.GeneratedColumn > bestMapping.GeneratedColumn) {
+				bestMapping = mapping
+			}
 		}
 	}
 
-	// If no mapping found on the same line, fall back to closest preceding mapping
+	// If no mapping found on the same line, find the closest preceding mapping
 	if bestMapping == nil {
-		bestMapping = &Mapping{GeneratedLine: -1}
-		for _, mapping := range sm.mappings {
-			if mapping.GeneratedLine > goLine-1 {
-				break
+		for i := range sm.mappings {
+			mapping := &sm.mappings[i]
+			if mapping.GeneratedLine < goLine0 ||
+				(mapping.GeneratedLine == goLine0 && mapping.GeneratedColumn < goColumn0) {
+				if bestMapping == nil ||
+					mapping.GeneratedLine > bestMapping.GeneratedLine ||
+					(mapping.GeneratedLine == bestMapping.GeneratedLine && mapping.GeneratedColumn > bestMapping.GeneratedColumn) {
+					bestMapping = mapping
+				}
 			}
-			if mapping.GeneratedLine == goLine-1 && mapping.GeneratedColumn > goColumn-1 {
-				break
-			}
-			*bestMapping = mapping
 		}
+	}
 
-		if bestMapping.GeneratedLine == -1 {
-			return "", 0, 0, fmt.Errorf("no mapping found for position %d:%d", goLine, goColumn)
-		}
+	if bestMapping == nil {
+		return "", 0, 0, fmt.Errorf("no mapping found for position %d:%d", goLine, goColumn)
 	}
 
 	if bestMapping.SourceIndex >= len(sm.Sources) {
@@ -320,6 +364,38 @@ func (sm *SourceMap) parseMappings() error {
 
 	sm.mappings = mappings
 	return nil
+}
+
+// ParseGoError parses a Go compilation error string
+func ParseGoError(errorStr string) (string, int, int, string, error) {
+	// Common Go error formats:
+	// ./file.go:10:5: error message
+	// file.go:10:5: error message
+	// file.go:10: error message (no column)
+
+	re := regexp.MustCompile(`^(.+?):(\d+)(?::(\d+))?: (.+)$`)
+	matches := re.FindStringSubmatch(strings.TrimSpace(errorStr))
+
+	if len(matches) < 4 {
+		return "", 0, 0, "", fmt.Errorf("unable to parse Go error: %s", errorStr)
+	}
+
+	file := matches[1]
+	line, err := strconv.Atoi(matches[2])
+	if err != nil {
+		return "", 0, 0, "", fmt.Errorf("invalid line number in error: %s", matches[2])
+	}
+
+	column := 1 // Default column if not specified
+	if len(matches) > 3 && matches[3] != "" {
+		column, err = strconv.Atoi(matches[3])
+		if err != nil {
+			return "", 0, 0, "", fmt.Errorf("invalid column number in error: %s", matches[3])
+		}
+	}
+
+	message := matches[4]
+	return file, line, column, message, nil
 }
 
 // GetSourceMapComment returns the source map comment to add to generated Go files

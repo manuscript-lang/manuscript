@@ -13,10 +13,15 @@ func (t *GoTranspiler) createIdent(id *mast.TypedID, name string) *ast.Ident {
 	if name == "" {
 		return &ast.Ident{Name: "_", NamePos: t.pos(id)}
 	}
-	return &ast.Ident{
+	ident := &ast.Ident{
 		Name:    t.generateVarName(name),
-		NamePos: t.posWithName(id, name),
+		NamePos: t.pos(id),
 	}
+
+	// Register the identifier for sourcemap
+	t.registerNodeMapping(ident, id)
+
+	return ident
 }
 
 // Helper function to handle type annotation
@@ -75,12 +80,16 @@ func (t *GoTranspiler) createVarDeclStmt(ident *ast.Ident, varType ast.Expr, pos
 
 // Helper function to create assignment statement
 func (t *GoTranspiler) createAssignment(ident *ast.Ident, valueExpr ast.Expr, pos token.Pos) ast.Node {
-	return &ast.AssignStmt{
+	assignStmt := &ast.AssignStmt{
 		Lhs:    []ast.Expr{ident},
 		TokPos: pos,
 		Tok:    token.DEFINE,
 		Rhs:    []ast.Expr{valueExpr},
 	}
+
+	// Register the assignment statement for sourcemap
+	// Note: We'll register the identifier separately in createIdent
+	return assignStmt
 }
 
 // Helper function to create try assignment with error handling

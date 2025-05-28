@@ -17,11 +17,10 @@ type GoTranspiler struct {
 	Imports     []*ast.ImportSpec // import specifications
 
 	// State management
-	fileSet         *token.FileSet
-	errors          []error
-	tempVarCount    int
-	loopDepth       int
-	positionCounter int // Counter for generating unique positions
+	fileSet      *token.FileSet
+	errors       []error
+	tempVarCount int
+	loopDepth    int
 
 	// Current context
 	currentFile      *ast.File
@@ -69,11 +68,10 @@ func (m *MultipleDeclarations) End() token.Pos {
 // NewGoTranspiler creates a new transpiler instance
 func NewGoTranspiler(packageName string) *GoTranspiler {
 	return &GoTranspiler{
-		PackageName:     packageName,
-		Imports:         []*ast.ImportSpec{},
-		fileSet:         token.NewFileSet(),
-		errors:          []error{},
-		positionCounter: 1, // Start position counter at 1
+		PackageName: packageName,
+		Imports:     []*ast.ImportSpec{},
+		fileSet:     token.NewFileSet(),
+		errors:      []error{},
 	}
 }
 
@@ -84,20 +82,6 @@ func NewGoTranspilerWithSourceMap(packageName string, sourcemapBuilder *sourcema
 		Imports:          []*ast.ImportSpec{},
 		fileSet:          sourcemapBuilder.GetFileSet(), // Use the sourcemap builder's file set
 		errors:           []error{},
-		positionCounter:  1, // Start position counter at 1
-		sourcemapBuilder: sourcemapBuilder,
-	}
-	return transpiler
-}
-
-// NewGoTranspilerWithPostPrintSourceMap creates a new transpiler instance with post-print sourcemap support
-func NewGoTranspilerWithPostPrintSourceMap(packageName string, sourcemapBuilder *sourcemap.Builder) *GoTranspiler {
-	transpiler := &GoTranspiler{
-		PackageName:      packageName,
-		Imports:          []*ast.ImportSpec{},
-		fileSet:          token.NewFileSet(),
-		errors:           []error{},
-		positionCounter:  1, // Start position counter at 1
 		sourcemapBuilder: sourcemapBuilder,
 	}
 	return transpiler
@@ -156,12 +140,8 @@ func (t *GoTranspiler) pos(node mast.Node) token.Pos {
 	if node == nil {
 		return token.NoPos
 	}
-	return token.NoPos
-}
-
-// posWithName creates a position and adds a sourcemap entry with a name
-func (t *GoTranspiler) posWithName(node mast.Node, name string) token.Pos {
-	return token.NoPos
+	// Return a simple position - the sourcemap handles the actual mapping
+	return token.Pos(1)
 }
 
 // Loop management
