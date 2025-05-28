@@ -30,11 +30,6 @@ type GoTranspiler struct {
 
 	// Sourcemap support
 	sourcemapBuilder *sourcemap.Builder
-
-	// Optimizations
-	stringConcat   bool // Enable efficient string concatenation
-	sliceOptimized bool // Enable slice optimizations
-	memOptimized   bool // Enable memory allocation optimizations
 }
 
 // PipelineBlockStmt represents a pipeline block that should not be flattened
@@ -79,9 +74,6 @@ func NewGoTranspiler(packageName string) *GoTranspiler {
 		fileSet:         token.NewFileSet(),
 		errors:          []error{},
 		positionCounter: 1, // Start position counter at 1
-		stringConcat:    true,
-		sliceOptimized:  true,
-		memOptimized:    true,
 	}
 }
 
@@ -94,9 +86,19 @@ func NewGoTranspilerWithSourceMap(packageName string, sourcemapBuilder *sourcema
 		errors:           []error{},
 		positionCounter:  1, // Start position counter at 1
 		sourcemapBuilder: sourcemapBuilder,
-		stringConcat:     true,
-		sliceOptimized:   true,
-		memOptimized:     true,
+	}
+	return transpiler
+}
+
+// NewGoTranspilerWithPostPrintSourceMap creates a new transpiler instance with post-print sourcemap support
+func NewGoTranspilerWithPostPrintSourceMap(packageName string, sourcemapBuilder *sourcemap.Builder) *GoTranspiler {
+	transpiler := &GoTranspiler{
+		PackageName:      packageName,
+		Imports:          []*ast.ImportSpec{},
+		fileSet:          token.NewFileSet(),
+		errors:           []error{},
+		positionCounter:  1, // Start position counter at 1
+		sourcemapBuilder: sourcemapBuilder,
 	}
 	return transpiler
 }
@@ -266,45 +268,9 @@ func (t *GoTranspiler) generateVarName(base string) string {
 	return cleaned
 }
 
-// String concatenation optimization
-func (t *GoTranspiler) optimizeStringConcat(left, right ast.Expr) ast.Expr {
-	if !t.stringConcat {
-		return &ast.BinaryExpr{
-			X:  left,
-			Op: token.ADD,
-			Y:  right,
-		}
+// registerNodeMapping registers a mapping between Go and Manuscript AST nodes for post-print source mapping
+func (t *GoTranspiler) registerNodeMapping(goNode ast.Node, msNode mast.Node) {
+	if t.sourcemapBuilder != nil {
+		t.sourcemapBuilder.RegisterNodeMapping(goNode, msNode)
 	}
-
-	// Use strings.Builder for multiple concatenations
-	// For now, just return simple concatenation
-	return &ast.BinaryExpr{
-		X:  left,
-		Op: token.ADD,
-		Y:  right,
-	}
-}
-
-// Type conversion utilities
-func (t *GoTranspiler) manuscriptTypeToGoType(msType mast.Type) ast.Expr {
-	if msType == nil {
-		return &ast.Ident{Name: "interface{}"}
-	}
-
-	// This would need to be implemented based on the Manuscript type system
-	// For now, return a placeholder
-	return &ast.Ident{Name: "interface{}"}
-}
-
-// Helper to convert expressions to statements
-func (t *GoTranspiler) exprToStmt(expr ast.Expr) ast.Stmt {
-	if expr == nil {
-		return nil
-	}
-	return &ast.ExprStmt{X: expr}
-}
-
-// Helper to convert manuscript identifier to Go identifier
-func (t *GoTranspiler) convertIdentifier(name string) *ast.Ident {
-	return &ast.Ident{Name: t.generateVarName(name)}
 }

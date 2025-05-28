@@ -20,11 +20,14 @@ func (t *GoTranspiler) VisitProgram(node *mast.Program) ast.Node {
 		Package: token.NoPos,
 	}
 
+	// Register node mapping for the file
+	t.registerNodeMapping(t.currentFile, node)
+
 	// Track whether we found a main function in the manuscript code
 	mainFound := false
-	hasStatements := false
+	var topLevelStmts []ast.Stmt
 
-	// Process all declarations
+	// First pass: collect all declarations and identify main function
 	for _, decl := range node.Declarations {
 		if decl == nil {
 			continue
@@ -50,18 +53,45 @@ func (t *GoTranspiler) VisitProgram(node *mast.Program) ast.Node {
 		case ast.Decl:
 			t.currentFile.Decls = append(t.currentFile.Decls, goNode)
 		case ast.Stmt:
-			// Top-level statements need to be wrapped in a main function or init
-			t.addToMainOrInit(goNode)
-			hasStatements = true
+			// Collect top-level statements to be added to main function later
+			topLevelStmts = append(topLevelStmts, goNode)
 		default:
 			// For any other type, try to handle as interface{} and extract what we can
 			t.handleUnknownResult(result)
 		}
 	}
 
-	// If no main function was found in the manuscript code AND no statements were added to an implicit main,
-	// create an empty one
-	if !mainFound && !hasStatements {
+	// Second pass: handle top-level statements
+	if len(topLevelStmts) > 0 {
+		if mainFound {
+			// If main function exists, add top-level statements to it
+			for _, decl := range t.currentFile.Decls {
+				if funcDecl, ok := decl.(*ast.FuncDecl); ok {
+					if funcDecl.Name != nil && funcDecl.Name.Name == "main" {
+						if funcDecl.Body == nil {
+							funcDecl.Body = &ast.BlockStmt{List: []ast.Stmt{}}
+						}
+						// Prepend top-level statements to the main function body
+						funcDecl.Body.List = append(topLevelStmts, funcDecl.Body.List...)
+						break
+					}
+				}
+			}
+		} else {
+			// If no main function exists, create one with the top-level statements
+			mainFunc := &ast.FuncDecl{
+				Name: &ast.Ident{Name: "main"},
+				Type: &ast.FuncType{
+					Params: &ast.FieldList{},
+				},
+				Body: &ast.BlockStmt{
+					List: topLevelStmts,
+				},
+			}
+			t.currentFile.Decls = append(t.currentFile.Decls, mainFunc)
+		}
+	} else if !mainFound {
+		// If no main function was found and no top-level statements, create an empty main
 		mainFunc := &ast.FuncDecl{
 			Name: &ast.Ident{Name: "main"},
 			Type: &ast.FuncType{
@@ -74,9 +104,17 @@ func (t *GoTranspiler) VisitProgram(node *mast.Program) ast.Node {
 		t.currentFile.Decls = append(t.currentFile.Decls, mainFunc)
 	}
 
-	// Add imports if any were collected
+	// Add imports to the file
 	if len(t.Imports) > 0 {
-		t.addImports()
+		importDecl := &ast.GenDecl{
+			Tok:   token.IMPORT,
+			Specs: make([]ast.Spec, len(t.Imports)),
+		}
+		for i, imp := range t.Imports {
+			importDecl.Specs[i] = imp
+		}
+		// Insert imports at the beginning
+		t.currentFile.Decls = append([]ast.Decl{importDecl}, t.currentFile.Decls...)
 	}
 
 	return t.currentFile
@@ -156,27 +194,6 @@ func (t *GoTranspiler) findOrCreateMainFunc() *ast.FuncDecl {
 
 	t.currentFile.Decls = append(t.currentFile.Decls, mainFunc)
 	return mainFunc
-}
-
-// addImports adds collected imports to the file
-func (t *GoTranspiler) addImports() {
-	if len(t.Imports) == 0 {
-		return
-	}
-
-	// Create import declaration
-	importDecl := &ast.GenDecl{
-		Tok:   token.IMPORT,
-		Specs: make([]ast.Spec, len(t.Imports)),
-	}
-
-	// Convert ImportSpec slice to Spec slice
-	for i, importSpec := range t.Imports {
-		importDecl.Specs[i] = importSpec
-	}
-
-	// Add import declaration to the beginning of the file
-	t.currentFile.Decls = append([]ast.Decl{importDecl}, t.currentFile.Decls...)
 }
 
 // handleUnknownResult tries to extract useful Go AST nodes from unknown result types

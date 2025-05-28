@@ -233,9 +233,11 @@ func (v *ParseTreeToAST) VisitLabelPrimaryLiteral(ctx *parser.LabelPrimaryLitera
 }
 
 func (v *ParseTreeToAST) VisitLabelPrimaryID(ctx *parser.LabelPrimaryIDContext) interface{} {
+	// Use the ID terminal node for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	return &ast.Identifier{
 		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+			BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idToken)},
 			Name:     ctx.ID().GetText(),
 		},
 	}

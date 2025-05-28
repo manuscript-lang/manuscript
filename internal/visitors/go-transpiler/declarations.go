@@ -96,10 +96,16 @@ func (t *GoTranspiler) VisitLetDecl(node *mast.LetDecl) ast.Node {
 		case *DestructuringBlockStmt:
 			// Standalone destructuring - preserve the wrapper as a statement
 			statements = append(statements, v)
+			// Register mapping for the destructuring block
+			t.registerNodeMapping(v, node)
 		case *ast.BlockStmt:
 			statements = append(statements, v.List...)
+			// Register mapping for the block
+			t.registerNodeMapping(v, node)
 		case ast.Stmt:
 			statements = append(statements, v)
+			// Register mapping for the statement
+			t.registerNodeMapping(v, node)
 		case nil:
 			// Skip nil results
 			continue
@@ -110,7 +116,9 @@ func (t *GoTranspiler) VisitLetDecl(node *mast.LetDecl) ast.Node {
 
 	// If we have multiple statements, return as a block
 	if len(statements) > 1 {
-		return &ast.BlockStmt{List: statements}
+		blockStmt := &ast.BlockStmt{List: statements}
+		t.registerNodeMapping(blockStmt, node)
+		return blockStmt
 	} else if len(statements) == 1 {
 		return statements[0]
 	}

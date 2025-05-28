@@ -196,3 +196,22 @@ func (v *ParseTreeToAST) VisitLetDestructuredArray(ctx *parser.LetDestructuredAr
 
 	return item
 }
+
+func (v *ParseTreeToAST) VisitTypedID(ctx *parser.TypedIDContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
+	typedID := ast.TypedID{
+		NamedNode: ast.NamedNode{
+			BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idToken)},
+			Name:     ctx.ID().GetText(),
+		},
+	}
+
+	if ctx.TypeAnnotation() != nil {
+		if typeAnn := ctx.TypeAnnotation().Accept(v); typeAnn != nil {
+			typedID.Type = typeAnn.(ast.TypeAnnotation)
+		}
+	}
+
+	return typedID
+}

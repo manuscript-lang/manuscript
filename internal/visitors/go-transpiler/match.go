@@ -86,9 +86,12 @@ func (t *GoTranspiler) VisitMatchExpr(node *mast.MatchExpr) ast.Node {
 	}
 
 	// Return the function call expression
-	return &ast.CallExpr{
+	callExpr := &ast.CallExpr{
 		Fun: iifeFuncLit,
 	}
+
+	t.registerNodeMapping(callExpr, node)
+	return callExpr
 }
 
 // VisitCaseClause transpiles case clauses
@@ -154,10 +157,13 @@ func (t *GoTranspiler) VisitCaseClause(node *mast.CaseClause) ast.Node {
 		}
 	}
 
-	return &ast.CaseClause{
+	caseClause := &ast.CaseClause{
 		List: values,
 		Body: body,
 	}
+
+	t.registerNodeMapping(caseClause, node)
+	return caseClause
 }
 
 // VisitDefaultClause transpiles default clauses

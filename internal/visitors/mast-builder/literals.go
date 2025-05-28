@@ -162,33 +162,40 @@ func (v *ParseTreeToAST) VisitStringLiteral(ctx *parser.StringLiteralContext) in
 // Number literals
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralInt(ctx *parser.LabelNumberLiteralIntContext) interface{} {
-	return v.createNumberLiteral(ctx, ctx.INTEGER().GetText(), ast.Integer)
+	token := ctx.INTEGER().GetSymbol()
+	return v.createNumberLiteralFromToken(token, ctx.INTEGER().GetText(), ast.Integer)
 }
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralFloat(ctx *parser.LabelNumberLiteralFloatContext) interface{} {
-	return v.createNumberLiteral(ctx, ctx.FLOAT().GetText(), ast.Float)
+	token := ctx.FLOAT().GetSymbol()
+	return v.createNumberLiteralFromToken(token, ctx.FLOAT().GetText(), ast.Float)
 }
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralHex(ctx *parser.LabelNumberLiteralHexContext) interface{} {
-	return v.createNumberLiteral(ctx, ctx.HEX_LITERAL().GetText(), ast.Hex)
+	token := ctx.HEX_LITERAL().GetSymbol()
+	return v.createNumberLiteralFromToken(token, ctx.HEX_LITERAL().GetText(), ast.Hex)
 }
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralBin(ctx *parser.LabelNumberLiteralBinContext) interface{} {
-	return v.createNumberLiteral(ctx, ctx.BINARY_LITERAL().GetText(), ast.Binary)
+	token := ctx.BINARY_LITERAL().GetSymbol()
+	return v.createNumberLiteralFromToken(token, ctx.BINARY_LITERAL().GetText(), ast.Binary)
 }
 
 func (v *ParseTreeToAST) VisitLabelNumberLiteralOct(ctx *parser.LabelNumberLiteralOctContext) interface{} {
-	return v.createNumberLiteral(ctx, ctx.OCTAL_LITERAL().GetText(), ast.Octal)
+	token := ctx.OCTAL_LITERAL().GetSymbol()
+	return v.createNumberLiteralFromToken(token, ctx.OCTAL_LITERAL().GetText(), ast.Octal)
 }
 
 // Boolean literals
 
 func (v *ParseTreeToAST) VisitLabelBoolLiteralTrue(ctx *parser.LabelBoolLiteralTrueContext) interface{} {
-	return v.createBooleanLiteral(ctx, true)
+	token := ctx.TRUE().GetSymbol()
+	return v.createBooleanLiteralFromToken(token, true)
 }
 
 func (v *ParseTreeToAST) VisitLabelBoolLiteralFalse(ctx *parser.LabelBoolLiteralFalseContext) interface{} {
-	return v.createBooleanLiteral(ctx, false)
+	token := ctx.FALSE().GetSymbol()
+	return v.createBooleanLiteralFromToken(token, false)
 }
 
 // Collection literals
@@ -240,8 +247,10 @@ func (v *ParseTreeToAST) VisitObjectField(ctx *parser.ObjectFieldContext) interf
 }
 
 func (v *ParseTreeToAST) VisitLabelObjectFieldNameID(ctx *parser.LabelObjectFieldNameIDContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	return &ast.ObjectFieldID{
-		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
+		NamedNode: v.createNamedNodeFromToken(idToken, ctx.ID().GetText()),
 	}
 }
 
@@ -330,8 +339,10 @@ func (v *ParseTreeToAST) VisitMapLiteral(ctx *parser.MapLiteralContext) interfac
 // Tagged block strings
 
 func (v *ParseTreeToAST) VisitTaggedBlockString(ctx *parser.TaggedBlockStringContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	taggedBlock := &ast.TaggedBlockString{
-		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
+		NamedNode: v.createNamedNodeFromToken(idToken, ctx.ID().GetText()),
 	}
 
 	switch {
@@ -351,8 +362,10 @@ func (v *ParseTreeToAST) VisitTaggedBlockString(ctx *parser.TaggedBlockStringCon
 // Struct initialization
 
 func (v *ParseTreeToAST) VisitStructInitExpr(ctx *parser.StructInitExprContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	structInit := &ast.StructInitExpr{
-		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
+		NamedNode: v.createNamedNodeFromToken(idToken, ctx.ID().GetText()),
 	}
 
 	if fieldList := v.acceptOptional(ctx.StructFieldList()); fieldList != nil {
@@ -382,8 +395,10 @@ func (v *ParseTreeToAST) VisitStructFieldList(ctx *parser.StructFieldListContext
 }
 
 func (v *ParseTreeToAST) VisitStructField(ctx *parser.StructFieldContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	field := ast.StructField{
-		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
+		NamedNode: v.createNamedNodeFromToken(idToken, ctx.ID().GetText()),
 	}
 
 	if expr := v.acceptOptional(ctx.Expr()); expr != nil {
@@ -396,8 +411,10 @@ func (v *ParseTreeToAST) VisitStructField(ctx *parser.StructFieldContext) interf
 // Typed object literal
 
 func (v *ParseTreeToAST) VisitTypedObjectLiteral(ctx *parser.TypedObjectLiteralContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	typedObjLit := &ast.TypedObjectLiteral{
-		NamedNode: v.createNamedNode(ctx, ctx.ID().GetText()),
+		NamedNode: v.createNamedNodeFromToken(idToken, ctx.ID().GetText()),
 	}
 
 	if fieldList := v.acceptOptional(ctx.ObjectFieldList()); fieldList != nil {
@@ -438,4 +455,26 @@ func (v *ParseTreeToAST) VisitBooleanLiteral(ctx *parser.BooleanLiteralContext) 
 
 func (v *ParseTreeToAST) VisitLiteral(ctx *parser.LiteralContext) interface{} {
 	return v.delegateToChild(ctx)
+}
+
+func (v *ParseTreeToAST) createNumberLiteralFromToken(token antlr.Token, value string, kind ast.NumberKind) *ast.NumberLiteral {
+	return &ast.NumberLiteral{
+		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPositionFromToken(token)}},
+		Value:     value,
+		Kind:      kind,
+	}
+}
+
+func (v *ParseTreeToAST) createBooleanLiteralFromToken(token antlr.Token, value bool) *ast.BooleanLiteral {
+	return &ast.BooleanLiteral{
+		TypedNode: ast.TypedNode{BaseNode: ast.BaseNode{Position: v.getPositionFromToken(token)}},
+		Value:     value,
+	}
+}
+
+func (v *ParseTreeToAST) createNamedNodeFromToken(token antlr.Token, name string) ast.NamedNode {
+	return ast.NamedNode{
+		BaseNode: ast.BaseNode{Position: v.getPositionFromToken(token)},
+		Name:     name,
+	}
 }

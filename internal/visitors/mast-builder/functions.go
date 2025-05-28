@@ -6,9 +6,10 @@ import (
 )
 
 func (v *ParseTreeToAST) VisitInterfaceDecl(ctx *parser.InterfaceDeclContext) interface{} {
+	idToken := ctx.ID().GetSymbol()
 	interfaceDecl := &ast.InterfaceDecl{
 		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+			BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idToken)},
 			Name:     ctx.ID().GetText(),
 		},
 	}
@@ -27,9 +28,10 @@ func (v *ParseTreeToAST) VisitInterfaceDecl(ctx *parser.InterfaceDeclContext) in
 }
 
 func (v *ParseTreeToAST) VisitInterfaceMethod(ctx *parser.InterfaceMethodContext) interface{} {
+	idToken := ctx.ID().GetSymbol()
 	method := ast.InterfaceMethod{
 		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+			BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idToken)},
 			Name:     ctx.ID().GetText(),
 		},
 		CanThrow: ctx.EXCLAMATION() != nil,
@@ -104,9 +106,11 @@ func (v *ParseTreeToAST) VisitParameters(ctx *parser.ParametersContext) interfac
 }
 
 func (v *ParseTreeToAST) VisitParam(ctx *parser.ParamContext) interface{} {
+	// Use the ID token for more precise positioning
+	idToken := ctx.ID().GetSymbol()
 	param := ast.Parameter{
 		NamedNode: ast.NamedNode{
-			BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+			BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idToken)},
 			Name:     ctx.ID().GetText(),
 		},
 	}

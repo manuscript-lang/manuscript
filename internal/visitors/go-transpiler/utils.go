@@ -26,10 +26,13 @@ func (t *GoTranspiler) VisitParameter(node *mast.Parameter) ast.Node {
 		paramType = &ast.Ident{Name: "interface{}"}
 	}
 
-	return &ast.Field{
+	field := &ast.Field{
 		Names: []*ast.Ident{{Name: t.generateVarName(node.Name)}},
 		Type:  paramType,
 	}
+
+	t.registerNodeMapping(field, node)
+	return field
 }
 
 // VisitInterfaceMethod transpiles interface method declarations
@@ -77,13 +80,16 @@ func (t *GoTranspiler) VisitInterfaceMethod(node *mast.InterfaceMethod) ast.Node
 		}
 	}
 
-	return &ast.Field{
+	field := &ast.Field{
 		Names: []*ast.Ident{{Name: t.generateVarName(node.Name)}},
 		Type: &ast.FuncType{
 			Params:  &ast.FieldList{List: params},
 			Results: results,
 		},
 	}
+
+	t.registerNodeMapping(field, node)
+	return field
 }
 
 // VisitTypedID transpiles typed identifiers
@@ -94,7 +100,10 @@ func (t *GoTranspiler) VisitTypedID(node *mast.TypedID) ast.Node {
 
 	// This is typically used in parameter/variable contexts
 	// Return the identifier name for now
-	return &ast.Ident{Name: t.generateVarName(node.Name)}
+	ident := &ast.Ident{Name: t.generateVarName(node.Name)}
+
+	t.registerNodeMapping(ident, node)
+	return ident
 }
 
 // VisitTypeSpec transpiles type specifications
@@ -108,7 +117,7 @@ func (t *GoTranspiler) VisitTypeSpec(node *mast.TypeSpec) ast.Node {
 		// Map manuscript types to Go types
 		switch node.Name {
 		case "int":
-			return &ast.Ident{Name: "int64"}
+			return &ast.Ident{Name: "int"}
 		case "float":
 			return &ast.Ident{Name: "float64"}
 		case "string":

@@ -21,9 +21,9 @@ func (t *GoTranspiler) VisitFnDecl(node *mast.FnDecl) ast.Node {
 		return t.buildGeneratorFunction(node.Name, params, body)
 	}
 
-	t.handleImplicitReturn(body, node.ReturnType)
+	t.handleImplicitReturn(body, node.ReturnType, node.Name)
 
-	return &ast.FuncDecl{
+	funcDecl := &ast.FuncDecl{
 		Name: &ast.Ident{
 			Name:    t.generateVarName(node.Name),
 			NamePos: t.posWithName(node, node.Name),
@@ -35,6 +35,9 @@ func (t *GoTranspiler) VisitFnDecl(node *mast.FnDecl) ast.Node {
 		},
 		Body: body,
 	}
+
+	t.registerNodeMapping(funcDecl, node)
+	return funcDecl
 }
 
 // buildFunctionParams builds parameter list and extraction statements for functions
@@ -124,7 +127,12 @@ func (t *GoTranspiler) buildFunctionBody(bodyNode mast.Node, paramExtractionStmt
 }
 
 // handleImplicitReturn adds implicit return for functions with explicit non-void return types
-func (t *GoTranspiler) handleImplicitReturn(body *ast.BlockStmt, returnType mast.Node) {
+func (t *GoTranspiler) handleImplicitReturn(body *ast.BlockStmt, returnType mast.Node, functionName string) {
+	// Never add implicit returns to main functions
+	if functionName == "main" {
+		return
+	}
+
 	if returnType != nil {
 		// Check if the return type is void
 		if typeSpec, ok := returnType.(*mast.TypeSpec); ok && typeSpec.Kind == mast.VoidType {
@@ -183,10 +191,13 @@ func (t *GoTranspiler) VisitFieldDecl(node *mast.FieldDecl) ast.Node {
 		fieldType = &ast.StarExpr{X: fieldType}
 	}
 
-	return &ast.Field{
+	field := &ast.Field{
 		Names: []*ast.Ident{{Name: t.generateVarName(node.Name)}},
 		Type:  fieldType,
 	}
+
+	t.registerNodeMapping(field, node)
+	return field
 }
 
 func (t *GoTranspiler) ensureLastExprIsReturn(body *ast.BlockStmt) {

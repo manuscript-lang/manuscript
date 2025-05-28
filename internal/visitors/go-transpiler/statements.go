@@ -127,10 +127,13 @@ func (t *GoTranspiler) VisitReturnStmt(node *mast.ReturnStmt) ast.Node {
 		}
 	}
 
-	return &ast.ReturnStmt{
+	returnStmt := &ast.ReturnStmt{
 		Return:  t.pos(node),
 		Results: results,
 	}
+
+	t.registerNodeMapping(returnStmt, node)
+	return returnStmt
 }
 
 // VisitYieldStmt transpiles yield statements to generator pattern using channels
@@ -232,10 +235,13 @@ func (t *GoTranspiler) VisitBreakStmt(node *mast.BreakStmt) ast.Node {
 		return nil
 	}
 
-	return &ast.BranchStmt{
+	breakStmt := &ast.BranchStmt{
 		TokPos: t.pos(node),
 		Tok:    token.BREAK,
 	}
+
+	t.registerNodeMapping(breakStmt, node)
+	return breakStmt
 }
 
 // VisitContinueStmt transpiles continue statements
@@ -245,10 +251,13 @@ func (t *GoTranspiler) VisitContinueStmt(node *mast.ContinueStmt) ast.Node {
 		return nil
 	}
 
-	return &ast.BranchStmt{
+	continueStmt := &ast.BranchStmt{
 		TokPos: t.pos(node),
 		Tok:    token.CONTINUE,
 	}
+
+	t.registerNodeMapping(continueStmt, node)
+	return continueStmt
 }
 
 // VisitCheckStmt transpiles check statements (error checking)
@@ -399,12 +408,15 @@ func (t *GoTranspiler) VisitIfStmt(node *mast.IfStmt) ast.Node {
 		}
 	}
 
-	return &ast.IfStmt{
+	ifStmt := &ast.IfStmt{
 		If:   t.pos(node),
 		Cond: condExpr,
 		Body: thenBlock,
 		Else: elseStmt,
 	}
+
+	t.registerNodeMapping(ifStmt, node)
+	return ifStmt
 }
 
 // VisitForStmt transpiles for statements
@@ -430,10 +442,13 @@ func (t *GoTranspiler) VisitForStmt(node *mast.ForStmt) ast.Node {
 	}
 
 	// Default: infinite loop
-	return &ast.ForStmt{
+	forStmt := &ast.ForStmt{
 		For:  t.pos(node),
 		Body: &ast.BlockStmt{List: []ast.Stmt{}},
 	}
+
+	t.registerNodeMapping(forStmt, node)
+	return forStmt
 }
 
 // VisitWhileStmt transpiles while statements

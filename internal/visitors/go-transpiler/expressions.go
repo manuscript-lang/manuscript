@@ -14,10 +14,15 @@ func (t *GoTranspiler) VisitIdentifier(node *mast.Identifier) ast.Node {
 		return &ast.Ident{Name: "_"}
 	}
 
-	return &ast.Ident{
+	ident := &ast.Ident{
 		Name:    t.generateVarName(node.Name),
 		NamePos: t.posWithName(node, node.Name),
 	}
+
+	// Register node mapping for post-print source mapping
+	t.registerNodeMapping(ident, node)
+
+	return ident
 }
 
 // VisitBinaryExpr transpiles binary expressions
@@ -76,12 +81,17 @@ func (t *GoTranspiler) VisitBinaryExpr(node *mast.BinaryExpr) ast.Node {
 		goOp = token.ADD // fallback
 	}
 
-	return &ast.BinaryExpr{
+	binaryExpr := &ast.BinaryExpr{
 		X:     leftExpr,
 		OpPos: t.pos(node),
 		Op:    goOp,
 		Y:     rightExpr,
 	}
+
+	// Register node mapping for post-print source mapping
+	t.registerNodeMapping(binaryExpr, node)
+
+	return binaryExpr
 }
 
 // VisitUnaryExpr transpiles unary expressions
@@ -112,11 +122,16 @@ func (t *GoTranspiler) VisitUnaryExpr(node *mast.UnaryExpr) ast.Node {
 		goOp = token.NOT // fallback
 	}
 
-	return &ast.UnaryExpr{
+	unaryExpr := &ast.UnaryExpr{
 		OpPos: t.pos(node),
 		Op:    goOp,
 		X:     operandExpr,
 	}
+
+	// Register node mapping for post-print source mapping
+	t.registerNodeMapping(unaryExpr, node)
+
+	return unaryExpr
 }
 
 // VisitCallExpr transpiles function call expressions
@@ -151,11 +166,16 @@ func (t *GoTranspiler) VisitCallExpr(node *mast.CallExpr) ast.Node {
 		}
 	}
 
-	return &ast.CallExpr{
+	callExpr := &ast.CallExpr{
 		Fun:    funcExpr,
 		Lparen: t.pos(node),
 		Args:   args,
 	}
+
+	// Register node mapping for post-print source mapping
+	t.registerNodeMapping(callExpr, node)
+
+	return callExpr
 }
 
 // VisitIndexExpr transpiles index expressions (array/object access)
@@ -176,11 +196,14 @@ func (t *GoTranspiler) VisitIndexExpr(node *mast.IndexExpr) ast.Node {
 		return nil
 	}
 
-	return &ast.IndexExpr{
+	indexExprNode := &ast.IndexExpr{
 		X:      objectExpr,
 		Lbrack: t.pos(node),
 		Index:  indexExpr,
 	}
+
+	t.registerNodeMapping(indexExprNode, node)
+	return indexExprNode
 }
 
 // VisitDotExpr transpiles member access expressions
@@ -197,13 +220,16 @@ func (t *GoTranspiler) VisitDotExpr(node *mast.DotExpr) ast.Node {
 		return nil
 	}
 
-	return &ast.SelectorExpr{
+	selectorExpr := &ast.SelectorExpr{
 		X: objectExpr,
 		Sel: &ast.Ident{
 			Name:    t.generateVarName(node.Field),
 			NamePos: t.pos(node),
 		},
 	}
+
+	t.registerNodeMapping(selectorExpr, node)
+	return selectorExpr
 }
 
 // VisitFnExpr transpiles function expressions

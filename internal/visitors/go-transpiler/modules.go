@@ -94,7 +94,10 @@ func (t *GoTranspiler) VisitImportItem(node *mast.ImportItem) ast.Node {
 	}
 
 	// ImportItems are typically handled as part of DestructuredImport
-	return &ast.Ident{Name: t.generateVarName(node.Name)}
+	ident := &ast.Ident{Name: t.generateVarName(node.Name)}
+
+	t.registerNodeMapping(ident, node)
+	return ident
 }
 
 // VisitModuleImport transpiles module imports
