@@ -161,30 +161,26 @@ func (t *GoTranspiler) isInLoop() bool {
 
 // addErrorsImport adds the "errors" import if not already present
 func (t *GoTranspiler) addErrorsImport() {
-	// Check if errors import already exists
 	for _, importSpec := range t.Imports {
 		if importSpec.Path != nil && importSpec.Path.Value == `"errors"` {
-			return // Already imported
+			return
 		}
 	}
 
-	// Add errors import
-	errorsImport := &ast.ImportSpec{
+	t.Imports = append(t.Imports, &ast.ImportSpec{
 		Path: &ast.BasicLit{
 			Kind:  token.STRING,
 			Value: `"errors"`,
 		},
-	}
-	t.Imports = append(t.Imports, errorsImport)
+	})
 }
 
-// Generate better variable names
+// generateVarName generates Go-compliant variable names
 func (t *GoTranspiler) generateVarName(base string) string {
 	if base == "" {
 		return t.nextTempVar()
 	}
 
-	// Clean up the base name to be Go-compliant
 	cleaned := strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
 			return r

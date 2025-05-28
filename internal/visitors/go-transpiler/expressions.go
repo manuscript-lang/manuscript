@@ -43,40 +43,8 @@ func (t *GoTranspiler) VisitBinaryExpr(node *mast.BinaryExpr) ast.Node {
 		return nil
 	}
 
-	// Map manuscript binary operators to Go operators
-	var goOp token.Token
-	switch node.Op {
-	case mast.Add:
-		goOp = token.ADD
-	case mast.Subtract:
-		goOp = token.SUB
-	case mast.Multiply:
-		goOp = token.MUL
-	case mast.Divide:
-		goOp = token.QUO
-	case mast.Modulo:
-		goOp = token.REM
-	case mast.Equal:
-		goOp = token.EQL
-	case mast.NotEqual:
-		goOp = token.NEQ
-	case mast.Less:
-		goOp = token.LSS
-	case mast.LessEqual:
-		goOp = token.LEQ
-	case mast.Greater:
-		goOp = token.GTR
-	case mast.GreaterEqual:
-		goOp = token.GEQ
-	case mast.LogicalAnd:
-		goOp = token.LAND
-	case mast.LogicalOr:
-		goOp = token.LOR
-	case mast.BitwiseAnd:
-		goOp = token.AND
-	case mast.BitwiseXor:
-		goOp = token.XOR
-	default:
+	goOp := t.mapBinaryOp(node.Op)
+	if goOp == token.ILLEGAL {
 		t.addError("unsupported binary operator", node)
 		goOp = token.ADD // fallback
 	}
@@ -88,9 +56,7 @@ func (t *GoTranspiler) VisitBinaryExpr(node *mast.BinaryExpr) ast.Node {
 		Y:     rightExpr,
 	}
 
-	// Register node mapping for post-print source mapping
 	t.registerNodeMapping(binaryExpr, node)
-
 	return binaryExpr
 }
 
@@ -108,16 +74,8 @@ func (t *GoTranspiler) VisitUnaryExpr(node *mast.UnaryExpr) ast.Node {
 		return nil
 	}
 
-	// Map manuscript unary operators to Go operators
-	var goOp token.Token
-	switch node.Op {
-	case mast.UnaryNot:
-		goOp = token.NOT
-	case mast.UnaryMinus:
-		goOp = token.SUB
-	case mast.UnaryPlus:
-		goOp = token.ADD
-	default:
+	goOp := t.mapUnaryOp(node.Op)
+	if goOp == token.ILLEGAL {
 		t.addError("unsupported unary operator", node)
 		goOp = token.NOT // fallback
 	}
@@ -128,9 +86,7 @@ func (t *GoTranspiler) VisitUnaryExpr(node *mast.UnaryExpr) ast.Node {
 		X:     operandExpr,
 	}
 
-	// Register node mapping for post-print source mapping
 	t.registerNodeMapping(unaryExpr, node)
-
 	return unaryExpr
 }
 
@@ -422,4 +378,56 @@ func (t *GoTranspiler) VisitTryExpr(node *mast.TryExpr) ast.Node {
 	}
 
 	return &ast.Ident{Name: "nil"}
+}
+
+// mapBinaryOp maps manuscript binary operators to Go operators
+func (t *GoTranspiler) mapBinaryOp(op mast.BinaryOp) token.Token {
+	switch op {
+	case mast.Add:
+		return token.ADD
+	case mast.Subtract:
+		return token.SUB
+	case mast.Multiply:
+		return token.MUL
+	case mast.Divide:
+		return token.QUO
+	case mast.Modulo:
+		return token.REM
+	case mast.Equal:
+		return token.EQL
+	case mast.NotEqual:
+		return token.NEQ
+	case mast.Less:
+		return token.LSS
+	case mast.LessEqual:
+		return token.LEQ
+	case mast.Greater:
+		return token.GTR
+	case mast.GreaterEqual:
+		return token.GEQ
+	case mast.LogicalAnd:
+		return token.LAND
+	case mast.LogicalOr:
+		return token.LOR
+	case mast.BitwiseAnd:
+		return token.AND
+	case mast.BitwiseXor:
+		return token.XOR
+	default:
+		return token.ILLEGAL
+	}
+}
+
+// mapUnaryOp maps manuscript unary operators to Go operators
+func (t *GoTranspiler) mapUnaryOp(op mast.UnaryOp) token.Token {
+	switch op {
+	case mast.UnaryNot:
+		return token.NOT
+	case mast.UnaryMinus:
+		return token.SUB
+	case mast.UnaryPlus:
+		return token.ADD
+	default:
+		return token.ILLEGAL
+	}
 }

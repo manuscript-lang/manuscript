@@ -100,62 +100,16 @@ func (t *GoTranspiler) VisitCaseClause(node *mast.CaseClause) ast.Node {
 		return &ast.CaseClause{List: []ast.Expr{}, Body: []ast.Stmt{}}
 	}
 
-	resultVarName := "__match_result"
-
-	// Get the pattern value
 	var values []ast.Expr
 	if node.Pattern != nil {
-		valueResult := t.Visit(node.Pattern)
-		if expr, ok := valueResult.(ast.Expr); ok {
-			values = append(values, expr)
+		if valueResult := t.Visit(node.Pattern); valueResult != nil {
+			if expr, ok := valueResult.(ast.Expr); ok {
+				values = append(values, expr)
+			}
 		}
 	}
 
-	// Handle the body based on its type
-	var body []ast.Stmt
-	if node.Body != nil {
-		switch caseBody := node.Body.(type) {
-		case *mast.CaseExpr:
-			// Simple expression case - assign to result variable, NO break statement
-			if caseBody.Expr != nil {
-				exprResult := t.Visit(caseBody.Expr)
-				if expr, ok := exprResult.(ast.Expr); ok {
-					body = []ast.Stmt{
-						&ast.AssignStmt{
-							Lhs: []ast.Expr{&ast.Ident{Name: resultVarName}},
-							Tok: token.ASSIGN,
-							Rhs: []ast.Expr{expr},
-						},
-					}
-				}
-			}
-		case *mast.CaseBlock:
-			// Block case - need to handle the last statement as a return value, WITH break
-			if caseBody.Block != nil {
-				blockResult := t.Visit(caseBody.Block)
-				if blockStmt, ok := blockResult.(*ast.BlockStmt); ok {
-					stmts := blockStmt.List
-					if len(stmts) > 0 {
-						// If the last statement is an expression statement, convert it to assignment
-						if exprStmt, isExprStmt := stmts[len(stmts)-1].(*ast.ExprStmt); isExprStmt {
-							bodyStmts := make([]ast.Stmt, len(stmts))
-							copy(bodyStmts, stmts[:len(stmts)-1])
-							bodyStmts[len(stmts)-1] = &ast.AssignStmt{
-								Lhs: []ast.Expr{&ast.Ident{Name: resultVarName}},
-								Tok: token.ASSIGN,
-								Rhs: []ast.Expr{exprStmt.X},
-							}
-							body = append(bodyStmts, &ast.BranchStmt{Tok: token.BREAK})
-						} else {
-							body = append(stmts, &ast.BranchStmt{Tok: token.BREAK})
-						}
-					} else {
-						body = []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}
-					}
-				}
-			}
-		}
-	}
+	body := t.buildCaseBody(node.Body)
 
 	caseClause := &ast.CaseClause{
 		List: values,
@@ -172,18 +126,26 @@ func (t *GoTranspiler) VisitDefaultClause(node *mast.DefaultClause) ast.Node {
 		return &ast.CaseClause{List: nil, Body: []ast.Stmt{}}
 	}
 
+	return &ast.CaseClause{
+		List: nil, // nil means default case
+		Body: t.buildCaseBody(node.Body),
+	}
+}
+
+// buildCaseBody builds the body statements for case/default clauses
+func (t *GoTranspiler) buildCaseBody(body interface{}) []ast.Stmt {
 	resultVarName := "__match_result"
 
-	// Handle the body based on its type
-	var body []ast.Stmt
-	if node.Body != nil {
-		switch caseBody := node.Body.(type) {
-		case *mast.CaseExpr:
-			// Simple expression case - assign to result variable, NO break statement
-			if caseBody.Expr != nil {
-				exprResult := t.Visit(caseBody.Expr)
+	if body == nil {
+		return []ast.Stmt{}
+	}
+
+	switch caseBody := body.(type) {
+	case *mast.CaseExpr:
+		if caseBody.Expr != nil {
+			if exprResult := t.Visit(caseBody.Expr); exprResult != nil {
 				if expr, ok := exprResult.(ast.Expr); ok {
-					body = []ast.Stmt{
+					return []ast.Stmt{
 						&ast.AssignStmt{
 							Lhs: []ast.Expr{&ast.Ident{Name: resultVarName}},
 							Tok: token.ASSIGN,
@@ -192,38 +154,33 @@ func (t *GoTranspiler) VisitDefaultClause(node *mast.DefaultClause) ast.Node {
 					}
 				}
 			}
-		case *mast.CaseBlock:
-			// Block case - need to handle the last statement as a return value, WITH break
-			if caseBody.Block != nil {
-				blockResult := t.Visit(caseBody.Block)
+		}
+	case *mast.CaseBlock:
+		if caseBody.Block != nil {
+			if blockResult := t.Visit(caseBody.Block); blockResult != nil {
 				if blockStmt, ok := blockResult.(*ast.BlockStmt); ok {
 					stmts := blockStmt.List
-					if len(stmts) > 0 {
-						// If the last statement is an expression statement, convert it to assignment
-						if exprStmt, isExprStmt := stmts[len(stmts)-1].(*ast.ExprStmt); isExprStmt {
-							bodyStmts := make([]ast.Stmt, len(stmts))
-							copy(bodyStmts, stmts[:len(stmts)-1])
-							bodyStmts[len(stmts)-1] = &ast.AssignStmt{
-								Lhs: []ast.Expr{&ast.Ident{Name: resultVarName}},
-								Tok: token.ASSIGN,
-								Rhs: []ast.Expr{exprStmt.X},
-							}
-							body = append(bodyStmts, &ast.BranchStmt{Tok: token.BREAK})
-						} else {
-							body = append(stmts, &ast.BranchStmt{Tok: token.BREAK})
-						}
-					} else {
-						body = []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}
+					if len(stmts) == 0 {
+						return []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}
 					}
+
+					// Convert last expression statement to assignment
+					if exprStmt, isExprStmt := stmts[len(stmts)-1].(*ast.ExprStmt); isExprStmt {
+						bodyStmts := make([]ast.Stmt, len(stmts))
+						copy(bodyStmts, stmts[:len(stmts)-1])
+						bodyStmts[len(stmts)-1] = &ast.AssignStmt{
+							Lhs: []ast.Expr{&ast.Ident{Name: resultVarName}},
+							Tok: token.ASSIGN,
+							Rhs: []ast.Expr{exprStmt.X},
+						}
+						return append(bodyStmts, &ast.BranchStmt{Tok: token.BREAK})
+					}
+					return append(stmts, &ast.BranchStmt{Tok: token.BREAK})
 				}
 			}
 		}
 	}
-
-	return &ast.CaseClause{
-		List: nil, // nil means default case
-		Body: body,
-	}
+	return []ast.Stmt{}
 }
 
 // VisitCaseExpr transpiles case expressions

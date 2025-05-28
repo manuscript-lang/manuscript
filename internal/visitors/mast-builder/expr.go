@@ -39,22 +39,24 @@ func (v *ParseTreeToAST) VisitAssignmentExpr(ctx *parser.AssignmentExprContext) 
 }
 
 func (v *ParseTreeToAST) VisitAssignmentOp(ctx *parser.AssignmentOpContext) interface{} {
-	opMap := map[bool]ast.AssignmentOp{
-		ctx.EQUALS() != nil:       ast.AssignEq,
-		ctx.PLUS_EQUALS() != nil:  ast.AssignPlusEq,
-		ctx.MINUS_EQUALS() != nil: ast.AssignMinusEq,
-		ctx.STAR_EQUALS() != nil:  ast.AssignStarEq,
-		ctx.SLASH_EQUALS() != nil: ast.AssignSlashEq,
-		ctx.MOD_EQUALS() != nil:   ast.AssignModEq,
-		ctx.CARET_EQUALS() != nil: ast.AssignCaretEq,
+	switch {
+	case ctx.EQUALS() != nil:
+		return ast.AssignEq
+	case ctx.PLUS_EQUALS() != nil:
+		return ast.AssignPlusEq
+	case ctx.MINUS_EQUALS() != nil:
+		return ast.AssignMinusEq
+	case ctx.STAR_EQUALS() != nil:
+		return ast.AssignStarEq
+	case ctx.SLASH_EQUALS() != nil:
+		return ast.AssignSlashEq
+	case ctx.MOD_EQUALS() != nil:
+		return ast.AssignModEq
+	case ctx.CARET_EQUALS() != nil:
+		return ast.AssignCaretEq
+	default:
+		return ast.AssignEq
 	}
-
-	for condition, op := range opMap {
-		if condition {
-			return op
-		}
-	}
-	return ast.AssignEq
 }
 
 func (v *ParseTreeToAST) VisitTernaryExpr(ctx *parser.TernaryExprContext) interface{} {
@@ -96,19 +98,18 @@ func (v *ParseTreeToAST) VisitComparisonExpr(ctx *parser.ComparisonExprContext) 
 }
 
 func (v *ParseTreeToAST) VisitComparisonOp(ctx *parser.ComparisonOpContext) interface{} {
-	opMap := map[bool]ast.BinaryOp{
-		ctx.LT() != nil:        ast.Less,
-		ctx.LT_EQUALS() != nil: ast.LessEqual,
-		ctx.GT() != nil:        ast.Greater,
-		ctx.GT_EQUALS() != nil: ast.GreaterEqual,
+	switch {
+	case ctx.LT() != nil:
+		return ast.Less
+	case ctx.LT_EQUALS() != nil:
+		return ast.LessEqual
+	case ctx.GT() != nil:
+		return ast.Greater
+	case ctx.GT_EQUALS() != nil:
+		return ast.GreaterEqual
+	default:
+		return ast.Less
 	}
-
-	for condition, op := range opMap {
-		if condition {
-			return op
-		}
-	}
-	return ast.Less
 }
 
 func (v *ParseTreeToAST) VisitAdditiveExpr(ctx *parser.AdditiveExprContext) interface{} {
@@ -145,17 +146,13 @@ func (v *ParseTreeToAST) VisitLabelUnaryOpExpr(ctx *parser.LabelUnaryOpExprConte
 		Expr:      v.acceptAsExpr(ctx.GetUnary()),
 	}
 
-	opMap := map[bool]ast.UnaryOp{
-		ctx.PLUS() != nil:        ast.UnaryPlus,
-		ctx.MINUS() != nil:       ast.UnaryMinus,
-		ctx.EXCLAMATION() != nil: ast.UnaryNot,
-	}
-
-	for condition, op := range opMap {
-		if condition {
-			unaryExpr.Op = op
-			break
-		}
+	switch {
+	case ctx.PLUS() != nil:
+		unaryExpr.Op = ast.UnaryPlus
+	case ctx.MINUS() != nil:
+		unaryExpr.Op = ast.UnaryMinus
+	case ctx.EXCLAMATION() != nil:
+		unaryExpr.Op = ast.UnaryNot
 	}
 
 	return unaryExpr

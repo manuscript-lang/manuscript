@@ -83,26 +83,24 @@ func (b *Builder) RegisterNodeMapping(goNode ast.Node, msNode mast.Node) {
 	nameIndex := -1
 
 	// For named nodes, add the name to the names array
-	if ident, ok := goNode.(*ast.Ident); ok && ident.Name != "" {
-		nameIndex = b.getOrAddName(ident.Name)
-	} else if fn, ok := goNode.(*ast.FuncDecl); ok && fn.Name != nil {
-		nameIndex = b.getOrAddName(fn.Name.Name)
+	switch node := goNode.(type) {
+	case *ast.Ident:
+		if node.Name != "" {
+			nameIndex = b.getOrAddName(node.Name)
+		}
+	case *ast.FuncDecl:
+		if node.Name != nil {
+			nameIndex = b.getOrAddName(node.Name.Name)
+		}
 	}
 
-	// Simple heuristic: map manuscript lines to Go lines with offset
-	// This works because our transpiler generates code in a predictable pattern
-	var generatedLine, generatedColumn int
-
 	// Account for package declaration and imports (typically 2-3 lines)
-	generatedLine = msPos.Line + 1 // Add offset for package and func declaration
+	generatedLine := msPos.Line + 1
+	generatedColumn := msPos.Column
 
-	// For identifiers in assignments, the Go compiler reports errors at the
-	// position of the variable name in the generated code, which is typically
-	// at column 5 (after 4 spaces of indentation)
+	// For identifiers in assignments, adjust column for indentation
 	if _, ok := goNode.(*ast.Ident); ok {
-		generatedColumn = 4 // 4 spaces of indentation + 1 for the identifier (0-based)
-	} else {
-		generatedColumn = msPos.Column
+		generatedColumn = 4 // 4 spaces of indentation
 	}
 
 	mapping := Mapping{

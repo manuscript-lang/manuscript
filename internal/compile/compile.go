@@ -80,16 +80,16 @@ func RunFile(filename string, cfg *config.MsConfig) {
 	err = cmd.Run()
 	stderrOutput := stderrBuf.String()
 
-	if err != nil && stderrOutput != "" && result.SourceMap != nil {
-		mapAndDisplayGoErrors(stderrOutput, result.SourceMap)
-	} else if err != nil && stderrOutput != "" {
-		fmt.Fprintf(os.Stderr, "Compilation errors:\n%s", stderrOutput)
+	if stderrOutput != "" {
+		if err != nil && result.SourceMap != nil {
+			mapAndDisplayGoErrors(stderrOutput, result.SourceMap)
+		} else if err != nil {
+			fmt.Fprintf(os.Stderr, "Compilation errors:\n%s", stderrOutput)
+		} else {
+			fmt.Fprint(os.Stderr, stderrOutput)
+		}
 	} else if err != nil {
 		fmt.Fprintf(os.Stderr, "Manuscript execution finished with error: %v\n", err)
-	}
-
-	if stderrOutput != "" && err == nil {
-		fmt.Fprint(os.Stderr, stderrOutput)
 	}
 }
 
