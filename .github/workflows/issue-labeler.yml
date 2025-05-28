@@ -12,6 +12,7 @@ jobs:
   label:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Label issues based on content
         uses: github/issue-labeler@v3.3
         with:
