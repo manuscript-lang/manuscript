@@ -151,12 +151,7 @@ func (t *GoTranspiler) processSingleLet(id *mast.TypedID, value mast.Expression,
 		return t.createAssignment(ident, valueExpr, pos)
 	}
 
-	// No value provided - must have type annotation
-	if varType == nil {
-		t.addError(fmt.Sprintf("Variable declaration '%s' must have an explicit type or an initial value.", varName), id)
-		return nil
-	}
-
+	// No value provided - use type annotation or nil for untyped var declaration
 	return t.createVarDeclStmt(ident, varType, pos)
 }
 
@@ -183,12 +178,7 @@ func (t *GoTranspiler) VisitLetBlock(node *mast.LetBlock) ast.Node {
 		}
 	}
 
-	// If there's only one statement, return it directly
-	if len(stmts) == 1 {
-		return stmts[0]
-	}
-
-	// For multiple statements, return a BlockStmt
+	// Return a block statement that can be flattened by parent visitors
 	return &ast.BlockStmt{List: stmts}
 }
 

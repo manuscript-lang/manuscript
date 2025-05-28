@@ -22,8 +22,8 @@ fn main() {
 package main
 
 type Point struct {
-    x   int64
-    y   int64
+    x   int
+    y   int
 }
 
 func printPoint(p Point) {
@@ -32,7 +32,7 @@ func printPoint(p Point) {
 }
 func main() {
     pt := &Point{x: 1, y: 2}
-    return printPoint(pt)
+    printPoint(pt)
 }
 ```
 
@@ -59,18 +59,18 @@ fn main() {
 package main
 
 type User struct {
-    id   int64
+    id   int
     name string
 }
 
-func createUser(id int64, name string) User {
+func createUser(id int, name string) User {
     u := &User{id: id, name: name}
     return u
 }
 func main() {
     u := createUser(1, "Test User")
     print(u.id)
-    return print(u.name)
+    print(u.name)
 }
 ```
 
@@ -108,7 +108,7 @@ func main() {
     vec := &Vector{dx: 1.0, dy: 2.5}
     scaledVec := scaleVector(vec, 2.0)
     print(scaledVec.dx)
-    return print(scaledVec.dy)
+    print(scaledVec.dy)
 }
 ```
 
@@ -129,14 +129,14 @@ fn main() {
 ```go
 package main
 
-type UserID int64
+type UserID int
 
 func printUserID(id UserID) {
     return print(id)
 }
 func main() {
     userID := 123
-    return printUserID(userID)
+    printUserID(userID)
 }
 ```
 
@@ -151,7 +151,7 @@ fn filter(arr int[], filterFunc fn (item int) bool) int[] {
 ```go
 package main
 
-func filter(arr []int64, filterFunc func(item int64) bool) []int64 {
+func filter(arr []int, filterFunc func(item int) bool) []int {
 }
 func main() {
 }
@@ -178,12 +178,12 @@ package main
 
 type ServerConfig struct {
     url  string
-    port int64
+    port int
 }
 
 func main() {
     a := &ServerConfig{url: "https://server.url", port: 8080}
-    return print(a.url)
+    print(a.url)
 }
 ```
 
@@ -209,14 +209,14 @@ fn main() {
 package main
 
 type User struct {
-    id    int64
+    id    int
     name  string
     email string
 }
 
 func main() {
     u := &User{id: 42, name: "John Doe"}
-    return print(u.name)
+    print(u.name)
 }
 ```
 
@@ -260,7 +260,7 @@ type Document struct {
 func main() {
     doc := &Document{title: "API Documentation", content: "\n      This is a multiline string\n      that spans multiple lines\n      and contains detailed content\n    ", metadata: "\n      Created: 2024-01-01\n      Author: System\n      Version: 1.0\n    "}
     print(doc.title)
-    return print(doc.content)
+    print(doc.content)
 }
 ```
 

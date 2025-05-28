@@ -94,18 +94,13 @@ func (t *GoTranspiler) VisitLetDecl(node *mast.LetDecl) ast.Node {
 		// Handle different result types
 		switch v := result.(type) {
 		case *DestructuringBlockStmt:
-			// Standalone destructuring - preserve the wrapper as a statement
-			statements = append(statements, v)
-			// Register mapping for the destructuring block
-			t.registerNodeMapping(v, node)
+			// Standalone destructuring - unwrap to the underlying BlockStmt
+			statements = append(statements, v.BlockStmt)
 		case *ast.BlockStmt:
+			// Flatten block statements (including let blocks)
 			statements = append(statements, v.List...)
-			// Register mapping for the block
-			t.registerNodeMapping(v, node)
 		case ast.Stmt:
 			statements = append(statements, v)
-			// Register mapping for the statement
-			t.registerNodeMapping(v, node)
 		case nil:
 			// Skip nil results
 			continue
@@ -114,16 +109,19 @@ func (t *GoTranspiler) VisitLetDecl(node *mast.LetDecl) ast.Node {
 		}
 	}
 
-	// If we have multiple statements, return as a block
+	// Register mapping only for the primary node
+	var result ast.Node
 	if len(statements) > 1 {
-		blockStmt := &ast.BlockStmt{List: statements}
-		t.registerNodeMapping(blockStmt, node)
-		return blockStmt
+		result = &ast.BlockStmt{List: statements}
 	} else if len(statements) == 1 {
-		return statements[0]
+		result = statements[0]
+	} else {
+		return nil
 	}
 
-	return nil
+	// Register mapping for the primary result only
+	t.registerNodeMapping(result, node)
+	return result
 }
 
 // VisitTypeDecl transpiles type declarations

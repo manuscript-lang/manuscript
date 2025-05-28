@@ -25,16 +25,12 @@ func main() {
     b := []interface{}{"asd", "Asds"}
     set := map[interface{}]bool{1: true, 2: true, 3: true}
     map := map[interface{}]interface{}{key: "value", another: 10}
-    {
-        __val1 := obj
-        a := __val1.a
-        b := __val1.b
-    }
-    {
-        __val2 := []interface{}{1, 2}
-        c := __val2[0]
-        d := __val2[1]
-    }
+    __val1 := obj
+    a := __val1.a
+    b := __val1.b
+    __val2 := []interface{}{1, 2}
+    c := __val2[0]
+    d := __val2[1]
     e := 30
     f := 30
     g := true

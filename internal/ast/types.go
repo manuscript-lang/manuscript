@@ -47,9 +47,27 @@ func NewSimpleType(name string) *TypeSpec {
 	}
 }
 
+// NewSimpleTypeWithPos creates a simple type with position information
+func NewSimpleTypeWithPos(name string, pos Position) *TypeSpec {
+	return &TypeSpec{
+		BaseNode: BaseNode{Position: pos},
+		Kind:     SimpleType,
+		Name:     name,
+	}
+}
+
 // NewArrayType creates an array type like int[], string[]
 func NewArrayType(elementType TypeAnnotation) *TypeSpec {
 	return &TypeSpec{
+		Kind:        ArrayType,
+		ElementType: elementType,
+	}
+}
+
+// NewArrayTypeWithPos creates an array type with position information
+func NewArrayTypeWithPos(elementType TypeAnnotation, pos Position) *TypeSpec {
+	return &TypeSpec{
+		BaseNode:    BaseNode{Position: pos},
 		Kind:        ArrayType,
 		ElementType: elementType,
 	}
@@ -64,9 +82,28 @@ func NewFunctionType(parameters []Parameter, returnType TypeAnnotation) *TypeSpe
 	}
 }
 
+// NewFunctionTypeWithPos creates a function type with position information
+func NewFunctionTypeWithPos(parameters []Parameter, returnType TypeAnnotation, pos Position) *TypeSpec {
+	return &TypeSpec{
+		BaseNode:   BaseNode{Position: pos},
+		Kind:       FunctionType,
+		Parameters: parameters,
+		ReturnType: returnType,
+	}
+}
+
 // NewTupleType creates a tuple type like (int, string)
 func NewTupleType(elementTypes []TypeAnnotation) *TypeSpec {
 	return &TypeSpec{
+		Kind:         TupleType,
+		ElementTypes: elementTypes,
+	}
+}
+
+// NewTupleTypeWithPos creates a tuple type with position information
+func NewTupleTypeWithPos(elementTypes []TypeAnnotation, pos Position) *TypeSpec {
+	return &TypeSpec{
+		BaseNode:     BaseNode{Position: pos},
 		Kind:         TupleType,
 		ElementTypes: elementTypes,
 	}
@@ -76,5 +113,13 @@ func NewTupleType(elementTypes []TypeAnnotation) *TypeSpec {
 func NewVoidType() *TypeSpec {
 	return &TypeSpec{
 		Kind: VoidType,
+	}
+}
+
+// NewVoidTypeWithPos creates a void type with position information
+func NewVoidTypeWithPos(pos Position) *TypeSpec {
+	return &TypeSpec{
+		BaseNode: BaseNode{Position: pos},
+		Kind:     VoidType,
 	}
 }

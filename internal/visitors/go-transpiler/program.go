@@ -42,6 +42,9 @@ func (t *GoTranspiler) VisitProgram(node *mast.Program) ast.Node {
 		switch goNode := result.(type) {
 		case *MultipleDeclarations:
 			t.currentFile.Decls = append(t.currentFile.Decls, goNode.Decls...)
+		case *ast.BlockStmt:
+			// Flatten block statements into top-level statements
+			topLevelStmts = append(topLevelStmts, goNode.List...)
 		case *ast.FuncDecl:
 			// Check if this is a main function
 			if goNode.Name != nil && goNode.Name.Name == "main" {

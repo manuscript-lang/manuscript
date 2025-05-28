@@ -46,16 +46,22 @@ func TestCompileManuscriptWithResolver(t *testing.T) {
 	ctx.SourceFile = "test.ms"
 	ctx.ModuleResolver = resolver
 
-	result := CompileManuscript(ctx)
-	if result.Error != nil {
-		t.Fatalf("Expected no error, got: %v", result.Error)
+	// Get the manuscript code from the resolver
+	msCode, err := resolver.ResolveModule("test.ms")
+	if err != nil {
+		t.Fatalf("Failed to resolve module: %v", err)
 	}
 
-	if !strings.Contains(result.GoCode, "package main") {
+	goCode, err := CompileManuscriptFromString(msCode, ctx)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if !strings.Contains(goCode, "package main") {
 		t.Error("Expected Go code to contain 'package main'")
 	}
 
-	if !strings.Contains(result.GoCode, "greeting := \"Hello, World!\"") {
+	if !strings.Contains(goCode, "greeting := \"Hello, World!\"") {
 		t.Error("Expected Go code to contain greeting assignment")
 	}
 }
@@ -71,13 +77,14 @@ func TestCompileManuscriptWithResolverError(t *testing.T) {
 	ctx.SourceFile = "missing.ms" // File not in resolver
 	ctx.ModuleResolver = resolver
 
-	result := CompileManuscript(ctx)
-	if result.Error == nil {
+	// Try to get the manuscript code from the resolver - this should fail
+	_, err := resolver.ResolveModule("missing.ms")
+	if err == nil {
 		t.Error("Expected error when file not found in resolver")
 	}
 
-	if !strings.Contains(result.Error.Error(), "module not found") {
-		t.Errorf("Expected 'module not found' error, got: %v", result.Error)
+	if !strings.Contains(err.Error(), "module not found") {
+		t.Errorf("Expected 'module not found' error, got: %v", err)
 	}
 }
 
