@@ -20,5 +20,4 @@ jobs:
           configuration-path: .github/labeler.yml
           include-title: 1
           include-body: 1
-          sync-labels: 1
           enable-versioned-regex: 0 
