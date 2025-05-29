@@ -1,0 +1,48 @@
+filters:
+  - label: bug
+    regexs:
+      - /(bug|error|broken|crash|fail|exception)/i
+    events: [issues]
+    targets: [title, comment]
+  
+  - label: language
+    regexs:
+      - /(keyword|operator|expression|statement)/i
+    events: [issues]
+    targets: [title, comment]
+  
+  - label: compiler
+    regexs:
+      - /(compiler|compilation|transpiler|transpilation)/i
+    events: [issues]
+    targets: [title, comment]
+  
+  - label: testing
+    regexs:
+      - /(test|testing|spec|coverage)/i
+    events: [issues]
+    targets: [title, comment]
+  
+  - label: build
+    regexs:
+      - /(build|ci|cd|github actions|workflow)/i
+    events: [issues]
+    targets: [title, comment]
+  
+  - label: priority/high
+    regexs:
+      - /(urgent|critical|high priority|blocker)/i
+    events: [issues]
+    targets: [title, comment]
+  
+  - label: priority/medium
+    regexs:
+      - /(medium priority|moderate|important)/i
+    events: [issues]
+    targets: [title, comment]
+  
+  - label: priority/low
+    regexs:
+      - /(low priority|minor|nice to have)/i
+    events: [issues]
+    targets: [title, comment] 

@@ -15,22 +15,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Label issues based on content
         id: labeler
-        uses: github/issue-labeler@v3.4
+        uses: hoho4190/issue-pr-labeler@v2.0.0
         with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}"
-          configuration-path: .github/labeler.yml
-          include-title: 1
-          include-body: 1
-          enable-versioned-regex: 0
-          sync-labels: 1
-        env:
-          ACTIONS_STEP_DEBUG: true
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          config-file-name: labeler-config.yml
       - name: Show labeling results
         if: always()
         run: |
           echo "=== Issue Labeler Results ==="
-          echo "Labels added: ${{ steps.labeler.outputs.labels-added }}"
-          echo "Labels removed: ${{ steps.labeler.outputs.labels-removed }}"
-          echo "Issue number: ${{ github.event.issue.number }}"
-          echo "Issue title: ${{ github.event.issue.title }}"
+          echo "Action completed successfully"
           echo "=== End Results ===" 
