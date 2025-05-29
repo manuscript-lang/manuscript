@@ -14,6 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Label issues based on content
+        id: labeler
         uses: github/issue-labeler@v3.4
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
@@ -21,4 +22,15 @@ jobs:
           include-title: 1
           include-body: 1
           enable-versioned-regex: 0
-          sync-labels: 1 
+          sync-labels: 1
+        env:
+          ACTIONS_STEP_DEBUG: true
+      - name: Show labeling results
+        if: always()
+        run: |
+          echo "=== Issue Labeler Results ==="
+          echo "Labels added: ${{ steps.labeler.outputs.labels-added }}"
+          echo "Labels removed: ${{ steps.labeler.outputs.labels-removed }}"
+          echo "Issue number: ${{ github.event.issue.number }}"
+          echo "Issue title: ${{ github.event.issue.title }}"
+          echo "=== End Results ===" 
