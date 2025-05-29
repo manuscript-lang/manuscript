@@ -203,6 +203,36 @@ func (t *GoTranspiler) VisitDeferStmt(node *mast.DeferStmt) ast.Node {
 	return nil
 }
 
+// VisitAsyncStmt transpiles async statements to Go's go statement
+func (t *GoTranspiler) VisitAsyncStmt(node *mast.AsyncStmt) ast.Node {
+	return t.transpileAsyncGoStmt(node.Expr)
+}
+
+// VisitGoStmt transpiles go statements to Go's go statement
+func (t *GoTranspiler) VisitGoStmt(node *mast.GoStmt) ast.Node {
+	return t.transpileAsyncGoStmt(node.Expr)
+}
+
+// transpileAsyncGoStmt is a shared helper for transpiling both async and go statements
+func (t *GoTranspiler) transpileAsyncGoStmt(expr mast.Expression) ast.Node {
+	if expr == nil {
+		return nil
+	}
+
+	stmt := t.Visit(expr)
+	if goExpr, ok := stmt.(ast.Expr); ok {
+		// In Go, go only works with function calls
+		if callExpr, ok := goExpr.(*ast.CallExpr); ok {
+			return &ast.GoStmt{Call: callExpr}
+		}
+		// Generate error for non-function-call expressions
+		t.addError("async/go statements can only be used with function calls", expr)
+		return nil
+	}
+
+	return nil
+}
+
 // VisitBreakStmt transpiles break statements
 func (t *GoTranspiler) VisitBreakStmt(node *mast.BreakStmt) ast.Node {
 	return t.createBranchStmt(node, token.BREAK, "break statement outside of loop")

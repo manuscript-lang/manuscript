@@ -173,27 +173,6 @@ type CaseBlock struct {
 	Block *CodeBlock
 }
 
-// Struct initialization
-
-type StructInitExpr struct {
-	NamedNode
-	Fields       []StructField
-	InferredType Type
-}
-
-func (e *StructInitExpr) GetInferredType() Type {
-	return e.InferredType
-}
-
-func (e *StructInitExpr) SetInferredType(t Type) {
-	e.InferredType = t
-}
-
-type StructField struct {
-	NamedNode
-	Value Expression
-}
-
 // Typed object literal
 
 type TypedObjectLiteral struct {

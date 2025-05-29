@@ -359,55 +359,6 @@ func (v *ParseTreeToAST) VisitTaggedBlockString(ctx *parser.TaggedBlockStringCon
 	return taggedBlock
 }
 
-// Struct initialization
-
-func (v *ParseTreeToAST) VisitStructInitExpr(ctx *parser.StructInitExprContext) interface{} {
-	// Use the ID token for more precise positioning
-	idToken := ctx.ID().GetSymbol()
-	structInit := &ast.StructInitExpr{
-		NamedNode: v.createNamedNodeFromToken(idToken, ctx.ID().GetText()),
-	}
-
-	if fieldList := v.acceptOptional(ctx.StructFieldList()); fieldList != nil {
-		structInit.Fields = fieldList.([]ast.StructField)
-	}
-
-	return structInit
-}
-
-func (v *ParseTreeToAST) VisitStructFieldList(ctx *parser.StructFieldListContext) interface{} {
-	var fields []ast.StructField
-	fieldNames := make(map[string]bool)
-
-	for _, fieldCtx := range ctx.AllStructField() {
-		if field := fieldCtx.Accept(v); field != nil {
-			structField := field.(ast.StructField)
-
-			if fieldNames[structField.Name] {
-				continue
-			}
-			fieldNames[structField.Name] = true
-
-			fields = append(fields, structField)
-		}
-	}
-	return fields
-}
-
-func (v *ParseTreeToAST) VisitStructField(ctx *parser.StructFieldContext) interface{} {
-	// Use the ID token for more precise positioning
-	idToken := ctx.ID().GetSymbol()
-	field := ast.StructField{
-		NamedNode: v.createNamedNodeFromToken(idToken, ctx.ID().GetText()),
-	}
-
-	if expr := v.acceptOptional(ctx.Expr()); expr != nil {
-		field.Value = expr.(ast.Expression)
-	}
-
-	return field
-}
-
 // Typed object literal
 
 func (v *ParseTreeToAST) VisitTypedObjectLiteral(ctx *parser.TypedObjectLiteralContext) interface{} {

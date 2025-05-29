@@ -22,6 +22,16 @@ type DeferStmt struct {
 	Expr Expression
 }
 
+type AsyncStmt struct {
+	BaseNode
+	Expr Expression
+}
+
+type GoStmt struct {
+	BaseNode
+	Expr Expression
+}
+
 type BreakStmt struct {
 	BaseNode
 }

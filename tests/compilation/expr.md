@@ -210,15 +210,13 @@ methods User as u {
 }
 
 fn main() {
-    let user = User(name: "Alice", age: 25)
+    let user = User{name: "Alice", age: 25}
     
     let name = user.getName()
     let is_adult = user.isAdult()
     
     user.birthday()
     let new_age = user.age
-    
-    let chained = User(name: "Bob", age: 30).getName()
 }
 ```
 
@@ -240,12 +238,11 @@ func (u *User) birthday() {
     u.age = u.age + 1
 }
 func main() {
-    user := User{name: "Alice", age: 25}
+    user := &User{name: "Alice", age: 25}
     name := user.getName()
     is_adult := user.isAdult()
     user.birthday()
     new_age := user.age
-    chained := User{name: "Bob", age: 30}.getName()
 }
 ```
 

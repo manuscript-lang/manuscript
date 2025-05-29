@@ -109,11 +109,15 @@ stmt:
 	| checkStmt			# LabelStmtCheck
 	| deferStmt			# LabelStmtDefer
 	| tryExpr SEMICOLON?	# LabelStmtTry
-	| pipedStmt			# LabelStmtPiped;
+	| pipedStmt			# LabelStmtPiped
+	| asyncStmt			# LabelStmtAsync
+	| goStmt			# LabelStmtGo;
 
 returnStmt: RETURN exprList? SEMICOLON?;
 yieldStmt: YIELD exprList? SEMICOLON?;
 deferStmt: DEFER expr SEMICOLON?;
+asyncStmt: ASYNC expr SEMICOLON?;
+goStmt: GO expr SEMICOLON?;
 exprList: expr (COMMA expr)* (COMMA)?;
 
 ifStmt: IF expr codeBlock (ELSE codeBlock)?;
@@ -208,6 +212,7 @@ postfixOp:
 // Primary expressions (literals, identifiers, grouping, etc.)
 primaryExpr:
 	literal					# LabelPrimaryLiteral
+	| typedObjectLiteral	# LabelPrimaryTypedObject
 	| ID					# LabelPrimaryID
 	| LPAREN expr RPAREN	# LabelPrimaryParen
 	| arrayLiteral			# LabelPrimaryArray
@@ -218,9 +223,7 @@ primaryExpr:
 	| matchExpr				# LabelPrimaryMatch
 	| VOID					# LabelPrimaryVoid
 	| NULL					# LabelPrimaryNull
-	| taggedBlockString		# LabelPrimaryTaggedBlock
-	| structInitExpr		# LabelPrimaryStructInit
-	| typedObjectLiteral	# LabelPrimaryTypedObject;
+	| taggedBlockString		# LabelPrimaryTaggedBlock;
 
 // --- Try Expressions ---
 tryExpr: TRY expr;
@@ -300,10 +303,6 @@ setLiteral: LT (expr (COMMA expr)* (COMMA)?)? GT;
 
 taggedBlockString:
 	ID (multiQuotedString | multiDoubleQuotedString);
-
-structInitExpr: ID LPAREN structFieldList? RPAREN;
-structFieldList: structField (COMMA structField)* (COMMA)?;
-structField: ID COLON expr;
 
 typedObjectLiteral: ID LBRACE objectFieldList? RBRACE;
 

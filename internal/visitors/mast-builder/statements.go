@@ -96,6 +96,14 @@ func (v *ParseTreeToAST) VisitLabelStmtDefer(ctx *parser.LabelStmtDeferContext) 
 	return ctx.DeferStmt().Accept(v)
 }
 
+func (v *ParseTreeToAST) VisitLabelStmtAsync(ctx *parser.LabelStmtAsyncContext) interface{} {
+	return ctx.AsyncStmt().Accept(v)
+}
+
+func (v *ParseTreeToAST) VisitLabelStmtGo(ctx *parser.LabelStmtGoContext) interface{} {
+	return ctx.GoStmt().Accept(v)
+}
+
 func (v *ParseTreeToAST) VisitLabelStmtTry(ctx *parser.LabelStmtTryContext) interface{} {
 	tryStmt := &ast.TryStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
@@ -130,6 +138,20 @@ func (v *ParseTreeToAST) VisitYieldStmt(ctx *parser.YieldStmtContext) interface{
 
 func (v *ParseTreeToAST) VisitDeferStmt(ctx *parser.DeferStmtContext) interface{} {
 	return &ast.DeferStmt{
+		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Expr:     v.visitExprIfPresent(ctx),
+	}
+}
+
+func (v *ParseTreeToAST) VisitAsyncStmt(ctx *parser.AsyncStmtContext) interface{} {
+	return &ast.AsyncStmt{
+		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Expr:     v.visitExprIfPresent(ctx),
+	}
+}
+
+func (v *ParseTreeToAST) VisitGoStmt(ctx *parser.GoStmtContext) interface{} {
+	return &ast.GoStmt{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
 		Expr:     v.visitExprIfPresent(ctx),
 	}

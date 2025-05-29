@@ -129,71 +129,6 @@ func (t *GoTranspiler) VisitObjectFieldString(node *mast.ObjectFieldString) ast.
 	}
 }
 
-// VisitStructField transpiles struct fields
-func (t *GoTranspiler) VisitStructField(node *mast.StructField) ast.Node {
-	if node == nil {
-		return &ast.KeyValueExpr{
-			Key:   &ast.Ident{Name: "unknown"},
-			Value: &ast.Ident{Name: "nil"},
-		}
-	}
-
-	// Get field name
-	var keyExpr ast.Expr
-	if node.Name != "" {
-		keyExpr = &ast.Ident{Name: t.generateVarName(node.Name)}
-	} else {
-		keyExpr = &ast.Ident{Name: "unknown"}
-	}
-
-	// Get field value
-	var valueExpr ast.Expr
-	if node.Value != nil {
-		valueResult := t.Visit(node.Value)
-		if expr, ok := valueResult.(ast.Expr); ok {
-			valueExpr = expr
-		} else {
-			valueExpr = &ast.Ident{Name: "nil"}
-		}
-	} else {
-		valueExpr = &ast.Ident{Name: "nil"}
-	}
-
-	return &ast.KeyValueExpr{
-		Key:   keyExpr,
-		Value: valueExpr,
-	}
-}
-
-// VisitStructInitExpr transpiles struct initialization expressions
-func (t *GoTranspiler) VisitStructInitExpr(node *mast.StructInitExpr) ast.Node {
-	if node == nil {
-		return &ast.Ident{Name: "nil"}
-	}
-
-	// Get the struct type from the name
-	var structType ast.Expr
-	if node.Name != "" {
-		structType = &ast.Ident{Name: t.generateVarName(node.Name)}
-	} else {
-		structType = &ast.Ident{Name: "interface{}"}
-	}
-
-	// Build field list
-	var fields []ast.Expr
-	for _, field := range node.Fields {
-		fieldResult := t.Visit(&field)
-		if keyValueExpr, ok := fieldResult.(*ast.KeyValueExpr); ok {
-			fields = append(fields, keyValueExpr)
-		}
-	}
-
-	return &ast.CompositeLit{
-		Type: structType,
-		Elts: fields,
-	}
-}
-
 // VisitTypedObjectLiteral transpiles typed object literals to Go pointer assignments
 func (t *GoTranspiler) VisitTypedObjectLiteral(node *mast.TypedObjectLiteral) ast.Node {
 	if node == nil {
@@ -535,4 +470,19 @@ func (t *GoTranspiler) VisitSetLiteral(node *mast.SetLiteral) ast.Node {
 
 	t.registerNodeMapping(literal, node)
 	return literal
+}
+
+// VisitTaggedBlockString transpiles tagged block strings
+func (t *GoTranspiler) VisitTaggedBlockString(node *mast.TaggedBlockString) ast.Node {
+	if node == nil {
+		return &ast.BasicLit{Kind: token.STRING, Value: `""`}
+	}
+
+	// For now, just return the content as a string literal
+	// In the future, this could be expanded to handle specific tag types
+	if node.Content != nil {
+		return t.Visit(node.Content)
+	}
+
+	return &ast.BasicLit{Kind: token.STRING, Value: `""`}
 }

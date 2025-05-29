@@ -21,6 +21,8 @@ type ManuscriptVisitor[T any] interface {
 	VisitReturnStmt(node *ReturnStmt) T
 	VisitYieldStmt(node *YieldStmt) T
 	VisitDeferStmt(node *DeferStmt) T
+	VisitAsyncStmt(node *AsyncStmt) T
+	VisitGoStmt(node *GoStmt) T
 	VisitBreakStmt(node *BreakStmt) T
 	VisitContinueStmt(node *ContinueStmt) T
 	VisitCheckStmt(node *CheckStmt) T
@@ -50,6 +52,7 @@ type ManuscriptVisitor[T any] interface {
 	VisitObjectLiteral(node *ObjectLiteral) T
 	VisitMapLiteral(node *MapLiteral) T
 	VisitSetLiteral(node *SetLiteral) T
+	VisitTaggedBlockString(node *TaggedBlockString) T
 	VisitFnExpr(node *FnExpr) T
 	VisitTernaryExpr(node *TernaryExpr) T
 	VisitAssignmentExpr(node *AssignmentExpr) T
@@ -58,17 +61,13 @@ type ManuscriptVisitor[T any] interface {
 	VisitNullExpr(node *NullExpr) T
 	VisitTryExpr(node *TryExpr) T
 	VisitMatchExpr(node *MatchExpr) T
-	VisitStructInitExpr(node *StructInitExpr) T
 	VisitTypedObjectLiteral(node *TypedObjectLiteral) T
 
-	// Match expression visitors
+	// Match expression components
 	VisitCaseClause(node *CaseClause) T
 	VisitDefaultClause(node *DefaultClause) T
 	VisitCaseExpr(node *CaseExpr) T
 	VisitCaseBlock(node *CaseBlock) T
-
-	// Struct init visitors
-	VisitStructField(node *StructField) T
 
 	// Object literal visitors
 	VisitObjectField(node *ObjectField) T
@@ -123,7 +122,7 @@ type ManuscriptVisitor[T any] interface {
 // Visit is the central dispatch function that routes to appropriate visit methods
 // This handles all the type switching so implementers don't have to
 func (visitor *BaseManuscriptVisitor[T]) Visit(node Node) T {
-	return DispatchVisit(visitor, node)
+	return DispatchVisit[T](visitor, node)
 }
 
 // DispatchVisit is a generic dispatch function that can be used by any visitor implementation
@@ -170,6 +169,10 @@ func DispatchVisit[T any](visitor ManuscriptVisitor[T], node Node) T {
 		return visitor.VisitYieldStmt(n)
 	case *DeferStmt:
 		return visitor.VisitDeferStmt(n)
+	case *AsyncStmt:
+		return visitor.VisitAsyncStmt(n)
+	case *GoStmt:
+		return visitor.VisitGoStmt(n)
 	case *BreakStmt:
 		return visitor.VisitBreakStmt(n)
 	case *ContinueStmt:
@@ -258,8 +261,6 @@ func DispatchVisit[T any](visitor ManuscriptVisitor[T], node Node) T {
 		return visitor.VisitTryExpr(n)
 	case *MatchExpr:
 		return visitor.VisitMatchExpr(n)
-	case *StructInitExpr:
-		return visitor.VisitStructInitExpr(n)
 	case *TypedObjectLiteral:
 		return visitor.VisitTypedObjectLiteral(n)
 
@@ -274,8 +275,6 @@ func DispatchVisit[T any](visitor ManuscriptVisitor[T], node Node) T {
 		return visitor.VisitCaseBlock(n)
 
 	// Literal component visitors
-	case *StructField:
-		return visitor.VisitStructField(n)
 	case *ObjectField:
 		return visitor.VisitObjectField(n)
 	case *MapField:
@@ -339,6 +338,9 @@ func DispatchVisit[T any](visitor ManuscriptVisitor[T], node Node) T {
 	case *ObjectFieldString:
 		return visitor.VisitObjectFieldString(n)
 
+	case *TaggedBlockString:
+		return visitor.VisitTaggedBlockString(n)
+
 	default:
 		var zero T
 		return zero
@@ -364,6 +366,8 @@ func (v *BaseManuscriptVisitor[T]) VisitExprStmt(node *ExprStmt) T           { v
 func (v *BaseManuscriptVisitor[T]) VisitReturnStmt(node *ReturnStmt) T       { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitYieldStmt(node *YieldStmt) T         { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitDeferStmt(node *DeferStmt) T         { var zero T; return zero }
+func (v *BaseManuscriptVisitor[T]) VisitAsyncStmt(node *AsyncStmt) T         { var zero T; return zero }
+func (v *BaseManuscriptVisitor[T]) VisitGoStmt(node *GoStmt) T               { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitBreakStmt(node *BreakStmt) T         { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitContinueStmt(node *ContinueStmt) T   { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitCheckStmt(node *CheckStmt) T         { var zero T; return zero }
@@ -401,10 +405,6 @@ func (v *BaseManuscriptVisitor[T]) VisitVoidExpr(node *VoidExpr) T   { var zero 
 func (v *BaseManuscriptVisitor[T]) VisitNullExpr(node *NullExpr) T   { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitTryExpr(node *TryExpr) T     { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitMatchExpr(node *MatchExpr) T { var zero T; return zero }
-func (v *BaseManuscriptVisitor[T]) VisitStructInitExpr(node *StructInitExpr) T {
-	var zero T
-	return zero
-}
 func (v *BaseManuscriptVisitor[T]) VisitTypedObjectLiteral(node *TypedObjectLiteral) T {
 	var zero T
 	return zero
@@ -413,7 +413,6 @@ func (v *BaseManuscriptVisitor[T]) VisitCaseClause(node *CaseClause) T       { v
 func (v *BaseManuscriptVisitor[T]) VisitDefaultClause(node *DefaultClause) T { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitCaseExpr(node *CaseExpr) T           { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitCaseBlock(node *CaseBlock) T         { var zero T; return zero }
-func (v *BaseManuscriptVisitor[T]) VisitStructField(node *StructField) T     { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitObjectField(node *ObjectField) T     { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitMapField(node *MapField) T           { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitStringLiteral(node *StringLiteral) T { var zero T; return zero }
@@ -474,6 +473,11 @@ func (v *BaseManuscriptVisitor[T]) VisitMethodImpl(node *MethodImpl) T { var zer
 // Object field subtype visitors
 func (v *BaseManuscriptVisitor[T]) VisitObjectFieldID(node *ObjectFieldID) T { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitObjectFieldString(node *ObjectFieldString) T {
+	var zero T
+	return zero
+}
+
+func (v *BaseManuscriptVisitor[T]) VisitTaggedBlockString(node *TaggedBlockString) T {
 	var zero T
 	return zero
 }

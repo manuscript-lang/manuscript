@@ -216,6 +216,14 @@ func (v *BaseManuscriptVisitor) VisitLabelStmtPiped(ctx *LabelStmtPipedContext) 
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitLabelStmtAsync(ctx *LabelStmtAsyncContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitLabelStmtGo(ctx *LabelStmtGoContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitReturnStmt(ctx *ReturnStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -225,6 +233,14 @@ func (v *BaseManuscriptVisitor) VisitYieldStmt(ctx *YieldStmtContext) interface{
 }
 
 func (v *BaseManuscriptVisitor) VisitDeferStmt(ctx *DeferStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitAsyncStmt(ctx *AsyncStmtContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseManuscriptVisitor) VisitGoStmt(ctx *GoStmtContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -392,6 +408,10 @@ func (v *BaseManuscriptVisitor) VisitLabelPrimaryLiteral(ctx *LabelPrimaryLitera
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryTypedObject(ctx *LabelPrimaryTypedObjectContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseManuscriptVisitor) VisitLabelPrimaryID(ctx *LabelPrimaryIDContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -433,14 +453,6 @@ func (v *BaseManuscriptVisitor) VisitLabelPrimaryNull(ctx *LabelPrimaryNullConte
 }
 
 func (v *BaseManuscriptVisitor) VisitLabelPrimaryTaggedBlock(ctx *LabelPrimaryTaggedBlockContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelPrimaryStructInit(ctx *LabelPrimaryStructInitContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelPrimaryTypedObject(ctx *LabelPrimaryTypedObjectContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -585,18 +597,6 @@ func (v *BaseManuscriptVisitor) VisitSetLiteral(ctx *SetLiteralContext) interfac
 }
 
 func (v *BaseManuscriptVisitor) VisitTaggedBlockString(ctx *TaggedBlockStringContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitStructInitExpr(ctx *StructInitExprContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitStructFieldList(ctx *StructFieldListContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitStructField(ctx *StructFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

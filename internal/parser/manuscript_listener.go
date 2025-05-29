@@ -164,6 +164,12 @@ type ManuscriptListener interface {
 	// EnterLabelStmtPiped is called when entering the LabelStmtPiped production.
 	EnterLabelStmtPiped(c *LabelStmtPipedContext)
 
+	// EnterLabelStmtAsync is called when entering the LabelStmtAsync production.
+	EnterLabelStmtAsync(c *LabelStmtAsyncContext)
+
+	// EnterLabelStmtGo is called when entering the LabelStmtGo production.
+	EnterLabelStmtGo(c *LabelStmtGoContext)
+
 	// EnterReturnStmt is called when entering the returnStmt production.
 	EnterReturnStmt(c *ReturnStmtContext)
 
@@ -172,6 +178,12 @@ type ManuscriptListener interface {
 
 	// EnterDeferStmt is called when entering the deferStmt production.
 	EnterDeferStmt(c *DeferStmtContext)
+
+	// EnterAsyncStmt is called when entering the asyncStmt production.
+	EnterAsyncStmt(c *AsyncStmtContext)
+
+	// EnterGoStmt is called when entering the goStmt production.
+	EnterGoStmt(c *GoStmtContext)
 
 	// EnterExprList is called when entering the exprList production.
 	EnterExprList(c *ExprListContext)
@@ -296,6 +308,9 @@ type ManuscriptListener interface {
 	// EnterLabelPrimaryLiteral is called when entering the LabelPrimaryLiteral production.
 	EnterLabelPrimaryLiteral(c *LabelPrimaryLiteralContext)
 
+	// EnterLabelPrimaryTypedObject is called when entering the LabelPrimaryTypedObject production.
+	EnterLabelPrimaryTypedObject(c *LabelPrimaryTypedObjectContext)
+
 	// EnterLabelPrimaryID is called when entering the LabelPrimaryID production.
 	EnterLabelPrimaryID(c *LabelPrimaryIDContext)
 
@@ -328,12 +343,6 @@ type ManuscriptListener interface {
 
 	// EnterLabelPrimaryTaggedBlock is called when entering the LabelPrimaryTaggedBlock production.
 	EnterLabelPrimaryTaggedBlock(c *LabelPrimaryTaggedBlockContext)
-
-	// EnterLabelPrimaryStructInit is called when entering the LabelPrimaryStructInit production.
-	EnterLabelPrimaryStructInit(c *LabelPrimaryStructInitContext)
-
-	// EnterLabelPrimaryTypedObject is called when entering the LabelPrimaryTypedObject production.
-	EnterLabelPrimaryTypedObject(c *LabelPrimaryTypedObjectContext)
 
 	// EnterTryExpr is called when entering the tryExpr production.
 	EnterTryExpr(c *TryExprContext)
@@ -442,15 +451,6 @@ type ManuscriptListener interface {
 
 	// EnterTaggedBlockString is called when entering the taggedBlockString production.
 	EnterTaggedBlockString(c *TaggedBlockStringContext)
-
-	// EnterStructInitExpr is called when entering the structInitExpr production.
-	EnterStructInitExpr(c *StructInitExprContext)
-
-	// EnterStructFieldList is called when entering the structFieldList production.
-	EnterStructFieldList(c *StructFieldListContext)
-
-	// EnterStructField is called when entering the structField production.
-	EnterStructField(c *StructFieldContext)
 
 	// EnterTypedObjectLiteral is called when entering the typedObjectLiteral production.
 	EnterTypedObjectLiteral(c *TypedObjectLiteralContext)
@@ -638,6 +638,12 @@ type ManuscriptListener interface {
 	// ExitLabelStmtPiped is called when exiting the LabelStmtPiped production.
 	ExitLabelStmtPiped(c *LabelStmtPipedContext)
 
+	// ExitLabelStmtAsync is called when exiting the LabelStmtAsync production.
+	ExitLabelStmtAsync(c *LabelStmtAsyncContext)
+
+	// ExitLabelStmtGo is called when exiting the LabelStmtGo production.
+	ExitLabelStmtGo(c *LabelStmtGoContext)
+
 	// ExitReturnStmt is called when exiting the returnStmt production.
 	ExitReturnStmt(c *ReturnStmtContext)
 
@@ -646,6 +652,12 @@ type ManuscriptListener interface {
 
 	// ExitDeferStmt is called when exiting the deferStmt production.
 	ExitDeferStmt(c *DeferStmtContext)
+
+	// ExitAsyncStmt is called when exiting the asyncStmt production.
+	ExitAsyncStmt(c *AsyncStmtContext)
+
+	// ExitGoStmt is called when exiting the goStmt production.
+	ExitGoStmt(c *GoStmtContext)
 
 	// ExitExprList is called when exiting the exprList production.
 	ExitExprList(c *ExprListContext)
@@ -770,6 +782,9 @@ type ManuscriptListener interface {
 	// ExitLabelPrimaryLiteral is called when exiting the LabelPrimaryLiteral production.
 	ExitLabelPrimaryLiteral(c *LabelPrimaryLiteralContext)
 
+	// ExitLabelPrimaryTypedObject is called when exiting the LabelPrimaryTypedObject production.
+	ExitLabelPrimaryTypedObject(c *LabelPrimaryTypedObjectContext)
+
 	// ExitLabelPrimaryID is called when exiting the LabelPrimaryID production.
 	ExitLabelPrimaryID(c *LabelPrimaryIDContext)
 
@@ -802,12 +817,6 @@ type ManuscriptListener interface {
 
 	// ExitLabelPrimaryTaggedBlock is called when exiting the LabelPrimaryTaggedBlock production.
 	ExitLabelPrimaryTaggedBlock(c *LabelPrimaryTaggedBlockContext)
-
-	// ExitLabelPrimaryStructInit is called when exiting the LabelPrimaryStructInit production.
-	ExitLabelPrimaryStructInit(c *LabelPrimaryStructInitContext)
-
-	// ExitLabelPrimaryTypedObject is called when exiting the LabelPrimaryTypedObject production.
-	ExitLabelPrimaryTypedObject(c *LabelPrimaryTypedObjectContext)
 
 	// ExitTryExpr is called when exiting the tryExpr production.
 	ExitTryExpr(c *TryExprContext)
@@ -916,15 +925,6 @@ type ManuscriptListener interface {
 
 	// ExitTaggedBlockString is called when exiting the taggedBlockString production.
 	ExitTaggedBlockString(c *TaggedBlockStringContext)
-
-	// ExitStructInitExpr is called when exiting the structInitExpr production.
-	ExitStructInitExpr(c *StructInitExprContext)
-
-	// ExitStructFieldList is called when exiting the structFieldList production.
-	ExitStructFieldList(c *StructFieldListContext)
-
-	// ExitStructField is called when exiting the structField production.
-	ExitStructField(c *StructFieldContext)
 
 	// ExitTypedObjectLiteral is called when exiting the typedObjectLiteral production.
 	ExitTypedObjectLiteral(c *TypedObjectLiteralContext)

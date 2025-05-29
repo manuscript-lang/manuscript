@@ -287,10 +287,6 @@ func (v *ParseTreeToAST) VisitLabelPrimaryTaggedBlock(ctx *parser.LabelPrimaryTa
 	return ctx.TaggedBlockString().Accept(v)
 }
 
-func (v *ParseTreeToAST) VisitLabelPrimaryStructInit(ctx *parser.LabelPrimaryStructInitContext) interface{} {
-	return ctx.StructInitExpr().Accept(v)
-}
-
 func (v *ParseTreeToAST) VisitLabelPrimaryTypedObject(ctx *parser.LabelPrimaryTypedObjectContext) interface{} {
 	return ctx.TypedObjectLiteral().Accept(v)
 }
