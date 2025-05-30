@@ -28,15 +28,19 @@ type CompileResult struct {
 	Error     error
 }
 
-const SyntaxErrorCode = "// SYNTAX ERROR"
+const SyntaxErrorCode = "ERR_SYNTAX"
 
 type SyntaxErrorListener struct {
 	*antlr.DefaultErrorListener
-	Errors []string
+	Errors     []string
+	SourceFile string
 }
 
-func NewSyntaxErrorListener() *SyntaxErrorListener {
-	return &SyntaxErrorListener{Errors: make([]string, 0)}
+func NewSyntaxErrorListener(sourceFile string) *SyntaxErrorListener {
+	return &SyntaxErrorListener{
+		Errors:     make([]string, 0),
+		SourceFile: sourceFile,
+	}
 }
 
 func (l *SyntaxErrorListener) SyntaxError(
@@ -46,7 +50,39 @@ func (l *SyntaxErrorListener) SyntaxError(
 	msg string,
 	e antlr.RecognitionException,
 ) {
-	l.Errors = append(l.Errors, fmt.Sprintf("line %d:%d %s", line, column, msg))
+	errorMsg := fmt.Sprintf("line %d:%d %s", line, column, msg)
+	l.Errors = append(l.Errors, errorMsg)
+
+	// Display the error with source code context like compilation errors
+	if l.SourceFile != "" {
+		l.printSyntaxError(line, column, msg)
+	} else {
+		fmt.Printf("Syntax error: %s\n", errorMsg)
+	}
+}
+
+func (l *SyntaxErrorListener) printSyntaxError(line, column int, message string) {
+	data, err := os.ReadFile(l.SourceFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Syntax error in %s at line %d, column %d: %s\n", l.SourceFile, line, column, message)
+		return
+	}
+
+	lines := strings.Split(string(data), "\n")
+	if line-1 < 0 || line-1 >= len(lines) {
+		fmt.Fprintf(os.Stderr, "Syntax error in %s at line %d, column %d: %s\n", l.SourceFile, line, column, message)
+		return
+	}
+
+	codeLine := lines[line-1]
+	arrowColumn := column - 1
+	if arrowColumn < 0 {
+		arrowColumn = 0
+	}
+	arrow := strings.Repeat(" ", arrowColumn) + "^"
+
+	fmt.Fprintf(os.Stderr, "\nSyntax error in %s at line %d, column %d:\n%s\n%s\n%s\n\n",
+		l.SourceFile, line, column, codeLine, arrow, message)
 }
 
 // RunFile compiles and runs a manuscript file
@@ -213,7 +249,7 @@ func compileFile(filename string, cfg *config.MsConfig, debug bool) CompileResul
 
 func manuscriptToGo(input string, ctx *config.CompilerContext) (string, *sourcemap.SourceMap, error) {
 	// Parse the input
-	tree, err := parseManuscript(input, ctx.Debug)
+	tree, err := parseManuscript(input, ctx.Debug, ctx.SourceFile)
 	if err != nil {
 		return "", nil, err
 	}
@@ -244,7 +280,7 @@ func manuscriptToGo(input string, ctx *config.CompilerContext) (string, *sourcem
 	return goCode, sourceMap, nil
 }
 
-func parseManuscript(input string, debug bool) (antlr.ParseTree, error) {
+func parseManuscript(input string, debug bool, sourceFile string) (antlr.ParseTree, error) {
 	inputStream := antlr.NewInputStream(input)
 	lexer := parser.NewManuscriptLexer(inputStream)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
@@ -255,15 +291,13 @@ func parseManuscript(input string, debug bool) (antlr.ParseTree, error) {
 		dumpTokens(stream)
 	}
 
-	errorListener := NewSyntaxErrorListener()
+	errorListener := NewSyntaxErrorListener(sourceFile)
 	p.RemoveErrorListeners()
 	p.AddErrorListener(errorListener)
 
 	tree := p.Program()
 	if len(errorListener.Errors) > 0 {
-		for _, err := range errorListener.Errors {
-			fmt.Printf("Syntax error: %s\n", err)
-		}
+		// Don't print errors here since the listener already printed them with context
 		return nil, errors.New(SyntaxErrorCode)
 	}
 

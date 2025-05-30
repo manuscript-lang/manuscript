@@ -1,6 +1,7 @@
 package transpiler
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 
@@ -9,19 +10,17 @@ import (
 
 // VisitIdentifier transpiles identifier expressions
 func (t *GoTranspiler) VisitIdentifier(node *mast.Identifier) ast.Node {
-	if node == nil || node.Name == "" {
+	if node == nil {
 		t.addError("invalid identifier", node)
-		return &ast.Ident{Name: "_"}
+		return nil
 	}
 
 	ident := &ast.Ident{
-		Name:    t.generateVarName(node.Name),
-		NamePos: t.pos(node),
+		Name:    node.Name,
+		NamePos: t.posWithName(node, node.Name),
 	}
 
-	// Register node mapping for post-print source mapping
 	t.registerNodeMapping(ident, node)
-
 	return ident
 }
 
@@ -105,18 +104,17 @@ func (t *GoTranspiler) VisitCallExpr(node *mast.CallExpr) ast.Node {
 	}
 
 	var args []ast.Expr
-	for _, arg := range node.Args {
+	for i, arg := range node.Args {
 		if arg == nil {
 			continue
 		}
 
 		argResult := t.Visit(arg)
 		if argExpr, ok := argResult.(ast.Expr); ok {
-			// Ensure the argument expression has the correct position
-			// This is crucial for source map accuracy
+			// For better source mapping, assign each argument a unique position
 			if ident, isIdent := argExpr.(*ast.Ident); isIdent {
-				// For identifiers, make sure the NamePos is set correctly
-				ident.NamePos = t.pos(arg)
+				// Create a unique position for this specific argument
+				ident.NamePos = t.posWithName(arg, ident.Name+fmt.Sprintf("_arg%d", i))
 			}
 			args = append(args, argExpr)
 		}
@@ -229,64 +227,92 @@ func (t *GoTranspiler) VisitFnExpr(node *mast.FnExpr) ast.Node {
 		body = &ast.BlockStmt{List: []ast.Stmt{}}
 	}
 
-	return &ast.FuncLit{
+	funcLit := &ast.FuncLit{
 		Type: &ast.FuncType{
 			Params:  &ast.FieldList{List: params},
 			Results: results,
 		},
 		Body: body,
 	}
+
+	t.registerNodeMapping(funcLit, node)
+	return funcLit
 }
 
 // VisitTernaryExpr transpiles ternary expressions to if expressions
 func (t *GoTranspiler) VisitTernaryExpr(node *mast.TernaryExpr) ast.Node {
-	if node == nil {
+	if node == nil || node.Cond == nil {
 		t.addError("invalid ternary expression", node)
 		return nil
 	}
 
+	// Visit condition
 	condition := t.Visit(node.Cond)
-	thenExpr := t.Visit(node.Then)
-	elseExpr := t.Visit(node.Else)
-
-	condExpr, okCond := condition.(ast.Expr)
-	thenGoExpr, okThen := thenExpr.(ast.Expr)
-	elseGoExpr, okElse := elseExpr.(ast.Expr)
-
-	if !okCond || !okThen || !okElse {
-		t.addError("ternary expression parts are not valid expressions", node)
+	condExpr, ok := condition.(ast.Expr)
+	if !ok {
+		t.addError("ternary condition is not a valid expression", node)
 		return nil
 	}
 
-	// In Go, we need to create an IIFE (Immediately Invoked Function Expression)
-	return &ast.CallExpr{
-		Fun: &ast.FuncLit{
-			Type: &ast.FuncType{
-				Params: &ast.FieldList{},
-				Results: &ast.FieldList{
-					List: []*ast.Field{{Type: &ast.Ident{Name: "interface{}"}}},
-				},
+	// Visit then branch
+	var thenExpr ast.Expr
+	if node.Then != nil {
+		thenResult := t.Visit(node.Then)
+		if expr, ok := thenResult.(ast.Expr); ok {
+			thenExpr = expr
+		} else {
+			t.addError("ternary then branch is not a valid expression", node)
+			return nil
+		}
+	} else {
+		thenExpr = &ast.Ident{Name: "nil"}
+	}
+
+	// Visit else branch
+	var elseExpr ast.Expr
+	if node.Else != nil {
+		elseResult := t.Visit(node.Else)
+		if expr, ok := elseResult.(ast.Expr); ok {
+			elseExpr = expr
+		} else {
+			t.addError("ternary else branch is not a valid expression", node)
+			return nil
+		}
+	} else {
+		elseExpr = &ast.Ident{Name: "nil"}
+	}
+
+	// Create immediately invoked function expression (IIFE) for ternary
+	funcLit := &ast.FuncLit{
+		Type: &ast.FuncType{
+			Params: &ast.FieldList{},
+			Results: &ast.FieldList{
+				List: []*ast.Field{{Type: &ast.Ident{Name: "interface{}"}}},
 			},
-			Body: &ast.BlockStmt{
-				List: []ast.Stmt{
-					&ast.IfStmt{
-						Cond: condExpr,
-						Body: &ast.BlockStmt{
-							List: []ast.Stmt{
-								&ast.ReturnStmt{Results: []ast.Expr{thenGoExpr}},
-							},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.IfStmt{
+					Cond: condExpr,
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.ReturnStmt{Results: []ast.Expr{thenExpr}},
 						},
-						Else: &ast.BlockStmt{
-							List: []ast.Stmt{
-								&ast.ReturnStmt{Results: []ast.Expr{elseGoExpr}},
-							},
+					},
+					Else: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.ReturnStmt{Results: []ast.Expr{elseExpr}},
 						},
 					},
 				},
 			},
 		},
-		Args: []ast.Expr{},
 	}
+
+	// Return the function call expression
+	callExpr := &ast.CallExpr{Fun: funcLit}
+	t.registerNodeMapping(callExpr, node)
+	return callExpr
 }
 
 // VisitAssignmentExpr transpiles assignment expressions

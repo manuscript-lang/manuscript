@@ -94,21 +94,23 @@ func (b *Builder) RegisterNodeMapping(goNode ast.Node, msNode mast.Node) {
 		}
 	}
 
-	// Account for package declaration and imports (typically 2-3 lines)
-	generatedLine := msPos.Line + 1
-	generatedColumn := msPos.Column
-
-	// For identifiers in assignments, adjust column for indentation
-	if _, ok := goNode.(*ast.Ident); ok {
-		generatedColumn = 4 // 4 spaces of indentation
+	// Extract the actual Go node position
+	goPos := goNode.Pos()
+	if goPos == token.NoPos {
+		return
 	}
 
+	// Decode the position back to line/column (reverse of transpiler.pos())
+	goLine := int(goPos) / 1000
+	goColumn := int(goPos) % 1000
+
+	// Create the mapping: Go position -> Manuscript position
 	mapping := Mapping{
-		GeneratedLine:   generatedLine,
-		GeneratedColumn: generatedColumn,
+		GeneratedLine:   goLine - 1,   // Convert to 0-based for VLQ encoding
+		GeneratedColumn: goColumn - 1, // Convert to 0-based for VLQ encoding
 		SourceIndex:     sourceIndex,
-		SourceLine:      msPos.Line - 1, // Convert to 0-based
-		SourceColumn:    msPos.Column,   // Keep as-is since ANTLR already provides 0-based
+		SourceLine:      msPos.Line - 1, // Convert to 0-based for VLQ encoding
+		SourceColumn:    msPos.Column,   // ANTLR already provides 0-based columns
 		NameIndex:       nameIndex,
 	}
 
@@ -254,37 +256,56 @@ func (sm *SourceMap) MapGoErrorToManuscript(goLine, goColumn int) (string, int, 
 		return "", 0, 0, fmt.Errorf("no mappings available")
 	}
 
-	// Find the best mapping for this position
-	var bestMapping *Mapping
-
 	// Convert to 0-based for comparison
 	goLine0 := goLine - 1
 	goColumn0 := goColumn - 1
 
-	// First, try to find a mapping on the same line with the closest column
+	// Find the best mapping for this position using improved algorithm
+	var bestMapping *Mapping
+	var bestScore int = -1
+
+	// Look for mappings and score them based on proximity and context
 	for i := range sm.mappings {
 		mapping := &sm.mappings[i]
-		if mapping.GeneratedLine == goLine0 {
-			// If we find a mapping on the same line, prefer the one closest to but not exceeding the column
-			if bestMapping == nil ||
-				(mapping.GeneratedColumn <= goColumn0 && mapping.GeneratedColumn > bestMapping.GeneratedColumn) {
-				bestMapping = mapping
-			}
-		}
-	}
 
-	// If no mapping found on the same line, find the closest preceding mapping
-	if bestMapping == nil {
-		for i := range sm.mappings {
-			mapping := &sm.mappings[i]
-			if mapping.GeneratedLine < goLine0 ||
-				(mapping.GeneratedLine == goLine0 && mapping.GeneratedColumn < goColumn0) {
-				if bestMapping == nil ||
-					mapping.GeneratedLine > bestMapping.GeneratedLine ||
-					(mapping.GeneratedLine == bestMapping.GeneratedLine && mapping.GeneratedColumn > bestMapping.GeneratedColumn) {
-					bestMapping = mapping
-				}
+		// Calculate distance from error position
+		lineDistance := abs(mapping.GeneratedLine - goLine0)
+		columnDistance := abs(mapping.GeneratedColumn - goColumn0)
+
+		// Score the mapping based on multiple factors
+		score := 0
+
+		// Exact line match gets highest priority
+		if mapping.GeneratedLine == goLine0 {
+			score += 1000
+
+			// Exact column match gets bonus
+			if mapping.GeneratedColumn == goColumn0 {
+				score += 500
+			} else if mapping.GeneratedColumn <= goColumn0 {
+				// Prefer mappings that are at or before the error column
+				score += 100 - columnDistance
+			} else {
+				// Penalize mappings that are after the error column
+				score += 50 - columnDistance
 			}
+		} else if lineDistance <= 2 {
+			// Nearby lines get lower priority
+			score += 100 - (lineDistance * 50)
+		} else {
+			// Far lines get very low priority
+			score += 10 - lineDistance
+		}
+
+		// Prefer mappings with names (they're usually more important)
+		if mapping.NameIndex >= 0 {
+			score += 25
+		}
+
+		// Update best mapping if this one scores higher
+		if bestMapping == nil || score > bestScore {
+			bestMapping = mapping
+			bestScore = score
 		}
 	}
 
@@ -300,6 +321,14 @@ func (sm *SourceMap) MapGoErrorToManuscript(goLine, goColumn int) (string, int, 
 		bestMapping.SourceLine + 1, // Convert back to 1-based
 		bestMapping.SourceColumn + 1, // Convert back to 1-based
 		nil
+}
+
+// abs returns the absolute value of an integer
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // parseMappings parses the VLQ-encoded mappings string

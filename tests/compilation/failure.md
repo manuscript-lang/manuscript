@@ -5,5 +5,5 @@ fn fn4() {
 }
 ```
 ```go
-// SYNTAX ERROR
+ERR_SYNTAX
 ```

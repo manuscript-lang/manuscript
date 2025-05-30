@@ -9,17 +9,17 @@ import (
 )
 
 // Helper function to create an identifier with proper position tracking
-func (t *GoTranspiler) createIdent(id *mast.TypedID, name string) *ast.Ident {
+func (t *GoTranspiler) createIdent(id *mast.TypedID, name string, letNode mast.Node) *ast.Ident {
 	if name == "" {
-		return &ast.Ident{Name: "_", NamePos: t.pos(id)}
+		return &ast.Ident{Name: "_", NamePos: t.pos(letNode)}
 	}
 	ident := &ast.Ident{
 		Name:    t.generateVarName(name),
-		NamePos: t.pos(id),
+		NamePos: t.pos(letNode),
 	}
 
-	// Register the identifier for sourcemap
-	t.registerNodeMapping(ident, id)
+	// Register the identifier for sourcemap with the let node
+	t.registerNodeMapping(ident, letNode)
 
 	return ident
 }
@@ -79,7 +79,7 @@ func (t *GoTranspiler) createVarDeclStmt(ident *ast.Ident, varType ast.Expr, pos
 }
 
 // Helper function to create assignment statement
-func (t *GoTranspiler) createAssignment(ident *ast.Ident, valueExpr ast.Expr, pos token.Pos) ast.Node {
+func (t *GoTranspiler) createAssignment(ident *ast.Ident, valueExpr ast.Expr, pos token.Pos, letNode mast.Node) ast.Node {
 	assignStmt := &ast.AssignStmt{
 		Lhs:    []ast.Expr{ident},
 		TokPos: pos,
@@ -87,13 +87,13 @@ func (t *GoTranspiler) createAssignment(ident *ast.Ident, valueExpr ast.Expr, po
 		Rhs:    []ast.Expr{valueExpr},
 	}
 
-	// Register the assignment statement for sourcemap
-	// Note: We'll register the identifier separately in createIdent
+	// Register the assignment statement for sourcemap with the full let node
+	t.registerNodeMapping(assignStmt, letNode)
 	return assignStmt
 }
 
 // Helper function to create try assignment with error handling
-func (t *GoTranspiler) createTryAssignment(ident *ast.Ident, valueExpr ast.Expr, pos token.Pos, valueNode mast.Node) ast.Node {
+func (t *GoTranspiler) createTryAssignment(ident *ast.Ident, valueExpr ast.Expr, pos token.Pos, valueNode mast.Node, letNode mast.Node) ast.Node {
 	errIdent := &ast.Ident{Name: "err", NamePos: t.pos(valueNode)}
 
 	assignStmt := &ast.AssignStmt{
@@ -120,23 +120,26 @@ func (t *GoTranspiler) createTryAssignment(ident *ast.Ident, valueExpr ast.Expr,
 		},
 	}
 
-	return &ast.BlockStmt{List: []ast.Stmt{assignStmt, ifStmt}}
+	blockStmt := &ast.BlockStmt{List: []ast.Stmt{assignStmt, ifStmt}}
+	t.registerNodeMapping(blockStmt, letNode)
+	return blockStmt
 }
 
 // Core function to handle single let declarations
-func (t *GoTranspiler) processSingleLet(id *mast.TypedID, value mast.Expression, isTry bool) ast.Node {
-	if id == nil {
-		t.addError("Attempted to transpile a nil identifier. This is an internal compiler error.", nil)
+func (t *GoTranspiler) processSingleLet(letNode *mast.LetSingle) ast.Node {
+	if letNode == nil || letNode.ID.Name == "" {
+		t.addError("Attempted to transpile a nil identifier. This is an internal compiler error.", letNode)
 		return nil
 	}
 
+	id := &letNode.ID
 	varName := id.Name
 	if varName == "" {
 		varName = "_"
 	}
 
-	ident := t.createIdent(id, id.Name)
-	pos := t.pos(id)
+	ident := t.createIdent(id, id.Name, letNode)
+	pos := t.pos(letNode) // Use the position of the entire let statement
 
 	// Process type annotation if present
 	varType, err := t.processTypeAnnotation(id.Type, varName)
@@ -146,22 +149,24 @@ func (t *GoTranspiler) processSingleLet(id *mast.TypedID, value mast.Expression,
 	}
 
 	// Process value expression if present
-	valueExpr, err := t.processValueExpression(value, varName)
+	valueExpr, err := t.processValueExpression(letNode.Value, varName)
 	if err != nil {
-		t.addError(err.Error(), value)
+		t.addError(err.Error(), letNode.Value)
 		return nil
 	}
 
 	// Handle different cases
 	if valueExpr != nil {
-		if isTry {
-			return t.createTryAssignment(ident, valueExpr, pos, value)
+		if letNode.IsTry {
+			return t.createTryAssignment(ident, valueExpr, pos, letNode.Value, letNode)
 		}
-		return t.createAssignment(ident, valueExpr, pos)
+		return t.createAssignment(ident, valueExpr, pos, letNode)
 	}
 
 	// No value provided - use type annotation or nil for untyped var declaration
-	return t.createVarDeclStmt(ident, varType, pos)
+	varDeclStmt := t.createVarDeclStmt(ident, varType, pos)
+	t.registerNodeMapping(varDeclStmt, letNode)
+	return varDeclStmt
 }
 
 // VisitLetBlock transpiles let blocks
@@ -198,7 +203,10 @@ func (t *GoTranspiler) VisitLetBlockItemSingle(node *mast.LetBlockItemSingle) as
 		return nil
 	}
 
-	return t.processSingleLet(&node.ID, node.Value, false)
+	return t.processSingleLet(&mast.LetSingle{
+		ID:    node.ID,
+		Value: node.Value,
+	})
 }
 
 // VisitLetBlockItemDestructuredObj transpiles destructured object let block items
@@ -227,7 +235,7 @@ func (t *GoTranspiler) VisitLetBlockItemDestructuredObj(node *mast.LetBlockItemD
 	// Then create assignments for each destructured field: a := __val1.a
 	for _, id := range node.IDs {
 		fieldAssign := &ast.AssignStmt{
-			Lhs: []ast.Expr{t.createIdent(&id, id.Name)},
+			Lhs: []ast.Expr{t.createIdent(&id, id.Name, node)},
 			Tok: token.DEFINE,
 			Rhs: []ast.Expr{
 				&ast.SelectorExpr{
@@ -268,7 +276,7 @@ func (t *GoTranspiler) VisitLetBlockItemDestructuredArray(node *mast.LetBlockIte
 	// Then create assignments for each destructured element: c := __val2[0]
 	for i, id := range node.IDs {
 		elementAssign := &ast.AssignStmt{
-			Lhs: []ast.Expr{t.createIdent(&id, id.Name)},
+			Lhs: []ast.Expr{t.createIdent(&id, id.Name, node)},
 			Tok: token.DEFINE,
 			Rhs: []ast.Expr{
 				&ast.IndexExpr{
@@ -330,5 +338,5 @@ func (t *GoTranspiler) VisitLetSingle(node *mast.LetSingle) ast.Node {
 		return nil
 	}
 
-	return t.processSingleLet(&node.ID, node.Value, node.IsTry)
+	return t.processSingleLet(node)
 }

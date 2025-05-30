@@ -60,10 +60,13 @@ func (t *GoTranspiler) VisitObjectField(node *mast.ObjectField) ast.Node {
 		}
 	}
 
-	return &ast.KeyValueExpr{
+	keyValueExpr := &ast.KeyValueExpr{
 		Key:   keyExpr,
 		Value: valueExpr,
 	}
+
+	t.registerNodeMapping(keyValueExpr, node)
+	return keyValueExpr
 }
 
 // VisitMapField transpiles map field declarations
@@ -96,10 +99,13 @@ func (t *GoTranspiler) VisitMapField(node *mast.MapField) ast.Node {
 		valueExpr = &ast.Ident{Name: "nil"}
 	}
 
-	return &ast.KeyValueExpr{
+	keyValueExpr := &ast.KeyValueExpr{
 		Key:   keyExpr,
 		Value: valueExpr,
 	}
+
+	t.registerNodeMapping(keyValueExpr, node)
+	return keyValueExpr
 }
 
 // VisitObjectFieldID transpiles object field IDs
@@ -108,7 +114,9 @@ func (t *GoTranspiler) VisitObjectFieldID(node *mast.ObjectFieldID) ast.Node {
 		return &ast.Ident{Name: "unknown"}
 	}
 
-	return &ast.Ident{Name: t.generateVarName(node.Name)}
+	ident := &ast.Ident{Name: t.generateVarName(node.Name)}
+	t.registerNodeMapping(ident, node)
+	return ident
 }
 
 // VisitObjectFieldString transpiles object field string declarations
@@ -119,14 +127,19 @@ func (t *GoTranspiler) VisitObjectFieldString(node *mast.ObjectFieldString) ast.
 
 	// Visit the string literal and return it
 	if node.Literal != nil {
-		return t.Visit(node.Literal)
+		result := t.Visit(node.Literal)
+		// Register mapping for the field string itself
+		t.registerNodeMapping(result, node)
+		return result
 	}
 
 	// Fallback to empty string
-	return &ast.BasicLit{
+	literal := &ast.BasicLit{
 		Kind:  token.STRING,
 		Value: `""`,
 	}
+	t.registerNodeMapping(literal, node)
+	return literal
 }
 
 // VisitTypedObjectLiteral transpiles typed object literals to Go pointer assignments
@@ -138,13 +151,16 @@ func (t *GoTranspiler) VisitTypedObjectLiteral(node *mast.TypedObjectLiteral) as
 	structType := t.getStructType(node.Name)
 	fields := t.buildStructFields(node.Fields)
 
-	return &ast.UnaryExpr{
+	unaryExpr := &ast.UnaryExpr{
 		Op: token.AND,
 		X: &ast.CompositeLit{
 			Type: structType,
 			Elts: fields,
 		},
 	}
+
+	t.registerNodeMapping(unaryExpr, node)
+	return unaryExpr
 }
 
 // getStructType returns the struct type expression for the given name

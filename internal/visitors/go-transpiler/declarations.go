@@ -155,11 +155,14 @@ func (t *GoTranspiler) VisitTypeDecl(node *mast.TypeDecl) ast.Node {
 		Type: goType,
 	}
 
-	return &ast.GenDecl{
+	genDecl := &ast.GenDecl{
 		TokPos: t.pos(node),
 		Tok:    token.TYPE,
 		Specs:  []ast.Spec{typeSpec},
 	}
+
+	t.registerNodeMapping(genDecl, node)
+	return genDecl
 }
 
 // VisitInterfaceDecl transpiles interface declarations

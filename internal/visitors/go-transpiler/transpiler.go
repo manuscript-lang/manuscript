@@ -17,15 +17,14 @@ type GoTranspiler struct {
 	Imports     []*ast.ImportSpec // import specifications
 
 	// State management
-	fileSet      *token.FileSet
-	errors       []error
-	tempVarCount int
-	loopDepth    int
+	fileSet         *token.FileSet
+	errors          []error
+	tempVarCount    int
+	loopDepth       int
+	positionCounter int // Counter for generating unique positions
 
 	// Current context
-	currentFile      *ast.File
-	currentDecls     []ast.Decl
-	currentTokenFile *token.File
+	currentFile *ast.File
 
 	// Sourcemap support
 	sourcemapBuilder *sourcemap.Builder
@@ -96,7 +95,7 @@ func (t *GoTranspiler) Visit(node mast.Node) ast.Node {
 func (t *GoTranspiler) TranspileProgram(program *mast.Program) (*ast.File, error) {
 	// Reset state
 	t.errors = []error{}
-	t.currentDecls = []ast.Decl{}
+	currentDecls := []ast.Decl{}
 
 	// Visit the program
 	result := t.Visit(program)
@@ -113,7 +112,7 @@ func (t *GoTranspiler) TranspileProgram(program *mast.Program) (*ast.File, error
 	// Fallback: create a basic Go file structure
 	goFile := &ast.File{
 		Name:    &ast.Ident{Name: t.PackageName},
-		Decls:   t.currentDecls,
+		Decls:   currentDecls,
 		Package: token.NoPos,
 	}
 
@@ -140,8 +139,40 @@ func (t *GoTranspiler) pos(node mast.Node) token.Pos {
 	if node == nil {
 		return token.NoPos
 	}
-	// Return a simple position - the sourcemap handles the actual mapping
-	return token.Pos(1)
+
+	// Create a unique position based on the manuscript node's position
+	msPos := node.Pos()
+	if msPos.Line == 0 && msPos.Column == 0 {
+		return token.NoPos
+	}
+
+	// Generate a unique token position using a counter to avoid collisions
+	// Base encoding: line * 1000 + column, then add a small offset for uniqueness
+	t.positionCounter++
+	pos := token.Pos(msPos.Line*1000 + msPos.Column + (t.positionCounter % 100))
+	return pos
+}
+
+// posWithName creates a position for named nodes with additional uniqueness
+func (t *GoTranspiler) posWithName(node mast.Node, name string) token.Pos {
+	if node == nil {
+		return token.NoPos
+	}
+
+	// Create a unique position based on the manuscript node's position
+	msPos := node.Pos()
+	if msPos.Line == 0 && msPos.Column == 0 {
+		return token.NoPos
+	}
+
+	// Generate a unique token position using both counter and name hash for extra uniqueness
+	t.positionCounter++
+	nameHash := 0
+	for _, char := range name {
+		nameHash = (nameHash*31 + int(char)) % 100
+	}
+	pos := token.Pos(msPos.Line*1000 + msPos.Column + (t.positionCounter+nameHash)%100)
+	return pos
 }
 
 // Loop management
