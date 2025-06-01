@@ -6,9 +6,14 @@ description: >
   Conditional statements, loops, pattern matching, and flow control in manuscript.
 ---
 
-manuscript provides several constructs for controlling program flow including conditionals, loops, pattern matching, and early exit statements.
+Does your program just run straight through like a runaway train? Time to grab the conductor's hat! Control flow statements are your signals, switches, and stations, letting you direct your code exactly where it needs to go (and sometimes, where it *really* shouldn't).
 
 ## Conditional Statements
+If statements: the bouncers of your code. 'Are you old enough?' 'Is the score high enough?' They ask the tough questions.
+
+If this thing is true,
+Then we do this cool action,
+Else, try something new.
 
 ### If Statements
 ```ms
@@ -41,6 +46,7 @@ let message = if score > 85 { "Great job!" } else { "Keep trying!" }
 ```
 
 ## Loops
+Loops: because sometimes, you just gotta do things again and again... and again. Whether you know how many times, or you're just waiting for a sign, Manuscript has a loop for you.
 
 ### For Loops
 
@@ -91,6 +97,7 @@ while count < 5 {
 ### Loop Control
 
 #### Break Statement
+The `break` statement is your emergency exit from a loop. Had enough? Just `break` out!
 ```ms
 for i in range(10) {
   if i == 5 {
@@ -102,6 +109,7 @@ for i in range(10) {
 ```
 
 #### Continue Statement
+`continue` is like saying 'Next!' in a loop. Skip the rest of this round and jump to the next iteration.
 ```ms
 for i in range(10) {
   if i % 2 == 0 {
@@ -113,6 +121,11 @@ for i in range(10) {
 ```
 
 ## Pattern Matching
+`match` is like a super-powered `if-else` chain, but way more stylish. It's the Swiss Army knife for when you have a value and a bunch of possibilities for what it could be or what it means.
+
+Value comes to choose,
+Which pattern fits just right now?
+Pathway then unfolds.
 
 manuscript supports powerful pattern matching with `match` expressions:
 
@@ -189,6 +202,7 @@ match status {
 ```
 
 ## Try-Catch (Error Handling)
+`try` and `check` are your safety nets and guard rails, making sure your program doesn't tumble into the abyss of unexpected errors.
 
 ### Try Expressions
 ```ms
@@ -239,6 +253,7 @@ fn generateNumbers() {
 ```
 
 ### Defer
+The `defer` statement is like making a promise to do something later, right before your function says goodbye. 'I'll clean this up, I swear!' it says.
 ```ms
 fn processFile(filename string) {
   let file = openFile(filename)
@@ -250,6 +265,7 @@ fn processFile(filename string) {
 ```
 
 ## Guard Clauses
+Guard clauses: the bouncers at the very beginning of your function. 'Nope, not on the list!' they say to bad data, showing it the door early.
 
 Use guard clauses for early validation:
 
