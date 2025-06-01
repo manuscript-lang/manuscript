@@ -2,9 +2,8 @@ lexer grammar ManuscriptLexer;
 
 // Newline handling
 NEWLINE : '\n' {
-    cl := l.(*CustomManuscriptLexer);
-    if cl.parenDepth == 0 && cl.bracketDepth == 0 && cl.braceDepth == 0 {
-        l.SetType(SEMICOLON)
+    if lexerParenDepth == 0 && lexerBracketDepth == 0 && lexerBraceDepth == 0 {
+        l.SetType(ManuscriptLexerSEMICOLON)
     } else {
         l.Skip()
     }
@@ -55,12 +54,12 @@ DEFER: 'defer';
 GO: 'go';
 
 // Punctuation (DEFAULT_MODE implicitly)
-LBRACE: '{' { cl := l.(*CustomManuscriptLexer); cl.braceDepth++ };
-RBRACE: '}' { cl := l.(*CustomManuscriptLexer); cl.braceDepth-- };
-LSQBR: '[' { cl := l.(*CustomManuscriptLexer); cl.bracketDepth++ };
-RSQBR: ']' { cl := l.(*CustomManuscriptLexer); cl.bracketDepth-- };
-LPAREN: '(' { cl := l.(*CustomManuscriptLexer); cl.parenDepth++ };
-RPAREN: ')' { cl := l.(*CustomManuscriptLexer); cl.parenDepth-- };
+LBRACE: '{' { lexerBraceDepth++ };
+RBRACE: '}' { lexerBraceDepth-- };
+LSQBR: '[' { lexerBracketDepth++ };
+RSQBR: ']' { lexerBracketDepth-- };
+LPAREN: '(' { lexerParenDepth++ };
+RPAREN: ')' { lexerParenDepth-- };
 LT: '<';
 GT: '>';
 LT_EQUALS: '<=';
