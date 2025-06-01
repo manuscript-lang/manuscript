@@ -41,7 +41,7 @@ fn main() {
   let result = save(validate(transform(getData())))
   
   // Piped syntax - clear data flow
-  getData() | transform | validate | save
+  getData() | transform | validate | save // So smooth, so readable!
 }
 ```
 
@@ -61,7 +61,7 @@ fn processNumbers() {
   [1, 2, 3, 4, 5] 
     | multiply factor=2 
     | add offset=10 
-    | format precision=2
+    | format precision=2 // Each step clearly states its business.
 }
 ```
 
@@ -78,7 +78,7 @@ fn analyzeData() {
   data.getEntries() 
     | filter condition=isValid 
     | processor.transform 
-    | save
+    | save // Functions and methods, playing nicely together in the pipe!
 }
 ```
 
@@ -92,7 +92,7 @@ fn processFile(filename string) Report! {
   let result = try readFile(filename) 
     | parseLines 
     | validateEntries 
-    | generateReport
+    | generateReport // If readFile cries "Error!", the whole chain stops. Sensible!
   
   return result
 }
@@ -124,7 +124,7 @@ fn analyzeLogFile(filename string) []PageStats! {
     | parseLogEntries
     | calculatePageStats
     | sortByHits
-    | takeTop count=10
+    | takeTop count=10 // From file to top 10 stats, like a well-oiled machine.
 }
 ```
 
@@ -136,12 +136,13 @@ Behind the scenes, Manuscript is like a clever stage manager, efficiently handli
 
 ```ms
 // Manuscript pipeline
-data | transform | validate
+data | transform | validate // You write this...
 ```
 
 Becomes equivalent to:
 ```go
 // Generated Go code (simplified)
+// ... Manuscript turns it into efficient Go code like this! Sneaky.
 proc1 := transform()
 proc2 := validate()
 for _, v := range data() {

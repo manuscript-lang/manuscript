@@ -23,7 +23,7 @@ Functions that can return errors use the `!` syntax:
 ```ms
 fn divide(a int, b int) int! {
   if b == 0 {
-    error("division by zero")  // return keyword optional
+    error("division by zero")  // return keyword optional // Classic math no-no!
   }
   a / b  // automatically returned
 }
@@ -44,7 +44,7 @@ fn main() {
   print("Result: " + string(result))  // Result: 5
   
   let errorCase = try divide(10, 0)
-  // Error is propagated up the call stack
+  // Error is propagated up the call stack // Uh oh, this one's gonna make some noise!
 }
 ```
 
@@ -56,7 +56,7 @@ The `try` keyword is your brave error explorer. You `try` to run a bang function
 ```ms
 let result = try parseNumber("42")
 // If parseNumber succeeds, result contains the value
-// If it fails, error is propagated to caller
+// If it fails, error is propagated to caller // Fingers crossed!
 ```
 
 ### Try in Function Calls
@@ -84,7 +84,7 @@ Errors in Manuscript are like well-trained carrier pigeons. If one function does
 
 ```ms
 fn levelThree() int! {
-  error("something went wrong")  // return keyword optional
+  error("something went wrong")  // return keyword optional // It all started here...
 }
 
 fn levelTwo() int! {
@@ -108,8 +108,8 @@ Use `check` for validation that should exit the function:
 
 ```ms
 fn validateInput(data Input) Result! {
-  check data.name != ""           // exits if false
-  check data.age > 0              // exits if false
+  check data.name != ""           // exits if false // Must have a name!
+  check data.age > 0              // exits if false // Age must be positive, no Benjamin Buttons here.
   check data.email.contains("@")  // exits if false
   
   // If all checks pass, continue processing
@@ -127,7 +127,7 @@ fn validateAge(age int) void! {
     error("age cannot be negative")  // return keyword optional
   }
   if age > 150 {
-    error("age seems unrealistic")  // return keyword optional
+    error("age seems unrealistic")  // return keyword optional // Unless they're a vampire?
   }
 }
 ```
@@ -153,7 +153,7 @@ fn connectToDatabase(url string) Connection! {
 Got a bang function but want to provide a default value if it misbehaves? `try operation() catch defaultValue` is your safety net. If `operation()` trips, `defaultValue` steps in. Smooth.
 ```ms
 fn safeDivide(a int, b int) int {
-  let result = try divide(a, b) catch 0
+  let result = try divide(a, b) catch 0 // If divide freaks out, we just get 0. Calm.
   result  // automatically returned
 }
 ```
@@ -224,7 +224,7 @@ fn parseConfig(filename string) Config! {
 ```ms
 fn processFileData(filename string) Result! {
   let file = try openFile(filename)
-  defer file.close()  // Always close, even on error
+  defer file.close()  // Always close, even on error // Good hygiene!
   
   let data = try file.readAll()
   processData(data)  // automatically returned

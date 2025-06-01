@@ -20,7 +20,7 @@ Else, try something new.
 let age = 18
 
 if age >= 18 {
-  print("Adult")
+  print("Adult") // Welcome to adulthood!
 }
 ```
 
@@ -53,7 +53,7 @@ Loops: because sometimes, you just gotta do things again and again... and again.
 #### Traditional For Loop
 ```ms
 for let i = 0; i < 10; i = i + 1 {
-  print("Count: " + string(i))
+  print("Count: " + string(i)) // Counting the old-school way
 }
 ```
 
@@ -62,7 +62,7 @@ for let i = 0; i < 10; i = i + 1 {
 let numbers = [1, 2, 3, 4, 5]
 
 for num in numbers {
-  print("Number: " + string(num))
+  print("Number: " + string(num)) // Much tidier for collections!
 }
 ```
 
@@ -90,7 +90,7 @@ let count = 0
 
 while count < 5 {
   print("Count: " + string(count))
-  count = count + 1
+  count = count + 1 // Don't forget to change the condition, or INFINITE LOOP!
 }
 ```
 
@@ -101,7 +101,7 @@ The `break` statement is your emergency exit from a loop. Had enough? Just `brea
 ```ms
 for i in range(10) {
   if i == 5 {
-    break
+    break // "I'm outta here!" - the loop
   }
   print(i)
 }
@@ -113,7 +113,7 @@ for i in range(10) {
 ```ms
 for i in range(10) {
   if i % 2 == 0 {
-    continue
+    continue // Skip this one, on to the next!
   }
   print(i)
 }
@@ -136,8 +136,8 @@ let value = 42
 let result = match value {
   0: "zero"
   1: "one"
-  42: "the answer"
-  default: "unknown"
+  42: "the answer" // To life, the universe, and everything
+  default: "unknown" // Always have a fallback!
 }
 ```
 
@@ -212,7 +212,7 @@ let result = try parseNumber("42")
 
 ### Try with Default
 ```ms
-let result = try parseNumber("invalid") catch 0
+let result = try parseNumber("invalid") catch 0 // If parsing goes sideways, we get 0. Phew!
 // result = 0 if parsing fails
 ```
 
@@ -257,7 +257,7 @@ The `defer` statement is like making a promise to do something later, right befo
 ```ms
 fn processFile(filename string) {
   let file = openFile(filename)
-  defer file.close()  // Always executed when function exits
+  defer file.close()  // "I promise I'll close this... eventually." - your function // Always executed when function exits
   
   // Process file...
   // file.close() is automatically called

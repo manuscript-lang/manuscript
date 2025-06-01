@@ -19,8 +19,8 @@ A neat, tidy list.
 ```ms
 let numbers = [1, 2, 3, 4, 5]
 let names = ["Alice", "Bob", "Charlie"]
-let mixed = [1, "hello", true, 3.14]
-let empty int[] = []  // empty array with explicit type
+let mixed = [1, "hello", true, 3.14] // Arrays: not picky about types by default!
+let empty int[] = []  // empty array with explicit type // An empty box, but it *knows* it's for ints.
 ```
 
 ### Array Access
@@ -35,7 +35,7 @@ let length = numbers.length()  // 5
 let items = [1, 2, 3]
 items.append(4)           // [1, 2, 3, 4]
 items.prepend(0)          // [0, 1, 2, 3, 4]
-let removed = items.pop() // removes and returns last element
+let removed = items.pop() // removes and returns last element // Bye bye, last element!
 let slice = items[1:3]    // [1, 2]
 ```
 
@@ -50,14 +50,14 @@ let person = {
   city: "New York"
 }
 
-let empty = {}  // empty object
+let empty = {}  // empty object // A blank slate, ready for properties!
 ```
 
 ### Object Access
 ```ms
 let name = person.name     // "Alice"
 let age = person["age"]    // 30 (bracket notation)
-person.email = "alice@example.com"  // add new field
+person.email = "alice@example.com"  // add new field // Easy to add new things!
 ```
 
 ### Nested Objects
@@ -87,7 +87,7 @@ Maps provide key-value storage with typed keys and values:
 ```ms
 let scores = ["Alice": 95, "Bob": 87, "Charlie": 92]
 let ages = ["Alice": 30, "Bob": 25, "Charlie": 35]
-let empty = [:]  // empty map
+let empty = [:]  // empty map // An empty map, hungry for key-value pairs.
 ```
 
 ### Map Operations
@@ -124,7 +124,7 @@ Order matters not.
 ```ms
 let numbers = <1, 2, 3, 4, 5>
 let names = <"Alice", "Bob", "Charlie">
-let empty = <>  // empty set
+let empty = <>  // empty set // An empty set, yearning for unique items.
 ```
 
 ### Set Operations
@@ -137,7 +137,7 @@ let size = numbers.size()         // 5
 // Set operations
 let a = <1, 2, 3>
 let b = <3, 4, 5>
-let union = a.union(b)        // <1, 2, 3, 4, 5>
+let union = a.union(b)        // <1, 2, 3, 4, 5> // All together now!
 let intersection = a.intersect(b)  // <3>
 let difference = a.subtract(b)     // <1, 2>
 ```
@@ -188,7 +188,7 @@ let product = Product{
   name: "Laptop",
   price: 999.99,
   tags: ["electronics", "computers"]
-  // description is omitted (optional)
+  // description is omitted (optional) // No description? No problem!
 }
 ```
 
@@ -204,7 +204,7 @@ let mixed = (1, "hello", 3.14, false)
 
 // Destructuring
 let (x, y) = point
-let (name, age, active) = person
+let (name, age, active) = person // Unpacking the tuple like a gift!
 ```
 
 ## Collection Operations
@@ -215,7 +215,7 @@ Once you've got your data nicely structured, it's time to party! Manuscript offe
 let numbers = [1, 2, 3, 4, 5]
 
 // Map - transform each element
-let doubled = numbers.map(fn(x) {  x * 2 })  // [2, 4, 6, 8, 10]
+let doubled = numbers.map(fn(x) {  x * 2 })  // [2, 4, 6, 8, 10] // Each number, times two!
 
 // Filter - keep elements that match condition
 let evens = numbers.filter(fn(x) {  x % 2 == 0 })  // [2, 4]
@@ -242,7 +242,7 @@ Ready to level up your data game? Comprehensions are a fancy way to build collec
 ### Collection Comprehensions
 ```ms
 // Array comprehension
-let squares = [x * x for x in range(10) if x % 2 == 0]  // [0, 4, 16, 36, 64]
+let squares = [x * x for x in range(10) if x % 2 == 0]  // [0, 4, 16, 36, 64] // Building a list, the fancy way.
 
 // Map comprehension  
 let wordLengths = [word: word.length() for word in ["hello", "world", "manuscript"]]

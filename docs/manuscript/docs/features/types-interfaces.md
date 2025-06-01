@@ -17,7 +17,7 @@ type User {
   name string
   email string
   age int
-  active bool
+  active bool // Our User blueprint!
 }
 ```
 
@@ -34,14 +34,14 @@ Ah, the great comma debate! Manuscript is pretty chill about commas when you're 
 ```ms
 // Multi-line party: commas are optional (and often omitted for cleanliness)
 let user1 = User{
-  name: "Alice"
+  name: "Alice" // Commas are shy in multi-line...
   email: "alice@example.com"
   age: 30
-  active: true
+  active: true // ...they often hide!
 }
 
 // Single-line squeeze: commas are a must!
-let user2 = User{name: "Bob", email: "bob@example.com", age: 25, active: false}
+let user2 = User{name: "Bob", email: "bob@example.com", age: 25, active: false} // But on one line, they're a must!
 
 // Mixed format: if multiple fields share a line, they need commas between them.
 let user3 = User{
@@ -75,7 +75,7 @@ let product = Product{name: "Laptop", price: 999.99}
 Create instances without specifying the type name when the type can be inferred:
 
 ```ms
-let a = {
+let a = { // Manuscript often knows what you mean!
   name: "Bob"
   email: "bob@example.com"
   age: 25
@@ -110,7 +110,7 @@ let users User[] = [
 type Product {
   name string
   price float
-  description string?  // optional field
+  description string?  // optional field // Might have it, might not. No biggie.
   category string?     // optional field
 }
 
@@ -135,7 +135,7 @@ type Person {
   age int
 }
 
-type Employee extends Person {
+type Employee extends Person { // Employee gets all of Person's cool stuff, plus its own!
   employeeId string
   department string
   salary float
@@ -175,10 +175,10 @@ Interfaces are like rulebooks or contracts. 'Any type that wants to be considere
 
 ### Interface Definition
 ```ms
-interface Drawable {
-  draw() void
-  getArea() float
-  getPerimeter() float
+interface Drawable { // The "Drawable" club rules:
+  draw() void       // Must know how to draw.
+  getArea() float   // Must be able to calculate its area.
+  getPerimeter() float // And its perimeter too!
 }
 
 interface Serializable {
@@ -207,7 +207,7 @@ type Rectangle {
   height float
 }
 
-methods Rectangle as this {
+methods Rectangle as this { // Teaching Rectangle some tricks
   draw() void {
     print("Drawing rectangle: " + string(this.width) + "x" + string(this.height))
   }
@@ -246,7 +246,7 @@ type Container[T] {
 }
 
 // Multi-line: commas optional
-let stringContainer = Container[string]{
+let stringContainer = Container[string]{ // This container holds strings!
   value: "hello"
   metadata: ["type": "text"]
 }

@@ -19,21 +19,21 @@ Magic, clean, and neat.
 ### Simple Function
 ```ms
 fn greet() {
-  print("Hello, World!")
+  print("Hello, World!") // Classic first step in any language!
 }
 ```
 
 ### Function with Parameters
 ```ms
 fn greet(name string) {
-  print("Hello, " + name + "!")
+  print("Hello, " + name + "!") // Personalized greetings are the best.
 }
 ```
 
 ### Function with Return Type
 ```ms
 fn add(a int, b int) int {
-  a + b  // automatically returned
+  a + b  // No 'return' needed, it's the last expression! How cool is that?
 }
 ```
 
@@ -54,8 +54,8 @@ fn greet(name string, greeting string = "Hello") {
 }
 
 // Usage
-greet("Alice")              // uses default greeting
-greet("Bob", "Hi")          // custom greeting
+greet("Alice")              // Uses default greeting "Hello"
+greet("Bob", "Hi")          // Bob gets a special "Hi"
 ```
 
 ### Multiple Parameters
@@ -84,7 +84,7 @@ fn divideWithRemainder(a int, b int) (int, int) {
 }
 
 // Usage
-let (q, r) = divideWithRemainder(17, 5)
+let (q, r) = divideWithRemainder(17, 5) // q gets quotient, r gets remainder. Sweet!
 ```
 
 ### Early Return
@@ -110,7 +110,7 @@ Functions can return errors using the bang (`!`) syntax:
 ```ms
 fn divide(a int, b int) int! {
   if b == 0 {
-    error("division by zero")  // return keyword optional
+    error("division by zero")  // return keyword optional // Whoops! Can't do that.
   }
   a / b  // automatically returned
 }
@@ -165,8 +165,8 @@ fn createCounter() (fn() int) {
 }
 
 let counter = createCounter()
-print(counter())  // 1
-print(counter())  // 2
+print(counter())  // Prints: 1
+print(counter())  // Prints: 2 // It remembers! Spooky good.
 ```
 
 ## Main Function
@@ -290,9 +290,9 @@ fn createConfig(env string) Config! {
 ```ms
 fn factorial(n int) int {
   if n <= 1 {
-    return 1  // explicit return for early exit
+    return 1  // Base case: the anchor of recursion!
   }
-  n * factorial(n - 1)  // automatically returned
+  n * factorial(n - 1)  // Calling itself, a mini-adventure. // automatically returned
 }
 ```
 

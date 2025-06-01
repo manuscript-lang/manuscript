@@ -13,7 +13,7 @@ Imagine your program is a bustling city. Modules are like well-organized neighbo
 Think of `export` as putting a 'For Sale' sign on the cool stuff in your module. 'Hey world, I've got this awesome `add` function and a very important `PI` variable, come and get it!'
 ### Exporting from a Module
 ```ms
-// math.ms
+// math.ms // Our little math workshop
 export fn add(a int, b int) int {
   return a + b
 }
@@ -22,14 +22,14 @@ export fn multiply(a int, b int) int {
   return a * b
 }
 
-export let PI = 3.14159
+export let PI = 3.14159 // A very important number!
 ```
 
 `import` is like going shopping. You browse other modules and say, 'I'll take that `add` function, that `PI`, and oh, that `multiply` looks useful too!'
 ### Importing Modules
 ```ms
-// main.ms
-import { add, multiply, PI } from 'math.ms'
+// main.ms // Where the action happens!
+import { add, multiply, PI } from 'math.ms' // Picking out the tools we need
 
 fn main() {
   let sum = add(5, 3)
@@ -54,13 +54,13 @@ Sometimes, names clash, or you just want a shorter nickname. `import { Logger as
 ### Aliased Imports
 ```ms
 import { add as mathAdd, subtract as mathSub } from 'math.ms'
-import { Logger as Log } from 'logging.ms'
+import { Logger as Log } from 'logging.ms' // Shorter name, same great logging.
 ```
 
 `import math from 'math.ms'` is like grabbing the entire toolkit from the 'math' workshop. Now you can use `math.add()`, `math.PI`, etc. Everything neatly namespaced!
 ### Target Import
 ```ms
-import math from 'math.ms'
+import math from 'math.ms' // Got the whole math kit right here.
 
 fn main() {
   let result = math.add(5, 3)
@@ -77,7 +77,7 @@ export fn processData(data string) string {
 
 export let CONFIG = {
   apiUrl: "https://api.example.com",
-  timeout: 5000
+  timeout: 5000 // Sensible defaults, ready to be exported!
 }
 ```
 
@@ -97,7 +97,7 @@ export interface Validator {
 Re-exporting is like creating a curated gift basket. You pick the best items from other modules and offer them as a convenient package from your own module. 'Everything you need, right here!'
 ### Re-exports
 ```ms
-// utils.ms
+// utils.ms // Your one-stop shop for common goodies!
 export { add, subtract } from 'math.ms'
 export { format, parse } from 'string.ms'
 ```
@@ -108,7 +108,7 @@ export { format, parse } from 'string.ms'
 Use `extern` for external packages:
 
 ```ms
-extern http from 'net/http'
+extern http from 'net/http' // Reaching out to the Go world for some HTTP magic.
 extern json from 'encoding/json'
 
 fn makeRequest(url string) string! {
