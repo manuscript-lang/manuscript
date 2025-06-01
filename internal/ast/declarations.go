@@ -34,18 +34,6 @@ type LetBlockItemSingle struct {
 	Value Expression
 }
 
-type LetBlockItemDestructuredObj struct {
-	BaseNode
-	IDs   []TypedID
-	Value Expression
-}
-
-type LetBlockItemDestructuredArray struct {
-	BaseNode
-	IDs   []TypedID
-	Value Expression
-}
-
 type LetDestructuredObj struct {
 	BaseNode
 	IDs   []TypedID

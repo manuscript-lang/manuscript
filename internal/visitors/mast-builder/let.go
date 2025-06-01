@@ -117,46 +117,6 @@ func (v *ParseTreeToAST) VisitLabelLetBlockItemSingle(ctx *parser.LabelLetBlockI
 	return item
 }
 
-func (v *ParseTreeToAST) VisitLabelLetBlockItemDestructuredObj(ctx *parser.LabelLetBlockItemDestructuredObjContext) interface{} {
-	item := &ast.LetBlockItemDestructuredObj{
-		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-	}
-
-	if ctx.TypedIDList() != nil {
-		if result := ctx.TypedIDList().Accept(v); result != nil {
-			item.IDs = result.([]ast.TypedID)
-		}
-	}
-
-	if ctx.Expr() != nil {
-		if result := ctx.Expr().Accept(v); result != nil {
-			item.Value = result.(ast.Expression)
-		}
-	}
-
-	return item
-}
-
-func (v *ParseTreeToAST) VisitLabelLetBlockItemDestructuredArray(ctx *parser.LabelLetBlockItemDestructuredArrayContext) interface{} {
-	item := &ast.LetBlockItemDestructuredArray{
-		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
-	}
-
-	if ctx.TypedIDList() != nil {
-		if result := ctx.TypedIDList().Accept(v); result != nil {
-			item.IDs = result.([]ast.TypedID)
-		}
-	}
-
-	if ctx.Expr() != nil {
-		if result := ctx.Expr().Accept(v); result != nil {
-			item.Value = result.(ast.Expression)
-		}
-	}
-
-	return item
-}
-
 func (v *ParseTreeToAST) VisitLetDestructuredObj(ctx *parser.LetDestructuredObjContext) interface{} {
 	item := &ast.LetDestructuredObj{
 		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},

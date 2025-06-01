@@ -51,9 +51,7 @@ letBlockItemList:
 	letBlockItemSep* letBlockItem (letBlockItemSep+ letBlockItem)* letBlockItemSep*;
 letBlockItemSep: COMMA | stmt_sep;
 letBlockItem:
-	typedID EQUALS expr						# LabelLetBlockItemSingle
-	| LBRACE typedIDList RBRACE EQUALS expr	# LabelLetBlockItemDestructuredObj
-	| LSQBR typedIDList RSQBR EQUALS expr	# LabelLetBlockItemDestructuredArray;
+	typedID EQUALS expr						# LabelLetBlockItemSingle;
 letDestructuredObj: LBRACE typedIDList RBRACE EQUALS expr;
 letDestructuredArray: LSQBR typedIDList RSQBR EQUALS expr;
 

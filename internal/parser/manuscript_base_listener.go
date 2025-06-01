@@ -123,22 +123,6 @@ func (s *BaseManuscriptListener) EnterLabelLetBlockItemSingle(ctx *LabelLetBlock
 // ExitLabelLetBlockItemSingle is called when production LabelLetBlockItemSingle is exited.
 func (s *BaseManuscriptListener) ExitLabelLetBlockItemSingle(ctx *LabelLetBlockItemSingleContext) {}
 
-// EnterLabelLetBlockItemDestructuredObj is called when production LabelLetBlockItemDestructuredObj is entered.
-func (s *BaseManuscriptListener) EnterLabelLetBlockItemDestructuredObj(ctx *LabelLetBlockItemDestructuredObjContext) {
-}
-
-// ExitLabelLetBlockItemDestructuredObj is called when production LabelLetBlockItemDestructuredObj is exited.
-func (s *BaseManuscriptListener) ExitLabelLetBlockItemDestructuredObj(ctx *LabelLetBlockItemDestructuredObjContext) {
-}
-
-// EnterLabelLetBlockItemDestructuredArray is called when production LabelLetBlockItemDestructuredArray is entered.
-func (s *BaseManuscriptListener) EnterLabelLetBlockItemDestructuredArray(ctx *LabelLetBlockItemDestructuredArrayContext) {
-}
-
-// ExitLabelLetBlockItemDestructuredArray is called when production LabelLetBlockItemDestructuredArray is exited.
-func (s *BaseManuscriptListener) ExitLabelLetBlockItemDestructuredArray(ctx *LabelLetBlockItemDestructuredArrayContext) {
-}
-
 // EnterLetDestructuredObj is called when production letDestructuredObj is entered.
 func (s *BaseManuscriptListener) EnterLetDestructuredObj(ctx *LetDestructuredObjContext) {}
 

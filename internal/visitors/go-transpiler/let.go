@@ -209,8 +209,8 @@ func (t *GoTranspiler) VisitLetBlockItemSingle(node *mast.LetBlockItemSingle) as
 	})
 }
 
-// VisitLetBlockItemDestructuredObj transpiles destructured object let block items
-func (t *GoTranspiler) VisitLetBlockItemDestructuredObj(node *mast.LetBlockItemDestructuredObj) ast.Node {
+// VisitLetDestructuredObj transpiles destructured object let declarations
+func (t *GoTranspiler) VisitLetDestructuredObj(node *mast.LetDestructuredObj) ast.Node {
 	if node == nil {
 		return nil
 	}
@@ -247,11 +247,13 @@ func (t *GoTranspiler) VisitLetBlockItemDestructuredObj(node *mast.LetBlockItemD
 		stmts = append(stmts, fieldAssign)
 	}
 
-	return &ast.BlockStmt{List: stmts}
+	// Wrap in DestructuringBlockStmt to preserve block structure
+	blockStmt := &ast.BlockStmt{List: stmts}
+	return &DestructuringBlockStmt{BlockStmt: blockStmt}
 }
 
-// VisitLetBlockItemDestructuredArray transpiles destructured array let block items
-func (t *GoTranspiler) VisitLetBlockItemDestructuredArray(node *mast.LetBlockItemDestructuredArray) ast.Node {
+// VisitLetDestructuredArray transpiles destructured array let declarations
+func (t *GoTranspiler) VisitLetDestructuredArray(node *mast.LetDestructuredArray) ast.Node {
 	if node == nil {
 		return nil
 	}
@@ -288,47 +290,9 @@ func (t *GoTranspiler) VisitLetBlockItemDestructuredArray(node *mast.LetBlockIte
 		stmts = append(stmts, elementAssign)
 	}
 
-	return &ast.BlockStmt{List: stmts}
-}
-
-// VisitLetDestructuredObj transpiles destructured object let declarations
-func (t *GoTranspiler) VisitLetDestructuredObj(node *mast.LetDestructuredObj) ast.Node {
-	if node == nil {
-		return nil
-	}
-
-	// Similar to VisitLetBlockItemDestructuredObj but as a statement
-	result := t.VisitLetBlockItemDestructuredObj(&mast.LetBlockItemDestructuredObj{
-		IDs:   node.IDs,
-		Value: node.Value,
-	})
-
 	// Wrap in DestructuringBlockStmt to preserve block structure
-	if blockStmt, ok := result.(*ast.BlockStmt); ok {
-		return &DestructuringBlockStmt{BlockStmt: blockStmt}
-	}
-
-	return result
-}
-
-// VisitLetDestructuredArray transpiles destructured array let declarations
-func (t *GoTranspiler) VisitLetDestructuredArray(node *mast.LetDestructuredArray) ast.Node {
-	if node == nil {
-		return nil
-	}
-
-	// Similar to VisitLetBlockItemDestructuredArray but as a statement
-	result := t.VisitLetBlockItemDestructuredArray(&mast.LetBlockItemDestructuredArray{
-		IDs:   node.IDs,
-		Value: node.Value,
-	})
-
-	// Wrap in DestructuringBlockStmt to preserve block structure
-	if blockStmt, ok := result.(*ast.BlockStmt); ok {
-		return &DestructuringBlockStmt{BlockStmt: blockStmt}
-	}
-
-	return result
+	blockStmt := &ast.BlockStmt{List: stmts}
+	return &DestructuringBlockStmt{BlockStmt: blockStmt}
 }
 
 // VisitLetSingle transpiles single let declarations

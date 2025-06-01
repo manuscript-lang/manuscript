@@ -76,14 +76,6 @@ func (v *BaseManuscriptVisitor) VisitLabelLetBlockItemSingle(ctx *LabelLetBlockI
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelLetBlockItemDestructuredObj(ctx *LabelLetBlockItemDestructuredObjContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
-func (v *BaseManuscriptVisitor) VisitLabelLetBlockItemDestructuredArray(ctx *LabelLetBlockItemDestructuredArrayContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseManuscriptVisitor) VisitLetDestructuredObj(ctx *LetDestructuredObjContext) interface{} {
 	return v.VisitChildren(ctx)
 }

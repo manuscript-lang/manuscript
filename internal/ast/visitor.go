@@ -93,8 +93,6 @@ type ManuscriptVisitor[T any] interface {
 	VisitLetSingle(node *LetSingle) T
 	VisitLetBlock(node *LetBlock) T
 	VisitLetBlockItemSingle(node *LetBlockItemSingle) T
-	VisitLetBlockItemDestructuredObj(node *LetBlockItemDestructuredObj) T
-	VisitLetBlockItemDestructuredArray(node *LetBlockItemDestructuredArray) T
 	VisitLetDestructuredObj(node *LetDestructuredObj) T
 	VisitLetDestructuredArray(node *LetDestructuredArray) T
 	VisitTypedID(node *TypedID) T
@@ -297,10 +295,6 @@ func DispatchVisit[T any](visitor ManuscriptVisitor[T], node Node) T {
 		return visitor.VisitLetBlock(n)
 	case *LetBlockItemSingle:
 		return visitor.VisitLetBlockItemSingle(n)
-	case *LetBlockItemDestructuredObj:
-		return visitor.VisitLetBlockItemDestructuredObj(n)
-	case *LetBlockItemDestructuredArray:
-		return visitor.VisitLetBlockItemDestructuredArray(n)
 	case *LetDestructuredObj:
 		return visitor.VisitLetDestructuredObj(n)
 	case *LetDestructuredArray:
@@ -432,14 +426,6 @@ func (v *BaseManuscriptVisitor[T]) VisitTypeSpec(node *TypeSpec) T   { var zero 
 func (v *BaseManuscriptVisitor[T]) VisitLetSingle(node *LetSingle) T { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitLetBlock(node *LetBlock) T   { var zero T; return zero }
 func (v *BaseManuscriptVisitor[T]) VisitLetBlockItemSingle(node *LetBlockItemSingle) T {
-	var zero T
-	return zero
-}
-func (v *BaseManuscriptVisitor[T]) VisitLetBlockItemDestructuredObj(node *LetBlockItemDestructuredObj) T {
-	var zero T
-	return zero
-}
-func (v *BaseManuscriptVisitor[T]) VisitLetBlockItemDestructuredArray(node *LetBlockItemDestructuredArray) T {
 	var zero T
 	return zero
 }

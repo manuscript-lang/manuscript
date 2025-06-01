@@ -12,10 +12,10 @@ let [c, d] = [1, 2]
 let (
     e = 30,
     f = 30,
-    g = true,
-    {i, j} = {i: 10, j: false},
-    [x, y] = ['x', 'y'],
+    g = true
 )
+let {i, j} = {i: 10, j: false}
+let [x, y] = ['x', 'y']
 ```
 ```go
 package main

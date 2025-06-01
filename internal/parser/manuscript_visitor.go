@@ -59,12 +59,6 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#LabelLetBlockItemSingle.
 	VisitLabelLetBlockItemSingle(ctx *LabelLetBlockItemSingleContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelLetBlockItemDestructuredObj.
-	VisitLabelLetBlockItemDestructuredObj(ctx *LabelLetBlockItemDestructuredObjContext) interface{}
-
-	// Visit a parse tree produced by Manuscript#LabelLetBlockItemDestructuredArray.
-	VisitLabelLetBlockItemDestructuredArray(ctx *LabelLetBlockItemDestructuredArrayContext) interface{}
-
 	// Visit a parse tree produced by Manuscript#letDestructuredObj.
 	VisitLetDestructuredObj(ctx *LetDestructuredObjContext) interface{}
 
