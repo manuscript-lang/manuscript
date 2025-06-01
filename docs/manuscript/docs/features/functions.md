@@ -6,30 +6,34 @@ description: >
   Function definitions, parameters, return types, and error handling in manuscript.
 ---
 
-Functions in manuscript are declared using the `fn` keyword. They support parameters, return types, default values, and error handling.
+Functions: the trusty workhorses of your code! Got a job that needs doing? Package it up in a function, give it a name, and call it whenever you need. It's like having a magical spellbook for your program!
 
-**Note:** The `return` keyword is optional in manuscript. Functions automatically return the value of the last expression.
+**Note:** The `return` keyword is optional in manuscript. Functions automatically return the value of the last expression. That's right, Manuscript is so chill, even `return` is often optional. The last expression? That's your return ticket!
 
 ## Basic Function Declaration
+
+Code block takes a task,
+Call its name, it does the work,
+Magic, clean, and neat.
 
 ### Simple Function
 ```ms
 fn greet() {
-  print("Hello, World!")
+  print("Hello, World!") // Classic first step in any language!
 }
 ```
 
 ### Function with Parameters
 ```ms
 fn greet(name string) {
-  print("Hello, " + name + "!")
+  print("Hello, " + name + "!") // Personalized greetings are the best.
 }
 ```
 
 ### Function with Return Type
 ```ms
 fn add(a int, b int) int {
-  a + b  // automatically returned
+  a + b  // No 'return' needed, it's the last expression! How cool is that?
 }
 ```
 
@@ -43,14 +47,15 @@ fn calculateArea(width float, height float) float {
 ```
 
 ### Default Parameters
+Sometimes, you're just not feeling picky. Default parameters are for those easy-going moments.
 ```ms
 fn greet(name string, greeting string = "Hello") {
   print(greeting + ", " + name + "!")
 }
 
 // Usage
-greet("Alice")              // uses default greeting
-greet("Bob", "Hi")          // custom greeting
+greet("Alice")              // Uses default greeting "Hello"
+greet("Bob", "Hi")          // Bob gets a special "Hi"
 ```
 
 ### Multiple Parameters
@@ -70,6 +75,7 @@ fn double(x int) int {
 ```
 
 ### Multiple Return Values
+Why return one thing when you can return two? Or three? Or... well, let's not get carried away. But Manuscript lets you bundle them up!
 ```ms
 fn divideWithRemainder(a int, b int) (int, int) {
   let quotient = a / b
@@ -78,7 +84,7 @@ fn divideWithRemainder(a int, b int) (int, int) {
 }
 
 // Usage
-let (q, r) = divideWithRemainder(17, 5)
+let (q, r) = divideWithRemainder(17, 5) // q gets quotient, r gets remainder. Sweet!
 ```
 
 ### Early Return
@@ -104,7 +110,7 @@ Functions can return errors using the bang (`!`) syntax:
 ```ms
 fn divide(a int, b int) int! {
   if b == 0 {
-    error("division by zero")  // return keyword optional
+    error("division by zero")  // return keyword optional // Whoops! Can't do that.
   }
   a / b  // automatically returned
 }
@@ -148,6 +154,7 @@ let result = add(5, 3)  // result = 8
 ```
 
 ### Closures
+Closures are like functions with photographic memory. They remember the environment where they were born, even if they travel far, far away in your code. Spooky, yet useful!
 ```ms
 fn createCounter() (fn() int) {
   let count = 0
@@ -158,8 +165,8 @@ fn createCounter() (fn() int) {
 }
 
 let counter = createCounter()
-print(counter())  // 1
-print(counter())  // 2
+print(counter())  // Prints: 1
+print(counter())  // Prints: 2 // It remembers! Spooky good.
 ```
 
 ## Main Function
@@ -283,9 +290,9 @@ fn createConfig(env string) Config! {
 ```ms
 fn factorial(n int) int {
   if n <= 1 {
-    return 1  // explicit return for early exit
+    return 1  // Base case: the anchor of recursion!
   }
-  n * factorial(n - 1)  // automatically returned
+  n * factorial(n - 1)  // Calling itself, a mini-adventure. // automatically returned
 }
 ```
 

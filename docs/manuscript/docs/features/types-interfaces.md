@@ -6,49 +6,54 @@ description: >
   Custom types, interfaces, methods, and type system features in manuscript.
 ---
 
-manuscript provides a rich type system with custom types, interfaces, and methods for building structured and extensible applications.
+Welcome to the world of Types and Interfaces, the dynamic duo that brings structure and sanity to your Manuscript code! Think of types as the DNA of your data, and interfaces as the contracts that keep everyone playing nicely together.
 
 ## Custom Types
 
+Defining a custom type is like designing your own action figure or doll. What properties should it have? `name string`, `superPower string?` (that question mark means it's optional, maybe they're still discovering their powers!).
 ### Basic Type Definition
 ```ms
 type User {
   name string
   email string
   age int
-  active bool
+  active bool // Our User blueprint!
 }
 ```
 
+Blueprints for your data,
+Fields and types, all well-defined,
+Objects come alive.
+
 ### Type Instantiation Syntax
 
-manuscript supports flexible comma usage in type instantiation:
-
-- **Multi-line format**: Commas are optional when each field is on a separate line
-- **Single-line format**: Commas are required to separate fields
+Ah, the great comma debate! Manuscript is pretty chill about commas when you're making new things from your types:
+- **Multi-line party:** If each field is on its own line, living large, commas are optional. Manuscript gets it, you're giving each field its moment.
+- **Single-line squeeze:** If you're lining them all up on one line, then yes, please use commas to keep them from bumping into each other. It's just good manners!
 
 ```ms
-// Multi-line: no commas needed
+// Multi-line party: commas are optional (and often omitted for cleanliness)
 let user1 = User{
-  name: "Alice"
+  name: "Alice" // Commas are shy in multi-line...
   email: "alice@example.com"
   age: 30
-  active: true
+  active: true // ...they often hide!
 }
 
-// Single-line: commas required
-let user2 = User{name: "Bob", email: "bob@example.com", age: 25, active: false}
+// Single-line squeeze: commas are a must!
+let user2 = User{name: "Bob", email: "bob@example.com", age: 25, active: false} // But on one line, they're a must!
 
-// Mixed format: commas required when multiple fields on same line
+// Mixed format: if multiple fields share a line, they need commas between them.
 let user3 = User{
-  name: "Charlie", email: "charlie@example.com"
-  age: 35
+  name: "Charlie", email: "charlie@example.com" // These two need a comma
+  age: 35                                       // This one is fine alone
   active: true
 }
 ```
 
 ### Typed vs Untyped Literals
 
+Sometimes Manuscript is a super-smart detective and can guess the type (that's an untyped literal - 'Look Ma, no type name!'). Other times, especially when things are a bit ambiguous or you're just starting out with an empty collection, you gotta give it a clear clue with a typed literal (`let user User = ...`). It's all about context!
 manuscript supports both typed and untyped literal syntax for creating instances:
 
 #### Typed Literals
@@ -70,7 +75,7 @@ let product = Product{name: "Laptop", price: 999.99}
 Create instances without specifying the type name when the type can be inferred:
 
 ```ms
-let a = {
+let a = { // Manuscript often knows what you mean!
   name: "Bob"
   email: "bob@example.com"
   age: 25
@@ -96,15 +101,16 @@ let users User[] = [
 
 #### When to Use Each
 
-- **Typed literals**: For storing strucuted data quickly, needed only for a small part of the code
-- **Untyped literals**: Use when type is clear from context (function parameters, variable annotations, etc.)
+- **Typed literals**: Use these when you want to be crystal clear, especially if Manuscript might get confused (like with an empty list `[]` - is it a list of numbers? Strings? Tiny llamas?). Also great for one-off structures where you don't need a formal `type` definition everywhere.
+- **Untyped literals**: Go for these when the type is super obvious from how you're using it – like assigning to a variable that already has a type, or in function parameters where the type is declared. Manuscript appreciates you not stating the obvious.
 
 ### Optional Fields
+`string?` - That little question mark is your best friend for fields that might not always have a value. It's like saying, 'This *might* be here, or it *might not*. No pressure.'
 ```ms
 type Product {
   name string
   price float
-  description string?  // optional field
+  description string?  // optional field // Might have it, might not. No biggie.
   category string?     // optional field
 }
 
@@ -120,6 +126,7 @@ let product2 = Product{name: "Mouse", price: 29.99}
 ```
 
 ## Type Extension
+`extends` is Manuscript's way of saying 'takes after.' So, an `Employee` can `extend` a `Person` (getting all their person-y qualities) and then add its own job-specific stuff. It's like genetic inheritance, but for code!
 
 ### Extending Types
 ```ms
@@ -128,7 +135,7 @@ type Person {
   age int
 }
 
-type Employee extends Person {
+type Employee extends Person { // Employee gets all of Person's cool stuff, plus its own!
   employeeId string
   department string
   salary float
@@ -149,6 +156,7 @@ type User extends Person, Timestamps {
 ```
 
 ## Type Aliases
+Type aliases are nicknames for your types. `type UserId = string` means you can now use `UserId` instead of `string` when you mean it. Makes your code read more like a story and less like a... well, just a bunch of strings.
 
 ### Simple Aliases
 ```ms
@@ -163,13 +171,14 @@ type EventHandler = fn(Event) void
 ```
 
 ## Interfaces
+Interfaces are like rulebooks or contracts. 'Any type that wants to be considered `Drawable`,' says the interface, 'must promise to have a `draw()` method and a `getArea()` method.' It's all about keeping promises!
 
 ### Interface Definition
 ```ms
-interface Drawable {
-  draw() void
-  getArea() float
-  getPerimeter() float
+interface Drawable { // The "Drawable" club rules:
+  draw() void       // Must know how to draw.
+  getArea() float   // Must be able to calculate its area.
+  getPerimeter() float // And its perimeter too!
 }
 
 interface Serializable {
@@ -189,6 +198,7 @@ interface Repository[T] {
 ```
 
 ## Methods
+Methods are functions that belong to a type. It's like teaching your `Robot` type how to `dance()` or `makeCoffee()`. These are the actions your custom types can perform.
 
 ### Implementing Methods
 ```ms
@@ -197,7 +207,7 @@ type Rectangle {
   height float
 }
 
-methods Rectangle as this {
+methods Rectangle as this { // Teaching Rectangle some tricks
   draw() void {
     print("Drawing rectangle: " + string(this.width) + "x" + string(this.height))
   }
@@ -228,6 +238,7 @@ methods Rectangle as this {
 ## Advanced Type Features
 
 ### Generic Types
+`Container[T]` - The `T` is a placeholder, like a 'Your Name Here' sticker. It means this container can hold any type you decide later. Super flexible!
 ```ms
 type Container[T] {
   value T
@@ -235,7 +246,7 @@ type Container[T] {
 }
 
 // Multi-line: commas optional
-let stringContainer = Container[string]{
+let stringContainer = Container[string]{ // This container holds strings!
   value: "hello"
   metadata: ["type": "text"]
 }
