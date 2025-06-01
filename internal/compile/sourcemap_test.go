@@ -34,7 +34,7 @@ func TestSourcemapPositionUniqueness(t *testing.T) {
 	}
 
 	// Compile the manuscript code
-	_, sourceMap, err := manuscriptToGo(msCode, ctx)
+	_, sourceMap, err := compileToGo(msCode, ctx)
 	if err != nil {
 		t.Fatalf("Failed to compile manuscript code: %v", err)
 	}

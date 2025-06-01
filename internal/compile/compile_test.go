@@ -174,7 +174,7 @@ fn main() {
 			}
 
 			// Compile the manuscript code
-			goCode, sourceMap, err := manuscriptToGo(tt.msCode, ctx)
+			goCode, sourceMap, err := compileToGo(tt.msCode, ctx)
 			if err != nil {
 				t.Fatalf("Failed to compile manuscript code: %v", err)
 			}
@@ -253,7 +253,7 @@ func TestCompileWithoutSourcemap(t *testing.T) {
 	}
 
 	// Compile the manuscript code
-	goCode, sourceMap, err := manuscriptToGo(msCode, ctx)
+	goCode, sourceMap, err := compileToGo(msCode, ctx)
 	if err != nil {
 		t.Fatalf("Failed to compile manuscript code: %v", err)
 	}
@@ -298,7 +298,7 @@ func TestSourcemapFileWriting(t *testing.T) {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
-	BuildFile(testFile, cfg, false)
+	BuildFile(testFile, cfg)
 
 	// Verify output files exist
 	outputFile := filepath.Join(tempDir, "test.go")
@@ -383,7 +383,7 @@ func TestCompileResultStructure(t *testing.T) {
 		},
 	}
 
-	result := compileFile("", cfg, false)
+	result := Compile("", cfg, CompileOptions{})
 
 	// Test that CompileResult has the expected structure
 	if result.Error == nil {
