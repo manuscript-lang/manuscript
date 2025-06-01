@@ -20,9 +20,9 @@ declaration:
 	;
 
 // --- Imports/Exports/Extern ---
-importDecl: IMPORT moduleImport SEMICOLON?;
-exportDecl: EXPORT exportedItem SEMICOLON?;
-externDecl: EXTERN moduleImport SEMICOLON?;
+importDecl: IMPORT moduleImport SEMICOLON;
+exportDecl: EXPORT exportedItem SEMICOLON;
+externDecl: EXTERN moduleImport SEMICOLON;
 
 exportedItem:
 	fnDecl			
@@ -40,10 +40,10 @@ importItem: ID (AS ID)?;
 
 // --- Let Declarations ---
 letDecl:
-	LET letSingle SEMICOLON?				
-	| LET letBlock SEMICOLON?			
-	| LET letDestructuredObj SEMICOLON?	
-	| LET letDestructuredArray SEMICOLON?;
+	LET letSingle SEMICOLON
+	| LET letBlock SEMICOLON
+	| LET letDestructuredObj SEMICOLON
+	| LET letDestructuredArray SEMICOLON;
 
 letSingle: typedID (EQUALS (expr | tryExpr))?;
 letBlock: LPAREN letBlockItemList? RPAREN;
@@ -95,7 +95,7 @@ methodImpl: interfaceMethod codeBlock;
 // --- Statements ---
 stmt:
 	letDecl				# LabelStmtLet
-	| expr SEMICOLON?	# LabelStmtExpr
+	| expr SEMICOLON	# LabelStmtExpr
 	| returnStmt		# LabelStmtReturn
 	| yieldStmt			# LabelStmtYield
 	| ifStmt			# LabelStmtIf
@@ -106,16 +106,16 @@ stmt:
 	| continueStmt		# LabelStmtContinue
 	| checkStmt			# LabelStmtCheck
 	| deferStmt			# LabelStmtDefer
-	| tryExpr SEMICOLON?	# LabelStmtTry
+	| tryExpr SEMICOLON	# LabelStmtTry
 	| pipedStmt			# LabelStmtPiped
 	| asyncStmt			# LabelStmtAsync
 	| goStmt			# LabelStmtGo;
 
-returnStmt: RETURN exprList? SEMICOLON?;
-yieldStmt: YIELD exprList? SEMICOLON?;
-deferStmt: DEFER expr SEMICOLON?;
-asyncStmt: ASYNC expr SEMICOLON?;
-goStmt: GO expr SEMICOLON?;
+returnStmt: RETURN exprList? SEMICOLON;
+yieldStmt: YIELD exprList? SEMICOLON;
+deferStmt: DEFER expr SEMICOLON;
+asyncStmt: ASYNC expr SEMICOLON;
+goStmt: GO expr SEMICOLON;
 exprList: expr (COMMA expr)* (COMMA)?;
 
 ifStmt: IF expr codeBlock (ELSE codeBlock)?;
@@ -133,12 +133,12 @@ loopBody:
 	LBRACE stmt_sep* (stmt (stmt_sep+ stmt)*)? stmt_sep* RBRACE;
 codeBlock:
 	LBRACE stmt_sep* (stmt (stmt_sep+ stmt)*)? stmt_sep* RBRACE;
-breakStmt: BREAK SEMICOLON?;
-continueStmt: CONTINUE SEMICOLON?;
-checkStmt: CHECK expr COMMA stringLiteral SEMICOLON?;
+breakStmt: BREAK SEMICOLON;
+continueStmt: CONTINUE SEMICOLON;
+checkStmt: CHECK expr COMMA stringLiteral SEMICOLON;
 
 // --- Piped Statements ---
-pipedStmt: postfixExpr (PIPE postfixExpr pipedArgs?)+ SEMICOLON?;
+pipedStmt: postfixExpr (PIPE postfixExpr pipedArgs?)+ SEMICOLON;
 pipedArgs: pipedArg+;
 pipedArg: ID EQUALS expr;
 
@@ -233,8 +233,8 @@ fnExpr:
 // --- Match Expressions ---
 matchExpr:
 	MATCH expr LBRACE stmt_sep* caseClause (stmt_sep+ caseClause)* stmt_sep* defaultClause? RBRACE;
-caseClause: expr (COLON expr | codeBlock) SEMICOLON?;
-defaultClause: DEFAULT (COLON expr | codeBlock) SEMICOLON?;
+caseClause: expr (COLON expr | codeBlock) SEMICOLON;
+defaultClause: DEFAULT (COLON expr | codeBlock) SEMICOLON;
 
 // --- String Literals ---
 singleQuotedString:
@@ -316,4 +316,4 @@ arrayType: ID LSQBR RSQBR;
 fnType: FN LPAREN parameters? RPAREN typeAnnotation?;
 
 // --- Helper Rules ---
-stmt_sep: SEMICOLON | NEWLINE;
+stmt_sep: SEMICOLON;
