@@ -335,8 +335,8 @@ type ManuscriptListener interface {
 	// EnterLabelPrimaryNull is called when entering the LabelPrimaryNull production.
 	EnterLabelPrimaryNull(c *LabelPrimaryNullContext)
 
-	// EnterLabelPrimaryTaggedBlock is called when entering the LabelPrimaryTaggedBlock production.
-	EnterLabelPrimaryTaggedBlock(c *LabelPrimaryTaggedBlockContext)
+	// EnterLabelPrimaryTaggedTemplate is called when entering the LabelPrimaryTaggedTemplate production.
+	EnterLabelPrimaryTaggedTemplate(c *LabelPrimaryTaggedTemplateContext)
 
 	// EnterTryExpr is called when entering the tryExpr production.
 	EnterTryExpr(c *TryExprContext)
@@ -443,8 +443,8 @@ type ManuscriptListener interface {
 	// EnterSetLiteral is called when entering the setLiteral production.
 	EnterSetLiteral(c *SetLiteralContext)
 
-	// EnterTaggedBlockString is called when entering the taggedBlockString production.
-	EnterTaggedBlockString(c *TaggedBlockStringContext)
+	// EnterTaggedTemplate is called when entering the taggedTemplate production.
+	EnterTaggedTemplate(c *TaggedTemplateContext)
 
 	// EnterTypedObjectLiteral is called when entering the typedObjectLiteral production.
 	EnterTypedObjectLiteral(c *TypedObjectLiteralContext)
@@ -803,8 +803,8 @@ type ManuscriptListener interface {
 	// ExitLabelPrimaryNull is called when exiting the LabelPrimaryNull production.
 	ExitLabelPrimaryNull(c *LabelPrimaryNullContext)
 
-	// ExitLabelPrimaryTaggedBlock is called when exiting the LabelPrimaryTaggedBlock production.
-	ExitLabelPrimaryTaggedBlock(c *LabelPrimaryTaggedBlockContext)
+	// ExitLabelPrimaryTaggedTemplate is called when exiting the LabelPrimaryTaggedTemplate production.
+	ExitLabelPrimaryTaggedTemplate(c *LabelPrimaryTaggedTemplateContext)
 
 	// ExitTryExpr is called when exiting the tryExpr production.
 	ExitTryExpr(c *TryExprContext)
@@ -911,8 +911,8 @@ type ManuscriptListener interface {
 	// ExitSetLiteral is called when exiting the setLiteral production.
 	ExitSetLiteral(c *SetLiteralContext)
 
-	// ExitTaggedBlockString is called when exiting the taggedBlockString production.
-	ExitTaggedBlockString(c *TaggedBlockStringContext)
+	// ExitTaggedTemplate is called when exiting the taggedTemplate production.
+	ExitTaggedTemplate(c *TaggedTemplateContext)
 
 	// ExitTypedObjectLiteral is called when exiting the typedObjectLiteral production.
 	ExitTypedObjectLiteral(c *TypedObjectLiteralContext)

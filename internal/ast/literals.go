@@ -110,12 +110,13 @@ type SetLiteral struct {
 
 // Tagged block strings
 
-type TaggedBlockString struct {
+type TaggedTemplate struct {
 	NamedNode
-	Content      *StringLiteral
+	Tag          *Identifier // This was missing in the plan but seems essential for a tagged template
+	Template     *StringLiteral
 	InferredType Type
 }
 
-func (t *TaggedBlockString) SetInferredType(typ Type) {
+func (t *TaggedTemplate) SetInferredType(typ Type) {
 	t.InferredType = typ
 }

@@ -93,14 +93,65 @@
                     ]
                 },
                 {
-                    "name": "string.tagged.block.ms",
-                    "begin": "([a-zA-Z_][a-zA-Z0-9_]*)\\s*('''|\"\"\")",
+                    "name": "meta.tagged-template.ms",
+                    "begin": "([a-zA-Z_][a-zA-Z0-9_]*)\\s*(''')",
                     "beginCaptures": {
-                        "1": { "name": "entity.name.function.tag.ms" }
+                        "1": { "name": "entity.name.function.tag.ms" },
+                        "2": { "name": "punctuation.definition.string.begin.ms" }
                     },
-                    "end": "(\\3)", 
+                    "end": "(''')",
+                    "endCaptures": {
+                        "1": { "name": "punctuation.definition.string.end.ms" }
+                    },
                     "patterns": [
                         { "include": "#string_interpolation_tagged_block" }
+                    ]
+                },
+                {
+                    "name": "meta.tagged-template.ms",
+                    "begin": "([a-zA-Z_][a-zA-Z0-9_]*)\\s*(\"\"\")",
+                    "beginCaptures": {
+                        "1": { "name": "entity.name.function.tag.ms" },
+                        "2": { "name": "punctuation.definition.string.begin.ms" }
+                    },
+                    "end": "(\"\"\")",
+                    "endCaptures": {
+                        "1": { "name": "punctuation.definition.string.end.ms" }
+                    },
+                    "patterns": [
+                        { "include": "#string_interpolation_tagged_block" }
+                    ]
+                },
+                {
+                    "name": "meta.tagged-template.ms",
+                    "begin": "([a-zA-Z_][a-zA-Z0-9_]*)\\s*(')",
+                    "beginCaptures": {
+                        "1": { "name": "entity.name.function.tag.ms" },
+                        "2": { "name": "punctuation.definition.string.begin.ms" }
+                    },
+                    "end": "(')",
+                    "endCaptures": {
+                        "1": { "name": "punctuation.definition.string.end.ms" }
+                    },
+                    "patterns": [
+                        { "include": "#string_escapes" },
+                        { "include": "#string_interpolation" }
+                    ]
+                },
+                {
+                    "name": "meta.tagged-template.ms",
+                    "begin": "([a-zA-Z_][a-zA-Z0-9_]*)\\s*(\")",
+                    "beginCaptures": {
+                        "1": { "name": "entity.name.function.tag.ms" },
+                        "2": { "name": "punctuation.definition.string.begin.ms" }
+                    },
+                    "end": "(\")",
+                    "endCaptures": {
+                        "1": { "name": "punctuation.definition.string.end.ms" }
+                    },
+                    "patterns": [
+                        { "include": "#string_escapes" },
+                        { "include": "#string_interpolation" }
                     ]
                 }
             ]

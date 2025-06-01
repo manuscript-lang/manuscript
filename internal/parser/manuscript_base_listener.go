@@ -675,11 +675,13 @@ func (s *BaseManuscriptListener) EnterLabelPrimaryNull(ctx *LabelPrimaryNullCont
 // ExitLabelPrimaryNull is called when production LabelPrimaryNull is exited.
 func (s *BaseManuscriptListener) ExitLabelPrimaryNull(ctx *LabelPrimaryNullContext) {}
 
-// EnterLabelPrimaryTaggedBlock is called when production LabelPrimaryTaggedBlock is entered.
-func (s *BaseManuscriptListener) EnterLabelPrimaryTaggedBlock(ctx *LabelPrimaryTaggedBlockContext) {}
+// EnterLabelPrimaryTaggedTemplate is called when production LabelPrimaryTaggedTemplate is entered.
+func (s *BaseManuscriptListener) EnterLabelPrimaryTaggedTemplate(ctx *LabelPrimaryTaggedTemplateContext) {
+}
 
-// ExitLabelPrimaryTaggedBlock is called when production LabelPrimaryTaggedBlock is exited.
-func (s *BaseManuscriptListener) ExitLabelPrimaryTaggedBlock(ctx *LabelPrimaryTaggedBlockContext) {}
+// ExitLabelPrimaryTaggedTemplate is called when production LabelPrimaryTaggedTemplate is exited.
+func (s *BaseManuscriptListener) ExitLabelPrimaryTaggedTemplate(ctx *LabelPrimaryTaggedTemplateContext) {
+}
 
 // EnterTryExpr is called when production tryExpr is entered.
 func (s *BaseManuscriptListener) EnterTryExpr(ctx *TryExprContext) {}
@@ -891,11 +893,11 @@ func (s *BaseManuscriptListener) EnterSetLiteral(ctx *SetLiteralContext) {}
 // ExitSetLiteral is called when production setLiteral is exited.
 func (s *BaseManuscriptListener) ExitSetLiteral(ctx *SetLiteralContext) {}
 
-// EnterTaggedBlockString is called when production taggedBlockString is entered.
-func (s *BaseManuscriptListener) EnterTaggedBlockString(ctx *TaggedBlockStringContext) {}
+// EnterTaggedTemplate is called when production taggedTemplate is entered.
+func (s *BaseManuscriptListener) EnterTaggedTemplate(ctx *TaggedTemplateContext) {}
 
-// ExitTaggedBlockString is called when production taggedBlockString is exited.
-func (s *BaseManuscriptListener) ExitTaggedBlockString(ctx *TaggedBlockStringContext) {}
+// ExitTaggedTemplate is called when production taggedTemplate is exited.
+func (s *BaseManuscriptListener) ExitTaggedTemplate(ctx *TaggedTemplateContext) {}
 
 // EnterTypedObjectLiteral is called when production typedObjectLiteral is entered.
 func (s *BaseManuscriptListener) EnterTypedObjectLiteral(ctx *TypedObjectLiteralContext) {}

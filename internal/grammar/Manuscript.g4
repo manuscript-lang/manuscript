@@ -221,7 +221,7 @@ primaryExpr:
 	| matchExpr				# LabelPrimaryMatch
 	| VOID					# LabelPrimaryVoid
 	| NULL					# LabelPrimaryNull
-	| taggedBlockString		# LabelPrimaryTaggedBlock;
+	| taggedTemplate		# LabelPrimaryTaggedTemplate;
 
 // --- Try Expressions ---
 tryExpr: TRY expr;
@@ -299,8 +299,8 @@ mapFieldList: mapField (COMMA mapField)* (COMMA)?;
 mapField: expr COLON expr;
 setLiteral: LT (expr (COMMA expr)* (COMMA)?)? GT;
 
-taggedBlockString:
-	ID (multiQuotedString | multiDoubleQuotedString);
+taggedTemplate:
+	ID stringLiteral;
 
 typedObjectLiteral: ID LBRACE objectFieldList? RBRACE;
 

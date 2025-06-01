@@ -52,7 +52,7 @@ type ManuscriptVisitor[T any] interface {
 	VisitObjectLiteral(node *ObjectLiteral) T
 	VisitMapLiteral(node *MapLiteral) T
 	VisitSetLiteral(node *SetLiteral) T
-	VisitTaggedBlockString(node *TaggedBlockString) T
+	VisitTaggedTemplate(node *TaggedTemplate) T
 	VisitFnExpr(node *FnExpr) T
 	VisitTernaryExpr(node *TernaryExpr) T
 	VisitAssignmentExpr(node *AssignmentExpr) T
@@ -332,8 +332,8 @@ func DispatchVisit[T any](visitor ManuscriptVisitor[T], node Node) T {
 	case *ObjectFieldString:
 		return visitor.VisitObjectFieldString(n)
 
-	case *TaggedBlockString:
-		return visitor.VisitTaggedBlockString(n)
+	case *TaggedTemplate:
+		return visitor.VisitTaggedTemplate(n)
 
 	default:
 		var zero T
@@ -463,7 +463,7 @@ func (v *BaseManuscriptVisitor[T]) VisitObjectFieldString(node *ObjectFieldStrin
 	return zero
 }
 
-func (v *BaseManuscriptVisitor[T]) VisitTaggedBlockString(node *TaggedBlockString) T {
+func (v *BaseManuscriptVisitor[T]) VisitTaggedTemplate(node *TaggedTemplate) T {
 	var zero T
 	return zero
 }

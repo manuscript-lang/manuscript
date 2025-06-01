@@ -444,7 +444,7 @@ func (v *BaseManuscriptVisitor) VisitLabelPrimaryNull(ctx *LabelPrimaryNullConte
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitLabelPrimaryTaggedBlock(ctx *LabelPrimaryTaggedBlockContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitLabelPrimaryTaggedTemplate(ctx *LabelPrimaryTaggedTemplateContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
@@ -588,7 +588,7 @@ func (v *BaseManuscriptVisitor) VisitSetLiteral(ctx *SetLiteralContext) interfac
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseManuscriptVisitor) VisitTaggedBlockString(ctx *TaggedBlockStringContext) interface{} {
+func (v *BaseManuscriptVisitor) VisitTaggedTemplate(ctx *TaggedTemplateContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 

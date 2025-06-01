@@ -283,8 +283,35 @@ func (v *ParseTreeToAST) VisitLabelPrimaryNull(ctx *parser.LabelPrimaryNullConte
 	}
 }
 
-func (v *ParseTreeToAST) VisitLabelPrimaryTaggedBlock(ctx *parser.LabelPrimaryTaggedBlockContext) interface{} {
-	return ctx.TaggedBlockString().Accept(v)
+func (v *ParseTreeToAST) VisitLabelPrimaryTaggedTemplate(ctx *parser.LabelPrimaryTaggedTemplateContext) interface{} {
+	if ctx == nil || ctx.TaggedTemplate() == nil {
+		return nil
+	}
+	idTerminalNode := ctx.TaggedTemplate().ID()
+	if idTerminalNode == nil {
+		return nil
+	}
+	tagIdentifier := &ast.Identifier{
+		BaseNode: ast.BaseNode{Position: v.getPositionFromToken(idTerminalNode.GetSymbol())},
+		Name:     idTerminalNode.GetText(),
+	}
+	stringLiteralRuleCtx := ctx.TaggedTemplate().StringLiteral()
+	if stringLiteralRuleCtx == nil {
+		return nil
+	}
+	stringLiteralNode := v.Visit(stringLiteralRuleCtx)
+	if stringLiteralNode == nil {
+		return nil
+	}
+	templateStringLiteral, ok := stringLiteralNode.(*ast.StringLiteral)
+	if !ok {
+		return nil
+	}
+	return &ast.TaggedTemplate{
+		BaseNode: ast.BaseNode{Position: v.getPosition(ctx)},
+		Tag:      tagIdentifier,
+		Template: templateStringLiteral,
+	}
 }
 
 func (v *ParseTreeToAST) VisitLabelPrimaryTypedObject(ctx *parser.LabelPrimaryTypedObjectContext) interface{} {

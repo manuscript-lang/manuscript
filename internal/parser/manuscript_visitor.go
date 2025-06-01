@@ -335,8 +335,8 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#LabelPrimaryNull.
 	VisitLabelPrimaryNull(ctx *LabelPrimaryNullContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#LabelPrimaryTaggedBlock.
-	VisitLabelPrimaryTaggedBlock(ctx *LabelPrimaryTaggedBlockContext) interface{}
+	// Visit a parse tree produced by Manuscript#LabelPrimaryTaggedTemplate.
+	VisitLabelPrimaryTaggedTemplate(ctx *LabelPrimaryTaggedTemplateContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#tryExpr.
 	VisitTryExpr(ctx *TryExprContext) interface{}
@@ -443,8 +443,8 @@ type ManuscriptVisitor interface {
 	// Visit a parse tree produced by Manuscript#setLiteral.
 	VisitSetLiteral(ctx *SetLiteralContext) interface{}
 
-	// Visit a parse tree produced by Manuscript#taggedBlockString.
-	VisitTaggedBlockString(ctx *TaggedBlockStringContext) interface{}
+	// Visit a parse tree produced by Manuscript#taggedTemplate.
+	VisitTaggedTemplate(ctx *TaggedTemplateContext) interface{}
 
 	// Visit a parse tree produced by Manuscript#typedObjectLiteral.
 	VisitTypedObjectLiteral(ctx *TypedObjectLiteralContext) interface{}
