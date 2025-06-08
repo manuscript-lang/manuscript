@@ -163,7 +163,7 @@ func compileToGo(input string, ctx *config.CompilerContext) (string, *sourcemap.
 
 func parseManuscript(input string, sourceFile string) (antlr.ParseTree, error) {
 	inputStream := antlr.NewInputStream(input)
-	lexer := parser.NewManuscriptLexer(inputStream)
+	lexer := parser.NewCustomManuscriptLexer(inputStream)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewManuscript(stream)
@@ -298,7 +298,7 @@ func writeOutputFiles(ctx *config.CompilerContext, result CompileResult, cfg *co
 func printTokens(input string) {
 	fmt.Println("\n=== TOKENS ===")
 	inputStream := antlr.NewInputStream(input)
-	lexer := parser.NewManuscriptLexer(inputStream)
+	lexer := parser.NewCustomManuscriptLexer(inputStream)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 	stream.Fill()
 

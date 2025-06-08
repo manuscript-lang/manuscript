@@ -1,7 +1,13 @@
 lexer grammar ManuscriptLexer;
 
-// Newline as statement separator (emit SEMICOLON for every newline outside strings/comments)
-NEWLINE: '\n';
+// Newline handling
+NEWLINE : '\n' {
+    if lexerParenDepth == 0 && lexerBracketDepth == 0 && lexerBraceDepth == 0 {
+        l.SetType(ManuscriptLexerSEMICOLON)
+    } else {
+        l.Skip()
+    }
+};
 
 // Define whitespace (excluding newlines) first, so it has highest priority
 WS: [ \t\r\f]+ -> channel(HIDDEN);
@@ -48,12 +54,12 @@ DEFER: 'defer';
 GO: 'go';
 
 // Punctuation (DEFAULT_MODE implicitly)
-LBRACE: '{';
-RBRACE: '}';
-LSQBR: '[';
-RSQBR: ']';
-LPAREN: '(';
-RPAREN: ')';
+LBRACE: '{' { lexerBraceDepth++ };
+RBRACE: '}' { lexerBraceDepth-- };
+LSQBR: '[' { lexerBracketDepth++ };
+RSQBR: ']' { lexerBracketDepth-- };
+LPAREN: '(' { lexerParenDepth++ };
+RPAREN: ')' { lexerParenDepth-- };
 LT: '<';
 GT: '>';
 LT_EQUALS: '<=';
