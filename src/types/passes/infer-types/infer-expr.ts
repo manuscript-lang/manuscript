@@ -212,18 +212,25 @@ function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
       return Types.channel(elementType);
     }
     
-    // Generic type constructor calls like Hello[string](...)
+    // Generic type constructor calls like Hello[string](...) or Pair[A, B](...)
     const baseType = ctx.env.lookupType(constructorName);
     if (baseType && baseType.kind === "object") {
-      const typeArg = resolveTypeName(
-        expr.callee.index.kind === "Identifier" ? expr.callee.index.name : "any",
-        ctx.env
-      );
+      // Collect all type arguments (first one from index, rest from typeArgs)
+      const allTypeArgs: AST.Expr[] = [expr.callee.index];
+      if (expr.callee.typeArgs) {
+        allTypeArgs.push(...expr.callee.typeArgs);
+      }
+      
       // Substitute type parameters in the base type
       const typeParams = baseType.typeParams || [];
       const bindings = new Map<string, Type>();
-      if (typeParams.length > 0 && typeParams[0]) {
-        bindings.set(typeParams[0].name, typeArg);
+      for (let i = 0; i < typeParams.length && i < allTypeArgs.length; i++) {
+        const typeArg = allTypeArgs[i]!;
+        const resolvedType = resolveTypeName(
+          typeArg.kind === "Identifier" ? typeArg.name : "any",
+          ctx.env
+        );
+        bindings.set(typeParams[i]!.name, resolvedType);
       }
       const instantiated = substituteTypeInObject(baseType, bindings);
       return inferConstructorCall(ctx, expr, instantiated);
@@ -593,7 +600,89 @@ function inferBuiltinMember(ctx: InferContext, objectType: Type, expr: AST.Membe
 }
 
 function inferPipeExpr(ctx: InferContext, expr: AST.PipeExpr): Type {
-  inferExpr(ctx, expr.left);
+  const leftType = inferExpr(ctx, expr.left);
+  
+  // If right side is a call expression, the left side becomes the first argument
+  if (expr.right.kind === "CallExpr") {
+    const callExpr = expr.right;
+    const calleeType = inferExpr(ctx, callExpr.callee);
+    
+    if (calleeType.kind === "function") {
+      // Create a synthetic call with left prepended to args
+      const syntheticArgs: (AST.Expr | { name: string; value: AST.Expr })[] = [
+        expr.left,
+        ...callExpr.args
+      ];
+      
+      // Infer type parameters with the synthetic args
+      const typeBindings = inferTypeParams(ctx, calleeType, syntheticArgs);
+      
+      // Substitute type params in parameter types
+      const params = calleeType.params.map(p => ({
+        ...p,
+        type: substituteTypeParams(p.type, typeBindings)
+      }));
+      
+      // Check argument count (left + explicit args)
+      const requiredCount = params.filter(p => !p.optional && !p.rest).length;
+      const totalArgs = 1 + callExpr.args.length;
+      
+      if (totalArgs < requiredCount) {
+        const err = TypeErrors.wrongArgumentCount(`at least ${requiredCount}`, totalArgs);
+        error(ctx, err.message, callExpr.loc, err.hint);
+      }
+      
+      // Check left against first param
+      if (params.length > 0) {
+        const firstParam = params[0]!;
+        if (!isAssignable(leftType, firstParam.type, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(firstParam.type), typeToString(leftType));
+          error(ctx, `Pipe argument: ${err.message}`, expr.left.loc, err.hint);
+        }
+      }
+      
+      // Check remaining args against remaining params
+      for (let i = 0; i < callExpr.args.length; i++) {
+        const arg = callExpr.args[i]!;
+        const paramIndex = i + 1; // +1 because left is first arg
+        const param = paramIndex < params.length ? params[paramIndex] : params[params.length - 1];
+        
+        if (param) {
+          let argType: Type;
+          let argLoc: AST.SourceLocation;
+          
+          if ("name" in arg && "value" in arg) {
+            argType = inferExpr(ctx, arg.value);
+            argLoc = arg.value.loc;
+          } else {
+            argType = inferExpr(ctx, arg as AST.Expr);
+            argLoc = (arg as AST.Expr).loc;
+          }
+          
+          const expectedType = param.rest && param.type.kind === "list" ?
+            param.type.elementType : param.type;
+          if (!isAssignable(argType, expectedType, ctx.env)) {
+            const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(argType));
+            error(ctx, `Argument ${paramIndex + 1}: ${err.message}`, argLoc, err.hint);
+          }
+        }
+      }
+      
+      return substituteTypeParams(calleeType.returnType, typeBindings);
+    }
+    
+    // Infer args anyway for non-function callees
+    for (const arg of callExpr.args) {
+      if ("name" in arg && "value" in arg) {
+        inferExpr(ctx, arg.value);
+      } else {
+        inferExpr(ctx, arg as AST.Expr);
+      }
+    }
+    return Types.any;
+  }
+  
+  // For simple identifier or other expression on the right
   const rightType = inferExpr(ctx, expr.right);
   if (rightType.kind === "function") {
     return rightType.returnType;

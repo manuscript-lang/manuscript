@@ -410,6 +410,8 @@ export interface IndexExpr extends BaseNode {
   index: Expr;
   // For slicing: obj[start:end:step]
   slice?: { start?: Expr; end?: Expr; step?: Expr };
+  // For generic type instantiation: Type[A, B] - additional type args after first
+  typeArgs?: Expr[];
 }
 
 export interface MemberExpr extends BaseNode {

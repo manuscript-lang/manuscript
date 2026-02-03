@@ -93,8 +93,14 @@ export function fnDeclToType(decl: AST.FnDecl): FunctionType {
     type: astTypeToType(c.type),
   })) ?? [];
 
+  const typeParams = decl.typeParams?.map(p => ({
+    name: p.name,
+    constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
+  }));
+
   return {
     kind: "function",
+    typeParams,
     params,
     returnType,
     isGenerator: decl.isGenerator,
@@ -118,8 +124,14 @@ export function methodToFunctionType(method: AST.MethodDecl): FunctionType {
     type: astTypeToType(c.type),
   })) ?? [];
 
+  const typeParams = method.typeParams?.map(p => ({
+    name: p.name,
+    constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
+  }));
+
   return {
     kind: "function",
+    typeParams,
     params,
     returnType,
     isGenerator: false,

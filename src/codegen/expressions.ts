@@ -80,12 +80,16 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     callee = `__ms_runtime.${node.callee.name}`;
   }
 
-  // Handle generic builtin constructors like Channel[T](...)
+  // Handle generic constructors like Channel[T](...) or UserType[T](...)
   if (node.callee.kind === "IndexExpr" && node.callee.object.kind === "Identifier") {
     const baseName = node.callee.object.name;
+    const args = genCallArgs(ctx, node.args, opts);
     if (BUILTIN_CONSTRUCTORS.has(baseName)) {
-      const args = genCallArgs(ctx, node.args, opts);
       return `new __ms_runtime.${baseName}(${args})`;
+    }
+    // User-defined generic types - type params are erased at runtime
+    if (opts.declaredTypes.has(baseName)) {
+      return `new ${baseName}(${args})`;
     }
   }
 

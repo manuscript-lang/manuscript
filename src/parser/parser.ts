@@ -1217,7 +1217,7 @@ export class Parser {
 
     let left = prefixParser();
 
-    while (precedence < this.currentPrecedence()) {
+    while (precedence < this.currentPrecedence() || this.tryLineContinuation(precedence)) {
       const infixParser = this.infixParsers.get(this.peek().type);
       if (!infixParser) break;
       this.advance();
@@ -1225,6 +1225,49 @@ export class Parser {
     }
 
     return left;
+  }
+
+  // Operators that can trigger line continuation
+  private static LINE_CONTINUATION_OPS = new Set<TokenType>([
+    "PIPE", "PLUS", "MINUS", "STAR", "SLASH", "PERCENT", "CARET",
+    "AND", "OR", "EQ", "NEQ", "LT", "GT", "LTE", "GTE",
+    "NULLISH", "DOTDOT"
+  ]);
+
+  // Check if expression can continue on next line and consume whitespace if so
+  // Only allows continuation without indentation changes and only for binary operators
+  private tryLineContinuation(precedence: Precedence): boolean {
+    if (!this.check("NEWLINE")) return false;
+    
+    // Save position to peek ahead
+    const savedPos = this.pos;
+    
+    // Skip only newlines (not INDENT/DEDENT)
+    while (this.match("NEWLINE")) {}
+    
+    // If we hit INDENT or DEDENT, this is not a simple line continuation
+    if (this.check("INDENT") || this.check("DEDENT")) {
+      this.pos = savedPos;
+      return false;
+    }
+    
+    // Only continue for specific binary operators, not for calls/members/etc.
+    const nextToken = this.peek().type;
+    if (!Parser.LINE_CONTINUATION_OPS.has(nextToken)) {
+      this.pos = savedPos;
+      return false;
+    }
+    
+    // Check if next token has higher precedence
+    const nextPrec = this.precedences.get(nextToken) ?? Precedence.NONE;
+    const canContinue = nextPrec > precedence;
+    
+    if (!canContinue) {
+      // Restore position if we can't continue
+      this.pos = savedPos;
+    }
+    
+    return canContinue;
   }
 
   private currentPrecedence(): Precedence {
@@ -1442,6 +1485,7 @@ export class Parser {
     const loc = this.previous().loc;
     const elements: (AST.Expr | AST.SpreadElement)[] = [];
 
+    this.skipBracketedWhitespace();
     while (!this.check("RBRACKET")) {
       if (this.match("SPREAD")) {
         const expr = this.expression();
@@ -1449,8 +1493,10 @@ export class Parser {
       } else {
         elements.push(this.expression());
       }
+      this.skipBracketedWhitespace();
       if (!this.check("RBRACKET")) {
         this.expect("COMMA");
+        this.skipBracketedWhitespace();
       }
     }
 
@@ -1462,6 +1508,7 @@ export class Parser {
     const loc = this.previous().loc;
     const entries: AST.MapEntry[] = [];
 
+    this.skipBracketedWhitespace();
     while (!this.check("RBRACE")) {
       const entryLoc = this.current().loc;
 
@@ -1475,8 +1522,10 @@ export class Parser {
         entries.push({ kind: "MapEntry", key, value, loc: entryLoc });
       }
 
+      this.skipBracketedWhitespace();
       if (!this.check("RBRACE")) {
         this.expect("COMMA");
+        this.skipBracketedWhitespace();
       }
     }
 
@@ -1540,7 +1589,17 @@ export class Parser {
       return this.sliceExpr(object, index, loc);
     }
 
+    // Check for additional type args: Type[A, B, C]
+    const typeArgs: AST.Expr[] = [];
+    while (this.match("COMMA")) {
+      typeArgs.push(this.expression());
+    }
+
     this.expect("RBRACKET");
+    
+    if (typeArgs.length > 0) {
+      return { kind: "IndexExpr", object, index, typeArgs, loc };
+    }
     return { kind: "IndexExpr", object, index, loc };
   }
 
@@ -1931,5 +1990,10 @@ export class Parser {
 
   private skipNewlines(): void {
     while (this.match("NEWLINE")) {}
+  }
+
+  // Skip newlines and indentation inside bracketed expressions (lists, maps, call args)
+  private skipBracketedWhitespace(): void {
+    while (this.match("NEWLINE") || this.match("INDENT") || this.match("DEDENT")) {}
   }
 }
