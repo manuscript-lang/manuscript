@@ -524,11 +524,7 @@ export class CodeGenerator {
     if (stmt.else) {
       this.emit("} else {");
       this.indentLevel++;
-      if (stmt.else.kind === "Block") {
-        this.genBlock(stmt.else, true);
-      } else {
-        this.genStatement(stmt.else);
-      }
+      this.genBlock(stmt.else, true);
       this.indentLevel--;
     }
 
@@ -778,7 +774,7 @@ export class CodeGenerator {
         }
       }
       
-      this.genStatement(stmt);
+      if (stmt) this.genStatement(stmt);
     }
   }
   

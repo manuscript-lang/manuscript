@@ -1,9 +1,9 @@
 import * as path from "path";
-import { ExtensionContext } from "vscode";
+import type { ExtensionContext } from "vscode";
 import {
   LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
+  type LanguageClientOptions,
+  type ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
 
@@ -24,7 +24,7 @@ export function activate(context: ExtensionContext) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: "file", language: "manuscript" }],
     synchronize: {
-      fileEvents: null,
+      fileEvents: undefined,
     },
   };
 

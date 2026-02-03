@@ -57,6 +57,7 @@ export function parseTestHeader(source: string): {
     const match = trimmed.match(/^\/\/\s*@(\w+):\s*(.+)$/);
     if (match) {
       const [, directive, value] = match;
+      if (value === undefined) continue;
       switch (directive) {
         case "test":
           name = value;
@@ -74,11 +75,11 @@ export function parseTestHeader(source: string): {
   // Second pass: collect all @expect and @error from entire file (in order)
   for (const line of lines) {
     const expectMatch = line.trim().match(/^\/\/\s*@expect:\s*(.+)$/);
-    if (expectMatch) {
+    if (expectMatch && expectMatch[1] !== undefined) {
       expectedOutput.push(expectMatch[1]);
     }
     const errorMatch = line.trim().match(/^\/\/\s*@error:\s*(.+)$/);
-    if (errorMatch) {
+    if (errorMatch && errorMatch[1] !== undefined) {
       expectedErrors.push(errorMatch[1]);
     }
   }
@@ -142,7 +143,7 @@ export async function runFixture(
   config?: FixtureConfig
 ): Promise<TestResult> {
   const start = performance.now();
-  const { name, expectedOutput, skip, shouldFail, typeCheck, expectedErrors } = parseTestHeader(source);
+  const { name, expectedOutput, skip, shouldFail, expectedErrors } = parseTestHeader(source);
   
   if (skip || config?.skip) {
     return {
