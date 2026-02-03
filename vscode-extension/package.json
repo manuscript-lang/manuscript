@@ -1,0 +1,59 @@
+{
+  "name": "manuscript",
+  "displayName": "Manuscript",
+  "description": "Language support for Manuscript (.ms files)",
+  "version": "0.1.0",
+  "publisher": "manuscript",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manuscript-lang/manuscript"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:manuscript"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "manuscript",
+        "aliases": [
+          "Manuscript",
+          "manuscript"
+        ],
+        "extensions": [
+          ".ms"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "manuscript",
+        "scopeName": "source.manuscript",
+        "path": "./syntaxes/manuscript.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "bun build src/extension.ts --outdir out --target node --format cjs --external vscode && bun build src/server.ts --outdir out --target node --format cjs",
+    "watch": "bun build src/extension.ts --outdir out --target node --format cjs --external vscode --watch",
+    "package": "vsce package --no-dependencies",
+    "install-ext": "./install.sh"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

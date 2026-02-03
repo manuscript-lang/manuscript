@@ -1,0 +1,261 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Manuscript",
+  "scopeName": "source.manuscript",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#operators" },
+    { "include": "#functions" },
+    { "include": "#types" },
+    { "include": "#variables" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.manuscript",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.manuscript",
+          "begin": "r\"\"\"",
+          "end": "\"\"\"",
+          "patterns": []
+        },
+        {
+          "name": "string.quoted.triple.manuscript",
+          "begin": "\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            { "include": "#string-interpolation" },
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.quoted.double.raw.manuscript",
+          "begin": "r\"",
+          "end": "\"",
+          "patterns": []
+        },
+        {
+          "name": "string.quoted.double.bytes.manuscript",
+          "begin": "b\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.quoted.double.manuscript",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#string-interpolation" },
+            { "include": "#string-escapes" }
+          ]
+        }
+      ]
+    },
+    "string-interpolation": {
+      "patterns": [
+        {
+          "name": "meta.interpolation.manuscript",
+          "begin": "(?<!\\\\)\\{",
+          "end": "\\}",
+          "beginCaptures": {
+            "0": { "name": "punctuation.section.interpolation.begin.manuscript" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.section.interpolation.end.manuscript" }
+          },
+          "contentName": "meta.embedded.line.manuscript",
+          "patterns": [
+            { "include": "#comments" },
+            { "include": "#numbers" },
+            { "include": "#keywords" },
+            { "include": "#constants" },
+            { "include": "#operators" },
+            { "include": "#interpolation-expression" }
+          ]
+        }
+      ]
+    },
+    "interpolation-expression": {
+      "patterns": [
+        {
+          "name": "variable.other.readwrite.manuscript",
+          "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b"
+        }
+      ]
+    },
+    "string-escapes": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.manuscript",
+          "match": "\\\\(?:[nrt\\\\\"{}]|u[0-9a-fA-F]{4}|u\\{[0-9a-fA-F]+\\}|x[0-9a-fA-F]{2})"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.manuscript",
+          "match": "\\b0x[0-9a-fA-F][0-9a-fA-F_]*\\b"
+        },
+        {
+          "name": "constant.numeric.binary.manuscript",
+          "match": "\\b0b[01][01_]*\\b"
+        },
+        {
+          "name": "constant.numeric.float.manuscript",
+          "match": "\\b[0-9][0-9_]*\\.(?![.])([0-9][0-9_]*)?([eE][+-]?[0-9][0-9_]*)?\\b"
+        },
+        {
+          "name": "constant.numeric.integer.manuscript",
+          "match": "\\b[0-9][0-9_]*([eE][+-]?[0-9][0-9_]*)?\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.manuscript",
+          "match": "\\b(if|else|for|match|return|break|continue|yield|defer|try|catch|throw|then|spawn)\\b"
+        },
+        {
+          "name": "keyword.declaration.manuscript",
+          "match": "\\b(fn|type|let|var|test|keyword|import|from|sealed|extends)\\b"
+        },
+        {
+          "name": "keyword.operator.manuscript",
+          "match": "\\b(and|or|not|is|as|in|using|with|where)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.true.manuscript",
+          "match": "\\btrue\\b"
+        },
+        {
+          "name": "constant.language.boolean.false.manuscript",
+          "match": "\\bfalse\\b"
+        },
+        {
+          "name": "constant.language.null.manuscript",
+          "match": "\\bnull\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.spread.manuscript",
+          "match": "\\.\\.\\."
+        },
+        {
+          "name": "keyword.operator.range.manuscript",
+          "match": "\\.\\."
+        },
+        {
+          "name": "keyword.operator.arrow.manuscript",
+          "match": "=>"
+        },
+        {
+          "name": "keyword.operator.nullish.manuscript",
+          "match": "\\?\\?"
+        },
+        {
+          "name": "keyword.operator.optional-chain.manuscript",
+          "match": "\\?\\."
+        },
+        {
+          "name": "keyword.operator.comparison.manuscript",
+          "match": "==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.assignment.compound.manuscript",
+          "match": "\\+=|-=|\\*=|/=|%="
+        },
+        {
+          "name": "keyword.operator.assignment.manuscript",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.arithmetic.manuscript",
+          "match": "\\+|-|\\*|/|%|\\^"
+        },
+        {
+          "name": "keyword.operator.pipe.manuscript",
+          "match": "\\|"
+        },
+        {
+          "name": "keyword.operator.bang.manuscript",
+          "match": "!"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "match": "\\b(fn)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?:\\[|\\()",
+          "captures": {
+            "1": { "name": "keyword.declaration.manuscript" },
+            "2": { "name": "entity.name.function.manuscript" }
+          }
+        },
+        {
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+          "captures": {
+            "1": { "name": "entity.name.function.call.manuscript" }
+          }
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "match": "\\b(type)\\s+([A-Z][a-zA-Z0-9_]*)\\b",
+          "captures": {
+            "1": { "name": "keyword.declaration.manuscript" },
+            "2": { "name": "entity.name.type.manuscript" }
+          }
+        },
+        {
+          "name": "support.type.primitive.manuscript",
+          "match": "\\b(number|string|bool|null|bytes|any|never|unknown|void)\\b"
+        },
+        {
+          "name": "support.type.builtin.manuscript",
+          "match": "\\b(list|map|set|Channel|Promise|Stream|Result|Agent)\\b"
+        },
+        {
+          "match": ":\\s*([A-Z][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "entity.name.type.manuscript" }
+          }
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "match": "\\b(let|var)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+          "captures": {
+            "1": { "name": "keyword.declaration.manuscript" },
+            "2": { "name": "variable.other.manuscript" }
+          }
+        }
+      ]
+    }
+  }
+}

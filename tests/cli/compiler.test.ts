@@ -1,0 +1,183 @@
+import { describe, test, expect } from "bun:test";
+import { compile, check, parse, formatErrors } from "../../src/cli/compiler";
+
+describe("Compiler Pipeline", () => {
+  describe("compile", () => {
+    test("compiles simple expression", () => {
+      const result = compile("let x = 42");
+      expect(result.success).toBe(true);
+      expect(result.code).toContain("const x = 42");
+    });
+
+    test("compiles function declaration", () => {
+      const result = compile(`
+fn add(a: number, b: number): number
+  return a + b
+`);
+      expect(result.success).toBe(true);
+      expect(result.code).toContain("function add(a, b)");
+    });
+
+    test("reports lexer errors", () => {
+      const result = compile("let x = @invalid");
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0]!.phase).toBe("lexer");
+    });
+
+    test("reports parser errors", () => {
+      const result = compile("let = 42");
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0]!.phase).toBe("parser");
+    });
+
+    test("reports type errors", () => {
+      const result = compile('let x: number = "hello"');
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0]!.phase).toBe("typecheck");
+    });
+
+    test("skips type checking when disabled", () => {
+      const result = compile('let x: number = "hello"', { typeCheck: false });
+      expect(result.success).toBe(true);
+    });
+
+    test("includes filename in errors", () => {
+      const result = compile("let = 42", { filename: "test.ms" });
+      expect(result.errors[0]!.file).toBe("test.ms");
+    });
+
+    test("returns AST on success", () => {
+      const result = compile("let x = 1");
+      expect(result.ast).toBeDefined();
+      expect(result.ast!.body.length).toBe(1);
+    });
+  });
+
+  describe("check", () => {
+    test("type checks valid code", () => {
+      const result = check("let x: number = 42");
+      expect(result.success).toBe(true);
+      expect(result.errors.length).toBe(0);
+    });
+
+    test("detects type errors", () => {
+      const result = check('let x: number = "string"');
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    test("returns AST even on type error", () => {
+      const result = check('let x: number = "string"');
+      expect(result.ast).toBeDefined();
+    });
+  });
+
+  describe("parse", () => {
+    test("parses without type checking", () => {
+      // This would fail type check but should parse fine
+      const result = parse('let x: number = "string"');
+      expect(result.success).toBe(true);
+      expect(result.ast).toBeDefined();
+    });
+
+    test("reports parse errors", () => {
+      const result = parse("let = invalid");
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("formatErrors", () => {
+    test("formats error without source", () => {
+      const formatted = formatErrors([{
+        message: "Test error",
+        phase: "parser",
+      }]);
+      expect(formatted).toContain("[parser] Test error");
+    });
+
+    test("formats error with location", () => {
+      const formatted = formatErrors([{
+        message: "Test error",
+        line: 5,
+        column: 10,
+        phase: "lexer",
+      }]);
+      expect(formatted).toContain("line 5");
+      expect(formatted).toContain("column 10");
+    });
+
+    test("formats error with source context", () => {
+      const source = "let x = 42\nlet y = @invalid";
+      const formatted = formatErrors([{
+        message: "Invalid token",
+        line: 2,
+        column: 9,
+        phase: "lexer",
+      }], source);
+      expect(formatted).toContain("let y = @invalid");
+    });
+
+    test("includes filename in output", () => {
+      const formatted = formatErrors([{
+        message: "Error",
+        file: "test.ms",
+        phase: "typecheck",
+      }]);
+      expect(formatted).toContain("test.ms");
+    });
+  });
+});
+
+describe("Complex Programs", () => {
+  test("compiles type declaration", () => {
+    const result = compile(`
+type Person
+  name: string
+  age: number
+`);
+    expect(result.success).toBe(true);
+    expect(result.code).toContain("class Person");
+  });
+
+  test("compiles enum declaration", () => {
+    const result = compile(`
+enum Color
+  Red
+  Green
+  Blue
+`);
+    expect(result.success).toBe(true);
+    expect(result.code).toContain("Object.freeze");
+  });
+
+  test("compiles with capabilities", () => {
+    const result = compile(`
+capabilities production
+  llm = Claude()
+`);
+    expect(result.success).toBe(true);
+  });
+
+  test("compiles agent", () => {
+    const result = compile(`
+agent Greeter using (LLM)
+  fn greet(name: string): string
+    return "Hello, " + name
+`);
+    expect(result.success).toBe(true);
+    expect(result.code).toContain("extends __ms_runtime.Agent");
+  });
+
+  test("compiles test declaration", () => {
+    const result = compile(`
+test "addition works"
+  let x = 1 + 1
+  assert x == 2
+`);
+    expect(result.success).toBe(true);
+    expect(result.code).toContain("__ms_runtime.test");
+  });
+});

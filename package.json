@@ -1,0 +1,26 @@
+{
+  "name": "manuscript",
+  "version": "0.1.0",
+  "description": "A minimal language for building agents",
+  "module": "src/index.ts",
+  "type": "module",
+  "bin": {
+    "manuscript": "./bin/manuscript.ts",
+    "ms": "./bin/manuscript.ts"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "check": "tsc --noEmit",
+    "ms": "bun run bin/manuscript.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "openai": "^4.103.0"
+  }
+}

@@ -1,0 +1,20 @@
+---
+alwaysApply: true
+---
+
+# How to write comments
+- DO NOT write excessive comments 
+- DO NOT add comments in code every few lines
+- DO write insightful comments about reasoning behind the code
+
+# How to write code
+- DO write simple concise code, do not overcomplicate
+- DO write as little code as possible to achieve the task
+- DO review the code after writing it, clean up for readability, conciseness, and efficiency
+- DO follow DRY, do not repeat same blocks of code
+- DO follow structured logging
+- DO NOT leave commented code in file
+- DO use short names for variables
+- DO create utility function and extract common logic
+- DO emit LLM friendly error messages
+- DO prefer e2e fixture tests over unit tests
