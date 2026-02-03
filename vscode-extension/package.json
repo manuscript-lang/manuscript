@@ -38,6 +38,14 @@
         "language": "manuscript",
         "scopeName": "source.manuscript",
         "path": "./syntaxes/manuscript.tmLanguage.json"
+      },
+      {
+        "scopeName": "markdown.manuscript.codeblock",
+        "path": "./syntaxes/manuscript-markdown.json",
+        "injectTo": ["text.html.markdown"],
+        "embeddedLanguages": {
+          "meta.embedded.block.manuscript": "manuscript"
+        }
       }
     ]
   },

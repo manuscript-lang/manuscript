@@ -103,6 +103,152 @@ describe("Type Checker - Type Declarations", () => {
   fn increment()
     value = value + 1`);
   });
+
+  test("type method can access fields", () => {
+    checkOk(`type Person
+  name: string
+  age: number
+  fn greet(): string
+    "Hello, " + name`);
+  });
+
+  test("type method can access parameters", () => {
+    checkOk(`type Greeter
+  name: string
+  fn greet(person: string): string
+    "Hello, " + person + " from " + name`);
+  });
+
+  test("type method unknown identifier fails", () => {
+    checkFails(`type Foo
+  fn bar()
+    x = unknown + 1`, "Unknown identifier");
+  });
+
+  test("type method scope resolves parameters before fields", () => {
+    // Parameter 'name' should shadow field 'name'
+    checkOk(`type Person
+  name: string
+  fn greet(name: string): string
+    "Hello, " + name`);
+  });
+
+  test("computed field can reference other fields", () => {
+    checkOk(`type Circle
+  radius: number
+  diameter: () => radius * 2`);
+  });
+
+  test("computed field unknown identifier fails", () => {
+    checkFails(`type Circle
+  radius: number
+  area: () => pi * radius * radius`, "Unknown identifier");
+  });
+
+  test("field default value type mismatch fails", () => {
+    checkFails(`type Config
+  count: number = "hello"`, "not assignable");
+  });
+
+  test("method return type mismatch fails", () => {
+    checkFails(`type Foo
+  fn bar(): number
+    "not a number"`, "not assignable");
+  });
+
+  test("unknown property on string fails", () => {
+    checkFails(`let s = "hello"
+s.unknown`, "does not exist on type 'string'");
+  });
+
+  test("unknown property on number fails", () => {
+    checkFails(`let n = 42
+n.value`, "does not exist on type 'number'");
+  });
+
+  test("unknown property on bool fails", () => {
+    checkFails(`let b = true
+b.flag`, "does not exist on type 'bool'");
+  });
+
+  test("unknown property on list fails", () => {
+    checkFails(`let a = [1,2,3]
+a.unknown`, "does not exist on type 'list'");
+  });
+
+  test("known string method ok", () => {
+    checkOk(`let s = "hello"
+print(s.upper())`);
+  });
+
+  test("known list method ok", () => {
+    checkOk(`let a = [1,2,3]
+print(a.length)`);
+  });
+
+  test("generic type constructor infers correct type", () => {
+    checkOk(`type Container[T]
+  value: T
+let c = Container[string]("hello")
+print(c.value)`);
+  });
+
+  test("generic type unknown property fails", () => {
+    checkFails(`type Container[T]
+  value: T
+let c = Container[string]("hello")
+print(c.unknown)`, "does not exist");
+  });
+
+  test("generic type with method", () => {
+    checkOk(`type Box[T]
+  value: T
+  fn get(): T
+    value
+let b = Box[number](42)
+print(b.get())`);
+  });
+
+  test("nested type access", () => {
+    checkOk(`type Inner
+  name: string
+type Outer
+  inner: Inner = Inner("test")
+let o = Outer()
+print(o.inner.name)`);
+  });
+
+  test("nested type unknown property fails", () => {
+    checkFails(`type Inner
+  name: string
+type Outer
+  inner: Inner = Inner("test")
+let o = Outer()
+print(o.inner.unknown)`, "does not exist");
+  });
+
+  test("method can modify and return field", () => {
+    checkOk(`type Counter
+  value: number = 0
+  fn increment(): number
+    value = value + 1
+    value`);
+  });
+
+  test("template string field access in method", () => {
+    checkOk(`type Person
+  name: string
+  age: number
+  fn describe(): string
+    "{name} is {age} years old"`);
+  });
+
+  test("template string with unknown identifier fails", () => {
+    checkFails(`type Person
+  name: string
+  fn describe(): string
+    "{unknown} is here"`, "Unknown identifier");
+  });
 });
 
 describe("Type Checker - Control Flow", () => {
