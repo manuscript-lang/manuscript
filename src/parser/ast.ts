@@ -39,6 +39,7 @@ export interface ExternFnDecl extends BaseNode {
   typeParams?: TypeParam[];
   params: Parameter[];
   returnType?: TypeExpr;
+  doc?: string;
 }
 
 export interface Parameter extends BaseNode {

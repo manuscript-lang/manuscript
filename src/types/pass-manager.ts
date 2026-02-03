@@ -79,6 +79,7 @@ export class ContextAnalysisPass implements Pass {
 export interface TypeCheckResult {
   program: AST.Program;
   types: Map<AST.ASTNode, Type>;
+  env: TypeEnvironment;
   errors: TypeCheckError[];
   warnings: string[];
 }
@@ -170,6 +171,7 @@ export class PassManager {
     return {
       program: ctx.program,
       types: ctx.types,
+      env: ctx.env,
       errors: ctx.errors,
       warnings: ctx.warnings,
     };

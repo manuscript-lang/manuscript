@@ -366,6 +366,34 @@ export function substituteTypeParams(type: Type, bindings: Map<string, Type>): T
   }
 }
 
+// Substitute type parameters in an object type
+export function substituteTypeInObject(objType: ObjectType, bindings: Map<string, Type>): ObjectType {
+  if (bindings.size === 0) return objType;
+  
+  return {
+    kind: "object",
+    name: objType.name,
+    properties: objType.properties.map(p => ({
+      ...p,
+      type: substituteTypeParams(p.type, bindings)
+    })),
+    methods: objType.methods.map(m => ({
+      name: m.name,
+      type: {
+        ...m.type,
+        params: m.type.params.map(p => ({
+          ...p,
+          type: substituteTypeParams(p.type, bindings)
+        })),
+        returnType: substituteTypeParams(m.type.returnType, bindings)
+      }
+    })),
+    typeParams: objType.typeParams,
+    extends: objType.extends,
+    context: objType.context
+  };
+}
+
 // Unify parameter type with argument type to infer type variables
 export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string, Type>): void {
   if (paramType.kind === "typevar") {
@@ -403,4 +431,56 @@ export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string,
     }
     unifyTypes(paramType.returnType, argType.returnType, bindings);
   }
+}
+
+// ============================================
+// AST Formatting Utilities (for IDE)
+// ============================================
+
+// Get docstring from a block (first statement if string literal)
+export function getDocstring(body: AST.Block | undefined): string | undefined {
+  const first = body?.statements?.[0];
+  if (first?.kind === "ExprStmt" && first.expr?.kind === "Literal" && typeof first.expr.value === "string") {
+    return first.expr.value;
+  }
+}
+
+// Format an AST type expression to string
+export function formatAstType(t: AST.TypeExpr | undefined): string {
+  if (!t) return "any";
+  try {
+    return typeToString(astTypeToType(t));
+  } catch {
+    return "any";
+  }
+}
+
+// Format function signature
+export function formatFnSignature(fn: AST.FnDecl | AST.ExternFnDecl, isExtern = false): string {
+  const params = fn.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
+  const ret = formatAstType(fn.returnType) || "void";
+  const typeParams = fn.typeParams?.length ? `[${fn.typeParams.map(t => t.name).join(", ")}]` : "";
+  const prefix = isExtern ? "extern fn" : "fn";
+  return `${prefix} ${fn.name}${typeParams}(${params}): ${ret}`;
+}
+
+// Format method signature
+export function formatMethodSignature(m: AST.MethodDecl): string {
+  const params = m.params.map(p => `${p.name}${p.optional ? "?" : ""}: ${formatAstType(p.type)}`).join(", ");
+  const ret = formatAstType(m.returnType) || "void";
+  return `fn(${params}): ${ret}`;
+}
+
+// Format type signature with fields
+export function formatTypeSignature(t: AST.TypeDecl): { signature: string; fields: string[] } {
+  const fields: string[] = [];
+  for (const m of t.body?.members || []) {
+    if (m.kind === "FieldDecl") {
+      const opt = m.optional ? "?" : "";
+      const def = m.defaultValue ? " = ..." : "";
+      fields.push(`${m.name}${opt}: ${formatAstType(m.type)}${def}`);
+    }
+  }
+  const sig = fields.length ? `${t.name}(${fields.join(", ")})` : t.name;
+  return { signature: sig, fields };
 }

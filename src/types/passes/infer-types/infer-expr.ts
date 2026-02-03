@@ -5,7 +5,8 @@ import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import {
   astTypeToType, resolveTypeName, isAssignable, extendsType,
-  findCommonType, typeInvolvesPromise, substituteTypeParams, unifyTypes
+  findCommonType, typeInvolvesPromise, substituteTypeParams, unifyTypes,
+  substituteTypeInObject
 } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, warning, recordType } from "./context";
@@ -193,9 +194,11 @@ function inferUnaryExpr(ctx: InferContext, expr: AST.UnaryExpr): Type {
 }
 
 function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
-  // Handle generic constructor calls like Channel[T](...)
+  // Handle generic constructor calls like TypeName[T](...)
   if (expr.callee.kind === "IndexExpr" && expr.callee.object.kind === "Identifier") {
     const constructorName = expr.callee.object.name;
+    
+    // Special case for Channel[T](...)
     if (constructorName === "Channel" && expr.callee.index.kind === "Identifier") {
       const typeArgName = expr.callee.index.name;
       const elementType = resolveTypeName(typeArgName, ctx.env);
@@ -207,6 +210,23 @@ function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
         }
       }
       return Types.channel(elementType);
+    }
+    
+    // Generic type constructor calls like Hello[string](...)
+    const baseType = ctx.env.lookupType(constructorName);
+    if (baseType && baseType.kind === "object") {
+      const typeArg = resolveTypeName(
+        expr.callee.index.kind === "Identifier" ? expr.callee.index.name : "any",
+        ctx.env
+      );
+      // Substitute type parameters in the base type
+      const typeParams = baseType.typeParams || [];
+      const bindings = new Map<string, Type>();
+      if (typeParams.length > 0 && typeParams[0]) {
+        bindings.set(typeParams[0].name, typeArg);
+      }
+      const instantiated = substituteTypeInObject(baseType, bindings);
+      return inferConstructorCall(ctx, expr, instantiated);
     }
   }
 
@@ -433,10 +453,10 @@ function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
   }
 
   // Built-in properties and methods
-  return inferBuiltinMember(objectType, expr);
+  return inferBuiltinMember(ctx, objectType, expr);
 }
 
-function inferBuiltinMember(objectType: Type, expr: AST.MemberExpr): Type {
+function inferBuiltinMember(ctx: InferContext, objectType: Type, expr: AST.MemberExpr): Type {
   if (expr.property === "length") {
     if (objectType.kind === "string" || objectType.kind === "list") {
       return Types.number;
@@ -467,6 +487,11 @@ function inferBuiltinMember(objectType: Type, expr: AST.MemberExpr): Type {
       case "chars":
         return Types.fn([], Types.list(Types.string));
     }
+    // Unknown property on string
+    if (!expr.optional) {
+      error(ctx, `Property '${expr.property}' does not exist on type 'string'`, expr.loc);
+    }
+    return expr.optional ? Types.optional(Types.any) : Types.any;
   }
 
   // List methods
@@ -493,6 +518,11 @@ function inferBuiltinMember(objectType: Type, expr: AST.MemberExpr): Type {
       case "first": case "last": return Types.fn([], Types.optional(el));
       case "is_empty": return Types.fn([], Types.bool);
     }
+    // Unknown property on list
+    if (!expr.optional) {
+      error(ctx, `Property '${expr.property}' does not exist on type 'list'`, expr.loc);
+    }
+    return expr.optional ? Types.optional(Types.any) : Types.any;
   }
 
   // Map methods
@@ -508,6 +538,8 @@ function inferBuiltinMember(objectType: Type, expr: AST.MemberExpr): Type {
       case "clear": return Types.fn([], Types.void);
       case "size": return Types.number;
     }
+    // Maps allow arbitrary key access via dot notation (e.g., map.key is map["key"])
+    return expr.optional ? Types.optional(objectType.valueType) : objectType.valueType;
   }
 
   // Set methods
@@ -520,6 +552,11 @@ function inferBuiltinMember(objectType: Type, expr: AST.MemberExpr): Type {
       case "size": return Types.number;
       case "values": return Types.fn([], Types.list(objectType.elementType));
     }
+    // Unknown property on set
+    if (!expr.optional) {
+      error(ctx, `Property '${expr.property}' does not exist on type 'set'`, expr.loc);
+    }
+    return expr.optional ? Types.optional(Types.any) : Types.any;
   }
 
   // Channel methods
@@ -532,8 +569,22 @@ function inferBuiltinMember(objectType: Type, expr: AST.MemberExpr): Type {
       case "try_send": return Types.fn([Types.param("value", objectType.elementType)], Types.bool);
       case "try_receive": return Types.fn([], Types.optional(objectType.elementType));
     }
+    // Unknown property on channel
+    if (!expr.optional) {
+      error(ctx, `Property '${expr.property}' does not exist on type 'channel'`, expr.loc);
+    }
+    return expr.optional ? Types.optional(Types.any) : Types.any;
   }
 
+  // Handle number and bool which have no properties
+  if (objectType.kind === "number" || objectType.kind === "bool") {
+    if (!expr.optional) {
+      error(ctx, `Property '${expr.property}' does not exist on type '${objectType.kind}'`, expr.loc);
+    }
+    return expr.optional ? Types.optional(Types.any) : Types.any;
+  }
+
+  // For any/unknown types, allow any property access
   if (expr.optional) {
     return Types.optional(Types.any);
   }

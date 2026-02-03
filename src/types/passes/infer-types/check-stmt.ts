@@ -1,6 +1,6 @@
 // Statement Checking - Type checks all statement kinds
 import * as AST from "../../../parser/ast";
-import type { Type, FunctionType, ContextBinding } from "../../types";
+import type { Type, FunctionType, ContextBinding, ObjectType } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import { astTypeToType, fnDeclToType, isAssignable, getIterableElementType, extendsType } from "../../type-utils";
@@ -70,6 +70,7 @@ export function checkStatement(ctx: InferContext, stmt: AST.Statement): void {
     case "ExternFnDecl":
       break;
     case "TypeDecl":
+      checkTypeDecl(ctx, stmt);
       break;
     case "TestDecl":
       checkTestDecl(ctx, stmt);
@@ -518,6 +519,100 @@ function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
   ctx.currentFunction = savedFn;
 
   recordType(ctx, decl, fnType);
+}
+
+function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
+  // Get the type from environment (already registered by collect-declarations pass)
+  const typeObj = ctx.env.lookupType(decl.name);
+  if (!typeObj || typeObj.kind !== "object") return;
+
+  // Create an environment with all fields available (for computed fields and methods)
+  const typeEnv = ctx.env.child();
+  for (const prop of (typeObj as ObjectType).properties) {
+    typeEnv.define(prop.name, prop.type, true);  // mutable = true
+  }
+
+  // Check field default values (including computed fields which may reference other fields)
+  for (const member of decl.body.members) {
+    if (member.kind === "FieldDecl" && member.defaultValue) {
+      const savedEnv = ctx.env;
+      ctx.env = typeEnv;
+      const valueType = inferExpr(ctx, member.defaultValue);
+      ctx.env = savedEnv;
+      
+      if (member.type) {
+        const declaredType = astTypeToType(member.type);
+        if (!isAssignable(valueType, declaredType, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(declaredType), typeToString(valueType));
+          error(ctx, err.message, member.loc, err.hint);
+        }
+      }
+    }
+  }
+
+  // Check method bodies
+  for (const member of decl.body.members) {
+    if (member.kind === "MethodDecl" && member.body) {
+      checkMethodDecl(ctx, decl, member, typeObj as ObjectType);
+    }
+  }
+}
+
+function checkMethodDecl(ctx: InferContext, typeDecl: AST.TypeDecl, method: AST.MethodDecl, typeObj: ObjectType): void {
+  const typeFieldsEnv = ctx.env.child();
+
+  // Add type fields to the method scope (mutable, so methods can assign to them)
+  for (const prop of typeObj.properties) {
+    typeFieldsEnv.define(prop.name, prop.type, true);  // mutable = true
+  }
+
+  // Create a child env for parameters (so they can shadow fields)
+  const methodEnv = typeFieldsEnv.child();
+
+  // Add method parameters (can shadow fields)
+  for (const param of method.params) {
+    const paramType = param.type ? astTypeToType(param.type) : Types.any;
+    methodEnv.define(param.name, paramType);
+  }
+
+  // Get the method's function type
+  const methodType = typeObj.methods.find(m => m.name === method.name);
+  const fnType = methodType?.type || Types.fn([], Types.any);
+
+  const savedEnv = ctx.env;
+  const savedFn = ctx.currentFunction;
+  const savedSpawns = ctx.unawaitedSpawns;
+  ctx.unawaitedSpawns = new Map();
+  ctx.env = methodEnv;
+  ctx.currentFunction = fnType;
+
+  // Check method body
+  for (const stmt of method.body!.statements) {
+    checkStatement(ctx, stmt);
+  }
+
+  // Check return type
+  const lastStmt = method.body!.statements[method.body!.statements.length - 1];
+  if (lastStmt?.kind === "ExprStmt" && method.returnType) {
+    const implicitReturnType = inferExpr(ctx, lastStmt.expr);
+    const declaredReturnType = fnType.returnType;
+    if (!isAssignable(implicitReturnType, declaredReturnType, ctx.env)) {
+      const err = TypeErrors.typeMismatch(typeToString(declaredReturnType), typeToString(implicitReturnType));
+      error(ctx, err.message, lastStmt.loc, err.hint);
+    }
+  }
+
+  // Check for unawaited spawns
+  for (const [name, loc] of ctx.unawaitedSpawns) {
+    error(ctx,
+      `spawn result '${name}' is never awaited (pass to race() or all() before method returns)`,
+      loc
+    );
+  }
+
+  ctx.unawaitedSpawns = savedSpawns;
+  ctx.env = savedEnv;
+  ctx.currentFunction = savedFn;
 }
 
 function validateUsingClause(ctx: InferContext, using: AST.UsingClause): void {

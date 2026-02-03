@@ -252,7 +252,15 @@ export class Parser {
     const params = this.parseParams();
     const returnType = this.match("COLON") ? this.parseType() : undefined;
 
-    return { kind: "ExternFnDecl", name, typeParams, params, returnType, loc };
+    // Check for optional docstring (indented string literal)
+    let doc: string | undefined;
+    if (this.match("NEWLINE") && this.match("INDENT") && this.check("STRING")) {
+      doc = this.advance().value as string;
+      this.match("NEWLINE");
+      this.expect("DEDENT");
+    }
+
+    return { kind: "ExternFnDecl", name, typeParams, params, returnType, doc, loc };
   }
 
   private expectIdentifierOrKeyword(): string {
@@ -1267,18 +1275,22 @@ export class Parser {
         }
         
         const exprStr = str.slice(exprStart, i - 1);
-        
-        // Parse the expression inside braces
-        // For simple identifiers, create an Identifier node
-        // For complex expressions, we'd need to recursively parse
         const exprParts = exprStr.trim();
+        
+        // Compute location for the expression inside braces
+        // +1 for opening quote, +exprStart for position within string
+        const exprLoc: AST.SourceLocation = {
+          line: loc.line,
+          column: loc.column + 1 + exprStart,
+          offset: loc.offset + 1 + exprStart,
+        };
         
         if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(exprParts)) {
           // Simple identifier
           parts.push({
             kind: "TemplateExpr",
-            expr: { kind: "Identifier", name: exprParts, loc },
-            loc,
+            expr: { kind: "Identifier", name: exprParts, loc: exprLoc },
+            loc: exprLoc,
           });
         } else {
           // Complex expression - recursively parse
@@ -1286,10 +1298,13 @@ export class Parser {
             const parser = new Parser(exprParts);
             const program = parser.parse();
             if (program.body.length === 1 && program.body[0]?.kind === "ExprStmt") {
+              // Adjust locations for the parsed expression
+              const expr = (program.body[0] as AST.ExprStmt).expr;
+              this.adjustExprLocations(expr, exprLoc);
               parts.push({
                 kind: "TemplateExpr",
-                expr: (program.body[0] as AST.ExprStmt).expr,
-                loc,
+                expr,
+                loc: exprLoc,
               });
             }
           } catch {
@@ -1308,6 +1323,30 @@ export class Parser {
     }
     
     return { kind: "TemplateLiteral", parts, loc };
+  }
+  
+  private adjustExprLocations(expr: AST.Expr, baseLoc: AST.SourceLocation): void {
+    // Adjust the expression's location relative to the base
+    expr.loc = {
+      line: baseLoc.line,
+      column: baseLoc.column + expr.loc.column - 1,
+      offset: baseLoc.offset + expr.loc.offset,
+    };
+    // Recursively adjust nested expressions
+    if (expr.kind === "MemberExpr") {
+      this.adjustExprLocations(expr.object, baseLoc);
+    } else if (expr.kind === "CallExpr") {
+      this.adjustExprLocations(expr.callee, baseLoc);
+      for (const arg of expr.args) {
+        if ("kind" in arg) this.adjustExprLocations(arg, baseLoc);
+      }
+    } else if (expr.kind === "BinaryExpr") {
+      this.adjustExprLocations(expr.left, baseLoc);
+      this.adjustExprLocations(expr.right, baseLoc);
+    } else if (expr.kind === "IndexExpr") {
+      this.adjustExprLocations(expr.object, baseLoc);
+      this.adjustExprLocations(expr.index, baseLoc);
+    }
   }
 
   private identifier(): AST.Identifier {
