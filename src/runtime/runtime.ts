@@ -1,13 +1,13 @@
 // Manuscript Runtime Library
-// Context is available via a runtime stack, pushed by `with` blocks.
+
+import { getCompiledStdlib } from "../stdlib/compiled";
 
 // Context base class for all capability/context types
 export class Context {
-  // Called automatically when exiting a `with` block
   exit(): void {}
 }
 
-// Context stack for ambient context (non-viral using)
+// Context stack for ambient context
 const __contextStack: Map<string, any>[] = [];
 
 export function __pushContext(): void {
@@ -20,151 +20,160 @@ export function __popContext(): void {
 
 export function __setContext(typeName: string, value: any): void {
   const current = __contextStack[__contextStack.length - 1];
-  if (current) {
-    current.set(typeName, value);
-  }
+  if (current) current.set(typeName, value);
 }
 
 export function __getContext(typeName: string): any {
-  // Search from innermost to outermost scope
   for (let i = __contextStack.length - 1; i >= 0; i--) {
     const scope = __contextStack[i];
-    if (scope?.has(typeName)) {
-      return scope.get(typeName);
-    }
+    if (scope?.has(typeName)) return scope.get(typeName);
   }
   throw new Error(`No context of type '${typeName}' available. Use 'with' to provide it.`);
 }
 
-// Re-export all modules
+// Re-export modules
 export { Agent } from "./agent";
 export { Channel, spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
 export { test, getTestCount, clearTests, runTests, runTestsWithResults } from "./testing";
-export * from "./collections";
-export * from "./strings";
-export * from "./numbers";
-export * from "./utils";
 
-// Import for __ms_runtime object
 import { Agent } from "./agent";
 import { Channel, spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
 import { test, getTestCount, clearTests, runTests, runTestsWithResults } from "./testing";
-import * as collections from "./collections";
-import * as strings from "./strings";
-import * as numbers from "./numbers";
-import * as utils from "./utils";
 
-// Runtime object for compiled code
-export const __ms_runtime = {
+// ============================================
+// Extern functions (require JS APIs)
+// ============================================
+
+function print(...args: any[]): void { console.log(...args); }
+function log(...args: any[]): void { console.log(...args); }
+function now(): number { return Date.now(); }
+
+function typeOf(x: any): string {
+  if (x === null) return "null";
+  if (Array.isArray(x)) return "list";
+  if (x instanceof Map) return "map";
+  if (x instanceof Set) return "set";
+  if (x instanceof Channel) return "channel";
+  if (typeof x === "object" && x.constructor && x.constructor.name !== "Object") {
+    return x.constructor.name;
+  }
+  return typeof x;
+}
+
+function clone<T>(x: T): T {
+  if (x === null || typeof x !== "object") return x;
+  if (Array.isArray(x)) return [...x] as T;
+  if (x instanceof Map) return new Map(x) as T;
+  if (x instanceof Set) return new Set(x) as T;
+  return { ...x };
+}
+
+function hash(x: any): number {
+  const str = JSON.stringify(x);
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i);
+    h |= 0;
+  }
+  return h;
+}
+
+function to_str(x: any): string {
+  if (x === null) return "null";
+  if (typeof x === "object") return JSON.stringify(x);
+  return String(x);
+}
+function to_num(s: string): number { return Number(s); }
+function to_json(x: any): string { return JSON.stringify(x); }
+function from_json(s: string): any { return JSON.parse(s); }
+
+function len(x: any): number {
+  if (typeof x === "string" || Array.isArray(x)) return x.length;
+  if (x instanceof Map || x instanceof Set) return x.size;
+  if (typeof x === "object" && x !== null) return Object.keys(x).length;
+  return 0;
+}
+function keys<K, V>(map: Map<K, V> | Record<string, V>): K[] {
+  if (map instanceof Map) return Array.from(map.keys());
+  return Object.keys(map) as K[];
+}
+function values<K, V>(map: Map<K, V> | Record<string, V>): V[] {
+  if (map instanceof Map) return Array.from(map.values());
+  return Object.values(map);
+}
+function entries<K, V>(map: Map<K, V> | Record<string, V>): [K, V][] {
+  if (map instanceof Map) return Array.from(map.entries());
+  return Object.entries(map) as [K, V][];
+}
+function sort<T>(list: T[]): T[] { return [...list].sort(); }
+
+function upper(s: string): string { return s.toUpperCase(); }
+function lower(s: string): string { return s.toLowerCase(); }
+function trim(s: string): string { return s.trim(); }
+function split(s: string, delim: string): string[] { return s.split(delim); }
+function join(list: string[], delim: string): string { return list.join(delim); }
+function replace(s: string, old: string, replacement: string): string { return s.replaceAll(old, replacement); }
+function starts_with(s: string, prefix: string): boolean { return s.startsWith(prefix); }
+function ends_with(s: string, suffix: string): boolean { return s.endsWith(suffix); }
+function substring(s: string, start: number, end?: number): string { return s.substring(start, end); }
+function matches(s: string, pattern: string): boolean { return new RegExp(pattern).test(s); }
+
+const sqrt = Math.sqrt;
+const pow = Math.pow;
+const floor = Math.floor;
+const ceil = Math.ceil;
+const round = Math.round;
+function random(): number { return Math.random(); }
+function random_int(minVal: number, maxVal: number): number {
+  return Math.floor(Math.random() * (maxVal - minVal + 1)) + minVal;
+}
+
+function panic(message: string): never { throw new Error(message); }
+function error(message: string, cause?: Error): Error {
+  const err = new Error(message);
+  if (cause) err.cause = cause;
+  return err;
+}
+
+function range(start: number, end: number, inclusive: boolean = false): number[] {
+  const result: number[] = [];
+  const stop = inclusive ? end + 1 : end;
+  for (let i = start; i < stop; i++) result.push(i);
+  return result;
+}
+function template(_name: string, parts: any[]): string {
+  return parts.map(p => String(p)).join("");
+}
+
+// ============================================
+// Runtime object
+// ============================================
+
+export const __ms_runtime: Record<string, any> = {
   // Classes
-  Context,
-  Agent,
-  Channel,
+  Context, Agent, Channel,
   
-  // Context stack (for non-viral using)
-  __pushContext,
-  __popContext,
-  __setContext,
-  __getContext,
+  // Context stack
+  __pushContext, __popContext, __setContext, __getContext,
   
   // Test runner
-  test,
-  getTestCount,
-  clearTests,
-  runTests,
-  runTestsWithResults,
-  
-  // Utilities
-  spawn,
-  range: utils.range,
-  template: utils.template,
-  
-  // Collections
-  len: collections.len,
-  keys: collections.keys,
-  values: collections.values,
-  entries: collections.entries,
-  contains: collections.contains,
-  unique: collections.unique,
-  flatten: collections.flatten,
-  sort: collections.sort,
-  reverse: collections.reverse,
-  first: collections.first,
-  last: collections.last,
-  take: collections.take,
-  drop: collections.drop,
-  zip: collections.zip,
-  map: collections.map,
-  each: collections.each,
-  filter: collections.filter,
-  slice: collections.slice,
-  concat: collections.concat,
-  reduce: collections.reduce,
-  find: collections.find,
-  any: collections.any,
-  all: collections.all,
-  group_by: collections.group_by,
-  sort_by: collections.sort_by,
-  
-  // Strings
-  upper: strings.upper,
-  lower: strings.lower,
-  trim: strings.trim,
-  split: strings.split,
-  join: strings.join,
-  replace: strings.replace,
-  starts_with: strings.starts_with,
-  ends_with: strings.ends_with,
-  substring: strings.substring,
-  matches: strings.matches,
-  
-  // Numbers
-  abs: numbers.abs,
-  min: numbers.min,
-  max: numbers.max,
-  floor: numbers.floor,
-  ceil: numbers.ceil,
-  round: numbers.round,
-  sqrt: numbers.sqrt,
-  pow: numbers.pow,
-  clamp: numbers.clamp,
-  random: numbers.random,
-  random_int: numbers.random_int,
-  
-  // Utility
-  print: utils.print,
-  log: utils.log,
-  now: utils.now,
-  sleep,
-  typeof: utils.typeOf,
-  clone: utils.clone,
-  equals: utils.equals,
-  hash: utils.hash,
-  
-  // Conversion
-  to_str: utils.to_str,
-  to_num: utils.to_num,
-  to_json: utils.to_json,
-  from_json: utils.from_json,
+  test, getTestCount, clearTests, runTests, runTestsWithResults,
   
   // Concurrency
-  all_settled,
-  race,
-  timeout,
-  delay,
+  spawn, sleep, all_settled, race, timeout, delay,
   
-  // Sets
-  set: utils.set,
-  union: utils.union,
-  intersect: utils.intersect,
-  difference: utils.difference,
-  is_subset: utils.is_subset,
+  // Internal (codegen)
+  range, template,
   
-  // Assert
-  assert: utils.assert,
-  
-  // Errors
-  error: utils.error,
-  ok: utils.ok,
-  err: utils.err,
+  // Extern functions
+  print, log, now,
+  typeof: typeOf, clone, hash,
+  to_str, to_num, to_json, from_json,
+  len, keys, values, entries, sort,
+  upper, lower, trim, split, join, replace, starts_with, ends_with, substring, matches,
+  sqrt, pow, floor, ceil, round, random, random_int,
+  panic, error,
 };
+
+// Add compiled stdlib (types and pure functions from stdlib.ms)
+Object.assign(__ms_runtime, getCompiledStdlib(__ms_runtime));

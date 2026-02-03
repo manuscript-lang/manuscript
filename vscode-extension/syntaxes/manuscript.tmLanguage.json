@@ -132,7 +132,7 @@
         },
         {
           "name": "keyword.declaration.manuscript",
-          "match": "\\b(fn|type|let|var|test|keyword|import|from|sealed|extends)\\b"
+          "match": "\\b(fn|type|let|var|test|keyword|import|from|sealed|extends|extern)\\b"
         },
         {
           "name": "keyword.operator.manuscript",

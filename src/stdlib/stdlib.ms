@@ -32,30 +32,31 @@ extern fn random(): number
 extern fn random_int(min: number, max: number): number
 
 // Type operations
-extern fn typeof(x: any): string
-extern fn clone(x: any): any
-extern fn hash(x: any): number
+extern fn typeof[T](x: T): string
+extern fn clone[T](x: T): T
+extern fn hash[T](x: T): number
 
 // Conversion
-extern fn to_str(x: any): string
+extern fn to_str[T](x: T): string
 extern fn to_num(s: string): number
-extern fn to_json(x: any): string
-extern fn from_json(s: string): any
+extern fn to_json[T](x: T): string
+extern fn from_json[T](s: string): T
 
 // Time
 extern fn now(): number
 extern fn sleep(ms: number): void
 
 // Collections (need JS runtime)
-extern fn len(x: any): number
-extern fn keys(m: map[any, any]): list[any]
-extern fn values(m: map[any, any]): list[any]
-extern fn entries(m: map[any, any]): list[list[any]]
-extern fn sort(list: list[any]): list[any]
+extern fn len[T](x: T): number
+extern fn keys[K, V](m: map[K, V]): list[K]
+extern fn values[K, V](m: map[K, V]): list[V]
+extern fn entries[K, V](m: map[K, V]): list[list[any]]
+extern fn sort[T](list: list[T]): list[T]
 
 // Concurrency (spawn is a keyword, not a function - type checked internally)
+// race accepts heterogeneous promises (e.g., data fetch vs timeout)
 extern fn race(promises: list[promise[any]]): promise[any]
-extern fn timeout(ms: number, promise: promise[any]): promise[any]
+extern fn timeout[T](ms: number, promise: promise[T]): promise[T]
 extern fn delay(ms: number): promise[void]
 
 // Channels - Channel[T] is a type with extern methods
@@ -215,38 +216,19 @@ fn group_by[T, K](list: list[T], f: fn(T): K): map[K, list[T]]
 fn sort_by[T, K](list: list[T], f: fn(T): K): list[T]
   let pairs = map(list, (item) => [f(item), item])
   let sorted = sort(pairs)
-  map(sorted, (pair) => pair[1])
+  map(sorted, (pair) => pair[1] as T)
 
-// String functions
-fn upper(s: string): string
-  s.upper()
-
-fn lower(s: string): string
-  s.lower()
-
-fn trim(s: string): string
-  s.trim()
-
-fn split(s: string, delim: string): list[string]
-  s.split(delim)
-
-fn join(list: list[string], delim: string): string
-  list.join(delim)
-
-fn replace(s: string, old: string, new: string): string
-  s.replace(old, new)
-
-fn starts_with(s: string, prefix: string): bool
-  s.starts_with(prefix)
-
-fn ends_with(s: string, suffix: string): bool
-  s.ends_with(suffix)
-
-fn substring(s: string, start: number, end?: number): string
-  s.slice(start, end)
-
-fn matches(s: string, pattern: string): bool
-  s.matches(pattern)
+// String functions (extern - wrap JS string methods)
+extern fn upper(s: string): string
+extern fn lower(s: string): string
+extern fn trim(s: string): string
+extern fn split(s: string, delim: string): list[string]
+extern fn join(list: list[string], delim: string): string
+extern fn replace(s: string, old: string, replacement: string): string
+extern fn starts_with(s: string, prefix: string): bool
+extern fn ends_with(s: string, suffix: string): bool
+extern fn substring(s: string, start: number, end?: number): string
+extern fn matches(s: string, pattern: string): bool
 
 // Set functions (using maps as sets)
 fn set[T](list: list[T]): set[T]
@@ -283,15 +265,21 @@ fn is_subset[T](a: set[T], b: set[T]): bool
       return false
   true
 
+// Result type
+type Result[T, E]
+  ok: bool
+  value?: T
+  error?: E
+
 // Result helpers
-fn ok[T](value: T): any
+fn ok[T](value: T): Result[T, never]
   { ok: true, value: value }
 
-fn err[E](error: E): any
+fn err[E](error: E): Result[never, E]
   { ok: false, error: error }
 
 // Testing
-fn assert(condition: any, message?: string): void
+fn assert(condition: bool, message?: string): void
   if not condition
     panic(message ?? "Assertion failed")
 

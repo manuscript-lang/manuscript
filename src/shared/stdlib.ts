@@ -2,14 +2,17 @@
 // Derives stdlib functions from stdlib.ms for single source of truth
 
 import { Parser } from "../parser";
-import { getStdlibFunctionNames } from "../stdlib/extractor";
+import { getStdlibFunctionNames, getExternFunctionNames } from "../stdlib/extractor";
 import { stdlibSource } from "../stdlib";
 
 // Parse stdlib once and extract function names
 const stdlibProgram = new Parser(stdlibSource).parse();
 
-// Stdlib function names derived from stdlib.ms
+// All stdlib function names (for type checking)
 export const STDLIB_FUNCTIONS = getStdlibFunctionNames(stdlibProgram);
+
+// Only extern functions need runtime implementation
+export const EXTERN_FUNCTIONS = getExternFunctionNames(stdlibProgram);
 
 // Built-in type names
 const BUILTIN_TYPES = new Set([
