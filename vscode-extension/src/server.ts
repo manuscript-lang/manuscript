@@ -20,77 +20,367 @@ import {
   Range,
   type RenameParams,
   WorkspaceEdit,
-  TextEdit,
   type ReferenceParams,
   type PrepareRenameParams,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-// Import only the compiler modules (no runtime capabilities which use Bun)
+
+// Reuse from src
 import { Parser } from "../../src/parser";
 import { TypeChecker } from "../../src/types/checker";
-import type { Program, FnDecl, TypeDecl, ASTNode } from "../../src/parser/ast";
-import type { Type } from "../../src/types/types";
+import { KEYWORDS } from "../../src/lexer/tokens";
+import { STDLIB_FUNCTIONS, isBuiltin } from "../../src/shared/stdlib";
+import { typeToString, Types } from "../../src/types/types";
+import type { Program, FnDecl, TypeDecl, ASTNode, Expr, Block } from "../../src/parser/ast";
+import type { Type, ObjectType, MethodType } from "../../src/types/types";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
+const cache = new Map<string, { program: Program; types: Map<ASTNode, Type> }>();
 
-// Cache for parsed documents
-const documentCache = new Map<string, { program: Program; types: Map<ASTNode, Type> }>();
+// Derive keyword list from lexer tokens
+const KEYWORD_LIST = Object.keys(KEYWORDS);
 
-connection.onInitialize((_params: InitializeParams): InitializeResult => {
-  return {
-    capabilities: {
-      textDocumentSync: TextDocumentSyncKind.Incremental,
-      completionProvider: { triggerCharacters: [".", ":"] },
-      hoverProvider: true,
-      documentSymbolProvider: true,
-      definitionProvider: true,
-      referencesProvider: true,
-      renameProvider: { prepareProvider: true },
-    },
-  };
-});
-
-// Keywords for completion
-const KEYWORDS = [
-  "fn", "type", "let", "var", "if", "else", "for", "match", "return",
-  "using", "with", "import", "from", "test", "yield", "defer", "try",
-  "catch", "throw", "break", "continue", "spawn", "sealed", "extends",
-  "and", "or", "not", "is", "as", "then", "in", "true", "false", "null", "where"
-];
-
+// Built-in types (from syntax.md)
 const BUILTIN_TYPES = [
   "number", "string", "bool", "null", "bytes", "any", "never", "void",
-  "list", "map", "set", "Channel", "Promise", "Stream", "Result"
+  "list", "map", "set", "Channel", "Promise", "Stream", "Result", "Error",
 ];
 
-const BUILTIN_FUNCTIONS = [
-  "print", "len", "range", "clone", "keys", "values", "entries",
-  "floor", "ceil", "round", "abs", "min", "max", "sum",
-  "int", "float", "str", "type_of", "assert"
-];
+// Docs for hover/completion
+const DOCS: Record<string, string> = {
+  print: "Prints a value to output.",
+  len: "Returns the length of a list, string, or map.",
+  range: "Returns a list of numbers from start to end (exclusive).",
+  clone: "Returns a deep copy of a value.",
+  keys: "Returns the keys of a map as a list.",
+  values: "Returns the values of a map as a list.",
+  entries: "Returns a list of {key, value} pairs from a map.",
+  contains: "Returns true if the collection contains the item.",
+  map: "Transforms each element; returns a new list.",
+  filter: "Keeps elements that match the predicate.",
+  reduce: "Folds the list to a single value.",
+  push: "Adds an item to the end of the list; returns the list.",
+  pop: "Removes and returns the last element, or null.",
+  join: "Joins list elements with a separator string.",
+  split: "Splits a string by delimiter; returns list of strings.",
+  length: "Number of characters (string) or elements (list).",
+  upper: "Converts string to uppercase.",
+  lower: "Converts string to lowercase.",
+  trim: "Removes leading/trailing whitespace.",
+  slice: "Returns a portion of the collection.",
+};
 
-// Validate document on change
-documents.onDidChangeContent((change) => {
-  validateDocument(change.document);
-});
+// Type completions by kind
+const TYPE_COMPLETIONS: Record<string, CompletionItem[]> = {
+  string: [
+    { label: "length", kind: CompletionItemKind.Property, detail: "number" },
+    { label: "upper", kind: CompletionItemKind.Method, detail: "fn(): string" },
+    { label: "lower", kind: CompletionItemKind.Method, detail: "fn(): string" },
+    { label: "trim", kind: CompletionItemKind.Method, detail: "fn(): string" },
+    { label: "split", kind: CompletionItemKind.Method, detail: "fn(sep: string): list[string]" },
+    { label: "contains", kind: CompletionItemKind.Method, detail: "fn(s: string): bool" },
+    { label: "starts_with", kind: CompletionItemKind.Method, detail: "fn(prefix: string): bool" },
+    { label: "ends_with", kind: CompletionItemKind.Method, detail: "fn(suffix: string): bool" },
+    { label: "replace", kind: CompletionItemKind.Method, detail: "fn(from: string, to: string): string" },
+    { label: "slice", kind: CompletionItemKind.Method, detail: "fn(start: number, end?: number): string" },
+  ],
+  list: [
+    { label: "length", kind: CompletionItemKind.Property, detail: "number" },
+    { label: "push", kind: CompletionItemKind.Method, detail: "fn(item: T): list[T]" },
+    { label: "pop", kind: CompletionItemKind.Method, detail: "fn(): T?" },
+    { label: "map", kind: CompletionItemKind.Method, detail: "fn(f: fn(T): U): list[U]" },
+    { label: "filter", kind: CompletionItemKind.Method, detail: "fn(f: fn(T): bool): list[T]" },
+    { label: "reduce", kind: CompletionItemKind.Method, detail: "fn(f: fn(acc, x): acc, init): any" },
+    { label: "join", kind: CompletionItemKind.Method, detail: "fn(sep?: string): string" },
+    { label: "contains", kind: CompletionItemKind.Method, detail: "fn(item: T): bool" },
+    { label: "slice", kind: CompletionItemKind.Method, detail: "fn(start: number, end?: number): list[T]" },
+  ],
+  map: [
+    { label: "get", kind: CompletionItemKind.Method, detail: "fn(key: K): V?" },
+    { label: "set", kind: CompletionItemKind.Method, detail: "fn(key: K, value: V): void" },
+    { label: "has", kind: CompletionItemKind.Method, detail: "fn(key: K): bool" },
+    { label: "keys", kind: CompletionItemKind.Method, detail: "fn(): list[K]" },
+    { label: "values", kind: CompletionItemKind.Method, detail: "fn(): list[V]" },
+    { label: "entries", kind: CompletionItemKind.Method, detail: "fn(): list[(K, V)]" },
+  ],
+};
+
+connection.onInitialize((_params: InitializeParams): InitializeResult => ({
+  capabilities: {
+    textDocumentSync: TextDocumentSyncKind.Incremental,
+    completionProvider: { triggerCharacters: [".", ":"], resolveProvider: true },
+    hoverProvider: true,
+    documentSymbolProvider: true,
+    definitionProvider: true,
+    referencesProvider: true,
+    renameProvider: { prepareProvider: true },
+  },
+}));
+
+// Unified AST walker with callbacks
+type Visitor = {
+  onExpr?: (e: Expr, scope: string) => void;
+  onIdent?: (name: string, loc: { line: number; column: number }, scope: string) => void;
+  onMember?: (prop: string, loc: { line: number; column: number }) => void;
+};
+
+function walk(program: Program, v: Visitor): void {
+  function expr(e: any, scope: string): void {
+    if (!e) return;
+    v.onExpr?.(e, scope);
+    if (e.kind === "Identifier") {
+      v.onIdent?.(e.name, e.loc, scope);
+    } else if (e.kind === "MemberExpr") {
+      v.onMember?.(e.property, e.loc);
+      expr(e.object, scope);
+    } else if (e.kind === "CallExpr") {
+      expr(e.callee, scope);
+      for (const a of e.args || []) expr(a.value ?? a, scope);
+    } else if (e.kind === "BinaryExpr" || e.kind === "PipeExpr") {
+      expr(e.left, scope); expr(e.right, scope);
+    } else if (e.kind === "UnaryExpr") {
+      expr(e.operand, scope);
+    } else if (e.kind === "IndexExpr") {
+      expr(e.object, scope); expr(e.index, scope);
+    } else if (e.kind === "LambdaExpr") {
+      e.body?.kind === "Block" ? block(e.body, scope) : expr(e.body, scope);
+    } else if (e.kind === "IfExpr") {
+      expr(e.condition, scope); expr(e.then, scope); expr(e.else, scope);
+    } else if (e.kind === "ListExpr") {
+      for (const el of e.elements || []) el.kind === "SpreadElement" ? expr(el.expr, scope) : expr(el, scope);
+    } else if (e.kind === "MapExpr") {
+      for (const en of e.entries || []) expr(en.value, scope);
+    } else if (e.kind === "RangeExpr") {
+      expr(e.start, scope); expr(e.end, scope);
+    } else if (e.kind === "MatchExpr") {
+      expr(e.value, scope);
+      for (const arm of e.arms || []) {
+        if (arm.guard) expr(arm.guard, scope);
+        arm.body?.kind === "Block" ? block(arm.body, scope) : expr(arm.body, scope);
+      }
+    } else if (e.kind === "TemplateLiteral") {
+      for (const p of e.parts || []) if (p.kind === "TemplateExpr") expr(p.expr, scope);
+    } else if (e.kind === "SpawnExpr" || e.kind === "TypeAssertion" || e.kind === "NullAssertion") {
+      expr(e.expr, scope);
+    }
+  }
+
+  function block(b: any, scope: string): void {
+    if (!b?.statements) return;
+    for (const s of b.statements) stmt(s, scope);
+  }
+
+  function stmt(s: any, scope: string): void {
+    if (!s) return;
+    if (s.kind === "FnDecl") {
+      block(s.body, s.name);
+    } else if (s.kind === "TypeDecl") {
+      for (const m of s.body?.members || []) {
+        if (m.kind === "MethodDecl" && m.body) block(m.body, `${s.name}.${m.name}`);
+        if (m.kind === "FieldDecl" && m.defaultValue) expr(m.defaultValue, s.name);
+      }
+    } else if (s.kind === "LetStmt" || s.kind === "VarStmt") {
+      expr(s.value, scope);
+    } else if (s.kind === "AssignStmt") {
+      expr(s.target, scope); expr(s.value, scope);
+    } else if (s.kind === "ExprStmt") {
+      expr(s.expr, scope);
+    } else if (s.kind === "IfStmt") {
+      expr(s.condition, scope);
+      s.then?.kind === "Block" ? block(s.then, scope) : stmt(s.then, scope);
+      for (const elif of s.elseIfs || []) { expr(elif.condition, scope); block(elif.body, scope); }
+      if (s.else) block(s.else, scope);
+    } else if (s.kind === "ForStmt") {
+      expr(s.iterable, scope); block(s.body, scope);
+    } else if (s.kind === "MatchStmt") {
+      expr(s.value, scope);
+      for (const arm of s.arms || []) {
+        if (arm.guard) expr(arm.guard, scope);
+        arm.body?.kind === "Block" ? block(arm.body, scope) : stmt(arm.body, scope);
+      }
+    } else if (s.kind === "ReturnStmt" || s.kind === "YieldStmt" || s.kind === "ThrowStmt") {
+      expr(s.value, scope);
+    } else if (s.kind === "TryStmt") {
+      block(s.body, scope);
+      if (s.catch?.body) block(s.catch.body, scope);
+    } else if (s.kind === "TestDecl") {
+      block(s.body, "test");
+    }
+  }
+
+  for (const s of program.body) stmt(s, "");
+}
+
+// Symbol info for navigation
+interface Symbol {
+  name: string;
+  kind: "function" | "type" | "variable" | "parameter" | "field" | "method";
+  scope: string;
+  loc: { line: number; column: number };
+  offset?: number;
+}
+
+function collectSymbols(program: Program): Symbol[] {
+  const syms: Symbol[] = [];
+  const add = (name: string, kind: Symbol["kind"], scope: string, loc: any, offset = 0) =>
+    syms.push({ name, kind, scope, loc, offset });
+
+  for (const s of program.body) {
+    if (s.kind === "FnDecl") {
+      const fn = s as FnDecl;
+      add(fn.name, "function", "", s.loc, 3);
+      for (const p of fn.params || []) add(p.name, "parameter", fn.name, p.loc);
+      walkBlock(fn.body, fn.name);
+    } else if (s.kind === "TypeDecl") {
+      const t = s as TypeDecl;
+      add(t.name, "type", "", s.loc, 5);
+      for (const m of t.body?.members || []) {
+        if (m.kind === "FieldDecl") add(m.name, "field", t.name, m.loc);
+        else if (m.kind === "MethodDecl") {
+          const scope = `${t.name}.${m.name}`;
+          add(m.name, "method", t.name, m.loc, 3);
+          for (const p of m.params || []) add(p.name, "parameter", scope, p.loc);
+          if (m.body) walkBlock(m.body, scope);
+        }
+      }
+    } else if (s.kind === "LetStmt") {
+      const ls = s as any;
+      if (ls.pattern?.kind === "IdentifierPattern") add(ls.pattern.name, "variable", "", s.loc, 4);
+    } else if (s.kind === "VarStmt") {
+      add((s as any).name, "variable", "", s.loc, 4);
+    } else if (s.kind === "TestDecl") {
+      walkBlock((s as any).body, "test");
+    }
+  }
+
+  function walkBlock(b: any, scope: string) {
+    if (!b?.statements) return;
+    for (const s of b.statements) {
+      if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern") {
+        add(s.pattern.name, "variable", scope, s.loc, 4);
+      } else if (s.kind === "VarStmt") {
+        add(s.name, "variable", scope, s.loc, 4);
+      } else if (s.kind === "ForStmt" && s.pattern?.kind === "IdentifierPattern") {
+        add(s.pattern.name, "variable", scope, s.pattern.loc);
+      }
+    }
+  }
+
+  return syms;
+}
+
+function findScope(program: Program, line: number): { scope: string; typeName?: string } {
+  for (const s of program.body) {
+    if (s.loc.line > line) break;
+    if (s.kind === "TypeDecl") {
+      const t = s as any;
+      for (const m of t.body?.members || []) {
+        if (m.kind === "MethodDecl" && m.body && m.loc.line <= line) {
+          return { scope: `${t.name}.${m.name}`, typeName: t.name };
+        }
+      }
+      if (t.body?.members?.length) return { scope: t.name, typeName: t.name };
+    } else if (s.kind === "FnDecl" && s.loc.line <= line) {
+      return { scope: (s as FnDecl).name };
+    }
+  }
+  return { scope: "" };
+}
+
+// Type resolution
+function resolveObject(program: Program, type: Type): ObjectType | null {
+  if (type.kind === "object") return type;
+  if (type.kind === "optional") return resolveObject(program, (type as any).inner);
+  if (type.kind === "union") {
+    for (const t of (type as any).types) {
+      const o = resolveObject(program, t);
+      if (o) return o;
+    }
+  }
+  if (type.kind === "ref") {
+    for (const s of program.body) {
+      if (s.kind === "TypeDecl" && (s as TypeDecl).name === type.name) {
+        const t = s as TypeDecl;
+        const props = (t.body?.members || [])
+          .filter(m => m.kind === "FieldDecl")
+          .map((m: any) => ({ name: m.name, type: {} as Type, optional: m.optional, readonly: false, computed: false }));
+        const methods: MethodType[] = (t.body?.members || [])
+          .filter(m => m.kind === "MethodDecl")
+          .map((m: any) => ({ name: m.name, type: Types.fn([], Types.any) }));
+        return { kind: "object", name: t.name, properties: props, methods };
+      }
+    }
+  }
+  return null;
+}
+
+function formatType(t: any): string {
+  if (!t) return "any";
+  switch (t.kind) {
+    case "NamedType": return t.name ?? "any";
+    case "GenericType": return `${t.name}[${(t.args ?? []).map(formatType).join(", ")}]`;
+    case "FunctionType": return `fn(${(t.params ?? []).map(formatType).join(", ")}): ${formatType(t.returnType)}`;
+    case "UnionType": return (t.types ?? []).map(formatType).join(" or ");
+    case "OptionalType": return `${formatType(t.inner)}?`;
+    case "ListType": return `list[${formatType(t.elementType)}]`;
+    default: return "any";
+  }
+}
+
+function getDocstring(body: Block): string | undefined {
+  const first = body?.statements?.[0];
+  if (first?.kind === "ExprStmt" && first.expr?.kind === "Literal" && typeof first.expr.value === "string") {
+    return first.expr.value;
+  }
+}
+
+function formatExpr(e: Expr): string {
+  switch (e.kind) {
+    case "Literal": return typeof e.value === "string" ? JSON.stringify(e.value) : String(e.value);
+    case "Identifier": return e.name;
+    default: return "...";
+  }
+}
+
+// Get type constructor signature with fields
+function getTypeSignature(t: TypeDecl): { sig: string; fields: string[] } {
+  const fields: string[] = [];
+  for (const m of t.body?.members || []) {
+    if (m.kind === "FieldDecl") {
+      const opt = m.optional ? "?" : "";
+      const def = m.defaultValue ? ` = ${formatExpr(m.defaultValue)}` : "";
+      const typeStr = m.type ? formatType(m.type) : "any";
+      fields.push(`${m.name}${opt}: ${typeStr}${def}`);
+    }
+  }
+  const sig = fields.length ? `${t.name}(${fields.join(", ")})` : t.name;
+  return { sig, fields };
+}
+
+// Word extraction
+function getWord(doc: TextDocument, pos: Position): { word: string; isProperty: boolean; start: number } {
+  const line = doc.getText({ start: { line: pos.line, character: 0 }, end: { line: pos.line + 1, character: 0 } });
+  const before = line.slice(0, pos.character);
+  const after = line.slice(pos.character);
+  const wordStart = before.match(/[a-zA-Z_][a-zA-Z0-9_]*$/)?.[0] || "";
+  const wordEnd = after.match(/^[a-zA-Z0-9_]*/)?.[0] || "";
+  const word = wordStart + wordEnd;
+  const beforeWord = before.slice(0, before.length - wordStart.length);
+  return { word, isProperty: beforeWord.trimEnd().endsWith("."), start: pos.character - wordStart.length };
+}
+
+// Document validation
+documents.onDidChangeContent(e => validateDocument(e.document));
 
 async function validateDocument(doc: TextDocument): Promise<void> {
-  const text = doc.getText();
   const diagnostics: Diagnostic[] = [];
 
   try {
-    const parser = new Parser(text);
-    const program = parser.parse();
-    
-    // Run type checker
-    const checker = new TypeChecker();
-    const result = checker.check(program);
-    
-    // Cache the result
-    documentCache.set(doc.uri, { program, types: result.types });
-    
-    // Map type errors to diagnostics
+    const program = new Parser(doc.getText()).parse();
+    const result = new TypeChecker().check(program);
+    cache.set(doc.uri, { program, types: result.types });
+
     for (const err of result.errors) {
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
@@ -102,27 +392,21 @@ async function validateDocument(doc: TextDocument): Promise<void> {
         source: "manuscript",
       });
     }
-
-    // Add warnings
-    for (const warning of result.warnings) {
+    for (const w of result.warnings) {
       diagnostics.push({
         severity: DiagnosticSeverity.Warning,
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
-        message: warning,
+        message: w,
         source: "manuscript",
       });
     }
   } catch (e: any) {
-    // Parse errors
-    const match = e.message?.match(/at line (\d+), column (\d+)/);
-    const line = match ? parseInt(match[1]) - 1 : 0;
-    const col = match ? parseInt(match[2]) - 1 : 0;
-    
+    const m = e.message?.match(/at line (\d+), column (\d+)/);
     diagnostics.push({
       severity: DiagnosticSeverity.Error,
       range: {
-        start: { line, character: col },
-        end: { line, character: col + 1 },
+        start: { line: m ? +m[1] - 1 : 0, character: m ? +m[2] - 1 : 0 },
+        end: { line: m ? +m[1] - 1 : 0, character: (m ? +m[2] : 0) + 1 },
       },
       message: e.message?.replace(/ at line \d+, column \d+$/, "") || "Parse error",
       source: "manuscript",
@@ -133,37 +417,49 @@ async function validateDocument(doc: TextDocument): Promise<void> {
 }
 
 // Completion
-connection.onCompletion((params: TextDocumentPositionParams): CompletionItem[] => {
+connection.onCompletion((params): CompletionItem[] => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
 
-  const items: CompletionItem[] = [];
-  const line = doc.getText({
-    start: { line: params.position.line, character: 0 },
-    end: params.position,
-  });
+  const line = doc.getText({ start: { line: params.position.line, character: 0 }, end: params.position });
+  const cached = cache.get(params.textDocument.uri);
 
-  // After colon, suggest types
+  // After colon: type completions
   if (line.match(/:\s*$/)) {
-    for (const t of BUILTIN_TYPES) {
-      items.push({ label: t, kind: CompletionItemKind.TypeParameter });
-    }
-    // Add user-defined types from cache
-    const cached = documentCache.get(params.textDocument.uri);
+    const items: CompletionItem[] = BUILTIN_TYPES.map(t => ({ label: t, kind: CompletionItemKind.TypeParameter }));
     if (cached) {
-      for (const stmt of cached.program.body) {
-        if (stmt.kind === "TypeDecl") {
-          items.push({ label: (stmt as TypeDecl).name, kind: CompletionItemKind.Class });
-        }
+      for (const s of cached.program.body) {
+        if (s.kind === "TypeDecl") items.push({ label: (s as TypeDecl).name, kind: CompletionItemKind.Class });
       }
     }
     return items;
   }
 
-  // After dot, suggest methods
+  // After dot: member completions
   if (line.match(/\.\s*$/)) {
-    // Common methods for any type
-    items.push(
+    if (cached) {
+      let bestExpr: Expr | null = null;
+      const oneBasedLine = params.position.line + 1;
+      const oneBasedCol = params.position.character;
+      walk(cached.program, {
+        onExpr(e) {
+          if (!e?.loc || e.loc.line !== oneBasedLine) return;
+          if (e.loc.column <= oneBasedCol) bestExpr = e;
+        },
+      });
+      const type = bestExpr ? cached.types.get(bestExpr) : undefined;
+      if (type) {
+        if (TYPE_COMPLETIONS[type.kind]) return TYPE_COMPLETIONS[type.kind];
+        const obj = resolveObject(cached.program, type);
+        if (obj) {
+          return [
+            ...obj.properties.map(p => ({ label: p.name, kind: CompletionItemKind.Property, detail: typeToString(p.type) })),
+            ...obj.methods.map(m => ({ label: m.name, kind: CompletionItemKind.Method, detail: typeToString(m.type) })),
+          ];
+        }
+      }
+    }
+    return [
       { label: "length", kind: CompletionItemKind.Property },
       { label: "map", kind: CompletionItemKind.Method },
       { label: "filter", kind: CompletionItemKind.Method },
@@ -174,30 +470,26 @@ connection.onCompletion((params: TextDocumentPositionParams): CompletionItem[] =
       { label: "split", kind: CompletionItemKind.Method },
       { label: "contains", kind: CompletionItemKind.Method },
       { label: "slice", kind: CompletionItemKind.Method },
-    );
-    return items;
+    ];
   }
 
-  // Keywords
-  for (const kw of KEYWORDS) {
-    items.push({ label: kw, kind: CompletionItemKind.Keyword });
-  }
+  // Default: keywords, functions, variables
+  const items: CompletionItem[] = [
+    ...KEYWORD_LIST.map(k => ({ label: k, kind: CompletionItemKind.Keyword })),
+    ...[...STDLIB_FUNCTIONS].map(f => ({ label: f, kind: CompletionItemKind.Function, data: { fn: f } })),
+  ];
 
-  // Built-in functions
-  for (const fn of BUILTIN_FUNCTIONS) {
-    items.push({ label: fn, kind: CompletionItemKind.Function });
-  }
-
-  // User-defined functions and variables from cache
-  const cached = documentCache.get(params.textDocument.uri);
   if (cached) {
-    for (const stmt of cached.program.body) {
-      if (stmt.kind === "FnDecl") {
-        items.push({ label: (stmt as FnDecl).name, kind: CompletionItemKind.Function });
-      } else if (stmt.kind === "TypeDecl") {
-        items.push({ label: (stmt as TypeDecl).name, kind: CompletionItemKind.Class });
-      } else if (stmt.kind === "LetStmt" || stmt.kind === "VarStmt") {
-        items.push({ label: (stmt as any).name || (stmt as any).pattern?.name, kind: CompletionItemKind.Variable });
+    for (const s of cached.program.body) {
+      if (s.kind === "FnDecl") {
+        items.push({ label: (s as FnDecl).name, kind: CompletionItemKind.Function, data: { uri: params.textDocument.uri, fn: (s as FnDecl).name } });
+      } else if (s.kind === "TypeDecl") {
+        const t = s as TypeDecl;
+        const { sig } = getTypeSignature(t);
+        items.push({ label: t.name, kind: CompletionItemKind.Class, detail: sig, data: { uri: params.textDocument.uri, type: t.name } });
+      } else if (s.kind === "LetStmt" || s.kind === "VarStmt") {
+        const name = (s as any).name || (s as any).pattern?.name;
+        if (name) items.push({ label: name, kind: CompletionItemKind.Variable });
       }
     }
   }
@@ -205,1050 +497,272 @@ connection.onCompletion((params: TextDocumentPositionParams): CompletionItem[] =
   return items;
 });
 
+connection.onCompletionResolve((item): CompletionItem => {
+  const data = item.data as { fn?: string; type?: string; uri?: string } | undefined;
+  if (!data) return item;
+
+  // Built-in function docs
+  if (data.fn && DOCS[data.fn]) {
+    item.documentation = { kind: MarkupKind.Markdown, value: DOCS[data.fn] };
+    return item;
+  }
+
+  if (data.uri) {
+    const cached = cache.get(data.uri);
+    for (const s of cached?.program.body || []) {
+      // Function completion
+      if (data.fn && s.kind === "FnDecl" && (s as FnDecl).name === data.fn) {
+        const fn = s as FnDecl;
+        const params = fn.params.map(p => `${p.name}: ${p.type ? formatType(p.type) : "any"}`).join(", ");
+        item.detail = `fn ${fn.name}(${params}): ${fn.returnType ? formatType(fn.returnType) : "any"}`;
+        const doc = getDocstring(fn.body);
+        if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
+        break;
+      }
+      // Type constructor completion
+      if (data.type && s.kind === "TypeDecl" && (s as TypeDecl).name === data.type) {
+        const t = s as TypeDecl;
+        const { fields } = getTypeSignature(t);
+        if (fields.length) {
+          item.documentation = { kind: MarkupKind.Markdown, value: `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` };
+        }
+        break;
+      }
+    }
+  }
+
+  return item;
+});
+
 // Hover
-connection.onHover((params: TextDocumentPositionParams): Hover | null => {
+connection.onHover((params): Hover | null => {
   const doc = documents.get(params.textDocument.uri);
-  if (!doc) return null;
+  const cached = cache.get(params.textDocument.uri);
+  if (!doc || !cached) return null;
 
-  const cached = documentCache.get(params.textDocument.uri);
-  if (!cached) return null;
-
-  // Find word at position
-  const line = doc.getText({
-    start: { line: params.position.line, character: 0 },
-    end: { line: params.position.line + 1, character: 0 },
-  });
-  
-  const col = params.position.character;
-  const before = line.slice(0, col);
-  const after = line.slice(col);
-  
-  const wordStart = before.match(/[a-zA-Z_][a-zA-Z0-9_]*$/)?.[0] || "";
-  const wordEnd = after.match(/^[a-zA-Z0-9_]*/)?.[0] || "";
-  const word = wordStart + wordEnd;
-  
+  const { word, isProperty } = getWord(doc, params.position);
   if (!word) return null;
 
-  // Look up in definitions
-  for (const stmt of cached.program.body) {
-    if (stmt.kind === "FnDecl" && (stmt as FnDecl).name === word) {
-      const fn = stmt as FnDecl;
-      const params = fn.params.map(p => `${p.name}: ${p.type ? formatTypeExpr(p.type) : "any"}`).join(", ");
-      const ret = fn.returnType ? formatTypeExpr(fn.returnType) : "any";
-      return {
-        contents: {
-          kind: MarkupKind.Markdown,
-          value: `\`\`\`manuscript\nfn ${fn.name}(${params}): ${ret}\n\`\`\``,
-        },
-      };
+  // Property access hover
+  if (isProperty) {
+    for (const s of cached.program.body) {
+      if (s.kind !== "TypeDecl") continue;
+      const t = s as TypeDecl;
+      for (const m of t.body?.members || []) {
+        if (m.name !== word) continue;
+        if (m.kind === "FieldDecl") {
+          return hover(m.type ? `${word}: ${formatType(m.type)}` : word);
+        }
+        if (m.kind === "MethodDecl") {
+          const params = (m.params || []).map(p => `${p.name}: ${p.type ? formatType(p.type) : "any"}`).join(", ");
+          const ret = m.returnType ? formatType(m.returnType) : "any";
+          return hover(`fn ${word}(${params}): ${ret}`, m.body ? getDocstring(m.body) : undefined);
+        }
+      }
     }
-    if (stmt.kind === "TypeDecl" && (stmt as TypeDecl).name === word) {
-      const t = stmt as TypeDecl;
-      return {
-        contents: {
-          kind: MarkupKind.Markdown,
-          value: `\`\`\`manuscript\ntype ${t.name}\n\`\`\``,
-        },
-      };
+    if (DOCS[word]) return hover(word === "length" ? "length: number" : "", DOCS[word]);
+    return null;
+  }
+
+  // Function/type hover
+  for (const s of cached.program.body) {
+    if (s.kind === "FnDecl" && (s as FnDecl).name === word) {
+      const fn = s as FnDecl;
+      const params = fn.params.map(p => `${p.name}: ${p.type ? formatType(p.type) : "any"}`).join(", ");
+      return hover(`fn ${fn.name}(${params}): ${fn.returnType ? formatType(fn.returnType) : "any"}`, getDocstring(fn.body));
+    }
+    if (s.kind === "TypeDecl" && (s as TypeDecl).name === word) {
+      const t = s as TypeDecl;
+      const { sig, fields } = getTypeSignature(t);
+      const fieldDocs = fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined;
+      return hover(`type ${sig}`, fieldDocs);
     }
   }
 
-  // Check keywords
-  if (KEYWORDS.includes(word)) {
-    return {
-      contents: {
-        kind: MarkupKind.Markdown,
-        value: `**${word}** - Manuscript keyword`,
-      },
-    };
-  }
-
-  // Check built-in types
-  if (BUILTIN_TYPES.includes(word)) {
-    return {
-      contents: {
-        kind: MarkupKind.Markdown,
-        value: `**${word}** - Built-in type`,
-      },
-    };
-  }
+  if (STDLIB_FUNCTIONS.has(word)) return { contents: { kind: MarkupKind.Markdown, value: `**${word}**\n\n${DOCS[word] || "Built-in function."}` } };
+  if (KEYWORD_LIST.includes(word)) return { contents: { kind: MarkupKind.Markdown, value: `**${word}** - Manuscript keyword` } };
+  if (BUILTIN_TYPES.includes(word)) return { contents: { kind: MarkupKind.Markdown, value: `**${word}** - Built-in type` } };
 
   return null;
 });
+
+function hover(sig: string, doc?: string): Hover {
+  const code = sig ? `\`\`\`manuscript\n${sig}\n\`\`\`` : "";
+  return { contents: { kind: MarkupKind.Markdown, value: code + (doc ? `\n\n${doc}` : "") } };
+}
 
 // Document symbols
 connection.onDocumentSymbol((params): DocumentSymbol[] => {
-  const cached = documentCache.get(params.textDocument.uri);
+  const cached = cache.get(params.textDocument.uri);
   if (!cached) return [];
 
-  const symbols: DocumentSymbol[] = [];
-
-  for (const stmt of cached.program.body) {
-    if (stmt.kind === "FnDecl") {
-      const fn = stmt as FnDecl;
-      symbols.push({
-        name: fn.name,
-        kind: SymbolKind.Function,
-        range: {
-          start: { line: fn.loc.line - 1, character: fn.loc.column - 1 },
-          end: { line: fn.loc.line - 1, character: fn.loc.column + fn.name.length },
-        },
-        selectionRange: {
-          start: { line: fn.loc.line - 1, character: fn.loc.column - 1 },
-          end: { line: fn.loc.line - 1, character: fn.loc.column + fn.name.length },
-        },
-      });
-    } else if (stmt.kind === "TypeDecl") {
-      const t = stmt as TypeDecl;
-      symbols.push({
-        name: t.name,
-        kind: SymbolKind.Class,
-        range: {
-          start: { line: t.loc.line - 1, character: t.loc.column - 1 },
-          end: { line: t.loc.line - 1, character: t.loc.column + t.name.length },
-        },
-        selectionRange: {
-          start: { line: t.loc.line - 1, character: t.loc.column - 1 },
-          end: { line: t.loc.line - 1, character: t.loc.column + t.name.length },
-        },
-      });
-    } else if (stmt.kind === "TestDecl") {
-      const test = stmt as any;
-      symbols.push({
-        name: `test "${test.name}"`,
-        kind: SymbolKind.Method,
-        range: {
-          start: { line: test.loc.line - 1, character: test.loc.column - 1 },
-          end: { line: test.loc.line - 1, character: test.loc.column + 4 },
-        },
-        selectionRange: {
-          start: { line: test.loc.line - 1, character: test.loc.column - 1 },
-          end: { line: test.loc.line - 1, character: test.loc.column + 4 },
-        },
-      });
-    }
-  }
-
-  return symbols;
+  return cached.program.body
+    .filter(s => s.kind === "FnDecl" || s.kind === "TypeDecl" || s.kind === "TestDecl")
+    .map(s => {
+      const name = s.kind === "TestDecl" ? `test "${(s as any).name}"` : (s as any).name;
+      const kind = s.kind === "FnDecl" ? SymbolKind.Function : s.kind === "TypeDecl" ? SymbolKind.Class : SymbolKind.Method;
+      const range = { start: { line: s.loc.line - 1, character: s.loc.column - 1 }, end: { line: s.loc.line - 1, character: s.loc.column + name.length } };
+      return { name, kind, range, selectionRange: range };
+    });
 });
 
-function formatTypeExpr(type: any): string {
-  if (!type) return "any";
-  switch (type.kind) {
-    case "NamedType":
-      return type.name;
-    case "GenericType":
-      return `${type.name}[${type.args.map(formatTypeExpr).join(", ")}]`;
-    case "FunctionType":
-      return `fn(${type.params.map(formatTypeExpr).join(", ")}): ${formatTypeExpr(type.returnType)}`;
-    case "UnionType":
-      return type.types.map(formatTypeExpr).join(" or ");
-    case "OptionalType":
-      return `${formatTypeExpr(type.inner)}?`;
-    case "ListType":
-      return `list[${formatTypeExpr(type.elementType)}]`;
-    default:
-      return "any";
-  }
-}
+// Definition
+connection.onDefinition((params): Definition | null => {
+  const doc = documents.get(params.textDocument.uri);
+  const cached = cache.get(params.textDocument.uri);
+  if (!doc || !cached) return null;
 
-// Get word at position and determine if it's a property access
-function getWordAtPosition(doc: TextDocument, position: Position): { word: string; isProperty: boolean } {
-  const line = doc.getText({
-    start: { line: position.line, character: 0 },
-    end: { line: position.line + 1, character: 0 },
-  });
-  const col = position.character;
-  const before = line.slice(0, col);
-  const after = line.slice(col);
-  const wordStart = before.match(/[a-zA-Z_][a-zA-Z0-9_]*$/)?.[0] || "";
-  const wordEnd = after.match(/^[a-zA-Z0-9_]*/)?.[0] || "";
-  const word = wordStart + wordEnd;
-  
-  // Check if preceded by a dot (property access)
-  const beforeWord = before.slice(0, before.length - wordStart.length);
-  const isProperty = beforeWord.trimEnd().endsWith(".");
-  
-  return { word, isProperty };
-}
+  const { word, isProperty } = getWord(doc, params.position);
+  if (!word) return null;
 
-// Scoped symbol with scope path for proper resolution
-interface ScopedSymbol {
-  name: string;
-  kind: "function" | "type" | "variable" | "parameter" | "field" | "method";
-  scope: string; // e.g., "", "Hello", "Hello.say_hello"
-  loc: { line: number; column: number };
-  endLine?: number; // end of scope for this symbol
-  nameOffset?: number;
-}
-
-// Find which scope contains a given line
-function findScopeAtLine(program: Program, line: number): { scope: string; typeName?: string } {
-  // Build a list of all scopes with their line ranges
-  const scopes: { scope: string; typeName?: string; start: number; end: number }[] = [];
-  
-  for (let i = 0; i < program.body.length; i++) {
-    const stmt = program.body[i]!;
-    const nextStmt = program.body[i + 1];
-    const nextStart = nextStmt?.loc?.line || Infinity;
-    
-    if (stmt.kind === "TypeDecl") {
-      const typeDecl = stmt as any;
-      const typeStart = stmt.loc.line;
-      
-      if (typeDecl.body?.members) {
-        for (let j = 0; j < typeDecl.body.members.length; j++) {
-          const member = typeDecl.body.members[j];
-          const nextMember = typeDecl.body.members[j + 1];
-          
-          if (member.kind === "MethodDecl" && member.body) {
-            const methodStart = member.loc.line;
-            // Method ends at next member or next top-level statement
-            const methodEnd = nextMember?.loc?.line ? nextMember.loc.line - 1 : nextStart - 1;
-            
-            scopes.push({
-              scope: `${typeDecl.name}.${member.name}`,
-              typeName: typeDecl.name,
-              start: methodStart,
-              end: methodEnd,
-            });
-          }
-        }
-        
-        // Type scope (for fields, not inside methods)
-        const lastMember = typeDecl.body.members[typeDecl.body.members.length - 1];
-        const typeEnd = lastMember?.loc?.line || typeStart;
-        scopes.push({
-          scope: typeDecl.name,
-          typeName: typeDecl.name,
-          start: typeStart,
-          end: Math.min(typeEnd, nextStart - 1),
-        });
-      }
-    } else if (stmt.kind === "FnDecl") {
-      const fnDecl = stmt as any;
-      const fnStart = stmt.loc.line;
-      const fnEnd = nextStart - 1;
-      
-      scopes.push({
-        scope: fnDecl.name,
-        start: fnStart,
-        end: fnEnd,
-      });
-    }
-  }
-  
-  // Find the most specific scope that contains this line
-  // Sort by specificity (longer scope = more specific) and start line
-  scopes.sort((a, b) => {
-    if (a.scope.length !== b.scope.length) return b.scope.length - a.scope.length;
-    return b.start - a.start;
-  });
-  
-  for (const s of scopes) {
-    if (line >= s.start && line <= s.end) {
-      return { scope: s.scope, typeName: s.typeName };
-    }
-  }
-  
-  return { scope: "" };
-}
-
-// Collect all scoped symbols from AST
-function collectScopedSymbols(program: Program): ScopedSymbol[] {
-  const symbols: ScopedSymbol[] = [];
-  
-  function addSymbol(name: string, kind: ScopedSymbol["kind"], scope: string, loc: any, nameOffset?: number) {
-    symbols.push({ name, kind, scope, loc, nameOffset });
-  }
-  
-  for (const stmt of program.body) {
-    if (stmt.kind === "FnDecl") {
-      const fn = stmt as any;
-      addSymbol(fn.name, "function", "", stmt.loc, 3);
-      // Parameters
-      for (const param of fn.params || []) {
-        addSymbol(param.name, "parameter", fn.name, param.loc);
-      }
-      // Walk body for local variables
-      walkBlock(fn.body, fn.name);
-    } else if (stmt.kind === "TypeDecl") {
-      const typeDecl = stmt as any;
-      addSymbol(typeDecl.name, "type", "", stmt.loc, 5);
-      
-      if (typeDecl.body?.members) {
-        for (const member of typeDecl.body.members) {
-          if (member.kind === "FieldDecl") {
-            addSymbol(member.name, "field", typeDecl.name, member.loc);
-          } else if (member.kind === "MethodDecl") {
-            const methodScope = `${typeDecl.name}.${member.name}`;
-            addSymbol(member.name, "method", typeDecl.name, member.loc, 3);
-            // Method parameters
-            for (const param of member.params || []) {
-              addSymbol(param.name, "parameter", methodScope, param.loc);
-            }
-            // Walk method body
-            if (member.body) walkBlock(member.body, methodScope);
-          }
+  // Property: find in type members
+  if (isProperty) {
+    for (const s of cached.program.body) {
+      if (s.kind !== "TypeDecl") continue;
+      for (const m of (s as TypeDecl).body?.members || []) {
+        if (m.name === word) {
+          const col = m.loc.column - 1 + (m.kind === "MethodDecl" ? 3 : 0);
+          return Location.create(params.textDocument.uri, {
+            start: { line: m.loc.line - 1, character: col },
+            end: { line: m.loc.line - 1, character: col + word.length },
+          });
         }
       }
-    } else if (stmt.kind === "LetStmt") {
-      const letStmt = stmt as any;
-      if (letStmt.pattern?.kind === "IdentifierPattern") {
-        addSymbol(letStmt.pattern.name, "variable", "", stmt.loc, 4);
-      }
-    } else if (stmt.kind === "VarStmt") {
-      addSymbol((stmt as any).name, "variable", "", stmt.loc, 4);
-    } else if (stmt.kind === "TestDecl") {
-      walkBlock((stmt as any).body, "test");
     }
+    return null;
   }
-  
-  function walkBlock(block: any, scope: string) {
-    if (!block?.statements) return;
-    for (const stmt of block.statements) {
-      if (stmt.kind === "LetStmt") {
-        const letStmt = stmt as any;
-        if (letStmt.pattern?.kind === "IdentifierPattern") {
-          addSymbol(letStmt.pattern.name, "variable", scope, stmt.loc, 4);
-        }
-      } else if (stmt.kind === "VarStmt") {
-        addSymbol((stmt as any).name, "variable", scope, stmt.loc, 4);
-      } else if (stmt.kind === "ForStmt" && (stmt as any).pattern?.kind === "IdentifierPattern") {
-        addSymbol((stmt as any).pattern.name, "variable", scope, (stmt as any).pattern.loc);
-      }
-    }
-  }
-  
-  return symbols;
-}
 
-// Find definition with scope awareness
-function findDefinitionScoped(uri: string, name: string, line: number): Location | null {
-  const cached = documentCache.get(uri);
-  if (!cached) return null;
+  // Skip built-ins
+  if (isBuiltin(word)) return null;
 
-  const symbols = collectScopedSymbols(cached.program);
-  const { scope, typeName } = findScopeAtLine(cached.program, line);
-  
-  // Look up definition based on scope
-  let def: ScopedSymbol | undefined;
-  
-  // If we're inside a type method, look for: 1) local vars, 2) params, 3) fields, 4) global
-  if (scope.includes(".")) {
-    // Inside a method - check method scope first (locals + params)
-    def = symbols.find(s => s.name === name && s.scope === scope);
-    // Then check type fields
-    if (!def && typeName) {
-      def = symbols.find(s => s.name === name && s.scope === typeName && (s.kind === "field" || s.kind === "method"));
-    }
-  } else if (scope && typeName) {
-    // Inside a type but not in method - check type fields
-    def = symbols.find(s => s.name === name && s.scope === typeName && (s.kind === "field" || s.kind === "method"));
-  } else if (scope) {
-    // Inside a function - check function scope first
-    def = symbols.find(s => s.name === name && s.scope === scope);
-  }
-  
-  // Fall back to global scope
-  if (!def) {
-    def = symbols.find(s => s.name === name && s.scope === "" && (s.kind === "function" || s.kind === "type"));
-    if (!def) {
-      def = symbols.find(s => s.name === name && s.scope === "");
-    }
-  }
-  
-  if (def) {
-    const col = def.loc.column - 1 + (def.nameOffset || 0);
-    return Location.create(uri, {
-      start: { line: def.loc.line - 1, character: col },
-      end: { line: def.loc.line - 1, character: col + name.length },
+  // Find symbol with scope awareness
+  const syms = collectSymbols(cached.program);
+  const { scope, typeName } = findScope(cached.program, params.position.line + 1);
+
+  let sym = scope.includes(".")
+    ? syms.find(s => s.name === word && s.scope === scope) || (typeName ? syms.find(s => s.name === word && s.scope === typeName) : undefined)
+    : scope
+      ? syms.find(s => s.name === word && s.scope === scope)
+      : undefined;
+
+  if (!sym) sym = syms.find(s => s.name === word && s.scope === "");
+
+  if (sym) {
+    const col = sym.loc.column - 1 + (sym.offset || 0);
+    return Location.create(params.textDocument.uri, {
+      start: { line: sym.loc.line - 1, character: col },
+      end: { line: sym.loc.line - 1, character: col + word.length },
     });
   }
   return null;
-}
-
-// Collect references with scope awareness
-function collectScopedReferences(program: Program, targetName: string, targetScope: string, targetKind: string): Range[] {
-  const refs: Range[] = [];
-  
-  function addRef(loc: any, name: string, currentScope: string) {
-    // For fields/methods, only match within the same type
-    if ((targetKind === "field" || targetKind === "method") && !currentScope.startsWith(targetScope.split(".")[0]!)) {
-      return;
-    }
-    // For parameters/locals, only match within same scope
-    if ((targetKind === "parameter" || targetKind === "variable") && targetScope !== "" && currentScope !== targetScope && !currentScope.startsWith(targetScope + ".")) {
-      return;
-    }
-    if (name === targetName) {
-      refs.push({
-        start: { line: loc.line - 1, character: loc.column - 1 },
-        end: { line: loc.line - 1, character: loc.column - 1 + name.length },
-      });
-    }
-  }
-  
-  function walkExpr(expr: any, scope: string): void {
-    if (!expr) return;
-    switch (expr.kind) {
-      case "Identifier":
-        addRef(expr.loc, expr.name, scope);
-        break;
-      case "BinaryExpr":
-        walkExpr(expr.left, scope);
-        walkExpr(expr.right, scope);
-        break;
-      case "UnaryExpr":
-        walkExpr(expr.operand, scope);
-        break;
-      case "CallExpr":
-        walkExpr(expr.callee, scope);
-        for (const arg of expr.args || []) {
-          if (arg.value) walkExpr(arg.value, scope);
-          else walkExpr(arg, scope);
-        }
-        break;
-      case "MemberExpr":
-        walkExpr(expr.object, scope);
-        break;
-      case "IndexExpr":
-        walkExpr(expr.object, scope);
-        walkExpr(expr.index, scope);
-        break;
-      case "PipeExpr":
-        walkExpr(expr.left, scope);
-        walkExpr(expr.right, scope);
-        break;
-      case "LambdaExpr":
-        if (expr.body?.kind === "Block") walkBlock(expr.body, scope);
-        else walkExpr(expr.body, scope);
-        break;
-      case "IfExpr":
-        walkExpr(expr.condition, scope);
-        walkExpr(expr.then, scope);
-        walkExpr(expr.else, scope);
-        break;
-      case "ListExpr":
-        for (const el of expr.elements || []) {
-          if (el.kind === "SpreadElement") walkExpr(el.expr, scope);
-          else walkExpr(el, scope);
-        }
-        break;
-      case "MapExpr":
-        for (const entry of expr.entries || []) {
-          if (entry.key?.kind !== "Identifier") walkExpr(entry.key, scope);
-          walkExpr(entry.value, scope);
-        }
-        break;
-      case "RangeExpr":
-        walkExpr(expr.start, scope);
-        walkExpr(expr.end, scope);
-        break;
-      case "SpawnExpr":
-        walkExpr(expr.expr, scope);
-        break;
-      case "TypeAssertion":
-      case "NullAssertion":
-        walkExpr(expr.expr, scope);
-        break;
-      case "TemplateLiteral":
-        for (const part of expr.parts || []) {
-          if (part.kind === "TemplateExpr") walkExpr(part.expr, scope);
-        }
-        break;
-      case "MatchExpr":
-        walkExpr(expr.value, scope);
-        for (const arm of expr.arms || []) {
-          if (arm.guard) walkExpr(arm.guard, scope);
-          if (arm.body?.kind === "Block") walkBlock(arm.body, scope);
-          else walkExpr(arm.body, scope);
-        }
-        break;
-    }
-  }
-  
-  function walkBlock(block: any, scope: string): void {
-    if (!block?.statements) return;
-    for (const stmt of block.statements) {
-      walkStmt(stmt, scope);
-    }
-  }
-  
-  function walkStmt(stmt: any, scope: string): void {
-    switch (stmt.kind) {
-      case "FnDecl":
-        addRef({ line: stmt.loc.line, column: stmt.loc.column + 3 }, stmt.name, "");
-        walkBlock(stmt.body, stmt.name);
-        break;
-      case "TypeDecl":
-        addRef({ line: stmt.loc.line, column: stmt.loc.column + 5 }, stmt.name, "");
-        if (stmt.body?.members) {
-          for (const member of stmt.body.members) {
-            if (member.kind === "FieldDecl") {
-              addRef(member.loc, member.name, stmt.name);
-              if (member.defaultValue) walkExpr(member.defaultValue, stmt.name);
-            } else if (member.kind === "MethodDecl") {
-              const methodScope = `${stmt.name}.${member.name}`;
-              addRef({ line: member.loc.line, column: member.loc.column + 3 }, member.name, stmt.name);
-              if (member.body) walkBlock(member.body, methodScope);
-            }
-          }
-        }
-        break;
-      case "LetStmt":
-        if (stmt.pattern?.kind === "IdentifierPattern") {
-          addRef({ line: stmt.pattern.loc.line, column: stmt.pattern.loc.column }, stmt.pattern.name, scope);
-        }
-        walkExpr(stmt.value, scope);
-        break;
-      case "VarStmt":
-        addRef({ line: stmt.loc.line, column: stmt.loc.column + 4 }, stmt.name, scope);
-        walkExpr(stmt.value, scope);
-        break;
-      case "AssignStmt":
-        walkExpr(stmt.target, scope);
-        walkExpr(stmt.value, scope);
-        break;
-      case "ExprStmt":
-        walkExpr(stmt.expr, scope);
-        break;
-      case "IfStmt":
-        walkExpr(stmt.condition, scope);
-        if (stmt.then?.kind === "Block") walkBlock(stmt.then, scope);
-        else walkStmt(stmt.then, scope);
-        for (const elif of stmt.elseIfs || []) {
-          walkExpr(elif.condition, scope);
-          walkBlock(elif.body, scope);
-        }
-        if (stmt.else) walkBlock(stmt.else, scope);
-        break;
-      case "ForStmt":
-        if (stmt.pattern?.kind === "IdentifierPattern") {
-          addRef(stmt.pattern.loc, stmt.pattern.name, scope);
-        }
-        walkExpr(stmt.iterable, scope);
-        walkBlock(stmt.body, scope);
-        break;
-      case "MatchStmt":
-        walkExpr(stmt.value, scope);
-        for (const arm of stmt.arms || []) {
-          if (arm.guard) walkExpr(arm.guard, scope);
-          if (arm.body?.kind === "Block") walkBlock(arm.body, scope);
-          else walkExpr(arm.body, scope);
-        }
-        break;
-      case "ReturnStmt":
-        walkExpr(stmt.value, scope);
-        break;
-      case "YieldStmt":
-        walkExpr(stmt.value, scope);
-        break;
-      case "ThrowStmt":
-        walkExpr(stmt.value, scope);
-        break;
-      case "TryStmt":
-        walkBlock(stmt.body, scope);
-        if (stmt.catch) walkBlock(stmt.catch.body, scope);
-        break;
-      case "TestDecl":
-        walkBlock(stmt.body, "test");
-        break;
-    }
-  }
-  
-  for (const stmt of program.body) {
-    walkStmt(stmt, "");
-  }
-  
-  return refs;
-}
-
-// Collect all MemberExpr property usages
-function collectMemberExprRefs(program: Program, propertyName: string): Range[] {
-  const refs: Range[] = [];
-  
-  function walkExpr(expr: any): void {
-    if (!expr) return;
-    switch (expr.kind) {
-      case "MemberExpr":
-        if (expr.property === propertyName) {
-          // Find the actual position of the property (after the dot)
-          // The loc might be the start of the whole expression, so we estimate
-          refs.push({
-            start: { line: expr.loc.line - 1, character: expr.loc.column - 1 },
-            end: { line: expr.loc.line - 1, character: expr.loc.column - 1 + propertyName.length },
-          });
-        }
-        walkExpr(expr.object);
-        break;
-      case "CallExpr":
-        walkExpr(expr.callee);
-        for (const arg of expr.args || []) {
-          if (arg.value) walkExpr(arg.value);
-          else walkExpr(arg);
-        }
-        break;
-      case "BinaryExpr":
-        walkExpr(expr.left);
-        walkExpr(expr.right);
-        break;
-      case "UnaryExpr":
-        walkExpr(expr.operand);
-        break;
-      case "IndexExpr":
-        walkExpr(expr.object);
-        walkExpr(expr.index);
-        break;
-      case "PipeExpr":
-        walkExpr(expr.left);
-        walkExpr(expr.right);
-        break;
-      case "IfExpr":
-        walkExpr(expr.condition);
-        walkExpr(expr.then);
-        walkExpr(expr.else);
-        break;
-      case "ListExpr":
-        for (const el of expr.elements || []) {
-          if (el.kind === "SpreadElement") walkExpr(el.expr);
-          else walkExpr(el);
-        }
-        break;
-      case "MapExpr":
-        for (const entry of expr.entries || []) {
-          walkExpr(entry.value);
-        }
-        break;
-      case "LambdaExpr":
-        if (expr.body?.kind === "Block") walkBlock(expr.body);
-        else walkExpr(expr.body);
-        break;
-      case "TemplateLiteral":
-        for (const part of expr.parts || []) {
-          if (part.kind === "TemplateExpr") walkExpr(part.expr);
-        }
-        break;
-      case "MatchExpr":
-        walkExpr(expr.value);
-        for (const arm of expr.arms || []) {
-          if (arm.guard) walkExpr(arm.guard);
-          if (arm.body?.kind === "Block") walkBlock(arm.body);
-          else walkExpr(arm.body);
-        }
-        break;
-      case "SpawnExpr":
-        walkExpr(expr.expr);
-        break;
-      case "TypeAssertion":
-      case "NullAssertion":
-        walkExpr(expr.expr);
-        break;
-    }
-  }
-  
-  function walkBlock(block: any): void {
-    if (!block?.statements) return;
-    for (const stmt of block.statements) walkStmt(stmt);
-  }
-  
-  function walkStmt(stmt: any): void {
-    switch (stmt.kind) {
-      case "FnDecl":
-        walkBlock(stmt.body);
-        break;
-      case "TypeDecl":
-        if (stmt.body?.members) {
-          for (const member of stmt.body.members) {
-            if (member.kind === "MethodDecl" && member.body) walkBlock(member.body);
-            if (member.kind === "FieldDecl" && member.defaultValue) walkExpr(member.defaultValue);
-          }
-        }
-        break;
-      case "LetStmt": walkExpr(stmt.value); break;
-      case "VarStmt": walkExpr(stmt.value); break;
-      case "AssignStmt": walkExpr(stmt.target); walkExpr(stmt.value); break;
-      case "ExprStmt": walkExpr(stmt.expr); break;
-      case "IfStmt":
-        walkExpr(stmt.condition);
-        if (stmt.then?.kind === "Block") walkBlock(stmt.then);
-        else walkStmt(stmt.then);
-        for (const elif of stmt.elseIfs || []) { walkExpr(elif.condition); walkBlock(elif.body); }
-        if (stmt.else) walkBlock(stmt.else);
-        break;
-      case "ForStmt": walkExpr(stmt.iterable); walkBlock(stmt.body); break;
-      case "MatchStmt":
-        walkExpr(stmt.value);
-        for (const arm of stmt.arms || []) {
-          if (arm.guard) walkExpr(arm.guard);
-          if (arm.body?.kind === "Block") walkBlock(arm.body);
-          else walkExpr(arm.body);
-        }
-        break;
-      case "ReturnStmt": walkExpr(stmt.value); break;
-      case "YieldStmt": walkExpr(stmt.value); break;
-      case "ThrowStmt": walkExpr(stmt.value); break;
-      case "TryStmt": walkBlock(stmt.body); if (stmt.catch) walkBlock(stmt.catch.body); break;
-      case "TestDecl": walkBlock(stmt.body); break;
-    }
-  }
-  
-  for (const stmt of program.body) walkStmt(stmt);
-  return refs;
-}
-
-// Find all references with scope awareness
-function findReferencesScoped(uri: string, name: string, line: number): Location[] {
-  const cached = documentCache.get(uri);
-  if (!cached) return [];
-
-  const symbols = collectScopedSymbols(cached.program);
-  const { scope, typeName } = findScopeAtLine(cached.program, line);
-  
-  // Find the symbol definition to determine its scope and kind
-  let targetSymbol: ScopedSymbol | undefined;
-  
-  if (scope.includes(".")) {
-    targetSymbol = symbols.find(s => s.name === name && s.scope === scope);
-    if (!targetSymbol && typeName) {
-      targetSymbol = symbols.find(s => s.name === name && s.scope === typeName);
-    }
-  } else if (typeName) {
-    targetSymbol = symbols.find(s => s.name === name && s.scope === typeName);
-  } else if (scope) {
-    targetSymbol = symbols.find(s => s.name === name && s.scope === scope);
-  }
-  if (!targetSymbol) {
-    targetSymbol = symbols.find(s => s.name === name && s.scope === "");
-  }
-  
-  if (!targetSymbol) return [];
-  
-  let refs = collectScopedReferences(cached.program, name, targetSymbol.scope, targetSymbol.kind);
-  
-  // For fields and methods, also include MemberExpr usages (e.g., user.name)
-  if (targetSymbol.kind === "field" || targetSymbol.kind === "method") {
-    const memberRefs = collectMemberExprRefs(cached.program, name);
-    refs = refs.concat(memberRefs);
-  }
-  
-  return refs.map(r => Location.create(uri, r));
-}
-
-// Find method/field definition across all types (for property access)
-function findMethodOrFieldDefinition(uri: string, name: string): Location | null {
-  const cached = documentCache.get(uri);
-  if (!cached) return null;
-
-  // Search all types for a method or field with this name
-  for (const stmt of cached.program.body) {
-    if (stmt.kind === "TypeDecl") {
-      const typeDecl = stmt as any;
-      if (typeDecl.body?.members) {
-        for (const member of typeDecl.body.members) {
-          if (member.kind === "FieldDecl" && member.name === name) {
-            return Location.create(uri, {
-              start: { line: member.loc.line - 1, character: member.loc.column - 1 },
-              end: { line: member.loc.line - 1, character: member.loc.column - 1 + name.length },
-            });
-          }
-          if (member.kind === "MethodDecl" && member.name === name) {
-            const col = member.loc.column - 1 + 3; // "fn "
-            return Location.create(uri, {
-              start: { line: member.loc.line - 1, character: col },
-              end: { line: member.loc.line - 1, character: col + name.length },
-            });
-          }
-        }
-      }
-    }
-  }
-  return null;
-}
-
-// Go to Definition
-connection.onDefinition((params: TextDocumentPositionParams): Definition | null => {
-  const doc = documents.get(params.textDocument.uri);
-  if (!doc) return null;
-
-  const { word, isProperty } = getWordAtPosition(doc, params.position);
-  if (!word) return null;
-  
-  // For property access (obj.method), search for method/field in all types
-  if (isProperty) {
-    return findMethodOrFieldDefinition(params.textDocument.uri, word);
-  }
-
-  return findDefinitionScoped(params.textDocument.uri, word, params.position.line + 1);
 });
 
-// Find method/field references across the document (for property access)
-function findMethodOrFieldReferences(uri: string, name: string): Location[] {
-  const cached = documentCache.get(uri);
-  if (!cached) return [];
-
-  const refs: Location[] = [];
-  
-  // Find the definition (method or field in a type)
-  for (const stmt of cached.program.body) {
-    if (stmt.kind === "TypeDecl") {
-      const typeDecl = stmt as any;
-      if (typeDecl.body?.members) {
-        for (const member of typeDecl.body.members) {
-          if (member.kind === "FieldDecl" && member.name === name) {
-            refs.push(Location.create(uri, {
-              start: { line: member.loc.line - 1, character: member.loc.column - 1 },
-              end: { line: member.loc.line - 1, character: member.loc.column - 1 + name.length },
-            }));
-          }
-          if (member.kind === "MethodDecl" && member.name === name) {
-            const col = member.loc.column - 1 + 3; // "fn "
-            refs.push(Location.create(uri, {
-              start: { line: member.loc.line - 1, character: col },
-              end: { line: member.loc.line - 1, character: col + name.length },
-            }));
-          }
-        }
-      }
-    }
-  }
-  
-  // Find all MemberExpr usages with this property name
-  function walkExpr(expr: any): void {
-    if (!expr) return;
-    switch (expr.kind) {
-      case "MemberExpr":
-        if (expr.property === name) {
-          // Calculate position of property name (after the dot)
-          const objEnd = expr.object?.loc?.column || expr.loc.column;
-          refs.push(Location.create(uri, {
-            start: { line: expr.loc.line - 1, character: expr.loc.column - 1 },
-            end: { line: expr.loc.line - 1, character: expr.loc.column - 1 + name.length },
-          }));
-        }
-        walkExpr(expr.object);
-        break;
-      case "CallExpr":
-        walkExpr(expr.callee);
-        for (const arg of expr.args || []) {
-          if (arg.value) walkExpr(arg.value);
-          else walkExpr(arg);
-        }
-        break;
-      case "BinaryExpr":
-        walkExpr(expr.left);
-        walkExpr(expr.right);
-        break;
-      case "UnaryExpr":
-        walkExpr(expr.operand);
-        break;
-      case "IndexExpr":
-        walkExpr(expr.object);
-        walkExpr(expr.index);
-        break;
-      case "PipeExpr":
-        walkExpr(expr.left);
-        walkExpr(expr.right);
-        break;
-      case "IfExpr":
-        walkExpr(expr.condition);
-        walkExpr(expr.then);
-        walkExpr(expr.else);
-        break;
-      case "ListExpr":
-        for (const el of expr.elements || []) {
-          if (el.kind === "SpreadElement") walkExpr(el.expr);
-          else walkExpr(el);
-        }
-        break;
-      case "MapExpr":
-        for (const entry of expr.entries || []) {
-          walkExpr(entry.value);
-        }
-        break;
-      case "LambdaExpr":
-        if (expr.body?.kind === "Block") walkBlock(expr.body);
-        else walkExpr(expr.body);
-        break;
-      case "TemplateLiteral":
-        for (const part of expr.parts || []) {
-          if (part.kind === "TemplateExpr") walkExpr(part.expr);
-        }
-        break;
-      case "MatchExpr":
-        walkExpr(expr.value);
-        for (const arm of expr.arms || []) {
-          if (arm.guard) walkExpr(arm.guard);
-          if (arm.body?.kind === "Block") walkBlock(arm.body);
-          else walkExpr(arm.body);
-        }
-        break;
-      case "SpawnExpr":
-        walkExpr(expr.expr);
-        break;
-      case "TypeAssertion":
-      case "NullAssertion":
-        walkExpr(expr.expr);
-        break;
-    }
-  }
-  
-  function walkBlock(block: any): void {
-    if (!block?.statements) return;
-    for (const stmt of block.statements) {
-      walkStmt(stmt);
-    }
-  }
-  
-  function walkStmt(stmt: any): void {
-    switch (stmt.kind) {
-      case "FnDecl":
-        walkBlock(stmt.body);
-        break;
-      case "TypeDecl":
-        if (stmt.body?.members) {
-          for (const member of stmt.body.members) {
-            if (member.kind === "MethodDecl" && member.body) {
-              walkBlock(member.body);
-            }
-            if (member.kind === "FieldDecl" && member.defaultValue) {
-              walkExpr(member.defaultValue);
-            }
-          }
-        }
-        break;
-      case "LetStmt":
-        walkExpr(stmt.value);
-        break;
-      case "VarStmt":
-        walkExpr(stmt.value);
-        break;
-      case "AssignStmt":
-        walkExpr(stmt.target);
-        walkExpr(stmt.value);
-        break;
-      case "ExprStmt":
-        walkExpr(stmt.expr);
-        break;
-      case "IfStmt":
-        walkExpr(stmt.condition);
-        if (stmt.then?.kind === "Block") walkBlock(stmt.then);
-        else walkStmt(stmt.then);
-        for (const elif of stmt.elseIfs || []) {
-          walkExpr(elif.condition);
-          walkBlock(elif.body);
-        }
-        if (stmt.else) walkBlock(stmt.else);
-        break;
-      case "ForStmt":
-        walkExpr(stmt.iterable);
-        walkBlock(stmt.body);
-        break;
-      case "MatchStmt":
-        walkExpr(stmt.value);
-        for (const arm of stmt.arms || []) {
-          if (arm.guard) walkExpr(arm.guard);
-          if (arm.body?.kind === "Block") walkBlock(arm.body);
-          else walkExpr(arm.body);
-        }
-        break;
-      case "ReturnStmt":
-        walkExpr(stmt.value);
-        break;
-      case "YieldStmt":
-        walkExpr(stmt.value);
-        break;
-      case "ThrowStmt":
-        walkExpr(stmt.value);
-        break;
-      case "TryStmt":
-        walkBlock(stmt.body);
-        if (stmt.catch) walkBlock(stmt.catch.body);
-        break;
-      case "TestDecl":
-        walkBlock(stmt.body);
-        break;
-    }
-  }
-  
-  for (const stmt of cached.program.body) {
-    walkStmt(stmt);
-  }
-  
-  return refs;
-}
-
-// Find References
-connection.onReferences((params: ReferenceParams): Location[] => {
+// References
+connection.onReferences((params): Location[] => {
   const doc = documents.get(params.textDocument.uri);
-  if (!doc) return [];
+  const cached = cache.get(params.textDocument.uri);
+  if (!doc || !cached) return [];
 
-  const { word, isProperty } = getWordAtPosition(doc, params.position);
+  const { word, isProperty } = getWord(doc, params.position);
   if (!word) return [];
-  
-  // For property access, find method/field references
+
+  const refs: Range[] = [];
+  const uri = params.textDocument.uri;
+
   if (isProperty) {
-    return findMethodOrFieldReferences(params.textDocument.uri, word);
+    for (const s of cached.program.body) {
+      if (s.kind === "TypeDecl") {
+        for (const m of (s as TypeDecl).body?.members || []) {
+          if (m.name === word) {
+            const col = m.loc.column - 1 + (m.kind === "MethodDecl" ? 3 : 0);
+            refs.push({ start: { line: m.loc.line - 1, character: col }, end: { line: m.loc.line - 1, character: col + word.length } });
+          }
+        }
+      }
+    }
+    walk(cached.program, {
+      onMember(prop, loc) {
+        if (prop === word) refs.push({ start: { line: loc.line - 1, character: loc.column - 1 }, end: { line: loc.line - 1, character: loc.column - 1 + word.length } });
+      },
+    });
+  } else {
+    const syms = collectSymbols(cached.program);
+    const { scope, typeName } = findScope(cached.program, params.position.line + 1);
+
+    let target = scope.includes(".")
+      ? syms.find(s => s.name === word && s.scope === scope) || (typeName ? syms.find(s => s.name === word && s.scope === typeName) : undefined)
+      : scope
+        ? syms.find(s => s.name === word && s.scope === scope)
+        : undefined;
+    if (!target) target = syms.find(s => s.name === word && s.scope === "");
+    if (!target) return [];
+
+    const col = target.loc.column - 1 + (target.offset || 0);
+    refs.push({ start: { line: target.loc.line - 1, character: col }, end: { line: target.loc.line - 1, character: col + word.length } });
+
+    walk(cached.program, {
+      onIdent(name, loc, currentScope) {
+        if (name !== word) return;
+        if ((target!.kind === "parameter" || target!.kind === "variable") && target!.scope !== "") {
+          if (currentScope !== target!.scope && !currentScope.startsWith(target!.scope + ".")) return;
+        }
+        refs.push({ start: { line: loc.line - 1, character: loc.column - 1 }, end: { line: loc.line - 1, character: loc.column - 1 + word.length } });
+      },
+    });
   }
 
-  return findReferencesScoped(params.textDocument.uri, word, params.position.line + 1);
-});
-
-// Prepare Rename (validate rename is possible)
-connection.onPrepareRename((params: PrepareRenameParams): Range | null => {
-  const doc = documents.get(params.textDocument.uri);
-  if (!doc) return null;
-
-  const { word, isProperty } = getWordAtPosition(doc, params.position);
-  if (!word) return null;
-  
-  // Don't allow renaming property access or keywords/built-ins
-  if (isProperty) return null;
-  if (KEYWORDS.includes(word) || BUILTIN_TYPES.includes(word) || BUILTIN_FUNCTIONS.includes(word)) {
-    return null;
-  }
-
-  const line = doc.getText({
-    start: { line: params.position.line, character: 0 },
-    end: { line: params.position.line + 1, character: 0 },
-  });
-  const col = params.position.character;
-  const before = line.slice(0, col);
-  const startCol = col - (before.match(/[a-zA-Z_][a-zA-Z0-9_]*$/)?.[0]?.length || 0);
-
-  return {
-    start: { line: params.position.line, character: startCol },
-    end: { line: params.position.line, character: startCol + word.length },
-  };
+  return refs.map(r => Location.create(uri, r));
 });
 
 // Rename
-connection.onRenameRequest((params: RenameParams): WorkspaceEdit | null => {
+connection.onPrepareRename((params): Range | null => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
 
-  const { word, isProperty } = getWordAtPosition(doc, params.position);
-  if (!word) return null;
-  
-  // Don't allow renaming property access or keywords/built-ins
-  if (isProperty) return null;
-  if (KEYWORDS.includes(word) || BUILTIN_TYPES.includes(word) || BUILTIN_FUNCTIONS.includes(word)) {
-    return null;
-  }
+  const { word, isProperty, start } = getWord(doc, params.position);
+  if (!word || isProperty) return null;
+  if (isBuiltin(word) || KEYWORD_LIST.includes(word) || BUILTIN_TYPES.includes(word)) return null;
 
-  const refs = findReferencesScoped(params.textDocument.uri, word, params.position.line + 1);
-  if (refs.length === 0) return null;
+  return { start: { line: params.position.line, character: start }, end: { line: params.position.line, character: start + word.length } };
+});
 
-  const edits: TextEdit[] = refs.map(ref => ({
-    range: ref.range,
-    newText: params.newName,
-  }));
+connection.onRenameRequest((params): WorkspaceEdit | null => {
+  const doc = documents.get(params.textDocument.uri);
+  const cached = cache.get(params.textDocument.uri);
+  if (!doc || !cached) return null;
 
-  return {
-    changes: {
-      [params.textDocument.uri]: edits,
+  const { word, isProperty } = getWord(doc, params.position);
+  if (!word || isProperty) return null;
+  if (isBuiltin(word) || KEYWORD_LIST.includes(word) || BUILTIN_TYPES.includes(word)) return null;
+
+  const ranges: Range[] = [];
+  const syms = collectSymbols(cached.program);
+  const { scope, typeName } = findScope(cached.program, params.position.line + 1);
+
+  let target = scope.includes(".")
+    ? syms.find(s => s.name === word && s.scope === scope) || (typeName ? syms.find(s => s.name === word && s.scope === typeName) : undefined)
+    : scope
+      ? syms.find(s => s.name === word && s.scope === scope)
+      : undefined;
+  if (!target) target = syms.find(s => s.name === word && s.scope === "");
+  if (!target) return null;
+
+  const col = target.loc.column - 1 + (target.offset || 0);
+  ranges.push({ start: { line: target.loc.line - 1, character: col }, end: { line: target.loc.line - 1, character: col + word.length } });
+
+  walk(cached.program, {
+    onIdent(name, loc, currentScope) {
+      if (name !== word) return;
+      if ((target!.kind === "parameter" || target!.kind === "variable") && target!.scope !== "") {
+        if (currentScope !== target!.scope && !currentScope.startsWith(target!.scope + ".")) return;
+      }
+      ranges.push({ start: { line: loc.line - 1, character: loc.column - 1 }, end: { line: loc.line - 1, character: loc.column - 1 + word.length } });
     },
-  };
+  });
+
+  if (ranges.length === 0) return null;
+
+  return { changes: { [params.textDocument.uri]: ranges.map(r => ({ range: r, newText: params.newName })) } };
 });
 
 documents.listen(connection);
