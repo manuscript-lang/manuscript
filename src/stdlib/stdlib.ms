@@ -3,6 +3,114 @@
 // ============================================
 
 // ============================================
+// Primitive Type Methods (built-in)
+// ============================================
+
+extern type string
+  length: number
+  fn upper(): string
+    "Converts to uppercase."
+  fn lower(): string
+    "Converts to lowercase."
+  fn trim(): string
+    "Removes leading/trailing whitespace."
+  fn split(sep: string): list[string]
+    "Splits by delimiter."
+  fn contains(s: string): bool
+    "Returns true if contains substring."
+  fn starts_with(prefix: string): bool
+    "Returns true if starts with prefix."
+  fn ends_with(suffix: string): bool
+    "Returns true if ends with suffix."
+  fn replace(old: string, new: string): string
+    "Replaces occurrences of 'old' with 'new'."
+  fn slice(start: number, end?: number): string
+    "Returns a portion of the string."
+  fn char_at(index: number): string?
+    "Returns character at index."
+  fn index_of(s: string): number?
+    "Returns index of substring, or null."
+  fn repeat(n: number): string
+    "Repeats string n times."
+  fn pad_start(len: number, char?: string): string
+    "Pads at start to given length."
+  fn pad_end(len: number, char?: string): string
+    "Pads at end to given length."
+  fn chars(): list[string]
+    "Returns list of characters."
+
+extern type list[T]
+  length: number
+  fn push(item: T): list[T]
+    "Adds item to end; returns the list."
+  fn pop(): T?
+    "Removes and returns last element."
+  fn shift(): T?
+    "Removes and returns first element."
+  fn contains(item: T): bool
+    "Returns true if list contains item."
+  fn index_of(item: T): number?
+    "Returns index of item, or null."
+  fn join(sep?: string): string
+    "Joins elements with separator."
+  fn reverse(): list[T]
+    "Returns reversed list."
+  fn slice(start: number, end?: number): list[T]
+    "Returns a portion of the list."
+  fn map[U](f: fn(T): U): list[U]
+    "Transforms each element."
+  fn filter(f: fn(T): bool): list[T]
+    "Keeps elements matching predicate."
+  fn reduce[U](f: fn(U, T): U, init: U): U
+    "Folds list to single value."
+  fn find(f: fn(T): bool): T?
+    "Returns first matching element."
+  fn every(f: fn(T): bool): bool
+    "Returns true if all match predicate."
+  fn some(f: fn(T): bool): bool
+    "Returns true if any matches predicate."
+  fn first(): T?
+    "Returns first element."
+  fn last(): T?
+    "Returns last element."
+  fn is_empty(): bool
+    "Returns true if list is empty."
+  fn sort(cmp?: fn(T, T): number): list[T]
+    "Returns sorted list."
+
+extern type map[K, V]
+  size: number
+  fn get(key: K): V?
+    "Returns value for key, or null."
+  fn set(key: K, value: V): void
+    "Sets key to value."
+  fn has(key: K): bool
+    "Returns true if key exists."
+  fn delete(key: K): bool
+    "Deletes key; returns true if existed."
+  fn keys(): list[K]
+    "Returns list of keys."
+  fn values(): list[V]
+    "Returns list of values."
+  fn entries(): list[list[any]]
+    "Returns list of [key, value] pairs."
+  fn clear(): void
+    "Removes all entries."
+
+extern type set[T]
+  size: number
+  fn add(item: T): void
+    "Adds item to set."
+  fn has(item: T): bool
+    "Returns true if item exists."
+  fn delete(item: T): bool
+    "Deletes item; returns true if existed."
+  fn clear(): void
+    "Removes all items."
+  fn values(): list[T]
+    "Returns list of items."
+
+// ============================================
 // Built-in Types
 // ============================================
 

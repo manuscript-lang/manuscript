@@ -29,6 +29,14 @@ describe("CodeGen - Binary Expressions", () => {
     ["a or b", "(a || b)"],
     ["a ?? b", "(a ?? b)"],
   ]);
+
+  test("is operator", () => {
+    const js = compile(`type Foo
+  x: number
+let f = Foo(1)
+let check = f is Foo`);
+    expect(js).toContain("instanceof Foo");
+  });
 });
 
 describe("CodeGen - Unary Expressions", () => {
@@ -78,6 +86,22 @@ describe("CodeGen - Call Expressions", () => {
     ["f(1, 2)", "f(1, 2)"],
     ["obj.method()", "obj.method()"],
   ]);
+
+  test("type constructor uses new", () => {
+    const js = compile(`type Point
+  x: number
+  y: number
+let p = Point(1, 2)`);
+    expect(js).toContain("new Point(1, 2)");
+  });
+
+  test("named arguments", () => {
+    expectCompiled("f(x: 1, y: 2)", "{ x: 1, y: 2 }");
+  });
+
+  test("builtin Channel constructor", () => {
+    expectCompiled("Channel[number]()", "new __ms_runtime.Channel()");
+  });
 });
 
 describe("CodeGen - Pipe Expressions", () => {
@@ -113,5 +137,46 @@ describe("CodeGen - Range Expressions", () => {
 describe("CodeGen - Spawn Expressions", () => {
   test("spawn", () => {
     expectCompiled("spawn f()", "__ms_runtime.spawn");
+  });
+});
+
+describe("CodeGen - Match Expressions", () => {
+  test("match expression with identifier pattern", () => {
+    const js = compile(`let result = match x
+  n => n + 1`);
+    expect(js).toContain("const n =");
+    expect(js).toContain("return");
+  });
+});
+
+describe("CodeGen - Template Literals", () => {
+  test("simple template", () => {
+    expectCompiled('let s = "hello {name}"', '"hello " + name');
+  });
+
+  test("template with multiple parts", () => {
+    expectCompiled('let s = "{a} + {b} = {c}"', "+ b +");
+  });
+});
+
+describe("CodeGen - Maps Advanced", () => {
+  test("spread in map", () => {
+    expectCompiled("let m = {...base, a: 1}", "...base");
+  });
+});
+
+describe("CodeGen - Index Advanced", () => {
+  test("slice with no start", () => {
+    expectCompiled("arr[:3]", "arr.slice(0, 3)");
+  });
+
+  test("slice with no end", () => {
+    expectCompiled("arr[1:]", "arr.slice(1,");
+  });
+});
+
+describe("CodeGen - Pipe Advanced", () => {
+  test("pipe to stdlib function", () => {
+    expectCompiled("items | len", "__ms_runtime.len(items)");
   });
 });

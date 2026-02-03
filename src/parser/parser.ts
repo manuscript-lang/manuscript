@@ -145,9 +145,14 @@ export class Parser {
       case "FN":
         return this.fnDecl();
       case "EXTERN":
+        // Check if extern type or extern fn
+        if (this.peekNext().type === "TYPE") {
+          this.advance(); // consume EXTERN
+          return this.typeDecl(true);
+        }
         return this.externFnDecl();
       case "TYPE":
-        return this.typeDecl();
+        return this.typeDecl(false);
       case "KEYWORD":
         return this.keywordDecl();
       case "TEST":
@@ -329,7 +334,7 @@ export class Parser {
     return { kind: "UsingClause", bindings, loc };
   }
 
-  private typeDecl(): AST.TypeDecl {
+  private typeDecl(isExtern = false): AST.TypeDecl {
     const loc = this.current().loc;
     this.expect("TYPE");
 
@@ -383,9 +388,9 @@ export class Parser {
     }
 
     this.expectNewline();
-    const body = this.parseTypeBody();
+    const body = this.parseTypeBody(isExtern);
 
-    return { kind: "TypeDecl", name, typeParams, extends: extendsTypes, using, where, body, loc };
+    return { kind: "TypeDecl", name, typeParams, extends: extendsTypes, using, where, body, loc, isExtern: isExtern || undefined };
   }
 
   private parseTypeParams(): AST.TypeParam[] {
@@ -433,7 +438,7 @@ export class Parser {
     return clauses;
   }
 
-  private parseTypeBody(): AST.TypeBody {
+  private parseTypeBody(isExternType = false): AST.TypeBody {
     const loc = this.current().loc;
     const members: AST.TypeMember[] = [];
 
@@ -441,11 +446,9 @@ export class Parser {
     this.skipNewlines();
 
     while (!this.check("DEDENT") && !this.isAtEnd()) {
-      if (this.check("EXTERN")) {
-        // extern fn method
-        members.push(this.parseMethodDecl(true));
-      } else if (this.check("FN")) {
-        members.push(this.parseMethodDecl(false));
+      if (this.check("FN") || this.check("EXTERN")) {
+        // Parse method - isExternType makes all methods implicitly extern
+        members.push(this.parseMethodDecl(isExternType));
       } else {
         members.push(this.parseFieldDecl());
       }
@@ -490,25 +493,30 @@ export class Parser {
     return { kind: "FieldDecl", name, type, optional, defaultValue, computed: false, loc };
   }
 
-  private parseMethodDecl(isExtern = false): AST.MethodDecl {
+  private parseMethodDecl(implicitExtern = false): AST.MethodDecl {
     const loc = this.current().loc;
-    if (isExtern) {
-      this.expect("EXTERN");
-    }
+    // Check for explicit extern keyword
+    const explicitExtern = this.match("EXTERN");
+    const isExtern = implicitExtern || explicitExtern;
+    
     this.expect("FN");
 
     const name = this.expectIdentifier();
+    const typeParams = this.check("LBRACKET") ? this.parseTypeParams() : undefined;
     const params = this.parseParams();
     const returnType = this.match("COLON") ? this.parseType() : undefined;
     const using = this.check("USING") ? this.parseUsing() : undefined;
 
     let body: AST.Block | undefined;
-    // Extern methods have no body
+    // Extern methods have no body, but may have docstring
     if (!isExtern && this.match("NEWLINE") && this.check("INDENT")) {
+      body = this.parseBlock();
+    } else if (isExtern && this.match("NEWLINE") && this.check("INDENT")) {
+      // Parse docstring block for extern methods
       body = this.parseBlock();
     }
 
-    return { kind: "MethodDecl", name, params, returnType, using, body, isExtern, loc };
+    return { kind: "MethodDecl", name, typeParams, params, returnType, using, body, isExtern: isExtern || undefined, loc };
   }
 
   private keywordDecl(): AST.KeywordDecl {

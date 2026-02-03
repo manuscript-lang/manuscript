@@ -140,6 +140,9 @@ function extractObjectType(decl: AST.TypeDecl): ObjectType {
   };
 }
 
+// Primitive types that are built-in (skip in type extraction)
+const BUILTIN_PRIMITIVE_TYPES = new Set(["string", "list", "map", "set"]);
+
 // Extract all types from stdlib AST
 export function extractStdlibTypes(program: AST.Program): StdlibTypes {
   const functions = new Map<string, FunctionType>();
@@ -154,6 +157,10 @@ export function extractStdlibTypes(program: AST.Program): StdlibTypes {
         functions.set(stmt.name, extractFunctionType(stmt));
         break;
       case "TypeDecl":
+        // Skip extern types for built-in primitives - they're for IDE tooling only
+        if (stmt.isExtern && BUILTIN_PRIMITIVE_TYPES.has(stmt.name)) {
+          break;
+        }
         types.set(stmt.name, extractObjectType(stmt));
         break;
     }

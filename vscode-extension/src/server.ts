@@ -25,14 +25,16 @@ import {
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-// Reuse from src
+// Reuse from src - single source of truth for language capabilities
 import { Parser } from "../../src/parser";
 import { TypeChecker } from "../../src/types/checker";
 import { KEYWORDS } from "../../src/lexer/tokens";
 import { STDLIB_FUNCTIONS, isBuiltin } from "../../src/shared/stdlib";
 import { typeToString, Types } from "../../src/types/types";
 import { stdlibSource, STDLIB_PATH_URI } from "../../src/stdlib";
-import type { Program, FnDecl, TypeDecl, ASTNode, Expr, Block, ExternFnDecl } from "../../src/parser/ast";
+import { visit } from "../../src/types/ast-visitor";
+import { astTypeToType, getIterableElementType } from "../../src/types/type-utils";
+import type { Program, FnDecl, TypeDecl, ASTNode, Expr, Block, ExternFnDecl, Statement } from "../../src/parser/ast";
 import type { Type, ObjectType, MethodType } from "../../src/types/types";
 
 const connection = createConnection(ProposedFeatures.all);
@@ -47,6 +49,8 @@ interface StdlibSymbol {
   name: string;
   kind: "function" | "extern" | "type";
   loc: { line: number; column: number };
+  signature?: string;
+  doc?: string;
 }
 
 function collectStdlibSymbols(program: Program): Map<string, StdlibSymbol> {
@@ -54,13 +58,24 @@ function collectStdlibSymbols(program: Program): Map<string, StdlibSymbol> {
   for (const stmt of program.body) {
     if (stmt.kind === "FnDecl") {
       const fn = stmt as FnDecl;
-      syms.set(fn.name, { name: fn.name, kind: "function", loc: stmt.loc });
+      const params = fn.params.map(p => `${p.name}: ${p.type ? formatType(p.type) : "any"}`).join(", ");
+      const ret = fn.returnType ? formatType(fn.returnType) : "void";
+      const typeParams = fn.typeParams?.length ? `[${fn.typeParams.map(t => t.name).join(", ")}]` : "";
+      const signature = `fn ${fn.name}${typeParams}(${params}): ${ret}`;
+      const doc = getDocstring(fn.body);
+      syms.set(fn.name, { name: fn.name, kind: "function", loc: stmt.loc, signature, doc });
     } else if (stmt.kind === "ExternFnDecl") {
       const fn = stmt as ExternFnDecl;
-      syms.set(fn.name, { name: fn.name, kind: "extern", loc: stmt.loc });
+      const params = fn.params.map(p => `${p.name}: ${p.type ? formatType(p.type) : "any"}`).join(", ");
+      const ret = fn.returnType ? formatType(fn.returnType) : "void";
+      const typeParams = fn.typeParams?.length ? `[${fn.typeParams.map(t => t.name).join(", ")}]` : "";
+      const signature = `extern fn ${fn.name}${typeParams}(${params}): ${ret}`;
+      syms.set(fn.name, { name: fn.name, kind: "extern", loc: stmt.loc, signature });
     } else if (stmt.kind === "TypeDecl") {
       const t = stmt as TypeDecl;
-      syms.set(t.name, { name: t.name, kind: "type", loc: stmt.loc });
+      const { sig, fields } = getTypeSignature(t);
+      const doc = fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined;
+      syms.set(t.name, { name: t.name, kind: "type", loc: stmt.loc, signature: `type ${sig}`, doc });
     }
   }
   return syms;
@@ -69,70 +84,62 @@ function collectStdlibSymbols(program: Program): Map<string, StdlibSymbol> {
 // Derive keyword list from lexer tokens
 const KEYWORD_LIST = Object.keys(KEYWORDS);
 
-// Built-in types (from syntax.md)
-const BUILTIN_TYPES = [
-  "number", "string", "bool", "null", "bytes", "any", "never", "void",
-  "list", "map", "set", "Channel", "Promise", "Stream", "Result", "Error",
-];
+// Built-in primitive type names (non-generic)
+const BUILTIN_PRIMITIVE_TYPES = ["number", "string", "bool", "null", "bytes", "any", "never", "void"];
 
-// Docs for hover/completion
-const DOCS: Record<string, string> = {
-  print: "Prints a value to output.",
-  len: "Returns the length of a list, string, or map.",
-  range: "Returns a list of numbers from start to end (exclusive).",
-  clone: "Returns a deep copy of a value.",
-  keys: "Returns the keys of a map as a list.",
-  values: "Returns the values of a map as a list.",
-  entries: "Returns a list of {key, value} pairs from a map.",
-  contains: "Returns true if the collection contains the item.",
-  map: "Transforms each element; returns a new list.",
-  filter: "Keeps elements that match the predicate.",
-  reduce: "Folds the list to a single value.",
-  push: "Adds an item to the end of the list; returns the list.",
-  pop: "Removes and returns the last element, or null.",
-  join: "Joins list elements with a separator string.",
-  split: "Splits a string by delimiter; returns list of strings.",
-  length: "Number of characters (string) or elements (list).",
-  upper: "Converts string to uppercase.",
-  lower: "Converts string to lowercase.",
-  trim: "Removes leading/trailing whitespace.",
-  slice: "Returns a portion of the collection.",
-};
+// Collect type completions from stdlib type declarations
+interface TypeMemberInfo {
+  name: string;
+  kind: "field" | "method";
+  signature: string;
+  doc?: string;
+}
 
-// Type completions by kind
-const TYPE_COMPLETIONS: Record<string, CompletionItem[]> = {
-  string: [
-    { label: "length", kind: CompletionItemKind.Property, detail: "number" },
-    { label: "upper", kind: CompletionItemKind.Method, detail: "fn(): string" },
-    { label: "lower", kind: CompletionItemKind.Method, detail: "fn(): string" },
-    { label: "trim", kind: CompletionItemKind.Method, detail: "fn(): string" },
-    { label: "split", kind: CompletionItemKind.Method, detail: "fn(sep: string): list[string]" },
-    { label: "contains", kind: CompletionItemKind.Method, detail: "fn(s: string): bool" },
-    { label: "starts_with", kind: CompletionItemKind.Method, detail: "fn(prefix: string): bool" },
-    { label: "ends_with", kind: CompletionItemKind.Method, detail: "fn(suffix: string): bool" },
-    { label: "replace", kind: CompletionItemKind.Method, detail: "fn(from: string, to: string): string" },
-    { label: "slice", kind: CompletionItemKind.Method, detail: "fn(start: number, end?: number): string" },
-  ],
-  list: [
-    { label: "length", kind: CompletionItemKind.Property, detail: "number" },
-    { label: "push", kind: CompletionItemKind.Method, detail: "fn(item: T): list[T]" },
-    { label: "pop", kind: CompletionItemKind.Method, detail: "fn(): T?" },
-    { label: "map", kind: CompletionItemKind.Method, detail: "fn(f: fn(T): U): list[U]" },
-    { label: "filter", kind: CompletionItemKind.Method, detail: "fn(f: fn(T): bool): list[T]" },
-    { label: "reduce", kind: CompletionItemKind.Method, detail: "fn(f: fn(acc, x): acc, init): any" },
-    { label: "join", kind: CompletionItemKind.Method, detail: "fn(sep?: string): string" },
-    { label: "contains", kind: CompletionItemKind.Method, detail: "fn(item: T): bool" },
-    { label: "slice", kind: CompletionItemKind.Method, detail: "fn(start: number, end?: number): list[T]" },
-  ],
-  map: [
-    { label: "get", kind: CompletionItemKind.Method, detail: "fn(key: K): V?" },
-    { label: "set", kind: CompletionItemKind.Method, detail: "fn(key: K, value: V): void" },
-    { label: "has", kind: CompletionItemKind.Method, detail: "fn(key: K): bool" },
-    { label: "keys", kind: CompletionItemKind.Method, detail: "fn(): list[K]" },
-    { label: "values", kind: CompletionItemKind.Method, detail: "fn(): list[V]" },
-    { label: "entries", kind: CompletionItemKind.Method, detail: "fn(): list[(K, V)]" },
-  ],
-};
+function collectStdlibTypeMembers(program: Program): Map<string, TypeMemberInfo[]> {
+  const result = new Map<string, TypeMemberInfo[]>();
+  for (const stmt of program.body) {
+    if (stmt.kind !== "TypeDecl") continue;
+    const t = stmt as TypeDecl;
+    const members: TypeMemberInfo[] = [];
+    for (const m of t.body?.members || []) {
+      if (m.kind === "FieldDecl") {
+        members.push({
+          name: m.name,
+          kind: "field",
+          signature: m.type ? formatType(m.type) : "any",
+        });
+      } else if (m.kind === "MethodDecl") {
+        const params = (m.params || []).map(p => `${p.name}${p.optional ? "?" : ""}: ${p.type ? formatType(p.type) : "any"}`).join(", ");
+        const ret = m.returnType ? formatType(m.returnType) : "void";
+        const doc = m.body ? getDocstring(m.body) : undefined;
+        members.push({
+          name: m.name,
+          kind: "method",
+          signature: `fn(${params}): ${ret}`,
+          doc,
+        });
+      }
+    }
+    if (members.length > 0) {
+      result.set(t.name, members);
+    }
+  }
+  return result;
+}
+
+// Build completions from stdlib type members
+const stdlibTypeMembers = collectStdlibTypeMembers(stdlibProgram);
+
+function getTypeCompletions(typeName: string): CompletionItem[] {
+  const members = stdlibTypeMembers.get(typeName);
+  if (!members) return [];
+  return members.map(m => ({
+    label: m.name,
+    kind: m.kind === "field" ? CompletionItemKind.Property : CompletionItemKind.Method,
+    detail: m.signature,
+    documentation: m.doc,
+  }));
+}
 
 connection.onInitialize((_params: InitializeParams): InitializeResult => ({
   capabilities: {
@@ -146,17 +153,15 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => ({
   },
 }));
 
-// Unified AST walker with callbacks
-type Visitor = {
-  onExpr?: (e: Expr, scope: string) => void;
+// Scope-aware AST walker for references/rename (tracks scope context)
+type ScopedVisitor = {
   onIdent?: (name: string, loc: { line: number; column: number }, scope: string) => void;
   onMember?: (prop: string, loc: { line: number; column: number }) => void;
 };
 
-function walk(program: Program, v: Visitor): void {
+function walkWithScope(program: Program, v: ScopedVisitor): void {
   function expr(e: any, scope: string): void {
     if (!e) return;
-    v.onExpr?.(e, scope);
     if (e.kind === "Identifier") {
       v.onIdent?.(e.name, e.loc, scope);
     } else if (e.kind === "MemberExpr") {
@@ -343,16 +348,13 @@ function resolveObject(program: Program, type: Type): ObjectType | null {
   return null;
 }
 
+// Convert AST type to string using shared utilities
 function formatType(t: any): string {
   if (!t) return "any";
-  switch (t.kind) {
-    case "NamedType": return t.name ?? "any";
-    case "GenericType": return `${t.name}[${(t.args ?? []).map(formatType).join(", ")}]`;
-    case "FunctionType": return `fn(${(t.params ?? []).map(formatType).join(", ")}): ${formatType(t.returnType)}`;
-    case "UnionType": return (t.types ?? []).map(formatType).join(" or ");
-    case "OptionalType": return `${formatType(t.inner)}?`;
-    case "ListType": return `list[${formatType(t.elementType)}]`;
-    default: return "any";
+  try {
+    return typeToString(astTypeToType(t));
+  } catch {
+    return "any";
   }
 }
 
@@ -460,7 +462,13 @@ connection.onCompletion((params): CompletionItem[] => {
 
   // After colon: type completions
   if (line.match(/:\s*$/)) {
-    const items: CompletionItem[] = BUILTIN_TYPES.map(t => ({ label: t, kind: CompletionItemKind.TypeParameter }));
+    // Primitive types
+    const items: CompletionItem[] = BUILTIN_PRIMITIVE_TYPES.map(t => ({ label: t, kind: CompletionItemKind.TypeParameter }));
+    // Stdlib types (Channel, Error, Result, etc.)
+    for (const [name, sym] of stdlibSymbols) {
+      if (sym.kind === "type") items.push({ label: name, kind: CompletionItemKind.Class });
+    }
+    // User-defined types
     if (cached) {
       for (const s of cached.program.body) {
         if (s.kind === "TypeDecl") items.push({ label: (s as TypeDecl).name, kind: CompletionItemKind.Class });
@@ -475,15 +483,18 @@ connection.onCompletion((params): CompletionItem[] => {
       let bestExpr: Expr | null = null;
       const oneBasedLine = params.position.line + 1;
       const oneBasedCol = params.position.character;
-      walk(cached.program, {
-        onExpr(e) {
+      visit(cached.program, {
+        expr(e) {
           if (!e?.loc || e.loc.line !== oneBasedLine) return;
           if (e.loc.column <= oneBasedCol) bestExpr = e;
         },
       });
       const type = bestExpr ? cached.types.get(bestExpr) : undefined;
       if (type) {
-        if (TYPE_COMPLETIONS[type.kind]) return TYPE_COMPLETIONS[type.kind];
+        // Try stdlib type members first (string, list, map, set)
+        const stdlibCompletions = getTypeCompletions(type.kind);
+        if (stdlibCompletions.length > 0) return stdlibCompletions;
+        // Then try user-defined object types
         const obj = resolveObject(cached.program, type);
         if (obj) {
           return [
@@ -493,18 +504,8 @@ connection.onCompletion((params): CompletionItem[] => {
         }
       }
     }
-    return [
-      { label: "length", kind: CompletionItemKind.Property },
-      { label: "map", kind: CompletionItemKind.Method },
-      { label: "filter", kind: CompletionItemKind.Method },
-      { label: "reduce", kind: CompletionItemKind.Method },
-      { label: "push", kind: CompletionItemKind.Method },
-      { label: "pop", kind: CompletionItemKind.Method },
-      { label: "join", kind: CompletionItemKind.Method },
-      { label: "split", kind: CompletionItemKind.Method },
-      { label: "contains", kind: CompletionItemKind.Method },
-      { label: "slice", kind: CompletionItemKind.Method },
-    ];
+    // Fallback: common methods from stdlib list type
+    return getTypeCompletions("list");
   }
 
   // Default: keywords, functions, variables
@@ -535,10 +536,13 @@ connection.onCompletionResolve((item): CompletionItem => {
   const data = item.data as { fn?: string; type?: string; uri?: string } | undefined;
   if (!data) return item;
 
-  // Built-in function docs
-  if (data.fn && DOCS[data.fn]) {
-    item.documentation = { kind: MarkupKind.Markdown, value: DOCS[data.fn] };
-    return item;
+  // Built-in function docs from stdlib
+  if (data.fn) {
+    const sym = stdlibSymbols.get(data.fn);
+    if (sym?.doc) {
+      item.documentation = { kind: MarkupKind.Markdown, value: sym.doc };
+      return item;
+    }
   }
 
   if (data.uri) {
@@ -568,6 +572,155 @@ connection.onCompletionResolve((item): CompletionItem => {
   return item;
 });
 
+// Find the AST node at a given position (1-based line/column to match AST locations)
+function findNodeAtPosition(program: Program, line: number, col: number): { node: ASTNode; kind: string } | null {
+  let best: { node: ASTNode; kind: string } | null = null;
+  
+  function check(node: any, kind: string) {
+    if (!node?.loc) return;
+    if (node.loc.line === line && node.loc.column <= col) {
+      if (!best || node.loc.column >= (best.node as any).loc.column) {
+        best = { node, kind };
+      }
+    }
+  }
+
+  function checkIdentifier(e: Expr) {
+    if (e.kind === "Identifier") {
+      const endCol = e.loc.column + e.name.length;
+      if (e.loc.line === line && e.loc.column <= col && col <= endCol) {
+        check(e, "Identifier");
+      }
+    }
+  }
+
+  function checkBindingSites(s: Statement) {
+    if (s.kind === "FnDecl") {
+      const nameStart = s.loc.column + 3; // "fn "
+      if (s.loc.line === line && nameStart <= col && col <= nameStart + s.name.length) {
+        check(s, "FnDecl");
+      }
+      for (const p of s.params || []) {
+        const endCol = p.loc.column + p.name.length;
+        if (p.loc.line === line && p.loc.column <= col && col <= endCol) {
+          check(p, "Parameter");
+        }
+      }
+    } else if (s.kind === "TypeDecl") {
+      const nameStart = s.loc.column + 5; // "type "
+      if (s.loc.line === line && nameStart <= col && col <= nameStart + s.name.length) {
+        check(s, "TypeDecl");
+      }
+      for (const m of s.body?.members || []) {
+        if (m.kind === "MethodDecl") {
+          for (const p of m.params || []) {
+            const endCol = p.loc.column + p.name.length;
+            if (p.loc.line === line && p.loc.column <= col && col <= endCol) {
+              check(p, "Parameter");
+            }
+          }
+        }
+      }
+    } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern") {
+      const nameStart = s.loc.column + 4; // "let "
+      if (s.loc.line === line && nameStart <= col && col <= nameStart + s.pattern.name.length) {
+        check({ ...s, name: s.pattern.name }, "LetBinding");
+      }
+    } else if (s.kind === "VarStmt") {
+      const nameStart = s.loc.column + 4; // "var "
+      if (s.loc.line === line && nameStart <= col && col <= nameStart + s.name.length) {
+        check(s, "VarBinding");
+      }
+    } else if (s.kind === "ForStmt" && s.pattern?.kind === "IdentifierPattern") {
+      const endCol = s.pattern.loc.column + s.pattern.name.length;
+      if (s.pattern.loc.line === line && s.pattern.loc.column <= col && col <= endCol) {
+        check({ ...s.pattern, iterable: s.iterable }, "ForBinding");
+      }
+    }
+  }
+
+  visit(program, {
+    expr: checkIdentifier,
+    stmt: checkBindingSites,
+  });
+  
+  return best;
+}
+
+// Find information about an identifier in the program context
+interface IdentifierInfo {
+  type: Type | null;
+  doc?: string;
+  declarationKind?: "let" | "var" | "parameter" | "for" | "function" | "type";
+}
+
+function findIdentifierInfo(program: Program, types: Map<ASTNode, Type>, name: string, line: number): IdentifierInfo {
+  let result: IdentifierInfo = { type: null };
+  
+  // Search for declaration in scope
+  function searchScope(statements: any[], scopeLine: number): boolean {
+    for (const s of statements) {
+      if (s.loc.line > scopeLine) continue;
+      
+      if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && s.pattern.name === name) {
+        result.type = types.get(s.value) || null;
+        result.declarationKind = "let";
+        return true;
+      }
+      if (s.kind === "VarStmt" && s.name === name) {
+        result.type = types.get(s.value) || null;
+        result.declarationKind = "var";
+        return true;
+      }
+      if (s.kind === "FnDecl" && s.name === name) {
+        result.type = types.get(s) || null;
+        result.doc = getDocstring(s.body);
+        result.declarationKind = "function";
+        return true;
+      }
+      if (s.kind === "FnDecl" && s.loc.line <= line) {
+        // Check if we're inside this function
+        for (const p of s.params || []) {
+          if (p.name === name) {
+            result.type = p.type ? convertAstTypeToCheckerType(p.type) : null;
+            result.declarationKind = "parameter";
+            return true;
+          }
+        }
+        // Search function body
+        if (s.body?.statements && searchScope(s.body.statements, line)) return true;
+      }
+      if (s.kind === "ForStmt" && s.pattern?.kind === "IdentifierPattern" && s.pattern.name === name && s.loc.line <= line) {
+        const iterType = types.get(s.iterable);
+        result.type = iterType ? getIterableElementType(iterType) : Types.any;
+        result.declarationKind = "for";
+        return true;
+      }
+      if (s.kind === "IfStmt") {
+        if (s.then?.statements && searchScope(s.then.statements, line)) return true;
+        for (const elif of s.elseIfs || []) {
+          if (elif.body?.statements && searchScope(elif.body.statements, line)) return true;
+        }
+        if (s.else?.statements && searchScope(s.else.statements, line)) return true;
+      }
+    }
+    return false;
+  }
+  
+  searchScope(program.body, line);
+  return result;
+}
+
+// Convert AST type annotation to checker Type - use shared utility
+function convertAstTypeToCheckerType(astType: any): Type | null {
+  if (!astType) return null;
+  try {
+    return astTypeToType(astType);
+  } catch {
+    return Types.any;
+  }
+}
+
 // Hover
 connection.onHover((params): Hover | null => {
   const doc = documents.get(params.textDocument.uri);
@@ -577,28 +730,114 @@ connection.onHover((params): Hover | null => {
   const { word, isProperty } = getWord(doc, params.position);
   if (!word) return null;
 
+  const oneBasedLine = params.position.line + 1;
+  const oneBasedCol = params.position.character + 1;
+
   // Property access hover
   if (isProperty) {
+    // Try to find the object being accessed and its type
+    let objectExpr: Expr | null = null;
+    visit(cached.program, {
+      expr(e) {
+        if (e.kind === "MemberExpr" && e.property === word && e.loc.line === oneBasedLine) {
+          objectExpr = (e as any).object;
+        }
+      },
+    });
+    
+    if (objectExpr) {
+      const objType = cached.types.get(objectExpr);
+      if (objType) {
+        const obj = resolveObject(cached.program, objType);
+        if (obj) {
+          // Check fields
+          const field = obj.properties.find(p => p.name === word);
+          if (field) {
+            return hover(`(property) ${word}: ${typeToString(field.type)}`);
+          }
+          // Check methods
+          const method = obj.methods.find(m => m.name === word);
+          if (method) {
+            return hover(`(method) ${word}: ${typeToString(method.type)}`);
+          }
+        }
+      }
+    }
+
+    // Fallback: search type declarations for matching member
     for (const s of cached.program.body) {
       if (s.kind !== "TypeDecl") continue;
       const t = s as TypeDecl;
       for (const m of t.body?.members || []) {
         if (m.name !== word) continue;
         if (m.kind === "FieldDecl") {
-          return hover(m.type ? `${word}: ${formatType(m.type)}` : word);
+          return hover(`(property) ${word}: ${m.type ? formatType(m.type) : "any"}`);
         }
         if (m.kind === "MethodDecl") {
           const params = (m.params || []).map(p => `${p.name}: ${p.type ? formatType(p.type) : "any"}`).join(", ");
           const ret = m.returnType ? formatType(m.returnType) : "any";
-          return hover(`fn ${word}(${params}): ${ret}`, m.body ? getDocstring(m.body) : undefined);
+          return hover(`(method) fn ${word}(${params}): ${ret}`, m.body ? getDocstring(m.body) : undefined);
         }
       }
     }
-    if (DOCS[word]) return hover(word === "length" ? "length: number" : "", DOCS[word]);
+    // Try to find property/method in stdlib types (string, list, map, set)
+    for (const [typeName, members] of stdlibTypeMembers) {
+      const member = members.find(m => m.name === word);
+      if (member) {
+        const prefix = member.kind === "field" ? "(property)" : "(method)";
+        return hover(`${prefix} ${word}: ${member.signature}`, member.doc);
+      }
+    }
     return null;
   }
 
-  // Function/type hover
+  // Try to find the exact node at position and get its type
+  const nodeInfo = findNodeAtPosition(cached.program, oneBasedLine, oneBasedCol);
+  
+  if (nodeInfo) {
+    const { node, kind } = nodeInfo;
+    
+    if (kind === "Identifier") {
+      // Look up the identifier's type from the type checker
+      const identType = cached.types.get(node);
+      if (identType) {
+        const identInfo = findIdentifierInfo(cached.program, cached.types, (node as any).name, oneBasedLine);
+        const prefix = identInfo.declarationKind === "parameter" ? "(parameter)" :
+                       identInfo.declarationKind === "for" ? "(for variable)" :
+                       identInfo.declarationKind === "function" ? "(function)" :
+                       identInfo.declarationKind === "let" ? "(let)" :
+                       identInfo.declarationKind === "var" ? "(var)" : "(variable)";
+        return hover(`${prefix} ${(node as any).name}: ${typeToString(identType)}`, identInfo.doc);
+      }
+    }
+    
+    if (kind === "Parameter") {
+      const param = node as any;
+      const paramType = param.type ? formatType(param.type) : "any";
+      return hover(`(parameter) ${param.name}: ${paramType}`);
+    }
+    
+    if (kind === "LetBinding") {
+      const binding = node as any;
+      const valueType = cached.types.get(binding.value);
+      return hover(`(let) ${binding.name}: ${valueType ? typeToString(valueType) : "any"}`);
+    }
+    
+    if (kind === "VarBinding") {
+      const binding = node as any;
+      const valueType = cached.types.get(binding.value);
+      return hover(`(var) ${binding.name}: ${valueType ? typeToString(valueType) : "any"}`);
+    }
+    
+    if (kind === "ForBinding") {
+      const binding = node as any;
+      const iterType = cached.types.get(binding.iterable);
+      const elemType = iterType ? typeToString(getIterableElementType(iterType)) : "any";
+      return hover(`(for variable) ${binding.name}: ${elemType}`);
+    }
+  }
+
+  // Function/type hover by name lookup
   for (const s of cached.program.body) {
     if (s.kind === "FnDecl" && (s as FnDecl).name === word) {
       const fn = s as FnDecl;
@@ -613,9 +852,29 @@ connection.onHover((params): Hover | null => {
     }
   }
 
-  if (STDLIB_FUNCTIONS.has(word)) return { contents: { kind: MarkupKind.Markdown, value: `**${word}**\n\n${DOCS[word] || "Built-in function."}` } };
+  // Try looking up identifier type by name if node lookup didn't work
+  const identInfo = findIdentifierInfo(cached.program, cached.types, word, oneBasedLine);
+  if (identInfo.type) {
+    const prefix = identInfo.declarationKind === "parameter" ? "(parameter)" :
+                   identInfo.declarationKind === "for" ? "(for variable)" :
+                   identInfo.declarationKind === "function" ? "(function)" :
+                   identInfo.declarationKind === "let" ? "(let)" :
+                   identInfo.declarationKind === "var" ? "(var)" : "(variable)";
+    return hover(`${prefix} ${word}: ${typeToString(identInfo.type)}`, identInfo.doc);
+  }
+
+  // Stdlib functions and types with full signatures
+  const stdlibSym = stdlibSymbols.get(word);
+  if (stdlibSym) {
+    if (stdlibSym.signature) {
+      return hover(stdlibSym.signature, stdlibSym.doc);
+    }
+    return { contents: { kind: MarkupKind.Markdown, value: `**${word}** - Built-in function.` } };
+  }
+  
+  // Keywords and builtin primitive types
   if (KEYWORD_LIST.includes(word)) return { contents: { kind: MarkupKind.Markdown, value: `**${word}** - Manuscript keyword` } };
-  if (BUILTIN_TYPES.includes(word)) return { contents: { kind: MarkupKind.Markdown, value: `**${word}** - Built-in type` } };
+  if (BUILTIN_PRIMITIVE_TYPES.includes(word)) return { contents: { kind: MarkupKind.Markdown, value: `**${word}** - Built-in type` } };
 
   return null;
 });
@@ -730,7 +989,7 @@ connection.onReferences((params): Location[] => {
         }
       }
     }
-    walk(cached.program, {
+    walkWithScope(cached.program, {
       onMember(prop, loc) {
         if (prop === word) refs.push({ start: { line: loc.line - 1, character: loc.column - 1 }, end: { line: loc.line - 1, character: loc.column - 1 + word.length } });
       },
@@ -750,7 +1009,7 @@ connection.onReferences((params): Location[] => {
     const col = target.loc.column - 1 + (target.offset || 0);
     refs.push({ start: { line: target.loc.line - 1, character: col }, end: { line: target.loc.line - 1, character: col + word.length } });
 
-    walk(cached.program, {
+    walkWithScope(cached.program, {
       onIdent(name, loc, currentScope) {
         if (name !== word) return;
         if ((target!.kind === "parameter" || target!.kind === "variable") && target!.scope !== "") {
@@ -771,7 +1030,7 @@ connection.onPrepareRename((params): Range | null => {
 
   const { word, isProperty, start } = getWord(doc, params.position);
   if (!word || isProperty) return null;
-  if (isBuiltin(word) || KEYWORD_LIST.includes(word) || BUILTIN_TYPES.includes(word)) return null;
+  if (isBuiltin(word) || KEYWORD_LIST.includes(word) || BUILTIN_PRIMITIVE_TYPES.includes(word)) return null;
 
   return { start: { line: params.position.line, character: start }, end: { line: params.position.line, character: start + word.length } };
 });
@@ -783,7 +1042,7 @@ connection.onRenameRequest((params): WorkspaceEdit | null => {
 
   const { word, isProperty } = getWord(doc, params.position);
   if (!word || isProperty) return null;
-  if (isBuiltin(word) || KEYWORD_LIST.includes(word) || BUILTIN_TYPES.includes(word)) return null;
+  if (isBuiltin(word) || KEYWORD_LIST.includes(word) || BUILTIN_PRIMITIVE_TYPES.includes(word)) return null;
 
   const ranges: Range[] = [];
   const syms = collectSymbols(cached.program);
@@ -800,7 +1059,7 @@ connection.onRenameRequest((params): WorkspaceEdit | null => {
   const col = target.loc.column - 1 + (target.offset || 0);
   ranges.push({ start: { line: target.loc.line - 1, character: col }, end: { line: target.loc.line - 1, character: col + word.length } });
 
-  walk(cached.program, {
+  walkWithScope(cached.program, {
     onIdent(name, loc, currentScope) {
       if (name !== word) return;
       if ((target!.kind === "parameter" || target!.kind === "variable") && target!.scope !== "") {

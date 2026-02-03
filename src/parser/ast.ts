@@ -69,6 +69,7 @@ export interface TypeDecl extends BaseNode {
   using?: UsingClause;
   where?: WhereClause[];
   body: TypeBody;
+  isExtern?: boolean;  // extern type - all methods are implicitly extern
 }
 
 export interface TypeParam extends BaseNode {
@@ -102,6 +103,7 @@ export interface FieldDecl extends BaseNode {
 export interface MethodDecl extends BaseNode {
   kind: "MethodDecl";
   name: string;
+  typeParams?: TypeParam[];
   params: Parameter[];
   returnType?: TypeExpr;
   using?: UsingClause;

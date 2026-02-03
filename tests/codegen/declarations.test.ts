@@ -3,7 +3,8 @@ import { compile, expectCompiled } from "../helpers";
 
 describe("CodeGen - Import Declarations", () => {
   test("simple import", () => {
-    expectCompiled('import { foo } from "./mod"', 'import { foo } from "./mod";');
+    // Default is CJS
+    expectCompiled('import { foo } from "./mod"', 'const { foo } = require("./mod");');
   });
 
   test("import with alias", () => {

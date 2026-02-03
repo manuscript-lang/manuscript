@@ -1,12 +1,4 @@
 // Capability Type Definitions
-// Context is the core construct - just an object with capability bindings
-
-// ============================================
-// Context - the core construct
-// ============================================
-
-// Context is simply an object mapping names to capabilities
-export type Context = Record<string, any>;
 
 // ============================================
 // LLM Types

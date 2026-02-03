@@ -306,6 +306,80 @@ fn greet(name: string, age: number): string
     expect(params).toBe("name: string, age: number");
     expect(ret).toBe("string");
   });
+
+  test("infers variable types from value", () => {
+    const source = `
+let x = 42
+let y = "hello"
+let z = true
+`;
+    const cached = parseDocument(source);
+    expect(cached).not.toBeNull();
+    
+    // Check that let statements have their values type-checked
+    const letStmts = cached!.program.body.filter(s => s.kind === "LetStmt");
+    expect(letStmts).toHaveLength(3);
+    
+    // Get inferred types from the type checker
+    for (const stmt of letStmts) {
+      const value = (stmt as any).value;
+      const inferredType = cached!.types.get(value);
+      expect(inferredType).toBeDefined();
+    }
+  });
+
+  test("infers function parameter types", () => {
+    const source = `
+fn add(a: number, b: number): number
+  return a + b
+`;
+    const cached = parseDocument(source);
+    expect(cached).not.toBeNull();
+    
+    const fn = cached!.program.body[0] as FnDecl;
+    expect(fn.params[0]?.type).toBeDefined();
+    expect(formatTypeExpr(fn.params[0]?.type)).toBe("number");
+  });
+
+  test("infers for loop variable type from iterable", () => {
+    const source = `
+fn sum_list(items: list[number]): number
+  var total = 0
+  for item in items
+    total = total + item
+  return total
+`;
+    const cached = parseDocument(source);
+    expect(cached).not.toBeNull();
+    
+    // The iterable 'items' should be typed as list[number]
+    const fn = cached!.program.body[0] as FnDecl;
+    const forStmt = fn.body?.statements?.find(s => s.kind === "ForStmt") as any;
+    expect(forStmt).toBeDefined();
+    
+    // Check iterable type was inferred
+    const iterType = cached!.types.get(forStmt.iterable);
+    expect(iterType?.kind).toBe("list");
+  });
+
+  test("infers type from object construction", () => {
+    const source = `
+type Point
+  x: number
+  y: number
+
+let p = Point(x: 1, y: 2)
+`;
+    const cached = parseDocument(source);
+    expect(cached).not.toBeNull();
+    
+    const letStmt = cached!.program.body.find(s => s.kind === "LetStmt") as any;
+    expect(letStmt).toBeDefined();
+    
+    const valueType = cached!.types.get(letStmt.value);
+    expect(valueType).toBeDefined();
+    expect(valueType?.kind).toBe("object");
+  });
 });
 
 describe("VSCode Extension - Complex Documents", () => {

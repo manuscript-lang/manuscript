@@ -142,7 +142,7 @@ describe("Runtime - Agent", () => {
 
   test("subclass can override run()", async () => {
     class TestAgent extends Agent {
-      async run(input: string) { return `Got: ${input}`; }
+      override async run(input: string) { return `Got: ${input}`; }
     }
     const agent = new TestAgent();
     expect(await agent.run("hello")).toBe("Got: hello");
