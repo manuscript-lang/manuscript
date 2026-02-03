@@ -1,5 +1,40 @@
 // Manuscript Runtime Library
-// Context is passed as a function parameter (__ctx) to functions that declare `using`.
+// Context is available via a runtime stack, pushed by `with` blocks.
+
+// Context base class for all capability/context types
+export class Context {
+  // Called automatically when exiting a `with` block
+  exit(): void {}
+}
+
+// Context stack for ambient context (non-viral using)
+const __contextStack: Map<string, any>[] = [];
+
+export function __pushContext(): void {
+  __contextStack.push(new Map());
+}
+
+export function __popContext(): void {
+  __contextStack.pop();
+}
+
+export function __setContext(typeName: string, value: any): void {
+  const current = __contextStack[__contextStack.length - 1];
+  if (current) {
+    current.set(typeName, value);
+  }
+}
+
+export function __getContext(typeName: string): any {
+  // Search from innermost to outermost scope
+  for (let i = __contextStack.length - 1; i >= 0; i--) {
+    const scope = __contextStack[i];
+    if (scope?.has(typeName)) {
+      return scope.get(typeName);
+    }
+  }
+  throw new Error(`No context of type '${typeName}' available. Use 'with' to provide it.`);
+}
 
 // Re-export all modules
 export { Agent } from "./agent";
@@ -22,8 +57,15 @@ import * as utils from "./utils";
 // Runtime object for compiled code
 export const __ms_runtime = {
   // Classes
+  Context,
   Agent,
   Channel,
+  
+  // Context stack (for non-viral using)
+  __pushContext,
+  __popContext,
+  __setContext,
+  __getContext,
   
   // Test runner
   test,

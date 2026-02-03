@@ -1,6 +1,6 @@
 // Type Checker - Validates types and infers missing annotations
 import * as AST from "../parser/ast";
-import type { Type, FunctionType, ObjectType, ContextBinding } from "./types";
+import type { Type, FunctionType, ObjectType, ContextBinding, ParameterType } from "./types";
 import { Types, typeToString, isNullable, nonNull } from "./types";
 import { TypeEnvironment, createGlobalEnvironment } from "./environment";
 import { TypeErrors } from "../shared/errors";
@@ -42,6 +42,16 @@ export class TypeChecker {
   private warnings: string[] = [];
   private currentFunction: FunctionType | null = null;
   private inLoop: boolean = false;
+  private insideWithContext: boolean = false;  // Track if we're checking a with context expr
+  // Track spawn variables that haven't been awaited (via race/all)
+  private unawaitedSpawns: Map<string, AST.SourceLocation> = new Map();
+  // Track function-level with blocks for escape analysis
+  private functionWithDepth: number = 0;
+  private withContextVars: Set<string> = new Set();
+  // Track which functions need context (have using or call functions that do)
+  private needsContextCache: Map<string, boolean> = new Map();
+  // Store function declarations for escape analysis
+  private fnDecls: Map<string, AST.FnDecl> = new Map();
 
   constructor() {
     this.env = createGlobalEnvironment();
@@ -54,9 +64,18 @@ export class TypeChecker {
     // First pass: collect type declarations
     this.collectDeclarations(program);
 
-    // Second pass: check all statements
+    // Second pass: check all statements (track top-level spawns)
+    this.unawaitedSpawns.clear();
     for (const stmt of program.body) {
       this.checkStatement(stmt);
+    }
+
+    // Error for any unawaited spawns at top level
+    for (const [name, loc] of this.unawaitedSpawns) {
+      this.error(
+        `spawn result '${name}' is never awaited (pass to race() or all())`,
+        loc
+      );
     }
 
     return {
@@ -109,6 +128,11 @@ export class TypeChecker {
         } else if (member.kind === "MethodDecl") {
           const methodType = this.methodToFunctionType(member);
           type.methods.push({ name: member.name, type: methodType });
+          
+          // Validate method override signature if this type extends another
+          if (decl.extends) {
+            this.validateMethodOverride(decl.name, member.name, methodType, decl.extends, member.loc);
+          }
         }
       }
     }
@@ -125,6 +149,8 @@ export class TypeChecker {
     const fnType = this.fnDeclToType(decl);
     try {
       this.env.define(decl.name, fnType);
+      // Store declaration for escape analysis
+      this.fnDecls.set(decl.name, decl);
     } catch (e) {
       const err = TypeErrors.functionAlreadyDefined(decl.name);
       this.error(err.message, decl.loc, err.hint);
@@ -181,10 +207,20 @@ export class TypeChecker {
         this.checkWithStmt(stmt);
         break;
       case "ExprStmt":
+        // Check for discarded spawn result - this is likely a bug
+        if (stmt.expr.kind === "SpawnExpr") {
+          this.error(
+            "spawn result must be used (await, pass to all(), or assign to variable)",
+            stmt.expr.loc
+          );
+        }
         this.inferExpr(stmt.expr);
         break;
       case "FnDecl":
         this.checkFnDecl(stmt);
+        break;
+      case "ExternFnDecl":
+        // Extern functions have no body to check, types registered via stdlib
         break;
       case "TypeDecl":
         // Already collected in first pass
@@ -209,6 +245,23 @@ export class TypeChecker {
     if (stmt.type && !this.isAssignable(valueType, declaredType)) {
       const err = TypeErrors.typeMismatch(typeToString(declaredType), typeToString(valueType));
       this.error(err.message, stmt.loc, err.hint);
+    }
+
+    // Track spawn-derived values:
+    // Only track values that derive from spawn expressions (not general Promise-returning calls)
+    // This ensures spawns are tracked from construction to consumption
+    if (stmt.pattern.kind === "IdentifierPattern") {
+      const containsSpawn = this.exprContainsSpawn(stmt.value, valueType);
+      // Don't track race/all results - they're already consumed
+      const isConsumerResult = stmt.value.kind === "CallExpr" && 
+        stmt.value.callee.kind === "Identifier" &&
+        (stmt.value.callee.name === "race" || stmt.value.callee.name === "all");
+      
+      if (containsSpawn && !isConsumerResult) {
+        this.unawaitedSpawns.set(stmt.pattern.name, stmt.loc);
+        // Transfer tracking from any source variables
+        this.transferSpawnTracking(stmt.value);
+      }
     }
 
     // Bind pattern
@@ -502,6 +555,17 @@ export class TypeChecker {
         const err = TypeErrors.typeMismatch(typeToString(this.currentFunction.returnType), typeToString(returnType));
         this.error(err.message, stmt.loc, err.hint);
       }
+      // Returning transfers ownership to caller - consume all spawns in return expr
+      this.consumeSpawnsInExpr(stmt.value);
+      
+      // Check for escaping context-dependent closures from function-level with
+      if (this.functionWithDepth > 0 && this.exprContainsEscapingLambda(stmt.value)) {
+        this.error(
+          `Cannot return closure that depends on context from 'with' block - it would outlive the context scope`,
+          stmt.loc,
+          `Context is cleaned up when 'with' block exits, but the returned closure needs it to execute`
+        );
+      }
     } else if (this.currentFunction.returnType.kind !== "void") {
       const err = TypeErrors.returnMissingValue(typeToString(this.currentFunction.returnType));
       this.error(err.message, stmt.loc, err.hint);
@@ -533,19 +597,54 @@ export class TypeChecker {
 
   private checkWithStmt(stmt: AST.WithStmt): void {
     const bindings: ContextBinding[] = [];
+    const isFunctionLevel = this.currentFunction !== null;
+    
+    // Track context variable names for escape analysis
+    const savedWithContextVars = new Set(this.withContextVars);
 
     for (const ctx of stmt.contexts) {
+      // Mark that we're inside a with context (allows Context instantiation)
+      this.insideWithContext = true;
       const ctxType = this.inferExpr(ctx.expr);
-      if (ctx.alias) {
-        bindings.push({ name: ctx.alias, type: ctxType });
+      this.insideWithContext = false;
+      
+      if (ctx.name) {
+        bindings.push({ name: ctx.name, type: ctxType });
+        if (isFunctionLevel) {
+          this.withContextVars.add(ctx.name);
+        }
       }
     }
 
     const withEnv = this.env.withContext(bindings);
     const savedEnv = this.env;
     this.env = withEnv;
+    
+    // Track function-level with depth for escape analysis
+    if (isFunctionLevel) {
+      this.functionWithDepth++;
+    }
+    
     this.checkBlock(stmt.body);
+    
+    // Check for escaping closures in the with body's last expression (potential implicit return)
+    if (isFunctionLevel) {
+      const lastStmt = stmt.body.statements[stmt.body.statements.length - 1];
+      if (lastStmt?.kind === "ExprStmt" && this.exprContainsEscapingLambda(lastStmt.expr)) {
+        this.error(
+          `Cannot return closure that depends on context from 'with' block - it would outlive the context scope`,
+          lastStmt.loc,
+          `Context is cleaned up when 'with' block exits, but the returned closure needs it to execute`
+        );
+      }
+    }
+    
+    if (isFunctionLevel) {
+      this.functionWithDepth--;
+    }
+    
     this.env = savedEnv;
+    this.withContextVars = savedWithContextVars;
   }
 
   private checkFnDecl(decl: AST.FnDecl): void {
@@ -560,6 +659,9 @@ export class TypeChecker {
 
     // Add context bindings to scope (from using clause)
     if (decl.using) {
+      // Validate that all using types extend Context
+      this.validateUsingClause(decl.using);
+      
       for (const binding of decl.using.bindings) {
         const bindingType = this.astTypeToType(binding.type);
         if (binding.name) {
@@ -568,12 +670,61 @@ export class TypeChecker {
       }
     }
 
-    // Check body
+    // Check body with spawn tracking
     const savedEnv = this.env;
     const savedFn = this.currentFunction;
+    const savedSpawns = this.unawaitedSpawns;
+    this.unawaitedSpawns = new Map();
     this.env = fnEnv;
     this.currentFunction = fnType;
-    this.checkBlock(decl.body);
+    
+    // Check function body statements directly (not via checkBlock which creates new scope)
+    // This keeps the function's scope active for implicit return handling
+    const bodyEnv = this.env.child();
+    this.env = bodyEnv;
+    for (const stmt of decl.body.statements) {
+      this.checkStatement(stmt);
+    }
+    
+    // Check for implicit return (last expression in body)
+    // Mark any tracked spawns in the return expression as consumed (transferred to caller)
+    const lastStmt = decl.body.statements[decl.body.statements.length - 1];
+    if (lastStmt?.kind === "ExprStmt") {
+      this.consumeSpawnsInExpr(lastStmt.expr);
+      
+      // Check for escaping context-dependent closures from function-level with (implicit return)
+      if (this.functionWithDepth > 0 && this.exprContainsEscapingLambda(lastStmt.expr)) {
+        this.error(
+          `Cannot return closure that depends on context from 'with' block - it would outlive the context scope`,
+          lastStmt.loc,
+          `Context is cleaned up when 'with' block exits, but the returned closure needs it to execute`
+        );
+      }
+      // Validate implicit return type matches declared return type
+      // Only check for non-Promise return types to avoid complex async/await semantics
+      if (decl.returnType && fnType.returnType.kind !== "promise" && fnType.returnType.kind !== "any") {
+        let implicitReturnType = this.inferExpr(lastStmt.expr);
+        const declaredReturnType = fnType.returnType;
+        // Since all calls are implicitly awaited, unwrap Promise types for comparison
+        if (implicitReturnType.kind === "promise") {
+          implicitReturnType = (implicitReturnType as any).resolveType;
+        }
+        if (!this.isAssignable(implicitReturnType, declaredReturnType)) {
+          const err = TypeErrors.typeMismatch(typeToString(declaredReturnType), typeToString(implicitReturnType));
+          this.error(err.message, lastStmt.loc, err.hint);
+        }
+      }
+    }
+    
+    // Error for any unawaited spawns at function exit
+    for (const [name, loc] of this.unawaitedSpawns) {
+      this.error(
+        `spawn result '${name}' is never awaited (pass to race() or all() before function returns)`,
+        loc
+      );
+    }
+    
+    this.unawaitedSpawns = savedSpawns;
     this.env = savedEnv;
     this.currentFunction = savedFn;
 
@@ -787,11 +938,61 @@ export class TypeChecker {
   }
 
   private inferCallExpr(expr: AST.CallExpr): Type {
+    // Handle generic constructor calls like Channel[T](...) 
+    // The callee is an IndexExpr where object is the constructor name and index is the type arg
+    if (expr.callee.kind === "IndexExpr" && expr.callee.object.kind === "Identifier") {
+      const constructorName = expr.callee.object.name;
+      
+      // Handle Channel[T](buffer) -> Channel[T]
+      if (constructorName === "Channel" && expr.callee.index.kind === "Identifier") {
+        const typeArgName = expr.callee.index.name;
+        const elementType = this.resolveTypeName(typeArgName);
+        
+        // Validate buffer argument if provided
+        for (const arg of expr.args) {
+          const argExpr = "kind" in arg ? arg : arg.value;
+          const argType = this.inferExpr(argExpr);
+          if (argType.kind !== "number" && argType.kind !== "any") {
+            this.error(`Channel buffer size must be a number, got '${typeToString(argType)}'`, argExpr.loc);
+          }
+        }
+        
+        return Types.channel(elementType);
+      }
+    }
+    
     const calleeType = this.inferExpr(expr.callee);
 
-    if (calleeType.kind === "function") {
+    // Consume spawns when:
+    // 1. Called with race/all (they await promises)
+    // 2. Passed to a function parameter of type Promise (function takes responsibility)
+    if (expr.callee.kind === "Identifier" && 
+        (expr.callee.name === "race" || expr.callee.name === "all")) {
+      this.markSpawnsConsumed(expr.args);
+    } else if (calleeType.kind === "function") {
+      // Check each argument - if the parameter type involves Promise, consume the spawn
       const params = calleeType.params;
+      for (let i = 0; i < expr.args.length && i < params.length; i++) {
+        const param = params[i];
+        if (param && this.typeInvolvesPromise(param.type)) {
+          const arg = expr.args[i];
+          const argExpr = arg && "kind" in arg ? arg : arg?.value;
+          if (argExpr) this.consumeSpawnsInExpr(argExpr);
+        }
+      }
+    }
+
+    if (calleeType.kind === "function") {
       const args = expr.args;
+      
+      // Infer type parameters if this is a generic function
+      const typeBindings = this.inferTypeParams(calleeType, args);
+      
+      // Substitute type params in parameter types
+      const params = calleeType.params.map(p => ({
+        ...p,
+        type: this.substituteTypeParams(p.type, typeBindings)
+      }));
 
       // Count required params (non-optional, non-rest)
       const requiredCount = params.filter(p => !p.optional && !p.rest).length;
@@ -834,9 +1035,10 @@ export class TypeChecker {
           const paramIndex = Math.min(i, params.length - 1);
           const param = params[paramIndex];
           if (param) {
-            const expectedType = param.rest ? 
-              (param.type.kind === "list" ? param.type.elementType : param.type) : 
-              param.type;
+            // For rest params, the annotation is the collected type
+            // e.g., ...nums: list[number] means each arg is number
+            const expectedType = param.rest && param.type.kind === "list" ? 
+              param.type.elementType : param.type;
             if (!this.isAssignable(argType, expectedType)) {
               const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(argType));
               this.error(`Argument ${i + 1}: ${err.message}`, argLoc, err.hint);
@@ -851,11 +1053,28 @@ export class TypeChecker {
           this.warning(`Function requires '${binding.name}' in context which may not be available`);
         }
       }
-      return calleeType.returnType;
+
+      // Substitute type params in return type
+      const returnType = this.substituteTypeParams(calleeType.returnType, typeBindings);
+
+      // Restriction: Context types can only be instantiated in 'with' clauses
+      // (Constructor functions have object type as return type)
+      if (returnType.kind === "object" && 
+          this.extendsType(returnType, "Context") && 
+          !this.insideWithContext) {
+        this.error(`Context type '${returnType.name}' can only be instantiated in 'with' clauses`, expr.loc);
+      }
+
+      return returnType;
     }
 
-    // Constructor call - check object type constructor
+    // Constructor call - check object type constructor (direct type reference)
     if (calleeType.kind === "object") {
+      // Restriction: Context types can only be instantiated in 'with' clauses
+      if (this.extendsType(calleeType, "Context") && !this.insideWithContext) {
+        this.error(`Context type '${calleeType.name}' can only be instantiated in 'with' clauses`, expr.loc);
+      }
+
       const props = calleeType.properties;
       const requiredProps = props.filter(p => !p.optional && !p.defaultValue);
       const args = expr.args;
@@ -1109,6 +1328,24 @@ export class TypeChecker {
       }
     }
 
+    // Channel methods
+    if (objectType.kind === "channel") {
+      switch (expr.property) {
+        case "send":
+          return Types.fn([Types.param("value", objectType.elementType)], Types.promise(Types.void));
+        case "receive":
+          return Types.fn([], Types.promise(Types.optional(objectType.elementType)));
+        case "close":
+          return Types.fn([], Types.void);
+        case "isClosed":
+          return Types.fn([], Types.bool);
+        case "try_send":
+          return Types.fn([Types.param("value", objectType.elementType)], Types.bool);
+        case "try_receive":
+          return Types.fn([], Types.optional(objectType.elementType));
+      }
+    }
+
     if (expr.optional) {
       return Types.optional(Types.any);
     }
@@ -1219,8 +1456,16 @@ export class TypeChecker {
         if (spreadType.kind === "list") {
           elementTypes.push(spreadType.elementType);
         }
+        // Consume spawn variable if spread
+        if (el.expr.kind === "Identifier") {
+          this.unawaitedSpawns.delete(el.expr.name);
+        }
       } else {
         elementTypes.push(this.inferExpr(el));
+        // Consume spawn variables when placed into a list (list takes ownership)
+        if (el.kind === "Identifier") {
+          this.unawaitedSpawns.delete(el.name);
+        }
       }
     }
 
@@ -1256,8 +1501,149 @@ export class TypeChecker {
   }
 
   private inferSpawnExpr(expr: AST.SpawnExpr): Type {
+    // Check for spawn inside function-level with - this is dangerous
+    if (this.functionWithDepth > 0) {
+      this.error(
+        `Cannot use 'spawn' inside function-level 'with' block - spawned task may outlive context scope`,
+        expr.loc,
+        `Move spawn outside the 'with' block or use top-level 'with' instead`
+      );
+    }
+    
     const innerType = this.inferExpr(expr.expr);
     return Types.promise(innerType.kind === "function" ? (innerType as FunctionType).returnType : innerType);
+  }
+
+  // Mark spawn variables as consumed when passed to race/all
+  private markSpawnsConsumed(args: (AST.Expr | { name: string; value: AST.Expr })[]): void {
+    for (const arg of args) {
+      const expr = "kind" in arg ? arg : arg.value;
+      this.consumeSpawnsInExpr(expr);
+    }
+  }
+
+  // Recursively consume all tracked spawns in an expression
+  private consumeSpawnsInExpr(expr: AST.Expr): void {
+    switch (expr.kind) {
+      case "Identifier":
+        this.unawaitedSpawns.delete(expr.name);
+        break;
+      case "ListExpr":
+        for (const el of expr.elements) {
+          if (el.kind !== "SpreadElement") {
+            this.consumeSpawnsInExpr(el);
+          } else {
+            this.consumeSpawnsInExpr(el.expr);
+          }
+        }
+        break;
+      case "MapExpr":
+        for (const entry of expr.entries) {
+          this.consumeSpawnsInExpr(entry.value);
+        }
+        break;
+      case "IfExpr":
+        this.consumeSpawnsInExpr(expr.then);
+        if (expr.else) this.consumeSpawnsInExpr(expr.else);
+        break;
+      case "IndexExpr":
+        this.consumeSpawnsInExpr(expr.object);
+        break;
+      case "MemberExpr":
+        this.consumeSpawnsInExpr(expr.object);
+        break;
+      case "CallExpr":
+        // For race(values(x)), consume spawns if:
+        // 1. Inner call returns Promise-related types
+        // 2. Inner call is 'values' (extracts map values which may contain spawns)
+        const callReturnType = this.inferExpr(expr);
+        const isValuesCall = expr.callee.kind === "Identifier" && expr.callee.name === "values";
+        if (this.typeInvolvesPromise(callReturnType) || isValuesCall) {
+          for (const arg of expr.args) {
+            const argExpr = "kind" in arg ? arg : arg.value;
+            this.consumeSpawnsInExpr(argExpr);
+          }
+        }
+        break;
+    }
+  }
+
+  // Check if an expression contains spawn-derived values
+  private exprContainsSpawn(expr: AST.Expr, exprType: Type): boolean {
+    // Direct spawn
+    if (expr.kind === "SpawnExpr") return true;
+    
+    // Tracked variable
+    if (expr.kind === "Identifier" && this.unawaitedSpawns.has(expr.name)) return true;
+    
+    // Check if any call argument contains spawn (for object instantiation)
+    if (expr.kind === "CallExpr") {
+      for (const arg of expr.args) {
+        const argExpr = "kind" in arg ? arg : arg.value;
+        if (this.exprContainsSpawn(argExpr, this.inferExpr(argExpr))) return true;
+      }
+    }
+    
+    // List containing spawns
+    if (expr.kind === "ListExpr") {
+      for (const el of expr.elements) {
+        if (el.kind === "SpreadElement") {
+          if (this.exprContainsSpawn(el.expr, this.inferExpr(el.expr))) return true;
+        } else if (this.exprContainsSpawn(el, this.inferExpr(el))) {
+          return true;
+        }
+      }
+    }
+    
+    // Map containing spawns
+    if (expr.kind === "MapExpr") {
+      for (const entry of expr.entries) {
+        if (this.exprContainsSpawn(entry.value, this.inferExpr(entry.value))) return true;
+      }
+    }
+    
+    // Index/member access on tracked container
+    if (expr.kind === "IndexExpr" && expr.object.kind === "Identifier") {
+      if (this.unawaitedSpawns.has(expr.object.name)) return true;
+    }
+    if (expr.kind === "MemberExpr" && expr.object.kind === "Identifier") {
+      if (this.unawaitedSpawns.has(expr.object.name)) return true;
+    }
+    
+    // Conditional with spawns
+    if (expr.kind === "IfExpr") {
+      if (this.exprContainsSpawn(expr.then, this.inferExpr(expr.then))) return true;
+      if (expr.else && this.exprContainsSpawn(expr.else, this.inferExpr(expr.else))) return true;
+    }
+    
+    return false;
+  }
+
+  // Transfer tracking from source variables when reassigning
+  private transferSpawnTracking(expr: AST.Expr): void {
+    if (expr.kind === "Identifier") {
+      this.unawaitedSpawns.delete(expr.name);
+    } else if (expr.kind === "IfExpr") {
+      if (expr.then.kind === "Identifier") this.unawaitedSpawns.delete(expr.then.name);
+      if (expr.else?.kind === "Identifier") this.unawaitedSpawns.delete(expr.else.name);
+    } else if (expr.kind === "ListExpr") {
+      for (const el of expr.elements) {
+        if (el.kind === "Identifier") this.unawaitedSpawns.delete(el.name);
+        else if (el.kind === "SpreadElement" && el.expr.kind === "Identifier") {
+          this.unawaitedSpawns.delete(el.expr.name);
+        }
+      }
+    } else if (expr.kind === "MapExpr") {
+      for (const entry of expr.entries) {
+        if (entry.value.kind === "Identifier") this.unawaitedSpawns.delete(entry.value.name);
+      }
+    } else if (expr.kind === "CallExpr") {
+      // Transfer from arguments (for object instantiation with spawn props)
+      for (const arg of expr.args) {
+        const argExpr = "kind" in arg ? arg : arg.value;
+        this.transferSpawnTracking(argExpr);
+      }
+    }
   }
 
   // ============================================
@@ -1407,6 +1793,24 @@ export class TypeChecker {
     }
   }
 
+  // Resolve a type name string to a Type (for generic type arguments parsed as identifiers)
+  private resolveTypeName(name: string): Type {
+    switch (name) {
+      case "number": return Types.number;
+      case "string": return Types.string;
+      case "bool": return Types.bool;
+      case "null": return Types.null;
+      case "any": return Types.any;
+      case "void": return Types.void;
+      default:
+        // Check if it's a declared type
+        const resolved = this.env.lookup(name);
+        if (resolved) return resolved;
+        // Return as a type reference for user-defined types
+        return Types.ref(name);
+    }
+  }
+
   private fnDeclToType(decl: AST.FnDecl): FunctionType {
     const params = decl.params.map(p => ({
       name: p.name,
@@ -1455,6 +1859,32 @@ export class TypeChecker {
     };
   }
 
+  // Check if a type involves Promise (is Promise, contains Promise, or has Promise properties)
+  private typeInvolvesPromise(t: Type, visited: Set<string> = new Set()): boolean {
+    if (t.kind === "promise") return true;
+    if (t.kind === "list") return this.typeInvolvesPromise((t as any).elementType, visited);
+    if (t.kind === "map") return this.typeInvolvesPromise((t as any).valueType, visited);
+    if (t.kind === "optional") return this.typeInvolvesPromise((t as any).inner, visited);
+    // Check object properties for nested Promises
+    if (t.kind === "object") {
+      const objType = t as any;
+      // Prevent infinite recursion for recursive types
+      if (objType.name && visited.has(objType.name)) return false;
+      if (objType.name) visited.add(objType.name);
+      for (const prop of objType.properties || []) {
+        if (this.typeInvolvesPromise(prop.type, visited)) return true;
+      }
+    }
+    // Check type references
+    if (t.kind === "ref") {
+      const resolved = this.env.resolveType(t);
+      if (resolved && resolved !== t) {
+        return this.typeInvolvesPromise(resolved, visited);
+      }
+    }
+    return false;
+  }
+
   private isAssignable(source: Type, target: Type): boolean {
     // Any is assignable to/from anything
     if (source.kind === "any" || target.kind === "any") return true;
@@ -1485,6 +1915,22 @@ export class TypeChecker {
           if ((resolvedTarget as any).keyType.kind === "any" && (resolvedTarget as any).valueType.kind === "any") return true;
           return this.isAssignable((resolvedSource as any).keyType, (resolvedTarget as any).keyType) &&
                  this.isAssignable((resolvedSource as any).valueType, (resolvedTarget as any).valueType);
+        case "channel":
+          // Channel[T] is assignable to Channel[any]
+          if ((resolvedTarget as any).elementType.kind === "any") return true;
+          return this.isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType);
+        case "promise":
+          // Promise[T] is assignable to Promise[any]
+          if ((resolvedTarget as any).resolveType.kind === "any") return true;
+          return this.isAssignable((resolvedSource as any).resolveType, (resolvedTarget as any).resolveType);
+        case "set":
+          // Set[T] is assignable to Set[any]
+          if ((resolvedTarget as any).elementType.kind === "any") return true;
+          return this.isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType);
+        case "stream":
+          // Stream[T] is assignable to Stream[any]
+          if ((resolvedTarget as any).elementType.kind === "any") return true;
+          return this.isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType);
         case "object":
           // Same named type or structural compatibility
           if ((resolvedSource as any).name && (resolvedTarget as any).name) {
@@ -1501,6 +1947,15 @@ export class TypeChecker {
 
     // T is assignable to T?
     if (resolvedTarget.kind === "optional") {
+      // T | null is assignable to T? (union with null is equivalent to optional)
+      if (resolvedSource.kind === "union") {
+        const unionTypes = (resolvedSource as any).types as Type[];
+        const nonNullTypes = unionTypes.filter((t: Type) => t.kind !== "null");
+        // If the union is T | null, check that T is assignable to the optional's inner type
+        if (nonNullTypes.length === unionTypes.length - 1) {
+          return nonNullTypes.every((t: Type) => this.isAssignable(t, (resolvedTarget as any).inner));
+        }
+      }
       return this.isAssignable(resolvedSource, (resolvedTarget as any).inner);
     }
 
@@ -1515,6 +1970,155 @@ export class TypeChecker {
     }
 
     return false;
+  }
+
+  /**
+   * Check if a type extends a base type (by name)
+   * Used for checking that context types extend Context
+   */
+  private extendsType(type: Type, baseName: string): boolean {
+    const resolved = type.kind === "ref" ? this.env.resolveType(type) : type;
+    
+    // Check if it's the base type itself
+    if (resolved.kind === "object" && resolved.name === baseName) {
+      return true;
+    }
+    
+    // Check extends clause
+    if (resolved.kind === "object" && resolved.extends) {
+      for (const parent of resolved.extends) {
+        if (this.extendsType(parent, baseName)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Validate that all types in a using clause extend Context
+   */
+  private validateUsingClause(using: AST.UsingClause): void {
+    for (const binding of using.bindings) {
+      const bindingType = this.astTypeToType(binding.type);
+      if (!this.extendsType(bindingType, "Context")) {
+        const typeName = binding.type.kind === "NamedType" ? binding.type.name : "unknown";
+        this.error(
+          `Type '${typeName}' used in 'using' clause must extend Context`,
+          binding.loc,
+          `Add 'extends Context' to the type definition`
+        );
+      }
+    }
+  }
+
+  /**
+   * Validate that a method override has the same signature as the base method
+   */
+  private validateMethodOverride(
+    typeName: string,
+    methodName: string,
+    methodType: FunctionType,
+    extendsTypes: AST.TypeExpr[],
+    loc: AST.SourceLocation
+  ): void {
+    for (const extendExpr of extendsTypes) {
+      const baseTypeName = extendExpr.kind === "NamedType" ? extendExpr.name : null;
+      if (!baseTypeName) continue;
+      
+      const baseType = this.env.lookupType(baseTypeName);
+      if (!baseType || baseType.kind !== "object") continue;
+      
+      const baseMethod = baseType.methods.find(m => m.name === methodName);
+      if (!baseMethod) continue;
+      
+      // Check parameter count and types
+      if (!this.paramsMatch(methodType.params, baseMethod.type.params)) {
+        const err = TypeErrors.methodOverrideParamMismatch(methodName, typeName, baseTypeName);
+        this.error(err.message, loc, err.hint);
+        return;
+      }
+      
+      // Check return type
+      if (!this.typesEqual(methodType.returnType, baseMethod.type.returnType)) {
+        const err = TypeErrors.methodOverrideReturnMismatch(
+          methodName, typeName, baseTypeName,
+          typeToString(baseMethod.type.returnType),
+          typeToString(methodType.returnType)
+        );
+        this.error(err.message, loc, err.hint);
+        return;
+      }
+      
+      // Check using clause (context bindings)
+      if (!this.contextMatch(methodType.context, baseMethod.type.context)) {
+        const err = TypeErrors.methodOverrideUsingMismatch(methodName, typeName, baseTypeName);
+        this.error(err.message, loc, err.hint);
+        return;
+      }
+    }
+  }
+
+  /**
+   * Check if two parameter lists match exactly
+   */
+  private paramsMatch(a: ParameterType[], b: ParameterType[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      const pa = a[i]!, pb = b[i]!;
+      if (pa.optional !== pb.optional) return false;
+      if (pa.rest !== pb.rest) return false;
+      if (!this.typesEqual(pa.type, pb.type)) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Check if two context binding lists match exactly
+   */
+  private contextMatch(a: ContextBinding[], b: ContextBinding[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      const ca = a[i]!, cb = b[i]!;
+      if (!this.typesEqual(ca.type, cb.type)) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Check if two types are structurally equal
+   */
+  private typesEqual(a: Type, b: Type): boolean {
+    if (a.kind !== b.kind) return false;
+    
+    switch (a.kind) {
+      case "number":
+      case "string":
+      case "bool":
+      case "null":
+      case "bytes":
+      case "void":
+      case "any":
+      case "never":
+        return true;
+      case "ref":
+        return (a as any).name === (b as any).name;
+      case "list":
+        return this.typesEqual((a as any).elementType, (b as any).elementType);
+      case "map":
+        return this.typesEqual((a as any).keyType, (b as any).keyType) &&
+               this.typesEqual((a as any).valueType, (b as any).valueType);
+      case "optional":
+        return this.typesEqual((a as any).inner, (b as any).inner);
+      case "function":
+        const fa = a as FunctionType, fb = b as FunctionType;
+        return this.paramsMatch(fa.params, fb.params) &&
+               this.typesEqual(fa.returnType, fb.returnType) &&
+               this.contextMatch(fa.context, fb.context);
+      default:
+        return typeToString(a) === typeToString(b);
+    }
   }
 
   private getIterableElementType(type: Type): Type {
@@ -1539,6 +2143,438 @@ export class TypeChecker {
 
     // Return union
     return Types.union(...types);
+  }
+
+  // ============================================
+  // Context Escape Analysis
+  // ============================================
+
+  /**
+   * Check if a function needs context (has using clause or calls functions that do)
+   */
+  private functionNeedsContext(fnName: string): boolean {
+    // Check cache first
+    if (this.needsContextCache.has(fnName)) {
+      return this.needsContextCache.get(fnName)!;
+    }
+    
+    // Prevent infinite recursion
+    this.needsContextCache.set(fnName, false);
+    
+    // Check if function has using clause
+    const symbol = this.env.lookup(fnName);
+    if (symbol?.type.kind === "function" && (symbol.type as FunctionType).context.length > 0) {
+      this.needsContextCache.set(fnName, true);
+      return true;
+    }
+    
+    // Check if function body calls any function that needs context
+    const fnDecl = this.fnDecls.get(fnName);
+    if (fnDecl?.body) {
+      if (this.blockNeedsContext(fnDecl.body)) {
+        this.needsContextCache.set(fnName, true);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  private blockNeedsContext(block: AST.Block): boolean {
+    for (const stmt of block.statements) {
+      if (this.stmtNeedsContext(stmt)) return true;
+    }
+    return false;
+  }
+
+  private stmtNeedsContext(stmt: AST.Statement): boolean {
+    switch (stmt.kind) {
+      case "ExprStmt":
+        return this.exprNeedsContext(stmt.expr);
+      case "LetStmt":
+      case "VarStmt":
+        return this.exprNeedsContext(stmt.value);
+      case "AssignStmt":
+        return this.exprNeedsContext(stmt.value);
+      case "IfStmt": {
+        const thenNeedsCtx = stmt.then.kind === "Block" 
+          ? this.blockNeedsContext(stmt.then) 
+          : this.stmtNeedsContext(stmt.then);
+        const elseNeedsCtx = stmt.else ? this.blockNeedsContext(stmt.else) : false;
+        return this.exprNeedsContext(stmt.condition) || thenNeedsCtx || elseNeedsCtx;
+      }
+      case "ForStmt":
+        return (stmt.iterable ? this.exprNeedsContext(stmt.iterable) : false) || 
+          this.blockNeedsContext(stmt.body);
+      case "ReturnStmt":
+        return stmt.value ? this.exprNeedsContext(stmt.value) : false;
+      case "WithStmt":
+        return this.blockNeedsContext(stmt.body);
+      default:
+        return false;
+    }
+  }
+
+  private exprNeedsContext(expr: AST.Expr): boolean {
+    switch (expr.kind) {
+      case "CallExpr":
+        // Check if callee is a function that needs context
+        if (expr.callee.kind === "Identifier") {
+          if (this.functionNeedsContext(expr.callee.name)) return true;
+        }
+        // Check arguments
+        for (const arg of expr.args) {
+          const argExpr = "kind" in arg ? arg : arg.value;
+          if (this.exprNeedsContext(argExpr)) return true;
+        }
+        return false;
+      case "LambdaExpr":
+        return this.lambdaNeedsContext(expr);
+      case "BinaryExpr":
+        return this.exprNeedsContext(expr.left) || this.exprNeedsContext(expr.right);
+      case "UnaryExpr":
+        return this.exprNeedsContext(expr.operand);
+      case "IfExpr":
+        return this.exprNeedsContext(expr.condition) ||
+          this.exprNeedsContext(expr.then) ||
+          this.exprNeedsContext(expr.else);
+      case "ListExpr":
+        return expr.elements.some(e => 
+          e.kind === "SpreadElement" ? this.exprNeedsContext(e.expr) : this.exprNeedsContext(e)
+        );
+      case "MapExpr":
+        return expr.entries.some(e => this.exprNeedsContext(e.value));
+      case "MemberExpr":
+        return this.exprNeedsContext(expr.object);
+      case "IndexExpr":
+        return this.exprNeedsContext(expr.object) || this.exprNeedsContext(expr.index);
+      case "PipeExpr":
+        return this.exprNeedsContext(expr.left) || this.exprNeedsContext(expr.right);
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Check if a lambda expression needs context
+   */
+  private lambdaNeedsContext(lambda: AST.LambdaExpr): boolean {
+    if (lambda.body.kind === "Block") {
+      return this.blockNeedsContext(lambda.body);
+    } else {
+      return this.exprNeedsContext(lambda.body);
+    }
+  }
+
+  /**
+   * Check if an expression contains a context-dependent lambda that would escape
+   */
+  private exprContainsEscapingLambda(expr: AST.Expr): boolean {
+    switch (expr.kind) {
+      case "LambdaExpr":
+        return this.lambdaNeedsContext(expr);
+      case "Identifier":
+        // Check if this is a context variable
+        return this.withContextVars.has(expr.name);
+      case "ListExpr":
+        return expr.elements.some(e =>
+          e.kind === "SpreadElement" 
+            ? this.exprContainsEscapingLambda(e.expr) 
+            : this.exprContainsEscapingLambda(e)
+        );
+      case "MapExpr":
+        return expr.entries.some(e => this.exprContainsEscapingLambda(e.value));
+      case "IfExpr":
+        return this.exprContainsEscapingLambda(expr.then) || 
+          this.exprContainsEscapingLambda(expr.else);
+      case "CallExpr":
+        // Check if this is a type constructor with escaping lambdas
+        for (const arg of expr.args) {
+          const argExpr = "kind" in arg ? arg : arg.value;
+          if (this.exprContainsEscapingLambda(argExpr)) return true;
+        }
+        return false;
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Check if a parameter escapes within a function body (is stored, returned, or passed to escaping fn)
+   */
+  private parameterEscapes(fnDecl: AST.FnDecl, paramName: string): boolean {
+    if (!fnDecl.body) return true; // Extern functions: assume escapes
+    return this.paramEscapesInBlock(fnDecl.body, paramName);
+  }
+
+  private paramEscapesInBlock(block: AST.Block, paramName: string): boolean {
+    for (const stmt of block.statements) {
+      if (this.paramEscapesInStmt(stmt, paramName)) return true;
+    }
+    return false;
+  }
+
+  private paramEscapesInStmt(stmt: AST.Statement, paramName: string): boolean {
+    switch (stmt.kind) {
+      case "ReturnStmt":
+        // Returning the parameter means it escapes
+        if (stmt.value && this.exprReferences(stmt.value, paramName)) return true;
+        return false;
+      case "LetStmt":
+      case "VarStmt":
+        // Assigning to a variable is OK as long as the variable doesn't escape
+        // For simplicity, we allow this (the variable is local)
+        return false;
+      case "AssignStmt":
+        // If assigning to something other than a local, it escapes
+        // For now, assume member/index assignments escape
+        if (stmt.target.kind !== "Identifier" && this.exprReferences(stmt.value, paramName)) {
+          return true;
+        }
+        return false;
+      case "ExprStmt":
+        return this.paramEscapesInExpr(stmt.expr, paramName);
+      case "IfStmt": {
+        const thenEscapes = stmt.then.kind === "Block" 
+          ? this.paramEscapesInBlock(stmt.then, paramName)
+          : this.paramEscapesInStmt(stmt.then, paramName);
+        const elseEscapes = stmt.else ? this.paramEscapesInBlock(stmt.else, paramName) : false;
+        return thenEscapes || elseEscapes;
+      }
+      case "ForStmt":
+        return this.paramEscapesInBlock(stmt.body, paramName);
+      default:
+        return false;
+    }
+  }
+
+  private paramEscapesInExpr(expr: AST.Expr, paramName: string): boolean {
+    switch (expr.kind) {
+      case "CallExpr":
+        // Check if parameter is passed to another function where it might escape
+        for (let i = 0; i < expr.args.length; i++) {
+          const arg = expr.args[i];
+          const argExpr = arg && ("kind" in arg ? arg : arg.value);
+          if (argExpr && this.exprReferences(argExpr, paramName)) {
+            // Check if the callee function stores this parameter
+            if (expr.callee.kind === "Identifier") {
+              const calleeDecl = this.fnDecls.get(expr.callee.name);
+              const calleeParam = calleeDecl?.params[i];
+              if (calleeDecl && calleeParam) {
+                const calleeParamName = calleeParam.name;
+                if (this.parameterEscapes(calleeDecl, calleeParamName)) {
+                  return true;
+                }
+              } else if (!calleeDecl) {
+                // Extern function or unknown - assume escapes
+                return true;
+              }
+            } else {
+              // Complex callee - assume escapes
+              return true;
+            }
+          }
+        }
+        // Check if callee itself references the param
+        if (this.paramEscapesInExpr(expr.callee, paramName)) return true;
+        return false;
+      case "MemberExpr":
+        // Method calls like list.push(param) - check if it's a storage method
+        if (expr.property === "push" || expr.property === "unshift" || 
+            expr.property === "set" || expr.property === "add") {
+          // This is a storage operation - if param is in parent call args, it escapes
+          return false; // The actual check happens at CallExpr level
+        }
+        return this.paramEscapesInExpr(expr.object, paramName);
+      default:
+        return false;
+    }
+  }
+
+  private exprReferences(expr: AST.Expr, name: string): boolean {
+    switch (expr.kind) {
+      case "Identifier":
+        return expr.name === name;
+      case "CallExpr":
+        if (this.exprReferences(expr.callee, name)) return true;
+        for (const arg of expr.args) {
+          const argExpr = "kind" in arg ? arg : arg.value;
+          if (this.exprReferences(argExpr, name)) return true;
+        }
+        return false;
+      case "LambdaExpr":
+        // Lambda might capture the name
+        if (expr.body.kind === "Block") {
+          return this.blockReferences(expr.body as AST.Block, name);
+        } else {
+          return this.exprReferences(expr.body as AST.Expr, name);
+        }
+      case "BinaryExpr":
+        return this.exprReferences(expr.left, name) || this.exprReferences(expr.right, name);
+      case "UnaryExpr":
+        return this.exprReferences(expr.operand, name);
+      case "MemberExpr":
+        return this.exprReferences(expr.object, name);
+      case "IndexExpr":
+        return this.exprReferences(expr.object, name) || this.exprReferences(expr.index, name);
+      case "IfExpr":
+        return this.exprReferences(expr.condition, name) ||
+          this.exprReferences(expr.then, name) ||
+          this.exprReferences(expr.else, name);
+      case "ListExpr":
+        return expr.elements.some(e =>
+          e.kind === "SpreadElement" ? this.exprReferences(e.expr, name) : this.exprReferences(e, name)
+        );
+      case "MapExpr":
+        return expr.entries.some(e => this.exprReferences(e.value, name));
+      default:
+        return false;
+    }
+  }
+
+  private blockReferences(block: AST.Block, name: string): boolean {
+    for (const stmt of block.statements) {
+      if (this.stmtReferences(stmt, name)) return true;
+    }
+    return false;
+  }
+
+  private stmtReferences(stmt: AST.Statement, name: string): boolean {
+    switch (stmt.kind) {
+      case "ExprStmt":
+        return this.exprReferences(stmt.expr, name);
+      case "LetStmt":
+      case "VarStmt":
+        return this.exprReferences(stmt.value, name);
+      case "AssignStmt":
+        return this.exprReferences(stmt.value, name);
+      case "ReturnStmt":
+        return stmt.value ? this.exprReferences(stmt.value, name) : false;
+      case "IfStmt": {
+        const thenRefs = stmt.then.kind === "Block"
+          ? this.blockReferences(stmt.then, name)
+          : this.stmtReferences(stmt.then, name);
+        const elseRefs = stmt.else ? this.blockReferences(stmt.else, name) : false;
+        return this.exprReferences(stmt.condition, name) || thenRefs || elseRefs;
+      }
+      case "ForStmt":
+        return (stmt.iterable ? this.exprReferences(stmt.iterable, name) : false) || 
+          this.blockReferences(stmt.body, name);
+      default:
+        return false;
+    }
+  }
+
+  // ============================================
+  // Generic Type Inference
+  // ============================================
+
+  // Infer type parameters from actual arguments
+  private inferTypeParams(fnType: FunctionType, args: (AST.Expr | AST.NamedArg)[]): Map<string, Type> {
+    const bindings = new Map<string, Type>();
+    if (!fnType.typeParams) return bindings;
+
+    // Initialize all type params as unknown
+    for (const tp of fnType.typeParams) {
+      bindings.set(tp.name, Types.any);
+    }
+
+    // Infer from each argument
+    for (let i = 0; i < args.length && i < fnType.params.length; i++) {
+      const arg = args[i]!;
+      const argExpr = "kind" in arg ? arg : arg.value;
+      const argType = this.inferExpr(argExpr);
+      const paramType = fnType.params[i]!.type;
+      this.unifyTypes(paramType, argType, bindings);
+    }
+
+    return bindings;
+  }
+
+  // Unify parameter type with argument type to infer type variables
+  private unifyTypes(paramType: Type, argType: Type, bindings: Map<string, Type>): void {
+    // If param is a type variable, bind it
+    if (paramType.kind === "typevar") {
+      const existing = bindings.get(paramType.name);
+      if (existing?.kind === "any") {
+        bindings.set(paramType.name, argType);
+      }
+      return;
+    }
+
+    // If param is a type reference that matches a type param name, bind it
+    if (paramType.kind === "ref" && bindings.has(paramType.name)) {
+      const existing = bindings.get(paramType.name);
+      if (existing?.kind === "any") {
+        bindings.set(paramType.name, argType);
+      }
+      return;
+    }
+
+    // Recursively unify generic types
+    if (paramType.kind === "list" && argType.kind === "list") {
+      this.unifyTypes(paramType.elementType, argType.elementType, bindings);
+    } else if (paramType.kind === "map" && argType.kind === "map") {
+      this.unifyTypes(paramType.keyType, argType.keyType, bindings);
+      this.unifyTypes(paramType.valueType, argType.valueType, bindings);
+    } else if (paramType.kind === "set" && argType.kind === "set") {
+      this.unifyTypes(paramType.elementType, argType.elementType, bindings);
+    } else if (paramType.kind === "promise" && argType.kind === "promise") {
+      this.unifyTypes(paramType.resolveType, argType.resolveType, bindings);
+    } else if (paramType.kind === "channel" && argType.kind === "channel") {
+      this.unifyTypes(paramType.elementType, argType.elementType, bindings);
+    } else if (paramType.kind === "optional" && argType.kind === "optional") {
+      this.unifyTypes(paramType.inner, argType.inner, bindings);
+    } else if (paramType.kind === "function" && argType.kind === "function") {
+      // Unify function parameter types and return type
+      for (let i = 0; i < paramType.params.length && i < argType.params.length; i++) {
+        this.unifyTypes(paramType.params[i]!.type, argType.params[i]!.type, bindings);
+      }
+      this.unifyTypes(paramType.returnType, argType.returnType, bindings);
+    }
+  }
+
+  // Substitute type parameters in a type
+  private substituteTypeParams(type: Type, bindings: Map<string, Type>): Type {
+    if (bindings.size === 0) return type;
+
+    switch (type.kind) {
+      case "typevar": {
+        const bound = bindings.get(type.name);
+        return bound ?? type;
+      }
+      case "ref": {
+        const bound = bindings.get(type.name);
+        return bound ?? type;
+      }
+      case "list":
+        return Types.list(this.substituteTypeParams(type.elementType, bindings));
+      case "map":
+        return Types.map(
+          this.substituteTypeParams(type.keyType, bindings),
+          this.substituteTypeParams(type.valueType, bindings)
+        );
+      case "set":
+        return Types.set(this.substituteTypeParams(type.elementType, bindings));
+      case "promise":
+        return Types.promise(this.substituteTypeParams(type.resolveType, bindings));
+      case "channel":
+        return Types.channel(this.substituteTypeParams(type.elementType, bindings));
+      case "optional":
+        return Types.optional(this.substituteTypeParams(type.inner, bindings));
+      case "function":
+        return Types.fn(
+          type.params.map(p => Types.param(
+            p.name,
+            this.substituteTypeParams(p.type, bindings),
+            p.optional,
+            p.rest
+          )),
+          this.substituteTypeParams(type.returnType, bindings)
+        );
+      default:
+        return type;
+    }
   }
 
   // ============================================

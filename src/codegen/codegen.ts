@@ -1,6 +1,6 @@
 // Code Generator - Transpiles Manuscript AST to JavaScript
 import * as AST from "../parser/ast";
-import { STDLIB_FUNCTIONS } from "../shared/stdlib";
+import { STDLIB_FUNCTIONS, BUILTIN_CONSTRUCTORS } from "../shared/stdlib";
 
 // ============================================
 // Code Generator Options
@@ -36,9 +36,41 @@ export class CodeGenerator {
   private scopeStack: { defers: AST.Statement[] }[] = [];
   // Track current class fields for method body generation
   private currentClassFields: Set<string> = new Set();
+  // Track variable types: var name -> type name (for inferring context types)
+  private variableTypes: Map<string, string> = new Map();
+  // Track type hierarchy: type name -> parent type names (for interface matching)
+  private typeHierarchy: Map<string, string[]> = new Map();
 
   constructor(options: Partial<CodeGenOptions> = {}) {
     this.options = { ...defaultOptions, ...options };
+  }
+
+  // Get all types that a given type can satisfy (itself + all ancestors)
+  private getTypeChain(typeName: string): string[] {
+    const chain: string[] = [typeName];
+    const parents = this.typeHierarchy.get(typeName);
+    if (parents) {
+      for (const parent of parents) {
+        chain.push(...this.getTypeChain(parent));
+      }
+    }
+    return chain;
+  }
+
+  // Infer type name from an expression (for tracking variable types)
+  private inferTypeName(expr: AST.Expr): string | undefined {
+    // Type constructor call: TypeName(...)
+    if (expr.kind === "CallExpr" && expr.callee.kind === "Identifier") {
+      const name = expr.callee.name;
+      if (this.declaredTypes.has(name)) {
+        return name;
+      }
+    }
+    // Identifier - look up tracked variable type
+    if (expr.kind === "Identifier") {
+      return this.variableTypes.get(expr.name);
+    }
+    return undefined;
   }
 
   // Scope management for defer
@@ -65,11 +97,21 @@ export class CodeGenerator {
     this.indentLevel = 0;
     this.tempVarCounter = 0;
     this.declaredTypes.clear();
+    this.variableTypes.clear();
+    this.typeHierarchy.clear();
 
-    // First pass: collect declared type names
+    // First pass: collect declared type names and hierarchy
     for (const stmt of program.body) {
       if (stmt.kind === "TypeDecl") {
         this.declaredTypes.add(stmt.name);
+        if (stmt.extends && stmt.extends.length > 0) {
+          const parents = stmt.extends
+            .filter(e => e.kind === "NamedType")
+            .map(e => (e as { kind: "NamedType"; name: string }).name);
+          if (parents.length > 0) {
+            this.typeHierarchy.set(stmt.name, parents);
+          }
+        }
       } else if (stmt.kind === "EnumDecl") {
         this.declaredTypes.add(stmt.name);
       }
@@ -108,6 +150,9 @@ export class CodeGenerator {
         break;
       case "FnDecl":
         this.genFnDecl(stmt);
+        break;
+      case "ExternFnDecl":
+        // Extern functions are implemented in the runtime, no code generated
         break;
       case "TypeDecl":
         this.genTypeDecl(stmt);
@@ -201,41 +246,24 @@ export class CodeGenerator {
 
   private genFnDecl(decl: AST.FnDecl): void {
     const params = this.genParams(decl.params);
-    // Only make async if function has 'using' context bindings that may need async
-    const needsAsync = decl.using && decl.using.bindings && decl.using.bindings.length > 0;
-    const async = decl.isGenerator ? "" : (needsAsync ? "async " : "");
-    const generator = decl.isGenerator ? "*" : "";
+    // Generators can't be async, all other functions are async for implicit await
+    const prefix = decl.isGenerator ? "function*" : "async function";
 
-    // Generate function with context parameter
+    this.emit(`${prefix} ${decl.name}(${params}) {`);
+    this.indentLevel++;
+    
+    // Pull context bindings from runtime stack (non-viral using)
     if (decl.using && decl.using.bindings.length > 0) {
-      // Build parameter list with __ctx at the end
-      const allParams = params ? `${params}, __ctx` : "__ctx";
-      
-      this.emit(`${async}function${generator} ${decl.name}(${allParams}) {`);
-      this.indentLevel++;
-      
-      // Destructure bindings from context
-      const bindingNames = decl.using.bindings.map(b => {
-        const bindingName = b.name || `_binding${this.tempVarCounter++}`;
-        return bindingName;
-      });
-      
-      if (bindingNames.length > 0) {
-        this.emit(`const { ${bindingNames.join(", ")} } = __ctx;`);
+      for (const binding of decl.using.bindings) {
+        const name = binding.name || `_binding${this.tempVarCounter++}`;
+        const typeName = binding.type.kind === "NamedType" ? binding.type.name : "unknown";
+        this.emit(`const ${name} = __ms_runtime.__getContext("${typeName}");`);
       }
-      
-      // Use implicit return for function bodies
-      this.genBlock(decl.body, true);
-      this.indentLevel--;
-      this.emit("}");
-    } else {
-      this.emit(`${async}function${generator} ${decl.name}(${params}) {`);
-      this.indentLevel++;
-      // Use implicit return for function bodies
-      this.genBlock(decl.body, true);
-      this.indentLevel--;
-      this.emit("}");
     }
+    
+    this.genBlock(decl.body, true);
+    this.indentLevel--;
+    this.emit("}");
     this.emit("");
   }
 
@@ -258,9 +286,16 @@ export class CodeGenerator {
       return;
     }
 
-    const extendsClause = decl.extends && decl.extends.length > 0 && decl.extends[0]
-      ? ` extends ${decl.extends[0].kind === "NamedType" ? decl.extends[0].name : "Object"}`
-      : "";
+    let extendsClause = "";
+    if (decl.extends && decl.extends.length > 0 && decl.extends[0]) {
+      const parentType = decl.extends[0];
+      let parentName = parentType.kind === "NamedType" ? parentType.name : "Object";
+      // Context is from the runtime
+      if (parentName === "Context") {
+        parentName = "__ms_runtime.Context";
+      }
+      extendsClause = ` extends ${parentName}`;
+    }
 
     this.emit(`class ${decl.name}${extendsClause} {`);
     this.indentLevel++;
@@ -281,7 +316,9 @@ export class CodeGenerator {
     const requiredFields = fields.filter(f => !f.optional && !f.defaultValue);
     const optionalFields = fields.filter(f => f.optional || f.defaultValue);
 
-    if (fields.length > 0) {
+    const hasExtends = decl.extends && decl.extends.length > 0;
+    
+    if (fields.length > 0 || hasExtends) {
       const constructorParams = requiredFields.map(f => f.name).join(", ");
       const optionalParams = optionalFields.map(f => {
         if (f.defaultValue) {
@@ -294,6 +331,10 @@ export class CodeGenerator {
       
       this.emit(`constructor(${allParams}) {`);
       this.indentLevel++;
+      // Call super() if extending another class
+      if (hasExtends) {
+        this.emit("super();");
+      }
       for (const field of fields) {
         this.emit(`this.${field.name} = ${field.name};`);
       }
@@ -306,16 +347,13 @@ export class CodeGenerator {
     this.currentClassFields = new Set(fields.map(f => f.name));
     
     for (const method of methods) {
-      // Only make async if method has 'using' context bindings that may need async
-      const needsAsync = method.using && method.using.bindings && method.using.bindings.length > 0;
-      const async = method.isGenerator ? "" : (needsAsync ? "async " : "");
-      const generator = method.isGenerator ? "*" : "";
+      // Generators can't be async, all other methods are async for implicit await
+      const prefix = method.isGenerator ? "*" : "async ";
       const params = this.genParams(method.params);
       
-      this.emit(`${async}${method.name}${generator}(${params}) {`);
+      this.emit(`${prefix}${method.name}(${params}) {`);
       this.indentLevel++;
       if (method.body) {
-        // Use implicit return for method bodies
         this.genBlock(method.body, true);
       }
       this.indentLevel--;
@@ -445,11 +483,25 @@ export class CodeGenerator {
     const pattern = this.genPattern(stmt.pattern);
     const value = this.genExpr(stmt.value);
     this.emit(`const ${pattern} = ${value};`);
+    
+    // Track variable type for type-based context matching
+    if (stmt.pattern.kind === "IdentifierPattern") {
+      const typeName = this.inferTypeName(stmt.value);
+      if (typeName) {
+        this.variableTypes.set(stmt.pattern.name, typeName);
+      }
+    }
   }
 
   private genVarStmt(stmt: AST.VarStmt): void {
     const value = this.genExpr(stmt.value);
     this.emit(`let ${stmt.name} = ${value};`);
+    
+    // Track variable type for type-based context matching
+    const typeName = this.inferTypeName(stmt.value);
+    if (typeName) {
+      this.variableTypes.set(stmt.name, typeName);
+    }
   }
 
   private genAssignStmt(stmt: AST.AssignStmt): void {
@@ -553,7 +605,8 @@ export class CodeGenerator {
       const inclusive = range.inclusive ? "<=" : "<";
       this.emit(`for (let ${pattern} = ${start}; ${pattern} ${inclusive} ${end}; ${pattern}++) {`);
     } else {
-      this.emit(`for (const ${pattern} of ${iterable}) {`);
+      // Use for-await-of to support both sync and async iterables (like Channel)
+      this.emit(`for await (const ${pattern} of ${iterable}) {`);
     }
     
     this.indentLevel++;
@@ -705,25 +758,48 @@ export class CodeGenerator {
     this.emit(`throw ${value};`);
   }
 
-  private genWithStmt(stmt: AST.WithStmt): void {
+  private genWithStmt(stmt: AST.WithStmt, implicitReturn: boolean = false): void {
     // With statement creates scoped context bindings with cleanup
     this.emit("{");
     this.indentLevel++;
     this.pushScope(); // Start tracking defers for this scope
     
-    // Create context variable(s)
+    // Push runtime context scope
+    this.emit("__ms_runtime.__pushContext();");
+    
+    // Create context variable(s) and register in runtime context stack
     const ctxNames: string[] = [];
     for (const ctx of stmt.contexts) {
       const expr = this.genExpr(ctx.expr);
-      const name = ctx.alias || `__ctx${this.tempVarCounter++}`;
+      
+      // Syntax: with let name = expr OR with expr
+      let name: string;
+      if (ctx.name) {
+        // with let name = expr
+        name = ctx.name;
+        this.emit(`const ${name} = ${expr};`);
+      } else {
+        // with expr (anonymous) - generate temp var
+        name = `__ctx${this.tempVarCounter++}`;
+        this.emit(`const ${name} = ${expr};`);
+      }
       ctxNames.push(name);
-      this.emit(`const ${name} = ${expr};`);
+      
+      // Register in runtime context stack by type AND all parent types (interface matching)
+      const typeName = this.inferTypeName(ctx.expr);
+      if (typeName) {
+        // Get full type chain (concrete type + all interfaces it implements)
+        const typeChain = this.getTypeChain(typeName);
+        for (const t of typeChain) {
+          this.emit(`__ms_runtime.__setContext("${t}", ${name});`);
+        }
+      }
     }
     
     // Wrap body in try/finally for cleanup
     this.emit("try {");
     this.indentLevel++;
-    this.genBlock(stmt.body);
+    this.genBlock(stmt.body, implicitReturn);
     this.indentLevel--;
     this.emit("} finally {");
     this.indentLevel++;
@@ -734,10 +810,13 @@ export class CodeGenerator {
       this.genStatement(defer);
     }
     
-    // Call exit() on contexts if the method exists
+    // Call exit() on contexts
     for (const name of ctxNames) {
-      this.emit(`if (${name}?.exit) await ${name}.exit();`);
+      this.emit(`if (${name}?.exit) ${name}.exit();`);
     }
+    
+    // Pop runtime context scope
+    this.emit("__ms_runtime.__popContext();");
     
     this.indentLevel--;
     this.emit("}");
@@ -770,6 +849,11 @@ export class CodeGenerator {
         // If statements should have implicit return in each branch
         if (stmt.kind === "IfStmt") {
           this.genIfStmtWithReturn(stmt);
+          continue;
+        }
+        // With statements should propagate implicit return to their body
+        if (stmt.kind === "WithStmt") {
+          this.genWithStmt(stmt, true);
           continue;
         }
       }
@@ -915,14 +999,25 @@ export class CodeGenerator {
       callee = `__ms_runtime.${expr.callee.name}`;
     }
     
+    // Handle generic builtin constructors like Channel[T](...)
+    // The IndexExpr is Channel[T] where Channel is the constructor and T is type param
+    if (expr.callee.kind === "IndexExpr" && expr.callee.object.kind === "Identifier") {
+      const baseName = expr.callee.object.name;
+      if (BUILTIN_CONSTRUCTORS.has(baseName)) {
+        const args = this.genCallArgs(expr.args);
+        return `new __ms_runtime.${baseName}(${args})`;
+      }
+    }
+    
     const args = this.genCallArgs(expr.args);
     
-    // Use 'new' for type constructors
+    // Use 'new' for type constructors (no await)
     if (expr.callee.kind === "Identifier" && this.declaredTypes.has(expr.callee.name)) {
       return `new ${callee}(${args})`;
     }
     
-    return `${callee}(${args})`;
+    // Implicit await for all function calls
+    return `(await ${callee}(${args}))`;
   }
 
   private genCallArgs(args: (AST.Expr | { name: string; value: AST.Expr })[]): string {
@@ -972,22 +1067,20 @@ export class CodeGenerator {
     const left = this.genExpr(expr.left);
     const right = expr.right;
     
-    // Pipe passes left as first argument to right
+    // Pipe with implicit await
     if (right.kind === "CallExpr") {
       let callee = this.genExpr(right.callee);
-      // Prefix stdlib functions with __ms_runtime
       if (right.callee.kind === "Identifier" && STDLIB_FUNCTIONS.has(right.callee.name)) {
         callee = `__ms_runtime.${right.callee.name}`;
       }
       const args = [left, ...right.args.map(a => this.genExpr(a as AST.Expr))];
-      return `${callee}(${args.join(", ")})`;
+      return `(await ${callee}(${args.join(", ")}))`;
     } else if (right.kind === "Identifier") {
-      // Prefix stdlib functions with __ms_runtime
       const fnName = STDLIB_FUNCTIONS.has(right.name) ? `__ms_runtime.${right.name}` : right.name;
-      return `${fnName}(${left})`;
+      return `(await ${fnName}(${left}))`;
     }
     
-    return `(${this.genExpr(right)})(${left})`;
+    return `(await (${this.genExpr(right)})(${left}))`;
   }
 
   private genLambdaExpr(expr: AST.LambdaExpr): string {
@@ -1012,7 +1105,8 @@ export class CodeGenerator {
       return `async (${params}) => {\n${bodyLines.join("\n")}\n${this.getIndent()}}`;
     }
     
-    return `(${params}) => ${this.genExpr(expr.body as AST.Expr)}`;
+    // All lambdas are async to support implicit await in body
+    return `async (${params}) => ${this.genExpr(expr.body as AST.Expr)}`;
   }
 
   private genIfExpr(expr: AST.IfExpr): string {

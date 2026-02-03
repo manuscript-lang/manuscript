@@ -51,10 +51,9 @@ describe("CodeGen - Function Declarations", () => {
   test("function with context bindings", () => {
     const js = compile(`fn read(path: string) using (fs: Filesystem)
   fs.read(path)`);
-    // Functions with context bindings take __ctx as parameter
-    expect(js).toContain("__ctx");
-    // Context bindings are destructured from __ctx
-    expect(js).toContain("const { fs } = __ctx;");
+    // Functions with context bindings pull from runtime context stack (non-viral)
+    expect(js).toContain('__ms_runtime.__getContext("Filesystem")');
+    expect(js).toContain("const fs =");
   });
 });
 

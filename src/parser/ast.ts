@@ -25,11 +25,20 @@ export interface ImportDecl extends BaseNode {
 export interface FnDecl extends BaseNode {
   kind: "FnDecl";
   name: string;
+  typeParams?: TypeParam[];
   params: Parameter[];
   returnType?: TypeExpr;
   using?: UsingClause;
   body: Block;
   isGenerator: boolean;
+}
+
+export interface ExternFnDecl extends BaseNode {
+  kind: "ExternFnDecl";
+  name: string;
+  typeParams?: TypeParam[];
+  params: Parameter[];
+  returnType?: TypeExpr;
 }
 
 export interface Parameter extends BaseNode {
@@ -98,6 +107,7 @@ export interface MethodDecl extends BaseNode {
   using?: UsingClause;
   body?: Block;
   isGenerator?: boolean;
+  isExtern?: boolean;
 }
 
 export interface EnumDecl extends BaseNode {
@@ -152,6 +162,7 @@ export interface TestDecl extends BaseNode {
 export type Statement =
   | ImportDecl
   | FnDecl
+  | ExternFnDecl
   | TypeDecl
   | EnumDecl
   | KeywordDecl
@@ -266,9 +277,14 @@ export interface ThrowStmt extends BaseNode {
   value: Expr;
 }
 
+export interface WithContext {
+  expr: Expr;
+  name?: string;  // with let name = expr
+}
+
 export interface WithStmt extends BaseNode {
   kind: "WithStmt";
-  contexts: { expr: Expr; alias?: string }[];
+  contexts: WithContext[];
   body: Block;
 }
 

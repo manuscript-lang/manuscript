@@ -391,15 +391,15 @@ describe("Parser - With Statements", () => {
     });
   });
 
-  test("with alias", () => {
-    const src = `with Trace("op") as t
+  test("with let binding", () => {
+    const src = `with let t = Trace("op")
   t.event("start")`;
     const result = stmt(src);
     expect(result).toMatchObject({
       kind: "WithStmt",
       contexts: [{ 
         expr: { kind: "CallExpr", callee: { kind: "Identifier", name: "Trace" } },
-        alias: "t" 
+        name: "t" 
       }],
     });
   });

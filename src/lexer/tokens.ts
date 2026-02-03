@@ -31,6 +31,7 @@ export type TokenType =
   | "SPAWN"
   | "SEALED"
   | "EXTENDS"
+  | "EXTERN"
   // NOTE: enum, agent, capabilities are NOT keywords - they are defined via
   // `keyword` declarations and resolved at semantic level per syntax.md
   | "AND"
@@ -128,6 +129,7 @@ export const KEYWORDS: Record<string, TokenType> = {
   spawn: "SPAWN",
   sealed: "SEALED",
   extends: "EXTENDS",
+  extern: "EXTERN",
   // NOTE: enum, agent, capabilities are defined via keyword declarations
   and: "AND",
   or: "OR",

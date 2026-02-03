@@ -21,6 +21,7 @@ Commands:
   check <files>    Type check files without running
   test [pattern]   Run tests matching pattern (default: **/*.test.ms)
   build <files>    Compile to JavaScript
+  emit <file>      Print compiled JavaScript to stdout
   repl             Start interactive REPL
 
 Options:
@@ -37,6 +38,7 @@ Examples:
   ms check src/**/*.ms
   ms test
   ms build src/*.ms -o dist/
+  ms emit main.ms
 `;
 
 interface CLIOptions {
@@ -158,10 +160,11 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
     const code = result.code!;
     
     // Create a module with runtime injected
-    const wrappedCode = `
-      const __ms_runtime = arguments[0];
-      ${code}
-    `;
+    // Wrap in async IIFE to support top-level await
+    const wrappedCode = `const __ms_runtime = arguments[0];
+return (async () => {
+${code}
+})();`;
     
     const fn = new Function(wrappedCode);
     await fn(__ms_runtime);
@@ -369,6 +372,39 @@ async function buildCommand(files: string[], options: CLIOptions): Promise<numbe
   return hasErrors ? 1 : 0;
 }
 
+async function emitCommand(files: string[], options: CLIOptions): Promise<number> {
+  if (files.length === 0) {
+    error("No file specified. Usage: ms emit <file>");
+    return 1;
+  }
+
+  const filepath = files[0]!;
+
+  try {
+    const source = await readFile(filepath);
+    const result = compile(source, {
+      filename: filepath,
+      typeCheck: !options.noTypecheck,
+    });
+
+    if (!result.success) {
+      console.error(formatErrors(result.errors, source));
+      return 1;
+    }
+
+    if (options.emitAst) {
+      console.log(JSON.stringify(result.ast, null, 2));
+    } else {
+      console.log(result.code);
+    }
+
+    return 0;
+  } catch (e: any) {
+    error(e.message);
+    return 1;
+  }
+}
+
 async function replCommand(options: CLIOptions): Promise<number> {
   console.log(`Manuscript v${VERSION} REPL`);
   console.log("Type expressions to evaluate, or :help for commands\n");
@@ -487,6 +523,8 @@ async function main(): Promise<number> {
       return testCommand(files, options);
     case "build":
       return buildCommand(files, options);
+    case "emit":
+      return emitCommand(files, options);
     case "repl":
       return replCommand(options);
     case "":

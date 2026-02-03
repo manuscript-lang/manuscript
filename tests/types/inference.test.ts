@@ -161,7 +161,8 @@ x ?? 0`;
 
 describe("Type Inference - Spawn", () => {
   test("spawn returns promise", () => {
-    const result = inferType("spawn print(1)");
+    // Spawn assigned and consumed via race
+    const result = inferType("let x = spawn print(1)\nrace([x])");
     expect(result).toMatch(/Promise|promise/);
   });
 });

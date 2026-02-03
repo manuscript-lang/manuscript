@@ -31,12 +31,40 @@ import { TypeChecker } from "../../src/types/checker";
 import { KEYWORDS } from "../../src/lexer/tokens";
 import { STDLIB_FUNCTIONS, isBuiltin } from "../../src/shared/stdlib";
 import { typeToString, Types } from "../../src/types/types";
-import type { Program, FnDecl, TypeDecl, ASTNode, Expr, Block } from "../../src/parser/ast";
+import { stdlibSource, STDLIB_PATH_URI } from "../../src/stdlib";
+import type { Program, FnDecl, TypeDecl, ASTNode, Expr, Block, ExternFnDecl } from "../../src/parser/ast";
 import type { Type, ObjectType, MethodType } from "../../src/types/types";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 const cache = new Map<string, { program: Program; types: Map<ASTNode, Type> }>();
+
+// Parse stdlib on startup for jump-to-definition
+const stdlibProgram = new Parser(stdlibSource).parse();
+const stdlibSymbols = collectStdlibSymbols(stdlibProgram);
+
+interface StdlibSymbol {
+  name: string;
+  kind: "function" | "extern" | "type";
+  loc: { line: number; column: number };
+}
+
+function collectStdlibSymbols(program: Program): Map<string, StdlibSymbol> {
+  const syms = new Map<string, StdlibSymbol>();
+  for (const stmt of program.body) {
+    if (stmt.kind === "FnDecl") {
+      const fn = stmt as FnDecl;
+      syms.set(fn.name, { name: fn.name, kind: "function", loc: stmt.loc });
+    } else if (stmt.kind === "ExternFnDecl") {
+      const fn = stmt as ExternFnDecl;
+      syms.set(fn.name, { name: fn.name, kind: "extern", loc: stmt.loc });
+    } else if (stmt.kind === "TypeDecl") {
+      const t = stmt as TypeDecl;
+      syms.set(t.name, { name: t.name, kind: "type", loc: stmt.loc });
+    }
+  }
+  return syms;
+}
 
 // Derive keyword list from lexer tokens
 const KEYWORD_LIST = Object.keys(KEYWORDS);
@@ -376,6 +404,12 @@ documents.onDidChangeContent(e => validateDocument(e.document));
 async function validateDocument(doc: TextDocument): Promise<void> {
   const diagnostics: Diagnostic[] = [];
 
+  // Skip validation for stdlib virtual document (already type-checked at load time)
+  if (doc.uri === STDLIB_PATH_URI) {
+    connection.sendDiagnostics({ uri: doc.uri, diagnostics: [] });
+    return;
+  }
+
   try {
     const program = new Parser(doc.getText()).parse();
     const result = new TypeChecker().check(program);
@@ -632,8 +666,24 @@ connection.onDefinition((params): Definition | null => {
     return null;
   }
 
-  // Skip built-ins
-  if (isBuiltin(word)) return null;
+  // Jump to stdlib for built-ins
+  if (isBuiltin(word)) {
+    const sym = stdlibSymbols.get(word);
+    if (sym) {
+      // Calculate column offset for different declaration kinds
+      let offset = 0;
+      if (sym.kind === "function") offset = 3; // "fn "
+      else if (sym.kind === "extern") offset = 10; // "extern fn "
+      else if (sym.kind === "type") offset = 5; // "type "
+      
+      const col = sym.loc.column - 1 + offset;
+      return Location.create(STDLIB_PATH_URI, {
+        start: { line: sym.loc.line - 1, character: col },
+        end: { line: sym.loc.line - 1, character: col + word.length },
+      });
+    }
+    return null;
+  }
 
   // Find symbol with scope awareness
   const syms = collectSymbols(cached.program);

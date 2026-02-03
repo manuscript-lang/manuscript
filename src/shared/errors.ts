@@ -180,6 +180,18 @@ export const TypeErrors = {
     message: `Index type '${got}' is not assignable to '${expected}'`,
     hint: `Use a ${expected} value to index this collection`,
   }),
+  methodOverrideParamMismatch: (method: string, type: string, base: string) => ({
+    message: `Method '${method}' in '${type}' has different parameters than in base type '${base}'`,
+    hint: `Override must have the same parameters as the base method`,
+  }),
+  methodOverrideReturnMismatch: (method: string, type: string, base: string, expected: string, got: string) => ({
+    message: `Method '${method}' in '${type}' returns '${got}' but base type '${base}' returns '${expected}'`,
+    hint: `Override must return the same type as the base method`,
+  }),
+  methodOverrideUsingMismatch: (method: string, type: string, base: string) => ({
+    message: `Method '${method}' in '${type}' has different 'using' clause than in base type '${base}'`,
+    hint: `Override must have the same 'using' clause as the base method`,
+  }),
 };
 
 // Helper to create error message with hint

@@ -67,16 +67,17 @@ export function zip<T, U>(a: T[], b: U[]): [T, U][] {
   return result;
 }
 
-export function map<T, U>(list: T[], fn: (item: T) => U): U[] {
-  return list.map(fn);
+export async function map<T, U>(list: T[], fn: (item: T) => U | Promise<U>): Promise<U[]> {
+  return Promise.all(list.map(fn));
 }
 
-export function each<T, U>(list: T[], fn: (item: T) => U): U[] {
-  return list.map(fn);
+export async function each<T, U>(list: T[], fn: (item: T) => U | Promise<U>): Promise<U[]> {
+  return Promise.all(list.map(fn));
 }
 
-export function filter<T>(list: T[], pred: (item: T) => boolean): T[] {
-  return list.filter(pred);
+export async function filter<T>(list: T[], pred: (item: T) => boolean | Promise<boolean>): Promise<T[]> {
+  const results = await Promise.all(list.map(async (item) => ({ item, keep: await pred(item) })));
+  return results.filter(r => r.keep).map(r => r.item);
 }
 
 export function slice<T>(list: T[], start: number, end?: number): T[] {
@@ -87,41 +88,54 @@ export function concat<T>(...lists: T[][]): T[] {
   return ([] as T[]).concat(...lists);
 }
 
-export function reduce<T, U>(list: T[], init: U, fn: (acc: U, item: T) => U): U {
-  return list.reduce(fn, init);
+export async function reduce<T, U>(list: T[], init: U, fn: (acc: U, item: T) => U | Promise<U>): Promise<U> {
+  let acc = init;
+  for (const item of list) {
+    acc = await fn(acc, item);
+  }
+  return acc;
 }
 
-export function find<T>(list: T[], pred: (item: T) => boolean): T | undefined {
-  return list.find(pred);
+export async function find<T>(list: T[], pred: (item: T) => boolean | Promise<boolean>): Promise<T | undefined> {
+  for (const item of list) {
+    if (await pred(item)) return item;
+  }
+  return undefined;
 }
 
-export function any<T>(list: T[], pred: (item: T) => boolean): boolean {
-  return list.some(pred);
+export async function any<T>(list: T[], pred: (item: T) => boolean | Promise<boolean>): Promise<boolean> {
+  for (const item of list) {
+    if (await pred(item)) return true;
+  }
+  return false;
 }
 
-export function all<T>(list: T[], pred: (item: T) => boolean): boolean {
-  return list.every(pred);
+export async function all<T>(list: T[], pred: (item: T) => boolean | Promise<boolean>): Promise<boolean> {
+  for (const item of list) {
+    if (!(await pred(item))) return false;
+  }
+  return true;
 }
 
-export function group_by<T, K extends string | number>(
+export async function group_by<T, K extends string | number>(
   list: T[],
-  fn: (item: T) => K
-): Map<K, T[]> {
+  fn: (item: T) => K | Promise<K>
+): Promise<Map<K, T[]>> {
   const result = new Map<K, T[]>();
   for (const item of list) {
-    const key = fn(item);
+    const key = await fn(item);
     if (!result.has(key)) result.set(key, []);
     result.get(key)!.push(item);
   }
   return result;
 }
 
-export function sort_by<T, K>(list: T[], fn: (item: T) => K): T[] {
-  return [...list].sort((a, b) => {
-    const ka = fn(a);
-    const kb = fn(b);
-    if (ka < kb) return -1;
-    if (ka > kb) return 1;
+export async function sort_by<T, K>(list: T[], fn: (item: T) => K | Promise<K>): Promise<T[]> {
+  const pairs = await Promise.all(list.map(async (item) => ({ item, key: await fn(item) })));
+  pairs.sort((a, b) => {
+    if (a.key < b.key) return -1;
+    if (a.key > b.key) return 1;
     return 0;
   });
+  return pairs.map(p => p.item);
 }

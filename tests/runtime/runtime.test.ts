@@ -76,13 +76,13 @@ describe("Runtime - Collection Functions", () => {
 });
 
 describe("Runtime - Higher Order Functions", () => {
-  test("map", () => {
+  test("map", async () => {
     const { map } = require("../../src/runtime/collections");
-    expect(map([1, 2, 3], (x: number) => x * 2)).toEqual([2, 4, 6]);
+    expect(await map([1, 2, 3], (x: number) => x * 2)).toEqual([2, 4, 6]);
   });
 
-  test("each", () => {
-    expect(each([1, 2, 3], (x) => x * 2)).toEqual([2, 4, 6]);
+  test("each", async () => {
+    expect(await each([1, 2, 3], (x) => x * 2)).toEqual([2, 4, 6]);
   });
 
   test("slice", () => {
@@ -91,38 +91,38 @@ describe("Runtime - Higher Order Functions", () => {
     expect(concat([1, 2], [3, 4])).toEqual([1, 2, 3, 4]);
   });
 
-  test("filter", () => {
-    expect(filter([1, 2, 3, 4], (x) => x % 2 === 0)).toEqual([2, 4]);
+  test("filter", async () => {
+    expect(await filter([1, 2, 3, 4], (x) => x % 2 === 0)).toEqual([2, 4]);
   });
 
-  test("reduce", () => {
-    expect(reduce([1, 2, 3], 0, (acc, x) => acc + x)).toBe(6);
+  test("reduce", async () => {
+    expect(await reduce([1, 2, 3], 0, (acc, x) => acc + x)).toBe(6);
   });
 
-  test("find", () => {
-    expect(find([1, 2, 3], (x) => x > 1)).toBe(2);
-    expect(find([1, 2, 3], (x) => x > 10)).toBe(undefined);
+  test("find", async () => {
+    expect(await find([1, 2, 3], (x) => x > 1)).toBe(2);
+    expect(await find([1, 2, 3], (x) => x > 10)).toBe(undefined);
   });
 
-  test("any", () => {
-    expect(any([1, 2, 3], (x) => x > 2)).toBe(true);
-    expect(any([1, 2, 3], (x) => x > 10)).toBe(false);
+  test("any", async () => {
+    expect(await any([1, 2, 3], (x) => x > 2)).toBe(true);
+    expect(await any([1, 2, 3], (x) => x > 10)).toBe(false);
   });
 
-  test("all", () => {
-    expect(all([1, 2, 3], (x) => x > 0)).toBe(true);
-    expect(all([1, 2, 3], (x) => x > 2)).toBe(false);
+  test("all", async () => {
+    expect(await all([1, 2, 3], (x) => x > 0)).toBe(true);
+    expect(await all([1, 2, 3], (x) => x > 2)).toBe(false);
   });
 
-  test("group_by", () => {
-    const result = group_by([1, 2, 3, 4], (x) => x % 2);
+  test("group_by", async () => {
+    const result = await group_by([1, 2, 3, 4], (x) => x % 2);
     expect(result.get(0)).toEqual([2, 4]);
     expect(result.get(1)).toEqual([1, 3]);
   });
 
-  test("sort_by", () => {
+  test("sort_by", async () => {
     const items = [{ name: "b" }, { name: "a" }];
-    expect(sort_by(items, (x) => x.name)).toEqual([{ name: "a" }, { name: "b" }]);
+    expect(await sort_by(items, (x) => x.name)).toEqual([{ name: "a" }, { name: "b" }]);
   });
 });
 

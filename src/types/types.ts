@@ -84,10 +84,16 @@ export interface TupleType extends BaseType {
 
 export interface FunctionType extends BaseType {
   kind: "function";
+  typeParams?: TypeParamDef[];
   params: ParameterType[];
   returnType: Type;
   isGenerator: boolean;
   context: ContextBinding[];
+}
+
+export interface TypeParamDef {
+  name: string;
+  constraint?: Type;
 }
 
 export interface ParameterType {

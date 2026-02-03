@@ -144,6 +144,8 @@ export class Parser {
         return this.importDecl();
       case "FN":
         return this.fnDecl();
+      case "EXTERN":
+        return this.externFnDecl();
       case "TYPE":
         return this.typeDecl();
       case "KEYWORD":
@@ -220,6 +222,7 @@ export class Parser {
     this.expect("FN");
 
     const name = this.expectIdentifier();
+    const typeParams = this.check("LBRACKET") ? this.parseTypeParams() : undefined;
     const params = this.parseParams();
     const returnType = this.match("COLON") ? this.parseType() : undefined;
     const using = this.check("USING") ? this.parseUsing() : undefined;
@@ -230,7 +233,30 @@ export class Parser {
     // Check if body contains yield (generators are detected automatically)
     const isGenerator = this.containsYield(body);
 
-    return { kind: "FnDecl", name, params, returnType, using, body, isGenerator, loc };
+    return { kind: "FnDecl", name, typeParams, params, returnType, using, body, isGenerator, loc };
+  }
+
+  private externFnDecl(): AST.ExternFnDecl {
+    const loc = this.current().loc;
+    this.expect("EXTERN");
+    this.expect("FN");
+
+    // Allow keywords as extern function names (e.g., spawn, typeof)
+    const name = this.expectIdentifierOrKeyword();
+    const typeParams = this.check("LBRACKET") ? this.parseTypeParams() : undefined;
+    const params = this.parseParams();
+    const returnType = this.match("COLON") ? this.parseType() : undefined;
+
+    return { kind: "ExternFnDecl", name, typeParams, params, returnType, loc };
+  }
+
+  private expectIdentifierOrKeyword(): string {
+    const token = this.advance();
+    if (token.type === "IDENTIFIER" || token.value !== null && typeof token.value === "string") {
+      return token.raw;
+    }
+    const err = ParserErrors.expectedToken("IDENTIFIER", token.type);
+    throw new ParseError(err.message, token, err.hint);
   }
 
   private parseParams(): AST.Parameter[] {
@@ -415,8 +441,11 @@ export class Parser {
     this.skipNewlines();
 
     while (!this.check("DEDENT") && !this.isAtEnd()) {
-      if (this.check("FN")) {
-        members.push(this.parseMethodDecl());
+      if (this.check("EXTERN")) {
+        // extern fn method
+        members.push(this.parseMethodDecl(true));
+      } else if (this.check("FN")) {
+        members.push(this.parseMethodDecl(false));
       } else {
         members.push(this.parseFieldDecl());
       }
@@ -461,8 +490,11 @@ export class Parser {
     return { kind: "FieldDecl", name, type, optional, defaultValue, computed: false, loc };
   }
 
-  private parseMethodDecl(): AST.MethodDecl {
+  private parseMethodDecl(isExtern = false): AST.MethodDecl {
     const loc = this.current().loc;
+    if (isExtern) {
+      this.expect("EXTERN");
+    }
     this.expect("FN");
 
     const name = this.expectIdentifier();
@@ -471,11 +503,12 @@ export class Parser {
     const using = this.check("USING") ? this.parseUsing() : undefined;
 
     let body: AST.Block | undefined;
-    if (this.match("NEWLINE") && this.check("INDENT")) {
+    // Extern methods have no body
+    if (!isExtern && this.match("NEWLINE") && this.check("INDENT")) {
       body = this.parseBlock();
     }
 
-    return { kind: "MethodDecl", name, params, returnType, using, body, loc };
+    return { kind: "MethodDecl", name, params, returnType, using, body, isExtern, loc };
   }
 
   private keywordDecl(): AST.KeywordDecl {
@@ -1028,16 +1061,21 @@ export class Parser {
     const loc = this.current().loc;
     this.expect("WITH");
 
-    const contexts: { expr: AST.Expr; alias?: string }[] = [];
+    const contexts: AST.WithContext[] = [];
 
     do {
-      // Parse expression but stop at 'as' or ','
-      const expr = this.parseContextExpr();
-      let alias: string | undefined;
-      if (this.match("AS")) {
-        alias = this.expectIdentifier();
+      // New syntax: with let name = expr OR with expr
+      if (this.match("LET")) {
+        // with let name = expr
+        const name = this.expectIdentifier();
+        this.expect("ASSIGN");
+        const expr = this.parseContextExpr();
+        contexts.push({ expr, name });
+      } else {
+        // with expr (anonymous)
+        const expr = this.parseContextExpr();
+        contexts.push({ expr });
       }
-      contexts.push({ expr, alias });
     } while (this.match("COMMA"));
 
     this.expectNewline();
@@ -1046,10 +1084,9 @@ export class Parser {
     return { kind: "WithStmt", contexts, body, loc };
   }
 
-  // Parse context expression - stops at 'as' keyword
+  // Parse context expression - stops at comma or newline
   private parseContextExpr(): AST.Expr {
-    // Can't use normal expression() because 'as' would be parsed as type assertion
-    // Instead, parse a primary expression followed by calls/member access
+    // Parse a primary expression followed by calls/member access
     let expr = this.parsePrimaryExpr();
     
     while (true) {

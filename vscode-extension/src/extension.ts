@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as vscode from "vscode";
 import type { ExtensionContext } from "vscode";
 import {
   LanguageClient,
@@ -7,9 +8,34 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 
+// Import embedded stdlib source
+import { stdlibSource } from "../../src/stdlib";
+
 let client: LanguageClient;
 
+// Virtual document provider for stdlib (read-only)
+class StdlibContentProvider implements vscode.TextDocumentContentProvider {
+  provideTextDocumentContent(_uri: vscode.Uri): string {
+    return stdlibSource;
+  }
+}
+
 export function activate(context: ExtensionContext) {
+  // Register content provider for manuscript:// scheme (stdlib virtual documents)
+  const provider = new StdlibContentProvider();
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider("manuscript", provider)
+  );
+
+  // Set language mode for stdlib virtual documents
+  context.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument(async (doc) => {
+      if (doc.uri.scheme === "manuscript" && doc.languageId !== "manuscript") {
+        await vscode.languages.setTextDocumentLanguage(doc, "manuscript");
+      }
+    })
+  );
+
   const serverModule = context.asAbsolutePath(path.join("out", "server.js"));
 
   const serverOptions: ServerOptions = {
@@ -22,7 +48,10 @@ export function activate(context: ExtensionContext) {
   };
 
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: "file", language: "manuscript" }],
+    documentSelector: [
+      { scheme: "file", language: "manuscript" },
+      { scheme: "manuscript", language: "manuscript" }, // Support stdlib virtual documents
+    ],
     synchronize: {
       fileEvents: undefined,
     },

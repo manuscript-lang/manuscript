@@ -17,4 +17,5 @@ alwaysApply: true
 - DO use short names for variables
 - DO create utility function and extract common logic
 - DO emit LLM friendly error messages
-- DO prefer e2e fixture tests over unit tests
+- DO write e2e fixture tests over unit tests
+- DO not create lots of small test files, prefer creating logical file with multiple test cases

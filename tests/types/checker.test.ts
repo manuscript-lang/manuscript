@@ -72,7 +72,9 @@ double(5)`);
   });
 
   test("function with capabilities", () => {
-    checkOk(`fn read_file(path: string) using (fs: Filesystem)
+    checkOk(`type Filesystem extends Context
+  fn read(path: string): string
+fn read_file(path: string) using (fs: Filesystem)
   fs.read(path)`);
   });
 });
@@ -171,11 +173,11 @@ with production()
   print("running")`);
   });
 
-  test("with alias", () => {
-    // Define a context function first  
+  test("with let binding", () => {
+    // New syntax: with let name = expr
     checkOk(`fn Trace(name: string)
   print(name)
-with Trace("op") as t
+with let t = Trace("op")
   print("traced")`);
   });
 });

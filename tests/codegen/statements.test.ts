@@ -54,7 +54,7 @@ describe("CodeGen - For Statements", () => {
   test("for-in loop", () => {
     const js = compile(`for x in items
   print(x)`);
-    expect(js).toContain("for (const x of items)");
+    expect(js).toContain("for await (const x of items)");
   });
 
   test("for with range", () => {
