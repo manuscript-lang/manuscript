@@ -27,7 +27,6 @@ describe("Lexer - Keywords", () => {
     "continue": ["CONTINUE"],
     "spawn": ["SPAWN"],
     "sealed": ["SEALED"],
-    "extends": ["EXTENDS"],
     "and": ["AND"],
     "or": ["OR"],
     "not": ["NOT"],

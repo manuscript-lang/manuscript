@@ -117,10 +117,9 @@ export interface ObjectType extends BaseType {
   name?: string;  // Named type (e.g., "User")
   properties: PropertyType[];
   methods: MethodType[];
-  extends?: Type[];
   typeParams?: TypeParameter[];
   context?: ContextBinding[];
-  init?: FunctionType;  // Explicit init block for types with inheritance
+  alias?: Type[];  // For type aliases (type Foo = Bar)
 }
 
 export interface PropertyType {
@@ -129,11 +128,14 @@ export interface PropertyType {
   optional: boolean;
   computed: boolean;
   defaultValue?: boolean;  // Has default value
+  embedded?: boolean;  // Go-style embedded type
+  promotedFrom?: string;  // Type name if promoted from embedded type
 }
 
 export interface MethodType {
   name: string;
   type: FunctionType;
+  promotedFrom?: string;  // Type name if promoted from embedded type
 }
 
 // ============================================

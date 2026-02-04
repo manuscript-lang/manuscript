@@ -83,7 +83,7 @@ agent Assistant using (LLM)
 `, { typeCheck: false });
     
     expect(result.success).toBe(true);
-    expect(result.code).toContain("class Assistant");
+    expect(result.code).toContain("function Assistant");
   });
 
   test("capabilities declaration compiles", () => {

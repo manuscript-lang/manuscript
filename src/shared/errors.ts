@@ -106,10 +106,6 @@ export const ParserErrors = {
     message: `Unexpected token in context expression: '${got}'`,
     hint: "Context expressions expect capability bindings",
   }),
-  multipleInheritanceNotAllowed: () => ({
-    message: "Multiple inheritance is not allowed",
-    hint: "A type can only extend one parent type. Use composition for multiple behaviors",
-  }),
 };
 
 // Common error messages with hints for type checker errors
@@ -184,31 +180,6 @@ export const TypeErrors = {
     message: `Index type '${got}' is not assignable to '${expected}'`,
     hint: `Use a ${expected} value to index this collection`,
   }),
-  methodOverrideParamMismatch: (method: string, type: string, base: string) => ({
-    message: `Method '${method}' in '${type}' has different parameters than in base type '${base}'`,
-    hint: `Override must have the same parameters as the base method`,
-  }),
-  methodOverrideReturnMismatch: (method: string, type: string, base: string, expected: string, got: string) => ({
-    message: `Method '${method}' in '${type}' returns '${got}' but base type '${base}' returns '${expected}'`,
-    hint: `Override must return the same type as the base method`,
-  }),
-  methodOverrideUsingMismatch: (method: string, type: string, base: string) => ({
-    message: `Method '${method}' in '${type}' has different 'using' clause than in base type '${base}'`,
-    hint: `Override must have the same 'using' clause as the base method`,
-  }),
-  inheritedTypeMissingInit: (name: string, parent: string) => ({
-    message: `Type '${name}' extends '${parent}' but has no init block`,
-    hint: "Types that extend another type must define an init block with super() call",
-  }),
-  initMissingSuperCall: (name: string) => ({
-    message: `Init block in '${name}' must call super()`,
-    hint: "Add super(...) call to initialize the parent type",
-  }),
-  superOutsideInit: () => ({
-    message: "super() can only be used inside init blocks",
-    hint: "Move super() call inside the init block of a type that extends another",
-  }),
-  
   // Pattern matching errors
   patternTypeMismatch: (patternKind: string, expected: string) => ({
     message: `Cannot use ${patternKind} pattern on type '${expected}'`,
@@ -253,10 +224,6 @@ export const TypeErrors = {
   privateAccess: (member: string, type: string) => ({
     message: `Cannot access private member '${member}' of type '${type}'`,
     hint: `Members starting with '_' are private and can only be accessed within the defining type`,
-  }),
-  cannotExtendSealed: (type: string, sealed: string) => ({
-    message: `Cannot extend sealed type '${sealed}'`,
-    hint: `Type '${sealed}' is sealed and cannot be extended`,
   }),
   unreachableCode: () => ({
     message: `Unreachable code detected`,

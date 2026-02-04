@@ -2,9 +2,14 @@
 
 import { getCompiledStdlib } from "../stdlib/compiled";
 
-// Context base class for all capability/context types
-export class Context {
-  exit(): void {}
+// Context base type - factory function returning null-prototype object
+// Used as embedded marker in capability types
+const Context$methods = Object.assign(Object.create(null), {
+  exit() {}
+});
+
+export function Context() {
+  return Object.create(Context$methods);
 }
 
 // Context stack for ambient context
@@ -54,6 +59,9 @@ function typeOf(x: any): string {
   if (x instanceof Map) return "map";
   if (x instanceof Set) return "set";
   if (x instanceof Channel) return "channel";
+  if (typeof x === "object" && x.__typename) {
+    return x.__typename;
+  }
   if (typeof x === "object" && x.constructor && x.constructor.name !== "Object") {
     return x.constructor.name;
   }
@@ -80,7 +88,11 @@ function hash(x: any): number {
 
 function to_str(x: any): string {
   if (x === null) return "null";
-  if (typeof x === "object") return JSON.stringify(x);
+  if (typeof x === "object") {
+    // For Manuscript types with __typename, use the type name
+    if (x.__typename) return x.__typename;
+    return JSON.stringify(x);
+  }
   return String(x);
 }
 function to_num(s: string): number { return Number(s); }

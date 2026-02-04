@@ -120,8 +120,8 @@ function extractObjectType(decl: AST.TypeDecl): ObjectType {
     constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
   }));
 
-  // Include extends types
-  const extendsTypes = decl.extends?.map(e => astTypeToType(e));
+  // Include alias types (for type aliases like type Foo = Bar)
+  const aliasTypes = decl.alias?.map(e => astTypeToType(e));
 
   return {
     kind: "object",
@@ -129,7 +129,7 @@ function extractObjectType(decl: AST.TypeDecl): ObjectType {
     properties,
     methods,
     typeParams,
-    extends: extendsTypes,
+    alias: aliasTypes,
   };
 }
 

@@ -71,16 +71,3 @@ type Account
 fn external_update(a: Account): void
   a._update_balance(100)
 // @error: Cannot access private
-
-// === Test with inheritance ===
-
-type Base
-  _secret: string
-  value: number
-
-type Derived extends Base
-  extra: string
-
-fn access_derived_private(d: Derived): string
-  d._secret
-// @error: Cannot access private

@@ -119,7 +119,7 @@ type Error
   cause: Error?
   stack: string?
 
-type Context
+extern type Context
   fn exit(): void
 
 // ============================================
@@ -225,7 +225,8 @@ extern type Channel[T]
 // LLM Capabilities
 // ============================================
 
-extern type Claude extends Context
+extern type Claude
+  Context
   model?: string
   apiKey?: string
   maxTokens?: number
@@ -237,7 +238,8 @@ extern type Claude extends Context
   fn stream(messages: list[any]): any
   fn exit(): void
 
-extern type GPT extends Context
+extern type GPT
+  Context
   model?: string
   apiKey?: string
   maxTokens?: number
@@ -250,7 +252,8 @@ extern type GPT extends Context
   fn stream(messages: list[any]): any
   fn exit(): void
 
-extern type MockLLM extends Context
+extern type MockLLM
+  Context
   responses?: list[any]
   defaultReply?: string
   delay?: number
@@ -268,7 +271,8 @@ extern type MockLLM extends Context
 // Filesystem Capabilities
 // ============================================
 
-extern type LocalFilesystem extends Context
+extern type LocalFilesystem
+  Context
   root?: string
   // Reads file contents as string
   fn read(path: string): string
@@ -290,7 +294,8 @@ extern type LocalFilesystem extends Context
   fn move(src: string, dest: string): void
   fn exit(): void
 
-extern type MockFilesystem extends Context
+extern type MockFilesystem
+  Context
   files?: map[string, string]
   fn read(path: string): string
   fn write(path: string, content: string): void
@@ -306,7 +311,8 @@ extern type MockFilesystem extends Context
   fn exit(): void
 
 // Filesystem alias for LocalFilesystem
-extern type Filesystem extends Context
+extern type Filesystem
+  Context
   root?: string
   fn read(path: string): string
   fn write(path: string, content: string): void
@@ -323,7 +329,8 @@ extern type Filesystem extends Context
 // Shell Capabilities
 // ============================================
 
-extern type LocalShell extends Context
+extern type LocalShell
+  Context
   shell?: string
   cwd?: string
   // Executes command and returns result
@@ -334,7 +341,8 @@ extern type LocalShell extends Context
   fn which(command: string): string?
   fn exit(): void
 
-extern type MockShell extends Context
+extern type MockShell
+  Context
   commands?: list[any]
   cwd?: string
   env?: map[string, string]
@@ -346,7 +354,8 @@ extern type MockShell extends Context
   fn exit(): void
 
 // Shell alias for LocalShell
-extern type Shell extends Context
+extern type Shell
+  Context
   shell?: string
   cwd?: string
   fn exec(command: string): any
@@ -358,7 +367,8 @@ extern type Shell extends Context
 // HTTP Capabilities
 // ============================================
 
-extern type FetchHTTP extends Context
+extern type FetchHTTP
+  Context
   baseURL?: string
   headers?: map[string, string]
   timeout?: number
@@ -373,7 +383,8 @@ extern type FetchHTTP extends Context
   fn postJSON(url: string, data: any): any
   fn exit(): void
 
-extern type MockHTTP extends Context
+extern type MockHTTP
+  Context
   responses?: list[any]
   fn get(url: string): any
   fn post(url: string): any
@@ -387,7 +398,8 @@ extern type MockHTTP extends Context
   fn exit(): void
 
 // HTTP alias for FetchHTTP
-extern type HTTP extends Context
+extern type HTTP
+  Context
   baseURL?: string
   headers?: map[string, string]
   timeout?: number

@@ -139,7 +139,7 @@ type Person
   age: number
 `);
     expect(result.success).toBe(true);
-    expect(result.code).toContain("class Person");
+    expect(result.code).toContain("function Person");
   });
 
   test("compiles enum declaration", () => {
@@ -168,7 +168,7 @@ agent Greeter using (LLM)
     return "Hello, " + name
 `);
     expect(result.success).toBe(true);
-    expect(result.code).toContain("extends __ms_runtime.Agent");
+    expect(result.code).toContain("function Greeter");
   });
 
   test("compiles test declaration", () => {

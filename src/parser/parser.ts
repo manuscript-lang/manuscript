@@ -354,14 +354,14 @@ export class Parser {
         while (this.match("OR")) {
           types.push(this.parseType());
         }
-        // Return as a type with union body
+        // Return as a type alias with union
         return {
           kind: "TypeDecl",
           name,
           typeParams,
           body: { kind: "TypeBody", members: [], loc },
           loc,
-          extends: types,
+          alias: types,
           doc,
         };
       }
@@ -370,21 +370,11 @@ export class Parser {
         kind: "TypeDecl",
         name,
         typeParams,
-        extends: [firstType],
+        alias: [firstType],
         body: { kind: "TypeBody", members: [], loc },
         loc,
         doc,
       };
-    }
-
-    let extendsTypes: AST.TypeExpr[] | undefined;
-    if (this.match("EXTENDS")) {
-      extendsTypes = [this.parseType()];
-      // Multiple inheritance is not allowed
-      if (this.check("COMMA")) {
-        const err = ParserErrors.multipleInheritanceNotAllowed();
-        throw new ParseError(err.message, this.peek(), err.hint);
-      }
     }
 
     const using = this.check("USING") ? this.parseUsing() : undefined;
@@ -402,7 +392,7 @@ export class Parser {
       body = { kind: "TypeBody", members: [], loc };
     }
 
-    return { kind: "TypeDecl", name, typeParams, extends: extendsTypes, using, where, body, loc, isExtern: isExtern || undefined, doc };
+    return { kind: "TypeDecl", name, typeParams, using, where, body, loc, isExtern: isExtern || undefined, doc };
   }
 
   private parseTypeParams(): AST.TypeParam[] {
@@ -459,13 +449,11 @@ export class Parser {
 
     while (!this.check("DEDENT") && !this.isAtEnd()) {
       if (this.check("FN") || this.check("EXTERN")) {
-        // Check for fn init(...) - special init method
-        if (this.check("FN") && this.peekNext().type === "IDENTIFIER" && this.peekNext().value === "init") {
-          members.push(this.parseInitDecl());
-        } else {
-          // Parse regular method - isExternType makes all methods implicitly extern
-          members.push(this.parseMethodDecl(isExternType));
-        }
+        // Parse method - isExternType makes all methods implicitly extern
+        members.push(this.parseMethodDecl(isExternType));
+      } else if (this.isEmbeddedType()) {
+        // Go-style embedding: capitalized type name without colon
+        members.push(this.parseEmbeddedType());
       } else {
         members.push(this.parseFieldDecl());
       }
@@ -474,16 +462,6 @@ export class Parser {
 
     this.expect("DEDENT");
     return { kind: "TypeBody", members, loc };
-  }
-
-  private parseInitDecl(): AST.InitDecl {
-    const loc = this.current().loc;
-    this.expect("FN");  // consume "fn"
-    this.advance();  // consume "init" identifier
-    const params = this.parseParams();
-    this.expectNewline();
-    const body = this.parseBlock();
-    return { kind: "InitDecl", params, body, loc };
   }
 
   private parseFieldDecl(): AST.FieldDecl {
@@ -521,6 +499,37 @@ export class Parser {
     return { kind: "FieldDecl", name, type, optional, defaultValue, computed: false, loc, doc };
   }
 
+  // Check if current position is an embedded type (Go-style embedding)
+  // Embedded type: Capitalized identifier NOT followed by : or ?
+  private isEmbeddedType(): boolean {
+    if (!this.check("IDENTIFIER")) return false;
+    const name = this.peek().value as string;
+    // Must be capitalized (first char is uppercase letter)
+    if (!name || name.length === 0) return false;
+    const firstChar = name[0]!;
+    if (firstChar !== firstChar.toUpperCase() || firstChar === firstChar.toLowerCase()) {
+      return false;
+    }
+    // Must NOT be followed by : or ? (which would make it a regular field)
+    const next = this.peekNext();
+    return next.type !== "COLON" && next.type !== "QUESTION";
+  }
+
+  // Parse Go-style embedded type
+  private parseEmbeddedType(): AST.FieldDecl {
+    const loc = this.current().loc;
+    const name = this.expectIdentifier();
+    return {
+      kind: "FieldDecl",
+      name,
+      type: { kind: "NamedType", name, loc },
+      optional: false,
+      computed: false,
+      embedded: true,
+      loc,
+    };
+  }
+
   private parseMethodDecl(implicitExtern = false): AST.MethodDecl {
     const doc = this.current().leadingComment;
     const loc = this.current().loc;
@@ -547,25 +556,12 @@ export class Parser {
 
   private keywordDecl(): AST.KeywordDecl {
     const loc = this.current().loc;
-    let sealed: AST.KeywordDecl["sealed"];
-
-    if (this.match("SEALED")) {
-      if (this.match("LPAREN")) {
-        // sealed(using) or sealed(extends)
-        const token = this.advance();
-        const modifier = token.raw;
-        this.expect("RPAREN");
-        sealed = `sealed(${modifier})` as AST.KeywordDecl["sealed"];
-      } else {
-        sealed = "sealed";
-      }
-    }
+    const sealed = this.match("SEALED") || undefined;
 
     this.expect("KEYWORD");
-    const name = this.expectName(); // Allow keywords as names (e.g., keyword capabilities = ...)
+    const name = this.expectName();
     this.expect("ASSIGN");
 
-    // expansion is "type" or "fn" which are keywords, not identifiers
     let expansion: "type" | "fn";
     if (this.match("TYPE")) {
       expansion = "type";
@@ -576,11 +572,6 @@ export class Parser {
       throw new ParseError(err.message, this.peek(), err.hint);
     }
 
-    let extendsType: AST.TypeExpr | undefined;
-    if (this.match("EXTENDS")) {
-      extendsType = this.parseType();
-    }
-
     const using = this.check("USING") ? this.parseUsing() : undefined;
 
     let returnType: AST.TypeExpr | undefined;
@@ -588,7 +579,7 @@ export class Parser {
       returnType = this.parseType();
     }
 
-    return { kind: "KeywordDecl", sealed, name, expansion, extends: extendsType, using, returnType, loc };
+    return { kind: "KeywordDecl", sealed, name, expansion, using, returnType, loc };
   }
 
   private testDecl(): AST.TestDecl {
@@ -1570,7 +1561,7 @@ export class Parser {
     return { kind: "BinaryExpr", op: token.raw, left, right, loc: token.loc };
   }
 
-  private callExpr(callee: AST.Expr): AST.CallExpr | AST.SuperExpr {
+  private callExpr(callee: AST.Expr): AST.CallExpr {
     const loc = this.previous().loc;
     const args: (AST.Expr | { name: string; value: AST.Expr })[] = [];
 
@@ -1590,12 +1581,6 @@ export class Parser {
     }
 
     this.expect("RPAREN");
-
-    // Handle super(...) as a special expression
-    if (callee.kind === "Identifier" && callee.name === "super") {
-      return { kind: "SuperExpr", args, loc: callee.loc };
-    }
-
     return { kind: "CallExpr", callee, args, loc };
   }
 

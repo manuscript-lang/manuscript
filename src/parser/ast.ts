@@ -67,7 +67,7 @@ export interface TypeDecl extends BaseNode {
   kind: "TypeDecl";
   name: string;
   typeParams?: TypeParam[];
-  extends?: TypeExpr[];
+  alias?: TypeExpr[];  // For type aliases: type Foo = Bar or type Message = A | B
   using?: UsingClause;
   where?: WhereClause[];
   body: TypeBody;
@@ -92,13 +92,7 @@ export interface TypeBody extends BaseNode {
   members: TypeMember[];
 }
 
-export type TypeMember = FieldDecl | MethodDecl | InitDecl;
-
-export interface InitDecl extends BaseNode {
-  kind: "InitDecl";
-  params: Parameter[];
-  body: Block;
-}
+export type TypeMember = FieldDecl | MethodDecl;
 
 export interface FieldDecl extends BaseNode {
   kind: "FieldDecl";
@@ -107,6 +101,7 @@ export interface FieldDecl extends BaseNode {
   optional: boolean;
   defaultValue?: Expr;
   computed: boolean; // () => expr
+  embedded?: boolean; // Go-style embedding (e.g., "Animal" in type body)
   doc?: string;
 }
 
@@ -137,10 +132,9 @@ export interface EnumVariant extends BaseNode {
 
 export interface KeywordDecl extends BaseNode {
   kind: "KeywordDecl";
-  sealed?: "sealed" | "sealed(using)" | "sealed(extends)";
+  sealed?: boolean;
   name: string;
   expansion: "type" | "fn";
-  extends?: TypeExpr;
   using?: UsingClause;
   returnType?: TypeExpr;
 }
@@ -371,7 +365,6 @@ export type Expr =
   | BinaryExpr
   | UnaryExpr
   | CallExpr
-  | SuperExpr
   | IndexExpr
   | MemberExpr
   | PipeExpr
@@ -413,11 +406,6 @@ export interface CallExpr extends BaseNode {
   kind: "CallExpr";
   callee: Expr;
   args: (Expr | { name: string; value: Expr })[]; // positional or named
-}
-
-export interface SuperExpr extends BaseNode {
-  kind: "SuperExpr";
-  args: (Expr | { name: string; value: Expr })[]; // arguments to parent constructor
 }
 
 export interface IndexExpr extends BaseNode {

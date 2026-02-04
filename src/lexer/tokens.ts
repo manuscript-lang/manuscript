@@ -30,7 +30,6 @@ export type TokenType =
   | "CONTINUE"
   | "SPAWN"
   | "SEALED"
-  | "EXTENDS"
   | "EXTERN"
   // NOTE: enum, agent, capabilities are NOT keywords - they are defined via
   // `keyword` declarations and resolved at semantic level per syntax.md
@@ -129,7 +128,6 @@ export const KEYWORDS: Record<string, TokenType> = {
   continue: "CONTINUE",
   spawn: "SPAWN",
   sealed: "SEALED",
-  extends: "EXTENDS",
   extern: "EXTERN",
   // NOTE: enum, agent, capabilities are defined via keyword declarations
   and: "AND",

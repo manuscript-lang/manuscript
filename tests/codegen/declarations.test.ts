@@ -59,13 +59,13 @@ describe("CodeGen - Function Declarations", () => {
 });
 
 describe("CodeGen - Type Declarations", () => {
-  test("type as class", () => {
+  test("type as factory function", () => {
     const js = compile(`type User
   name: string
   age: number`);
-    expect(js).toContain("class User");
-    expect(js).toContain("constructor(name, age)");
-    expect(js).toContain("this.name = name;");
+    expect(js).toContain("function User(name, age)");
+    expect(js).toContain("Object.create(");
+    expect(js).toContain("self.name = name;");
   });
 
   test("type with optional field", () => {
@@ -89,10 +89,12 @@ describe("CodeGen - Type Declarations", () => {
     expect(js).toContain("increment()");
   });
 
-  test("type extends", () => {
-    const js = compile(`type Admin extends User
+  test("type with embedding", () => {
+    const js = compile(`type Admin
+  User
   role: string`);
-    expect(js).toContain("extends User");
+    expect(js).toContain("self.User = _User;");
+    expect(js).toContain("_User = User()");
   });
 });
 
@@ -115,7 +117,7 @@ describe("CodeGen - Agent Declarations", () => {
   
   run(prompt: string)
     greet("world")`);
-    expect(js).toContain("class Helper extends __ms_runtime.Agent");
+    expect(js).toContain("function Helper(llm)");
     expect(js).toContain("async greet(name)");
     expect(js).toContain("async run(prompt)");
   });

@@ -3,7 +3,6 @@ import * as AST from "../parser/ast";
 import type { Type } from "./types";
 import { createGlobalEnvironment, TypeEnvironment } from "./environment";
 import { TypeCheckError } from "./errors";
-import { initPass } from "./passes/init-pass";
 import { collectDeclarations } from "./passes/collect-declarations";
 import { inferTypes } from "./passes/infer-types";
 import { analyzeContext } from "./passes/context-analysis";
@@ -33,15 +32,6 @@ export interface Pass {
 // ============================================
 // Built-in Pass Wrappers
 // ============================================
-
-export class InitPass implements Pass {
-  name = "init-pass";
-
-  run(ctx: PassContext): void {
-    const result = initPass(ctx.program);
-    ctx.errors.push(...result.errors);
-  }
-}
 
 export class CollectDeclarationsPass implements Pass {
   name = "collect-declarations";
@@ -106,7 +96,6 @@ export class PassManager {
    */
   static createDefault(): PassManager {
     const mgr = new PassManager();
-    mgr.addPass(new InitPass());
     mgr.addPass(new CollectDeclarationsPass());
     mgr.addPass(new InferTypesPass());
     mgr.addPass(new ContextAnalysisPass());

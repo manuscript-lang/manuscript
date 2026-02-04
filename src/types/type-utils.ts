@@ -232,21 +232,13 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
 
 // Check if source object is structurally assignable to target object
 function isObjectAssignable(source: ObjectType, target: ObjectType, env: TypeEnvironment): boolean {
-  // Named types: must be the same type or source extends target
+  // Named types: exact match only (no inheritance)
   if (source.name && target.name) {
-    if (source.name === target.name) return true;
-    // Check inheritance
-    if (source.extends) {
-      for (const parent of source.extends) {
-        if (isAssignable(parent, target, env)) return true;
-      }
-    }
-    return false;
+    return source.name === target.name;
   }
   
   // Named target with unnamed source: check structural compatibility
   if (target.name && !source.name) {
-    // Source must have all properties of target with compatible types
     for (const targetProp of target.properties) {
       if (targetProp.optional) continue;
       const sourceProp = source.properties.find(p => p.name === targetProp.name);
@@ -257,7 +249,6 @@ function isObjectAssignable(source: ObjectType, target: ObjectType, env: TypeEnv
   }
   
   // Unnamed source to named target or both unnamed: structural subtyping
-  // Source must have all required properties of target with compatible types
   for (const targetProp of target.properties) {
     if (targetProp.optional) continue;
     const sourceProp = source.properties.find(p => p.name === targetProp.name);
@@ -380,23 +371,29 @@ export function contextMatch(a: ContextBinding[], b: ContextBinding[]): boolean 
   return true;
 }
 
-// Check if a type extends a base type by name
+// Check if a type has an embedded type by name (Go-style composition)
+// Replaces old inheritance check - now checks for embedded field
 export function extendsType(type: Type, baseName: string, env: TypeEnvironment): boolean {
   const resolved = type.kind === "ref" ? env.resolveType(type) : type;
 
+  // Direct match
   if (resolved.kind === "object" && (resolved as ObjectType).name === baseName) {
     return true;
   }
 
-  if (resolved.kind === "object" && (resolved as ObjectType).extends) {
-    for (const parent of (resolved as ObjectType).extends!) {
-      if (extendsType(parent, baseName, env)) {
-        return true;
-      }
-    }
+  // Check for embedded type with matching name
+  if (resolved.kind === "object") {
+    const obj = resolved as ObjectType;
+    const embedded = obj.properties.find(p => p.embedded && p.name === baseName);
+    if (embedded) return true;
   }
 
   return false;
+}
+
+// Check if a type has Context embedded (for with-block validation)
+export function hasEmbeddedContext(type: Type, env: TypeEnvironment): boolean {
+  return extendsType(type, "Context", env);
 }
 
 // Check if a type is iterable
@@ -558,19 +555,9 @@ export function substituteTypeInObject(objType: ObjectType, bindings: Map<string
       }
     })),
     typeParams: objType.typeParams,
-    extends: objType.extends,
+    alias: objType.alias,
     context: objType.context
   };
-  if (objType.init) {
-    result.init = {
-      ...objType.init,
-      params: objType.init.params.map(p => ({
-        ...p,
-        type: substituteTypeParams(p.type, bindings)
-      })),
-      returnType: substituteTypeParams(objType.init.returnType, bindings)
-    };
-  }
   return result;
 }
 

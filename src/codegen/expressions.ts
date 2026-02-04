@@ -22,7 +22,6 @@ export function genExpr(ctx: Ctx, expr: AST.Expr, opts: GenOpts): string {
     case "BinaryExpr": return genBinary(ctx, expr, opts);
     case "UnaryExpr": return genUnary(ctx, expr, opts);
     case "CallExpr": return genCall(ctx, expr, opts);
-    case "SuperExpr": return genSuper(ctx, expr, opts);
     case "IndexExpr": return genIndex(ctx, expr, opts);
     case "MemberExpr": return genMember(ctx, expr, opts);
     case "PipeExpr": return genPipe(ctx, expr, opts);
@@ -39,17 +38,6 @@ export function genExpr(ctx: Ctx, expr: AST.Expr, opts: GenOpts): string {
   }
 }
 
-export function genSuper(ctx: Ctx, node: AST.SuperExpr, opts: GenOpts): string {
-  const args = node.args.map(arg => {
-    if ("name" in arg && "value" in arg) {
-      // Named args aren't supported in JS super, just use value
-      return genExpr(ctx, arg.value, opts);
-    }
-    return genExpr(ctx, arg as AST.Expr, opts);
-  });
-  return `super(${args.join(", ")})`;
-}
-
 export function genLiteral(node: AST.Literal): string {
   if (node.value === null) return "null";
   if (typeof node.value === "string") return JSON.stringify(node.value);
@@ -58,12 +46,14 @@ export function genLiteral(node: AST.Literal): string {
 }
 
 export function genIdentifier(node: AST.Identifier, opts: GenOpts): string {
-  // In init blocks, params shadow fields - don't add this. for params
-  if (opts.initParams?.has(node.name)) {
+  // Don't prefix type names (used as constructors) - they're global
+  if (opts.declaredTypes.has(node.name)) {
     return node.name;
   }
+  // Use self.field for factory function pattern, this.field for methods
   if (opts.classFields?.has(node.name)) {
-    return `this.${node.name}`;
+    const prefix = opts.selfVar || "this";
+    return `${prefix}.${node.name}`;
   }
   return node.name;
 }
@@ -91,8 +81,10 @@ export function genUnary(ctx: Ctx, node: AST.UnaryExpr, opts: GenOpts): string {
 export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
   let callee = genExpr(ctx, node.callee, opts);
 
-  // Prefix stdlib functions
-  if (node.callee.kind === "Identifier" && STDLIB_FUNCTIONS.has(node.callee.name)) {
+  // Prefix stdlib functions (unless it's a class method shadowing the stdlib)
+  if (node.callee.kind === "Identifier" && 
+      STDLIB_FUNCTIONS.has(node.callee.name) &&
+      !opts.classFields?.has(node.callee.name)) {
     callee = `__ms_runtime.${node.callee.name}`;
   }
 
@@ -103,17 +95,17 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     if (EXTERN_TYPES.has(baseName)) {
       return `new __ms_runtime.${baseName}(${args})`;
     }
-    // User-defined generic types - type params are erased at runtime
+    // User-defined generic types - factory functions, no 'new'
     if (opts.declaredTypes.has(baseName)) {
-      return `new ${baseName}(${args})`;
+      return `${baseName}(${args})`;
     }
   }
 
   const args = genCallArgs(ctx, node.args, opts);
 
-  // Use 'new' for type constructors
+  // User-defined types use factory functions (no 'new')
   if (node.callee.kind === "Identifier" && opts.declaredTypes.has(node.callee.name)) {
-    return `new ${callee}(${args})`;
+    return `${callee}(${args})`;
   }
 
   // Implicit await for all function calls
@@ -244,7 +236,8 @@ function genPatternCondition(tempVar: string, pattern: AST.Pattern): string {
     case "LiteralPattern": return `${tempVar} === ${JSON.stringify(pattern.value)}`;
     case "TypePattern": {
       const typeName = pattern.type.kind === "NamedType" ? pattern.type.name : "Object";
-      return `${tempVar} instanceof ${typeName}`;
+      // Use __typename for Manuscript types, fallback to instanceof for external types
+      return `(${tempVar}?.__typename === "${typeName}" || ${tempVar} instanceof ${typeName})`;
     }
     case "RangePattern": return `${tempVar} >= ${pattern.start} && ${tempVar} <= ${pattern.end}`;
     case "ArrayPattern": return `Array.isArray(${tempVar})`;
@@ -284,7 +277,8 @@ export function genMap(ctx: Ctx, node: AST.MapExpr, opts: GenOpts): string {
 export function genTemplate(ctx: Ctx, node: AST.TemplateLiteral, opts: GenOpts): string {
   const parts = node.parts.map(p => {
     if (typeof p === "string") return JSON.stringify(p);
-    return genExpr(ctx, p.expr, opts);
+    // Use to_str for interpolated expressions to handle null-prototype objects
+    return `__ms_runtime.to_str(${genExpr(ctx, p.expr, opts)})`;
   });
   return parts.length === 1 ? parts[0]! : `(${parts.join(" + ")})`;
 }

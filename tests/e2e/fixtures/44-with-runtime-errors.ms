@@ -1,12 +1,9 @@
 // @test: With Runtime Errors - context not available at runtime
 // @error: No context of type 'Logger' available
 
-type Logger extends Context
+type Logger
+  Context
   prefix: string
-  
-  fn init(prefix: string)
-    super()
-    prefix = prefix
   
   fn log(msg: string): string
     "{prefix}: {msg}"

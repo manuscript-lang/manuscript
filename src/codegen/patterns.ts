@@ -40,7 +40,8 @@ export function genPatternCondition(tempVar: string, pattern: AST.Pattern): stri
       return `${tempVar} === ${JSON.stringify(pattern.value)}`;
     case "TypePattern": {
       const typeName = pattern.type.kind === "NamedType" ? pattern.type.name : "Object";
-      return `${tempVar} instanceof ${typeName}`;
+      // Use __typename for Manuscript types (factory functions), fallback to instanceof for external types
+      return `(${tempVar}?.__typename === "${typeName}" || ${tempVar} instanceof ${typeName})`;
     }
     case "RangePattern":
       return `${tempVar} >= ${pattern.start} && ${tempVar} <= ${pattern.end}`;

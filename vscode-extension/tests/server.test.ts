@@ -442,8 +442,8 @@ type Counter
     expect(cached).not.toBeNull();
     
     const typeDecl = cached!.program.body[0] as any;
-    // 1 field + 2 methods + 1 auto-generated init = 4 members
-    expect(typeDecl.body.members).toHaveLength(4);
+    // 1 field + 2 methods = 3 members
+    expect(typeDecl.body.members).toHaveLength(3);
   });
 
   test("parses function with optional return", () => {
@@ -1747,7 +1747,7 @@ type Calculator
 
     const symbols = getDocumentSymbols(cached!.symbols);
     
-    // Should have 1 type, 1 field, 3 methods (default init + add + subtract)
+    // Should have 1 type, 1 field, 2 methods (add + subtract)
     const types = symbols.filter(s => s.kind === "type");
     const fields = symbols.filter(s => s.kind === "field");
     const methods = symbols.filter(s => s.kind === "method");
@@ -1759,8 +1759,7 @@ type Calculator
     expect(fields[0].name).toBe("value");
     expect(fields[0].parent).toBe("Calculator");
     
-    expect(methods.length).toBe(3);
-    expect(methods.map(m => m.name)).toContain("init");
+    expect(methods.length).toBe(2);
     expect(methods.map(m => m.name)).toContain("add");
     expect(methods.map(m => m.name)).toContain("subtract");
     expect(methods[0].parent).toBe("Calculator");

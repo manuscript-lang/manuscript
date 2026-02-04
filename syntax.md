@@ -447,21 +447,17 @@ let user = assert data.user, "no user"  // with message
 Define syntax shortcuts:
 
 ```manuscript
-keyword capabilities = type extends Context
-keyword agent = type extends Agent using (LLM)
+keyword capabilities = type using (Context)
 keyword prompt = fn (): string
 
-// Sealed variants
-sealed keyword enum = type                    // no extends, no using
-sealed(using) keyword model = type            // extends OK, no using
+// Sealed prevents adding using clause
+sealed keyword enum = type
 ```
 
-| Modifier | Inheritance | Capabilities |
-|----------|-------------|--------------|
-| `sealed` | No | No |
-| `sealed(using)` | Yes | No |
-| `sealed(extends)` | No | Yes |
-| *(none)* | Yes | Yes |
+| Modifier | Capabilities |
+|----------|--------------|
+| `sealed` | No |
+| *(none)* | Yes |
 
 ---
 

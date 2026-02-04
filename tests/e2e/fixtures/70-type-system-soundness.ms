@@ -1,6 +1,6 @@
 // @test: Type System Soundness - Comprehensive assignability and type checking
 
-// === Structural Subtyping for Objects ===
+// === Named Types Must Match Exactly ===
 
 type Point
   x: number
@@ -11,7 +11,7 @@ type Point3D
   y: number
   z: number
 
-// Named types must match exactly
+// Named types must match exactly (no structural subtyping)
 fn takes_point(p: Point): number
   p.x + p.y
 
@@ -19,38 +19,13 @@ let p3d = Point3D(1, 2, 3)
 let bad_assign = takes_point(p3d)
 // @error: not assignable
 
-// === Function Type Variance ===
-
-type Animal
-  name: string
-
-type Dog extends Animal
-  breed: string
-  fn init(name: string, breed: string)
-    super(name)
-    breed = breed
-
-fn process_animal(handler: fn(Animal): void): void
-  handler(Animal("generic"))
-
-fn dog_handler(d: Dog): void
-  print(d.breed)
-
-// Should error: dog_handler expects Dog, but will receive Animal
-let bad_fn = process_animal(dog_handler)
-// @error: not assignable
-
-// Covariant return: can return narrower type
-fn get_animal(): Animal
-  Dog("Rex", "Labrador")
-
 // === Generic Type Constraints ===
 
 fn identity[T](x: T): T
   x
 
 let num = identity(42)
-let str = identity("hello")
+let str_val = identity("hello")
 
 // Generic with collections
 fn first_elem[T](items: list[T]): T?
@@ -75,15 +50,6 @@ fn make_success(): MyResult
 fn make_error(): MyResult
   MyError("failed")
 
-// === List Invariance ===
-
-type Cat extends Animal
-  whiskers: number
-
-let dogs: list[Dog] = [Dog("Rex", "Lab")]
-let animals: list[Animal] = dogs
-// @error: not assignable
-
 // === Optional Type Handling ===
 
 fn maybe_num(): number?
@@ -104,8 +70,8 @@ let null_val: number? = null
 let any_val: any = 42
 let num_val = any_val as number
 
-let str_val = "hello"
-let bad_assert = str_val as number
+let str_assert = "hello"
+let bad_assert = str_assert as number
 // @error: Cannot assert
 
 // === Never Type Assignability ===

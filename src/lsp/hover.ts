@@ -16,7 +16,6 @@ import {
   getDocstring,
   parseMemberQualifiedName,
   parseQualifiedName,
-  findConstructorCalleeAt,
 } from "./utils";
 
 export interface HoverInfo {
@@ -40,15 +39,7 @@ export function getHoverForSymbol(
   for (const ref of symbols.getAllReferences()) {
     const def = symbols.getDefinitionById(ref.symbolId);
     if (def && ref.loc.line === line && column >= ref.loc.column && column <= ref.loc.column + def.name.length) {
-      let targetDef = def;
-      if (def.id.kind === "type") {
-        const ctorCallee = findConstructorCalleeAt(program, line, column);
-        if (ctorCallee === def.name) {
-          const initDef = symbols.getDefinition(`${def.name}.init`);
-          if (initDef) targetDef = initDef;
-        }
-      }
-      return getHoverForDefinition(targetDef, types, program, env);
+      return getHoverForDefinition(def, types, program, env);
     }
   }
   return null;
@@ -118,10 +109,6 @@ function getHoverForDefinition(
         const obj = env.lookupType(parsed.typeName);
         if (obj?.kind === "object") {
           const o = obj as ObjectType;
-          if (parsed.memberName === "init" && o.init) {
-            const initMember = findTypeDecl(program, parsed.typeName)?.body?.members?.find((m): m is AST.InitDecl => m.kind === "InitDecl");
-            return { signature: `(constructor) ${formatFunctionType(o.init)}`, doc: getDocstring(initMember?.body) };
-          }
           const method = o.methods.find(m => m.name === parsed.memberName);
           if (method) {
             const ft = method.type;
@@ -136,10 +123,6 @@ function getHoverForDefinition(
         const typeDecl = findTypeDecl(program, parsed.typeName);
         if (typeDecl) {
           for (const m of typeDecl.body?.members || []) {
-            if (m.kind === "InitDecl" && parsed.memberName === "init") {
-              const params = m.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
-              return { signature: `(constructor) fn init(${params}): ${parsed.typeName}`, doc: getDocstring(m.body) };
-            }
             if (m.kind === "MethodDecl" && m.name === parsed.memberName) {
               const params = m.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
               const ret = formatAstType(m.returnType);

@@ -1,6 +1,6 @@
 // Expression Type Inference - Infers types for all expression kinds
 import * as AST from "../../../parser/ast";
-import type { Type, FunctionType, ObjectType } from "../../types";
+import type { Type, FunctionType, ObjectType, ParameterType } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import {
@@ -95,9 +95,6 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
     case "TemplateLiteral":
       type = inferTemplateLiteral(ctx, expr);
       break;
-    case "SuperExpr":
-      type = inferSuperExpr(ctx, expr);
-      break;
     default:
       type = Types.any;
   }
@@ -121,9 +118,20 @@ function inferIdentifier(ctx: InferContext, expr: AST.Identifier): Type {
     if (typeRef) {
       if (typeRef.kind === "object" && typeRef.name) {
         const obj = typeRef as ObjectType;
-        const params = obj.init
-          ? obj.init.params.map((p: any) => Types.param(p.name, p.type, p.optional))
-          : obj.properties.map(p => Types.param(p.name, p.type, p.optional || p.defaultValue));
+        // Factory params in declaration order: embedded first, then own fields
+        // Exclude promoted props and Context (marker type)
+        const ownProps = obj.properties.filter(p => !p.promotedFrom);
+        const params: ParameterType[] = [];
+        for (const p of ownProps) {
+          if (p.embedded) {
+            // Skip Context - it's a marker type, not a real embedded value
+            if (p.name === "Context") continue;
+            const embeddedType = ctx.env.lookupType(p.name);
+            params.push(Types.param(p.name, embeddedType || Types.any, true));
+          } else {
+            params.push(Types.param(p.name, p.type, p.optional || !!p.defaultValue));
+          }
+        }
         return Types.fn(params, typeRef);
       }
       return typeRef;
@@ -390,74 +398,45 @@ function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: an
   }
 
   const args = expr.args;
+  // Props in declaration order, excluding promoted and Context (marker type)
+  const ownProps = objType.properties.filter((p: any) => !p.promotedFrom && !(p.embedded && p.name === "Context"));
+  
+  // Count required: non-embedded without optional/default
+  const requiredCount = ownProps.filter((p: any) => !p.embedded && !p.optional && !p.defaultValue).length;
+  const maxArgs = ownProps.length;
 
-  // If type has explicit init, validate against init params
-  if (objType.init) {
-    const initParams = objType.init.params;
-    const requiredParams = initParams.filter((p: any) => !p.optional);
-    
-    if (args.length < requiredParams.length) {
-      const err = TypeErrors.wrongArgumentCount(`at least ${requiredParams.length}`, args.length);
-      error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
-    } else if (args.length > initParams.length) {
-      const err = TypeErrors.wrongArgumentCount(`at most ${initParams.length}`, args.length);
-      error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
-    }
+  if (args.length < requiredCount) {
+    const err = TypeErrors.wrongArgumentCount(`at least ${requiredCount}`, args.length);
+    error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
+  } else if (args.length > maxArgs) {
+    const err = TypeErrors.wrongArgumentCount(`at most ${maxArgs}`, args.length);
+    error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
+  }
 
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i]!;
-      let argType: Type;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    let argType: Type;
 
-      if ("name" in arg && "value" in arg) {
-        argType = inferExpr(ctx, arg.value);
-        const param = initParams.find((p: any) => p.name === arg.name);
-        if (!param) {
-          error(ctx, `Unknown parameter '${arg.name}' in ${objType.name} constructor`, arg.value.loc);
-        } else if (!isAssignable(argType, param.type, ctx.env)) {
-          const err = TypeErrors.typeMismatch(typeToString(param.type), typeToString(argType));
-          error(ctx, `Parameter '${arg.name}': ${err.message}`, arg.value.loc, err.hint);
-        }
+    if ("name" in arg && "value" in arg) {
+      argType = inferExpr(ctx, arg.value);
+      const prop = ownProps.find((p: any) => p.name === arg.name);
+      if (!prop) {
+        const err = TypeErrors.propertyNotExist(arg.name, objType.name!);
+        error(ctx, err.message, arg.value.loc, err.hint);
       } else {
-        argType = inferExpr(ctx, arg as AST.Expr);
-        const param = initParams[i];
-        if (param && !isAssignable(argType, param.type, ctx.env)) {
-          const err = TypeErrors.typeMismatch(typeToString(param.type), typeToString(argType));
-          error(ctx, `Argument ${i + 1}: ${err.message}`, (arg as AST.Expr).loc, err.hint);
-        }
-      }
-    }
-  } else {
-    // No init - use property-based validation (original behavior)
-    const props = objType.properties;
-    const requiredProps = props.filter((p: any) => !p.optional && !p.defaultValue);
-
-    if (args.length < requiredProps.length) {
-      const err = TypeErrors.wrongArgumentCount(`at least ${requiredProps.length}`, args.length);
-      error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
-    } else if (args.length > props.length) {
-      const err = TypeErrors.wrongArgumentCount(`at most ${props.length}`, args.length);
-      error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
-    }
-
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i]!;
-      let argType: Type;
-
-      if ("name" in arg && "value" in arg) {
-        argType = inferExpr(ctx, arg.value);
-        const prop = props.find((p: any) => p.name === arg.name);
-        if (!prop) {
-          const err = TypeErrors.propertyNotExist(arg.name, objType.name!);
-          error(ctx, err.message, arg.value.loc, err.hint);
-        } else if (!isAssignable(argType, prop.type, ctx.env)) {
-          const err = TypeErrors.typeMismatch(typeToString(prop.type), typeToString(argType));
+        const expectedType = prop.embedded ? ctx.env.lookupType(prop.name) || Types.any : prop.type;
+        if (!isAssignable(argType, expectedType, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(argType));
           error(ctx, `Property '${arg.name}': ${err.message}`, arg.value.loc, err.hint);
         }
-      } else {
-        argType = inferExpr(ctx, arg as AST.Expr);
-        const prop = props[i];
-        if (prop && !isAssignable(argType, prop.type, ctx.env)) {
-          const err = TypeErrors.typeMismatch(typeToString(prop.type), typeToString(argType));
+      }
+    } else {
+      argType = inferExpr(ctx, arg as AST.Expr);
+      const prop = ownProps[i];
+      if (prop) {
+        const expectedType = prop.embedded ? ctx.env.lookupType(prop.name) || Types.any : prop.type;
+        if (!isAssignable(argType, expectedType, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(argType));
           error(ctx, `Argument ${i + 1}: ${err.message}`, (arg as AST.Expr).loc, err.hint);
         }
       }
@@ -465,19 +444,6 @@ function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: an
   }
 
   return objType;
-}
-
-function inferSuperExpr(ctx: InferContext, expr: AST.SuperExpr): Type {
-  // super() validation is done by init-pass
-  // Here we just infer types for the arguments
-  for (const arg of expr.args) {
-    if ("name" in arg && "value" in arg) {
-      inferExpr(ctx, arg.value);
-    } else {
-      inferExpr(ctx, arg as AST.Expr);
-    }
-  }
-  return Types.void;
 }
 
 function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {

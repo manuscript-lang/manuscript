@@ -1,10 +1,10 @@
 // @test: Escape Analysis - Context safety
-// @error: no init block
 // @error: only be instantiated in 'with'
 
 // === Context Type Definition ===
 
-type Logger extends Context
+type Logger
+  Context
   prefix: string
   
   fn log(msg: string): void
@@ -13,28 +13,28 @@ type Logger extends Context
 // === Valid Context Usage ===
 
 fn with_context(): void
-  with let log = Logger("APP")
+  with let log = Logger(prefix: "APP")
     log.log("hello")
 
 // === Nested With Blocks ===
 
 fn nested_contexts(): void
-  with let outer = Logger("OUT")
-    with let inner = Logger("IN")
+  with let outer = Logger(prefix: "OUT")
+    with let inner = Logger(prefix: "IN")
       outer.log("outer")
       inner.log("inner")
 
 // === Context in Loops ===
 
 fn loop_with_context(): void
-  with let log = Logger("LOOP")
+  with let log = Logger(prefix: "LOOP")
     for i in [1, 2, 3]
       log.log(to_str(i))
 
 // === Context in Match ===
 
 fn match_with_context(x: number): void
-  with let log = Logger("MATCH")
+  with let log = Logger(prefix: "MATCH")
     match x
       0 => log.log("zero")
       _ => log.log("other")
@@ -42,4 +42,4 @@ fn match_with_context(x: number): void
 // === Context Instantiation Outside With ===
 
 fn bad_instantiation(): Logger
-  Logger("BAD")
+  Logger(prefix: "BAD")

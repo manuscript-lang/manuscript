@@ -130,14 +130,6 @@ function collectTypeInfo(program: AST.Program, opts: GenOpts): void {
   for (const stmt of program.body) {
     if (stmt.kind === "TypeDecl") {
       opts.declaredTypes.add(stmt.name);
-      if (stmt.extends && stmt.extends.length > 0) {
-        const parents = stmt.extends
-          .filter(e => e.kind === "NamedType")
-          .map(e => (e as AST.NamedType).name);
-        if (parents.length > 0) {
-          opts.typeHierarchy.set(stmt.name, parents);
-        }
-      }
     } else if (stmt.kind === "EnumDecl") {
       opts.declaredTypes.add(stmt.name);
     }

@@ -4,6 +4,7 @@ import type { Ctx, GenOpts } from "./types";
 import { emit, pushIndent, popIndent, tempVar } from "./types";
 import { genExpr } from "./expressions";
 import { genBlock } from "./statements";
+import { EXTERN_TYPES } from "../shared/stdlib";
 
 // Generate function parameters
 export function genParams(ctx: Ctx, params: AST.Parameter[], opts: GenOpts): string {
@@ -54,100 +55,152 @@ export function genFn(ctx: Ctx, decl: AST.FnDecl, opts: GenOpts): void {
   emit(ctx, "");
 }
 
-// Generate type declaration
+// Generate type declaration using factory function + shared null-prototype pattern
 export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
   if (!decl.body) {
     emit(ctx, `// type ${decl.name} = ...`);
     return;
   }
 
-  let extendsClause = "";
-  if (decl.extends && decl.extends.length > 0 && decl.extends[0]) {
-    const parentType = decl.extends[0];
-    let parentName = parentType.kind === "NamedType" ? parentType.name : "Object";
-    if (parentName === "Context") {
-      parentName = "__ms_runtime.Context";
-    }
-    extendsClause = ` extends ${parentName}`;
-  }
-
-  emit(ctx, `class ${decl.name}${extendsClause} {`);
-  pushIndent(ctx);
-
   const fields: AST.FieldDecl[] = [];
   const methods: AST.MethodDecl[] = [];
-  let initDecl: AST.InitDecl | undefined;
 
   for (const member of decl.body.members) {
     if (member.kind === "FieldDecl") {
       fields.push(member);
     } else if (member.kind === "MethodDecl") {
       methods.push(member);
-    } else if (member.kind === "InitDecl") {
-      initDecl = member;
     }
   }
 
-  // Generate constructor
+  // Collect all fields and methods including promoted from embedded types
   const classFields = new Set(fields.map(f => f.name));
+  for (const method of methods) {
+    classFields.add(method.name);
+  }
+  for (const field of fields) {
+    if (field.embedded) {
+      const embeddedFields = ctx.typeFields.get(field.name);
+      if (embeddedFields) {
+        for (const ef of embeddedFields) {
+          classFields.add(ef);
+        }
+      }
+    }
+  }
+  // Register this type's fields for future embedding
+  ctx.typeFields.set(decl.name, classFields);
+  
   const methodOpts = { ...opts, classFields };
 
-  if (initDecl) {
-    // Use init block (init-pass ensures all types have one)
-    const initParamNames = new Set(initDecl.params.map(p => p.name));
-    const initOpts = { ...opts, classFields, initParams: initParamNames };
-    const params = genParams(ctx, initDecl.params, initOpts);
-    emit(ctx, `constructor(${params}) {`);
+  // Generate shared methods object (null prototype for security)
+  if (methods.length > 0) {
+    emit(ctx, `const ${decl.name}$methods = Object.assign(Object.create(null), {`);
     pushIndent(ctx);
-    genBlock(ctx, initDecl.body, { ...initOpts, insideInit: true });
-    popIndent(ctx);
-    emit(ctx, "}");
-    emit(ctx, "");
-  } else if (fields.length > 0 || (decl.extends && decl.extends.length > 0)) {
-    // Fallback: auto-generate constructor from fields (for standalone codegen without init-pass)
-    const requiredFields = fields.filter(f => !f.optional && !f.defaultValue);
-    const optionalFields = fields.filter(f => f.optional || f.defaultValue);
-    const hasExtends = decl.extends && decl.extends.length > 0;
-
-    const ctorParams = requiredFields.map(f => f.name).join(", ");
-    const optParams = optionalFields.map(f => {
-      if (f.defaultValue) return `${f.name} = ${genExpr(ctx, f.defaultValue, opts)}`;
-      return `${f.name} = undefined`;
-    }).join(", ");
-
-    const allParams = [ctorParams, optParams].filter(p => p).join(", ");
-
-    emit(ctx, `constructor(${allParams}) {`);
-    pushIndent(ctx);
-    if (hasExtends) {
-      emit(ctx, "super();");
+    for (const method of methods) {
+      const prefix = method.isGenerator ? "*" : "async ";
+      const params = genParams(ctx, method.params, methodOpts);
+      emit(ctx, `${prefix}${method.name}(${params}) {`);
+      pushIndent(ctx);
+      if (method.body) {
+        genBlock(ctx, method.body, { ...methodOpts, implicitReturn: true });
+      }
+      popIndent(ctx);
+      emit(ctx, `},`);
     }
+    popIndent(ctx);
+    emit(ctx, `});`);
+    emit(ctx, "");
+  }
+
+  // Get embedded fields for initialization (skip Context - it's a marker type)
+  const embeddedFields = fields.filter(f => f.embedded && f.name !== "Context");
+
+  // Generate factory function from fields
+  if (fields.length > 0) {
+    // Build params in declaration order, skip Context (marker type)
+    const allParams = fields
+      .filter(f => !(f.embedded && f.name === "Context"))
+      .map(f => {
+        if (f.embedded) {
+          const typeName = EXTERN_TYPES.has(f.name) ? `__ms_runtime.${f.name}` : f.name;
+          return `_${f.name} = ${typeName}()`;
+        } else if (f.optional || f.defaultValue || f.computed) {
+          if (f.defaultValue) return `${f.name} = ${genExpr(ctx, f.defaultValue, opts)}`;
+          return `${f.name} = undefined`;
+        }
+        return f.name;
+      }).join(", ");
+
+    emit(ctx, `function ${decl.name}(${allParams}) {`);
+    pushIndent(ctx);
+    
+    if (methods.length > 0) {
+      emit(ctx, `const self = Object.create(${decl.name}$methods);`);
+    } else {
+      emit(ctx, `const self = Object.create(null);`);
+    }
+    emit(ctx, `self.__typename = "${decl.name}";`);
+    
+    // Initialize regular (non-embedded) fields FIRST (for shadowing to work)
     for (const field of fields) {
-      emit(ctx, `this.${field.name} = ${field.name};`);
+      if (field.embedded) continue;
+      if (field.computed && field.defaultValue) {
+        emit(ctx, `Object.defineProperty(self, "${field.name}", { get() { return ${genExpr(ctx, field.defaultValue, { ...opts, selfVar: "self" })}; } });`);
+      } else {
+        emit(ctx, `self.${field.name} = ${field.name};`);
+      }
     }
+    
+    // Initialize embedded types and forward their properties/methods
+    for (const ef of embeddedFields) {
+      const paramName = `_${ef.name}`;
+      emit(ctx, `self.${ef.name} = ${paramName};`);
+      // Forward embedded type's properties and methods (for...in includes inherited)
+      // Skip properties that already exist in self (shadowing)
+      emit(ctx, `for (const k in ${paramName}) {`);
+      pushIndent(ctx);
+      emit(ctx, `if (k !== '__typename' && !(k in self)) {`);
+      pushIndent(ctx);
+      emit(ctx, `const v = ${paramName}[k];`);
+      emit(ctx, `if (typeof v === 'function') {`);
+      pushIndent(ctx);
+      emit(ctx, `self[k] = v.bind(${paramName});`);
+      popIndent(ctx);
+      emit(ctx, `} else {`);
+      pushIndent(ctx);
+      emit(ctx, `Object.defineProperty(self, k, {`);
+      pushIndent(ctx);
+      emit(ctx, `get() { return self.${ef.name}[k]; },`);
+      emit(ctx, `set(v) { self.${ef.name}[k] = v; },`);
+      emit(ctx, `enumerable: true`);
+      popIndent(ctx);
+      emit(ctx, `});`);
+      popIndent(ctx);
+      emit(ctx, `}`);
+      popIndent(ctx);
+      emit(ctx, `}`);
+      popIndent(ctx);
+      emit(ctx, `}`);
+    }
+    
+    emit(ctx, `return self;`);
     popIndent(ctx);
     emit(ctx, "}");
     emit(ctx, "");
-  }
-
-  // Generate methods with class field context
-  for (const method of methods) {
-    const prefix = method.isGenerator ? "*" : "async ";
-    const params = genParams(ctx, method.params, methodOpts);
-
-    emit(ctx, `${prefix}${method.name}(${params}) {`);
+  } else {
+    // Empty type (like Context marker)
+    emit(ctx, `function ${decl.name}() {`);
     pushIndent(ctx);
-    if (method.body) {
-      genBlock(ctx, method.body, { ...methodOpts, implicitReturn: true });
+    if (methods.length > 0) {
+      emit(ctx, `return Object.create(${decl.name}$methods);`);
+    } else {
+      emit(ctx, `return Object.create(null);`);
     }
     popIndent(ctx);
     emit(ctx, "}");
     emit(ctx, "");
   }
-
-  popIndent(ctx);
-  emit(ctx, "}");
-  emit(ctx, "");
 }
 
 // Generate enum declaration
@@ -202,43 +255,58 @@ export function genContext(ctx: Ctx, decl: AST.ContextDecl, opts: GenOpts): void
   emit(ctx, "");
 }
 
-// Generate agent declaration
+// Generate agent declaration using factory function pattern
 export function genAgent(ctx: Ctx, decl: AST.AgentDecl, opts: GenOpts): void {
-  emit(ctx, `class ${decl.name} extends __ms_runtime.Agent {`);
-  pushIndent(ctx);
-
   const bindings = decl.context?.map(c => c.name || "_binding") || [];
-  emit(ctx, `constructor(${bindings.join(", ")}) {`);
-  pushIndent(ctx);
-  emit(ctx, "super();");
-  for (const binding of bindings) {
-    emit(ctx, `this.${binding} = ${binding};`);
-  }
-  popIndent(ctx);
-  emit(ctx, "}");
-  emit(ctx, "");
+  const hasTools = decl.tools && decl.tools.length > 0;
+  const hasRun = !!decl.run;
 
-  if (decl.tools) {
-    for (const tool of decl.tools) {
-      const params = genParams(ctx, tool.params, opts);
-      emit(ctx, `async ${tool.name}(${params}) {`);
-      pushIndent(ctx);
-      genBlock(ctx, tool.body, opts);
-      popIndent(ctx);
-      emit(ctx, "}");
-      emit(ctx, "");
-    }
-  }
-
-  if (decl.run) {
-    const params = genParams(ctx, decl.run.params, opts);
-    emit(ctx, `async run(${params}) {`);
+  // Generate shared methods object if there are tools or run method
+  if (hasTools || hasRun) {
+    emit(ctx, `const ${decl.name}$methods = Object.assign(Object.create(null), {`);
     pushIndent(ctx);
-    genBlock(ctx, decl.run.body, opts);
+
+    if (decl.tools) {
+      for (const tool of decl.tools) {
+        const params = genParams(ctx, tool.params, opts);
+        emit(ctx, `async ${tool.name}(${params}) {`);
+        pushIndent(ctx);
+        genBlock(ctx, tool.body, opts);
+        popIndent(ctx);
+        emit(ctx, "},");
+      }
+    }
+
+    if (decl.run) {
+      const params = genParams(ctx, decl.run.params, opts);
+      emit(ctx, `async run(${params}) {`);
+      pushIndent(ctx);
+      genBlock(ctx, decl.run.body, opts);
+      popIndent(ctx);
+      emit(ctx, "},");
+    }
+
     popIndent(ctx);
-    emit(ctx, "}");
+    emit(ctx, "});");
+    emit(ctx, "");
   }
 
+  // Generate factory function
+  emit(ctx, `function ${decl.name}(${bindings.join(", ")}) {`);
+  pushIndent(ctx);
+
+  if (hasTools || hasRun) {
+    emit(ctx, `const self = Object.create(${decl.name}$methods);`);
+  } else {
+    emit(ctx, `const self = Object.create(null);`);
+  }
+  emit(ctx, `self.__typename = "${decl.name}";`);
+
+  for (const binding of bindings) {
+    emit(ctx, `self.${binding} = ${binding};`);
+  }
+
+  emit(ctx, `return self;`);
   popIndent(ctx);
   emit(ctx, "}");
   emit(ctx, "");

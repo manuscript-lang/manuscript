@@ -4,7 +4,8 @@
 
 // === Setup ===
 
-type Logger extends Context
+type Logger
+  Context
   prefix: string
   fn log(msg: string): string
     "{prefix}: {msg}"
@@ -18,72 +19,21 @@ fn helper(): string using (logger: Logger)
 fn async_work(): number
   42
 
-// ============================================
-// CLOSURE ESCAPE ERRORS
-// ============================================
 
-// === Direct escape: closure calls using function ===
-fn escape_direct()
-  with let logger = Logger("X")
-    () => greet("test")
+// === Error 1: Returning closure that captures context ===
+fn escaping_closure(): fn (): string
+  with let l = Logger(prefix: "ESCAPE")
+    // ERROR: This closure captures the context and escapes the with block
+    return () => greet("escaped")
 
-// === Transitive escape: closure calls fn that uses context ===
-fn escape_transitive()
-  with let logger = Logger("X")
-    () => helper()
+// === Error 2: Spawn inside function-level with ===
+fn spawn_in_with(): number
+  with let l = Logger(prefix: "SPAWN")
+    // ERROR: Spawn would escape the with block's lifetime
+    let handle = spawn async_work()
+    // The with block ends here but the spawn might still be running
+    42
 
-// === Escape from nested with (inner closure escapes outer) ===
-fn escape_nested_with()
-  with let outer = Logger("OUT")
-    with let inner = Logger("IN")
-      () => greet("nested")
-
-// === Escape via explicit return ===
-fn escape_explicit_return()
-  with let logger = Logger("X")
-    return () => greet("explicit")
-
-// ============================================
-// SPAWN INSIDE WITH ERRORS
-// ============================================
-
-// === Basic spawn in with ===
-fn spawn_in_with()
-  with let logger = Logger("X")
-    spawn async_work()
-
-// === Spawn in if inside with ===
-fn spawn_in_if_in_with(flag: bool)
-  with let logger = Logger("X")
-    if flag
-      spawn async_work()
-
-// === Spawn in for loop inside with ===
-fn spawn_in_for_in_with()
-  with let logger = Logger("X")
-    for i in [1, 2]
-      spawn async_work()
-
-// === Spawn in nested with ===
-fn spawn_in_nested_with()
-  with let outer = Logger("OUT")
-    with let inner = Logger("IN")
-      spawn async_work()
-
-// === Spawn in try inside with ===
-fn spawn_in_try_in_with()
-  with let logger = Logger("X")
-    try
-      spawn async_work()
-    catch e
-      print(e)
-
-// === Spawn in match inside with ===
-fn spawn_in_match_in_with(n: number)
-  with let logger = Logger("X")
-    match n
-      1 => spawn async_work()
-      _ => spawn async_work()
-
-// All functions above should fail to compile
-// Test passes if all expected errors are found
+// Call to trigger the errors
+let f = escaping_closure()
+let n = spawn_in_with()

@@ -658,13 +658,6 @@ function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
     }
   }
 
-  // Check init block if present
-  for (const member of decl.body.members) {
-    if (member.kind === "InitDecl") {
-      checkInitDecl(ctx, decl, member, typeObj as ObjectType);
-    }
-  }
-
   // Check method bodies
   for (const member of decl.body.members) {
     if (member.kind === "MethodDecl" && member.body) {
@@ -676,34 +669,17 @@ function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
   ctx.currentTypeName = savedTypeName;
 }
 
-function checkInitDecl(ctx: InferContext, typeDecl: AST.TypeDecl, init: AST.InitDecl, typeObj: ObjectType): void {
-  // Add type fields first (mutable, so init can assign to them)
-  const fieldsEnv = ctx.env.child();
-  for (const prop of typeObj.properties) {
-    fieldsEnv.define(prop.name, prop.type, true);  // mutable = true
-  }
-
-  // Create child scope for parameters (can shadow fields)
-  // Init parameters are mutable because init bodies do assignments like `field = param`
-  const initEnv = fieldsEnv.child();
-  for (const param of init.params) {
-    const paramType = param.type ? astTypeToType(param.type) : Types.any;
-    initEnv.define(param.name, paramType, true);  // mutable = true for init params
-  }
-
-  // Check the init body
-  const savedEnv = ctx.env;
-  ctx.env = initEnv;
-  checkBlock(ctx, init.body);
-  ctx.env = savedEnv;
-}
-
 function checkMethodDecl(ctx: InferContext, typeDecl: AST.TypeDecl, method: AST.MethodDecl, typeObj: ObjectType): void {
   const typeFieldsEnv = ctx.env.child();
 
   // Add type fields to the method scope (mutable, so methods can assign to them)
   for (const prop of typeObj.properties) {
     typeFieldsEnv.define(prop.name, prop.type, true);  // mutable = true
+  }
+  
+  // Add type methods to the method scope (for promoted method calls)
+  for (const m of typeObj.methods) {
+    typeFieldsEnv.define(m.name, m.type);
   }
 
   // Create a child env for parameters (so they can shadow fields)
@@ -761,9 +737,9 @@ function validateUsingClause(ctx: InferContext, using: AST.UsingClause): void {
     if (!extendsType(bindingType, "Context", ctx.env)) {
       const typeName = binding.type.kind === "NamedType" ? binding.type.name : "unknown";
       error(ctx,
-        `Type '${typeName}' used in 'using' clause must extend Context`,
+        `Type '${typeName}' used in 'using' clause must embed Context`,
         binding.loc,
-        `Add 'extends Context' to the type definition`
+        `Add 'Context' as an embedded field in the type definition`
       );
     }
   }

@@ -84,25 +84,6 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
             loc: m.loc,
             nameOffset: 0,
           });
-        } else if (m.kind === "InitDecl") {
-          ctx.symbols.addDefinition({
-            id: { kind: "method", qualifiedName: `${stmt.name}.init` },
-            name: "init",
-            loc: m.loc,
-            nameOffset: 3, // "fn "
-          });
-          for (const p of m.params) {
-            ctx.symbols.addDefinition({
-              id: { kind: "parameter", qualifiedName: `${stmt.name}.init.${p.name}` },
-              name: p.name,
-              loc: p.loc,
-              nameOffset: 0,
-            });
-          }
-          const oldScope = ctx.currentScope;
-          ctx.currentScope = `${stmt.name}.init`;
-          collectBlockDefinitions(ctx, m.body);
-          ctx.currentScope = oldScope;
         } else if (m.kind === "MethodDecl") {
           ctx.symbols.addDefinition({
             id: { kind: "method", qualifiedName: `${stmt.name}.${m.name}` },

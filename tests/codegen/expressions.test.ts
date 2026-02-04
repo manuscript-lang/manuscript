@@ -87,12 +87,13 @@ describe("CodeGen - Call Expressions", () => {
     ["obj.method()", "obj.method()"],
   ]);
 
-  test("type constructor uses new", () => {
+  test("type constructor is factory function", () => {
     const js = compile(`type Point
   x: number
   y: number
 let p = Point(1, 2)`);
-    expect(js).toContain("new Point(1, 2)");
+    expect(js).toContain("Point(1, 2)");
+    expect(js).not.toContain("new Point");
   });
 
   test("named arguments", () => {
@@ -151,11 +152,11 @@ describe("CodeGen - Match Expressions", () => {
 
 describe("CodeGen - Template Literals", () => {
   test("simple template", () => {
-    expectCompiled('let s = "hello {name}"', '"hello " + name');
+    expectCompiled('let s = "hello {name}"', '"hello " + __ms_runtime.to_str(name)');
   });
 
   test("template with multiple parts", () => {
-    expectCompiled('let s = "{a} + {b} = {c}"', "+ b +");
+    expectCompiled('let s = "{a} + {b} = {c}"', '__ms_runtime.to_str(b)');
   });
 });
 

@@ -1,7 +1,7 @@
-// @test: Using Context Errors - Types must extend Context
-// @error: must extend Context
+// @test: Using Context Errors - Types must embed Context
+// @error: must embed Context
 
-// This type does NOT extend Context - should cause error
+// This type does NOT embed Context - should cause error
 type BadLogger
   prefix: string
   

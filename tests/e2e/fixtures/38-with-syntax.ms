@@ -1,11 +1,8 @@
 // @test: With Syntax - let binding vs anonymous context
 
-type Logger extends Context
+type Logger
+  Context
   prefix: string
-  
-  fn init(prefix: string)
-    super()
-    prefix = prefix
   
   fn log(msg: string): string
     "{prefix}: {msg}"
@@ -19,48 +16,37 @@ with let myLogger = Logger("NAMED")
   // Can use myLogger directly in this block
   // @expect: NAMED: direct call
   print(myLogger.log("direct call"))
-  // Functions with using also get access
+  
+  // Also available via using
   // @expect: NAMED: Hello, Alice
   print(greet("Alice"))
 
 // === Pattern 2: with expr (anonymous) ===
-// Use this when you only need to provide context for functions with 'using'
-// The context is available to functions but not as a named variable
+// Use this when you only need the context for 'using' functions
 with Logger("ANON")
+  // Context is available for using functions
   // @expect: ANON: Hello, Bob
   print(greet("Bob"))
 
-// === Multiple contexts - mixed patterns ===
-type Config extends Context
+// === Both patterns in sequence ===
+with let outer = Logger("OUTER")
+  // @expect: OUTER: Hello, Outer
+  print(greet("Outer"))
+  
+with Logger("INNER")
+  // @expect: INNER: Hello, Inner
+  print(greet("Inner"))
+
+// === Two-argument config type ===
+type Config
+  Context
   env: string
-  
-  fn init(env: string)
-    super()
-    env = env
-  
-  fn get_env(): string
-    env
+  debug: bool
 
-fn log_with_env(msg: string): string using (logger: Logger, config: Config)
-  logger.log("[" + config.get_env() + "] " + msg)
+fn getEnv(): string using (config: Config)
+  config.env
 
-// Both named
-with let logger = Logger("APP"), let config = Config("prod")
-  // @expect: APP: direct
-  print(logger.log("direct"))
-  // @expect: prod
-  print(config.get_env())
-  // @expect: APP: [prod] message
-  print(log_with_env("message"))
-
-// Named logger, anonymous config
-with let logger = Logger("DEBUG"), Config("dev")
-  // @expect: DEBUG: log
-  print(logger.log("log"))
-  // @expect: DEBUG: [dev] test
-  print(log_with_env("test"))
-
-// Both anonymous - just providing context for functions
-with Logger("SILENT"), Config("staging")
-  // @expect: SILENT: [staging] data
-  print(log_with_env("data"))
+// Positional arguments
+with let c = Config("production", false)
+  // @expect: production
+  print(getEnv())

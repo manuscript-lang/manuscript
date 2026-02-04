@@ -207,23 +207,15 @@ channel_accumulator_demo()
 // CHANNELS WITH CONTEXT (MODULE SCOPE)
 // ============================================
 
-// Logger context with channel reporting
-type IReporter extends Context
-  fn init()
-    super()
-  fn report(msg: string)
-
-type ChannelReporter extends IReporter
+// Reporter context with channel
+type ChannelReporter
+  Context
   ch: Channel[string]
-  
-  fn init(ch: Channel[string])
-    super()
-    ch = ch
   
   fn report(msg: string)
     ch.send(msg)
 
-fn do_work(name: string) using (reporter: IReporter)
+fn do_work(name: string) using (reporter: ChannelReporter)
   reporter.report("started: " + name)
   reporter.report("completed: " + name)
 
@@ -252,18 +244,9 @@ print(first_report)
 // CONTEXT WITH SPAWN AND CHANNELS (MODULE SCOPE)
 // ============================================
 
-type ICounter extends Context
-  fn init()
-    super()
-  fn increment(): number
-  fn get(): number
-
-type SafeCounter extends ICounter
+type SafeCounter
+  Context
   count: number = 0
-  
-  fn init(count: number = 0)
-    super()
-    count = count
   
   fn increment(): number
     count = count + 1
@@ -272,7 +255,7 @@ type SafeCounter extends ICounter
   fn get(): number
     count
 
-fn worker(id: number, ch: Channel[number]) using (counter: ICounter)
+fn worker(id: number, ch: Channel[number]) using (counter: SafeCounter)
   let n = counter.increment()
   ch.send(n)
 
@@ -292,22 +275,14 @@ worker_ch.close()
 // EVENT BUS PATTERN WITH CONTEXT
 // ============================================
 
-type IEventBus extends Context
-  fn init()
-    super()
-  fn publish(event: string)
-
-type SimpleEventBus extends IEventBus
+type SimpleEventBus
+  Context
   ch: Channel[string]
-  
-  fn init(ch: Channel[string])
-    super()
-    ch = ch
   
   fn publish(event: string)
     ch.send(event)
 
-fn event_publisher() using (bus: IEventBus)
+fn event_publisher() using (bus: SimpleEventBus)
   bus.publish("event1")
   bus.publish("event2")
 

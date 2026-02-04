@@ -25,9 +25,7 @@ export type GenOpts = {
   isGenerator: boolean;
   declaredTypes: Set<string>;
   variableTypes: Map<string, string>;
-  typeHierarchy: Map<string, string[]>;
-  insideInit?: boolean;
-  initParams?: Set<string>;  // Init block parameters (shouldn't get this. prefix)
+  selfVar?: string;  // Variable name for 'this' in factory functions (e.g., "self")
 };
 
 // Output context - manages emission state
@@ -37,6 +35,7 @@ export type Ctx = {
   options: CodeGenOptions;
   scopeStack: { defers: AST.Statement[] }[];
   tempCounter: number;
+  typeFields: Map<string, Set<string>>; // type name -> field names (for embedding)
 };
 
 // Create fresh context
@@ -44,6 +43,7 @@ export function createCtx(options: Partial<CodeGenOptions> = {}): Ctx {
   return {
     out: [],
     indent: 0,
+    typeFields: new Map(),
     options: { ...defaultOptions, ...options },
     scopeStack: [],
     tempCounter: 0,
@@ -58,7 +58,6 @@ export function createOpts(overrides: Partial<GenOpts> = {}): GenOpts {
     isGenerator: false,
     declaredTypes: new Set(),
     variableTypes: new Map(),
-    typeHierarchy: new Map(),
     ...overrides,
   };
 }
@@ -109,18 +108,7 @@ export function resetCtx(ctx: Ctx): void {
   ctx.indent = 0;
   ctx.scopeStack = [];
   ctx.tempCounter = 0;
-}
-
-// Type hierarchy helpers
-export function getTypeChain(opts: GenOpts, typeName: string): string[] {
-  const chain: string[] = [typeName];
-  const parents = opts.typeHierarchy.get(typeName);
-  if (parents) {
-    for (const parent of parents) {
-      chain.push(...getTypeChain(opts, parent));
-    }
-  }
-  return chain;
+  ctx.typeFields = new Map();
 }
 
 // Exhaustiveness helper for switch statements

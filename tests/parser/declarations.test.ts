@@ -144,7 +144,7 @@ describe("Parser - Type Declarations", () => {
     expect(result.body[0]).toMatchObject({
       kind: "TypeDecl",
       name: "UserID",
-      extends: [{ kind: "NamedType", name: "string" }],
+      alias: [{ kind: "NamedType", name: "string" }],
     });
   });
 
@@ -154,7 +154,7 @@ describe("Parser - Type Declarations", () => {
     expect(result.body[0]).toMatchObject({
       kind: "TypeDecl",
       name: "Handler",
-      extends: [{
+      alias: [{
         kind: "FunctionType",
         params: [{ kind: "NamedType", name: "Request" }],
         returnType: { kind: "NamedType", name: "Response" },
@@ -165,14 +165,12 @@ describe("Parser - Type Declarations", () => {
   test("union type alias", () => {
     const src = "type Message = Text or Image or File";
     const result = program(src);
-    // Union is parsed as a single UnionType in extends
     expect(result.body[0]).toMatchObject({
       kind: "TypeDecl",
       name: "Message",
     });
-    // Check that extends contains a union type
     const typeDecl = result.body[0] as any;
-    expect(typeDecl.extends[0]).toMatchObject({
+    expect(typeDecl.alias[0]).toMatchObject({
       kind: "UnionType",
       types: [
         { kind: "NamedType", name: "Text" },
@@ -266,21 +264,21 @@ describe("Parser - Type Declarations", () => {
     });
   });
 
-  test("type extends", () => {
-    const src = `type Admin extends User
+  test("type with embedding", () => {
+    const src = `type Admin
+  User
   permissions: list[string]`;
     const result = program(src);
     expect(result.body[0]).toMatchObject({
       kind: "TypeDecl",
       name: "Admin",
-      extends: [{ kind: "NamedType", name: "User" }],
+      body: {
+        members: [
+          { kind: "FieldDecl", name: "User", embedded: true },
+          { kind: "FieldDecl", name: "permissions" },
+        ],
+      },
     });
-  });
-
-  test("multiple inheritance not allowed", () => {
-    const src = `type Duck extends Animal, Flyable, Swimmable
-  name: string`;
-    expect(() => program(src)).toThrow("Multiple inheritance is not allowed");
   });
 
   test("generic type", () => {
@@ -306,19 +304,18 @@ describe("Parser - Type Declarations", () => {
 });
 
 describe("Parser - Keyword Declarations", () => {
-  test("simple keyword", () => {
-    const src = "keyword capabilities = type extends Context";
+  test("simple type keyword", () => {
+    const src = "keyword capabilities = type";
     const result = program(src);
     expect(result.body[0]).toMatchObject({
       kind: "KeywordDecl",
       name: "capabilities",
       expansion: "type",
-      extends: { kind: "NamedType", name: "Context" },
     });
   });
 
   test("keyword with using", () => {
-    const src = "keyword agent = type extends Agent using (LLM)";
+    const src = "keyword agent = type using (LLM)";
     const result = program(src);
     expect(result.body[0]).toMatchObject({
       kind: "KeywordDecl",
@@ -343,17 +340,8 @@ describe("Parser - Keyword Declarations", () => {
     const result = program(src);
     expect(result.body[0]).toMatchObject({
       kind: "KeywordDecl",
-      sealed: "sealed",
+      sealed: true,
       name: "enum",
-    });
-  });
-
-  test("sealed(using) keyword", () => {
-    const src = "sealed(using) keyword model = type";
-    const result = program(src);
-    expect(result.body[0]).toMatchObject({
-      kind: "KeywordDecl",
-      sealed: "sealed(using)",
     });
   });
 });

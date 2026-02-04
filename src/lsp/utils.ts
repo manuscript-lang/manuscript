@@ -45,11 +45,10 @@ export function findTypeDecl(program: AST.Program, name: string): AST.TypeDecl |
   return null;
 }
 
-export function findTypeMember(program: AST.Program, typeName: string, memberName: string): AST.FieldDecl | AST.MethodDecl | AST.InitDecl | null {
+export function findTypeMember(program: AST.Program, typeName: string, memberName: string): AST.FieldDecl | AST.MethodDecl | null {
   const typeDecl = findTypeDecl(program, typeName);
   if (!typeDecl) return null;
   for (const m of typeDecl.body?.members || []) {
-    if (m.kind === "InitDecl" && memberName === "init") return m;
     if ((m.kind === "FieldDecl" || m.kind === "MethodDecl") && m.name === memberName) return m;
   }
   return null;

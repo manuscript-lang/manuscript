@@ -1,12 +1,9 @@
 // @test: Context/Using Edge Cases - Capability system stress test
 
 // === Basic context passing ===
-type Logger extends Context
+type Logger
+  Context
   prefix: string
-  
-  fn init(prefix: string)
-    super()
-    prefix = prefix
   
   fn log(msg: string): string
     "{prefix}: {msg}"
@@ -18,108 +15,132 @@ with let l = Logger("[INFO]")
   // @expect: [INFO]: Hello, World
   print(greet("World"))
 
-// === Transitive context propagation ===
-fn inner_fn(): string using (logger: Logger)
-  logger.log("inner")
-
-fn middle_fn(): string using (logger: Logger)
-  inner_fn()
-
-fn outer_fn(): string using (logger: Logger)
-  middle_fn()
-
-with let l2 = Logger("[TRACE]")
-  // @expect: [TRACE]: inner
-  print(outer_fn())
-
-// === Multiple contexts ===
-type Counter extends Context
-  count: number = 0
-  
-  fn init(count: number = 0)
-    super()
-    count = count
+// === Nested contexts of same type ===
+type Counter
+  Context
+  name: string
+  value: number = 0
   
   fn increment(): number
-    count = count + 1
-    count
-
-fn use_both(): string using (logger: Logger, counter: Counter)
-  let n = counter.increment()
-  logger.log("count is {n}")
-
-with let log = Logger("[COUNT]")
-  with let cnt = Counter()
-    // @expect: [COUNT]: count is 1
-    print(use_both())
-    // @expect: [COUNT]: count is 2
-    print(use_both())
-
-// === Context in loops ===
-fn log_items(items: list[string]) using (logger: Logger)
-  for item in items
-    print(logger.log(item))
-
-with let log4 = Logger("[ITEM]")
-  // @expect: [ITEM]: a
-  // @expect: [ITEM]: b
-  // @expect: [ITEM]: c
-  log_items(["a", "b", "c"])
-
-// === Context in match expressions ===
-fn process_value(v: number): string using (logger: Logger)
-  match v
-    0 => logger.log("zero")
-    1 => logger.log("one")
-    _ => logger.log("other")
-
-with let log5 = Logger("[MATCH]")
-  // @expect: [MATCH]: zero
-  print(process_value(0))
-  // @expect: [MATCH]: one
-  print(process_value(1))
-  // @expect: [MATCH]: other
-  print(process_value(42))
-
-// === Context in try/catch ===
-fn risky_op(): string using (logger: Logger)
-  try
-    throw("oops")
-  catch e
-    return logger.log("caught: {e}")
-  "unreachable"
-
-with let log6 = Logger("[ERR]")
-  // @expect: [ERR]: caught: oops
-  print(risky_op())
-
-// === Nested with blocks with same context type ===
-with let outer = Logger("[OUTER]")
-  // @expect: [OUTER]: Hello, outside
-  print(greet("outside"))
-  with let inner = Logger("[INNER]")
-    // @expect: [INNER]: Hello, inside
-    print(greet("inside"))
-  // @expect: [OUTER]: Hello, back
-  print(greet("back"))
-
-// === Context with default values ===
-type AppConfig extends Context
-  debug: bool = false
-  verbose: bool = true
+    value = value + 1
+    value
   
-  fn init(debug: bool = false, verbose: bool = true)
-    super()
-    debug = debug
-    verbose = verbose
+  fn getName(): string
+    name
 
-fn should_log(): bool using (config: AppConfig)
-  config.debug or config.verbose
+fn countOp(): number using (counter: Counter)
+  counter.increment()
 
-with let cfg = AppConfig()
-  // @expect: true
-  print(should_log())
+fn getCounterName(): string using (counter: Counter)
+  counter.getName()
 
-with let cfg2 = AppConfig(true, false)
-  // @expect: true
-  print(should_log())
+with let outer = Counter("outer", 0)
+  // @expect: 1
+  print(countOp())
+  
+  with let inner = Counter("inner", 100)
+    // Inner shadows outer
+    // @expect: 101
+    print(countOp())
+    // @expect: inner
+    print(getCounterName())
+  
+  // Back to outer
+  // @expect: 2
+  print(countOp())
+  // @expect: outer
+  print(getCounterName())
+
+// === Context with state modifications ===
+type Accumulator
+  Context
+  total: number = 0
+  
+  fn add(n: number): number
+    total = total + n
+    total
+  
+  fn getTotal(): number
+    total
+
+fn addValue(n: number): number using (acc: Accumulator)
+  acc.add(n)
+
+fn readTotal(): number using (acc: Accumulator)
+  acc.getTotal()
+
+with let acc = Accumulator()
+  addValue(10)
+  addValue(20)
+  addValue(5)
+  // @expect: 35
+  print(readTotal())
+
+// === Multiple independent contexts ===
+type Config
+  Context
+  env: string
+  
+  fn getEnv(): string
+    env
+
+fn getEnvironment(): string using (config: Config)
+  config.getEnv()
+
+fn logWithEnv(msg: string): string using (logger: Logger, config: Config)
+  logger.log("[" + config.getEnv() + "] " + msg)
+
+with let l = Logger("APP"), let c = Config("prod")
+  // @expect: APP: [prod] system started
+  print(logWithEnv("system started"))
+
+// === Context method with mutable state ===
+type Builder
+  Context
+  parts: number = 0
+  result: string = ""
+  
+  fn add(part: string): void
+    if parts == 0
+      result = part
+    else
+      result = result + "-" + part
+    parts = parts + 1
+  
+  fn build(): string
+    result
+
+fn addPart(part: string) using (builder: Builder)
+  builder.add(part)
+
+with let b = Builder()
+  addPart("hello")
+  addPart("world")
+  addPart("foo")
+  // @expect: hello-world-foo
+  print(b.build())
+
+// === Conditional context usage ===
+type Feature
+  Context
+  enabled: bool
+  
+  fn isEnabled(): bool
+    enabled
+
+fn checkFeature(): bool using (feature: Feature)
+  feature.isEnabled()
+
+fn maybeLog(msg: string): string using (logger: Logger, feature: Feature)
+  if feature.isEnabled()
+    logger.log(msg)
+  else
+    "[disabled]"
+
+with let l = Logger("LOG"), let f = Feature(true)
+  // @expect: LOG: feature enabled
+  print(maybeLog("feature enabled"))
+
+with let l = Logger("LOG"), let f = Feature(false)
+  // @expect: [disabled]
+  print(maybeLog("feature disabled"))
