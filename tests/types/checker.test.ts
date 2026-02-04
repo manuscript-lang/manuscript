@@ -662,9 +662,138 @@ describe("Type Checker - Return Statements", () => {
 
 describe("Type Checker - Generators", () => {
   test("yield inside generator ok", () => {
-    // Generators are detected automatically by presence of yield
     checkOk(`fn gen()
   yield 1
   yield 2`);
+  });
+
+});
+
+describe("Type Checker - Break/Continue", () => {
+  test("break outside loop fails", () => {
+    checkFails(`fn f(): number
+  break
+  1`, "break");
+  });
+  test("continue outside loop fails", () => {
+    checkFails(`fn f(): number
+  continue
+  1`, "continue");
+  });
+});
+
+describe("Type Checker - Defer", () => {
+  test("defer runs body", () => {
+    checkOk(`fn f(): number
+  defer 1 + 1
+  42`);
+  });
+});
+
+describe("Type Checker - Match patterns", () => {
+  test("match with range pattern", () => {
+    checkOk(`let x = 5
+match x
+  1..10 => "low"
+  _ => "other"`);
+  });
+  test("match with object pattern on map", () => {
+    checkOk(`let m: map[string, number] = {"a": 1}
+match m
+  {} => 0
+  _ => 1`);
+  });
+  test("match with array pattern and rest", () => {
+    checkOk(`let nums = [1, 2, 3]
+match nums
+  [a, ...rest] => a + rest.length
+  _ => 0`);
+  });
+  test("match literal pattern mismatch fails", () => {
+    checkFails(`match 42
+  "hello" => 1
+  _ => 0`, "cannot match");
+  });
+  test("match type pattern incompatible fails", () => {
+    checkFails(`match "str"
+  number as n => n
+  _ => 0`, "not compatible");
+  });
+  test("match rest pattern on non-list fails", () => {
+    checkFails(`let n = 42
+match n
+  [a, ...r] => a
+  _ => 0`, "rest");
+  });
+  test("match object pattern on non-object fails", () => {
+    checkFails(`match 42
+  {x} => x
+  _ => 0`, "object");
+  });
+  test("match union with optional and type pattern", () => {
+    checkOk(`let x: number? = 1
+match x
+  null => 0
+  n => n`);
+  });
+});
+
+describe("Type Checker - Using clause", () => {
+  test("using non-context type fails", () => {
+    checkFails(`type NotContext
+  x: number
+fn f(): number using (n: NotContext)
+  0`, "context type");
+  });
+});
+
+describe("Type Checker - Unreachable code", () => {
+  test("code after return type-checks and may warn", () => {
+    const result = check(`fn f(): number
+  return 1
+  let x = 2`);
+    expect(result.errors).toHaveLength(0);
+    expect(Array.isArray(result.warnings)).toBe(true);
+  });
+});
+
+describe("Type Checker - Spawn", () => {
+  test("spawn as bare statement fails", () => {
+    checkFails(`fn f(): number
+  spawn print(1)
+  42`, "spawn result must be used");
+  });
+});
+
+describe("Type Checker - Return outside function", () => {
+  test("return at top level fails", () => {
+    checkFails(`return 1`, "return");
+  });
+});
+
+describe("Type Checker - Match guard and exhaustiveness", () => {
+  test("match guard must be bool", () => {
+    checkFails(`match 1
+  x if 1 => x
+  _ => 0`, "Guard");
+  });
+  test("match on optional without null case fails", () => {
+    checkFails(`let x: number? = 1
+match x
+  number as n => n`, "exhaustive");
+  });
+  test("match on bool without both cases fails", () => {
+    checkFails(`let b = true
+match b
+  true => 1`, "exhaustive");
+  });
+});
+
+describe("Type Checker - Var redefinition", () => {
+  test("var redefinition in same scope fails", () => {
+    checkFails(`fn f(): number
+  var x = 1
+  var x = 2
+  x`, "already defined");
   });
 });

@@ -154,6 +154,14 @@ export class Parser {
         return this.externFnDecl();
       case "TYPE":
         return this.typeDecl(false);
+      case "CONTEXT": {
+        const nextToken = this.peekNext();
+        const name = nextToken.type === "IDENTIFIER" ? (nextToken.value as string) : "";
+        const first = name[0];
+        const isCapitalized = first !== undefined && first === first.toUpperCase() && first !== first.toLowerCase();
+        if (isCapitalized) return this.contextTypeDecl();
+        return this.contextDecl();
+      }
       case "KEYWORD":
         return this.keywordDecl();
       case "TEST":
@@ -189,8 +197,7 @@ export class Parser {
         return this.enumDecl();
       case "agent":
         return this.agentDecl();
-      case "context":
-      case "capabilities":  // Backward compatibility
+      case "capabilities":
         return this.contextDecl();
       default:
         return this.statement();
@@ -393,6 +400,19 @@ export class Parser {
     }
 
     return { kind: "TypeDecl", name, typeParams, using, where, body, loc, isExtern: isExtern || undefined, doc };
+  }
+
+  private contextTypeDecl(): AST.TypeDecl {
+    const loc = this.current().loc;
+    this.expect("CONTEXT");
+    const name = this.expectIdentifier();
+    let body: AST.TypeBody;
+    if (this.match("NEWLINE") && this.check("INDENT")) {
+      body = this.parseTypeBody(false);
+    } else {
+      body = { kind: "TypeBody", members: [], loc: this.current().loc };
+    }
+    return { kind: "TypeDecl", name, body, loc, isContextType: true };
   }
 
   private parseTypeParams(): AST.TypeParam[] {
@@ -831,6 +851,8 @@ export class Parser {
         return this.fnDecl();
       case "TYPE":
         return this.typeDecl();
+      case "CONTEXT":
+        return this.contextTypeDecl();
       default:
         return this.exprOrAssignStmt();
     }

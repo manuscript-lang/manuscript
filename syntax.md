@@ -282,7 +282,22 @@ fn main()
 
 ## 7. Capabilities
 
-Dependency injection via `Context` and `with`. Compiler verifies all requirements statically.
+Dependency injection via context types and `with`. Compiler verifies all requirements statically.
+
+### Defining context types
+
+Declare a capability type with the `context` keyword; the type can then be used in `using` clauses and provided in `with` blocks:
+
+```manuscript
+context Filesystem
+  fn read(path: string): string
+  fn write(path: string, content: string): void
+
+context Shell
+  fn exec(cmd: string): string
+```
+
+Context types have no marker field in the body—only real fields and methods. Legacy form: `type X` with an embedded `Context` line is also accepted.
 
 ### Declaring Dependencies
 

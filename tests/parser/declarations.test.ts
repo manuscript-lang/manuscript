@@ -189,6 +189,31 @@ describe("Parser - Type Declarations", () => {
     });
   });
 
+  test("context type declaration", () => {
+    const src = `context Filesystem
+  fn read(path: string): string`;
+    const result = program(src);
+    expect(result.body[0]).toMatchObject({
+      kind: "TypeDecl",
+      name: "Filesystem",
+      isContextType: true,
+    });
+    const decl = result.body[0] as any;
+    expect(decl.body.members).toHaveLength(1);
+    expect(decl.body.members[0]).toMatchObject({ kind: "MethodDecl", name: "read" });
+  });
+
+  test("context type with no body", () => {
+    const src = "context Empty";
+    const result = program(src);
+    expect(result.body[0]).toMatchObject({
+      kind: "TypeDecl",
+      name: "Empty",
+      isContextType: true,
+      body: { kind: "TypeBody", members: [] },
+    });
+  });
+
   test("struct type", () => {
     const src = `type User
   id: number
