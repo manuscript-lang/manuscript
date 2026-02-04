@@ -24,6 +24,7 @@ export const GENERIC_TYPE_CONSTRUCTORS: Record<string, (args: Type[]) => Type | 
   set: (args) => args[0] ? Types.set(args[0]) : undefined,
   Promise: (args) => args[0] ? Types.promise(args[0]) : undefined,
   Stream: (args) => args[0] ? Types.stream(args[0]) : undefined,
+  Channel: (args) => args[0] ? Types.channel(args[0]) : undefined,
 };
 
 // Builtin method/property info

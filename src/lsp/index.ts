@@ -28,4 +28,5 @@ export {
   getDocstring,
   findFnDecl,
   findTypeDecl,
+  findConstructorCalleeAt,
 } from "./utils";

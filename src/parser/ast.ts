@@ -526,6 +526,7 @@ export type TypeExpr =
   | NamedType
   | GenericType
   | FunctionType
+  | TypePredicateExpr
   | UnionType
   | OptionalType
   | ListType
@@ -546,6 +547,13 @@ export interface FunctionType extends BaseNode {
   kind: "FunctionType";
   params: TypeExpr[];
   returnType: TypeExpr;
+}
+
+// Type predicate for type guard functions: x is Type
+export interface TypePredicateExpr extends BaseNode {
+  kind: "TypePredicateExpr";
+  paramName: string;   // The parameter name
+  targetType: TypeExpr; // The type being asserted
 }
 
 export interface UnionType extends BaseNode {

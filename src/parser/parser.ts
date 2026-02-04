@@ -1865,9 +1865,17 @@ export class Parser {
     }
 
     // Named type with potential generics: List[T], Map[K, V]
+    // Or type predicate: x is Type
     if (token.type === "IDENTIFIER") {
       this.advance();
       const name = token.value as string;
+
+      // Check for type predicate: x is Type
+      if (this.check("IS")) {
+        this.advance();
+        const targetType = this.parsePrimaryType();
+        return { kind: "TypePredicateExpr", paramName: name, targetType, loc: token.loc };
+      }
 
       // Check for generic arguments
       if (this.check("LBRACKET")) {

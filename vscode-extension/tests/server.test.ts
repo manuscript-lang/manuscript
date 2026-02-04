@@ -1611,7 +1611,7 @@ fn greet(name: string): string
     expect(cached).not.toBeNull();
 
     // Hover on "greet" at line 2, column 4
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 2, 4);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 2, 4, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("fn greet");
     expect(hover!.signature).toContain("name: string");
@@ -1628,7 +1628,7 @@ type Person
     expect(cached).not.toBeNull();
 
     // Hover on "Person" at line 2, column 6
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 2, 6);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 2, 6, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("type Person");
     expect(hover!.doc).toContain("name: string");
@@ -1645,7 +1645,7 @@ type Person
     expect(cached).not.toBeNull();
 
     // Hover on "name" field at line 3, column 3
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 3, 3);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 3, 3, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toBe("(field) name: string");
   });
@@ -1660,7 +1660,7 @@ type Calculator
     expect(cached).not.toBeNull();
 
     // Hover on "add" method at line 3, column 6
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 3, 6);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 3, 6, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("(method) fn add");
     expect(hover!.signature).toContain("a: number");
@@ -1677,7 +1677,7 @@ fn main()
     expect(cached).not.toBeNull();
 
     // Hover on "x" definition at line 3, column 7
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 3, 7);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 3, 7, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("x");
     expect(hover!.signature).toContain("number");
@@ -1692,7 +1692,7 @@ fn greet(name: string): string
     expect(cached).not.toBeNull();
 
     // Hover on "name" parameter at line 2, column 10
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 2, 10);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 2, 10, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toBe("(parameter) name: string");
   });
@@ -1747,7 +1747,7 @@ type Calculator
 
     const symbols = getDocumentSymbols(cached!.symbols);
     
-    // Should have 1 type, 1 field, 2 methods
+    // Should have 1 type, 1 field, 3 methods (default init + add + subtract)
     const types = symbols.filter(s => s.kind === "type");
     const fields = symbols.filter(s => s.kind === "field");
     const methods = symbols.filter(s => s.kind === "method");
@@ -1759,7 +1759,8 @@ type Calculator
     expect(fields[0].name).toBe("value");
     expect(fields[0].parent).toBe("Calculator");
     
-    expect(methods.length).toBe(2);
+    expect(methods.length).toBe(3);
+    expect(methods.map(m => m.name)).toContain("init");
     expect(methods.map(m => m.name)).toContain("add");
     expect(methods.map(m => m.name)).toContain("subtract");
     expect(methods[0].parent).toBe("Calculator");
@@ -1812,7 +1813,7 @@ let p = Person(name: "John", age: 30)
     const valueType = cached!.types.get(letStmt.value);
     expect(valueType).toBeDefined();
     
-    const resolved = resolveObjectType(cached!.program, valueType!);
+    const resolved = resolveObjectType(cached!.program, valueType!, cached!.env);
     expect(resolved).not.toBeNull();
     expect(resolved!.name).toBe("Person");
   });
@@ -1833,7 +1834,7 @@ type Calculator
 
     // Try to resolve via ref type
     const refType = { kind: "ref", name: "Calculator" } as any;
-    const obj = resolveObjectType(cached!.program, refType);
+    const obj = resolveObjectType(cached!.program, refType, cached!.env);
     expect(obj).not.toBeNull();
     expect(obj!.name).toBe("Calculator");
     

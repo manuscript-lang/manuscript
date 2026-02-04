@@ -66,7 +66,6 @@ function collectTypeDecl(
           name: member.name,
           type: member.type ? astTypeToType(member.type) : Types.any,
           optional: member.optional,
-          readonly: false,
           computed: member.computed,
           defaultValue: !!member.defaultValue,
         });

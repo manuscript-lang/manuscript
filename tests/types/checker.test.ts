@@ -619,7 +619,7 @@ describe("Type Checker - Match Exhaustiveness", () => {
     const result = check(`let b = true
 match b
   true => "yes"`);
-    expect(result.warnings.some(w => w.includes("exhaustive"))).toBe(true);
+    expect(result.errors.some(e => e.message.includes("exhaustive"))).toBe(true);
   });
 
   test("match on bool with both cases ok", () => {

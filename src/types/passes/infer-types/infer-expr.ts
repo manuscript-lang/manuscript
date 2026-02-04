@@ -1,6 +1,6 @@
 // Expression Type Inference - Infers types for all expression kinds
 import * as AST from "../../../parser/ast";
-import type { Type, FunctionType } from "../../types";
+import type { Type, FunctionType, ObjectType } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import {
@@ -65,12 +65,30 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
     case "SpawnExpr":
       type = inferSpawnExpr(ctx, expr);
       break;
-    case "TypeAssertion":
-      type = astTypeToType(expr.type);
+    case "TypeAssertion": {
+      const exprType = inferExpr(ctx, expr.expr);
+      const assertedType = astTypeToType(expr.type);
+      // Allow assertion if types are related (one is subtype of other, or both same kind)
+      const canAssert = 
+        exprType.kind === "any" || assertedType.kind === "any" ||
+        isAssignable(exprType, assertedType, ctx.env) ||
+        isAssignable(assertedType, exprType, ctx.env);
+      if (!canAssert) {
+        const err = TypeErrors.invalidTypeAssertion(typeToString(exprType), typeToString(assertedType));
+        error(ctx, err.message, expr.loc, err.hint);
+      }
+      type = assertedType;
       break;
-    case "NullAssertion":
-      type = nonNull(inferExpr(ctx, expr.expr));
+    }
+    case "NullAssertion": {
+      const innerType = inferExpr(ctx, expr.expr);
+      if (!isNullable(innerType)) {
+        const err = TypeErrors.unnecessaryNullAssertion(typeToString(innerType));
+        warning(ctx, `${err.message}. ${err.hint}`);
+      }
+      type = nonNull(innerType);
       break;
+    }
     case "RangeExpr":
       type = Types.list(Types.number);
       break;
@@ -102,10 +120,11 @@ function inferIdentifier(ctx: InferContext, expr: AST.Identifier): Type {
     const typeRef = ctx.env.lookupType(expr.name);
     if (typeRef) {
       if (typeRef.kind === "object" && typeRef.name) {
-        return Types.fn(
-          typeRef.properties.map(p => Types.param(p.name, p.type, p.optional || p.defaultValue)),
-          typeRef
-        );
+        const obj = typeRef as ObjectType;
+        const params = obj.init
+          ? obj.init.params.map((p: any) => Types.param(p.name, p.type, p.optional))
+          : obj.properties.map(p => Types.param(p.name, p.type, p.optional || p.defaultValue));
+        return Types.fn(params, typeRef);
       }
       return typeRef;
     }
@@ -345,8 +364,11 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
     }
   }
 
+  // Check if required context types are available
+  // Note: This is a heuristic check - full context type checking would require tracking
+  // available context types, not just variable names. Keep as warning for now.
   for (const binding of fnType.context) {
-    if (binding.name && !ctx.env.isDefined(binding.name)) {
+    if (binding.name && !ctx.env.isDefined(binding.name) && !ctx.insideWithContext) {
       warning(ctx, `Function requires '${binding.name}' in context which may not be available`);
     }
   }
@@ -526,10 +548,20 @@ function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
   if (resolved.kind === "object") {
     const prop = resolved.properties.find(p => p.name === expr.property);
     if (prop) {
+      // Check private member access (members starting with _)
+      if (expr.property.startsWith("_") && resolved.name && ctx.currentTypeName !== resolved.name) {
+        const err = TypeErrors.privateAccess(expr.property, resolved.name);
+        error(ctx, err.message, expr.loc, err.hint);
+      }
       return expr.optional ? Types.optional(prop.type) : prop.type;
     }
     const method = resolved.methods.find(m => m.name === expr.property);
     if (method) {
+      // Check private method access (methods starting with _)
+      if (expr.property.startsWith("_") && resolved.name && ctx.currentTypeName !== resolved.name) {
+        const err = TypeErrors.privateAccess(expr.property, resolved.name);
+        error(ctx, err.message, expr.loc, err.hint);
+      }
       return method.type;
     }
     if (resolved.name && !expr.optional) {

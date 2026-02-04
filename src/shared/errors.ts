@@ -208,6 +208,64 @@ export const TypeErrors = {
     message: "super() can only be used inside init blocks",
     hint: "Move super() call inside the init block of a type that extends another",
   }),
+  
+  // Pattern matching errors
+  patternTypeMismatch: (patternKind: string, expected: string) => ({
+    message: `Cannot use ${patternKind} pattern on type '${expected}'`,
+    hint: `This pattern requires a compatible type`,
+  }),
+  literalPatternMismatch: (literalType: string, expected: string) => ({
+    message: `Literal of type '${literalType}' cannot match type '${expected}'`,
+    hint: `The literal must be compatible with the matched type`,
+  }),
+  unknownPatternProperty: (prop: string, type: string) => ({
+    message: `Property '${prop}' does not exist on type '${type}'`,
+    hint: `Check property name spelling or use a type that has this property`,
+  }),
+  tuplePatternLengthMismatch: (expected: number, got: number) => ({
+    message: `Tuple has ${expected} elements but pattern has ${got}`,
+    hint: `Match the number of elements in the pattern to the tuple`,
+  }),
+  incompatibleTypePattern: (patternType: string, expectedType: string) => ({
+    message: `Type '${patternType}' is not compatible with '${expectedType}'`,
+    hint: `The pattern type must be a subtype of the matched value's type`,
+  }),
+  rangePatternRequiresNumber: (got: string) => ({
+    message: `Range patterns require numeric type, got '${got}'`,
+    hint: `Range patterns like 1..10 can only match numbers`,
+  }),
+  guardMustBeBool: (got: string) => ({
+    message: `Guard expression must be bool, got '${got}'`,
+    hint: `The 'if' condition in a match arm must evaluate to a boolean`,
+  }),
+  matchNotExhaustive: (missing: string[]) => ({
+    message: `Match is not exhaustive. Missing cases: ${missing.join(", ")}`,
+    hint: `Add the missing cases or use a wildcard '_' pattern`,
+  }),
+  invalidTypeAssertion: (from: string, to: string) => ({
+    message: `Cannot assert type '${from}' as '${to}'`,
+    hint: `Type assertions require the types to be related (one must be a subtype of the other)`,
+  }),
+  unnecessaryNullAssertion: (type: string) => ({
+    message: `Unnecessary null assertion on non-nullable type '${type}'`,
+    hint: `The expression is already non-nullable, remove the '!'`,
+  }),
+  privateAccess: (member: string, type: string) => ({
+    message: `Cannot access private member '${member}' of type '${type}'`,
+    hint: `Members starting with '_' are private and can only be accessed within the defining type`,
+  }),
+  cannotExtendSealed: (type: string, sealed: string) => ({
+    message: `Cannot extend sealed type '${sealed}'`,
+    hint: `Type '${sealed}' is sealed and cannot be extended`,
+  }),
+  unreachableCode: () => ({
+    message: `Unreachable code detected`,
+    hint: `This code will never execute. Consider removing it`,
+  }),
+  nonIterableForLoop: (type: string) => ({
+    message: `Cannot iterate over type '${type}'`,
+    hint: `For loops require an iterable type (list, set, map, string, stream, or channel)`,
+  }),
 };
 
 // Helper to create error message with hint

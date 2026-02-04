@@ -92,7 +92,6 @@ function extractObjectType(decl: AST.TypeDecl): ObjectType {
         name: member.name,
         type: astTypeToType(member.type),
         optional: member.optional,
-        readonly: false,
         computed: member.computed,
         defaultValue: !!member.defaultValue,
       });

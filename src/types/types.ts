@@ -127,7 +127,6 @@ export interface PropertyType {
   name: string;
   type: Type;
   optional: boolean;
-  readonly: boolean;
   computed: boolean;
   defaultValue?: boolean;  // Has default value
 }
@@ -390,8 +389,8 @@ export const Types = {
     return { name, type, optional, rest };
   },
 
-  prop(name: string, type: Type, optional = false, readonly = false): PropertyType {
-    return { name, type, optional, readonly, computed: false };
+  prop(name: string, type: Type, optional = false): PropertyType {
+    return { name, type, optional, computed: false };
   },
 };
 

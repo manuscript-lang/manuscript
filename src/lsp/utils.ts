@@ -2,6 +2,8 @@
 import * as AST from "../parser/ast";
 import type { Type, ObjectType, MethodType } from "../types/types";
 import { typeToString } from "../types/types";
+import type { TypeEnvironment } from "../types/environment";
+import { visit } from "../types/ast-visitor";
 import type { SymbolDef } from "./symbols";
 
 // ============================================
@@ -43,15 +45,29 @@ export function findTypeDecl(program: AST.Program, name: string): AST.TypeDecl |
   return null;
 }
 
-export function findTypeMember(program: AST.Program, typeName: string, memberName: string): AST.FieldDecl | AST.MethodDecl | null {
+export function findTypeMember(program: AST.Program, typeName: string, memberName: string): AST.FieldDecl | AST.MethodDecl | AST.InitDecl | null {
   const typeDecl = findTypeDecl(program, typeName);
   if (!typeDecl) return null;
   for (const m of typeDecl.body?.members || []) {
-    // Skip InitDecl as it doesn't have a name property
-    if (m.kind === "InitDecl") continue;
-    if (m.name === memberName) return m;
+    if (m.kind === "InitDecl" && memberName === "init") return m;
+    if ((m.kind === "FieldDecl" || m.kind === "MethodDecl") && m.name === memberName) return m;
   }
   return null;
+}
+
+/** If (line, col) is on the callee of a constructor call TypeName(...), return the type name. */
+export function findConstructorCalleeAt(program: AST.Program, line: number, col: number): string | null {
+  let result: string | null = null;
+  visit(program, {
+    expr(e) {
+      if (e.kind === "CallExpr" && e.callee.kind === "Identifier") {
+        const loc = e.callee.loc;
+        const endCol = loc.column + e.callee.name.length;
+        if (loc.line === line && loc.column <= col && col <= endCol) result = e.callee.name;
+      }
+    },
+  });
+  return result;
 }
 
 // ============================================
@@ -118,16 +134,20 @@ export function getDocstring(block: AST.Block | undefined): string | undefined {
 // Type Resolution
 // ============================================
 
-export function resolveObjectType(program: AST.Program, type: Type): ObjectType | null {
+export function resolveObjectType(program: AST.Program, type: Type, env?: TypeEnvironment): ObjectType | null {
   if (type.kind === "object") return type;
-  if (type.kind === "optional") return resolveObjectType(program, (type as any).inner);
+  if (type.kind === "optional") return resolveObjectType(program, (type as any).inner, env);
   if (type.kind === "union") {
     for (const t of (type as any).types) {
-      const o = resolveObjectType(program, t);
+      const o = resolveObjectType(program, t, env);
       if (o) return o;
     }
   }
   if (type.kind === "ref") {
+    if (env) {
+      const resolved = env.lookupType(type.name);
+      if (resolved?.kind === "object") return resolved as ObjectType;
+    }
     const typeDecl = findTypeDecl(program, type.name);
     if (typeDecl) {
       const props = (typeDecl.body?.members || [])
@@ -136,7 +156,6 @@ export function resolveObjectType(program: AST.Program, type: Type): ObjectType 
           name: m.name,
           type: { kind: "any" } as Type,
           optional: m.optional,
-          readonly: false,
           computed: false,
           defaultValue: !!m.defaultValue,
         }));
@@ -150,6 +169,11 @@ export function resolveObjectType(program: AST.Program, type: Type): ObjectType 
     }
   }
   return null;
+}
+
+export function formatTypeSignatureFromObject(obj: ObjectType): { signature: string; fields: string[] } {
+  const fields = obj.properties.map(p => `${p.name}: ${typeToString(p.type)}`);
+  return { signature: obj.name ?? "", fields };
 }
 
 // ============================================

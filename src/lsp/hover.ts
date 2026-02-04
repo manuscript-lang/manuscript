@@ -1,7 +1,8 @@
-// Hover Info - Provides hover information for symbols
+// Hover Info - Provides hover information for symbols (uses type checker env when available)
 import * as AST from "../parser/ast";
-import type { Type, FunctionType } from "../types/types";
+import type { Type, FunctionType, ObjectType } from "../types/types";
 import { typeToString } from "../types/types";
+import type { TypeEnvironment } from "../types/environment";
 import type { SymbolTable, SymbolDef } from "./symbols";
 import {
   isDefLocationMatch,
@@ -9,10 +10,13 @@ import {
   findTypeDecl,
   formatAstType,
   formatFnSignature,
+  formatFunctionType,
   formatTypeSignature,
+  formatTypeSignatureFromObject,
   getDocstring,
   parseMemberQualifiedName,
   parseQualifiedName,
+  findConstructorCalleeAt,
 } from "./utils";
 
 export interface HoverInfo {
@@ -25,30 +29,36 @@ export function getHoverForSymbol(
   types: Map<AST.ASTNode, Type>,
   program: AST.Program,
   line: number,
-  column: number
+  column: number,
+  env?: TypeEnvironment
 ): HoverInfo | null {
-  // Find the symbol at this position
   for (const def of symbols.getAllDefinitions()) {
     if (isDefLocationMatch(def, line, column)) {
-      return getHoverForDefinition(def, types, program);
+      return getHoverForDefinition(def, types, program, env);
     }
   }
-  
-  // Check references
   for (const ref of symbols.getAllReferences()) {
     const def = symbols.getDefinitionById(ref.symbolId);
     if (def && ref.loc.line === line && column >= ref.loc.column && column <= ref.loc.column + def.name.length) {
-      return getHoverForDefinition(def, types, program);
+      let targetDef = def;
+      if (def.id.kind === "type") {
+        const ctorCallee = findConstructorCalleeAt(program, line, column);
+        if (ctorCallee === def.name) {
+          const initDef = symbols.getDefinition(`${def.name}.init`);
+          if (initDef) targetDef = initDef;
+        }
+      }
+      return getHoverForDefinition(targetDef, types, program, env);
     }
   }
-  
   return null;
 }
 
 function getHoverForDefinition(
   def: SymbolDef,
   types: Map<AST.ASTNode, Type>,
-  program: AST.Program
+  program: AST.Program,
+  env?: TypeEnvironment
 ): HoverInfo | null {
   switch (def.id.kind) {
     case "function": {
@@ -65,6 +75,14 @@ function getHoverForDefinition(
       break;
     }
     case "type": {
+      if (env) {
+        const obj = env.lookupType(def.name);
+        if (obj?.kind === "object") {
+          const { signature, fields } = formatTypeSignatureFromObject(obj as ObjectType);
+          const doc = fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined;
+          return { signature: `type ${signature}`, doc };
+        }
+      }
       const typeDecl = findTypeDecl(program, def.name);
       if (typeDecl) {
         const { signature, fields } = formatTypeSignature(typeDecl);
@@ -75,6 +93,13 @@ function getHoverForDefinition(
     }
     case "field": {
       const parsed = parseMemberQualifiedName(def.id.qualifiedName);
+      if (parsed && env) {
+        const obj = env.lookupType(parsed.typeName);
+        if (obj?.kind === "object") {
+          const prop = (obj as ObjectType).properties.find(p => p.name === parsed.memberName);
+          if (prop) return { signature: `(field) ${parsed.memberName}: ${typeToString(prop.type)}` };
+        }
+      }
       if (parsed) {
         const typeDecl = findTypeDecl(program, parsed.typeName);
         if (typeDecl) {
@@ -89,10 +114,32 @@ function getHoverForDefinition(
     }
     case "method": {
       const parsed = parseMemberQualifiedName(def.id.qualifiedName);
+      if (parsed && env) {
+        const obj = env.lookupType(parsed.typeName);
+        if (obj?.kind === "object") {
+          const o = obj as ObjectType;
+          if (parsed.memberName === "init" && o.init) {
+            const initMember = findTypeDecl(program, parsed.typeName)?.body?.members?.find((m): m is AST.InitDecl => m.kind === "InitDecl");
+            return { signature: `(constructor) ${formatFunctionType(o.init)}`, doc: getDocstring(initMember?.body) };
+          }
+          const method = o.methods.find(m => m.name === parsed.memberName);
+          if (method) {
+            const ft = method.type;
+            const params = ft.params.map((p: any) => `${p.name}: ${typeToString(p.type)}`).join(", ");
+            const ret = typeToString(ft.returnType);
+            const methodMember = findTypeDecl(program, parsed.typeName)?.body?.members?.find((m): m is AST.MethodDecl => m.kind === "MethodDecl" && m.name === parsed.memberName);
+            return { signature: `(method) fn ${parsed.memberName}(${params}): ${ret}`, doc: getDocstring(methodMember?.body) };
+          }
+        }
+      }
       if (parsed) {
         const typeDecl = findTypeDecl(program, parsed.typeName);
         if (typeDecl) {
           for (const m of typeDecl.body?.members || []) {
+            if (m.kind === "InitDecl" && parsed.memberName === "init") {
+              const params = m.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
+              return { signature: `(constructor) fn init(${params}): ${parsed.typeName}`, doc: getDocstring(m.body) };
+            }
             if (m.kind === "MethodDecl" && m.name === parsed.memberName) {
               const params = m.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
               const ret = formatAstType(m.returnType);

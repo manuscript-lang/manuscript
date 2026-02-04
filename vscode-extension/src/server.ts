@@ -59,6 +59,7 @@ import {
   getTypeMemberCompletions,
   getObjectMemberCompletions,
   resolveObjectType,
+  findConstructorCalleeAt,
   type DocumentSymbolKind,
   type CompletionInfo,
 } from "../../src/lsp";
@@ -206,7 +207,7 @@ connection.onCompletion((params): CompletionItem[] => {
         const stdlibCompletions = getTypeMemberCompletions(stdlibTypeMembers, type.kind);
         if (stdlibCompletions.length > 0) return toCompletionItems(stdlibCompletions);
         // Try user-defined object types
-        const obj = resolveObjectType(cached.program, type);
+        const obj = resolveObjectType(cached.program, type, cached.env);
         if (obj) return toCompletionItems(getObjectMemberCompletions(obj));
       }
     }
@@ -286,7 +287,7 @@ connection.onHover((params): Hover | null => {
   const oneBasedCol = params.position.character + 1;
 
   // Try symbol table first for user-defined symbols
-  const symbolHover = getHoverForSymbol(cached.symbols, cached.types, cached.program, oneBasedLine, oneBasedCol);
+  const symbolHover = getHoverForSymbol(cached.symbols, cached.types, cached.program, oneBasedLine, oneBasedCol, cached.env);
   if (symbolHover) return hover(symbolHover.signature, symbolHover.doc);
 
   // Property access: check stdlib type members
@@ -349,8 +350,15 @@ connection.onDefinition((params): Definition | null => {
   const oneBasedCol = params.position.character + 1;
 
   // Use symbol table for resolution
-  const def = resolveDefinition(cached.symbols, oneBasedLine, oneBasedCol);
+  let def = resolveDefinition(cached.symbols, oneBasedLine, oneBasedCol);
   if (def) {
+    if (def.id.kind === "type") {
+      const ctorCallee = findConstructorCalleeAt(cached.program, oneBasedLine, oneBasedCol);
+      if (ctorCallee === def.name) {
+        const initDef = cached.symbols.getDefinition(`${def.name}.init`);
+        if (initDef) def = initDef;
+      }
+    }
     const col = def.loc.column - 1 + def.nameOffset;
     return Location.create(params.textDocument.uri, {
       start: { line: def.loc.line - 1, character: col },

@@ -3,7 +3,7 @@ import * as AST from "../../../parser/ast";
 import type { Type, FunctionType, ContextBinding, ObjectType } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
-import { astTypeToType, fnDeclToType, isAssignable, getIterableElementType, extendsType } from "../../type-utils";
+import { astTypeToType, fnDeclToType, isAssignable, getIterableElementType, isIterable, extendsType } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, warning, recordType } from "./context";
 import { checkPattern, bindPattern } from "./check-pattern";
@@ -219,12 +219,95 @@ function applyTypeNarrowing(ctx: InferContext, condition: AST.Expr, env: any, tr
              (condition.op === "!=" || condition.op === "==") &&
              condition.left.kind === "Identifier" &&
              condition.right.kind === "Literal" && condition.right.value === null) {
+    // Null check narrowing: x == null or x != null
     const varName = condition.left.name;
     const symbol = ctx.env.lookup(varName);
     if (symbol && isNullable(symbol.type)) {
       const isNotNull = (condition.op === "!=" && truthyBranch) || (condition.op === "==" && !truthyBranch);
       if (isNotNull) {
         env.define(varName, nonNull(symbol.type), symbol.mutable);
+      }
+    }
+  } else if (condition.kind === "BinaryExpr" &&
+             (condition.op === "==" || condition.op === "!=") &&
+             condition.left.kind === "Identifier" &&
+             condition.right.kind === "Literal") {
+    // Literal narrowing: x == "value" or x == 42
+    const varName = condition.left.name;
+    const symbol = ctx.env.lookup(varName);
+    if (symbol) {
+      const isEqual = (condition.op === "==" && truthyBranch) || (condition.op === "!=" && !truthyBranch);
+      if (isEqual) {
+        // Narrow to the literal type
+        const literalType = Types.literal(condition.right.value as string | number | boolean);
+        env.define(varName, literalType, symbol.mutable);
+      } else if (symbol.type.kind === "union") {
+        // Remove the literal from union if not equal
+        const literalStr = JSON.stringify(condition.right.value);
+        const remaining = symbol.type.types.filter((t: Type) => {
+          if (t.kind === "literal") return JSON.stringify(t.value) !== literalStr;
+          return true;
+        });
+        if (remaining.length === 1) {
+          env.define(varName, remaining[0]!, symbol.mutable);
+        } else if (remaining.length > 1) {
+          env.define(varName, Types.union(...remaining), symbol.mutable);
+        }
+      }
+    }
+  } else if (condition.kind === "BinaryExpr" &&
+             (condition.op === "==" || condition.op === "!=") &&
+             condition.left.kind === "MemberExpr" &&
+             condition.right.kind === "Literal") {
+    // Discriminated union narrowing: x.kind == "value"
+    const memberExpr = condition.left as AST.MemberExpr;
+    if (memberExpr.object.kind === "Identifier") {
+      const varName = memberExpr.object.name;
+      const propName = memberExpr.property;
+      const symbol = ctx.env.lookup(varName);
+      
+      if (symbol && symbol.type.kind === "union") {
+        const isEqual = (condition.op === "==" && truthyBranch) || (condition.op === "!=" && !truthyBranch);
+        const literalValue = condition.right.value;
+        
+        const matching: Type[] = [];
+        const nonMatching: Type[] = [];
+        
+        for (const t of symbol.type.types) {
+          const resolved = t.kind === "ref" ? ctx.env.resolveType(t) : t;
+          if (resolved.kind === "object") {
+            const prop = (resolved as ObjectType).properties.find(p => p.name === propName);
+            if (prop) {
+              // Check if this type's property matches the literal
+              const propMatches = prop.type.kind === "literal" && prop.type.value === literalValue;
+              if (propMatches) {
+                matching.push(t);
+              } else {
+                nonMatching.push(t);
+              }
+            } else {
+              nonMatching.push(t);
+            }
+          } else {
+            nonMatching.push(t);
+          }
+        }
+        
+        if (isEqual && matching.length > 0) {
+          // Narrow to matching types
+          if (matching.length === 1) {
+            env.define(varName, matching[0]!, symbol.mutable);
+          } else {
+            env.define(varName, Types.union(...matching), symbol.mutable);
+          }
+        } else if (!isEqual && nonMatching.length > 0) {
+          // Narrow to non-matching types
+          if (nonMatching.length === 1) {
+            env.define(varName, nonMatching[0]!, symbol.mutable);
+          } else {
+            env.define(varName, Types.union(...nonMatching), symbol.mutable);
+          }
+        }
       }
     }
   } else if (condition.kind === "UnaryExpr" && (condition.op === "not" || condition.op === "!")) {
@@ -240,6 +323,12 @@ function checkForStmt(ctx: InferContext, stmt: AST.ForStmt): void {
 
   if (stmt.pattern && stmt.iterable) {
     const iterableType = inferExpr(ctx, stmt.iterable);
+    
+    if (!isIterable(iterableType)) {
+      const err = TypeErrors.nonIterableForLoop(typeToString(iterableType));
+      error(ctx, err.message, stmt.iterable.loc, err.hint);
+    }
+    
     const elementType = getIterableElementType(iterableType);
 
     const savedEnv = ctx.env;
@@ -267,7 +356,11 @@ function checkMatchStmt(ctx: InferContext, stmt: AST.MatchStmt): void {
     checkPattern(ctx, arm.pattern, valueType);
 
     if (arm.guard) {
-      inferExpr(ctx, arm.guard);
+      const guardType = inferExpr(ctx, arm.guard);
+      if (guardType.kind !== "bool" && guardType.kind !== "any") {
+        const err = TypeErrors.guardMustBeBool(typeToString(guardType));
+        error(ctx, err.message, arm.guard.loc, err.hint);
+      }
     }
 
     if (arm.body.kind === "Block") {
@@ -318,7 +411,8 @@ function checkMatchExhaustiveness(ctx: InferContext, valueType: Type, arms: AST.
     }
 
     if (uncovered.length > 0) {
-      warning(ctx, `Match may not be exhaustive. Missing cases: ${uncovered.join(", ")}`);
+      const err = TypeErrors.matchNotExhaustive(uncovered);
+      error(ctx, err.message, loc, err.hint);
     }
   }
 
@@ -331,8 +425,13 @@ function checkMatchExhaustiveness(ctx: InferContext, valueType: Type, arms: AST.
       arm.pattern.kind === "IdentifierPattern"
     );
 
-    if (!hasNullCase || !hasValueCase) {
-      warning(ctx, `Match on optional type may not be exhaustive`);
+    const missing: string[] = [];
+    if (!hasNullCase) missing.push("null");
+    if (!hasValueCase) missing.push(typeToString(valueType.inner));
+    
+    if (missing.length > 0) {
+      const err = TypeErrors.matchNotExhaustive(missing);
+      error(ctx, err.message, loc, err.hint);
     }
   }
 
@@ -344,8 +443,13 @@ function checkMatchExhaustiveness(ctx: InferContext, valueType: Type, arms: AST.
       arm.pattern.kind === "LiteralPattern" && arm.pattern.value === false
     );
 
-    if (!hasTrue || !hasFalse) {
-      warning(ctx, `Match on bool may not be exhaustive`);
+    const missing: string[] = [];
+    if (!hasTrue) missing.push("true");
+    if (!hasFalse) missing.push("false");
+    
+    if (missing.length > 0) {
+      const err = TypeErrors.matchNotExhaustive(missing);
+      error(ctx, err.message, loc, err.hint);
     }
   }
 }
@@ -526,6 +630,10 @@ function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
   const typeObj = ctx.env.lookupType(decl.name);
   if (!typeObj || typeObj.kind !== "object") return;
 
+  // Set current type context for private member access
+  const savedTypeName = ctx.currentTypeName;
+  ctx.currentTypeName = decl.name;
+
   // Create an environment with all fields available (for computed fields and methods)
   const typeEnv = ctx.env.child();
   for (const prop of (typeObj as ObjectType).properties) {
@@ -563,6 +671,9 @@ function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
       checkMethodDecl(ctx, decl, member, typeObj as ObjectType);
     }
   }
+  
+  // Restore type context
+  ctx.currentTypeName = savedTypeName;
 }
 
 function checkInitDecl(ctx: InferContext, typeDecl: AST.TypeDecl, init: AST.InitDecl, typeObj: ObjectType): void {
@@ -666,13 +777,64 @@ function checkTestDecl(ctx: InferContext, decl: AST.TestDecl): void {
   ctx.env = savedEnv;
 }
 
+// Check if a statement is a terminating statement (return, throw, break, continue)
+function isTerminatingStatement(stmt: AST.Statement): boolean {
+  switch (stmt.kind) {
+    case "ReturnStmt":
+    case "ThrowStmt":
+    case "BreakStmt":
+    case "ContinueStmt":
+      return true;
+    case "IfStmt":
+      // If is terminating only if both branches are terminating
+      if (!stmt.else) return false;
+      const thenTerminates = stmt.then.kind === "Block" 
+        ? blockTerminates(stmt.then)
+        : isTerminatingStatement(stmt.then);
+      const elseTerminates = blockTerminates(stmt.else);
+      return thenTerminates && elseTerminates;
+    case "MatchStmt":
+      // Match is terminating only if all arms are terminating (and there's a catch-all)
+      const hasCatchAll = stmt.arms.some(arm => 
+        arm.pattern.kind === "WildcardPattern" || 
+        (arm.pattern.kind === "IdentifierPattern" && !arm.guard)
+      );
+      if (!hasCatchAll) return false;
+      return stmt.arms.every(arm => {
+        if (arm.body.kind === "Block") return blockTerminates(arm.body);
+        return false;
+      });
+    default:
+      return false;
+  }
+}
+
+// Check if a block terminates (all paths through it terminate)
+function blockTerminates(block: AST.Block): boolean {
+  for (const stmt of block.statements) {
+    if (isTerminatingStatement(stmt)) return true;
+  }
+  return false;
+}
+
 export function checkBlock(ctx: InferContext, block: AST.Block): void {
   const blockEnv = ctx.env.child();
   const savedEnv = ctx.env;
   ctx.env = blockEnv;
 
+  let seenTerminator = false;
   for (const stmt of block.statements) {
+    if (seenTerminator) {
+      // Warn about unreachable code
+      const err = TypeErrors.unreachableCode();
+      warning(ctx, `${err.message} at line ${stmt.loc.line}. ${err.hint}`);
+    }
+    
     checkStatement(ctx, stmt);
+    
+    if (isTerminatingStatement(stmt)) {
+      seenTerminator = true;
+    }
   }
 
   ctx.env = savedEnv;

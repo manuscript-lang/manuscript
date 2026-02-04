@@ -42,6 +42,10 @@ export function astTypeToType(astType: AST.TypeExpr): Type {
       return Types.list(astTypeToType(astType.elementType));
     case "MapType":
       return Types.map(astTypeToType(astType.keyType), astTypeToType(astType.valueType));
+    case "TypePredicateExpr":
+      // Type predicates return bool at runtime, but carry narrowing info
+      // The predicate info is used during type checking for narrowing
+      return Types.bool;
     default:
       return Types.any;
   }
@@ -125,6 +129,11 @@ export function methodToFunctionType(method: AST.MethodDecl): FunctionType {
 // Check if source type is assignable to target type
 export function isAssignable(source: Type, target: Type, env: TypeEnvironment): boolean {
   if (source.kind === "any" || target.kind === "any") return true;
+  
+  // never is assignable to anything (bottom type)
+  if (source.kind === "never") return true;
+  // nothing is assignable to never except never itself
+  if (target.kind === "never") return false;
 
   const resolvedSource = source.kind === "ref" ? env.resolveType(source) : source;
   const resolvedTarget = target.kind === "ref" ? env.resolveType(target) : target;
@@ -143,33 +152,48 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
         return (resolvedSource as any).name === (resolvedTarget as any).name;
       case "list":
         if ((resolvedTarget as any).elementType.kind === "any") return true;
-        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env);
+        // Lists are invariant for mutation safety
+        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env) &&
+               isAssignable((resolvedTarget as any).elementType, (resolvedSource as any).elementType, env);
       case "map":
         if ((resolvedTarget as any).keyType.kind === "any" && (resolvedTarget as any).valueType.kind === "any") return true;
+        // Maps are invariant for mutation safety
         return isAssignable((resolvedSource as any).keyType, (resolvedTarget as any).keyType, env) &&
-               isAssignable((resolvedSource as any).valueType, (resolvedTarget as any).valueType, env);
+               isAssignable((resolvedTarget as any).keyType, (resolvedSource as any).keyType, env) &&
+               isAssignable((resolvedSource as any).valueType, (resolvedTarget as any).valueType, env) &&
+               isAssignable((resolvedTarget as any).valueType, (resolvedSource as any).valueType, env);
       case "channel":
         if ((resolvedTarget as any).elementType.kind === "any") return true;
-        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env);
+        // Channels are invariant (read and write)
+        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env) &&
+               isAssignable((resolvedTarget as any).elementType, (resolvedSource as any).elementType, env);
       case "promise":
         if ((resolvedTarget as any).resolveType.kind === "any") return true;
+        // Promises are covariant (read-only)
         return isAssignable((resolvedSource as any).resolveType, (resolvedTarget as any).resolveType, env);
       case "set":
         if ((resolvedTarget as any).elementType.kind === "any") return true;
-        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env);
+        // Sets are invariant for mutation safety
+        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env) &&
+               isAssignable((resolvedTarget as any).elementType, (resolvedSource as any).elementType, env);
       case "stream":
         if ((resolvedTarget as any).elementType.kind === "any") return true;
+        // Streams are covariant (read-only)
         return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env);
+      case "tuple":
+        return isTupleAssignable(resolvedSource as any, resolvedTarget as any, env);
       case "object":
-        if ((resolvedSource as any).name && (resolvedTarget as any).name) {
-          return (resolvedSource as any).name === (resolvedTarget as any).name;
-        }
-        return true;
+        return isObjectAssignable(resolvedSource as ObjectType, resolvedTarget as ObjectType, env);
+      case "function":
+        return isFunctionAssignable(resolvedSource as FunctionType, resolvedTarget as FunctionType, env);
+      case "intersection":
+        return isIntersectionAssignable(resolvedSource as any, resolvedTarget as any, env);
       default:
         return true;
     }
   }
 
+  // Handle cross-kind assignability
   if (resolvedSource.kind === "null" && resolvedTarget.kind === "optional") return true;
 
   if (resolvedTarget.kind === "optional") {
@@ -183,15 +207,122 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
     return isAssignable(resolvedSource, (resolvedTarget as any).inner, env);
   }
 
+  // Union target: source must be assignable to at least one member
   if (resolvedTarget.kind === "union") {
     return (resolvedTarget as any).types.some((t: Type) => isAssignable(resolvedSource, t, env));
   }
 
+  // Union source: all members must be assignable to target
   if (resolvedSource.kind === "union") {
     return (resolvedSource as any).types.every((t: Type) => isAssignable(t, resolvedTarget, env));
   }
+  
+  // Intersection source: at least one member must be assignable to target
+  if (resolvedSource.kind === "intersection") {
+    return (resolvedSource as any).types.some((t: Type) => isAssignable(t, resolvedTarget, env));
+  }
+  
+  // Intersection target: source must be assignable to all members
+  if (resolvedTarget.kind === "intersection") {
+    return (resolvedTarget as any).types.every((t: Type) => isAssignable(resolvedSource, t, env));
+  }
 
   return false;
+}
+
+// Check if source object is structurally assignable to target object
+function isObjectAssignable(source: ObjectType, target: ObjectType, env: TypeEnvironment): boolean {
+  // Named types: must be the same type or source extends target
+  if (source.name && target.name) {
+    if (source.name === target.name) return true;
+    // Check inheritance
+    if (source.extends) {
+      for (const parent of source.extends) {
+        if (isAssignable(parent, target, env)) return true;
+      }
+    }
+    return false;
+  }
+  
+  // Named target with unnamed source: check structural compatibility
+  if (target.name && !source.name) {
+    // Source must have all properties of target with compatible types
+    for (const targetProp of target.properties) {
+      if (targetProp.optional) continue;
+      const sourceProp = source.properties.find(p => p.name === targetProp.name);
+      if (!sourceProp) return false;
+      if (!isAssignable(sourceProp.type, targetProp.type, env)) return false;
+    }
+    return true;
+  }
+  
+  // Unnamed source to named target or both unnamed: structural subtyping
+  // Source must have all required properties of target with compatible types
+  for (const targetProp of target.properties) {
+    if (targetProp.optional) continue;
+    const sourceProp = source.properties.find(p => p.name === targetProp.name);
+    if (!sourceProp) return false;
+    if (!isAssignable(sourceProp.type, targetProp.type, env)) return false;
+  }
+  
+  return true;
+}
+
+// Check function type assignability with proper variance
+// Functions are contravariant in parameters and covariant in return type
+function isFunctionAssignable(source: FunctionType, target: FunctionType, env: TypeEnvironment): boolean {
+  // If source params have any `any` types, be permissive (common with untyped lambdas)
+  // This maintains backward compatibility while still catching obviously wrong types
+  const sourceHasAnyParam = source.params.some(p => p.type.kind === "any");
+  if (sourceHasAnyParam) return true;
+  
+  // Check parameter counts (source can have fewer required params)
+  const sourceRequired = source.params.filter(p => !p.optional && !p.rest).length;
+  const targetRequired = target.params.filter(p => !p.optional && !p.rest).length;
+  
+  if (sourceRequired > targetRequired) return false;
+  
+  // Check each parameter (contravariant: target param must be assignable to source param)
+  for (let i = 0; i < target.params.length; i++) {
+    const targetParam = target.params[i]!;
+    const sourceParam = source.params[i];
+    
+    if (!sourceParam) {
+      // Source doesn't have this param - OK if target param is optional
+      if (!targetParam.optional && !targetParam.rest) return false;
+      continue;
+    }
+    
+    // Contravariance: target param type must be assignable to source param type
+    if (!isAssignable(targetParam.type, sourceParam.type, env)) {
+      return false;
+    }
+  }
+  
+  // Check return type (covariant: source return must be assignable to target return)
+  if (!isAssignable(source.returnType, target.returnType, env)) return false;
+  
+  return true;
+}
+
+// Check tuple assignability
+function isTupleAssignable(source: { elements: Type[] }, target: { elements: Type[] }, env: TypeEnvironment): boolean {
+  if (source.elements.length !== target.elements.length) return false;
+  for (let i = 0; i < source.elements.length; i++) {
+    if (!isAssignable(source.elements[i]!, target.elements[i]!, env)) return false;
+  }
+  return true;
+}
+
+// Check intersection assignability
+function isIntersectionAssignable(source: { types: Type[] }, target: { types: Type[] }, env: TypeEnvironment): boolean {
+  // Source intersection is assignable to target intersection if
+  // for each type in target, there's a compatible type in source
+  for (const targetType of target.types) {
+    const hasMatch = source.types.some(st => isAssignable(st, targetType, env));
+    if (!hasMatch) return false;
+  }
+  return true;
 }
 
 // Check structural equality of two types
@@ -268,6 +399,26 @@ export function extendsType(type: Type, baseName: string, env: TypeEnvironment):
   return false;
 }
 
+// Check if a type is iterable
+export function isIterable(type: Type): boolean {
+  const kind = type.kind;
+  if (kind === "list" || kind === "set" || kind === "string" ||
+      kind === "map" || kind === "stream" || kind === "channel" ||
+      kind === "any") {
+    return true;
+  }
+  // Check if it's a generic type like Channel[T]
+  if (kind === "generic") {
+    const genType = type as any;
+    if (genType.base?.kind === "ref") {
+      const baseName = genType.base.name.toLowerCase();
+      return baseName === "channel" || baseName === "list" || baseName === "set" ||
+             baseName === "map" || baseName === "stream";
+    }
+  }
+  return false;
+}
+
 // Get element type from iterable
 export function getIterableElementType(type: Type): Type {
   if (type.kind === "list") return type.elementType;
@@ -329,7 +480,12 @@ export function substituteTypeParams(type: Type, bindings: Map<string, Type>): T
     }
     case "ref": {
       const bound = bindings.get(type.name);
-      return bound ?? type;
+      if (bound) return bound;
+      // Handle ref with generic args
+      if (type.args && type.args.length > 0) {
+        return Types.ref(type.name, type.args.map(a => substituteTypeParams(a, bindings)));
+      }
+      return type;
     }
     case "list":
       return Types.list(substituteTypeParams(type.elementType, bindings));
@@ -346,6 +502,17 @@ export function substituteTypeParams(type: Type, bindings: Map<string, Type>): T
       return Types.channel(substituteTypeParams(type.elementType, bindings));
     case "optional":
       return Types.optional(substituteTypeParams(type.inner, bindings));
+    case "tuple":
+      return Types.tuple(...type.elements.map(e => substituteTypeParams(e, bindings)));
+    case "union":
+      return Types.union(...type.types.map(t => substituteTypeParams(t, bindings)));
+    case "intersection":
+      return Types.intersection(...type.types.map(t => substituteTypeParams(t, bindings)));
+    case "generic":
+      return Types.generic(
+        substituteTypeParams(type.base, bindings),
+        type.args.map(a => substituteTypeParams(a, bindings))
+      );
     case "function":
       return Types.fn(
         type.params.map(p => Types.param(
@@ -356,6 +523,13 @@ export function substituteTypeParams(type: Type, bindings: Map<string, Type>): T
         )),
         substituteTypeParams(type.returnType, bindings)
       );
+    case "stream":
+      return Types.stream(substituteTypeParams(type.elementType, bindings));
+    case "result":
+      return Types.result(
+        substituteTypeParams(type.okType, bindings),
+        substituteTypeParams(type.errType, bindings)
+      );
     default:
       return type;
   }
@@ -365,7 +539,7 @@ export function substituteTypeParams(type: Type, bindings: Map<string, Type>): T
 export function substituteTypeInObject(objType: ObjectType, bindings: Map<string, Type>): ObjectType {
   if (bindings.size === 0) return objType;
   
-  return {
+  const result: ObjectType = {
     kind: "object",
     name: objType.name,
     properties: objType.properties.map(p => ({
@@ -387,6 +561,17 @@ export function substituteTypeInObject(objType: ObjectType, bindings: Map<string
     extends: objType.extends,
     context: objType.context
   };
+  if (objType.init) {
+    result.init = {
+      ...objType.init,
+      params: objType.init.params.map(p => ({
+        ...p,
+        type: substituteTypeParams(p.type, bindings)
+      })),
+      returnType: substituteTypeParams(objType.init.returnType, bindings)
+    };
+  }
+  return result;
 }
 
 // Unify parameter type with argument type to infer type variables

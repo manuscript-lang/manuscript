@@ -15,6 +15,9 @@ export interface InferContext {
   currentFunction: FunctionType | null;
   inLoop: boolean;
   
+  // Current type context (for private member access)
+  currentTypeName: string | null;
+  
   // Spawn tracking
   unawaitedSpawns: Map<string, AST.SourceLocation>;
   
@@ -39,6 +42,7 @@ export function createInferContext(
     fnDecls,
     currentFunction: null,
     inLoop: false,
+    currentTypeName: null,
     unawaitedSpawns: new Map(),
     functionWithDepth: 0,
     withContextVars: new Set(),
