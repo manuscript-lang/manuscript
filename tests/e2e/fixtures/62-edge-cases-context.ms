@@ -3,6 +3,11 @@
 // === Basic context passing ===
 type Logger extends Context
   prefix: string
+  
+  fn init(prefix: string)
+    super()
+    prefix = prefix
+  
   fn log(msg: string): string
     "{prefix}: {msg}"
 
@@ -30,6 +35,11 @@ with let l2 = Logger("[TRACE]")
 // === Multiple contexts ===
 type Counter extends Context
   count: number = 0
+  
+  fn init(count: number = 0)
+    super()
+    count = count
+  
   fn increment(): number
     count = count + 1
     count
@@ -97,6 +107,11 @@ with let outer = Logger("[OUTER]")
 type AppConfig extends Context
   debug: bool = false
   verbose: bool = true
+  
+  fn init(debug: bool = false, verbose: bool = true)
+    super()
+    debug = debug
+    verbose = verbose
 
 fn should_log(): bool using (config: AppConfig)
   config.debug or config.verbose

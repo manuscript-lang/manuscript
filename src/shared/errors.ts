@@ -106,6 +106,10 @@ export const ParserErrors = {
     message: `Unexpected token in context expression: '${got}'`,
     hint: "Context expressions expect capability bindings",
   }),
+  multipleInheritanceNotAllowed: () => ({
+    message: "Multiple inheritance is not allowed",
+    hint: "A type can only extend one parent type. Use composition for multiple behaviors",
+  }),
 };
 
 // Common error messages with hints for type checker errors
@@ -191,6 +195,18 @@ export const TypeErrors = {
   methodOverrideUsingMismatch: (method: string, type: string, base: string) => ({
     message: `Method '${method}' in '${type}' has different 'using' clause than in base type '${base}'`,
     hint: `Override must have the same 'using' clause as the base method`,
+  }),
+  inheritedTypeMissingInit: (name: string, parent: string) => ({
+    message: `Type '${name}' extends '${parent}' but has no init block`,
+    hint: "Types that extend another type must define an init block with super() call",
+  }),
+  initMissingSuperCall: (name: string) => ({
+    message: `Init block in '${name}' must call super()`,
+    hint: "Add super(...) call to initialize the parent type",
+  }),
+  superOutsideInit: () => ({
+    message: "super() can only be used inside init blocks",
+    hint: "Move super() call inside the init block of a type that extends another",
   }),
 };
 

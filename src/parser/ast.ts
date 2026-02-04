@@ -92,7 +92,13 @@ export interface TypeBody extends BaseNode {
   members: TypeMember[];
 }
 
-export type TypeMember = FieldDecl | MethodDecl;
+export type TypeMember = FieldDecl | MethodDecl | InitDecl;
+
+export interface InitDecl extends BaseNode {
+  kind: "InitDecl";
+  params: Parameter[];
+  body: Block;
+}
 
 export interface FieldDecl extends BaseNode {
   kind: "FieldDecl";
@@ -365,6 +371,7 @@ export type Expr =
   | BinaryExpr
   | UnaryExpr
   | CallExpr
+  | SuperExpr
   | IndexExpr
   | MemberExpr
   | PipeExpr
@@ -406,6 +413,11 @@ export interface CallExpr extends BaseNode {
   kind: "CallExpr";
   callee: Expr;
   args: (Expr | { name: string; value: Expr })[]; // positional or named
+}
+
+export interface SuperExpr extends BaseNode {
+  kind: "SuperExpr";
+  args: (Expr | { name: string; value: Expr })[]; // arguments to parent constructor
 }
 
 export interface IndexExpr extends BaseNode {

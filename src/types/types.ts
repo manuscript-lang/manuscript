@@ -120,6 +120,7 @@ export interface ObjectType extends BaseType {
   extends?: Type[];
   typeParams?: TypeParameter[];
   context?: ContextBinding[];
+  init?: FunctionType;  // Explicit init block for types with inheritance
 }
 
 export interface PropertyType {

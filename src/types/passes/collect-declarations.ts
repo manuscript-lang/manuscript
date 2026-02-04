@@ -78,6 +78,20 @@ function collectTypeDecl(
         if (decl.extends) {
           validateMethodOverride(decl.name, member.name, methodType, decl.extends, member.loc, env, addError);
         }
+      } else if (member.kind === "InitDecl") {
+        // Store init as a function type for constructor validation
+        type.init = {
+          kind: "function",
+          params: member.params.map(p => ({
+            name: p.name,
+            type: p.type ? astTypeToType(p.type) : Types.any,
+            optional: p.optional || !!p.defaultValue,
+            rest: p.rest,
+          })),
+          returnType: { kind: "object", name: decl.name, properties: type.properties, methods: type.methods },
+          isGenerator: false,
+          context: [],
+        };
       }
     }
   }

@@ -442,7 +442,8 @@ type Counter
     expect(cached).not.toBeNull();
     
     const typeDecl = cached!.program.body[0] as any;
-    expect(typeDecl.body.members).toHaveLength(3);
+    // 1 field + 2 methods + 1 auto-generated init = 4 members
+    expect(typeDecl.body.members).toHaveLength(4);
   });
 
   test("parses function with optional return", () => {

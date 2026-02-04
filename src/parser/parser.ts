@@ -380,8 +380,10 @@ export class Parser {
     let extendsTypes: AST.TypeExpr[] | undefined;
     if (this.match("EXTENDS")) {
       extendsTypes = [this.parseType()];
-      while (this.match("COMMA")) {
-        extendsTypes.push(this.parseType());
+      // Multiple inheritance is not allowed
+      if (this.check("COMMA")) {
+        const err = ParserErrors.multipleInheritanceNotAllowed();
+        throw new ParseError(err.message, this.peek(), err.hint);
       }
     }
 
@@ -457,8 +459,13 @@ export class Parser {
 
     while (!this.check("DEDENT") && !this.isAtEnd()) {
       if (this.check("FN") || this.check("EXTERN")) {
-        // Parse method - isExternType makes all methods implicitly extern
-        members.push(this.parseMethodDecl(isExternType));
+        // Check for fn init(...) - special init method
+        if (this.check("FN") && this.peekNext().type === "IDENTIFIER" && this.peekNext().value === "init") {
+          members.push(this.parseInitDecl());
+        } else {
+          // Parse regular method - isExternType makes all methods implicitly extern
+          members.push(this.parseMethodDecl(isExternType));
+        }
       } else {
         members.push(this.parseFieldDecl());
       }
@@ -467,6 +474,16 @@ export class Parser {
 
     this.expect("DEDENT");
     return { kind: "TypeBody", members, loc };
+  }
+
+  private parseInitDecl(): AST.InitDecl {
+    const loc = this.current().loc;
+    this.expect("FN");  // consume "fn"
+    this.advance();  // consume "init" identifier
+    const params = this.parseParams();
+    this.expectNewline();
+    const body = this.parseBlock();
+    return { kind: "InitDecl", params, body, loc };
   }
 
   private parseFieldDecl(): AST.FieldDecl {
@@ -1553,7 +1570,7 @@ export class Parser {
     return { kind: "BinaryExpr", op: token.raw, left, right, loc: token.loc };
   }
 
-  private callExpr(callee: AST.Expr): AST.CallExpr {
+  private callExpr(callee: AST.Expr): AST.CallExpr | AST.SuperExpr {
     const loc = this.previous().loc;
     const args: (AST.Expr | { name: string; value: AST.Expr })[] = [];
 
@@ -1573,6 +1590,12 @@ export class Parser {
     }
 
     this.expect("RPAREN");
+
+    // Handle super(...) as a special expression
+    if (callee.kind === "Identifier" && callee.name === "super") {
+      return { kind: "SuperExpr", args, loc: callee.loc };
+    }
+
     return { kind: "CallExpr", callee, args, loc };
   }
 

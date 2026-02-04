@@ -4,6 +4,11 @@
 
 type Logger extends Context
   prefix: string
+  
+  fn init(prefix: string)
+    super()
+    prefix = prefix
+  
   fn log(msg: string): string
     "{prefix}: {msg}"
   fn exit(): void
@@ -11,6 +16,11 @@ type Logger extends Context
 
 type Counter extends Context
   count: number = 0
+  
+  fn init(count: number = 0)
+    super()
+    count = count
+  
   fn inc(): number
     count = count + 1
     count

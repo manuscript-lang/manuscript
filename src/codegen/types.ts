@@ -26,6 +26,8 @@ export type GenOpts = {
   declaredTypes: Set<string>;
   variableTypes: Map<string, string>;
   typeHierarchy: Map<string, string[]>;
+  insideInit?: boolean;
+  initParams?: Set<string>;  // Init block parameters (shouldn't get this. prefix)
 };
 
 // Output context - manages emission state

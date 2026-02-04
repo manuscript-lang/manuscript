@@ -329,7 +329,7 @@ describe("PassManager - Configurable API", () => {
   test("removePass removes by name", () => {
     const mgr = PassManager.createDefault();
     mgr.removePass("context-analysis");
-    expect(mgr.getPassNames()).toEqual(["collect-declarations", "infer-types"]);
+    expect(mgr.getPassNames()).toEqual(["init-pass", "collect-declarations", "infer-types"]);
   });
 
   test("insertBefore inserts at correct position", () => {

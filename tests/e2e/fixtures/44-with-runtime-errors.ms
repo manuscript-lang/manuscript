@@ -3,6 +3,11 @@
 
 type Logger extends Context
   prefix: string
+  
+  fn init(prefix: string)
+    super()
+    prefix = prefix
+  
   fn log(msg: string): string
     "{prefix}: {msg}"
 

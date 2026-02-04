@@ -1,6 +1,6 @@
 // Shared context for type inference sub-modules
 import * as AST from "../../../parser/ast";
-import type { Type, FunctionType, ContextBinding } from "../../types";
+import type { Type, FunctionType } from "../../types";
 import type { TypeEnvironment } from "../../environment";
 import { TypeCheckError } from "../../errors";
 

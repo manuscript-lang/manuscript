@@ -47,6 +47,8 @@ export function findTypeMember(program: AST.Program, typeName: string, memberNam
   const typeDecl = findTypeDecl(program, typeName);
   if (!typeDecl) return null;
   for (const m of typeDecl.body?.members || []) {
+    // Skip InitDecl as it doesn't have a name property
+    if (m.kind === "InitDecl") continue;
     if (m.name === memberName) return m;
   }
   return null;

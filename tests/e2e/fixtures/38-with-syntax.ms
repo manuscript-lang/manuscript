@@ -2,6 +2,11 @@
 
 type Logger extends Context
   prefix: string
+  
+  fn init(prefix: string)
+    super()
+    prefix = prefix
+  
   fn log(msg: string): string
     "{prefix}: {msg}"
 
@@ -28,6 +33,11 @@ with Logger("ANON")
 // === Multiple contexts - mixed patterns ===
 type Config extends Context
   env: string
+  
+  fn init(env: string)
+    super()
+    env = env
+  
   fn get_env(): string
     env
 

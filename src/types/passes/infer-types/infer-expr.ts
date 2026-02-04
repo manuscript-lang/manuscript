@@ -77,6 +77,9 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
     case "TemplateLiteral":
       type = inferTemplateLiteral(ctx, expr);
       break;
+    case "SuperExpr":
+      type = inferSuperExpr(ctx, expr);
+      break;
     default:
       type = Types.any;
   }
@@ -364,43 +367,95 @@ function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: an
     error(ctx, `Context type '${objType.name}' can only be instantiated in 'with' clauses`, expr.loc);
   }
 
-  const props = objType.properties;
-  const requiredProps = props.filter((p: any) => !p.optional && !p.defaultValue);
   const args = expr.args;
 
-  if (args.length < requiredProps.length) {
-    const err = TypeErrors.wrongArgumentCount(`at least ${requiredProps.length}`, args.length);
-    error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
-  } else if (args.length > props.length) {
-    const err = TypeErrors.wrongArgumentCount(`at most ${props.length}`, args.length);
-    error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
-  }
+  // If type has explicit init, validate against init params
+  if (objType.init) {
+    const initParams = objType.init.params;
+    const requiredParams = initParams.filter((p: any) => !p.optional);
+    
+    if (args.length < requiredParams.length) {
+      const err = TypeErrors.wrongArgumentCount(`at least ${requiredParams.length}`, args.length);
+      error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
+    } else if (args.length > initParams.length) {
+      const err = TypeErrors.wrongArgumentCount(`at most ${initParams.length}`, args.length);
+      error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
+    }
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]!;
-    let argType: Type;
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i]!;
+      let argType: Type;
 
-    if ("name" in arg && "value" in arg) {
-      argType = inferExpr(ctx, arg.value);
-      const prop = props.find((p: any) => p.name === arg.name);
-      if (!prop) {
-        const err = TypeErrors.propertyNotExist(arg.name, objType.name!);
-        error(ctx, err.message, arg.value.loc, err.hint);
-      } else if (!isAssignable(argType, prop.type, ctx.env)) {
-        const err = TypeErrors.typeMismatch(typeToString(prop.type), typeToString(argType));
-        error(ctx, `Property '${arg.name}': ${err.message}`, arg.value.loc, err.hint);
+      if ("name" in arg && "value" in arg) {
+        argType = inferExpr(ctx, arg.value);
+        const param = initParams.find((p: any) => p.name === arg.name);
+        if (!param) {
+          error(ctx, `Unknown parameter '${arg.name}' in ${objType.name} constructor`, arg.value.loc);
+        } else if (!isAssignable(argType, param.type, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(param.type), typeToString(argType));
+          error(ctx, `Parameter '${arg.name}': ${err.message}`, arg.value.loc, err.hint);
+        }
+      } else {
+        argType = inferExpr(ctx, arg as AST.Expr);
+        const param = initParams[i];
+        if (param && !isAssignable(argType, param.type, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(param.type), typeToString(argType));
+          error(ctx, `Argument ${i + 1}: ${err.message}`, (arg as AST.Expr).loc, err.hint);
+        }
       }
-    } else {
-      argType = inferExpr(ctx, arg as AST.Expr);
-      const prop = props[i];
-      if (prop && !isAssignable(argType, prop.type, ctx.env)) {
-        const err = TypeErrors.typeMismatch(typeToString(prop.type), typeToString(argType));
-        error(ctx, `Argument ${i + 1}: ${err.message}`, (arg as AST.Expr).loc, err.hint);
+    }
+  } else {
+    // No init - use property-based validation (original behavior)
+    const props = objType.properties;
+    const requiredProps = props.filter((p: any) => !p.optional && !p.defaultValue);
+
+    if (args.length < requiredProps.length) {
+      const err = TypeErrors.wrongArgumentCount(`at least ${requiredProps.length}`, args.length);
+      error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
+    } else if (args.length > props.length) {
+      const err = TypeErrors.wrongArgumentCount(`at most ${props.length}`, args.length);
+      error(ctx, `Type '${objType.name}': ${err.message}`, expr.loc, err.hint);
+    }
+
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i]!;
+      let argType: Type;
+
+      if ("name" in arg && "value" in arg) {
+        argType = inferExpr(ctx, arg.value);
+        const prop = props.find((p: any) => p.name === arg.name);
+        if (!prop) {
+          const err = TypeErrors.propertyNotExist(arg.name, objType.name!);
+          error(ctx, err.message, arg.value.loc, err.hint);
+        } else if (!isAssignable(argType, prop.type, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(prop.type), typeToString(argType));
+          error(ctx, `Property '${arg.name}': ${err.message}`, arg.value.loc, err.hint);
+        }
+      } else {
+        argType = inferExpr(ctx, arg as AST.Expr);
+        const prop = props[i];
+        if (prop && !isAssignable(argType, prop.type, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(prop.type), typeToString(argType));
+          error(ctx, `Argument ${i + 1}: ${err.message}`, (arg as AST.Expr).loc, err.hint);
+        }
       }
     }
   }
 
   return objType;
+}
+
+function inferSuperExpr(ctx: InferContext, expr: AST.SuperExpr): Type {
+  // super() validation is done by init-pass
+  // Here we just infer types for the arguments
+  for (const arg of expr.args) {
+    if ("name" in arg && "value" in arg) {
+      inferExpr(ctx, arg.value);
+    } else {
+      inferExpr(ctx, arg as AST.Expr);
+    }
+  }
+  return Types.void;
 }
 
 function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {

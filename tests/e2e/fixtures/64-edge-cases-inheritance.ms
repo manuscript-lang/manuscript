@@ -16,10 +16,14 @@ type Base
     0
 
 type Middle extends Base
+  fn init()
+    super()
   fn value(): number
     1
 
 type Derived extends Middle
+  fn init()
+    super()
   fn value(): number
     2
 

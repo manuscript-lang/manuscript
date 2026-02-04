@@ -277,18 +277,10 @@ describe("Parser - Type Declarations", () => {
     });
   });
 
-  test("multiple inheritance", () => {
+  test("multiple inheritance not allowed", () => {
     const src = `type Duck extends Animal, Flyable, Swimmable
   name: string`;
-    const result = program(src);
-    expect(result.body[0]).toMatchObject({
-      kind: "TypeDecl",
-      extends: [
-        { kind: "NamedType", name: "Animal" },
-        { kind: "NamedType", name: "Flyable" },
-        { kind: "NamedType", name: "Swimmable" },
-      ],
-    });
+    expect(() => program(src)).toThrow("Multiple inheritance is not allowed");
   });
 
   test("generic type", () => {

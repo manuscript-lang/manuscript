@@ -22,6 +22,7 @@ export function genExpr(ctx: Ctx, expr: AST.Expr, opts: GenOpts): string {
     case "BinaryExpr": return genBinary(ctx, expr, opts);
     case "UnaryExpr": return genUnary(ctx, expr, opts);
     case "CallExpr": return genCall(ctx, expr, opts);
+    case "SuperExpr": return genSuper(ctx, expr, opts);
     case "IndexExpr": return genIndex(ctx, expr, opts);
     case "MemberExpr": return genMember(ctx, expr, opts);
     case "PipeExpr": return genPipe(ctx, expr, opts);
@@ -38,6 +39,17 @@ export function genExpr(ctx: Ctx, expr: AST.Expr, opts: GenOpts): string {
   }
 }
 
+export function genSuper(ctx: Ctx, node: AST.SuperExpr, opts: GenOpts): string {
+  const args = node.args.map(arg => {
+    if ("name" in arg && "value" in arg) {
+      // Named args aren't supported in JS super, just use value
+      return genExpr(ctx, arg.value, opts);
+    }
+    return genExpr(ctx, arg as AST.Expr, opts);
+  });
+  return `super(${args.join(", ")})`;
+}
+
 export function genLiteral(node: AST.Literal): string {
   if (node.value === null) return "null";
   if (typeof node.value === "string") return JSON.stringify(node.value);
@@ -46,6 +58,10 @@ export function genLiteral(node: AST.Literal): string {
 }
 
 export function genIdentifier(node: AST.Identifier, opts: GenOpts): string {
+  // In init blocks, params shadow fields - don't add this. for params
+  if (opts.initParams?.has(node.name)) {
+    return node.name;
+  }
   if (opts.classFields?.has(node.name)) {
     return `this.${node.name}`;
   }

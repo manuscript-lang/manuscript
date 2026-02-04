@@ -76,21 +76,39 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
 
   const fields: AST.FieldDecl[] = [];
   const methods: AST.MethodDecl[] = [];
+  let initDecl: AST.InitDecl | undefined;
 
   for (const member of decl.body.members) {
     if (member.kind === "FieldDecl") {
       fields.push(member);
     } else if (member.kind === "MethodDecl") {
       methods.push(member);
+    } else if (member.kind === "InitDecl") {
+      initDecl = member;
     }
   }
 
   // Generate constructor
-  const requiredFields = fields.filter(f => !f.optional && !f.defaultValue);
-  const optionalFields = fields.filter(f => f.optional || f.defaultValue);
-  const hasExtends = decl.extends && decl.extends.length > 0;
+  const classFields = new Set(fields.map(f => f.name));
+  const methodOpts = { ...opts, classFields };
 
-  if (fields.length > 0 || hasExtends) {
+  if (initDecl) {
+    // Use init block (init-pass ensures all types have one)
+    const initParamNames = new Set(initDecl.params.map(p => p.name));
+    const initOpts = { ...opts, classFields, initParams: initParamNames };
+    const params = genParams(ctx, initDecl.params, initOpts);
+    emit(ctx, `constructor(${params}) {`);
+    pushIndent(ctx);
+    genBlock(ctx, initDecl.body, { ...initOpts, insideInit: true });
+    popIndent(ctx);
+    emit(ctx, "}");
+    emit(ctx, "");
+  } else if (fields.length > 0 || (decl.extends && decl.extends.length > 0)) {
+    // Fallback: auto-generate constructor from fields (for standalone codegen without init-pass)
+    const requiredFields = fields.filter(f => !f.optional && !f.defaultValue);
+    const optionalFields = fields.filter(f => f.optional || f.defaultValue);
+    const hasExtends = decl.extends && decl.extends.length > 0;
+
     const ctorParams = requiredFields.map(f => f.name).join(", ");
     const optParams = optionalFields.map(f => {
       if (f.defaultValue) return `${f.name} = ${genExpr(ctx, f.defaultValue, opts)}`;
@@ -113,9 +131,6 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
   }
 
   // Generate methods with class field context
-  const classFields = new Set(fields.map(f => f.name));
-  const methodOpts = { ...opts, classFields };
-
   for (const method of methods) {
     const prefix = method.isGenerator ? "*" : "async ";
     const params = genParams(ctx, method.params, methodOpts);

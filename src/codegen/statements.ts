@@ -52,7 +52,22 @@ export function genVar(ctx: Ctx, stmt: AST.VarStmt, opts: GenOpts): void {
 
 // Generate assignment statement
 export function genAssign(ctx: Ctx, stmt: AST.AssignStmt, opts: GenOpts): void {
-  const target = genExpr(ctx, stmt.target, opts);
+  let target: string;
+  
+  // In init blocks, assignments to field names should use this.field
+  // even when the field name matches a param name
+  if (opts.insideInit && stmt.target.kind === "Identifier") {
+    const fieldName = stmt.target.name;
+    // Check if this is a field (either in classFields or initParams which are derived from fields)
+    if (opts.classFields?.has(fieldName) || opts.initParams?.has(fieldName)) {
+      target = `this.${fieldName}`;
+    } else {
+      target = genExpr(ctx, stmt.target, opts);
+    }
+  } else {
+    target = genExpr(ctx, stmt.target, opts);
+  }
+  
   const value = genExpr(ctx, stmt.value, opts);
   emit(ctx, `${target} ${stmt.op} ${value};`);
 }

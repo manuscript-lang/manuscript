@@ -3,17 +3,25 @@
 // === Interface pattern: empty body functions define the contract ===
 // ILogger is an interface - methods have signatures but no body
 type ILogger extends Context
+  fn init()
+    super()
   fn log(msg: string): string
 
 // Concrete implementation provides actual behavior
 type ConsoleLogger extends ILogger
   prefix: string
   
+  fn init(prefix: string)
+    super()
+    prefix = prefix
+  
   fn log(msg: string): string
     "{prefix}: {msg}"
 
 // Another implementation - could be a mock for testing
 type MockLogger extends ILogger
+  fn init()
+    super()
   fn log(msg: string): string
     "[MOCK] " + msg
 
@@ -38,12 +46,19 @@ with ConsoleLogger("ANON")
 
 // === Multiple context bindings ===
 type IConfig extends Context
+  fn init()
+    super()
   fn get_env(): string
   fn is_debug(): bool
 
 type AppConfig extends IConfig
   env: string
   debug: bool
+  
+  fn init(env: string, debug: bool)
+    super()
+    env = env
+    debug = debug
   
   fn get_env(): string
     env
@@ -69,12 +84,18 @@ with let logger = ConsoleLogger("PROD"), let config = AppConfig("prod", false)
 // === Swapping storage implementations ===
 // Interface defines contract for storage
 type IStorage extends Context
+  fn init()
+    super()
   fn save(key: string, value: string): string
   fn load(key: string): string
 
 // In-memory implementation
 type MemoryStorage extends IStorage
   name: string
+  
+  fn init(name: string)
+    super()
+    name = name
   
   fn save(key: string, value: string): string
     "[{name}] Saved {key}={value}"
@@ -121,6 +142,10 @@ with let logger = ConsoleLogger("NOTIF")
 type Counter extends Context
   count: number = 0
   
+  fn init(count: number = 0)
+    super()
+    count = count
+  
   fn increment(): number
     count = count + 1
     count
@@ -147,6 +172,11 @@ with let tracker = Counter()
 type Env extends Context
   name: string
   base_url: string
+  
+  fn init(name: string, base_url: string)
+    super()
+    name = name
+    base_url = base_url
 
 fn make_request(path: string): string using (env: Env)
   env.base_url + path
@@ -171,6 +201,11 @@ with let logger = ConsoleLogger("SIMPLE")
 type Settings extends Context
   theme: string = "light"
   language: string = "en"
+  
+  fn init(theme: string = "light", language: string = "en")
+    super()
+    theme = theme
+    language = language
 
 fn get_theme(): string using (settings: Settings)
   settings.theme
@@ -193,10 +228,14 @@ with let settings = Settings("dark", "es")
 // === Chained context operations - non-viral ===
 // Interface for formatters
 type IFormatter extends Context
+  fn init()
+    super()
   fn format(s: string): string
 
 // Concrete implementation
 type BracketFormatter extends IFormatter
+  fn init()
+    super()
   fn format(s: string): string
     "[" + s + "]"
 

@@ -209,10 +209,16 @@ channel_accumulator_demo()
 
 // Logger context with channel reporting
 type IReporter extends Context
+  fn init()
+    super()
   fn report(msg: string)
 
 type ChannelReporter extends IReporter
   ch: Channel[string]
+  
+  fn init(ch: Channel[string])
+    super()
+    ch = ch
   
   fn report(msg: string)
     ch.send(msg)
@@ -247,11 +253,17 @@ print(first_report)
 // ============================================
 
 type ICounter extends Context
+  fn init()
+    super()
   fn increment(): number
   fn get(): number
 
 type SafeCounter extends ICounter
   count: number = 0
+  
+  fn init(count: number = 0)
+    super()
+    count = count
   
   fn increment(): number
     count = count + 1
@@ -281,10 +293,16 @@ worker_ch.close()
 // ============================================
 
 type IEventBus extends Context
+  fn init()
+    super()
   fn publish(event: string)
 
 type SimpleEventBus extends IEventBus
   ch: Channel[string]
+  
+  fn init(ch: Channel[string])
+    super()
+    ch = ch
   
   fn publish(event: string)
     ch.send(event)
