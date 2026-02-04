@@ -191,6 +191,28 @@ type Admin extends User
 // Multiple inheritance
 type Duck extends Animal, Flyable, Swimmable
 
+// Type embedding (Go-style composition)
+// Capitalized type name on its own line embeds that type; fields and methods are promoted
+type Animal
+  name: string
+  age: number
+  fn speak(): string
+    "{name} says hello"
+
+type Dog
+  Animal
+  breed: string
+  fn bark(): string
+    "{name} barks!"
+
+let dog = Dog(Animal("Buddy", 3), "Golden Retriever")
+dog.name          // promoted from Animal
+dog.speak()       // promoted method
+dog.Animal.name   // direct access to embedded value
+// Constructor args: embedded types first (in declaration order), then own fields
+// Own fields/methods shadow promoted ones; use obj.EmbeddedType.member to access embedded
+// Multiple embeds: if two embeds promote the same member name, use explicit access (obj.A.member)
+
 // Interface (methods without bodies)
 type Serializable
   fn serialize(): string
@@ -515,6 +537,7 @@ agent helper
 | `field?: type` | Optional |
 | `field: type = value` | Default |
 | `field: () => expr` | Computed |
+| `TypeName` (line alone) | Embedded type; members promoted, access via `obj.TypeName.member` |
 
 ### Capabilities
 
