@@ -381,9 +381,9 @@ export function extendsType(type: Type, baseName: string, env: TypeEnvironment):
     return true;
   }
 
-  // Check for embedded type with matching name
   if (resolved.kind === "object") {
     const obj = resolved as ObjectType;
+    if (baseName === "Context" && obj.isContextType) return true;
     const embedded = obj.properties.find(p => p.embedded && p.name === baseName);
     if (embedded) return true;
   }
@@ -391,8 +391,10 @@ export function extendsType(type: Type, baseName: string, env: TypeEnvironment):
   return false;
 }
 
-// Check if a type has Context embedded (for with-block validation)
+// Context type: either declared with `context TypeName` or embeds Context (legacy)
 export function hasEmbeddedContext(type: Type, env: TypeEnvironment): boolean {
+  const resolved = type.kind === "ref" ? env.resolveType(type) : type;
+  if (resolved.kind === "object" && (resolved as ObjectType).isContextType) return true;
   return extendsType(type, "Context", env);
 }
 

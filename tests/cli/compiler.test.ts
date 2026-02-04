@@ -3,10 +3,11 @@ import { compile, check, parse, formatErrors } from "../../src/cli/compiler";
 
 describe("Compiler Pipeline", () => {
   describe("compile", () => {
-    test("compiles simple expression", () => {
+    test("compiles simple expression and returns AST", () => {
       const result = compile("let x = 42");
       expect(result.success).toBe(true);
       expect(result.code).toContain("const x = 42");
+      expect(result.ast?.body.length).toBe(1);
     });
 
     test("compiles function declaration", () => {
@@ -49,11 +50,6 @@ fn add(a: number, b: number): number
       expect(result.errors[0]!.file).toBe("test.ms");
     });
 
-    test("returns AST on success", () => {
-      const result = compile("let x = 1");
-      expect(result.ast).toBeDefined();
-      expect(result.ast!.body.length).toBe(1);
-    });
   });
 
   describe("check", () => {
@@ -63,15 +59,25 @@ fn add(a: number, b: number): number
       expect(result.errors.length).toBe(0);
     });
 
-    test("detects type errors", () => {
+    test("detects type errors and still returns AST", () => {
       const result = check('let x: number = "string"');
       expect(result.success).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.ast).toBeDefined();
     });
 
-    test("returns AST even on type error", () => {
-      const result = check('let x: number = "string"');
-      expect(result.ast).toBeDefined();
+    test("reports parse errors with hint and location", () => {
+      const result = check("let = 42");
+      expect(result.success).toBe(false);
+      expect(result.errors[0]!.phase).toBe("parser");
+      expect(result.errors[0]!.message).toBeDefined();
+      expect(result.errors[0]!.hint).toBeDefined();
+    });
+
+    test("reports lexer errors when check fails on invalid token", () => {
+      const result = check("let x = @bad");
+      expect(result.success).toBe(false);
+      expect(result.errors[0]!.phase).toBe("lexer");
     });
   });
 

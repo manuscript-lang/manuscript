@@ -72,6 +72,7 @@ export interface TypeDecl extends BaseNode {
   where?: WhereClause[];
   body: TypeBody;
   isExtern?: boolean;  // extern type - all methods are implicitly extern
+  isContextType?: boolean;  // context TypeName - capability type for with/using
   doc?: string;
 }
 

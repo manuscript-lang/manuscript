@@ -112,6 +112,7 @@ function registerType(
       constraint: p.constraint ? astTypeToType(p.constraint) : undefined
     })),
     alias: decl.alias?.map(e => astTypeToType(e)),
+    isContextType: decl.isContextType,
   };
 
   try {
