@@ -24,7 +24,7 @@ export interface CollectOutput {
 const BUILTIN_KEYWORDS = ["enum", "agent", "context", "capabilities"];
 
 function createBuiltinKeywordDecl(name: string): AST.KeywordDecl {
-  const loc = { line: 0, column: 0 };
+  const loc: AST.SourceLocation = { line: 0, column: 0, offset: 0 };
   return {
     kind: "KeywordDecl",
     name,
