@@ -184,13 +184,6 @@ type Counter
   fn get(): number
     value
 
-// Inheritance
-type Admin extends User
-  permissions: list[string]
-
-// Multiple inheritance
-type Duck extends Animal, Flyable, Swimmable
-
 // Type embedding 
 // Capitalized type name on its own line embeds that type; fields and methods are promoted
 type Animal
@@ -224,12 +217,20 @@ let user = User(id: 1, name: "Alice")
 
 ### Enums
 
+Enums define named constants. Values are required:
+
 ```manuscript
 enum Status
   Pending = "pending"
   Done = "done"
 
+enum Priority
+  Low = 1
+  Medium = 2
+  High = 3
+
 let s = Status.Pending       // s == "pending"
+let p = Priority.High        // p == 3
 ```
 
 ### Unions
@@ -388,13 +389,6 @@ Method overrides cannot add capabilities (can use same or fewer):
 ```manuscript
 type Handler
   fn handle(data: Data) using (fs: Filesystem)
-
-type FileHandler extends Handler
-  fn handle(data: Data) using (fs: Filesystem)   // OK
-type SimpleHandler extends Handler
-  fn handle(data: Data)                          // OK (fewer)
-type NetHandler extends Handler
-  fn handle(data: Data) using (http: HTTP)       // ERROR (adds)
 ```
 
 ---
@@ -481,20 +475,85 @@ let user = assert data.user, "no user"  // with message
 
 ## 10. Keyword Declarations
 
-Define syntax shortcuts:
+Define domain-specific type constructors with fields and methods:
+
+### Defining Keywords
 
 ```manuscript
-keyword capabilities = type using (Context)
-keyword prompt = fn (): string
-
-// Sealed prevents adding using clause
-sealed keyword enum = type
+keyword workflow = type
+  steps: list[string]
+  status: string = "pending"
+  
+  fn run(): void
+    for step in steps
+      print("Running: " + step)
 ```
 
-| Modifier | Capabilities |
-|----------|--------------|
-| `sealed` | No |
-| *(none)* | Yes |
+### Using Keywords
+
+```manuscript
+workflow Pipeline
+  steps = ["fetch", "transform", "load"]
+
+let p = Pipeline()
+p.run()  // prints: Running: fetch, Running: transform, Running: load
+```
+
+### Keyword Fields
+
+| Syntax | Meaning |
+|--------|---------|
+| `field: type` | Required field |
+| `field?: type` | Optional field |
+| `field: type = value` | Field with default |
+
+### Keyword Methods
+
+Methods defined in the keyword are available on all instances:
+
+```manuscript
+keyword entity = type
+  id: number
+  
+  fn getId(): number
+    id
+
+entity User
+  id = 1
+  
+  fn greet(): string    // users can add their own methods
+    "Hello from user " + to_str(id)
+
+let u = User()
+u.getId()   // from keyword
+u.greet()   // from user
+```
+
+### Built-in Keywords
+
+The following keywords are pre-defined:
+
+```manuscript
+// Enumerated types (values required)
+enum Status
+  Pending = 0
+  Active = 1
+  Complete = 2
+
+let s = Status.Pending  // s == 0
+
+// Agents
+agent Helper
+  fn greet(name: string): string
+    "Hello, " + name
+
+// Capability groups
+capabilities production
+  llm = Claude()
+
+context testing
+  fs = MockFilesystem()
+```
 
 ---
 
@@ -526,8 +585,11 @@ agent helper
 |-----------|---------|
 | `fn` | Function |
 | `type` | Data structure |
-| `keyword` | Syntax shortcuts |
+| `keyword` | Domain-specific type constructors |
 | `test` | Test cases |
+| `enum` | Enumerated types |
+| `agent` | AI agents |
+| `capabilities` | Capability groups |
 
 ### Type Fields
 

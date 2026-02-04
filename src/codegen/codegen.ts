@@ -14,7 +14,7 @@ import {
 // Import generators
 import { genExpr, setGen as setExprGen } from "./expressions";
 import { setGen as setStmtGen, genLet, genVar, genAssign, genIf, genFor, genMatch, genReturn, genYield, genDefer, genTry, genThrow, genWith, genExprStmt, genBlock } from "./statements";
-import { genImport, genFn, genType, genEnum, genContext, genAgent, genTest } from "./declarations";
+import { genImport, genFn, genType, genEnum, genContext, genAgent, genTest, genKeywordTypeUse } from "./declarations";
 
 // Main dispatch function - handles all AST nodes
 export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): string {
@@ -57,7 +57,10 @@ export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): st
       genEnum(ctx, node, opts);
       return "";
     case "KeywordDecl":
-      // Keywords are compile-time only
+      // Keywords are compile-time only, no codegen
+      return "";
+    case "KeywordTypeUse":
+      genKeywordTypeUse(ctx, node, opts);
       return "";
     case "ContextDecl":
       genContext(ctx, node, opts);
@@ -125,13 +128,15 @@ export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): st
 setExprGen(gen);
 setStmtGen(gen);
 
-// Collect type information from program
-function collectTypeInfo(program: AST.Program, opts: GenOpts): void {
+// Collect type information and keyword declarations from program
+function collectTypeInfo(program: AST.Program, opts: GenOpts, ctx: Ctx): void {
   for (const stmt of program.body) {
     if (stmt.kind === "TypeDecl") {
       opts.declaredTypes.add(stmt.name);
     } else if (stmt.kind === "EnumDecl") {
       opts.declaredTypes.add(stmt.name);
+    } else if (stmt.kind === "KeywordDecl") {
+      ctx.keywordDecls.set(stmt.name, stmt);
     }
   }
 }
@@ -156,7 +161,7 @@ export class CodeGenerator {
     resetCtx(this.ctx);
     const opts = createOpts();
 
-    collectTypeInfo(program, opts);
+    collectTypeInfo(program, opts, this.ctx);
     emitRuntimeImports(this.ctx);
 
     for (const stmt of program.body) {
