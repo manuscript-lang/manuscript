@@ -699,7 +699,7 @@ export class Parser {
     const sealed = this.match("SEALED") || undefined;
 
     this.expect("KEYWORD");
-    const name = this.expectName();
+    const name = this.expectKeywordName();
     this.expect("ASSIGN");
 
     let expansion: "type" | "fn";
@@ -2196,6 +2196,21 @@ export class Parser {
     if (token.type === "IDENTIFIER") {
       this.advance();
       return token.value as string;
+    }
+    const err = ParserErrors.expectedName(token.type);
+    throw new ParseError(err.message, token, err.hint);
+  }
+
+  // Like expectName but allows reserved words that can be keyword declaration names (e.g. "context" in `keyword context = type`)
+  private expectKeywordName(): string {
+    const token = this.current();
+    if (token.type === "IDENTIFIER") {
+      this.advance();
+      return token.value as string;
+    }
+    if (token.type === "CONTEXT") {
+      this.advance();
+      return "context";
     }
     const err = ParserErrors.expectedName(token.type);
     throw new ParseError(err.message, token, err.hint);
