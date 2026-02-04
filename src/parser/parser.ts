@@ -171,30 +171,149 @@ export class Parser {
 
   /**
    * Handle identifiers that might be keyword-defined constructs or regular statements.
-   * Per syntax.md, `enum`, `agent`, `context` (capabilities) are defined via keyword declarations,
-   * not as core language keywords.
+   * All keyword usages (enum, agent, context, etc.) use pattern-based detection.
    */
   private identifierDeclarationOrStatement(): AST.Statement {
-    const token = this.peek();
-    const name = token.value as string;
-    
-    // Check if this identifier matches a known keyword expansion pattern
-    // These are the standard library keyword definitions from syntax.md:
-    // - keyword enum = type (sealed)
-    // - keyword agent = type extends Agent using (context bindings)  
-    // - keyword context = type (for declaring context bindings)
-    // Note: "capabilities" is also accepted for backward compatibility
-    switch (name) {
-      case "enum":
-        return this.enumDecl();
-      case "agent":
-        return this.agentDecl();
-      case "context":
-      case "capabilities":  // Backward compatibility
-        return this.contextDecl();
-      default:
-        return this.statement();
+    // Pattern-based detection for keyword type usages
+    // Pattern: IDENTIFIER IDENTIFIER [using | NEWLINE+INDENT]
+    if (this.looksLikeKeywordTypeUse()) {
+      return this.parseKeywordTypeUse();
     }
+    
+    return this.statement();
+  }
+
+  /**
+   * Check if current position looks like a keyword type usage.
+   * Pattern: IDENTIFIER IDENTIFIER [using | NEWLINE]
+   * 
+   * This is unambiguous because:
+   * - Function calls require parens: workflow(x)
+   * - Assignments have =: workflow = x
+   * - Method calls have .: workflow.run()
+   * - Index expressions have [: arr[0]
+   * 
+   * So IDENTIFIER IDENTIFIER can only be a keyword type use.
+   */
+  private looksLikeKeywordTypeUse(): boolean {
+    if (!this.check("IDENTIFIER")) return false;
+    
+    const next = this.peekNext();
+    // Next must be an identifier (the name) - not LBRACKET which could be index
+    return next.type === "IDENTIFIER";
+  }
+
+  /**
+   * Parse a keyword type usage like "agent Coder using (fs: Filesystem)"
+   * Creates a KeywordTypeUse node that will be validated in semantic phase.
+   */
+  private parseKeywordTypeUse(): AST.KeywordTypeUse {
+    const doc = this.current().leadingComment;
+    const loc = this.current().loc;
+    
+    // The keyword name (e.g., "agent", "workflow", "enum")
+    const keyword = this.expectIdentifier();
+    
+    // The type name (e.g., "Coder", "DataPipeline")
+    const name = this.expectIdentifier();
+    
+    // Optional using clause
+    const using = this.check("USING") ? this.parseUsing() : undefined;
+    
+    // Parse body with support for both value assignments and field declarations
+    this.expectNewline();
+    let body: AST.TypeBody;
+    if (this.check("INDENT")) {
+      body = this.parseKeywordTypeUseBody();
+    } else {
+      body = { kind: "TypeBody", members: [], loc };
+    }
+    
+    return { kind: "KeywordTypeUse", keyword, name, using, body, loc, doc };
+  }
+
+  /**
+   * Parse body of a keyword type use. Supports:
+   * - Value assignments: name = expr (for keyword-defined fields)
+   * - Field declarations: name: type (for new fields)
+   * - Methods: fn name(...): ...
+   */
+  private parseKeywordTypeUseBody(): AST.TypeBody {
+    const loc = this.current().loc;
+    const members: AST.TypeMember[] = [];
+
+    this.expect("INDENT");
+    this.skipNewlines();
+
+    while (!this.check("DEDENT") && !this.isAtEnd()) {
+      if (this.check("FN")) {
+        members.push(this.parseMethodDecl(false));
+      } else if (this.check("IDENTIFIER")) {
+        const fieldLoc = this.current().loc;
+        const doc = this.current().leadingComment;
+        const fieldName = this.expectIdentifier();
+        
+        // Check for optional marker
+        let optional = this.match("QUESTION");
+        
+        if (this.match("ASSIGN")) {
+          // Value assignment: name = expr
+          // Create a FieldDecl with inferred type (will be checked in semantic phase)
+          const value = this.expression();
+          members.push({
+            kind: "FieldDecl",
+            name: fieldName,
+            optional,
+            defaultValue: value,
+            loc: fieldLoc,
+            doc
+          } as AST.FieldDecl);
+        } else if (this.match("COLON")) {
+          // Field declaration: name: type [= value]
+          // Check for computed field: name: () => expr
+          if (this.check("LPAREN") && this.peekNext().type === "RPAREN") {
+            this.advance(); // (
+            this.advance(); // )
+            this.expect("ARROW");
+            const value = this.expression();
+            members.push({
+              kind: "FieldDecl",
+              name: fieldName,
+              optional,
+              computed: true,
+              defaultValue: value,
+              loc: fieldLoc,
+              doc
+            } as AST.FieldDecl);
+          } else {
+            const type = this.parseType();
+            let defaultValue: AST.Expr | undefined;
+            if (this.match("ASSIGN")) {
+              defaultValue = this.expression();
+            }
+            members.push({
+              kind: "FieldDecl",
+              name: fieldName,
+              type,
+              optional,
+              defaultValue,
+              loc: fieldLoc,
+              doc
+            } as AST.FieldDecl);
+          }
+        } else {
+          const err = ParserErrors.expectedToken("'=' or ':'", this.peek().type);
+          throw new ParseError(err.message, this.peek(), `Field '${fieldName}' needs a value (=) or type (:)`);
+        }
+      } else {
+        const err = ParserErrors.unexpectedToken(this.peek().type, "field or method declaration");
+        throw new ParseError(err.message, this.peek(), err.hint);
+      }
+      this.skipNewlines();
+    }
+
+    this.expect("DEDENT");
+    return { kind: "TypeBody", members, loc };
   }
 
   private importDecl(): AST.ImportDecl {
@@ -572,14 +691,81 @@ export class Parser {
       throw new ParseError(err.message, this.peek(), err.hint);
     }
 
+    // Parse optional using clause
     const using = this.check("USING") ? this.parseUsing() : undefined;
 
+    // Parse optional return type (for fn keywords)
     let returnType: AST.TypeExpr | undefined;
     if (this.match("COLON")) {
       returnType = this.parseType();
     }
 
-    return { kind: "KeywordDecl", sealed, name, expansion, using, returnType, loc };
+    // Parse optional body (fields and methods)
+    let body: AST.KeywordBody | undefined;
+    if (this.match("NEWLINE") && this.check("INDENT")) {
+      body = this.parseKeywordBody();
+    }
+
+    return { kind: "KeywordDecl", sealed, name, expansion, using, returnType, body, loc };
+  }
+
+  private parseKeywordBody(): AST.KeywordBody {
+    const loc = this.current().loc;
+    const members: AST.KeywordMember[] = [];
+
+    this.expect("INDENT");
+    this.skipNewlines();
+
+    while (!this.check("DEDENT") && !this.isAtEnd()) {
+      if (this.check("FN")) {
+        // Parse method with implementation
+        members.push(this.parseMethodDecl(false));
+      } else {
+        // Parse keyword field specification
+        members.push(this.parseKeywordField());
+      }
+      this.skipNewlines();
+    }
+
+    this.expect("DEDENT");
+    return { kind: "KeywordBody", members, loc };
+  }
+
+  private parseKeywordField(): AST.KeywordField {
+    const doc = this.current().leadingComment;
+    const loc = this.current().loc;
+    const name = this.expectIdentifier();
+
+    let optional = false;
+    if (this.match("QUESTION")) {
+      optional = true;
+    }
+
+    // Type is required for keyword fields
+    this.expect("COLON");
+
+    // Check for computed field: name: () => expr
+    if (this.check("LPAREN")) {
+      const next = this.peekNext();
+      if (next.type === "RPAREN") {
+        // Computed field
+        this.advance(); // (
+        this.advance(); // )
+        this.expect("ARROW");
+        const value = this.expression();
+        // Infer type from the expression (will be checked in semantic phase)
+        return { kind: "KeywordField", name, type: { kind: "NamedType", name: "any", loc }, optional, computed: true, defaultValue: value, loc, doc };
+      }
+    }
+
+    const type = this.parseType();
+
+    let defaultValue: AST.Expr | undefined;
+    if (this.match("ASSIGN")) {
+      defaultValue = this.expression();
+    }
+
+    return { kind: "KeywordField", name, type, optional, defaultValue, computed: false, loc, doc };
   }
 
   private testDecl(): AST.TestDecl {
