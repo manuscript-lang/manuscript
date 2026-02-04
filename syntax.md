@@ -191,7 +191,7 @@ type Admin extends User
 // Multiple inheritance
 type Duck extends Animal, Flyable, Swimmable
 
-// Type embedding (Go-style composition)
+// Type embedding 
 // Capitalized type name on its own line embeds that type; fields and methods are promoted
 type Animal
   name: string
