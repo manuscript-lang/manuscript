@@ -100,7 +100,7 @@ export function formatFunctionType(type: Type): string {
 }
 
 // ============================================
-// Docstring Extraction
+// Docstring Extraction (legacy - comments now in AST)
 // ============================================
 
 export function getDocstring(block: AST.Block | undefined): string | undefined {

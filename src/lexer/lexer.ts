@@ -1,5 +1,5 @@
 import type { Token, TokenType, SourceLocation } from "./tokens";
-import { KEYWORDS, createToken } from "./tokens";
+import { KEYWORDS } from "./tokens";
 import { LexerErrors } from "../shared/errors";
 
 export class LexerError extends Error {
@@ -22,6 +22,8 @@ export class Lexer {
   private indentStack: number[] = [0];
   private atLineStart: boolean = true;
   private pendingTokens: Token[] = [];
+  private pendingComment: string | undefined;
+  private pendingCommentLine: number = 0;
 
   constructor(source: string) {
     this.source = source;
@@ -166,9 +168,23 @@ export class Lexer {
   }
 
   private skipComment(): void {
+    this.advance(); // skip first /
+    this.advance(); // skip second /
+    
+    // Capture comment text
+    const commentStart = this.pos;
     while (!this.isAtEnd() && this.peek() !== "\n") {
       this.advance();
     }
+    const commentText = this.source.slice(commentStart, this.pos).trim();
+    
+    // Accumulate consecutive comments
+    if (this.pendingComment && this.line === this.pendingCommentLine + 1) {
+      this.pendingComment += "\n" + commentText;
+    } else {
+      this.pendingComment = commentText;
+    }
+    this.pendingCommentLine = this.line;
   }
 
   private scanString(): void {
@@ -209,7 +225,7 @@ export class Lexer {
 
     this.advance(); // consume closing "
     const raw = this.source.slice(startPos, this.pos);
-    this.tokens.push(createToken("STRING", value, raw, startLoc));
+    this.tokens.push(this.makeToken("STRING", value, raw, startLoc));
   }
 
   private scanMultilineString(): void {
@@ -228,7 +244,7 @@ export class Lexer {
         this.advance();
         this.advance();
         const raw = this.source.slice(startPos, this.pos);
-        this.tokens.push(createToken("STRING", value, raw, startLoc));
+        this.tokens.push(this.makeToken("STRING", value, raw, startLoc));
         return;
       }
 
@@ -267,7 +283,7 @@ export class Lexer {
           this.advance();
           this.advance();
           const raw = this.source.slice(startPos, this.pos);
-          this.tokens.push(createToken("STRING", value, raw, startLoc));
+          this.tokens.push(this.makeToken("STRING", value, raw, startLoc));
           return;
         }
 
@@ -302,7 +318,7 @@ export class Lexer {
 
     this.advance(); // closing "
     const raw = this.source.slice(startPos, this.pos);
-    this.tokens.push(createToken("STRING", value, raw, startLoc));
+    this.tokens.push(this.makeToken("STRING", value, raw, startLoc));
   }
 
   private scanByteString(): void {
@@ -332,7 +348,7 @@ export class Lexer {
 
     this.advance(); // closing "
     const raw = this.source.slice(startPos, this.pos);
-    this.tokens.push(createToken("STRING", value, raw, startLoc));
+    this.tokens.push(this.makeToken("STRING", value, raw, startLoc));
   }
 
   private scanEscapeSequence(): string {
@@ -421,7 +437,7 @@ export class Lexer {
 
     const raw = this.source.slice(startPos, this.pos);
     const value = parseFloat(raw.replace(/_/g, ""));
-    this.tokens.push(createToken("NUMBER", value, raw, startLoc));
+    this.tokens.push(this.makeToken("NUMBER", value, raw, startLoc));
   }
 
   private scanHexNumber(startLoc: SourceLocation, startPos: number): void {
@@ -435,7 +451,7 @@ export class Lexer {
     const raw = this.source.slice(startPos, this.pos);
     const hexPart = raw.slice(2).replace(/_/g, "");
     const value = parseInt(hexPart, 16);
-    this.tokens.push(createToken("NUMBER", value, raw, startLoc));
+    this.tokens.push(this.makeToken("NUMBER", value, raw, startLoc));
   }
 
   private scanBinaryNumber(startLoc: SourceLocation, startPos: number): void {
@@ -449,7 +465,7 @@ export class Lexer {
     const raw = this.source.slice(startPos, this.pos);
     const binPart = raw.slice(2).replace(/_/g, "");
     const value = parseInt(binPart, 2);
-    this.tokens.push(createToken("NUMBER", value, raw, startLoc));
+    this.tokens.push(this.makeToken("NUMBER", value, raw, startLoc));
   }
 
   private scanIdentifier(): void {
@@ -463,7 +479,7 @@ export class Lexer {
     const raw = this.source.slice(startPos, this.pos);
     const type = KEYWORDS[raw] ?? "IDENTIFIER";
     const value = type === "TRUE" ? true : type === "FALSE" ? false : type === "NULL" ? null : raw;
-    this.tokens.push(createToken(type, value, raw, startLoc));
+    this.tokens.push(this.makeToken(type, value, raw, startLoc));
   }
 
   private scanOperator(): void {
@@ -608,7 +624,7 @@ export class Lexer {
         throw new LexerError(err.message, startLoc, err.hint);
     }
 
-    this.tokens.push(createToken(type, raw, raw, startLoc));
+    this.tokens.push(this.makeToken(type, raw, raw, startLoc));
   }
 
   // Helper methods
@@ -671,7 +687,18 @@ export class Lexer {
     return { line: this.line, column: this.column, offset: this.pos };
   }
 
-  private makeToken(type: TokenType, value: any, raw: string): Token {
-    return createToken(type, value, raw, this.currentLoc());
+  private makeToken(type: TokenType, value: any, raw: string, loc?: SourceLocation): Token {
+    const token: Token = { type, value, raw, loc: loc ?? this.currentLoc() };
+    
+    // Attach pending comment to meaningful tokens (not whitespace/structure)
+    if (this.pendingComment && type !== "NEWLINE" && type !== "INDENT" && type !== "DEDENT" && type !== "EOF") {
+      // Only attach if comment is on line immediately before this token
+      if ((loc?.line ?? this.line) - this.pendingCommentLine <= 1) {
+        token.leadingComment = this.pendingComment;
+      }
+      this.pendingComment = undefined;
+    }
+    
+    return token;
   }
 }

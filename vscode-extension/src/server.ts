@@ -36,8 +36,8 @@ import { visit } from "../../src/types/ast-visitor";
 import {
   formatFnSignature,
   formatTypeSignature,
-  getDocstring,
 } from "../../src/types/type-utils";
+import { getDocstring } from "../../src/lsp/utils";
 
 // Stdlib extraction
 import {
@@ -83,7 +83,7 @@ const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 const cache = new Map<string, CachedDocument>();
 
-// Parse stdlib once on startup
+// Parse stdlib once on startup (comments are captured in AST during parsing)
 const stdlibProgram = new Parser(stdlibSource).parse();
 const stdlibSymbols = collectStdlibSymbols(stdlibProgram);
 const stdlibTypeMembers = collectTypeMembersFromProgram(stdlibProgram);

@@ -3,45 +3,31 @@ import * as AST from "../parser/ast";
 import type { Type, FunctionType, ParameterType, ContextBinding, ObjectType } from "./types";
 import { Types, typeToString } from "./types";
 import type { TypeEnvironment } from "./environment";
+import { PRIMITIVE_TYPE_MAP, constructGenericType } from "./primitives";
 
 // Convert AST type expression to internal Type representation
 export function astTypeToType(astType: AST.TypeExpr): Type {
   switch (astType.kind) {
     case "NamedType": {
-      switch (astType.name) {
-        case "number": return Types.number;
-        case "string": return Types.string;
-        case "bool": return Types.bool;
-        case "null": return Types.null;
-        case "bytes": return Types.bytes;
-        case "any": return Types.any;
-        case "never": return Types.never;
-        case "void": return Types.void;
-        case "list": return Types.list(Types.any);
-        case "map": return Types.map(Types.any, Types.any);
-        case "set": return Types.set(Types.any);
-        default: return Types.ref(astType.name);
+      // Check primitive type map first
+      const primitiveType = PRIMITIVE_TYPE_MAP[astType.name];
+      if (primitiveType) {
+        return primitiveType;
       }
+      // Handle unparameterized generic types
+      if (astType.name === "list") return Types.list(Types.any);
+      if (astType.name === "map") return Types.map(Types.any, Types.any);
+      if (astType.name === "set") return Types.set(Types.any);
+      return Types.ref(astType.name);
     }
     case "GenericType": {
-      switch (astType.name) {
-        case "list":
-          return Types.list(astTypeToType(astType.args[0]!));
-        case "map":
-          return Types.map(astTypeToType(astType.args[0]!), astTypeToType(astType.args[1]!));
-        case "set":
-          return Types.set(astTypeToType(astType.args[0]!));
-        case "Channel":
-          return Types.channel(astTypeToType(astType.args[0]!));
-        case "Promise":
-          return Types.promise(astTypeToType(astType.args[0]!));
-        case "Stream":
-          return Types.stream(astTypeToType(astType.args[0]!));
-        case "Result":
-          return Types.result(astTypeToType(astType.args[0]!), astTypeToType(astType.args[1]!));
-        default:
-          return Types.generic(Types.ref(astType.name), astType.args.map(a => astTypeToType(a)));
+      const args = astType.args.map(a => astTypeToType(a));
+      // Use data-driven generic type constructor
+      const constructed = constructGenericType(astType.name, args);
+      if (constructed) {
+        return constructed;
       }
+      return Types.generic(Types.ref(astType.name), args);
     }
     case "FunctionType":
       return Types.fn(
@@ -63,18 +49,15 @@ export function astTypeToType(astType: AST.TypeExpr): Type {
 
 // Resolve a type name string to a Type
 export function resolveTypeName(name: string, env: TypeEnvironment): Type {
-  switch (name) {
-    case "number": return Types.number;
-    case "string": return Types.string;
-    case "bool": return Types.bool;
-    case "null": return Types.null;
-    case "any": return Types.any;
-    case "void": return Types.void;
-    default:
-      const resolved = env.lookup(name);
-      if (resolved) return resolved.type;
-      return Types.ref(name);
+  // Check primitive type map first
+  const primitiveType = PRIMITIVE_TYPE_MAP[name];
+  if (primitiveType) {
+    return primitiveType;
   }
+  // Look up in environment
+  const resolved = env.lookup(name);
+  if (resolved) return resolved.type;
+  return Types.ref(name);
 }
 
 // Convert function declaration to FunctionType
@@ -448,14 +431,6 @@ export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string,
 // ============================================
 // AST Formatting Utilities (for IDE)
 // ============================================
-
-// Get docstring from a block (first statement if string literal)
-export function getDocstring(body: AST.Block | undefined): string | undefined {
-  const first = body?.statements?.[0];
-  if (first?.kind === "ExprStmt" && first.expr?.kind === "Literal" && typeof first.expr.value === "string") {
-    return first.expr.value;
-  }
-}
 
 // Format an AST type expression to string
 export function formatAstType(t: AST.TypeExpr | undefined): string {

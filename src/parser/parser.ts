@@ -147,8 +147,9 @@ export class Parser {
       case "EXTERN":
         // Check if extern type or extern fn
         if (this.peekNext().type === "TYPE") {
+          const externDoc = this.current().leadingComment;
           this.advance(); // consume EXTERN
-          return this.typeDecl(true);
+          return this.typeDecl(true, externDoc);
         }
         return this.externFnDecl();
       case "TYPE":
@@ -223,6 +224,7 @@ export class Parser {
   }
 
   private fnDecl(): AST.FnDecl {
+    const doc = this.current().leadingComment;
     const loc = this.current().loc;
     this.expect("FN");
 
@@ -238,10 +240,11 @@ export class Parser {
     // Check if body contains yield (generators are detected automatically)
     const isGenerator = this.containsYield(body);
 
-    return { kind: "FnDecl", name, typeParams, params, returnType, using, body, isGenerator, loc };
+    return { kind: "FnDecl", name, typeParams, params, returnType, using, body, isGenerator, loc, doc };
   }
 
   private externFnDecl(): AST.ExternFnDecl {
+    const doc = this.current().leadingComment;
     const loc = this.current().loc;
     this.expect("EXTERN");
     this.expect("FN");
@@ -252,15 +255,7 @@ export class Parser {
     const params = this.parseParams();
     const returnType = this.match("COLON") ? this.parseType() : undefined;
 
-    // Check for optional docstring (indented string literal)
-    let doc: string | undefined;
-    if (this.match("NEWLINE") && this.match("INDENT") && this.check("STRING")) {
-      doc = this.advance().value as string;
-      this.match("NEWLINE");
-      this.expect("DEDENT");
-    }
-
-    return { kind: "ExternFnDecl", name, typeParams, params, returnType, doc, loc };
+    return { kind: "ExternFnDecl", name, typeParams, params, returnType, loc, doc };
   }
 
   private expectIdentifierOrKeyword(): string {
@@ -342,7 +337,8 @@ export class Parser {
     return { kind: "UsingClause", bindings, loc };
   }
 
-  private typeDecl(isExtern = false): AST.TypeDecl {
+  private typeDecl(isExtern = false, externDoc?: string): AST.TypeDecl {
+    const doc = externDoc ?? this.current().leadingComment;
     const loc = this.current().loc;
     this.expect("TYPE");
 
@@ -365,8 +361,8 @@ export class Parser {
           typeParams,
           body: { kind: "TypeBody", members: [], loc },
           loc,
-          // Store the union as extends for now
           extends: types,
+          doc,
         };
       }
       // Simple alias
@@ -377,6 +373,7 @@ export class Parser {
         extends: [firstType],
         body: { kind: "TypeBody", members: [], loc },
         loc,
+        doc,
       };
     }
 
@@ -395,10 +392,15 @@ export class Parser {
       where = this.parseWhere();
     }
 
-    this.expectNewline();
-    const body = this.parseTypeBody(isExtern);
+    // Body is optional for extern types (can be empty)
+    let body: AST.TypeBody;
+    if (this.match("NEWLINE") && this.check("INDENT")) {
+      body = this.parseTypeBody(isExtern);
+    } else {
+      body = { kind: "TypeBody", members: [], loc };
+    }
 
-    return { kind: "TypeDecl", name, typeParams, extends: extendsTypes, using, where, body, loc, isExtern: isExtern || undefined };
+    return { kind: "TypeDecl", name, typeParams, extends: extendsTypes, using, where, body, loc, isExtern: isExtern || undefined, doc };
   }
 
   private parseTypeParams(): AST.TypeParam[] {
@@ -468,6 +470,7 @@ export class Parser {
   }
 
   private parseFieldDecl(): AST.FieldDecl {
+    const doc = this.current().leadingComment;
     const loc = this.current().loc;
     const name = this.expectIdentifier();
 
@@ -487,7 +490,7 @@ export class Parser {
           this.advance(); // )
           this.expect("ARROW");
           const value = this.expression();
-          return { kind: "FieldDecl", name, optional, computed: true, defaultValue: value, loc };
+          return { kind: "FieldDecl", name, optional, computed: true, defaultValue: value, loc, doc };
         }
       }
       type = this.parseType();
@@ -498,10 +501,11 @@ export class Parser {
       defaultValue = this.expression();
     }
 
-    return { kind: "FieldDecl", name, type, optional, defaultValue, computed: false, loc };
+    return { kind: "FieldDecl", name, type, optional, defaultValue, computed: false, loc, doc };
   }
 
   private parseMethodDecl(implicitExtern = false): AST.MethodDecl {
+    const doc = this.current().leadingComment;
     const loc = this.current().loc;
     // Check for explicit extern keyword
     const explicitExtern = this.match("EXTERN");
@@ -516,15 +520,12 @@ export class Parser {
     const using = this.check("USING") ? this.parseUsing() : undefined;
 
     let body: AST.Block | undefined;
-    // Extern methods have no body, but may have docstring
+    // Only non-extern methods have bodies
     if (!isExtern && this.match("NEWLINE") && this.check("INDENT")) {
-      body = this.parseBlock();
-    } else if (isExtern && this.match("NEWLINE") && this.check("INDENT")) {
-      // Parse docstring block for extern methods
       body = this.parseBlock();
     }
 
-    return { kind: "MethodDecl", name, typeParams, params, returnType, using, body, isExtern: isExtern || undefined, loc };
+    return { kind: "MethodDecl", name, typeParams, params, returnType, using, body, isExtern: isExtern || undefined, loc, doc };
   }
 
   private keywordDecl(): AST.KeywordDecl {

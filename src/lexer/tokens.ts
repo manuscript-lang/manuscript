@@ -100,6 +100,7 @@ export interface Token {
   value: string | number | boolean | null;
   raw: string;       // Original source text
   loc: SourceLocation;
+  leadingComment?: string;  // Comment(s) immediately preceding this token
 }
 
 // Core keywords built into the lexer
@@ -143,12 +144,3 @@ export const KEYWORDS: Record<string, TokenType> = {
   null: "NULL",
   where: "WHERE",
 };
-
-export function createToken(
-  type: TokenType,
-  value: string | number | boolean | null,
-  raw: string,
-  loc: SourceLocation
-): Token {
-  return { type, value, raw, loc };
-}

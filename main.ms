@@ -10,22 +10,14 @@ type Hello[T]
     age: number = 10
     p: Person = Person("John", 20)
 
+    // Say hello to the user from a method
     fn say_hello(): string
-        """
-        Say hello to the user from a method
-        """
         "Hello, {name}" 
 
     fn say_hello_to_person(person: string): string
-        """
-        Say hello to the person
-        """
         "Hello, {person} from {name}"
 
 fn hello(name: string): string
-    """
-    Say hello to the user
-    """
     "Hello, " + name
 
 let user = Hello[string]("World")

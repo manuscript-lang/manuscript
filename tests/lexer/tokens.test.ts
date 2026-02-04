@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { lexerCases, tokenTypes, tokenPairs, expectLexerError } from "../helpers";
+import { lexerCases, tokenTypes, tokenPairs, tokenize, expectLexerError } from "../helpers";
 
 describe("Lexer - Keywords", () => {
   lexerCases({
@@ -228,5 +228,58 @@ describe("Lexer - Error handling", () => {
 
   test("unexpected character with context", () => {
     expectLexerError("let x = @", /Unexpected character/);
+  });
+});
+
+describe("Lexer - Leading comments", () => {
+  test("single line comment attaches to next token", () => {
+    const tokens = tokenize("// comment\nlet x = 1");
+    const letToken = tokens.find(t => t.type === "LET");
+    expect(letToken?.leadingComment).toBe("comment");
+  });
+
+  test("multi-line comment accumulates", () => {
+    const tokens = tokenize("// line 1\n// line 2\nlet x = 1");
+    const letToken = tokens.find(t => t.type === "LET");
+    expect(letToken?.leadingComment).toBe("line 1\nline 2");
+  });
+
+  test("comment only attaches to immediately following token", () => {
+    const tokens = tokenize("// comment\n\n\nlet x = 1");
+    const letToken = tokens.find(t => t.type === "LET");
+    expect(letToken?.leadingComment).toBeUndefined();
+  });
+
+  test("comment does not attach to NEWLINE tokens", () => {
+    const tokens = tokenize("// comment\nlet x = 1");
+    const newlineTokens = tokens.filter(t => t.type === "NEWLINE");
+    for (const t of newlineTokens) {
+      expect(t.leadingComment).toBeUndefined();
+    }
+  });
+
+  test("empty comment line does not attach", () => {
+    const tokens = tokenize("//\nlet x = 1");
+    const letToken = tokens.find(t => t.type === "LET");
+    // Empty comments are trimmed to empty string which is falsy, so not stored
+    expect(letToken?.leadingComment).toBeUndefined();
+  });
+
+  test("comment with leading/trailing whitespace is trimmed", () => {
+    const tokens = tokenize("//   spaced   \nlet x = 1");
+    const letToken = tokens.find(t => t.type === "LET");
+    expect(letToken?.leadingComment).toBe("spaced");
+  });
+
+  test("comment attaches to keyword token", () => {
+    const tokens = tokenize("// doc\nextern fn foo(): void");
+    const externToken = tokens.find(t => t.type === "EXTERN");
+    expect(externToken?.leadingComment).toBe("doc");
+  });
+
+  test("comment attaches to type keyword", () => {
+    const tokens = tokenize("// Type doc\ntype Foo");
+    const typeToken = tokens.find(t => t.type === "TYPE");
+    expect(typeToken?.leadingComment).toBe("Type doc");
   });
 });

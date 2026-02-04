@@ -8,6 +8,7 @@ import {
   findCommonType, typeInvolvesPromise, substituteTypeParams, unifyTypes,
   substituteTypeInObject
 } from "../../type-utils";
+import { constructGenericType } from "../../primitives";
 import type { InferContext } from "./context";
 import { error, warning, recordType } from "./context";
 import { checkPattern } from "./check-pattern";
@@ -198,42 +199,52 @@ function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
   if (expr.callee.kind === "IndexExpr" && expr.callee.object.kind === "Identifier") {
     const constructorName = expr.callee.object.name;
     
-    // Special case for Channel[T](...)
-    if (constructorName === "Channel" && expr.callee.index.kind === "Identifier") {
-      const typeArgName = expr.callee.index.name;
-      const elementType = resolveTypeName(typeArgName, ctx.env);
-      for (const arg of expr.args) {
-        const argExpr = "kind" in arg ? arg : arg.value;
-        const argType = inferExpr(ctx, argExpr);
-        if (argType.kind !== "number" && argType.kind !== "any") {
-          error(ctx, `Channel buffer size must be a number, got '${typeToString(argType)}'`, argExpr.loc);
-        }
-      }
-      return Types.channel(elementType);
+    // Collect type arguments
+    const allTypeArgs: AST.Expr[] = [expr.callee.index];
+    if (expr.callee.typeArgs) {
+      allTypeArgs.push(...expr.callee.typeArgs);
     }
     
-    // Generic type constructor calls like Hello[string](...) or Pair[A, B](...)
+    // Resolve type arguments to Types
+    const resolvedTypeArgs = allTypeArgs.map(arg => 
+      resolveTypeName(arg.kind === "Identifier" ? arg.name : "any", ctx.env)
+    );
+    
+    // Check if this is a built-in generic type (Channel, etc.)
+    const builtinType = constructGenericType(constructorName, resolvedTypeArgs);
+    if (builtinType) {
+      // Validate constructor arguments against the extern type definition
+      const baseType = ctx.env.lookupType(constructorName);
+      if (baseType && baseType.kind === "object") {
+        const typeParams = baseType.typeParams || [];
+        const bindings = new Map<string, Type>();
+        for (let i = 0; i < typeParams.length && i < resolvedTypeArgs.length; i++) {
+          bindings.set(typeParams[i]!.name, resolvedTypeArgs[i]!);
+        }
+        const instantiated = substituteTypeInObject(baseType, bindings);
+        // Check constructor arguments
+        inferConstructorCall(ctx, expr, instantiated);
+      }
+      return builtinType;
+    }
+    
+    // Generic type constructor calls for user-defined types like Channel[number](...) or Pair[A, B](...)
     const baseType = ctx.env.lookupType(constructorName);
     if (baseType && baseType.kind === "object") {
-      // Collect all type arguments (first one from index, rest from typeArgs)
-      const allTypeArgs: AST.Expr[] = [expr.callee.index];
-      if (expr.callee.typeArgs) {
-        allTypeArgs.push(...expr.callee.typeArgs);
-      }
-      
       // Substitute type parameters in the base type
       const typeParams = baseType.typeParams || [];
       const bindings = new Map<string, Type>();
-      for (let i = 0; i < typeParams.length && i < allTypeArgs.length; i++) {
-        const typeArg = allTypeArgs[i]!;
-        const resolvedType = resolveTypeName(
-          typeArg.kind === "Identifier" ? typeArg.name : "any",
-          ctx.env
-        );
-        bindings.set(typeParams[i]!.name, resolvedType);
+      for (let i = 0; i < typeParams.length && i < resolvedTypeArgs.length; i++) {
+        bindings.set(typeParams[i]!.name, resolvedTypeArgs[i]!);
       }
       const instantiated = substituteTypeInObject(baseType, bindings);
-      return inferConstructorCall(ctx, expr, instantiated);
+      // Validate constructor arguments
+      inferConstructorCall(ctx, expr, instantiated);
+      // Return a generic type that preserves the type arguments for assignability
+      if (typeParams.length > 0 && resolvedTypeArgs.length > 0) {
+        return Types.generic(Types.ref(constructorName), resolvedTypeArgs);
+      }
+      return instantiated;
     }
   }
 
@@ -442,7 +453,20 @@ function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
 
 function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
   const objectType = inferExpr(ctx, expr.object);
-  const resolved = ctx.env.resolveType(objectType);
+  let resolved = ctx.env.resolveType(objectType);
+
+  // Handle generic types like Container[string] - resolve and substitute
+  if (resolved.kind === "generic" && resolved.base.kind === "ref") {
+    const baseType = ctx.env.lookupType(resolved.base.name);
+    if (baseType && baseType.kind === "object") {
+      const typeParams = baseType.typeParams || [];
+      const bindings = new Map<string, Type>();
+      for (let i = 0; i < typeParams.length && i < resolved.args.length; i++) {
+        bindings.set(typeParams[i]!.name, resolved.args[i]!);
+      }
+      resolved = substituteTypeInObject(baseType, bindings);
+    }
+  }
 
   if (resolved.kind === "object") {
     const prop = resolved.properties.find(p => p.name === expr.property);
@@ -464,126 +488,28 @@ function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
 }
 
 function inferBuiltinMember(ctx: InferContext, objectType: Type, expr: AST.MemberExpr): Type {
-  if (expr.property === "length") {
-    if (objectType.kind === "string" || objectType.kind === "list") {
-      return Types.number;
+  // Look up method/property from builtin registry
+  const member = ctx.env.lookupBuiltinMethod(objectType.kind, expr.property);
+  
+  if (member) {
+    let memberType = member.type;
+    
+    // Substitute type parameters based on the object type
+    if (member.isProperty) {
+      memberType = substituteBuiltinTypeParams(memberType, objectType);
+    } else {
+      memberType = substituteBuiltinTypeParams(memberType, objectType);
     }
+    
+    return memberType;
   }
-
-  // String methods
-  if (objectType.kind === "string") {
-    switch (expr.property) {
-      case "upper": case "lower": case "trim": case "trim_start": case "trim_end":
-        return Types.fn([], Types.string);
-      case "split":
-        return Types.fn([Types.param("sep", Types.string)], Types.list(Types.string));
-      case "contains": case "starts_with": case "ends_with":
-        return Types.fn([Types.param("s", Types.string)], Types.bool);
-      case "replace":
-        return Types.fn([Types.param("from", Types.string), Types.param("to", Types.string)], Types.string);
-      case "slice":
-        return Types.fn([Types.param("start", Types.number), Types.param("end", Types.number, true)], Types.string);
-      case "char_at":
-        return Types.fn([Types.param("index", Types.number)], Types.optional(Types.string));
-      case "index_of":
-        return Types.fn([Types.param("s", Types.string)], Types.optional(Types.number));
-      case "repeat":
-        return Types.fn([Types.param("n", Types.number)], Types.string);
-      case "pad_start": case "pad_end":
-        return Types.fn([Types.param("len", Types.number), Types.param("char", Types.string, true)], Types.string);
-      case "chars":
-        return Types.fn([], Types.list(Types.string));
-    }
-    // Unknown property on string
-    if (!expr.optional) {
-      error(ctx, `Property '${expr.property}' does not exist on type 'string'`, expr.loc);
-    }
-    return expr.optional ? Types.optional(Types.any) : Types.any;
-  }
-
-  // List methods
-  if (objectType.kind === "list") {
-    const el = objectType.elementType;
-    switch (expr.property) {
-      case "push": return Types.fn([Types.param("item", el)], objectType);
-      case "insert": return Types.fn([Types.param("index", Types.number), Types.param("item", el)], Types.void);
-      case "pop": case "shift": return Types.fn([], Types.optional(el));
-      case "remove": return Types.fn([Types.param("index", Types.number)], el);
-      case "clear": return Types.fn([], Types.void);
-      case "index_of": return Types.fn([Types.param("item", el)], Types.optional(Types.number));
-      case "contains": return Types.fn([Types.param("item", el)], Types.bool);
-      case "join": return Types.fn([Types.param("sep", Types.string, true)], Types.string);
-      case "reverse": return Types.fn([], objectType);
-      case "sort": return Types.fn([Types.param("cmp", Types.fn([Types.param("a", el), Types.param("b", el)], Types.number), true)], objectType);
-      case "slice": return Types.fn([Types.param("start", Types.number), Types.param("end", Types.number, true)], objectType);
-      case "map": return Types.fn([Types.param("f", Types.fn([Types.param("x", el)], Types.any))], Types.list(Types.any));
-      case "filter": return Types.fn([Types.param("f", Types.fn([Types.param("x", el)], Types.bool))], objectType);
-      case "reduce": return Types.fn([Types.param("f", Types.fn([Types.param("acc", Types.any), Types.param("x", el)], Types.any)), Types.param("init", Types.any)], Types.any);
-      case "find": return Types.fn([Types.param("f", Types.fn([Types.param("x", el)], Types.bool))], Types.optional(el));
-      case "every": case "some": return Types.fn([Types.param("f", Types.fn([Types.param("x", el)], Types.bool))], Types.bool);
-      case "flat": return Types.fn([], Types.list(Types.any));
-      case "first": case "last": return Types.fn([], Types.optional(el));
-      case "is_empty": return Types.fn([], Types.bool);
-    }
-    // Unknown property on list
-    if (!expr.optional) {
-      error(ctx, `Property '${expr.property}' does not exist on type 'list'`, expr.loc);
-    }
-    return expr.optional ? Types.optional(Types.any) : Types.any;
-  }
-
-  // Map methods
+  
+  // Special case: Maps allow arbitrary key access via dot notation
   if (objectType.kind === "map") {
-    switch (expr.property) {
-      case "get": return Types.fn([Types.param("key", objectType.keyType)], Types.optional(objectType.valueType));
-      case "set": return Types.fn([Types.param("key", objectType.keyType), Types.param("value", objectType.valueType)], Types.void);
-      case "has": return Types.fn([Types.param("key", objectType.keyType)], Types.bool);
-      case "delete": return Types.fn([Types.param("key", objectType.keyType)], Types.bool);
-      case "keys": return Types.fn([], Types.list(objectType.keyType));
-      case "values": return Types.fn([], Types.list(objectType.valueType));
-      case "entries": return Types.fn([], Types.list(Types.tuple(objectType.keyType, objectType.valueType)));
-      case "clear": return Types.fn([], Types.void);
-      case "size": return Types.number;
-    }
-    // Maps allow arbitrary key access via dot notation (e.g., map.key is map["key"])
     return expr.optional ? Types.optional(objectType.valueType) : objectType.valueType;
   }
 
-  // Set methods
-  if (objectType.kind === "set") {
-    switch (expr.property) {
-      case "add": return Types.fn([Types.param("item", objectType.elementType)], Types.void);
-      case "has": return Types.fn([Types.param("item", objectType.elementType)], Types.bool);
-      case "delete": return Types.fn([Types.param("item", objectType.elementType)], Types.bool);
-      case "clear": return Types.fn([], Types.void);
-      case "size": return Types.number;
-      case "values": return Types.fn([], Types.list(objectType.elementType));
-    }
-    // Unknown property on set
-    if (!expr.optional) {
-      error(ctx, `Property '${expr.property}' does not exist on type 'set'`, expr.loc);
-    }
-    return expr.optional ? Types.optional(Types.any) : Types.any;
-  }
-
-  // Channel methods
-  if (objectType.kind === "channel") {
-    switch (expr.property) {
-      case "send": return Types.fn([Types.param("value", objectType.elementType)], Types.promise(Types.void));
-      case "receive": return Types.fn([], Types.promise(Types.optional(objectType.elementType)));
-      case "close": return Types.fn([], Types.void);
-      case "isClosed": return Types.fn([], Types.bool);
-      case "try_send": return Types.fn([Types.param("value", objectType.elementType)], Types.bool);
-      case "try_receive": return Types.fn([], Types.optional(objectType.elementType));
-    }
-    // Unknown property on channel
-    if (!expr.optional) {
-      error(ctx, `Property '${expr.property}' does not exist on type 'channel'`, expr.loc);
-    }
-    return expr.optional ? Types.optional(Types.any) : Types.any;
-  }
-
-  // Handle number and bool which have no properties
+  // Handle types without properties
   if (objectType.kind === "number" || objectType.kind === "bool") {
     if (!expr.optional) {
       error(ctx, `Property '${expr.property}' does not exist on type '${objectType.kind}'`, expr.loc);
@@ -591,12 +517,38 @@ function inferBuiltinMember(ctx: InferContext, objectType: Type, expr: AST.Membe
     return expr.optional ? Types.optional(Types.any) : Types.any;
   }
 
-  // For any/unknown types, allow any property access
-  if (expr.optional) {
-    return Types.optional(Types.any);
+  // For builtin primitive types that should have properties defined
+  if (objectType.kind === "string" || objectType.kind === "list" || objectType.kind === "set") {
+    if (!expr.optional) {
+      error(ctx, `Property '${expr.property}' does not exist on type '${objectType.kind}'`, expr.loc);
+    }
+    return expr.optional ? Types.optional(Types.any) : Types.any;
   }
 
-  return Types.any;
+  // For any/unknown types, allow any property access
+  return expr.optional ? Types.optional(Types.any) : Types.any;
+}
+
+// Substitute type parameters (T, K, V) in method types based on the actual object type
+// Only for true primitives - Channel is handled as a regular ObjectType
+function substituteBuiltinTypeParams(type: Type, objectType: Type): Type {
+  const bindings = new Map<string, Type>();
+  
+  // Build bindings based on object type kind (primitives only)
+  if (objectType.kind === "list") {
+    bindings.set("T", objectType.elementType);
+  } else if (objectType.kind === "map") {
+    bindings.set("K", objectType.keyType);
+    bindings.set("V", objectType.valueType);
+  } else if (objectType.kind === "set") {
+    bindings.set("T", objectType.elementType);
+  }
+  
+  if (bindings.size === 0) {
+    return type;
+  }
+  
+  return substituteTypeParams(type, bindings);
 }
 
 function inferPipeExpr(ctx: InferContext, expr: AST.PipeExpr): Type {

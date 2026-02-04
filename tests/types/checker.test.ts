@@ -72,9 +72,9 @@ double(5)`);
   });
 
   test("function with capabilities", () => {
-    checkOk(`type Filesystem extends Context
+    checkOk(`type MyFilesystem extends Context
   fn read(path: string): string
-fn read_file(path: string) using (fs: Filesystem)
+fn read_file(path: string) using (fs: MyFilesystem)
   fs.read(path)`);
   });
 });

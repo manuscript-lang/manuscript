@@ -1,11 +1,14 @@
 // Type extraction from stdlib AST
 import type * as AST from "../parser/ast";
-import type { Type, FunctionType, ObjectType, PropertyType, MethodType } from "../types/types";
+import type { Type, FunctionType, ObjectType, PropertyType, MethodType, TypeParameter } from "../types/types";
 import { Types } from "../types/types";
+import { PRIMITIVE_TYPE_MAP, constructGenericType, type BuiltinMethodRegistry, type BuiltinMemberInfo } from "../types/primitives";
 
 export interface StdlibTypes {
   functions: Map<string, FunctionType>;
   types: Map<string, ObjectType>;
+  externTypes: Set<string>;
+  builtinMethods: BuiltinMethodRegistry;
 }
 
 // Convert AST TypeExpr to internal Type
@@ -17,33 +20,15 @@ function astTypeToType(typeExpr: AST.TypeExpr | undefined): Type {
       return nameToType(typeExpr.name);
 
     case "GenericType": {
-      const base = nameToType(typeExpr.name);
       const args = typeExpr.args.map(astTypeToType);
       
-      // Handle built-in generic types specially
-      if (typeExpr.name === "list" && args.length === 1) {
-        return Types.list(args[0]!);
-      }
-      if (typeExpr.name === "map" && args.length === 2) {
-        return Types.map(args[0]!, args[1]!);
-      }
-      if (typeExpr.name === "set" && args.length === 1) {
-        return Types.set(args[0]!);
-      }
-      if (typeExpr.name === "promise" && args.length === 1) {
-        return Types.promise(args[0]!);
-      }
-      if (typeExpr.name === "channel" && args.length === 1) {
-        return Types.channel(args[0]!);
-      }
-      if (typeExpr.name === "stream" && args.length === 1) {
-        return Types.stream(args[0]!);
-      }
-      if (typeExpr.name === "Result" && args.length === 2) {
-        return Types.result(args[0]!, args[1]!);
+      // Use data-driven generic type constructor
+      const constructed = constructGenericType(typeExpr.name, args);
+      if (constructed) {
+        return constructed;
       }
       
-      return Types.generic(base, args);
+      return Types.generic(nameToType(typeExpr.name), args);
     }
 
     case "FunctionType": {
@@ -71,17 +56,7 @@ function astTypeToType(typeExpr: AST.TypeExpr | undefined): Type {
 }
 
 function nameToType(name: string): Type {
-  switch (name) {
-    case "number": return Types.number;
-    case "string": return Types.string;
-    case "bool": return Types.bool;
-    case "null": return Types.null;
-    case "bytes": return Types.bytes;
-    case "any": return Types.any;
-    case "never": return Types.never;
-    case "void": return Types.void;
-    default: return Types.ref(name);
-  }
+  return PRIMITIVE_TYPE_MAP[name] ?? Types.ref(name);
 }
 
 // Extract function type from FnDecl or ExternFnDecl
@@ -122,31 +97,58 @@ function extractObjectType(decl: AST.TypeDecl): ObjectType {
         defaultValue: !!member.defaultValue,
       });
     } else if (member.kind === "MethodDecl") {
+      const methodTypeParams = member.typeParams?.map(p => ({
+        name: p.name,
+        constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
+      }));
       const methodParams = member.params.map(p => 
         Types.param(p.name, astTypeToType(p.type), p.optional, p.rest)
       );
+      const fnType = Types.fn(methodParams, astTypeToType(member.returnType));
+      if (methodTypeParams) {
+        fnType.typeParams = methodTypeParams;
+      }
       methods.push({
         name: member.name,
-        type: Types.fn(methodParams, astTypeToType(member.returnType)),
+        type: fnType,
       });
     }
   }
+
+  // Include type parameters from the type declaration
+  const typeParams: TypeParameter[] | undefined = decl.typeParams?.map(p => ({
+    name: p.name,
+    constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
+  }));
+
+  // Include extends types
+  const extendsTypes = decl.extends?.map(e => astTypeToType(e));
 
   return {
     kind: "object",
     name: decl.name,
     properties,
     methods,
+    typeParams,
+    extends: extendsTypes,
   };
 }
 
-// Primitive types that are built-in (skip in type extraction)
-const BUILTIN_PRIMITIVE_TYPES = new Set(["string", "list", "map", "set"]);
+// Type kind to extern type name mapping for builtin methods
+// Only for true primitives - Channel is a regular extern type
+const BUILTIN_TYPE_KIND_MAP: Record<string, string> = {
+  "string": "string",
+  "list": "list",
+  "map": "map",
+  "set": "set",
+};
 
 // Extract all types from stdlib AST
 export function extractStdlibTypes(program: AST.Program): StdlibTypes {
   const functions = new Map<string, FunctionType>();
   const types = new Map<string, ObjectType>();
+  const externTypes = new Set<string>();
+  const builtinMethods: BuiltinMethodRegistry = new Map();
 
   for (const stmt of program.body) {
     switch (stmt.kind) {
@@ -156,17 +158,44 @@ export function extractStdlibTypes(program: AST.Program): StdlibTypes {
       case "ExternFnDecl":
         functions.set(stmt.name, extractFunctionType(stmt));
         break;
-      case "TypeDecl":
-        // Skip extern types for built-in primitives - they're for IDE tooling only
-        if (stmt.isExtern && BUILTIN_PRIMITIVE_TYPES.has(stmt.name)) {
-          break;
+      case "TypeDecl": {
+        const objType = extractObjectType(stmt);
+        types.set(stmt.name, objType);
+        
+        // Track extern types for codegen
+        if (stmt.isExtern) {
+          externTypes.add(stmt.name);
+          
+          // Extract builtin methods for primitive types
+          const typeKind = BUILTIN_TYPE_KIND_MAP[stmt.name];
+          if (typeKind) {
+            const memberMap = new Map<string, BuiltinMemberInfo>();
+            
+            // Add properties
+            for (const prop of objType.properties) {
+              memberMap.set(prop.name, {
+                type: prop.type,
+                isProperty: true,
+              });
+            }
+            
+            // Add methods
+            for (const method of objType.methods) {
+              memberMap.set(method.name, {
+                type: method.type,
+                isProperty: false,
+              });
+            }
+            
+            builtinMethods.set(typeKind, memberMap);
+          }
         }
-        types.set(stmt.name, extractObjectType(stmt));
         break;
+      }
     }
   }
 
-  return { functions, types };
+  return { functions, types, externTypes, builtinMethods };
 }
 
 // Get set of function names for codegen
@@ -202,11 +231,22 @@ export function getPureFunctionNames(program: AST.Program): Set<string> {
   return result;
 }
 
+// Get set of extern type names (need runtime implementation)
+export function getExternTypeNames(program: AST.Program): Set<string> {
+  const result = new Set<string>();
+  for (const stmt of program.body) {
+    if (stmt.kind === "TypeDecl" && stmt.isExtern) {
+      result.add(stmt.name);
+    }
+  }
+  return result;
+}
+
 // ============================================
 // IDE Symbol Extraction
 // ============================================
 
-import { formatAstType, formatMethodSignature, getDocstring } from "../types/type-utils";
+import { formatAstType, formatMethodSignature } from "../types/type-utils";
 
 // Stdlib symbol info (with signatures for IDE)
 export interface StdlibSymbol {
@@ -227,8 +267,7 @@ export function collectStdlibSymbols(program: AST.Program): Map<string, StdlibSy
       const ret = formatAstType(stmt.returnType) || "void";
       const typeParams = stmt.typeParams?.length ? `[${stmt.typeParams.map(t => t.name).join(", ")}]` : "";
       const signature = `fn ${stmt.name}${typeParams}(${params}): ${ret}`;
-      const doc = getDocstring(stmt.body);
-      syms.set(stmt.name, { name: stmt.name, kind: "function", loc: stmt.loc, signature, doc });
+      syms.set(stmt.name, { name: stmt.name, kind: "function", loc: stmt.loc, signature, doc: stmt.doc });
     } else if (stmt.kind === "ExternFnDecl") {
       const params = stmt.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
       const ret = formatAstType(stmt.returnType) || "void";
@@ -244,7 +283,7 @@ export function collectStdlibSymbols(program: AST.Program): Map<string, StdlibSy
         }
       }
       const sig = fields.length ? `${stmt.name}(${fields.join(", ")})` : stmt.name;
-      const doc = fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined;
+      const doc = stmt.doc || (fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined);
       syms.set(stmt.name, { name: stmt.name, kind: "type", loc: stmt.loc, signature: `type ${sig}`, doc });
     }
   }
@@ -270,6 +309,7 @@ export function extractTypeMembers(t: AST.TypeDecl): TypeMemberInfo[] {
         name: m.name,
         kind: "field",
         signature: formatAstType(m.type),
+        doc: m.doc,
         loc: m.loc,
       });
     } else if (m.kind === "MethodDecl") {
@@ -277,7 +317,7 @@ export function extractTypeMembers(t: AST.TypeDecl): TypeMemberInfo[] {
         name: m.name,
         kind: "method",
         signature: formatMethodSignature(m),
-        doc: m.body ? getDocstring(m.body) : undefined,
+        doc: m.doc,
         loc: m.loc,
       });
     }

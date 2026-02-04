@@ -2,7 +2,7 @@
 import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
 import { emit, pushIndent, popIndent, tempVar } from "./types";
-import { STDLIB_FUNCTIONS, BUILTIN_CONSTRUCTORS } from "../shared/stdlib";
+import { STDLIB_FUNCTIONS, EXTERN_TYPES } from "../shared/stdlib";
 
 // Forward declaration for mutual recursion
 export type GenFn = (ctx: Ctx, node: AST.Expr | AST.Statement, opts: GenOpts) => string;
@@ -84,7 +84,7 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
   if (node.callee.kind === "IndexExpr" && node.callee.object.kind === "Identifier") {
     const baseName = node.callee.object.name;
     const args = genCallArgs(ctx, node.args, opts);
-    if (BUILTIN_CONSTRUCTORS.has(baseName)) {
+    if (EXTERN_TYPES.has(baseName)) {
       return `new __ms_runtime.${baseName}(${args})`;
     }
     // User-defined generic types - type params are erased at runtime

@@ -42,19 +42,11 @@ export function collectDeclarations(input: CollectInput): CollectOutput {
   return { env, fnDecls, errors };
 }
 
-// Primitive types that are built-in (their methods are handled by the type checker)
-const BUILTIN_PRIMITIVE_TYPES = new Set(["string", "list", "map", "set"]);
-
 function collectTypeDecl(
   decl: AST.TypeDecl,
   env: TypeEnvironment,
   addError: (msg: string, loc: AST.SourceLocation, hint?: string) => void
 ): void {
-  // Skip extern types for built-in primitives - they're defined for IDE tooling only
-  if (decl.isExtern && BUILTIN_PRIMITIVE_TYPES.has(decl.name)) {
-    return;
-  }
-
   const type: ObjectType = {
     kind: "object",
     name: decl.name,

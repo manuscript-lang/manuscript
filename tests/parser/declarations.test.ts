@@ -418,3 +418,131 @@ fn main()
     expect(result.body[1]?.kind).toBe("FnDecl");
   });
 });
+
+describe("Parser - Documentation Comments", () => {
+  test("function with doc comment", () => {
+    const src = `// Adds two numbers
+fn add(a: number, b: number): number
+  a + b`;
+    const result = program(src);
+    expect(result.body[0]).toMatchObject({
+      kind: "FnDecl",
+      name: "add",
+      doc: "Adds two numbers",
+    });
+  });
+
+  test("function with multi-line doc comment", () => {
+    const src = `// Adds two numbers together
+// Returns the sum
+fn add(a: number, b: number): number
+  a + b`;
+    const result = program(src);
+    expect(result.body[0]).toMatchObject({
+      kind: "FnDecl",
+      name: "add",
+      doc: "Adds two numbers together\nReturns the sum",
+    });
+  });
+
+  test("extern function with doc comment", () => {
+    const src = `// Prints values to console
+extern fn print(...args: any): void`;
+    const result = program(src);
+    expect(result.body[0]).toMatchObject({
+      kind: "ExternFnDecl",
+      name: "print",
+      doc: "Prints values to console",
+    });
+  });
+
+  test("type with doc comment", () => {
+    const src = `// A 2D point
+type Point
+  x: number
+  y: number`;
+    const result = program(src);
+    expect(result.body[0]).toMatchObject({
+      kind: "TypeDecl",
+      name: "Point",
+      doc: "A 2D point",
+    });
+  });
+
+  test("type fields with doc comments", () => {
+    const src = `type Point
+  // X coordinate
+  x: number
+  // Y coordinate  
+  y: number`;
+    const result = program(src);
+    const typeDecl = result.body[0] as any;
+    expect(typeDecl.body.members[0]).toMatchObject({
+      kind: "FieldDecl",
+      name: "x",
+      doc: "X coordinate",
+    });
+    expect(typeDecl.body.members[1]).toMatchObject({
+      kind: "FieldDecl",
+      name: "y",
+      doc: "Y coordinate",
+    });
+  });
+
+  test("type methods with doc comments", () => {
+    const src = `type Point
+  x: number
+  // Calculates distance from origin
+  fn distance(): number
+    self.x * 2`;
+    const result = program(src);
+    const typeDecl = result.body[0] as any;
+    expect(typeDecl.body.members[1]).toMatchObject({
+      kind: "MethodDecl",
+      name: "distance",
+      doc: "Calculates distance from origin",
+    });
+  });
+
+  test("extern type with doc comment", () => {
+    const src = `// HTTP response object
+extern type Response`;
+    const result = program(src);
+    expect(result.body[0]).toMatchObject({
+      kind: "TypeDecl",
+      name: "Response",
+      isExtern: true,
+      doc: "HTTP response object",
+    });
+  });
+
+  test("no doc when comment is not immediately before", () => {
+    const src = `// Comment
+
+fn add(a: number, b: number): number
+  a + b`;
+    const result = program(src);
+    expect((result.body[0] as any).doc).toBeUndefined();
+  });
+
+  test("multiple declarations with separate docs", () => {
+    const src = `// First function
+fn foo(): number
+  1
+
+// Second function
+fn bar(): number
+  2`;
+    const result = program(src);
+    expect(result.body[0]).toMatchObject({
+      kind: "FnDecl",
+      name: "foo",
+      doc: "First function",
+    });
+    expect(result.body[1]).toMatchObject({
+      kind: "FnDecl",
+      name: "bar",
+      doc: "Second function",
+    });
+  });
+});

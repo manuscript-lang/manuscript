@@ -4,6 +4,7 @@ import { Types } from "./types";
 import { Parser } from "../parser";
 import { extractStdlibTypes } from "../stdlib/extractor";
 import { stdlibSource } from "../stdlib";
+import { PRIMITIVE_TYPE_MAP, type BuiltinMethodRegistry, type BuiltinMemberInfo } from "./primitives";
 
 // ============================================
 // Symbol Entry
@@ -25,9 +26,29 @@ export class TypeEnvironment {
   private types: Map<string, Type> = new Map();
   private typeParams: Map<string, Type> = new Map();
   private parent: TypeEnvironment | null;
+  private builtinMethods: BuiltinMethodRegistry | null = null;
 
   constructor(parent: TypeEnvironment | null = null) {
     this.parent = parent;
+  }
+
+  // Set builtin method registry (called during global env setup)
+  setBuiltinMethods(registry: BuiltinMethodRegistry): void {
+    this.builtinMethods = registry;
+  }
+
+  // Look up a builtin method/property by type kind and member name
+  lookupBuiltinMethod(typeKind: string, memberName: string): BuiltinMemberInfo | undefined {
+    if (this.builtinMethods) {
+      const members = this.builtinMethods.get(typeKind);
+      if (members) {
+        return members.get(memberName);
+      }
+    }
+    if (this.parent) {
+      return this.parent.lookupBuiltinMethod(typeKind, memberName);
+    }
+    return undefined;
   }
 
   // ============================================
@@ -208,7 +229,7 @@ export class TypeEnvironment {
 // Cache for parsed stdlib types (parse once)
 let stdlibTypesCache: ReturnType<typeof extractStdlibTypes> | null = null;
 
-function getStdlibTypes() {
+export function getStdlibTypes() {
   if (!stdlibTypesCache) {
     const program = new Parser(stdlibSource).parse();
     stdlibTypesCache = extractStdlibTypes(program);
@@ -219,21 +240,22 @@ function getStdlibTypes() {
 export function createGlobalEnvironment(): TypeEnvironment {
   const env = new TypeEnvironment();
 
-  // Primitive types (truly built-in, not from stdlib)
-  env.defineType("number", Types.number);
-  env.defineType("string", Types.string);
-  env.defineType("bool", Types.bool);
-  env.defineType("null", Types.null);
-  env.defineType("bytes", Types.bytes);
-  env.defineType("any", Types.any);
-  env.defineType("never", Types.never);
-  env.defineType("void", Types.void);
+  // Primitive types from centralized map
+  for (const [name, type] of Object.entries(PRIMITIVE_TYPE_MAP)) {
+    env.defineType(name, type);
+  }
 
   // Load types and functions from stdlib.ms
   const stdlib = getStdlibTypes();
 
-  // Register type declarations from stdlib
+  // Set builtin method registry
+  env.setBuiltinMethods(stdlib.builtinMethods);
+
+  // Register type declarations from stdlib (skip primitives - already defined)
+  const primitiveNames = new Set(Object.keys(PRIMITIVE_TYPE_MAP));
   for (const [name, type] of stdlib.types) {
+    // Skip primitive extern types - their internal types are already defined
+    if (primitiveNames.has(name)) continue;
     env.defineType(name, type);
   }
 

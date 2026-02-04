@@ -31,6 +31,7 @@ export interface FnDecl extends BaseNode {
   using?: UsingClause;
   body: Block;
   isGenerator: boolean;
+  doc?: string;
 }
 
 export interface ExternFnDecl extends BaseNode {
@@ -71,6 +72,7 @@ export interface TypeDecl extends BaseNode {
   where?: WhereClause[];
   body: TypeBody;
   isExtern?: boolean;  // extern type - all methods are implicitly extern
+  doc?: string;
 }
 
 export interface TypeParam extends BaseNode {
@@ -99,6 +101,7 @@ export interface FieldDecl extends BaseNode {
   optional: boolean;
   defaultValue?: Expr;
   computed: boolean; // () => expr
+  doc?: string;
 }
 
 export interface MethodDecl extends BaseNode {
@@ -111,6 +114,7 @@ export interface MethodDecl extends BaseNode {
   body?: Block;
   isGenerator?: boolean;
   isExtern?: boolean;
+  doc?: string;
 }
 
 export interface EnumDecl extends BaseNode {
