@@ -134,8 +134,10 @@ describe("Context Analysis - exprContainsEscapingLambda", () => {
       kind: "MapExpr",
       entries: [
         {
+          kind: "MapEntry",
           key: { kind: "Literal", value: "k", loc: { line: 1, column: 1, offset: 0 } },
           value: { kind: "Identifier", name: "y", loc: { line: 1, column: 1, offset: 0 } },
+          loc: { line: 1, column: 1, offset: 0 },
         },
       ],
       loc: { line: 1, column: 1, offset: 0 },
@@ -171,9 +173,10 @@ describe("Context Analysis - parameterEscapes", () => {
     const fnDecl: AST.FnDecl = {
       kind: "FnDecl",
       name: "noBody",
-      params: [{ name: "x", type: null, optional: false, rest: false, loc: { line: 1, column: 1, offset: 0 } }],
-      returnType: null,
-      body: undefined,
+      params: [{ kind: "Parameter", name: "x", type: undefined, optional: false, rest: false, loc: { line: 1, column: 1, offset: 0 } }],
+      returnType: undefined,
+      body: { kind: "Block", statements: [], loc: { line: 1, column: 1, offset: 0 } },
+      isGenerator: false,
       loc: { line: 1, column: 1, offset: 0 },
     };
     expect(parameterEscapes(fnDecl, "x", new Map())).toBe(true);
