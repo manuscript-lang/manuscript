@@ -149,16 +149,13 @@ fn log(level: string, ...messages: list[string])
 (a, b) => a + b
 ```
 
-### Docstrings (Tool Exposure)
+### Tool Comments
 
 ```manuscript
+// Read a file's contents
+// Args:
+//   path: The file path to read
 fn read_file(path: string): string using (fs: Filesystem)
-  """
-  Read a file's contents.
-
-  Args:
-    path: The file path to read
-  """
   fs.read(path)
 ```
 
