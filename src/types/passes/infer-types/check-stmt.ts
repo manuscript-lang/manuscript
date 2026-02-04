@@ -3,7 +3,7 @@ import * as AST from "../../../parser/ast";
 import type { Type, FunctionType, ContextBinding, ObjectType } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
-import { astTypeToType, fnDeclToType, isAssignable, getIterableElementType, isIterable, extendsType } from "../../type-utils";
+import { astTypeToType, fnDeclToType, isAssignable, getIterableElementType, isIterable, hasEmbeddedContext } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, warning, recordType } from "./context";
 import { checkPattern, bindPattern } from "./check-pattern";
@@ -837,12 +837,12 @@ function checkMethodDecl(ctx: InferContext, typeDecl: AST.TypeDecl, method: AST.
 function validateUsingClause(ctx: InferContext, using: AST.UsingClause): void {
   for (const binding of using.bindings) {
     const bindingType = astTypeToType(binding.type);
-    if (!extendsType(bindingType, "Context", ctx.env)) {
+    if (!hasEmbeddedContext(bindingType, ctx.env)) {
       const typeName = binding.type.kind === "NamedType" ? binding.type.name : "unknown";
       error(ctx,
-        `Type '${typeName}' used in 'using' clause must embed Context`,
+        `Type '${typeName}' used in 'using' clause must be a context type`,
         binding.loc,
-        `Add 'Context' as an embedded field in the type definition`
+        `Use \`context ${typeName}\` or add Context as an embedded field`
       );
     }
   }

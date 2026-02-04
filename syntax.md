@@ -184,6 +184,28 @@ type Counter
   fn get(): number
     value
 
+// Type embedding 
+// Capitalized type name on its own line embeds that type; fields and methods are promoted
+type Animal
+  name: string
+  age: number
+  fn speak(): string
+    "{name} says hello"
+
+type Dog
+  Animal
+  breed: string
+  fn bark(): string
+    "{name} barks!"
+
+let dog = Dog(Animal("Buddy", 3), "Golden Retriever")
+dog.name          // promoted from Animal
+dog.speak()       // promoted method
+dog.Animal.name   // direct access to embedded value
+// Constructor args: embedded types first (in declaration order), then own fields
+// Own fields/methods shadow promoted ones; use obj.EmbeddedType.member to access embedded
+// Multiple embeds: if two embeds promote the same member name, use explicit access (obj.A.member)
+
 // Interface (methods without bodies)
 type Serializable
   fn serialize(): string
@@ -283,7 +305,22 @@ fn main()
 
 ## 7. Capabilities
 
-Dependency injection via `Context` and `with`. Compiler verifies all requirements statically.
+Dependency injection via context types and `with`. Compiler verifies all requirements statically.
+
+### Defining context types
+
+Declare a capability type with the `context` keyword; the type can then be used in `using` clauses and provided in `with` blocks:
+
+```manuscript
+context Filesystem
+  fn read(path: string): string
+  fn write(path: string, content: string): void
+
+context Shell
+  fn exec(cmd: string): string
+```
+
+Context types have no marker field in the body—only real fields and methods. Legacy form: `type X` with an embedded `Context` line is also accepted.
 
 ### Declaring Dependencies
 
@@ -562,6 +599,7 @@ agent helper
 | `field?: type` | Optional |
 | `field: type = value` | Default |
 | `field: () => expr` | Computed |
+| `TypeName` (line alone) | Embedded type; members promoted, access via `obj.TypeName.member` |
 
 ### Capabilities
 

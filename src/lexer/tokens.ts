@@ -17,6 +17,7 @@ export type TokenType =
   | "RETURN"
   | "USING"
   | "WITH"
+  | "CONTEXT"
   | "IMPORT"
   | "FROM"
   | "TEST"
@@ -115,6 +116,7 @@ export const KEYWORDS: Record<string, TokenType> = {
   return: "RETURN",
   using: "USING",
   with: "WITH",
+  context: "CONTEXT",
   import: "IMPORT",
   from: "FROM",
   test: "TEST",

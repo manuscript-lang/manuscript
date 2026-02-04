@@ -113,6 +113,30 @@ type Foo
       expect(counterType.methods[0]!.name).toBe("increment");
     }
   });
+
+  test("embed of non-existent type reports error", () => {
+    const program = parse(`type Bad
+  NoSuchType
+  x: number`);
+    const env = createGlobalEnvironment();
+    const result = collectDeclarations({ program, env });
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some(e => e.message.includes("Cannot embed") && e.message.includes("not found"))).toBe(true);
+  });
+
+  test("two embeds promoting same member reports ambiguous access", () => {
+    const program = parse(`type A
+  name: string
+type B
+  name: string
+type C
+  A
+  B`);
+    const env = createGlobalEnvironment();
+    const result = collectDeclarations({ program, env });
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some(e => e.message.includes("Ambiguous access") && e.message.includes("name"))).toBe(true);
+  });
 });
 
 describe("Pass 2: Infer Types", () => {
@@ -235,10 +259,110 @@ describe("Type Utils - Pure Functions", () => {
   test("substituteTypeParams replaces type variables", () => {
     const bindings = new Map<string, typeof Types.number>();
     bindings.set("T", Types.number);
-    
     const typeVar = Types.ref("T");
     const result = TypeUtils.substituteTypeParams(typeVar, bindings);
     expect(result.kind).toBe("number");
+  });
+
+  test("getIterableElementType for set, stream, channel", () => {
+    expect(TypeUtils.getIterableElementType(Types.set(Types.string)).kind).toBe("string");
+    expect(TypeUtils.getIterableElementType(Types.stream(Types.number)).kind).toBe("number");
+    expect(TypeUtils.getIterableElementType(Types.channel(Types.bool)).kind).toBe("bool");
+  });
+
+  test("formatAstType returns any for undefined", () => {
+    expect(TypeUtils.formatAstType(undefined)).toBe("any");
+  });
+
+  test("isAssignable never and intersection", () => {
+    const env = createGlobalEnvironment();
+    expect(TypeUtils.isAssignable(Types.never, Types.number, env)).toBe(true);
+    expect(TypeUtils.isAssignable(Types.number, Types.never, env)).toBe(false);
+    const inter = Types.intersection(Types.number, Types.string);
+    expect(TypeUtils.isAssignable(inter, Types.number, env)).toBe(true);
+  });
+
+  test("paramsMatch and contextMatch", () => {
+    const p = [Types.param("a", Types.number)];
+    expect(TypeUtils.paramsMatch(p, p)).toBe(true);
+    expect(TypeUtils.paramsMatch(p, [Types.param("a", Types.string)])).toBe(false);
+    const ctx: import("../../src/types/types").ContextBinding[] = [{ name: "x", type: Types.number }];
+    expect(TypeUtils.contextMatch(ctx, ctx)).toBe(true);
+  });
+
+  test("extendsType and hasEmbeddedContext", () => {
+    const env = createGlobalEnvironment();
+    const program = parse(`type Context
+  x: number
+type Foo
+  Context
+  y: string`);
+    const { env: populatedEnv } = collectDeclarations({ program, env });
+    const fooType = populatedEnv.lookupType("Foo");
+    expect(fooType && TypeUtils.extendsType(fooType, "Context", populatedEnv)).toBe(true);
+    expect(fooType && TypeUtils.hasEmbeddedContext(fooType, populatedEnv)).toBe(true);
+  });
+
+  test("isIterable for generic channel/list", () => {
+    const genericChannel = Types.generic(Types.ref("Channel"), [Types.number]);
+    expect(TypeUtils.isIterable(genericChannel)).toBe(true);
+  });
+
+  test("typeInvolvesPromise", () => {
+    const env = createGlobalEnvironment();
+    expect(TypeUtils.typeInvolvesPromise(Types.promise(Types.number), env)).toBe(true);
+    expect(TypeUtils.typeInvolvesPromise(Types.list(Types.promise(Types.number)), env)).toBe(true);
+    expect(TypeUtils.typeInvolvesPromise(Types.number, env)).toBe(false);
+  });
+
+  test("substituteTypeInObject", () => {
+    const objType: import("../../src/types/types").ObjectType = {
+      kind: "object",
+      name: "Box",
+      properties: [{ name: "value", type: Types.ref("T"), optional: false, computed: false, defaultValue: false, embedded: false }],
+      methods: [],
+    };
+    const bindings = new Map<string, import("../../src/types/types").Type>([["T", Types.number]]);
+    const result = TypeUtils.substituteTypeInObject(objType, bindings);
+    expect(result.properties[0]!.type.kind).toBe("number");
+  });
+
+  test("unifyTypes", () => {
+    const bindings = new Map<string, import("../../src/types/types").Type>();
+    bindings.set("T", Types.any);
+    TypeUtils.unifyTypes(Types.list(Types.typevar("T")), Types.list(Types.number), bindings);
+    expect(bindings.get("T")?.kind).toBe("number");
+  });
+
+  test("resolveTypeName", () => {
+    const env = createGlobalEnvironment();
+    expect(TypeUtils.resolveTypeName("number", env).kind).toBe("number");
+    expect(TypeUtils.resolveTypeName("UnknownType", env).kind).toBe("ref");
+  });
+
+  test("formatFnSignature and formatMethodSignature", () => {
+    const program = parse(`fn add(a: number, b: number): number
+  a + b`);
+    const fnDecl = program.body.find((s): s is import("../../src/parser/ast").FnDecl => s.kind === "FnDecl")!;
+    const sig = TypeUtils.formatFnSignature(fnDecl);
+    expect(sig).toContain("number");
+    expect(sig).toContain("add");
+    const typeProgram = parse(`type T
+  fn m(x: number): string
+    "ok"`);
+    const typeDecl = typeProgram.body.find((s): s is import("../../src/parser/ast").TypeDecl => s.kind === "TypeDecl")!;
+    const method = typeDecl.body!.members.find((m): m is import("../../src/parser/ast").MethodDecl => m.kind === "MethodDecl")!;
+    expect(TypeUtils.formatMethodSignature(method)).toContain("number");
+  });
+
+  test("formatTypeSignature", () => {
+    const program = parse(`type Point
+  x: number
+  y: number`);
+    const typeDecl = program.body.find((s): s is import("../../src/parser/ast").TypeDecl => s.kind === "TypeDecl")!;
+    const { signature, fields } = TypeUtils.formatTypeSignature(typeDecl);
+    expect(signature).toContain("Point");
+    expect(fields.length).toBe(2);
   });
 });
 

@@ -120,6 +120,7 @@ export interface ObjectType extends BaseType {
   typeParams?: TypeParameter[];
   context?: ContextBinding[];
   alias?: Type[];  // For type aliases (type Foo = Bar)
+  isContextType?: boolean;  // context TypeName - capability type for with/using
 }
 
 export interface PropertyType {

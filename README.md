@@ -48,6 +48,8 @@ with MockFilesystem(), MockShell() // test
   deploy(code)
 ```
 
+Capability types are defined with `context TypeName` (e.g. `context Filesystem`); see [Syntax § Capabilities](./syntax.md#7-capabilities).
+
 **Prompts are templates.**  
 Multi-line strings with `{interpolation}`, `{if}`, and `{for}`. No escaping.
 
