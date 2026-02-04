@@ -170,15 +170,15 @@ describe("Context Analysis - exprContainsEscapingLambda", () => {
 
 describe("Context Analysis - parameterEscapes", () => {
   test("function without body returns true", () => {
-    const fnDecl: AST.FnDecl = {
-      kind: "FnDecl",
+    const fnDecl = {
+      kind: "FnDecl" as const,
       name: "noBody",
-      params: [{ kind: "Parameter", name: "x", type: undefined, optional: false, rest: false, loc: { line: 1, column: 1, offset: 0 } }],
+      params: [{ kind: "Parameter" as const, name: "x", type: undefined, optional: false, rest: false, loc: { line: 1, column: 1, offset: 0 } }],
       returnType: undefined,
-      body: { kind: "Block", statements: [], loc: { line: 1, column: 1, offset: 0 } },
+      body: undefined,
       isGenerator: false,
       loc: { line: 1, column: 1, offset: 0 },
-    };
+    } as unknown as AST.FnDecl;
     expect(parameterEscapes(fnDecl, "x", new Map())).toBe(true);
   });
 
