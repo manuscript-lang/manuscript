@@ -74,8 +74,8 @@ type T
       const parser = new Parser(source);
       const program = parser.parse();
       const checker = new TypeChecker();
-      const result = checker.check(program);
-      const completions = getScopeCompletions(program, result.types, 10);
+      checker.check(program);
+      const completions = getScopeCompletions(program, 10);
       expect(completions.some((c) => c.label === "add" && c.kind === "function")).toBe(true);
       expect(completions.some((c) => c.label === "T" && c.kind === "type")).toBe(true);
     });
@@ -89,8 +89,8 @@ let z = x + y
       const parser = new Parser(source);
       const program = parser.parse();
       const checker = new TypeChecker();
-      const result = checker.check(program);
-      const completions = getScopeCompletions(program, result.types, 5);
+      checker.check(program);
+      const completions = getScopeCompletions(program, 5);
       expect(completions.some((c) => c.label === "x" && c.kind === "variable")).toBe(true);
       expect(completions.some((c) => c.label === "y" && c.kind === "variable")).toBe(true);
     });
@@ -100,17 +100,17 @@ let z = x + y
       const parser = new Parser(source);
       const program = parser.parse();
       const checker = new TypeChecker();
-      const result = checker.check(program);
-      const completions = getScopeCompletions(program, result.types, 1);
+      checker.check(program);
+      const completions = getScopeCompletions(program, 1);
       expect(completions.filter((c) => c.label === "a")).toHaveLength(0);
     });
 
-    test("uses short function signature when type not in map", () => {
+    test("uses short function signature when type not resolved", () => {
       const source = `fn add(a: number, b: number): number\n  return a + b`;
       const parser = new Parser(source);
       const program = parser.parse();
-      const emptyTypes = new Map();
-      const completions = getScopeCompletions(program, emptyTypes, 5);
+      // Don't run type checker - resolvedType will be undefined
+      const completions = getScopeCompletions(program, 5);
       const fnCompletion = completions.find((c) => c.label === "add" && c.kind === "function");
       expect(fnCompletion).toBeDefined();
       expect(fnCompletion!.detail).toContain("fn(");

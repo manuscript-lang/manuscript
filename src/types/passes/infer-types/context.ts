@@ -6,7 +6,6 @@ import { TypeCheckError } from "../../errors";
 
 export interface InferContext {
   env: TypeEnvironment;
-  types: Map<AST.ASTNode, Type>;
   errors: TypeCheckError[];
   warnings: string[];
   fnDecls: Map<string, AST.FnDecl>;
@@ -39,7 +38,6 @@ export function createInferContext(
 ): InferContext {
   return {
     env,
-    types: new Map(),
     errors: [],
     warnings: [],
     fnDecls,
@@ -66,5 +64,5 @@ export function warning(ctx: InferContext, message: string): void {
 }
 
 export function recordType(ctx: InferContext, node: AST.ASTNode, type: Type): void {
-  ctx.types.set(node, type);
+  (node as AST.BaseNode).resolvedType = type;
 }

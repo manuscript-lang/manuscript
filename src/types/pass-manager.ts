@@ -1,6 +1,5 @@
 // Pass Manager - Configurable pipeline for type checking passes
 import * as AST from "../parser/ast";
-import type { Type } from "./types";
 import { createGlobalEnvironment, TypeEnvironment } from "./environment";
 import { TypeCheckError } from "./errors";
 import { collectDeclarations } from "./passes/collect-declarations";
@@ -15,7 +14,6 @@ export interface PassContext {
   program: AST.Program;
   env: TypeEnvironment;
   fnDecls: Map<string, AST.FnDecl>;
-  types: Map<AST.ASTNode, Type>;
   errors: TypeCheckError[];
   warnings: string[];
 }
@@ -53,7 +51,6 @@ export class InferTypesPass implements Pass {
       env: ctx.env,
       fnDecls: ctx.fnDecls,
     });
-    ctx.types = result.types;
     ctx.errors.push(...result.errors);
     ctx.warnings.push(...result.warnings);
   }
@@ -78,7 +75,6 @@ export class ContextAnalysisPass implements Pass {
 
 export interface TypeCheckResult {
   program: AST.Program;
-  types: Map<AST.ASTNode, Type>;
   env: TypeEnvironment;
   errors: TypeCheckError[];
   warnings: string[];
@@ -159,7 +155,6 @@ export class PassManager {
       program,
       env: createGlobalEnvironment(),
       fnDecls: new Map(),
-      types: new Map(),
       errors: [],
       warnings: [],
     };
@@ -170,7 +165,6 @@ export class PassManager {
 
     return {
       program: ctx.program,
-      types: ctx.types,
       env: ctx.env,
       errors: ctx.errors,
       warnings: ctx.warnings,

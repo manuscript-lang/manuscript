@@ -16,7 +16,7 @@ type Person
     const program = new Parser(source).parse();
     const checker = new TypeChecker();
     const result = checker.check(program);
-    const symbols = buildSymbolTable(program, result.types, result.env);
+    const symbols = buildSymbolTable(program, result.env);
     const docSymbols = getDocumentSymbols(symbols);
     expect(docSymbols.some((s) => s.name === "foo" && s.kind === "function")).toBe(true);
     expect(docSymbols.some((s) => s.name === "Person" && s.kind === "type")).toBe(true);
@@ -36,7 +36,7 @@ type T
     const program = new Parser(source).parse();
     const checker = new TypeChecker();
     const result = checker.check(program);
-    const symbols = buildSymbolTable(program, result.types, result.env);
+    const symbols = buildSymbolTable(program, result.env);
     const topLevel = getTopLevelSymbols(symbols);
     expect(topLevel.every((s) => s.kind === "function" || s.kind === "type")).toBe(true);
     expect(topLevel.every((s) => !s.name.includes("."))).toBe(true);

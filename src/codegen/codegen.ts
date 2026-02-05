@@ -128,22 +128,10 @@ export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): st
 setExprGen(gen);
 setStmtGen(gen);
 
-// Collect type information and keyword declarations from program
-function collectTypeInfo(program: AST.Program, opts: GenOpts, ctx: Ctx): void {
+// Collect keyword declarations from program (needed for keyword type use)
+function collectKeywordDecls(program: AST.Program, ctx: Ctx): void {
   for (const stmt of program.body) {
-    if (stmt.kind === "TypeDecl") {
-      opts.declaredTypes.add(stmt.name);
-      if (stmt.body?.members) {
-        const paramNames = stmt.body.members
-          .filter((m): m is AST.FieldDecl => m.kind === "FieldDecl" && !(m.embedded && m.name === "Context"))
-          .map((m) => m.name);
-        if (paramNames.length > 0) opts.callableParamOrder.set(stmt.name, paramNames);
-      }
-    } else if (stmt.kind === "EnumDecl") {
-      opts.declaredTypes.add(stmt.name);
-    } else if (stmt.kind === "FnDecl") {
-      opts.callableParamOrder.set(stmt.name, stmt.params.map((p) => p.name));
-    } else if (stmt.kind === "KeywordDecl") {
+    if (stmt.kind === "KeywordDecl") {
       ctx.keywordDecls.set(stmt.name, stmt);
     }
   }
@@ -169,7 +157,7 @@ export class CodeGenerator {
     resetCtx(this.ctx);
     const opts = createOpts();
 
-    collectTypeInfo(program, opts, this.ctx);
+    collectKeywordDecls(program, this.ctx);
     emitRuntimeImports(this.ctx);
 
     for (const stmt of program.body) {

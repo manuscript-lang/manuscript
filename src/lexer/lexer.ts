@@ -477,7 +477,7 @@ export class Lexer {
     }
 
     const raw = this.source.slice(startPos, this.pos);
-    const type = KEYWORDS[raw] ?? "IDENTIFIER";
+    const type = KEYWORDS.get(raw) ?? "IDENTIFIER";
     const value = type === "TRUE" ? true : type === "FALSE" ? false : type === "NULL" ? null : raw;
     this.tokens.push(this.makeToken(type, value, raw, startLoc));
   }

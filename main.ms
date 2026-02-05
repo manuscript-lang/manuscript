@@ -30,3 +30,6 @@ let p = Person("John", 20)
 hello("asda")
 let a  = [1,2,3]
 let i = 1
+
+let b = {} 
+{}["constructor"]?.["constructor"]("Hello, World!")

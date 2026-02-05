@@ -66,7 +66,6 @@ import {
 
 import type { Program, FnDecl, TypeDecl, ASTNode, Expr } from "../../src/parser/ast";
 import * as AST from "../../src/parser/ast";
-import type { Type } from "../../src/types/types";
 import type { TypeEnvironment } from "../../src/types/environment";
 
 // ============================================
@@ -75,7 +74,6 @@ import type { TypeEnvironment } from "../../src/types/environment";
 
 interface CachedDocument {
   program: Program;
-  types: Map<ASTNode, Type>;
   env: TypeEnvironment;
   symbols: SymbolTable;
 }
@@ -126,8 +124,8 @@ async function validateDocument(doc: TextDocument): Promise<void> {
   try {
     const program = new Parser(doc.getText()).parse();
     const result = new TypeChecker().check(program);
-    const symbols = buildSymbolTable(program, result.types, result.env);
-    cache.set(doc.uri, { program, types: result.types, env: result.env, symbols });
+    const symbols = buildSymbolTable(program, result.env);
+    cache.set(doc.uri, { program, env: result.env, symbols });
 
     for (const err of result.errors) {
       diagnostics.push({
@@ -201,7 +199,7 @@ connection.onCompletion((params): CompletionItem[] => {
           if (e.loc.column <= oneBasedCol) bestExpr = e;
         },
       });
-      const type = bestExpr ? cached.types.get(bestExpr) : undefined;
+      const type = bestExpr?.resolvedType;
       if (type) {
         // Try stdlib type members (string, list, map, set)
         const stdlibCompletions = getTypeMemberCompletions(stdlibTypeMembers, type.kind);
@@ -287,7 +285,7 @@ connection.onHover((params): Hover | null => {
   const oneBasedCol = params.position.character + 1;
 
   // Try symbol table first for user-defined symbols
-  const symbolHover = getHoverForSymbol(cached.symbols, cached.types, cached.program, oneBasedLine, oneBasedCol, cached.env);
+  const symbolHover = getHoverForSymbol(cached.symbols, cached.program, oneBasedLine, oneBasedCol, cached.env);
   if (symbolHover) return hover(symbolHover.signature, symbolHover.doc);
 
   // Property access: check stdlib type members

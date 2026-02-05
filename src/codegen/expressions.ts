@@ -1,7 +1,7 @@
 // Expression Generators
 import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
-import { emit, pushIndent, popIndent, tempVar } from "./types";
+import { emit, pushIndent, popIndent, tempVar, isTypeConstructor, getParamOrder } from "./types";
 import { STDLIB_FUNCTIONS, EXTERN_TYPES } from "../shared/stdlib";
 
 // Forward declaration for mutual recursion
@@ -47,7 +47,7 @@ export function genLiteral(node: AST.Literal): string {
 
 export function genIdentifier(node: AST.Identifier, opts: GenOpts): string {
   // Don't prefix type names (used as constructors) - they're global
-  if (opts.declaredTypes.has(node.name)) {
+  if (isTypeConstructor(node)) {
     return node.name;
   }
   // Use self.field for factory function pattern, this.field for methods
@@ -96,22 +96,24 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
       return `new __ms_runtime.${baseName}(${args})`;
     }
     // User-defined generic types - factory functions, no 'new'
-    if (opts.declaredTypes.has(baseName)) {
+    if (isTypeConstructor(node.callee.object)) {
       return `${baseName}(${args})`;
     }
   }
 
-  const name = node.callee.kind === "Identifier" ? node.callee.name : undefined;
-  const paramOrder = name ? opts.callableParamOrder.get(name) : undefined;
-  const args = genCallArgs(ctx, node.args, opts, paramOrder);
-
-  // Extern type constructors (e.g. MockLLM, Claude) use new __ms_runtime.X(...); exclude stdlib functions like map
+ 
+  // Don't apply param ordering to extern types - they should keep named args as objects
   if (node.callee.kind === "Identifier" && EXTERN_TYPES.has(node.callee.name) && !STDLIB_FUNCTIONS.has(node.callee.name)) {
+    const args = genCallArgs(ctx, node.args, opts);
     return `new __ms_runtime.${node.callee.name}(${args})`;
   }
 
+  // Get param order from callee's resolved type for user-defined functions and types
+  const paramOrder = getParamOrder(node.callee);
+  const args = genCallArgs(ctx, node.args, opts, paramOrder);
+
   // User-defined types use factory functions (no 'new')
-  if (node.callee.kind === "Identifier" && opts.declaredTypes.has(node.callee.name)) {
+  if (isTypeConstructor(node.callee)) {
     return `${callee}(${args})`;
   }
 
@@ -167,10 +169,12 @@ export function genIndex(ctx: Ctx, node: AST.IndexExpr, opts: GenOpts): string {
   if (node.slice) {
     const start = node.slice.start ? genExpr(ctx, node.slice.start, opts) : "0";
     const end = node.slice.end ? genExpr(ctx, node.slice.end, opts) : "";
+    if (node.optional) return `${obj}?.slice(${start}, ${end})`;
     return `${obj}.slice(${start}, ${end})`;
   }
 
   const index = genExpr(ctx, node.index, opts);
+  if (node.optional) return `${obj}?.[${index}]`;
   return `${obj}[${index}]`;
 }
 

@@ -48,27 +48,26 @@ export function getObjectMemberCompletions(obj: ObjectType): CompletionInfo[] {
 // Get completions for variables/functions in scope
 export function getScopeCompletions(
   program: AST.Program,
-  types: Map<AST.ASTNode, Type>,
   line: number
 ): CompletionInfo[] {
   const completions: CompletionInfo[] = [];
   
   for (const s of program.body) {
     if (s.kind === "FnDecl") {
-      const fnType = types.get(s);
+      const fnType = s.resolvedType;
       const detail = fnType ? formatFunctionType(fnType) : formatFnSignatureShort(s);
       completions.push({ label: s.name, kind: "function", detail });
     } else if (s.kind === "TypeDecl") {
       completions.push({ label: s.name, kind: "type", detail: `type ${s.name}` });
     } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && s.loc.line < line) {
-      const varType = types.get(s.value);
+      const varType = s.value.resolvedType;
       completions.push({
         label: s.pattern.name,
         kind: "variable",
         detail: varType ? typeToString(varType) : "any",
       });
     } else if (s.kind === "VarStmt" && s.loc.line < line) {
-      const varType = types.get(s.value);
+      const varType = s.value.resolvedType;
       completions.push({
         label: s.name,
         kind: "variable",

@@ -1,7 +1,7 @@
 import { Lexer, KEYWORDS } from "../lexer";
 import type { Token, TokenType } from "../lexer";
 
-const KEYWORD_TOKEN_TYPES = new Set(Object.values(KEYWORDS));
+const KEYWORD_TOKEN_TYPES = new Set(KEYWORDS.values());
 import * as AST from "./ast";
 import { ParserErrors } from "../shared/errors";
 
@@ -89,9 +89,15 @@ export class Parser {
     this.infix("PIPE", Precedence.PIPE, (l) => this.pipeExpr(l));
     this.infix("DOTDOT", Precedence.RANGE, (l) => this.rangeExpr(l));
     this.infix("LPAREN", Precedence.CALL, (l) => this.callExpr(l));
-    this.infix("LBRACKET", Precedence.CALL, (l) => this.indexExpr(l));
+    this.infix("LBRACKET", Precedence.CALL, (l) => this.indexExpr(l, false));
     this.infix("DOT", Precedence.CALL, (l) => this.memberExpr(l, false));
-    this.infix("OPTIONAL", Precedence.CALL, (l) => this.memberExpr(l, true));
+    this.infix("OPTIONAL", Precedence.CALL, (l) => {
+      if (this.check("LBRACKET")) {
+        this.advance();
+        return this.indexExpr(l, true);
+      }
+      return this.memberExpr(l, true);
+    });
     this.infix("BANG", Precedence.CALL, (l) => this.nullAssertion(l));
   }
 
@@ -1816,18 +1822,18 @@ export class Parser {
     return { kind: "CallExpr", callee, args, loc };
   }
 
-  private indexExpr(object: AST.Expr): AST.IndexExpr {
+  private indexExpr(object: AST.Expr, optional: boolean): AST.IndexExpr {
     const loc = this.previous().loc;
 
     // Check for slice: [start:end] or [start:end:step]
     if (this.check("COLON")) {
-      return this.sliceExpr(object, undefined, loc);
+      return this.sliceExpr(object, undefined, loc, optional);
     }
 
     const index = this.expression();
 
     if (this.check("COLON")) {
-      return this.sliceExpr(object, index, loc);
+      return this.sliceExpr(object, index, loc, optional);
     }
 
     // Check for additional type args: Type[A, B, C]
@@ -1839,12 +1845,12 @@ export class Parser {
     this.expect("RBRACKET");
     
     if (typeArgs.length > 0) {
-      return { kind: "IndexExpr", object, index, typeArgs, loc };
+      return { kind: "IndexExpr", object, index, optional, typeArgs, loc };
     }
-    return { kind: "IndexExpr", object, index, loc };
+    return { kind: "IndexExpr", object, index, optional, loc };
   }
 
-  private sliceExpr(object: AST.Expr, start: AST.Expr | undefined, loc: AST.SourceLocation): AST.IndexExpr {
+  private sliceExpr(object: AST.Expr, start: AST.Expr | undefined, loc: AST.SourceLocation, optional: boolean): AST.IndexExpr {
     this.expect("COLON");
     let end: AST.Expr | undefined;
     let step: AST.Expr | undefined;
@@ -1866,6 +1872,7 @@ export class Parser {
       kind: "IndexExpr",
       object,
       index: dummyIndex,
+      optional,
       slice: { start, end, step },
       loc,
     };
