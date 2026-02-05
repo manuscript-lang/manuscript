@@ -15,9 +15,9 @@ with let l = Logger(
   prefix: "APP",
   level: 1
 )
-    // @expect: {"prefix":"APP","level":1}: direct
+    // @expect: APP: direct
     print(l.log("direct"))
-    // @expect: {"prefix":"APP","level":1}: Hello, World
+    // @expect: APP: Hello, World
     print(greet("World"))
 
 // === Multiple contexts with newline between (multiline context list) ===
@@ -32,5 +32,5 @@ fn logWithEnv(msg: string): string using (logger: Logger, config: Config)
 
 with Logger(prefix: "SVC"),
   let c = Config(env: "prod")
-    // @expect: {"prefix":"SVC"}: [[object Object]] started
+    // @expect: SVC: [prod] started
     print(logWithEnv("started"))
