@@ -96,6 +96,7 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     if (EXTERN_TYPES.has(baseName)) {
       return `new __ms_runtime.${baseName}(${args})`;
     }
+    // User-defined generic types - factory functions, no 'new'
     if (isTypeConstructor(node.callee.object) || ctx.typeFields.has(baseName)) {
       return `${baseName}(${args})`;
     }
@@ -153,12 +154,21 @@ function genCallArgs(
       }
     }
     let posIdx = 0;
-    const ordered = paramOrder.map((name) => {
+    const ordered: (AST.Expr | null)[] = paramOrder.map((name): AST.Expr | null => {
       if (byName.has(name)) return byName.get(name)!;
-      if (posIdx < positional.length) return positional[posIdx++];
+      if (posIdx < positional.length) return positional[posIdx++]!;
       return null;
-    }).filter((e): e is AST.Expr => e !== null);
-    return ordered.map((e) => genExpr(ctx, e, opts)).join(", ");
+    });
+    // Find the last non-null index to trim trailing undefined args
+    let lastProvided = ordered.length - 1;
+    while (lastProvided >= 0 && ordered[lastProvided] === null) {
+      lastProvided--;
+    }
+    // Generate args, using 'undefined' for missing intermediate params
+    const result = ordered.slice(0, lastProvided + 1).map((e) => 
+      e === null ? "undefined" : genExpr(ctx, e, opts)
+    );
+    return result.join(", ");
   }
 
   if (hasNamed) {
