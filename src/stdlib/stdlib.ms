@@ -225,8 +225,7 @@ extern type Channel[T]
 // LLM Capabilities
 // ============================================
 
-extern type Claude
-  Context
+extern context Claude
   model?: string
   apiKey?: string
   maxTokens?: number
@@ -238,8 +237,7 @@ extern type Claude
   fn stream(messages: list[any]): any
   fn exit(): void
 
-extern type GPT
-  Context
+extern context GPT
   model?: string
   apiKey?: string
   maxTokens?: number
@@ -252,8 +250,7 @@ extern type GPT
   fn stream(messages: list[any]): any
   fn exit(): void
 
-extern type MockLLM
-  Context
+extern context MockLLM
   responses?: list[any]
   defaultReply?: string
   delay?: number
@@ -271,8 +268,7 @@ extern type MockLLM
 // Filesystem Capabilities
 // ============================================
 
-extern type LocalFilesystem
-  Context
+extern context LocalFilesystem
   root?: string
   // Reads file contents as string
   fn read(path: string): string
@@ -294,8 +290,7 @@ extern type LocalFilesystem
   fn move(src: string, dest: string): void
   fn exit(): void
 
-extern type MockFilesystem
-  Context
+extern context MockFilesystem
   files?: map[string, string]
   fn read(path: string): string
   fn write(path: string, content: string): void
@@ -311,8 +306,7 @@ extern type MockFilesystem
   fn exit(): void
 
 // Filesystem alias for LocalFilesystem
-extern type Filesystem
-  Context
+extern context Filesystem
   root?: string
   fn read(path: string): string
   fn write(path: string, content: string): void
@@ -329,8 +323,7 @@ extern type Filesystem
 // Shell Capabilities
 // ============================================
 
-extern type LocalShell
-  Context
+extern context LocalShell
   shell?: string
   cwd?: string
   // Executes command and returns result
@@ -341,8 +334,7 @@ extern type LocalShell
   fn which(command: string): string?
   fn exit(): void
 
-extern type MockShell
-  Context
+extern context MockShell
   commands?: list[any]
   cwd?: string
   env?: map[string, string]
@@ -354,8 +346,7 @@ extern type MockShell
   fn exit(): void
 
 // Shell alias for LocalShell
-extern type Shell
-  Context
+extern context Shell
   shell?: string
   cwd?: string
   fn exec(command: string): any
@@ -367,8 +358,7 @@ extern type Shell
 // HTTP Capabilities
 // ============================================
 
-extern type FetchHTTP
-  Context
+extern context FetchHTTP
   baseURL?: string
   headers?: map[string, string]
   timeout?: number
@@ -383,8 +373,7 @@ extern type FetchHTTP
   fn postJSON(url: string, data: any): any
   fn exit(): void
 
-extern type MockHTTP
-  Context
+extern context MockHTTP
   responses?: list[any]
   fn get(url: string): any
   fn post(url: string): any
@@ -398,8 +387,7 @@ extern type MockHTTP
   fn exit(): void
 
 // HTTP alias for FetchHTTP
-extern type HTTP
-  Context
+extern context HTTP
   baseURL?: string
   headers?: map[string, string]
   timeout?: number

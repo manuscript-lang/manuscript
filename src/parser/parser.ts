@@ -113,6 +113,8 @@ export class Parser {
     while (!this.isAtEnd()) {
       body.push(this.declaration());
       this.skipNewlines();
+      // After a multiline with, we may have extra DEDENTs (continuation indent closing)
+      while (this.match("DEDENT")) {}
     }
 
     return {
@@ -145,11 +147,17 @@ export class Parser {
       case "FN":
         return this.fnDecl();
       case "EXTERN":
-        // Check if extern type or extern fn
-        if (this.peekNext().type === "TYPE") {
+        // Check if extern type, extern context, or extern fn
+        const next = this.peekNext().type;
+        if (next === "TYPE") {
           const externDoc = this.current().leadingComment;
           this.advance(); // consume EXTERN
           return this.typeDecl(true, externDoc);
+        }
+        if (next === "CONTEXT") {
+          const externDoc = this.current().leadingComment;
+          this.advance(); // consume EXTERN
+          return this.contextTypeDecl(true, externDoc);
         }
         return this.externFnDecl();
       case "TYPE":
@@ -402,17 +410,17 @@ export class Parser {
     return { kind: "TypeDecl", name, typeParams, using, where, body, loc, isExtern: isExtern || undefined, doc };
   }
 
-  private contextTypeDecl(): AST.TypeDecl {
+  private contextTypeDecl(isExtern = false, doc?: string): AST.TypeDecl {
     const loc = this.current().loc;
     this.expect("CONTEXT");
     const name = this.expectIdentifier();
     let body: AST.TypeBody;
     if (this.match("NEWLINE") && this.check("INDENT")) {
-      body = this.parseTypeBody(false);
+      body = this.parseTypeBody(isExtern);
     } else {
       body = { kind: "TypeBody", members: [], loc: this.current().loc };
     }
-    return { kind: "TypeDecl", name, body, loc, isContextType: true };
+    return { kind: "TypeDecl", name, body, loc, isContextType: true, isExtern: isExtern || undefined, doc };
   }
 
   private parseTypeParams(): AST.TypeParam[] {
@@ -1107,19 +1115,23 @@ export class Parser {
   private withStmt(): AST.WithStmt {
     const loc = this.current().loc;
     this.expect("WITH");
+    // First context must follow "with" on same line; newline+indent only allowed after comma
 
     const contexts: AST.WithContext[] = [];
 
     do {
+      // Allow newline+indent only after comma (e.g. with A(),\n  let b = B()), not after "with"
+      if (contexts.length > 0) this.skipBracketedWhitespace();
       // New syntax: with let name = expr OR with expr
       if (this.match("LET")) {
-        // with let name = expr
+        // with let name = expr (expr may be multiline)
         const name = this.expectIdentifier();
         this.expect("ASSIGN");
+        this.skipBracketedWhitespace();
         const expr = this.parseContextExpr();
         contexts.push({ expr, name });
       } else {
-        // with expr (anonymous)
+        // with expr (anonymous, may be multiline)
         const expr = this.parseContextExpr();
         contexts.push({ expr });
       }
@@ -1180,7 +1192,9 @@ export class Parser {
     const loc = callee.loc;
     const args: (AST.Expr | { name: string; value: AST.Expr })[] = [];
 
-    while (!this.check("RPAREN")) {
+    while (true) {
+      this.skipBracketedWhitespace();
+      if (this.check("RPAREN")) break;
       if (this.check("IDENTIFIER") && this.peekNext().type === "COLON") {
         const name = this.expectIdentifier();
         this.expect("COLON");
@@ -1189,6 +1203,7 @@ export class Parser {
       } else {
         args.push(this.expression());
       }
+      this.skipBracketedWhitespace();
       if (!this.check("RPAREN")) {
         this.expect("COMMA");
       }

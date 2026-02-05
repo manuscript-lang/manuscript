@@ -72,8 +72,7 @@ double(5)`);
   });
 
   test("function with capabilities", () => {
-    checkOk(`type MyFilesystem
-  Context
+    checkOk(`context MyFilesystem
   fn read(path: string): string
 fn read_file(path: string) using (fs: MyFilesystem)
   fs.read(path)`);

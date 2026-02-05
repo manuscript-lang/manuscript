@@ -4,7 +4,7 @@ import type { Type, FunctionType, ObjectType, ParameterType } from "../../types"
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import {
-  astTypeToType, resolveTypeName, isAssignable, extendsType,
+  astTypeToType, resolveTypeName, isAssignable,
   findCommonType, typeInvolvesPromise, substituteTypeParams, unifyTypes,
   substituteTypeInObject
 } from "../../type-utils";
@@ -119,13 +119,11 @@ function inferIdentifier(ctx: InferContext, expr: AST.Identifier): Type {
       if (typeRef.kind === "object" && typeRef.name) {
         const obj = typeRef as ObjectType;
         // Factory params in declaration order: embedded first, then own fields
-        // Exclude promoted props and Context (marker type)
+        // Exclude promoted props
         const ownProps = obj.properties.filter(p => !p.promotedFrom);
         const params: ParameterType[] = [];
         for (const p of ownProps) {
           if (p.embedded) {
-            // Skip Context - it's a marker type, not a real embedded value
-            if (p.name === "Context") continue;
             const embeddedType = ctx.env.lookupType(p.name);
             params.push(Types.param(p.name, embeddedType || Types.any, true));
           } else {
@@ -384,7 +382,7 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
   const returnType = substituteTypeParams(fnType.returnType, typeBindings);
 
   if (returnType.kind === "object" &&
-      extendsType(returnType, "Context", ctx.env) &&
+      (returnType as ObjectType).isContextType &&
       !ctx.insideWithContext) {
     error(ctx, `Context type '${returnType.name}' can only be instantiated in 'with' clauses`, expr.loc);
   }
@@ -393,13 +391,13 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
 }
 
 function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: any): Type {
-  if (extendsType(objType, "Context", ctx.env) && !ctx.insideWithContext) {
+  if (objType.isContextType && !ctx.insideWithContext) {
     error(ctx, `Context type '${objType.name}' can only be instantiated in 'with' clauses`, expr.loc);
   }
 
   const args = expr.args;
-  // Props in declaration order, excluding promoted and Context (marker type)
-  const ownProps = objType.properties.filter((p: any) => !p.promotedFrom && !(p.embedded && p.name === "Context"));
+  // Props in declaration order, excluding promoted
+  const ownProps = objType.properties.filter((p: any) => !p.promotedFrom);
   
   // Count required: non-embedded without optional/default
   const requiredCount = ownProps.filter((p: any) => !p.embedded && !p.optional && !p.defaultValue).length;

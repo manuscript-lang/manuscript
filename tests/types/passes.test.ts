@@ -290,17 +290,15 @@ describe("Type Utils - Pure Functions", () => {
     expect(TypeUtils.contextMatch(ctx, ctx)).toBe(true);
   });
 
-  test("extendsType and hasEmbeddedContext", () => {
+  test("extendsType Context and typeIsContext", () => {
     const env = createGlobalEnvironment();
-    const program = parse(`type Context
-  x: number
-type Foo
-  Context
+    const program = parse(`context Foo
   y: string`);
     const { env: populatedEnv } = collectDeclarations({ program, env });
     const fooType = populatedEnv.lookupType("Foo");
+    expect(fooType && TypeUtils.typeIsContext(fooType, populatedEnv)).toBe(true);
     expect(fooType && TypeUtils.extendsType(fooType, "Context", populatedEnv)).toBe(true);
-    expect(fooType && TypeUtils.hasEmbeddedContext(fooType, populatedEnv)).toBe(true);
+    expect(fooType && (fooType as import("../../src/types/types").ObjectType).isContextType).toBe(true);
   });
 
   test("isIterable for generic channel/list", () => {

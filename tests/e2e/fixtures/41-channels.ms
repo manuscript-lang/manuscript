@@ -208,8 +208,7 @@ channel_accumulator_demo()
 // ============================================
 
 // Reporter context with channel
-type ChannelReporter
-  Context
+context ChannelReporter
   ch: Channel[string]
   
   fn report(msg: string)
@@ -244,8 +243,7 @@ print(first_report)
 // CONTEXT WITH SPAWN AND CHANNELS (MODULE SCOPE)
 // ============================================
 
-type SafeCounter
-  Context
+context SafeCounter
   count: number = 0
   
   fn increment(): number
@@ -275,8 +273,7 @@ worker_ch.close()
 // EVENT BUS PATTERN WITH CONTEXT
 // ============================================
 
-type SimpleEventBus
-  Context
+context SimpleEventBus
   ch: Channel[string]
   
   fn publish(event: string)

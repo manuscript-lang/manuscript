@@ -413,4 +413,61 @@ describe("Parser - With Statements", () => {
       contexts: [{}, {}],
     });
   });
+
+  test("multiline with clause - call args on separate lines", () => {
+    const src = `with let l = Logger(
+  prefix: "APP",
+  level: 2
+)
+  l.log("start")`;
+    const result = stmt(src);
+    expect(result).toMatchObject({
+      kind: "WithStmt",
+      contexts: [{
+        name: "l",
+        expr: {
+          kind: "CallExpr",
+          callee: { kind: "Identifier", name: "Logger" },
+          args: [
+            { name: "prefix", value: { kind: "Literal", value: "APP" } },
+            { name: "level", value: { kind: "Literal", value: 2 } },
+          ],
+        },
+      }],
+    });
+  });
+
+  test("with does not allow newline before first context", () => {
+    expectParseError(`with
+  let t = Trace("op")
+    t.event("start")`);
+  });
+
+  test("multiple context objects in one with", () => {
+    const src = `with let a = A(), let b = B(), let c = C()
+  run()`;
+    const result = stmt(src);
+    expect(result).toMatchObject({
+      kind: "WithStmt",
+      contexts: [
+        { name: "a", expr: { kind: "CallExpr", callee: { kind: "Identifier", name: "A" } } },
+        { name: "b", expr: { kind: "CallExpr", callee: { kind: "Identifier", name: "B" } } },
+        { name: "c", expr: { kind: "CallExpr", callee: { kind: "Identifier", name: "C" } } },
+      ],
+    });
+  });
+
+  test("multiline with - multiple contexts with newline between", () => {
+    const src = `with Logger("A"),
+  let c = Config("prod")
+    run()`;
+    const result = stmt(src);
+    expect(result).toMatchObject({
+      kind: "WithStmt",
+      contexts: [
+        { expr: { kind: "CallExpr", callee: { kind: "Identifier", name: "Logger" } } },
+        { name: "c", expr: { kind: "CallExpr", callee: { kind: "Identifier", name: "Config" } } },
+      ],
+    });
+  });
 });

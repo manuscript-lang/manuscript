@@ -13,8 +13,7 @@ const parse = (src: string) => new Parser(src).parse();
 
 describe("Context Analysis - analyzeContext", () => {
   test("with block and let binding capturing context var (alias path)", () => {
-    const program = parse(`type Logger
-  Context
+    const program = parse(`context Logger
   prefix: string
 fn greet(): string using (logger: Logger)
   with let l = Logger(prefix: "x")
@@ -28,8 +27,7 @@ fn greet(): string using (logger: Logger)
   });
 
   test("with block and var capturing context", () => {
-    const program = parse(`type C
-  Context
+    const program = parse(`context C
   x: number
 fn f(): number using (c: C)
   with let c = C(1)
@@ -42,8 +40,7 @@ fn f(): number using (c: C)
   });
 
   test("if stmt branches analyzed", () => {
-    const program = parse(`type C
-  Context
+    const program = parse(`context C
   x: number
 fn f(): number using (c: C)
   with let c = C(1)
@@ -58,8 +55,7 @@ fn f(): number using (c: C)
   });
 
   test("for stmt body analyzed", () => {
-    const program = parse(`type C
-  Context
+    const program = parse(`context C
   x: number
 fn f(): number using (c: C)
   with let c = C(1)
@@ -72,8 +68,7 @@ fn f(): number using (c: C)
   });
 
   test("try/catch blocks analyzed", () => {
-    const program = parse(`type C
-  Context
+    const program = parse(`context C
   x: number
 fn f(): number using (c: C)
   with let c = C(1)
@@ -238,8 +233,7 @@ fn outer(x: number): number
 
 describe("Context Analysis - fnNeedsContext and exprNeedsContext", () => {
   test("lambda calling using function triggers fnNeedsContext", () => {
-    const program = parse(`type Logger
-  Context
+    const program = parse(`context Logger
   prefix: string
 fn greet(): string using (logger: Logger)
   "hi"
