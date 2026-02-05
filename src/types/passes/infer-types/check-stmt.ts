@@ -105,6 +105,10 @@ function checkLetStmt(ctx: InferContext, stmt: AST.LetStmt): void {
 
     if (containsSpawn && !isConsumerResult) {
       ctx.unawaitedSpawns.set(stmt.pattern.name, stmt.loc);
+      if (stmt.value.kind === "SpawnExpr" && ctx.lastSpawnInWithWasContextDependent && ctx.contextDependentSpawnsInWith) {
+        ctx.contextDependentSpawnsInWith.add(stmt.pattern.name);
+      }
+      ctx.lastSpawnInWithWasContextDependent = false;
       transferSpawnTracking(ctx, stmt.value);
     }
   }
@@ -536,8 +540,11 @@ function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
   ctx.withBlockDepth++;
   ctx.insideWithContext = true;
 
+  let savedContextDependent: Set<string> | null = null;
   if (isFunctionLevel) {
     ctx.functionWithDepth++;
+    savedContextDependent = ctx.contextDependentSpawnsInWith;
+    ctx.contextDependentSpawnsInWith = new Set();
   }
 
   checkBlock(ctx, stmt.body);
@@ -551,9 +558,18 @@ function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
         `Context is cleaned up when 'with' block exits, but the returned closure needs it to execute`
       );
     }
-  }
-
-  if (isFunctionLevel) {
+    for (const name of ctx.contextDependentSpawnsInWith!) {
+      const loc = ctx.unawaitedSpawns.get(name);
+      if (loc) {
+        error(ctx,
+          `Cannot use 'spawn' inside function-level 'with' block - spawned task may outlive context scope`,
+          loc,
+          `Add e.g. \`let _ = race([${name}])\` or \`all_settled([${name}])\` before the block ends, or spawn a task that does not use the context`
+        );
+        ctx.unawaitedSpawns.delete(name);
+      }
+    }
+    ctx.contextDependentSpawnsInWith = savedContextDependent;
     ctx.functionWithDepth--;
   }
 

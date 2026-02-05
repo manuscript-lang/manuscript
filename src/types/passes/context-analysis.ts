@@ -167,7 +167,7 @@ function stmtNeedsContext(stmt: AST.Statement, env: TypeEnvironment, fnDecls: Ma
   }
 }
 
-function exprNeedsContext(expr: AST.Expr, env: TypeEnvironment, fnDecls: Map<string, AST.FnDecl>, cache: Map<string, boolean>): boolean {
+export function exprNeedsContext(expr: AST.Expr, env: TypeEnvironment, fnDecls: Map<string, AST.FnDecl>, cache: Map<string, boolean>): boolean {
   switch (expr.kind) {
     case "CallExpr":
       if (expr.callee.kind === "Identifier" && fnNeedsContext(expr.callee.name, env, fnDecls, cache)) return true;

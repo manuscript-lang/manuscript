@@ -20,7 +20,9 @@ export interface InferContext {
   
   // Spawn tracking
   unawaitedSpawns: Map<string, AST.SourceLocation>;
-  
+  lastSpawnInWithWasContextDependent: boolean;
+  contextDependentSpawnsInWith: Set<string> | null;
+
   // Context/with tracking for escape analysis
   functionWithDepth: number;
   withContextVars: Set<string>;
@@ -45,6 +47,8 @@ export function createInferContext(
     inLoop: false,
     currentTypeName: null,
     unawaitedSpawns: new Map(),
+    lastSpawnInWithWasContextDependent: false,
+    contextDependentSpawnsInWith: null,
     functionWithDepth: 0,
     withContextVars: new Set(),
     withBlockDepth: 0,

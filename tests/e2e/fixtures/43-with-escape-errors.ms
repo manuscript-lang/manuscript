@@ -18,21 +18,33 @@ fn helper(): string using (logger: Logger)
 fn async_work(): number
   42
 
-
-// === Error 1: Returning closure that captures context ===
+// Error 1: returning closure that captures with context (closure escapes)
 fn escaping_closure(): fn (): string
   with let l = Logger(prefix: "ESCAPE")
-    // ERROR: This closure captures the context and escapes the with block
     return () => greet("escaped")
 
-// === Error 2: Spawn inside function-level with ===
+// Allowed: spawn async_work() does not capture or use with context
 fn spawn_in_with(): number
   with let l = Logger(prefix: "SPAWN")
-    // ERROR: Spawn would escape the with block's lifetime
     let handle = spawn async_work()
-    // The with block ends here but the spawn might still be running
+    let _ = race([handle])
     42
 
-// Call to trigger the errors
+// Allowed: spawn greet("x") consumed with race() before block ends
+fn spawn_context_dependent(): number
+  with let l = Logger(prefix: "SPAWN")
+    let handle = spawn greet("x")
+    let _ = race([handle])
+    42
+
+// Error 2: spawn greet("x") not consumed before with block ends
+fn spawn_context_escapes(): number
+  with let l = Logger(prefix: "SPAWN")
+    let handle = spawn greet("x")
+    42
+
+// Trigger type-check (both errors reported)
 let f = escaping_closure()
 let n = spawn_in_with()
+let _ = spawn_context_dependent()
+let _ = spawn_context_escapes()

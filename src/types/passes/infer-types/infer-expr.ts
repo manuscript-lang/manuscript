@@ -12,6 +12,7 @@ import { constructGenericType } from "../../primitives";
 import type { InferContext } from "./context";
 import { error, warning, recordType } from "./context";
 import { checkPattern } from "./check-pattern";
+import { exprContainsEscapingLambda, exprNeedsContext } from "../context-analysis";
 
 // Forward declaration for checkBlock (will be provided by check-stmt)
 export let checkBlockFn: (ctx: InferContext, block: AST.Block) => void;
@@ -828,12 +829,12 @@ function inferMapExpr(ctx: InferContext, expr: AST.MapExpr): Type {
 }
 
 function inferSpawnExpr(ctx: InferContext, expr: AST.SpawnExpr): Type {
+  ctx.lastSpawnInWithWasContextDependent = false;
   if (ctx.functionWithDepth > 0) {
-    error(ctx,
-      `Cannot use 'spawn' inside function-level 'with' block - spawned task may outlive context scope`,
-      expr.loc,
-      `Move spawn outside the 'with' block or use top-level 'with' instead`
-    );
+    const capturesContext =
+      exprContainsEscapingLambda(expr.expr, ctx.withContextVars, ctx.env, ctx.fnDecls, ctx.needsContextCache) ||
+      exprNeedsContext(expr.expr, ctx.env, ctx.fnDecls, ctx.needsContextCache);
+    if (capturesContext) ctx.lastSpawnInWithWasContextDependent = true;
   }
 
   const innerType = inferExpr(ctx, expr.expr);
@@ -861,6 +862,7 @@ export function consumeSpawnsInExpr(ctx: InferContext, expr: AST.Expr): void {
   switch (expr.kind) {
     case "Identifier":
       ctx.unawaitedSpawns.delete(expr.name);
+      ctx.contextDependentSpawnsInWith?.delete(expr.name);
       break;
     case "ListExpr":
       for (const el of expr.elements) {
