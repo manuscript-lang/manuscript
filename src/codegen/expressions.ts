@@ -292,21 +292,24 @@ export function genList(ctx: Ctx, node: AST.ListExpr, opts: GenOpts): string {
 }
 
 export function genMap(ctx: Ctx, node: AST.MapExpr, opts: GenOpts): string {
-  if (node.entries.length === 0) return "{}";
+  if (node.entries.length === 0) return "Object.create(null)";
 
-  const entries = node.entries.map(entry => {
+  const literalParts: string[] = [];
+  const spreadExprs: string[] = [];
+  for (const entry of node.entries) {
     if (entry.spread) {
-      return `...${genExpr(ctx, entry.key, opts)}`;
+      spreadExprs.push(genExpr(ctx, entry.key, opts));
+    } else {
+      const key = entry.key.kind === "Identifier"
+        ? entry.key.name
+        : `[${genExpr(ctx, entry.key, opts)}]`;
+      const value = genExpr(ctx, entry.value, opts);
+      literalParts.push(`${key}: ${value}`);
     }
-
-    const key = entry.key.kind === "Identifier"
-      ? entry.key.name
-      : `[${genExpr(ctx, entry.key, opts)}]`;
-    const value = genExpr(ctx, entry.value, opts);
-    return `${key}: ${value}`;
-  });
-
-  return `{ ${entries.join(", ")} }`;
+  }
+  const sources = [...spreadExprs];
+  if (literalParts.length > 0) sources.push(`{ ${literalParts.join(", ")} }`);
+  return sources.length === 0 ? "Object.create(null)" : `Object.assign(Object.create(null), ${sources.join(", ")})`;
 }
 
 export function genTemplate(ctx: Ctx, node: AST.TemplateLiteral, opts: GenOpts): string {
