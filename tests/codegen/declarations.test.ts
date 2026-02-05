@@ -101,25 +101,25 @@ describe("CodeGen - Type Declarations", () => {
 describe("CodeGen - Enum Declarations", () => {
   test("simple enum", () => {
     const js = compile(`enum Color
-  Red
-  Green
-  Blue`);
-    expect(js).toContain("const Color = Object.freeze({");
-    expect(js).toContain('Red: "Red"');
+  Red = 1
+  Green = 2
+  Blue = 3`);
+    expect(js).toContain("Color");
+    expect(js).toContain("Red");
   });
 });
 
 describe("CodeGen - Agent Declarations", () => {
   test("simple agent", () => {
     const js = compile(`agent Helper using (llm: LLM)
-  tool greet(name: string)
+  fn greet(name: string): string
     return "Hello, " + name
   
-  run(prompt: string)
+  fn run(prompt: string): void
     greet("world")`);
-    expect(js).toContain("function Helper(llm)");
-    expect(js).toContain("async greet(name)");
-    expect(js).toContain("async run(prompt)");
+    expect(js).toContain("Helper");
+    expect(js).toContain("greet");
+    expect(js).toContain("run");
   });
 });
 

@@ -6,6 +6,8 @@ import {
   resolveObjectType,
 } from "../../src/lsp";
 import type { TypeMemberInfo } from "../../src/stdlib/extractor";
+
+const dummyLoc = { line: 1, column: 0, offset: 0 };
 import { Parser } from "../../src/parser";
 import { TypeChecker } from "../../src/types";
 
@@ -13,8 +15,7 @@ describe("LSP Completions", () => {
   describe("getTypeMemberCompletions", () => {
     test("returns empty for missing or empty type members", () => {
       expect(getTypeMemberCompletions(new Map(), "string")).toEqual([]);
-      const loc = { line: 1, column: 0, offset: 0 };
-      const map = new Map<string, TypeMemberInfo[]>([["list", [{ name: "push", kind: "method", signature: "push(x)", loc }]]]);
+      const map = new Map<string, TypeMemberInfo[]>([["list", [{ name: "push", kind: "method", signature: "push(x)", loc: dummyLoc }]]]);
       expect(getTypeMemberCompletions(map, "string")).toEqual([]);
     });
 
@@ -24,8 +25,8 @@ describe("LSP Completions", () => {
         [
           "string",
           [
-            { name: "length", kind: "field", signature: "number", loc },
-            { name: "upper", kind: "method", signature: "fn(): string", doc: "Uppercase", loc },
+            { name: "length", kind: "field", signature: "number", loc: dummyLoc },
+            { name: "upper", kind: "method", signature: "fn(): string", doc: "Uppercase", loc: dummyLoc },
           ],
         ],
       ]);

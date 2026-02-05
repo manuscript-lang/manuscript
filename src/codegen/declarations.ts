@@ -203,7 +203,7 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
   }
 }
 
-// Generate enum declaration
+// Generate enum declaration (old EnumDecl AST node)
 export function genEnum(ctx: Ctx, decl: AST.EnumDecl, opts: GenOpts): void {
   emit(ctx, `const ${decl.name} = Object.freeze({`);
   pushIndent(ctx);
@@ -217,6 +217,30 @@ export function genEnum(ctx: Ctx, decl: AST.EnumDecl, opts: GenOpts): void {
       emit(ctx, `${variant.name}: ${genExpr(ctx, variant.value, opts)}${comma}`);
     } else {
       emit(ctx, `${variant.name}: "${variant.name}"${comma}`);
+    }
+  }
+
+  popIndent(ctx);
+  emit(ctx, "});");
+  emit(ctx, "");
+}
+
+// Generate enum from keyword type use (enum Color with Red = 1, etc.)
+function genEnumKeywordUse(ctx: Ctx, use: AST.KeywordTypeUse, opts: GenOpts): void {
+  const fields = use.body.members.filter(m => m.kind === "FieldDecl") as AST.FieldDecl[];
+  
+  emit(ctx, `const ${use.name} = Object.freeze({`);
+  pushIndent(ctx);
+
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i];
+    if (!field) continue;
+    const comma = i < fields.length - 1 ? "," : "";
+
+    if (field.defaultValue) {
+      emit(ctx, `${field.name}: ${genExpr(ctx, field.defaultValue, opts)}${comma}`);
+    } else {
+      emit(ctx, `${field.name}: "${field.name}"${comma}`);
     }
   }
 
@@ -320,4 +344,131 @@ export function genTest(ctx: Ctx, decl: AST.TestDecl, opts: GenOpts): void {
   popIndent(ctx);
   emit(ctx, "});");
   emit(ctx, "");
+}
+
+// Generate keyword type use (similar to type declaration)
+// Combines keyword's fields/methods with user's fields/methods
+export function genKeywordTypeUse(ctx: Ctx, use: AST.KeywordTypeUse, opts: GenOpts): void {
+  // Special case: enum generates Object.freeze with variants
+  if (use.keyword === "enum") {
+    genEnumKeywordUse(ctx, use, opts);
+    return;
+  }
+
+  const fields: AST.FieldDecl[] = [];
+  const methods: AST.MethodDecl[] = [];
+  const userFieldNames = new Set<string>();
+  const userMethodNames = new Set<string>();
+
+  // Collect from user's body
+  for (const member of use.body.members) {
+    if (member.kind === "FieldDecl") {
+      fields.push(member);
+      userFieldNames.add(member.name);
+    } else if (member.kind === "MethodDecl") {
+      methods.push(member);
+      userMethodNames.add(member.name);
+    }
+  }
+
+  // Get keyword declaration to merge its methods
+  const keywordDecl = ctx.keywordDecls.get(use.keyword);
+  if (keywordDecl?.body) {
+    // Add keyword's methods (user cannot override - enforced by semantic phase)
+    for (const member of keywordDecl.body.members) {
+      if (member.kind === "MethodDecl" && !userMethodNames.has(member.name)) {
+        methods.push(member);
+      }
+    }
+    // Add keyword's fields that aren't provided by user (for type info)
+    for (const member of keywordDecl.body.members) {
+      if (member.kind === "KeywordField" && !userFieldNames.has(member.name)) {
+        // KeywordField -> FieldDecl conversion
+        fields.push({
+          kind: "FieldDecl",
+          name: member.name,
+          type: member.type,
+          optional: member.optional,
+          defaultValue: member.defaultValue,
+          computed: member.computed,
+          loc: member.loc,
+          doc: member.doc,
+        });
+      }
+    }
+  }
+
+  // Track fields for embedding
+  const classFields = new Set(fields.map(f => f.name));
+  for (const method of methods) {
+    classFields.add(method.name);
+  }
+  ctx.typeFields.set(use.name, classFields);
+  
+  const methodOpts = { ...opts, classFields };
+
+  // Generate shared methods object
+  if (methods.length > 0) {
+    emit(ctx, `const ${use.name}$methods = Object.assign(Object.create(null), {`);
+    pushIndent(ctx);
+    for (const method of methods) {
+      const prefix = method.isGenerator ? "*" : "async ";
+      const params = genParams(ctx, method.params, methodOpts);
+      emit(ctx, `${prefix}${method.name}(${params}) {`);
+      pushIndent(ctx);
+      if (method.body) {
+        genBlock(ctx, method.body, { ...methodOpts, implicitReturn: true });
+      }
+      popIndent(ctx);
+      emit(ctx, `},`);
+    }
+    popIndent(ctx);
+    emit(ctx, `});`);
+    emit(ctx, "");
+  }
+
+  // Generate factory function
+  if (fields.length > 0) {
+    const allParams = fields.map(f => {
+      if (f.optional || f.defaultValue || f.computed) {
+        if (f.defaultValue) return `${f.name} = ${genExpr(ctx, f.defaultValue, opts)}`;
+        return `${f.name} = undefined`;
+      }
+      return f.name;
+    }).join(", ");
+
+    emit(ctx, `function ${use.name}(${allParams}) {`);
+    pushIndent(ctx);
+    
+    if (methods.length > 0) {
+      emit(ctx, `const self = Object.create(${use.name}$methods);`);
+    } else {
+      emit(ctx, `const self = Object.create(null);`);
+    }
+    emit(ctx, `self.__typename = "${use.name}";`);
+    
+    for (const field of fields) {
+      if (field.computed && field.defaultValue) {
+        emit(ctx, `Object.defineProperty(self, "${field.name}", { get() { return ${genExpr(ctx, field.defaultValue, { ...opts, selfVar: "self" })}; } });`);
+      } else {
+        emit(ctx, `self.${field.name} = ${field.name};`);
+      }
+    }
+    
+    emit(ctx, `return self;`);
+    popIndent(ctx);
+    emit(ctx, "}");
+    emit(ctx, "");
+  } else {
+    emit(ctx, `function ${use.name}() {`);
+    pushIndent(ctx);
+    if (methods.length > 0) {
+      emit(ctx, `return Object.create(${use.name}$methods);`);
+    } else {
+      emit(ctx, `return Object.create(null);`);
+    }
+    popIndent(ctx);
+    emit(ctx, "}");
+    emit(ctx, "");
+  }
 }
