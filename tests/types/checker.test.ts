@@ -336,12 +336,12 @@ describe("Type Checker - Test Declarations", () => {
 });
 
 describe("Type Checker - Warnings", () => {
-  test("collects warnings", () => {
+  test("calling using function without context fails at call site", () => {
     const result = check(`fn needs_fs() using (fs: Filesystem)
   fs.read("file.txt")
 needs_fs()`);
-    // Should have a warning about capability
-    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some(e => e.message.includes("No context of type"))).toBe(true);
   });
 });
 

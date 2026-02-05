@@ -24,6 +24,7 @@ export interface InferContext {
   // Context/with tracking for escape analysis
   functionWithDepth: number;
   withContextVars: Set<string>;
+  withBlockDepth: number;
   insideWithContext: boolean;
   
   // Context requirement cache
@@ -46,6 +47,7 @@ export function createInferContext(
     unawaitedSpawns: new Map(),
     functionWithDepth: 0,
     withContextVars: new Set(),
+    withBlockDepth: 0,
     insideWithContext: false,
     needsContextCache: new Map(),
   };

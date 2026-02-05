@@ -376,12 +376,9 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
     }
   }
 
-  // Check if required context types are available
-  // Note: This is a heuristic check - full context type checking would require tracking
-  // available context types, not just variable names. Keep as warning for now.
   for (const binding of fnType.context) {
     if (binding.name && !ctx.env.isDefined(binding.name) && !ctx.insideWithContext) {
-      warning(ctx, `Function requires '${binding.name}' in context which may not be available`);
+      error(ctx, `No context of type '${typeToString(binding.type)}' available`, expr.loc);
     }
   }
 
