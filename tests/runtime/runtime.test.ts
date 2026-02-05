@@ -104,9 +104,13 @@ describe("Runtime - Compiled Stdlib Functions", () => {
 
   test("result helpers", async () => {
     const success = await rt.ok(42);
-    expect(success).toEqual({ ok: true, value: 42 });
+    expect(success.__typename).toBe("Result");
+    expect(success.ok).toBe(true);
+    expect(success.value).toBe(42);
     const failure = await rt.err("failed");
-    expect(failure).toEqual({ ok: false, error: "failed" });
+    expect(failure.__typename).toBe("Result");
+    expect(failure.ok).toBe(false);
+    expect(failure.error).toBe("failed");
   });
 
   test("equality", async () => {
