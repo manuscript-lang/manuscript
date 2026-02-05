@@ -96,8 +96,7 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     if (EXTERN_TYPES.has(baseName)) {
       return `new __ms_runtime.${baseName}(${args})`;
     }
-    // User-defined generic types - factory functions, no 'new'
-    if (isTypeConstructor(node.callee.object)) {
+    if (isTypeConstructor(node.callee.object) || ctx.typeFields.has(baseName)) {
       return `${baseName}(${args})`;
     }
   }
@@ -123,8 +122,11 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
   const paramOrder = getParamOrder(node.callee);
   const args = genCallArgs(ctx, node.args, opts, paramOrder);
 
-  // User-defined types use factory functions (no 'new')
+  // User-defined types use sync factory functions (no 'new', no await)
   if (isTypeConstructor(node.callee)) {
+    return `${callee}(${args})`;
+  }
+  if (node.callee.kind === "Identifier" && ctx.typeFields.has(node.callee.name)) {
     return `${callee}(${args})`;
   }
 
