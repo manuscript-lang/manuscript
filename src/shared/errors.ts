@@ -1,6 +1,24 @@
 // Shared Error Utilities for LLM-friendly error messages
 // All errors should provide: what's wrong, where, and hints for fixing
 
+// Reserved JS property names that cannot be used as field names or map keys
+// These exist on Object.prototype and would cause prototype pollution issues
+export const RESERVED_PROPERTY_NAMES = new Set([
+  'constructor',
+  '__defineGetter__',
+  '__defineSetter__',
+  'hasOwnProperty',
+  '__lookupGetter__',
+  '__lookupSetter__',
+  'isPrototypeOf',
+  'propertyIsEnumerable',
+  'toString',
+  'valueOf',
+  '__proto__',
+  'toLocaleString',
+  'prototype',
+]);
+
 export interface SourceLocation {
   line: number;
   column: number;
@@ -236,6 +254,26 @@ export const TypeErrors = {
   nonIterableForLoop: (type: string) => ({
     message: `Cannot iterate over type '${type}'`,
     hint: `For loops require an iterable type (list, set, map, string, stream, or channel)`,
+  }),
+  memberAccessOnFunction: () => ({
+    message: `Cannot access properties on function values`,
+    hint: `Functions do not have accessible properties. Call the function or use a different approach`,
+  }),
+  memberAccessOnType: (typeName: string) => ({
+    message: `Cannot access properties on type '${typeName}' directly`,
+    hint: `Use Type() constructor to create an instance, then access properties on the instance`,
+  }),
+  reservedPropertyName: (name: string) => ({
+    message: `Property name '${name}' is reserved and cannot be used`,
+    hint: `This name conflicts with JavaScript Object prototype methods. Choose a different name`,
+  }),
+  indexAccessOnInvalidType: (type: string) => ({
+    message: `Index access is not allowed on type '${type}'`,
+    hint: `Index access [] is only allowed on list, map, and string types`,
+  }),
+  genericParamMustBeIdentifier: () => ({
+    message: `Generic type parameter must be an identifier`,
+    hint: `Use a simple type name like T, K, V, etc.`,
   }),
 };
 

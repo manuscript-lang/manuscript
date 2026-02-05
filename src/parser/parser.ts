@@ -1,7 +1,7 @@
 import { Lexer, KEYWORDS } from "../lexer";
 import type { Token, TokenType } from "../lexer";
 
-const KEYWORD_TOKEN_TYPES = new Set(Object.values(KEYWORDS));
+const KEYWORD_TOKEN_TYPES = new Set(KEYWORDS.values());
 import * as AST from "./ast";
 import { ParserErrors } from "../shared/errors";
 
@@ -60,6 +60,7 @@ export class Parser {
     this.prefix("IDENTIFIER", () => this.identifier());
     this.prefix("LPAREN", () => this.groupOrLambda());
     this.prefix("LBRACKET", () => this.listExpr());
+    this.prefix("LT", () => this.setExpr());
     this.prefix("LBRACE", () => this.mapExpr());
     this.prefix("MINUS", () => this.unary());
     this.prefix("NOT", () => this.unary());
@@ -89,9 +90,15 @@ export class Parser {
     this.infix("PIPE", Precedence.PIPE, (l) => this.pipeExpr(l));
     this.infix("DOTDOT", Precedence.RANGE, (l) => this.rangeExpr(l));
     this.infix("LPAREN", Precedence.CALL, (l) => this.callExpr(l));
-    this.infix("LBRACKET", Precedence.CALL, (l) => this.indexExpr(l));
+    this.infix("LBRACKET", Precedence.CALL, (l) => this.indexExpr(l, false));
     this.infix("DOT", Precedence.CALL, (l) => this.memberExpr(l, false));
-    this.infix("OPTIONAL", Precedence.CALL, (l) => this.memberExpr(l, true));
+    this.infix("OPTIONAL", Precedence.CALL, (l) => {
+      if (this.check("LBRACKET")) {
+        this.advance();
+        return this.indexExpr(l, true);
+      }
+      return this.memberExpr(l, true);
+    });
     this.infix("BANG", Precedence.CALL, (l) => this.nullAssertion(l));
   }
 
@@ -115,6 +122,8 @@ export class Parser {
     while (!this.isAtEnd()) {
       body.push(this.declaration());
       this.skipNewlines();
+      // After a multiline with, we may have extra DEDENTs (continuation indent closing)
+      while (this.match("DEDENT")) {}
     }
 
     return {
@@ -147,11 +156,17 @@ export class Parser {
       case "FN":
         return this.fnDecl();
       case "EXTERN":
-        // Check if extern type or extern fn
-        if (this.peekNext().type === "TYPE") {
+        // Check if extern type, extern context, or extern fn
+        const next = this.peekNext().type;
+        if (next === "TYPE") {
           const externDoc = this.current().leadingComment;
           this.advance(); // consume EXTERN
           return this.typeDecl(true, externDoc);
+        }
+        if (next === "CONTEXT") {
+          const externDoc = this.current().leadingComment;
+          this.advance(); // consume EXTERN
+          return this.contextTypeDecl(true, externDoc);
         }
         return this.externFnDecl();
       case "TYPE":
@@ -524,17 +539,17 @@ export class Parser {
     return { kind: "TypeDecl", name, typeParams, using, where, body, loc, isExtern: isExtern || undefined, doc };
   }
 
-  private contextTypeDecl(): AST.TypeDecl {
+  private contextTypeDecl(isExtern = false, doc?: string): AST.TypeDecl {
     const loc = this.current().loc;
     this.expect("CONTEXT");
     const name = this.expectIdentifier();
     let body: AST.TypeBody;
     if (this.match("NEWLINE") && this.check("INDENT")) {
-      body = this.parseTypeBody(false);
+      body = this.parseTypeBody(isExtern);
     } else {
       body = { kind: "TypeBody", members: [], loc: this.current().loc };
     }
-    return { kind: "TypeDecl", name, body, loc, isContextType: true };
+    return { kind: "TypeDecl", name, body, loc, isContextType: true, isExtern: isExtern || undefined, doc };
   }
 
   private parseTypeParams(): AST.TypeParam[] {
@@ -1296,19 +1311,23 @@ export class Parser {
   private withStmt(): AST.WithStmt {
     const loc = this.current().loc;
     this.expect("WITH");
+    // First context must follow "with" on same line; newline+indent only allowed after comma
 
     const contexts: AST.WithContext[] = [];
 
     do {
+      // Allow newline+indent only after comma (e.g. with A(),\n  let b = B()), not after "with"
+      if (contexts.length > 0) this.skipBracketedWhitespace();
       // New syntax: with let name = expr OR with expr
       if (this.match("LET")) {
-        // with let name = expr
+        // with let name = expr (expr may be multiline)
         const name = this.expectIdentifier();
         this.expect("ASSIGN");
+        this.skipBracketedWhitespace();
         const expr = this.parseContextExpr();
         contexts.push({ expr, name });
       } else {
-        // with expr (anonymous)
+        // with expr (anonymous, may be multiline)
         const expr = this.parseContextExpr();
         contexts.push({ expr });
       }
@@ -1369,7 +1388,9 @@ export class Parser {
     const loc = callee.loc;
     const args: (AST.Expr | { name: string; value: AST.Expr })[] = [];
 
-    while (!this.check("RPAREN")) {
+    while (true) {
+      this.skipBracketedWhitespace();
+      if (this.check("RPAREN")) break;
       if (this.check("IDENTIFIER") && this.peekNext().type === "COLON") {
         const name = this.expectIdentifier();
         this.expect("COLON");
@@ -1378,6 +1399,7 @@ export class Parser {
       } else {
         args.push(this.expression());
       }
+      this.skipBracketedWhitespace();
       if (!this.check("RPAREN")) {
         this.expect("COMMA");
       }
@@ -1724,6 +1746,24 @@ export class Parser {
     return { kind: "ListExpr", elements, loc };
   }
 
+  private setExpr(): AST.SetExpr {
+    const loc = this.previous().loc;
+    const elements: AST.Expr[] = [];
+    this.skipBracketedWhitespace();
+    if (this.check("GT")) {
+      this.advance();
+      return { kind: "SetExpr", elements, loc };
+    }
+    while (!this.check("GT")) {
+      elements.push(this.expression(Precedence.COMPARISON));
+      this.skipBracketedWhitespace();
+      if (!this.check("GT")) this.expect("COMMA");
+      this.skipBracketedWhitespace();
+    }
+    this.expect("GT");
+    return { kind: "SetExpr", elements, loc };
+  }
+
   private mapExpr(): AST.MapExpr {
     const loc = this.previous().loc;
     const entries: AST.MapEntry[] = [];
@@ -1801,18 +1841,18 @@ export class Parser {
     return { kind: "CallExpr", callee, args, loc };
   }
 
-  private indexExpr(object: AST.Expr): AST.IndexExpr {
+  private indexExpr(object: AST.Expr, optional: boolean): AST.IndexExpr {
     const loc = this.previous().loc;
 
     // Check for slice: [start:end] or [start:end:step]
     if (this.check("COLON")) {
-      return this.sliceExpr(object, undefined, loc);
+      return this.sliceExpr(object, undefined, loc, optional);
     }
 
     const index = this.expression();
 
     if (this.check("COLON")) {
-      return this.sliceExpr(object, index, loc);
+      return this.sliceExpr(object, index, loc, optional);
     }
 
     // Check for additional type args: Type[A, B, C]
@@ -1824,12 +1864,12 @@ export class Parser {
     this.expect("RBRACKET");
     
     if (typeArgs.length > 0) {
-      return { kind: "IndexExpr", object, index, typeArgs, loc };
+      return { kind: "IndexExpr", object, index, optional, typeArgs, loc };
     }
-    return { kind: "IndexExpr", object, index, loc };
+    return { kind: "IndexExpr", object, index, optional, loc };
   }
 
-  private sliceExpr(object: AST.Expr, start: AST.Expr | undefined, loc: AST.SourceLocation): AST.IndexExpr {
+  private sliceExpr(object: AST.Expr, start: AST.Expr | undefined, loc: AST.SourceLocation, optional: boolean): AST.IndexExpr {
     this.expect("COLON");
     let end: AST.Expr | undefined;
     let step: AST.Expr | undefined;
@@ -1851,6 +1891,7 @@ export class Parser {
       kind: "IndexExpr",
       object,
       index: dummyIndex,
+      optional,
       slice: { start, end, step },
       loc,
     };

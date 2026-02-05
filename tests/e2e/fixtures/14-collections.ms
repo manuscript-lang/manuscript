@@ -73,7 +73,11 @@ print(keys(person))
 print(values(person))
 
 // === Nested structures ===
-let users = [{name: "Alice", scores: [90, 85, 92]}, {name: "Bob", scores: [78, 82, 88]}]
+type User
+  name: string
+  scores: list[number]
+
+let users: list[User] = [User("Alice", [90, 85, 92]), User("Bob", [78, 82, 88])]
 // @expect: Alice
 print(users[0].name)
 // @expect: 85

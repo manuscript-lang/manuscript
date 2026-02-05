@@ -6,7 +6,6 @@ import { SymbolTable, type SymbolId, type SymbolDef } from "./symbols";
 
 interface BuildContext {
   symbols: SymbolTable;
-  types: Map<AST.ASTNode, Type>;
   env: TypeEnvironment;
   program: AST.Program;
   currentScope: string;
@@ -14,13 +13,11 @@ interface BuildContext {
 
 export function buildSymbolTable(
   program: AST.Program,
-  types: Map<AST.ASTNode, Type>,
   env: TypeEnvironment
 ): SymbolTable {
   const symbols = new SymbolTable();
   const ctx: BuildContext = {
     symbols,
-    types,
     env,
     program,
     currentScope: "",
@@ -269,7 +266,7 @@ function collectExprReferences(ctx: BuildContext, expr: AST.Expr): void {
     case "MemberExpr": {
       collectExprReferences(ctx, expr.object);
       // Resolve member based on object type (recursively handles chains like user.p.say_hello)
-      const objType = ctx.types.get(expr.object);
+      const objType = expr.object.resolvedType;
       let typeName = objType ? getTypeName(ctx.env, objType) : null;
       
       // Fallback: if type is "any", try to infer from the object expression recursively
@@ -340,6 +337,9 @@ function collectExprReferences(ctx: BuildContext, expr: AST.Expr): void {
           collectExprReferences(ctx, el);
         }
       }
+      break;
+    case "SetExpr":
+      for (const el of expr.elements) collectExprReferences(ctx, el);
       break;
     case "MapExpr":
       for (const entry of expr.entries) {

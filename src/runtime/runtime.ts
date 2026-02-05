@@ -157,6 +157,22 @@ function template(_name: string, parts: any[]): string {
   return parts.map(p => String(p)).join("");
 }
 
+function setFromList<T>(list: T[]): Set<T> {
+  return new Set(list);
+}
+function setUnion<T>(a: Set<T>, b: Set<T>): Set<T> {
+  return new Set([...a, ...b]);
+}
+function setIntersect<T>(a: Set<T>, b: Set<T>): Set<T> {
+  return new Set([...a].filter(x => b.has(x)));
+}
+function setDifference<T>(a: Set<T>, b: Set<T>): Set<T> {
+  return new Set([...a].filter(x => !b.has(x)));
+}
+function setIsSubset<T>(a: Set<T>, b: Set<T>): boolean {
+  return [...a].every(x => b.has(x));
+}
+
 // ============================================
 // Runtime object
 // ============================================
@@ -185,6 +201,7 @@ export const __ms_runtime: Record<string, any> = {
   upper, lower, trim, split, join, replace, starts_with, ends_with, substring, matches,
   sqrt, pow, floor, ceil, round, random, random_int,
   panic, error,
+  set: setFromList, union: setUnion, intersect: setIntersect, difference: setDifference, is_subset: setIsSubset,
 };
 
 // Add compiled stdlib (types and pure functions from stdlib.ms)

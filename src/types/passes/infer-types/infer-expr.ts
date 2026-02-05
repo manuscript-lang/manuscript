@@ -2,9 +2,9 @@
 import * as AST from "../../../parser/ast";
 import type { Type, FunctionType, ObjectType, ParameterType } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
-import { TypeErrors } from "../../../shared/errors";
+import { TypeErrors, RESERVED_PROPERTY_NAMES } from "../../../shared/errors";
 import {
-  astTypeToType, resolveTypeName, isAssignable, extendsType,
+  astTypeToType, resolveTypeName, isAssignable,
   findCommonType, typeInvolvesPromise, substituteTypeParams, unifyTypes,
   substituteTypeInObject
 } from "../../type-utils";
@@ -12,6 +12,7 @@ import { constructGenericType } from "../../primitives";
 import type { InferContext } from "./context";
 import { error, warning, recordType } from "./context";
 import { checkPattern } from "./check-pattern";
+import { exprContainsEscapingLambda, exprNeedsContext } from "../context-analysis";
 
 // Forward declaration for checkBlock (will be provided by check-stmt)
 export let checkBlockFn: (ctx: InferContext, block: AST.Block) => void;
@@ -58,6 +59,9 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
       break;
     case "ListExpr":
       type = inferListExpr(ctx, expr);
+      break;
+    case "SetExpr":
+      type = inferSetExpr(ctx, expr);
       break;
     case "MapExpr":
       type = inferMapExpr(ctx, expr);
@@ -119,13 +123,11 @@ function inferIdentifier(ctx: InferContext, expr: AST.Identifier): Type {
       if (typeRef.kind === "object" && typeRef.name) {
         const obj = typeRef as ObjectType;
         // Factory params in declaration order: embedded first, then own fields
-        // Exclude promoted props and Context (marker type)
+        // Exclude promoted props
         const ownProps = obj.properties.filter(p => !p.promotedFrom);
         const params: ParameterType[] = [];
         for (const p of ownProps) {
           if (p.embedded) {
-            // Skip Context - it's a marker type, not a real embedded value
-            if (p.name === "Context") continue;
             const embeddedType = ctx.env.lookupType(p.name);
             params.push(Types.param(p.name, embeddedType || Types.any, true));
           } else {
@@ -229,52 +231,66 @@ function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
   if (expr.callee.kind === "IndexExpr" && expr.callee.object.kind === "Identifier") {
     const constructorName = expr.callee.object.name;
     
-    // Collect type arguments
-    const allTypeArgs: AST.Expr[] = [expr.callee.index];
-    if (expr.callee.typeArgs) {
-      allTypeArgs.push(...expr.callee.typeArgs);
-    }
-    
-    // Resolve type arguments to Types
-    const resolvedTypeArgs = allTypeArgs.map(arg => 
-      resolveTypeName(arg.kind === "Identifier" ? arg.name : "any", ctx.env)
-    );
-    
-    // Check if this is a built-in generic type (Channel, etc.)
-    const builtinType = constructGenericType(constructorName, resolvedTypeArgs);
-    if (builtinType) {
-      // Validate constructor arguments against the extern type definition
+    // Only treat as generic constructor if the name refers to a type
+    const baseTypeCheck = ctx.env.lookupType(constructorName);
+    if (baseTypeCheck) {
+      // Record the type on the identifier so codegen knows this is a type constructor
+      recordType(ctx, expr.callee.object, baseTypeCheck);
+      // Collect type arguments
+      const allTypeArgs: AST.Expr[] = [expr.callee.index];
+      if (expr.callee.typeArgs) {
+        allTypeArgs.push(...expr.callee.typeArgs);
+      }
+      
+      // Validate type arguments are identifiers
+      for (const arg of allTypeArgs) {
+        if (arg.kind !== "Identifier") {
+          const err = TypeErrors.genericParamMustBeIdentifier();
+          error(ctx, err.message, arg.loc, err.hint);
+        }
+      }
+      
+      // Resolve type arguments to Types
+      const resolvedTypeArgs = allTypeArgs.map(arg => 
+        resolveTypeName(arg.kind === "Identifier" ? arg.name : "any", ctx.env)
+      );
+      
+      // Check if this is a built-in generic type (Channel, etc.)
+      const builtinType = constructGenericType(constructorName, resolvedTypeArgs);
+      if (builtinType) {
+        // Validate constructor arguments against the extern type definition
+        const baseType = ctx.env.lookupType(constructorName);
+        if (baseType && baseType.kind === "object") {
+          const typeParams = baseType.typeParams || [];
+          const bindings = new Map<string, Type>();
+          for (let i = 0; i < typeParams.length && i < resolvedTypeArgs.length; i++) {
+            bindings.set(typeParams[i]!.name, resolvedTypeArgs[i]!);
+          }
+          const instantiated = substituteTypeInObject(baseType, bindings);
+          // Check constructor arguments
+          inferConstructorCall(ctx, expr, instantiated);
+        }
+        return builtinType;
+      }
+      
+      // Generic type constructor calls for user-defined types like Pair[A, B](...)
       const baseType = ctx.env.lookupType(constructorName);
       if (baseType && baseType.kind === "object") {
+        // Substitute type parameters in the base type
         const typeParams = baseType.typeParams || [];
         const bindings = new Map<string, Type>();
         for (let i = 0; i < typeParams.length && i < resolvedTypeArgs.length; i++) {
           bindings.set(typeParams[i]!.name, resolvedTypeArgs[i]!);
         }
         const instantiated = substituteTypeInObject(baseType, bindings);
-        // Check constructor arguments
+        // Validate constructor arguments
         inferConstructorCall(ctx, expr, instantiated);
+        // Return a generic type that preserves the type arguments for assignability
+        if (typeParams.length > 0 && resolvedTypeArgs.length > 0) {
+          return Types.generic(Types.ref(constructorName), resolvedTypeArgs);
+        }
+        return instantiated;
       }
-      return builtinType;
-    }
-    
-    // Generic type constructor calls for user-defined types like Channel[number](...) or Pair[A, B](...)
-    const baseType = ctx.env.lookupType(constructorName);
-    if (baseType && baseType.kind === "object") {
-      // Substitute type parameters in the base type
-      const typeParams = baseType.typeParams || [];
-      const bindings = new Map<string, Type>();
-      for (let i = 0; i < typeParams.length && i < resolvedTypeArgs.length; i++) {
-        bindings.set(typeParams[i]!.name, resolvedTypeArgs[i]!);
-      }
-      const instantiated = substituteTypeInObject(baseType, bindings);
-      // Validate constructor arguments
-      inferConstructorCall(ctx, expr, instantiated);
-      // Return a generic type that preserves the type arguments for assignability
-      if (typeParams.length > 0 && resolvedTypeArgs.length > 0) {
-        return Types.generic(Types.ref(constructorName), resolvedTypeArgs);
-      }
-      return instantiated;
     }
   }
 
@@ -378,19 +394,16 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
     }
   }
 
-  // Check if required context types are available
-  // Note: This is a heuristic check - full context type checking would require tracking
-  // available context types, not just variable names. Keep as warning for now.
   for (const binding of fnType.context) {
     if (binding.name && !ctx.env.isDefined(binding.name) && !ctx.insideWithContext) {
-      warning(ctx, `Function requires '${binding.name}' in context which may not be available`);
+      error(ctx, `No context of type '${typeToString(binding.type)}' available`, expr.loc);
     }
   }
 
   const returnType = substituteTypeParams(fnType.returnType, typeBindings);
 
   if (returnType.kind === "object" &&
-      extendsType(returnType, "Context", ctx.env) &&
+      (returnType as ObjectType).isContextType &&
       !ctx.insideWithContext) {
     error(ctx, `Context type '${returnType.name}' can only be instantiated in 'with' clauses`, expr.loc);
   }
@@ -399,7 +412,7 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
 }
 
 function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: any): Type {
-  if (extendsType(objType, "Context", ctx.env) && !ctx.insideWithContext) {
+  if (objType.isContextType && !ctx.insideWithContext) {
     error(ctx, `Context type '${objType.name}' can only be instantiated in 'with' clauses`, expr.loc);
   }
 
@@ -460,7 +473,34 @@ function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: an
 }
 
 function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
-  const objectType = inferExpr(ctx, expr.object);
+  // Check for generic type instantiation: Type[T] or Type[A, B]
+  // This is allowed when object is an identifier that refers to a type
+  if (expr.object.kind === "Identifier") {
+    const typeRef = ctx.env.lookupType(expr.object.name);
+    if (typeRef) {
+      // Generic type arguments must be identifiers, not string literals
+      if (expr.index.kind === "Literal" && typeof (expr.index as AST.Literal).value === "string") {
+        error(ctx, "Generic type arguments must be identifiers, not string literals", expr.index.loc);
+        return Types.any;
+      }
+      // This is generic type instantiation, handled by call expression
+      // Just infer the index type arguments
+      inferExpr(ctx, expr.index);
+      if (expr.typeArgs) {
+        for (const arg of expr.typeArgs) {
+          inferExpr(ctx, arg);
+        }
+      }
+      return typeRef;
+    }
+  }
+
+  let objectType = inferExpr(ctx, expr.object);
+
+  // For optional index access (?.[]): unwrap optional type
+  if (expr.optional && objectType.kind === "optional") {
+    objectType = objectType.inner;
+  }
 
   if (expr.slice) {
     if (expr.slice.start) {
@@ -477,7 +517,7 @@ function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
         error(ctx, `Slice end index: ${err.message}`, expr.slice.end.loc, err.hint);
       }
     }
-    return objectType;
+    return expr.optional ? Types.optional(objectType) : objectType;
   }
 
   const indexType = inferExpr(ctx, expr.index);
@@ -487,13 +527,15 @@ function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
       const err = TypeErrors.indexTypeMismatch("number", typeToString(indexType));
       error(ctx, `List index: ${err.message}`, expr.index.loc, err.hint);
     }
-    return objectType.elementType;
+    const result = objectType.elementType;
+    return expr.optional ? Types.optional(result) : result;
   }
   if (objectType.kind === "map") {
     if (!isAssignable(indexType, objectType.keyType, ctx.env)) {
       const err = TypeErrors.indexTypeMismatch(typeToString(objectType.keyType), typeToString(indexType));
       error(ctx, `Map key: ${err.message}`, expr.index.loc, err.hint);
     }
+    // Map access always returns optional (key may not exist)
     return Types.optional(objectType.valueType);
   }
   if (objectType.kind === "string") {
@@ -501,15 +543,42 @@ function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
       const err = TypeErrors.indexTypeMismatch("number", typeToString(indexType));
       error(ctx, `String index: ${err.message}`, expr.index.loc, err.hint);
     }
-    return Types.string;
+    return expr.optional ? Types.optional(Types.string) : Types.string;
   }
 
-  return Types.any;
+  // Disallow index access on other types (except any)
+  if (objectType.kind !== "any") {
+    const err = TypeErrors.indexAccessOnInvalidType(typeToString(objectType));
+    error(ctx, err.message, expr.loc, err.hint);
+  }
+
+  return expr.optional ? Types.optional(Types.any) : Types.any;
 }
 
 function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
+  // Check for member access on type references BEFORE inferring the type
+  // (since type names resolve to function types, we need to check this first)
+  if (expr.object.kind === "Identifier") {
+    const symbol = ctx.env.lookup(expr.object.name);
+    if (!symbol) {
+      const typeRef = ctx.env.lookupType(expr.object.name);
+      if (typeRef && typeRef.kind === "object") {
+        const err = TypeErrors.memberAccessOnType(expr.object.name);
+        error(ctx, err.message, expr.loc, err.hint);
+        return Types.any;
+      }
+    }
+  }
+
   const objectType = inferExpr(ctx, expr.object);
   let resolved = ctx.env.resolveType(objectType);
+
+  // Disallow member access on function types
+  if (resolved.kind === "function") {
+    const err = TypeErrors.memberAccessOnFunction();
+    error(ctx, err.message, expr.loc, err.hint);
+    return Types.any;
+  }
 
   // Handle generic types like Container[string] - resolve and substitute
   if (resolved.kind === "generic" && resolved.base.kind === "ref") {
@@ -808,6 +877,15 @@ function inferListExpr(ctx: InferContext, expr: AST.ListExpr): Type {
   return Types.list(commonType);
 }
 
+function inferSetExpr(ctx: InferContext, expr: AST.SetExpr): Type {
+  if (expr.elements.length === 0) return Types.set(Types.any);
+  const elementTypes = expr.elements.map(el => inferExpr(ctx, el));
+  for (const el of expr.elements) {
+    if (el.kind === "Identifier") ctx.unawaitedSpawns.delete(el.name);
+  }
+  return Types.set(findCommonType(elementTypes));
+}
+
 function inferMapExpr(ctx: InferContext, expr: AST.MapExpr): Type {
   if (expr.entries.length === 0) {
     return Types.map(Types.string, Types.any);
@@ -819,6 +897,11 @@ function inferMapExpr(ctx: InferContext, expr: AST.MapExpr): Type {
   for (const entry of expr.entries) {
     if (!entry.spread) {
       if (entry.key.kind === "Identifier") {
+        // Check for reserved property names
+        if (RESERVED_PROPERTY_NAMES.has(entry.key.name)) {
+          const err = TypeErrors.reservedPropertyName(entry.key.name);
+          error(ctx, err.message, entry.key.loc, err.hint);
+        }
         keyTypes.push(Types.string);
       } else {
         keyTypes.push(inferExpr(ctx, entry.key));
@@ -833,12 +916,12 @@ function inferMapExpr(ctx: InferContext, expr: AST.MapExpr): Type {
 }
 
 function inferSpawnExpr(ctx: InferContext, expr: AST.SpawnExpr): Type {
+  ctx.lastSpawnInWithWasContextDependent = false;
   if (ctx.functionWithDepth > 0) {
-    error(ctx,
-      `Cannot use 'spawn' inside function-level 'with' block - spawned task may outlive context scope`,
-      expr.loc,
-      `Move spawn outside the 'with' block or use top-level 'with' instead`
-    );
+    const capturesContext =
+      exprContainsEscapingLambda(expr.expr, ctx.withContextVars, ctx.env, ctx.fnDecls, ctx.needsContextCache) ||
+      exprNeedsContext(expr.expr, ctx.env, ctx.fnDecls, ctx.needsContextCache);
+    if (capturesContext) ctx.lastSpawnInWithWasContextDependent = true;
   }
 
   const innerType = inferExpr(ctx, expr.expr);
@@ -866,6 +949,7 @@ export function consumeSpawnsInExpr(ctx: InferContext, expr: AST.Expr): void {
   switch (expr.kind) {
     case "Identifier":
       ctx.unawaitedSpawns.delete(expr.name);
+      ctx.contextDependentSpawnsInWith?.delete(expr.name);
       break;
     case "ListExpr":
       for (const el of expr.elements) {
@@ -875,6 +959,9 @@ export function consumeSpawnsInExpr(ctx: InferContext, expr: AST.Expr): void {
           consumeSpawnsInExpr(ctx, el.expr);
         }
       }
+      break;
+    case "SetExpr":
+      for (const el of expr.elements) consumeSpawnsInExpr(ctx, el);
       break;
     case "MapExpr":
       for (const entry of expr.entries) {
@@ -892,7 +979,7 @@ export function consumeSpawnsInExpr(ctx: InferContext, expr: AST.Expr): void {
       consumeSpawnsInExpr(ctx, expr.object);
       break;
     case "CallExpr": {
-      const callReturnType = ctx.types.get(expr) ?? Types.any;
+      const callReturnType = expr.resolvedType ?? Types.any;
       const isValuesCall = expr.callee.kind === "Identifier" && expr.callee.name === "values";
       if (typeInvolvesPromise(callReturnType, ctx.env) || isValuesCall) {
         for (const arg of expr.args) {
@@ -923,6 +1010,11 @@ export function exprContainsSpawn(ctx: InferContext, expr: AST.Expr): boolean {
       } else if (exprContainsSpawn(ctx, el)) {
         return true;
       }
+    }
+  }
+  if (expr.kind === "SetExpr") {
+    for (const el of expr.elements) {
+      if (exprContainsSpawn(ctx, el)) return true;
     }
   }
 
@@ -959,6 +1051,10 @@ export function transferSpawnTracking(ctx: InferContext, expr: AST.Expr): void {
       else if (el.kind === "SpreadElement" && el.expr.kind === "Identifier") {
         ctx.unawaitedSpawns.delete(el.expr.name);
       }
+    }
+  } else if (expr.kind === "SetExpr") {
+    for (const el of expr.elements) {
+      if (el.kind === "Identifier") ctx.unawaitedSpawns.delete(el.name);
     }
   } else if (expr.kind === "MapExpr") {
     for (const entry of expr.entries) {

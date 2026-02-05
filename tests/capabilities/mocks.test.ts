@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { MockLLM } from "../../src/runtime/capabilities/llm";
+import { MockLLM } from "../../src/runtime/capabilities/llm/mock";
 import { MockFilesystem } from "../../src/runtime/capabilities/filesystem";
 import { MockShell } from "../../src/runtime/capabilities/shell";
 import { MockHTTP } from "../../src/runtime/capabilities/http";

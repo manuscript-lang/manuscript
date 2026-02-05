@@ -113,14 +113,13 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
     emit(ctx, "");
   }
 
-  // Get embedded fields for initialization (skip Context - it's a marker type)
-  const embeddedFields = fields.filter(f => f.embedded && f.name !== "Context");
+  // Get embedded fields for initialization
+  const embeddedFields = fields.filter(f => f.embedded);
 
   // Generate factory function from fields
   if (fields.length > 0) {
-    // Build params in declaration order, skip Context (marker type)
+    // Build params in declaration order
     const allParams = fields
-      .filter(f => !(f.embedded && f.name === "Context"))
       .map(f => {
         if (f.embedded) {
           const typeName = EXTERN_TYPES.has(f.name) ? `__ms_runtime.${f.name}` : f.name;

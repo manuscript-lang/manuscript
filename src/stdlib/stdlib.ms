@@ -114,8 +114,8 @@ extern type map[K, V]
 
 extern type set[T]
   size: number
-  // Adds item to set
-  fn add(item: T): void
+  // Adds item to set, returns set for chaining
+  fn add(item: T): set[T]
   // Returns true if item exists
   fn has(item: T): bool
   // Deletes item, returns true if existed
@@ -124,6 +124,12 @@ extern type set[T]
   fn clear(): void
   // Returns list of items
   fn values(): list[T]
+  // Returns list of [value, value] pairs
+  fn entries(): list[list[T]]
+  // Same as values for set
+  fn keys(): list[T]
+  // Calls f for each element
+  fn forEach(f: fn(T): void): void
 
 // ============================================
 // Built-in Types
@@ -240,8 +246,7 @@ extern type Channel[T]
 // LLM Capabilities
 // ============================================
 
-extern type Claude
-  Context
+extern context Claude
   model?: string
   apiKey?: string
   maxTokens?: number
@@ -253,8 +258,7 @@ extern type Claude
   fn stream(messages: list[any]): any
   fn exit(): void
 
-extern type GPT
-  Context
+extern context GPT
   model?: string
   apiKey?: string
   maxTokens?: number
@@ -267,8 +271,7 @@ extern type GPT
   fn stream(messages: list[any]): any
   fn exit(): void
 
-extern type MockLLM
-  Context
+extern context MockLLM
   responses?: list[any]
   defaultReply?: string
   delay?: number
@@ -286,8 +289,7 @@ extern type MockLLM
 // Filesystem Capabilities
 // ============================================
 
-extern type LocalFilesystem
-  Context
+extern context LocalFilesystem
   root?: string
   // Reads file contents as string
   fn read(path: string): string
@@ -309,8 +311,7 @@ extern type LocalFilesystem
   fn move(src: string, dest: string): void
   fn exit(): void
 
-extern type MockFilesystem
-  Context
+extern context MockFilesystem
   files?: map[string, string]
   fn read(path: string): string
   fn write(path: string, content: string): void
@@ -326,8 +327,7 @@ extern type MockFilesystem
   fn exit(): void
 
 // Filesystem alias for LocalFilesystem
-extern type Filesystem
-  Context
+extern context Filesystem
   root?: string
   fn read(path: string): string
   fn write(path: string, content: string): void
@@ -344,8 +344,7 @@ extern type Filesystem
 // Shell Capabilities
 // ============================================
 
-extern type LocalShell
-  Context
+extern context LocalShell
   shell?: string
   cwd?: string
   // Executes command and returns result
@@ -356,8 +355,7 @@ extern type LocalShell
   fn which(command: string): string?
   fn exit(): void
 
-extern type MockShell
-  Context
+extern context MockShell
   commands?: list[any]
   cwd?: string
   env?: map[string, string]
@@ -369,8 +367,7 @@ extern type MockShell
   fn exit(): void
 
 // Shell alias for LocalShell
-extern type Shell
-  Context
+extern context Shell
   shell?: string
   cwd?: string
   fn exec(command: string): any
@@ -382,8 +379,7 @@ extern type Shell
 // HTTP Capabilities
 // ============================================
 
-extern type FetchHTTP
-  Context
+extern context FetchHTTP
   baseURL?: string
   headers?: map[string, string]
   timeout?: number
@@ -398,8 +394,7 @@ extern type FetchHTTP
   fn postJSON(url: string, data: any): any
   fn exit(): void
 
-extern type MockHTTP
-  Context
+extern context MockHTTP
   responses?: list[any]
   fn get(url: string): any
   fn post(url: string): any
@@ -413,8 +408,7 @@ extern type MockHTTP
   fn exit(): void
 
 // HTTP alias for FetchHTTP
-extern type HTTP
-  Context
+extern context HTTP
   baseURL?: string
   headers?: map[string, string]
   timeout?: number
@@ -626,43 +620,15 @@ extern fn substring(s: string, start: number, end?: number): string
 extern fn matches(s: string, pattern: string): bool
 
 // Creates a set from a list
-fn set[T](list: list[T]): set[T]
-  let result = {}
-  for item in list
-    result[item] = true
-  result
-
+extern fn set[T](list: list[T]): set[T]
 // Returns union of two sets
-fn union[T](a: set[T], b: set[T]): set[T]
-  let result = {}
-  for k in keys(a)
-    result[k] = true
-  for k in keys(b)
-    result[k] = true
-  result
-
+extern fn union[T](a: set[T], b: set[T]): set[T]
 // Returns intersection of two sets
-fn intersect[T](a: set[T], b: set[T]): set[T]
-  let result = {}
-  for k in keys(a)
-    if b[k]
-      result[k] = true
-  result
-
+extern fn intersect[T](a: set[T], b: set[T]): set[T]
 // Returns elements in a but not in b
-fn difference[T](a: set[T], b: set[T]): set[T]
-  let result = {}
-  for k in keys(a)
-    if not b[k]
-      result[k] = true
-  result
-
+extern fn difference[T](a: set[T], b: set[T]): set[T]
 // Returns true if a is subset of b
-fn is_subset[T](a: set[T], b: set[T]): bool
-  for k in keys(a)
-    if not b[k]
-      return false
-  true
+extern fn is_subset[T](a: set[T], b: set[T]): bool
 
 // Result type for error handling
 type Result[T, E]

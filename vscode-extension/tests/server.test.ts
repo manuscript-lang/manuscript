@@ -40,7 +40,6 @@ function formatTypeExpr(type: any): string {
 
 interface DocumentCache {
   program: Program;
-  types: Map<any, Type>;
   env: TypeEnvironment;
   symbols: SymbolTable;
 }
@@ -51,8 +50,8 @@ function parseDocument(source: string): DocumentCache | null {
     const program = parser.parse();
     const checker = new TypeChecker();
     const result = checker.check(program);
-    const symbols = buildSymbolTable(program, result.types, result.env);
-    return { program, types: result.types, env: result.env, symbols };
+    const symbols = buildSymbolTable(program, result.env);
+    return { program, env: result.env, symbols };
   } catch {
     return null;
   }
@@ -328,7 +327,7 @@ let z = true
     // Get inferred types from the type checker
     for (const stmt of letStmts) {
       const value = (stmt as any).value;
-      const inferredType = cached!.types.get(value);
+      const inferredType = value.resolvedType;
       expect(inferredType).toBeDefined();
     }
   });
@@ -359,12 +358,12 @@ let mixed = [1, "two"]
     expect(letStmts).toHaveLength(3);
     
     // Check nums is list[number]
-    const numsType = cached!.types.get(letStmts[0].value);
+    const numsType = letStmts[0].value.resolvedType;
     expect(numsType?.kind).toBe("list");
     expect((numsType as any).elementType.kind).toBe("number");
     
     // Check strs is list[string]
-    const strsType = cached!.types.get(letStmts[1].value);
+    const strsType = letStmts[1].value.resolvedType;
     expect(strsType?.kind).toBe("list");
     expect((strsType as any).elementType.kind).toBe("string");
   });
@@ -386,7 +385,7 @@ fn sum_list(items: list[number]): number
     expect(forStmt).toBeDefined();
     
     // Check iterable type was inferred
-    const iterType = cached!.types.get(forStmt.iterable);
+    const iterType = forStmt.iterable.resolvedType;
     expect(iterType?.kind).toBe("list");
   });
 
@@ -404,7 +403,7 @@ let p = Point(x: 1, y: 2)
     const letStmt = cached!.program.body.find(s => s.kind === "LetStmt") as any;
     expect(letStmt).toBeDefined();
     
-    const valueType = cached!.types.get(letStmt.value);
+    const valueType = letStmt.value.resolvedType;
     expect(valueType).toBeDefined();
     expect(valueType?.kind).toBe("object");
   });
@@ -945,7 +944,7 @@ print(a.name)
     visit(cached!.program, {
       expr(e) {
         if (e.kind === "MemberExpr") {
-          const objType = cached!.types.get(e.object);
+          const objType = e.object.resolvedType;
           let typeName: string | null = null;
           if (objType) {
             if (objType.kind === "object") typeName = (objType as any).name;
@@ -985,7 +984,7 @@ let p = Person(name: "John", age: 30)
     expect(letStmt).toBeDefined();
     
     // Get the type of the value (Person constructor call)
-    const valueType = cached!.types.get(letStmt.value);
+    const valueType = letStmt.value.resolvedType;
     expect(valueType).toBeDefined();
     expect(valueType!.kind).toBe("object");
     expect((valueType as any).name).toBe("Person");
@@ -1056,7 +1055,7 @@ print(c.count)
     const letStmt = cached!.program.body.find(s => s.kind === "LetStmt") as any;
     expect(letStmt).toBeDefined();
     
-    const valueType = cached!.types.get(letStmt.value);
+    const valueType = letStmt.value.resolvedType;
     expect(valueType).toBeDefined();
     
     // Type should be defined - could be generic, object, ref, or any depending on type checker
@@ -1144,7 +1143,7 @@ print(s.value)
     
     // Check the object types are correctly resolved
     for (const expr of memberExprs) {
-      const objType = cached!.types.get(expr.object);
+      const objType = expr.object.resolvedType;
       expect(objType).toBeDefined();
       // Type should be resolvable
       expect(["object", "ref"]).toContain(objType!.kind);
@@ -1611,7 +1610,7 @@ fn greet(name: string): string
     expect(cached).not.toBeNull();
 
     // Hover on "greet" at line 2, column 4
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 2, 4, cached!.env);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.program, 2, 4, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("fn greet");
     expect(hover!.signature).toContain("name: string");
@@ -1628,7 +1627,7 @@ type Person
     expect(cached).not.toBeNull();
 
     // Hover on "Person" at line 2, column 6
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 2, 6, cached!.env);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.program, 2, 6, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("type Person");
     expect(hover!.doc).toContain("name: string");
@@ -1645,7 +1644,7 @@ type Person
     expect(cached).not.toBeNull();
 
     // Hover on "name" field at line 3, column 3
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 3, 3, cached!.env);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.program, 3, 3, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toBe("(field) name: string");
   });
@@ -1660,7 +1659,7 @@ type Calculator
     expect(cached).not.toBeNull();
 
     // Hover on "add" method at line 3, column 6
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 3, 6, cached!.env);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.program, 3, 6, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("(method) fn add");
     expect(hover!.signature).toContain("a: number");
@@ -1677,7 +1676,7 @@ fn main()
     expect(cached).not.toBeNull();
 
     // Hover on "x" definition at line 3, column 7
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 3, 7, cached!.env);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.program, 3, 7, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("x");
     expect(hover!.signature).toContain("number");
@@ -1692,7 +1691,7 @@ fn greet(name: string): string
     expect(cached).not.toBeNull();
 
     // Hover on "name" parameter at line 2, column 10
-    const hover = getHoverForSymbol(cached!.symbols, cached!.types, cached!.program, 2, 10, cached!.env);
+    const hover = getHoverForSymbol(cached!.symbols, cached!.program, 2, 10, cached!.env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toBe("(parameter) name: string");
   });
@@ -1809,7 +1808,7 @@ let p = Person(name: "John", age: 30)
     const letStmt = cached!.program.body.find(s => s.kind === "LetStmt") as any;
     expect(letStmt).toBeDefined();
     
-    const valueType = cached!.types.get(letStmt.value);
+    const valueType = letStmt.value.resolvedType;
     expect(valueType).toBeDefined();
     
     const resolved = resolveObjectType(cached!.program, valueType!, cached!.env);

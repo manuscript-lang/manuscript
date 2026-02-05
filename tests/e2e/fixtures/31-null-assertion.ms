@@ -78,7 +78,7 @@ print(first_or_default([], 0))
 fn get_nested(obj: map): string
   let inner = obj["inner"]
   if inner == null then return "no inner"
-  let value = inner["value"]
+  let value = inner?.["value"]
   value ?? "no value"
 
 let nested = {inner: {value: "found"}}

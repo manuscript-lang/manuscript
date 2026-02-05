@@ -1,7 +1,7 @@
 // Statement Generators
 import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
-import { emit, pushIndent, popIndent, tempVar, pushScope, popScope, addDefer } from "./types";
+import { emit, pushIndent, popIndent, tempVar, pushScope, popScope, addDefer, getTypeName } from "./types";
 import { genExpr } from "./expressions";
 import { genPattern, genPatternCondition, genMatchCondition, genPatternBindings } from "./patterns";
 
@@ -12,42 +12,17 @@ export function setGen(fn: GenFn): void {
   _gen = fn;
 }
 
-// Infer type name from expression
-function inferTypeName(expr: AST.Expr, opts: GenOpts): string | undefined {
-  if (expr.kind === "CallExpr" && expr.callee.kind === "Identifier") {
-    const name = expr.callee.name;
-    if (opts.declaredTypes.has(name)) return name;
-  }
-  if (expr.kind === "Identifier") {
-    return opts.variableTypes.get(expr.name);
-  }
-  return undefined;
-}
-
 // Generate let statement
 export function genLet(ctx: Ctx, stmt: AST.LetStmt, opts: GenOpts): void {
   const pattern = genPattern(stmt.pattern);
   const value = genExpr(ctx, stmt.value, opts);
   emit(ctx, `const ${pattern} = ${value};`);
-
-  // Track variable type
-  if (stmt.pattern.kind === "IdentifierPattern") {
-    const typeName = inferTypeName(stmt.value, opts);
-    if (typeName) {
-      opts.variableTypes.set(stmt.pattern.name, typeName);
-    }
-  }
 }
 
 // Generate var statement
 export function genVar(ctx: Ctx, stmt: AST.VarStmt, opts: GenOpts): void {
   const value = genExpr(ctx, stmt.value, opts);
   emit(ctx, `let ${stmt.name} = ${value};`);
-
-  const typeName = inferTypeName(stmt.value, opts);
-  if (typeName) {
-    opts.variableTypes.set(stmt.name, typeName);
-  }
 }
 
 // Generate assignment statement
@@ -306,7 +281,7 @@ export function genWith(ctx: Ctx, stmt: AST.WithStmt, opts: GenOpts): void {
     }
     ctxNames.push(name);
 
-    const typeName = inferTypeName(ctxBinding.expr, opts);
+    const typeName = getTypeName(ctxBinding.expr);
     if (typeName) {
       // Register the context type (no inheritance chain with Go-style embedding)
       emit(ctx, `__ms_runtime.__setContext("${typeName}", ${name});`);

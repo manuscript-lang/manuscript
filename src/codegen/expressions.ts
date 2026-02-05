@@ -1,7 +1,7 @@
 // Expression Generators
 import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
-import { emit, pushIndent, popIndent, tempVar } from "./types";
+import { emit, pushIndent, popIndent, tempVar, isTypeConstructor, getParamOrder } from "./types";
 import { STDLIB_FUNCTIONS, EXTERN_TYPES } from "../shared/stdlib";
 
 // Forward declaration for mutual recursion
@@ -29,6 +29,7 @@ export function genExpr(ctx: Ctx, expr: AST.Expr, opts: GenOpts): string {
     case "IfExpr": return genIfExpr(ctx, expr, opts);
     case "MatchExpr": return genMatchExpr(ctx, expr, opts);
     case "ListExpr": return genList(ctx, expr, opts);
+    case "SetExpr": return genSet(ctx, expr, opts);
     case "MapExpr": return genMap(ctx, expr, opts);
     case "TemplateLiteral": return genTemplate(ctx, expr, opts);
     case "SpawnExpr": return genSpawn(ctx, expr, opts);
@@ -47,7 +48,7 @@ export function genLiteral(node: AST.Literal): string {
 
 export function genIdentifier(node: AST.Identifier, opts: GenOpts): string {
   // Don't prefix type names (used as constructors) - they're global
-  if (opts.declaredTypes.has(node.name)) {
+  if (isTypeConstructor(node)) {
     return node.name;
   }
   // Use self.field for factory function pattern, this.field for methods
@@ -96,22 +97,34 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
       return `new __ms_runtime.${baseName}(${args})`;
     }
     // User-defined generic types - factory functions, no 'new'
-    if (opts.declaredTypes.has(baseName)) {
+    if (isTypeConstructor(node.callee.object)) {
       return `${baseName}(${args})`;
     }
   }
 
-  const name = node.callee.kind === "Identifier" ? node.callee.name : undefined;
-  const paramOrder = name ? opts.callableParamOrder.get(name) : undefined;
-  const args = genCallArgs(ctx, node.args, opts, paramOrder);
-
-  // Extern type constructors (e.g. MockLLM, Claude) use new __ms_runtime.X(...); exclude stdlib functions like map
+ 
+  // Don't apply param ordering to extern types - they should keep named args as objects
   if (node.callee.kind === "Identifier" && EXTERN_TYPES.has(node.callee.name) && !STDLIB_FUNCTIONS.has(node.callee.name)) {
+    const args = genCallArgs(ctx, node.args, opts);
     return `new __ms_runtime.${node.callee.name}(${args})`;
   }
 
+  // Set methods values/entries/keys return iterators in JS; we need lists
+  if (node.callee.kind === "MemberExpr" && node.args.length === 0) {
+    const objType = node.callee.object.resolvedType;
+    if (objType?.kind === "set" && ["values", "entries", "keys"].includes(node.callee.property)) {
+      const obj = genExpr(ctx, node.callee.object, opts);
+      const method = node.callee.property;
+      return `Array.from(${obj}.${method}())`;
+    }
+  }
+
+  // Get param order from callee's resolved type for user-defined functions and types
+  const paramOrder = getParamOrder(node.callee);
+  const args = genCallArgs(ctx, node.args, opts, paramOrder);
+
   // User-defined types use factory functions (no 'new')
-  if (node.callee.kind === "Identifier" && opts.declaredTypes.has(node.callee.name)) {
+  if (isTypeConstructor(node.callee)) {
     return `${callee}(${args})`;
   }
 
@@ -167,10 +180,12 @@ export function genIndex(ctx: Ctx, node: AST.IndexExpr, opts: GenOpts): string {
   if (node.slice) {
     const start = node.slice.start ? genExpr(ctx, node.slice.start, opts) : "0";
     const end = node.slice.end ? genExpr(ctx, node.slice.end, opts) : "";
+    if (node.optional) return `${obj}?.slice(${start}, ${end})`;
     return `${obj}.slice(${start}, ${end})`;
   }
 
   const index = genExpr(ctx, node.index, opts);
+  if (node.optional) return `${obj}?.[${index}]`;
   return `${obj}[${index}]`;
 }
 
@@ -287,22 +302,31 @@ export function genList(ctx: Ctx, node: AST.ListExpr, opts: GenOpts): string {
   return `[${elements.join(", ")}]`;
 }
 
+export function genSet(ctx: Ctx, node: AST.SetExpr, opts: GenOpts): string {
+  if (node.elements.length === 0) return "new Set()";
+  const inner = node.elements.map(el => genExpr(ctx, el, opts)).join(", ");
+  return `new Set([${inner}])`;
+}
+
 export function genMap(ctx: Ctx, node: AST.MapExpr, opts: GenOpts): string {
-  if (node.entries.length === 0) return "{}";
+  if (node.entries.length === 0) return "Object.create(null)";
 
-  const entries = node.entries.map(entry => {
+  const literalParts: string[] = [];
+  const spreadExprs: string[] = [];
+  for (const entry of node.entries) {
     if (entry.spread) {
-      return `...${genExpr(ctx, entry.key, opts)}`;
+      spreadExprs.push(genExpr(ctx, entry.key, opts));
+    } else {
+      const key = entry.key.kind === "Identifier"
+        ? entry.key.name
+        : `[${genExpr(ctx, entry.key, opts)}]`;
+      const value = genExpr(ctx, entry.value, opts);
+      literalParts.push(`${key}: ${value}`);
     }
-
-    const key = entry.key.kind === "Identifier"
-      ? entry.key.name
-      : `[${genExpr(ctx, entry.key, opts)}]`;
-    const value = genExpr(ctx, entry.value, opts);
-    return `${key}: ${value}`;
-  });
-
-  return `{ ${entries.join(", ")} }`;
+  }
+  const sources = [...spreadExprs];
+  if (literalParts.length > 0) sources.push(`{ ${literalParts.join(", ")} }`);
+  return sources.length === 0 ? "Object.create(null)" : `Object.assign(Object.create(null), ${sources.join(", ")})`;
 }
 
 export function genTemplate(ctx: Ctx, node: AST.TemplateLiteral, opts: GenOpts): string {

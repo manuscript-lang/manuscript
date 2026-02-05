@@ -3,7 +3,7 @@ import * as AST from "../../../parser/ast";
 import type { Type, FunctionType, ContextBinding, ObjectType } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
-import { astTypeToType, fnDeclToType, isAssignable, getIterableElementType, isIterable, hasEmbeddedContext } from "../../type-utils";
+import { astTypeToType, fnDeclToType, isAssignable, getIterableElementType, isIterable, typeIsContext } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, warning, recordType } from "./context";
 import { checkPattern, bindPattern } from "./check-pattern";
@@ -105,6 +105,10 @@ function checkLetStmt(ctx: InferContext, stmt: AST.LetStmt): void {
 
     if (containsSpawn && !isConsumerResult) {
       ctx.unawaitedSpawns.set(stmt.pattern.name, stmt.loc);
+      if (stmt.value.kind === "SpawnExpr" && ctx.lastSpawnInWithWasContextDependent && ctx.contextDependentSpawnsInWith) {
+        ctx.contextDependentSpawnsInWith.add(stmt.pattern.name);
+      }
+      ctx.lastSpawnInWithWasContextDependent = false;
       transferSpawnTracking(ctx, stmt.value);
     }
   }
@@ -533,9 +537,14 @@ function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
   const withEnv = ctx.env.withContext(bindings);
   const savedEnv = ctx.env;
   ctx.env = withEnv;
+  ctx.withBlockDepth++;
+  ctx.insideWithContext = true;
 
+  let savedContextDependent: Set<string> | null = null;
   if (isFunctionLevel) {
     ctx.functionWithDepth++;
+    savedContextDependent = ctx.contextDependentSpawnsInWith;
+    ctx.contextDependentSpawnsInWith = new Set();
   }
 
   checkBlock(ctx, stmt.body);
@@ -549,13 +558,24 @@ function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
         `Context is cleaned up when 'with' block exits, but the returned closure needs it to execute`
       );
     }
-  }
-
-  if (isFunctionLevel) {
+    for (const name of ctx.contextDependentSpawnsInWith!) {
+      const loc = ctx.unawaitedSpawns.get(name);
+      if (loc) {
+        error(ctx,
+          `Cannot use 'spawn' inside function-level 'with' block - spawned task may outlive context scope`,
+          loc,
+          `Add e.g. \`let _ = race([${name}])\` or \`all_settled([${name}])\` before the block ends, or spawn a task that does not use the context`
+        );
+        ctx.unawaitedSpawns.delete(name);
+      }
+    }
+    ctx.contextDependentSpawnsInWith = savedContextDependent;
     ctx.functionWithDepth--;
   }
 
   ctx.env = savedEnv;
+  ctx.withBlockDepth--;
+  ctx.insideWithContext = ctx.withBlockDepth > 0;
   ctx.withContextVars = savedWithContextVars;
 }
 
@@ -837,12 +857,12 @@ function checkMethodDecl(ctx: InferContext, typeDecl: AST.TypeDecl, method: AST.
 function validateUsingClause(ctx: InferContext, using: AST.UsingClause): void {
   for (const binding of using.bindings) {
     const bindingType = astTypeToType(binding.type);
-    if (!hasEmbeddedContext(bindingType, ctx.env)) {
+    if (!typeIsContext(bindingType, ctx.env)) {
       const typeName = binding.type.kind === "NamedType" ? binding.type.name : "unknown";
       error(ctx,
         `Type '${typeName}' used in 'using' clause must be a context type`,
         binding.loc,
-        `Use \`context ${typeName}\` or add Context as an embedded field`
+        `Use \`context ${typeName}\` to declare a context type`
       );
     }
   }

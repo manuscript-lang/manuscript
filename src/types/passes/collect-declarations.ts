@@ -5,7 +5,7 @@ import type { Type, ObjectType, FunctionType, PropertyType, MethodType } from ".
 import { Types } from "../types";
 import type { TypeEnvironment } from "../environment";
 import { TypeCheckError } from "../errors";
-import { TypeErrors } from "../../shared/errors";
+import { TypeErrors, RESERVED_PROPERTY_NAMES } from "../../shared/errors";
 import { astTypeToType, methodToFunctionType, fnDeclToType } from "../type-utils";
 
 export interface CollectInput {
@@ -87,6 +87,11 @@ function registerType(
   if (decl.body && decl.body.members.length > 0) {
     for (const member of decl.body.members) {
       if (member.kind === "FieldDecl") {
+        // Check for reserved property names
+        if (RESERVED_PROPERTY_NAMES.has(member.name)) {
+          const err = TypeErrors.reservedPropertyName(member.name);
+          addError(err.message, member.loc, err.hint);
+        }
         properties.push({
           name: member.name,
           type: member.type ? astTypeToType(member.type) : Types.any,
@@ -96,6 +101,11 @@ function registerType(
           embedded: member.embedded,
         });
       } else if (member.kind === "MethodDecl") {
+        // Check for reserved method names
+        if (RESERVED_PROPERTY_NAMES.has(member.name)) {
+          const err = TypeErrors.reservedPropertyName(member.name);
+          addError(err.message, member.loc, err.hint);
+        }
         const methodType = methodToFunctionType(member);
         methods.push({ name: member.name, type: methodType });
       }

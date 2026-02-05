@@ -1,10 +1,12 @@
 import type { SourceLocation } from "../lexer/tokens";
+import type { Type } from "../types/types";
 export type { SourceLocation };
 
 // Base AST node
 export interface BaseNode {
   kind: string;
   loc: SourceLocation;
+  resolvedType?: Type;  // Populated by type checker
 }
 
 // ============================================
@@ -404,6 +406,7 @@ export type Expr =
   | IfExpr
   | MatchExpr
   | ListExpr
+  | SetExpr
   | MapExpr
   | TemplateLiteral
   | SpawnExpr
@@ -444,6 +447,7 @@ export interface IndexExpr extends BaseNode {
   kind: "IndexExpr";
   object: Expr;
   index: Expr;
+  optional: boolean; // ?.[]
   // For slicing: obj[start:end:step]
   slice?: { start?: Expr; end?: Expr; step?: Expr };
   // For generic type instantiation: Type[A, B] - additional type args after first
@@ -490,6 +494,11 @@ export interface ListExpr extends BaseNode {
 export interface SpreadElement extends BaseNode {
   kind: "SpreadElement";
   expr: Expr;
+}
+
+export interface SetExpr extends BaseNode {
+  kind: "SetExpr";
+  elements: Expr[];
 }
 
 export interface MapExpr extends BaseNode {

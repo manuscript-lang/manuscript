@@ -383,7 +383,8 @@ export function extendsType(type: Type, baseName: string, env: TypeEnvironment):
 
   if (resolved.kind === "object") {
     const obj = resolved as ObjectType;
-    if (baseName === "Context" && obj.isContextType) return true;
+    // Context types: only those declared with `context TypeName`, not embedded Context
+    if (baseName === "Context") return obj.isContextType === true;
     const embedded = obj.properties.find(p => p.embedded && p.name === baseName);
     if (embedded) return true;
   }
@@ -391,11 +392,10 @@ export function extendsType(type: Type, baseName: string, env: TypeEnvironment):
   return false;
 }
 
-// Context type: either declared with `context TypeName` or embeds Context (legacy)
-export function hasEmbeddedContext(type: Type, env: TypeEnvironment): boolean {
+/** True if type is a context type (declared with `context TypeName`). Used for with/using. */
+export function typeIsContext(type: Type, env: TypeEnvironment): boolean {
   const resolved = type.kind === "ref" ? env.resolveType(type) : type;
-  if (resolved.kind === "object" && (resolved as ObjectType).isContextType) return true;
-  return extendsType(type, "Context", env);
+  return resolved.kind === "object" && (resolved as ObjectType).isContextType === true;
 }
 
 // Check if a type is iterable

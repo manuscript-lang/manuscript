@@ -49,13 +49,13 @@ export const inferType = (src: string): string => {
   // Find the last expression statement and return its type
   const lastStmt = result.program.body[result.program.body.length - 1];
   if (lastStmt?.kind === "ExprStmt") {
-    const type = result.types.get(lastStmt.expr);
+    const type = lastStmt.expr.resolvedType;
     if (type) return typeToString(type);
   }
   // For let/var, get the value type
   if (lastStmt?.kind === "LetStmt" || lastStmt?.kind === "VarStmt") {
     const value = lastStmt.kind === "LetStmt" ? lastStmt.value : lastStmt.value;
-    const type = result.types.get(value);
+    const type = value.resolvedType;
     if (type) return typeToString(type);
   }
   return "unknown";

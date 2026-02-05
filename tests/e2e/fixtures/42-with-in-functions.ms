@@ -2,8 +2,7 @@
 
 // === Setup: Context types and using functions ===
 
-type Logger
-  Context
+context Logger
   prefix: string
   
   fn log(msg: string): string
@@ -11,8 +10,7 @@ type Logger
   fn exit(): void
     print("{prefix}: cleanup")
 
-type Counter
-  Context
+context Counter
   count: number = 0
   
   fn increment(): number

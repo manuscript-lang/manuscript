@@ -171,12 +171,11 @@ export async function runFixture(
       };
     }
     
-    // Check that all expected errors are present
     const actualErrors = errors || [error || ""];
-    const allErrorsFound = expectErrors.every(expectedErr => 
+    const allErrorsFound = expectErrors.every(expectedErr =>
       actualErrors.some(actualErr => actualErr.includes(expectedErr))
     );
-    
+
     return {
       name,
       passed: allErrorsFound,

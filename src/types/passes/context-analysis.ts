@@ -122,6 +122,9 @@ function visitExpr(expr: AST.Expr, fn: (e: AST.Expr) => void): void {
     case "ListExpr":
       for (const el of expr.elements) visitExpr(el.kind === "SpreadElement" ? el.expr : el, fn);
       break;
+    case "SetExpr":
+      for (const el of expr.elements) visitExpr(el, fn);
+      break;
     case "MapExpr": for (const e of expr.entries) visitExpr(e.value, fn); break;
     case "IfExpr": visitExpr(expr.condition, fn); visitExpr(expr.then, fn); visitExpr(expr.else, fn); break;
     case "PipeExpr": visitExpr(expr.left, fn); visitExpr(expr.right, fn); break;
@@ -167,7 +170,7 @@ function stmtNeedsContext(stmt: AST.Statement, env: TypeEnvironment, fnDecls: Ma
   }
 }
 
-function exprNeedsContext(expr: AST.Expr, env: TypeEnvironment, fnDecls: Map<string, AST.FnDecl>, cache: Map<string, boolean>): boolean {
+export function exprNeedsContext(expr: AST.Expr, env: TypeEnvironment, fnDecls: Map<string, AST.FnDecl>, cache: Map<string, boolean>): boolean {
   switch (expr.kind) {
     case "CallExpr":
       if (expr.callee.kind === "Identifier" && fnNeedsContext(expr.callee.name, env, fnDecls, cache)) return true;
@@ -177,6 +180,7 @@ function exprNeedsContext(expr: AST.Expr, env: TypeEnvironment, fnDecls: Map<str
     case "UnaryExpr": return exprNeedsContext(expr.operand, env, fnDecls, cache);
     case "IfExpr": return exprNeedsContext(expr.condition, env, fnDecls, cache) || exprNeedsContext(expr.then, env, fnDecls, cache) || exprNeedsContext(expr.else, env, fnDecls, cache);
     case "ListExpr": return expr.elements.some(e => exprNeedsContext(e.kind === "SpreadElement" ? e.expr : e, env, fnDecls, cache));
+    case "SetExpr": return expr.elements.some(e => exprNeedsContext(e, env, fnDecls, cache));
     case "MapExpr": return expr.entries.some(e => exprNeedsContext(e.value, env, fnDecls, cache));
     case "MemberExpr": return exprNeedsContext(expr.object, env, fnDecls, cache);
     case "IndexExpr": return exprNeedsContext(expr.object, env, fnDecls, cache) || exprNeedsContext(expr.index, env, fnDecls, cache);
@@ -191,6 +195,7 @@ export function exprContainsEscapingLambda(expr: AST.Expr, ctxVars: Set<string>,
     case "LambdaExpr": return expr.body.kind === "Block" ? blockNeedsContext(expr.body, env, fnDecls, cache) : exprNeedsContext(expr.body, env, fnDecls, cache);
     case "Identifier": return ctxVars.has(expr.name);
     case "ListExpr": return expr.elements.some(e => exprContainsEscapingLambda(e.kind === "SpreadElement" ? e.expr : e, ctxVars, env, fnDecls, cache));
+    case "SetExpr": return expr.elements.some(e => exprContainsEscapingLambda(e, ctxVars, env, fnDecls, cache));
     case "MapExpr": return expr.entries.some(e => exprContainsEscapingLambda(e.value, ctxVars, env, fnDecls, cache));
     case "IfExpr": return exprContainsEscapingLambda(expr.then, ctxVars, env, fnDecls, cache) || exprContainsEscapingLambda(expr.else, ctxVars, env, fnDecls, cache);
     case "CallExpr": return expr.args.some(a => exprContainsEscapingLambda("kind" in a ? a : a.value, ctxVars, env, fnDecls, cache));

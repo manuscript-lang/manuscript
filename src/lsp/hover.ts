@@ -25,7 +25,6 @@ export interface HoverInfo {
 
 export function getHoverForSymbol(
   symbols: SymbolTable,
-  types: Map<AST.ASTNode, Type>,
   program: AST.Program,
   line: number,
   column: number,
@@ -33,13 +32,13 @@ export function getHoverForSymbol(
 ): HoverInfo | null {
   for (const def of symbols.getAllDefinitions()) {
     if (isDefLocationMatch(def, line, column)) {
-      return getHoverForDefinition(def, types, program, env);
+      return getHoverForDefinition(def, program, env);
     }
   }
   for (const ref of symbols.getAllReferences()) {
     const def = symbols.getDefinitionById(ref.symbolId);
     if (def && ref.loc.line === line && column >= ref.loc.column && column <= ref.loc.column + def.name.length) {
-      return getHoverForDefinition(def, types, program, env);
+      return getHoverForDefinition(def, program, env);
     }
   }
   return null;
@@ -47,7 +46,6 @@ export function getHoverForSymbol(
 
 function getHoverForDefinition(
   def: SymbolDef,
-  types: Map<AST.ASTNode, Type>,
   program: AST.Program,
   env?: TypeEnvironment
 ): HoverInfo | null {
@@ -55,7 +53,7 @@ function getHoverForDefinition(
     case "function": {
       const fn = findFnDecl(program, def.name);
       if (fn) {
-        const fnType = types.get(fn) as FunctionType | undefined;
+        const fnType = fn.resolvedType as FunctionType | undefined;
         if (fnType?.kind === "function") {
           const params = fnType.params.map((p: any) => `${p.name}: ${typeToString(p.type)}`).join(", ");
           const ret = typeToString(fnType.returnType);
@@ -134,7 +132,7 @@ function getHoverForDefinition(
       break;
     }
     case "variable": {
-      const varType = findVariableType(program, types, def);
+      const varType = findVariableType(program, def);
       const prefix = def.loc.column === 5 ? "(let)" : "(var)";
       return { signature: `${prefix} ${def.name}: ${varType ? typeToString(varType) : "any"}` };
     }
@@ -150,14 +148,14 @@ function getHoverForDefinition(
   return null;
 }
 
-function findVariableType(program: AST.Program, types: Map<AST.ASTNode, Type>, def: SymbolDef): Type | null {
+function findVariableType(program: AST.Program, def: SymbolDef): Type | null {
   function searchStatements(stmts: AST.Statement[]): Type | null {
     for (const s of stmts) {
       if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && s.pattern.name === def.name && s.loc.line === def.loc.line) {
-        return types.get(s.value) || null;
+        return s.value.resolvedType || null;
       }
       if (s.kind === "VarStmt" && s.name === def.name && s.loc.line === def.loc.line) {
-        return types.get(s.value) || null;
+        return s.value.resolvedType || null;
       }
       if (s.kind === "FnDecl" && s.body) {
         const result = searchStatements(s.body.statements);

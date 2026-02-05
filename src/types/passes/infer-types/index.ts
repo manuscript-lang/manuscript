@@ -1,7 +1,6 @@
 // Pass 2: Infer Types
 // Main type inference and validation pass
 import * as AST from "../../../parser/ast";
-import type { Type } from "../../types";
 import type { TypeEnvironment } from "../../environment";
 import { TypeCheckError } from "../../errors";
 import { createInferContext, error } from "./context";
@@ -14,7 +13,6 @@ export interface InferInput {
 }
 
 export interface InferOutput {
-  types: Map<AST.ASTNode, Type>;
   errors: TypeCheckError[];
   warnings: string[];
 }
@@ -37,7 +35,6 @@ export function inferTypes(input: InferInput): InferOutput {
   }
 
   return {
-    types: ctx.types,
     errors: ctx.errors,
     warnings: ctx.warnings,
   };

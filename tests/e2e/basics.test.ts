@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { executeWithOutput } from "../helpers/execution";
+import { execute, executeWithOutput } from "../helpers/execution";
 
 describe("E2E: Variables and Literals", () => {
   test("number literals", async () => {
@@ -39,6 +39,24 @@ print(len(nums))`);
 let obj = {name: "Alice", age: 30}
 print(obj.name, obj.age)`);
     expect(output).toContain("Alice 30");
+  });
+
+  test("map [] access does not pollute Object.prototype", async () => {
+    const hadPolluted = "polluted" in Object.prototype;
+    await execute(`
+let m = {}
+m["__proto__"] = { polluted: true }
+`);
+    expect(Object.prototype.hasOwnProperty("polluted")).toBe(false);
+    if (!hadPolluted) delete (Object.prototype as any).polluted;
+  });
+
+  test("map bracket write stores __proto__ as own property", async () => {
+    const { output } = await executeWithOutput(`
+let m = {}
+m["__proto__"] = 1
+print(m["__proto__"])`);
+    expect(output).toContain("1");
   });
 
   test("mutable variables", async () => {

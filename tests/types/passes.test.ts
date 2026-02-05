@@ -47,7 +47,12 @@ x + 2`);
 
   test("collects types for expressions", () => {
     const result = checkWithPassManager(`let x = 42`);
-    expect(result.types.size).toBeGreaterThan(0);
+    // Types are now stored on AST nodes via resolvedType
+    const letStmt = result.program.body[0];
+    expect(letStmt?.kind).toBe("LetStmt");
+    if (letStmt?.kind === "LetStmt") {
+      expect(letStmt.value.resolvedType).toBeDefined();
+    }
   });
 });
 
@@ -149,8 +154,12 @@ true`);
     const result = inferTypes({ program, env: populatedEnv, fnDecls });
     
     expect(result.errors).toHaveLength(0);
-    // Should have types for each literal
-    expect(result.types.size).toBeGreaterThan(0);
+    // Types are now stored on AST nodes via resolvedType
+    const firstStmt = program.body[0];
+    expect(firstStmt?.kind).toBe("ExprStmt");
+    if (firstStmt?.kind === "ExprStmt") {
+      expect(firstStmt.expr.resolvedType).toBeDefined();
+    }
   });
 
   test("infers binary expression types", () => {
@@ -290,17 +299,15 @@ describe("Type Utils - Pure Functions", () => {
     expect(TypeUtils.contextMatch(ctx, ctx)).toBe(true);
   });
 
-  test("extendsType and hasEmbeddedContext", () => {
+  test("extendsType Context and typeIsContext", () => {
     const env = createGlobalEnvironment();
-    const program = parse(`type Context
-  x: number
-type Foo
-  Context
+    const program = parse(`context Foo
   y: string`);
     const { env: populatedEnv } = collectDeclarations({ program, env });
     const fooType = populatedEnv.lookupType("Foo");
+    expect(fooType && TypeUtils.typeIsContext(fooType, populatedEnv)).toBe(true);
     expect(fooType && TypeUtils.extendsType(fooType, "Context", populatedEnv)).toBe(true);
-    expect(fooType && TypeUtils.hasEmbeddedContext(fooType, populatedEnv)).toBe(true);
+    expect(fooType && (fooType as import("../../src/types/types").ObjectType).isContextType).toBe(true);
   });
 
   test("isIterable for generic channel/list", () => {
@@ -502,7 +509,12 @@ describe("PassManager - Configurable API", () => {
     
     // Should have no errors (but also no type checking)
     expect(result.errors).toHaveLength(0);
-    expect(result.types.size).toBe(0); // No types inferred
+    // Without InferTypesPass, AST nodes won't have resolvedType set
+    const fnDecl = result.program.body[0];
+    expect(fnDecl?.kind).toBe("FnDecl");
+    if (fnDecl?.kind === "FnDecl") {
+      expect(fnDecl.resolvedType).toBeUndefined();
+    }
   });
 
   test("method chaining works", () => {

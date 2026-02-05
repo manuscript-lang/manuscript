@@ -1,5 +1,6 @@
 // Code Generator Types
 import type * as AST from "../parser/ast";
+import type { Type, FunctionType, ObjectType } from "../types/types";
 
 // Code generation options
 export interface CodeGenOptions {
@@ -23,11 +24,39 @@ export type GenOpts = {
   implicitReturn: boolean;
   classFields: Set<string> | null;
   isGenerator: boolean;
-  declaredTypes: Set<string>;
-  callableParamOrder: Map<string, string[]>;  // callee name (fn or type) -> param names in order for named-arg reordering
-  variableTypes: Map<string, string>;
   selfVar?: string;  // Variable name for 'this' in factory functions (e.g., "self")
 };
+
+// ============================================
+// Type Helpers - use node.resolvedType
+// ============================================
+
+export function isMapType(node: AST.ASTNode): boolean {
+  return node.resolvedType?.kind === "map";
+}
+
+export function getTypeName(node: AST.ASTNode): string | undefined {
+  const t = node.resolvedType;
+  if (t?.kind === "object") return (t as ObjectType).name;
+  if (t?.kind === "ref") return t.name;
+  return undefined;
+}
+
+export function isTypeConstructor(node: AST.ASTNode): boolean {
+  const t = node.resolvedType;
+  return t?.kind === "object" && !!(t as ObjectType).name;
+}
+
+export function getParamOrder(node: AST.ASTNode): string[] | undefined {
+  const t = node.resolvedType;
+  if (t?.kind === "function") {
+    return (t as FunctionType).params.map(p => p.name);
+  }
+  if (t?.kind === "object") {
+    return (t as ObjectType).properties.map(p => p.name);
+  }
+  return undefined;
+}
 
 // Output context - manages emission state
 export type Ctx = {
@@ -59,9 +88,6 @@ export function createOpts(overrides: Partial<GenOpts> = {}): GenOpts {
     implicitReturn: false,
     classFields: null,
     isGenerator: false,
-    declaredTypes: new Set(),
-    callableParamOrder: new Map(),
-    variableTypes: new Map(),
     ...overrides,
   };
 }

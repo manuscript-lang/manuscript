@@ -1,18 +1,15 @@
 // @test: Using Context - Dependency injection and context passing
 
 // === Context types for dependency injection ===
-// Logger context type (embeds Context for use with 'with')
-type Logger
-  Context
+// Logger context type (use with 'with')
+context Logger
   prefix: string
   
   fn log(msg: string): string
     "{prefix}: {msg}"
 
 // Mock logger for testing
-type MockLogger
-  Context
-  
+context MockLogger
   fn log(msg: string): string
     "[MOCK] " + msg
 
@@ -39,8 +36,7 @@ with Logger("ANON")
   print(greet("Anonymous"))
 
 // === Multiple context bindings ===
-type Config
-  Context
+context Config
   env: string
   debug: bool
   
@@ -79,8 +75,7 @@ with let outer_logger = Logger("OUTER")
   print(greet("back to outer"))
 
 // === Context with state ===
-type Counter
-  Context
+context Counter
   count: number = 0
   
   fn increment(): number
@@ -102,8 +97,7 @@ with let c = Counter()
   print(c.get_count())
 
 // === Environment pattern ===
-type Env
-  Context
+context Env
   name: string
   version: number
   
@@ -118,8 +112,7 @@ with let e = Env("test", 1)
   print(getEnvInfo())
 
 // === Settings pattern ===
-type Settings
-  Context
+context Settings
   maxRetries: number
   timeout: number
   

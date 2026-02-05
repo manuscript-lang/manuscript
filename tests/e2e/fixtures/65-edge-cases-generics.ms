@@ -144,9 +144,9 @@ print(len(nested[1][0]))
 // === Map of lists ===
 let mapOfLists: map[string, list[number]] = {"evens": [2, 4, 6], "odds": [1, 3, 5]}
 // @expect: 3
-print(len(mapOfLists["evens"]))
+print(len(mapOfLists["evens"] ?? []))
 // @expect: 2
-print(mapOfLists["evens"][0])
+print(mapOfLists["evens"]?.[0] ?? 0)
 
 // === List of maps ===
 let users: list[map[string, string]] = [{"name": "Alice", "role": "admin"}, {"name": "Bob", "role": "user"}]

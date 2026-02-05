@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { Parser } from "../../src/parser/parser";
 import { CodeGenerator } from "../../src/codegen/codegen";
 import type { CodeGenOptions } from "../../src/codegen/codegen";
+import { TypeChecker } from "../../src/types";
 
 /**
  * Compile Manuscript source to JavaScript
@@ -9,6 +10,9 @@ import type { CodeGenOptions } from "../../src/codegen/codegen";
 export const compile = (src: string, options?: Partial<CodeGenOptions>): string => {
   const parser = new Parser(src);
   const program = parser.parse();
+  // Run type checker to populate resolvedType on AST nodes
+  const checker = new TypeChecker();
+  checker.check(program);
   const codegen = new CodeGenerator(options);
   return codegen.generate(program);
 };

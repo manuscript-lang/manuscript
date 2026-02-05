@@ -60,9 +60,9 @@ describe("CodeGen - Lists", () => {
 
 describe("CodeGen - Maps", () => {
   compileCases([
-    ["{}", "{}"],
-    ["{a: 1}", "{ a: 1 }"],
-    ["{a: 1, b: 2}", "a: 1"],
+    ["{}", "Object.create(null)"],
+    ["{a: 1}", "Object.assign(Object.create(null), { a: 1 })"],
+    ["{a: 1, b: 2}", "Object.assign(Object.create(null), { a: 1, b: 2 })"],
   ]);
 });
 
@@ -180,7 +180,7 @@ describe("CodeGen - Template Literals", () => {
 
 describe("CodeGen - Maps Advanced", () => {
   test("spread in map", () => {
-    expectCompiled("let m = {...base, a: 1}", "...base");
+    expectCompiled("let m = {...base, a: 1}", "Object.assign(Object.create(null), base, { a: 1 })");
   });
 });
 

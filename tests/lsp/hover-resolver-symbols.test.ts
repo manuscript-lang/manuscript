@@ -13,8 +13,8 @@ import { TypeChecker } from "../../src/types";
 function parseDocument(source: string) {
   const program = new Parser(source).parse();
   const result = new TypeChecker().check(program);
-  const symbols = buildSymbolTable(program, result.types, result.env);
-  return { program, types: result.types, env: result.env, symbols };
+  const symbols = buildSymbolTable(program, result.env);
+  return { program, env: result.env, symbols };
 }
 
 describe("LSP Hover", () => {
@@ -24,12 +24,12 @@ fn greet(name: string): string
   return "Hello, " + name
 let _ = greet("x")
 `;
-    const { symbols, types, program, env } = parseDocument(source);
-    const onDef = getHoverForSymbol(symbols, types, program, 2, 4, env);
+    const { symbols, program, env } = parseDocument(source);
+    const onDef = getHoverForSymbol(symbols, program, 2, 4, env);
     expect(onDef).not.toBeNull();
     expect(onDef!.signature).toContain("fn greet");
     expect(onDef!.signature).toContain("name: string");
-    const onRef = getHoverForSymbol(symbols, types, program, 4, 10, env);
+    const onRef = getHoverForSymbol(symbols, program, 4, 10, env);
     expect(onRef).not.toBeNull();
     expect(onRef!.signature).toContain("fn greet");
   });
@@ -40,8 +40,8 @@ type Person
   name: string
   age: number
 `;
-    const { symbols, types, program, env } = parseDocument(source);
-    const hover = getHoverForSymbol(symbols, types, program, 2, 6, env);
+    const { symbols, program, env } = parseDocument(source);
+    const hover = getHoverForSymbol(symbols, program, 2, 6, env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("type Person");
     expect(hover!.doc).toContain("name: string");
@@ -54,12 +54,12 @@ type Person
 let p = Person(name: "x")
 let _ = p.name
 `;
-    const { symbols, types, program, env } = parseDocument(source);
-    const onFieldDef = getHoverForSymbol(symbols, types, program, 3, 3, env);
+    const { symbols, program, env } = parseDocument(source);
+    const onFieldDef = getHoverForSymbol(symbols, program, 3, 3, env);
     expect(onFieldDef).not.toBeNull();
     expect(onFieldDef!.signature).toContain("(field)");
     expect(onFieldDef!.signature).toContain("name");
-    const onMemberRef = getHoverForSymbol(symbols, types, program, 6, 7, env);
+    const onMemberRef = getHoverForSymbol(symbols, program, 6, 7, env);
     if (onMemberRef) expect(onMemberRef.signature).toContain("name");
   });
 
@@ -71,8 +71,8 @@ type T
 let x = T()
 let _ = x.get()
 `;
-    const { symbols, types, program, env } = parseDocument(source);
-    const onMethodDef = getHoverForSymbol(symbols, types, program, 3, 6, env);
+    const { symbols, program, env } = parseDocument(source);
+    const onMethodDef = getHoverForSymbol(symbols, program, 3, 6, env);
     expect(onMethodDef).not.toBeNull();
     expect(onMethodDef!.signature).toContain("(method)");
     expect(onMethodDef!.signature).toContain("get");
@@ -84,11 +84,11 @@ fn f(a: number): number
   let x = a
   return x
 `;
-    const { symbols, types, program, env } = parseDocument(source);
-    const onVar = getHoverForSymbol(symbols, types, program, 3, 7, env);
+    const { symbols, program, env } = parseDocument(source);
+    const onVar = getHoverForSymbol(symbols, program, 3, 7, env);
     expect(onVar).not.toBeNull();
     expect(onVar!.signature).toContain("x");
-    const onParam = getHoverForSymbol(symbols, types, program, 2, 7, env);
+    const onParam = getHoverForSymbol(symbols, program, 2, 7, env);
     expect(onParam).not.toBeNull();
     expect(onParam!.signature).toContain("(parameter)");
     expect(onParam!.signature).toContain("a: number");
@@ -100,23 +100,22 @@ type T
   fn add(n: number): number
     return n
 `;
-    const { symbols, types, program, env } = parseDocument(source);
-    const hover = getHoverForSymbol(symbols, types, program, 3, 10, env);
+    const { symbols, program, env } = parseDocument(source);
+    const hover = getHoverForSymbol(symbols, program, 3, 10, env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("(parameter)");
     expect(hover!.signature).toContain("n");
   });
 
   test("hover returns null when not on symbol", () => {
-    const { symbols, types, program, env } = parseDocument("let x = 1");
-    expect(getHoverForSymbol(symbols, types, program, 1, 1, env)).toBeNull();
+    const { symbols, program, env } = parseDocument("let x = 1");
+    expect(getHoverForSymbol(symbols, program, 1, 1, env)).toBeNull();
   });
 
-  test("hover on function uses formatFnSignature when type not in map", () => {
+  test("hover on function uses formatFnSignature when type not resolved", () => {
     const source = `fn bar(a: number): number\n  return a`;
     const { program, symbols, env } = parseDocument(source);
-    const emptyTypes = new Map();
-    const hover = getHoverForSymbol(symbols, emptyTypes, program, 1, 4, env);
+    const hover = getHoverForSymbol(symbols, program, 1, 4, env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("bar");
     expect(hover!.signature).toContain("number");
@@ -124,8 +123,8 @@ type T
 
   test("hover on type without env uses findTypeDecl", () => {
     const source = `type Box\n  x: number`;
-    const { program, symbols, types } = parseDocument(source);
-    const hover = getHoverForSymbol(symbols, types, program, 1, 6, undefined);
+    const { program, symbols } = parseDocument(source);
+    const hover = getHoverForSymbol(symbols, program, 1, 6, undefined);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("type Box");
   });
@@ -136,8 +135,8 @@ fn f()
   var y = 2
   print(y)
 `;
-    const { symbols, types, program, env } = parseDocument(source);
-    const hover = getHoverForSymbol(symbols, types, program, 3, 7, env);
+    const { symbols, program, env } = parseDocument(source);
+    const hover = getHoverForSymbol(symbols, program, 3, 7, env);
     expect(hover).not.toBeNull();
     expect(hover!.signature).toContain("y");
   });
