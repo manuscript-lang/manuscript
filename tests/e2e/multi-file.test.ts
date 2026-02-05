@@ -84,4 +84,23 @@ print(x)
     const result = resolveSpecifier("/proj", "/proj/src", "pkg:utils");
     expect(result).toEqual({ kind: "external" });
   });
+
+  test("compileProject: unresolved module errors on importer file with line", async () => {
+    const dir = path.join(process.cwd(), "tests", "e2e", "fixtures", "multi-file-unresolved");
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, "ms.toml"), 'src = "."\n');
+    await fs.writeFile(
+      path.join(dir, "main.ms"),
+      'import { add } from "nonexistent"\nlet x = 1\n'
+    );
+    const entryPath = path.join(dir, "main.ms");
+    const result = await compileProject(entryPath, { typeCheck: true });
+    expect(result.success).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+    const moduleError = result.errors.find((e) => e.message.includes("Module not found") || e.message.includes("not found"));
+    expect(moduleError).toBeDefined();
+    expect(path.resolve(moduleError!.file!)).toBe(path.resolve(entryPath));
+    expect(moduleError!.line).toBe(1);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
 });

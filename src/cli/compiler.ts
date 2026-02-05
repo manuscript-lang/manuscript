@@ -224,6 +224,15 @@ function relPathFromSrc(srcDir: string, filePath: string): string {
     .replace(/\\/g, "/");
 }
 
+function findImportDeclLoc(program: AST.Program, specifier: string): { line: number; column: number } | undefined {
+  for (const stmt of program.body) {
+    if (stmt.kind === "ImportDecl" && stmt.source === specifier && stmt.loc) {
+      return { line: stmt.loc.line, column: stmt.loc.column };
+    }
+  }
+  return undefined;
+}
+
 function emitPathFromTo(
   srcDir: string,
   fromFilePath: string,
@@ -377,9 +386,26 @@ export async function compileProject(
 
   if (graph.errors.length > 0) {
     for (const e of graph.errors) {
+      let line: number | undefined;
+      let column: number | undefined;
+      if (e.file && e.specifier) {
+        try {
+          const src = await readFile(e.file);
+          const prog = new Parser(src).parse();
+          const loc = findImportDeclLoc(prog, e.specifier);
+          if (loc) {
+            line = loc.line;
+            column = loc.column;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
       errors.push({
         message: e.message,
         file: e.file,
+        line,
+        column,
         phase: "typecheck",
       });
     }
@@ -490,15 +516,25 @@ export async function typecheckDocumentInProject(
   const warnings: CompileWarning[] = [];
 
   if (graph.errors.length > 0) {
-    for (const e of graph.errors) {
-      errors.push({ message: e.message, file: e.file, phase: "typecheck" });
-    }
+    let entryProgram: AST.Program | undefined;
     try {
-      const entryProgram = new Parser(entrySource).parse();
-      return { program: entryProgram, env: createGlobalEnvironment(), errors, warnings };
+      entryProgram = new Parser(entrySource).parse();
     } catch {
       return null;
     }
+    for (const e of graph.errors) {
+      const loc = e.specifier && e.file && path.resolve(e.file) === entryAbs
+        ? findImportDeclLoc(entryProgram!, e.specifier)
+        : undefined;
+      errors.push({
+        message: e.message,
+        file: e.file,
+        line: loc?.line,
+        column: loc?.column,
+        phase: "typecheck",
+      });
+    }
+    return { program: entryProgram!, env: createGlobalEnvironment(), errors, warnings };
   }
 
   const programs = new Map<string, AST.Program>();

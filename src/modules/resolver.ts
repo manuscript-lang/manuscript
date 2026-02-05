@@ -94,7 +94,7 @@ export async function buildModuleGraph(
 
   const entryAbs = path.resolve(entryPath);
 
-  async function visit(filePath: string): Promise<void> {
+  async function visit(filePath: string, importerPath?: string, specifier?: string): Promise<void> {
     const key = path.resolve(filePath);
     if (visited.has(key)) return;
     const stackIndex = stackOrder.indexOf(key);
@@ -102,7 +102,7 @@ export async function buildModuleGraph(
       const cycle = stackOrder.slice(stackIndex).concat(key);
       errors.push({
         message: `Circular dependency: ${cycle.join(" → ")}`,
-        file: filePath,
+        file: importerPath ?? filePath,
       });
       return;
     }
@@ -116,7 +116,7 @@ export async function buildModuleGraph(
         err?.code === "ENOENT"
           ? `Module not found: ${filePath}`
           : `Cannot read file: ${(e as Error).message}`;
-      errors.push({ message: msg, file: filePath });
+      errors.push({ message: msg, file: importerPath ?? filePath, specifier });
       stackOrder.pop();
       return;
     }
@@ -147,8 +147,8 @@ export async function buildModuleGraph(
       }
     }
     pathToDeps.set(key, deps);
-    for (const dep of deps) {
-      await visit(dep);
+    for (const [specifier, depPath] of thisMap) {
+      await visit(depPath, filePath, specifier);
     }
     stackOrder.pop();
     visited.add(key);
