@@ -92,12 +92,26 @@ type Match
 
 ### Sets
 
+Set literals use angle brackets. All set values are JavaScript `Set` with method parity.
+
 ```manuscript
-set(list)                    // create set from list
-union(a, b)                  // a ∪ b
-intersect(a, b)              // a ∩ b
-difference(a, b)             // a - b
-is_subset(a, b)              // a ⊆ b
+let a = <1, 2, 3>           // set literal
+let b = <>                   // empty set
+set(list)                    // create set from list (extern)
+union(a, b)                  // a ∪ b (extern)
+intersect(a, b)              // a ∩ b (extern)
+difference(a, b)             // a - b (extern)
+is_subset(a, b)              // a ⊆ b (extern)
+
+// Set methods (JS Set parity)
+s.add(x)                     // add item, returns set for chaining
+s.has(x)  s.delete(x)
+s.clear()
+s.values()                   // list[T]
+s.entries()                  // list of [value, value] pairs
+s.keys()                     // same as values
+s.forEach(f)                 // f: fn(T): void
+s.size                       // number of elements
 ```
 
 ### Conversion

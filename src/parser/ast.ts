@@ -406,6 +406,7 @@ export type Expr =
   | IfExpr
   | MatchExpr
   | ListExpr
+  | SetExpr
   | MapExpr
   | TemplateLiteral
   | SpawnExpr
@@ -493,6 +494,11 @@ export interface ListExpr extends BaseNode {
 export interface SpreadElement extends BaseNode {
   kind: "SpreadElement";
   expr: Expr;
+}
+
+export interface SetExpr extends BaseNode {
+  kind: "SetExpr";
+  elements: Expr[];
 }
 
 export interface MapExpr extends BaseNode {

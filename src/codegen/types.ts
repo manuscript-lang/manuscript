@@ -45,9 +45,7 @@ export function getTypeName(node: AST.ASTNode): string | undefined {
 export function isTypeConstructor(node: AST.ASTNode): boolean {
   const t = node.resolvedType;
   if (!t) return false;
-  // Direct object type
   if (t.kind === "object" && !!(t as ObjectType).name) return true;
-  // Constructor function returning an object or generic type
   if (t.kind === "function") {
     const fnType = t as FunctionType;
     const retType = fnType.returnType;

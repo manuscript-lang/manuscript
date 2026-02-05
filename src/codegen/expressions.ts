@@ -29,6 +29,7 @@ export function genExpr(ctx: Ctx, expr: AST.Expr, opts: GenOpts): string {
     case "IfExpr": return genIfExpr(ctx, expr, opts);
     case "MatchExpr": return genMatchExpr(ctx, expr, opts);
     case "ListExpr": return genList(ctx, expr, opts);
+    case "SetExpr": return genSet(ctx, expr, opts);
     case "MapExpr": return genMap(ctx, expr, opts);
     case "TemplateLiteral": return genTemplate(ctx, expr, opts);
     case "SpawnExpr": return genSpawn(ctx, expr, opts);
@@ -96,7 +97,7 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
       return `new __ms_runtime.${baseName}(${args})`;
     }
     // User-defined generic types - factory functions, no 'new'
-    if (isTypeConstructor(node.callee.object)) {
+    if (isTypeConstructor(node.callee.object) || ctx.typeFields.has(baseName)) {
       return `${baseName}(${args})`;
     }
   }
@@ -108,12 +109,25 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     return `new __ms_runtime.${node.callee.name}(${args})`;
   }
 
+  // Set methods values/entries/keys return iterators in JS; we need lists
+  if (node.callee.kind === "MemberExpr" && node.args.length === 0) {
+    const objType = node.callee.object.resolvedType;
+    if (objType?.kind === "set" && ["values", "entries", "keys"].includes(node.callee.property)) {
+      const obj = genExpr(ctx, node.callee.object, opts);
+      const method = node.callee.property;
+      return `Array.from(${obj}.${method}())`;
+    }
+  }
+
   // Get param order from callee's resolved type for user-defined functions and types
   const paramOrder = getParamOrder(node.callee);
   const args = genCallArgs(ctx, node.args, opts, paramOrder);
 
-  // User-defined types use factory functions (no 'new')
+  // User-defined types use sync factory functions (no 'new', no await)
   if (isTypeConstructor(node.callee)) {
+    return `${callee}(${args})`;
+  }
+  if (node.callee.kind === "Identifier" && ctx.typeFields.has(node.callee.name)) {
     return `${callee}(${args})`;
   }
 
@@ -298,6 +312,12 @@ export function genList(ctx: Ctx, node: AST.ListExpr, opts: GenOpts): string {
     return genExpr(ctx, el, opts);
   });
   return `[${elements.join(", ")}]`;
+}
+
+export function genSet(ctx: Ctx, node: AST.SetExpr, opts: GenOpts): string {
+  if (node.elements.length === 0) return "new Set()";
+  const inner = node.elements.map(el => genExpr(ctx, el, opts)).join(", ");
+  return `new Set([${inner}])`;
 }
 
 export function genMap(ctx: Ctx, node: AST.MapExpr, opts: GenOpts): string {

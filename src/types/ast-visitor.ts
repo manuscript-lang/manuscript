@@ -196,6 +196,9 @@ export function visitExpr(expr: AST.Expr, visitor: Visitor): void {
         }
       }
       break;
+    case "SetExpr":
+      for (const el of expr.elements) visitExpr(el, visitor);
+      break;
     case "MapExpr":
       for (const entry of expr.entries) {
         visitExpr(entry.key, visitor);
@@ -282,6 +285,9 @@ export function visitWithScope(program: AST.Program, v: ScopedVisitor): void {
           if (el.kind === "SpreadElement") expr(el.expr, scope);
           else expr(el, scope);
         }
+        break;
+      case "SetExpr":
+        for (const el of e.elements) expr(el, scope);
         break;
       case "MapExpr":
         for (const en of e.entries) {
@@ -430,6 +436,8 @@ export function exprReferences(expr: AST.Expr, name: string): boolean {
       return expr.elements.some(e =>
         e.kind === "SpreadElement" ? exprReferences(e.expr, name) : exprReferences(e, name)
       );
+    case "SetExpr":
+      return expr.elements.some(e => exprReferences(e, name));
     case "MapExpr":
       return expr.entries.some(e => exprReferences(e.value, name));
     case "PipeExpr":

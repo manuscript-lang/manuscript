@@ -60,6 +60,9 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
     case "ListExpr":
       type = inferListExpr(ctx, expr);
       break;
+    case "SetExpr":
+      type = inferSetExpr(ctx, expr);
+      break;
     case "MapExpr":
       type = inferMapExpr(ctx, expr);
       break;
@@ -889,6 +892,15 @@ function inferListExpr(ctx: InferContext, expr: AST.ListExpr): Type {
   return Types.list(commonType);
 }
 
+function inferSetExpr(ctx: InferContext, expr: AST.SetExpr): Type {
+  if (expr.elements.length === 0) return Types.set(Types.any);
+  const elementTypes = expr.elements.map(el => inferExpr(ctx, el));
+  for (const el of expr.elements) {
+    if (el.kind === "Identifier") ctx.unawaitedSpawns.delete(el.name);
+  }
+  return Types.set(findCommonType(elementTypes));
+}
+
 function inferMapExpr(ctx: InferContext, expr: AST.MapExpr): Type {
   if (expr.entries.length === 0) {
     return Types.map(Types.string, Types.any);
@@ -963,6 +975,9 @@ export function consumeSpawnsInExpr(ctx: InferContext, expr: AST.Expr): void {
         }
       }
       break;
+    case "SetExpr":
+      for (const el of expr.elements) consumeSpawnsInExpr(ctx, el);
+      break;
     case "MapExpr":
       for (const entry of expr.entries) {
         consumeSpawnsInExpr(ctx, entry.value);
@@ -1012,6 +1027,11 @@ export function exprContainsSpawn(ctx: InferContext, expr: AST.Expr): boolean {
       }
     }
   }
+  if (expr.kind === "SetExpr") {
+    for (const el of expr.elements) {
+      if (exprContainsSpawn(ctx, el)) return true;
+    }
+  }
 
   if (expr.kind === "MapExpr") {
     for (const entry of expr.entries) {
@@ -1046,6 +1066,10 @@ export function transferSpawnTracking(ctx: InferContext, expr: AST.Expr): void {
       else if (el.kind === "SpreadElement" && el.expr.kind === "Identifier") {
         ctx.unawaitedSpawns.delete(el.expr.name);
       }
+    }
+  } else if (expr.kind === "SetExpr") {
+    for (const el of expr.elements) {
+      if (el.kind === "Identifier") ctx.unawaitedSpawns.delete(el.name);
     }
   } else if (expr.kind === "MapExpr") {
     for (const entry of expr.entries) {

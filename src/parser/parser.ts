@@ -60,6 +60,7 @@ export class Parser {
     this.prefix("IDENTIFIER", () => this.identifier());
     this.prefix("LPAREN", () => this.groupOrLambda());
     this.prefix("LBRACKET", () => this.listExpr());
+    this.prefix("LT", () => this.setExpr());
     this.prefix("LBRACE", () => this.mapExpr());
     this.prefix("MINUS", () => this.unary());
     this.prefix("NOT", () => this.unary());
@@ -1743,6 +1744,24 @@ export class Parser {
 
     this.expect("RBRACKET");
     return { kind: "ListExpr", elements, loc };
+  }
+
+  private setExpr(): AST.SetExpr {
+    const loc = this.previous().loc;
+    const elements: AST.Expr[] = [];
+    this.skipBracketedWhitespace();
+    if (this.check("GT")) {
+      this.advance();
+      return { kind: "SetExpr", elements, loc };
+    }
+    while (!this.check("GT")) {
+      elements.push(this.expression(Precedence.COMPARISON));
+      this.skipBracketedWhitespace();
+      if (!this.check("GT")) this.expect("COMMA");
+      this.skipBracketedWhitespace();
+    }
+    this.expect("GT");
+    return { kind: "SetExpr", elements, loc };
   }
 
   private mapExpr(): AST.MapExpr {

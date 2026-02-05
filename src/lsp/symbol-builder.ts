@@ -338,6 +338,9 @@ function collectExprReferences(ctx: BuildContext, expr: AST.Expr): void {
         }
       }
       break;
+    case "SetExpr":
+      for (const el of expr.elements) collectExprReferences(ctx, el);
+      break;
     case "MapExpr":
       for (const entry of expr.entries) {
         collectExprReferences(ctx, entry.key);
