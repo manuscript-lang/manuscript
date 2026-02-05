@@ -14,3 +14,7 @@ export {
 } from "./pass-manager";
 export * from "./type-utils";
 export * from "./ast-visitor";
+export {
+  getModuleExports,
+  type GetModuleExportsResult,
+} from "./module-exports";

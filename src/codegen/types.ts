@@ -9,6 +9,8 @@ export interface CodeGenOptions {
   runtime: "bun" | "node";
   module: "esm" | "cjs";
   emitRuntimeImport: boolean;
+  /** For project compile: specifier -> emit path (e.g. "agents/coder" -> "./agents/coder.js") */
+  importEmitPaths?: Map<string, string>;
 }
 
 export const defaultOptions: CodeGenOptions = {

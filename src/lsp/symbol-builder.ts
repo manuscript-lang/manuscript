@@ -132,6 +132,19 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
       });
       break;
     }
+    case "ImportDecl": {
+      for (const { name, alias } of stmt.names) {
+        const bindingName = alias ?? name;
+        ctx.symbols.addDefinition({
+          id: { kind: "import", qualifiedName: bindingName },
+          name: bindingName,
+          loc: stmt.loc,
+          nameOffset: 0,
+          importTarget: { specifier: stmt.source, exportedName: name },
+        });
+      }
+      break;
+    }
     case "ForStmt": {
       if (stmt.pattern?.kind === "IdentifierPattern") {
         const scope = ctx.currentScope;

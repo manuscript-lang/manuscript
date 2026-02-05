@@ -24,11 +24,11 @@ export function genImport(ctx: Ctx, decl: AST.ImportDecl, opts: GenOpts): void {
     if (item.alias) return `${item.name} as ${item.alias}`;
     return item.name;
   });
-
+  const path = ctx.options.importEmitPaths?.get(decl.source) ?? decl.source;
   if (ctx.options.module === "esm") {
-    emit(ctx, `import { ${items.join(", ")} } from "${decl.source}";`);
+    emit(ctx, `import { ${items.join(", ")} } from "${path}";`);
   } else {
-    emit(ctx, `const { ${items.join(", ")} } = require("${decl.source}");`);
+    emit(ctx, `const { ${items.join(", ")} } = require("${path}");`);
   }
 }
 

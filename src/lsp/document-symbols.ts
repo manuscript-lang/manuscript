@@ -2,7 +2,7 @@
 import type { SourceLocation } from "../parser/ast";
 import type { SymbolTable, SymbolDef, SymbolId } from "./symbols";
 
-export type DocumentSymbolKind = "function" | "type" | "field" | "method" | "variable" | "parameter";
+export type DocumentSymbolKind = "function" | "type" | "field" | "method" | "variable" | "parameter" | "import";
 
 export interface DocumentSymbolInfo {
   name: string;
@@ -58,7 +58,7 @@ function shouldIncludeInOutline(def: SymbolDef): boolean {
   const kind = def.id.kind;
   const qn = def.id.qualifiedName;
   
-  // Always include top-level functions and types
+  if (kind === "import") return true;
   if ((kind === "function" || kind === "type") && !qn.includes(".")) {
     return true;
   }

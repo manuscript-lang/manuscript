@@ -2,8 +2,7 @@
 import type { SourceLocation } from "../parser/ast";
 
 export interface SymbolId {
-  kind: "function" | "type" | "field" | "method" | "variable" | "parameter";
-  // Fully qualified name: "fn_name", "TypeName", "TypeName.member"
+  kind: "function" | "type" | "field" | "method" | "variable" | "parameter" | "import";
   qualifiedName: string;
 }
 
@@ -11,8 +10,9 @@ export interface SymbolDef {
   id: SymbolId;
   name: string;
   loc: SourceLocation;
-  // Name offset within the declaration (e.g., 3 for "fn " prefix)
   nameOffset: number;
+  /** When id.kind === "import", points to the defining module and exported name for go-to-def/hover */
+  importTarget?: { specifier: string; exportedName: string };
 }
 
 export interface SymbolRef {

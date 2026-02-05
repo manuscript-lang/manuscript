@@ -151,9 +151,16 @@ export class PassManager {
    * Run all passes on the program
    */
   run(program: AST.Program): TypeCheckResult {
+    return this.runWithEnv(program, createGlobalEnvironment());
+  }
+
+  /**
+   * Run all passes with a pre-seeded environment (e.g. for project compile with imports).
+   */
+  runWithEnv(program: AST.Program, initialEnv: TypeEnvironment): TypeCheckResult {
     const ctx: PassContext = {
       program,
-      env: createGlobalEnvironment(),
+      env: initialEnv,
       fnDecls: new Map(),
       errors: [],
       warnings: [],

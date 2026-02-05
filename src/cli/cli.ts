@@ -5,8 +5,10 @@ import { parseArgs } from "util";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { Glob } from "bun";
-import { compile, check, formatErrors, type CompileOptions } from "./compiler";
+import * as os from "os";
+import { compile, check, compileProject, formatErrors, type CompileOptions } from "./compiler";
 import { __ms_runtime } from "../runtime/runtime";
+import { findMsToml, loadMsToml } from "../modules";
 
 const VERSION = "0.1.0";
 
@@ -136,14 +138,46 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
     return 1;
   }
 
-  const filepath = files[0]!;
-  
+  const filepath = path.resolve(files[0]!);
+
   try {
+    const projectRoot = await findMsToml(path.dirname(filepath));
+    if (projectRoot) {
+      const config = await loadMsToml(projectRoot);
+      const result = await compileProject(filepath, {
+        typeCheck: !options.noTypecheck,
+        emitRuntimeImport: true,
+        module: "esm",
+      });
+      if (!result.success) {
+        console.error(formatErrors(result.errors));
+        return 1;
+      }
+      const outDir = path.join(os.tmpdir(), `ms-run-${Date.now()}`);
+      await fs.mkdir(outDir, { recursive: true });
+      for (const [fp, code] of result.outputs) {
+        const rel = path.relative(config.srcDir, fp).replace(/\.ms$/i, "") + ".js";
+        const outPath = path.join(outDir, rel);
+        await fs.mkdir(path.dirname(outPath), { recursive: true });
+        await fs.writeFile(outPath, code);
+      }
+      const entryRel = path.relative(config.srcDir, filepath).replace(/\.ms$/i, "") + ".js";
+      const entryOut = path.join(outDir, entryRel);
+      const proc = Bun.spawn(["bun", "run", entryOut], {
+        cwd: outDir,
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      });
+      const exitCode = await proc.exited;
+      return exitCode ?? 1;
+    }
+
     const source = await readFile(filepath);
     const result = compile(source, {
       filename: filepath,
       typeCheck: !options.noTypecheck,
-      emitRuntimeImport: false, // We inject runtime via Function arguments
+      emitRuntimeImport: false,
     });
 
     if (!result.success) {
@@ -156,24 +190,16 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
       return 0;
     }
 
-    // Execute the compiled code
     const code = result.code!;
-    
-    // Create a module with runtime injected
-    // Wrap in async IIFE to support top-level await
     const wrappedCode = `const __ms_runtime = arguments[0];
 return (async () => {
 ${code}
 })();`;
-    
     const fn = new Function(wrappedCode);
     await fn(__ms_runtime);
-    
-    // Run any pending tests
     if (__ms_runtime.getTestCount() > 0) {
       __ms_runtime.runTests();
     }
-    
     return 0;
   } catch (e: any) {
     error(e.message);
@@ -188,21 +214,31 @@ async function checkCommand(files: string[], options: CLIOptions): Promise<numbe
   }
 
   const resolvedFiles = await globFiles(files);
-  
   if (resolvedFiles.length === 0) {
     error("No .ms files found matching the pattern");
     return 1;
   }
 
+  const firstPath = path.resolve(resolvedFiles[0]!);
+  const projectRoot = await findMsToml(path.dirname(firstPath));
+  if (projectRoot) {
+    const result = await compileProject(firstPath, { typeCheck: true });
+    if (!result.success) {
+      console.error(formatErrors(result.errors));
+      error(`Found ${result.errors.length} error(s)`);
+      return 1;
+    }
+    success(`Checked project (${result.outputs.size} file(s)) with no errors`);
+    return 0;
+  }
+
   let hasErrors = false;
   let totalErrors = 0;
   let checkedCount = 0;
-
   for (const filepath of resolvedFiles) {
     try {
       const source = await readFile(filepath);
       const result = check(source, { filename: filepath });
-
       if (!result.success) {
         hasErrors = true;
         totalErrors += result.errors.length;
@@ -216,15 +252,13 @@ async function checkCommand(files: string[], options: CLIOptions): Promise<numbe
       hasErrors = true;
     }
   }
-
   console.log();
   if (hasErrors) {
     error(`Found ${totalErrors} error(s) in ${checkedCount} file(s)`);
     return 1;
-  } else {
-    success(`Checked ${checkedCount} file(s) with no errors`);
-    return 0;
   }
+  success(`Checked ${checkedCount} file(s) with no errors`);
+  return 0;
 }
 
 async function testCommand(files: string[], options: CLIOptions): Promise<number> {
@@ -320,19 +354,34 @@ async function buildCommand(files: string[], options: CLIOptions): Promise<numbe
   }
 
   const resolvedFiles = await globFiles(files);
-  
   if (resolvedFiles.length === 0) {
     error("No .ms files found matching the pattern");
     return 1;
   }
 
   const outputDir = options.output || "dist";
-  
-  // Create output directory
+  const firstPath = path.resolve(resolvedFiles[0]!);
+  const projectRoot = await findMsToml(path.dirname(firstPath));
+  if (projectRoot) {
+    const result = await compileProject(firstPath, {
+      typeCheck: !options.noTypecheck,
+      outDir: outputDir,
+    });
+    if (!result.success) {
+      console.error(formatErrors(result.errors));
+      return 1;
+    }
+    const config = await loadMsToml(projectRoot);
+    for (const [fp] of result.outputs) {
+      const rel = path.relative(config.srcDir, fp).replace(/\.ms$/i, "") + ".js";
+      log(`\x1b[32m✓\x1b[0m ${fp} → ${path.join(outputDir, rel)}`, options);
+    }
+    return 0;
+  }
+
   await fs.mkdir(outputDir, { recursive: true });
 
   let hasErrors = false;
-
   for (const filepath of resolvedFiles) {
     try {
       const source = await readFile(filepath);
@@ -340,7 +389,6 @@ async function buildCommand(files: string[], options: CLIOptions): Promise<numbe
         filename: filepath,
         typeCheck: !options.noTypecheck,
       });
-
       if (!result.success) {
         hasErrors = true;
         console.error(formatErrors(result.errors, source));

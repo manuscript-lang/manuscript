@@ -13,7 +13,6 @@ import {
   formatFunctionType,
   formatTypeSignature,
   formatTypeSignatureFromObject,
-  getDocstring,
   parseMemberQualifiedName,
   parseQualifiedName,
 } from "./utils";
@@ -57,9 +56,9 @@ function getHoverForDefinition(
         if (fnType?.kind === "function") {
           const params = fnType.params.map((p: any) => `${p.name}: ${typeToString(p.type)}`).join(", ");
           const ret = typeToString(fnType.returnType);
-          return { signature: `fn ${def.name}(${params}): ${ret}`, doc: getDocstring(fn.body) };
+          return { signature: `fn ${def.name}(${params}): ${ret}`, doc: fn.doc };
         }
-        return { signature: formatFnSignature(fn), doc: getDocstring(fn.body) };
+        return { signature: formatFnSignature(fn), doc: fn.doc };
       }
       break;
     }
@@ -75,7 +74,7 @@ function getHoverForDefinition(
       const typeDecl = findTypeDecl(program, def.name);
       if (typeDecl) {
         const { signature, fields } = formatTypeSignature(typeDecl);
-        const doc = fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined;
+        const doc = typeDecl.doc ?? (fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined);
         return { signature: `type ${signature}`, doc };
       }
       break;
@@ -113,7 +112,7 @@ function getHoverForDefinition(
             const params = ft.params.map((p: any) => `${p.name}: ${typeToString(p.type)}`).join(", ");
             const ret = typeToString(ft.returnType);
             const methodMember = findTypeDecl(program, parsed.typeName)?.body?.members?.find((m): m is AST.MethodDecl => m.kind === "MethodDecl" && m.name === parsed.memberName);
-            return { signature: `(method) fn ${parsed.memberName}(${params}): ${ret}`, doc: getDocstring(methodMember?.body) };
+            return { signature: `(method) fn ${parsed.memberName}(${params}): ${ret}`, doc: methodMember?.doc };
           }
         }
       }
@@ -124,7 +123,7 @@ function getHoverForDefinition(
             if (m.kind === "MethodDecl" && m.name === parsed.memberName) {
               const params = m.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
               const ret = formatAstType(m.returnType);
-              return { signature: `(method) fn ${parsed.memberName}(${params}): ${ret}`, doc: getDocstring(m.body) };
+              return { signature: `(method) fn ${parsed.memberName}(${params}): ${ret}`, doc: m.doc };
             }
           }
         }

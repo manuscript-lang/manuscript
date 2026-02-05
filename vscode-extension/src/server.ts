@@ -37,7 +37,6 @@ import {
   formatFnSignature,
   formatTypeSignature,
 } from "../../src/types/type-utils";
-import { getDocstring } from "../../src/lsp/utils";
 
 // Stdlib extraction
 import {
@@ -62,11 +61,17 @@ import {
   findConstructorCalleeAt,
   type DocumentSymbolKind,
   type CompletionInfo,
+  type HoverInfo,
 } from "../../src/lsp";
 
 import type { Program, FnDecl, TypeDecl, ASTNode, Expr } from "../../src/parser/ast";
 import * as AST from "../../src/parser/ast";
 import type { TypeEnvironment } from "../../src/types/environment";
+import * as path from "path";
+import * as fs from "fs/promises";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { typecheckDocumentInProject } from "../../src/cli/compiler";
+import { findMsToml, loadMsToml, resolveSpecifier } from "../../src/modules";
 
 // ============================================
 // Server State
@@ -81,6 +86,80 @@ interface CachedDocument {
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 const cache = new Map<string, CachedDocument>();
+
+async function getOrLoadCached(depPath: string): Promise<CachedDocument | null> {
+  const uri = pathToFileURL(path.resolve(depPath)).href;
+  const existing = cache.get(uri);
+  if (existing) return existing;
+  let content: string;
+  try {
+    content = await fs.readFile(path.resolve(depPath), "utf-8");
+  } catch {
+    return null;
+  }
+  const result = await typecheckDocumentInProject(depPath, content, (p) =>
+    fs.readFile(path.resolve(p), "utf-8")
+  );
+  if (!result) {
+    try {
+      const program = new Parser(content).parse();
+      const checkResult = new TypeChecker().check(program);
+      const symbols = buildSymbolTable(program, checkResult.env);
+      const cached: CachedDocument = { program, env: checkResult.env, symbols };
+      cache.set(uri, cached);
+      return cached;
+    } catch {
+      return null;
+    }
+  }
+  const symbols = buildSymbolTable(result.program, result.env);
+  const cached: CachedDocument = { program: result.program, env: result.env, symbols };
+  cache.set(uri, cached);
+  return cached;
+}
+
+async function listMsFilesInDir(dir: string): Promise<string[]> {
+  const out: string[] = [];
+  async function walk(d: string): Promise<void> {
+    let entries: { name: string; isFile: () => boolean }[];
+    try {
+      entries = await fs.readdir(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = path.join(d, e.name);
+      if (e.isFile()) {
+        if (e.name.toLowerCase().endsWith(".ms")) out.push(full);
+      } else {
+        await walk(full);
+      }
+    }
+  }
+  await walk(path.resolve(dir));
+  return out;
+}
+
+/** Resolve project config from a file URI. Returns null if no project. */
+async function getProjectConfig(
+  fileUri: string
+): Promise<{ projectRoot: string; config: Awaited<ReturnType<typeof loadMsToml>> } | null> {
+  const entryPath = fileURLToPath(new URL(fileUri));
+  const projectRoot = await findMsToml(path.dirname(entryPath));
+  if (!projectRoot) return null;
+  try {
+    const config = await loadMsToml(projectRoot);
+    return { projectRoot, config };
+  } catch {
+    return null;
+  }
+}
+
+/** Specifier for a file path relative to srcDir (e.g. "src/ms/add" for add.ms). */
+function specifierForFile(srcDir: string, filePath: string): string {
+  const rel = path.relative(srcDir, path.resolve(filePath));
+  return rel.replace(/\.ms$/i, "").replace(/\\/g, "/");
+}
 
 // Parse stdlib once on startup (comments are captured in AST during parsing)
 const stdlibProgram = new Parser(stdlibSource).parse();
@@ -119,6 +198,46 @@ async function validateDocument(doc: TextDocument): Promise<void> {
   if (doc.uri === STDLIB_PATH_URI) {
     connection.sendDiagnostics({ uri: doc.uri, diagnostics: [] });
     return;
+  }
+
+  if (doc.uri.startsWith("file:")) {
+    const entryPath = fileURLToPath(new URL(doc.uri));
+    const projectResult = await typecheckDocumentInProject(
+      entryPath,
+      doc.getText(),
+      (p) => fs.readFile(path.resolve(p), "utf-8")
+    );
+    if (projectResult) {
+      const { program, env, errors, warnings } = projectResult;
+      const symbols = buildSymbolTable(program, env);
+      cache.set(doc.uri, { program, env, symbols });
+      const entryAbs = path.resolve(entryPath);
+      for (const err of errors) {
+        if (err.file && path.resolve(err.file) === entryAbs) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Error,
+            range: {
+              start: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) - 1 },
+              end: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) + 10 },
+            },
+            message: err.message.replace(/ at line \d+, column \d+$/, ""),
+            source: "manuscript",
+          });
+        }
+      }
+      for (const w of warnings) {
+        if (w.file && path.resolve(w.file) === entryAbs) {
+          diagnostics.push({
+            severity: DiagnosticSeverity.Warning,
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+            message: w.message,
+            source: "manuscript",
+          });
+        }
+      }
+      connection.sendDiagnostics({ uri: doc.uri, diagnostics });
+      return;
+    }
   }
 
   try {
@@ -228,6 +347,15 @@ connection.onCompletion((params): CompletionItem[] => {
       } else if (s.kind === "LetStmt" || s.kind === "VarStmt") {
         const name = (s as any).name || (s as any).pattern?.name;
         if (name) items.push({ label: name, kind: CompletionItemKind.Variable });
+      } else if (s.kind === "ImportDecl") {
+        for (const { name, alias } of s.names) {
+          const label = alias ?? name;
+          items.push({
+            label,
+            kind: CompletionItemKind.Function,
+            data: { import: true, specifier: s.source, exportedName: name, uri: params.textDocument.uri },
+          });
+        }
       }
     }
   }
@@ -235,9 +363,43 @@ connection.onCompletion((params): CompletionItem[] => {
   return items;
 });
 
-connection.onCompletionResolve((item): CompletionItem => {
-  const data = item.data as { fn?: string; type?: string; uri?: string } | undefined;
+connection.onCompletionResolve(async (item): Promise<CompletionItem> => {
+  const data = item.data as {
+    fn?: string;
+    type?: string;
+    uri?: string;
+    import?: boolean;
+    specifier?: string;
+    exportedName?: string;
+  } | undefined;
   if (!data) return item;
+
+  if (data.import && data.specifier != null && data.exportedName != null && data.uri) {
+    const proj = await getProjectConfig(data.uri);
+    if (proj) {
+      const resolved = resolveSpecifier(proj.projectRoot, proj.config.srcDir, data.specifier);
+      if ("kind" in resolved && resolved.kind === "local") {
+        const depCached = await getOrLoadCached(resolved.path);
+        if (depCached) {
+          for (const s of depCached.program.body) {
+            if (s.kind === "FnDecl" && s.name === data.exportedName) {
+              item.detail = formatFnSignature(s);
+              if (s.doc) item.documentation = { kind: MarkupKind.Markdown, value: s.doc };
+              return item;
+            }
+            if (s.kind === "TypeDecl" && s.name === data.exportedName) {
+              const { signature, fields } = formatTypeSignature(s);
+              item.detail = signature;
+              const doc = s.doc ?? (fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined);
+              if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
+              return item;
+            }
+          }
+        }
+      }
+    }
+    return item;
+  }
 
   if (data.fn) {
     const sym = stdlibSymbols.get(data.fn);
@@ -252,15 +414,13 @@ connection.onCompletionResolve((item): CompletionItem => {
     for (const s of cached?.program.body || []) {
       if (data.fn && s.kind === "FnDecl" && s.name === data.fn) {
         item.detail = formatFnSignature(s);
-        const doc = getDocstring(s.body);
-        if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
+        if (s.doc) item.documentation = { kind: MarkupKind.Markdown, value: s.doc };
         break;
       }
       if (data.type && s.kind === "TypeDecl" && s.name === data.type) {
         const { fields } = formatTypeSignature(s);
-        if (fields.length) {
-          item.documentation = { kind: MarkupKind.Markdown, value: `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` };
-        }
+        const doc = s.doc ?? (fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined);
+        if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
         break;
       }
     }
@@ -273,7 +433,7 @@ connection.onCompletionResolve((item): CompletionItem => {
 // Hover
 // ============================================
 
-connection.onHover((params): Hover | null => {
+connection.onHover(async (params): Promise<Hover | null> => {
   const doc = documents.get(params.textDocument.uri);
   const cached = cache.get(params.textDocument.uri);
   if (!doc || !cached) return null;
@@ -284,11 +444,16 @@ connection.onHover((params): Hover | null => {
   const oneBasedLine = params.position.line + 1;
   const oneBasedCol = params.position.character + 1;
 
-  // Try symbol table first for user-defined symbols
-  const symbolHover = getHoverForSymbol(cached.symbols, cached.program, oneBasedLine, oneBasedCol, cached.env);
+  let symbolHover = getHoverForSymbol(cached.symbols, cached.program, oneBasedLine, oneBasedCol, cached.env);
+  if (!symbolHover) {
+    const def = resolveDefinition(cached.symbols, oneBasedLine, oneBasedCol);
+    const importTarget = def?.importTarget ?? getImportBindingOnLine(cached.program, oneBasedLine, word);
+    if (importTarget) {
+      symbolHover = await resolveImportHover(doc.uri, importTarget);
+    }
+  }
   if (symbolHover) return hover(symbolHover.signature, symbolHover.doc);
 
-  // Property access: check stdlib type members
   if (isProperty) {
     for (const [, members] of stdlibTypeMembers) {
       const member = members.find(m => m.name === word);
@@ -336,7 +501,7 @@ connection.onDocumentSymbol((params): DocumentSymbol[] => {
 // Go to Definition
 // ============================================
 
-connection.onDefinition((params): Definition | null => {
+connection.onDefinition(async (params): Promise<Definition | null> => {
   const doc = documents.get(params.textDocument.uri);
   const cached = cache.get(params.textDocument.uri);
   if (!doc || !cached) return null;
@@ -347,9 +512,12 @@ connection.onDefinition((params): Definition | null => {
   const oneBasedLine = params.position.line + 1;
   const oneBasedCol = params.position.character + 1;
 
-  // Use symbol table for resolution
   let def = resolveDefinition(cached.symbols, oneBasedLine, oneBasedCol);
   if (def) {
+    if (def.importTarget) {
+      const depLocation = await resolveImportDefinition(doc.uri, def.importTarget);
+      if (depLocation) return depLocation;
+    }
     if (def.id.kind === "type") {
       const ctorCallee = findConstructorCalleeAt(cached.program, oneBasedLine, oneBasedCol);
       if (ctorCallee === def.name) {
@@ -364,7 +532,12 @@ connection.onDefinition((params): Definition | null => {
     });
   }
 
-  // Check stdlib functions/types
+  const importTarget = getImportBindingOnLine(cached.program, oneBasedLine, word);
+  if (importTarget) {
+    const depLocation = await resolveImportDefinition(doc.uri, importTarget);
+    if (depLocation) return depLocation;
+  }
+
   const stdlibSym = stdlibSymbols.get(word);
   if (stdlibSym) {
     return Location.create(STDLIB_PATH_URI, locToRange(stdlibSym.loc));
@@ -373,11 +546,130 @@ connection.onDefinition((params): Definition | null => {
   return null;
 });
 
+function getImportBindingOnLine(
+  program: AST.Program,
+  line: number,
+  word: string
+): { specifier: string; exportedName: string } | null {
+  for (const stmt of program.body) {
+    if (stmt.kind !== "ImportDecl" || stmt.loc?.line !== line) continue;
+    for (const { name, alias } of stmt.names) {
+      if ((alias ?? name) === word) return { specifier: stmt.source, exportedName: name };
+    }
+  }
+  return null;
+}
+
+async function resolveImportDefinition(
+  currentUri: string,
+  importTarget: { specifier: string; exportedName: string }
+): Promise<Location | null> {
+  const entryPath = fileURLToPath(new URL(currentUri));
+  const startDir = path.dirname(entryPath);
+  const projectRoot = await findMsToml(startDir);
+  if (!projectRoot) return null;
+  let config;
+  try {
+    config = await loadMsToml(projectRoot);
+  } catch {
+    return null;
+  }
+  const resolved = resolveSpecifier(projectRoot, config.srcDir, importTarget.specifier);
+  if (!("kind" in resolved) || resolved.kind !== "local") return null;
+  const depCached = await getOrLoadCached(resolved.path);
+  if (!depCached) return null;
+  const depDef = depCached.symbols.getDefinition(importTarget.exportedName);
+  if (!depDef) return null;
+  const depUri = pathToFileURL(path.resolve(resolved.path)).href;
+  const col = depDef.loc.column - 1 + depDef.nameOffset;
+  return Location.create(depUri, {
+    start: { line: depDef.loc.line - 1, character: col },
+    end: { line: depDef.loc.line - 1, character: col + depDef.name.length },
+  });
+}
+
+async function resolveImportHover(
+  currentUri: string,
+  importTarget: { specifier: string; exportedName: string }
+): Promise<HoverInfo | null> {
+  const entryPath = fileURLToPath(new URL(currentUri));
+  const startDir = path.dirname(entryPath);
+  const projectRoot = await findMsToml(startDir);
+  if (!projectRoot) return null;
+  let config;
+  try {
+    config = await loadMsToml(projectRoot);
+  } catch {
+    return null;
+  }
+  const resolved = resolveSpecifier(projectRoot, config.srcDir, importTarget.specifier);
+  if (!("kind" in resolved) || resolved.kind !== "local") return null;
+  const depCached = await getOrLoadCached(resolved.path);
+  if (!depCached) return null;
+  const depDef = depCached.symbols.getDefinition(importTarget.exportedName);
+  if (!depDef) return null;
+  const nameCol = depDef.loc.column + depDef.nameOffset;
+  return getHoverForSymbol(
+    depCached.symbols,
+    depCached.program,
+    depDef.loc.line,
+    nameCol,
+    depCached.env
+  );
+}
+
+/** Collect reference locations from every file in the project that imports (specifier, exportedName). */
+async function findProjectReferencesToExport(
+  projectRoot: string,
+  config: Awaited<ReturnType<typeof loadMsToml>>,
+  specifier: string,
+  exportedName: string
+): Promise<{ definition: Location; references: Location[] } | null> {
+  const resolved = resolveSpecifier(projectRoot, config.srcDir, specifier);
+  if (!("kind" in resolved) || resolved.kind !== "local") return null;
+  const depCached = await getOrLoadCached(resolved.path);
+  if (!depCached) return null;
+  const depDef = depCached.symbols.getDefinition(exportedName);
+  if (!depDef) return null;
+  const depUri = pathToFileURL(path.resolve(resolved.path)).href;
+  const defCol = depDef.loc.column - 1 + depDef.nameOffset;
+  const definition = Location.create(depUri, {
+    start: { line: depDef.loc.line - 1, character: defCol },
+    end: { line: depDef.loc.line - 1, character: defCol + depDef.name.length },
+  });
+  const references: Location[] = [];
+  const depRefs = findReferences(depCached.symbols, depDef.loc.line, depDef.loc.column + depDef.nameOffset);
+  if (depRefs) {
+    for (const ref of depRefs.references) {
+      references.push(Location.create(depUri, locToRange(ref.loc, depDef.name.length)));
+    }
+  }
+  const msFiles = await listMsFilesInDir(config.srcDir);
+  for (const filePath of msFiles) {
+    if (path.resolve(filePath) === path.resolve(resolved.path)) continue;
+    const fileCached = await getOrLoadCached(filePath);
+    if (!fileCached) continue;
+    for (const stmt of fileCached.program.body) {
+      if (stmt.kind !== "ImportDecl" || stmt.source !== specifier) continue;
+      for (const { name, alias } of stmt.names) {
+        if (name !== exportedName) continue;
+        const bindingName = alias ?? name;
+        const refs = fileCached.symbols.getReferences(bindingName);
+        const fileUri = pathToFileURL(path.resolve(filePath)).href;
+        for (const ref of refs) {
+          references.push(Location.create(fileUri, locToRange(ref.loc, bindingName.length)));
+        }
+      }
+    }
+  }
+  return { definition, references };
+}
+
 // ============================================
 // Find References
 // ============================================
 
-connection.onReferences((params): Location[] => {
+connection.onReferences(async (params): Promise<Location[]> => {
   const doc = documents.get(params.textDocument.uri);
   const cached = cache.get(params.textDocument.uri);
   if (!doc || !cached) return [];
@@ -386,24 +678,56 @@ connection.onReferences((params): Location[] => {
   const oneBasedLine = params.position.line + 1;
   const oneBasedCol = params.position.character + 1;
 
-  // Use symbol table for resolution
   const result = findReferences(cached.symbols, oneBasedLine, oneBasedCol);
   if (!result) return [];
 
+  const { definition, references } = result;
   const locations: Location[] = [];
-  
-  // Add definition location
-  const defCol = result.definition.loc.column - 1 + result.definition.nameOffset;
-  locations.push(Location.create(uri, {
-    start: { line: result.definition.loc.line - 1, character: defCol },
-    end: { line: result.definition.loc.line - 1, character: defCol + result.definition.name.length },
-  }));
 
-  // Add all reference locations
-  for (const ref of result.references) {
-    locations.push(Location.create(uri, locToRange(ref.loc, result.definition.name.length)));
+  if (definition.importTarget) {
+    const proj = await getProjectConfig(uri);
+    if (proj) {
+      const projectRefs = await findProjectReferencesToExport(
+        proj.projectRoot,
+        proj.config,
+        definition.importTarget.specifier,
+        definition.importTarget.exportedName
+      );
+      if (projectRefs) {
+        locations.push(projectRefs.definition);
+        locations.push(...projectRefs.references);
+        return locations;
+      }
+    }
+    const depLocation = await resolveImportDefinition(uri, definition.importTarget);
+    if (depLocation) locations.push(depLocation);
+  } else {
+    const proj = await getProjectConfig(uri);
+    if (proj) {
+      const currentPath = fileURLToPath(new URL(uri));
+      const specifier = specifierForFile(proj.config.srcDir, currentPath);
+      const projectRefs = await findProjectReferencesToExport(
+        proj.projectRoot,
+        proj.config,
+        specifier,
+        definition.name
+      );
+      if (projectRefs) {
+        locations.push(projectRefs.definition);
+        locations.push(...projectRefs.references);
+        return locations;
+      }
+    }
+    const defCol = definition.loc.column - 1 + definition.nameOffset;
+    locations.push(Location.create(uri, {
+      start: { line: definition.loc.line - 1, character: defCol },
+      end: { line: definition.loc.line - 1, character: defCol + definition.name.length },
+    }));
   }
 
+  for (const ref of references) {
+    locations.push(Location.create(uri, locToRange(ref.loc, definition.name.length)));
+  }
   return locations;
 });
 
@@ -492,6 +816,7 @@ const documentSymbolKindMap: Record<DocumentSymbolKind, SymbolKind> = {
   parameter: SymbolKind.Variable,
   field: SymbolKind.Property,
   method: SymbolKind.Method,
+  import: SymbolKind.Variable,
 };
 
 const completionKindMap: Record<CompletionInfo["kind"], CompletionItemKind> = {
