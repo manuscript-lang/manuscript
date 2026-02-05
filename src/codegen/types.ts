@@ -24,6 +24,7 @@ export type GenOpts = {
   classFields: Set<string> | null;
   isGenerator: boolean;
   declaredTypes: Set<string>;
+  callableParamOrder: Map<string, string[]>;  // callee name (fn or type) -> param names in order for named-arg reordering
   variableTypes: Map<string, string>;
   selfVar?: string;  // Variable name for 'this' in factory functions (e.g., "self")
 };
@@ -57,6 +58,7 @@ export function createOpts(overrides: Partial<GenOpts> = {}): GenOpts {
     classFields: null,
     isGenerator: false,
     declaredTypes: new Set(),
+    callableParamOrder: new Map(),
     variableTypes: new Map(),
     ...overrides,
   };

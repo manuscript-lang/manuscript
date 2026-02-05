@@ -130,8 +130,16 @@ function collectTypeInfo(program: AST.Program, opts: GenOpts): void {
   for (const stmt of program.body) {
     if (stmt.kind === "TypeDecl") {
       opts.declaredTypes.add(stmt.name);
+      if (stmt.body?.members) {
+        const paramNames = stmt.body.members
+          .filter((m): m is AST.FieldDecl => m.kind === "FieldDecl" && !(m.embedded && m.name === "Context"))
+          .map((m) => m.name);
+        if (paramNames.length > 0) opts.callableParamOrder.set(stmt.name, paramNames);
+      }
     } else if (stmt.kind === "EnumDecl") {
       opts.declaredTypes.add(stmt.name);
+    } else if (stmt.kind === "FnDecl") {
+      opts.callableParamOrder.set(stmt.name, stmt.params.map((p) => p.name));
     }
   }
 }

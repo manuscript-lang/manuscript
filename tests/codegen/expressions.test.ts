@@ -96,12 +96,30 @@ let p = Point(1, 2)`);
     expect(js).not.toContain("new Point");
   });
 
-  test("named arguments", () => {
+  test("named arguments (generic callee → object)", () => {
     expectCompiled("f(x: 1, y: 2)", "{ x: 1, y: 2 }");
+  });
+
+  test("named arguments to user fn → positional in param order", () => {
+    const js = compile(`
+fn add(a: number, b: number): number
+  a + b
+let x = add(b: 2, a: 1)
+`);
+    expect(js).toContain("add(1, 2)");
+    expect(js).not.toContain("add({");
   });
 
   test("builtin Channel constructor", () => {
     expectCompiled("Channel[number]()", "new __ms_runtime.Channel()");
+  });
+
+  test("extern type constructor with named args (MockLLM)", () => {
+    const js = compile(`test "mock"
+  let llm = MockLLM(responses: [{match: ".*", reply: "Done"}])`);
+    expect(js).toContain("new __ms_runtime.MockLLM(");
+    expect(js).toContain("responses:");
+    expect(js).toContain('reply: "Done"');
   });
 });
 

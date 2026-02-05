@@ -172,6 +172,10 @@ export const TypeErrors = {
       ? `Available parameters: ${available.join(", ")}`
       : "Check the function signature for valid parameter names",
   }),
+  mixedPositionalAndNamedArguments: () => ({
+    message: "Cannot mix positional and named arguments in the same call",
+    hint: "Use either all positional (f(a, b)) or all named (f(a: x, b: y))",
+  }),
   propertyNotExist: (prop: string, type: string) => ({
     message: `Property '${prop}' does not exist on type '${type}'`,
     hint: "Check property name spelling or verify the type has this property",

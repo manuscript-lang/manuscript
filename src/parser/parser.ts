@@ -1,5 +1,7 @@
-import { Lexer } from "../lexer";
+import { Lexer, KEYWORDS } from "../lexer";
 import type { Token, TokenType } from "../lexer";
+
+const KEYWORD_TOKEN_TYPES = new Set(Object.values(KEYWORDS));
 import * as AST from "./ast";
 import { ParserErrors } from "../shared/errors";
 
@@ -1546,6 +1548,12 @@ export class Parser {
       if (this.match("SPREAD")) {
         const expr = this.expression();
         entries.push({ kind: "MapEntry", key: expr, value: expr, spread: true, loc: entryLoc });
+      } else if (this.peekNext().type === "COLON" && (this.check("IDENTIFIER") || KEYWORD_TOKEN_TYPES.has(this.peek().type))) {
+        const t = this.advance();
+        const key: AST.Expr = { kind: "Identifier", name: t.raw, loc: t.loc };
+        this.expect("COLON");
+        const value = this.expression();
+        entries.push({ kind: "MapEntry", key, value, loc: entryLoc });
       } else {
         const key = this.expression();
         this.expect("COLON");

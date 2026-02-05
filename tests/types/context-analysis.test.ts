@@ -130,15 +130,18 @@ describe("Context Analysis - exprContainsEscapingLambda", () => {
       loc: { line: 1, column: 1, offset: 0 },
     };
     expect(exprContainsEscapingLambda(listExpr, new Set(["x"]), env, fnDecls, cache)).toBe(true);
+    const entryLoc = { line: 1, column: 1, offset: 0 };
     const mapExpr: AST.Expr = {
       kind: "MapExpr",
       entries: [
         {
-          key: { kind: "Literal", value: "k", loc: { line: 1, column: 1, offset: 0 } },
-          value: { kind: "Identifier", name: "y", loc: { line: 1, column: 1, offset: 0 } },
+          kind: "MapEntry",
+          key: { kind: "Literal", value: "k", loc: entryLoc },
+          value: { kind: "Identifier", name: "y", loc: entryLoc },
+          loc: entryLoc,
         },
       ],
-      loc: { line: 1, column: 1, offset: 0 },
+      loc: entryLoc,
     };
     expect(exprContainsEscapingLambda(mapExpr, new Set(["y"]), env, fnDecls, cache)).toBe(true);
   });
@@ -168,14 +171,15 @@ describe("Context Analysis - exprContainsEscapingLambda", () => {
 
 describe("Context Analysis - parameterEscapes", () => {
   test("function without body returns true", () => {
-    const fnDecl: AST.FnDecl = {
-      kind: "FnDecl",
+    const loc = { line: 1, column: 1, offset: 0 };
+    const fnDecl = {
+      kind: "FnDecl" as const,
       name: "noBody",
-      params: [{ name: "x", type: null, optional: false, rest: false, loc: { line: 1, column: 1, offset: 0 } }],
-      returnType: null,
+      params: [{ kind: "Parameter" as const, name: "x", optional: false, rest: false, loc }],
       body: undefined,
-      loc: { line: 1, column: 1, offset: 0 },
-    };
+      isGenerator: false,
+      loc,
+    } as unknown as AST.FnDecl;
     expect(parameterEscapes(fnDecl, "x", new Map())).toBe(true);
   });
 

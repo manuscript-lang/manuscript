@@ -101,7 +101,14 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     }
   }
 
-  const args = genCallArgs(ctx, node.args, opts);
+  const name = node.callee.kind === "Identifier" ? node.callee.name : undefined;
+  const paramOrder = name ? opts.callableParamOrder.get(name) : undefined;
+  const args = genCallArgs(ctx, node.args, opts, paramOrder);
+
+  // Extern type constructors (e.g. MockLLM, Claude) use new __ms_runtime.X(...); exclude stdlib functions like map
+  if (node.callee.kind === "Identifier" && EXTERN_TYPES.has(node.callee.name) && !STDLIB_FUNCTIONS.has(node.callee.name)) {
+    return `new __ms_runtime.${node.callee.name}(${args})`;
+  }
 
   // User-defined types use factory functions (no 'new')
   if (node.callee.kind === "Identifier" && opts.declaredTypes.has(node.callee.name)) {
@@ -112,8 +119,32 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
   return `(await ${callee}(${args}))`;
 }
 
-function genCallArgs(ctx: Ctx, args: (AST.Expr | { name: string; value: AST.Expr })[], opts: GenOpts): string {
-  const hasNamed = args.some(a => "name" in a && "value" in a);
+function genCallArgs(
+  ctx: Ctx,
+  args: (AST.Expr | { name: string; value: AST.Expr })[],
+  opts: GenOpts,
+  paramOrder?: string[]
+): string {
+  const hasNamed = args.some((a) => "name" in a && "value" in a);
+
+  if (hasNamed && paramOrder && paramOrder.length > 0) {
+    const byName = new Map<string, AST.Expr>();
+    const positional: AST.Expr[] = [];
+    for (const a of args) {
+      if ("name" in a && "value" in a) {
+        byName.set(a.name, a.value);
+      } else {
+        positional.push(a as AST.Expr);
+      }
+    }
+    let posIdx = 0;
+    const ordered = paramOrder.map((name) => {
+      if (byName.has(name)) return byName.get(name)!;
+      if (posIdx < positional.length) return positional[posIdx++];
+      return null;
+    }).filter((e): e is AST.Expr => e !== null);
+    return ordered.map((e) => genExpr(ctx, e, opts)).join(", ");
+  }
 
   if (hasNamed) {
     const parts: string[] = [];
@@ -127,7 +158,7 @@ function genCallArgs(ctx: Ctx, args: (AST.Expr | { name: string; value: AST.Expr
     return `{ ${parts.join(", ")} }`;
   }
 
-  return args.map(a => genExpr(ctx, a as AST.Expr, opts)).join(", ");
+  return args.map((a) => genExpr(ctx, a as AST.Expr, opts)).join(", ");
 }
 
 export function genIndex(ctx: Ctx, node: AST.IndexExpr, opts: GenOpts): string {
