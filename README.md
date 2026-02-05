@@ -25,7 +25,7 @@ fn run_cmd(cmd: string): string using (sh: Shell)
 ```
 
 ```manuscript
-with Claude(), Filesystem(), Shell()
+with let fs = Filesystem(), let sh = Shell()
   coder(task: "Refactor auth.ts").run("Go")
 ```
 
@@ -41,10 +41,10 @@ fn deploy(code: string) using (fs: Filesystem, sh: Shell)
   fs.write("app.js", code)
   sh.exec("node app.js")
 
-with Filesystem(), Shell()         // production
+with let fs = Filesystem(), let sh = Shell()
   deploy(code)
 
-with MockFilesystem(), MockShell() // test  
+with let fs = MockFilesystem(), let sh = MockShell()
   deploy(code)
 ```
 
@@ -64,11 +64,14 @@ system: () => """
 ```
 
 **Extensible via `keyword`.**  
-`agent` itself is defined using `keyword`. Create your own declarative constructs with first-class syntax.
+`agent` and `enum` are defined with `keyword`. Add your own declarative constructs.
 
 ```manuscript
-keyword capabilities = type using (Context)
-keyword prompt = fn (): string
+keyword workflow = type
+  steps: list[string]
+  fn run(): void
+    for step in steps
+      print("Running: " + step)
 ```
 
 **Statically typed.**  
@@ -81,17 +84,13 @@ No semicolons, braces, or `async/await`. Indentation defines scope. Less noise m
 
 ## Testing
 
-First-class `test` blocks. Mock any capability.
+First-class `test` blocks. Provide capabilities with `with` and mock as needed.
 
 ```manuscript
 test "agent creates file"
-  let fs = MockFilesystem()
-  let llm = MockLLM(responses: [{match: ".*", reply: "Done"}])
-  
-  with llm, fs
+  with let fs = MockFilesystem(), let llm = MockLLM()
     coder(task: "Create main.js").run("Start")
-  
-  assert fs.exists("main.js")
+    assert fs.exists("main.js")
 ```
 
 ---
@@ -119,7 +118,7 @@ match code
 users | filter((u) => u.active) | map((u) => u.name)
 ```
 
-Everything else you'd expect: control flow, loops, generics, error handling, and a standard library.
+See [Syntax](./syntax.md) for the full language: control flow, loops, generics, interfaces, error handling, concurrency (`spawn`, `race`, `Channel`), set literals `<1, 2, 3>`, and the standard library.
 
 ---
 

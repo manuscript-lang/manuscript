@@ -18,6 +18,7 @@ true  false                  // bool
 null                         // null
 [1, 2, 3]                    // list[T]
 {a: 1, b: 2}                 // map[K, V]
+<1, 2, 3>  <>                // set[T]
 b"binary"                    // bytes
 
 // Variables
@@ -105,7 +106,7 @@ match value
 // Loops
 for item in items
   body
-for i in 0..10
+for i in 0..10                   // range: start inclusive, end exclusive (0..3 => 0,1,2)
   body
 for                               // infinite
   if done then break
@@ -235,8 +236,10 @@ fn process(s: Serializable): string
 let doc = JsonDoc(data: "{}")
 process(doc)   // OK: JsonDoc satisfies Serializable
 
-// Construction
+// Construction (positional or named; cannot mix)
 let user = User(id: 1, name: "Alice")
+let p = Point(3, 4)
+let q = Person(age: 30, name: "Alice")
 ```
 
 ### Enums
@@ -281,9 +284,11 @@ fn sort[T](items: list[T]): list[T] where T: Comparable
 // Built-in generic types
 list[T]                      // ordered collection
 map[K, V]                    // key-value mapping
-set[T]                       // unique values
+set[T]                       // unique values (literal: <a, b, c> or <>)
 fn(A, B): R                  // function type
 T?                           // optional (T or null)
+Promise[T]                   // result of spawn; consume with race()
+Channel[T]                   // buffered channel; Channel[T](n)
 ```
 
 ### Error Type
@@ -303,11 +308,8 @@ throw(Error(message: "failed", cause: prev_error))
 ## 6. Modules
 
 ```manuscript
-// project.yml
-name: my-agent
-entry: main
-source: { root: src }
-dependencies: { anthropic: 1.0 }
+// ms.toml (project root)
+src = "src"    // directory where .ms files live (default "src")
 ```
 
 ```manuscript
@@ -333,18 +335,19 @@ Dependency injection via context types and `with`. Compiler verifies all require
 
 ### Defining context types
 
-Declare a capability type with the `context` keyword; the type can then be used in `using` clauses and provided in `with` blocks:
+Declare a capability type with the `context` keyword; use it in `using` clauses and provide it in `with` blocks. Context types can have fields and methods (including `close()` for cleanup when the value is used in `with`).
 
 ```manuscript
 context Filesystem
   fn read(path: string): string
   fn write(path: string, content: string): void
 
-context Shell
-  fn exec(cmd: string): string
+context Logger
+  prefix: string
+  fn log(msg: string): string
+    "{prefix}: {msg}"
+  fn close(): void
 ```
-
-Context types have no marker field in the body—only real fields and methods. Legacy form: `type X` with an embedded `Context` line is also accepted.
 
 ### Declaring Dependencies
 
@@ -382,12 +385,20 @@ capabilities testing
 with production()
   agent.run("hello")
 
-with production(), Trace("op")
-  deploy(code)
+with let prod = production()
+  prod.llm.call("hello")
 
-with Trace("op") as t
-  t.event("started")
+with Logger("OP")              // anonymous: context available to using functions only
+  greet("world")
+
+with let log = Logger("OP")     // named: use log inside block and in using functions
+  print(log.log("ok"))
+
+with myResource                // pre-created value; type must have close(), called at block exit
+  do_work()
 ```
+
+Any type with a `close()` method is closable: used in `with`, `close()` runs at block exit (including on error). Context types often implement `close()` for cleanup.
 
 ### Compiler Inference
 
@@ -473,19 +484,51 @@ chat.end()
 
 ---
 
-## 9. Testing
+## 9. Concurrency
+
+```manuscript
+// spawn: start a task, get Promise[T]. Must consume with race() (or pass along until consumed)
+let task = spawn work(42)
+race([task])                  // wait for one; result is the value
+
+fn work(n: number): number
+  n * 2
+
+// Promise[T] in types and functions
+fn create_task(): Promise[number]
+  let t = spawn work(10)
+  t
+
+// Channels: buffered, typed
+let ch = Channel[string](1)   // buffer size 1
+ch.send("hello")
+let msg = ch.receive()
+ch.close()
+for item in ch                // iterate until closed and drained
+  print(item)
+
+// Channel with custom type
+let numCh = Channel[number](5)
+numCh.send(1)
+```
+
+---
+
+## 10. Testing
 
 ```manuscript
 test "description"
-  llm = MockLLM(responses: [{match: ".*", reply: "Hi"}])
-  fs = MockFilesystem(files: {"a.txt": "content"})
-  
-  let result = assert agent.run("hello")
-  assert result == "Hi"
+  let x = 1 + 1
+  assert x == 2
 
-test "with capabilities" with testing()
-  let result = assert agent.run("hello")
-  assert result.length > 0
+test "with variables"
+  let name = "Alice"
+  assert len(name) == 5
+
+test "with capabilities"
+  with let llm = MockLLM()
+    let result = agent.run("hello")
+    assert result != null
 ```
 
 `assert` is an expression — returns value if truthy, fails test otherwise:
@@ -497,9 +540,9 @@ let user = assert data.user, "no user"  // with message
 
 ---
 
-## 10. Keyword Declarations
+## 11. Keyword Declarations
 
-Define domain-specific type constructors with fields and methods:
+Define domain-specific type constructors with fields and methods. Keywords are syntactic sugar over `type` (e.g. `keyword workflow = type`).
 
 ### Defining Keywords
 
@@ -553,35 +596,13 @@ u.getId()   // from keyword
 u.greet()   // from user
 ```
 
-### Built-in Keywords
+### Built-in keywords
 
-The following keywords are pre-defined:
-
-```manuscript
-// Enumerated types (values required)
-enum Status
-  Pending = 0
-  Active = 1
-  Complete = 2
-
-let s = Status.Pending  // s == 0
-
-// Agents
-agent Helper
-  fn greet(name: string): string
-    "Hello, " + name
-
-// Capability groups
-capabilities production
-  llm = Claude()
-
-context testing
-  fs = MockFilesystem()
-```
+`enum`, `agent`, and `capabilities` are predefined keywords. `context` declares a capability type (used with `using` and `with`).
 
 ---
 
-## 11. Templates
+## 12. Templates
 
 ```manuscript
 "Hello, {name}"
@@ -609,10 +630,12 @@ agent helper
 |-----------|---------|
 | `fn` | Function |
 | `type` | Data structure |
+| `interface` | Method signatures; types satisfy implicitly |
 | `keyword` | Domain-specific type constructors |
 | `test` | Test cases |
 | `enum` | Enumerated types |
 | `agent` | AI agents |
+| `context` | Capability type (for `using` / `with`) |
 | `capabilities` | Capability groups |
 
 ### Type Fields
