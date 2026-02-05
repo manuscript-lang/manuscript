@@ -131,7 +131,22 @@ function inferIdentifier(ctx: InferContext, expr: AST.Identifier): Type {
             params.push(Types.param(p.name, p.type, p.optional || !!p.defaultValue));
           }
         }
-        return Types.fn(params, typeRef);
+        // For generic types, create a FunctionType with type parameters
+        // so that inferTypeParams can infer the bindings
+        const fnType: FunctionType = {
+          kind: "function",
+          params,
+          returnType: obj.typeParams && obj.typeParams.length > 0
+            ? Types.generic(Types.ref(obj.name!), obj.typeParams.map(tp => Types.typevar(tp.name)))
+            : typeRef,
+          isGenerator: false,
+          context: [],
+          typeParams: obj.typeParams?.map(tp => ({
+            name: tp.name,
+            constraint: tp.constraint,
+          })),
+        };
+        return fnType;
       }
       return typeRef;
     }
@@ -1053,12 +1068,27 @@ function inferTypeParams(ctx: InferContext, fnType: FunctionType, args: (AST.Exp
     bindings.set(tp.name, Types.any);
   }
 
-  for (let i = 0; i < args.length && i < fnType.params.length; i++) {
-    const arg = args[i]!;
-    const argExpr = "kind" in arg ? arg : arg.value;
-    const argType = inferExpr(ctx, argExpr);
-    const paramType = fnType.params[i]!.type;
-    unifyTypes(paramType, argType, bindings);
+  // Handle named and positional args properly
+  let posIdx = 0;
+  for (const arg of args) {
+    let argType: Type;
+    let paramType: Type | undefined;
+    
+    if ("name" in arg && "value" in arg) {
+      // Named argument - match by name
+      argType = inferExpr(ctx, arg.value);
+      const param = fnType.params.find(p => p.name === arg.name);
+      paramType = param?.type;
+    } else {
+      // Positional argument
+      argType = inferExpr(ctx, arg as AST.Expr);
+      paramType = fnType.params[posIdx]?.type;
+      posIdx++;
+    }
+    
+    if (paramType) {
+      unifyTypes(paramType, argType, bindings);
+    }
   }
 
   return bindings;

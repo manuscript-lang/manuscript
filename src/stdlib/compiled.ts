@@ -3,6 +3,7 @@
 
 import { Parser } from "../parser";
 import { CodeGenerator } from "../codegen/codegen";
+import { TypeChecker } from "../types/checker";
 import { stdlibSource } from "./index";
 
 // Check if a type has extern methods (should be provided by runtime, not compiled)
@@ -14,6 +15,10 @@ function hasExternMethods(stmt: any): boolean {
 // Compile stdlib.ms - all constructs except extern declarations
 function compileStdlib(): (runtime: any) => Record<string, any> {
   const ast = new Parser(stdlibSource).parse();
+  
+  // Type-check to populate resolvedType on AST nodes
+  new TypeChecker().check(ast);
+  
   const codegen = new CodeGenerator({ emitRuntimeImport: false });
   
   // Collect names to export (types and pure functions)

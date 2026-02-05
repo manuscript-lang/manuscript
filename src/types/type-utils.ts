@@ -188,12 +188,29 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
         return isFunctionAssignable(resolvedSource as FunctionType, resolvedTarget as FunctionType, env);
       case "intersection":
         return isIntersectionAssignable(resolvedSource as any, resolvedTarget as any, env);
+      case "generic":
+        return isGenericAssignable(resolvedSource as any, resolvedTarget as any, env);
+      case "typevar":
+        // Type variables match by name (same scoped variable)
+        return (resolvedSource as any).name === (resolvedTarget as any).name;
       default:
         return true;
     }
   }
 
   // Handle cross-kind assignability
+  
+  // Type variable is assignable to any (or the same type variable)
+  if (resolvedSource.kind === "typevar") {
+    // A type variable can be assigned to any or to itself
+    return resolvedTarget.kind === "any" || 
+           (resolvedTarget.kind === "typevar" && (resolvedSource as any).name === (resolvedTarget as any).name);
+  }
+  
+  // Anything can be assigned to a type variable (during unification)
+  if (resolvedTarget.kind === "typevar") {
+    return true;
+  }
   if (resolvedSource.kind === "null" && resolvedTarget.kind === "optional") return true;
 
   if (resolvedTarget.kind === "optional") {
@@ -313,6 +330,21 @@ function isIntersectionAssignable(source: { types: Type[] }, target: { types: Ty
     const hasMatch = source.types.some(st => isAssignable(st, targetType, env));
     if (!hasMatch) return false;
   }
+  return true;
+}
+
+// Check generic type assignability (e.g., Result[T, E] to Result[T, never])
+function isGenericAssignable(source: { base: Type; args: Type[] }, target: { base: Type; args: Type[] }, env: TypeEnvironment): boolean {
+  // Base types must be assignable
+  if (!isAssignable(source.base, target.base, env)) return false;
+  
+  // Check each type argument (covariant for now)
+  // If lengths differ, compare available args
+  const minLen = Math.min(source.args.length, target.args.length);
+  for (let i = 0; i < minLen; i++) {
+    if (!isAssignable(source.args[i]!, target.args[i]!, env)) return false;
+  }
+  
   return true;
 }
 

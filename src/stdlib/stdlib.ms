@@ -660,11 +660,11 @@ type Result[T, E]
 
 // Creates a success Result
 fn ok[T](value: T): Result[T, never]
-  { ok: true, value: value }
+  Result(ok: true, value: value)
 
 // Creates an error Result
 fn err[E](error: E): Result[never, E]
-  { ok: false, error: error }
+  Result(ok: false, error: error)
 
 // Throws if condition is false
 fn assert(condition: bool, message?: string): void
