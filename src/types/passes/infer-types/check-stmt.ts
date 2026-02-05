@@ -533,6 +533,7 @@ function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
   const withEnv = ctx.env.withContext(bindings);
   const savedEnv = ctx.env;
   ctx.env = withEnv;
+  ctx.insideWithContext = true;
 
   if (isFunctionLevel) {
     ctx.functionWithDepth++;
@@ -556,6 +557,7 @@ function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
   }
 
   ctx.env = savedEnv;
+  ctx.insideWithContext = false;
   ctx.withContextVars = savedWithContextVars;
 }
 
