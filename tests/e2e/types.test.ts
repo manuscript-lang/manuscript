@@ -17,9 +17,9 @@ print(p.x, p.y)`);
   test("enum declaration compiles", () => {
     const result = compile(`
 enum Color
-  Red
-  Green
-  Blue
+  Red = 1
+  Green = 2
+  Blue = 3
 
 let c = Color.Red
 `, { typeCheck: false, emitRuntimeImport: false });

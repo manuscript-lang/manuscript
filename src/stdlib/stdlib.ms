@@ -3,6 +3,21 @@
 // ============================================
 
 // ============================================
+// Built-in Keywords
+// ============================================
+
+// Agent keyword - defines AI agents with tools and capabilities
+keyword agent = type
+
+// Context/Capabilities keyword - defines capability bundles for dependency injection
+keyword context = type
+
+keyword capabilities = type
+
+// Enum keyword - defines enumerated types with named constants
+keyword enum = type
+
+// ============================================
 // Primitive Type Methods (built-in)
 // ============================================
 

@@ -67,8 +67,8 @@ system: () => """
 `agent` itself is defined using `keyword`. Create your own declarative constructs with first-class syntax.
 
 ```manuscript
-keyword agent = type extends Agent using (LLM)
-keyword workflow = fn using (LLM)
+keyword capabilities = type using (Context)
+keyword prompt = fn (): string
 ```
 
 **Statically typed.**  
@@ -135,8 +135,6 @@ manuscript check agent.ms    # type check
 ```
 
 **VS Code:** `cd vscode-extension && ./install.sh`
-
-Built-in capabilities for LLMs (Claude, GPT), filesystem, shell, HTTP—with mocks for testing.
 
 ---
 

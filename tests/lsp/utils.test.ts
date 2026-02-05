@@ -29,7 +29,7 @@ describe("LSP Utils", () => {
     expect(isLocationMatch({ line: 1, column: 5 }, 0, 3, 1, 6)).toBe(true);
     expect(isLocationMatch({ line: 1, column: 5 }, 0, 3, 1, 4)).toBe(false);
     expect(isLocationMatch({ line: 1, column: 5 }, 0, 3, 1, 9)).toBe(false);
-    const def: SymbolDef = { id: { kind: "function", qualifiedName: "foo" }, name: "foo", loc: { line: 1, column: 0 }, nameOffset: 0 };
+    const def: SymbolDef = { id: { kind: "function", qualifiedName: "foo" }, name: "foo", loc: { line: 1, column: 0, offset: 0 }, nameOffset: 0 };
     expect(isDefLocationMatch(def, 1, 1)).toBe(true);
     expect(isDefLocationMatch(def, 1, 4)).toBe(false);
   });

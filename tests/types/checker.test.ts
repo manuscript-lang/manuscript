@@ -368,6 +368,12 @@ double(1, 2, 3)`, "Expected at most 1");
 greet(42)`, "not assignable");
   });
 
+  test("mixed positional and named arguments fails", () => {
+    checkFails(`fn triple(a: number, b: number, c: number): number
+  a + b + c
+let x = triple(10, c: 30, b: 20)`, "Cannot mix positional and named");
+  });
+
   test("optional parameter can be omitted", () => {
     checkOk(`fn greet(name: string, greeting?: string): string
   "hi"
@@ -412,6 +418,13 @@ let c = Config("test")`);
   x: number
   y: number
 let p = Point("a", "b")`, "not assignable");
+  });
+
+  test("type constructor mixed positional and named fails", () => {
+    checkFails(`type Point
+  x: number
+  y: number
+let p = Point(1, y: 2)`, "Cannot mix positional and named");
   });
 });
 

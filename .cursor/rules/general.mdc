@@ -1,21 +1,16 @@
 ---
 alwaysApply: true
 ---
-
-# How to write comments
-- DO NOT write excessive comments 
-- DO NOT add comments in code every few lines
-- DO write insightful comments about reasoning behind the code
-
 # How to write code
-- DO write simple concise code, do not overcomplicate
-- DO write as little code as possible to achieve the task
-- DO review the code after writing it, clean up for readability, conciseness, and efficiency
-- DO follow DRY, do not repeat same blocks of code
-- DO follow structured logging
-- DO NOT leave commented code in file
-- DO use short names for variables
-- DO create utility function and extract common logic
-- DO emit LLM friendly error messages
-- DO write e2e fixture tests over unit tests
-- DO not create lots of small test files, prefer creating logical file with multiple test cases
+- don't write excessive comments 
+- write simple concise code, do not overcomplicate
+- write as little code as possible to achieve the task
+- review the code after writing it, clean up for readability, conciseness, and efficiency
+- do not repeat same blocks of code
+- don't leave commented code in file
+- use meaningful for variables
+- create utility function and extract common logic
+- emit LLM friendly error messages
+- ALWAYS write e2e fixture tests 
+- don't create lots of small test files, prefer creating logical file with multiple test cases
+- ALWAYS run `bun test` and `bun tsc` to test the changes

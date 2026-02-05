@@ -137,7 +137,37 @@ export interface KeywordDecl extends BaseNode {
   name: string;
   expansion: "type" | "fn";
   using?: UsingClause;
-  returnType?: TypeExpr;
+  returnType?: TypeExpr;      // For fn keywords
+  body?: KeywordBody;         // Fields and methods with implementations
+}
+
+// Body of a keyword declaration - defines required fields, optional fields, and sealed methods
+export interface KeywordBody extends BaseNode {
+  kind: "KeywordBody";
+  members: KeywordMember[];
+}
+
+export type KeywordMember = KeywordField | MethodDecl;
+
+// Field specification in a keyword - can be required, optional, or have defaults
+export interface KeywordField extends BaseNode {
+  kind: "KeywordField";
+  name: string;
+  type: TypeExpr;
+  optional: boolean;          // field?: Type
+  defaultValue?: Expr;        // field: Type = value
+  computed: boolean;          // field: () => expr
+  doc?: string;
+}
+
+// Usage of a keyword-defined type (e.g., "agent Coder using (...)")
+export interface KeywordTypeUse extends BaseNode {
+  kind: "KeywordTypeUse";
+  keyword: string;            // "agent", "workflow", etc.
+  name: string;               // "Coder", "DataPipeline"
+  using?: UsingClause;
+  body: TypeBody;             // User-provided fields and methods
+  doc?: string;
 }
 
 export interface ContextDecl extends BaseNode {
@@ -174,6 +204,7 @@ export type Statement =
   | TypeDecl
   | EnumDecl
   | KeywordDecl
+  | KeywordTypeUse
   | ContextDecl
   | AgentDecl
   | TestDecl
@@ -574,6 +605,8 @@ export type ASTNode =
   | Pattern
   | TypeExpr
   | TypeMember
+  | KeywordMember
   | MatchArm
   | Parameter
-  | Block;
+  | Block
+  | KeywordBody;

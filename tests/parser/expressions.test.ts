@@ -259,6 +259,17 @@ describe("Parser - Map Expressions", () => {
       ],
     });
   });
+
+  test("map with keyword as key (e.g. match)", () => {
+    const result = expr('{match: ".*", reply: "Done"}');
+    expect(result).toMatchObject({
+      kind: "MapExpr",
+      entries: [
+        { key: { kind: "Identifier", name: "match" }, value: { kind: "Literal", value: ".*" } },
+        { key: { kind: "Identifier", name: "reply" }, value: { kind: "Literal", value: "Done" } },
+      ],
+    });
+  });
 });
 
 describe("Parser - Lambda Expressions", () => {

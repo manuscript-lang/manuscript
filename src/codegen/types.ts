@@ -24,6 +24,7 @@ export type GenOpts = {
   classFields: Set<string> | null;
   isGenerator: boolean;
   declaredTypes: Set<string>;
+  callableParamOrder: Map<string, string[]>;  // callee name (fn or type) -> param names in order for named-arg reordering
   variableTypes: Map<string, string>;
   selfVar?: string;  // Variable name for 'this' in factory functions (e.g., "self")
 };
@@ -36,6 +37,7 @@ export type Ctx = {
   scopeStack: { defers: AST.Statement[] }[];
   tempCounter: number;
   typeFields: Map<string, Set<string>>; // type name -> field names (for embedding)
+  keywordDecls: Map<string, AST.KeywordDecl>; // keyword name -> declaration
 };
 
 // Create fresh context
@@ -44,6 +46,7 @@ export function createCtx(options: Partial<CodeGenOptions> = {}): Ctx {
     out: [],
     indent: 0,
     typeFields: new Map(),
+    keywordDecls: new Map(),
     options: { ...defaultOptions, ...options },
     scopeStack: [],
     tempCounter: 0,
@@ -57,6 +60,7 @@ export function createOpts(overrides: Partial<GenOpts> = {}): GenOpts {
     classFields: null,
     isGenerator: false,
     declaredTypes: new Set(),
+    callableParamOrder: new Map(),
     variableTypes: new Map(),
     ...overrides,
   };
@@ -109,6 +113,7 @@ export function resetCtx(ctx: Ctx): void {
   ctx.scopeStack = [];
   ctx.tempCounter = 0;
   ctx.typeFields = new Map();
+  ctx.keywordDecls = new Map();
 }
 
 // Exhaustiveness helper for switch statements

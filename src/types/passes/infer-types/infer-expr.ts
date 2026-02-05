@@ -316,6 +316,12 @@ function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
 
 function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: FunctionType): Type {
   const args = expr.args;
+  const hasNamed = args.some((a) => "name" in a && "value" in a);
+  const hasPositional = args.some((a) => !("name" in a && "value" in a));
+  if (hasNamed && hasPositional) {
+    const err = TypeErrors.mixedPositionalAndNamedArguments();
+    error(ctx, err.message, expr.loc, err.hint);
+  }
 
   // Infer type parameters
   const typeBindings = inferTypeParams(ctx, fnType, args);
@@ -396,8 +402,15 @@ function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: an
   }
 
   const args = expr.args;
-  // Props in declaration order, excluding promoted
-  const ownProps = objType.properties.filter((p: any) => !p.promotedFrom);
+  const hasNamed = args.some((a) => "name" in a && "value" in a);
+  const hasPositional = args.some((a) => !("name" in a && "value" in a));
+  if (hasNamed && hasPositional) {
+    const err = TypeErrors.mixedPositionalAndNamedArguments();
+    error(ctx, err.message, expr.loc, err.hint);
+  }
+
+  // Props in declaration order, excluding promoted and Context (marker type)
+  const ownProps = objType.properties.filter((p: any) => !p.promotedFrom && !(p.embedded && p.name === "Context"));
   
   // Count required: non-embedded without optional/default
   const requiredCount = ownProps.filter((p: any) => !p.embedded && !p.optional && !p.defaultValue).length;
