@@ -29,6 +29,7 @@ export function genExpr(ctx: Ctx, expr: AST.Expr, opts: GenOpts): string {
     case "IfExpr": return genIfExpr(ctx, expr, opts);
     case "MatchExpr": return genMatchExpr(ctx, expr, opts);
     case "ListExpr": return genList(ctx, expr, opts);
+    case "SetExpr": return genSet(ctx, expr, opts);
     case "MapExpr": return genMap(ctx, expr, opts);
     case "TemplateLiteral": return genTemplate(ctx, expr, opts);
     case "SpawnExpr": return genSpawn(ctx, expr, opts);
@@ -106,6 +107,16 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
   if (node.callee.kind === "Identifier" && EXTERN_TYPES.has(node.callee.name) && !STDLIB_FUNCTIONS.has(node.callee.name)) {
     const args = genCallArgs(ctx, node.args, opts);
     return `new __ms_runtime.${node.callee.name}(${args})`;
+  }
+
+  // Set methods values/entries/keys return iterators in JS; we need lists
+  if (node.callee.kind === "MemberExpr" && node.args.length === 0) {
+    const objType = node.callee.object.resolvedType;
+    if (objType?.kind === "set" && ["values", "entries", "keys"].includes(node.callee.property)) {
+      const obj = genExpr(ctx, node.callee.object, opts);
+      const method = node.callee.property;
+      return `Array.from(${obj}.${method}())`;
+    }
   }
 
   // Get param order from callee's resolved type for user-defined functions and types
@@ -289,6 +300,12 @@ export function genList(ctx: Ctx, node: AST.ListExpr, opts: GenOpts): string {
     return genExpr(ctx, el, opts);
   });
   return `[${elements.join(", ")}]`;
+}
+
+export function genSet(ctx: Ctx, node: AST.SetExpr, opts: GenOpts): string {
+  if (node.elements.length === 0) return "new Set()";
+  const inner = node.elements.map(el => genExpr(ctx, el, opts)).join(", ");
+  return `new Set([${inner}])`;
 }
 
 export function genMap(ctx: Ctx, node: AST.MapExpr, opts: GenOpts): string {

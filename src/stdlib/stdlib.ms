@@ -114,8 +114,8 @@ extern type map[K, V]
 
 extern type set[T]
   size: number
-  // Adds item to set
-  fn add(item: T): void
+  // Adds item to set, returns set for chaining
+  fn add(item: T): set[T]
   // Returns true if item exists
   fn has(item: T): bool
   // Deletes item, returns true if existed
@@ -124,6 +124,12 @@ extern type set[T]
   fn clear(): void
   // Returns list of items
   fn values(): list[T]
+  // Returns list of [value, value] pairs
+  fn entries(): list[list[T]]
+  // Same as values for set
+  fn keys(): list[T]
+  // Calls f for each element
+  fn forEach(f: fn(T): void): void
 
 // ============================================
 // Built-in Types
@@ -614,43 +620,15 @@ extern fn substring(s: string, start: number, end?: number): string
 extern fn matches(s: string, pattern: string): bool
 
 // Creates a set from a list
-fn set[T](list: list[T]): set[T]
-  let result = {}
-  for item in list
-    result[item] = true
-  result
-
+extern fn set[T](list: list[T]): set[T]
 // Returns union of two sets
-fn union[T](a: set[T], b: set[T]): set[T]
-  let result = {}
-  for k in keys(a)
-    result[k] = true
-  for k in keys(b)
-    result[k] = true
-  result
-
+extern fn union[T](a: set[T], b: set[T]): set[T]
 // Returns intersection of two sets
-fn intersect[T](a: set[T], b: set[T]): set[T]
-  let result = {}
-  for k in keys(a)
-    if b[k]
-      result[k] = true
-  result
-
+extern fn intersect[T](a: set[T], b: set[T]): set[T]
 // Returns elements in a but not in b
-fn difference[T](a: set[T], b: set[T]): set[T]
-  let result = {}
-  for k in keys(a)
-    if not b[k]
-      result[k] = true
-  result
-
+extern fn difference[T](a: set[T], b: set[T]): set[T]
 // Returns true if a is subset of b
-fn is_subset[T](a: set[T], b: set[T]): bool
-  for k in keys(a)
-    if not b[k]
-      return false
-  true
+extern fn is_subset[T](a: set[T], b: set[T]): bool
 
 // Result type for error handling
 type Result[T, E]
