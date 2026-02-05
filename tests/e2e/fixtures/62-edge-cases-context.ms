@@ -6,6 +6,7 @@ context Logger
   
   fn log(msg: string): string
     "{prefix}: {msg}"
+  fn close(): void
 
 fn greet(name: string): string using (logger: Logger)
   logger.log("Hello, " + name)
@@ -25,6 +26,8 @@ context Counter
   
   fn getName(): string
     name
+  
+  fn close(): void
 
 fn countOp(): number using (counter: Counter)
   counter.increment()
@@ -59,6 +62,8 @@ context Accumulator
   
   fn getTotal(): number
     total
+  
+  fn close(): void
 
 fn addValue(n: number): number using (acc: Accumulator)
   acc.add(n)
@@ -79,6 +84,8 @@ context Config
   
   fn getEnv(): string
     env
+  
+  fn close(): void
 
 fn getEnvironment(): string using (config: Config)
   config.getEnv()
@@ -104,6 +111,8 @@ context Builder
   
   fn build(): string
     result
+  
+  fn close(): void
 
 fn addPart(part: string) using (builder: Builder)
   builder.add(part)
@@ -121,6 +130,8 @@ context Feature
   
   fn isEnabled(): bool
     enabled
+  
+  fn close(): void
 
 fn checkFeature(): bool using (feature: Feature)
   feature.isEnabled()

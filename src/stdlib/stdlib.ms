@@ -18,6 +18,13 @@ keyword capabilities = type
 keyword enum = type
 
 // ============================================
+// Closable (for with/using)
+// ============================================
+
+interface Closable
+  fn close(): void
+
+// ============================================
 // Primitive Type Methods (built-in)
 // ============================================
 
@@ -256,7 +263,7 @@ extern context Claude
   fn complete(messages: list[any]): any
   // Streams a chat completion
   fn stream(messages: list[any]): any
-  fn exit(): void
+  fn close(): void
 
 extern context GPT
   model?: string
@@ -269,7 +276,7 @@ extern context GPT
   fn complete(messages: list[any]): any
   // Streams a chat completion
   fn stream(messages: list[any]): any
-  fn exit(): void
+  fn close(): void
 
 extern context MockLLM
   responses?: list[any]
@@ -283,7 +290,7 @@ extern context MockLLM
   fn stream(messages: list[any]): any
   // Adds a mock response pattern
   fn addResponse(pattern: string, reply: string): void
-  fn exit(): void
+  fn close(): void
 
 // ============================================
 // Filesystem Capabilities
@@ -309,7 +316,7 @@ extern context LocalFilesystem
   fn copy(src: string, dest: string): void
   // Moves file from src to dest
   fn move(src: string, dest: string): void
-  fn exit(): void
+  fn close(): void
 
 extern context MockFilesystem
   files?: map[string, string]
@@ -324,7 +331,7 @@ extern context MockFilesystem
   fn move(src: string, dest: string): void
   // Sets mock file content directly
   fn setFile(path: string, content: string): void
-  fn exit(): void
+  fn close(): void
 
 // Filesystem alias for LocalFilesystem
 extern context Filesystem
@@ -338,7 +345,7 @@ extern context Filesystem
   fn remove(path: string): void
   fn copy(src: string, dest: string): void
   fn move(src: string, dest: string): void
-  fn exit(): void
+  fn close(): void
 
 // ============================================
 // Shell Capabilities
@@ -353,7 +360,7 @@ extern context LocalShell
   fn start(command: string): any
   // Finds path to command executable
   fn which(command: string): string?
-  fn exit(): void
+  fn close(): void
 
 extern context MockShell
   commands?: list[any]
@@ -364,7 +371,7 @@ extern context MockShell
   fn which(command: string): string?
   // Adds mock command response
   fn addCommand(pattern: string, result: any): void
-  fn exit(): void
+  fn close(): void
 
 // Shell alias for LocalShell
 extern context Shell
@@ -373,7 +380,7 @@ extern context Shell
   fn exec(command: string): any
   fn start(command: string): any
   fn which(command: string): string?
-  fn exit(): void
+  fn close(): void
 
 // ============================================
 // HTTP Capabilities
@@ -392,7 +399,7 @@ extern context FetchHTTP
   fn getJSON(url: string): any
   // Performs POST with JSON body
   fn postJSON(url: string, data: any): any
-  fn exit(): void
+  fn close(): void
 
 extern context MockHTTP
   responses?: list[any]
@@ -405,7 +412,7 @@ extern context MockHTTP
   fn postJSON(url: string, data: any): any
   // Adds mock HTTP response
   fn addResponse(pattern: string, response: any): void
-  fn exit(): void
+  fn close(): void
 
 // HTTP alias for FetchHTTP
 extern context HTTP
@@ -419,7 +426,7 @@ extern context HTTP
   fn delete(url: string): any
   fn getJSON(url: string): any
   fn postJSON(url: string, data: any): any
-  fn exit(): void
+  fn close(): void
 
 // Errors
 // Throws an unrecoverable error

@@ -8,7 +8,7 @@ import {
   type Pass,
   type PassContext,
 } from "../../src/types/pass-manager";
-import { createGlobalEnvironment } from "../../src/types/environment";
+import { createGlobalEnvironment, TypeEnvironment } from "../../src/types/environment";
 import { collectDeclarations } from "../../src/types/passes/collect-declarations";
 import { inferTypes } from "../../src/types/passes/infer-types";
 import { analyzeContext } from "../../src/types/passes/context-analysis";
@@ -290,7 +290,278 @@ describe("Type Utils - Pure Functions", () => {
     const inter = Types.intersection(Types.number, Types.string);
     expect(TypeUtils.isAssignable(inter, Types.number, env)).toBe(true);
   });
+});
 
+describe("Type Utils - isAssignable", () => {
+  const env = createGlobalEnvironment();
+
+  describe("primitives and any/never", () => {
+    test("same primitive is assignable", () => {
+      expect(TypeUtils.isAssignable(Types.number, Types.number, env)).toBe(true);
+      expect(TypeUtils.isAssignable(Types.string, Types.string, env)).toBe(true);
+      expect(TypeUtils.isAssignable(Types.bool, Types.bool, env)).toBe(true);
+      expect(TypeUtils.isAssignable(Types.null, Types.null, env)).toBe(true);
+      expect(TypeUtils.isAssignable(Types.void, Types.void, env)).toBe(true);
+    });
+
+    test("different primitives are not assignable", () => {
+      expect(TypeUtils.isAssignable(Types.number, Types.string, env)).toBe(false);
+      expect(TypeUtils.isAssignable(Types.string, Types.bool, env)).toBe(false);
+      expect(TypeUtils.isAssignable(Types.bool, Types.number, env)).toBe(false);
+    });
+
+    test("any accepts and is accepted by anything", () => {
+      expect(TypeUtils.isAssignable(Types.any, Types.number, env)).toBe(true);
+      expect(TypeUtils.isAssignable(Types.number, Types.any, env)).toBe(true);
+      expect(TypeUtils.isAssignable(Types.any, Types.any, env)).toBe(true);
+    });
+
+    test("never is assignable to anything, nothing to never", () => {
+      expect(TypeUtils.isAssignable(Types.never, Types.number, env)).toBe(true);
+      expect(TypeUtils.isAssignable(Types.never, Types.string, env)).toBe(true);
+      expect(TypeUtils.isAssignable(Types.number, Types.never, env)).toBe(false);
+    });
+  });
+
+  describe("list (invariant)", () => {
+    test("same element type is assignable", () => {
+      const listNum = Types.list(Types.number);
+      expect(TypeUtils.isAssignable(listNum, listNum, env)).toBe(true);
+    });
+
+    test("list(any) accepts any list", () => {
+      expect(TypeUtils.isAssignable(Types.list(Types.number), Types.list(Types.any), env)).toBe(true);
+    });
+
+    test("different element types are not assignable", () => {
+      expect(TypeUtils.isAssignable(Types.list(Types.number), Types.list(Types.string), env)).toBe(false);
+      expect(TypeUtils.isAssignable(Types.list(Types.string), Types.list(Types.number), env)).toBe(false);
+    });
+  });
+
+  describe("map (invariant)", () => {
+    test("same key and value type is assignable", () => {
+      const m = Types.map(Types.string, Types.number);
+      expect(TypeUtils.isAssignable(m, m, env)).toBe(true);
+    });
+
+    test("map(any,any) accepts any map", () => {
+      expect(TypeUtils.isAssignable(Types.map(Types.string, Types.number), Types.map(Types.any, Types.any), env)).toBe(true);
+    });
+
+    test("different key or value type is not assignable", () => {
+      expect(TypeUtils.isAssignable(Types.map(Types.string, Types.number), Types.map(Types.string, Types.string), env)).toBe(false);
+      expect(TypeUtils.isAssignable(Types.map(Types.string, Types.number), Types.map(Types.number, Types.number), env)).toBe(false);
+    });
+  });
+
+  describe("set (invariant)", () => {
+    test("same element type is assignable", () => {
+      const setNum = Types.set(Types.number);
+      expect(TypeUtils.isAssignable(setNum, setNum, env)).toBe(true);
+    });
+
+    test("different element type is not assignable", () => {
+      expect(TypeUtils.isAssignable(Types.set(Types.number), Types.set(Types.string), env)).toBe(false);
+    });
+  });
+
+  describe("channel (invariant)", () => {
+    test("same element type is assignable", () => {
+      const ch = Types.channel(Types.number);
+      expect(TypeUtils.isAssignable(ch, ch, env)).toBe(true);
+    });
+
+    test("different element type is not assignable", () => {
+      expect(TypeUtils.isAssignable(Types.channel(Types.number), Types.channel(Types.string), env)).toBe(false);
+    });
+  });
+
+  describe("promise (covariant)", () => {
+    test("same resolve type is assignable", () => {
+      const p = Types.promise(Types.number);
+      expect(TypeUtils.isAssignable(p, p, env)).toBe(true);
+    });
+
+    test("source resolve assignable to target resolve is assignable", () => {
+      expect(TypeUtils.isAssignable(Types.promise(Types.number), Types.promise(Types.any), env)).toBe(true);
+    });
+
+    test("target promise(any) accepts any promise", () => {
+      expect(TypeUtils.isAssignable(Types.promise(Types.string), Types.promise(Types.any), env)).toBe(true);
+    });
+
+    test("incompatible resolve type is not assignable", () => {
+      expect(TypeUtils.isAssignable(Types.promise(Types.string), Types.promise(Types.number), env)).toBe(false);
+    });
+  });
+
+  describe("stream (covariant)", () => {
+    test("same element type is assignable", () => {
+      const s = Types.stream(Types.number);
+      expect(TypeUtils.isAssignable(s, s, env)).toBe(true);
+    });
+
+    test("source element assignable to target element is assignable", () => {
+      expect(TypeUtils.isAssignable(Types.stream(Types.number), Types.stream(Types.any), env)).toBe(true);
+    });
+  });
+
+  describe("tuple", () => {
+    test("same shape is assignable", () => {
+      const t = Types.tuple(Types.number, Types.string);
+      expect(TypeUtils.isAssignable(t, t, env)).toBe(true);
+    });
+
+    test("different length is not assignable", () => {
+      expect(TypeUtils.isAssignable(Types.tuple(Types.number), Types.tuple(Types.number, Types.string), env)).toBe(false);
+      expect(TypeUtils.isAssignable(Types.tuple(Types.number, Types.string), Types.tuple(Types.number), env)).toBe(false);
+    });
+
+    test("same length different element types is not assignable", () => {
+      expect(TypeUtils.isAssignable(Types.tuple(Types.number, Types.string), Types.tuple(Types.string, Types.number), env)).toBe(false);
+    });
+  });
+
+  describe("optional", () => {
+    test("inner type assignable to optional", () => {
+      expect(TypeUtils.isAssignable(Types.number, Types.optional(Types.number), env)).toBe(true);
+    });
+
+    test("null assignable to optional", () => {
+      expect(TypeUtils.isAssignable(Types.null, Types.optional(Types.number), env)).toBe(true);
+    });
+
+    test("wrong type not assignable to optional", () => {
+      expect(TypeUtils.isAssignable(Types.string, Types.optional(Types.number), env)).toBe(false);
+    });
+  });
+
+  describe("union", () => {
+    test("source assignable to one member of target union", () => {
+      const numOrStr = Types.union(Types.number, Types.string);
+      expect(TypeUtils.isAssignable(Types.number, numOrStr, env)).toBe(true);
+      expect(TypeUtils.isAssignable(Types.string, numOrStr, env)).toBe(true);
+    });
+
+    test("source not assignable to any member fails", () => {
+      const numOrStr = Types.union(Types.number, Types.string);
+      expect(TypeUtils.isAssignable(Types.bool, numOrStr, env)).toBe(false);
+    });
+
+    test("union source: all members must be assignable to target", () => {
+      const numOrStr = Types.union(Types.number, Types.string);
+      expect(TypeUtils.isAssignable(numOrStr, Types.any, env)).toBe(true);
+      expect(TypeUtils.isAssignable(numOrStr, Types.number, env)).toBe(false);
+    });
+  });
+
+  describe("intersection", () => {
+    test("intersection assignable to each member", () => {
+      const inter = Types.intersection(Types.number, Types.string);
+      expect(TypeUtils.isAssignable(inter, Types.number, env)).toBe(true);
+      expect(TypeUtils.isAssignable(inter, Types.string, env)).toBe(true);
+    });
+
+    test("source must be assignable to all members of target intersection", () => {
+      const inter = Types.intersection(Types.number, Types.number);
+      expect(TypeUtils.isAssignable(Types.number, inter, env)).toBe(true);
+    });
+  });
+
+  describe("ref and object", () => {
+    test("same named type is assignable", () => {
+      const pointType = Types.object(
+        [Types.prop("x", Types.number), Types.prop("y", Types.number)],
+        [],
+        "Point"
+      );
+      const envWithPoint = new TypeEnvironment();
+      envWithPoint.defineType("Point", pointType);
+      expect(TypeUtils.isAssignable(Types.ref("Point"), Types.ref("Point"), envWithPoint)).toBe(true);
+    });
+
+    test("different named types are not assignable", () => {
+      const pointType = Types.object(
+        [Types.prop("x", Types.number), Types.prop("y", Types.number)],
+        [],
+        "Point"
+      );
+      const otherType = Types.object([Types.prop("z", Types.number)], [], "Other");
+      const envLocal = new TypeEnvironment();
+      envLocal.defineType("Point", pointType);
+      envLocal.defineType("Other", otherType);
+      expect(TypeUtils.isAssignable(Types.ref("Point"), Types.ref("Other"), envLocal)).toBe(false);
+    });
+  });
+
+  describe("object to interface (structural)", () => {
+    test("object with required methods satisfies interface", () => {
+      const closable = env.lookupType("Closable");
+      expect(closable?.kind).toBe("interface");
+      const objWithClose = Types.object(
+        [],
+        [{ name: "close", type: Types.fn([], Types.void) }],
+        "MyResource"
+      );
+      expect(TypeUtils.isAssignable(objWithClose, closable!, env)).toBe(true);
+    });
+
+    test("object missing interface method does not satisfy", () => {
+      const closable = env.lookupType("Closable");
+      expect(closable).not.toBeNull();
+      const objNoClose = Types.object([Types.prop("x", Types.number)], [], "NoClose");
+      expect(TypeUtils.isAssignable(objNoClose, closable!, env)).toBe(false);
+    });
+  });
+
+  describe("function", () => {
+    test("same signature is assignable", () => {
+      const fn = Types.fn([Types.param("a", Types.number)], Types.string);
+      expect(TypeUtils.isAssignable(fn, fn, env)).toBe(true);
+    });
+
+    test("covariant return: subtype return is assignable", () => {
+      const fnNum = Types.fn([Types.param("x", Types.number)], Types.number);
+      const fnAny = Types.fn([Types.param("x", Types.number)], Types.any);
+      expect(TypeUtils.isAssignable(fnNum, fnAny, env)).toBe(true);
+    });
+
+    test("contravariant param: target param wider accepts source", () => {
+      const fnAny = Types.fn([Types.param("x", Types.any)], Types.number);
+      const fnNum = Types.fn([Types.param("x", Types.number)], Types.number);
+      expect(TypeUtils.isAssignable(fnAny, fnNum, env)).toBe(true);
+    });
+
+    test("source param stricter than target is not assignable", () => {
+      const fnNum = Types.fn([Types.param("x", Types.number)], Types.number);
+      const fnStr = Types.fn([Types.param("x", Types.string)], Types.number);
+      expect(TypeUtils.isAssignable(fnNum, fnStr, env)).toBe(false);
+    });
+
+    test("source with any param is permissive", () => {
+      const fnAnyParam = Types.fn([Types.param("x", Types.any)], Types.number);
+      const fnNumParam = Types.fn([Types.param("x", Types.number)], Types.number);
+      expect(TypeUtils.isAssignable(fnAnyParam, fnNumParam, env)).toBe(true);
+    });
+  });
+
+  describe("typevar", () => {
+    test("typevar assignable to any", () => {
+      expect(TypeUtils.isAssignable(Types.typevar("T"), Types.any, env)).toBe(true);
+    });
+
+    test("anything assignable to typevar (target)", () => {
+      expect(TypeUtils.isAssignable(Types.number, Types.typevar("T"), env)).toBe(true);
+    });
+
+    test("same typevar name is assignable", () => {
+      expect(TypeUtils.isAssignable(Types.typevar("T"), Types.typevar("T"), env)).toBe(true);
+    });
+  });
+});
+
+describe("Type Utils - Pure Functions (continued)", () => {
   test("paramsMatch and contextMatch", () => {
     const p = [Types.param("a", Types.number)];
     expect(TypeUtils.paramsMatch(p, p)).toBe(true);

@@ -301,7 +301,7 @@ export function genWith(ctx: Ctx, stmt: AST.WithStmt, opts: GenOpts): void {
   }
 
   for (const name of ctxNames) {
-    emit(ctx, `if (${name}?.exit) ${name}.exit();`);
+    emit(ctx, `if (${name}?.close) ${name}.close();`);
   }
 
   emit(ctx, "__ms_runtime.__popContext();");

@@ -3,12 +3,16 @@ import * as AST from "../../../parser/ast";
 import type { Type, FunctionType, ContextBinding, ObjectType } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
-import { astTypeToType, fnDeclToType, isAssignable, getIterableElementType, isIterable, typeIsContext } from "../../type-utils";
+import { astTypeToType, fnDeclToType, isAssignable, getIterableElementType, isIterable } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, warning, recordType } from "./context";
 import { checkPattern, bindPattern } from "./check-pattern";
 import { inferExpr, setCheckBlockFn, consumeSpawnsInExpr, exprContainsSpawn, transferSpawnTracking } from "./infer-expr";
 import { exprContainsEscapingLambda } from "../context-analysis";
+
+function getClosableType(ctx: InferContext): Type | null {
+  return ctx.env.lookupType("Closable") ?? null;
+}
 
 export function checkStatement(ctx: InferContext, stmt: AST.Statement): void {
   switch (stmt.kind) {
@@ -523,11 +527,21 @@ function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
 
   const savedWithContextVars = new Set(ctx.withContextVars);
 
-  for (const ctxBinding of stmt.contexts) {
-    ctx.insideWithContext = true;
-    const ctxType = inferExpr(ctx, ctxBinding.expr);
-    ctx.insideWithContext = false;
+  const closableType = getClosableType(ctx);
+  if (!closableType) {
+    error(ctx, "Closable interface not found (stdlib required)", stmt.loc);
+    return;
+  }
 
+  for (const ctxBinding of stmt.contexts) {
+    const ctxType = inferExpr(ctx, ctxBinding.expr);
+    if (!isAssignable(ctxType, closableType, ctx.env)) {
+      error(ctx,
+        `Expression in 'with' must satisfy Closable (must have close(): void)`,
+        ctxBinding.expr.loc,
+        `Type '${typeToString(ctxType)}' does not have close(): void`
+      );
+    }
     if (ctxBinding.name) {
       bindings.push({ name: ctxBinding.name, type: ctxType });
       if (isFunctionLevel) {
@@ -863,14 +877,19 @@ function checkMethodDecl(ctx: InferContext, typeDecl: AST.TypeDecl, method: AST.
 }
 
 function validateUsingClause(ctx: InferContext, using: AST.UsingClause): void {
+  const closableType = getClosableType(ctx);
+  if (!closableType) {
+    error(ctx, "Closable interface not found (stdlib required)", using.loc);
+    return;
+  }
   for (const binding of using.bindings) {
     const bindingType = astTypeToType(binding.type);
-    if (!typeIsContext(bindingType, ctx.env)) {
+    if (!isAssignable(bindingType, closableType, ctx.env)) {
       const typeName = binding.type.kind === "NamedType" ? binding.type.name : "unknown";
       error(ctx,
-        `Type '${typeName}' used in 'using' clause must be a context type`,
+        `Type '${typeName}' used in 'using' clause must satisfy Closable (must have close(): void)`,
         binding.loc,
-        `Use \`context ${typeName}\` to declare a context type`
+        `Ensure the type has a close(): void method`
       );
     }
   }

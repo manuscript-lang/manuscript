@@ -1,12 +1,11 @@
-// @test: Context Instantiation Restriction - only in with clauses
-// @error: can only be instantiated in 'with' clauses
+// @test: Context instantiation allowed outside with (Closable)
 
 context Logger
   prefix: string
   fn log(msg: string): string
     "{prefix}: {msg}"
+  fn close(): void
 
-// ERROR: Context type instantiated outside of 'with'
-let logger = Logger(prefix: "BAD")
-
-print(logger.log("this should fail"))
+let logger = Logger(prefix: "OK")
+// @expect: OK: works outside with
+print(logger.log("works outside with"))

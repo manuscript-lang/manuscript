@@ -1,5 +1,5 @@
-// @test: Using Context Errors - Types must be context type
-// @error: must be a context type
+// @test: Using Context Errors - Types must satisfy Closable
+// @error: must satisfy Closable
 
 // This type does NOT embed Context - should cause error
 type BadLogger

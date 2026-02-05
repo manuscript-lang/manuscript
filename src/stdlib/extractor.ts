@@ -1,12 +1,13 @@
 // Type extraction from stdlib AST
 import type * as AST from "../parser/ast";
-import type { Type, FunctionType, ObjectType, PropertyType, MethodType, TypeParameter } from "../types/types";
+import type { Type, FunctionType, ObjectType, InterfaceType, PropertyType, MethodType, TypeParameter } from "../types/types";
 import { Types } from "../types/types";
 import { PRIMITIVE_TYPE_MAP, constructGenericType, type BuiltinMethodRegistry, type BuiltinMemberInfo } from "../types/primitives";
+import { methodToFunctionType } from "../types/type-utils";
 
 export interface StdlibTypes {
   functions: Map<string, FunctionType>;
-  types: Map<string, ObjectType>;
+  types: Map<string, ObjectType | InterfaceType>;
   externTypes: Set<string>;
   builtinMethods: BuiltinMethodRegistry;
 }
@@ -145,7 +146,7 @@ const BUILTIN_TYPE_KIND_MAP: Record<string, string> = {
 // Extract all types from stdlib AST
 export function extractStdlibTypes(program: AST.Program): StdlibTypes {
   const functions = new Map<string, FunctionType>();
-  const types = new Map<string, ObjectType>();
+  const types = new Map<string, ObjectType | InterfaceType>();
   const externTypes = new Set<string>();
   const builtinMethods: BuiltinMethodRegistry = new Map();
 
@@ -157,6 +158,25 @@ export function extractStdlibTypes(program: AST.Program): StdlibTypes {
       case "ExternFnDecl":
         functions.set(stmt.name, extractFunctionType(stmt));
         break;
+      case "InterfaceDecl": {
+        const methods: MethodType[] = [];
+        for (const member of stmt.body.members) {
+          if (member.kind === "MethodDecl") {
+            methods.push({ name: member.name, type: methodToFunctionType(member) });
+          }
+        }
+        const iface: InterfaceType = {
+          kind: "interface",
+          name: stmt.name,
+          methods,
+          typeParams: stmt.typeParams?.map(p => ({
+            name: p.name,
+            constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
+          })),
+        };
+        types.set(stmt.name, iface);
+        break;
+      }
       case "TypeDecl": {
         const objType = extractObjectType(stmt);
         types.set(stmt.name, objType);

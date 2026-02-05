@@ -213,6 +213,7 @@ context ChannelReporter
   
   fn report(msg: string)
     ch.send(msg)
+  fn close(): void
 
 fn do_work(name: string) using (reporter: ChannelReporter)
   reporter.report("started: " + name)
@@ -252,6 +253,8 @@ context SafeCounter
   
   fn get(): number
     count
+  
+  fn close(): void
 
 fn worker(id: number, ch: Channel[number]) using (counter: SafeCounter)
   let n = counter.increment()
@@ -278,6 +281,7 @@ context SimpleEventBus
   
   fn publish(event: string)
     ch.send(event)
+  fn close(): void
 
 fn event_publisher() using (bus: SimpleEventBus)
   bus.publish("event1")

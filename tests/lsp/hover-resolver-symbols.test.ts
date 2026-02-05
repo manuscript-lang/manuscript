@@ -129,6 +129,21 @@ type T
     expect(hover!.signature).toContain("type Box");
   });
 
+  test("hover on with-let binding shows variable type", () => {
+    const source = `
+type MyResource
+  name: string
+  fn close(): void
+with let a = MyResource(name: "x")
+  print(a)
+`;
+    const { symbols, program, env } = parseDocument(source);
+    const onBinding = getHoverForSymbol(symbols, program, 5, 10, env);
+    expect(onBinding).not.toBeNull();
+    expect(onBinding!.signature).toContain("a");
+    expect(onBinding!.signature).toContain("MyResource");
+  });
+
   test("hover on var shows (var) prefix", () => {
     const source = `
 fn f()

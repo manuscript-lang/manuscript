@@ -1,5 +1,4 @@
 // @test: Escape Analysis - Context safety
-// @error: only be instantiated in 'with'
 
 // === Context Type Definition ===
 
@@ -8,6 +7,7 @@ context Logger
   
   fn log(msg: string): void
     print(prefix + ": " + msg)
+  fn close(): void
 
 // === Valid Context Usage ===
 
@@ -37,8 +37,3 @@ fn match_with_context(x: number): void
     match x
       0 => log.log("zero")
       _ => log.log("other")
-
-// === Context Instantiation Outside With ===
-
-fn bad_instantiation(): Logger
-  Logger(prefix: "BAD")

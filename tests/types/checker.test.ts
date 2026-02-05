@@ -74,6 +74,7 @@ double(5)`);
   test("function with capabilities", () => {
     checkOk(`context MyFilesystem
   fn read(path: string): string
+  fn close(): void
 fn read_file(path: string) using (fs: MyFilesystem)
   fs.read(path)`);
   });
@@ -312,18 +313,16 @@ catch e
 
 describe("Type Checker - With Statement", () => {
   test("with statement", () => {
-    // Define a context function first
-    checkOk(`fn production()
-  print("prod")
-with production()
+    checkOk(`context R
+  fn close(): void
+with R()
   print("running")`);
   });
 
   test("with let binding", () => {
-    // New syntax: with let name = expr
-    checkOk(`fn Trace(name: string)
-  print(name)
-with let t = Trace("op")
+    checkOk(`context R
+  fn close(): void
+with let t = R()
   print("traced")`);
   });
 });
@@ -755,7 +754,69 @@ describe("Type Checker - Using clause", () => {
     checkFails(`type NotContext
   x: number
 fn f(): number using (n: NotContext)
-  0`, "context type");
+  0`, "must satisfy Closable");
+  });
+});
+
+describe("Type Checker - Closable (with/using)", () => {
+  test("with: type with close() passes", () => {
+    checkOk(`context R
+  fn close(): void
+with R()
+  print(1)`);
+  });
+
+  test("with: type without close() fails", () => {
+    checkFails(`type NoClose
+  x: number
+with NoClose(x: 1)
+  print(1)`, "must satisfy Closable");
+  });
+
+  test("with: value created before block passes", () => {
+    checkOk(`context R
+  fn close(): void
+let r = R()
+with r
+  print(1)`);
+  });
+
+  test("using: type with close() passes", () => {
+    checkOk(`context S
+  fn close(): void
+fn use(): number using (s: S)
+  0
+with S()
+  print(use())`);
+  });
+
+  test("using: type without close() fails", () => {
+    checkFails(`type T
+  x: number
+fn f(): number using (t: T)
+  0`, "must satisfy Closable");
+  });
+
+  test("context type instantiation outside with allowed", () => {
+    checkOk(`context C
+  fn close(): void
+let c = C()
+print(c)`);
+  });
+
+  test("context type as function return outside with allowed", () => {
+    checkOk(`context C
+  fn close(): void
+fn make(): C
+  C()
+let c = make()`);
+  });
+
+  test("Closable built-in available without stdlib", () => {
+    checkOk(`context R
+  fn close(): void
+with R()
+  print(1)`);
   });
 });
 

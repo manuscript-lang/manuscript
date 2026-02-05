@@ -192,6 +192,13 @@ function findVariableType(program: AST.Program, def: SymbolDef): Type | null {
       if (s.kind === "VarStmt" && s.name === def.name && s.loc.line === def.loc.line) {
         return s.value.resolvedType || null;
       }
+      if (s.kind === "WithStmt") {
+        for (const c of s.contexts) {
+          if (c.name === def.name) return c.expr.resolvedType ?? null;
+        }
+        const inBody = searchStatements(s.body.statements);
+        if (inBody) return inBody;
+      }
       if (s.kind === "FnDecl" && s.body) {
         const result = searchStatements(s.body.statements);
         if (result) return result;

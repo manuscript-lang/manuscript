@@ -196,18 +196,19 @@ describe("CodeGen - Throw", () => {
 
 describe("CodeGen - With Statements", () => {
   test("with context", () => {
-    const js = compile(`with ctx()
+    const js = compile(`context R
+  fn close(): void
+with R()
   print(1)`);
-    // With statements now use try/finally for cleanup
     expect(js).toContain("try {");
     expect(js).toContain("} finally {");
-    // Check for exit() call on context
-    expect(js).toContain("?.exit");
+    expect(js).toContain("?.close");
   });
 
   test("with named binding", () => {
     const js = compile(`context Ctx
   value: number
+  fn close(): void
 with let c = Ctx(42)
   print(c.value)`);
     expect(js).toContain("const c =");
@@ -217,6 +218,7 @@ with let c = Ctx(42)
   test("with implicit return", () => {
     const js = compile(`context Ctx
   value: number
+  fn close(): void
 fn getValue(): number
   with let c = Ctx(42)
     c.value`);

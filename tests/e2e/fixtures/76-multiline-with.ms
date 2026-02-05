@@ -6,6 +6,7 @@ context Logger
 
   fn log(msg: string): string
     "{prefix}: {msg}"
+  fn close(): void
 
 fn greet(name: string): string using (logger: Logger)
   logger.log("Hello, " + name)
@@ -23,6 +24,7 @@ with let l = Logger(
 // === Multiple contexts with newline between (multiline context list) ===
 context Config
   env: string
+  fn close(): void
 
 fn getEnv(): string using (config: Config)
   config.env

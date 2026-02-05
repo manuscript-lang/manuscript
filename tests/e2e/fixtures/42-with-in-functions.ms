@@ -7,7 +7,7 @@ context Logger
   
   fn log(msg: string): string
     "{prefix}: {msg}"
-  fn exit(): void
+  fn close(): void
     print("{prefix}: cleanup")
 
 context Counter
@@ -18,6 +18,7 @@ context Counter
     count
   fn get(): number
     count
+  fn close(): void
 
 fn greet(name: string): string using (logger: Logger)
   logger.log("Hello, " + name)

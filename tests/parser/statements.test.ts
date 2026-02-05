@@ -470,4 +470,32 @@ describe("Parser - With Statements", () => {
       ],
     });
   });
+
+  test("multiple let bindings - AST has contexts array with correct shape", () => {
+    const result = stmt(`with let a = A(), let b = B()
+  a
+  b`);
+    expect(result.kind).toBe("WithStmt");
+    const withStmt = result as import("../../src/parser/ast").WithStmt;
+    expect(Array.isArray(withStmt.contexts)).toBe(true);
+    expect(withStmt.contexts.length).toBe(2);
+    expect(withStmt.contexts[0]).toMatchObject({ name: "a", expr: { kind: "CallExpr", callee: { kind: "Identifier", name: "A" } } });
+    expect(withStmt.contexts[0]!.nameLoc).toBeDefined();
+    expect(withStmt.contexts[1]).toMatchObject({ name: "b", expr: { kind: "CallExpr", callee: { kind: "Identifier", name: "B" } } });
+    expect(withStmt.contexts[1]!.nameLoc).toBeDefined();
+    expect(withStmt.body.kind).toBe("Block");
+  });
+
+  test("mixed anonymous and let bindings", () => {
+    const result = stmt(`with X(), let y = Y(), Z()
+  pass`);
+    const withStmt = result as import("../../src/parser/ast").WithStmt;
+    expect(withStmt.contexts.length).toBe(3);
+    expect(withStmt.contexts[0]!.name).toBeUndefined();
+    expect(withStmt.contexts[0]!.expr).toMatchObject({ kind: "CallExpr", callee: { name: "X" } });
+    expect(withStmt.contexts[1]!.name).toBe("y");
+    expect(withStmt.contexts[1]!.expr).toMatchObject({ kind: "CallExpr", callee: { name: "Y" } });
+    expect(withStmt.contexts[2]!.name).toBeUndefined();
+    expect(withStmt.contexts[2]!.expr).toMatchObject({ kind: "CallExpr", callee: { name: "Z" } });
+  });
 });

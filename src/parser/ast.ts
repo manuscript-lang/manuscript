@@ -342,6 +342,7 @@ export interface ThrowStmt extends BaseNode {
 export interface WithContext {
   expr: Expr;
   name?: string;  // with let name = expr
+  nameLoc?: SourceLocation;  // loc of the binding name for LSP
 }
 
 export interface WithStmt extends BaseNode {

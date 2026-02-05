@@ -158,6 +158,22 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
       }
       break;
     }
+    case "WithStmt": {
+      for (const c of stmt.contexts) {
+        if (c.name) {
+          const scope = ctx.currentScope;
+          const qn = scope ? `${scope}.${c.name}` : c.name;
+          ctx.symbols.addDefinition({
+            id: { kind: "variable", qualifiedName: qn },
+            name: c.name,
+            loc: c.nameLoc ?? c.expr.loc,
+            nameOffset: 0,
+          });
+        }
+      }
+      collectBlockDefinitions(ctx, stmt.body);
+      break;
+    }
   }
 }
 

@@ -5,7 +5,7 @@ import { getCompiledStdlib } from "../stdlib/compiled";
 // Context base type - factory function returning null-prototype object
 // Used as embedded marker in capability types
 const Context$methods = Object.assign(Object.create(null), {
-  exit() {}
+  close() {}
 });
 
 export function Context() {

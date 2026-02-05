@@ -1367,10 +1367,11 @@ export class Parser {
       if (this.match("LET")) {
         // with let name = expr (expr may be multiline)
         const name = this.expectIdentifier();
+        const nameLoc = this.previous().loc;
         this.expect("ASSIGN");
         this.skipBracketedWhitespace();
         const expr = this.parseContextExpr();
-        contexts.push({ expr, name });
+        contexts.push({ expr, name, nameLoc });
       } else {
         // with expr (anonymous, may be multiline)
         const expr = this.parseContextExpr();

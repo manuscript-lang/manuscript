@@ -423,21 +423,10 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
   }
 
   const returnType = substituteTypeParams(fnType.returnType, typeBindings);
-
-  if (returnType.kind === "object" &&
-      (returnType as ObjectType).isContextType &&
-      !ctx.insideWithContext) {
-    error(ctx, `Context type '${returnType.name}' can only be instantiated in 'with' clauses`, expr.loc);
-  }
-
   return returnType;
 }
 
 function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: any): Type {
-  if (objType.isContextType && !ctx.insideWithContext) {
-    error(ctx, `Context type '${objType.name}' can only be instantiated in 'with' clauses`, expr.loc);
-  }
-
   const args = expr.args;
   const hasNamed = args.some((a) => "name" in a && "value" in a);
   const hasPositional = args.some((a) => !("name" in a && "value" in a));
