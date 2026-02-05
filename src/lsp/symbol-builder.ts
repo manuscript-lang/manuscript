@@ -1,8 +1,8 @@
 // Symbol Table Builder - Builds symbol table from AST and type information
 import * as AST from "../parser/ast";
-import type { Type, ObjectType } from "../types/types";
+import type { Type, ObjectType, InterfaceType } from "../types/types";
 import type { TypeEnvironment } from "../types/environment";
-import { SymbolTable, type SymbolId, type SymbolDef } from "./symbols";
+import { SymbolTable, type SymbolDef } from "./symbols";
 
 interface BuildContext {
   symbols: SymbolTable;
@@ -82,22 +82,7 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
             nameOffset: 0,
           });
         } else if (m.kind === "MethodDecl") {
-          ctx.symbols.addDefinition({
-            id: { kind: "method", qualifiedName: `${stmt.name}.${m.name}` },
-            name: m.name,
-            loc: m.loc,
-            nameOffset: 3, // "fn "
-          });
-          // Method parameters
-          for (const p of m.params) {
-            ctx.symbols.addDefinition({
-              id: { kind: "parameter", qualifiedName: `${stmt.name}.${m.name}.${p.name}` },
-              name: p.name,
-              loc: p.loc,
-              nameOffset: 0,
-            });
-          }
-          // Local variables in method body
+          registerMethodDef(ctx, stmt.name, m);
           if (m.body) {
             const oldScope = ctx.currentScope;
             ctx.currentScope = `${stmt.name}.${m.name}`;
@@ -130,6 +115,18 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
         loc: stmt.loc,
         nameOffset: 4, // "var "
       });
+      break;
+    }
+    case "InterfaceDecl": {
+      ctx.symbols.addDefinition({
+        id: { kind: "type", qualifiedName: stmt.name },
+        name: stmt.name,
+        loc: stmt.loc,
+        nameOffset: 10, // "interface "
+      });
+      for (const m of stmt.body?.members || []) {
+        if (m.kind === "MethodDecl") registerMethodDef(ctx, stmt.name, m);
+      }
       break;
     }
     case "ImportDecl": {
@@ -170,9 +167,66 @@ function collectBlockDefinitions(ctx: BuildContext, block: AST.Block): void {
   }
 }
 
+function registerMethodDef(ctx: BuildContext, typeName: string, m: AST.MethodDecl): void {
+  ctx.symbols.addDefinition({
+    id: { kind: "method", qualifiedName: `${typeName}.${m.name}` },
+    name: m.name,
+    loc: m.loc,
+    nameOffset: 3, // "fn "
+  });
+  for (const p of m.params) {
+    ctx.symbols.addDefinition({
+      id: { kind: "parameter", qualifiedName: `${typeName}.${m.name}.${p.name}` },
+      name: p.name,
+      loc: p.loc,
+      nameOffset: 0,
+    });
+  }
+}
+
+function addTypeRef(ctx: BuildContext, type: AST.TypeExpr): void {
+  switch (type.kind) {
+    case "NamedType": {
+      const def = ctx.symbols.getDefinition(type.name);
+      if (def) ctx.symbols.addReference({ symbolId: def.id, loc: type.loc });
+      break;
+    }
+    case "GenericType": {
+      const def = ctx.symbols.getDefinition(type.name);
+      if (def) ctx.symbols.addReference({ symbolId: def.id, loc: type.loc });
+      for (const a of type.args) addTypeRef(ctx, a);
+      break;
+    }
+    case "FunctionType":
+      for (const p of type.params) addTypeRef(ctx, p);
+      addTypeRef(ctx, type.returnType);
+      break;
+    case "TypePredicateExpr":
+      addTypeRef(ctx, type.targetType);
+      break;
+    case "UnionType":
+      for (const t of type.types) addTypeRef(ctx, t);
+      break;
+    case "OptionalType":
+      addTypeRef(ctx, type.inner);
+      break;
+    case "ListType":
+      addTypeRef(ctx, type.elementType);
+      break;
+    case "MapType":
+      addTypeRef(ctx, type.keyType);
+      addTypeRef(ctx, type.valueType);
+      break;
+  }
+}
+
 function collectReferences(ctx: BuildContext, stmt: AST.Statement): void {
   switch (stmt.kind) {
     case "FnDecl": {
+      for (const p of stmt.params) {
+        if (p.type) addTypeRef(ctx, p.type);
+      }
+      if (stmt.returnType) addTypeRef(ctx, stmt.returnType);
       const oldScope = ctx.currentScope;
       ctx.currentScope = stmt.name;
       if (stmt.body) collectBlockReferences(ctx, stmt.body);
@@ -180,21 +234,37 @@ function collectReferences(ctx: BuildContext, stmt: AST.Statement): void {
       break;
     }
     case "TypeDecl": {
+      for (const a of stmt.alias || []) addTypeRef(ctx, a);
       const oldScope = ctx.currentScope;
       ctx.currentScope = stmt.name;
       for (const m of stmt.body?.members || []) {
-        if (m.kind === "FieldDecl" && m.defaultValue) {
-          collectExprReferences(ctx, m.defaultValue);
-        } else if (m.kind === "MethodDecl" && m.body) {
-          ctx.currentScope = `${stmt.name}.${m.name}`;
-          collectBlockReferences(ctx, m.body);
-          ctx.currentScope = stmt.name;
+        if (m.kind === "FieldDecl") {
+          if (m.type) addTypeRef(ctx, m.type);
+          if (m.defaultValue) collectExprReferences(ctx, m.defaultValue);
+        } else if (m.kind === "MethodDecl") {
+          if (m.returnType) addTypeRef(ctx, m.returnType);
+          if (m.body) {
+            ctx.currentScope = `${stmt.name}.${m.name}`;
+            collectBlockReferences(ctx, m.body);
+            ctx.currentScope = stmt.name;
+          }
         }
       }
       ctx.currentScope = oldScope;
       break;
     }
+    case "InterfaceDecl": {
+      for (const m of stmt.body?.members || []) {
+        if (m.kind === "MethodDecl" && m.returnType) addTypeRef(ctx, m.returnType);
+        if (m.kind === "EmbeddedInterfaceDecl") {
+          const def = ctx.symbols.getDefinition(m.name);
+          if (def) ctx.symbols.addReference({ symbolId: def.id, loc: m.loc });
+        }
+      }
+      break;
+    }
     case "LetStmt":
+      if (stmt.pattern?.kind === "TypePattern") addTypeRef(ctx, stmt.pattern.type);
       collectExprReferences(ctx, stmt.value);
       break;
     case "VarStmt":
@@ -372,9 +442,12 @@ function collectExprReferences(ctx: BuildContext, expr: AST.Expr): void {
       collectExprReferences(ctx, expr.end);
       break;
     case "SpawnExpr":
-    case "TypeAssertion":
     case "NullAssertion":
       collectExprReferences(ctx, expr.expr);
+      break;
+    case "TypeAssertion":
+      collectExprReferences(ctx, expr.expr);
+      addTypeRef(ctx, expr.type);
       break;
   }
 }
@@ -487,9 +560,14 @@ function getMethodReturnTypeName(ctx: BuildContext, typeName: string, methodName
     if (stmt.kind === "TypeDecl" && stmt.name === typeName) {
       for (const member of stmt.body.members) {
         if (member.kind === "MethodDecl" && member.name === methodName) {
-          if (member.returnType) {
-            return getTypeNameFromAstType(member.returnType);
-          }
+          if (member.returnType) return getTypeNameFromAstType(member.returnType);
+        }
+      }
+    }
+    if (stmt.kind === "InterfaceDecl" && stmt.name === typeName) {
+      for (const member of stmt.body.members) {
+        if (member.kind === "MethodDecl" && member.name === methodName) {
+          if (member.returnType) return getTypeNameFromAstType(member.returnType);
         }
       }
     }
@@ -508,30 +586,17 @@ function getTypeNameFromAstType(type: AST.TypeExpr): string | null {
   return null;
 }
 
-// Get the type name for member lookup (handles ref, object, generic types)
+// Get the type name for member lookup (handles ref, object, interface, generic types)
 function getTypeName(env: TypeEnvironment, type: Type): string | null {
-  // Handle ref types (e.g., Hello[string] has kind: "ref", name: "Hello")
-  if (type.kind === "ref") {
-    return type.name;
-  }
-  // Handle object types with a name
-  if (type.kind === "object" && (type as ObjectType).name) {
-    return (type as ObjectType).name!;
-  }
-  // Handle optional types - unwrap and recurse
-  if (type.kind === "optional") {
-    return getTypeName(env, (type as any).inner);
-  }
-  // Try resolving if env can help
+  if (type.kind === "ref") return type.name;
+  if (type.kind === "object" && (type as ObjectType).name) return (type as ObjectType).name!;
+  if (type.kind === "interface") return (type as InterfaceType).name;
+  if (type.kind === "optional") return getTypeName(env, (type as any).inner);
   const resolved = env.resolveType(type);
   if (resolved !== type) {
-    // Avoid infinite recursion
-    if (resolved.kind === "object" && (resolved as ObjectType).name) {
-      return (resolved as ObjectType).name!;
-    }
-    if (resolved.kind === "ref") {
-      return resolved.name;
-    }
+    if (resolved.kind === "object" && (resolved as ObjectType).name) return (resolved as ObjectType).name!;
+    if (resolved.kind === "ref") return resolved.name;
+    if (resolved.kind === "interface") return (resolved as InterfaceType).name;
   }
   return null;
 }

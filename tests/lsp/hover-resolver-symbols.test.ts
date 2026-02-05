@@ -141,6 +141,40 @@ fn f()
     expect(hover!.signature).toContain("y");
   });
 
+  test("hover on interface definition and on reference in type annotation", () => {
+    const source = `
+interface Greeter
+  fn greet(): string
+type Person
+  name: string
+  fn greet(): string
+    return "Hi"
+fn use(g: Greeter): string
+  return g.greet()
+let p = Person(name: "x")
+let _ = use(p)
+`;
+    const { symbols, program, env } = parseDocument(source);
+    const onIfaceDef = getHoverForSymbol(symbols, program, 2, 12, env);
+    expect(onIfaceDef).not.toBeNull();
+    expect(onIfaceDef!.signature).toContain("interface Greeter");
+    expect(onIfaceDef!.doc).toContain("greet");
+    const onRef = getHoverForSymbol(symbols, program, 8, 12, env);
+    expect(onRef).not.toBeNull();
+    expect(onRef!.signature).toContain("interface Greeter");
+  });
+
+  test("hover on interface method definition", () => {
+    const source = `
+interface I
+  fn m(x: number): string
+`;
+    const { symbols, program, env } = parseDocument(source);
+    const hover = getHoverForSymbol(symbols, program, 3, 6, env);
+    expect(hover).not.toBeNull();
+    expect(hover!.signature).toContain("(method)");
+    expect(hover!.signature).toContain("m");
+  });
 });
 
 describe("LSP Resolver", () => {
@@ -196,6 +230,41 @@ describe("LSP Resolver", () => {
     const lines = locs!.map((l) => l.loc.line);
     expect(lines).toContain(1);
     expect(lines).toContain(3);
+  });
+
+  test("resolveDefinition for interface: on definition; findReferences includes type annotation", () => {
+    const source = `
+interface Reader
+  fn read(): string
+fn f(r: Reader): string
+  return r.read()
+`;
+    const { symbols } = parseDocument(source);
+    const defOnDef = resolveDefinition(symbols, 2, 12);
+    expect(defOnDef).not.toBeNull();
+    expect(defOnDef!.name).toBe("Reader");
+    expect(defOnDef!.id.kind).toBe("type");
+    const refs = findReferences(symbols, 2, 12);
+    expect(refs).not.toBeNull();
+    expect(refs!.definition.name).toBe("Reader");
+    expect(refs!.references.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("findReferences and getRenameLocations for interface", () => {
+    const source = `
+interface I
+  fn m(): number
+fn use(x: I): number
+  return x.m()
+`;
+    const { symbols } = parseDocument(source);
+    const refs = findReferences(symbols, 2, 11);
+    expect(refs).not.toBeNull();
+    expect(refs!.definition.name).toBe("I");
+    expect(refs!.references.length).toBeGreaterThanOrEqual(1);
+    const locs = getRenameLocations(symbols, 2, 11);
+    expect(locs).not.toBeNull();
+    expect(locs!.length).toBeGreaterThanOrEqual(2);
   });
 });
 

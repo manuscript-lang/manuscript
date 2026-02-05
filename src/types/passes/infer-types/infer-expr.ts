@@ -328,11 +328,18 @@ function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
   }
 
   if (calleeType.kind === "function") {
+    recordType(ctx, expr.callee, calleeType);
     return inferFunctionCall(ctx, expr, calleeType);
   }
 
   if (calleeType.kind === "object") {
+    recordType(ctx, expr.callee, calleeType);
     return inferConstructorCall(ctx, expr, calleeType);
+  }
+
+  if (calleeType.kind === "interface") {
+    error(ctx, `Interface '${calleeType.name}' cannot be constructed; use a type that satisfies the interface`, expr.loc);
+    return calleeType;
   }
 
   // Infer arguments for unknown callees
@@ -606,6 +613,16 @@ function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
       }
       resolved = substituteTypeInObject(baseType, bindings);
     }
+  }
+
+  if (resolved.kind === "interface") {
+    const method = resolved.methods.find(m => m.name === expr.property);
+    if (method) return method.type;
+    if (!expr.optional) {
+      const err = TypeErrors.propertyNotExist(expr.property, resolved.name);
+      error(ctx, err.message, expr.loc, err.hint);
+    }
+    return Types.any;
   }
 
   if (resolved.kind === "object") {

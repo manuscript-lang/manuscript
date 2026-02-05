@@ -8,11 +8,13 @@ import {
   isDefLocationMatch,
   findFnDecl,
   findTypeDecl,
+  findInterfaceDecl,
   formatAstType,
   formatFnSignature,
   formatFunctionType,
   formatTypeSignature,
   formatTypeSignatureFromObject,
+  formatInterfaceSignature,
   parseMemberQualifiedName,
   parseQualifiedName,
 } from "./utils";
@@ -64,12 +66,26 @@ function getHoverForDefinition(
     }
     case "type": {
       if (env) {
-        const obj = env.lookupType(def.name);
-        if (obj?.kind === "object") {
-          const { signature, fields } = formatTypeSignatureFromObject(obj as ObjectType);
+        const looked = env.lookupType(def.name);
+        if (looked?.kind === "interface") {
+          const iface = findInterfaceDecl(program, def.name);
+          if (iface) {
+            const { signature, methods } = formatInterfaceSignature(iface);
+            const doc = iface.doc ?? (methods.length ? `**Methods:**\n${methods.map(m => `- \`${m}\``).join("\n")}` : undefined);
+            return { signature: `interface ${signature}`, doc };
+          }
+        }
+        if (looked?.kind === "object") {
+          const { signature, fields } = formatTypeSignatureFromObject(looked as ObjectType);
           const doc = fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined;
           return { signature: `type ${signature}`, doc };
         }
+      }
+      const iface = findInterfaceDecl(program, def.name);
+      if (iface) {
+        const { signature, methods } = formatInterfaceSignature(iface);
+        const doc = iface.doc ?? (methods.length ? `**Methods:**\n${methods.map(m => `- \`${m}\``).join("\n")}` : undefined);
+        return { signature: `interface ${signature}`, doc };
       }
       const typeDecl = findTypeDecl(program, def.name);
       if (typeDecl) {
@@ -103,9 +119,9 @@ function getHoverForDefinition(
     case "method": {
       const parsed = parseMemberQualifiedName(def.id.qualifiedName);
       if (parsed && env) {
-        const obj = env.lookupType(parsed.typeName);
-        if (obj?.kind === "object") {
-          const o = obj as ObjectType;
+        const looked = env.lookupType(parsed.typeName);
+        if (looked?.kind === "object") {
+          const o = looked as ObjectType;
           const method = o.methods.find(m => m.name === parsed.memberName);
           if (method) {
             const ft = method.type;
@@ -115,11 +131,31 @@ function getHoverForDefinition(
             return { signature: `(method) fn ${parsed.memberName}(${params}): ${ret}`, doc: methodMember?.doc };
           }
         }
+        if (looked?.kind === "interface") {
+          const method = (looked as any).methods?.find((m: any) => m.name === parsed.memberName);
+          if (method) {
+            const ft = method.type;
+            const params = ft.params?.map((p: any) => `${p.name}: ${typeToString(p.type)}`).join(", ") ?? "";
+            const ret = typeToString(ft.returnType);
+            const methodMember = findInterfaceDecl(program, parsed.typeName)?.body?.members?.find((m): m is AST.MethodDecl => m.kind === "MethodDecl" && m.name === parsed.memberName);
+            return { signature: `(method) fn ${parsed.memberName}(${params}): ${ret}`, doc: methodMember?.doc };
+          }
+        }
       }
       if (parsed) {
         const typeDecl = findTypeDecl(program, parsed.typeName);
         if (typeDecl) {
           for (const m of typeDecl.body?.members || []) {
+            if (m.kind === "MethodDecl" && m.name === parsed.memberName) {
+              const params = m.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
+              const ret = formatAstType(m.returnType);
+              return { signature: `(method) fn ${parsed.memberName}(${params}): ${ret}`, doc: m.doc };
+            }
+          }
+        }
+        const iface = findInterfaceDecl(program, parsed.typeName);
+        if (iface) {
+          for (const m of iface.body?.members || []) {
             if (m.kind === "MethodDecl" && m.name === parsed.memberName) {
               const params = m.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
               const ret = formatAstType(m.returnType);
@@ -182,6 +218,16 @@ function findParameterType(program: AST.Program, scope: string, paramName: strin
     const typeDecl = findTypeDecl(program, typeName);
     if (typeDecl) {
       for (const m of typeDecl.body?.members || []) {
+        if (m.kind === "MethodDecl" && m.name === methodName) {
+          for (const p of m.params) {
+            if (p.name === paramName) return p.type ?? null;
+          }
+        }
+      }
+    }
+    const iface = findInterfaceDecl(program, typeName);
+    if (iface) {
+      for (const m of iface.body?.members || []) {
         if (m.kind === "MethodDecl" && m.name === methodName) {
           for (const p of m.params) {
             if (p.name === paramName) return p.type ?? null;

@@ -1,6 +1,6 @@
 // LSP Utilities - Shared helpers for LSP features
 import * as AST from "../parser/ast";
-import type { Type, ObjectType, MethodType } from "../types/types";
+import type { Type, ObjectType, MethodType, InterfaceType } from "../types/types";
 import { typeToString } from "../types/types";
 import type { TypeEnvironment } from "../types/environment";
 import { visit } from "../types/ast-visitor";
@@ -38,11 +38,21 @@ export function findFnDecl(program: AST.Program, name: string): AST.FnDecl | nul
   return null;
 }
 
-export function findTypeDecl(program: AST.Program, name: string): AST.TypeDecl | null {
+function findDeclByName(program: AST.Program, name: string): AST.TypeDecl | AST.InterfaceDecl | null {
   for (const s of program.body) {
-    if (s.kind === "TypeDecl" && s.name === name) return s;
+    if ((s.kind === "TypeDecl" || s.kind === "InterfaceDecl") && s.name === name) return s;
   }
   return null;
+}
+
+export function findTypeDecl(program: AST.Program, name: string): AST.TypeDecl | null {
+  const d = findDeclByName(program, name);
+  return d?.kind === "TypeDecl" ? d : null;
+}
+
+export function findInterfaceDecl(program: AST.Program, name: string): AST.InterfaceDecl | null {
+  const d = findDeclByName(program, name);
+  return d?.kind === "InterfaceDecl" ? d : null;
 }
 
 export function findTypeMember(program: AST.Program, typeName: string, memberName: string): AST.FieldDecl | AST.MethodDecl | null {
@@ -108,6 +118,13 @@ export function formatTypeSignature(t: AST.TypeDecl): { signature: string; field
   return { signature: t.name, fields };
 }
 
+export function formatInterfaceSignature(iface: AST.InterfaceDecl): { signature: string; methods: string[] } {
+  const methods = (iface.body?.members || [])
+    .filter((m): m is AST.MethodDecl => m.kind === "MethodDecl")
+    .map(m => formatMethodSignature(m));
+  return { signature: iface.name, methods };
+}
+
 export function formatFunctionType(type: Type): string {
   if (type.kind !== "function") return "fn()";
   const fnType = type as any;
@@ -133,21 +150,44 @@ export function getDocstring(block: AST.Block | undefined): string | undefined {
 // Type Resolution
 // ============================================
 
-export function resolveObjectType(program: AST.Program, type: Type, env?: TypeEnvironment): ObjectType | null {
-  if (type.kind === "object") return type;
-  if (type.kind === "optional") return resolveObjectType(program, (type as any).inner, env);
+function resolveToKind<T extends Type>(
+  type: Type,
+  env: TypeEnvironment | undefined,
+  kind: "object" | "interface"
+): T | null {
+  if (type.kind === kind) return type as T;
+  if (type.kind === "optional") return resolveToKind((type as any).inner, env, kind);
   if (type.kind === "union") {
     for (const t of (type as any).types) {
-      const o = resolveObjectType(program, t, env);
-      if (o) return o;
+      const r = resolveToKind(t, env, kind) as T | null;
+      if (r) return r;
     }
   }
-  if (type.kind === "ref") {
-    if (env) {
-      const resolved = env.lookupType(type.name);
-      if (resolved?.kind === "object") return resolved as ObjectType;
+  if (type.kind === "ref" && env) {
+    const resolved = env.lookupType(type.name);
+    if (resolved?.kind === kind) return resolved as T;
+  }
+  return null;
+}
+
+function getRefName(type: Type): string | null {
+  if (type.kind === "ref") return type.name;
+  if (type.kind === "optional") return getRefName((type as any).inner);
+  if (type.kind === "union") {
+    for (const t of (type as any).types) {
+      const n = getRefName(t);
+      if (n) return n;
     }
-    const typeDecl = findTypeDecl(program, type.name);
+  }
+  return null;
+}
+
+export function resolveObjectType(program: AST.Program, type: Type, env?: TypeEnvironment): ObjectType | null {
+  const direct = resolveToKind<ObjectType>(type, env, "object");
+  if (direct) return direct;
+  const refName = getRefName(type);
+  if (refName) {
+    const typeDecl = findTypeDecl(program, refName);
     if (typeDecl) {
       const props = (typeDecl.body?.members || [])
         .filter((m): m is AST.FieldDecl => m.kind === "FieldDecl")
@@ -168,6 +208,10 @@ export function resolveObjectType(program: AST.Program, type: Type, env?: TypeEn
     }
   }
   return null;
+}
+
+export function resolveInterfaceType(program: AST.Program, type: Type, env?: TypeEnvironment): InterfaceType | null {
+  return resolveToKind<InterfaceType>(type, env, "interface");
 }
 
 export function formatTypeSignatureFromObject(obj: ObjectType): { signature: string; fields: string[] } {

@@ -57,8 +57,11 @@ import {
   getDocumentSymbols,
   getTypeMemberCompletions,
   getObjectMemberCompletions,
+  getInterfaceMemberCompletions,
   resolveObjectType,
+  resolveInterfaceType,
   findConstructorCalleeAt,
+  formatInterfaceSignature,
   type DocumentSymbolKind,
   type CompletionInfo,
   type HoverInfo,
@@ -300,7 +303,7 @@ connection.onCompletion((params): CompletionItem[] => {
     }
     if (cached) {
       for (const s of cached.program.body) {
-        if (s.kind === "TypeDecl") items.push({ label: s.name, kind: CompletionItemKind.Class });
+        if (s.kind === "TypeDecl" || s.kind === "InterfaceDecl") items.push({ label: s.name, kind: CompletionItemKind.Class });
       }
     }
     return items;
@@ -318,14 +321,14 @@ connection.onCompletion((params): CompletionItem[] => {
           if (e.loc.column <= oneBasedCol) bestExpr = e;
         },
       });
-      const type = bestExpr?.resolvedType;
+      const type = (bestExpr as AST.Expr | null)?.resolvedType;
       if (type) {
-        // Try stdlib type members (string, list, map, set)
         const stdlibCompletions = getTypeMemberCompletions(stdlibTypeMembers, type.kind);
         if (stdlibCompletions.length > 0) return toCompletionItems(stdlibCompletions);
-        // Try user-defined object types
         const obj = resolveObjectType(cached.program, type, cached.env);
         if (obj) return toCompletionItems(getObjectMemberCompletions(obj));
+        const iface = resolveInterfaceType(cached.program, type, cached.env);
+        if (iface) return toCompletionItems(getInterfaceMemberCompletions(iface));
       }
     }
     return toCompletionItems(getTypeMemberCompletions(stdlibTypeMembers, "list"));
@@ -344,6 +347,8 @@ connection.onCompletion((params): CompletionItem[] => {
       } else if (s.kind === "TypeDecl") {
         const { signature } = formatTypeSignature(s);
         items.push({ label: s.name, kind: CompletionItemKind.Class, detail: signature, data: { uri: params.textDocument.uri, type: s.name } });
+      } else if (s.kind === "InterfaceDecl") {
+        items.push({ label: s.name, kind: CompletionItemKind.Class, detail: `interface ${s.name}`, data: { uri: params.textDocument.uri, type: s.name, interface: true } });
       } else if (s.kind === "LetStmt" || s.kind === "VarStmt") {
         const name = (s as any).name || (s as any).pattern?.name;
         if (name) items.push({ label: name, kind: CompletionItemKind.Variable });
@@ -394,6 +399,13 @@ connection.onCompletionResolve(async (item): Promise<CompletionItem> => {
               if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
               return item;
             }
+            if (s.kind === "InterfaceDecl" && s.name === data.exportedName) {
+              const { signature, methods } = formatInterfaceSignature(s);
+              item.detail = `interface ${signature}`;
+              const doc = s.doc ?? (methods.length ? `**Methods:**\n${methods.map(m => `- \`${m}\``).join("\n")}` : undefined);
+              if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
+              return item;
+            }
           }
         }
       }
@@ -420,6 +432,12 @@ connection.onCompletionResolve(async (item): Promise<CompletionItem> => {
       if (data.type && s.kind === "TypeDecl" && s.name === data.type) {
         const { fields } = formatTypeSignature(s);
         const doc = s.doc ?? (fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined);
+        if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
+        break;
+      }
+      if (data.type && s.kind === "InterfaceDecl" && s.name === data.type) {
+        const { methods } = formatInterfaceSignature(s);
+        const doc = s.doc ?? (methods.length ? `**Methods:**\n${methods.map(m => `- \`${m}\``).join("\n")}` : undefined);
         if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
         break;
       }

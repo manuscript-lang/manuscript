@@ -140,6 +140,17 @@ export interface MethodType {
 }
 
 // ============================================
+// Interface Type (method contract, no implementation)
+// ============================================
+
+export interface InterfaceType extends BaseType {
+  kind: "interface";
+  name: string;
+  methods: MethodType[];
+  typeParams?: TypeParameter[];
+}
+
+// ============================================
 // Union and Intersection Types
 // ============================================
 
@@ -272,6 +283,7 @@ export type Type =
   | TupleType
   | FunctionType
   | ObjectType
+  | InterfaceType
   | UnionType
   | IntersectionType
   | OptionalType
@@ -478,6 +490,9 @@ export function typeToString(type: Type): string {
 
     case "object":
       return type.name ?? "{ ... }";
+
+    case "interface":
+      return type.name;
 
     case "union":
       return type.types.map(typeToString).join(" | ");

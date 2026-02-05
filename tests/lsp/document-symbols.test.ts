@@ -44,4 +44,21 @@ type T
     expect(topLevel.some((s) => s.name === "T")).toBe(true);
     expect(topLevel.find((s) => s.name === "x")).toBeUndefined();
   });
+
+  test("getDocumentSymbols includes interfaces and interface methods", () => {
+    const source = `
+interface Greeter
+  fn greet(): string
+type Person
+  name: string
+`;
+    const program = new Parser(source).parse();
+    const checker = new TypeChecker();
+    const result = checker.check(program);
+    const symbols = buildSymbolTable(program, result.env);
+    const docSymbols = getDocumentSymbols(symbols);
+    expect(docSymbols.some((s) => s.name === "Greeter" && s.kind === "type")).toBe(true);
+    expect(docSymbols.some((s) => s.name === "greet" && s.kind === "method" && s.parent === "Greeter")).toBe(true);
+    expect(docSymbols.some((s) => s.name === "Person" && s.kind === "type")).toBe(true);
+  });
 });

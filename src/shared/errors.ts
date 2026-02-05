@@ -275,6 +275,10 @@ export const TypeErrors = {
     message: `Generic type parameter must be an identifier`,
     hint: `Use a simple type name like T, K, V, etc.`,
   }),
+  methodRequiresBody: (methodName: string, typeName: string) => ({
+    message: `Method '${methodName}' on type '${typeName}' must have a body`,
+    hint: `Concrete types require method implementations. Use 'interface' for method signatures only`,
+  }),
 };
 
 // Helper to create error message with hint

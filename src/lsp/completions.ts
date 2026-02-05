@@ -1,9 +1,9 @@
 // Completions - Provides completion items for code completion
 import * as AST from "../parser/ast";
-import type { Type, ObjectType } from "../types/types";
+import type { Type, ObjectType, InterfaceType } from "../types/types";
 import { typeToString } from "../types/types";
 import type { TypeMemberInfo } from "../stdlib/extractor";
-import { formatAstType, formatFunctionType, resolveObjectType } from "./utils";
+import { formatAstType, formatFunctionType, resolveObjectType, resolveInterfaceType } from "./utils";
 
 export type CompletionKind = "function" | "type" | "variable" | "property" | "method" | "keyword";
 
@@ -45,6 +45,15 @@ export function getObjectMemberCompletions(obj: ObjectType): CompletionInfo[] {
   ];
 }
 
+// Get completions for interface members (methods only)
+export function getInterfaceMemberCompletions(iface: InterfaceType): CompletionInfo[] {
+  return iface.methods.map(m => ({
+    label: m.name,
+    kind: "method" as const,
+    detail: typeToString(m.type),
+  }));
+}
+
 // Get completions for variables/functions in scope
 export function getScopeCompletions(
   program: AST.Program,
@@ -59,6 +68,8 @@ export function getScopeCompletions(
       completions.push({ label: s.name, kind: "function", detail });
     } else if (s.kind === "TypeDecl") {
       completions.push({ label: s.name, kind: "type", detail: `type ${s.name}` });
+    } else if (s.kind === "InterfaceDecl") {
+      completions.push({ label: s.name, kind: "type", detail: `interface ${s.name}` });
     } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && s.loc.line < line) {
       const varType = s.value.resolvedType;
       completions.push({
@@ -86,5 +97,5 @@ function formatFnSignatureShort(fn: AST.FnDecl): string {
   return `fn(${params}): ${ret}`;
 }
 
-// Re-export resolveObjectType for use by server
-export { resolveObjectType } from "./utils";
+// Re-export for use by server
+export { resolveObjectType, resolveInterfaceType } from "./utils";

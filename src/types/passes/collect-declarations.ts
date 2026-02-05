@@ -1,7 +1,7 @@
 // Pass 1: Collect Declarations
 // Gathers type and function declarations into the type environment
 import * as AST from "../../parser/ast";
-import type { Type, ObjectType, FunctionType, PropertyType, MethodType } from "../types";
+import type { Type, ObjectType, InterfaceType, FunctionType, PropertyType, MethodType } from "../types";
 import { Types } from "../types";
 import type { TypeEnvironment } from "../environment";
 import { TypeCheckError } from "../errors";
@@ -55,19 +55,23 @@ export function collectDeclarations(input: CollectInput): CollectOutput {
     }
   }
 
-  // First pass: register all types (needed for embedded type lookup)
+  // First pass: register all types and interfaces (needed for embedded lookup)
   for (const stmt of program.body) {
     if (stmt.kind === "TypeDecl") {
       registerType(stmt, env, addError);
+    } else if (stmt.kind === "InterfaceDecl") {
+      registerInterface(stmt, env, addError);
     } else if (stmt.kind === "KeywordTypeUse") {
       registerKeywordTypeUse(stmt, keywordDecls, env, addError);
     }
   }
 
-  // Second pass: resolve embedded types and promote members
+  // Second pass: resolve embedded types/interfaces and promote members
   for (const stmt of program.body) {
     if (stmt.kind === "TypeDecl") {
       resolveEmbeddedTypes(stmt, env, addError);
+    } else if (stmt.kind === "InterfaceDecl") {
+      resolveEmbeddedInterfaces(stmt, env, addError);
     } else if (stmt.kind === "FnDecl") {
       collectFnDecl(stmt, env, fnDecls, addError);
     }
@@ -130,6 +134,90 @@ function registerType(
   } catch (e) {
     const err = TypeErrors.typeAlreadyDefined(decl.name);
     addError(err.message, decl.loc, err.hint);
+  }
+}
+
+function registerInterface(
+  decl: AST.InterfaceDecl,
+  env: TypeEnvironment,
+  addError: (msg: string, loc: AST.SourceLocation, hint?: string) => void
+): void {
+  const methods: MethodType[] = [];
+  for (const member of decl.body.members) {
+    if (member.kind === "MethodDecl") {
+      if (RESERVED_PROPERTY_NAMES.has(member.name)) {
+        const err = TypeErrors.reservedPropertyName(member.name);
+        addError(err.message, member.loc, err.hint);
+      }
+      methods.push({ name: member.name, type: methodToFunctionType(member) });
+    }
+  }
+  const iface: InterfaceType = {
+    kind: "interface",
+    name: decl.name,
+    methods,
+    typeParams: decl.typeParams?.map(p => ({
+      name: p.name,
+      constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
+    })),
+  };
+  try {
+    env.defineType(decl.name, iface);
+  } catch (e) {
+    const err = TypeErrors.typeAlreadyDefined(decl.name);
+    addError(err.message, decl.loc, err.hint);
+  }
+}
+
+function resolveEmbeddedInterfaces(
+  decl: AST.InterfaceDecl,
+  env: TypeEnvironment,
+  addError: (msg: string, loc: AST.SourceLocation, hint?: string) => void
+): void {
+  const iface = env.lookupType(decl.name);
+  if (!iface || iface.kind !== "interface") return;
+
+  const ownNames = new Set(iface.methods.map(m => m.name));
+  const promotedSources = new Map<string, string[]>();
+
+  for (const member of decl.body.members) {
+    if (member.kind !== "EmbeddedInterfaceDecl") continue;
+    const embedded = env.lookupType(member.name);
+    if (!embedded) {
+      addError(
+        `Cannot embed '${member.name}': interface not found`,
+        member.loc,
+        `Make sure '${member.name}' is defined before '${decl.name}'`
+      );
+      continue;
+    }
+    if (embedded.kind !== "interface") {
+      addError(
+        `Cannot embed '${member.name}': not an interface`,
+        member.loc,
+        `Only interfaces can be embedded in an interface`
+      );
+      continue;
+    }
+    for (const method of embedded.methods) {
+      if (ownNames.has(method.name)) continue;
+      const sources = promotedSources.get(method.name) || [];
+      sources.push(member.name);
+      promotedSources.set(method.name, sources);
+      if (sources.length === 1) {
+        iface.methods.push({ ...method, promotedFrom: member.name });
+      }
+    }
+  }
+
+  for (const [name, sources] of promotedSources) {
+    if (sources.length > 1) {
+      addError(
+        `Ambiguous access to '${name}' - exists in: ${sources.join(", ")}`,
+        decl.loc,
+        `Use explicit access or define own method to disambiguate`
+      );
+    }
   }
 }
 

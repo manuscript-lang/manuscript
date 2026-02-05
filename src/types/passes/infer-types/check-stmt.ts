@@ -72,6 +72,8 @@ export function checkStatement(ctx: InferContext, stmt: AST.Statement): void {
     case "TypeDecl":
       checkTypeDecl(ctx, stmt);
       break;
+    case "InterfaceDecl":
+      break;
     case "TestDecl":
       checkTestDecl(ctx, stmt);
       break;
@@ -652,21 +654,28 @@ function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
 }
 
 function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
-  // Get the type from environment (already registered by collect-declarations pass)
   const typeObj = ctx.env.lookupType(decl.name);
   if (!typeObj || typeObj.kind !== "object") return;
 
-  // Set current type context for private member access
+  const objType = typeObj as ObjectType;
+  if (!decl.isExtern && !decl.isContextType) {
+    for (const member of decl.body.members) {
+      if (member.kind === "MethodDecl" && !member.body) {
+        const err = TypeErrors.methodRequiresBody(member.name, decl.name);
+        error(ctx, err.message, member.loc, err.hint);
+      }
+    }
+  }
+
   const savedTypeName = ctx.currentTypeName;
   ctx.currentTypeName = decl.name;
 
   // Create an environment with all fields available (for computed fields and methods)
   const typeEnv = ctx.env.child();
-  for (const prop of (typeObj as ObjectType).properties) {
-    typeEnv.define(prop.name, prop.type, true);  // mutable = true
+  for (const prop of objType.properties) {
+    typeEnv.define(prop.name, prop.type, true);
   }
 
-  // Check field default values (including computed fields which may reference other fields)
   for (const member of decl.body.members) {
     if (member.kind === "FieldDecl" && member.defaultValue) {
       const savedEnv = ctx.env;
@@ -684,10 +693,9 @@ function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
     }
   }
 
-  // Check method bodies
   for (const member of decl.body.members) {
     if (member.kind === "MethodDecl" && member.body) {
-      checkMethodDecl(ctx, decl, member, typeObj as ObjectType);
+      checkMethodDecl(ctx, decl, member, objType);
     }
   }
   

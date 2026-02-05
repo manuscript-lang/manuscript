@@ -121,6 +121,26 @@ export interface MethodDecl extends BaseNode {
   doc?: string;
 }
 
+export interface InterfaceDecl extends BaseNode {
+  kind: "InterfaceDecl";
+  name: string;
+  typeParams?: TypeParam[];
+  body: InterfaceBody;
+  doc?: string;
+}
+
+export interface InterfaceBody extends BaseNode {
+  kind: "InterfaceBody";
+  members: InterfaceMember[];
+}
+
+export type InterfaceMember = MethodDecl | EmbeddedInterfaceDecl;
+
+export interface EmbeddedInterfaceDecl extends BaseNode {
+  kind: "EmbeddedInterfaceDecl";
+  name: string;
+}
+
 export interface EnumDecl extends BaseNode {
   kind: "EnumDecl";
   name: string;
@@ -204,6 +224,7 @@ export type Statement =
   | FnDecl
   | ExternFnDecl
   | TypeDecl
+  | InterfaceDecl
   | EnumDecl
   | KeywordDecl
   | KeywordTypeUse
@@ -618,4 +639,6 @@ export type ASTNode =
   | MatchArm
   | Parameter
   | Block
-  | KeywordBody;
+  | KeywordBody
+  | InterfaceBody
+  | InterfaceMember;

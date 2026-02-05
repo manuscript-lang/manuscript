@@ -206,10 +206,34 @@ dog.Animal.name   // direct access to embedded value
 // Own fields/methods shadow promoted ones; use obj.EmbeddedType.member to access embedded
 // Multiple embeds: if two embeds promote the same member name, use explicit access (obj.A.member)
 
-// Interface (methods without bodies)
-type Serializable
+// Interface: method signatures only (no bodies). Types satisfy interfaces implicitly (Go-style).
+interface Serializable
   fn serialize(): string
   fn deserialize(data: string)
+
+// Interface embedding: list an interface name on its own line; its methods are promoted
+interface Reader
+  fn read(): string
+interface Writer
+  fn write(data: string): void
+interface ReadWriter
+  Reader
+  Writer
+  fn read(): string   // own method shadows Reader.read
+
+// Concrete types must give every method a body. No implements keyword.
+type JsonDoc
+  data: string
+  fn serialize(): string
+    data
+  fn deserialize(s: string)
+    data = s
+
+fn process(s: Serializable): string
+  s.serialize()
+
+let doc = JsonDoc(data: "{}")
+process(doc)   // OK: JsonDoc satisfies Serializable
 
 // Construction
 let user = User(id: 1, name: "Alice")

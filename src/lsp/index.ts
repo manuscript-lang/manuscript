@@ -14,8 +14,10 @@ export { getDocumentSymbols, getTopLevelSymbols, type DocumentSymbolInfo, type D
 export {
   getTypeMemberCompletions,
   getObjectMemberCompletions,
+  getInterfaceMemberCompletions,
   getScopeCompletions,
   resolveObjectType,
+  resolveInterfaceType,
   type CompletionInfo,
   type CompletionKind,
 } from "./completions";
@@ -25,8 +27,10 @@ export {
   formatAstType,
   formatFnSignature,
   formatTypeSignature,
+  formatInterfaceSignature,
   getDocstring,
   findFnDecl,
   findTypeDecl,
+  findInterfaceDecl,
   findConstructorCalleeAt,
 } from "./utils";

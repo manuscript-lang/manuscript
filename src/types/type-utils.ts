@@ -1,6 +1,6 @@
 // Type Utilities - Pure functions for type operations
 import * as AST from "../parser/ast";
-import type { Type, FunctionType, ParameterType, ContextBinding, ObjectType } from "./types";
+import type { Type, FunctionType, ParameterType, ContextBinding, ObjectType, InterfaceType } from "./types";
 import { Types, typeToString } from "./types";
 import type { TypeEnvironment } from "./environment";
 import { PRIMITIVE_TYPE_MAP, constructGenericType } from "./primitives";
@@ -184,6 +184,17 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
         return isTupleAssignable(resolvedSource as any, resolvedTarget as any, env);
       case "object":
         return isObjectAssignable(resolvedSource as ObjectType, resolvedTarget as ObjectType, env);
+      case "interface": {
+        const src = resolvedSource as InterfaceType;
+        const tgt = resolvedTarget as InterfaceType;
+        if (src.name === tgt.name) return true;
+        for (const tgtMethod of tgt.methods) {
+          const srcMethod = src.methods.find(m => m.name === tgtMethod.name);
+          if (!srcMethod) return false;
+          if (!isFunctionAssignable(srcMethod.type, tgtMethod.type, env)) return false;
+        }
+        return true;
+      }
       case "function":
         return isFunctionAssignable(resolvedSource as FunctionType, resolvedTarget as FunctionType, env);
       case "intersection":
@@ -244,6 +255,20 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
     return (resolvedTarget as any).types.every((t: Type) => isAssignable(resolvedSource, t, env));
   }
 
+  // Object satisfies interface (structural): source must have all interface methods
+  if (resolvedTarget.kind === "interface") {
+    const concrete = resolvedSource.kind === "ref" ? env.resolveType(resolvedSource) : resolvedSource;
+    if (concrete.kind !== "object") return false;
+    const obj = concrete as ObjectType;
+    const iface = resolvedTarget as InterfaceType;
+    for (const ifaceMethod of iface.methods) {
+      const objMethod = obj.methods.find(m => m.name === ifaceMethod.name);
+      if (!objMethod) return false;
+      if (!isFunctionAssignable(objMethod.type, ifaceMethod.type, env)) return false;
+    }
+    return true;
+  }
+
   return false;
 }
 
@@ -272,7 +297,13 @@ function isObjectAssignable(source: ObjectType, target: ObjectType, env: TypeEnv
     if (!sourceProp) return false;
     if (!isAssignable(sourceProp.type, targetProp.type, env)) return false;
   }
-  
+
+  for (const targetMethod of target.methods) {
+    const sourceMethod = source.methods.find(m => m.name === targetMethod.name);
+    if (!sourceMethod) return false;
+    if (!isFunctionAssignable(sourceMethod.type, targetMethod.type, env)) return false;
+  }
+
   return true;
 }
 

@@ -171,6 +171,8 @@ export class Parser {
         return this.externFnDecl();
       case "TYPE":
         return this.typeDecl(false);
+      case "INTERFACE":
+        return this.interfaceDecl();
       case "CONTEXT": {
         const nextToken = this.peekNext();
         const name = nextToken.type === "IDENTIFIER" ? (nextToken.value as string) : "";
@@ -552,6 +554,51 @@ export class Parser {
     return { kind: "TypeDecl", name, body, loc, isContextType: true, isExtern: isExtern || undefined, doc };
   }
 
+  private interfaceDecl(): AST.InterfaceDecl {
+    const doc = this.current().leadingComment;
+    const loc = this.current().loc;
+    this.expect("INTERFACE");
+    const name = this.expectIdentifier();
+    const typeParams = this.check("LBRACKET") ? this.parseTypeParams() : undefined;
+    let body: AST.InterfaceBody;
+    if (this.match("NEWLINE") && this.check("INDENT")) {
+      body = this.parseInterfaceBody();
+    } else {
+      body = { kind: "InterfaceBody", members: [], loc: this.current().loc };
+    }
+    return { kind: "InterfaceDecl", name, typeParams, body, loc, doc };
+  }
+
+  private parseInterfaceBody(): AST.InterfaceBody {
+    const loc = this.current().loc;
+    const members: AST.InterfaceMember[] = [];
+    this.expect("INDENT");
+    this.skipNewlines();
+    while (!this.check("DEDENT") && !this.isAtEnd()) {
+      if (this.check("FN") || this.check("EXTERN")) {
+        members.push(this.parseMethodDecl(false, true));
+      } else if (this.isEmbeddedType()) {
+        members.push(this.parseEmbeddedInterface());
+      } else {
+        const name = this.peek().value as string;
+        throw new ParseError(
+          `Unexpected token in interface body: expected method signature or embedded interface name, got '${name}'`,
+          this.current(),
+          "Interfaces contain only fn signatures and embedded interface names"
+        );
+      }
+      this.skipNewlines();
+    }
+    this.expect("DEDENT");
+    return { kind: "InterfaceBody", members, loc };
+  }
+
+  private parseEmbeddedInterface(): AST.EmbeddedInterfaceDecl {
+    const loc = this.current().loc;
+    const name = this.expectIdentifier();
+    return { kind: "EmbeddedInterfaceDecl", name, loc };
+  }
+
   private parseTypeParams(): AST.TypeParam[] {
     this.expect("LBRACKET");
     const params: AST.TypeParam[] = [];
@@ -687,13 +734,12 @@ export class Parser {
     };
   }
 
-  private parseMethodDecl(implicitExtern = false): AST.MethodDecl {
+  private parseMethodDecl(implicitExtern = false, skipBody = false): AST.MethodDecl {
     const doc = this.current().leadingComment;
     const loc = this.current().loc;
-    // Check for explicit extern keyword
     const explicitExtern = this.match("EXTERN");
     const isExtern = implicitExtern || explicitExtern;
-    
+
     this.expect("FN");
 
     const name = this.expectIdentifier();
@@ -703,8 +749,7 @@ export class Parser {
     const using = this.check("USING") ? this.parseUsing() : undefined;
 
     let body: AST.Block | undefined;
-    // Only non-extern methods have bodies
-    if (!isExtern && this.match("NEWLINE") && this.check("INDENT")) {
+    if (!skipBody && !isExtern && this.match("NEWLINE") && this.check("INDENT")) {
       body = this.parseBlock();
     }
 
