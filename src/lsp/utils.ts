@@ -79,6 +79,23 @@ export function findConstructorCalleeAt(program: AST.Program, line: number, col:
   return result;
 }
 
+/** Receiver type at (line, col) when position is on a member with the given name (e.g. method call b.get()). */
+export function getReceiverTypeAtPosition(program: AST.Program, line: number, col: number, memberName: string): Type | undefined {
+  let best: { type: Type; column: number } | null = null;
+  const consider = (receiverType: Type | undefined, loc: AST.SourceLocation) => {
+    if (!receiverType || loc.line !== line || loc.column > col) return;
+    if (!best || loc.column >= best.column) best = { type: receiverType, column: loc.column };
+  };
+  visit(program, {
+    expr(e) {
+      if (e.kind === "MemberExpr" && e.property === memberName) consider(e.object.resolvedType, e.loc);
+      if (e.kind === "CallExpr" && e.callee.kind === "MemberExpr" && e.callee.property === memberName)
+        consider(e.callee.object.resolvedType, e.callee.loc);
+    },
+  });
+  return best !== null ? (best as { type: Type; column: number }).type : undefined;
+}
+
 // ============================================
 // Type Formatting
 // ============================================

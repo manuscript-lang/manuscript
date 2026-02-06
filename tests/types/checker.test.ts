@@ -74,7 +74,9 @@ double(5)`);
   test("function with capabilities", () => {
     checkOk(`context MyFilesystem
   fn read(path: string): string
+    ""
   fn close(): void
+    return
 fn read_file(path: string) using (fs: MyFilesystem)
   fs.read(path)`);
   });
@@ -160,6 +162,22 @@ describe("Type Checker - Type Declarations", () => {
   test("unknown property on string fails", () => {
     checkFails(`let s = "hello"
 s.unknown`, "does not exist on type 'string'");
+  });
+
+  describe("keyword type use - empty methods", () => {
+    test("keyword type use requires method body (same as type)", () => {
+      checkFails(`context Logger
+  fn close(): void`, "must have a body");
+      checkFails(`agent Foo
+  fn run(): void`, "must have a body");
+    });
+    test("keyword type use with method body passes", () => {
+      checkOk(`context Logger
+  fn log(msg: string): string
+    msg
+  fn close(): void
+    return`);
+    });
   });
 
   test("unknown property on number fails", () => {
@@ -315,6 +333,7 @@ describe("Type Checker - With Statement", () => {
   test("with statement", () => {
     checkOk(`context R
   fn close(): void
+    return
 with R()
   print("running")`);
   });
@@ -322,6 +341,7 @@ with R()
   test("with let binding", () => {
     checkOk(`context R
   fn close(): void
+    return
 with let t = R()
   print("traced")`);
   });
@@ -762,6 +782,7 @@ describe("Type Checker - Closable (with/using)", () => {
   test("with: type with close() passes", () => {
     checkOk(`context R
   fn close(): void
+    return
 with R()
   print(1)`);
   });
@@ -776,6 +797,7 @@ with NoClose(x: 1)
   test("with: value created before block passes", () => {
     checkOk(`context R
   fn close(): void
+    return
 let r = R()
 with r
   print(1)`);
@@ -784,6 +806,7 @@ with r
   test("using: type with close() passes", () => {
     checkOk(`context S
   fn close(): void
+    return
 fn use(): number using (s: S)
   0
 with S()
@@ -800,6 +823,7 @@ fn f(): number using (t: T)
   test("context type instantiation outside with allowed", () => {
     checkOk(`context C
   fn close(): void
+    return
 let c = C()
 print(c)`);
   });
@@ -807,6 +831,7 @@ print(c)`);
   test("context type as function return outside with allowed", () => {
     checkOk(`context C
   fn close(): void
+    return
 fn make(): C
   C()
 let c = make()`);
@@ -815,6 +840,7 @@ let c = make()`);
   test("Closable built-in available without stdlib", () => {
     checkOk(`context R
   fn close(): void
+    return
 with R()
   print(1)`);
   });

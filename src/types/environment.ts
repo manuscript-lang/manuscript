@@ -1,5 +1,5 @@
 // Type Environment - Symbol tables for type checking
-import type { Type, ObjectType, FunctionType, TypeParameter, ContextBinding } from "./types";
+import type { Type, ObjectType, FunctionType, TypeParameter, UsingBinding } from "./types";
 import { Types } from "./types";
 import { substituteTypeParams, substituteTypeInObject } from "./type-utils";
 import { Parser } from "../parser";
@@ -124,8 +124,20 @@ export class TypeEnvironment {
   /**
    * Resolve a type reference to its actual type.
    * When ref has generic args, substitutes type params into the resolved type.
+   * Also resolves generic(base, args) when base is a ref to an object type.
    */
   resolveType(type: Type): Type {
+    if (type.kind === "generic" && type.base.kind === "ref") {
+      const base = this.lookupType(type.base.name);
+      if (base?.kind === "object" && base.typeParams?.length) {
+        const bindings = new Map<string, Type>();
+        for (let i = 0; i < base.typeParams.length && i < type.args.length; i++) {
+          bindings.set(base.typeParams[i]!.name, type.args[i]!);
+        }
+        return substituteTypeInObject(base, bindings);
+      }
+      return type;
+    }
     if (type.kind !== "ref") return type;
     const resolved = this.lookupType(type.name);
     if (!resolved) return type;
@@ -208,7 +220,7 @@ export class TypeEnvironment {
    * Create a child scope with context bindings
    * Context bindings are just regular variable bindings
    */
-  withContext(bindings: ContextBinding[]): TypeEnvironment {
+  withContext(bindings: UsingBinding[]): TypeEnvironment {
     const child = this.child();
     for (const binding of bindings) {
       if (binding.name) {

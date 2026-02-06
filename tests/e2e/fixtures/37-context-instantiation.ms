@@ -5,6 +5,7 @@ context Logger
   fn log(msg: string): string
     "{prefix}: {msg}"
   fn close(): void
+    return
 
 let logger = Logger(prefix: "OK")
 // @expect: OK: works outside with

@@ -8,6 +8,7 @@ context Logger
   fn log(msg: string): void
     print(prefix + ": " + msg)
   fn close(): void
+    return
 
 // === Valid Context Usage ===
 

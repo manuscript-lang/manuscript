@@ -84,7 +84,7 @@ export interface FunctionType extends BaseType {
   params: ParameterType[];
   returnType: Type;
   isGenerator: boolean;
-  context: ContextBinding[];
+  context: UsingBinding[];
 }
 
 export interface TypeParamDef {
@@ -99,9 +99,9 @@ export interface ParameterType {
   rest: boolean;
 }
 
-export interface ContextBinding {
+export interface UsingBinding {
   name?: string;  // Binding name (e.g., "fs" in "fs: Filesystem")
-  type: Type;     // The type required from context
+  type: Type;     // The type required from with/using
 }
 
 // ============================================
@@ -114,9 +114,8 @@ export interface ObjectType extends BaseType {
   properties: PropertyType[];
   methods: MethodType[];
   typeParams?: TypeParameter[];
-  context?: ContextBinding[];
+  context?: UsingBinding[];
   alias?: Type[];  // For type aliases (type Foo = Bar)
-  isContextType?: boolean;  // context TypeName - capability type for with/using
 }
 
 export interface PropertyType {
@@ -217,7 +216,7 @@ export interface TypeRef extends BaseType {
 export interface AgentType extends BaseType {
   kind: "agent";
   name: string;
-  context: ContextBinding[];
+  context: UsingBinding[];
   tools: Type[];
   config?: Type;
 }
@@ -322,11 +321,11 @@ export const Types = {
     return { kind: "tuple", elements };
   },
 
-  fn(params: ParameterType[], returnType: Type, context: ContextBinding[] = []): FunctionType {
+  fn(params: ParameterType[], returnType: Type, context: UsingBinding[] = []): FunctionType {
     return { kind: "function", params, returnType, isGenerator: false, context };
   },
 
-  generator(params: ParameterType[], yieldType: Type, context: ContextBinding[] = []): FunctionType {
+  generator(params: ParameterType[], yieldType: Type, context: UsingBinding[] = []): FunctionType {
     return { 
       kind: "function", 
       params, 

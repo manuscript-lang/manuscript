@@ -650,23 +650,12 @@ describe("Type Utils - isAssignable", () => {
 });
 
 describe("Type Utils - Pure Functions (continued)", () => {
-  test("paramsMatch and contextMatch", () => {
+  test("paramsMatch and usingMatch", () => {
     const p = [Types.param("a", Types.number)];
     expect(TypeUtils.paramsMatch(p, p)).toBe(true);
     expect(TypeUtils.paramsMatch(p, [Types.param("a", Types.string)])).toBe(false);
-    const ctx: import("../../src/types/types").ContextBinding[] = [{ name: "x", type: Types.number }];
-    expect(TypeUtils.contextMatch(ctx, ctx)).toBe(true);
-  });
-
-  test("extendsType Context and typeIsContext", () => {
-    const env = createGlobalEnvironment();
-    const program = parse(`context Foo
-  y: string`);
-    const { env: populatedEnv } = collectDeclarations({ program, env });
-    const fooType = populatedEnv.lookupType("Foo");
-    expect(fooType && TypeUtils.typeIsContext(fooType, populatedEnv)).toBe(true);
-    expect(fooType && TypeUtils.extendsType(fooType, "Context", populatedEnv)).toBe(true);
-    expect(fooType && (fooType as import("../../src/types/types").ObjectType).isContextType).toBe(true);
+    const ctx: import("../../src/types/types").UsingBinding[] = [{ name: "x", type: Types.number }];
+    expect(TypeUtils.usingMatch(ctx, ctx)).toBe(true);
   });
 
   test("isIterable for generic channel/list", () => {

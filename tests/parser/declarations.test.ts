@@ -108,7 +108,7 @@ describe("Parser - Function Declarations", () => {
       kind: "FnDecl",
       using: {
         kind: "UsingClause",
-        bindings: [{ kind: "ContextBinding", name: "fs", type: { kind: "NamedType", name: "Filesystem" } }],
+        bindings: [{ kind: "UsingBinding", name: "fs", type: { kind: "NamedType", name: "Filesystem" } }],
       },
     });
   });
@@ -120,7 +120,7 @@ describe("Parser - Function Declarations", () => {
     expect(result.body[0]).toMatchObject({
       kind: "FnDecl",
       using: {
-        bindings: [{ kind: "ContextBinding", type: { kind: "NamedType", name: "Filesystem" } }],
+        bindings: [{ kind: "UsingBinding", type: { kind: "NamedType", name: "Filesystem" } }],
       },
     });
   });
@@ -194,9 +194,9 @@ describe("Parser - Type Declarations", () => {
   fn read(path: string): string`;
     const result = program(src);
     expect(result.body[0]).toMatchObject({
-      kind: "TypeDecl",
+      kind: "KeywordTypeUse",
+      keyword: "context",
       name: "Filesystem",
-      isContextType: true,
     });
     const decl = result.body[0] as any;
     expect(decl.body.members).toHaveLength(1);
@@ -207,9 +207,9 @@ describe("Parser - Type Declarations", () => {
     const src = "context Empty";
     const result = program(src);
     expect(result.body[0]).toMatchObject({
-      kind: "TypeDecl",
+      kind: "KeywordTypeUse",
+      keyword: "context",
       name: "Empty",
-      isContextType: true,
       body: { kind: "TypeBody", members: [] },
     });
   });
@@ -345,7 +345,7 @@ describe("Parser - Keyword Declarations", () => {
     expect(result.body[0]).toMatchObject({
       kind: "KeywordDecl",
       name: "agent",
-      using: { bindings: [{ kind: "ContextBinding", type: { name: "LLM" } }] },
+      using: { bindings: [{ kind: "UsingBinding", type: { name: "LLM" } }] },
     });
   });
 

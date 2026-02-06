@@ -7,6 +7,7 @@ context Logger
   fn log(msg: string): string
     "{prefix}: {msg}"
   fn close(): void
+    return
 
 fn greet(name: string): string using (logger: Logger)
   logger.log("Hello, " + name)

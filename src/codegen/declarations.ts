@@ -248,36 +248,6 @@ function genEnumKeywordUse(ctx: Ctx, use: AST.KeywordTypeUse, opts: GenOpts): vo
   emit(ctx, "");
 }
 
-// Generate context declaration
-export function genContext(ctx: Ctx, decl: AST.ContextDecl, opts: GenOpts): void {
-  emit(ctx, `const ${decl.name} = {`);
-  pushIndent(ctx);
-
-  if (decl.bindings) {
-    for (const binding of decl.bindings) {
-      const value = genExpr(ctx, binding.value, opts);
-      emit(ctx, `${binding.name}: ${value},`);
-    }
-  }
-
-  if (decl.methods) {
-    for (const method of decl.methods) {
-      const params = genParams(ctx, method.params, opts);
-      emit(ctx, `async ${method.name}(${params}) {`);
-      pushIndent(ctx);
-      if (method.body) {
-        genBlock(ctx, method.body, opts);
-      }
-      popIndent(ctx);
-      emit(ctx, "},");
-    }
-  }
-
-  popIndent(ctx);
-  emit(ctx, "};");
-  emit(ctx, "");
-}
-
 // Generate agent declaration using factory function pattern
 export function genAgent(ctx: Ctx, decl: AST.AgentDecl, opts: GenOpts): void {
   const bindings = decl.context?.map(c => c.name || "_binding") || [];

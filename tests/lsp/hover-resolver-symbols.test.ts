@@ -78,6 +78,24 @@ let _ = x.get()
     expect(onMethodDef!.signature).toContain("get");
   });
 
+  test("hover on generic instance method resolves to concrete return type", () => {
+    const source = `
+type Box[T]
+  value: T
+  fn get(): T
+    value
+let b = Box[number](10)
+let _ = b.get()
+`;
+    const { symbols, program, env } = parseDocument(source);
+    const hover = getHoverForSymbol(symbols, program, 7, 11, env);
+    expect(hover).not.toBeNull();
+    expect(hover!.signature).toContain("(method)");
+    expect(hover!.signature).toContain("get");
+    expect(hover!.signature).toContain("number");
+    expect(hover!.signature).not.toContain("): T");
+  });
+
   test("hover on variable (let) and parameter", () => {
     const source = `
 fn f(a: number): number
@@ -92,6 +110,23 @@ fn f(a: number): number
     expect(onParam).not.toBeNull();
     expect(onParam!.signature).toContain("(parameter)");
     expect(onParam!.signature).toContain("a: number");
+  });
+
+  test("hover on destructured variables shows inferred type", () => {
+    const source = `
+let { x, y } = { x: 3, y: 4 }
+print(x)
+print(y)
+`;
+    const { symbols, program, env } = parseDocument(source);
+    const onX = getHoverForSymbol(symbols, program, 3, 7, env);
+    expect(onX).not.toBeNull();
+    expect(onX!.signature).toContain("x");
+    expect(onX!.signature).toContain("number");
+    const onY = getHoverForSymbol(symbols, program, 4, 7, env);
+    expect(onY).not.toBeNull();
+    expect(onY!.signature).toContain("y");
+    expect(onY!.signature).toContain("number");
   });
 
   test("hover on method parameter", () => {

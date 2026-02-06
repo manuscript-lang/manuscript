@@ -36,6 +36,23 @@ export function buildSymbolTable(
   return symbols;
 }
 
+function getPatternBindings(pattern: AST.Pattern): { name: string; loc: AST.SourceLocation }[] {
+  switch (pattern.kind) {
+    case "IdentifierPattern":
+      return [{ name: pattern.name, loc: pattern.loc }];
+    case "ObjectPattern":
+      return pattern.properties.flatMap(prop => getPatternBindings(prop.pattern));
+    case "ArrayPattern":
+      return pattern.elements.flatMap(el => getPatternBindings(el));
+    case "RestPattern":
+      return [{ name: pattern.name, loc: pattern.loc }];
+    case "TypePattern":
+      return pattern.binding ? [{ name: pattern.binding, loc: pattern.loc }] : [];
+    default:
+      return [];
+  }
+}
+
 function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
   switch (stmt.kind) {
     case "FnDecl": {
@@ -94,8 +111,8 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
       break;
     }
     case "LetStmt": {
+      const scope = ctx.currentScope;
       if (stmt.pattern?.kind === "IdentifierPattern") {
-        const scope = ctx.currentScope;
         const qn = scope ? `${scope}.${stmt.pattern.name}` : stmt.pattern.name;
         ctx.symbols.addDefinition({
           id: { kind: "variable", qualifiedName: qn },
@@ -103,6 +120,17 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
           loc: stmt.loc,
           nameOffset: 4, // "let "
         });
+      } else if (stmt.pattern) {
+        for (const { name, loc } of getPatternBindings(stmt.pattern)) {
+          const qn = scope ? `${scope}.${name}` : name;
+          const nameOffset = loc.column;
+          ctx.symbols.addDefinition({
+            id: { kind: "variable", qualifiedName: qn },
+            name,
+            loc,
+            nameOffset: 0,
+          });
+        }
       }
       break;
     }

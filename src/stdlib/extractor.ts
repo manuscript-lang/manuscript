@@ -10,6 +10,7 @@ export interface StdlibTypes {
   types: Map<string, ObjectType | InterfaceType>;
   externTypes: Set<string>;
   builtinMethods: BuiltinMethodRegistry;
+  keywords: Map<string, AST.KeywordDecl>;
 }
 
 // Convert AST TypeExpr to internal Type
@@ -214,7 +215,14 @@ export function extractStdlibTypes(program: AST.Program): StdlibTypes {
     }
   }
 
-  return { functions, types, externTypes, builtinMethods };
+  const keywords = new Map<string, AST.KeywordDecl>();
+  for (const stmt of program.body) {
+    if (stmt.kind === "KeywordDecl") {
+      keywords.set(stmt.name, stmt);
+    }
+  }
+
+  return { functions, types, externTypes, builtinMethods, keywords };
 }
 
 // Get set of function names for codegen

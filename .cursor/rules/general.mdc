@@ -12,5 +12,6 @@ alwaysApply: true
 - create utility function and extract common logic
 - emit LLM friendly error messages
 - ALWAYS write e2e fixture tests 
+- do write unit tests, and ensure high test coverage
 - don't create lots of small test files, prefer creating logical file with multiple test cases
 - ALWAYS run `bun test` and `bun tsc` to test the changes

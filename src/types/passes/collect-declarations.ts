@@ -7,6 +7,7 @@ import type { TypeEnvironment } from "../environment";
 import { TypeCheckError } from "../errors";
 import { TypeErrors, RESERVED_PROPERTY_NAMES } from "../../shared/errors";
 import { astTypeToType, methodToFunctionType, fnDeclToType } from "../type-utils";
+import { getStdlibTypes } from "../environment";
 
 export interface CollectInput {
   program: AST.Program;
@@ -20,19 +21,6 @@ export interface CollectOutput {
   errors: TypeCheckError[];
 }
 
-// Built-in keywords that are always available
-const BUILTIN_KEYWORDS = ["enum", "agent", "context", "capabilities"];
-
-function createBuiltinKeywordDecl(name: string): AST.KeywordDecl {
-  const loc: AST.SourceLocation = { line: 0, column: 0, offset: 0 };
-  return {
-    kind: "KeywordDecl",
-    name,
-    expansion: "type",
-    loc,
-  };
-}
-
 export function collectDeclarations(input: CollectInput): CollectOutput {
   const { program, env } = input;
   const fnDecls = new Map<string, AST.FnDecl>();
@@ -43,12 +31,12 @@ export function collectDeclarations(input: CollectInput): CollectOutput {
     errors.push(new TypeCheckError(message, loc, hint));
   };
 
-  // Pre-register built-in keywords
-  for (const name of BUILTIN_KEYWORDS) {
-    keywordDecls.set(name, createBuiltinKeywordDecl(name));
+  // Seed keyword declarations from stdlib
+  for (const [name, decl] of getStdlibTypes().keywords) {
+    keywordDecls.set(name, decl);
   }
 
-  // Pass 0: collect keyword declarations (can override built-ins)
+  // Collect keyword declarations from program (can override stdlib)
   for (const stmt of program.body) {
     if (stmt.kind === "KeywordDecl") {
       keywordDecls.set(stmt.name, stmt);
@@ -126,7 +114,6 @@ function registerType(
       constraint: p.constraint ? astTypeToType(p.constraint) : undefined
     })),
     alias: decl.alias?.map(e => astTypeToType(e)),
-    isContextType: decl.isContextType,
   };
 
   try {
@@ -316,7 +303,7 @@ function collectFnDecl(
   }
 }
 
-// Register a keyword type use (e.g., "workflow DataPipeline")
+// Register a keyword type use. Supports empty (no body) or spelled-out (methods/fields in body).
 function registerKeywordTypeUse(
   use: AST.KeywordTypeUse,
   keywordDecls: Map<string, AST.KeywordDecl>,

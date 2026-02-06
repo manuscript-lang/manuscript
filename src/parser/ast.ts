@@ -57,13 +57,13 @@ export interface Parameter extends BaseNode {
 
 export interface UsingClause extends BaseNode {
   kind: "UsingClause";
-  bindings: ContextBinding[];
+  bindings: UsingBinding[];
 }
 
-export interface ContextBinding extends BaseNode {
-  kind: "ContextBinding";
+export interface UsingBinding extends BaseNode {
+  kind: "UsingBinding";
   name?: string;  // Binding name (e.g., "fs" in "fs: Filesystem")
-  type: TypeExpr; // The type required from context
+  type: TypeExpr; // The type required from with/using
 }
 
 export interface TypeDecl extends BaseNode {
@@ -75,7 +75,6 @@ export interface TypeDecl extends BaseNode {
   where?: WhereClause[];
   body: TypeBody;
   isExtern?: boolean;  // extern type - all methods are implicitly extern
-  isContextType?: boolean;  // context TypeName - capability type for with/using
   doc?: string;
 }
 
@@ -193,17 +192,10 @@ export interface KeywordTypeUse extends BaseNode {
   doc?: string;
 }
 
-export interface ContextDecl extends BaseNode {
-  kind: "ContextDecl";
-  name: string;
-  bindings?: { name: string; value: Expr }[];
-  methods?: MethodDecl[];
-}
-
 export interface AgentDecl extends BaseNode {
   kind: "AgentDecl";
   name: string;
-  context?: ContextBinding[];
+  context?: UsingBinding[];
   fields?: FieldDecl[];
   tools?: FnDecl[];
   run?: FnDecl;
@@ -229,7 +221,6 @@ export type Statement =
   | EnumDecl
   | KeywordDecl
   | KeywordTypeUse
-  | ContextDecl
   | AgentDecl
   | TestDecl
   | LetStmt

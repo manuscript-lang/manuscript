@@ -156,31 +156,16 @@ export class Parser {
       case "FN":
         return this.fnDecl();
       case "EXTERN":
-        // Check if extern type, extern context, or extern fn
-        const next = this.peekNext().type;
-        if (next === "TYPE") {
+        if (this.peekNext().type === "TYPE") {
           const externDoc = this.current().leadingComment;
           this.advance(); // consume EXTERN
           return this.typeDecl(true, externDoc);
-        }
-        if (next === "CONTEXT") {
-          const externDoc = this.current().leadingComment;
-          this.advance(); // consume EXTERN
-          return this.contextTypeDecl(true, externDoc);
         }
         return this.externFnDecl();
       case "TYPE":
         return this.typeDecl(false);
       case "INTERFACE":
         return this.interfaceDecl();
-      case "CONTEXT": {
-        const nextToken = this.peekNext();
-        const name = nextToken.type === "IDENTIFIER" ? (nextToken.value as string) : "";
-        const first = name[0];
-        const isCapitalized = first !== undefined && first === first.toUpperCase() && first !== first.toLowerCase();
-        if (isCapitalized) return this.contextTypeDecl();
-        return this.contextDecl();
-      }
       case "KEYWORD":
         return this.keywordDecl();
       case "TEST":
@@ -459,19 +444,17 @@ export class Parser {
     this.expect("USING");
     this.expect("LPAREN");
 
-    const bindings: AST.ContextBinding[] = [];
+    const bindings: AST.UsingBinding[] = [];
 
     while (!this.check("RPAREN")) {
       const bindingLoc = this.current().loc;
       const first = this.expectIdentifier();
 
       if (this.match("COLON")) {
-        // name: Type
         const type = this.parseType();
-        bindings.push({ kind: "ContextBinding", name: first, type, loc: bindingLoc });
+        bindings.push({ kind: "UsingBinding", name: first, type, loc: bindingLoc });
       } else {
-        // Just Type (pass-through)
-        bindings.push({ kind: "ContextBinding", type: { kind: "NamedType", name: first, loc: this.current().loc }, loc: bindingLoc });
+        bindings.push({ kind: "UsingBinding", type: { kind: "NamedType", name: first, loc: this.current().loc }, loc: bindingLoc });
       }
 
       if (!this.check("RPAREN")) {
@@ -539,19 +522,6 @@ export class Parser {
     }
 
     return { kind: "TypeDecl", name, typeParams, using, where, body, loc, isExtern: isExtern || undefined, doc };
-  }
-
-  private contextTypeDecl(isExtern = false, doc?: string): AST.TypeDecl {
-    const loc = this.current().loc;
-    this.expect("CONTEXT");
-    const name = this.expectIdentifier();
-    let body: AST.TypeBody;
-    if (this.match("NEWLINE") && this.check("INDENT")) {
-      body = this.parseTypeBody(isExtern);
-    } else {
-      body = { kind: "TypeBody", members: [], loc: this.current().loc };
-    }
-    return { kind: "TypeDecl", name, body, loc, isContextType: true, isExtern: isExtern || undefined, doc };
   }
 
   private interfaceDecl(): AST.InterfaceDecl {
@@ -1008,60 +978,6 @@ export class Parser {
     return { kind: "AgentDecl", name, context, fields, tools, run, loc };
   }
 
-  private contextDecl(): AST.ContextDecl {
-    const loc = this.current().loc;
-    // 'context' or 'capabilities' is defined via keyword declaration, consumed as IDENTIFIER
-    this.advance(); // consume the identifier
-
-    const name = this.expectIdentifier();
-    this.expectNewline();
-
-    if (!this.match("INDENT")) {
-      return { kind: "ContextDecl", name, loc };
-    }
-
-    // Parse context bindings and methods
-    const bindings: { name: string; value: AST.Expr }[] = [];
-    const methods: AST.MethodDecl[] = [];
-
-    while (!this.check("DEDENT") && !this.check("EOF")) {
-      if (this.check("FN")) {
-        // Method (like exit for cleanup)
-        this.advance();
-        const fnLoc = this.current().loc;
-        const fnName = this.expectIdentifier();
-        const params = this.parseParams();
-        const returnType = this.match("COLON") ? this.parseType() : undefined;
-        const using = this.check("USING") ? this.parseUsing() : undefined;
-        this.expectNewline();
-        const body = this.parseBlock();
-        methods.push({
-          kind: "MethodDecl",
-          name: fnName,
-          params,
-          returnType,
-          using,
-          body,
-          isGenerator: this.containsYield(body),
-          loc: fnLoc,
-        });
-      } else {
-        // Binding: name = expr
-        const bindingName = this.expectIdentifier();
-        this.expect("ASSIGN");
-        const bindingValue = this.expression();
-        bindings.push({ name: bindingName, value: bindingValue });
-
-        if (!this.match("NEWLINE") && !this.check("DEDENT")) {
-          break;
-        }
-      }
-    }
-
-    this.match("DEDENT");
-    return { kind: "ContextDecl", name, bindings, methods, loc };
-  }
-
   // ============================================
   // Statements
   // ============================================
@@ -1100,8 +1016,6 @@ export class Parser {
         return this.fnDecl();
       case "TYPE":
         return this.typeDecl();
-      case "CONTEXT":
-        return this.contextTypeDecl();
       default:
         return this.exprOrAssignStmt();
     }
@@ -2302,10 +2216,6 @@ export class Parser {
     if (token.type === "IDENTIFIER") {
       this.advance();
       return token.value as string;
-    }
-    if (token.type === "CONTEXT") {
-      this.advance();
-      return "context";
     }
     const err = ParserErrors.expectedName(token.type);
     throw new ParseError(err.message, token, err.hint);

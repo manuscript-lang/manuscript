@@ -8,12 +8,14 @@ context Logger
   fn log(msg: string): string
     "{prefix}: {msg}"
   fn close(): void
+    return
 
 // Mock logger for testing
 context MockLogger
   fn log(msg: string): string
     "[MOCK] " + msg
   fn close(): void
+    return
 
 // === Function uses context via 'using' ===
 fn greet(name: string): string using (logger: Logger)
@@ -49,6 +51,7 @@ context Config
     debug
   
   fn close(): void
+    return
 
 fn process(data: string): string using (logger: Logger, config: Config)
   if config.is_debug()
@@ -90,6 +93,7 @@ context Counter
     count
   
   fn close(): void
+    return
 
 fn doWork(): number using (counter: Counter)
   counter.increment()
@@ -111,6 +115,7 @@ context Env
     "{name} v{version}"
   
   fn close(): void
+    return
 
 fn getEnvInfo(): string using (env: Env)
   "Running in: " + env.description()
@@ -128,6 +133,7 @@ context Settings
     {maxRetries: maxRetries, timeout: timeout}
   
   fn close(): void
+    return
 
 fn configure(): map[string, number] using (s: Settings)
   s.getSettings()

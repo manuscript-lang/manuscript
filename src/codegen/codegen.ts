@@ -14,7 +14,7 @@ import {
 // Import generators
 import { genExpr, setGen as setExprGen } from "./expressions";
 import { setGen as setStmtGen, genLet, genVar, genAssign, genIf, genFor, genMatch, genReturn, genYield, genDefer, genTry, genThrow, genWith, genExprStmt, genBlock } from "./statements";
-import { genImport, genFn, genType, genEnum, genContext, genAgent, genTest, genKeywordTypeUse } from "./declarations";
+import { genImport, genFn, genType, genEnum, genAgent, genTest, genKeywordTypeUse } from "./declarations";
 
 // Main dispatch function - handles all AST nodes
 export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): string {
@@ -62,9 +62,6 @@ export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): st
       return "";
     case "KeywordTypeUse":
       genKeywordTypeUse(ctx, node, opts);
-      return "";
-    case "ContextDecl":
-      genContext(ctx, node, opts);
       return "";
     case "AgentDecl":
       genAgent(ctx, node, opts);

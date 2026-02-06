@@ -1,5 +1,5 @@
 import * as AST from "../../../parser/ast";
-import type { Type, ObjectType, ContextBinding } from "../../types";
+import type { Type, ObjectType, UsingBinding } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import { astTypeToType, isAssignable, getIterableElementType, isIterable } from "../../type-utils";
@@ -318,7 +318,7 @@ export function checkTryStmt(ctx: InferContext, stmt: AST.TryStmt): void {
 }
 
 export function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
-  const bindings: ContextBinding[] = [];
+  const bindings: UsingBinding[] = [];
   const isFunctionLevel = ctx.currentFunction !== null;
   const savedWithContextVars = new Set(ctx.withContextVars);
 

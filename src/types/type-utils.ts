@@ -1,6 +1,6 @@
 // Type Utilities - Pure functions for type operations
 import * as AST from "../parser/ast";
-import type { Type, FunctionType, ParameterType, ContextBinding, ObjectType, InterfaceType } from "./types";
+import type { Type, FunctionType, ParameterType, UsingBinding, ObjectType, InterfaceType } from "./types";
 import { Types, typeToString } from "./types";
 import type { TypeEnvironment } from "./environment";
 import { PRIMITIVE_TYPE_MAP, constructGenericType } from "./primitives";
@@ -75,7 +75,7 @@ export function fnDeclToType(decl: AST.FnDecl): FunctionType {
 
   const returnType = decl.returnType ? astTypeToType(decl.returnType) : Types.unknown;
 
-  const context: ContextBinding[] = decl.using?.bindings.map(c => ({
+  const context: UsingBinding[] = decl.using?.bindings.map(c => ({
     name: c.name,
     type: astTypeToType(c.type),
   })) ?? [];
@@ -106,7 +106,7 @@ export function methodToFunctionType(method: AST.MethodDecl): FunctionType {
 
   const returnType = method.returnType ? astTypeToType(method.returnType) : Types.unknown;
 
-  const context: ContextBinding[] = method.using?.bindings.map(c => ({
+  const context: UsingBinding[] = method.using?.bindings.map(c => ({
     name: c.name,
     type: astTypeToType(c.type),
   })) ?? [];
@@ -401,7 +401,7 @@ export function typesEqual(a: Type, b: Type): boolean {
       const fa = a as FunctionType, fb = b as FunctionType;
       return paramsMatch(fa.params, fb.params) &&
              typesEqual(fa.returnType, fb.returnType) &&
-             contextMatch(fa.context, fb.context);
+             usingMatch(fa.context, fb.context);
     default:
       return typeToString(a) === typeToString(b);
   }
@@ -419,8 +419,7 @@ export function paramsMatch(a: ParameterType[], b: ParameterType[]): boolean {
   return true;
 }
 
-// Check if two context binding lists match exactly
-export function contextMatch(a: ContextBinding[], b: ContextBinding[]): boolean {
+export function usingMatch(a: UsingBinding[], b: UsingBinding[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     const ca = a[i]!, cb = b[i]!;
@@ -441,19 +440,11 @@ export function extendsType(type: Type, baseName: string, env: TypeEnvironment):
 
   if (resolved.kind === "object") {
     const obj = resolved as ObjectType;
-    // Context types: only those declared with `context TypeName`, not embedded Context
-    if (baseName === "Context") return obj.isContextType === true;
     const embedded = obj.properties.find(p => p.embedded && p.name === baseName);
     if (embedded) return true;
   }
 
   return false;
-}
-
-/** True if type is a context type (declared with `context TypeName`). Used for with/using. */
-export function typeIsContext(type: Type, env: TypeEnvironment): boolean {
-  const resolved = type.kind === "ref" ? env.resolveType(type) : type;
-  return resolved.kind === "object" && (resolved as ObjectType).isContextType === true;
 }
 
 // Check if a type is iterable

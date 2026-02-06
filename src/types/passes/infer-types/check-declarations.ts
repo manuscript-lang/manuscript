@@ -69,27 +69,29 @@ export function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
   recordType(ctx, decl, fnType);
 }
 
-export function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
-  const typeObj = ctx.env.lookupType(decl.name);
-  if (!typeObj || typeObj.kind !== "object") return;
-
-  const objType = typeObj as ObjectType;
-  if (!decl.isExtern && !decl.isContextType) {
-    for (const member of decl.body.members) {
+function checkObjectTypeBody(
+  ctx: InferContext,
+  typeName: string,
+  body: AST.TypeBody,
+  objType: ObjectType,
+  opts: { isExtern: boolean }
+): void {
+  if (!opts.isExtern) {
+    for (const member of body.members) {
       if (member.kind === "MethodDecl" && !member.body) {
-        const err = TypeErrors.methodRequiresBody(member.name, decl.name);
+        const err = TypeErrors.methodRequiresBody(member.name, typeName);
         error(ctx, err.message, member.loc, err.hint);
       }
     }
   }
 
   const savedTypeName = ctx.currentTypeName;
-  ctx.currentTypeName = decl.name;
+  ctx.currentTypeName = typeName;
 
   const typeEnv = ctx.env.child();
   for (const prop of objType.properties) typeEnv.define(prop.name, prop.type, true);
 
-  for (const member of decl.body.members) {
+  for (const member of body.members) {
     if (member.kind === "FieldDecl" && member.defaultValue) {
       const savedEnv = ctx.env;
       ctx.env = typeEnv;
@@ -111,85 +113,30 @@ export function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
     }
   }
 
-  for (const member of decl.body.members) {
-    if (member.kind === "MethodDecl" && member.body) checkMethodDecl(ctx, decl, member, objType);
+  for (const member of body.members) {
+    if (member.kind === "MethodDecl" && member.body) checkMethodBody(ctx, member, objType);
   }
 
   ctx.currentTypeName = savedTypeName;
+}
+
+export function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
+  const typeObj = ctx.env.lookupType(decl.name);
+  if (!typeObj || typeObj.kind !== "object") return;
+  checkObjectTypeBody(ctx, decl.name, decl.body, typeObj as ObjectType, {
+    isExtern: !!decl.isExtern,
+  });
 }
 
 export function checkKeywordTypeUse(ctx: InferContext, use: AST.KeywordTypeUse): void {
   const typeObj = ctx.env.lookupType(use.name);
   if (!typeObj || typeObj.kind !== "object") return;
-
-  const savedTypeName = ctx.currentTypeName;
-  ctx.currentTypeName = use.name;
-
-  const typeEnv = ctx.env.child();
-  for (const prop of (typeObj as ObjectType).properties) typeEnv.define(prop.name, prop.type, true);
-
-  for (const member of use.body.members) {
-    if (member.kind === "FieldDecl" && member.defaultValue) {
-      const savedEnv = ctx.env;
-      ctx.env = typeEnv;
-      const declaredType = member.type ? astTypeToType(member.type) : undefined;
-      if (declaredType) setExpectedType(member.defaultValue, declaredType);
-      const valueType = ctx.inferExpr(ctx, member.defaultValue);
-      ctx.env = savedEnv;
-      if (member.type) {
-        const expectedType = astTypeToType(member.type);
-        if (!isAssignable(valueType, expectedType, ctx.env)) {
-          const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(valueType));
-          error(ctx, err.message, member.loc, err.hint);
-        }
-      }
-    }
-  }
-
-  for (const member of use.body.members) {
-    if (member.kind === "MethodDecl" && member.body) checkMethodBody(ctx, member, typeObj as ObjectType);
-  }
-
-  ctx.currentTypeName = savedTypeName;
+  checkObjectTypeBody(ctx, use.name, use.body, typeObj as ObjectType, {
+    isExtern: false,
+  });
 }
 
 function checkMethodBody(ctx: InferContext, method: AST.MethodDecl, typeObj: ObjectType): void {
-  const typeFieldsEnv = ctx.env.child();
-  for (const prop of typeObj.properties) typeFieldsEnv.define(prop.name, prop.type, true);
-  for (const m of typeObj.methods) typeFieldsEnv.define(m.name, m.type);
-
-  const methodEnv = typeFieldsEnv.child();
-  for (const param of method.params) methodEnv.define(param.name, param.type ? astTypeToType(param.type) : Types.unknown);
-
-  const methodType = typeObj.methods.find(m => m.name === method.name);
-  const fnType = methodType?.type || Types.fn([], Types.unknown);
-
-  const savedEnv = ctx.env;
-  const savedFn = ctx.currentFunction;
-  const savedSpawns = ctx.unawaitedSpawns;
-  ctx.unawaitedSpawns = new Map();
-  ctx.env = methodEnv;
-  ctx.currentFunction = fnType;
-
-  for (const stmt of method.body!.statements) ctx.checkStatement(ctx, stmt);
-
-  const lastStmt = method.body!.statements[method.body!.statements.length - 1];
-  if (lastStmt?.kind === "ExprStmt" && method.returnType) {
-    const implicitReturnType = (lastStmt.expr as AST.BaseNode).resolvedType ?? Types.unknown;
-    if (!isAssignable(implicitReturnType, fnType.returnType, ctx.env)) {
-      const err = TypeErrors.typeMismatch(typeToString(fnType.returnType), typeToString(implicitReturnType));
-      error(ctx, err.message, lastStmt.loc, err.hint);
-    }
-  }
-
-  for (const [name, loc] of ctx.unawaitedSpawns) error(ctx, `spawn result '${name}' is never awaited`, loc);
-
-  ctx.unawaitedSpawns = savedSpawns;
-  ctx.env = savedEnv;
-  ctx.currentFunction = savedFn;
-}
-
-function checkMethodDecl(ctx: InferContext, typeDecl: AST.TypeDecl, method: AST.MethodDecl, typeObj: ObjectType): void {
   const typeFieldsEnv = ctx.env.child();
   for (const prop of typeObj.properties) typeFieldsEnv.define(prop.name, prop.type, true);
   for (const m of typeObj.methods) typeFieldsEnv.define(m.name, m.type);

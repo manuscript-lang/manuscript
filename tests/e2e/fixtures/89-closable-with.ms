@@ -24,6 +24,7 @@ context Logger
   fn log(msg: string): string
     "{prefix}: {msg}"
   fn close(): void
+    return
 
 with let log = Logger(prefix: "CLOSABLE")
   // @expect: CLOSABLE: ok

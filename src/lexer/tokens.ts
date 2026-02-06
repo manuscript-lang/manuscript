@@ -17,7 +17,6 @@ export type TokenType =
   | "RETURN"
   | "USING"
   | "WITH"
-  | "CONTEXT"
   | "INTERFACE"
   | "IMPORT"
   | "FROM"
@@ -118,7 +117,6 @@ export const KEYWORDS = new Map<string, TokenType>([
   ["return", "RETURN"],
   ["using", "USING"],
   ["with", "WITH"],
-  ["context", "CONTEXT"],
   ["interface", "INTERFACE"],
   ["import", "IMPORT"],
   ["from", "FROM"],

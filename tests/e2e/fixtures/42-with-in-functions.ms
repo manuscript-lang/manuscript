@@ -19,6 +19,7 @@ context Counter
   fn get(): number
     count
   fn close(): void
+    return
 
 fn greet(name: string): string using (logger: Logger)
   logger.log("Hello, " + name)
