@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { __ms_runtime, Agent, Channel } from "../../src/runtime/runtime";
+import { __ms_runtime, Channel } from "../../src/runtime/runtime";
 
 // Helper to call async runtime functions
 const rt = __ms_runtime;
@@ -138,17 +138,3 @@ describe("Runtime - Channel", () => {
   });
 });
 
-describe("Runtime - Agent", () => {
-  test("Agent.run() throws not implemented", async () => {
-    const agent = new Agent();
-    await expect(agent.run("test")).rejects.toThrow("must be implemented");
-  });
-
-  test("subclass can override run()", async () => {
-    class TestAgent extends Agent {
-      override async run(input: string) { return `Got: ${input}`; }
-    }
-    const agent = new TestAgent();
-    expect(await agent.run("hello")).toBe("Got: hello");
-  });
-});

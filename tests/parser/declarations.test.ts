@@ -13,11 +13,11 @@ describe("Parser - Import Declarations", () => {
   });
 
   test("import with alias", () => {
-    const src = 'import { Claude as LLM } from "anthropic"';
+    const src = 'import { Channel as Ch } from "runtime"';
     const result = program(src);
     expect(result.body[0]).toMatchObject({
       kind: "ImportDecl",
-      names: [{ name: "Claude", alias: "LLM" }],
+      names: [{ name: "Channel", alias: "Ch" }],
     });
   });
 
@@ -101,26 +101,26 @@ describe("Parser - Function Declarations", () => {
   });
 
   test("function with using", () => {
-    const src = `fn read_file(path: string) using (fs: Filesystem)
-  fs.read(path)`;
+    const src = `fn run(ctx: string) using (c: Context)
+  ctx`;
     const result = program(src);
     expect(result.body[0]).toMatchObject({
       kind: "FnDecl",
       using: {
         kind: "UsingClause",
-        bindings: [{ kind: "UsingBinding", name: "fs", type: { kind: "NamedType", name: "Filesystem" } }],
+        bindings: [{ kind: "UsingBinding", name: "c", type: { kind: "NamedType", name: "Context" } }],
       },
     });
   });
 
   test("function with pass-through using", () => {
-    const src = `fn process(task: string) using (Filesystem)
-  read("config.txt")`;
+    const src = `fn process(task: string) using (Context)
+  task`;
     const result = program(src);
     expect(result.body[0]).toMatchObject({
       kind: "FnDecl",
       using: {
-        bindings: [{ kind: "UsingBinding", type: { kind: "NamedType", name: "Filesystem" } }],
+        bindings: [{ kind: "UsingBinding", type: { kind: "NamedType", name: "Context" } }],
       },
     });
   });
@@ -345,7 +345,7 @@ test "greet works"
   });
 
   test("program with imports", () => {
-    const src = `import { Claude } from "anthropic"
+    const src = `import { Context } from "runtime"
 
 fn main()
   print("hello")`;

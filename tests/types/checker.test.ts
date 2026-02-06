@@ -340,9 +340,9 @@ describe("Type Checker - Test Declarations", () => {
 
 describe("Type Checker - Warnings", () => {
   test("calling using function without context fails at call site", () => {
-    const result = check(`fn needs_fs() using (fs: Filesystem)
-  fs.read("file.txt")
-needs_fs()`);
+    const result = check(`fn needs_ctx() using (c: Context)
+  return
+needs_ctx()`);
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors.some(e => e.message.includes("No context of type"))).toBe(true);
   });

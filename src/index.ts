@@ -5,5 +5,4 @@ export { TypeChecker, TypeEnvironment, createGlobalEnvironment, Types, typeToStr
 export type { Type, TypeCheckResult, TypeCheckError, FunctionType, ObjectType, UsingBinding } from "./types";
 export * from "./codegen";
 export * from "./runtime";
-export * from "./runtime/capabilities";
 export * from "./cli";

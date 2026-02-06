@@ -37,11 +37,9 @@ export function __getContext(typeName: string): any {
 }
 
 // Re-export modules
-export { Agent } from "./agent";
 export { Channel, spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
 export { test, getTestCount, clearTests, runTests, runTestsWithResults } from "./testing";
 
-import { Agent } from "./agent";
 import { Channel, spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
 import { test, getTestCount, clearTests, runTests, runTestsWithResults } from "./testing";
 
@@ -179,7 +177,7 @@ function setIsSubset<T>(a: Set<T>, b: Set<T>): boolean {
 
 export const __ms_runtime: Record<string, any> = {
   // Classes
-  Context, Agent, Channel,
+  Context, Channel,
   
   // Context stack
   __pushContext, __popContext, __setContext, __getContext,

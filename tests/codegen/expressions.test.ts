@@ -114,12 +114,11 @@ let x = add(b: 2, a: 1)
     expectCompiled("Channel[number]()", "new __ms_runtime.Channel()");
   });
 
-  test("extern type constructor with named args (MockLLM)", () => {
-    const js = compile(`test "mock"
-  let llm = MockLLM(responses: [{match: ".*", reply: "Done"}])`);
-    expect(js).toContain("new __ms_runtime.MockLLM(");
-    expect(js).toContain("responses:");
-    expect(js).toContain('reply: "Done"');
+  test("extern type constructor with named args (Channel)", () => {
+    const js = compile(`test "ch"
+  let ch = Channel[number](buffer: 2)`);
+    expect(js).toContain("new __ms_runtime.Channel(");
+    expect(js).toContain("buffer:");
   });
 });
 
