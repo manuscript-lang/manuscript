@@ -1,14 +1,5 @@
 import { describe, test, expect } from "bun:test";
 import {
-  findFnDecl,
-  findTypeDecl,
-  findConstructorCalleeAt,
-  formatFnSignature,
-  formatTypeSignature,
-  getDocstring,
-  resolveObjectType,
-} from "../../src/lsp";
-import {
   isLocationMatch,
   isDefLocationMatch,
   parseQualifiedName,
@@ -16,11 +7,14 @@ import {
 } from "../../src/lsp/utils";
 import {
   formatAstType,
+  formatFnSignature,
+  formatTypeSignature,
   formatMethodSignature,
   formatFunctionType,
   formatTypeSignatureFromObject,
+  resolveObjectType,
 } from "../../src/types/type-utils";
-import { findTypeMember } from "../../src/types/ast-query";
+import { findFnDecl, findTypeDecl, findConstructorCalleeAt, findTypeMember } from "../../src/types/ast-query";
 import type { SymbolDef } from "../../src/lsp/symbols";
 import { Parser } from "../../src/parser";
 import { TypeChecker } from "../../src/types";
@@ -96,13 +90,6 @@ type T
     const fnType = { kind: "function" as const, params: [{ name: "x", type: { kind: "number" } }], returnType: { kind: "string" } };
     expect(formatFunctionType(fnType as any)).toContain("x:");
     expect(formatFunctionType(fnType as any)).toContain("string");
-  });
-
-  test("getDocstring: first string literal or undefined", () => {
-    const withDoc = new Parser("fn f()\n  \"doc here\"\n  return 1").parse();
-    expect(getDocstring(findFnDecl(withDoc, "f")!.body)).toBe("doc here");
-    expect(getDocstring(findFnDecl(new Parser("fn f()\n  return 1").parse(), "f")!.body)).toBeUndefined();
-    expect(getDocstring(undefined)).toBeUndefined();
   });
 
   test("resolveObjectType: ref, optional, union, env, unknown ref", () => {

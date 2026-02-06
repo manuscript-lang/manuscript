@@ -1,13 +1,10 @@
 ---
 alwaysApply: true
 ---
-# How to write code
+- Be concise 
+
+# Writing code
 - don't write excessive comments 
-- write simple concise code, do not overcomplicate
-- write as little code as possible to achieve the task
-- review the code after writing it, clean up for readability, conciseness, and efficiency
-- do not repeat same blocks of code
-- don't leave commented code in file
 - use meaningful for variables
 - create utility function and extract common logic
 - emit LLM friendly error messages
@@ -15,3 +12,13 @@ alwaysApply: true
 - do write unit tests, and ensure high test coverage
 - don't create lots of small test files, prefer creating logical file with multiple test cases
 - ALWAYS run `bun test` and `bun tsc` to test the changes
+
+# Writing plans
+- Include code snippets and file paths
+- Include mermaid diagrams
+- Do not over-engineer, keep the design simple
+- Ask clarifying questions
+- Always prefer reuse over new code
+- Include testing 
+- Write bullet points
+- Include, problem and solution

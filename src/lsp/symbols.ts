@@ -20,6 +20,10 @@ export interface SymbolRef {
   loc: SourceLocation;
 }
 
+export function isSymbolDef(sym: SymbolDef | SymbolRef): sym is SymbolDef {
+  return "nameOffset" in sym;
+}
+
 export class SymbolTable {
   private definitions = new Map<string, SymbolDef>();
   private references: SymbolRef[] = [];

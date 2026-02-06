@@ -34,7 +34,13 @@ import { visit } from "../../src/types/ast-visitor";
 import {
   formatFnSignature,
   formatTypeSignature,
+  formatInterfaceSignature,
+  resolveObjectType,
+  resolveInterfaceType,
 } from "../../src/types/type-utils";
+
+// AST query helpers
+import { findConstructorCalleeAt } from "../../src/types/ast-query";
 
 // Stdlib extraction
 import {
@@ -58,10 +64,8 @@ import {
   getInterfaceMemberCompletions,
   getTypeAnnotationCompletions,
   getDefaultCompletions,
-  resolveObjectType,
-  resolveInterfaceType,
-  findConstructorCalleeAt,
-  formatInterfaceSignature,
+  resolveStdlibDefinition,
+  getStdlibHover,
   type DocumentSymbolKind,
   type CompletionInfo,
   type HoverInfo,
@@ -74,12 +78,10 @@ import * as path from "path";
 import * as fs from "fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { typecheckDocumentInProject, typecheckSingle, parseSource } from "../../src/cli/compiler";
-import { findMsToml, loadMsToml, resolveSpecifier } from "../../src/modules";
-import {
-  isStdlibImport,
-  resolveStdlibDefinition,
-  getStdlibHover,
-} from "../../src/lsp";
+import { resolveSpecifier, type MsTomlConfig } from "../../src/modules";
+import { BUILTIN_PRIMITIVE_TYPES, isStdlibImport } from "../../src/shared/constants";
+import { errorsToDiagnostics, warningsToDiagnostics } from "./diagnostics";
+import { getProjectConfig, resolveLocalImport } from "./project";
 
 // ============================================
 // Server State
@@ -144,21 +146,6 @@ async function listMsFilesInDir(dir: string): Promise<string[]> {
   return out;
 }
 
-/** Resolve project config from a file URI. Returns null if no project. */
-async function getProjectConfig(
-  fileUri: string
-): Promise<{ projectRoot: string; config: Awaited<ReturnType<typeof loadMsToml>> } | null> {
-  const entryPath = fileURLToPath(new URL(fileUri));
-  const projectRoot = await findMsToml(path.dirname(entryPath));
-  if (!projectRoot) return null;
-  try {
-    const config = await loadMsToml(projectRoot);
-    return { projectRoot, config };
-  } catch {
-    return null;
-  }
-}
-
 /** Specifier for a file path relative to srcDir (e.g. "src/ms/add" for add.ms). */
 function specifierForFile(srcDir: string, filePath: string): string {
   const rel = path.relative(srcDir, path.resolve(filePath));
@@ -171,7 +158,6 @@ const builtinsTypeMembers = collectTypeMembersFromProgram(builtinsProgram);
 
 // Derived constants
 const KEYWORD_LIST = Object.keys(KEYWORDS);
-const BUILTIN_PRIMITIVE_TYPES = ["number", "string", "bool", "null", "bytes", "unknown", "never", "void"];
 
 // ============================================
 // LSP Initialization
@@ -214,30 +200,10 @@ async function validateDocument(doc: TextDocument): Promise<void> {
       const { program, env, errors, warnings } = projectResult;
       const symbols = buildSymbolTable(program, env);
       cache.set(doc.uri, { program, env, symbols });
-      const entryAbs = path.resolve(entryPath);
-      for (const err of errors) {
-        if (err.file && path.resolve(err.file) === entryAbs) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Error,
-            range: {
-              start: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) - 1 },
-              end: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) + 10 },
-            },
-            message: err.message.replace(/ at line \d+, column \d+$/, ""),
-            source: "manuscript",
-          });
-        }
-      }
-      for (const w of warnings) {
-        if (w.file && path.resolve(w.file) === entryAbs) {
-          diagnostics.push({
-            severity: DiagnosticSeverity.Warning,
-            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
-            message: w.message,
-            source: "manuscript",
-          });
-        }
-      }
+      diagnostics.push(
+        ...errorsToDiagnostics(errors, entryPath),
+        ...warningsToDiagnostics(warnings, entryPath)
+      );
       connection.sendDiagnostics({ uri: doc.uri, diagnostics });
       return;
     }
@@ -247,41 +213,16 @@ async function validateDocument(doc: TextDocument): Promise<void> {
   const tc = typecheckSingle(doc.getText(), { filename: entryPath });
   if (!tc) {
     const parseResult = parseSource(doc.getText(), entryPath);
-    for (const err of parseResult.errors) {
-      diagnostics.push({
-        severity: DiagnosticSeverity.Error,
-        range: {
-          start: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) - 1 },
-          end: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) + 10 },
-        },
-        message: err.message,
-        source: "manuscript",
-      });
-    }
+    diagnostics.push(...errorsToDiagnostics(parseResult.errors));
     connection.sendDiagnostics({ uri: doc.uri, diagnostics });
     return;
   }
   const symbols = buildSymbolTable(tc.program, tc.env);
   cache.set(doc.uri, { program: tc.program, env: tc.env, symbols });
-  for (const err of tc.errors) {
-    diagnostics.push({
-      severity: DiagnosticSeverity.Error,
-      range: {
-        start: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) - 1 },
-        end: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) + 10 },
-      },
-      message: err.message.replace(/ at line \d+, column \d+$/, ""),
-      source: "manuscript",
-    });
-  }
-  for (const w of tc.warnings) {
-    diagnostics.push({
-      severity: DiagnosticSeverity.Warning,
-      range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
-      message: w.message,
-      source: "manuscript",
-    });
-  }
+  diagnostics.push(
+    ...errorsToDiagnostics(tc.errors),
+    ...warningsToDiagnostics(tc.warnings)
+  );
   connection.sendDiagnostics({ uri: doc.uri, diagnostics });
 }
 
@@ -385,32 +326,29 @@ connection.onCompletionResolve(async (item): Promise<CompletionItem> => {
       }
       return item;
     }
-    const proj = await getProjectConfig(data.uri!);
-    if (proj) {
-      const resolved = resolveSpecifier(proj.projectRoot, proj.config.srcDir, data.specifier);
-      if ("kind" in resolved && resolved.kind === "local") {
-        const depCached = await getOrLoadCached(resolved.path);
-        if (depCached) {
-          for (const s of depCached.program.body) {
-            if (s.kind === "FnDecl" && s.name === data.exportedName) {
-              item.detail = formatFnSignature(s);
-              if (s.doc) item.documentation = { kind: MarkupKind.Markdown, value: s.doc };
-              return item;
-            }
-            if (s.kind === "TypeDecl" && s.name === data.exportedName) {
-              const { signature, fields } = formatTypeSignature(s);
-              item.detail = signature;
-              const doc = s.doc ?? (fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined);
-              if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
-              return item;
-            }
-            if (s.kind === "InterfaceDecl" && s.name === data.exportedName) {
-              const { signature, methods } = formatInterfaceSignature(s);
-              item.detail = `interface ${signature}`;
-              const doc = s.doc ?? (methods.length ? `**Methods:**\n${methods.map(m => `- \`${m}\``).join("\n")}` : undefined);
-              if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
-              return item;
-            }
+    const resolved = await resolveLocalImport(data.uri!, data.specifier);
+    if (resolved) {
+      const depCached = await getOrLoadCached(resolved.path);
+      if (depCached) {
+        for (const s of depCached.program.body) {
+          if (s.kind === "FnDecl" && s.name === data.exportedName) {
+            item.detail = formatFnSignature(s);
+            if (s.doc) item.documentation = { kind: MarkupKind.Markdown, value: s.doc };
+            return item;
+          }
+          if (s.kind === "TypeDecl" && s.name === data.exportedName) {
+            const { signature, fields } = formatTypeSignature(s);
+            item.detail = signature;
+            const doc = s.doc ?? (fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined);
+            if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
+            return item;
+          }
+          if (s.kind === "InterfaceDecl" && s.name === data.exportedName) {
+            const { signature, methods } = formatInterfaceSignature(s);
+            item.detail = `interface ${signature}`;
+            const doc = s.doc ?? (methods.length ? `**Methods:**\n${methods.map(m => `- \`${m}\``).join("\n")}` : undefined);
+            if (doc) item.documentation = { kind: MarkupKind.Markdown, value: doc };
+            return item;
           }
         }
       }
@@ -582,6 +520,19 @@ function getImportBindingOnLine(
   return null;
 }
 
+async function resolveLocalImportTarget(
+  currentUri: string,
+  importTarget: { specifier: string; exportedName: string }
+): Promise<{ cached: CachedDocument; def: ReturnType<SymbolTable["getDefinition"]>; depUri: string } | null> {
+  const resolved = await resolveLocalImport(currentUri, importTarget.specifier);
+  if (!resolved) return null;
+  const cached = await getOrLoadCached(resolved.path);
+  if (!cached) return null;
+  const def = cached.symbols.getDefinition(importTarget.exportedName);
+  if (!def) return null;
+  return { cached, def, depUri: pathToFileURL(path.resolve(resolved.path)).href };
+}
+
 async function resolveImportDefinition(
   currentUri: string,
   importTarget: { specifier: string; exportedName: string }
@@ -591,27 +542,12 @@ async function resolveImportDefinition(
     if (!loc) return null;
     return Location.create(loc.uri, loc.range);
   }
-  const entryPath = fileURLToPath(new URL(currentUri));
-  const startDir = path.dirname(entryPath);
-  const projectRoot = await findMsToml(startDir);
-  if (!projectRoot) return null;
-  let config;
-  try {
-    config = await loadMsToml(projectRoot);
-  } catch {
-    return null;
-  }
-  const resolved = resolveSpecifier(projectRoot, config.srcDir, importTarget.specifier);
-  if (!("kind" in resolved) || resolved.kind !== "local") return null;
-  const depCached = await getOrLoadCached(resolved.path);
-  if (!depCached) return null;
-  const depDef = depCached.symbols.getDefinition(importTarget.exportedName);
-  if (!depDef) return null;
-  const depUri = pathToFileURL(path.resolve(resolved.path)).href;
-  const col = depDef.loc.column - 1 + depDef.nameOffset;
-  return Location.create(depUri, {
-    start: { line: depDef.loc.line - 1, character: col },
-    end: { line: depDef.loc.line - 1, character: col + depDef.name.length },
+  const result = await resolveLocalImportTarget(currentUri, importTarget);
+  if (!result) return null;
+  const col = result.def.loc.column - 1 + result.def.nameOffset;
+  return Location.create(result.depUri, {
+    start: { line: result.def.loc.line - 1, character: col },
+    end: { line: result.def.loc.line - 1, character: col + result.def.name.length },
   });
 }
 
@@ -622,36 +558,22 @@ async function resolveImportHover(
   if (isStdlibImport(importTarget.specifier)) {
     return getStdlibHover(importTarget.specifier, importTarget.exportedName);
   }
-  const entryPath = fileURLToPath(new URL(currentUri));
-  const startDir = path.dirname(entryPath);
-  const projectRoot = await findMsToml(startDir);
-  if (!projectRoot) return null;
-  let config;
-  try {
-    config = await loadMsToml(projectRoot);
-  } catch {
-    return null;
-  }
-  const resolved = resolveSpecifier(projectRoot, config.srcDir, importTarget.specifier);
-  if (!("kind" in resolved) || resolved.kind !== "local") return null;
-  const depCached = await getOrLoadCached(resolved.path);
-  if (!depCached) return null;
-  const depDef = depCached.symbols.getDefinition(importTarget.exportedName);
-  if (!depDef) return null;
-  const nameCol = depDef.loc.column + depDef.nameOffset;
+  const result = await resolveLocalImportTarget(currentUri, importTarget);
+  if (!result) return null;
+  const nameCol = result.def.loc.column + result.def.nameOffset;
   return getHoverForSymbol(
-    depCached.symbols,
-    depCached.program,
-    depDef.loc.line,
+    result.cached.symbols,
+    result.cached.program,
+    result.def.loc.line,
     nameCol,
-    depCached.env
+    result.cached.env
   );
 }
 
 /** Collect reference locations from every file in the project that imports (specifier, exportedName). */
 async function findProjectReferencesToExport(
   projectRoot: string,
-  config: Awaited<ReturnType<typeof loadMsToml>>,
+  config: MsTomlConfig,
   specifier: string,
   exportedName: string
 ): Promise<{ definition: Location; references: Location[] } | null> {

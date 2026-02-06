@@ -4,11 +4,8 @@ import type { Type, FunctionType, ObjectType, MethodType, InterfaceType } from "
 import { typeToString } from "../types/types";
 import type { TypeEnvironment } from "../types/environment";
 import type { SymbolTable, SymbolDef } from "./symbols";
-import {
-  isDefLocationMatch,
-  parseMemberQualifiedName,
-  parseQualifiedName,
-} from "./utils";
+import { resolveDefinition } from "./resolver";
+import { parseMemberQualifiedName, parseQualifiedName } from "./utils";
 import {
   formatAstType,
   formatFnSignature,
@@ -21,6 +18,8 @@ import {
   findFnDecl,
   findTypeDecl,
   findInterfaceDecl,
+  findVariableType,
+  findParameterType,
   getReceiverTypeAtPosition,
 } from "../types/ast-query";
 
@@ -72,18 +71,9 @@ export function getHoverForSymbol(
   column: number,
   env?: TypeEnvironment
 ): HoverInfo | null {
-  for (const def of symbols.getAllDefinitions()) {
-    if (isDefLocationMatch(def, line, column)) {
-      return getHoverForDefinition(def, program, env, line, column);
-    }
-  }
-  for (const ref of symbols.getAllReferences()) {
-    const def = symbols.getDefinitionById(ref.symbolId);
-    if (def && ref.loc.line === line && column >= ref.loc.column && column <= ref.loc.column + def.name.length) {
-      return getHoverForDefinition(def, program, env, line, column);
-    }
-  }
-  return null;
+  const def = resolveDefinition(symbols, line, column);
+  if (!def) return null;
+  return getHoverForDefinition(def, program, env, line, column);
 }
 
 function getHoverForDefinition(
@@ -123,7 +113,8 @@ function getHoverForDefinition(
     case "field": {
       const parsed = parseMemberQualifiedName(def.id.qualifiedName);
       if (!parsed) break;
-      const objType = env && getObjectTypeForMember(env, program, parsed.typeName, hoverLine, hoverCol, parsed.memberName);
+      const receiver = env && getReceiverTypeForMember(env, program, parsed.typeName, hoverLine, hoverCol, parsed.memberName);
+      const objType = receiver?.kind === "object" ? receiver : null;
       const prop = objType?.properties.find(p => p.name === parsed.memberName);
       if (prop) return { signature: `(field) ${parsed.memberName}: ${typeToString(prop.type)}` };
       const typeDecl = findTypeDecl(program, parsed.typeName);
@@ -134,7 +125,7 @@ function getHoverForDefinition(
     case "method": {
       const parsed = parseMemberQualifiedName(def.id.qualifiedName);
       if (!parsed) break;
-      const resolvedType = env && getObjectOrInterfaceForMember(env, program, parsed.typeName, hoverLine, hoverCol, parsed.memberName);
+      const resolvedType = env && getReceiverTypeForMember(env, program, parsed.typeName, hoverLine, hoverCol, parsed.memberName);
       const method = resolvedType && getMethodFromResolved(resolvedType, parsed.memberName);
       if (method) {
         const params = method.type.params.map((p: any) => `${p.name}: ${typeToString(p.type)}`).join(", ");
@@ -153,7 +144,7 @@ function getHoverForDefinition(
       break;
     }
     case "variable": {
-      const varType = env?.getType(def.name) ?? findVariableType(program, def);
+      const varType = env?.getType(def.name) ?? findVariableType(program, def.name, def.loc.line);
       const prefix = def.loc.column === 5 ? "(let)" : "(var)";
       return { signature: `${prefix} ${def.name}: ${varType ? typeToString(varType) : "any"}` };
     }
@@ -172,20 +163,7 @@ function getTypeOrInterfaceFromEnv(env: TypeEnvironment, name: string): ObjectTy
   return null;
 }
 
-function getObjectTypeForMember(env: TypeEnvironment, program: AST.Program, typeName: string, line?: number, col?: number, memberName?: string): ObjectType | null {
-  if (line !== undefined && col !== undefined && memberName) {
-    const receiverType = getReceiverTypeAtPosition(program, line, col, memberName);
-    if (receiverType) {
-      const resolved = env.resolveType(receiverType);
-      if (resolved.kind === "object") return resolved as ObjectType;
-    }
-  }
-  const t = env.lookupType(typeName);
-  if (t?.kind === "object") return t as ObjectType;
-  return null;
-}
-
-function getObjectOrInterfaceForMember(env: TypeEnvironment, program: AST.Program, typeName: string, line?: number, col?: number, memberName?: string): ObjectType | InterfaceType | null {
+function getReceiverTypeForMember(env: TypeEnvironment, program: AST.Program, typeName: string, line?: number, col?: number, memberName?: string): ObjectType | InterfaceType | null {
   if (line !== undefined && col !== undefined && memberName) {
     const receiverType = getReceiverTypeAtPosition(program, line, col, memberName);
     if (receiverType) {
@@ -201,74 +179,4 @@ function getObjectOrInterfaceForMember(env: TypeEnvironment, program: AST.Progra
 function getMethodFromResolved(resolved: ObjectType | InterfaceType, name: string): MethodType | null {
   const methods = (resolved as ObjectType).methods ?? (resolved as InterfaceType).methods;
   return methods?.find(m => m.name === name) ?? null;
-}
-
-function findVariableType(program: AST.Program, def: SymbolDef): Type | null {
-  function searchStatements(stmts: AST.Statement[]): Type | null {
-    for (const s of stmts) {
-      if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && s.pattern.name === def.name && s.loc.line === def.loc.line) {
-        return s.value.resolvedType || null;
-      }
-      if (s.kind === "VarStmt" && s.name === def.name && s.loc.line === def.loc.line) {
-        return s.value.resolvedType || null;
-      }
-      if (s.kind === "WithStmt") {
-        for (const c of s.contexts) {
-          if (c.name === def.name) return c.expr.resolvedType ?? null;
-        }
-        const inBody = searchStatements(s.body.statements);
-        if (inBody) return inBody;
-      }
-      if (s.kind === "FnDecl" && s.body) {
-        const result = searchStatements(s.body.statements);
-        if (result) return result;
-      }
-      if (s.kind === "TypeDecl") {
-        for (const m of s.body?.members || []) {
-          if (m.kind === "MethodDecl" && m.body) {
-            const result = searchStatements(m.body.statements);
-            if (result) return result;
-          }
-        }
-      }
-    }
-    return null;
-  }
-  return searchStatements(program.body);
-}
-
-function findParameterType(program: AST.Program, scope: string, paramName: string): AST.TypeExpr | null {
-  if (scope.includes(".")) {
-    const dotIdx = scope.indexOf(".");
-    const typeName = scope.slice(0, dotIdx);
-    const methodName = scope.slice(dotIdx + 1);
-    const typeDecl = findTypeDecl(program, typeName);
-    if (typeDecl) {
-      for (const m of typeDecl.body?.members || []) {
-        if (m.kind === "MethodDecl" && m.name === methodName) {
-          for (const p of m.params) {
-            if (p.name === paramName) return p.type ?? null;
-          }
-        }
-      }
-    }
-    const iface = findInterfaceDecl(program, typeName);
-    if (iface) {
-      for (const m of iface.body?.members || []) {
-        if (m.kind === "MethodDecl" && m.name === methodName) {
-          for (const p of m.params) {
-            if (p.name === paramName) return p.type ?? null;
-          }
-        }
-      }
-    }
-  } else {
-    const fn = findFnDecl(program, scope);
-    if (fn) {
-      for (const p of fn.params) {
-        if (p.name === paramName) return p.type ?? null;
-      }
-    }
-  }
-  return null;
 }

@@ -6,7 +6,6 @@ export {
   resolveDefinition,
   findReferences,
   getRenameLocations,
-  canRename,
   type RenameLocation,
 } from "./resolver";
 export { getHoverForSymbol, type HoverInfo } from "./hover";
@@ -18,28 +17,10 @@ export {
   getScopeCompletions,
   getTypeAnnotationCompletions,
   getDefaultCompletions,
-  resolveObjectType,
-  resolveInterfaceType,
   type CompletionInfo,
   type CompletionKind,
 } from "./completions";
-
-// Re-export utilities that may be useful
 export {
-  formatAstType,
-  formatFnSignature,
-  formatTypeSignature,
-  formatInterfaceSignature,
-} from "../types/type-utils";
-export {
-  findFnDecl,
-  findTypeDecl,
-  findInterfaceDecl,
-  findConstructorCalleeAt,
-} from "../types/ast-query";
-export { getDocstring } from "./utils";
-export {
-  isStdlibImport,
   resolveStdlibDefinition,
   getStdlibHover,
   type StdlibDefinitionLocation,

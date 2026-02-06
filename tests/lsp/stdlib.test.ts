@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
+import { isStdlibImport } from "../../src/shared/constants";
 import {
-  isStdlibImport,
   resolveStdlibDefinition,
   getStdlibHover,
 } from "../../src/lsp/stdlib";

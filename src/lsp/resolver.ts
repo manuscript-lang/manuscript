@@ -1,5 +1,6 @@
 // Symbol Resolver - High-level API for LSP features
 import type { SymbolTable, SymbolDef, SymbolRef } from "./symbols";
+import { isSymbolDef } from "./symbols";
 import { isLocationMatch } from "./utils";
 
 export interface ResolvedSymbol {
@@ -43,13 +44,8 @@ export function resolveDefinition(
 ): SymbolDef | undefined {
   const symbol = resolveSymbolAt(symbols, line, column);
   if (!symbol) return undefined;
-  
-  if ("definition" in symbol || "id" in symbol && "nameOffset" in symbol) {
-    // It's a definition
-    return symbol as SymbolDef;
-  }
-  // It's a reference, get its definition
-  return symbols.getDefinitionById((symbol as SymbolRef).symbolId);
+  if (isSymbolDef(symbol)) return symbol;
+  return symbols.getDefinitionById(symbol.symbolId);
 }
 
 // Find all references to the symbol at a given position
@@ -92,9 +88,4 @@ export function getRenameLocations(
   }
 
   return locations;
-}
-
-// Check if a symbol can be renamed (not a builtin/keyword)
-export function canRename(def: SymbolDef): boolean {
-  return def.id.kind !== undefined;
 }

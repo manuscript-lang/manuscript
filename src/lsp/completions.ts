@@ -1,9 +1,10 @@
 // Completions - Provides completion items for code completion
 import * as AST from "../parser/ast";
-import type { Type, ObjectType, InterfaceType } from "../types/types";
+import type { ObjectType, InterfaceType } from "../types/types";
 import { typeToString } from "../types/types";
-import type { TypeMemberInfo } from "../builtin/extractor";
-import { formatAstType, formatFunctionType, resolveObjectType, resolveInterfaceType } from "../types/type-utils";
+import type { TypeMemberInfo, BuiltinsSymbol } from "../builtin/extractor";
+import { BUILTIN_PRIMITIVE_TYPES } from "../shared/constants";
+import { formatFunctionType, formatFnSignatureFromAst } from "../types/type-utils";
 
 export type CompletionKind = "function" | "type" | "variable" | "property" | "method" | "keyword";
 
@@ -54,52 +55,43 @@ export function getInterfaceMemberCompletions(iface: InterfaceType): CompletionI
   }));
 }
 
-// Get completions for variables/functions in scope
+// Get completions for variables/functions in scope. line caps which Let/Var are visible (use Infinity for all).
 export function getScopeCompletions(
   program: AST.Program,
-  line: number
+  line: number = Infinity
 ): CompletionInfo[] {
   const completions: CompletionInfo[] = [];
-  
   for (const s of program.body) {
     if (s.kind === "FnDecl") {
       const fnType = s.resolvedType;
-      const detail = fnType ? formatFunctionType(fnType) : formatFnSignatureShort(s);
+      const detail = fnType ? formatFunctionType(fnType) : formatFnSignatureFromAst(s);
       completions.push({ label: s.name, kind: "function", detail });
     } else if (s.kind === "TypeDecl") {
       completions.push({ label: s.name, kind: "type", detail: `type ${s.name}` });
     } else if (s.kind === "InterfaceDecl") {
       completions.push({ label: s.name, kind: "type", detail: `interface ${s.name}` });
-    } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && s.loc.line < line) {
+    } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && (s.loc?.line ?? 0) < line) {
       const varType = s.value.resolvedType;
       completions.push({
         label: s.pattern.name,
         kind: "variable",
         detail: varType ? typeToString(varType) : "unknown",
       });
-    } else if (s.kind === "VarStmt" && s.loc.line < line) {
+    } else if (s.kind === "VarStmt" && (s.loc?.line ?? 0) < line) {
       const varType = s.value.resolvedType;
       completions.push({
         label: s.name,
         kind: "variable",
         detail: varType ? typeToString(varType) : "unknown",
       });
+    } else if (s.kind === "ImportDecl") {
+      for (const { name, alias } of s.names) {
+        completions.push({ label: alias ?? name, kind: "function" });
+      }
     }
   }
-  
   return completions;
 }
-
-// Short signature without function name (for completion detail)
-function formatFnSignatureShort(fn: AST.FnDecl): string {
-  const params = fn.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
-  const ret = formatAstType(fn.returnType);
-  return `fn(${params}): ${ret}`;
-}
-
-import type { BuiltinsSymbol } from "../builtin/extractor";
-
-const BUILTIN_PRIMITIVE_TYPES = ["number", "string", "bool", "null", "bytes", "unknown", "never", "void"];
 
 // Completions after `:` — type annotation context
 export function getTypeAnnotationCompletions(
@@ -123,7 +115,7 @@ export function getTypeAnnotationCompletions(
   return items;
 }
 
-// Default completions: keywords, builtins, scope
+// Default completions: keywords, stdlib, and scope (via getScopeCompletions)
 export function getDefaultCompletions(
   program: AST.Program | undefined,
   keywords: string[],
@@ -134,28 +126,7 @@ export function getDefaultCompletions(
     ...keywords.map(k => ({ label: k, kind: "keyword" as const })),
     ...[...stdlibFunctions].map(f => ({ label: f, kind: "function" as const, doc: builtinsSymbols.get(f)?.doc })),
   ];
-
-  if (program) {
-    for (const s of program.body) {
-      if (s.kind === "FnDecl") {
-        items.push({ label: s.name, kind: "function" });
-      } else if (s.kind === "TypeDecl") {
-        items.push({ label: s.name, kind: "type", detail: `type ${s.name}` });
-      } else if (s.kind === "InterfaceDecl") {
-        items.push({ label: s.name, kind: "type", detail: `interface ${s.name}` });
-      } else if (s.kind === "LetStmt" || s.kind === "VarStmt") {
-        const name = (s as any).name || (s as any).pattern?.name;
-        if (name) items.push({ label: name, kind: "variable" });
-      } else if (s.kind === "ImportDecl") {
-        for (const { name, alias } of s.names) {
-          items.push({ label: alias ?? name, kind: "function" });
-        }
-      }
-    }
-  }
-
+  if (program) items.push(...getScopeCompletions(program, Infinity));
   return items;
 }
 
-// Re-export for use by server
-export { resolveObjectType, resolveInterfaceType } from "../types/type-utils";

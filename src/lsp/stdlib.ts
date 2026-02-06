@@ -10,8 +10,6 @@ import {
 } from "../stdlib/loader";
 import { getHoverForType, type HoverInfo } from "./hover";
 
-export { isStdlibImport };
-
 export interface StdlibDefinitionLocation {
   uri: string;
   range: { start: { line: number; character: number }; end: { line: number; character: number } };

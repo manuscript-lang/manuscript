@@ -1,6 +1,7 @@
 import * as AST from "../parser/ast";
 import { visit } from "./ast-visitor";
 import type { Type } from "./types";
+import { NAME_OFFSET_FN, NAME_OFFSET_EXTERN_FN, NAME_OFFSET_TYPE, NAME_OFFSET_INTERFACE } from "../shared/constants";
 
 export function findFnDecl(program: AST.Program, name: string): AST.FnDecl | null {
   for (const s of program.body) {
@@ -36,10 +37,10 @@ export type TopLevelDecl = AST.FnDecl | AST.ExternFnDecl | AST.TypeDecl | AST.In
 
 function nameOffsetForDecl(decl: TopLevelDecl): number {
   switch (decl.kind) {
-    case "FnDecl": return 3;
-    case "ExternFnDecl": return 10;
-    case "TypeDecl": return 5;
-    case "InterfaceDecl": return 10;
+    case "FnDecl": return NAME_OFFSET_FN;
+    case "ExternFnDecl": return NAME_OFFSET_EXTERN_FN;
+    case "TypeDecl": return NAME_OFFSET_TYPE;
+    case "InterfaceDecl": return NAME_OFFSET_INTERFACE;
     default: return 0;
   }
 }
@@ -65,6 +66,76 @@ export function findConstructorCalleeAt(program: AST.Program, line: number, col:
     },
   });
   return result;
+}
+
+export function findVariableType(program: AST.Program, name: string, line: number): Type | null {
+  function searchStatements(stmts: AST.Statement[]): Type | null {
+    for (const s of stmts) {
+      if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && s.pattern.name === name && s.loc.line === line) {
+        return s.value.resolvedType || null;
+      }
+      if (s.kind === "VarStmt" && s.name === name && s.loc.line === line) {
+        return s.value.resolvedType || null;
+      }
+      if (s.kind === "WithStmt") {
+        for (const c of s.contexts) {
+          if (c.name === name) return c.expr.resolvedType ?? null;
+        }
+        const inBody = searchStatements(s.body.statements);
+        if (inBody) return inBody;
+      }
+      if (s.kind === "FnDecl" && s.body) {
+        const result = searchStatements(s.body.statements);
+        if (result) return result;
+      }
+      if (s.kind === "TypeDecl") {
+        for (const m of s.body?.members || []) {
+          if (m.kind === "MethodDecl" && m.body) {
+            const result = searchStatements(m.body.statements);
+            if (result) return result;
+          }
+        }
+      }
+    }
+    return null;
+  }
+  return searchStatements(program.body);
+}
+
+export function findParameterType(program: AST.Program, scope: string, paramName: string): AST.TypeExpr | null {
+  if (scope.includes(".")) {
+    const dotIdx = scope.indexOf(".");
+    const typeName = scope.slice(0, dotIdx);
+    const methodName = scope.slice(dotIdx + 1);
+    const typeDecl = findTypeDecl(program, typeName);
+    if (typeDecl) {
+      for (const m of typeDecl.body?.members || []) {
+        if (m.kind === "MethodDecl" && m.name === methodName) {
+          for (const p of m.params) {
+            if (p.name === paramName) return p.type ?? null;
+          }
+        }
+      }
+    }
+    const iface = findInterfaceDecl(program, typeName);
+    if (iface) {
+      for (const m of iface.body?.members || []) {
+        if (m.kind === "MethodDecl" && m.name === methodName) {
+          for (const p of m.params) {
+            if (p.name === paramName) return p.type ?? null;
+          }
+        }
+      }
+    }
+  } else {
+    const fn = findFnDecl(program, scope);
+    if (fn) {
+      for (const p of fn.params) {
+        if (p.name === paramName) return p.type ?? null;
+      }
+    }
+  }
+  return null;
 }
 
 export function getReceiverTypeAtPosition(program: AST.Program, line: number, col: number, memberName: string): Type | undefined {

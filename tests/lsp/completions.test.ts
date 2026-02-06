@@ -3,8 +3,8 @@ import {
   getTypeMemberCompletions,
   getObjectMemberCompletions,
   getScopeCompletions,
-  resolveObjectType,
 } from "../../src/lsp";
+import { resolveObjectType } from "../../src/types/type-utils";
 import type { TypeMemberInfo } from "../../src/builtin/extractor";
 
 const dummyLoc = { line: 1, column: 0, offset: 0 };

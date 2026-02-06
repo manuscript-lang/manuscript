@@ -1,6 +1,7 @@
 // Document Symbols - Provides document outline information
 import type { SourceLocation } from "../parser/ast";
 import type { SymbolTable, SymbolDef, SymbolId } from "./symbols";
+import { parseMemberQualifiedName } from "./utils";
 
 export type DocumentSymbolKind = "function" | "type" | "field" | "method" | "variable" | "parameter" | "import";
 
@@ -74,11 +75,8 @@ function shouldIncludeInOutline(def: SymbolDef): boolean {
 
 function getParentSymbol(def: SymbolDef): string | undefined {
   if (def.id.kind === "field" || def.id.kind === "method") {
-    // Extract parent type name from qualified name (TypeName.memberName)
-    const parts = def.id.qualifiedName.split(".");
-    if (parts.length >= 2) {
-      return parts[0];
-    }
+    const parsed = parseMemberQualifiedName(def.id.qualifiedName);
+    return parsed?.typeName;
   }
   return undefined;
 }

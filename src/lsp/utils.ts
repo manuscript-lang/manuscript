@@ -1,7 +1,6 @@
 // LSP Utilities - LSP-specific helpers only
 // For type utilities, import directly from "../types/type-utils"
 // For AST queries, import directly from "../types/ast-query"
-import * as AST from "../parser/ast";
 import type { SymbolDef } from "./symbols";
 
 // ============================================
@@ -23,19 +22,6 @@ export function isLocationMatch(
 
 export function isDefLocationMatch(def: SymbolDef, line: number, column: number): boolean {
   return isLocationMatch(def.loc, def.nameOffset, def.name.length, line, column);
-}
-
-// ============================================
-// Docstring Extraction (legacy - comments now in AST)
-// ============================================
-
-export function getDocstring(block: AST.Block | undefined): string | undefined {
-  if (!block?.statements?.length) return undefined;
-  const first = block.statements[0];
-  if (!first || first.kind !== "ExprStmt") return undefined;
-  const expr = first.expr;
-  if (expr.kind !== "Literal" || typeof expr.value !== "string") return undefined;
-  return expr.value;
 }
 
 // ============================================

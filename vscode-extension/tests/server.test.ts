@@ -4,7 +4,8 @@ import { TypeChecker } from "../../src/types/checker";
 import type { Program, FnDecl, TypeDecl } from "../../src/parser/ast";
 import type { Type } from "../../src/types/types";
 import type { TypeEnvironment } from "../../src/types/environment";
-import { buildSymbolTable, resolveDefinition, findReferences, getRenameLocations, getHoverForSymbol, getDocumentSymbols, resolveObjectType, getObjectMemberCompletions, type SymbolTable } from "../../src/lsp";
+import { buildSymbolTable, resolveDefinition, findReferences, getRenameLocations, getHoverForSymbol, getDocumentSymbols, getObjectMemberCompletions, type SymbolTable } from "../../src/lsp";
+import { resolveObjectType } from "../../src/types/type-utils";
 
 // Test helpers that mirror server.ts logic
 const KEYWORDS = [

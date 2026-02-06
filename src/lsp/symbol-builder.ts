@@ -2,6 +2,9 @@
 import * as AST from "../parser/ast";
 import type { Type, ObjectType, InterfaceType } from "../types/types";
 import type { TypeEnvironment } from "../types/environment";
+import { getTypeDisplayName } from "../types/type-utils";
+import { findTypeDecl, findInterfaceDecl } from "../types/ast-query";
+import { NAME_OFFSET_FN, NAME_OFFSET_TYPE, NAME_OFFSET_LET_VAR, NAME_OFFSET_INTERFACE } from "../shared/constants";
 import { SymbolTable, type SymbolDef } from "./symbols";
 
 interface BuildContext {
@@ -61,7 +64,7 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
         id: { kind: "function", qualifiedName: stmt.name },
         name: stmt.name,
         loc: stmt.loc,
-        nameOffset: 3, // "fn "
+        nameOffset: NAME_OFFSET_FN,
       });
       // Parameters
       for (const p of stmt.params) {
@@ -87,7 +90,7 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
         id: { kind: "type", qualifiedName: stmt.name },
         name: stmt.name,
         loc: stmt.loc,
-        nameOffset: 5, // "type "
+        nameOffset: NAME_OFFSET_TYPE,
       });
       // Members
       for (const m of stmt.body?.members || []) {
@@ -118,7 +121,7 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
           id: { kind: "variable", qualifiedName: qn },
           name: stmt.pattern.name,
           loc: stmt.loc,
-          nameOffset: 4, // "let "
+          nameOffset: NAME_OFFSET_LET_VAR,
         });
       } else if (stmt.pattern) {
         for (const { name, loc } of getPatternBindings(stmt.pattern)) {
@@ -141,7 +144,7 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
         id: { kind: "variable", qualifiedName: qn },
         name: stmt.name,
         loc: stmt.loc,
-        nameOffset: 4, // "var "
+        nameOffset: NAME_OFFSET_LET_VAR,
       });
       break;
     }
@@ -150,7 +153,7 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
         id: { kind: "type", qualifiedName: stmt.name },
         name: stmt.name,
         loc: stmt.loc,
-        nameOffset: 10, // "interface "
+        nameOffset: NAME_OFFSET_INTERFACE,
       });
       for (const m of stmt.body?.members || []) {
         if (m.kind === "MethodDecl") registerMethodDef(ctx, stmt.name, m);
@@ -394,7 +397,7 @@ function collectExprReferences(ctx: BuildContext, expr: AST.Expr): void {
       collectExprReferences(ctx, expr.object);
       // Resolve member based on object type (recursively handles chains like user.p.say_hello)
       const objType = expr.object.resolvedType;
-      let typeName = objType ? getTypeName(ctx.env, objType) : null;
+      let typeName = objType ? getTypeDisplayName(ctx.env, objType) : null;
       
       // Fallback: if type is "unknown", try to infer from the object expression recursively
       if (!typeName) {
@@ -576,43 +579,32 @@ function getTypeNameFromConstructor(expr: AST.Expr): string | null {
   return null;
 }
 
-// Get the type name of a field in a type
 function getFieldTypeName(ctx: BuildContext, typeName: string, fieldName: string): string | null {
-  // Look up the type declaration in the program
-  for (const stmt of ctx.program.body) {
-    if (stmt.kind === "TypeDecl" && stmt.name === typeName) {
-      for (const member of stmt.body.members) {
-        if (member.kind === "FieldDecl" && member.name === fieldName) {
-          // Get the type annotation
-          if (member.type) {
-            return getTypeNameFromAstType(member.type);
-          }
-          // If no type annotation but has default, infer from default
-          if (member.defaultValue) {
-            return getTypeNameFromConstructor(member.defaultValue);
-          }
-        }
-      }
+  const typeDecl = findTypeDecl(ctx.program, typeName);
+  if (!typeDecl?.body) return null;
+  for (const member of typeDecl.body.members) {
+    if (member.kind === "FieldDecl" && member.name === fieldName) {
+      if (member.type) return getTypeNameFromAstType(member.type);
+      if (member.defaultValue) return getTypeNameFromConstructor(member.defaultValue);
     }
   }
   return null;
 }
 
-// Get the return type name of a method
 function getMethodReturnTypeName(ctx: BuildContext, typeName: string, methodName: string): string | null {
-  for (const stmt of ctx.program.body) {
-    if (stmt.kind === "TypeDecl" && stmt.name === typeName) {
-      for (const member of stmt.body.members) {
-        if (member.kind === "MethodDecl" && member.name === methodName) {
-          if (member.returnType) return getTypeNameFromAstType(member.returnType);
-        }
+  const typeDecl = findTypeDecl(ctx.program, typeName);
+  if (typeDecl?.body) {
+    for (const member of typeDecl.body.members) {
+      if (member.kind === "MethodDecl" && member.name === methodName && member.returnType) {
+        return getTypeNameFromAstType(member.returnType);
       }
     }
-    if (stmt.kind === "InterfaceDecl" && stmt.name === typeName) {
-      for (const member of stmt.body.members) {
-        if (member.kind === "MethodDecl" && member.name === methodName) {
-          if (member.returnType) return getTypeNameFromAstType(member.returnType);
-        }
+  }
+  const iface = findInterfaceDecl(ctx.program, typeName);
+  if (iface?.body) {
+    for (const member of iface.body.members) {
+      if (member.kind === "MethodDecl" && member.name === methodName && member.returnType) {
+        return getTypeNameFromAstType(member.returnType);
       }
     }
   }
@@ -630,17 +622,3 @@ function getTypeNameFromAstType(type: AST.TypeExpr): string | null {
   return null;
 }
 
-// Get the type name for member lookup (handles ref, object, interface, generic types)
-function getTypeName(env: TypeEnvironment, type: Type): string | null {
-  if (type.kind === "ref") return type.name;
-  if (type.kind === "object" && (type as ObjectType).name) return (type as ObjectType).name!;
-  if (type.kind === "interface") return (type as InterfaceType).name;
-  if (type.kind === "optional") return getTypeName(env, (type as any).inner);
-  const resolved = env.resolveType(type);
-  if (resolved !== type) {
-    if (resolved.kind === "object" && (resolved as ObjectType).name) return (resolved as ObjectType).name!;
-    if (resolved.kind === "ref") return resolved.name;
-    if (resolved.kind === "interface") return (resolved as InterfaceType).name;
-  }
-  return null;
-}

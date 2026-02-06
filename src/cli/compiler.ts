@@ -105,7 +105,7 @@ export interface ProjectCompileResult {
  * Core single-file pipeline: parse -> typecheck -> optional codegen.
  * Single source of truth for all single-file operations.
  */
-function compileSingle(
+export function compileSingle(
   source: string,
   options: CompileOptions = {},
   skipCodegen = false
@@ -147,6 +147,7 @@ function compileSingle(
   }
 }
 
+/** Typecheck-only API: delegates to compileSingle with skipCodegen. */
 export function typecheckSingle(source: string, options: CompileOptions = {}): TypecheckSingleResult | null {
   const result = compileSingle(source, options, true);
   if (!result.ast) return null;
@@ -287,60 +288,69 @@ function runProjectTypecheckLoop(
   return { moduleExportsMap, errors, warnings, entryProgram, entryEnv };
 }
 
-export async function compileProject(
-  entryPath: string,
-  options: ProjectCompileOptions = {}
-): Promise<ProjectCompileResult> {
-  const errors: CompileError[] = [];
-  const warnings: CompileWarning[] = [];
-  const outputs = new Map<string, string>();
+export interface ProjectInitOptions {
+  entrySource?: string;
+  entryAST?: AST.Program;
+}
 
+export interface ProjectInitResult {
+  config: MsTomlConfig;
+  graph: ModuleGraph;
+  programs: Map<string, AST.Program>;
+  errors: CompileError[];
+}
+
+export async function initProject(
+  entryPath: string,
+  readFile: (filePath: string) => Promise<string>,
+  options?: ProjectInitOptions
+): Promise<ProjectInitResult | null> {
   const entryAbs = path.resolve(entryPath);
   const startDir = path.dirname(entryAbs);
   const projectRoot = await findMsToml(startDir);
-  if (!projectRoot) {
-    errors.push({
-      message: "No ms.toml found (required when using imports).",
-      file: entryPath,
-      phase: "typecheck",
-    });
-    return { success: false, outputs, errors, warnings };
-  }
+  if (!projectRoot) return null;
 
   let config: MsTomlConfig;
   try {
     config = await loadMsToml(projectRoot);
-  } catch (e: unknown) {
-    errors.push({
-      message: (e as Error).message,
-      phase: "typecheck",
-    });
-    return { success: false, outputs, errors, warnings };
+  } catch {
+    return null;
   }
 
-  const readFile = async (filePath: string): Promise<string> => {
-    const fs = await import("fs/promises");
-    return fs.readFile(path.resolve(filePath), "utf-8");
-  };
+  const effectiveReadFile =
+    options?.entrySource != null
+      ? (filePath: string) =>
+          path.resolve(filePath) === entryAbs ? Promise.resolve(options.entrySource!) : readFile(filePath)
+      : readFile;
 
   const graph = await buildModuleGraph(
     entryAbs,
     config.projectRoot,
     config.srcDir,
-    readFile
+    effectiveReadFile
   );
 
+  const errors: CompileError[] = [];
   if (graph.errors.length > 0) {
     for (const e of graph.errors) {
       let line: number | undefined;
       let column: number | undefined;
       if (e.file && e.specifier) {
-        const parsed = parseSource(await readFile(e.file), e.file);
-        if (parsed.success && parsed.ast) {
-          const loc = findImportDeclLoc(parsed.ast, e.specifier);
+        if (path.resolve(e.file) === entryAbs && options?.entryAST) {
+          const loc = findImportDeclLoc(options.entryAST, e.specifier);
           if (loc) {
             line = loc.line;
             column = loc.column;
+          }
+        } else {
+          const source = await effectiveReadFile(e.file);
+          const parsed = parseSource(source, e.file);
+          if (parsed.success && parsed.ast) {
+            const loc = findImportDeclLoc(parsed.ast, e.specifier);
+            if (loc) {
+              line = loc.line;
+              column = loc.column;
+            }
           }
         }
       }
@@ -352,19 +362,52 @@ export async function compileProject(
         phase: "typecheck",
       });
     }
-    return { success: false, outputs, errors, warnings };
+    return { config, graph, programs: new Map(), errors };
   }
 
   const programs = new Map<string, AST.Program>();
   for (const filePath of graph.order) {
-    const source = await readFile(filePath);
+    if (path.resolve(filePath) === entryAbs && options?.entryAST) {
+      programs.set(filePath, options.entryAST);
+      continue;
+    }
+    const source = await effectiveReadFile(filePath);
     const parsed = parseSource(source, filePath);
     if (!parsed.success || !parsed.ast) {
       errors.push(...parsed.errors);
-      return { success: false, outputs, errors, warnings };
+      return { config, graph, programs, errors };
     }
     programs.set(filePath, parsed.ast);
   }
+  return { config, graph, programs, errors };
+}
+
+export async function compileProject(
+  entryPath: string,
+  options: ProjectCompileOptions = {}
+): Promise<ProjectCompileResult> {
+  const errors: CompileError[] = [];
+  const warnings: CompileWarning[] = [];
+  const outputs = new Map<string, string>();
+  const entryAbs = path.resolve(entryPath);
+
+  const readFile = async (filePath: string): Promise<string> => {
+    const fs = await import("fs/promises");
+    return fs.readFile(path.resolve(filePath), "utf-8");
+  };
+
+  const init = await initProject(entryPath, readFile);
+  if (!init) {
+    errors.push({
+      message: "No ms.toml found (required when using imports).",
+      file: entryPath,
+      phase: "typecheck",
+    });
+    return { success: false, outputs, errors, warnings };
+  }
+  const { config, graph, programs } = init;
+  for (const e of init.errors) errors.push(e);
+  if (errors.length > 0) return { success: false, outputs, errors, warnings };
 
   const typeCheck = options.typeCheck !== false;
   const loopResult = runProjectTypecheckLoop(graph, programs, entryAbs, typeCheck);
@@ -426,67 +469,20 @@ export async function typecheckDocumentInProject(
   readFile: (filePath: string) => Promise<string>
 ): Promise<TypecheckDocumentInProjectResult | null> {
   const entryAbs = path.resolve(entryPath);
-  const startDir = path.dirname(entryAbs);
-  const projectRoot = await findMsToml(startDir);
-  if (!projectRoot) return null;
-
-  let config;
-  try {
-    config = await loadMsToml(projectRoot);
-  } catch {
-    return null;
-  }
-
-  // Parse entry source once upfront and reuse across all code paths
   const entryParsed = parseSource(entrySource, entryPath);
   if (!entryParsed.success || !entryParsed.ast) return null;
   const entryAST = entryParsed.ast;
 
-  const readFileWithEntry = async (filePath: string): Promise<string> =>
-    path.resolve(filePath) === entryAbs ? entrySource : readFile(filePath);
+  const init = await initProject(entryPath, readFile, { entrySource, entryAST });
+  if (!init) return null;
 
-  const graph = await buildModuleGraph(
-    entryAbs,
-    config.projectRoot,
-    config.srcDir,
-    readFileWithEntry
-  );
-
-  const errors: CompileError[] = [];
+  const errors: CompileError[] = [...init.errors];
   const warnings: CompileWarning[] = [];
-
-  if (graph.errors.length > 0) {
-    for (const e of graph.errors) {
-      const loc = e.specifier && e.file && path.resolve(e.file) === entryAbs
-        ? findImportDeclLoc(entryAST, e.specifier)
-        : undefined;
-      errors.push({
-        message: e.message,
-        file: e.file,
-        line: loc?.line,
-        column: loc?.column,
-        phase: "typecheck",
-      });
-    }
+  if (init.errors.length > 0) {
     return { program: entryAST, env: createGlobalEnvironment(), errors, warnings };
   }
 
-  const programs = new Map<string, AST.Program>();
-  for (const filePath of graph.order) {
-    if (path.resolve(filePath) === entryAbs) {
-      programs.set(filePath, entryAST);
-      continue;
-    }
-    const source = await readFileWithEntry(filePath);
-    const parsed = parseSource(source, filePath);
-    if (!parsed.success || !parsed.ast) {
-      errors.push(...parsed.errors);
-      return { program: entryAST, env: createGlobalEnvironment(), errors, warnings };
-    }
-    programs.set(filePath, parsed.ast);
-  }
-
-  const loopResult = runProjectTypecheckLoop(graph, programs, entryAbs, true);
+  const loopResult = runProjectTypecheckLoop(init.graph, init.programs, entryAbs, true);
   for (const e of loopResult.errors) errors.push(e);
   for (const w of loopResult.warnings) warnings.push(w);
   const { entryProgram, entryEnv } = loopResult;

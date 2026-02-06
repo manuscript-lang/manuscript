@@ -65,6 +65,20 @@ export function resolveTypeName(name: string, env: TypeEnvironment): Type {
   return Types.ref(name);
 }
 
+export function getTypeDisplayName(env: TypeEnvironment, type: Type): string | null {
+  if (type.kind === "ref") return type.name;
+  if (type.kind === "object" && (type as ObjectType).name) return (type as ObjectType).name!;
+  if (type.kind === "interface") return (type as InterfaceType).name;
+  if (type.kind === "optional") return getTypeDisplayName(env, (type as any).inner);
+  const resolved = env.resolveType(type);
+  if (resolved !== type) {
+    if (resolved.kind === "object" && (resolved as ObjectType).name) return (resolved as ObjectType).name!;
+    if (resolved.kind === "ref") return resolved.name;
+    if (resolved.kind === "interface") return (resolved as InterfaceType).name;
+  }
+  return null;
+}
+
 // Convert function declaration to FunctionType
 export function fnDeclToType(decl: AST.FnDecl): FunctionType {
   const params = decl.params.map(p => ({
@@ -694,6 +708,12 @@ export function formatFnSignature(fn: AST.FnDecl | AST.ExternFnDecl, isExtern = 
   const typeParams = fn.typeParams?.length ? `[${fn.typeParams.map(t => t.name).join(", ")}]` : "";
   const prefix = isExtern ? "extern fn" : "fn";
   return `${prefix} ${fn.name}${typeParams}(${params}): ${ret}`;
+}
+
+export function formatFnSignatureFromAst(fn: AST.FnDecl): string {
+  const params = fn.params.map(p => `${p.name}: ${formatAstType(p.type)}`).join(", ");
+  const ret = formatAstType(fn.returnType);
+  return `fn(${params}): ${ret}`;
 }
 
 // Format method signature
