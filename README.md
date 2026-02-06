@@ -108,7 +108,7 @@ match code
 users | filter((u) => u.active) | map((u) => u.name)
 ```
 
-See [Syntax](./syntax.md) for the full language: control flow, loops, generics, interfaces, error handling, concurrency (`spawn`, `race`, `Channel`), set literals `<1, 2, 3>`, and the standard library.
+See [Syntax](./syntax.md) for the full language: control flow, loops, generics, interfaces, error handling, concurrency (`spawn`, `race`), set literals `<1, 2, 3>`, and the standard library.
 
 ---
 

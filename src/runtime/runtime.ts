@@ -37,10 +37,10 @@ export function __getContext(typeName: string): any {
 }
 
 // Re-export modules
-export { Channel, spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
+export { spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
 export { test, getTestCount, clearTests, runTests, runTestsWithResults } from "./testing";
 
-import { Channel, spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
+import { spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
 import { test, getTestCount, clearTests, runTests, runTestsWithResults } from "./testing";
 
 // ============================================
@@ -56,7 +56,6 @@ function typeOf(x: any): string {
   if (Array.isArray(x)) return "list";
   if (x instanceof Map) return "map";
   if (x instanceof Set) return "set";
-  if (x instanceof Channel) return "channel";
   if (typeof x === "object" && x.__typename) {
     return x.__typename;
   }
@@ -177,8 +176,8 @@ function setIsSubset<T>(a: Set<T>, b: Set<T>): boolean {
 
 export const __ms_runtime: Record<string, any> = {
   // Classes
-  Context, Channel,
-  
+  Context,
+
   // Context stack
   __pushContext, __popContext, __setContext, __getContext,
   

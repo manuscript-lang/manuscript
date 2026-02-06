@@ -236,7 +236,7 @@
         },
         {
           "name": "support.type.builtin.manuscript",
-          "match": "\\b(list|map|set|Channel|Promise|Stream|Result|Agent)\\b"
+          "match": "\\b(list|map|set|Promise|Stream|Result|Agent)\\b"
         },
         {
           "match": ":\\s*([A-Z][a-zA-Z0-9_]*)",

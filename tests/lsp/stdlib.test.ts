@@ -55,8 +55,8 @@ describe("LSP stdlib - resolveStdlibDefinition (go to definition)", () => {
     expect(loc!.uri).toMatch(/collections\.ms$/);
   });
 
-  test("returns location for std/concurrency type", () => {
-    const loc = resolveStdlibDefinition("std/concurrency", "Channel");
+  test("returns location for std/concurrency export", () => {
+    const loc = resolveStdlibDefinition("std/concurrency", "race");
     expect(loc).not.toBeNull();
     expect(loc!.uri).toMatch(/concurrency\.ms$/);
   });
@@ -96,13 +96,10 @@ describe("LSP stdlib - getStdlibHover (hover)", () => {
     expect(hover!.signature).toContain("first");
   });
 
-  test("returns hover for std/concurrency type with doc (fields or methods)", () => {
-    const hover = getStdlibHover("std/concurrency", "Channel");
+  test("returns hover for std/concurrency extern fn", () => {
+    const hover = getStdlibHover("std/concurrency", "race");
     expect(hover).not.toBeNull();
-    expect(hover!.signature).toMatch(/type|interface/);
-    expect(hover!.signature).toContain("Channel");
-    expect(hover!.doc).toBeDefined();
-    expect(hover!.doc!.length).toBeGreaterThan(0);
+    expect(hover!.signature).toContain("race");
   });
 
   test("returns null for non-stdlib specifier", () => {

@@ -270,7 +270,6 @@ set[T]                       // unique values (literal: <a, b, c> or <>)
 fn(A, B): R                  // function type
 T?                           // optional (T or null)
 Promise[T]                   // result of spawn; consume with race()
-Channel[T]                   // buffered channel; Channel[T](n)
 ```
 
 ### Error Type
@@ -481,17 +480,6 @@ fn create_task(): Promise[number]
   let t = spawn work(10)
   t
 
-// Channels: buffered, typed
-let ch = Channel[string](1)   // buffer size 1
-ch.send("hello")
-let msg = ch.receive()
-ch.close()
-for item in ch                // iterate until closed and drained
-  print(item)
-
-// Channel with custom type
-let numCh = Channel[number](5)
-numCh.send(1)
 ```
 
 ---

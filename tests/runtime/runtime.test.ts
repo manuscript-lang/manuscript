@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { __ms_runtime, Channel } from "../../src/runtime/runtime";
+import { __ms_runtime } from "../../src/runtime/runtime";
 
 // Helper to call async runtime functions
 const rt = __ms_runtime;
@@ -119,22 +119,3 @@ describe("Runtime - Compiled Stdlib Functions", () => {
     expect(await rt.equals([1, 2], [1, 3])).toBe(false);
   });
 });
-
-describe("Runtime - Channel", () => {
-  test("buffered channel stores values", async () => {
-    const ch = new Channel(2);
-    await ch.send(1);
-    await ch.send(2);
-    expect(await ch.receive()).toBe(1);
-    expect(await ch.receive()).toBe(2);
-  });
-
-  test("close channel", async () => {
-    const ch = new Channel(1);
-    await ch.send(1);
-    ch.close();
-    expect(await ch.receive()).toBe(1);
-    expect(await ch.receive()).toBe(undefined);
-  });
-});
-

@@ -175,7 +175,7 @@ function inferBuiltinMember(ctx: InferContext, objectType: Type, expr: AST.Membe
 
 function substituteBuiltinTypeParams(type: Type, objectType: Type): Type {
   const bindings = new Map<string, Type>();
-  if (objectType.kind === "list" || objectType.kind === "set" || objectType.kind === "channel")
+  if (objectType.kind === "list" || objectType.kind === "set")
     bindings.set("T", objectType.elementType);
   else if (objectType.kind === "map") {
     bindings.set("K", objectType.keyType);

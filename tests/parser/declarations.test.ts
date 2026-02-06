@@ -13,11 +13,11 @@ describe("Parser - Import Declarations", () => {
   });
 
   test("import with alias", () => {
-    const src = 'import { Channel as Ch } from "runtime"';
+    const src = 'import { Promise as P } from "runtime"';
     const result = program(src);
     expect(result.body[0]).toMatchObject({
       kind: "ImportDecl",
-      names: [{ name: "Channel", alias: "Ch" }],
+      names: [{ name: "Promise", alias: "P" }],
     });
   });
 

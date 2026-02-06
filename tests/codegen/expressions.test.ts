@@ -110,15 +110,10 @@ let x = add(b: 2, a: 1)
     expect(js).not.toContain("add({");
   });
 
-  test("builtin Channel constructor", () => {
-    expectCompiled("Channel[number]()", "new __ms_runtime.Channel()");
-  });
-
-  test("extern type constructor with named args (Channel)", () => {
-    const js = compile(`test "ch"
-  let ch = Channel[number](buffer: 2)`);
-    expect(js).toContain("new __ms_runtime.Channel(");
-    expect(js).toContain("buffer:");
+  test("extern type constructor with named args", () => {
+    const js = compile(`test "ctx"
+  let ctx = Context()`);
+    expect(js).toContain("new __ms_runtime.Context(");
   });
 });
 

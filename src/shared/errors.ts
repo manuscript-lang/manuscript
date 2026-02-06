@@ -253,7 +253,7 @@ export const TypeErrors = {
   }),
   nonIterableForLoop: (type: string) => ({
     message: `Cannot iterate over type '${type}'`,
-    hint: `For loops require an iterable type (list, set, map, string, stream, or channel)`,
+    hint: `For loops require an iterable type (list, set, map, string, or stream)`,
   }),
   memberAccessOnFunction: () => ({
     message: `Cannot access properties on function values`,

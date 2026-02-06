@@ -82,7 +82,6 @@ const BUILTIN_TYPE_KIND_MAP: Record<string, string> = {
   "list": "list",
   "map": "map",
   "set": "set",
-  "Channel": "channel",
 };
 
 // Extract all types from builtins AST

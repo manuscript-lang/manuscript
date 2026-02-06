@@ -2,7 +2,7 @@
 
 import { sqrt, pow, floor, ceil, round, abs, min, max, clamp } from "std/math"
 import { sort, keys, values, entries, first, last, take, drop, reverse, contains, unique, flatten, zip, concat, range, slice, map, each, filter, reduce, find, any, all, group_by, sort_by } from "std/collections"
-import { Channel, race, sleep, delay } from "std/concurrency"
+import { race, sleep, delay } from "std/concurrency"
 
 // === std/math ===
 // @expect: 4
@@ -72,15 +72,6 @@ print(find([1, 2, 3, 4], (x) => x > 2))
 print(any([1, 2, 3], (x) => x > 2))
 // @expect: false
 print(all([1, 2, 3], (x) => x > 2))
-
-// === std/concurrency - Channel ===
-fn channel_test()
-  let ch = Channel[number](1)
-  ch.send(42)
-  let val = ch.receive()
-  // @expect: 42
-  print(val)
-channel_test()
 
 // === std/concurrency - race with spawn ===
 fn work(): number

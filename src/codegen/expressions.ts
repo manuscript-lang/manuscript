@@ -89,7 +89,7 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     callee = `__ms_runtime.${node.callee.name}`;
   }
 
-  // Handle generic constructors like Channel[T](...) or UserType[T](...)
+  // Handle generic constructors like UserType[T](...)
   if (node.callee.kind === "IndexExpr" && node.callee.object.kind === "Identifier") {
     const baseName = node.callee.object.name;
     const args = genCallArgs(ctx, node.args, opts);

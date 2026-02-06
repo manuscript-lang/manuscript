@@ -178,11 +178,6 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
                isAssignable((resolvedTarget as any).keyType, (resolvedSource as any).keyType, env) &&
                isAssignable((resolvedSource as any).valueType, (resolvedTarget as any).valueType, env) &&
                isAssignable((resolvedTarget as any).valueType, (resolvedSource as any).valueType, env);
-      case "channel":
-        if ((resolvedTarget as any).elementType.kind === "unknown") return true;
-        // Channels are invariant (read and write)
-        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env) &&
-               isAssignable((resolvedTarget as any).elementType, (resolvedSource as any).elementType, env);
       case "promise":
         if ((resolvedTarget as any).resolveType.kind === "unknown") return true;
         // Promises are covariant (read-only)
@@ -465,17 +460,14 @@ export function extendsType(type: Type, baseName: string, env: TypeEnvironment):
 // Check if a type is iterable
 export function isIterable(type: Type): boolean {
   const kind = type.kind;
-  if (kind === "list" || kind === "set" || kind === "string" ||
-      kind === "map" || kind === "stream" || kind === "channel") {
+  if (kind === "list" || kind === "set" || kind === "string" || kind === "map" || kind === "stream") {
     return true;
   }
-  // Check if it's a generic type like Channel[T]
   if (kind === "generic") {
     const genType = type as any;
     if (genType.base?.kind === "ref") {
       const baseName = genType.base.name.toLowerCase();
-      return baseName === "channel" || baseName === "list" || baseName === "set" ||
-             baseName === "map" || baseName === "stream";
+      return baseName === "list" || baseName === "set" || baseName === "map" || baseName === "stream";
     }
   }
   return false;
@@ -488,7 +480,6 @@ export function getIterableElementType(type: Type): Type {
   if (type.kind === "string") return Types.string;
   if (type.kind === "map") return Types.tuple(type.keyType, type.valueType);
   if (type.kind === "stream") return type.elementType;
-  if (type.kind === "channel") return type.elementType;
   return Types.unknown;
 }
 
@@ -560,8 +551,8 @@ export function substituteTypeParams(type: Type, bindings: Map<string, Type>): T
       return Types.set(substituteTypeParams(type.elementType, bindings));
     case "promise":
       return Types.promise(substituteTypeParams(type.resolveType, bindings));
-    case "channel":
-      return Types.channel(substituteTypeParams(type.elementType, bindings));
+    case "stream":
+      return Types.unknown;
     case "optional":
       return Types.optional(substituteTypeParams(type.inner, bindings));
     case "tuple":
@@ -670,8 +661,6 @@ export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string,
     }
   } else if (paramType.kind === "promise" && argType.kind === "promise") {
     unifyTypes(paramType.resolveType, argType.resolveType, bindings);
-  } else if (paramType.kind === "channel" && argType.kind === "channel") {
-    unifyTypes(paramType.elementType, argType.elementType, bindings);
   } else if (paramType.kind === "optional" && argType.kind === "optional") {
     unifyTypes(paramType.inner, argType.inner, bindings);
   } else if (paramType.kind === "function" && argType.kind === "function") {

@@ -213,22 +213,6 @@ export interface TypeRef extends BaseType {
 // Agent Type (special)
 // ============================================
 
-export interface AgentType extends BaseType {
-  kind: "agent";
-  name: string;
-  context: UsingBinding[];
-  tools: Type[];
-  config?: Type;
-}
-
-// ============================================
-// Channel Type (for concurrency)
-// ============================================
-
-export interface ChannelType extends BaseType {
-  kind: "channel";
-  elementType: Type;
-}
 
 // ============================================
 // Promise Type (for async)
@@ -285,8 +269,6 @@ export type Type =
   | TypeVariable
   | GenericType
   | TypeRef
-  | AgentType
-  | ChannelType
   | PromiseType
   | StreamType
   | ResultType;
@@ -326,12 +308,12 @@ export const Types = {
   },
 
   generator(params: ParameterType[], yieldType: Type, context: UsingBinding[] = []): FunctionType {
-    return { 
-      kind: "function", 
-      params, 
-      returnType: Types.stream(yieldType), 
-      isGenerator: true, 
-      context 
+    return {
+      kind: "function",
+      params,
+      returnType: Types.stream(yieldType),
+      isGenerator: true,
+      context,
     };
   },
 
@@ -375,10 +357,6 @@ export const Types = {
 
   ref(name: string, args?: Type[]): TypeRef {
     return { kind: "ref", name, args };
-  },
-
-  channel(elementType: Type): ChannelType {
-    return { kind: "channel", elementType };
   },
 
   promise(resolveType: Type): PromiseType {
@@ -508,12 +486,6 @@ export function typeToString(type: Type): string {
       return type.args
         ? `${type.name}[${type.args.map(typeToString).join(", ")}]`
         : type.name;
-
-    case "agent":
-      return `agent ${type.name}`;
-
-    case "channel":
-      return `Channel[${typeToString(type.elementType)}]`;
 
     case "promise":
       return `Promise[${typeToString(type.resolveType)}]`;

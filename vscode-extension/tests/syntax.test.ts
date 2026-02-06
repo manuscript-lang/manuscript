@@ -261,7 +261,6 @@ describe("TextMate Grammar - Types", () => {
     expect(pattern.match).toContain("list");
     expect(pattern.match).toContain("map");
     expect(pattern.match).toContain("set");
-    expect(pattern.match).toContain("Channel");
     expect(pattern.match).toContain("Promise");
   });
 });

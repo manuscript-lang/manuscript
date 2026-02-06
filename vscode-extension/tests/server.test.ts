@@ -17,7 +17,7 @@ const KEYWORDS = [
 
 const BUILTIN_TYPES = [
   "number", "string", "bool", "null", "bytes", "unknown", "never", "void",
-  "list", "map", "set", "Channel", "Promise", "Stream", "Result"
+  "list", "map", "set", "Promise", "Stream", "Result"
 ];
 
 const BUILTIN_FUNCTIONS = [

@@ -261,10 +261,9 @@ describe("Type Utils - Pure Functions", () => {
     expect(result.kind).toBe("number");
   });
 
-  test("getIterableElementType for set, stream, channel", () => {
+  test("getIterableElementType for set, stream", () => {
     expect(TypeUtils.getIterableElementType(Types.set(Types.string)).kind).toBe("string");
     expect(TypeUtils.getIterableElementType(Types.stream(Types.number)).kind).toBe("number");
-    expect(TypeUtils.getIterableElementType(Types.channel(Types.bool)).kind).toBe("bool");
   });
 
   test("formatAstType returns unknown for undefined", () => {
@@ -460,17 +459,6 @@ describe("Type Utils - isAssignable", () => {
     });
   });
 
-  describe("channel (invariant)", () => {
-    test("same element type is assignable", () => {
-      const ch = Types.channel(Types.number);
-      expect(TypeUtils.isAssignable(ch, ch, env)).toBe(true);
-    });
-
-    test("different element type is not assignable", () => {
-      expect(TypeUtils.isAssignable(Types.channel(Types.number), Types.channel(Types.string), env)).toBe(false);
-    });
-  });
-
   describe("promise (covariant)", () => {
     test("same resolve type is assignable", () => {
       const p = Types.promise(Types.number);
@@ -658,9 +646,9 @@ describe("Type Utils - Pure Functions (continued)", () => {
     expect(TypeUtils.usingMatch(ctx, ctx)).toBe(true);
   });
 
-  test("isIterable for generic channel/list", () => {
-    const genericChannel = Types.generic(Types.ref("Channel"), [Types.number]);
-    expect(TypeUtils.isIterable(genericChannel)).toBe(true);
+  test("isIterable for generic list", () => {
+    const genericList = Types.generic(Types.ref("list"), [Types.number]);
+    expect(TypeUtils.isIterable(genericList)).toBe(true);
   });
 
   test("typeInvolvesPromise", () => {
