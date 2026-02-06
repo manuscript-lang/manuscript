@@ -6,18 +6,16 @@ import { resolveStdlibImports } from "../stdlib/loader";
 
 export type { TypeCheckResult };
 
+export function runSingleFileTypecheck(program: AST.Program): TypeCheckResult {
+  const env = createGlobalEnvironment();
+  const stdlibErrors = resolveStdlibImports(program, env);
+  const result = PassManager.createDefault().runWithEnv(program, env);
+  result.errors.unshift(...stdlibErrors);
+  return result;
+}
+
 export class TypeChecker {
-  private manager: PassManager;
-
-  constructor() {
-    this.manager = PassManager.createDefault();
-  }
-
   check(program: AST.Program): TypeCheckResult {
-    const env = createGlobalEnvironment();
-    const stdlibErrors = resolveStdlibImports(program, env);
-    const result = this.manager.runWithEnv(program, env);
-    result.errors.unshift(...stdlibErrors);
-    return result;
+    return runSingleFileTypecheck(program);
   }
 }

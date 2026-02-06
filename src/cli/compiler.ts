@@ -5,10 +5,10 @@ import * as path from "path";
 import { Parser } from "../parser";
 import type { TypeEnvironment } from "../types/environment";
 import type { Type } from "../types/types";
-import { PassManager, createGlobalEnvironment, getModuleExports } from "../types";
+import { PassManager, createGlobalEnvironment, getModuleExports, runSingleFileTypecheck, TypeCheckError } from "../types";
 import { CodeGenerator } from "../codegen";
 import type * as AST from "../parser/ast";
-import { findMsToml, loadMsToml, buildModuleGraph, type ModuleGraph, type MsTomlConfig, resolveSpecifier } from "../modules";
+import { findMsToml, loadMsToml, buildModuleGraph, type ModuleGraph, type MsTomlConfig } from "../modules";
 import { resolveStdlibImports } from "../stdlib/loader";
 
 export interface CompileResult {
@@ -38,7 +38,52 @@ export interface CompileWarning {
 export interface CompileOptions {
   filename?: string;
   typeCheck?: boolean;
-  emitRuntimeImport?: boolean; // Emit import { __ms_runtime } (default: true, set to false for eval)
+  emitRuntimeImport?: boolean;
+}
+
+export interface ParseResult {
+  success: boolean;
+  ast?: AST.Program;
+  errors: CompileError[];
+}
+
+export interface TypecheckSingleResult {
+  program: AST.Program;
+  env: TypeEnvironment;
+  errors: CompileError[];
+  warnings: CompileWarning[];
+}
+
+function toCompileError(te: TypeCheckError, filePath: string): CompileError {
+  return {
+    message: te.message,
+    hint: te.hint,
+    line: te.loc?.line,
+    column: te.loc?.column,
+    file: filePath,
+    phase: "typecheck",
+  };
+}
+
+export function parseSource(source: string, filename?: string): ParseResult {
+  const errors: CompileError[] = [];
+  const file = filename ?? "<anonymous>";
+  try {
+    const ast = new Parser(source).parse();
+    return { success: true, ast, errors };
+  } catch (error: unknown) {
+    const e = error as Error & { name?: string; message?: string; hint?: string; token?: { loc?: { line?: number; column?: number } }; loc?: { line?: number; column?: number } };
+    const phase = e.name === "LexerError" ? "lexer" : "parser";
+    errors.push({
+      message: e.message ?? String(error),
+      hint: e.hint,
+      line: e.token?.loc?.line ?? e.loc?.line,
+      column: e.token?.loc?.column ?? e.loc?.column,
+      file,
+      phase,
+    });
+    return { success: false, errors };
+  }
 }
 
 export interface ProjectCompileOptions {
@@ -57,158 +102,78 @@ export interface ProjectCompileResult {
 }
 
 /**
- * Compile Manuscript source code to JavaScript
+ * Core single-file pipeline: parse -> typecheck -> optional codegen.
+ * Single source of truth for all single-file operations.
  */
-export function compile(source: string, options: CompileOptions = {}): CompileResult {
+function compileSingle(
+  source: string,
+  options: CompileOptions = {},
+  skipCodegen = false
+): CompileResult & { env?: TypeEnvironment } {
   const errors: CompileError[] = [];
   const warnings: CompileWarning[] = [];
-  const filename = options.filename || "<anonymous>";
+  const filename = options.filename ?? "<anonymous>";
+  let env: TypeEnvironment | undefined;
 
-  // Phase 1 & 2: Parse (lexing is done internally by Parser)
-  let ast: AST.Program;
-  try {
-    const parser = new Parser(source);
-    ast = parser.parse();
-  } catch (error: any) {
-    // Determine phase from error type
-    const phase = error.name === "LexerError" ? "lexer" : "parser";
-    errors.push({
-      message: error.message,
-      hint: error.hint,
-      line: error.token?.loc?.line ?? error.loc?.line,
-      column: error.token?.loc?.column ?? error.loc?.column,
-      file: filename,
-      phase,
-    });
-    return { success: false, errors, warnings };
-  }
+  const parseResult = parseSource(source, filename);
+  if (!parseResult.success) return { success: false, errors: parseResult.errors, warnings };
+  const ast = parseResult.ast!;
 
-  // Phase 3: Type Checking (optional, enabled by default)
   if (options.typeCheck !== false) {
     try {
-      const singleGraph: ModuleGraph = {
-        order: [filename],
-        specifierToPath: new Map(),
-        errors: [],
-      };
-      const programs = new Map<string, AST.Program>([[filename, ast]]);
-      const tcResult = runProjectTypecheckLoop(singleGraph, programs, filename, true);
-      errors.push(...tcResult.errors);
-      warnings.push(...tcResult.warnings);
-      
-      if (errors.length > 0) {
-        return { success: false, ast, errors, warnings };
-      }
-    } catch (error: any) {
-      errors.push({
-        message: error.message,
-        file: filename,
-        phase: "typecheck",
-      });
+      const result = runSingleFileTypecheck(ast);
+      env = result.env;
+      errors.push(...result.errors.map(te => toCompileError(te, filename)));
+      warnings.push(...result.warnings.map(w => ({ message: w, file: filename })));
+      if (errors.length > 0) return { success: false, ast, errors, warnings, env };
+    } catch (error: unknown) {
+      const e = error as Error;
+      errors.push({ message: e.message ?? String(error), hint: (error as { hint?: string }).hint, file: filename, phase: "typecheck" });
       return { success: false, ast, errors, warnings };
     }
   }
 
-  // Phase 4: Code Generation
-  let code: string;
-  try {
-    const generator = new CodeGenerator({
-      emitRuntimeImport: options.emitRuntimeImport !== false,
-    });
-    code = generator.generate(ast);
-  } catch (error: any) {
-    errors.push({
-      message: error.message,
-      file: filename,
-      phase: "codegen",
-    });
-    return { success: false, ast, errors, warnings };
+  if (skipCodegen) {
+    return { success: errors.length === 0, ast, errors, warnings, env };
   }
 
-  return { success: true, code, ast, errors, warnings };
+  try {
+    const code = new CodeGenerator({ emitRuntimeImport: options.emitRuntimeImport !== false }).generate(ast);
+    return { success: true, code, ast, errors, warnings, env };
+  } catch (error: unknown) {
+    const e = error as Error;
+    errors.push({ message: e.message ?? String(error), file: filename, phase: "codegen" });
+    return { success: false, ast, errors, warnings, env };
+  }
+}
+
+export function typecheckSingle(source: string, options: CompileOptions = {}): TypecheckSingleResult | null {
+  const result = compileSingle(source, options, true);
+  if (!result.ast) return null;
+  return { program: result.ast, env: result.env!, errors: result.errors, warnings: result.warnings };
+}
+
+/**
+ * Compile Manuscript source code to JavaScript
+ */
+export function compile(source: string, options: CompileOptions = {}): CompileResult {
+  return compileSingle(source, options);
 }
 
 /**
  * Type check Manuscript source code without generating code
  */
 export function check(source: string, options: CompileOptions = {}): CompileResult {
-  const errors: CompileError[] = [];
-  const warnings: CompileWarning[] = [];
-  const filename = options.filename || "<anonymous>";
-
-  // Phase 1 & 2: Parse (lexing is done internally by Parser)
-  let ast: AST.Program;
-  try {
-    const parser = new Parser(source);
-    ast = parser.parse();
-  } catch (error: any) {
-    const phase = error.name === "LexerError" ? "lexer" : "parser";
-    errors.push({
-      message: error.message,
-      hint: error.hint,
-      line: error.token?.loc?.line ?? error.loc?.line,
-      column: error.token?.loc?.column ?? error.loc?.column,
-      file: filename,
-      phase,
-    });
-    return { success: false, errors, warnings };
-  }
-
-  // Phase 3: Type Checking
-  try {
-    const singleGraph: ModuleGraph = {
-      order: [filename],
-      specifierToPath: new Map(),
-      errors: [],
-    };
-    const programs = new Map<string, AST.Program>([[filename, ast]]);
-    const tcResult = runProjectTypecheckLoop(singleGraph, programs, filename, true);
-    errors.push(...tcResult.errors);
-    warnings.push(...tcResult.warnings);
-  } catch (error: any) {
-    errors.push({
-      message: error.message,
-      hint: error.hint,
-      file: filename,
-      phase: "typecheck",
-    });
-  }
-
-  return { 
-    success: errors.length === 0, 
-    ast, 
-    errors, 
-    warnings 
-  };
+  return compileSingle(source, options, true);
 }
 
 /**
  * Parse Manuscript source code and return AST
  */
 export function parse(source: string, options: CompileOptions = {}): CompileResult {
-  const errors: CompileError[] = [];
-  const warnings: CompileWarning[] = [];
-  const filename = options.filename || "<anonymous>";
-
-  // Phase 1 & 2: Parse (lexing is done internally by Parser)
-  let ast: AST.Program;
-  try {
-    const parser = new Parser(source);
-    ast = parser.parse();
-  } catch (error: any) {
-    const phase = error.name === "LexerError" ? "lexer" : "parser";
-    errors.push({
-      message: error.message,
-      hint: error.hint,
-      line: error.token?.loc?.line ?? error.loc?.line,
-      column: error.token?.loc?.column ?? error.loc?.column,
-      file: filename,
-      phase,
-    });
-    return { success: false, errors, warnings };
-  }
-
-  return { success: true, ast, errors, warnings };
+  const parseResult = parseSource(source, options.filename ?? "<anonymous>");
+  if (!parseResult.success) return { ...parseResult, success: false, warnings: [] };
+  return { success: true, ast: parseResult.ast, errors: [], warnings: [] };
 }
 
 function relPathFromSrc(srcDir: string, filePath: string): string {
@@ -298,44 +263,18 @@ function runProjectTypecheckLoop(
       }
     }
 
-    // Resolve stdlib imports
     const stdlibErrors = resolveStdlibImports(program, env);
-    for (const te of stdlibErrors) {
-      errors.push({
-        message: te.message,
-        line: te.loc?.line,
-        column: te.loc?.column,
-        file: filePath,
-        phase: "typecheck",
-      });
-    }
+    for (const te of stdlibErrors) errors.push(toCompileError(te, filePath));
 
     const result = passManager.runWithEnv(program, env);
     if (typeCheck) {
-      for (const te of result.errors) {
-        errors.push({
-          message: te.message,
-          hint: te.hint,
-          line: te.loc?.line,
-          column: te.loc?.column,
-          file: filePath,
-          phase: "typecheck",
-        });
-      }
-      for (const w of result.warnings) {
-        warnings.push({ message: w, file: filePath });
-      }
+      for (const te of result.errors) errors.push(toCompileError(te, filePath));
+      for (const w of result.warnings) warnings.push({ message: w, file: filePath });
     }
 
     const exportResult = getModuleExports(program, result.env);
     for (const e of exportResult.errors) {
-      errors.push({
-        message: e.message,
-        file: filePath,
-        line: e.loc?.line,
-        column: e.loc?.column,
-        phase: "typecheck",
-      });
+      errors.push({ message: e.message, file: filePath, line: e.loc?.line, column: e.loc?.column, phase: "typecheck" });
     }
     moduleExportsMap.set(path.resolve(filePath), exportResult.exports);
 
@@ -396,16 +335,13 @@ export async function compileProject(
       let line: number | undefined;
       let column: number | undefined;
       if (e.file && e.specifier) {
-        try {
-          const src = await readFile(e.file);
-          const prog = new Parser(src).parse();
-          const loc = findImportDeclLoc(prog, e.specifier);
+        const parsed = parseSource(await readFile(e.file), e.file);
+        if (parsed.success && parsed.ast) {
+          const loc = findImportDeclLoc(parsed.ast, e.specifier);
           if (loc) {
             line = loc.line;
             column = loc.column;
           }
-        } catch {
-          /* ignore */
         }
       }
       errors.push({
@@ -422,20 +358,12 @@ export async function compileProject(
   const programs = new Map<string, AST.Program>();
   for (const filePath of graph.order) {
     const source = await readFile(filePath);
-    try {
-      const program = new Parser(source).parse();
-      programs.set(filePath, program);
-    } catch (e: unknown) {
-      const err = e as Error & { token?: { loc?: { line?: number; column?: number } }; loc?: { line?: number; column?: number } };
-      errors.push({
-        message: err.message,
-        file: filePath,
-        line: err.token?.loc?.line ?? err.loc?.line,
-        column: err.token?.loc?.column ?? err.loc?.column,
-        phase: "parser",
-      });
+    const parsed = parseSource(source, filePath);
+    if (!parsed.success || !parsed.ast) {
+      errors.push(...parsed.errors);
       return { success: false, outputs, errors, warnings };
     }
+    programs.set(filePath, parsed.ast);
   }
 
   const typeCheck = options.typeCheck !== false;
@@ -509,6 +437,11 @@ export async function typecheckDocumentInProject(
     return null;
   }
 
+  // Parse entry source once upfront and reuse across all code paths
+  const entryParsed = parseSource(entrySource, entryPath);
+  if (!entryParsed.success || !entryParsed.ast) return null;
+  const entryAST = entryParsed.ast;
+
   const readFileWithEntry = async (filePath: string): Promise<string> =>
     path.resolve(filePath) === entryAbs ? entrySource : readFile(filePath);
 
@@ -523,15 +456,9 @@ export async function typecheckDocumentInProject(
   const warnings: CompileWarning[] = [];
 
   if (graph.errors.length > 0) {
-    let entryProgram: AST.Program | undefined;
-    try {
-      entryProgram = new Parser(entrySource).parse();
-    } catch {
-      return null;
-    }
     for (const e of graph.errors) {
       const loc = e.specifier && e.file && path.resolve(e.file) === entryAbs
-        ? findImportDeclLoc(entryProgram!, e.specifier)
+        ? findImportDeclLoc(entryAST, e.specifier)
         : undefined;
       errors.push({
         message: e.message,
@@ -541,31 +468,22 @@ export async function typecheckDocumentInProject(
         phase: "typecheck",
       });
     }
-    return { program: entryProgram!, env: createGlobalEnvironment(), errors, warnings };
+    return { program: entryAST, env: createGlobalEnvironment(), errors, warnings };
   }
 
   const programs = new Map<string, AST.Program>();
   for (const filePath of graph.order) {
-    const source = await readFileWithEntry(filePath);
-    try {
-      programs.set(filePath, new Parser(source).parse());
-    } catch (e: unknown) {
-      const err = e as Error & { token?: { loc?: { line?: number; column?: number } }; loc?: { line?: number; column?: number } };
-      errors.push({
-        message: err.message,
-        file: filePath,
-        line: err.token?.loc?.line ?? err.loc?.line,
-        column: err.token?.loc?.column ?? err.loc?.column,
-        phase: "parser",
-      });
-      if (path.resolve(filePath) === entryAbs) return null;
-      try {
-        const entryProgram = new Parser(entrySource).parse();
-        return { program: entryProgram, env: createGlobalEnvironment(), errors, warnings };
-      } catch {
-        return null;
-      }
+    if (path.resolve(filePath) === entryAbs) {
+      programs.set(filePath, entryAST);
+      continue;
     }
+    const source = await readFileWithEntry(filePath);
+    const parsed = parseSource(source, filePath);
+    if (!parsed.success || !parsed.ast) {
+      errors.push(...parsed.errors);
+      return { program: entryAST, env: createGlobalEnvironment(), errors, warnings };
+    }
+    programs.set(filePath, parsed.ast);
   }
 
   const loopResult = runProjectTypecheckLoop(graph, programs, entryAbs, true);
@@ -574,8 +492,7 @@ export async function typecheckDocumentInProject(
   const { entryProgram, entryEnv } = loopResult;
 
   if (!entryProgram || !entryEnv) {
-    const fallback = new Parser(entrySource).parse();
-    return { program: fallback, env: createGlobalEnvironment(), errors, warnings };
+    return { program: entryAST, env: createGlobalEnvironment(), errors, warnings };
   }
   return { program: entryProgram, env: entryEnv, errors, warnings };
 }

@@ -1,9 +1,10 @@
 // Type extraction from builtins AST
 import type * as AST from "../parser/ast";
+import { Parser } from "../parser";
 import type { Type, FunctionType, ObjectType, InterfaceType, PropertyType, MethodType, TypeParameter } from "../types/types";
 import { Types } from "../types/types";
-import { PRIMITIVE_TYPE_MAP, constructGenericType, type BuiltinMethodRegistry, type BuiltinMemberInfo } from "../types/primitives";
-import { methodToFunctionType } from "../types/type-utils";
+import { type BuiltinMethodRegistry, type BuiltinMemberInfo } from "../types/primitives";
+import { astTypeToType, fnDeclToType, methodToFunctionType } from "../types/type-utils";
 
 export interface BuiltinsTypes {
   functions: Map<string, FunctionType>;
@@ -12,77 +13,34 @@ export interface BuiltinsTypes {
   builtinMethods: BuiltinMethodRegistry;
 }
 
-// Convert AST TypeExpr to internal Type
-function astTypeToType(typeExpr: AST.TypeExpr | undefined): Type {
-  if (!typeExpr) return Types.unknown;
-
-  switch (typeExpr.kind) {
-    case "NamedType":
-      return nameToType(typeExpr.name);
-
-    case "GenericType": {
-      const args = typeExpr.args.map(astTypeToType);
-      
-      // Use data-driven generic type constructor
-      const constructed = constructGenericType(typeExpr.name, args);
-      if (constructed) {
-        return constructed;
-      }
-      
-      return Types.generic(nameToType(typeExpr.name), args);
-    }
-
-    case "FunctionType": {
-      const params = typeExpr.params.map((p, i) => 
-        Types.param(`arg${i}`, astTypeToType(p))
-      );
-      return Types.fn(params, astTypeToType(typeExpr.returnType));
-    }
-
-    case "UnionType":
-      return Types.union(...typeExpr.types.map(astTypeToType));
-
-    case "OptionalType":
-      return Types.optional(astTypeToType(typeExpr.inner));
-
-    case "ListType":
-      return Types.list(astTypeToType(typeExpr.elementType));
-
-    case "MapType":
-      return Types.map(astTypeToType(typeExpr.keyType), astTypeToType(typeExpr.valueType));
-
-    default:
-      return Types.unknown;
-  }
+// Parse source and extract types in one step
+export function parseAndExtractTypes(source: string): { ast: AST.Program; types: BuiltinsTypes } {
+  const ast = new Parser(source).parse();
+  const types = extractBuiltinsTypes(ast);
+  return { ast, types };
 }
 
-function nameToType(name: string): Type {
-  return PRIMITIVE_TYPE_MAP[name] ?? Types.ref(name);
+function toType(e: AST.TypeExpr | undefined): Type {
+  return e ? astTypeToType(e) : Types.unknown;
 }
 
-// Extract function type from FnDecl or ExternFnDecl
 function extractFunctionType(decl: AST.FnDecl | AST.ExternFnDecl): FunctionType {
+  if (decl.kind === "FnDecl") return fnDeclToType(decl);
   const typeParams = decl.typeParams?.map(p => ({
     name: p.name,
     constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
   }));
-  const params = decl.params.map(p => 
-    Types.param(p.name, astTypeToType(p.type), p.optional, p.rest)
-  );
-  const returnType = astTypeToType(decl.returnType);
-  const isGenerator = decl.kind === "FnDecl" ? decl.isGenerator : false;
-  
+  const params = decl.params.map(p => Types.param(p.name, toType(p.type), p.optional, p.rest));
   return {
     kind: "function",
     typeParams,
     params,
-    returnType,
-    isGenerator,
+    returnType: toType(decl.returnType),
+    isGenerator: false,
     context: [],
   };
 }
 
-// Extract object type from TypeDecl
 function extractObjectType(decl: AST.TypeDecl): ObjectType {
   const properties: PropertyType[] = [];
   const methods: MethodType[] = [];
@@ -91,37 +49,21 @@ function extractObjectType(decl: AST.TypeDecl): ObjectType {
     if (member.kind === "FieldDecl") {
       properties.push({
         name: member.name,
-        type: astTypeToType(member.type),
+        type: toType(member.type),
         optional: member.optional,
         computed: member.computed,
         defaultValue: !!member.defaultValue,
       });
     } else if (member.kind === "MethodDecl") {
-      const methodTypeParams = member.typeParams?.map(p => ({
-        name: p.name,
-        constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
-      }));
-      const methodParams = member.params.map(p => 
-        Types.param(p.name, astTypeToType(p.type), p.optional, p.rest)
-      );
-      const fnType = Types.fn(methodParams, astTypeToType(member.returnType));
-      if (methodTypeParams) {
-        fnType.typeParams = methodTypeParams;
-      }
-      methods.push({
-        name: member.name,
-        type: fnType,
-      });
+      const fnType = methodToFunctionType(member);
+      methods.push({ name: member.name, type: fnType });
     }
   }
 
-  // Include type parameters from the type declaration
   const typeParams: TypeParameter[] | undefined = decl.typeParams?.map(p => ({
     name: p.name,
     constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
   }));
-
-  // Include alias types (for type aliases like type Foo = Bar)
   const aliasTypes = decl.alias?.map(e => astTypeToType(e));
 
   return {
@@ -161,9 +103,7 @@ export function extractBuiltinsTypes(program: AST.Program): BuiltinsTypes {
       case "InterfaceDecl": {
         const methods: MethodType[] = [];
         for (const member of stmt.body.members) {
-          if (member.kind === "MethodDecl") {
-            methods.push({ name: member.name, type: methodToFunctionType(member) });
-          }
+          if (member.kind === "MethodDecl") methods.push({ name: member.name, type: methodToFunctionType(member) });
         }
         const iface: InterfaceType = {
           kind: "interface",
@@ -217,49 +157,6 @@ export function extractBuiltinsTypes(program: AST.Program): BuiltinsTypes {
   return { functions, types, externTypes, builtinMethods };
 }
 
-// Get set of function names for codegen
-export function getStdlibFunctionNames(program: AST.Program): Set<string> {
-  const result = new Set<string>();
-  for (const stmt of program.body) {
-    if (stmt.kind === "FnDecl" || stmt.kind === "ExternFnDecl") {
-      result.add(stmt.name);
-    }
-  }
-  return result;
-}
-
-// Get set of extern function names (need runtime implementation)
-export function getExternFunctionNames(program: AST.Program): Set<string> {
-  const result = new Set<string>();
-  for (const stmt of program.body) {
-    if (stmt.kind === "ExternFnDecl") {
-      result.add(stmt.name);
-    }
-  }
-  return result;
-}
-
-// Get set of pure function names (implemented in Manuscript)
-export function getPureFunctionNames(program: AST.Program): Set<string> {
-  const result = new Set<string>();
-  for (const stmt of program.body) {
-    if (stmt.kind === "FnDecl") {
-      result.add(stmt.name);
-    }
-  }
-  return result;
-}
-
-// Get set of extern type names (need runtime implementation)
-export function getExternTypeNames(program: AST.Program): Set<string> {
-  const result = new Set<string>();
-  for (const stmt of program.body) {
-    if (stmt.kind === "TypeDecl" && stmt.isExtern) {
-      result.add(stmt.name);
-    }
-  }
-  return result;
-}
 
 // ============================================
 // IDE Symbol Extraction

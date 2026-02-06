@@ -3,7 +3,7 @@ import * as AST from "../parser/ast";
 import type { Type, ObjectType, InterfaceType } from "../types/types";
 import { typeToString } from "../types/types";
 import type { TypeMemberInfo } from "../builtin/extractor";
-import { formatAstType, formatFunctionType, resolveObjectType, resolveInterfaceType } from "./utils";
+import { formatAstType, formatFunctionType, resolveObjectType, resolveInterfaceType } from "../types/type-utils";
 
 export type CompletionKind = "function" | "type" | "variable" | "property" | "method" | "keyword";
 
@@ -97,5 +97,65 @@ function formatFnSignatureShort(fn: AST.FnDecl): string {
   return `fn(${params}): ${ret}`;
 }
 
+import type { BuiltinsSymbol } from "../builtin/extractor";
+
+const BUILTIN_PRIMITIVE_TYPES = ["number", "string", "bool", "null", "bytes", "unknown", "never", "void"];
+
+// Completions after `:` — type annotation context
+export function getTypeAnnotationCompletions(
+  builtinsSymbols: Map<string, BuiltinsSymbol>,
+  program?: AST.Program
+): CompletionInfo[] {
+  const items: CompletionInfo[] = BUILTIN_PRIMITIVE_TYPES.map(t => ({
+    label: t,
+    kind: "type" as const,
+  }));
+  for (const [name, sym] of builtinsSymbols) {
+    if (sym.kind === "type") items.push({ label: name, kind: "type" });
+  }
+  if (program) {
+    for (const s of program.body) {
+      if (s.kind === "TypeDecl" || s.kind === "InterfaceDecl") {
+        items.push({ label: s.name, kind: "type" });
+      }
+    }
+  }
+  return items;
+}
+
+// Default completions: keywords, builtins, scope
+export function getDefaultCompletions(
+  program: AST.Program | undefined,
+  keywords: string[],
+  stdlibFunctions: Set<string>,
+  builtinsSymbols: Map<string, BuiltinsSymbol>
+): CompletionInfo[] {
+  const items: CompletionInfo[] = [
+    ...keywords.map(k => ({ label: k, kind: "keyword" as const })),
+    ...[...stdlibFunctions].map(f => ({ label: f, kind: "function" as const, doc: builtinsSymbols.get(f)?.doc })),
+  ];
+
+  if (program) {
+    for (const s of program.body) {
+      if (s.kind === "FnDecl") {
+        items.push({ label: s.name, kind: "function" });
+      } else if (s.kind === "TypeDecl") {
+        items.push({ label: s.name, kind: "type", detail: `type ${s.name}` });
+      } else if (s.kind === "InterfaceDecl") {
+        items.push({ label: s.name, kind: "type", detail: `interface ${s.name}` });
+      } else if (s.kind === "LetStmt" || s.kind === "VarStmt") {
+        const name = (s as any).name || (s as any).pattern?.name;
+        if (name) items.push({ label: name, kind: "variable" });
+      } else if (s.kind === "ImportDecl") {
+        for (const { name, alias } of s.names) {
+          items.push({ label: alias ?? name, kind: "function" });
+        }
+      }
+    }
+  }
+
+  return items;
+}
+
 // Re-export for use by server
-export { resolveObjectType, resolveInterfaceType } from "./utils";
+export { resolveObjectType, resolveInterfaceType } from "../types/type-utils";

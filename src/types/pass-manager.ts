@@ -2,8 +2,8 @@
 import * as AST from "../parser/ast";
 import { createGlobalEnvironment, TypeEnvironment } from "./environment";
 import { TypeCheckError } from "./errors";
-import { CollectDeclarationsPass } from "./passes/collect-declarations-pass";
-import { InferTypesPass } from "./passes/infer-types-pass";
+import { CollectDeclarationsPass } from "./passes/collect-declarations";
+import { InferTypesPass } from "./passes/infer-types";
 
 // ============================================
 // Pass Context - Shared state between passes

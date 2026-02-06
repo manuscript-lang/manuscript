@@ -11,14 +11,16 @@ import {
 import {
   isLocationMatch,
   isDefLocationMatch,
-  findTypeMember,
+  parseQualifiedName,
+  parseMemberQualifiedName,
+} from "../../src/lsp/utils";
+import {
   formatAstType,
   formatMethodSignature,
   formatFunctionType,
   formatTypeSignatureFromObject,
-  parseQualifiedName,
-  parseMemberQualifiedName,
-} from "../../src/lsp/utils";
+} from "../../src/types/type-utils";
+import { findTypeMember } from "../../src/types/ast-query";
 import type { SymbolDef } from "../../src/lsp/symbols";
 import { Parser } from "../../src/parser";
 import { TypeChecker } from "../../src/types";
@@ -66,7 +68,7 @@ type Person
     expect(formatAstType({ kind: "UnionType", types: [num, str], loc: {} as any })).toBe("number | string");
     expect(formatAstType({ kind: "OptionalType", inner: num, loc: {} as any })).toBe("number?");
     expect(formatAstType({ kind: "FunctionType", params: [num], returnType: num, loc: {} as any })).toBe("fn(number): number");
-    expect(formatAstType({ kind: "MapType", keyType: str, valueType: num, loc: {} as any } as any)).toBe("unknown");
+    expect(formatAstType({ kind: "MapType", keyType: str, valueType: num, loc: {} as any } as any)).toBe("map[string, number]");
   });
 
   test("formatFnSignature, formatMethodSignature, formatTypeSignature from AST", () => {

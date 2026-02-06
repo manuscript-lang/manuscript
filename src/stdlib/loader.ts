@@ -5,8 +5,9 @@
 import { readFileSync, readdirSync } from "fs";
 import * as path from "path";
 import { pathToFileURL } from "node:url";
-import { Parser } from "../parser";
-import { extractBuiltinsTypes, type BuiltinsTypes } from "../builtin/extractor";
+import { findDeclByName } from "../types/ast-query";
+import { parseAndExtractTypes, type BuiltinsTypes } from "../builtin/extractor";
+import { isStdlibImport } from "../shared/constants";
 import { TypeCheckError } from "../types/errors";
 import type { TypeEnvironment } from "../types/environment";
 import type * as AST from "../parser/ast";
@@ -73,18 +74,17 @@ export async function ensureStdlibCache(): Promise<void> {
 
 export function getStdlibAST(name: string): AST.Program | null {
   if (astCache.has(name)) return astCache.get(name)!;
-  const source = getStdlibSourceSync(name);
-  if (!source) return null;
-  const ast = new Parser(source).parse();
-  astCache.set(name, ast);
-  return ast;
+  // Parsing via getStdlibTypes populates both caches
+  getStdlibTypes(name);
+  return astCache.get(name) ?? null;
 }
 
 export function getStdlibTypes(name: string): BuiltinsTypes | null {
   if (typesCache.has(name)) return typesCache.get(name)!;
-  const ast = getStdlibAST(name);
-  if (!ast) return null;
-  const types = extractBuiltinsTypes(ast);
+  const source = getStdlibSourceSync(name);
+  if (!source) return null;
+  const { ast, types } = parseAndExtractTypes(source);
+  astCache.set(name, ast);
   typesCache.set(name, types);
   return types;
 }
@@ -155,9 +155,8 @@ export function getAllStdlibSources(): Map<string, string> {
   return result;
 }
 
-export function isStdlibImport(specifier: string): boolean {
-  return specifier.startsWith("std/");
-}
+// Re-export from shared for backward compat
+export { isStdlibImport } from "../shared/constants";
 
 export function stdlibModuleName(specifier: string): string {
   return specifier.slice(4);
@@ -177,22 +176,10 @@ export interface StdlibExportLocation {
 export function getStdlibExportLocation(moduleName: string, exportedName: string): StdlibExportLocation | null {
   const stdTypes = getStdlibTypes(moduleName);
   if (!stdTypes) return null;
-  const isExported =
-    stdTypes.functions.has(exportedName) || stdTypes.types.has(exportedName);
-  if (!isExported) return null;
+  if (!stdTypes.functions.has(exportedName) && !stdTypes.types.has(exportedName)) return null;
   const program = getStdlibAST(moduleName);
   if (!program) return null;
-  for (const stmt of program.body) {
-    if ((stmt.kind === "FnDecl" || stmt.kind === "ExternFnDecl") && stmt.name === exportedName) {
-      const nameOffset = stmt.kind === "ExternFnDecl" ? 10 : 3;
-      return { loc: stmt.loc, nameOffset, name: stmt.name };
-    }
-    if (stmt.kind === "TypeDecl" && stmt.name === exportedName) {
-      return { loc: stmt.loc, nameOffset: 5, name: stmt.name };
-    }
-    if (stmt.kind === "InterfaceDecl" && stmt.name === exportedName) {
-      return { loc: stmt.loc, nameOffset: 10, name: stmt.name };
-    }
-  }
-  return null;
+  const found = findDeclByName(program, exportedName);
+  if (!found) return null;
+  return { loc: found.decl.loc, nameOffset: found.nameOffset, name: found.decl.name };
 }

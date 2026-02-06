@@ -2,9 +2,7 @@
 import type { Type, ObjectType, FunctionType, TypeParameter, UsingBinding } from "./types";
 import { Types } from "./types";
 import { substituteTypeParams, substituteTypeInObject } from "./type-utils";
-import { Parser } from "../parser";
-import { extractBuiltinsTypes } from "../builtin/extractor";
-import { builtinsSource } from "../builtin";
+import { getBuiltinsTypes } from "../builtin";
 import { PRIMITIVE_TYPE_MAP, type BuiltinMethodRegistry, type BuiltinMemberInfo } from "./primitives";
 
 // ============================================
@@ -259,20 +257,9 @@ export class TypeEnvironment {
 // Global Environment with Builtins
 // ============================================
 
-let builtinsTypesCache: ReturnType<typeof extractBuiltinsTypes> | null = null;
-
-export function getBuiltinsTypes() {
-  if (!builtinsTypesCache) {
-    const program = new Parser(builtinsSource).parse();
-    builtinsTypesCache = extractBuiltinsTypes(program);
-  }
-  return builtinsTypesCache;
-}
-
 export function createGlobalEnvironment(): TypeEnvironment {
   const env = new TypeEnvironment();
 
-  // Primitive types from centralized map
   for (const [name, type] of Object.entries(PRIMITIVE_TYPE_MAP)) {
     env.defineType(name, type);
   }

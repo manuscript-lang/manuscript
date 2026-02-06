@@ -23,11 +23,9 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 // Language capabilities from src/
-import { Parser } from "../../src/parser";
-import { TypeChecker } from "../../src/types/checker";
 import { KEYWORDS } from "../../src/lexer/tokens";
-import { STDLIB_FUNCTIONS, isBuiltin } from "../../src/shared/stdlib";
-import { builtinsSource, BUILTINS_PATH_URI } from "../../src/builtin";
+import { STDLIB_FUNCTIONS, isBuiltin } from "../../src/builtin";
+import { getBuiltinsAST, BUILTINS_PATH_URI } from "../../src/builtin";
 
 // AST traversal
 import { visit } from "../../src/types/ast-visitor";
@@ -58,6 +56,8 @@ import {
   getTypeMemberCompletions,
   getObjectMemberCompletions,
   getInterfaceMemberCompletions,
+  getTypeAnnotationCompletions,
+  getDefaultCompletions,
   resolveObjectType,
   resolveInterfaceType,
   findConstructorCalleeAt,
@@ -73,7 +73,7 @@ import type { TypeEnvironment } from "../../src/types/environment";
 import * as path from "path";
 import * as fs from "fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { typecheckDocumentInProject } from "../../src/cli/compiler";
+import { typecheckDocumentInProject, typecheckSingle, parseSource } from "../../src/cli/compiler";
 import { findMsToml, loadMsToml, resolveSpecifier } from "../../src/modules";
 import {
   isStdlibImport,
@@ -109,16 +109,12 @@ async function getOrLoadCached(depPath: string): Promise<CachedDocument | null> 
     fs.readFile(path.resolve(p), "utf-8")
   );
   if (!result) {
-    try {
-      const program = new Parser(content).parse();
-      const checkResult = new TypeChecker().check(program);
-      const symbols = buildSymbolTable(program, checkResult.env);
-      const cached: CachedDocument = { program, env: checkResult.env, symbols };
-      cache.set(uri, cached);
-      return cached;
-    } catch {
-      return null;
-    }
+    const tc = typecheckSingle(content, { filename: depPath });
+    if (!tc) return null;
+    const symbols = buildSymbolTable(tc.program, tc.env);
+    const cached: CachedDocument = { program: tc.program, env: tc.env, symbols };
+    cache.set(uri, cached);
+    return cached;
   }
   const symbols = buildSymbolTable(result.program, result.env);
   const cached: CachedDocument = { program: result.program, env: result.env, symbols };
@@ -169,7 +165,7 @@ function specifierForFile(srcDir: string, filePath: string): string {
   return rel.replace(/\.ms$/i, "").replace(/\\/g, "/");
 }
 
-const builtinsProgram = new Parser(builtinsSource).parse();
+const builtinsProgram = getBuiltinsAST();
 const builtinsSymbols = collectBuiltinsSymbols(builtinsProgram);
 const builtinsTypeMembers = collectTypeMembersFromProgram(builtinsProgram);
 
@@ -247,44 +243,45 @@ async function validateDocument(doc: TextDocument): Promise<void> {
     }
   }
 
-  try {
-    const program = new Parser(doc.getText()).parse();
-    const result = new TypeChecker().check(program);
-    const symbols = buildSymbolTable(program, result.env);
-    cache.set(doc.uri, { program, env: result.env, symbols });
-
-    for (const err of result.errors) {
+  const entryPath = doc.uri.startsWith("file:") ? fileURLToPath(new URL(doc.uri)) : "";
+  const tc = typecheckSingle(doc.getText(), { filename: entryPath });
+  if (!tc) {
+    const parseResult = parseSource(doc.getText(), entryPath);
+    for (const err of parseResult.errors) {
       diagnostics.push({
         severity: DiagnosticSeverity.Error,
         range: {
-          start: { line: err.loc.line - 1, character: err.loc.column - 1 },
-          end: { line: err.loc.line - 1, character: err.loc.column + 10 },
+          start: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) - 1 },
+          end: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) + 10 },
         },
-        message: err.message.replace(/ at line \d+, column \d+$/, ""),
+        message: err.message,
         source: "manuscript",
       });
     }
-    for (const w of result.warnings) {
-      diagnostics.push({
-        severity: DiagnosticSeverity.Warning,
-        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
-        message: w,
-        source: "manuscript",
-      });
-    }
-  } catch (e: any) {
-    const m = e.message?.match(/at line (\d+), column (\d+)/);
+    connection.sendDiagnostics({ uri: doc.uri, diagnostics });
+    return;
+  }
+  const symbols = buildSymbolTable(tc.program, tc.env);
+  cache.set(doc.uri, { program: tc.program, env: tc.env, symbols });
+  for (const err of tc.errors) {
     diagnostics.push({
       severity: DiagnosticSeverity.Error,
       range: {
-        start: { line: m ? +m[1] - 1 : 0, character: m ? +m[2] - 1 : 0 },
-        end: { line: m ? +m[1] - 1 : 0, character: (m ? +m[2] : 0) + 1 },
+        start: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) - 1 },
+        end: { line: (err.line ?? 1) - 1, character: (err.column ?? 1) + 10 },
       },
-      message: e.message?.replace(/ at line \d+, column \d+$/, "") || "Parse error",
+      message: err.message.replace(/ at line \d+, column \d+$/, ""),
       source: "manuscript",
     });
   }
-
+  for (const w of tc.warnings) {
+    diagnostics.push({
+      severity: DiagnosticSeverity.Warning,
+      range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+      message: w.message,
+      source: "manuscript",
+    });
+  }
   connection.sendDiagnostics({ uri: doc.uri, diagnostics });
 }
 
@@ -301,16 +298,7 @@ connection.onCompletion((params): CompletionItem[] => {
 
   // After colon: type completions
   if (line.match(/:\s*$/)) {
-    const items: CompletionItem[] = BUILTIN_PRIMITIVE_TYPES.map(t => ({ label: t, kind: CompletionItemKind.TypeParameter }));
-    for (const [name, sym] of builtinsSymbols) {
-      if (sym.kind === "type") items.push({ label: name, kind: CompletionItemKind.Class });
-    }
-    if (cached) {
-      for (const s of cached.program.body) {
-        if (s.kind === "TypeDecl" || s.kind === "InterfaceDecl") items.push({ label: s.name, kind: CompletionItemKind.Class });
-      }
-    }
-    return items;
+    return toCompletionItems(getTypeAnnotationCompletions(builtinsSymbols, cached?.program));
   }
 
   // After dot: member completions
@@ -338,34 +326,39 @@ connection.onCompletion((params): CompletionItem[] => {
     return toCompletionItems(getTypeMemberCompletions(builtinsTypeMembers, "list"));
   }
 
-  // Default: keywords, functions, variables
-  const items: CompletionItem[] = [
-    ...KEYWORD_LIST.map(k => ({ label: k, kind: CompletionItemKind.Keyword })),
-    ...[...STDLIB_FUNCTIONS].map(f => ({ label: f, kind: CompletionItemKind.Function, data: { fn: f } })),
-  ];
+  // Default: keywords, builtins, scope
+  const infos = getDefaultCompletions(cached?.program, KEYWORD_LIST, STDLIB_FUNCTIONS, builtinsSymbols);
+  const items = toCompletionItems(infos);
 
+  // Attach data for completion resolve (import info, URIs)
   if (cached) {
+    for (const item of items) {
+      const stmt = cached.program.body.find(
+        s => (s.kind === "FnDecl" && s.name === item.label) ||
+             (s.kind === "TypeDecl" && s.name === item.label) ||
+             (s.kind === "InterfaceDecl" && s.name === item.label)
+      );
+      if (stmt) {
+        if (stmt.kind === "FnDecl") item.data = { uri: params.textDocument.uri, fn: stmt.name };
+        else if (stmt.kind === "TypeDecl") item.data = { uri: params.textDocument.uri, type: stmt.name };
+        else if (stmt.kind === "InterfaceDecl") item.data = { uri: params.textDocument.uri, type: stmt.name, interface: true };
+      }
+    }
     for (const s of cached.program.body) {
-      if (s.kind === "FnDecl") {
-        items.push({ label: s.name, kind: CompletionItemKind.Function, data: { uri: params.textDocument.uri, fn: s.name } });
-      } else if (s.kind === "TypeDecl") {
-        const { signature } = formatTypeSignature(s);
-        items.push({ label: s.name, kind: CompletionItemKind.Class, detail: signature, data: { uri: params.textDocument.uri, type: s.name } });
-      } else if (s.kind === "InterfaceDecl") {
-        items.push({ label: s.name, kind: CompletionItemKind.Class, detail: `interface ${s.name}`, data: { uri: params.textDocument.uri, type: s.name, interface: true } });
-      } else if (s.kind === "LetStmt" || s.kind === "VarStmt") {
-        const name = (s as any).name || (s as any).pattern?.name;
-        if (name) items.push({ label: name, kind: CompletionItemKind.Variable });
-      } else if (s.kind === "ImportDecl") {
+      if (s.kind === "ImportDecl") {
         for (const { name, alias } of s.names) {
-          const label = alias ?? name;
-          items.push({
-            label,
-            kind: CompletionItemKind.Function,
-            data: { import: true, specifier: s.source, exportedName: name, uri: params.textDocument.uri },
-          });
+          const existing = items.find(i => i.label === (alias ?? name));
+          if (existing) {
+            existing.data = { import: true, specifier: s.source, exportedName: name, uri: params.textDocument.uri };
+          }
         }
       }
+    }
+  }
+  // Attach fn data for stdlib function resolve
+  for (const item of items) {
+    if (STDLIB_FUNCTIONS.has(item.label) && !item.data) {
+      item.data = { fn: item.label };
     }
   }
 

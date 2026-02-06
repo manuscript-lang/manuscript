@@ -1,10 +1,10 @@
 // Pass 1: Collect Declarations
-// Gathers type and function declarations into the type environment
 import * as AST from "../../parser/ast";
 import type { Type, ObjectType, InterfaceType, FunctionType, PropertyType, MethodType } from "../types";
 import { Types } from "../types";
 import type { TypeEnvironment } from "../environment";
 import { TypeCheckError } from "../errors";
+import type { Pass, PassContext } from "../pass-manager";
 import { TypeErrors, RESERVED_PROPERTY_NAMES } from "../../shared/errors";
 import { astTypeToType, methodToFunctionType, fnDeclToType } from "../type-utils";
 
@@ -284,3 +284,12 @@ function collectFnDecl(
   }
 }
 
+export class CollectDeclarationsPass implements Pass {
+  name = "collect-declarations";
+  run(ctx: PassContext): void {
+    const result = collectDeclarations({ program: ctx.program, env: ctx.env });
+    ctx.env = result.env;
+    ctx.fnDecls = result.fnDecls;
+    ctx.errors.push(...result.errors);
+  }
+}

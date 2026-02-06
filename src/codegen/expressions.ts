@@ -2,8 +2,7 @@
 import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
 import { emit, pushIndent, popIndent, tempVar, isTypeConstructor, getParamOrder } from "./types";
-import { STDLIB_FUNCTIONS, EXTERN_TYPES, PRIMITIVE_EXTERN_TYPES } from "../shared/stdlib";
-import { isStdlibExternType } from "../stdlib/loader";
+import { STDLIB_FUNCTIONS, EXTERN_TYPES, PRIMITIVE_EXTERN_TYPES, isStdlibExternType } from "../builtin";
 
 // Forward declaration for mutual recursion
 export type GenFn = (ctx: Ctx, node: AST.Expr | AST.Statement, opts: GenOpts) => string;

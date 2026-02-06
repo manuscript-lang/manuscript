@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { getBuiltinsAST } from "../../src/builtin";
-import { isBuiltin, EXTERN_TYPES } from "../../src/shared/stdlib";
+import { isBuiltin, EXTERN_TYPES } from "../../src/builtin";
 
 describe("Builtin", () => {
   test("getBuiltinsAST returns parsed program and caches on second call", () => {

@@ -1,6 +1,7 @@
 import * as AST from "../../../parser/ast";
 import type { TypeEnvironment } from "../../environment";
 import { TypeCheckError } from "../../errors";
+import type { Pass, PassContext } from "../../pass-manager";
 import { createInferContext, error } from "./context";
 import { checkStatement, checkBlock } from "./check-stmt";
 import { inferExpr } from "./infer-expr";
@@ -29,6 +30,15 @@ export function inferTypes(input: InferInput): InferOutput {
   }
 
   return { errors: ctx.errors, warnings: ctx.warnings };
+}
+
+export class InferTypesPass implements Pass {
+  name = "infer-types";
+  run(ctx: PassContext): void {
+    const result = inferTypes({ program: ctx.program, env: ctx.env, fnDecls: ctx.fnDecls });
+    ctx.errors.push(...result.errors);
+    ctx.warnings.push(...result.warnings);
+  }
 }
 
 export { checkStatement, checkBlock } from "./check-stmt";

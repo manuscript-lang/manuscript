@@ -6,19 +6,23 @@ import type { TypeEnvironment } from "../types/environment";
 import type { SymbolTable, SymbolDef } from "./symbols";
 import {
   isDefLocationMatch,
-  findFnDecl,
-  findTypeDecl,
-  findInterfaceDecl,
+  parseMemberQualifiedName,
+  parseQualifiedName,
+} from "./utils";
+import {
   formatAstType,
   formatFnSignature,
   formatFunctionType,
   formatTypeSignature,
   formatTypeSignatureFromObject,
   formatInterfaceSignature,
-  parseMemberQualifiedName,
-  parseQualifiedName,
+} from "../types/type-utils";
+import {
+  findFnDecl,
+  findTypeDecl,
+  findInterfaceDecl,
   getReceiverTypeAtPosition,
-} from "./utils";
+} from "../types/ast-query";
 
 export interface HoverInfo {
   signature: string;

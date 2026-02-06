@@ -16,6 +16,8 @@ export {
   getObjectMemberCompletions,
   getInterfaceMemberCompletions,
   getScopeCompletions,
+  getTypeAnnotationCompletions,
+  getDefaultCompletions,
   resolveObjectType,
   resolveInterfaceType,
   type CompletionInfo,
@@ -28,12 +30,14 @@ export {
   formatFnSignature,
   formatTypeSignature,
   formatInterfaceSignature,
-  getDocstring,
+} from "../types/type-utils";
+export {
   findFnDecl,
   findTypeDecl,
   findInterfaceDecl,
   findConstructorCalleeAt,
-} from "./utils";
+} from "../types/ast-query";
+export { getDocstring } from "./utils";
 export {
   isStdlibImport,
   resolveStdlibDefinition,

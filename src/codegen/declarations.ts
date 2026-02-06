@@ -4,8 +4,8 @@ import type { Ctx, GenOpts } from "./types";
 import { emit, pushIndent, popIndent, tempVar } from "./types";
 import { genExpr } from "./expressions";
 import { genBlock } from "./statements";
-import { EXTERN_TYPES } from "../shared/stdlib";
-import { isStdlibImport } from "../stdlib/loader";
+import { EXTERN_TYPES } from "../builtin";
+import { isStdlibImport } from "../shared/constants";
 
 // Generate function parameters
 export function genParams(ctx: Ctx, params: AST.Parameter[], opts: GenOpts): string {

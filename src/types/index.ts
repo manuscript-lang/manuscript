@@ -13,6 +13,7 @@ export {
 } from "./pass-manager";
 export * from "./type-utils";
 export * from "./ast-visitor";
+export * from "./ast-query";
 export {
   getModuleExports,
   type GetModuleExportsResult,

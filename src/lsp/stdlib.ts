@@ -1,8 +1,8 @@
 // LSP helpers for stdlib imports (hover, go-to-definition, find refs).
 // Uses typechecking pipeline (getStdlibTypes) and loader (export location, URI) only; no AST in LSP.
 
+import { isStdlibImport } from "../shared/constants";
 import {
-  isStdlibImport,
   stdlibModuleName,
   getStdlibTypes,
   getStdlibModuleUri,
