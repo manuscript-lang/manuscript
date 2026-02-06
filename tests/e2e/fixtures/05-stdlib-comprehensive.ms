@@ -1,4 +1,6 @@
 // @test: Standard Library Functions
+import { abs, min, max, clamp, floor, ceil, round } from "std/math"
+import { first, last, take, drop, reverse, flatten, unique, contains, sort } from "std/collections"
 
 // === String operations ===
 // @expect: 5

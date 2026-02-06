@@ -1,4 +1,5 @@
 // @test: Tree Operations
+import { max } from "std/math"
 
 type Node
   value: number

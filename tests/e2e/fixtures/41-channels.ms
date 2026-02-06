@@ -1,4 +1,5 @@
 // @test: Channels - Communication between concurrent operations
+import { Channel, race, sleep } from "std/concurrency"
 
 // ============================================
 // BASIC CHANNEL OPERATIONS

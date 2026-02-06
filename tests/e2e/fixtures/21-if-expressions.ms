@@ -1,4 +1,5 @@
 // @test: If Expressions - If as expression returning values
+import { map } from "std/collections"
 
 // === Basic if expression ===
 let x = 10

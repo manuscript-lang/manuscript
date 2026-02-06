@@ -1,4 +1,5 @@
 // @test: Generics Edge Cases - Comprehensive generic type testing
+import { first, last, filter, map, reduce, find, take, drop, reverse, flatten, unique, contains, keys, values, sort } from "std/collections"
 
 // === User-defined generic types ===
 type Box[T]

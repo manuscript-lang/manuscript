@@ -1,4 +1,5 @@
 // @test: Test Blocks - Test declarations
+import { first, last } from "std/collections"
 
 // === Basic test block ===
 test "simple assertion"

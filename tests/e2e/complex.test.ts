@@ -26,6 +26,7 @@ print(a)`);
 
   test("list processing pipeline", async () => {
     const { output } = await executeWithOutput(`
+import { filter, map, reduce } from "std/collections"
 let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 let evens = filter(nums, (x: number) => x % 2 == 0)
 let doubled = map(evens, (x: number) => x * 2)
@@ -36,6 +37,7 @@ print(sum)`);
 
   test("string manipulation", async () => {
     const { output } = await executeWithOutput(`
+import { map, filter } from "std/collections"
 let words = ["hello", "world", "foo", "bar"]
 let upper_words = map(words, (w: string) => upper(w))
 let long_words = filter(upper_words, (w: string) => len(w) > 3)
@@ -46,6 +48,7 @@ print(long_words)`);
 
   test("nested data structures", async () => {
     const { output } = await executeWithOutput(`
+import { map, reduce } from "std/collections"
 let users = [{name: "Alice", age: 30}, {name: "Bob", age: 25}]
 let names = map(users, (u: map[string, string or number]) => u["name"] as string)
 print(names)

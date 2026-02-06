@@ -1,9 +1,11 @@
 import * as path from "path";
 import type * as AST from "../parser/ast";
 import { Parser } from "../parser";
+import { isStdlibImport, stdlibModuleName, getStdlibSource } from "../stdlib/loader";
 
 export type ResolveResult =
   | { kind: "local"; path: string }
+  | { kind: "stdlib"; module: string }
   | { kind: "external" };
 
 export interface ResolverError {
@@ -50,6 +52,9 @@ export function resolveSpecifier(
         'Relative imports are not allowed; use logical paths from src root (e.g. "lib/foo").',
       specifier,
     };
+  }
+  if (isStdlibImport(specifier)) {
+    return { kind: "stdlib", module: stdlibModuleName(specifier) };
   }
   if (specifier.startsWith(PKG_PREFIX)) {
     return { kind: "external" };
@@ -141,6 +146,12 @@ export async function buildModuleGraph(
         if (result.kind === "local") {
           deps.push(result.path);
           thisMap.set(specifier, result.path);
+        } else if (result.kind === "stdlib") {
+          // Preload stdlib source into cache for later sync access
+          const stdSource = await getStdlibSource(result.module);
+          if (!stdSource) {
+            errors.push({ message: `Stdlib module not found: "std/${result.module}"`, file: filePath, specifier });
+          }
         }
       } else {
         errors.push({ ...result, file: filePath });

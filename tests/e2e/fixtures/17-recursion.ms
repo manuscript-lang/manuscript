@@ -1,4 +1,5 @@
 // @test: Recursion - Recursive Functions
+import { slice, concat } from "std/collections"
 
 // === Factorial ===
 fn factorial(n: number): number

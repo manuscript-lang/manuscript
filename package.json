@@ -9,7 +9,7 @@
     "ms": "./bin/manuscript.ts"
   },
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build": "bun build --compile bin/manuscript.ts ./src/stdlib/** --asset-naming=\"[name].[ext]\" --outfile ms",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "check": "tsc --noEmit",

@@ -1,4 +1,5 @@
 // @test: Algorithms - Sorting and Computation
+import { floor } from "std/math"
 
 // === Bubble Sort ===
 fn bubble_sort(arr: list[number]): list[number]

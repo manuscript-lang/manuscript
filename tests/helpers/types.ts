@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { Parser } from "../../src/parser/parser";
-import { TypeChecker, typeToString, Types } from "../../src/types";
+import { TypeChecker, TypeCheckError, typeToString, Types } from "../../src/types";
 import type { TypeCheckResult, Type } from "../../src/types";
 
 /**
@@ -46,13 +46,11 @@ export const checkFails = (src: string, errorMatch?: string | RegExp): TypeCheck
  */
 export const inferType = (src: string): string => {
   const result = checkOk(src);
-  // Find the last expression statement and return its type
   const lastStmt = result.program.body[result.program.body.length - 1];
   if (lastStmt?.kind === "ExprStmt") {
     const type = lastStmt.expr.resolvedType;
     if (type) return typeToString(type);
   }
-  // For let/var, get the value type
   if (lastStmt?.kind === "LetStmt" || lastStmt?.kind === "VarStmt") {
     const value = lastStmt.kind === "LetStmt" ? lastStmt.value : lastStmt.value;
     const type = value.resolvedType;

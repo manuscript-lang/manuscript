@@ -38,6 +38,23 @@ export class TypeEnvironment {
     this.builtinMethods = registry;
   }
 
+  // Merge additional builtin methods (for stdlib modules)
+  mergeBuiltinMethods(registry: BuiltinMethodRegistry): void {
+    if (!this.builtinMethods) {
+      this.builtinMethods = new Map();
+    }
+    for (const [typeKind, members] of registry) {
+      const existing = this.builtinMethods.get(typeKind);
+      if (existing) {
+        for (const [name, info] of members) {
+          existing.set(name, info);
+        }
+      } else {
+        this.builtinMethods.set(typeKind, new Map(members));
+      }
+    }
+  }
+
   // Look up a builtin method/property by type kind and member name
   lookupBuiltinMethod(typeKind: string, memberName: string): BuiltinMemberInfo | undefined {
     if (this.builtinMethods) {

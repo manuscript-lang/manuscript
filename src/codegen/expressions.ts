@@ -2,7 +2,8 @@
 import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
 import { emit, pushIndent, popIndent, tempVar, isTypeConstructor, getParamOrder } from "./types";
-import { STDLIB_FUNCTIONS, EXTERN_TYPES } from "../shared/stdlib";
+import { STDLIB_FUNCTIONS, EXTERN_TYPES, PRIMITIVE_EXTERN_TYPES } from "../shared/stdlib";
+import { isStdlibExternType } from "../stdlib/loader";
 
 // Forward declaration for mutual recursion
 export type GenFn = (ctx: Ctx, node: AST.Expr | AST.Statement, opts: GenOpts) => string;
@@ -93,7 +94,8 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
   if (node.callee.kind === "IndexExpr" && node.callee.object.kind === "Identifier") {
     const baseName = node.callee.object.name;
     const args = genCallArgs(ctx, node.args, opts);
-    if (EXTERN_TYPES.has(baseName)) {
+    const isExtern = EXTERN_TYPES.has(baseName) || isStdlibExternType(baseName);
+    if (isExtern && !PRIMITIVE_EXTERN_TYPES.has(baseName)) {
       return `new __ms_runtime.${baseName}(${args})`;
     }
     // User-defined generic types - factory functions, no 'new'
@@ -102,9 +104,12 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     }
   }
 
- 
-  // Don't apply param ordering to extern types - they should keep named args as objects
-  if (node.callee.kind === "Identifier" && EXTERN_TYPES.has(node.callee.name) && !STDLIB_FUNCTIONS.has(node.callee.name)) {
+  // Extern type constructors (e.g. Context(...))
+  // Primitive types (string, list, map, set) are never constructors
+  if (node.callee.kind === "Identifier" &&
+      (EXTERN_TYPES.has(node.callee.name) || isStdlibExternType(node.callee.name)) &&
+      !STDLIB_FUNCTIONS.has(node.callee.name) &&
+      !PRIMITIVE_EXTERN_TYPES.has(node.callee.name)) {
     const args = genCallArgs(ctx, node.args, opts);
     return `new __ms_runtime.${node.callee.name}(${args})`;
   }

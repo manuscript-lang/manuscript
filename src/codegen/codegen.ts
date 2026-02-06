@@ -117,7 +117,8 @@ setStmtGen(gen);
 // Emit runtime imports
 function emitRuntimeImports(ctx: Ctx): void {
   if (ctx.options.emitRuntimeImport) {
-    emit(ctx, 'import { __ms_runtime } from "manuscript/runtime";');
+    const spec = ctx.options.runtimeImportPath ?? "manuscript/runtime";
+    emit(ctx, `import { __ms_runtime } from ${JSON.stringify(spec)};`);
     emit(ctx, "");
   }
 }

@@ -1,4 +1,5 @@
 // @test: Type Methods and Inheritance
+import { sqrt } from "std/math"
 
 // === Basic type with methods ===
 type Counter

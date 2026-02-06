@@ -1,4 +1,5 @@
 // @test: Plain types - type declarations with fields and methods
+import { sqrt } from "std/math"
 
 // === Type with default-valued fields (enum-like usage) ===
 type Status

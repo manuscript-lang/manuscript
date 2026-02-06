@@ -17,6 +17,7 @@ print(split("a,b,c", ","))`);
 
   test("list functions", async () => {
     const { output } = await executeWithOutput(`
+import { first, last, reverse } from "std/collections"
 let nums = [1, 2, 3]
 print(len(nums))
 print(first(nums))
@@ -29,6 +30,7 @@ print(reverse(nums))`);
 
   test("map/filter/reduce", async () => {
     const { output } = await executeWithOutput(`
+import { map, filter, reduce } from "std/collections"
 let nums = [1, 2, 3, 4, 5]
 let doubled = map(nums, (x: number) => x * 2)
 let evens = filter(nums, (x: number) => x % 2 == 0)

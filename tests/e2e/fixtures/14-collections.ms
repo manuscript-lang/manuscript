@@ -1,4 +1,5 @@
 // @test: Collections - Lists and Maps
+import { concat, contains, slice, take, sort, reverse, unique, keys, values } from "std/collections"
 
 // === List creation and access ===
 let nums = [1, 2, 3, 4, 5]

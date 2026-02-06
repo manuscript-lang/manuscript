@@ -1,5 +1,6 @@
 // Test: {} is always a Map
 // Maps should be real JS Maps, not plain objects
+import { entries, keys, values } from "std/collections"
 
 test "empty map creates Map"
   let m = {}

@@ -1,4 +1,5 @@
 // @test: Number Literals - Various number formats
+import { floor, ceil, round } from "std/math"
 
 // === Integer literals ===
 // @expect: 42

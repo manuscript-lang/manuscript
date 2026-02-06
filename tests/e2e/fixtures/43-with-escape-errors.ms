@@ -1,6 +1,7 @@
 // @test: With Escape Errors - comprehensive escape and spawn restrictions
 // @error: Cannot return closure that depends on context
 // @error: Cannot use 'spawn' inside function-level 'with'
+import { race } from "std/concurrency"
 
 // === Setup ===
 

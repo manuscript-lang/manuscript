@@ -1,4 +1,6 @@
 // @test: Spawn Error Patterns - spawns must be properly consumed
+import { race } from "std/concurrency"
+import { keys } from "std/collections"
 
 fn work(): number
   42

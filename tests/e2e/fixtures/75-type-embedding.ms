@@ -1,4 +1,5 @@
 // @test: Type Embedding - Go-style composition
+import { keys } from "std/collections"
 
 // === Basic Embedding ===
 type Animal

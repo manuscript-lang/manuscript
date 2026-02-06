@@ -1,4 +1,6 @@
 // @test: Types and Objects - Data structures
+import { sqrt } from "std/math"
+import { keys, values } from "std/collections"
 
 // === Simple type ===
 type Point

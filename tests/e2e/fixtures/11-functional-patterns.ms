@@ -1,4 +1,5 @@
 // @test: Functional Patterns
+import { filter, map, reduce } from "std/collections"
 
 // === Function composition ===
 fn compose(f, g)

@@ -9,6 +9,8 @@ export interface CodeGenOptions {
   runtime: "bun" | "node";
   module: "esm" | "cjs";
   emitRuntimeImport: boolean;
+  /** When set, emit this path instead of "manuscript/runtime" (for built output that resolves runtime internally) */
+  runtimeImportPath?: string;
   /** For project compile: specifier -> emit path (e.g. "agents/coder" -> "./agents/coder.js") */
   importEmitPaths?: Map<string, string>;
 }

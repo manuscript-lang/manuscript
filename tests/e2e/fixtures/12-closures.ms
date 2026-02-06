@@ -1,4 +1,5 @@
 // @test: Closures and Lexical Scope
+import { filter } from "std/collections"
 
 // === Closure over parameter ===
 fn make_adder(n: number)

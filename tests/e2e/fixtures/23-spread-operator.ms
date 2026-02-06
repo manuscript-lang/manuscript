@@ -1,4 +1,5 @@
 // @test: Spread Operator - Spreading lists and maps
+import { reduce, keys, values } from "std/collections"
 
 // === Spread in list literal ===
 let a = [1, 2, 3]

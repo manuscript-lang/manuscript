@@ -4,11 +4,25 @@
 import { parseArgs } from "util";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { pathToFileURL } from "url";
 import { Glob } from "bun";
 import * as os from "os";
 import { compile, check, compileProject, formatErrors, type CompileOptions } from "./compiler";
 import { __ms_runtime } from "../runtime/runtime";
 import { findMsToml, loadMsToml } from "../modules";
+import { isCompiledBinary } from "../shared/env";
+
+function registerRuntimePlugin(): void {
+  Bun.plugin({
+    name: "manuscript-runtime",
+    setup(builder) {
+      builder.module("manuscript/runtime", () => ({
+        exports: { __ms_runtime },
+        loader: "object",
+      }));
+    },
+  });
+}
 
 const VERSION = "0.1.0";
 
@@ -161,16 +175,20 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
         await fs.mkdir(path.dirname(outPath), { recursive: true });
         await fs.writeFile(outPath, code);
       }
+      registerRuntimePlugin();
       const entryRel = path.relative(config.srcDir, filepath).replace(/\.ms$/i, "") + ".js";
       const entryOut = path.join(outDir, entryRel);
-      const proc = Bun.spawn(["bun", "run", entryOut], {
-        cwd: outDir,
-        stdin: "inherit",
-        stdout: "inherit",
-        stderr: "inherit",
-      });
-      const exitCode = await proc.exited;
-      return exitCode ?? 1;
+      const prevCwd = process.cwd();
+      try {
+        process.chdir(outDir);
+        await import(pathToFileURL(entryOut).href);
+        return process.exitCode ?? 0;
+      } catch (e: any) {
+        error(e?.message ?? String(e));
+        return 1;
+      } finally {
+        process.chdir(prevCwd);
+      }
     }
 
     const source = await readFile(filepath);

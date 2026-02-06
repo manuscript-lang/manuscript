@@ -15,6 +15,9 @@ export const EXTERN_FUNCTIONS = getExternFunctionNames(builtinsProgram);
 
 export const EXTERN_TYPES = getExternTypeNames(builtinsProgram);
 
+// Primitive types that are never constructable (use literal syntax: [] {} <> "")
+export const PRIMITIVE_EXTERN_TYPES = new Set(["string", "list", "map", "set"]);
+
 // Check if name is a built-in (used by analyzer)
 export function isBuiltin(name: string): boolean {
   return STDLIB_FUNCTIONS.has(name) || 

@@ -5,10 +5,11 @@ import * as path from "path";
 import { Parser } from "../parser";
 import type { TypeEnvironment } from "../types/environment";
 import type { Type } from "../types/types";
-import { TypeChecker, PassManager, createGlobalEnvironment, getModuleExports } from "../types";
+import { PassManager, createGlobalEnvironment, getModuleExports } from "../types";
 import { CodeGenerator } from "../codegen";
 import type * as AST from "../parser/ast";
-import { findMsToml, loadMsToml, buildModuleGraph, type ModuleGraph } from "../modules";
+import { findMsToml, loadMsToml, buildModuleGraph, type ModuleGraph, resolveSpecifier } from "../modules";
+import { resolveStdlibImports } from "../stdlib/loader";
 
 export interface CompileResult {
   success: boolean;
@@ -84,19 +85,15 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   // Phase 3: Type Checking (optional, enabled by default)
   if (options.typeCheck !== false) {
     try {
-      const checker = new TypeChecker();
-      const result = checker.check(ast);
-      
-      for (const typeError of result.errors) {
-        errors.push({
-          message: typeError.message,
-          hint: typeError.hint,
-          line: typeError.loc?.line,
-          column: typeError.loc?.column,
-          file: filename,
-          phase: "typecheck",
-        });
-      }
+      const singleGraph: ModuleGraph = {
+        order: [filename],
+        specifierToPath: new Map(),
+        errors: [],
+      };
+      const programs = new Map<string, AST.Program>([[filename, ast]]);
+      const tcResult = runProjectTypecheckLoop(singleGraph, programs, filename, true);
+      errors.push(...tcResult.errors);
+      warnings.push(...tcResult.warnings);
       
       if (errors.length > 0) {
         return { success: false, ast, errors, warnings };
@@ -158,19 +155,15 @@ export function check(source: string, options: CompileOptions = {}): CompileResu
 
   // Phase 3: Type Checking
   try {
-    const checker = new TypeChecker();
-    const result = checker.check(ast);
-    
-    for (const typeError of result.errors) {
-      errors.push({
-        message: typeError.message,
-        hint: typeError.hint,
-        line: typeError.loc?.line,
-        column: typeError.loc?.column,
-        file: filename,
-        phase: "typecheck",
-      });
-    }
+    const singleGraph: ModuleGraph = {
+      order: [filename],
+      specifierToPath: new Map(),
+      errors: [],
+    };
+    const programs = new Map<string, AST.Program>([[filename, ast]]);
+    const tcResult = runProjectTypecheckLoop(singleGraph, programs, filename, true);
+    errors.push(...tcResult.errors);
+    warnings.push(...tcResult.warnings);
   } catch (error: any) {
     errors.push({
       message: error.message,
@@ -268,6 +261,7 @@ function runProjectTypecheckLoop(
     const program = programs.get(filePath)!;
     const env = createGlobalEnvironment();
 
+    // Resolve local imports
     const thisImports = graph.specifierToPath.get(path.resolve(filePath));
     if (thisImports) {
       for (const [specifier, resolvedPath] of thisImports) {
@@ -301,6 +295,18 @@ function runProjectTypecheckLoop(
           }
         }
       }
+    }
+
+    // Resolve stdlib imports
+    const stdlibErrors = resolveStdlibImports(program, env);
+    for (const te of stdlibErrors) {
+      errors.push({
+        message: te.message,
+        line: te.loc?.line,
+        column: te.loc?.column,
+        file: filePath,
+        phase: "typecheck",
+      });
     }
 
     const result = passManager.runWithEnv(program, env);

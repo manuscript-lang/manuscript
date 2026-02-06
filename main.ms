@@ -1,3 +1,5 @@
+import { ceil } from "std/math"
+
 type Person
     name: string
     age: number
@@ -31,5 +33,4 @@ hello("asda")
 let a  = [1,2,3]
 let i = 1
 
-let b = {} 
-{}["constructor"]?.["constructor"]("Hello, World!")
+ceil(0.1)

@@ -1,4 +1,5 @@
 // @test: Pipe Operator - Function chaining with pipe
+import { map, reduce, filter } from "std/collections"
 
 // === Basic pipe ===
 let result = 5 | to_str

@@ -1,4 +1,6 @@
 // @test: Spawn Valid Patterns - comprehensive spawn usage
+import { race, sleep } from "std/concurrency"
+import { values } from "std/collections"
 
 fn work(n: number): number
   n * 2

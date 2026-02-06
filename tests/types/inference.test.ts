@@ -149,12 +149,6 @@ describe("Type Inference - Built-in Functions", () => {
     ['len("hello")', "number"],
     ['upper("hello")', "string"],
     ['lower("HELLO")', "string"],
-    ["abs(-5)", "number"],
-    ["min(1, 2)", "number"],
-    ["max(1, 2)", "number"],
-    ["floor(3.7)", "number"],
-    ["ceil(3.2)", "number"],
-    ["round(3.5)", "number"],
   ]);
 });
 
@@ -196,8 +190,7 @@ x ?? 0`;
 
 describe("Type Inference - Spawn", () => {
   test("spawn returns promise", () => {
-    // Spawn assigned and consumed via race
-    const result = inferType("let x = spawn print(1)\nrace([x])");
+    const result = inferType('import { race } from "std/concurrency"\nlet x = spawn print(1)\nrace([x])');
     expect(result).toMatch(/Promise|promise/);
   });
 });

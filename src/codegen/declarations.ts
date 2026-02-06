@@ -5,6 +5,7 @@ import { emit, pushIndent, popIndent, tempVar } from "./types";
 import { genExpr } from "./expressions";
 import { genBlock } from "./statements";
 import { EXTERN_TYPES } from "../shared/stdlib";
+import { isStdlibImport } from "../stdlib/loader";
 
 // Generate function parameters
 export function genParams(ctx: Ctx, params: AST.Parameter[], opts: GenOpts): string {
@@ -20,6 +21,16 @@ export function genParams(ctx: Ctx, params: AST.Parameter[], opts: GenOpts): str
 
 // Generate import declaration
 export function genImport(ctx: Ctx, decl: AST.ImportDecl, opts: GenOpts): void {
+  // Stdlib imports destructure from __ms_runtime
+  if (isStdlibImport(decl.source)) {
+    const items = decl.names.map(item => {
+      if (item.alias) return `${item.name}: ${item.alias}`;
+      return item.name;
+    });
+    emit(ctx, `const { ${items.join(", ")} } = __ms_runtime;`);
+    return;
+  }
+
   const items = decl.names.map(item => {
     if (item.alias) return `${item.name} as ${item.alias}`;
     return item.name;

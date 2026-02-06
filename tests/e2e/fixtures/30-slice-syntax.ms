@@ -1,4 +1,5 @@
 // @test: Slice Syntax - Array and string slicing
+import { slice, take, drop } from "std/collections"
 
 // === Basic slice with builtins ===
 let nums = [1, 2, 3, 4, 5]

@@ -1,4 +1,5 @@
 // @test: Data Processing - Transformations
+import { filter, reduce, map, find, any, all } from "std/collections"
 
 // === Filter and reduce ===
 let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

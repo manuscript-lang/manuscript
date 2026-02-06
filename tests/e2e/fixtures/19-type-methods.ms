@@ -1,4 +1,5 @@
 // @test: Type Definitions - Types with fields and defaults
+import { sqrt } from "std/math"
 
 // === Type with required fields ===
 type Point

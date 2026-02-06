@@ -202,5 +202,5 @@ export const __ms_runtime: Record<string, any> = {
   set: setFromList, union: setUnion, intersect: setIntersect, difference: setDifference, is_subset: setIsSubset,
 };
 
-// Add compiled builtins (types and pure functions from builtins.ms)
+// Add compiled pure functions from builtins.ms and stdlib modules
 Object.assign(__ms_runtime, getCompiledBuiltins(__ms_runtime));
