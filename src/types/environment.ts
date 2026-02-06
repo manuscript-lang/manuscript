@@ -1,6 +1,7 @@
 // Type Environment - Symbol tables for type checking
 import type { Type, ObjectType, FunctionType, TypeParameter, ContextBinding } from "./types";
 import { Types } from "./types";
+import { substituteTypeParams, substituteTypeInObject } from "./type-utils";
 import { Parser } from "../parser";
 import { extractStdlibTypes } from "../stdlib/extractor";
 import { stdlibSource } from "../stdlib";
@@ -121,19 +122,22 @@ export class TypeEnvironment {
   }
 
   /**
-   * Resolve a type reference to its actual type
+   * Resolve a type reference to its actual type.
+   * When ref has generic args, substitutes type params into the resolved type.
    */
   resolveType(type: Type): Type {
-    if (type.kind === "ref") {
-      const resolved = this.lookupType(type.name);
-      if (!resolved) {
-        // Return the ref as-is if not found (might be forward reference)
-        return type;
-      }
-      // TODO: Handle generic arguments
-      return resolved;
+    if (type.kind !== "ref") return type;
+    const resolved = this.lookupType(type.name);
+    if (!resolved) return type;
+    if (!type.args?.length) return resolved;
+    const typeParams = resolved.kind === "object" ? resolved.typeParams : undefined;
+    if (!typeParams?.length) return resolved;
+    const bindings = new Map<string, Type>();
+    for (let i = 0; i < typeParams.length && i < type.args.length; i++) {
+      bindings.set(typeParams[i]!.name, type.args[i]!);
     }
-    return type;
+    if (resolved.kind === "object") return substituteTypeInObject(resolved, bindings);
+    return substituteTypeParams(resolved, bindings);
   }
 
   // ============================================

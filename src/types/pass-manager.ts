@@ -2,9 +2,8 @@
 import * as AST from "../parser/ast";
 import { createGlobalEnvironment, TypeEnvironment } from "./environment";
 import { TypeCheckError } from "./errors";
-import { collectDeclarations } from "./passes/collect-declarations";
-import { inferTypes } from "./passes/infer-types";
-import { analyzeContext } from "./passes/context-analysis";
+import { CollectDeclarationsPass } from "./passes/collect-declarations-pass";
+import { InferTypesPass } from "./passes/infer-types-pass";
 
 // ============================================
 // Pass Context - Shared state between passes
@@ -27,47 +26,7 @@ export interface Pass {
   run(ctx: PassContext): void;
 }
 
-// ============================================
-// Built-in Pass Wrappers
-// ============================================
-
-export class CollectDeclarationsPass implements Pass {
-  name = "collect-declarations";
-
-  run(ctx: PassContext): void {
-    const result = collectDeclarations({ program: ctx.program, env: ctx.env });
-    ctx.env = result.env;
-    ctx.fnDecls = result.fnDecls;
-    ctx.errors.push(...result.errors);
-  }
-}
-
-export class InferTypesPass implements Pass {
-  name = "infer-types";
-
-  run(ctx: PassContext): void {
-    const result = inferTypes({
-      program: ctx.program,
-      env: ctx.env,
-      fnDecls: ctx.fnDecls,
-    });
-    ctx.errors.push(...result.errors);
-    ctx.warnings.push(...result.warnings);
-  }
-}
-
-export class ContextAnalysisPass implements Pass {
-  name = "context-analysis";
-
-  run(ctx: PassContext): void {
-    const result = analyzeContext({
-      program: ctx.program,
-      env: ctx.env,
-      fnDecls: ctx.fnDecls,
-    });
-    ctx.errors.push(...result.errors);
-  }
-}
+export { CollectDeclarationsPass, InferTypesPass };
 
 // ============================================
 // Type Check Result
@@ -94,7 +53,6 @@ export class PassManager {
     const mgr = new PassManager();
     mgr.addPass(new CollectDeclarationsPass());
     mgr.addPass(new InferTypesPass());
-    mgr.addPass(new ContextAnalysisPass());
     return mgr;
   }
 

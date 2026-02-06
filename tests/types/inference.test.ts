@@ -109,6 +109,41 @@ describe("Type Inference - Conditionals", () => {
   });
 });
 
+describe("Type Inference - Expected type propagation", () => {
+  test("return value gets expected type from function return", () => {
+    checkOk("fn f(): number\n  return 42");
+  });
+
+  test("generic identity call infers from argument and return", () => {
+    const src = `fn identity[T](x: T): T
+  x
+identity(42)`;
+    expect(inferType(src)).toBe("number");
+  });
+
+  test("match with number arms type-checks", () => {
+    checkOk(`match 1
+  1 => 42
+  _ => 0`);
+  });
+});
+
+describe("Type Inference - Patterns", () => {
+  test("let with object pattern", () => {
+    checkOk("let { a } = { a: 1 }\na");
+    expect(inferType("let { a } = { a: 1 }\na")).toBe("number");
+  });
+
+  test("let with array pattern", () => {
+    checkOk("let [x, y] = [1, 2]\nx + y");
+    expect(inferType("let [x, y] = [1, 2]\nx + y")).toBe("number");
+  });
+
+  test("let with type annotation and pattern", () => {
+    checkOk("let [a, b]: list[number] = [1, 2]\na");
+  });
+});
+
 describe("Type Inference - Built-in Functions", () => {
   typeCases([
     ['len("hello")', "number"],

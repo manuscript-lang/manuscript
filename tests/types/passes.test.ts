@@ -4,15 +4,13 @@ import {
   PassManager,
   CollectDeclarationsPass,
   InferTypesPass,
-  ContextAnalysisPass,
   type Pass,
   type PassContext,
 } from "../../src/types/pass-manager";
 import { createGlobalEnvironment, TypeEnvironment } from "../../src/types/environment";
 import { collectDeclarations } from "../../src/types/passes/collect-declarations";
 import { inferTypes } from "../../src/types/passes/infer-types";
-import { analyzeContext } from "../../src/types/passes/context-analysis";
-import { typeToString } from "../../src/types";
+import { typeToString, type Type } from "../../src/types";
 import * as TypeUtils from "../../src/types/type-utils";
 import { Types } from "../../src/types/types";
 
@@ -203,16 +201,6 @@ add("x", "y")`);
   });
 });
 
-describe("Pass 3: Context Analysis", () => {
-  test("no errors for simple program", () => {
-    const program = parse(`let x = 1`);
-    const env = createGlobalEnvironment();
-    const { env: populatedEnv, fnDecls } = collectDeclarations({ program, env });
-    const result = analyzeContext({ program, env: populatedEnv, fnDecls });
-    
-    expect(result.errors).toHaveLength(0);
-  });
-});
 
 describe("Type Utils - Pure Functions", () => {
   test("astTypeToType converts NamedType", () => {
@@ -289,6 +277,107 @@ describe("Type Utils - Pure Functions", () => {
     expect(TypeUtils.isAssignable(Types.number, Types.never, env)).toBe(false);
     const inter = Types.intersection(Types.number, Types.string);
     expect(TypeUtils.isAssignable(inter, Types.number, env)).toBe(true);
+  });
+});
+
+describe("Type Utils - unifyTypes", () => {
+  test("unify typevar with concrete type", () => {
+    const bindings = new Map<string, Type>();
+    bindings.set("T", Types.unknown);
+    TypeUtils.unifyTypes(Types.typevar("T"), Types.number, bindings);
+    expect(bindings.get("T")).toEqual(Types.number);
+  });
+
+  test("unify list element types", () => {
+    const bindings = new Map<string, Type>();
+    bindings.set("T", Types.unknown);
+    TypeUtils.unifyTypes(Types.list(Types.typevar("T")), Types.list(Types.number), bindings);
+    expect(bindings.get("T")).toEqual(Types.number);
+  });
+
+  test("unify map key and value types", () => {
+    const bindings = new Map<string, Type>();
+    bindings.set("K", Types.unknown);
+    bindings.set("V", Types.unknown);
+    TypeUtils.unifyTypes(
+      Types.map(Types.typevar("K"), Types.typevar("V")),
+      Types.map(Types.string, Types.number),
+      bindings
+    );
+    expect(bindings.get("K")).toEqual(Types.string);
+    expect(bindings.get("V")).toEqual(Types.number);
+  });
+
+  test("unify set element type", () => {
+    const bindings = new Map<string, Type>();
+    bindings.set("T", Types.unknown);
+    TypeUtils.unifyTypes(Types.set(Types.typevar("T")), Types.set(Types.bool), bindings);
+    expect(bindings.get("T")).toEqual(Types.bool);
+  });
+
+  test("unify tuple element-wise", () => {
+    const bindings = new Map<string, Type>();
+    bindings.set("A", Types.unknown);
+    bindings.set("B", Types.unknown);
+    TypeUtils.unifyTypes(
+      Types.tuple(Types.typevar("A"), Types.typevar("B")),
+      Types.tuple(Types.number, Types.string),
+      bindings
+    );
+    expect(bindings.get("A")).toEqual(Types.number);
+    expect(bindings.get("B")).toEqual(Types.string);
+  });
+
+  test("unify generic base and args", () => {
+    const bindings = new Map<string, Type>();
+    bindings.set("T", Types.unknown);
+    const base = Types.ref("Box");
+    TypeUtils.unifyTypes(
+      Types.generic(base, [Types.typevar("T")]),
+      Types.generic(base, [Types.number]),
+      bindings
+    );
+    expect(bindings.get("T")).toEqual(Types.number);
+  });
+
+  test("typevar already bound to same name does not recurse", () => {
+    const bindings = new Map<string, Type>();
+    bindings.set("T", Types.typevar("T"));
+    expect(() => {
+      TypeUtils.unifyTypes(Types.typevar("T"), Types.number, bindings);
+    }).not.toThrow();
+  });
+});
+
+describe("Environment - resolveType and type params", () => {
+  test("resolveType ref without args returns type as-is", () => {
+    const env = new TypeEnvironment();
+    const num = Types.number;
+    env.defineType("N", num);
+    expect(env.resolveType(Types.ref("N"))).toEqual(num);
+  });
+
+  test("resolveType ref with args substitutes into object typeParams", () => {
+    const env = new TypeEnvironment();
+    const boxType: import("../../src/types/types").ObjectType = {
+      kind: "object",
+      name: "Box",
+      typeParams: [{ name: "T" }],
+      properties: [Types.prop("value", Types.typevar("T"))],
+      methods: [],
+    };
+    env.defineType("Box", boxType);
+    const resolved = env.resolveType(Types.ref("Box", [Types.number]));
+    expect(resolved.kind).toBe("object");
+    const obj = resolved as import("../../src/types/types").ObjectType;
+    expect(obj.properties[0]?.type).toEqual(Types.number);
+  });
+
+  test("bindTypeParam and lookupTypeParam in child scope", () => {
+    const parent = new TypeEnvironment();
+    parent.bindTypeParam("T", Types.number);
+    const child = parent.child();
+    expect(child.lookupTypeParam("T")).toEqual(Types.number);
   });
 });
 
@@ -717,7 +806,6 @@ describe("PassManager - Configurable API", () => {
     const names = mgr.getPassNames();
     expect(names).toContain("collect-declarations");
     expect(names).toContain("infer-types");
-    expect(names).toContain("context-analysis");
   });
 
   test("addPass appends to pipeline", () => {
@@ -729,24 +817,24 @@ describe("PassManager - Configurable API", () => {
 
   test("removePass removes by name", () => {
     const mgr = PassManager.createDefault();
-    mgr.removePass("context-analysis");
-    expect(mgr.getPassNames()).toEqual(["collect-declarations", "infer-types"]);
+    mgr.removePass("infer-types");
+    expect(mgr.getPassNames()).toEqual(["collect-declarations"]);
   });
 
   test("insertBefore inserts at correct position", () => {
     const mgr = new PassManager();
     mgr.addPass(new CollectDeclarationsPass());
-    mgr.addPass(new ContextAnalysisPass());
-    mgr.insertBefore("context-analysis", new InferTypesPass());
-    expect(mgr.getPassNames()).toEqual(["collect-declarations", "infer-types", "context-analysis"]);
+    mgr.addPass(new InferTypesPass());
+    mgr.insertBefore("infer-types", { name: "custom", run() {} });
+    expect(mgr.getPassNames()).toEqual(["collect-declarations", "custom", "infer-types"]);
   });
 
   test("insertAfter inserts at correct position", () => {
     const mgr = new PassManager();
     mgr.addPass(new CollectDeclarationsPass());
-    mgr.addPass(new ContextAnalysisPass());
-    mgr.insertAfter("collect-declarations", new InferTypesPass());
-    expect(mgr.getPassNames()).toEqual(["collect-declarations", "infer-types", "context-analysis"]);
+    mgr.addPass(new InferTypesPass());
+    mgr.insertAfter("collect-declarations", { name: "custom", run() {} });
+    expect(mgr.getPassNames()).toEqual(["collect-declarations", "custom", "infer-types"]);
   });
 
   test("custom pass can be added", () => {

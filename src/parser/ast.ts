@@ -6,7 +6,8 @@ export type { SourceLocation };
 export interface BaseNode {
   kind: string;
   loc: SourceLocation;
-  resolvedType?: Type;  // Populated by type checker
+  resolvedType?: Type;   // Populated by type checker
+  expectedType?: Type;   // Set before inference where context is known
 }
 
 // ============================================

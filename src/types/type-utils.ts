@@ -624,16 +624,22 @@ export function substituteTypeInObject(objType: ObjectType, bindings: Map<string
 export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string, Type>): void {
   if (paramType.kind === "typevar") {
     const existing = bindings.get(paramType.name);
-    if (existing?.kind === "unknown") {
+    if (existing === undefined) return;
+    if (existing.kind === "unknown") {
       bindings.set(paramType.name, argType);
+    } else if (existing.kind !== "typevar" || existing.name !== paramType.name) {
+      unifyTypes(existing, argType, bindings);
     }
     return;
   }
 
   if (paramType.kind === "ref" && bindings.has(paramType.name)) {
     const existing = bindings.get(paramType.name);
-    if (existing?.kind === "unknown") {
+    if (existing === undefined) return;
+    if (existing.kind === "unknown") {
       bindings.set(paramType.name, argType);
+    } else if (existing.kind !== "ref" || existing.name !== paramType.name) {
+      unifyTypes(existing, argType, bindings);
     }
     return;
   }
@@ -645,6 +651,17 @@ export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string,
     unifyTypes(paramType.valueType, argType.valueType, bindings);
   } else if (paramType.kind === "set" && argType.kind === "set") {
     unifyTypes(paramType.elementType, argType.elementType, bindings);
+  } else if (paramType.kind === "tuple" && argType.kind === "tuple") {
+    const len = Math.min(paramType.elements.length, argType.elements.length);
+    for (let i = 0; i < len; i++) {
+      unifyTypes(paramType.elements[i]!, argType.elements[i]!, bindings);
+    }
+  } else if (paramType.kind === "generic" && argType.kind === "generic") {
+    unifyTypes(paramType.base, argType.base, bindings);
+    const len = Math.min(paramType.args.length, argType.args.length);
+    for (let i = 0; i < len; i++) {
+      unifyTypes(paramType.args[i]!, argType.args[i]!, bindings);
+    }
   } else if (paramType.kind === "promise" && argType.kind === "promise") {
     unifyTypes(paramType.resolveType, argType.resolveType, bindings);
   } else if (paramType.kind === "channel" && argType.kind === "channel") {

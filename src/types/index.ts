@@ -8,7 +8,6 @@ export {
   PassManager,
   CollectDeclarationsPass,
   InferTypesPass,
-  ContextAnalysisPass,
   type Pass,
   type PassContext,
 } from "./pass-manager";

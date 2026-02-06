@@ -1,46 +1,48 @@
-// Shared context for type inference sub-modules
 import * as AST from "../../../parser/ast";
 import type { Type, FunctionType } from "../../types";
 import type { TypeEnvironment } from "../../environment";
 import { TypeCheckError } from "../../errors";
+
+export interface Dispatch {
+  inferExpr: (ctx: InferContext, expr: AST.Expr) => Type;
+  checkStatement: (ctx: InferContext, stmt: AST.Statement) => void;
+  checkBlock: (ctx: InferContext, block: AST.Block) => void;
+}
 
 export interface InferContext {
   env: TypeEnvironment;
   errors: TypeCheckError[];
   warnings: string[];
   fnDecls: Map<string, AST.FnDecl>;
-  
-  // Current function context
+
+  inferExpr: (ctx: InferContext, expr: AST.Expr) => Type;
+  checkStatement: (ctx: InferContext, stmt: AST.Statement) => void;
+  checkBlock: (ctx: InferContext, block: AST.Block) => void;
+
   currentFunction: FunctionType | null;
   inLoop: boolean;
-  
-  // Current type context (for private member access)
   currentTypeName: string | null;
-  
-  // Spawn tracking
   unawaitedSpawns: Map<string, AST.SourceLocation>;
   lastSpawnInWithWasContextDependent: boolean;
   contextDependentSpawnsInWith: Set<string> | null;
-
-  // Context/with tracking for escape analysis
   functionWithDepth: number;
   withContextVars: Set<string>;
   withBlockDepth: number;
   insideWithContext: boolean;
-  
-  // Context requirement cache
   needsContextCache: Map<string, boolean>;
 }
 
 export function createInferContext(
   env: TypeEnvironment,
-  fnDecls: Map<string, AST.FnDecl>
+  fnDecls: Map<string, AST.FnDecl>,
+  dispatch: Dispatch
 ): InferContext {
   return {
     env,
     errors: [],
     warnings: [],
     fnDecls,
+    ...dispatch,
     currentFunction: null,
     inLoop: false,
     currentTypeName: null,
@@ -65,4 +67,12 @@ export function warning(ctx: InferContext, message: string): void {
 
 export function recordType(ctx: InferContext, node: AST.ASTNode, type: Type): void {
   (node as AST.BaseNode).resolvedType = type;
+}
+
+export function getExpectedType(node: AST.ASTNode): Type | undefined {
+  return (node as AST.BaseNode).expectedType;
+}
+
+export function setExpectedType(node: AST.ASTNode, type: Type): void {
+  (node as AST.BaseNode).expectedType = type;
 }
