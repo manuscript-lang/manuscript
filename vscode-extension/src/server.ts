@@ -27,7 +27,7 @@ import { Parser } from "../../src/parser";
 import { TypeChecker } from "../../src/types/checker";
 import { KEYWORDS } from "../../src/lexer/tokens";
 import { STDLIB_FUNCTIONS, isBuiltin } from "../../src/shared/stdlib";
-import { stdlibSource, STDLIB_PATH_URI } from "../../src/stdlib";
+import { builtinsSource, BUILTINS_PATH_URI } from "../../src/builtin";
 
 // AST traversal
 import { visit } from "../../src/types/ast-visitor";
@@ -40,11 +40,11 @@ import {
 
 // Stdlib extraction
 import {
-  collectStdlibSymbols,
+  collectBuiltinsSymbols,
   collectTypeMembersFromProgram,
-  type StdlibSymbol,
+  type BuiltinsSymbol,
   type TypeMemberInfo,
-} from "../../src/stdlib/extractor";
+} from "../../src/builtin/extractor";
 
 // LSP-specific symbol resolution
 import {
@@ -164,10 +164,9 @@ function specifierForFile(srcDir: string, filePath: string): string {
   return rel.replace(/\.ms$/i, "").replace(/\\/g, "/");
 }
 
-// Parse stdlib once on startup (comments are captured in AST during parsing)
-const stdlibProgram = new Parser(stdlibSource).parse();
-const stdlibSymbols = collectStdlibSymbols(stdlibProgram);
-const stdlibTypeMembers = collectTypeMembersFromProgram(stdlibProgram);
+const builtinsProgram = new Parser(builtinsSource).parse();
+const builtinsSymbols = collectBuiltinsSymbols(builtinsProgram);
+const builtinsTypeMembers = collectTypeMembersFromProgram(builtinsProgram);
 
 // Derived constants
 const KEYWORD_LIST = Object.keys(KEYWORDS);
@@ -198,7 +197,7 @@ documents.onDidChangeContent(e => validateDocument(e.document));
 async function validateDocument(doc: TextDocument): Promise<void> {
   const diagnostics: Diagnostic[] = [];
 
-  if (doc.uri === STDLIB_PATH_URI) {
+  if (doc.uri === BUILTINS_PATH_URI) {
     connection.sendDiagnostics({ uri: doc.uri, diagnostics: [] });
     return;
   }
@@ -298,7 +297,7 @@ connection.onCompletion((params): CompletionItem[] => {
   // After colon: type completions
   if (line.match(/:\s*$/)) {
     const items: CompletionItem[] = BUILTIN_PRIMITIVE_TYPES.map(t => ({ label: t, kind: CompletionItemKind.TypeParameter }));
-    for (const [name, sym] of stdlibSymbols) {
+    for (const [name, sym] of builtinsSymbols) {
       if (sym.kind === "type") items.push({ label: name, kind: CompletionItemKind.Class });
     }
     if (cached) {
@@ -323,15 +322,15 @@ connection.onCompletion((params): CompletionItem[] => {
       });
       const type = (bestExpr as AST.Expr | null)?.resolvedType;
       if (type) {
-        const stdlibCompletions = getTypeMemberCompletions(stdlibTypeMembers, type.kind);
-        if (stdlibCompletions.length > 0) return toCompletionItems(stdlibCompletions);
+        const builtinCompletions = getTypeMemberCompletions(builtinsTypeMembers, type.kind);
+        if (builtinCompletions.length > 0) return toCompletionItems(builtinCompletions);
         const obj = resolveObjectType(cached.program, type, cached.env);
         if (obj) return toCompletionItems(getObjectMemberCompletions(obj));
         const iface = resolveInterfaceType(cached.program, type, cached.env);
         if (iface) return toCompletionItems(getInterfaceMemberCompletions(iface));
       }
     }
-    return toCompletionItems(getTypeMemberCompletions(stdlibTypeMembers, "list"));
+    return toCompletionItems(getTypeMemberCompletions(builtinsTypeMembers, "list"));
   }
 
   // Default: keywords, functions, variables
@@ -414,7 +413,7 @@ connection.onCompletionResolve(async (item): Promise<CompletionItem> => {
   }
 
   if (data.fn) {
-    const sym = stdlibSymbols.get(data.fn);
+    const sym = builtinsSymbols.get(data.fn);
     if (sym?.doc) {
       item.documentation = { kind: MarkupKind.Markdown, value: sym.doc };
       return item;
@@ -473,7 +472,7 @@ connection.onHover(async (params): Promise<Hover | null> => {
   if (symbolHover) return hover(symbolHover.signature, symbolHover.doc);
 
   if (isProperty) {
-    for (const [, members] of stdlibTypeMembers) {
+    for (const [, members] of builtinsTypeMembers) {
       const member = members.find(m => m.name === word);
       if (member) {
         if (member.kind === "field") {
@@ -487,9 +486,8 @@ connection.onHover(async (params): Promise<Hover | null> => {
     return null;
   }
 
-  // Check stdlib functions/types
-  const stdlibSym = stdlibSymbols.get(word);
-  if (stdlibSym?.signature) return hover(stdlibSym.signature, stdlibSym.doc);
+  const builtinSym = builtinsSymbols.get(word);
+  if (builtinSym?.signature) return hover(builtinSym.signature, builtinSym.doc);
 
   // Keywords and builtins
   if (KEYWORD_LIST.includes(word)) return hover(`(keyword) ${word}`);
@@ -556,9 +554,9 @@ connection.onDefinition(async (params): Promise<Definition | null> => {
     if (depLocation) return depLocation;
   }
 
-  const stdlibSym = stdlibSymbols.get(word);
-  if (stdlibSym) {
-    return Location.create(STDLIB_PATH_URI, locToRange(stdlibSym.loc));
+  const builtinSym = builtinsSymbols.get(word);
+  if (builtinSym) {
+    return Location.create(BUILTINS_PATH_URI, locToRange(builtinSym.loc));
   }
 
   return null;

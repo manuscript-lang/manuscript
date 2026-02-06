@@ -82,7 +82,7 @@ export function genUnary(ctx: Ctx, node: AST.UnaryExpr, opts: GenOpts): string {
 export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
   let callee = genExpr(ctx, node.callee, opts);
 
-  // Prefix stdlib functions (unless it's a class method shadowing the stdlib)
+  // Prefix builtin functions (unless it's a class method shadowing the builtin)
   if (node.callee.kind === "Identifier" && 
       STDLIB_FUNCTIONS.has(node.callee.name) &&
       !opts.classFields?.has(node.callee.name)) {

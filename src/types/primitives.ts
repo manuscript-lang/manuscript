@@ -56,7 +56,7 @@ export function constructGenericType(name: string, args: Type[]): Type | undefin
 }
 
 // Type kind to stdlib extern type name mapping
-// Maps internal type kinds to the extern type names in stdlib.ms
+// Maps internal type kinds to the extern type names in builtins.ms
 // Only for true primitives (string, list, map, set)
 export const TYPE_KIND_TO_EXTERN_NAME: Record<string, string> = {
   string: "string",

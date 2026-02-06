@@ -3,8 +3,8 @@ import type { Type, ObjectType, FunctionType, TypeParameter, UsingBinding } from
 import { Types } from "./types";
 import { substituteTypeParams, substituteTypeInObject } from "./type-utils";
 import { Parser } from "../parser";
-import { extractStdlibTypes } from "../stdlib/extractor";
-import { stdlibSource } from "../stdlib";
+import { extractBuiltinsTypes } from "../builtin/extractor";
+import { builtinsSource } from "../builtin";
 import { PRIMITIVE_TYPE_MAP, type BuiltinMethodRegistry, type BuiltinMemberInfo } from "./primitives";
 
 // ============================================
@@ -242,15 +242,14 @@ export class TypeEnvironment {
 // Global Environment with Builtins
 // ============================================
 
-// Cache for parsed stdlib types (parse once)
-let stdlibTypesCache: ReturnType<typeof extractStdlibTypes> | null = null;
+let builtinsTypesCache: ReturnType<typeof extractBuiltinsTypes> | null = null;
 
-export function getStdlibTypes() {
-  if (!stdlibTypesCache) {
-    const program = new Parser(stdlibSource).parse();
-    stdlibTypesCache = extractStdlibTypes(program);
+export function getBuiltinsTypes() {
+  if (!builtinsTypesCache) {
+    const program = new Parser(builtinsSource).parse();
+    builtinsTypesCache = extractBuiltinsTypes(program);
   }
-  return stdlibTypesCache;
+  return builtinsTypesCache;
 }
 
 export function createGlobalEnvironment(): TypeEnvironment {
@@ -261,22 +260,16 @@ export function createGlobalEnvironment(): TypeEnvironment {
     env.defineType(name, type);
   }
 
-  // Load types and functions from stdlib.ms
-  const stdlib = getStdlibTypes();
+  const builtins = getBuiltinsTypes();
+  env.setBuiltinMethods(builtins.builtinMethods);
 
-  // Set builtin method registry
-  env.setBuiltinMethods(stdlib.builtinMethods);
-
-  // Register type declarations from stdlib (skip primitives - already defined)
   const primitiveNames = new Set(Object.keys(PRIMITIVE_TYPE_MAP));
-  for (const [name, type] of stdlib.types) {
-    // Skip primitive extern types - their internal types are already defined
+  for (const [name, type] of builtins.types) {
     if (primitiveNames.has(name)) continue;
     env.defineType(name, type);
   }
 
-  // Register function declarations from stdlib
-  for (const [name, type] of stdlib.functions) {
+  for (const [name, type] of builtins.functions) {
     env.define(name, type);
   }
 

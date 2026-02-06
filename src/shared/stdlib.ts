@@ -1,22 +1,19 @@
 // Standard Library Function Registry
-// Derives stdlib functions and types from stdlib.ms for single source of truth
+// Derives builtin functions and types from builtins.ms for single source of truth
 
 import { Parser } from "../parser";
-import { getStdlibFunctionNames, getExternFunctionNames, getExternTypeNames } from "../stdlib/extractor";
-import { stdlibSource } from "../stdlib";
+import { getStdlibFunctionNames, getExternFunctionNames, getExternTypeNames } from "../builtin/extractor";
+import { builtinsSource } from "../builtin";
 import { PRIMITIVE_TYPE_MAP } from "../types/primitives";
 
-// Parse stdlib once and extract names
-const stdlibProgram = new Parser(stdlibSource).parse();
+const builtinsProgram = new Parser(builtinsSource).parse();
 
-// All stdlib function names (for type checking)
-export const STDLIB_FUNCTIONS = getStdlibFunctionNames(stdlibProgram);
+export const STDLIB_FUNCTIONS = getStdlibFunctionNames(builtinsProgram);
 
 // Only extern functions need runtime implementation
-export const EXTERN_FUNCTIONS = getExternFunctionNames(stdlibProgram);
+export const EXTERN_FUNCTIONS = getExternFunctionNames(builtinsProgram);
 
-// Extern type names (extracted from stdlib.ms, replaces hardcoded BUILTIN_CONSTRUCTORS)
-export const EXTERN_TYPES = getExternTypeNames(stdlibProgram);
+export const EXTERN_TYPES = getExternTypeNames(builtinsProgram);
 
 // Check if name is a built-in (used by analyzer)
 export function isBuiltin(name: string): boolean {

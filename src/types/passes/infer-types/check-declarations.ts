@@ -169,7 +169,7 @@ function checkMethodBody(ctx: InferContext, method: AST.MethodDecl, typeObj: Obj
 function validateUsingClause(ctx: InferContext, using: AST.UsingClause): void {
   const closableType = ctx.env.lookupType("Closable") ?? null;
   if (!closableType) {
-    error(ctx, "Closable interface not found (stdlib required)", using.loc);
+    error(ctx, "Closable interface not found (builtins required)", using.loc);
     return;
   }
   for (const binding of using.bindings) {

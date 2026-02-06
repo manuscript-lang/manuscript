@@ -1,6 +1,6 @@
 // Manuscript Runtime Library
 
-import { getCompiledStdlib } from "../stdlib/compiled";
+import { getCompiledBuiltins } from "../builtin/compiled";
 
 // Context base type - factory function returning null-prototype object
 // Used as embedded marker in capability types
@@ -202,5 +202,5 @@ export const __ms_runtime: Record<string, any> = {
   set: setFromList, union: setUnion, intersect: setIntersect, difference: setDifference, is_subset: setIsSubset,
 };
 
-// Add compiled stdlib (types and pure functions from stdlib.ms)
-Object.assign(__ms_runtime, getCompiledStdlib(__ms_runtime));
+// Add compiled builtins (types and pure functions from builtins.ms)
+Object.assign(__ms_runtime, getCompiledBuiltins(__ms_runtime));

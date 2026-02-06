@@ -1,6 +1,6 @@
 // @test: Slice Syntax - Array and string slicing
 
-// === Basic slice with stdlib ===
+// === Basic slice with builtins ===
 let nums = [1, 2, 3, 4, 5]
 // @expect: [2, 3, 4]
 print(slice(nums, 1, 4))

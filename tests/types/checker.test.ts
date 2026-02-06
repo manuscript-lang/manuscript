@@ -821,7 +821,7 @@ fn make(): C
 let c = make()`);
   });
 
-  test("Closable built-in available without stdlib", () => {
+  test("Closable built-in available without builtins", () => {
     checkOk(`type R
   fn close(): void
     return

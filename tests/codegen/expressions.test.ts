@@ -194,7 +194,7 @@ describe("CodeGen - Index Advanced", () => {
 });
 
 describe("CodeGen - Pipe Advanced", () => {
-  test("pipe to stdlib function", () => {
+  test("pipe to builtin function", () => {
     expectCompiled("items | len", "__ms_runtime.len(items)");
   });
 });

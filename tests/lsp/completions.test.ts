@@ -5,7 +5,7 @@ import {
   getScopeCompletions,
   resolveObjectType,
 } from "../../src/lsp";
-import type { TypeMemberInfo } from "../../src/stdlib/extractor";
+import type { TypeMemberInfo } from "../../src/builtin/extractor";
 
 const dummyLoc = { line: 1, column: 0, offset: 0 };
 import { Parser } from "../../src/parser";

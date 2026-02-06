@@ -2,7 +2,7 @@
 import * as AST from "../parser/ast";
 import type { Type, ObjectType, InterfaceType } from "../types/types";
 import { typeToString } from "../types/types";
-import type { TypeMemberInfo } from "../stdlib/extractor";
+import type { TypeMemberInfo } from "../builtin/extractor";
 import { formatAstType, formatFunctionType, resolveObjectType, resolveInterfaceType } from "./utils";
 
 export type CompletionKind = "function" | "type" | "variable" | "property" | "method" | "keyword";
@@ -14,7 +14,7 @@ export interface CompletionInfo {
   doc?: string;
 }
 
-// Get completions for type members (stdlib types like string, list, map, set)
+// Get completions for type members (builtin types like string, list, map, set)
 export function getTypeMemberCompletions(
   typeMembers: Map<string, TypeMemberInfo[]>,
   typeName: string

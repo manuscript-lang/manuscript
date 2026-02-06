@@ -8,26 +8,22 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 
-// Import embedded stdlib source
-import { stdlibSource } from "../../src/stdlib";
+import { builtinsSource } from "../../src/builtin";
 
 let client: LanguageClient;
 
-// Virtual document provider for stdlib (read-only)
-class StdlibContentProvider implements vscode.TextDocumentContentProvider {
+class BuiltinsContentProvider implements vscode.TextDocumentContentProvider {
   provideTextDocumentContent(_uri: vscode.Uri): string {
-    return stdlibSource;
+    return builtinsSource;
   }
 }
 
 export function activate(context: ExtensionContext) {
-  // Register content provider for manuscript:// scheme (stdlib virtual documents)
-  const provider = new StdlibContentProvider();
+  const provider = new BuiltinsContentProvider();
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider("manuscript", provider)
   );
 
-  // Set language mode for stdlib virtual documents
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(async (doc) => {
       if (doc.uri.scheme === "manuscript" && doc.languageId !== "manuscript") {
@@ -50,7 +46,7 @@ export function activate(context: ExtensionContext) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
       { scheme: "file", language: "manuscript" },
-      { scheme: "manuscript", language: "manuscript" }, // Support stdlib virtual documents
+      { scheme: "manuscript", language: "manuscript" },
     ],
     synchronize: {
       fileEvents: undefined,

@@ -324,7 +324,7 @@ export function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
 
   const closableType = ctx.env.lookupType("Closable") ?? null;
   if (!closableType) {
-    error(ctx, "Closable interface not found (stdlib required)", stmt.loc);
+    error(ctx, "Closable interface not found (builtins required)", stmt.loc);
     return;
   }
 
