@@ -60,13 +60,13 @@ type Person
   test("formatAstType: known kinds and fallbacks", () => {
     const num = { kind: "NamedType" as const, name: "number", loc: {} as any };
     const str = { kind: "NamedType" as const, name: "string", loc: {} as any };
-    expect(formatAstType(undefined)).toBe("any");
+    expect(formatAstType(undefined)).toBe("unknown");
     expect(formatAstType(num)).toBe("number");
     expect(formatAstType({ kind: "GenericType", name: "list", args: [num], loc: {} as any })).toBe("list[number]");
     expect(formatAstType({ kind: "UnionType", types: [num, str], loc: {} as any })).toBe("number | string");
     expect(formatAstType({ kind: "OptionalType", inner: num, loc: {} as any })).toBe("number?");
     expect(formatAstType({ kind: "FunctionType", params: [num], returnType: num, loc: {} as any })).toBe("fn(number): number");
-    expect(formatAstType({ kind: "MapType", keyType: str, valueType: num, loc: {} as any } as any)).toBe("any");
+    expect(formatAstType({ kind: "MapType", keyType: str, valueType: num, loc: {} as any } as any)).toBe("unknown");
   });
 
   test("formatFnSignature, formatMethodSignature, formatTypeSignature from AST", () => {

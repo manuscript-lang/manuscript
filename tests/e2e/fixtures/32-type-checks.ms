@@ -62,10 +62,12 @@ print(safe_length([1, 2, 3]))
 print(safe_length(42))
 
 // === Type in conditions ===
-fn add_or_concat(a, b): string
+fn add_or_concat(a: unknown, b: unknown): string
   if typeof(a) == "string" or typeof(b) == "string"
     return to_str(a) + to_str(b)
-  return to_str(a + b)
+  if typeof(a) == "number" and typeof(b) == "number"
+    return to_str(a + b)
+  return to_str(a) + to_str(b)
 
 // @expect: hello world
 print(add_or_concat("hello ", "world"))

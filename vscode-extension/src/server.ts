@@ -171,7 +171,7 @@ const stdlibTypeMembers = collectTypeMembersFromProgram(stdlibProgram);
 
 // Derived constants
 const KEYWORD_LIST = Object.keys(KEYWORDS);
-const BUILTIN_PRIMITIVE_TYPES = ["number", "string", "bool", "null", "bytes", "any", "never", "void"];
+const BUILTIN_PRIMITIVE_TYPES = ["number", "string", "bool", "null", "bytes", "unknown", "never", "void"];
 
 // ============================================
 // LSP Initialization

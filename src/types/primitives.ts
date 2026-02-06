@@ -11,7 +11,7 @@ export const PRIMITIVE_TYPE_MAP: Record<string, Type> = {
   bool: Types.bool,
   null: Types.null,
   bytes: Types.bytes,
-  any: Types.any,
+  unknown: Types.unknown,
   never: Types.never,
   void: Types.void,
 };

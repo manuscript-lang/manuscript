@@ -248,7 +248,7 @@ print(o.inner.unknown)`, "does not exist");
     checkFails(`type Person
   name: string
   fn describe(): string
-    "{unknown} is here"`, "Unknown identifier");
+    "{undefined_var} is here"`, "Unknown identifier");
   });
 });
 

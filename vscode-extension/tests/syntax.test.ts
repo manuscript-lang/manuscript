@@ -252,7 +252,7 @@ describe("TextMate Grammar - Types", () => {
     expect(pattern.match).toContain("bool");
     expect(pattern.match).toContain("null");
     expect(pattern.match).toContain("bytes");
-    expect(pattern.match).toContain("any");
+    expect(pattern.match).toContain("unknown");
     expect(pattern.match).toContain("void");
   });
 

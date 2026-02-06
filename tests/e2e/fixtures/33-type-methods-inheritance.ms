@@ -70,11 +70,11 @@ type Product
   quantity: number = 1
   total: () => price * quantity
   fn applyDiscount(percent: number): number
-    total * (1 - percent / 100)
+    total() * (1 - percent / 100)
 
 let prod = Product("Widget", 10, 5)
 // @expect: 50
-print(prod.total)
+print(prod.total())
 // @expect: 45
 print(prod.applyDiscount(10))
 

@@ -160,7 +160,7 @@ print(doc.Auditable.created)
 print(doc.Auditable.Timestamps.created)
 
 // === Keys and Iteration ===
-fn count_fields(obj): number
+fn count_fields(obj: map[unknown, unknown]): number
   len(keys(obj))
 
 // keys() returns own enumerable keys including promoted

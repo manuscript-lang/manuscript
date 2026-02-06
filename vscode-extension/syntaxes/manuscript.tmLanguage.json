@@ -255,7 +255,7 @@
         },
         {
           "name": "support.type.primitive.manuscript",
-          "match": "\\b(number|string|bool|null|bytes|any|never|unknown|void)\\b"
+          "match": "\\b(number|string|bool|null|bytes|unknown|never|void)\\b"
         },
         {
           "name": "support.type.builtin.manuscript",

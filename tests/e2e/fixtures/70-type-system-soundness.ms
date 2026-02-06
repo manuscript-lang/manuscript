@@ -67,7 +67,7 @@ let null_val: number? = null
 
 // === Type Assertions ===
 
-let any_val: any = 42
+let any_val: unknown = 42
 let num_val = any_val as number
 
 let str_assert = "hello"

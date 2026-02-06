@@ -5,7 +5,7 @@ let m = {}
 m["__proto__"] = 1
 
 // @expect: undefined
-print(m["constructor"]?.["constructor"])
+print((m["constructor"] as map[string, unknown])?.["constructor"])
 
 // @expect: 1
 print(m["__proto__"])

@@ -34,17 +34,17 @@ print(greet("Alice"))`);
 
   test("lambda expressions", async () => {
     const { output } = await executeWithOutput(`
-let double = (x) => x * 2
+let double = (x: number) => x * 2
 print(double(5))`);
     expect(output).toContain("10");
   });
 
   test("higher-order functions", async () => {
     const { output } = await executeWithOutput(`
-fn apply(f, x)
+fn apply(f: fn(number): number, x: number): number
   return f(x)
 
-let inc = (n) => n + 1
+let inc = (n: number) => n + 1
 print(apply(inc, 5))`);
     expect(output).toContain("6");
   });

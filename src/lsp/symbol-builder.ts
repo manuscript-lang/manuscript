@@ -368,7 +368,7 @@ function collectExprReferences(ctx: BuildContext, expr: AST.Expr): void {
       const objType = expr.object.resolvedType;
       let typeName = objType ? getTypeName(ctx.env, objType) : null;
       
-      // Fallback: if type is "any", try to infer from the object expression recursively
+      // Fallback: if type is "unknown", try to infer from the object expression recursively
       if (!typeName) {
         typeName = inferTypeNameFromExpr(ctx, expr.object);
       }

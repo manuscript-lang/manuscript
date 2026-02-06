@@ -271,6 +271,10 @@ export const TypeErrors = {
     message: `Index access is not allowed on type '${type}'`,
     hint: `Index access [] is only allowed on list, map, and string types`,
   }),
+  operationNotAllowedOnUnknown: (operation?: string) => ({
+    message: operation ? `Operation '${operation}' is not allowed on type 'unknown'` : "Operations are not allowed on type 'unknown'",
+    hint: "Narrow the value first with 'x as Type' before using it",
+  }),
   genericParamMustBeIdentifier: () => ({
     message: `Generic type parameter must be an identifier`,
     hint: `Use a simple type name like T, K, V, etc.`,

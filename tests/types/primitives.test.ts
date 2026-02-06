@@ -20,7 +20,7 @@ describe("primitives", () => {
     expect(resolvePrimitiveType("string")?.kind).toBe("string");
     expect(resolvePrimitiveType("bool")?.kind).toBe("bool");
     expect(resolvePrimitiveType("null")?.kind).toBe("null");
-    expect(resolvePrimitiveType("any")?.kind).toBe("any");
+    expect(resolvePrimitiveType("unknown")?.kind).toBe("unknown");
     expect(resolvePrimitiveType("Unknown")).toBeUndefined();
   });
 

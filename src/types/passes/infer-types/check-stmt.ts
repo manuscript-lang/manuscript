@@ -95,11 +95,12 @@ export function checkStatement(ctx: InferContext, stmt: AST.Statement): void {
 }
 
 function checkLetStmt(ctx: InferContext, stmt: AST.LetStmt): void {
-  const valueType = inferExpr(ctx, stmt.value);
-  const declaredType = stmt.type ? astTypeToType(stmt.type) : valueType;
+  const declaredType = stmt.type ? astTypeToType(stmt.type) : undefined;
+  const valueType = inferExpr(ctx, stmt.value, declaredType);
+  const resolvedDeclared = declaredType ?? valueType;
 
-  if (stmt.type && !isAssignable(valueType, declaredType, ctx.env)) {
-    const err = TypeErrors.typeMismatch(typeToString(declaredType), typeToString(valueType));
+  if (stmt.type && !isAssignable(valueType, resolvedDeclared, ctx.env)) {
+    const err = TypeErrors.typeMismatch(typeToString(resolvedDeclared), typeToString(valueType));
     error(ctx, err.message, stmt.loc, err.hint);
   }
 
@@ -119,20 +120,21 @@ function checkLetStmt(ctx: InferContext, stmt: AST.LetStmt): void {
     }
   }
 
-  bindPattern(ctx, stmt.pattern, declaredType, false);
+  bindPattern(ctx, stmt.pattern, resolvedDeclared, false);
 }
 
 function checkVarStmt(ctx: InferContext, stmt: AST.VarStmt): void {
-  const valueType = inferExpr(ctx, stmt.value);
-  const declaredType = stmt.type ? astTypeToType(stmt.type) : valueType;
+  const declaredType = stmt.type ? astTypeToType(stmt.type) : undefined;
+  const valueType = inferExpr(ctx, stmt.value, declaredType);
+  const resolvedDeclared = declaredType ?? valueType;
 
-  if (stmt.type && !isAssignable(valueType, declaredType, ctx.env)) {
-    const err = TypeErrors.typeMismatch(typeToString(declaredType), typeToString(valueType));
+  if (stmt.type && !isAssignable(valueType, resolvedDeclared, ctx.env)) {
+    const err = TypeErrors.typeMismatch(typeToString(resolvedDeclared), typeToString(valueType));
     error(ctx, err.message, stmt.loc, err.hint);
   }
 
   try {
-    ctx.env.define(stmt.name, declaredType, true);
+    ctx.env.define(stmt.name, resolvedDeclared, true);
   } catch (e) {
     const err = TypeErrors.variableAlreadyDefined(stmt.name);
     error(ctx, err.message, stmt.loc, err.hint);
@@ -141,7 +143,7 @@ function checkVarStmt(ctx: InferContext, stmt: AST.VarStmt): void {
 
 function checkAssignStmt(ctx: InferContext, stmt: AST.AssignStmt): void {
   const targetType = inferExpr(ctx, stmt.target);
-  const valueType = inferExpr(ctx, stmt.value);
+  const valueType = inferExpr(ctx, stmt.value, targetType);
 
   if (stmt.target.kind === "Identifier") {
     const symbol = ctx.env.lookup(stmt.target.name);
@@ -326,6 +328,34 @@ function applyTypeNarrowing(ctx: InferContext, condition: AST.Expr, env: any, tr
         }
       }
     }
+  } else if (condition.kind === "BinaryExpr" && condition.op === "and") {
+    applyTypeNarrowing(ctx, condition.left, env, truthyBranch);
+    applyTypeNarrowing(ctx, condition.right, env, truthyBranch);
+  } else if (condition.kind === "BinaryExpr" &&
+             (condition.op === "==" || condition.op === "!=") &&
+             condition.left.kind === "CallExpr") {
+    const call = condition.left as AST.CallExpr;
+    const callee = call.callee;
+    const typeStr = condition.right.kind === "Literal" && typeof condition.right.value === "string" ? condition.right.value : null;
+    if (callee.kind === "Identifier" && callee.name === "typeof" && call.args.length === 1 && typeStr) {
+      const raw = call.args[0];
+      const argExpr: AST.Expr | undefined = raw && "value" in raw ? (raw as { value: AST.Expr }).value : (raw as AST.Expr);
+      if (argExpr?.kind === "Identifier") {
+        const varName = (argExpr as AST.Identifier).name;
+        const symbol = ctx.env.lookup(varName);
+        if (symbol) {
+          let narrowedType: Type | null = null;
+          if (typeStr === "number") narrowedType = Types.number;
+          else if (typeStr === "string") narrowedType = Types.string;
+          else if (typeStr === "boolean") narrowedType = Types.bool;
+          else if (typeStr === "null") narrowedType = Types.null;
+          if (narrowedType) {
+            const isEqual = (condition.op === "==" && truthyBranch) || (condition.op === "!=" && !truthyBranch);
+            if (isEqual) env.define(varName, narrowedType, symbol.mutable);
+          }
+        }
+      }
+    }
   } else if (condition.kind === "UnaryExpr" && (condition.op === "not" || condition.op === "!")) {
     applyTypeNarrowing(ctx, condition.operand, env, !truthyBranch);
   }
@@ -373,7 +403,7 @@ function checkMatchStmt(ctx: InferContext, stmt: AST.MatchStmt): void {
 
     if (arm.guard) {
       const guardType = inferExpr(ctx, arm.guard);
-      if (guardType.kind !== "bool" && guardType.kind !== "any") {
+      if (guardType.kind !== "bool") {
         const err = TypeErrors.guardMustBeBool(typeToString(guardType));
         error(ctx, err.message, arm.guard.loc, err.hint);
       }
@@ -600,7 +630,7 @@ function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
   const fnEnv = ctx.env.child();
 
   for (const param of decl.params) {
-    const paramType = param.type ? astTypeToType(param.type) : Types.any;
+    const paramType = param.type ? astTypeToType(param.type) : Types.unknown;
     fnEnv.define(param.name, paramType);
   }
 
@@ -640,7 +670,7 @@ function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
       );
     }
 
-    if (decl.returnType && fnType.returnType.kind !== "promise" && fnType.returnType.kind !== "any") {
+    if (decl.returnType && fnType.returnType.kind !== "promise" && fnType.returnType.kind !== "unknown") {
       let implicitReturnType = inferExpr(ctx, lastStmt.expr);
       const declaredReturnType = fnType.returnType;
       if (implicitReturnType.kind === "promise") {
@@ -694,13 +724,18 @@ function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
     if (member.kind === "FieldDecl" && member.defaultValue) {
       const savedEnv = ctx.env;
       ctx.env = typeEnv;
-      const valueType = inferExpr(ctx, member.defaultValue);
+      const declaredType = member.type ? astTypeToType(member.type) : undefined;
+      const valueType = inferExpr(ctx, member.defaultValue, declaredType);
+      if (!member.type && member.computed) {
+        const prop = objType.properties.find(p => p.name === member.name);
+        if (prop) prop.type = valueType;
+      }
       ctx.env = savedEnv;
       
       if (member.type) {
-        const declaredType = astTypeToType(member.type);
-        if (!isAssignable(valueType, declaredType, ctx.env)) {
-          const err = TypeErrors.typeMismatch(typeToString(declaredType), typeToString(valueType));
+        const expectedType = astTypeToType(member.type);
+        if (!isAssignable(valueType, expectedType, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(valueType));
           error(ctx, err.message, member.loc, err.hint);
         }
       }
@@ -737,13 +772,14 @@ function checkKeywordTypeUse(ctx: InferContext, use: AST.KeywordTypeUse): void {
     if (member.kind === "FieldDecl" && member.defaultValue) {
       const savedEnv = ctx.env;
       ctx.env = typeEnv;
-      const valueType = inferExpr(ctx, member.defaultValue);
+      const declaredType = member.type ? astTypeToType(member.type) : undefined;
+      const valueType = inferExpr(ctx, member.defaultValue, declaredType);
       ctx.env = savedEnv;
       
       if (member.type) {
-        const declaredType = astTypeToType(member.type);
-        if (!isAssignable(valueType, declaredType, ctx.env)) {
-          const err = TypeErrors.typeMismatch(typeToString(declaredType), typeToString(valueType));
+        const expectedType = astTypeToType(member.type);
+        if (!isAssignable(valueType, expectedType, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(valueType));
           error(ctx, err.message, member.loc, err.hint);
         }
       }
@@ -774,12 +810,12 @@ function checkKeywordTypeMethod(ctx: InferContext, use: AST.KeywordTypeUse, meth
   const methodEnv = typeFieldsEnv.child();
 
   for (const param of method.params) {
-    const paramType = param.type ? astTypeToType(param.type) : Types.any;
+    const paramType = param.type ? astTypeToType(param.type) : Types.unknown;
     methodEnv.define(param.name, paramType);
   }
 
   const methodType = typeObj.methods.find(m => m.name === method.name);
-  const fnType = methodType?.type || Types.fn([], Types.any);
+  const fnType = methodType?.type || Types.fn([], Types.unknown);
 
   const savedEnv = ctx.env;
   const savedFn = ctx.currentFunction;
@@ -832,13 +868,13 @@ function checkMethodDecl(ctx: InferContext, typeDecl: AST.TypeDecl, method: AST.
 
   // Add method parameters (can shadow fields)
   for (const param of method.params) {
-    const paramType = param.type ? astTypeToType(param.type) : Types.any;
+    const paramType = param.type ? astTypeToType(param.type) : Types.unknown;
     methodEnv.define(param.name, paramType);
   }
 
   // Get the method's function type
   const methodType = typeObj.methods.find(m => m.name === method.name);
-  const fnType = methodType?.type || Types.fn([], Types.any);
+  const fnType = methodType?.type || Types.fn([], Types.unknown);
 
   const savedEnv = ctx.env;
   const savedFn = ctx.currentFunction;

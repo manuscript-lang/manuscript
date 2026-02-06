@@ -41,25 +41,25 @@ print(count_evens_odds(nums))
 // === Object processing ===
 let users = [{name: "Alice", age: 30}, {name: "Bob", age: 25}]
 
-let names = map(users, (u) => u.name)
+let names = map(users, (u: map[string, string or number]) => u["name"] as string)
 // @expect: [Alice, Bob]
 print(names)
 
-let ages = map(users, (u) => u.age)
-let total_age = reduce(ages, 0, (a, b) => a + b)
+let ages = map(users, (u: map[string, string or number]) => u["age"] as number)
+let total_age = reduce(ages, 0, (a: number, b: number) => a + b)
 // @expect: 55
 print(total_age)
 
 // === Find element ===
-let found = find(users, (u) => u.name == "Bob")
+let found = find(users, (u: map[string, string or number]) => (u["name"] as string) == "Bob")
 // @expect: {name: Bob, age: 25}
 print(found)
 
 // === Any/All predicates ===
-let any_adult = any(ages, (a) => a >= 18)
+let any_adult = any(ages, (a: number) => a >= 18)
 // @expect: true
 print(any_adult)
 
-let all_adult = all(ages, (a) => a >= 18)
+let all_adult = all(ages, (a: number) => a >= 18)
 // @expect: true
 print(all_adult)

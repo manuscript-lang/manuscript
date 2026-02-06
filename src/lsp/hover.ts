@@ -177,7 +177,7 @@ function getHoverForDefinition(
         const paramType = findParameterType(program, parsed.parent, parsed.name);
         return { signature: `(parameter) ${parsed.name}: ${paramType ? formatAstType(paramType) : "any"}` };
       }
-      return { signature: `(parameter) ${def.name}: any` };
+      return { signature: `(parameter) ${def.name}: unknown` };
     }
   }
   return null;

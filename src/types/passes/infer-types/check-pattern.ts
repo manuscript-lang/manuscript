@@ -18,12 +18,12 @@ function getLiteralType(value: unknown): Type {
   if (typeof value === "string") return Types.string;
   if (typeof value === "boolean") return Types.bool;
   if (value === null) return Types.null;
-  return Types.any;
+  return Types.unknown;
 }
 
 // Check if a type can match a literal
 function canMatchLiteral(literalType: Type, expectedType: Type): boolean {
-  if (expectedType.kind === "any" || expectedType.kind === literalType.kind) return true;
+  if (expectedType.kind === "unknown" || expectedType.kind === literalType.kind) return true;
   if (expectedType.kind === "union") {
     return expectedType.types.some(t => canMatchLiteral(literalType, t));
   }
@@ -35,7 +35,7 @@ function canMatchLiteral(literalType: Type, expectedType: Type): boolean {
 
 // Check if pattern type is compatible with expected type
 function isPatternTypeCompatible(patternType: Type, expectedType: Type, ctx: InferContext): boolean {
-  if (expectedType.kind === "any") return true;
+  if (expectedType.kind === "unknown") return true;
   if (isAssignable(patternType, expectedType, ctx.env)) return true;
   if (expectedType.kind === "union") {
     return expectedType.types.some(t => isAssignable(patternType, t, ctx.env));
@@ -48,7 +48,7 @@ function isPatternTypeCompatible(patternType: Type, expectedType: Type, ctx: Inf
 
 // Check if a type is numeric (for range patterns)
 function isNumeric(type: Type): boolean {
-  if (type.kind === "number" || type.kind === "any") return true;
+  if (type.kind === "number" || type.kind === "unknown") return true;
   if (type.kind === "union") return type.types.some(isNumeric);
   if (type.kind === "optional") return isNumeric(type.inner);
   return false;
@@ -85,7 +85,7 @@ export function checkPattern(ctx: InferContext, pattern: AST.Pattern, expectedTy
       } else {
         const err = TypeErrors.patternTypeMismatch("rest", typeToString(expectedType));
         error(ctx, err.message, pattern.loc, err.hint);
-        ctx.env.define(pattern.name, Types.list(Types.any));
+        ctx.env.define(pattern.name, Types.list(Types.unknown));
       }
       break;
     
@@ -121,15 +121,15 @@ function handleObjectPattern(ctx: InferContext, pattern: AST.ObjectPattern, reso
     return;
   }
   
-  if (resolved.kind !== "object" && resolved.kind !== "any") {
+  if (resolved.kind !== "object" && resolved.kind !== "unknown") {
     const err = TypeErrors.patternTypeMismatch("object", typeToString(expectedType));
     error(ctx, err.message, pattern.loc, err.hint);
-    for (const prop of pattern.properties) checkPattern(ctx, prop.pattern, Types.any);
+    for (const prop of pattern.properties) checkPattern(ctx, prop.pattern, Types.unknown);
     return;
   }
   
-  if (resolved.kind === "any") {
-    for (const prop of pattern.properties) checkPattern(ctx, prop.pattern, Types.any);
+  if (resolved.kind === "unknown") {
+    for (const prop of pattern.properties) checkPattern(ctx, prop.pattern, Types.unknown);
     return;
   }
   
@@ -139,7 +139,7 @@ function handleObjectPattern(ctx: InferContext, pattern: AST.ObjectPattern, reso
     if (!propType) {
       const err = TypeErrors.unknownPatternProperty(prop.key, typeToString(expectedType));
       error(ctx, err.message, prop.pattern.loc ?? pattern.loc, err.hint);
-      checkPattern(ctx, prop.pattern, Types.any);
+      checkPattern(ctx, prop.pattern, Types.unknown);
     } else {
       checkPattern(ctx, prop.pattern, propType.type);
     }
@@ -151,7 +151,7 @@ function handleArrayPattern(ctx: InferContext, pattern: AST.ArrayPattern, resolv
   if (resolved.kind !== "list" && resolved.kind !== "tuple") {
     const err = TypeErrors.patternTypeMismatch("array", typeToString(expectedType));
     error(ctx, err.message, pattern.loc, err.hint);
-    for (const el of pattern.elements) checkPattern(ctx, el, Types.any);
+    for (const el of pattern.elements) checkPattern(ctx, el, Types.unknown);
     return;
   }
   
@@ -169,9 +169,9 @@ function handleArrayPattern(ctx: InferContext, pattern: AST.ArrayPattern, resolv
     for (const el of pattern.elements) {
       if (el.kind === "RestPattern") {
         const rest = resolved.elements.slice(idx);
-        ctx.env.define(el.name, rest.length > 0 ? Types.list(Types.union(...rest)) : Types.list(Types.any));
+        ctx.env.define(el.name, rest.length > 0 ? Types.list(Types.union(...rest)) : Types.list(Types.unknown));
       } else {
-        checkPattern(ctx, el, idx < resolved.elements.length ? resolved.elements[idx]! : Types.any);
+        checkPattern(ctx, el, idx < resolved.elements.length ? resolved.elements[idx]! : Types.unknown);
         idx++;
       }
     }
@@ -209,17 +209,17 @@ export function bindPattern(ctx: InferContext, pattern: AST.Pattern, type: Type,
           if (!propType) {
             const err = TypeErrors.unknownPatternProperty(prop.key, typeToString(type));
             error(ctx, err.message, prop.pattern.loc ?? pattern.loc, err.hint);
-            bindPattern(ctx, prop.pattern, Types.any, mutable);
+            bindPattern(ctx, prop.pattern, Types.unknown, mutable);
           } else {
             bindPattern(ctx, prop.pattern, propType.type, mutable);
           }
         }
-      } else if (resolved.kind === "any") {
-        for (const prop of pattern.properties) bindPattern(ctx, prop.pattern, Types.any, mutable);
+      } else if (resolved.kind === "unknown") {
+        for (const prop of pattern.properties) bindPattern(ctx, prop.pattern, Types.unknown, mutable);
       } else {
         const err = TypeErrors.patternTypeMismatch("object", typeToString(type));
         error(ctx, err.message, pattern.loc, err.hint);
-        for (const prop of pattern.properties) bindPattern(ctx, prop.pattern, Types.any, mutable);
+        for (const prop of pattern.properties) bindPattern(ctx, prop.pattern, Types.unknown, mutable);
       }
       break;
       
@@ -234,16 +234,16 @@ export function bindPattern(ctx: InferContext, pattern: AST.Pattern, type: Type,
         for (const el of pattern.elements) {
           if (el.kind === "RestPattern") {
             const rest = resolved.elements.slice(idx);
-            ctx.env.define(el.name, Types.list(rest.length > 0 ? Types.union(...rest) : Types.any), mutable);
+            ctx.env.define(el.name, Types.list(rest.length > 0 ? Types.union(...rest) : Types.unknown), mutable);
           } else {
-            bindPattern(ctx, el, idx < resolved.elements.length ? resolved.elements[idx]! : Types.any, mutable);
+            bindPattern(ctx, el, idx < resolved.elements.length ? resolved.elements[idx]! : Types.unknown, mutable);
             idx++;
           }
         }
       } else {
         const err = TypeErrors.patternTypeMismatch("array", typeToString(type));
         error(ctx, err.message, pattern.loc, err.hint);
-        for (const el of pattern.elements) bindPattern(ctx, el, Types.any, mutable);
+        for (const el of pattern.elements) bindPattern(ctx, el, Types.unknown, mutable);
       }
       break;
       
@@ -252,7 +252,7 @@ export function bindPattern(ctx: InferContext, pattern: AST.Pattern, type: Type,
       else {
         const err = TypeErrors.patternTypeMismatch("rest", typeToString(type));
         error(ctx, err.message, pattern.loc, err.hint);
-        ctx.env.define(pattern.name, Types.list(Types.any), mutable);
+        ctx.env.define(pattern.name, Types.list(Types.unknown), mutable);
       }
       break;
   }

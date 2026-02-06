@@ -33,7 +33,7 @@ print(sum_list([1, 2, 3, 4, 5]))
 // === Reverse list (recursive) ===
 fn reverse_rec(items: list[number]): list[number]
   if len(items) <= 1 then return items
-  concat(reverse_rec(slice(items, 1, len(items))), [items[0]])
+  (concat(reverse_rec(slice(items, 1, len(items))), [items[0]] as list[number]) as list[number])
 
 // @expect: [5, 4, 3, 2, 1]
 print(reverse_rec([1, 2, 3, 4, 5]))

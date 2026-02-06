@@ -27,9 +27,9 @@ print(a)`);
   test("list processing pipeline", async () => {
     const { output } = await executeWithOutput(`
 let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-let evens = filter(nums, (x) => x % 2 == 0)
-let doubled = map(evens, (x) => x * 2)
-let sum = reduce(doubled, 0, (a, b) => a + b)
+let evens = filter(nums, (x: number) => x % 2 == 0)
+let doubled = map(evens, (x: number) => x * 2)
+let sum = reduce(doubled, 0, (a: number, b: number) => a + b)
 print(sum)`);
     expect(output).toContain("60");
   });
@@ -37,8 +37,8 @@ print(sum)`);
   test("string manipulation", async () => {
     const { output } = await executeWithOutput(`
 let words = ["hello", "world", "foo", "bar"]
-let upper_words = map(words, (w) => upper(w))
-let long_words = filter(upper_words, (w) => len(w) > 3)
+let upper_words = map(words, (w: string) => upper(w))
+let long_words = filter(upper_words, (w: string) => len(w) > 3)
 print(long_words)`);
     expect(output[0]).toContain("HELLO");
     expect(output[0]).toContain("WORLD");
@@ -47,10 +47,10 @@ print(long_words)`);
   test("nested data structures", async () => {
     const { output } = await executeWithOutput(`
 let users = [{name: "Alice", age: 30}, {name: "Bob", age: 25}]
-let names = map(users, (u) => u.name)
+let names = map(users, (u: map[string, string or number]) => u["name"] as string)
 print(names)
-let ages = map(users, (u) => u.age)
-let total_age = reduce(ages, 0, (a, b) => a + b)
+let ages = map(users, (u: map[string, string or number]) => u["age"] as number)
+let total_age = reduce(ages, 0, (a: number, b: number) => a + b)
 print(total_age)`);
     expect(output[0]).toContain("Alice");
     expect(output[1]).toBe("55");

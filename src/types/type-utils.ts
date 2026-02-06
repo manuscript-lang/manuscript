@@ -15,9 +15,9 @@ export function astTypeToType(astType: AST.TypeExpr): Type {
         return primitiveType;
       }
       // Handle unparameterized generic types
-      if (astType.name === "list") return Types.list(Types.any);
-      if (astType.name === "map") return Types.map(Types.any, Types.any);
-      if (astType.name === "set") return Types.set(Types.any);
+      if (astType.name === "list") return Types.list(Types.unknown);
+      if (astType.name === "map") return Types.map(Types.unknown, Types.unknown);
+      if (astType.name === "set") return Types.set(Types.unknown);
       return Types.ref(astType.name);
     }
     case "GenericType": {
@@ -47,7 +47,7 @@ export function astTypeToType(astType: AST.TypeExpr): Type {
       // The predicate info is used during type checking for narrowing
       return Types.bool;
     default:
-      return Types.any;
+      return Types.unknown;
   }
 }
 
@@ -68,12 +68,12 @@ export function resolveTypeName(name: string, env: TypeEnvironment): Type {
 export function fnDeclToType(decl: AST.FnDecl): FunctionType {
   const params = decl.params.map(p => ({
     name: p.name,
-    type: p.type ? astTypeToType(p.type) : Types.any,
+    type: p.type ? astTypeToType(p.type) : Types.unknown,
     optional: p.optional,
     rest: p.rest,
   }));
 
-  const returnType = decl.returnType ? astTypeToType(decl.returnType) : Types.any;
+  const returnType = decl.returnType ? astTypeToType(decl.returnType) : Types.unknown;
 
   const context: ContextBinding[] = decl.using?.bindings.map(c => ({
     name: c.name,
@@ -99,12 +99,12 @@ export function fnDeclToType(decl: AST.FnDecl): FunctionType {
 export function methodToFunctionType(method: AST.MethodDecl): FunctionType {
   const params = method.params.map(p => ({
     name: p.name,
-    type: p.type ? astTypeToType(p.type) : Types.any,
+    type: p.type ? astTypeToType(p.type) : Types.unknown,
     optional: p.optional,
     rest: p.rest,
   }));
 
-  const returnType = method.returnType ? astTypeToType(method.returnType) : Types.any;
+  const returnType = method.returnType ? astTypeToType(method.returnType) : Types.unknown;
 
   const context: ContextBinding[] = method.using?.bindings.map(c => ({
     name: c.name,
@@ -128,8 +128,9 @@ export function methodToFunctionType(method: AST.MethodDecl): FunctionType {
 
 // Check if source type is assignable to target type
 export function isAssignable(source: Type, target: Type, env: TypeEnvironment): boolean {
-  if (source.kind === "any" || target.kind === "any") return true;
-  
+  if (target.kind === "unknown") return true;
+  if (source.kind === "unknown") return false;
+
   // never is assignable to anything (bottom type)
   if (source.kind === "never") return true;
   // nothing is assignable to never except never itself
@@ -151,33 +152,33 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
       case "ref":
         return (resolvedSource as any).name === (resolvedTarget as any).name;
       case "list":
-        if ((resolvedTarget as any).elementType.kind === "any") return true;
+        if ((resolvedTarget as any).elementType.kind === "unknown") return true;
         // Lists are invariant for mutation safety
         return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env) &&
                isAssignable((resolvedTarget as any).elementType, (resolvedSource as any).elementType, env);
       case "map":
-        if ((resolvedTarget as any).keyType.kind === "any" && (resolvedTarget as any).valueType.kind === "any") return true;
+        if ((resolvedTarget as any).keyType.kind === "unknown" && (resolvedTarget as any).valueType.kind === "unknown") return true;
         // Maps are invariant for mutation safety
         return isAssignable((resolvedSource as any).keyType, (resolvedTarget as any).keyType, env) &&
                isAssignable((resolvedTarget as any).keyType, (resolvedSource as any).keyType, env) &&
                isAssignable((resolvedSource as any).valueType, (resolvedTarget as any).valueType, env) &&
                isAssignable((resolvedTarget as any).valueType, (resolvedSource as any).valueType, env);
       case "channel":
-        if ((resolvedTarget as any).elementType.kind === "any") return true;
+        if ((resolvedTarget as any).elementType.kind === "unknown") return true;
         // Channels are invariant (read and write)
         return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env) &&
                isAssignable((resolvedTarget as any).elementType, (resolvedSource as any).elementType, env);
       case "promise":
-        if ((resolvedTarget as any).resolveType.kind === "any") return true;
+        if ((resolvedTarget as any).resolveType.kind === "unknown") return true;
         // Promises are covariant (read-only)
         return isAssignable((resolvedSource as any).resolveType, (resolvedTarget as any).resolveType, env);
       case "set":
-        if ((resolvedTarget as any).elementType.kind === "any") return true;
+        if ((resolvedTarget as any).elementType.kind === "unknown") return true;
         // Sets are invariant for mutation safety
         return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env) &&
                isAssignable((resolvedTarget as any).elementType, (resolvedSource as any).elementType, env);
       case "stream":
-        if ((resolvedTarget as any).elementType.kind === "any") return true;
+        if ((resolvedTarget as any).elementType.kind === "unknown") return true;
         // Streams are covariant (read-only)
         return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env);
       case "tuple":
@@ -211,10 +212,9 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
 
   // Handle cross-kind assignability
   
-  // Type variable is assignable to any (or the same type variable)
+  // Type variable is assignable to unknown (or the same type variable)
   if (resolvedSource.kind === "typevar") {
-    // A type variable can be assigned to any or to itself
-    return resolvedTarget.kind === "any" || 
+    return resolvedTarget.kind === "unknown" ||
            (resolvedTarget.kind === "typevar" && (resolvedSource as any).name === (resolvedTarget as any).name);
   }
   
@@ -310,11 +310,6 @@ function isObjectAssignable(source: ObjectType, target: ObjectType, env: TypeEnv
 // Check function type assignability with proper variance
 // Functions are contravariant in parameters and covariant in return type
 function isFunctionAssignable(source: FunctionType, target: FunctionType, env: TypeEnvironment): boolean {
-  // If source params have any `any` types, be permissive (common with untyped lambdas)
-  // This maintains backward compatibility while still catching obviously wrong types
-  const sourceHasAnyParam = source.params.some(p => p.type.kind === "any");
-  if (sourceHasAnyParam) return true;
-  
   // Check parameter counts (source can have fewer required params)
   const sourceRequired = source.params.filter(p => !p.optional && !p.rest).length;
   const targetRequired = target.params.filter(p => !p.optional && !p.rest).length;
@@ -390,7 +385,7 @@ export function typesEqual(a: Type, b: Type): boolean {
     case "null":
     case "bytes":
     case "void":
-    case "any":
+    case "unknown":
     case "never":
       return true;
     case "ref":
@@ -465,8 +460,7 @@ export function typeIsContext(type: Type, env: TypeEnvironment): boolean {
 export function isIterable(type: Type): boolean {
   const kind = type.kind;
   if (kind === "list" || kind === "set" || kind === "string" ||
-      kind === "map" || kind === "stream" || kind === "channel" ||
-      kind === "any") {
+      kind === "map" || kind === "stream" || kind === "channel") {
     return true;
   }
   // Check if it's a generic type like Channel[T]
@@ -489,12 +483,12 @@ export function getIterableElementType(type: Type): Type {
   if (type.kind === "map") return Types.tuple(type.keyType, type.valueType);
   if (type.kind === "stream") return type.elementType;
   if (type.kind === "channel") return type.elementType;
-  return Types.any;
+  return Types.unknown;
 }
 
 // Find common type of multiple types
 export function findCommonType(types: Type[]): Type {
-  if (types.length === 0) return Types.any;
+  if (types.length === 0) return Types.unknown;
   if (types.length === 1) return types[0]!;
 
   const first = types[0]!;
@@ -630,7 +624,7 @@ export function substituteTypeInObject(objType: ObjectType, bindings: Map<string
 export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string, Type>): void {
   if (paramType.kind === "typevar") {
     const existing = bindings.get(paramType.name);
-    if (existing?.kind === "any") {
+    if (existing?.kind === "unknown") {
       bindings.set(paramType.name, argType);
     }
     return;
@@ -638,7 +632,7 @@ export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string,
 
   if (paramType.kind === "ref" && bindings.has(paramType.name)) {
     const existing = bindings.get(paramType.name);
-    if (existing?.kind === "any") {
+    if (existing?.kind === "unknown") {
       bindings.set(paramType.name, argType);
     }
     return;
@@ -671,11 +665,11 @@ export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string,
 
 // Format an AST type expression to string
 export function formatAstType(t: AST.TypeExpr | undefined): string {
-  if (!t) return "any";
+  if (!t) return "unknown";
   try {
     return typeToString(astTypeToType(t));
   } catch {
-    return "any";
+    return "unknown";
   }
 }
 

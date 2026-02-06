@@ -115,7 +115,7 @@ extern type map[K, V]
   // Returns list of values
   fn values(): list[V]
   // Returns list of [key, value] pairs
-  fn entries(): list[list[any]]
+  fn entries(): list[list[unknown]]
   // Removes all entries
   fn clear(): void
 
@@ -156,9 +156,9 @@ extern type Context
 
 // I/O
 // Prints values to stdout
-extern fn print(...args: any): void
+extern fn print(...args: unknown): void
 // Logs values for debugging
-extern fn log(...args: any): void
+extern fn log(...args: unknown): void
 
 // Math
 // Returns the square root
@@ -208,7 +208,7 @@ extern fn keys[K, V](m: map[K, V]): list[K]
 // Returns list of map values
 extern fn values[K, V](m: map[K, V]): list[V]
 // Returns list of [key, value] pairs
-extern fn entries[K, V](m: map[K, V]): list[list[any]]
+extern fn entries[K, V](m: map[K, V]): list[list[unknown]]
 // Returns a sorted copy of the list
 extern fn sort[T](list: list[T]): list[T]
 
@@ -224,7 +224,7 @@ extern type Stream[T]
 
 // Concurrency
 // Returns first promise to resolve
-extern fn race(promises: list[Promise[any]]): Promise[any]
+extern fn race[T](promises: list[Promise[T]]): Promise[T]
 // Fails promise if it takes longer than ms
 extern fn timeout[T](ms: number, p: Promise[T]): Promise[T]
 // Returns a promise that resolves after ms
@@ -260,9 +260,9 @@ extern context Claude
   // Sends a prompt and returns the response
   fn ask(prompt: string): string
   // Completes a chat with messages
-  fn complete(messages: list[any]): any
+  fn complete(messages: list[unknown]): unknown
   // Streams a chat completion
-  fn stream(messages: list[any]): any
+  fn stream(messages: list[unknown]): unknown
   fn close(): void
 
 extern context GPT
@@ -273,21 +273,21 @@ extern context GPT
   // Sends a prompt and returns the response
   fn ask(prompt: string): string
   // Completes a chat with messages
-  fn complete(messages: list[any]): any
+  fn complete(messages: list[unknown]): unknown
   // Streams a chat completion
-  fn stream(messages: list[any]): any
+  fn stream(messages: list[unknown]): unknown
   fn close(): void
 
 extern context MockLLM
-  responses?: list[any]
+  responses?: list[unknown]
   defaultReply?: string
   delay?: number
   // Sends a prompt and returns the mock response
   fn ask(prompt: string): string
   // Completes a chat with mock messages
-  fn complete(messages: list[any]): any
+  fn complete(messages: list[unknown]): unknown
   // Streams a mock chat completion
-  fn stream(messages: list[any]): any
+  fn stream(messages: list[unknown]): unknown
   // Adds a mock response pattern
   fn addResponse(pattern: string, reply: string): void
   fn close(): void
@@ -305,7 +305,7 @@ extern context LocalFilesystem
   // Returns true if path exists
   fn exists(path: string): bool
   // Lists directory contents
-  fn list(path: string): list[any]
+  fn list(path: string): list[unknown]
   // Finds files matching glob pattern
   fn glob(pattern: string): list[string]
   // Creates directory recursively
@@ -323,7 +323,7 @@ extern context MockFilesystem
   fn read(path: string): string
   fn write(path: string, content: string): void
   fn exists(path: string): bool
-  fn list(path: string): list[any]
+  fn list(path: string): list[unknown]
   fn glob(pattern: string): list[string]
   fn mkdir(path: string): void
   fn remove(path: string): void
@@ -339,7 +339,7 @@ extern context Filesystem
   fn read(path: string): string
   fn write(path: string, content: string): void
   fn exists(path: string): bool
-  fn list(path: string): list[any]
+  fn list(path: string): list[unknown]
   fn glob(pattern: string): list[string]
   fn mkdir(path: string): void
   fn remove(path: string): void
@@ -355,30 +355,30 @@ extern context LocalShell
   shell?: string
   cwd?: string
   // Executes command and returns result
-  fn exec(command: string): any
+  fn exec(command: string): unknown
   // Starts command with streaming output
-  fn start(command: string): any
+  fn start(command: string): unknown
   // Finds path to command executable
   fn which(command: string): string?
   fn close(): void
 
 extern context MockShell
-  commands?: list[any]
+  commands?: list[unknown]
   cwd?: string
   env?: map[string, string]
-  fn exec(command: string): any
-  fn start(command: string): any
+  fn exec(command: string): unknown
+  fn start(command: string): unknown
   fn which(command: string): string?
   // Adds mock command response
-  fn addCommand(pattern: string, result: any): void
+  fn addCommand(pattern: string, result: unknown): void
   fn close(): void
 
 // Shell alias for LocalShell
 extern context Shell
   shell?: string
   cwd?: string
-  fn exec(command: string): any
-  fn start(command: string): any
+  fn exec(command: string): unknown
+  fn start(command: string): unknown
   fn which(command: string): string?
   fn close(): void
 
@@ -390,28 +390,28 @@ extern context FetchHTTP
   baseURL?: string
   headers?: map[string, string]
   timeout?: number
-  fn get(url: string): any
-  fn post(url: string): any
-  fn put(url: string): any
-  fn patch(url: string): any
-  fn delete(url: string): any
+  fn get(url: string): unknown
+  fn post(url: string): unknown
+  fn put(url: string): unknown
+  fn patch(url: string): unknown
+  fn delete(url: string): unknown
   // Performs GET and parses JSON response
-  fn getJSON(url: string): any
+  fn getJSON(url: string): unknown
   // Performs POST with JSON body
-  fn postJSON(url: string, data: any): any
+  fn postJSON(url: string, data: unknown): unknown
   fn close(): void
 
 extern context MockHTTP
-  responses?: list[any]
-  fn get(url: string): any
-  fn post(url: string): any
-  fn put(url: string): any
-  fn patch(url: string): any
-  fn delete(url: string): any
-  fn getJSON(url: string): any
-  fn postJSON(url: string, data: any): any
+  responses?: list[unknown]
+  fn get(url: string): unknown
+  fn post(url: string): unknown
+  fn put(url: string): unknown
+  fn patch(url: string): unknown
+  fn delete(url: string): unknown
+  fn getJSON(url: string): unknown
+  fn postJSON(url: string, data: unknown): unknown
   // Adds mock HTTP response
-  fn addResponse(pattern: string, response: any): void
+  fn addResponse(pattern: string, response: unknown): void
   fn close(): void
 
 // HTTP alias for FetchHTTP
@@ -419,13 +419,13 @@ extern context HTTP
   baseURL?: string
   headers?: map[string, string]
   timeout?: number
-  fn get(url: string): any
-  fn post(url: string): any
-  fn put(url: string): any
-  fn patch(url: string): any
-  fn delete(url: string): any
-  fn getJSON(url: string): any
-  fn postJSON(url: string, data: any): any
+  fn get(url: string): unknown
+  fn post(url: string): unknown
+  fn put(url: string): unknown
+  fn patch(url: string): unknown
+  fn delete(url: string): unknown
+  fn getJSON(url: string): unknown
+  fn postJSON(url: string, data: unknown): unknown
   fn close(): void
 
 // Errors
@@ -464,21 +464,21 @@ fn last[T](list: list[T]): T?
 
 // Returns the first n elements
 fn take[T](list: list[T], n: number): list[T]
-  let result = []
+  let result = [] as list[T]
   for i in 0..min(n, len(list))
     result.push(list[i])
   result
 
 // Returns all but the first n elements
 fn drop[T](list: list[T], n: number): list[T]
-  let result = []
+  let result = [] as list[T]
   for i in n..len(list)
     result.push(list[i])
   result
 
 // Returns a reversed copy of the list
 fn reverse[T](list: list[T]): list[T]
-  let result = []
+  let result = [] as list[T]
   for i in 0..len(list)
     result.push(list[len(list) - 1 - i])
   result
@@ -493,7 +493,7 @@ fn contains[T](list: list[T], item: T): bool
 // Returns list with duplicates removed
 fn unique[T](list: list[T]): list[T]
   let seen = {}
-  let result = []
+  let result = [] as list[T]
   for item in list
     let key = to_str(item)
     if not seen[key]
@@ -503,15 +503,15 @@ fn unique[T](list: list[T]): list[T]
 
 // Flattens a list of lists into one list
 fn flatten[T](lists: list[list[T]]): list[T]
-  let result = []
+  let result = [] as list[T]
   for list in lists
     for item in list
       result.push(item)
   result
 
 // Pairs elements from two lists
-fn zip[T, U](a: list[T], b: list[U]): list[list[any]]
-  let result = []
+fn zip[T, U](a: list[T], b: list[U]): list[list[unknown]]
+  let result = [] as list[list[unknown]]
   let n = min(len(a), len(b))
   for i in 0..n
     result.push([a[i], b[i]])
@@ -519,7 +519,7 @@ fn zip[T, U](a: list[T], b: list[U]): list[list[any]]
 
 // Concatenates multiple lists into one
 fn concat[T](...lists: list[list[T]]): list[T]
-  let result = []
+  let result = [] as list[T]
   for list in lists
     for item in list
       result.push(item)
@@ -527,7 +527,7 @@ fn concat[T](...lists: list[list[T]]): list[T]
 
 // Returns list of integers [start, end)
 fn range(start: number, end: number): list[number]
-  let result = []
+  let result = [] as list[number]
   for i in start..end
     result.push(i)
   result
@@ -535,14 +535,14 @@ fn range(start: number, end: number): list[number]
 // Returns a portion of the list
 fn slice[T](list: list[T], start: number, end?: number): list[T]
   let e = end ?? len(list)
-  let result = []
+  let result = [] as list[T]
   for i in start..e
     result.push(list[i])
   result
 
 // Transforms each element using f
 fn map[T, U](list: list[T], f: fn(T): U): list[U]
-  let result = []
+  let result = [] as list[U]
   for item in list
     result.push(f(item))
   result
@@ -554,7 +554,7 @@ fn each[T](list: list[T], f: fn(T): void): void
 
 // Keeps elements where pred returns true
 fn filter[T](list: list[T], pred: fn(T): bool): list[T]
-  let result = []
+  let result = [] as list[T]
   for item in list
     if pred(item)
       result.push(item)
@@ -590,11 +590,11 @@ fn all[T](list: list[T], pred: fn(T): bool): bool
 
 // Groups elements by key from f
 fn group_by[T, K](list: list[T], f: fn(T): K): map[K, list[T]]
-  var result = {}
+  var result = {} as map[K, list[T]]
   for item in list
     let key = f(item)
     if not result[key]
-      result[key] = []
+      result[key] = [] as list[T]
     result[key].push(item)
   result
 

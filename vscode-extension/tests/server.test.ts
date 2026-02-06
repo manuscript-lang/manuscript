@@ -15,7 +15,7 @@ const KEYWORDS = [
 ];
 
 const BUILTIN_TYPES = [
-  "number", "string", "bool", "null", "bytes", "any", "never", "void",
+  "number", "string", "bool", "null", "bytes", "unknown", "never", "void",
   "list", "map", "set", "Channel", "Promise", "Stream", "Result"
 ];
 
@@ -26,7 +26,7 @@ const BUILTIN_FUNCTIONS = [
 ];
 
 function formatTypeExpr(type: any): string {
-  if (!type) return "any";
+  if (!type) return "unknown";
   switch (type.kind) {
     case "NamedType": return type.name;
     case "GenericType": return `${type.name}[${type.args.map(formatTypeExpr).join(", ")}]`;
@@ -34,7 +34,7 @@ function formatTypeExpr(type: any): string {
     case "UnionType": return type.types.map(formatTypeExpr).join(" or ");
     case "OptionalType": return `${formatTypeExpr(type.inner)}?`;
     case "ListType": return `list[${formatTypeExpr(type.elementType)}]`;
-    default: return "any";
+    default: return "unknown";
   }
 }
 
@@ -289,8 +289,8 @@ describe("VSCode Extension - Type Formatting", () => {
   });
 
   test("handles null/undefined types", () => {
-    expect(formatTypeExpr(null)).toBe("any");
-    expect(formatTypeExpr(undefined)).toBe("any");
+    expect(formatTypeExpr(null)).toBe("unknown");
+    expect(formatTypeExpr(undefined)).toBe("unknown");
   });
 });
 
@@ -304,8 +304,8 @@ fn greet(name: string, age: number): string
     expect(cached).not.toBeNull();
     
     const fn = cached!.program.body[0] as FnDecl;
-    const params = fn.params.map(p => `${p.name}: ${p.type ? formatTypeExpr(p.type) : "any"}`).join(", ");
-    const ret = fn.returnType ? formatTypeExpr(fn.returnType) : "any";
+    const params = fn.params.map(p => `${p.name}: ${p.type ? formatTypeExpr(p.type) : "unknown"}`).join(", ");
+    const ret = fn.returnType ? formatTypeExpr(fn.returnType) : "unknown";
     
     expect(params).toBe("name: string, age: number");
     expect(ret).toBe("string");

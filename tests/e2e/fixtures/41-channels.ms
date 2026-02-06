@@ -44,10 +44,11 @@ fn typed_channel_demo()
   let msg = Message(1, "first message")
   ch.send(msg)
   let received = ch.receive()
-  // @expect: first message
-  print(received.text)
-  // @expect: 1
-  print(received.id)
+  if received != null
+    // @expect: first message
+    print(received.text)
+    // @expect: 1
+    print(received.id)
 
 typed_channel_demo()
 

@@ -94,7 +94,7 @@ print(h.farewell("Friend"))
 // === Nested keyword usage ===
 keyword config = type
   name: string
-  value: any
+  value: unknown
 
 config DatabaseConfig
   name = "postgres"

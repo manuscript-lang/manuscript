@@ -56,7 +56,7 @@ describe("Type Inference - Unary Operations", () => {
 
 describe("Type Inference - Lists", () => {
   typeCases([
-    ["[]", "list[any]"],
+    ["[]", "list[unknown]"],
     ["[1, 2, 3]", "list[number]"],
     ['["a", "b"]', "list[string]"],
     ["[[1], [2]]", "list[list[number]]"],
@@ -65,7 +65,7 @@ describe("Type Inference - Lists", () => {
 
 describe("Type Inference - Maps", () => {
   typeCases([
-    ["{}", "map[string, any]"],
+    ["{}", "map[string, unknown]"],
     ["{a: 1, b: 2}", "map[string, number]"],
     ['{"x": 1, "y": 2}', "map[string, number]"],
   ]);

@@ -50,7 +50,7 @@ print(is_valid)
 
 // === If expression in list ===
 let items = [1, 2, 3, 4, 5]
-let mapped = map(items, (i) => if i % 2 == 0 then i * 2 else i)
+let mapped = map(items, (i: number) => if i % 2 == 0 then i * 2 else i)
 // @expect: [1, 4, 3, 8, 5]
 print(mapped)
 

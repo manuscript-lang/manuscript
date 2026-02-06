@@ -14,7 +14,7 @@ export interface StdlibTypes {
 
 // Convert AST TypeExpr to internal Type
 function astTypeToType(typeExpr: AST.TypeExpr | undefined): Type {
-  if (!typeExpr) return Types.any;
+  if (!typeExpr) return Types.unknown;
 
   switch (typeExpr.kind) {
     case "NamedType":
@@ -52,7 +52,7 @@ function astTypeToType(typeExpr: AST.TypeExpr | undefined): Type {
       return Types.map(astTypeToType(typeExpr.keyType), astTypeToType(typeExpr.valueType));
 
     default:
-      return Types.any;
+      return Types.unknown;
   }
 }
 
@@ -135,12 +135,12 @@ function extractObjectType(decl: AST.TypeDecl): ObjectType {
 }
 
 // Type kind to extern type name mapping for builtin methods
-// Only for true primitives - Channel is a regular extern type
 const BUILTIN_TYPE_KIND_MAP: Record<string, string> = {
   "string": "string",
   "list": "list",
   "map": "map",
   "set": "set",
+  "Channel": "channel",
 };
 
 // Extract all types from stdlib AST

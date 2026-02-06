@@ -56,7 +56,7 @@ print(process_optional(42))
 // === Null with maps ===
 fn get_config_value(config: map, key: string): string
   let val = config[key]
-  val ?? "undefined"
+  (val ?? "undefined") as string
 
 let config = {host: "localhost", port: "8080"}
 // @expect: localhost
@@ -78,8 +78,8 @@ print(first_or_default([], 0))
 fn get_nested(obj: map): string
   let inner = obj["inner"]
   if inner == null then return "no inner"
-  let value = inner?.["value"]
-  value ?? "no value"
+  let value = (inner as map)?.["value"]
+  (value ?? "no value") as string
 
 let nested = {inner: {value: "found"}}
 // @expect: found

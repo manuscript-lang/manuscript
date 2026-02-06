@@ -49,7 +49,7 @@ print(identity("hello"))
 // @expect: true
 print(identity(true))
 
-fn swap[A, B](a: A, b: B): list[any]
+fn swap[A, B](a: A, b: B): list[unknown]
   [b, a]
 
 let swapped = swap(1, "one")
@@ -64,7 +64,7 @@ fn mapItems[T, U](items: list[T], f: fn(T): U): list[U]
     result = [...result, f(item)]
   result
 
-let tripled = mapItems([1, 2, 3], (x) => x * 3)
+let tripled = mapItems([1, 2, 3], (x: number) => x * 3)
 // @expect: 3
 print(tripled[0])
 // @expect: 9
@@ -94,8 +94,8 @@ print(items[0])
 
 // === Multi-line pipe expressions ===
 let pipeResult = [1, 2, 3, 4, 5, 6]
-| filter((x) => x % 2 == 0)
-| map((x) => x * 10)
+| filter((x: number) => x % 2 == 0)
+| map((x: number) => x * 10)
 // @expect: 3
 print(len(pipeResult))
 // @expect: 20
@@ -172,7 +172,7 @@ print(first([]) ?? 0)
 print(last([]) ?? 0)
 
 // === Stdlib filter ===
-let evens = filter([1, 2, 3, 4, 5, 6], (x) => x % 2 == 0)
+let evens = filter([1, 2, 3, 4, 5, 6], (x: number) => x % 2 == 0)
 // @expect: 3
 print(len(evens))
 // @expect: 2
@@ -180,12 +180,12 @@ print(evens[0])
 // @expect: 4
 print(evens[1])
 
-let positives = filter([-2, -1, 0, 1, 2], (x) => x > 0)
+let positives = filter([-2, -1, 0, 1, 2], (x: number) => x > 0)
 // @expect: 2
 print(len(positives))
 
 // === Stdlib map ===
-let doubled = map([1, 2, 3], (x) => x * 2)
+let doubled = map([1, 2, 3], (x: number) => x * 2)
 // @expect: 2
 print(doubled[0])
 // @expect: 4
@@ -202,29 +202,29 @@ print(lengths[1])
 print(lengths[2])
 
 // === Stdlib reduce ===
-let sum = reduce([1, 2, 3, 4, 5], 0, (acc, x) => acc + x)
+let sum = reduce([1, 2, 3, 4, 5], 0, (acc: number, x: number) => acc + x)
 // @expect: 15
 print(sum)
 
-let product = reduce([1, 2, 3, 4], 1, (acc, x) => acc * x)
+let product = reduce([1, 2, 3, 4], 1, (acc: number, x: number) => acc * x)
 // @expect: 24
 print(product)
 
-let joined = reduce(["a", "b", "c"], "", (acc, x) => acc + x)
+let joined = reduce(["a", "b", "c"], "", (acc: string, x: string) => acc + x)
 // @expect: abc
 print(joined)
 
 // Empty reduce
-let emptySum = reduce([], 100, (acc, x) => acc + x)
+let emptySum = reduce([] as list[number], 100, (acc: number, x: number) => acc + x)
 // @expect: 100
 print(emptySum)
 
 // === Stdlib find ===
-let found = find([1, 2, 3, 4, 5], (x) => x > 3)
+let found = find([1, 2, 3, 4, 5], (x: number) => x > 3)
 // @expect: 4
 print(found ?? 0)
 
-let notFound = find([1, 2, 3], (x) => x > 10)
+let notFound = find([1, 2, 3], (x: number) => x > 10)
 // @expect: 0
 print(notFound ?? 0)
 
@@ -301,9 +301,9 @@ print(sorted[1])
 print(sorted[7])
 
 // === Chained operations ===
-let evensFiltered = filter([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], (x) => x % 2 == 0)
-let squared = map(evensFiltered, (x) => x * x)
-let chainResult = reduce(squared, 0, (acc, x) => acc + x)
+let evensFiltered = filter([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], (x: number) => x % 2 == 0)
+let squared = map(evensFiltered, (x: number) => x * x)
+let chainResult = reduce(squared, 0, (acc: number, x: number) => acc + x)
 // @expect: 220
 print(chainResult)
 
@@ -311,7 +311,7 @@ print(chainResult)
 let data = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
 var sums: list[number] = []
 for row in data
-  sums = [...sums, reduce(row, 0, (acc, x) => acc + x)]
+  sums = [...sums, reduce(row, 0, (acc: number, x: number) => acc + x)]
 // @expect: 6
 print(sums[0])
 // @expect: 9

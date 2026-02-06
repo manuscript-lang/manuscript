@@ -30,9 +30,9 @@ print(reverse(nums))`);
   test("map/filter/reduce", async () => {
     const { output } = await executeWithOutput(`
 let nums = [1, 2, 3, 4, 5]
-let doubled = map(nums, (x) => x * 2)
-let evens = filter(nums, (x) => x % 2 == 0)
-let sum = reduce(nums, 0, (acc, x) => acc + x)
+let doubled = map(nums, (x: number) => x * 2)
+let evens = filter(nums, (x: number) => x % 2 == 0)
+let sum = reduce(nums, 0, (acc: number, x: number) => acc + x)
 print(doubled)
 print(evens)
 print(sum)`);

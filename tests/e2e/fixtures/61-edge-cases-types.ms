@@ -57,7 +57,7 @@ print(apply_twice(add_ten, 5))
 
 // === Closure captures ===
 fn make_adder(base: number): fn(number): number
-  (n) => base + n
+  (n: number) => base + n
 
 let add5 = make_adder(5)
 // @expect: 8

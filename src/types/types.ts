@@ -37,10 +37,6 @@ export interface BytesType extends BaseType {
 // Special Types
 // ============================================
 
-export interface AnyType extends BaseType {
-  kind: "any";
-}
-
 export interface NeverType extends BaseType {
   kind: "never";
 }
@@ -273,7 +269,6 @@ export type Type =
   | BoolType
   | NullType
   | BytesType
-  | AnyType
   | NeverType
   | UnknownType
   | VoidType
@@ -307,7 +302,6 @@ export const Types = {
   bool: { kind: "bool" } as BoolType,
   null: { kind: "null" } as NullType,
   bytes: { kind: "bytes" } as BytesType,
-  any: { kind: "any" } as AnyType,
   never: { kind: "never" } as NeverType,
   unknown: { kind: "unknown" } as UnknownType,
   void: { kind: "void" } as VoidType,
@@ -455,7 +449,6 @@ export function typeToString(type: Type): string {
     case "bool":
     case "null":
     case "bytes":
-    case "any":
     case "never":
     case "unknown":
     case "void":

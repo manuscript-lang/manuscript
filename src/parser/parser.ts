@@ -680,16 +680,16 @@ export class Parser {
 
     let type: AST.TypeExpr | undefined;
     if (this.match("COLON")) {
-      // Check for computed field: name: () => expr
+      // Check for computed field: name: () => expr (store as LambdaExpr so it's a method)
       if (this.check("LPAREN")) {
         const next = this.peekNext();
         if (next.type === "RPAREN") {
-          // Computed field
           this.advance(); // (
           this.advance(); // )
           this.expect("ARROW");
-          const value = this.expression();
-          return { kind: "FieldDecl", name, optional, computed: true, defaultValue: value, loc, doc };
+          const body = this.expression();
+          const lambda: AST.LambdaExpr = { kind: "LambdaExpr", params: [], body, loc };
+          return { kind: "FieldDecl", name, optional, computed: true, defaultValue: lambda, loc, doc };
         }
       }
       type = this.parseType();
@@ -837,7 +837,7 @@ export class Parser {
         this.expect("ARROW");
         const value = this.expression();
         // Infer type from the expression (will be checked in semantic phase)
-        return { kind: "KeywordField", name, type: { kind: "NamedType", name: "any", loc }, optional, computed: true, defaultValue: value, loc, doc };
+        return { kind: "KeywordField", name, type: { kind: "NamedType", name: "unknown", loc }, optional, computed: true, defaultValue: value, loc, doc };
       }
     }
 

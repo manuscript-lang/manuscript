@@ -84,7 +84,7 @@ export function findConstructorCalleeAt(program: AST.Program, line: number, col:
 // ============================================
 
 export function formatAstType(type: AST.TypeExpr | undefined): string {
-  if (!type) return "any";
+  if (!type) return "unknown";
   switch (type.kind) {
     case "NamedType": return type.name;
     case "GenericType": return `${type.name}[${type.args.map(formatAstType).join(", ")}]`;
@@ -92,7 +92,7 @@ export function formatAstType(type: AST.TypeExpr | undefined): string {
     case "UnionType": return type.types.map(formatAstType).join(" | ");
     case "OptionalType": return `${formatAstType(type.inner)}?`;
     case "ListType": return `list[${formatAstType(type.elementType)}]`;
-    default: return "any";
+    default: return "unknown";
   }
 }
 
@@ -193,7 +193,7 @@ export function resolveObjectType(program: AST.Program, type: Type, env?: TypeEn
         .filter((m): m is AST.FieldDecl => m.kind === "FieldDecl")
         .map(m => ({
           name: m.name,
-          type: { kind: "any" } as Type,
+          type: { kind: "unknown" } as Type,
           optional: m.optional,
           computed: false,
           defaultValue: !!m.defaultValue,
@@ -202,7 +202,7 @@ export function resolveObjectType(program: AST.Program, type: Type, env?: TypeEn
         .filter((m): m is AST.MethodDecl => m.kind === "MethodDecl")
         .map(m => ({
           name: m.name,
-          type: { kind: "function", params: [], returnType: { kind: "any" } } as any,
+          type: { kind: "function", params: [], returnType: { kind: "unknown" } } as any,
         }));
       return { kind: "object", name: typeDecl.name, properties: props, methods };
     }

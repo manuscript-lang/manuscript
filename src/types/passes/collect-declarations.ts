@@ -98,7 +98,7 @@ function registerType(
         }
         properties.push({
           name: member.name,
-          type: member.type ? astTypeToType(member.type) : Types.any,
+          type: member.type ? astTypeToType(member.type) : Types.unknown,
           optional: member.optional,
           computed: member.computed,
           defaultValue: !!member.defaultValue,
@@ -382,7 +382,7 @@ function registerKeywordTypeUse(
         // User's additional field
         properties.push({
           name: member.name,
-          type: member.type ? astTypeToType(member.type) : Types.any,
+          type: member.type ? astTypeToType(member.type) : Types.unknown,
           optional: member.optional,
           computed: member.computed,
           defaultValue: !!member.defaultValue,

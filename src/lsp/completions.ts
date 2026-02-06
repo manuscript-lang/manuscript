@@ -75,14 +75,14 @@ export function getScopeCompletions(
       completions.push({
         label: s.pattern.name,
         kind: "variable",
-        detail: varType ? typeToString(varType) : "any",
+        detail: varType ? typeToString(varType) : "unknown",
       });
     } else if (s.kind === "VarStmt" && s.loc.line < line) {
       const varType = s.value.resolvedType;
       completions.push({
         label: s.name,
         kind: "variable",
-        detail: varType ? typeToString(varType) : "any",
+        detail: varType ? typeToString(varType) : "unknown",
       });
     }
   }

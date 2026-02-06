@@ -32,7 +32,7 @@ print(all_combined)
 
 // === Spread in function call context ===
 fn process_all(items: list[number]): number
-  reduce(items, 0, (acc, n) => acc + n)
+  reduce(items, 0, (acc: number, n: number) => acc + n)
 
 let nums = [1, 2, 3, 4, 5]
 // @expect: 15

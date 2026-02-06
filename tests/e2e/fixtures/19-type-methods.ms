@@ -69,7 +69,7 @@ let circle = Circle(5)
 // @expect: 5
 print(circle.radius)
 // @expect: 10
-print(circle.diameter)
+print(circle.diameter())
 
 // === Multiple type instances ===
 type Counter

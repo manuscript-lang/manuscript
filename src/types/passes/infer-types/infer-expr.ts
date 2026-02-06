@@ -20,7 +20,20 @@ export function setCheckBlockFn(fn: (ctx: InferContext, block: AST.Block) => voi
   checkBlockFn = fn;
 }
 
-export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
+function expectedListOrMapType(expected: Type | undefined): Type | undefined {
+  if (!expected) return undefined;
+  if (expected.kind === "list" || expected.kind === "map") return expected;
+  if (expected.kind === "optional" && expected.inner) return expectedListOrMapType(expected.inner);
+  return undefined;
+}
+
+function expectedFunctionType(expected: Type | undefined): FunctionType | undefined {
+  if (!expected) return undefined;
+  if (expected.kind === "function") return expected;
+  return undefined;
+}
+
+export function inferExpr(ctx: InferContext, expr: AST.Expr, expectedType?: Type): Type {
   let type: Type;
 
   switch (expr.kind) {
@@ -49,7 +62,7 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
       type = inferPipeExpr(ctx, expr);
       break;
     case "LambdaExpr":
-      type = inferLambdaExpr(ctx, expr);
+      type = inferLambdaExpr(ctx, expr, expectedFunctionType(expectedType));
       break;
     case "IfExpr":
       type = inferIfExpr(ctx, expr);
@@ -58,13 +71,13 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
       type = inferMatchExpr(ctx, expr);
       break;
     case "ListExpr":
-      type = inferListExpr(ctx, expr);
+      type = inferListExpr(ctx, expr, expectedListOrMapType(expectedType));
       break;
     case "SetExpr":
-      type = inferSetExpr(ctx, expr);
+      type = inferSetExpr(ctx, expr, expectedListOrMapType(expectedType));
       break;
     case "MapExpr":
-      type = inferMapExpr(ctx, expr);
+      type = inferMapExpr(ctx, expr, expectedListOrMapType(expectedType));
       break;
     case "SpawnExpr":
       type = inferSpawnExpr(ctx, expr);
@@ -73,8 +86,8 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
       const exprType = inferExpr(ctx, expr.expr);
       const assertedType = astTypeToType(expr.type);
       // Allow assertion if types are related (one is subtype of other, or both same kind)
-      const canAssert = 
-        exprType.kind === "any" || assertedType.kind === "any" ||
+      const canAssert =
+        exprType.kind === "unknown" || assertedType.kind === "unknown" ||
         isAssignable(exprType, assertedType, ctx.env) ||
         isAssignable(assertedType, exprType, ctx.env);
       if (!canAssert) {
@@ -100,7 +113,7 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
       type = inferTemplateLiteral(ctx, expr);
       break;
     default:
-      type = Types.any;
+      type = Types.unknown;
   }
 
   recordType(ctx, expr, type);
@@ -112,7 +125,7 @@ function inferLiteral(expr: AST.Literal): Type {
   if (typeof expr.value === "string") return Types.string;
   if (typeof expr.value === "boolean") return Types.bool;
   if (expr.value === null) return Types.null;
-  return Types.any;
+  return Types.unknown;
 }
 
 function inferIdentifier(ctx: InferContext, expr: AST.Identifier): Type {
@@ -129,7 +142,7 @@ function inferIdentifier(ctx: InferContext, expr: AST.Identifier): Type {
         for (const p of ownProps) {
           if (p.embedded) {
             const embeddedType = ctx.env.lookupType(p.name);
-            params.push(Types.param(p.name, embeddedType || Types.any, true));
+            params.push(Types.param(p.name, embeddedType || Types.unknown, true));
           } else {
             params.push(Types.param(p.name, p.type, p.optional || !!p.defaultValue));
           }
@@ -155,7 +168,7 @@ function inferIdentifier(ctx: InferContext, expr: AST.Identifier): Type {
     }
     const err = TypeErrors.unknownIdentifier(expr.name);
     error(ctx, err.message, expr.loc, err.hint);
-    return Types.any;
+    return Types.unknown;
   }
   return symbol.type;
 }
@@ -166,14 +179,18 @@ function inferBinaryExpr(ctx: InferContext, expr: AST.BinaryExpr): Type {
 
   switch (expr.op) {
     case "+":
+      if (leftType.kind === "unknown" || rightType.kind === "unknown") {
+        const err = TypeErrors.operationNotAllowedOnUnknown("+");
+        error(ctx, err.message, expr.loc, err.hint);
+      }
       if (leftType.kind === "string" || rightType.kind === "string") {
         return Types.string;
       }
-      if (leftType.kind !== "number" && leftType.kind !== "any") {
+      if (leftType.kind !== "number") {
         const err = TypeErrors.operatorRequiresType("+", "number or string", typeToString(leftType));
         error(ctx, err.message, expr.left.loc, err.hint);
       }
-      if (rightType.kind !== "number" && rightType.kind !== "any") {
+      if (rightType.kind !== "number") {
         const err = TypeErrors.operatorRequiresType("+", "number or string", typeToString(rightType));
         error(ctx, err.message, expr.right.loc, err.hint);
       }
@@ -183,11 +200,15 @@ function inferBinaryExpr(ctx: InferContext, expr: AST.BinaryExpr): Type {
     case "/":
     case "%":
     case "^":
-      if (leftType.kind !== "number" && leftType.kind !== "any") {
+      if (leftType.kind === "unknown" || rightType.kind === "unknown") {
+        const err = TypeErrors.operationNotAllowedOnUnknown(expr.op);
+        error(ctx, err.message, expr.loc, err.hint);
+      }
+      if (leftType.kind !== "number") {
         const err = TypeErrors.operatorRequiresType(expr.op, "number", typeToString(leftType));
         error(ctx, err.message, expr.left.loc, err.hint);
       }
-      if (rightType.kind !== "number" && rightType.kind !== "any") {
+      if (rightType.kind !== "number") {
         const err = TypeErrors.operatorRequiresType(expr.op, "number", typeToString(rightType));
         error(ctx, err.message, expr.right.loc, err.hint);
       }
@@ -196,10 +217,13 @@ function inferBinaryExpr(ctx: InferContext, expr: AST.BinaryExpr): Type {
     case ">":
     case "<=":
     case ">=": {
+      if (leftType.kind === "unknown" || rightType.kind === "unknown") {
+        const err = TypeErrors.operationNotAllowedOnUnknown(expr.op);
+        error(ctx, err.message, expr.loc, err.hint);
+      }
       const leftBase = leftType.kind === "optional" ? leftType.inner : leftType;
       const rightBase = rightType.kind === "optional" ? rightType.inner : rightType;
-      if (leftBase.kind !== "any" && rightBase.kind !== "any" &&
-          leftBase.kind !== rightBase.kind &&
+      if (leftBase.kind !== rightBase.kind &&
           !((leftBase.kind === "number" || leftBase.kind === "string") &&
             (rightBase.kind === "number" || rightBase.kind === "string"))) {
         const err = TypeErrors.cannotCompare(typeToString(leftType), typeToString(rightType));
@@ -208,7 +232,13 @@ function inferBinaryExpr(ctx: InferContext, expr: AST.BinaryExpr): Type {
       return Types.bool;
     }
     case "==":
-    case "!=":
+    case "!=": {
+      if (leftType.kind === "unknown" || rightType.kind === "unknown") {
+        const err = TypeErrors.operationNotAllowedOnUnknown(expr.op);
+        error(ctx, err.message, expr.loc, err.hint);
+      }
+      return Types.bool;
+    }
     case "and":
     case "or":
     case "is":
@@ -219,7 +249,7 @@ function inferBinaryExpr(ctx: InferContext, expr: AST.BinaryExpr): Type {
       }
       return leftType;
     default:
-      return Types.any;
+      return Types.unknown;
   }
 }
 
@@ -228,7 +258,11 @@ function inferUnaryExpr(ctx: InferContext, expr: AST.UnaryExpr): Type {
 
   switch (expr.op) {
     case "-":
-      if (operandType.kind !== "number" && operandType.kind !== "any") {
+      if (operandType.kind === "unknown") {
+        const err = TypeErrors.operationNotAllowedOnUnknown("-");
+        error(ctx, err.message, expr.operand.loc, err.hint);
+      }
+      if (operandType.kind !== "number") {
         const err = TypeErrors.operatorRequiresType("-", "number", typeToString(operandType));
         error(ctx, err.message, expr.operand.loc, err.hint);
       }
@@ -267,7 +301,7 @@ function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
       
       // Resolve type arguments to Types
       const resolvedTypeArgs = allTypeArgs.map(arg => 
-        resolveTypeName(arg.kind === "Identifier" ? arg.name : "any", ctx.env)
+        resolveTypeName(arg.kind === "Identifier" ? arg.name : "unknown", ctx.env)
       );
       
       // Check if this is a built-in generic type (Channel, etc.)
@@ -351,7 +385,7 @@ function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
     }
   }
 
-  return Types.any;
+  return Types.unknown;
 }
 
 function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: FunctionType): Type {
@@ -390,9 +424,9 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
     let argLoc: AST.SourceLocation;
 
     if ("name" in arg && "value" in arg) {
-      argType = inferExpr(ctx, arg.value);
-      argLoc = arg.value.loc;
       const param = params.find(p => p.name === arg.name);
+      argType = inferExpr(ctx, arg.value, param?.type);
+      argLoc = arg.value.loc;
       if (!param) {
         const err = TypeErrors.unknownParameter(arg.name, params.map(p => p.name).filter(Boolean) as string[]);
         error(ctx, err.message, arg.value.loc, err.hint);
@@ -401,10 +435,11 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
         error(ctx, `Argument '${arg.name}': ${err.message}`, arg.value.loc, err.hint);
       }
     } else {
-      argType = inferExpr(ctx, arg as AST.Expr);
-      argLoc = (arg as AST.Expr).loc;
       const paramIndex = Math.min(i, params.length - 1);
       const param = params[paramIndex];
+      const expected = param && (param.rest && param.type.kind === "list" ? param.type : param.type);
+      argType = inferExpr(ctx, arg as AST.Expr, expected);
+      argLoc = (arg as AST.Expr).loc;
       if (param) {
         const expectedType = param.rest && param.type.kind === "list" ?
           param.type.elementType : param.type;
@@ -455,25 +490,23 @@ function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: an
     let argType: Type;
 
     if ("name" in arg && "value" in arg) {
-      argType = inferExpr(ctx, arg.value);
       const prop = ownProps.find((p: any) => p.name === arg.name);
+      const expectedType = prop ? (prop.embedded ? ctx.env.lookupType(prop.name) || Types.unknown : prop.type) : undefined;
+      argType = inferExpr(ctx, arg.value, expectedType);
       if (!prop) {
         const err = TypeErrors.propertyNotExist(arg.name, objType.name!);
         error(ctx, err.message, arg.value.loc, err.hint);
-      } else {
-        const expectedType = prop.embedded ? ctx.env.lookupType(prop.name) || Types.any : prop.type;
-        if (!isAssignable(argType, expectedType, ctx.env)) {
-          const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(argType));
-          error(ctx, `Property '${arg.name}': ${err.message}`, arg.value.loc, err.hint);
-        }
+      } else if (!isAssignable(argType, expectedType!, ctx.env)) {
+        const err = TypeErrors.typeMismatch(typeToString(expectedType!), typeToString(argType));
+        error(ctx, `Property '${arg.name}': ${err.message}`, arg.value.loc, err.hint);
       }
     } else {
-      argType = inferExpr(ctx, arg as AST.Expr);
       const prop = ownProps[i];
+      const expectedType = prop ? (prop.embedded ? ctx.env.lookupType(prop.name) || Types.unknown : prop.type) : undefined;
+      argType = inferExpr(ctx, arg as AST.Expr, expectedType);
       if (prop) {
-        const expectedType = prop.embedded ? ctx.env.lookupType(prop.name) || Types.any : prop.type;
-        if (!isAssignable(argType, expectedType, ctx.env)) {
-          const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(argType));
+        if (!isAssignable(argType, expectedType!, ctx.env)) {
+          const err = TypeErrors.typeMismatch(typeToString(expectedType!), typeToString(argType));
           error(ctx, `Argument ${i + 1}: ${err.message}`, (arg as AST.Expr).loc, err.hint);
         }
       }
@@ -492,7 +525,7 @@ function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
       // Generic type arguments must be identifiers, not string literals
       if (expr.index.kind === "Literal" && typeof (expr.index as AST.Literal).value === "string") {
         error(ctx, "Generic type arguments must be identifiers, not string literals", expr.index.loc);
-        return Types.any;
+        return Types.unknown;
       }
       // This is generic type instantiation, handled by call expression
       // Just infer the index type arguments
@@ -516,14 +549,14 @@ function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
   if (expr.slice) {
     if (expr.slice.start) {
       const startType = inferExpr(ctx, expr.slice.start);
-      if (startType.kind !== "number" && startType.kind !== "any") {
+      if (startType.kind !== "number") {
         const err = TypeErrors.indexTypeMismatch("number", typeToString(startType));
         error(ctx, `Slice start index: ${err.message}`, expr.slice.start.loc, err.hint);
       }
     }
     if (expr.slice.end) {
       const endType = inferExpr(ctx, expr.slice.end);
-      if (endType.kind !== "number" && endType.kind !== "any") {
+      if (endType.kind !== "number") {
         const err = TypeErrors.indexTypeMismatch("number", typeToString(endType));
         error(ctx, `Slice end index: ${err.message}`, expr.slice.end.loc, err.hint);
       }
@@ -534,7 +567,7 @@ function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
   const indexType = inferExpr(ctx, expr.index);
 
   if (objectType.kind === "list") {
-    if (indexType.kind !== "number" && indexType.kind !== "any") {
+    if (indexType.kind !== "number") {
       const err = TypeErrors.indexTypeMismatch("number", typeToString(indexType));
       error(ctx, `List index: ${err.message}`, expr.index.loc, err.hint);
     }
@@ -550,20 +583,21 @@ function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
     return Types.optional(objectType.valueType);
   }
   if (objectType.kind === "string") {
-    if (indexType.kind !== "number" && indexType.kind !== "any") {
+    if (indexType.kind !== "number") {
       const err = TypeErrors.indexTypeMismatch("number", typeToString(indexType));
       error(ctx, `String index: ${err.message}`, expr.index.loc, err.hint);
     }
     return expr.optional ? Types.optional(Types.string) : Types.string;
   }
 
-  // Disallow index access on other types (except any)
-  if (objectType.kind !== "any") {
-    const err = TypeErrors.indexAccessOnInvalidType(typeToString(objectType));
+  if (objectType.kind === "unknown") {
+    const err = TypeErrors.operationNotAllowedOnUnknown("[]");
     error(ctx, err.message, expr.loc, err.hint);
+    return expr.optional ? Types.optional(Types.unknown) : Types.unknown;
   }
-
-  return expr.optional ? Types.optional(Types.any) : Types.any;
+  const err = TypeErrors.indexAccessOnInvalidType(typeToString(objectType));
+  error(ctx, err.message, expr.loc, err.hint);
+  return expr.optional ? Types.optional(Types.unknown) : Types.unknown;
 }
 
 function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
@@ -576,19 +610,24 @@ function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
       if (typeRef && typeRef.kind === "object") {
         const err = TypeErrors.memberAccessOnType(expr.object.name);
         error(ctx, err.message, expr.loc, err.hint);
-        return Types.any;
+        return Types.unknown;
       }
     }
   }
 
   const objectType = inferExpr(ctx, expr.object);
+  if (objectType.kind === "unknown") {
+    const err = TypeErrors.operationNotAllowedOnUnknown(".");
+    error(ctx, err.message, expr.loc, err.hint);
+    return Types.unknown;
+  }
   let resolved = ctx.env.resolveType(objectType);
 
   // Disallow member access on function types
   if (resolved.kind === "function") {
     const err = TypeErrors.memberAccessOnFunction();
     error(ctx, err.message, expr.loc, err.hint);
-    return Types.any;
+    return Types.unknown;
   }
 
   // Handle generic types like Container[string] - resolve and substitute
@@ -611,7 +650,7 @@ function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
       const err = TypeErrors.propertyNotExist(expr.property, resolved.name);
       error(ctx, err.message, expr.loc, err.hint);
     }
-    return Types.any;
+    return Types.unknown;
   }
 
   if (resolved.kind === "object") {
@@ -665,24 +704,28 @@ function inferBuiltinMember(ctx: InferContext, objectType: Type, expr: AST.Membe
     return expr.optional ? Types.optional(objectType.valueType) : objectType.valueType;
   }
 
+  if (objectType.kind === "unknown") {
+    const err = TypeErrors.operationNotAllowedOnUnknown(".");
+    error(ctx, err.message, expr.loc, err.hint);
+    return Types.unknown;
+  }
+
   // Handle types without properties
   if (objectType.kind === "number" || objectType.kind === "bool") {
     if (!expr.optional) {
       error(ctx, `Property '${expr.property}' does not exist on type '${objectType.kind}'`, expr.loc);
     }
-    return expr.optional ? Types.optional(Types.any) : Types.any;
+    return expr.optional ? Types.optional(Types.unknown) : Types.unknown;
   }
 
-  // For builtin primitive types that should have properties defined
   if (objectType.kind === "string" || objectType.kind === "list" || objectType.kind === "set") {
     if (!expr.optional) {
       error(ctx, `Property '${expr.property}' does not exist on type '${objectType.kind}'`, expr.loc);
     }
-    return expr.optional ? Types.optional(Types.any) : Types.any;
+    return expr.optional ? Types.optional(Types.unknown) : Types.unknown;
   }
 
-  // For any/unknown types, allow any property access
-  return expr.optional ? Types.optional(Types.any) : Types.any;
+  return expr.optional ? Types.optional(Types.unknown) : Types.unknown;
 }
 
 // Substitute type parameters (T, K, V) in method types based on the actual object type
@@ -691,13 +734,11 @@ function substituteBuiltinTypeParams(type: Type, objectType: Type): Type {
   const bindings = new Map<string, Type>();
   
   // Build bindings based on object type kind (primitives only)
-  if (objectType.kind === "list") {
+  if (objectType.kind === "list" || objectType.kind === "set" || objectType.kind === "channel") {
     bindings.set("T", objectType.elementType);
   } else if (objectType.kind === "map") {
     bindings.set("K", objectType.keyType);
     bindings.set("V", objectType.valueType);
-  } else if (objectType.kind === "set") {
-    bindings.set("T", objectType.elementType);
   }
   
   if (bindings.size === 0) {
@@ -787,7 +828,7 @@ function inferPipeExpr(ctx: InferContext, expr: AST.PipeExpr): Type {
         inferExpr(ctx, arg as AST.Expr);
       }
     }
-    return Types.any;
+    return Types.unknown;
   }
   
   // For simple identifier or other expression on the right
@@ -795,16 +836,29 @@ function inferPipeExpr(ctx: InferContext, expr: AST.PipeExpr): Type {
   if (rightType.kind === "function") {
     return rightType.returnType;
   }
-  return Types.any;
+  return Types.unknown;
 }
 
-function inferLambdaExpr(ctx: InferContext, expr: AST.LambdaExpr): Type {
-  const params = expr.params.map(p => ({
-    name: p.name,
-    type: p.type ? astTypeToType(p.type) : Types.any,
-    optional: p.optional,
-    rest: p.rest,
-  }));
+function inferLambdaExpr(ctx: InferContext, expr: AST.LambdaExpr, expectedFn?: FunctionType): Type {
+  const restParam = expectedFn?.params.find(p => p.rest);
+  const restElementType = restParam?.type.kind === "list" ? restParam.type.elementType : undefined;
+
+  const params = expr.params.map((p, i) => {
+    let type: Type;
+    if (p.type) {
+      type = astTypeToType(p.type);
+    } else if (expectedFn?.params) {
+      if (p.rest) {
+        type = restElementType ?? Types.unknown;
+      } else {
+        const expectedParam = expectedFn.params[i] ?? (restParam && restElementType ? { type: restElementType } : null);
+        type = expectedParam?.type ?? Types.unknown;
+      }
+    } else {
+      type = Types.unknown;
+    }
+    return { name: p.name, type, optional: p.optional, rest: p.rest };
+  });
 
   const lambdaEnv = ctx.env.child();
   for (const param of params) {
@@ -871,9 +925,10 @@ function inferMatchExpr(ctx: InferContext, expr: AST.MatchExpr): Type {
   return Types.union(...armTypes);
 }
 
-function inferListExpr(ctx: InferContext, expr: AST.ListExpr): Type {
+function inferListExpr(ctx: InferContext, expr: AST.ListExpr, expected?: Type): Type {
   if (expr.elements.length === 0) {
-    return Types.list(Types.any);
+    if (expected?.kind === "list") return Types.list(expected.elementType);
+    return Types.list(Types.unknown);
   }
 
   const elementTypes: Type[] = [];
@@ -898,8 +953,11 @@ function inferListExpr(ctx: InferContext, expr: AST.ListExpr): Type {
   return Types.list(commonType);
 }
 
-function inferSetExpr(ctx: InferContext, expr: AST.SetExpr): Type {
-  if (expr.elements.length === 0) return Types.set(Types.any);
+function inferSetExpr(ctx: InferContext, expr: AST.SetExpr, expected?: Type): Type {
+  if (expr.elements.length === 0) {
+    if (expected?.kind === "set") return Types.set(expected.elementType);
+    return Types.set(Types.unknown);
+  }
   const elementTypes = expr.elements.map(el => inferExpr(ctx, el));
   for (const el of expr.elements) {
     if (el.kind === "Identifier") ctx.unawaitedSpawns.delete(el.name);
@@ -907,9 +965,10 @@ function inferSetExpr(ctx: InferContext, expr: AST.SetExpr): Type {
   return Types.set(findCommonType(elementTypes));
 }
 
-function inferMapExpr(ctx: InferContext, expr: AST.MapExpr): Type {
+function inferMapExpr(ctx: InferContext, expr: AST.MapExpr, expected?: Type): Type {
   if (expr.entries.length === 0) {
-    return Types.map(Types.string, Types.any);
+    if (expected?.kind === "map") return Types.map(expected.keyType, expected.valueType);
+    return Types.map(Types.string, Types.unknown);
   }
 
   const keyTypes: Type[] = [];
@@ -1000,7 +1059,7 @@ export function consumeSpawnsInExpr(ctx: InferContext, expr: AST.Expr): void {
       consumeSpawnsInExpr(ctx, expr.object);
       break;
     case "CallExpr": {
-      const callReturnType = expr.resolvedType ?? Types.any;
+      const callReturnType = expr.resolvedType ?? Types.unknown;
       const isValuesCall = expr.callee.kind === "Identifier" && expr.callee.name === "values";
       if (typeInvolvesPromise(callReturnType, ctx.env) || isValuesCall) {
         for (const arg of expr.args) {
@@ -1095,30 +1154,23 @@ function inferTypeParams(ctx: InferContext, fnType: FunctionType, args: (AST.Exp
   if (!fnType.typeParams) return bindings;
 
   for (const tp of fnType.typeParams) {
-    bindings.set(tp.name, Types.any);
+    bindings.set(tp.name, Types.unknown);
   }
 
-  // Handle named and positional args properly
   let posIdx = 0;
   for (const arg of args) {
-    let argType: Type;
     let paramType: Type | undefined;
-    
     if ("name" in arg && "value" in arg) {
-      // Named argument - match by name
-      argType = inferExpr(ctx, arg.value);
       const param = fnType.params.find(p => p.name === arg.name);
       paramType = param?.type;
     } else {
-      // Positional argument
-      argType = inferExpr(ctx, arg as AST.Expr);
       paramType = fnType.params[posIdx]?.type;
       posIdx++;
     }
-    
-    if (paramType) {
-      unifyTypes(paramType, argType, bindings);
-    }
+    const expected = paramType ? substituteTypeParams(paramType, bindings) : undefined;
+    const argExpr = "name" in arg && "value" in arg ? arg.value : (arg as AST.Expr);
+    const argType = inferExpr(ctx, argExpr, expected);
+    if (paramType) unifyTypes(paramType, argType, bindings);
   }
 
   return bindings;
