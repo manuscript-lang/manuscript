@@ -128,14 +128,6 @@ export function checkTypeDecl(ctx: InferContext, decl: AST.TypeDecl): void {
   });
 }
 
-export function checkKeywordTypeUse(ctx: InferContext, use: AST.KeywordTypeUse): void {
-  const typeObj = ctx.env.lookupType(use.name);
-  if (!typeObj || typeObj.kind !== "object") return;
-  checkObjectTypeBody(ctx, use.name, use.body, typeObj as ObjectType, {
-    isExtern: false,
-  });
-}
-
 function checkMethodBody(ctx: InferContext, method: AST.MethodDecl, typeObj: ObjectType): void {
   const typeFieldsEnv = ctx.env.child();
   for (const prop of typeObj.properties) typeFieldsEnv.define(prop.name, prop.type, true);

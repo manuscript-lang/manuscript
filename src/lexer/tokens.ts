@@ -21,7 +21,6 @@ export type TokenType =
   | "IMPORT"
   | "FROM"
   | "TEST"
-  | "KEYWORD"
   | "YIELD"
   | "DEFER"
   | "TRY"
@@ -30,10 +29,8 @@ export type TokenType =
   | "BREAK"
   | "CONTINUE"
   | "SPAWN"
-  | "SEALED"
   | "EXTERN"
-  // NOTE: enum, agent, capabilities are NOT keywords - they are defined via
-  // `keyword` declarations and resolved at semantic level per syntax.md
+  // enum, agent, capabilities are identifiers; use plain type for enum/agent patterns
   | "AND"
   | "OR"
   | "NOT"
@@ -121,7 +118,6 @@ export const KEYWORDS = new Map<string, TokenType>([
   ["import", "IMPORT"],
   ["from", "FROM"],
   ["test", "TEST"],
-  ["keyword", "KEYWORD"],
   ["yield", "YIELD"],
   ["defer", "DEFER"],
   ["try", "TRY"],
@@ -130,9 +126,7 @@ export const KEYWORDS = new Map<string, TokenType>([
   ["break", "BREAK"],
   ["continue", "CONTINUE"],
   ["spawn", "SPAWN"],
-  ["sealed", "SEALED"],
   ["extern", "EXTERN"],
-  // NOTE: enum, agent, capabilities are defined via keyword declarations
   ["and", "AND"],
   ["or", "OR"],
   ["not", "NOT"],

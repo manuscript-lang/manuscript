@@ -1,6 +1,6 @@
 // @test: Multiline with clause - context can only be instantiated in with
 
-context Logger
+type Logger
   prefix: string
   level: number = 0
 
@@ -23,7 +23,7 @@ with let l = Logger(
     print(greet("World"))
 
 // === Multiple contexts with newline between (multiline context list) ===
-context Config
+type Config
   env: string
   fn close(): void
     return

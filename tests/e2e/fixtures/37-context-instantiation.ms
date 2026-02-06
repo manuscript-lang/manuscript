@@ -1,6 +1,6 @@
 // @test: Context instantiation allowed outside with (Closable)
 
-context Logger
+type Logger
   prefix: string
   fn log(msg: string): string
     "{prefix}: {msg}"

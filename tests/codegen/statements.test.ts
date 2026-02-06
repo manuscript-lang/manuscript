@@ -196,7 +196,7 @@ describe("CodeGen - Throw", () => {
 
 describe("CodeGen - With Statements", () => {
   test("with context", () => {
-    const js = compile(`context R
+    const js = compile(`type R
   fn close(): void
 with R()
   print(1)`);
@@ -206,7 +206,7 @@ with R()
   });
 
   test("with named binding", () => {
-    const js = compile(`context Ctx
+    const js = compile(`type Ctx
   value: number
   fn close(): void
 with let c = Ctx(42)
@@ -216,7 +216,7 @@ with let c = Ctx(42)
   });
 
   test("with implicit return", () => {
-    const js = compile(`context Ctx
+    const js = compile(`type Ctx
   value: number
   fn close(): void
 fn getValue(): number
@@ -253,7 +253,7 @@ describe("CodeGen - Yield Statements", () => {
 
 describe("CodeGen - Defer Statements", () => {
   test("defer in with block", () => {
-    const js = compile(`context Ctx
+    const js = compile(`type Ctx
   value: number
 with let c = Ctx(42)
   defer print("cleanup")

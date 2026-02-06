@@ -1,6 +1,6 @@
 # Manuscript Syntax v4.0
 
-A minimal language for building agents. Four core constructs: `fn`, `type`, `keyword`, `test`.
+A minimal language for building agents. Core constructs: `fn`, `type`, `interface`, `test`.
 
 ---
 
@@ -242,24 +242,6 @@ let p = Point(3, 4)
 let q = Person(age: 30, name: "Alice")
 ```
 
-### Enums
-
-Enums define named constants. Values are required:
-
-```manuscript
-enum Status
-  Pending = "pending"
-  Done = "done"
-
-enum Priority
-  Low = 1
-  Medium = 2
-  High = 3
-
-let s = Status.Pending       // s == "pending"
-let p = Priority.High        // p == 3
-```
-
 ### Unions
 
 ```manuscript
@@ -335,14 +317,14 @@ Dependency injection via context types and `with`. Compiler verifies all require
 
 ### Defining context types
 
-Declare a capability type with the `context` keyword; use it in `using` clauses and provide it in `with` blocks. Context types can have fields and methods (including `close()` for cleanup when the value is used in `with`).
+Use `type` or `interface` for capability types; use them in `using` clauses and provide them in `with` blocks. Types used in `with` can have fields and methods (including `close()` for cleanup when the value is used in `with`).
 
 ```manuscript
-context Filesystem
+type Filesystem
   fn read(path: string): string
   fn write(path: string, content: string): void
 
-context Logger
+type Logger
   prefix: string
   fn log(msg: string): string
     "{prefix}: {msg}"
@@ -540,69 +522,7 @@ let user = assert data.user, "no user"  // with message
 
 ---
 
-## 11. Keyword Declarations
-
-Define domain-specific type constructors with fields and methods. Keywords are syntactic sugar over `type` (e.g. `keyword workflow = type`).
-
-### Defining Keywords
-
-```manuscript
-keyword workflow = type
-  steps: list[string]
-  status: string = "pending"
-  
-  fn run(): void
-    for step in steps
-      print("Running: " + step)
-```
-
-### Using Keywords
-
-```manuscript
-workflow Pipeline
-  steps = ["fetch", "transform", "load"]
-
-let p = Pipeline()
-p.run()  // prints: Running: fetch, Running: transform, Running: load
-```
-
-### Keyword Fields
-
-| Syntax | Meaning |
-|--------|---------|
-| `field: type` | Required field |
-| `field?: type` | Optional field |
-| `field: type = value` | Field with default |
-
-### Keyword Methods
-
-Methods defined in the keyword are available on all instances:
-
-```manuscript
-keyword entity = type
-  id: number
-  
-  fn getId(): number
-    id
-
-entity User
-  id = 1
-  
-  fn greet(): string    // users can add their own methods
-    "Hello from user " + to_str(id)
-
-let u = User()
-u.getId()   // from keyword
-u.greet()   // from user
-```
-
-### Built-in keywords
-
-`enum`, `agent`, and `capabilities` are predefined keywords. `context` declares a capability type (used with `using` and `with`).
-
----
-
-## 12. Templates
+## 11. Templates
 
 ```manuscript
 "Hello, {name}"
@@ -611,13 +531,6 @@ u.greet()   // from user
 {if admin}Admin panel{else}User view{end}
 {for item in items}- {item.name}{end}
 """
-
-// Include
-prompt base(role: string)
-  "You are a {role}."
-
-agent helper
-  system: "{include base('assistant')}"
 ```
 
 ---
@@ -631,12 +544,7 @@ agent helper
 | `fn` | Function |
 | `type` | Data structure |
 | `interface` | Method signatures; types satisfy implicitly |
-| `keyword` | Domain-specific type constructors |
 | `test` | Test cases |
-| `enum` | Enumerated types |
-| `agent` | AI agents |
-| `context` | Capability type (for `using` / `with`) |
-| `capabilities` | Capability groups |
 
 ### Type Fields
 

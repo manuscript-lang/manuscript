@@ -1,7 +1,7 @@
 // @test: With Runtime Errors - context not available at runtime
 // @error: No context of type 'Logger' available
 
-context Logger
+type Logger
   prefix: string
   
   fn log(msg: string): string

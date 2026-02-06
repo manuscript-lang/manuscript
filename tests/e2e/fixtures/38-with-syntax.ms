@@ -1,6 +1,6 @@
 // @test: With Syntax - let binding vs anonymous context
 
-context Logger
+type Logger
   prefix: string
   
   fn log(msg: string): string
@@ -39,7 +39,7 @@ with Logger("INNER")
   print(greet("Inner"))
 
 // === Two-argument config type ===
-context Config
+type Config
   env: string
   debug: bool
   fn close(): void

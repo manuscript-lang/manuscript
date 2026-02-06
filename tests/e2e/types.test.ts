@@ -14,14 +14,15 @@ print(p.x, p.y)`);
     expect(output).toContain("3 4");
   });
 
-  test("enum declaration compiles", () => {
+  test("type with default fields compiles", () => {
     const result = compile(`
-enum Color
-  Red = 1
-  Green = 2
-  Blue = 3
+type Color
+  Red: number = 1
+  Green: number = 2
+  Blue: number = 3
 
-let c = Color.Red
+let c = Color()
+let r = c.Red
 `, { typeCheck: false, emitRuntimeImport: false });
     expect(result.success).toBe(true);
     expect(result.code).toContain("Color");
@@ -74,24 +75,14 @@ let p = Point(1, 2)
   });
 });
 
-describe("E2E: Agents and Capabilities", () => {
-  test("agent declaration compiles", () => {
+describe("E2E: Types with methods", () => {
+  test("type with methods compiles", () => {
     const result = compile(`
-agent Assistant using (LLM)
+type Assistant
   fn greet(): string
     return "Hello"
 `, { typeCheck: false });
-    
     expect(result.success).toBe(true);
     expect(result.code).toContain("function Assistant");
-  });
-
-  test("capabilities declaration compiles", () => {
-    const result = compile(`
-capabilities production
-  llm = Claude()
-`, { typeCheck: false });
-    
-    expect(result.success).toBe(true);
   });
 });

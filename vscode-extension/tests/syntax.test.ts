@@ -137,7 +137,6 @@ describe("TextMate Grammar - Keywords", () => {
     expect(pattern.match).toContain("let");
     expect(pattern.match).toContain("var");
     expect(pattern.match).toContain("test");
-    expect(pattern.match).toContain("sealed");
     expect(pattern.match).toContain("extends");
   });
 

@@ -19,7 +19,7 @@ with r2
 // @expect: R2 closed
 
 // === Context type (has close()) still works ===
-context Logger
+type Logger
   prefix: string
   fn log(msg: string): string
     "{prefix}: {msg}"

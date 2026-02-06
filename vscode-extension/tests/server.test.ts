@@ -10,7 +10,7 @@ import { buildSymbolTable, resolveDefinition, findReferences, getRenameLocations
 const KEYWORDS = [
   "fn", "type", "let", "var", "if", "else", "for", "match", "return",
   "using", "with", "import", "from", "test", "yield", "defer", "try",
-  "catch", "throw", "break", "continue", "spawn", "sealed", "extends",
+  "catch", "throw", "break", "continue", "spawn", "extends",
   "and", "or", "not", "is", "as", "then", "in", "true", "false", "null", "where"
 ];
 

@@ -11,7 +11,7 @@ import {
   checkIfStmt, checkForStmt, checkMatchStmt,
   checkReturnStmt, checkYieldStmt, checkTryStmt, checkWithStmt
 } from "./check-control-flow";
-import { checkFnDecl, checkTypeDecl, checkKeywordTypeUse, checkTestDecl } from "./check-declarations";
+import { checkFnDecl, checkTypeDecl, checkTestDecl } from "./check-declarations";
 
 export function checkStatement(ctx: InferContext, stmt: AST.Statement): void {
   switch (stmt.kind) {
@@ -69,16 +69,12 @@ export function checkStatement(ctx: InferContext, stmt: AST.Statement): void {
     case "ExternFnDecl":
     case "InterfaceDecl":
     case "ImportDecl":
-    case "KeywordDecl":
       break;
     case "TypeDecl":
       checkTypeDecl(ctx, stmt);
       break;
     case "TestDecl":
       checkTestDecl(ctx, stmt);
-      break;
-    case "KeywordTypeUse":
-      checkKeywordTypeUse(ctx, stmt);
       break;
   }
 }

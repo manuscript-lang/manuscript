@@ -148,35 +148,6 @@ type Person
     expect(result.code).toContain("function Person");
   });
 
-  test("compiles enum declaration", () => {
-    const result = compile(`
-enum Color
-  Red = 1
-  Green = 2
-  Blue = 3
-`);
-    expect(result.success).toBe(true);
-    expect(result.code).toContain("Color");
-  });
-
-  test("compiles with capabilities", () => {
-    const result = compile(`
-capabilities production
-  llm = Claude()
-`, { typeCheck: false });
-    expect(result.success).toBe(true);
-  });
-
-  test("compiles agent", () => {
-    const result = compile(`
-agent Greeter using (LLM)
-  fn greet(name: string): string
-    return "Hello, " + name
-`);
-    expect(result.success).toBe(true);
-    expect(result.code).toContain("function Greeter");
-  });
-
   test("compiles test declaration", () => {
     const result = compile(`
 test "addition works"

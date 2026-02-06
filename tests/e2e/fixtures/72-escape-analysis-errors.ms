@@ -2,7 +2,7 @@
 
 // === Context Type Definition ===
 
-context Logger
+type Logger
   prefix: string
   
   fn log(msg: string): void

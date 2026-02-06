@@ -132,16 +132,11 @@
         },
         {
           "name": "keyword.declaration.manuscript",
-          "match": "\\b(fn|type|let|var|test|keyword|import|from|sealed|extends|extern)\\b"
+          "match": "\\b(fn|type|let|var|test|import|from|extends|extern)\\b"
         },
         {
           "name": "keyword.operator.manuscript",
           "match": "\\b(and|or|not|is|as|in|using|with|where)\\b"
-        },
-        {
-          "comment": "Built-in keyword types (enum, agent, context, capabilities)",
-          "name": "keyword.other.keyword-type.manuscript",
-          "match": "\\b(enum|agent|context|capabilities)\\b"
         }
       ]
     },
@@ -228,24 +223,6 @@
     },
     "types": {
       "patterns": [
-        {
-          "comment": "Keyword declaration: keyword name = type/fn",
-          "match": "\\b(keyword)\\s+([a-z][a-zA-Z0-9_]*)\\s*(=)\\s*(type|fn)\\b",
-          "captures": {
-            "1": { "name": "keyword.declaration.manuscript" },
-            "2": { "name": "entity.name.type.keyword.manuscript" },
-            "3": { "name": "keyword.operator.assignment.manuscript" },
-            "4": { "name": "keyword.declaration.manuscript" }
-          }
-        },
-        {
-          "comment": "User-defined keyword type usage: keyword_name TypeName (at line start)",
-          "match": "^(\\s*)([a-z][a-zA-Z0-9_]*)\\s+([A-Z][a-zA-Z0-9_]*)\\b",
-          "captures": {
-            "2": { "name": "keyword.other.keyword-type.manuscript" },
-            "3": { "name": "entity.name.type.manuscript" }
-          }
-        },
         {
           "match": "\\b(type)\\s+([A-Z][a-zA-Z0-9_]*)\\b",
           "captures": {

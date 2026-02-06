@@ -34,7 +34,7 @@ function compileStdlib(): (runtime: any) => Record<string, any> {
     if (hasExternMethods(stmt)) continue;
     
     // Track names to export
-    if (stmt.kind === "FnDecl" || stmt.kind === "TypeDecl" || stmt.kind === "EnumDecl") {
+    if (stmt.kind === "FnDecl" || stmt.kind === "TypeDecl") {
       exportNames.push((stmt as { name: string }).name);
     }
     

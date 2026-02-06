@@ -12,8 +12,6 @@ function getDeclName(stmt: AST.Statement): string | null {
       return stmt.name;
     case "TypeDecl":
       return stmt.name;
-    case "KeywordTypeUse":
-      return stmt.name;
     default:
       return null;
   }
@@ -38,7 +36,7 @@ export function getModuleExports(
     let type: Type | undefined;
     if (stmt.kind === "FnDecl") {
       type = env.getType(name);
-    } else if (stmt.kind === "TypeDecl" || stmt.kind === "KeywordTypeUse") {
+    } else if (stmt.kind === "TypeDecl") {
       type = env.lookupType(name);
     }
     if (type === undefined) continue;

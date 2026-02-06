@@ -7,7 +7,6 @@ import type { TypeEnvironment } from "../environment";
 import { TypeCheckError } from "../errors";
 import { TypeErrors, RESERVED_PROPERTY_NAMES } from "../../shared/errors";
 import { astTypeToType, methodToFunctionType, fnDeclToType } from "../type-utils";
-import { getStdlibTypes } from "../environment";
 
 export interface CollectInput {
   program: AST.Program;
@@ -17,44 +16,26 @@ export interface CollectInput {
 export interface CollectOutput {
   env: TypeEnvironment;
   fnDecls: Map<string, AST.FnDecl>;
-  keywordDecls: Map<string, AST.KeywordDecl>;
   errors: TypeCheckError[];
 }
 
 export function collectDeclarations(input: CollectInput): CollectOutput {
   const { program, env } = input;
   const fnDecls = new Map<string, AST.FnDecl>();
-  const keywordDecls = new Map<string, AST.KeywordDecl>();
   const errors: TypeCheckError[] = [];
 
   const addError = (message: string, loc: AST.SourceLocation, hint?: string) => {
     errors.push(new TypeCheckError(message, loc, hint));
   };
 
-  // Seed keyword declarations from stdlib
-  for (const [name, decl] of getStdlibTypes().keywords) {
-    keywordDecls.set(name, decl);
-  }
-
-  // Collect keyword declarations from program (can override stdlib)
-  for (const stmt of program.body) {
-    if (stmt.kind === "KeywordDecl") {
-      keywordDecls.set(stmt.name, stmt);
-    }
-  }
-
-  // First pass: register all types and interfaces (needed for embedded lookup)
   for (const stmt of program.body) {
     if (stmt.kind === "TypeDecl") {
       registerType(stmt, env, addError);
     } else if (stmt.kind === "InterfaceDecl") {
       registerInterface(stmt, env, addError);
-    } else if (stmt.kind === "KeywordTypeUse") {
-      registerKeywordTypeUse(stmt, keywordDecls, env, addError);
     }
   }
 
-  // Second pass: resolve embedded types/interfaces and promote members
   for (const stmt of program.body) {
     if (stmt.kind === "TypeDecl") {
       resolveEmbeddedTypes(stmt, env, addError);
@@ -65,7 +46,7 @@ export function collectDeclarations(input: CollectInput): CollectOutput {
     }
   }
 
-  return { env, fnDecls, keywordDecls, errors };
+  return { env, fnDecls, errors };
 }
 
 function registerType(
@@ -303,120 +284,3 @@ function collectFnDecl(
   }
 }
 
-// Register a keyword type use. Supports empty (no body) or spelled-out (methods/fields in body).
-function registerKeywordTypeUse(
-  use: AST.KeywordTypeUse,
-  keywordDecls: Map<string, AST.KeywordDecl>,
-  env: TypeEnvironment,
-  addError: (msg: string, loc: AST.SourceLocation, hint?: string) => void
-): void {
-  const keywordDecl = keywordDecls.get(use.keyword);
-  
-  if (!keywordDecl) {
-    addError(
-      `Unknown keyword '${use.keyword}'`,
-      use.loc,
-      `Define it with: keyword ${use.keyword} = type`
-    );
-    return;
-  }
-
-  if (keywordDecl.expansion !== "type") {
-    addError(
-      `Keyword '${use.keyword}' is not a type keyword`,
-      use.loc,
-      `'${use.keyword}' expands to '${keywordDecl.expansion}', not 'type'`
-    );
-    return;
-  }
-
-  // Collect properties from keyword declaration
-  const properties: PropertyType[] = [];
-  const methods: MethodType[] = [];
-  const keywordMethodNames = new Set<string>();
-
-  // Add fields from keyword declaration
-  if (keywordDecl.body) {
-    for (const member of keywordDecl.body.members) {
-      if (member.kind === "KeywordField") {
-        properties.push({
-          name: member.name,
-          type: astTypeToType(member.type),
-          optional: member.optional,
-          computed: member.computed,
-          defaultValue: !!member.defaultValue,
-        });
-      } else if (member.kind === "MethodDecl") {
-        const methodType = methodToFunctionType(member);
-        methods.push({ name: member.name, type: methodType });
-        keywordMethodNames.add(member.name);
-      }
-    }
-  }
-
-  // Add fields from user's type body (validate no method collision)
-  for (const member of use.body.members) {
-    if (member.kind === "FieldDecl") {
-      // Check if this overrides a keyword field (allowed for providing values)
-      const existingIdx = properties.findIndex(p => p.name === member.name);
-      if (existingIdx >= 0) {
-        // User is providing value for keyword field - keep keyword's type, mark as provided
-        properties[existingIdx] = {
-          ...properties[existingIdx]!,
-          defaultValue: true,  // Mark as having a value
-        };
-      } else {
-        // User's additional field
-        properties.push({
-          name: member.name,
-          type: member.type ? astTypeToType(member.type) : Types.unknown,
-          optional: member.optional,
-          computed: member.computed,
-          defaultValue: !!member.defaultValue,
-        });
-      }
-    } else if (member.kind === "MethodDecl") {
-      // Check for collision with keyword methods (not allowed)
-      if (keywordMethodNames.has(member.name)) {
-        addError(
-          `Cannot override keyword method '${member.name}'`,
-          member.loc,
-          `Keyword '${use.keyword}' defines sealed method '${member.name}'. Use hooks for customization.`
-        );
-        continue;
-      }
-      const methodType = methodToFunctionType(member);
-      methods.push({ name: member.name, type: methodType });
-    }
-  }
-
-  // Check required fields are provided
-  if (keywordDecl.body) {
-    for (const member of keywordDecl.body.members) {
-      if (member.kind === "KeywordField" && !member.optional && !member.defaultValue) {
-        const prop = properties.find(p => p.name === member.name);
-        if (!prop || !prop.defaultValue) {
-          addError(
-            `Missing required field '${member.name}' for keyword '${use.keyword}'`,
-            use.loc,
-            `'${use.keyword}' requires field '${member.name}: ${member.type ? astTypeToType(member.type).kind : 'unknown'}'`
-          );
-        }
-      }
-    }
-  }
-
-  const type: ObjectType = {
-    kind: "object",
-    name: use.name,
-    properties,
-    methods,
-  };
-
-  try {
-    env.defineType(use.name, type);
-  } catch (e) {
-    const err = TypeErrors.typeAlreadyDefined(use.name);
-    addError(err.message, use.loc, err.hint);
-  }
-}

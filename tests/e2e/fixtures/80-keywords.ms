@@ -1,73 +1,52 @@
-// @test: Keywords - Extensible keyword system
+// @test: Plain types - type declarations with fields and methods
 
-// === Basic enum keyword ===
-enum Status
-  Pending = 0
-  Active = 1
-  Complete = 2
+// === Type with default-valued fields (enum-like usage) ===
+type Status
+  Pending: number = 0
+  Active: number = 1
+  Complete: number = 2
 
+let status = Status()
 // @expect: 0
-print(Status.Pending)
+print(status.Pending)
 // @expect: 1
-print(Status.Active)
+print(status.Active)
 // @expect: 2
-print(Status.Complete)
+print(status.Complete)
 
-// === Enum with string values ===
-enum Color
-  Red = "red"
-  Green = "green"
-  Blue = "blue"
+// === Type with methods ===
+type Counter
+  value: number = 0
+  fn increment(): void
+    value = value + 1
+  fn get(): number
+    value
 
-// @expect: red
-print(Color.Red)
-// @expect: green
-print(Color.Green)
+let c = Counter()
+// @expect: 0
+print(c.get())
+c.increment()
+c.increment()
+// @expect: 2
+print(c.get())
 
-// === Custom keyword declaration ===
-keyword workflow = type
-  steps: list[string]
-  
-  fn run(): void
-    for step in steps
-      print("Running: " + step)
-
-// === Keyword type use with value assignment ===
-workflow Pipeline
-  steps = ["fetch", "transform", "load"]
-
-let p = Pipeline()
-// @expect: Running: fetch
-// @expect: Running: transform
-// @expect: Running: load
-p.run()
-
-// === Keyword with optional field and default ===
-keyword task = type
+// === Type with optional field and default ===
+type Task
   name: string
   priority?: number
   status: string = "pending"
-  
   fn describe(): string
     name + " (" + status + ")"
 
-task MyTask
-  name = "Build feature"
-
-let t = MyTask()
+let t = Task("Build feature")
 // @expect: Build feature (pending)
 print(t.describe())
 
-// === User adding methods to keyword type ===
-keyword entity = type
-  id: number
-  
+// === Type with id and methods ===
+type User
+  id: number = 1
   fn getId(): number
     id
-
-entity User
-  id = 1
-  
   fn greet(): string
     "Hello from user " + to_str(id)
 
@@ -77,11 +56,10 @@ print(u.getId())
 // @expect: Hello from user 1
 print(u.greet())
 
-// === Agent keyword with methods ===
-agent Helper
+// === Type with multiple methods ===
+type Helper
   fn greet(name: string): string
     "Hello, " + name
-  
   fn farewell(name: string): string
     "Goodbye, " + name
 
@@ -91,45 +69,36 @@ print(h.greet("World"))
 // @expect: Goodbye, Friend
 print(h.farewell("Friend"))
 
-// === Nested keyword usage ===
-keyword config = type
-  name: string
-  value: unknown
+// === Type with nested object ===
+type DbValue
+  host: string
+  port: number
 
-config DatabaseConfig
-  name = "postgres"
-  value = {host: "localhost", port: 5432}
+type DatabaseConfig
+  name: string = "postgres"
+  value: DbValue
 
-let db = DatabaseConfig()
+let db = DatabaseConfig("postgres", DbValue("localhost", 5432))
 // @expect: postgres
 print(db.name)
 // @expect: localhost
 print(db.value.host)
 
-// === Keyword with computed expressions in values ===
-keyword counter = type
-  initial: number
-  current: number
-  
+// === Type with method returning number ===
+type MyCounter
+  initial: number = 0
+  current: number = 10
   fn increment(): number
     current + 1
 
-counter MyCounter
-  initial = 0
-  current = 10
-
-let c = MyCounter()
+let mc = MyCounter()
 // @expect: 11
-print(c.increment())
+print(mc.increment())
 
-// === Keyword instances as function arguments ===
-keyword item = type
-  name: string
-  price: number
-
-item Product
-  name = "Widget"
-  price = 9.99
+// === Type as function argument ===
+type Product
+  name: string = "Widget"
+  price: number = 9.99
 
 fn format_product(p: Product): string
   p.name + ": $" + to_str(p.price)
@@ -138,60 +107,41 @@ let prod = Product()
 // @expect: Widget: $9.99
 print(format_product(prod))
 
-// === Multiple keyword instances ===
-keyword point = type
+// === Type with method using fields ===
+type Point
   x: number
   y: number
-  
   fn distance_from_origin(): number
     sqrt(x ^ 2 + y ^ 2)
 
-point Origin
-  x = 0
-  y = 0
-
-point Corner
-  x = 3
-  y = 4
-
-let o = Origin()
-let corner = Corner()
+let origin = Point(0, 0)
+let corner = Point(3, 4)
 // @expect: 0
-print(o.distance_from_origin())
+print(origin.distance_from_origin())
 // @expect: 5
 print(corner.distance_from_origin())
 
-// === Keyword method with parameters ===
-keyword calculator = type
-  base: number
-  
+// === Type with method parameters ===
+type Calculator
+  base: number = 10
   fn add(n: number): number
     base + n
-  
   fn multiply(n: number): number
     base * n
 
-calculator Calc
-  base = 10
-
-let calc = Calc()
+let calc = Calculator()
 // @expect: 15
 print(calc.add(5))
 // @expect: 30
 print(calc.multiply(3))
 
-// === Keyword with list field operations ===
-keyword queue = type
-  items: list[string]
-  
+// === Type with list field ===
+type TaskQueue
+  items: list[string] = ["task1", "task2", "task3"]
   fn size(): number
     len(items)
-  
   fn first_item(): string
     if len(items) > 0 then items[0] else "empty"
-
-queue TaskQueue
-  items = ["task1", "task2", "task3"]
 
 let q = TaskQueue()
 // @expect: 3
@@ -199,24 +149,14 @@ print(q.size())
 // @expect: task1
 print(q.first_item())
 
-// === Keyword with map field ===
-keyword registry = type
-  entries: map[string, number]
-  
+// === Type with map field ===
+type Scores
+  entries: map[string, number] = {alice: 100, bob: 85, charlie: 92}
   fn lookup(key: string): number
     entries[key] ?? 0
-
-registry Scores
-  entries = {alice: 100, bob: 85, charlie: 92}
 
 let scores = Scores()
 // @expect: 100
 print(scores.lookup("alice"))
 // @expect: 0
 print(scores.lookup("unknown"))
-
-
-// === Enum without explicit value ===
-enum BadEnum
-  Red
-// @error: Expected

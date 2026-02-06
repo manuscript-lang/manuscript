@@ -3,7 +3,8 @@
 Simple enough for AI to write. Clear enough for humans to review. Easy enough for computers to verify.
 
 ```manuscript
-agent coder using (fs: Filesystem, sh: Shell)
+type coder using (fs: Filesystem, sh: Shell)
+  Agent
   task: string
   system: () => """
     You are a senior engineer. Task: {task}
@@ -61,17 +62,6 @@ system: () => """
   - You know {skill}
   {end}
 """
-```
-
-**Extensible via `keyword`.**  
-`agent` and `enum` are defined with `keyword`. Add your own declarative constructs.
-
-```manuscript
-keyword workflow = type
-  steps: list[string]
-  fn run(): void
-    for step in steps
-      print("Running: " + step)
 ```
 
 **Statically typed.**  

@@ -1,7 +1,7 @@
 // @test: Context/Using Edge Cases - Capability system stress test
 
 // === Basic context passing ===
-context Logger
+type Logger
   prefix: string
   
   fn log(msg: string): string
@@ -17,7 +17,7 @@ with let l = Logger("[INFO]")
   print(greet("World"))
 
 // === Nested contexts of same type ===
-context Counter
+type Counter
   name: string
   value: number = 0
   
@@ -55,7 +55,7 @@ with let outer = Counter("outer", 0)
   print(getCounterName())
 
 // === Context with state modifications ===
-context Accumulator
+type Accumulator
   total: number = 0
   
   fn add(n: number): number
@@ -82,7 +82,7 @@ with let acc = Accumulator()
   print(readTotal())
 
 // === Multiple independent contexts ===
-context Config
+type Config
   env: string
   
   fn getEnv(): string
@@ -102,7 +102,7 @@ with let l = Logger("APP"), let c = Config("prod")
   print(logWithEnv("system started"))
 
 // === Context method with mutable state ===
-context Builder
+type Builder
   parts: number = 0
   result: string = ""
   
@@ -130,7 +130,7 @@ with let b = Builder()
   print(b.build())
 
 // === Conditional context usage ===
-context Feature
+type Feature
   enabled: bool
   
   fn isEnabled(): bool

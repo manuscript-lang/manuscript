@@ -76,7 +76,6 @@ export type Ctx = {
   scopeStack: { defers: AST.Statement[] }[];
   tempCounter: number;
   typeFields: Map<string, Set<string>>; // type name -> field names (for embedding)
-  keywordDecls: Map<string, AST.KeywordDecl>; // keyword name -> declaration
 };
 
 // Create fresh context
@@ -85,7 +84,6 @@ export function createCtx(options: Partial<CodeGenOptions> = {}): Ctx {
     out: [],
     indent: 0,
     typeFields: new Map(),
-    keywordDecls: new Map(),
     options: { ...defaultOptions, ...options },
     scopeStack: [],
     tempCounter: 0,
@@ -149,7 +147,6 @@ export function resetCtx(ctx: Ctx): void {
   ctx.scopeStack = [];
   ctx.tempCounter = 0;
   ctx.typeFields = new Map();
-  ctx.keywordDecls = new Map();
 }
 
 // Exhaustiveness helper for switch statements

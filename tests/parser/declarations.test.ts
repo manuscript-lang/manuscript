@@ -189,31 +189,6 @@ describe("Parser - Type Declarations", () => {
     });
   });
 
-  test("context type declaration", () => {
-    const src = `context Filesystem
-  fn read(path: string): string`;
-    const result = program(src);
-    expect(result.body[0]).toMatchObject({
-      kind: "KeywordTypeUse",
-      keyword: "context",
-      name: "Filesystem",
-    });
-    const decl = result.body[0] as any;
-    expect(decl.body.members).toHaveLength(1);
-    expect(decl.body.members[0]).toMatchObject({ kind: "MethodDecl", name: "read" });
-  });
-
-  test("context type with no body", () => {
-    const src = "context Empty";
-    const result = program(src);
-    expect(result.body[0]).toMatchObject({
-      kind: "KeywordTypeUse",
-      keyword: "context",
-      name: "Empty",
-      body: { kind: "TypeBody", members: [] },
-    });
-  });
-
   test("struct type", () => {
     const src = `type User
   id: number
@@ -324,49 +299,6 @@ describe("Parser - Type Declarations", () => {
     expect(result.body[0]).toMatchObject({
       kind: "TypeDecl",
       where: [{ param: "T", constraint: { kind: "NamedType", name: "Comparable" } }],
-    });
-  });
-});
-
-describe("Parser - Keyword Declarations", () => {
-  test("simple type keyword", () => {
-    const src = "keyword capabilities = type";
-    const result = program(src);
-    expect(result.body[0]).toMatchObject({
-      kind: "KeywordDecl",
-      name: "capabilities",
-      expansion: "type",
-    });
-  });
-
-  test("keyword with using", () => {
-    const src = "keyword agent = type using (LLM)";
-    const result = program(src);
-    expect(result.body[0]).toMatchObject({
-      kind: "KeywordDecl",
-      name: "agent",
-      using: { bindings: [{ kind: "UsingBinding", type: { name: "LLM" } }] },
-    });
-  });
-
-  test("function keyword", () => {
-    const src = "keyword prompt = fn: string";
-    const result = program(src);
-    expect(result.body[0]).toMatchObject({
-      kind: "KeywordDecl",
-      name: "prompt",
-      expansion: "fn",
-      returnType: { kind: "NamedType", name: "string" },
-    });
-  });
-
-  test("sealed keyword", () => {
-    const src = "sealed keyword enum = type";
-    const result = program(src);
-    expect(result.body[0]).toMatchObject({
-      kind: "KeywordDecl",
-      sealed: true,
-      name: "enum",
     });
   });
 });

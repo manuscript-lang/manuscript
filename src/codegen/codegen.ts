@@ -14,7 +14,7 @@ import {
 // Import generators
 import { genExpr, setGen as setExprGen } from "./expressions";
 import { setGen as setStmtGen, genLet, genVar, genAssign, genIf, genFor, genMatch, genReturn, genYield, genDefer, genTry, genThrow, genWith, genExprStmt, genBlock } from "./statements";
-import { genImport, genFn, genType, genEnum, genAgent, genTest, genKeywordTypeUse } from "./declarations";
+import { genImport, genFn, genType, genTest } from "./declarations";
 
 // Main dispatch function - handles all AST nodes
 export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): string {
@@ -53,18 +53,6 @@ export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): st
       return "";
     case "TypeDecl":
       genType(ctx, node, opts);
-      return "";
-    case "EnumDecl":
-      genEnum(ctx, node, opts);
-      return "";
-    case "KeywordDecl":
-      // Keywords are compile-time only, no codegen
-      return "";
-    case "KeywordTypeUse":
-      genKeywordTypeUse(ctx, node, opts);
-      return "";
-    case "AgentDecl":
-      genAgent(ctx, node, opts);
       return "";
     case "TestDecl":
       genTest(ctx, node, opts);
@@ -126,15 +114,6 @@ export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): st
 setExprGen(gen);
 setStmtGen(gen);
 
-// Collect keyword declarations from program (needed for keyword type use)
-function collectKeywordDecls(program: AST.Program, ctx: Ctx): void {
-  for (const stmt of program.body) {
-    if (stmt.kind === "KeywordDecl") {
-      ctx.keywordDecls.set(stmt.name, stmt);
-    }
-  }
-}
-
 // Emit runtime imports
 function emitRuntimeImports(ctx: Ctx): void {
   if (ctx.options.emitRuntimeImport) {
@@ -155,7 +134,6 @@ export class CodeGenerator {
     resetCtx(this.ctx);
     const opts = createOpts();
 
-    collectKeywordDecls(program, this.ctx);
     emitRuntimeImports(this.ctx);
 
     for (const stmt of program.body) {

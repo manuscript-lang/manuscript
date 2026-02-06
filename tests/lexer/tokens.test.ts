@@ -17,7 +17,6 @@ describe("Lexer - Keywords", () => {
     "import": ["IMPORT"],
     "from": ["FROM"],
     "test": ["TEST"],
-    "keyword": ["KEYWORD"],
     "yield": ["YIELD"],
     "defer": ["DEFER"],
     "try": ["TRY"],
@@ -26,7 +25,6 @@ describe("Lexer - Keywords", () => {
     "break": ["BREAK"],
     "continue": ["CONTINUE"],
     "spawn": ["SPAWN"],
-    "sealed": ["SEALED"],
     "and": ["AND"],
     "or": ["OR"],
     "not": ["NOT"],
@@ -67,9 +65,7 @@ describe("Lexer - Identifiers", () => {
     ]);
   });
 
-  // agent, capabilities, prompt are all identifiers
-  // They are defined via keyword declarations (syntax.md), not core keywords
-  test("agent, capabilities, prompt are identifiers (keyword-defined)", () => {
+  test("agent, capabilities, prompt, enum are identifiers", () => {
     expect(tokenTypes("agent capabilities prompt enum")).toEqual([
       "IDENTIFIER", "IDENTIFIER", "IDENTIFIER", "IDENTIFIER"
     ]);

@@ -4,7 +4,7 @@
 
 // === Setup ===
 
-context Logger
+type Logger
   prefix: string
   fn log(msg: string): string
     "{prefix}: {msg}"
