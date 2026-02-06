@@ -21,4 +21,4 @@ alwaysApply: true
 - Always prefer reuse over new code
 - Include testing 
 - Write bullet points
-- Include, problem and solution
+- Include problem and solution
