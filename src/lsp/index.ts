@@ -34,3 +34,9 @@ export {
   findInterfaceDecl,
   findConstructorCalleeAt,
 } from "./utils";
+export {
+  isStdlibImport,
+  resolveStdlibDefinition,
+  getStdlibHover,
+  type StdlibDefinitionLocation,
+} from "./stdlib";

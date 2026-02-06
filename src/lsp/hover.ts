@@ -11,6 +11,7 @@ import {
   findInterfaceDecl,
   formatAstType,
   formatFnSignature,
+  formatFunctionType,
   formatTypeSignature,
   formatTypeSignatureFromObject,
   formatInterfaceSignature,
@@ -22,6 +23,42 @@ import {
 export interface HoverInfo {
   signature: string;
   doc?: string;
+}
+
+export function getHoverForDecl(decl: AST.FnDecl | AST.ExternFnDecl | AST.TypeDecl | AST.InterfaceDecl): HoverInfo {
+  if (decl.kind === "FnDecl" || decl.kind === "ExternFnDecl") {
+    return { signature: formatFnSignature(decl as AST.FnDecl), doc: (decl as AST.FnDecl).doc };
+  }
+  if (decl.kind === "TypeDecl") {
+    const { signature, fields } = formatTypeSignature(decl);
+    const doc = decl.doc ?? (fields.length ? `**Fields:**\n${fields.map((f) => `- \`${f}\``).join("\n")}` : undefined);
+    return { signature: `type ${signature}`, doc };
+  }
+  const { signature, methods } = formatInterfaceSignature(decl as AST.InterfaceDecl);
+  const iface = decl as AST.InterfaceDecl;
+  const doc = iface.doc ?? (methods.length ? `**Methods:**\n${methods.map((m) => `- \`${m}\``).join("\n")}` : undefined);
+  return { signature: `interface ${signature}`, doc };
+}
+
+export function getHoverForType(
+  name: string,
+  type: FunctionType | ObjectType | InterfaceType
+): HoverInfo {
+  if (type.kind === "function") {
+    const fn = formatFunctionType(type);
+    return { signature: fn.startsWith("fn(") ? `fn ${name}${fn.slice(2)}` : `fn ${name}(): unknown` };
+  }
+  if (type.kind === "object") {
+    const { signature, fields } = formatTypeSignatureFromObject(type as ObjectType);
+    const doc = fields.length ? `**Fields:**\n${fields.map((f) => `- \`${f}\``).join("\n")}` : undefined;
+    return { signature: `type ${signature}`, doc };
+  }
+  const iface = type as InterfaceType;
+  const methods = (iface.methods ?? []).map(
+    (m) => `fn ${m.name}${formatFunctionType(m.type).slice(2)}`
+  );
+  const doc = methods.length ? `**Methods:**\n${methods.map((m) => `- \`${m}\``).join("\n")}` : undefined;
+  return { signature: `interface ${iface.name}`, doc };
 }
 
 export function getHoverForSymbol(
@@ -61,30 +98,22 @@ function getHoverForDefinition(
         const params = fnType.params.map((p: any) => `${p.name}: ${typeToString(p.type)}`).join(", ");
         return { signature: `fn ${def.name}(${params}): ${typeToString(fnType.returnType)}`, doc: fn.doc };
       }
-      return { signature: formatFnSignature(fn), doc: fn.doc };
+      return getHoverForDecl(fn);
     }
     case "type": {
       const fromEnv = env && getTypeOrInterfaceFromEnv(env, def.name);
       if (fromEnv?.kind === "interface") {
         const iface = findInterfaceDecl(program, def.name);
-        const { signature, methods } = iface ? formatInterfaceSignature(iface) : { signature: def.name, methods: [] };
-        const doc = iface?.doc ?? (methods.length ? `**Methods:**\n${methods.map(m => `- \`${m}\``).join("\n")}` : undefined);
-        return { signature: `interface ${signature}`, doc };
+        return iface ? getHoverForDecl(iface) : { signature: `interface ${def.name}`, doc: undefined };
       }
       if (fromEnv?.kind === "object") {
         const { signature, fields } = formatTypeSignatureFromObject(fromEnv as ObjectType);
         return { signature: `type ${signature}`, doc: fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined };
       }
       const iface = findInterfaceDecl(program, def.name);
-      if (iface) {
-        const { signature } = formatInterfaceSignature(iface);
-        return { signature: `interface ${signature}`, doc: iface.doc };
-      }
+      if (iface) return getHoverForDecl(iface);
       const typeDecl = findTypeDecl(program, def.name);
-      if (typeDecl) {
-        const { signature, fields } = formatTypeSignature(typeDecl);
-        return { signature: `type ${signature}`, doc: typeDecl.doc };
-      }
+      if (typeDecl) return getHoverForDecl(typeDecl);
       break;
     }
     case "field": {

@@ -75,6 +75,11 @@ import * as fs from "fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { typecheckDocumentInProject } from "../../src/cli/compiler";
 import { findMsToml, loadMsToml, resolveSpecifier } from "../../src/modules";
+import {
+  isStdlibImport,
+  resolveStdlibDefinition,
+  getStdlibHover,
+} from "../../src/lsp";
 
 // ============================================
 // Server State
@@ -378,8 +383,16 @@ connection.onCompletionResolve(async (item): Promise<CompletionItem> => {
   } | undefined;
   if (!data) return item;
 
-  if (data.import && data.specifier != null && data.exportedName != null && data.uri) {
-    const proj = await getProjectConfig(data.uri);
+  if (data.import && data.specifier != null && data.exportedName != null) {
+    if (isStdlibImport(data.specifier)) {
+      const hoverInfo = getStdlibHover(data.specifier, data.exportedName);
+      if (hoverInfo) {
+        item.detail = hoverInfo.signature;
+        if (hoverInfo.doc) item.documentation = { kind: MarkupKind.Markdown, value: hoverInfo.doc };
+      }
+      return item;
+    }
+    const proj = await getProjectConfig(data.uri!);
     if (proj) {
       const resolved = resolveSpecifier(proj.projectRoot, proj.config.srcDir, data.specifier);
       if ("kind" in resolved && resolved.kind === "local") {
@@ -580,6 +593,11 @@ async function resolveImportDefinition(
   currentUri: string,
   importTarget: { specifier: string; exportedName: string }
 ): Promise<Location | null> {
+  if (isStdlibImport(importTarget.specifier)) {
+    const loc = resolveStdlibDefinition(importTarget.specifier, importTarget.exportedName);
+    if (!loc) return null;
+    return Location.create(loc.uri, loc.range);
+  }
   const entryPath = fileURLToPath(new URL(currentUri));
   const startDir = path.dirname(entryPath);
   const projectRoot = await findMsToml(startDir);
@@ -608,6 +626,9 @@ async function resolveImportHover(
   currentUri: string,
   importTarget: { specifier: string; exportedName: string }
 ): Promise<HoverInfo | null> {
+  if (isStdlibImport(importTarget.specifier)) {
+    return getStdlibHover(importTarget.specifier, importTarget.exportedName);
+  }
   const entryPath = fileURLToPath(new URL(currentUri));
   const startDir = path.dirname(entryPath);
   const projectRoot = await findMsToml(startDir);
@@ -641,6 +662,30 @@ async function findProjectReferencesToExport(
   specifier: string,
   exportedName: string
 ): Promise<{ definition: Location; references: Location[] } | null> {
+  if (isStdlibImport(specifier)) {
+    const defLoc = resolveStdlibDefinition(specifier, exportedName);
+    if (!defLoc) return null;
+    const definition = Location.create(defLoc.uri, defLoc.range);
+    const references: Location[] = [];
+    const msFiles = await listMsFilesInDir(config.srcDir);
+    for (const filePath of msFiles) {
+      const fileCached = await getOrLoadCached(filePath);
+      if (!fileCached) continue;
+      for (const stmt of fileCached.program.body) {
+        if (stmt.kind !== "ImportDecl" || stmt.source !== specifier) continue;
+        for (const { name, alias } of stmt.names) {
+          if (name !== exportedName) continue;
+          const bindingName = alias ?? name;
+          const refs = fileCached.symbols.getReferences(bindingName);
+          const fileUri = pathToFileURL(path.resolve(filePath)).href;
+          for (const ref of refs) {
+            references.push(Location.create(fileUri, locToRange(ref.loc, bindingName.length)));
+          }
+        }
+      }
+    }
+    return { definition, references };
+  }
   const resolved = resolveSpecifier(projectRoot, config.srcDir, specifier);
   if (!("kind" in resolved) || resolved.kind !== "local") return null;
   const depCached = await getOrLoadCached(resolved.path);

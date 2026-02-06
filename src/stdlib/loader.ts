@@ -3,6 +3,8 @@
 // In compiled binary: reads from Bun.embeddedFiles (via isCompiledBinary)
 
 import { readFileSync, readdirSync } from "fs";
+import * as path from "path";
+import { pathToFileURL } from "node:url";
 import { Parser } from "../parser";
 import { extractBuiltinsTypes, type BuiltinsTypes } from "../builtin/extractor";
 import { TypeCheckError } from "../types/errors";
@@ -48,12 +50,24 @@ export async function getStdlibSource(name: string): Promise<string | null> {
 
 export function getStdlibSourceSync(name: string): string | null {
   if (sourceCache.has(name)) return sourceCache.get(name)!;
+  if (isCompiledBinary()) return null;
   try {
     const source = readFileSync(`${STDLIB_DIR}/${name}.ms`, "utf-8");
     sourceCache.set(name, source);
     return source;
   } catch {
     return null;
+  }
+}
+
+export async function ensureStdlibCache(): Promise<void> {
+  if (!isCompiledBinary()) return;
+  const idx = getEmbeddedIndex();
+  for (const [filename] of idx) {
+    if (filename.endsWith(".ms")) {
+      const modName = filename.replace(/\.ms$/, "");
+      if (!sourceCache.has(modName)) await getStdlibSource(modName);
+    }
   }
 }
 
@@ -147,4 +161,38 @@ export function isStdlibImport(specifier: string): boolean {
 
 export function stdlibModuleName(specifier: string): string {
   return specifier.slice(4);
+}
+
+export function getStdlibModuleUri(moduleName: string): string {
+  if (isCompiledBinary()) return `manuscript-stdlib:///${moduleName}.ms`;
+  return pathToFileURL(path.resolve(STDLIB_DIR, `${moduleName}.ms`)).href;
+}
+
+export interface StdlibExportLocation {
+  loc: AST.SourceLocation;
+  nameOffset: number;
+  name: string;
+}
+
+export function getStdlibExportLocation(moduleName: string, exportedName: string): StdlibExportLocation | null {
+  const stdTypes = getStdlibTypes(moduleName);
+  if (!stdTypes) return null;
+  const isExported =
+    stdTypes.functions.has(exportedName) || stdTypes.types.has(exportedName);
+  if (!isExported) return null;
+  const program = getStdlibAST(moduleName);
+  if (!program) return null;
+  for (const stmt of program.body) {
+    if ((stmt.kind === "FnDecl" || stmt.kind === "ExternFnDecl") && stmt.name === exportedName) {
+      const nameOffset = stmt.kind === "ExternFnDecl" ? 10 : 3;
+      return { loc: stmt.loc, nameOffset, name: stmt.name };
+    }
+    if (stmt.kind === "TypeDecl" && stmt.name === exportedName) {
+      return { loc: stmt.loc, nameOffset: 5, name: stmt.name };
+    }
+    if (stmt.kind === "InterfaceDecl" && stmt.name === exportedName) {
+      return { loc: stmt.loc, nameOffset: 10, name: stmt.name };
+    }
+  }
+  return null;
 }

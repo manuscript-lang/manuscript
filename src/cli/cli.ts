@@ -9,7 +9,7 @@ import { Glob } from "bun";
 import * as os from "os";
 import { compile, check, compileProject, formatErrors, type CompileOptions } from "./compiler";
 import { __ms_runtime } from "../runtime/runtime";
-import { findMsToml, loadMsToml } from "../modules";
+import { findMsToml } from "../modules";
 import { isCompiledBinary } from "../shared/env";
 
 function registerRuntimePlugin(): void {
@@ -157,7 +157,6 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
   try {
     const projectRoot = await findMsToml(path.dirname(filepath));
     if (projectRoot) {
-      const config = await loadMsToml(projectRoot);
       const result = await compileProject(filepath, {
         typeCheck: !options.noTypecheck,
         emitRuntimeImport: true,
@@ -167,6 +166,7 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
         console.error(formatErrors(result.errors));
         return 1;
       }
+      const config = result.config!;
       const outDir = path.join(os.tmpdir(), `ms-run-${Date.now()}`);
       await fs.mkdir(outDir, { recursive: true });
       for (const [fp, code] of result.outputs) {
@@ -389,7 +389,7 @@ async function buildCommand(files: string[], options: CLIOptions): Promise<numbe
       console.error(formatErrors(result.errors));
       return 1;
     }
-    const config = await loadMsToml(projectRoot);
+    const config = result.config!;
     for (const [fp] of result.outputs) {
       const rel = path.relative(config.srcDir, fp).replace(/\.ms$/i, "") + ".js";
       log(`\x1b[32m✓\x1b[0m ${fp} → ${path.join(outputDir, rel)}`, options);

@@ -8,7 +8,7 @@ import type { Type } from "../types/types";
 import { PassManager, createGlobalEnvironment, getModuleExports } from "../types";
 import { CodeGenerator } from "../codegen";
 import type * as AST from "../parser/ast";
-import { findMsToml, loadMsToml, buildModuleGraph, type ModuleGraph, resolveSpecifier } from "../modules";
+import { findMsToml, loadMsToml, buildModuleGraph, type ModuleGraph, type MsTomlConfig, resolveSpecifier } from "../modules";
 import { resolveStdlibImports } from "../stdlib/loader";
 
 export interface CompileResult {
@@ -50,9 +50,10 @@ export interface ProjectCompileOptions {
 
 export interface ProjectCompileResult {
   success: boolean;
-  outputs: Map<string, string>; // file path -> generated code
+  outputs: Map<string, string>;
   errors: CompileError[];
   warnings: CompileWarning[];
+  config?: MsTomlConfig;
 }
 
 /**
@@ -367,7 +368,7 @@ export async function compileProject(
     return { success: false, outputs, errors, warnings };
   }
 
-  let config;
+  let config: MsTomlConfig;
   try {
     config = await loadMsToml(projectRoot);
   } catch (e: unknown) {
@@ -477,7 +478,7 @@ export async function compileProject(
     }
   }
 
-  return { success: true, outputs, errors, warnings };
+  return { success: true, outputs, errors, warnings, config };
 }
 
 export interface TypecheckDocumentInProjectResult {
