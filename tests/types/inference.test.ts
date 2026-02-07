@@ -189,8 +189,8 @@ x ?? 0`;
 });
 
 describe("Type Inference - Spawn", () => {
-  test("spawn returns promise", () => {
+  test("race returns resolved type", () => {
     const result = inferType('import { race } from "std/concurrency"\nlet x = spawn print(1)\nrace([x])');
-    expect(result).toMatch(/Promise|promise/);
+    expect(result).toBe("void");
   });
 });

@@ -4,6 +4,10 @@ export function spawn<T>(fn: () => Promise<T>): Promise<T> {
   return fn();
 }
 
+export function resolve<T>(p: Promise<T>): Promise<T> {
+  return p;
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

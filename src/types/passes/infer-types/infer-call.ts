@@ -59,10 +59,7 @@ export function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
 
   const calleeType = ctx.inferExpr(ctx, expr.callee);
 
-  if (expr.callee.kind === "Identifier" &&
-      (expr.callee.name === "race" || expr.callee.name === "all")) {
-    for (const arg of expr.args) consumeSpawnsInExpr(ctx, "kind" in arg ? arg : arg.value);
-  } else if (calleeType.kind === "function") {
+  if (calleeType.kind === "function") {
     for (let i = 0; i < expr.args.length && i < calleeType.params.length; i++) {
       const param = calleeType.params[i];
       if (param && typeInvolvesPromise(param.type, ctx.env)) {

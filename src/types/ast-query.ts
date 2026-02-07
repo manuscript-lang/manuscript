@@ -1,6 +1,7 @@
 import * as AST from "../parser/ast";
 import { visit } from "./ast-visitor";
 import type { Type } from "./types";
+import { getIterableElementType } from "./type-utils";
 import { NAME_OFFSET_FN, NAME_OFFSET_EXTERN_FN, NAME_OFFSET_TYPE, NAME_OFFSET_INTERFACE } from "../shared/constants";
 
 export function findFnDecl(program: AST.Program, name: string): AST.FnDecl | null {
@@ -81,6 +82,13 @@ export function findVariableType(program: AST.Program, name: string, line: numbe
         for (const c of s.contexts) {
           if (c.name === name) return c.expr.resolvedType ?? null;
         }
+        const inBody = searchStatements(s.body.statements);
+        if (inBody) return inBody;
+      }
+      if (s.kind === "ForStmt" && s.pattern?.kind === "IdentifierPattern" && s.pattern.name === name && s.pattern.loc.line === line && s.iterable?.resolvedType) {
+        return getIterableElementType(s.iterable.resolvedType);
+      }
+      if (s.kind === "ForStmt" && s.body) {
         const inBody = searchStatements(s.body.statements);
         if (inBody) return inBody;
       }

@@ -37,10 +37,10 @@ export function __getContext(typeName: string): any {
 }
 
 // Re-export modules
-export { spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
+export { spawn, sleep, all_settled, race, resolve, timeout, delay } from "./concurrency";
 export { test, getTestCount, clearTests, runTests, runTestsWithResults } from "./testing";
 
-import { spawn, sleep, all_settled, race, timeout, delay } from "./concurrency";
+import { spawn, sleep, all_settled, race, resolve, timeout, delay } from "./concurrency";
 import { test, getTestCount, clearTests, runTests, runTestsWithResults } from "./testing";
 
 // ============================================
@@ -185,7 +185,7 @@ export const __ms_runtime: Record<string, any> = {
   test, getTestCount, clearTests, runTests, runTestsWithResults,
   
   // Concurrency
-  spawn, sleep, all_settled, race, timeout, delay,
+  spawn, sleep, all_settled, race, resolve, timeout, delay,
   
   // Internal (codegen)
   range, template,

@@ -129,6 +129,22 @@ print(y)
     expect(onY!.signature).toContain("number");
   });
 
+  test("hover on for-loop variable shows iterable element type", () => {
+    const source = `
+fn foo()
+  for x in [1, 2, 3]
+    print(x)
+`;
+    const { symbols, program, env } = parseDocument(source);
+    const onLoopVar = getHoverForSymbol(symbols, program, 3, 7, env);
+    expect(onLoopVar).not.toBeNull();
+    expect(onLoopVar!.signature).toContain("x");
+    expect(onLoopVar!.signature).toContain("number");
+    const onRefInBody = getHoverForSymbol(symbols, program, 4, 11, env);
+    expect(onRefInBody).not.toBeNull();
+    expect(onRefInBody!.signature).toContain("number");
+  });
+
   test("hover on method parameter", () => {
     const source = `
 type T
