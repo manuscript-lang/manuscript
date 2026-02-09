@@ -1,6 +1,5 @@
 // Symbol Table Builder - Builds symbol table from AST and type information
-import * as AST from "../parser/ast";
-import type { Type, ObjectType, InterfaceType } from "../types/types";
+import type * as AST from "../parser/ast";
 import type { TypeEnvironment } from "../types/environment";
 import { getTypeDisplayName } from "../types/type-utils";
 import { findTypeDecl, findInterfaceDecl } from "../types/ast-query";
@@ -126,7 +125,6 @@ function collectDefinitions(ctx: BuildContext, stmt: AST.Statement): void {
       } else if (stmt.pattern) {
         for (const { name, loc } of getPatternBindings(stmt.pattern)) {
           const qn = scope ? `${scope}.${name}` : name;
-          const nameOffset = loc.column;
           ctx.symbols.addDefinition({
             id: { kind: "variable", qualifiedName: qn },
             name,

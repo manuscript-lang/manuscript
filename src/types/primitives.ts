@@ -1,7 +1,7 @@
 // Centralized Primitive Type Registry
 // Single source of truth for primitive type mappings and builtin methods
 
-import type { Type, FunctionType, PropertyType } from "./types";
+import type { Type, FunctionType } from "./types";
 import { Types } from "./types";
 
 // Primitive type name to Type mapping

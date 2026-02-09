@@ -47,8 +47,8 @@ print(obj.name, obj.age)`);
 let m = {}
 m["__proto__"] = { polluted: true }
 `);
-    expect(Object.prototype.hasOwnProperty("polluted")).toBe(false);
-    if (!hadPolluted) delete (Object.prototype as any).polluted;
+    expect(Object.hasOwn(Object.prototype, "polluted")).toBe(false);
+    if (!hadPolluted) delete (Object.prototype as Record<string, unknown>).polluted;
   });
 
   test("map bracket write stores __proto__ as own property", async () => {

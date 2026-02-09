@@ -12,19 +12,41 @@
     "plugin:@typescript-eslint/strict",
     "plugin:@typescript-eslint/stylistic"
   ],
-  "env": {
-    "node": true,
-    "es2022": true
-  },
-  "ignorePatterns": ["vscode-extension", "dist", "*.ms", "node_modules"],
+  "env": { "node": true, "es2022": true },
+  "ignorePatterns": ["vscode-extension", "dist", "*.ms", "*.d.ts", "node_modules"],
+  "overrides": [
+    {
+      "files": ["tests/**/*.ts"],
+      "rules": {
+        "@typescript-eslint/no-non-null-assertion": "off",
+        "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/consistent-type-imports": "off",
+        "no-nested-ternary": "off",
+        "prefer-template": "off"
+      }
+    }
+  ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
-    "@typescript-eslint/no-non-null-assertion": "warn",
+    "@typescript-eslint/no-non-null-assertion": "off",
     "@typescript-eslint/no-inferrable-types": "off",
     "@typescript-eslint/consistent-type-definitions": "off",
     "@typescript-eslint/no-empty-function": ["error", { "allow": ["arrowFunctions", "methods"] }],
     "no-console": "off",
-    "no-empty": ["error", { "allowEmptyCatch": true }]
+    "no-empty": ["error", { "allowEmptyCatch": true }],
+
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
+    "no-param-reassign": ["error", { "props": false }],
+    "no-throw-literal": "error",
+    "prefer-template": "warn",
+    "no-nested-ternary": "warn",
+    "no-unneeded-ternary": "warn",
+
+    "@typescript-eslint/consistent-type-imports": [
+      "warn",
+      { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
+    ]
   }
 }

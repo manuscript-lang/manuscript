@@ -1,5 +1,5 @@
 // Completions - Provides completion items for code completion
-import * as AST from "../parser/ast";
+import type * as AST from "../parser/ast";
 import type { ObjectType, InterfaceType } from "../types/types";
 import { typeToString } from "../types/types";
 import type { TypeMemberInfo, BuiltinsSymbol } from "../builtin/extractor";

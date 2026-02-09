@@ -1,6 +1,6 @@
 // Document Symbols - Provides document outline information
 import type { SourceLocation } from "../parser/ast";
-import type { SymbolTable, SymbolDef, SymbolId } from "./symbols";
+import type { SymbolTable, SymbolDef } from "./symbols";
 import { parseMemberQualifiedName } from "./utils";
 
 export type DocumentSymbolKind = "function" | "type" | "field" | "method" | "variable" | "parameter" | "import";

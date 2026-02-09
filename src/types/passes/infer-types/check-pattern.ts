@@ -1,6 +1,6 @@
 // Pattern Checking - Validates patterns and binds pattern variables
-import * as AST from "../../../parser/ast";
-import type { Type, ObjectType } from "../../types";
+import type * as AST from "../../../parser/ast";
+import type { Type, ObjectType, MapType } from "../../types";
 import { Types, typeToString } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import { astTypeToType, isAssignable } from "../../type-utils";
@@ -116,7 +116,7 @@ function handleObjectPattern(ctx: InferContext, pattern: AST.ObjectPattern, reso
   // Maps can be destructured with object patterns
   if (resolved.kind === "map") {
     for (const prop of pattern.properties) {
-      checkPattern(ctx, prop.pattern, (resolved as any).valueType);
+      checkPattern(ctx, prop.pattern, (resolved as MapType).valueType);
     }
     return;
   }
@@ -202,7 +202,7 @@ export function bindPattern(ctx: InferContext, pattern: AST.Pattern, type: Type,
       
     case "ObjectPattern":
       if (resolved.kind === "map") {
-        for (const prop of pattern.properties) bindPattern(ctx, prop.pattern, (resolved as any).valueType, mutable);
+        for (const prop of pattern.properties) bindPattern(ctx, prop.pattern, (resolved as MapType).valueType, mutable);
       } else if (resolved.kind === "object") {
         for (const prop of pattern.properties) {
           const propType = resolved.properties.find(p => p.name === prop.key);

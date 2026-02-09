@@ -13,7 +13,7 @@ import {
 
 // Import generators
 import { genExpr, setGen as setExprGen } from "./expressions";
-import { setGen as setStmtGen, genLet, genVar, genAssign, genIf, genFor, genMatch, genReturn, genYield, genDefer, genTry, genThrow, genWith, genExprStmt, genBlock } from "./statements";
+import { setGen as setStmtGen, genLet, genVar, genAssign, genIf, genFor, genMatch, genReturn, genYield, genDefer, genTry, genThrow, genWith, genExprStmt } from "./statements";
 import { genImport, genFn, genType, genTest } from "./declarations";
 
 // Main dispatch function - handles all AST nodes

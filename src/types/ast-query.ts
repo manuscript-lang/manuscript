@@ -1,4 +1,4 @@
-import * as AST from "../parser/ast";
+import type * as AST from "../parser/ast";
 import { visit } from "./ast-visitor";
 import type { Type } from "./types";
 import { getIterableElementType } from "./type-utils";

@@ -20,7 +20,7 @@ export function genParams(ctx: Ctx, params: AST.Parameter[], opts: GenOpts): str
 }
 
 // Generate import declaration
-export function genImport(ctx: Ctx, decl: AST.ImportDecl, opts: GenOpts): void {
+export function genImport(ctx: Ctx, decl: AST.ImportDecl, _opts: GenOpts): void {
   // Stdlib imports destructure from __ms_runtime
   if (isStdlibImport(decl.source)) {
     const items = decl.names.map(item => {

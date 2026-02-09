@@ -1,6 +1,6 @@
 // Code Generator Types
 import type * as AST from "../parser/ast";
-import type { Type, FunctionType, ObjectType } from "../types/types";
+import type { FunctionType, ObjectType } from "../types/types";
 
 // Code generation options
 export interface CodeGenOptions {

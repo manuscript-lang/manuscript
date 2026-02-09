@@ -1,5 +1,5 @@
 // Type Environment - Symbol tables for type checking
-import type { Type, ObjectType, FunctionType, TypeParameter, UsingBinding } from "./types";
+import type { Type, UsingBinding } from "./types";
 import { Types } from "./types";
 import { substituteTypeParams, substituteTypeInObject } from "./type-utils";
 import { getBuiltinsTypes } from "../builtin";
@@ -21,9 +21,9 @@ export interface Symbol {
 // ============================================
 
 export class TypeEnvironment {
-  private symbols: Map<string, Symbol> = new Map();
-  private types: Map<string, Type> = new Map();
-  private typeParams: Map<string, Type> = new Map();
+  private symbols = new Map<string, Symbol>();
+  private types = new Map<string, Type>();
+  private typeParams = new Map<string, Type>();
   private parent: TypeEnvironment | null;
   private builtinMethods: BuiltinMethodRegistry | null = null;
 

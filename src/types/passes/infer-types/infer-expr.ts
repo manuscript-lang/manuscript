@@ -1,4 +1,4 @@
-import * as AST from "../../../parser/ast";
+import type * as AST from "../../../parser/ast";
 import type { Type, FunctionType, ObjectType, ParameterType } from "../../types";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors, RESERVED_PROPERTY_NAMES } from "../../../shared/errors";

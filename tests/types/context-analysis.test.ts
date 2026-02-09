@@ -7,7 +7,7 @@ import {
   exprContainsEscapingLambda,
   parameterEscapes,
 } from "../../src/types/passes/context-analysis";
-import * as AST from "../../src/parser/ast";
+import type * as AST from "../../src/parser/ast";
 
 const parse = (src: string) => new Parser(src).parse();
 

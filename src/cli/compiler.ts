@@ -5,7 +5,7 @@ import * as path from "path";
 import { Parser } from "../parser";
 import type { TypeEnvironment } from "../types/environment";
 import type { Type } from "../types/types";
-import { PassManager, createGlobalEnvironment, getModuleExports, runSingleFileTypecheck, TypeCheckError } from "../types";
+import { PassManager, createGlobalEnvironment, getModuleExports, runSingleFileTypecheck, type TypeCheckError } from "../types";
 import { CodeGenerator } from "../codegen";
 import type * as AST from "../parser/ast";
 import { findMsToml, loadMsToml, buildModuleGraph, type ModuleGraph, type MsTomlConfig } from "../modules";
@@ -200,8 +200,8 @@ function emitPathFromTo(
 ): string {
   const fromRel = relPathFromSrc(srcDir, fromFilePath);
   const toRel = relPathFromSrc(srcDir, toFilePath);
-  const fromDir = path.dirname(fromRel + ".js");
-  const toFile = toRel + ".js";
+  const fromDir = path.dirname(`${fromRel  }.js`);
+  const toFile = `${toRel  }.js`;
   return path.relative(fromDir, toFile).replace(/\\/g, "/");
 }
 
@@ -411,7 +411,7 @@ export async function compileProject(
 
   const typeCheck = options.typeCheck !== false;
   const loopResult = runProjectTypecheckLoop(graph, programs, entryAbs, typeCheck);
-  const { moduleExportsMap, errors: loopErrors, warnings: loopWarnings } = loopResult;
+  const { errors: loopErrors, warnings: loopWarnings } = loopResult;
   for (const e of loopErrors) errors.push(e);
   for (const w of loopWarnings) warnings.push(w);
 
@@ -442,7 +442,7 @@ export async function compileProject(
     const fs = await import("fs/promises");
     await fs.mkdir(options.outDir, { recursive: true });
     for (const [filePath, code] of outputs) {
-      const rel = path.relative(config.srcDir, filePath).replace(/\.ms$/i, "") + ".js";
+      const rel = `${path.relative(config.srcDir, filePath).replace(/\.ms$/i, "")  }.js`;
       const outPath = path.join(options.outDir, rel);
       await fs.mkdir(path.dirname(outPath), { recursive: true });
       await fs.writeFile(outPath, code);

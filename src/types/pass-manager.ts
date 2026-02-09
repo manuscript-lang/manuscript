@@ -1,7 +1,7 @@
 // Pass Manager - Configurable pipeline for type checking passes
-import * as AST from "../parser/ast";
-import { createGlobalEnvironment, TypeEnvironment } from "./environment";
-import { TypeCheckError } from "./errors";
+import type * as AST from "../parser/ast";
+import { createGlobalEnvironment, type TypeEnvironment } from "./environment";
+import { type TypeCheckError } from "./errors";
 import { CollectDeclarationsPass } from "./passes/collect-declarations";
 import { InferTypesPass } from "./passes/infer-types";
 

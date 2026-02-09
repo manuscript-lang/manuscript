@@ -180,7 +180,7 @@ export class Lexer {
     
     // Accumulate consecutive comments
     if (this.pendingComment && this.line === this.pendingCommentLine + 1) {
-      this.pendingComment += "\n" + commentText;
+      this.pendingComment += `\n${  commentText}`;
     } else {
       this.pendingComment = commentText;
     }
@@ -199,7 +199,6 @@ export class Lexer {
 
     this.advance(); // consume opening "
     let value = "";
-    let hasInterpolation = false;
 
     while (!this.isAtEnd() && this.peek() !== '"') {
       if (this.peek() === "\n") {
@@ -211,7 +210,6 @@ export class Lexer {
         value += this.scanEscapeSequence();
       } else if (this.peek() === "{") {
         // For now, just include { literally - interpolation handled at parse time
-        hasInterpolation = true;
         value += this.advance();
       } else {
         value += this.advance();
@@ -388,9 +386,10 @@ export class Lexer {
         }
         return String.fromCharCode(parseInt(hex, 16));
       }
-      default:
+      default: {
         const err = LexerErrors.invalidEscapeSequence(char);
         throw new LexerError(err.message, this.currentLoc(), err.hint);
+      }
     }
   }
 
@@ -478,7 +477,10 @@ export class Lexer {
 
     const raw = this.source.slice(startPos, this.pos);
     const type = KEYWORDS.get(raw) ?? "IDENTIFIER";
-    const value = type === "TRUE" ? true : type === "FALSE" ? false : type === "NULL" ? null : raw;
+    let value: string | number | boolean | null = raw;
+    if (type === "TRUE") value = true;
+    else if (type === "FALSE") value = false;
+    else if (type === "NULL") value = null;
     this.tokens.push(this.makeToken(type, value, raw, startLoc));
   }
 
@@ -619,9 +621,10 @@ export class Lexer {
       case "}":
         type = "RBRACE";
         break;
-      default:
+      default: {
         const err = LexerErrors.unexpectedCharacter(char);
         throw new LexerError(err.message, startLoc, err.hint);
+      }
     }
 
     this.tokens.push(this.makeToken(type, raw, raw, startLoc));
@@ -687,7 +690,7 @@ export class Lexer {
     return { line: this.line, column: this.column, offset: this.pos };
   }
 
-  private makeToken(type: TokenType, value: any, raw: string, loc?: SourceLocation): Token {
+  private makeToken(type: TokenType, value: string | number | boolean | null, raw: string, loc?: SourceLocation): Token {
     const token: Token = { type, value, raw, loc: loc ?? this.currentLoc() };
     
     // Attach pending comment to meaningful tokens (not whitespace/structure)
