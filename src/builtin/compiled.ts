@@ -1,14 +1,15 @@
 // Compiled builtins from builtins.ms and stdlib modules
 
 import { Parser } from "../parser";
+import type * as AST from "../parser/ast";
 import { CodeGenerator } from "../codegen/codegen";
 import { TypeChecker } from "../types/checker";
 import { builtinsSource } from "./index";
 import { getAllStdlibSources } from "../stdlib/loader";
 
-function hasExternMethods(stmt: any): boolean {
+function hasExternMethods(stmt: AST.Statement): boolean {
   if (stmt.kind !== "TypeDecl" || !stmt.body?.members) return false;
-  return stmt.body.members.some((m: any) => m.kind === "MethodDecl" && m.isExtern);
+  return stmt.body.members.some((m) => m.kind === "MethodDecl" && (m as AST.MethodDecl).isExtern);
 }
 
 function compileSource(source: string): { code: string[]; exportNames: string[] } {
@@ -21,11 +22,9 @@ function compileSource(source: string): { code: string[]; exportNames: string[] 
   for (const stmt of ast.body) {
     if (stmt.kind === "ExternFnDecl") continue;
     if (hasExternMethods(stmt)) continue;
-    const name = (stmt as { name?: string }).name;
-    if (stmt.kind === "FnDecl" || stmt.kind === "TypeDecl") {
-      if (name && !name.startsWith("_")) {
-        exportNames.push(name);
-      }
+    const name = stmt.kind === "FnDecl" || stmt.kind === "TypeDecl" ? stmt.name : undefined;
+    if ((stmt.kind === "FnDecl" || stmt.kind === "TypeDecl") && name && !name.startsWith("_")) {
+      exportNames.push(name);
     }
     const singleProgram = { kind: "Program" as const, body: [stmt], loc: stmt.loc };
     const stmtCode = codegen.generate(singleProgram);
@@ -35,7 +34,7 @@ function compileSource(source: string): { code: string[]; exportNames: string[] 
   return { code, exportNames };
 }
 
-function compileAll(): (runtime: any) => Record<string, any> {
+function compileAll(): (runtime: Record<string, unknown>) => Record<string, unknown> {
   const allCode: string[] = [];
   const allExports: string[] = [];
 
@@ -57,12 +56,12 @@ function compileAll(): (runtime: any) => Record<string, any> {
     return { ${allExports.join(", ")} };
   `;
 
-  return new Function("__ms_runtime", moduleCode) as (runtime: any) => Record<string, any>;
+  return new Function("__ms_runtime", moduleCode) as (runtime: Record<string, unknown>) => Record<string, unknown>;
 }
 
-let compiledBuiltins: Record<string, any> | null = null;
+let compiledBuiltins: Record<string, unknown> | null = null;
 
-export function getCompiledBuiltins(runtime: any): Record<string, any> {
+export function getCompiledBuiltins(runtime: Record<string, unknown>): Record<string, unknown> {
   if (!compiledBuiltins) {
     const factory = compileAll();
     compiledBuiltins = factory(runtime);

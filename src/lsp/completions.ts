@@ -55,12 +55,132 @@ export function getInterfaceMemberCompletions(iface: InterfaceType): CompletionI
   }));
 }
 
-// Get completions for variables/functions in scope. line caps which Let/Var are visible (use Infinity for all).
+function isLocBeforeCursor(loc: AST.SourceLocation | undefined, line: number, col: number): boolean {
+  if (!loc) return true;
+  return loc.line < line || (loc.line === line && loc.column < col);
+}
+
+function isCursorBeforeLoc(line: number, col: number, loc: AST.SourceLocation | undefined): boolean {
+  if (!loc) return false;
+  return line < loc.line || (line === loc.line && col < loc.column);
+}
+
+function getScopeAtPosition(program: AST.Program, line: number, col: number): string {
+  let scope = "";
+
+  function walk(stmts: AST.Statement[]): boolean {
+    for (const s of stmts) {
+      if (isCursorBeforeLoc(line, col, s.loc)) return true;
+      if (s.kind === "FnDecl") {
+        scope = s.name;
+        if (s.body?.statements && walk(s.body.statements)) return true;
+      } else if (s.kind === "TypeDecl" && s.body?.members) {
+        for (const m of s.body.members) {
+          if (m.kind === "MethodDecl" && m.body?.statements && walk(m.body.statements)) return true;
+        }
+      } else if (s.kind === "TestDecl" && s.body?.statements && walk(s.body.statements)) return true;
+    }
+    return false;
+  }
+  walk(program.body);
+  return scope;
+}
+
+function collectScopeCompletions(
+  program: AST.Program,
+  line: number,
+  col: number,
+  scope: string,
+  out: CompletionInfo[]
+): void {
+  const before = (loc: AST.SourceLocation | undefined) => isLocBeforeCursor(loc, line, col);
+
+  if (!scope) {
+    for (const s of program.body) {
+      if (s.kind === "FnDecl") {
+        const fnType = s.resolvedType;
+        const detail = fnType ? formatFunctionType(fnType) : formatFnSignatureFromAst(s);
+        out.push({ label: s.name, kind: "function", detail });
+      } else if (s.kind === "TypeDecl") {
+        out.push({ label: s.name, kind: "type", detail: `type ${s.name}` });
+      } else if (s.kind === "InterfaceDecl") {
+        out.push({ label: s.name, kind: "type", detail: `interface ${s.name}` });
+      } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && before(s.loc)) {
+        const varType = s.value.resolvedType;
+        out.push({ label: s.pattern.name, kind: "variable", detail: varType ? typeToString(varType) : "unknown" });
+      } else if (s.kind === "VarStmt" && before(s.loc)) {
+        const varType = s.value.resolvedType;
+        out.push({ label: s.name, kind: "variable", detail: varType ? typeToString(varType) : "unknown" });
+      } else if (s.kind === "ImportDecl") {
+        for (const { name, alias } of s.names) out.push({ label: alias ?? name, kind: "function" });
+      }
+    }
+    return;
+  }
+
+  for (const s of program.body) {
+    if (s.kind === "FnDecl") {
+      const fnType = s.resolvedType;
+      const detail = fnType ? formatFunctionType(fnType) : formatFnSignatureFromAst(s);
+      out.push({ label: s.name, kind: "function", detail });
+    } else if (s.kind === "TypeDecl") {
+      out.push({ label: s.name, kind: "type", detail: `type ${s.name}` });
+    } else if (s.kind === "InterfaceDecl") {
+      out.push({ label: s.name, kind: "type", detail: `interface ${s.name}` });
+    } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && before(s.loc)) {
+      const varType = s.value.resolvedType;
+      out.push({ label: s.pattern.name, kind: "variable", detail: varType ? typeToString(varType) : "unknown" });
+    } else if (s.kind === "VarStmt" && before(s.loc)) {
+      const varType = s.value.resolvedType;
+      out.push({ label: s.name, kind: "variable", detail: varType ? typeToString(varType) : "unknown" });
+    } else if (s.kind === "ImportDecl") {
+      for (const { name, alias } of s.names) out.push({ label: alias ?? name, kind: "function" });
+    }
+    if (s.kind === "FnDecl" && s.name === scope) {
+      for (const p of s.params) {
+        out.push({
+          label: p.name,
+          kind: "variable",
+          detail: p.type ? formatAstType(p.type) : "unknown",
+        });
+      }
+      if (s.body?.statements) {
+        for (const st of s.body.statements) {
+          if (st.kind === "LetStmt" && st.pattern?.kind === "IdentifierPattern" && before(st.loc)) {
+            const varType = st.value.resolvedType;
+            out.push({ label: st.pattern.name, kind: "variable", detail: varType ? typeToString(varType) : "unknown" });
+          } else if (st.kind === "VarStmt" && before(st.loc)) {
+            const varType = st.value.resolvedType;
+            out.push({ label: st.name, kind: "variable", detail: varType ? typeToString(varType) : "unknown" });
+          }
+        }
+      }
+      break;
+    }
+  }
+}
+
+function formatAstType(type: AST.TypeExpr): string {
+  switch (type.kind) {
+    case "NamedType": return type.name;
+    case "GenericType": return `${type.name}[${type.args.map(formatAstType).join(", ")}]`;
+    default: return "unknown";
+  }
+}
+
+// Get completions for variables/functions in scope. With cursor (line, col) in 1-based coords uses scope at position; else line caps Let/Var visibility.
 export function getScopeCompletions(
   program: AST.Program,
-  line: number = Infinity
+  line: number = Infinity,
+  col?: number
 ): CompletionInfo[] {
   const completions: CompletionInfo[] = [];
+  if (col !== undefined && col >= 0 && line !== Infinity && Number.isFinite(line) && line >= 1) {
+    const scope = getScopeAtPosition(program, line, col);
+    collectScopeCompletions(program, line, col, scope, completions);
+    return completions;
+  }
+  const lineCap = line;
   for (const s of program.body) {
     if (s.kind === "FnDecl") {
       const fnType = s.resolvedType;
@@ -70,14 +190,14 @@ export function getScopeCompletions(
       completions.push({ label: s.name, kind: "type", detail: `type ${s.name}` });
     } else if (s.kind === "InterfaceDecl") {
       completions.push({ label: s.name, kind: "type", detail: `interface ${s.name}` });
-    } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && (s.loc?.line ?? 0) < line) {
+    } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern" && (s.loc?.line ?? 0) < lineCap) {
       const varType = s.value.resolvedType;
       completions.push({
         label: s.pattern.name,
         kind: "variable",
         detail: varType ? typeToString(varType) : "unknown",
       });
-    } else if (s.kind === "VarStmt" && (s.loc?.line ?? 0) < line) {
+    } else if (s.kind === "VarStmt" && (s.loc?.line ?? 0) < lineCap) {
       const varType = s.value.resolvedType;
       completions.push({
         label: s.name,
@@ -115,18 +235,26 @@ export function getTypeAnnotationCompletions(
   return items;
 }
 
-// Default completions: keywords, stdlib, and scope (via getScopeCompletions)
+// Default completions: keywords, stdlib, and scope (via getScopeCompletions). Pass cursor (1-based line, 1-based col) for scope-aware completions.
 export function getDefaultCompletions(
   program: AST.Program | undefined,
   keywords: string[],
   stdlibFunctions: Set<string>,
-  builtinsSymbols: Map<string, BuiltinsSymbol>
+  builtinsSymbols: Map<string, BuiltinsSymbol>,
+  cursorLine?: number,
+  cursorCol?: number
 ): CompletionInfo[] {
   const items: CompletionInfo[] = [
     ...keywords.map(k => ({ label: k, kind: "keyword" as const })),
     ...[...stdlibFunctions].map(f => ({ label: f, kind: "function" as const, doc: builtinsSymbols.get(f)?.doc })),
   ];
-  if (program) items.push(...getScopeCompletions(program, Infinity));
+  if (program) {
+    const scopeItems =
+      cursorLine !== undefined && cursorCol !== undefined
+        ? getScopeCompletions(program, cursorLine, cursorCol)
+        : getScopeCompletions(program, Infinity);
+    items.push(...scopeItems);
+  }
   return items;
 }
 

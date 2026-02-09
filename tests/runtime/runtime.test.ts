@@ -103,11 +103,13 @@ describe("Runtime - Compiled Stdlib Functions", () => {
   });
 
   test("result helpers", async () => {
-    const success = await rt.ok(42);
+    type OkResult = { __typename: string; ok: boolean; value?: number };
+    type ErrResult = { __typename: string; ok: boolean; error?: string };
+    const success = (await rt.ok(42)) as OkResult;
     expect(success.__typename).toBe("Result");
     expect(success.ok).toBe(true);
     expect(success.value).toBe(42);
-    const failure = await rt.err("failed");
+    const failure = (await rt.err("failed")) as ErrResult;
     expect(failure.__typename).toBe("Result");
     expect(failure.ok).toBe(false);
     expect(failure.error).toBe("failed");

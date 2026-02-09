@@ -1,5 +1,6 @@
 import * as AST from "../../../parser/ast";
 import type { Type, ObjectType, UsingBinding } from "../../types";
+import type { TypeEnvironment } from "../../environment";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import { astTypeToType, isAssignable, getIterableElementType, isIterable } from "../../type-utils";
@@ -49,7 +50,7 @@ export function checkIfStmt(ctx: InferContext, stmt: AST.IfStmt): void {
   if (stmt.pattern && stmt.elseReturn) ctx.inferExpr(ctx, stmt.elseReturn);
 }
 
-function applyTypeNarrowing(ctx: InferContext, condition: AST.Expr, env: any, truthyBranch: boolean): void {
+function applyTypeNarrowing(ctx: InferContext, condition: AST.Expr, env: TypeEnvironment, truthyBranch: boolean): void {
   if (condition.kind === "BinaryExpr" && condition.op === "is") {
     if (condition.left.kind === "Identifier" && condition.right.kind === "Identifier") {
       const varName = condition.left.name;
@@ -61,7 +62,7 @@ function applyTypeNarrowing(ctx: InferContext, condition: AST.Expr, env: any, tr
         } else if (symbol.type.kind === "union") {
           const remaining = symbol.type.types.filter((t: Type) => {
             if (t.kind === "ref") return t.name !== typeName;
-            if (t.kind === "object") return (t as any).name !== typeName;
+            if (t.kind === "object") return (t as ObjectType).name !== typeName;
             return typeToString(t) !== typeName;
           });
           if (remaining.length === 1) env.define(varName, remaining[0]!, symbol.mutable);
@@ -232,8 +233,8 @@ function checkMatchExhaustiveness(ctx: InferContext, valueType: Type, arms: AST.
     }
     const uncovered: string[] = [];
     for (const t of valueType.types) {
-      const typeName = t.kind === "ref" ? t.name :
-        t.kind === "object" && (t as any).name ? (t as any).name : typeToString(t);
+      const typeName: string = t.kind === "ref" ? t.name :
+        t.kind === "object" && (t as ObjectType).name ? (t as ObjectType).name! : typeToString(t);
       if (!coveredTypes.has(typeName)) uncovered.push(typeName);
     }
     if (uncovered.length > 0) {

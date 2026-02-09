@@ -116,5 +116,36 @@ let z = x + y
       expect(fnCompletion!.detail).toContain("fn(");
       expect(fnCompletion!.detail).toContain("number");
     });
+
+    test("scope-aware: inside function returns params and locals before cursor (1-based line and column)", () => {
+      const source = `
+fn main()
+  let user = "World"
+  let x = 1
+  print(user)
+`;
+      const parser = new Parser(source);
+      const program = parser.parse();
+      const checker = new TypeChecker();
+      checker.check(program);
+      const completions = getScopeCompletions(program, 5, 3);
+      const labels = completions.map((c) => c.label);
+      expect(labels).toContain("user");
+      expect(labels).toContain("x");
+      expect(labels).toContain("main");
+    });
+
+    test("scope-aware: line-cap mode when col omitted (backward compat)", () => {
+      const source = `let a = 1\nlet b = 2`;
+      const parser = new Parser(source);
+      const program = parser.parse();
+      const checker = new TypeChecker();
+      checker.check(program);
+      const completions = getScopeCompletions(program, 1);
+      expect(completions.filter((c) => c.label === "a" || c.label === "b")).toHaveLength(0);
+      const completionsLine2 = getScopeCompletions(program, 2);
+      expect(completionsLine2.some((c) => c.label === "a")).toBe(true);
+      expect(completionsLine2.filter((c) => c.label === "b")).toHaveLength(0);
+    });
   });
 });

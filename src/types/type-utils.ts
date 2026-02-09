@@ -1,6 +1,26 @@
 // Type Utilities - Pure functions for type operations
 import * as AST from "../parser/ast";
-import type { Type, FunctionType, ParameterType, UsingBinding, ObjectType, InterfaceType, MethodType } from "./types";
+import type {
+  Type,
+  FunctionType,
+  ParameterType,
+  UsingBinding,
+  ObjectType,
+  InterfaceType,
+  MethodType,
+  OptionalType,
+  ListType,
+  MapType,
+  PromiseType,
+  SetType,
+  StreamType,
+  TupleType,
+  UnionType,
+  IntersectionType,
+  GenericType,
+  TypeRef,
+  TypeVariable,
+} from "./types";
 import { Types, typeToString } from "./types";
 import type { TypeEnvironment } from "./environment";
 import { PRIMITIVE_TYPE_MAP, constructGenericType } from "./primitives";
@@ -69,7 +89,7 @@ export function getTypeDisplayName(env: TypeEnvironment, type: Type): string | n
   if (type.kind === "ref") return type.name;
   if (type.kind === "object" && (type as ObjectType).name) return (type as ObjectType).name!;
   if (type.kind === "interface") return (type as InterfaceType).name;
-  if (type.kind === "optional") return getTypeDisplayName(env, (type as any).inner);
+  if (type.kind === "optional") return getTypeDisplayName(env, (type as OptionalType).inner);
   const resolved = env.resolveType(type);
   if (resolved !== type) {
     if (resolved.kind === "object" && (resolved as ObjectType).name) return (resolved as ObjectType).name!;
@@ -165,34 +185,29 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
       case "never":
         return true;
       case "ref":
-        return (resolvedSource as any).name === (resolvedTarget as any).name;
+        return (resolvedSource as TypeRef).name === (resolvedTarget as TypeRef).name;
       case "list":
-        if ((resolvedTarget as any).elementType.kind === "unknown") return true;
-        // Lists are invariant for mutation safety
-        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env) &&
-               isAssignable((resolvedTarget as any).elementType, (resolvedSource as any).elementType, env);
+        if ((resolvedTarget as ListType).elementType.kind === "unknown") return true;
+        const sl = resolvedSource as ListType, tl = resolvedTarget as ListType;
+        return isAssignable(sl.elementType, tl.elementType, env) && isAssignable(tl.elementType, sl.elementType, env);
       case "map":
-        if ((resolvedTarget as any).keyType.kind === "unknown" && (resolvedTarget as any).valueType.kind === "unknown") return true;
-        // Maps are invariant for mutation safety
-        return isAssignable((resolvedSource as any).keyType, (resolvedTarget as any).keyType, env) &&
-               isAssignable((resolvedTarget as any).keyType, (resolvedSource as any).keyType, env) &&
-               isAssignable((resolvedSource as any).valueType, (resolvedTarget as any).valueType, env) &&
-               isAssignable((resolvedTarget as any).valueType, (resolvedSource as any).valueType, env);
+        const tm = resolvedTarget as MapType;
+        if (tm.keyType.kind === "unknown" && tm.valueType.kind === "unknown") return true;
+        const sm = resolvedSource as MapType;
+        return isAssignable(sm.keyType, tm.keyType, env) && isAssignable(tm.keyType, sm.keyType, env) &&
+               isAssignable(sm.valueType, tm.valueType, env) && isAssignable(tm.valueType, sm.valueType, env);
       case "promise":
-        if ((resolvedTarget as any).resolveType.kind === "unknown") return true;
-        // Promises are covariant (read-only)
-        return isAssignable((resolvedSource as any).resolveType, (resolvedTarget as any).resolveType, env);
+        if ((resolvedTarget as PromiseType).resolveType.kind === "unknown") return true;
+        return isAssignable((resolvedSource as PromiseType).resolveType, (resolvedTarget as PromiseType).resolveType, env);
       case "set":
-        if ((resolvedTarget as any).elementType.kind === "unknown") return true;
-        // Sets are invariant for mutation safety
-        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env) &&
-               isAssignable((resolvedTarget as any).elementType, (resolvedSource as any).elementType, env);
+        if ((resolvedTarget as SetType).elementType.kind === "unknown") return true;
+        const ss = resolvedSource as SetType, ts = resolvedTarget as SetType;
+        return isAssignable(ss.elementType, ts.elementType, env) && isAssignable(ts.elementType, ss.elementType, env);
       case "stream":
-        if ((resolvedTarget as any).elementType.kind === "unknown") return true;
-        // Streams are covariant (read-only)
-        return isAssignable((resolvedSource as any).elementType, (resolvedTarget as any).elementType, env);
+        if ((resolvedTarget as StreamType).elementType.kind === "unknown") return true;
+        return isAssignable((resolvedSource as StreamType).elementType, (resolvedTarget as StreamType).elementType, env);
       case "tuple":
-        return isTupleAssignable(resolvedSource as any, resolvedTarget as any, env);
+        return isTupleAssignable(resolvedSource as TupleType, resolvedTarget as TupleType, env);
       case "object":
         return isObjectAssignable(resolvedSource as ObjectType, resolvedTarget as ObjectType, env);
       case "interface": {
@@ -209,12 +224,11 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
       case "function":
         return isFunctionAssignable(resolvedSource as FunctionType, resolvedTarget as FunctionType, env);
       case "intersection":
-        return isIntersectionAssignable(resolvedSource as any, resolvedTarget as any, env);
+        return isIntersectionAssignable(resolvedSource as IntersectionType, resolvedTarget as IntersectionType, env);
       case "generic":
-        return isGenericAssignable(resolvedSource as any, resolvedTarget as any, env);
+        return isGenericAssignable(resolvedSource as GenericType, resolvedTarget as GenericType, env);
       case "typevar":
-        // Type variables match by name (same scoped variable)
-        return (resolvedSource as any).name === (resolvedTarget as any).name;
+        return (resolvedSource as TypeVariable).name === (resolvedTarget as TypeVariable).name;
       default:
         return true;
     }
@@ -225,7 +239,7 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
   // Type variable is assignable to unknown (or the same type variable)
   if (resolvedSource.kind === "typevar") {
     return resolvedTarget.kind === "unknown" ||
-           (resolvedTarget.kind === "typevar" && (resolvedSource as any).name === (resolvedTarget as any).name);
+           (resolvedTarget.kind === "typevar" && (resolvedSource as TypeVariable).name === (resolvedTarget as TypeVariable).name);
   }
   
   // Anything can be assigned to a type variable (during unification)
@@ -235,34 +249,31 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
   if (resolvedSource.kind === "null" && resolvedTarget.kind === "optional") return true;
 
   if (resolvedTarget.kind === "optional") {
+    const optTarget = resolvedTarget as OptionalType;
     if (resolvedSource.kind === "union") {
-      const unionTypes = (resolvedSource as any).types as Type[];
+      const unionTypes = (resolvedSource as UnionType).types;
       const nonNullTypes = unionTypes.filter((t: Type) => t.kind !== "null");
       if (nonNullTypes.length === unionTypes.length - 1) {
-        return nonNullTypes.every((t: Type) => isAssignable(t, (resolvedTarget as any).inner, env));
+        return nonNullTypes.every((t: Type) => isAssignable(t, optTarget.inner, env));
       }
     }
-    return isAssignable(resolvedSource, (resolvedTarget as any).inner, env);
+    return isAssignable(resolvedSource, optTarget.inner, env);
   }
 
-  // Union target: source must be assignable to at least one member
   if (resolvedTarget.kind === "union") {
-    return (resolvedTarget as any).types.some((t: Type) => isAssignable(resolvedSource, t, env));
+    return (resolvedTarget as UnionType).types.some((t: Type) => isAssignable(resolvedSource, t, env));
   }
 
-  // Union source: all members must be assignable to target
   if (resolvedSource.kind === "union") {
-    return (resolvedSource as any).types.every((t: Type) => isAssignable(t, resolvedTarget, env));
+    return (resolvedSource as UnionType).types.every((t: Type) => isAssignable(t, resolvedTarget, env));
   }
-  
-  // Intersection source: at least one member must be assignable to target
+
   if (resolvedSource.kind === "intersection") {
-    return (resolvedSource as any).types.some((t: Type) => isAssignable(t, resolvedTarget, env));
+    return (resolvedSource as IntersectionType).types.some((t: Type) => isAssignable(t, resolvedTarget, env));
   }
-  
-  // Intersection target: source must be assignable to all members
+
   if (resolvedTarget.kind === "intersection") {
-    return (resolvedTarget as any).types.every((t: Type) => isAssignable(resolvedSource, t, env));
+    return (resolvedTarget as IntersectionType).types.every((t: Type) => isAssignable(resolvedSource, t, env));
   }
 
   // Object satisfies interface (structural): source must have all interface methods
@@ -399,14 +410,14 @@ export function typesEqual(a: Type, b: Type): boolean {
     case "never":
       return true;
     case "ref":
-      return (a as any).name === (b as any).name;
+      return (a as TypeRef).name === (b as TypeRef).name;
     case "list":
-      return typesEqual((a as any).elementType, (b as any).elementType);
+      return typesEqual((a as ListType).elementType, (b as ListType).elementType);
     case "map":
-      return typesEqual((a as any).keyType, (b as any).keyType) &&
-             typesEqual((a as any).valueType, (b as any).valueType);
+      return typesEqual((a as MapType).keyType, (b as MapType).keyType) &&
+             typesEqual((a as MapType).valueType, (b as MapType).valueType);
     case "optional":
-      return typesEqual((a as any).inner, (b as any).inner);
+      return typesEqual((a as OptionalType).inner, (b as OptionalType).inner);
     case "function":
       const fa = a as FunctionType, fb = b as FunctionType;
       return paramsMatch(fa.params, fb.params) &&
@@ -464,9 +475,9 @@ export function isIterable(type: Type): boolean {
     return true;
   }
   if (kind === "generic") {
-    const genType = type as any;
+    const genType = type as GenericType;
     if (genType.base?.kind === "ref") {
-      const baseName = genType.base.name.toLowerCase();
+      const baseName = (genType.base as TypeRef).name.toLowerCase();
       return baseName === "list" || baseName === "set" || baseName === "map" || baseName === "stream";
     }
   }
@@ -499,12 +510,12 @@ export function findCommonType(types: Type[]): Type {
 // Check if a type involves Promise
 export function typeInvolvesPromise(t: Type, env: TypeEnvironment, visited: Set<string> = new Set()): boolean {
   if (t.kind === "promise") return true;
-  if (t.kind === "list") return typeInvolvesPromise((t as any).elementType, env, visited);
-  if (t.kind === "map") return typeInvolvesPromise((t as any).valueType, env, visited);
-  if (t.kind === "optional") return typeInvolvesPromise((t as any).inner, env, visited);
+  if (t.kind === "list") return typeInvolvesPromise((t as ListType).elementType, env, visited);
+  if (t.kind === "map") return typeInvolvesPromise((t as MapType).valueType, env, visited);
+  if (t.kind === "optional") return typeInvolvesPromise((t as OptionalType).inner, env, visited);
 
   if (t.kind === "object") {
-    const objType = t as any;
+    const objType = t as ObjectType;
     if (objType.name && visited.has(objType.name)) return false;
     if (objType.name) visited.add(objType.name);
     for (const prop of objType.properties || []) {
@@ -747,9 +758,10 @@ export function formatTypeSignatureFromObject(obj: ObjectType): { signature: str
 
 function resolveToKind<T extends Type>(type: Type, env: TypeEnvironment | undefined, kind: "object" | "interface"): T | null {
   if (type.kind === kind) return type as T;
-  if (type.kind === "optional") return resolveToKind((type as any).inner, env, kind);
+  if (type.kind === "generic") return resolveToKind(type.base, env, kind);
+  if (type.kind === "optional") return resolveToKind(type.inner, env, kind);
   if (type.kind === "union") {
-    for (const t of (type as any).types) {
+    for (const t of type.types) {
       const r = resolveToKind(t, env, kind) as T | null;
       if (r) return r;
     }
@@ -763,9 +775,10 @@ function resolveToKind<T extends Type>(type: Type, env: TypeEnvironment | undefi
 
 function getRefName(type: Type): string | null {
   if (type.kind === "ref") return type.name;
-  if (type.kind === "optional") return getRefName((type as any).inner);
+  if (type.kind === "generic") return getRefName(type.base);
+  if (type.kind === "optional") return getRefName(type.inner);
   if (type.kind === "union") {
-    for (const t of (type as any).types) {
+    for (const t of type.types) {
       const n = getRefName(t);
       if (n) return n;
     }
@@ -791,7 +804,7 @@ export function resolveObjectType(program: AST.Program, type: Type, env?: TypeEn
         }));
       const methods: MethodType[] = (typeDecl.body?.members || [])
         .filter((m): m is AST.MethodDecl => m.kind === "MethodDecl")
-        .map(m => ({ name: m.name, type: { kind: "function", params: [], returnType: { kind: "unknown" } } as any }));
+        .map(m => ({ name: m.name, type: { kind: "function", params: [], returnType: { kind: "unknown" }, isGenerator: false, context: [] } as FunctionType }));
       return { kind: "object", name: typeDecl.name, properties: props, methods };
     }
   }

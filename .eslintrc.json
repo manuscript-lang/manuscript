@@ -1,0 +1,30 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/strict",
+    "plugin:@typescript-eslint/stylistic"
+  ],
+  "env": {
+    "node": true,
+    "es2022": true
+  },
+  "ignorePatterns": ["vscode-extension", "dist", "*.ms", "node_modules"],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-non-null-assertion": "warn",
+    "@typescript-eslint/no-inferrable-types": "off",
+    "@typescript-eslint/consistent-type-definitions": "off",
+    "@typescript-eslint/no-empty-function": ["error", { "allow": ["arrowFunctions", "methods"] }],
+    "no-console": "off",
+    "no-empty": ["error", { "allowEmptyCatch": true }]
+  }
+}

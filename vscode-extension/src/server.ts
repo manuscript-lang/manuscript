@@ -254,7 +254,11 @@ connection.onCompletion((params): CompletionItem[] => {
           if (e.loc.column <= oneBasedCol) bestExpr = e;
         },
       });
-      const type = (bestExpr as AST.Expr | null)?.resolvedType;
+      const expr = bestExpr as AST.Expr | null;
+      const type =
+        expr?.kind === "MemberExpr"
+          ? expr.object.resolvedType
+          : expr?.resolvedType;
       if (type) {
         const builtinCompletions = getTypeMemberCompletions(builtinsTypeMembers, type.kind);
         if (builtinCompletions.length > 0) return toCompletionItems(builtinCompletions);
@@ -264,11 +268,20 @@ connection.onCompletion((params): CompletionItem[] => {
         if (iface) return toCompletionItems(getInterfaceMemberCompletions(iface));
       }
     }
-    return toCompletionItems(getTypeMemberCompletions(builtinsTypeMembers, "list"));
+    return [];
   }
 
-  // Default: keywords, builtins, scope
-  const infos = getDefaultCompletions(cached?.program, KEYWORD_LIST, STDLIB_FUNCTIONS, builtinsSymbols);
+  // Default: keywords, builtins, scope (scope-aware when we have a parsed program and cursor position). AST uses 1-based line and column.
+  const oneBasedLine = params.position.line + 1;
+  const oneBasedCol = params.position.character + 1;
+  const infos = getDefaultCompletions(
+    cached?.program,
+    KEYWORD_LIST,
+    STDLIB_FUNCTIONS,
+    builtinsSymbols,
+    cached ? oneBasedLine : undefined,
+    cached ? oneBasedCol : undefined
+  );
   const items = toCompletionItems(infos);
 
   // Attach data for completion resolve (import info, URIs)
@@ -543,11 +556,12 @@ async function resolveImportDefinition(
     return Location.create(loc.uri, loc.range);
   }
   const result = await resolveLocalImportTarget(currentUri, importTarget);
-  if (!result) return null;
-  const col = result.def.loc.column - 1 + result.def.nameOffset;
-  return Location.create(result.depUri, {
-    start: { line: result.def.loc.line - 1, character: col },
-    end: { line: result.def.loc.line - 1, character: col + result.def.name.length },
+  if (!result?.def) return null;
+  const { def, depUri } = result;
+  const col = def.loc.column - 1 + def.nameOffset;
+  return Location.create(depUri, {
+    start: { line: def.loc.line - 1, character: col },
+    end: { line: def.loc.line - 1, character: col + def.name.length },
   });
 }
 
@@ -559,14 +573,15 @@ async function resolveImportHover(
     return getStdlibHover(importTarget.specifier, importTarget.exportedName);
   }
   const result = await resolveLocalImportTarget(currentUri, importTarget);
-  if (!result) return null;
-  const nameCol = result.def.loc.column + result.def.nameOffset;
+  if (!result?.def) return null;
+  const { def, cached } = result;
+  const nameCol = def.loc.column + def.nameOffset;
   return getHoverForSymbol(
-    result.cached.symbols,
-    result.cached.program,
-    result.def.loc.line,
+    cached.symbols,
+    cached.program,
+    def.loc.line,
     nameCol,
-    result.cached.env
+    cached.env
   );
 }
 

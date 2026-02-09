@@ -1,5 +1,5 @@
 import * as AST from "../../../parser/ast";
-import type { Type, FunctionType } from "../../types";
+import type { Type, FunctionType, ObjectType, PropertyType } from "../../types";
 import { Types, typeToString } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import {
@@ -156,7 +156,7 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
   return substituteTypeParams(fnType.returnType, typeBindings);
 }
 
-export function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: any): Type {
+export function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: ObjectType): Type {
   const args = expr.args;
   const hasNamed = args.some((a) => "name" in a && "value" in a);
   const hasPositional = args.some((a) => !("name" in a && "value" in a));
@@ -165,8 +165,8 @@ export function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objT
     error(ctx, err.message, expr.loc, err.hint);
   }
 
-  const ownProps = objType.properties.filter((p: any) => !p.promotedFrom && !(p.embedded && p.name === "Context"));
-  const requiredCount = ownProps.filter((p: any) => !p.embedded && !p.optional && !p.defaultValue).length;
+  const ownProps = objType.properties.filter((p: PropertyType) => !p.promotedFrom && !(p.embedded && p.name === "Context"));
+  const requiredCount = ownProps.filter((p: PropertyType) => !p.embedded && !p.optional && !p.defaultValue).length;
   const maxArgs = ownProps.length;
 
   if (args.length < requiredCount) {
@@ -180,7 +180,7 @@ export function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objT
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     if ("name" in arg && "value" in arg) {
-      const prop = ownProps.find((p: any) => p.name === arg.name);
+      const prop = ownProps.find((p: PropertyType) => p.name === arg.name);
       const expected = prop ? (prop.embedded ? ctx.env.lookupType(prop.name) || Types.unknown : prop.type) : undefined;
       if (expected) setExpectedType(arg.value, expected);
       const argType = ctx.inferExpr(ctx, arg.value);

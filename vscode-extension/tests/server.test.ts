@@ -4,8 +4,10 @@ import { TypeChecker } from "../../src/types/checker";
 import type { Program, FnDecl, TypeDecl } from "../../src/parser/ast";
 import type { Type } from "../../src/types/types";
 import type { TypeEnvironment } from "../../src/types/environment";
-import { buildSymbolTable, resolveDefinition, findReferences, getRenameLocations, getHoverForSymbol, getDocumentSymbols, getObjectMemberCompletions, type SymbolTable } from "../../src/lsp";
+import { buildSymbolTable, resolveDefinition, findReferences, getRenameLocations, getHoverForSymbol, getDocumentSymbols, getObjectMemberCompletions, getTypeMemberCompletions, type SymbolTable } from "../../src/lsp";
 import { resolveObjectType } from "../../src/types/type-utils";
+import { getBuiltinsAST } from "../../src/builtin";
+import { collectTypeMembersFromProgram } from "../../src/builtin/extractor";
 
 // Test helpers that mirror server.ts logic
 const KEYWORDS = [
@@ -1846,5 +1848,20 @@ type Calculator
     const methodNames = obj!.methods.map(m => m.name);
     expect(methodNames).toContain("add");
     expect(methodNames).toContain("reset");
+  });
+
+  test("builtin member completions keyed by type kind (string vs list)", () => {
+    const builtinsProgram = getBuiltinsAST();
+    const builtinsTypeMembers = collectTypeMembersFromProgram(builtinsProgram);
+    const stringMembers = getTypeMemberCompletions(builtinsTypeMembers, "string");
+    const listMembers = getTypeMemberCompletions(builtinsTypeMembers, "list");
+    const stringLabels = stringMembers.map((c) => c.label);
+    const listLabels = listMembers.map((c) => c.label);
+    expect(stringLabels).toContain("length");
+    expect(stringLabels).toContain("upper");
+    expect(stringLabels).not.toContain("push");
+    expect(listLabels).toContain("push");
+    expect(listLabels).toContain("pop");
+    expect(listLabels).not.toContain("upper");
   });
 });

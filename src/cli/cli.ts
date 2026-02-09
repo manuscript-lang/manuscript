@@ -184,8 +184,8 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
         await import(pathToFileURL(entryOut).href);
         const code = process.exitCode;
         return typeof code === "number" ? code : 0;
-      } catch (e: any) {
-        error(e?.message ?? String(e));
+      } catch (e: unknown) {
+        error(e instanceof Error ? e.message : String(e));
         return 1;
       } finally {
         process.chdir(prevCwd);
@@ -220,8 +220,8 @@ ${code}
       __ms_runtime.runTests();
     }
     return 0;
-  } catch (e: any) {
-    error(e.message);
+  } catch (e: unknown) {
+    error(e instanceof Error ? e.message : String(e));
     return 1;
   }
 }
@@ -266,8 +266,8 @@ async function checkCommand(files: string[], options: CLIOptions): Promise<numbe
         log(`\x1b[32m✓\x1b[0m ${filepath}`, options);
       }
       checkedCount++;
-    } catch (e: any) {
-      error(`${filepath}: ${e.message}`);
+    } catch (e: unknown) {
+      error(`${filepath}: ${e instanceof Error ? e.message : String(e)}`);
       hasErrors = true;
     }
   }
@@ -339,8 +339,8 @@ async function testCommand(files: string[], options: CLIOptions): Promise<number
           failures.push({ file: filepath, name: test.name, error: test.error || "Unknown error" });
         }
       }
-    } catch (e: any) {
-      error(`${filepath}: ${e.message}`);
+    } catch (e: unknown) {
+      error(`${filepath}: ${e instanceof Error ? e.message : String(e)}`);
       failedTests++;
     }
   }
@@ -430,8 +430,8 @@ async function buildCommand(files: string[], options: CLIOptions): Promise<numbe
         await fs.writeFile(outPath, result.code!);
         log(`\x1b[32m✓\x1b[0m ${filepath} → ${outPath}`, options);
       }
-    } catch (e: any) {
-      error(`${filepath}: ${e.message}`);
+    } catch (e: unknown) {
+      error(`${filepath}: ${e instanceof Error ? e.message : String(e)}`);
       hasErrors = true;
     }
   }
@@ -466,8 +466,8 @@ async function emitCommand(files: string[], options: CLIOptions): Promise<number
     }
 
     return 0;
-  } catch (e: any) {
-    error(e.message);
+  } catch (e: unknown) {
+    error(e instanceof Error ? e.message : String(e));
     return 1;
   }
 }
@@ -549,8 +549,8 @@ Commands:
           const fn = new Function(wrappedCode);
           await fn(__ms_runtime);
         }
-      } catch (e: any) {
-        console.error(`Error: ${e.message}`);
+      } catch (e: unknown) {
+        console.error(`Error: ${e instanceof Error ? e.message : String(e)}`);
       }
 
       prompt();

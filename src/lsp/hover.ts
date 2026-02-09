@@ -89,7 +89,7 @@ function getHoverForDefinition(
       if (!fn) break;
       const fnType = fn.resolvedType as FunctionType | undefined;
       if (fnType?.kind === "function") {
-        const params = fnType.params.map((p: any) => `${p.name}: ${typeToString(p.type)}`).join(", ");
+        const params = fnType.params.map((p) => `${p.name}: ${typeToString(p.type)}`).join(", ");
         return { signature: `fn ${def.name}(${params}): ${typeToString(fnType.returnType)}`, doc: fn.doc };
       }
       return getHoverForDecl(fn);
