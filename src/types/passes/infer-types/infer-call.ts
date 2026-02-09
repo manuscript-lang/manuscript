@@ -1,9 +1,9 @@
-import * as AST from "../../../parser/ast";
+import type * as AST from "../../../parser/ast";
 import type { Type, FunctionType, ObjectType, PropertyType } from "../../types";
 import { Types, typeToString } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import {
-  astTypeToType, resolveTypeName, isAssignable, typeInvolvesPromise,
+  resolveTypeName, isAssignable, typeInvolvesPromise,
   substituteTypeParams, unifyTypes, substituteTypeInObject
 } from "../../type-utils";
 import { constructGenericType } from "../../primitives";
@@ -100,7 +100,7 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
     error(ctx, err.message, expr.loc, err.hint);
   }
 
-  let typeBindings = inferTypeParams(ctx, fnType, args);
+  const typeBindings = inferTypeParams(ctx, fnType, args);
   if (expectedType && fnType.typeParams?.length) {
     const currentReturn = substituteTypeParams(fnType.returnType, typeBindings);
     unifyTypes(currentReturn, expectedType, typeBindings);
@@ -181,7 +181,10 @@ export function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objT
     const arg = args[i]!;
     if ("name" in arg && "value" in arg) {
       const prop = ownProps.find((p: PropertyType) => p.name === arg.name);
-      const expected = prop ? (prop.embedded ? ctx.env.lookupType(prop.name) || Types.unknown : prop.type) : undefined;
+      let expected: Type | undefined;
+      if (prop === undefined) expected = undefined;
+      else if (prop.embedded) expected = ctx.env.lookupType(prop.name) || Types.unknown;
+      else expected = prop.type;
       if (expected) setExpectedType(arg.value, expected);
       const argType = ctx.inferExpr(ctx, arg.value);
       if (!prop) {
@@ -193,11 +196,14 @@ export function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objT
       }
     } else {
       const prop = ownProps[i];
-      const expected = prop ? (prop.embedded ? ctx.env.lookupType(prop.name) || Types.unknown : prop.type) : undefined;
-      if (expected) setExpectedType(arg as AST.Expr, expected);
+      let expectedPos: Type | undefined;
+      if (prop === undefined) expectedPos = undefined;
+      else if (prop.embedded) expectedPos = ctx.env.lookupType(prop.name) || Types.unknown;
+      else expectedPos = prop.type;
+      if (expectedPos) setExpectedType(arg as AST.Expr, expectedPos);
       const argType = ctx.inferExpr(ctx, arg as AST.Expr);
-      if (prop && !isAssignable(argType, expected!, ctx.env)) {
-        const err = TypeErrors.typeMismatch(typeToString(expected!), typeToString(argType));
+      if (prop && expectedPos && !isAssignable(argType, expectedPos, ctx.env)) {
+        const err = TypeErrors.typeMismatch(typeToString(expectedPos), typeToString(argType));
         error(ctx, `Argument ${i + 1}: ${err.message}`, (arg as AST.Expr).loc, err.hint);
       }
     }

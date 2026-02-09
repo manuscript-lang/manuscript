@@ -1,5 +1,5 @@
-import * as AST from "../../../parser/ast";
-import type { Type, FunctionType, ObjectType } from "../../types";
+import type * as AST from "../../../parser/ast";
+import type { ObjectType, PromiseType } from "../../types";
 import { Types, typeToString } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import { astTypeToType, fnDeclToType, isAssignable } from "../../type-utils";
@@ -51,7 +51,7 @@ export function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
     if (decl.returnType && fnType.returnType.kind !== "promise" && fnType.returnType.kind !== "unknown") {
       const implicitReturnType = (lastStmt.expr as AST.BaseNode).resolvedType ?? Types.unknown;
       const declaredReturnType = fnType.returnType;
-      const resolved = implicitReturnType.kind === "promise" ? (implicitReturnType as any).resolveType : implicitReturnType;
+      const resolved = implicitReturnType.kind === "promise" ? (implicitReturnType as PromiseType).resolveType : implicitReturnType;
       if (!isAssignable(resolved, declaredReturnType, ctx.env)) {
         const err = TypeErrors.typeMismatch(typeToString(declaredReturnType), typeToString(resolved));
         error(ctx, err.message, lastStmt.loc, err.hint);

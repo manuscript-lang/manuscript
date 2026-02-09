@@ -1,5 +1,5 @@
 // Type Utilities - Pure functions for type operations
-import * as AST from "../parser/ast";
+import type * as AST from "../parser/ast";
 import type {
   Type,
   FunctionType,
@@ -186,23 +186,26 @@ export function isAssignable(source: Type, target: Type, env: TypeEnvironment): 
         return true;
       case "ref":
         return (resolvedSource as TypeRef).name === (resolvedTarget as TypeRef).name;
-      case "list":
+      case "list": {
         if ((resolvedTarget as ListType).elementType.kind === "unknown") return true;
         const sl = resolvedSource as ListType, tl = resolvedTarget as ListType;
         return isAssignable(sl.elementType, tl.elementType, env) && isAssignable(tl.elementType, sl.elementType, env);
-      case "map":
+      }
+      case "map": {
         const tm = resolvedTarget as MapType;
         if (tm.keyType.kind === "unknown" && tm.valueType.kind === "unknown") return true;
         const sm = resolvedSource as MapType;
         return isAssignable(sm.keyType, tm.keyType, env) && isAssignable(tm.keyType, sm.keyType, env) &&
                isAssignable(sm.valueType, tm.valueType, env) && isAssignable(tm.valueType, sm.valueType, env);
+      }
       case "promise":
         if ((resolvedTarget as PromiseType).resolveType.kind === "unknown") return true;
         return isAssignable((resolvedSource as PromiseType).resolveType, (resolvedTarget as PromiseType).resolveType, env);
-      case "set":
+      case "set": {
         if ((resolvedTarget as SetType).elementType.kind === "unknown") return true;
         const ss = resolvedSource as SetType, ts = resolvedTarget as SetType;
         return isAssignable(ss.elementType, ts.elementType, env) && isAssignable(ts.elementType, ss.elementType, env);
+      }
       case "stream":
         if ((resolvedTarget as StreamType).elementType.kind === "unknown") return true;
         return isAssignable((resolvedSource as StreamType).elementType, (resolvedTarget as StreamType).elementType, env);
@@ -418,11 +421,12 @@ export function typesEqual(a: Type, b: Type): boolean {
              typesEqual((a as MapType).valueType, (b as MapType).valueType);
     case "optional":
       return typesEqual((a as OptionalType).inner, (b as OptionalType).inner);
-    case "function":
+    case "function": {
       const fa = a as FunctionType, fb = b as FunctionType;
       return paramsMatch(fa.params, fb.params) &&
              typesEqual(fa.returnType, fb.returnType) &&
              usingMatch(fa.context, fb.context);
+    }
     default:
       return typeToString(a) === typeToString(b);
   }
@@ -508,7 +512,7 @@ export function findCommonType(types: Type[]): Type {
 }
 
 // Check if a type involves Promise
-export function typeInvolvesPromise(t: Type, env: TypeEnvironment, visited: Set<string> = new Set()): boolean {
+export function typeInvolvesPromise(t: Type, env: TypeEnvironment, visited = new Set<string>()): boolean {
   if (t.kind === "promise") return true;
   if (t.kind === "list") return typeInvolvesPromise((t as ListType).elementType, env, visited);
   if (t.kind === "map") return typeInvolvesPromise((t as MapType).valueType, env, visited);
@@ -562,8 +566,6 @@ export function substituteTypeParams(type: Type, bindings: Map<string, Type>): T
       return Types.set(substituteTypeParams(type.elementType, bindings));
     case "promise":
       return Types.promise(substituteTypeParams(type.resolveType, bindings));
-    case "stream":
-      return Types.unknown;
     case "optional":
       return Types.optional(substituteTypeParams(type.inner, bindings));
     case "tuple":

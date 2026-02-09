@@ -1,4 +1,4 @@
-import * as AST from "../../../parser/ast";
+import type * as AST from "../../../parser/ast";
 import type { Type, FunctionType } from "../../types";
 import { Types } from "../../types";
 import { typeInvolvesPromise } from "../../type-utils";

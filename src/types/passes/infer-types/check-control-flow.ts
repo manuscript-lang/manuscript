@@ -1,11 +1,11 @@
-import * as AST from "../../../parser/ast";
+import type * as AST from "../../../parser/ast";
 import type { Type, ObjectType, UsingBinding } from "../../types";
 import type { TypeEnvironment } from "../../environment";
 import { Types, typeToString, isNullable, nonNull } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import { astTypeToType, isAssignable, getIterableElementType, isIterable } from "../../type-utils";
 import type { InferContext } from "./context";
-import { error, warning, setExpectedType } from "./context";
+import { error, setExpectedType } from "./context";
 import { checkPattern, bindPattern } from "./check-pattern";
 import { consumeSpawnsInExpr } from "./infer-spawn";
 import { exprContainsEscapingLambda } from "../context-analysis";
@@ -233,8 +233,10 @@ function checkMatchExhaustiveness(ctx: InferContext, valueType: Type, arms: AST.
     }
     const uncovered: string[] = [];
     for (const t of valueType.types) {
-      const typeName: string = t.kind === "ref" ? t.name :
-        t.kind === "object" && (t as ObjectType).name ? (t as ObjectType).name! : typeToString(t);
+      let typeName: string;
+      if (t.kind === "ref") typeName = t.name;
+      else if (t.kind === "object" && (t as ObjectType).name) typeName = (t as ObjectType).name!;
+      else typeName = typeToString(t);
       if (!coveredTypes.has(typeName)) uncovered.push(typeName);
     }
     if (uncovered.length > 0) {

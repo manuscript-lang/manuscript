@@ -1,6 +1,5 @@
-import * as AST from "../../../parser/ast";
-import type { Type } from "../../types";
-import { Types, typeToString } from "../../types";
+import type * as AST from "../../../parser/ast";
+import { typeToString } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import { astTypeToType, isAssignable } from "../../type-utils";
 import type { InferContext } from "./context";
@@ -121,7 +120,7 @@ function checkVarStmt(ctx: InferContext, stmt: AST.VarStmt): void {
 
   try {
     ctx.env.define(stmt.name, resolvedDeclared, true);
-  } catch (e) {
+  } catch {
     const err = TypeErrors.variableAlreadyDefined(stmt.name);
     error(ctx, err.message, stmt.loc, err.hint);
   }
@@ -150,15 +149,17 @@ function isTerminatingStatement(stmt: AST.Statement): boolean {
   switch (stmt.kind) {
     case "ReturnStmt": case "ThrowStmt": case "BreakStmt": case "ContinueStmt":
       return true;
-    case "IfStmt":
+    case "IfStmt": {
       if (!stmt.else) return false;
       const thenTerminates = stmt.then.kind === "Block" ? blockTerminates(stmt.then) : isTerminatingStatement(stmt.then);
       return thenTerminates && blockTerminates(stmt.else);
-    case "MatchStmt":
+    }
+    case "MatchStmt": {
       const hasCatchAll = stmt.arms.some(arm =>
         arm.pattern.kind === "WildcardPattern" || (arm.pattern.kind === "IdentifierPattern" && !arm.guard));
       if (!hasCatchAll) return false;
       return stmt.arms.every(arm => arm.body.kind === "Block" ? blockTerminates(arm.body) : false);
+    }
     default:
       return false;
   }

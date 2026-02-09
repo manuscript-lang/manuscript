@@ -1,5 +1,5 @@
-import * as AST from "../../../parser/ast";
-import type { Type, ObjectType } from "../../types";
+import type * as AST from "../../../parser/ast";
+import type { Type } from "../../types";
 import { Types, typeToString } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
 import { isAssignable, substituteTypeParams, substituteTypeInObject } from "../../type-utils";

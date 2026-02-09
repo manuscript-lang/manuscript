@@ -2,7 +2,7 @@ import { Lexer, KEYWORDS } from "../lexer";
 import type { Token, TokenType } from "../lexer";
 
 const KEYWORD_TOKEN_TYPES = new Set(KEYWORDS.values());
-import * as AST from "./ast";
+import type * as AST from "./ast";
 import { ParserErrors } from "../shared/errors";
 
 export class ParseError extends Error {
@@ -41,9 +41,9 @@ export class Parser {
   private tokens: Token[] = [];
   private pos: number = 0;
 
-  private prefixParsers: Map<TokenType, PrefixParseFn> = new Map();
-  private infixParsers: Map<TokenType, InfixParseFn> = new Map();
-  private precedences: Map<TokenType, Precedence> = new Map();
+  private prefixParsers = new Map<TokenType, PrefixParseFn>();
+  private infixParsers = new Map<TokenType, InfixParseFn>();
+  private precedences = new Map<TokenType, Precedence>();
 
   constructor(source: string) {
     this.tokens = new Lexer(source).tokenize();
@@ -123,7 +123,7 @@ export class Parser {
       body.push(this.declaration());
       this.skipNewlines();
       // After a multiline with, we may have extra DEDENTs (continuation indent closing)
-      while (this.match("DEDENT")) {}
+      while (this.match("DEDENT")) { /* consume DEDENTs */ }
     }
 
     return {
@@ -736,7 +736,7 @@ export class Parser {
     let elseReturn: AST.Expr;
     if (this.check("RETURN") || this.check("THROW")) {
       // Parse as statement but extract the value
-      const stmtKind = this.peek().type;
+      void this.peek().type;
       this.advance();
       elseReturn = this.check("NEWLINE") || this.check("EOF") 
         ? { kind: "Identifier", name: "null", loc } as AST.Identifier
@@ -916,7 +916,7 @@ export class Parser {
     // Parse a primary expression followed by calls/member access
     let expr = this.parsePrimaryExpr();
     
-    while (true) {
+    for (;;) {
       if (this.check("LPAREN")) {
         this.advance();
         expr = this.finishCallExpr(expr);
@@ -960,7 +960,7 @@ export class Parser {
     const loc = callee.loc;
     const args: (AST.Expr | { name: string; value: AST.Expr })[] = [];
 
-    while (true) {
+    for (;;) {
       this.skipBracketedWhitespace();
       if (this.check("RPAREN")) break;
       if (this.check("IDENTIFIER") && this.peekNext().type === "COLON") {
@@ -1057,7 +1057,7 @@ export class Parser {
     const savedPos = this.pos;
     
     // Skip only newlines (not INDENT/DEDENT)
-    while (this.match("NEWLINE")) {}
+    while (this.match("NEWLINE")) { /* consume newlines */ }
     
     // If we hit INDENT or DEDENT, this is not a simple line continuation
     if (this.check("INDENT") || this.check("DEDENT")) {
@@ -1122,7 +1122,7 @@ export class Parser {
         
         // Find the matching closing brace
         let depth = 1;
-        let exprStart = i + 1;
+        const exprStart = i + 1;
         i++;
         
         while (i < str.length && depth > 0) {
@@ -1166,7 +1166,7 @@ export class Parser {
             }
           } catch {
             // Fall back to treating as text if parse fails
-            parts.push("{" + exprParts + "}");
+            parts.push(`{${  exprParts  }}`);
           }
         }
       } else {
@@ -1835,11 +1835,11 @@ export class Parser {
   }
 
   private skipNewlines(): void {
-    while (this.match("NEWLINE")) {}
+    while (this.match("NEWLINE")) { /* consume newlines */ }
   }
 
   // Skip newlines and indentation inside bracketed expressions (lists, maps, call args)
   private skipBracketedWhitespace(): void {
-    while (this.match("NEWLINE") || this.match("INDENT") || this.match("DEDENT")) {}
+    while (this.match("NEWLINE") || this.match("INDENT") || this.match("DEDENT")) { /* consume */ }
   }
 }

@@ -3,7 +3,7 @@ import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
 import { emit, pushIndent, popIndent, tempVar, pushScope, popScope, addDefer, getTypeName } from "./types";
 import { genExpr } from "./expressions";
-import { genPattern, genPatternCondition, genMatchCondition, genPatternBindings } from "./patterns";
+import { genPattern, genMatchCondition, genPatternBindings } from "./patterns";
 
 // Forward declaration for mutual recursion with gen()
 export type GenFn = (ctx: Ctx, node: AST.Expr | AST.Statement, opts: GenOpts) => string;

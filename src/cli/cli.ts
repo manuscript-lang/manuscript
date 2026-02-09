@@ -7,10 +7,9 @@ import * as path from "path";
 import { pathToFileURL } from "url";
 import { Glob } from "bun";
 import * as os from "os";
-import { compile, check, compileProject, formatErrors, type CompileOptions } from "./compiler";
+import { compile, check, compileProject, formatErrors } from "./compiler";
 import { __ms_runtime } from "../runtime/runtime";
 import { findMsToml } from "../modules";
-import { isCompiledBinary } from "../shared/env";
 
 function registerRuntimePlugin(): void {
   Bun.plugin({
@@ -118,7 +117,7 @@ function success(message: string): void {
 async function readFile(filepath: string): Promise<string> {
   try {
     return await fs.readFile(filepath, "utf-8");
-  } catch (e) {
+  } catch {
     throw new Error(`Cannot read file: ${filepath}`);
   }
 }
@@ -170,13 +169,13 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
       const outDir = path.join(os.tmpdir(), `ms-run-${Date.now()}`);
       await fs.mkdir(outDir, { recursive: true });
       for (const [fp, code] of result.outputs) {
-        const rel = path.relative(config.srcDir, fp).replace(/\.ms$/i, "") + ".js";
+        const rel = `${path.relative(config.srcDir, fp).replace(/\.ms$/i, "")  }.js`;
         const outPath = path.join(outDir, rel);
         await fs.mkdir(path.dirname(outPath), { recursive: true });
         await fs.writeFile(outPath, code);
       }
       registerRuntimePlugin();
-      const entryRel = path.relative(config.srcDir, filepath).replace(/\.ms$/i, "") + ".js";
+      const entryRel = `${path.relative(config.srcDir, filepath).replace(/\.ms$/i, "")  }.js`;
       const entryOut = path.join(outDir, entryRel);
       const prevCwd = process.cwd();
       try {
@@ -392,7 +391,7 @@ async function buildCommand(files: string[], options: CLIOptions): Promise<numbe
     }
     const config = result.config!;
     for (const [fp] of result.outputs) {
-      const rel = path.relative(config.srcDir, fp).replace(/\.ms$/i, "") + ".js";
+      const rel = `${path.relative(config.srcDir, fp).replace(/\.ms$/i, "")  }.js`;
       log(`\x1b[32m✓\x1b[0m ${fp} → ${path.join(outputDir, rel)}`, options);
     }
     return 0;
@@ -484,14 +483,14 @@ async function replCommand(options: CLIOptions): Promise<number> {
 
   const prompt = () => {
     rl.question("\x1b[36mms>\x1b[0m ", async (line) => {
-      line = line.trim();
+      const trimmed = line.trim();
 
-      if (line === ":quit" || line === ":q") {
+      if (trimmed === ":quit" || trimmed === ":q") {
         rl.close();
         return;
       }
 
-      if (line === ":help" || line === ":h") {
+      if (trimmed === ":help" || trimmed === ":h") {
         console.log(`
 Commands:
   :help, :h     Show this help
@@ -503,14 +502,14 @@ Commands:
         return;
       }
 
-      if (line === ":clear") {
+      if (trimmed === ":clear") {
         console.clear();
         prompt();
         return;
       }
 
-      if (line.startsWith(":ast ")) {
-        const code = line.slice(5);
+      if (trimmed.startsWith(":ast ")) {
+        const code = trimmed.slice(5);
         const result = compile(code, { typeCheck: false });
         if (result.success) {
           console.log(JSON.stringify(result.ast, null, 2));
@@ -521,7 +520,7 @@ Commands:
         return;
       }
 
-      if (!line) {
+      if (!trimmed) {
         prompt();
         return;
       }
@@ -529,9 +528,9 @@ Commands:
       // Try to compile and run
       try {
         // Wrap expression in a print if it's not a statement
-        let code = line;
-        if (!line.includes("let ") && !line.includes("var ") && !line.includes("fn ")) {
-          code = `print(${line})`;
+        let code = trimmed;
+        if (!trimmed.includes("let ") && !trimmed.includes("var ") && !trimmed.includes("fn ")) {
+          code = `print(${trimmed})`;
         }
 
         const result = compile(code, { 

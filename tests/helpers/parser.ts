@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { Parser } from "../../src/parser/parser";
-import * as AST from "../../src/parser/ast";
+import type * as AST from "../../src/parser/ast";
 
 /**
  * Parse a single expression

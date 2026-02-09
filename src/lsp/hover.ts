@@ -1,6 +1,6 @@
 // Hover Info - Uses type checker output (env + AST resolvedType) as single source of truth
-import * as AST from "../parser/ast";
-import type { Type, FunctionType, ObjectType, MethodType, InterfaceType } from "../types/types";
+import type * as AST from "../parser/ast";
+import type { FunctionType, ObjectType, MethodType, InterfaceType, ParameterType } from "../types/types";
 import { typeToString } from "../types/types";
 import type { TypeEnvironment } from "../types/environment";
 import type { SymbolTable, SymbolDef } from "./symbols";
@@ -128,7 +128,7 @@ function getHoverForDefinition(
       const resolvedType = env && getReceiverTypeForMember(env, program, parsed.typeName, hoverLine, hoverCol, parsed.memberName);
       const method = resolvedType && getMethodFromResolved(resolvedType, parsed.memberName);
       if (method) {
-        const params = method.type.params.map((p: any) => `${p.name}: ${typeToString(p.type)}`).join(", ");
+        const params = method.type.params.map((p: ParameterType) => `${p.name}: ${typeToString(p.type)}`).join(", ");
         const sig = `(method) fn ${parsed.memberName}(${params}): ${typeToString(method.type.returnType)}`;
         const decl = findTypeDecl(program, resolvedType.name ?? parsed.typeName) ?? findInterfaceDecl(program, (resolvedType as InterfaceType).name ?? parsed.typeName);
         const methodDecl = decl?.body?.members?.find((m): m is AST.MethodDecl => m.kind === "MethodDecl" && m.name === parsed.memberName);

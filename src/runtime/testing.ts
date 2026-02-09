@@ -52,8 +52,8 @@ export async function runTestsWithResults(): Promise<TestResult[]> {
     try {
       await t.fn();
       results.push({ name: t.description, passed: true });
-    } catch (e: any) {
-      results.push({ name: t.description, passed: false, error: e?.message || String(e) });
+    } catch (e: unknown) {
+      results.push({ name: t.description, passed: false, error: e instanceof Error ? e.message : String(e) });
     }
   }
 

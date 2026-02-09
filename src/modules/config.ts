@@ -22,7 +22,7 @@ function parseSrcFromToml(content: string): string {
 export async function findMsToml(startDir: string): Promise<string | null> {
   let dir = path.resolve(startDir);
   const root = path.parse(dir).root;
-  while (true) {
+  for (;;) {
     const candidate = path.join(dir, MS_TOML);
     try {
       await fs.access(candidate);

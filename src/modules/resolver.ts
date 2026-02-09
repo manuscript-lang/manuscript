@@ -183,7 +183,7 @@ function topologicalOrder(pathToDeps: Map<string, string[]>): string[] {
   for (const n of nodes) {
     inDegree.set(n, 0);
   }
-  for (const [from, deps] of pathToDeps) {
+  for (const [, deps] of pathToDeps) {
     for (const d of deps) {
       const to = path.resolve(d);
       if (nodes.has(to)) {

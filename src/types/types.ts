@@ -447,8 +447,8 @@ export function typeToString(type: Type): string {
       const params = type.params.map(p => {
         let s = p.name;
         if (p.optional) s += "?";
-        s += ": " + typeToString(p.type);
-        if (p.rest) s = "..." + s;
+        s += `: ${  typeToString(p.type)}`;
+        if (p.rest) s = `...${  s}`;
         return s;
       }).join(", ");
       const ret = typeToString(type.returnType);

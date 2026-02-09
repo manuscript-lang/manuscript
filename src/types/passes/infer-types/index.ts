@@ -1,6 +1,6 @@
-import * as AST from "../../../parser/ast";
+import type * as AST from "../../../parser/ast";
 import type { TypeEnvironment } from "../../environment";
-import { TypeCheckError } from "../../errors";
+import { type TypeCheckError } from "../../errors";
 import type { Pass, PassContext } from "../../pass-manager";
 import { createInferContext, error } from "./context";
 import { checkStatement, checkBlock } from "./check-stmt";

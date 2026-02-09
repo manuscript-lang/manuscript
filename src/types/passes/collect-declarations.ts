@@ -1,6 +1,6 @@
 // Pass 1: Collect Declarations
-import * as AST from "../../parser/ast";
-import type { Type, ObjectType, InterfaceType, FunctionType, PropertyType, MethodType } from "../types";
+import type * as AST from "../../parser/ast";
+import type { ObjectType, InterfaceType, PropertyType, MethodType } from "../types";
 import { Types } from "../types";
 import type { TypeEnvironment } from "../environment";
 import { TypeCheckError } from "../errors";
@@ -99,7 +99,7 @@ function registerType(
 
   try {
     env.defineType(decl.name, type);
-  } catch (e) {
+  } catch {
     const err = TypeErrors.typeAlreadyDefined(decl.name);
     addError(err.message, decl.loc, err.hint);
   }
@@ -131,7 +131,7 @@ function registerInterface(
   };
   try {
     env.defineType(decl.name, iface);
-  } catch (e) {
+  } catch {
     const err = TypeErrors.typeAlreadyDefined(decl.name);
     addError(err.message, decl.loc, err.hint);
   }
@@ -278,7 +278,7 @@ function collectFnDecl(
   try {
     env.define(decl.name, fnType);
     fnDecls.set(decl.name, decl);
-  } catch (e) {
+  } catch {
     const err = TypeErrors.functionAlreadyDefined(decl.name);
     addError(err.message, decl.loc, err.hint);
   }

@@ -1,5 +1,5 @@
 // Pass 3: Context Analysis - Checks for context-dependent code escaping 'with' blocks
-import * as AST from "../../parser/ast";
+import type * as AST from "../../parser/ast";
 import type { FunctionType } from "../types";
 import type { TypeEnvironment } from "../environment";
 import { TypeCheckError } from "../errors";

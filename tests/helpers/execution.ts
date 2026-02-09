@@ -27,11 +27,11 @@ function formatValue(val: any): string {
   if (val === null) return "null";
   if (val === undefined) return "undefined";
   if (Array.isArray(val)) {
-    return "[" + val.map(formatValue).join(", ") + "]";
+    return `[${  val.map(formatValue).join(", ")  }]`;
   }
   if (typeof val === "object") {
     const entries = Object.entries(val).map(([k, v]) => `${k}: ${formatValue(v)}`);
-    return "{" + entries.join(", ") + "}";
+    return `{${  entries.join(", ")  }}`;
   }
   return String(val);
 }

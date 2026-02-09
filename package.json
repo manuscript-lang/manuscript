@@ -9,7 +9,7 @@
     "ms": "./bin/manuscript.ts"
   },
   "scripts": {
-    "lint": "eslint src tests bin --max-warnings 0",
+    "lint": "node_modules/.bin/eslint src tests bin --max-warnings 0",
     "build": "bun build --compile bin/manuscript.ts ./src/stdlib/** --asset-naming=\"[name].[ext]\" --outfile ms",
     "test": "bun test",
     "test:coverage": "bun test --coverage",

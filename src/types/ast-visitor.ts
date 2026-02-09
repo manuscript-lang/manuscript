@@ -1,5 +1,5 @@
 // AST Visitor - Generic traversal utilities for type checking passes
-import * as AST from "../parser/ast";
+import type * as AST from "../parser/ast";
 
 // ============================================
 // Basic Visitor Interface
@@ -573,10 +573,10 @@ export interface NodeAtPosition {
 export function findNodeAtPosition(program: AST.Program, line: number, col: number): NodeAtPosition | null {
   let best: NodeAtPosition | null = null;
 
-  function check(node: any, kind: NodeAtPosition["kind"]) {
+  function check(node: AST.ASTNode | undefined, kind: NodeAtPosition["kind"]) {
     if (!node?.loc) return;
     if (node.loc.line === line && node.loc.column <= col) {
-      if (!best || node.loc.column >= (best.node as any).loc.column) {
+      if (!best || node.loc.column >= (best.node as AST.BaseNode).loc.column) {
         best = { node, kind };
       }
     }
@@ -621,7 +621,7 @@ export function findNodeAtPosition(program: AST.Program, line: number, col: numb
     } else if (s.kind === "LetStmt" && s.pattern?.kind === "IdentifierPattern") {
       const nameStart = s.loc.column + 4;
       if (s.loc.line === line && nameStart <= col && col <= nameStart + s.pattern.name.length) {
-        check({ ...s, name: s.pattern.name }, "LetBinding");
+        check({ ...s, name: s.pattern.name } as AST.ASTNode, "LetBinding");
       }
     } else if (s.kind === "VarStmt") {
       const nameStart = s.loc.column + 4;
@@ -631,7 +631,7 @@ export function findNodeAtPosition(program: AST.Program, line: number, col: numb
     } else if (s.kind === "ForStmt" && s.pattern?.kind === "IdentifierPattern") {
       const endCol = s.pattern.loc.column + s.pattern.name.length;
       if (s.pattern.loc.line === line && s.pattern.loc.column <= col && col <= endCol) {
-        check({ ...s.pattern, iterable: s.iterable }, "ForBinding");
+        check({ ...s.pattern, iterable: s.iterable } as AST.ASTNode, "ForBinding");
       }
     }
   }
