@@ -12,6 +12,7 @@ import { collectDeclarations } from "../../src/types/passes/collect-declarations
 import { inferTypes } from "../../src/types/passes/infer-types";
 import { typeToString, type Type } from "../../src/types";
 import * as TypeUtils from "../../src/types/type-utils";
+import * as Format from "../../src/lsp/format";
 import { Types } from "../../src/types/types";
 
 // Helper to parse source
@@ -267,7 +268,7 @@ describe("Type Utils - Pure Functions", () => {
   });
 
   test("formatAstType returns unknown for undefined", () => {
-    expect(TypeUtils.formatAstType(undefined)).toBe("unknown");
+    expect(Format.formatAstType(undefined)).toBe("unknown");
   });
 
   test("isAssignable never and intersection", () => {
@@ -687,7 +688,7 @@ describe("Type Utils - Pure Functions (continued)", () => {
     const program = parse(`fn add(a: number, b: number): number
   a + b`);
     const fnDecl = program.body.find((s): s is import("../../src/parser/ast").FnDecl => s.kind === "FnDecl")!;
-    const sig = TypeUtils.formatFnSignature(fnDecl);
+    const sig = Format.formatFnSignature(fnDecl);
     expect(sig).toContain("number");
     expect(sig).toContain("add");
     const typeProgram = parse(`type T
@@ -695,7 +696,7 @@ describe("Type Utils - Pure Functions (continued)", () => {
     "ok"`);
     const typeDecl = typeProgram.body.find((s): s is import("../../src/parser/ast").TypeDecl => s.kind === "TypeDecl")!;
     const method = typeDecl.body!.members.find((m): m is import("../../src/parser/ast").MethodDecl => m.kind === "MethodDecl")!;
-    expect(TypeUtils.formatMethodSignature(method)).toContain("number");
+    expect(Format.formatMethodSignature(method)).toContain("number");
   });
 
   test("formatTypeSignature", () => {
@@ -703,7 +704,7 @@ describe("Type Utils - Pure Functions (continued)", () => {
   x: number
   y: number`);
     const typeDecl = program.body.find((s): s is import("../../src/parser/ast").TypeDecl => s.kind === "TypeDecl")!;
-    const { signature, fields } = TypeUtils.formatTypeSignature(typeDecl);
+    const { signature, fields } = Format.formatTypeSignature(typeDecl);
     expect(signature).toContain("Point");
     expect(fields.length).toBe(2);
   });

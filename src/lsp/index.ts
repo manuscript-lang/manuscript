@@ -15,13 +15,29 @@ export {
   getObjectMemberCompletions,
   getInterfaceMemberCompletions,
   getScopeCompletions,
-  getTypeAnnotationCompletions,
-  getDefaultCompletions,
   type CompletionInfo,
   type CompletionKind,
 } from "./completions";
 export {
-  resolveStdlibDefinition,
-  getStdlibHover,
-  type StdlibDefinitionLocation,
-} from "./stdlib";
+  formatFnSignature,
+  formatTypeSignature,
+  formatInterfaceSignature,
+  resolveObjectType,
+  resolveInterfaceType,
+} from "./format";
+export {
+  collectTypeMembersFromProgram,
+  type BuiltinsSymbol,
+  type TypeMemberInfo,
+} from "./builtin-symbols";
+
+// LanguageService — high-level API for protocol adapters
+export {
+  LanguageService,
+  type LanguageServiceHost,
+  type DiagnosticInfo,
+  type DefinitionResult,
+  type ReferenceLocation,
+  type RenameLocationInfo,
+  type CompletionItemData,
+} from "./service";

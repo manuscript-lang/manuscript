@@ -13,7 +13,7 @@ import {
   formatTypeSignature,
   formatTypeSignatureFromObject,
   formatInterfaceSignature,
-} from "../types/type-utils";
+} from "./format";
 import {
   findFnDecl,
   findTypeDecl,

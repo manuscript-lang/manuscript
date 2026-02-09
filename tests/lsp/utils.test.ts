@@ -13,7 +13,7 @@ import {
   formatFunctionType,
   formatTypeSignatureFromObject,
   resolveObjectType,
-} from "../../src/types/type-utils";
+} from "../../src/lsp/format";
 import { findFnDecl, findTypeDecl, findConstructorCalleeAt, findTypeMember } from "../../src/types/ast-query";
 import type { SymbolDef } from "../../src/lsp/symbols";
 import { Parser } from "../../src/parser";

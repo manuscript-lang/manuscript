@@ -5,9 +5,9 @@ import type { Program, FnDecl, TypeDecl } from "../../src/parser/ast";
 import type { Type } from "../../src/types/types";
 import type { TypeEnvironment } from "../../src/types/environment";
 import { buildSymbolTable, resolveDefinition, findReferences, getRenameLocations, getHoverForSymbol, getDocumentSymbols, getObjectMemberCompletions, getTypeMemberCompletions, type SymbolTable } from "../../src/lsp";
-import { resolveObjectType } from "../../src/types/type-utils";
+import { resolveObjectType } from "../../src/lsp/format";
 import { getBuiltinsAST } from "../../src/builtin";
-import { collectTypeMembersFromProgram } from "../../src/builtin/extractor";
+import { collectTypeMembersFromProgram } from "../../src/lsp";
 
 // Test helpers that mirror server.ts logic
 const KEYWORDS = [

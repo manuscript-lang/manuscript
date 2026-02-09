@@ -2,9 +2,19 @@
 import * as AST from "../parser/ast";
 import type { ObjectType, InterfaceType } from "../types/types";
 import { typeToString } from "../types/types";
-import type { TypeMemberInfo, BuiltinsSymbol } from "../builtin/extractor";
+import type { TypeEnvironment } from "../types/environment";
+import type { TypeMemberInfo, BuiltinsSymbol } from "./builtin-symbols";
 import { BUILTIN_PRIMITIVE_TYPES } from "../shared/constants";
-import { formatFunctionType, formatFnSignatureFromAst } from "../types/type-utils";
+import {
+  formatFunctionType,
+  formatFnSignatureFromAst,
+  formatFnSignature,
+  formatTypeSignature,
+  formatInterfaceSignature,
+  resolveObjectType,
+  resolveInterfaceType,
+} from "./format";
+import { visit } from "../types/ast-visitor";
 
 export type CompletionKind = "function" | "type" | "variable" | "property" | "method" | "keyword";
 
@@ -258,3 +268,56 @@ export function getDefaultCompletions(
   return items;
 }
 
+// Get member completions at a dot-position by walking the AST to find the receiver expression
+export function getMemberCompletionsAtPosition(
+  program: AST.Program,
+  env: TypeEnvironment,
+  line: number,
+  col: number,
+  builtinsTypeMembers: Map<string, TypeMemberInfo[]>
+): CompletionInfo[] {
+  let bestExpr: AST.Expr | null = null;
+  visit(program, {
+    expr(e) {
+      if (!e?.loc || e.loc.line !== line) return;
+      if (e.loc.column <= col) bestExpr = e;
+    },
+  });
+  const expr = bestExpr as AST.Expr | null;
+  const type =
+    expr?.kind === "MemberExpr"
+      ? expr.object.resolvedType
+      : expr?.resolvedType;
+  if (!type) return [];
+  const builtinCompletions = getTypeMemberCompletions(builtinsTypeMembers, type.kind);
+  if (builtinCompletions.length > 0) return builtinCompletions;
+  const obj = resolveObjectType(program, type, env);
+  if (obj) return getObjectMemberCompletions(obj);
+  const iface = resolveInterfaceType(program, type, env);
+  if (iface) return getInterfaceMemberCompletions(iface);
+  return [];
+}
+
+// Resolve completion detail for a declaration in a program
+export function resolveCompletionDetail(
+  program: AST.Program,
+  name: string,
+  kind: "fn" | "type" | "interface"
+): { detail: string; doc?: string } | null {
+  for (const s of program.body) {
+    if (kind === "fn" && s.kind === "FnDecl" && s.name === name) {
+      return { detail: formatFnSignature(s), doc: s.doc };
+    }
+    if (kind === "type" && s.kind === "TypeDecl" && s.name === name) {
+      const { signature, fields } = formatTypeSignature(s);
+      const doc = s.doc ?? (fields.length ? `**Fields:**\n${fields.map(f => `- \`${f}\``).join("\n")}` : undefined);
+      return { detail: signature, doc };
+    }
+    if (kind === "interface" && s.kind === "InterfaceDecl" && s.name === name) {
+      const { signature, methods } = formatInterfaceSignature(s);
+      const doc = s.doc ?? (methods.length ? `**Methods:**\n${methods.map(m => `- \`${m}\``).join("\n")}` : undefined);
+      return { detail: `interface ${signature}`, doc };
+    }
+  }
+  return null;
+}
