@@ -7,19 +7,19 @@ fn last[T](list: list[T]): T?
   if len(list) > 0 then list[len(list) - 1] else null
 
 fn take[T](list: list[T], n: number): list[T]
-  let result = [] as list[T]
+  let result: list[T] = []
   for i in 0..min(n, len(list))
     result.push(list[i])
   result
 
 fn drop[T](list: list[T], n: number): list[T]
-  let result = [] as list[T]
+  let result: list[T] = []
   for i in n..len(list)
     result.push(list[i])
   result
 
 fn reverse[T](list: list[T]): list[T]
-  let result = [] as list[T]
+  let result: list[T] = []
   for i in 0..len(list)
     result.push(list[len(list) - 1 - i])
   result
@@ -32,7 +32,7 @@ fn contains[T](list: list[T], item: T): bool
 
 fn unique[T](list: list[T]): list[T]
   let seen = {}
-  let result = [] as list[T]
+  let result: list[T] = []
   for item in list
     let key = to_str(item)
     if not seen[key]
@@ -41,41 +41,41 @@ fn unique[T](list: list[T]): list[T]
   result
 
 fn flatten[T](lists: list[list[T]]): list[T]
-  let result = [] as list[T]
+  let result: list[T] = []
   for list in lists
     for item in list
       result.push(item)
   result
 
 fn zip[T, U](a: list[T], b: list[U]): list[list[T or U]]
-  let result = [] as list[list[T or U]]
+  let result: list[list[T or U]] = []
   let n = min(len(a), len(b))
   for i in 0..n
     result.push([a[i], b[i]])
   result
 
 fn concat[T](...lists: list[list[T]]): list[T]
-  let result = [] as list[T]
+  let result: list[T] = []
   for list in lists
     for item in list
       result.push(item)
   result
 
 fn range(start: number, end: number): list[number]
-  let result = [] as list[number]
+  let result: list[number] = []
   for i in start..end
     result.push(i)
   result
 
 fn slice[T](list: list[T], start: number, end?: number): list[T]
   let e = end ?? len(list)
-  let result = [] as list[T]
+  let result: list[T] = []
   for i in start..e
     result.push(list[i])
   result
 
 fn map[T, U](list: list[T], f: fn(T): U): list[U]
-  let result = [] as list[U]
+  let result: list[U] = []
   for item in list
     result.push(f(item))
   result
@@ -85,7 +85,7 @@ fn each[T](list: list[T], f: fn(T): void): void
     f(item)
 
 fn filter[T](list: list[T], pred: fn(T): bool): list[T]
-  let result = [] as list[T]
+  let result: list[T] = []
   for item in list
     if pred(item)
       result.push(item)
@@ -116,15 +116,20 @@ fn all[T](list: list[T], pred: fn(T): bool): bool
   true
 
 fn group_by[T, K](list: list[T], f: fn(T): K): map[K, list[T]]
-  var result = {} as map[K, list[T]]
+  var result: map[K, list[T]] = {}
   for item in list
     let key = f(item)
     if not result[key]
-      result[key] = [] as list[T]
+      let newList: list[T] = []
+      result[key] = newList
     result[key].push(item)
   result
 
+type _By[K, T]
+  key: K
+  value: T
+
 fn sort_by[T, K](list: list[T], f: fn(T): K): list[T]
-  let pairs = map(list, (item) => [f(item), item])
-  let sorted = sort(pairs)
-  map(sorted, (pair) => pair[1] as T)
+  let pairs: list[_By[K, T]] = map(list, (item) => _By(key: f(item), value: item))
+  let sorted = sort(pairs, (a, b) => if to_str(a.key) < to_str(b.key) then -1 else if to_str(a.key) > to_str(b.key) then 1 else 0)
+  map(sorted, (p) => p.value)

@@ -215,6 +215,9 @@ export function visitExpr(expr: AST.Expr, visitor: Visitor): void {
     case "SpawnExpr":
       visitExpr(expr.expr, visitor);
       break;
+    case "IsExpr":
+      visitExpr(expr.expr, visitor);
+      break;
     case "TypeAssertion":
       visitExpr(expr.expr, visitor);
       break;
@@ -275,6 +278,8 @@ export function exprReferences(expr: AST.Expr, name: string): boolean {
     case "PipeExpr":
       return exprReferences(expr.left, name) || exprReferences(expr.right, name);
     case "SpawnExpr":
+      return exprReferences(expr.expr, name);
+    case "IsExpr":
       return exprReferences(expr.expr, name);
     case "TypeAssertion":
     case "NullAssertion":

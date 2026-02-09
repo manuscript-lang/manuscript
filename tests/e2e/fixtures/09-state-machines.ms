@@ -37,7 +37,8 @@ fn do_transition(current: string, next: string): map
 
 var order = "pending"
 let r1 = do_transition(order, "confirmed")
-order = r1.state as string
+let s1 = r1.state
+order = if s1 is string then s1 else ""
 // @expect: confirmed true
 print(order, r1.ok)
 
@@ -46,7 +47,8 @@ let r2 = do_transition(order, "pending")
 print(r2.state, r2.ok)
 
 let r3 = do_transition(order, "shipped")
-order = r3.state as string
+let s3 = r3.state
+order = if s3 is string then s3 else ""
 // @expect: shipped true
 print(order, r3.ok)
 
@@ -86,14 +88,16 @@ fn vending_refund(balance: number): map
 
 var vm = 0
 let a1 = vending_insert(vm, 100)
-vm = a1.balance as number
+let b1 = a1.balance
+vm = if b1 is number then b1 else 0
 // @expect: inserted 100
 print(a1.message)
 // @expect: 100
 print(vm)
 
 let a2 = vending_buy(vm, 50)
-vm = a2.balance as number
+let b2 = a2.balance
+vm = if b2 is number then b2 else 0
 // @expect: bought item
 print(a2.message)
 // @expect: 50

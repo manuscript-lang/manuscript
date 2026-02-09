@@ -88,6 +88,7 @@ export function visitWithScope(program: AST.Program, v: ScopedVisitor): void {
         }
         break;
       case "SpawnExpr":
+      case "IsExpr":
       case "TypeAssertion":
       case "NullAssertion":
         expr(e.expr, scope);

@@ -3,6 +3,8 @@ import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
 import { emit, pushIndent, popIndent, tempVar, isTypeConstructor, getParamOrder } from "./types";
 import { STDLIB_FUNCTIONS, EXTERN_TYPES, PRIMITIVE_EXTERN_TYPES, isStdlibExternType } from "../builtin";
+import type { Type, ListType, MapType } from "../types/types";
+import { typeToString } from "../types/types";
 
 // Forward declaration for mutual recursion
 export type GenFn = (ctx: Ctx, node: AST.Expr | AST.Statement, opts: GenOpts) => string;
@@ -33,10 +35,172 @@ export function genExpr(ctx: Ctx, expr: AST.Expr, opts: GenOpts): string {
     case "MapExpr": return genMap(ctx, expr, opts);
     case "TemplateLiteral": return genTemplate(ctx, expr, opts);
     case "SpawnExpr": return genSpawn(ctx, expr, opts);
+    case "IsExpr": return genIsExpr(ctx, expr, opts);
     case "TypeAssertion": return genExpr(ctx, expr.expr, opts);
     case "NullAssertion": return genExpr(ctx, expr.expr, opts);
     case "RangeExpr": return genRange(ctx, expr, opts);
   }
+}
+
+const IS_PLAIN_OBJECT =
+  (x: string) => `(typeof ${x} === "object" && ${x} !== null && !Array.isArray(${x}) && !(${x} instanceof Set))`;
+
+function getTypeArgsLiteralFromIndexExpr(indexExpr: AST.IndexExpr): string | null {
+  const all = [indexExpr.index, ...(indexExpr.typeArgs ?? [])];
+  const names = all.map((e): string | null => (e.kind === "Identifier" ? e.name : null));
+  if (names.some(n => n === null)) return null;
+  return JSON.stringify(names as string[]);
+}
+
+function typeExprToRuntimeTag(t: AST.TypeExpr): string {
+  switch (t.kind) {
+    case "NamedType": return t.name;
+    case "GenericType": return t.args.length ? `${t.name}[${t.args.map(typeExprToRuntimeTag).join(",")}]` : t.name;
+    case "OptionalType": return typeExprToRuntimeTag(t.inner);
+    case "ListType": return `list[${typeExprToRuntimeTag(t.elementType)}]`;
+    case "MapType": return `map[${typeExprToRuntimeTag(t.keyType)},${typeExprToRuntimeTag(t.valueType)}]`;
+    case "UnionType": return t.types.map(typeExprToRuntimeTag).join("|");
+    case "FunctionType": return "function";
+    default: return "unknown";
+  }
+}
+
+function typeToRuntimeTag(t: Type): string {
+  switch (t.kind) {
+    case "number":
+    case "string":
+    case "bool":
+    case "null":
+    case "bytes":
+    case "never":
+    case "unknown":
+    case "void":
+      return t.kind;
+    case "list":
+      return `list[${typeToRuntimeTag((t as ListType).elementType)}]`;
+    case "map": {
+      const m = t as MapType;
+      return `map[${typeToRuntimeTag(m.keyType)},${typeToRuntimeTag(m.valueType)}]`;
+    }
+    case "set":
+      return `set[${typeToRuntimeTag((t as { elementType: Type }).elementType)}]`;
+    case "optional":
+      return typeToRuntimeTag((t as { inner: Type }).inner);
+    case "ref": {
+      const r = t as { name: string; args?: Type[] };
+      return r.args?.length ? `${r.name}[${r.args.map(typeToRuntimeTag).join(",")}]` : r.name;
+    }
+    case "generic": {
+      const g = t as { base: Type; args: Type[] };
+      return `${typeToRuntimeTag(g.base)}[${g.args.map(typeToRuntimeTag).join(",")}]`;
+    }
+    default:
+      return typeToString(t).replace(/, /g, ",");
+  }
+}
+
+function typeContainsTypeVar(t: Type): boolean {
+  if (t.kind === "typevar") return true;
+  if (t.kind === "list") return typeContainsTypeVar((t as ListType).elementType);
+  if (t.kind === "map") {
+    const m = t as MapType;
+    return typeContainsTypeVar(m.keyType) || typeContainsTypeVar(m.valueType);
+  }
+  if (t.kind === "optional" || t.kind === "ref" || t.kind === "generic") {
+    const g = t as { inner?: Type; args?: Type[]; base?: Type };
+    if (g.inner && typeContainsTypeVar(g.inner)) return true;
+    if (g.args?.some(a => typeContainsTypeVar(a))) return true;
+    if (g.base && typeContainsTypeVar(g.base)) return true;
+  }
+  return false;
+}
+
+function getRuntimeTypeArgs(t: Type): string[] | null {
+  if (typeContainsTypeVar(t)) return null;
+  if (t.kind === "list") return [typeToRuntimeTag((t as ListType).elementType)];
+  if (t.kind === "map") {
+    const m = t as MapType;
+    return [typeToRuntimeTag(m.keyType), typeToRuntimeTag(m.valueType)];
+  }
+  if (t.kind === "ref") {
+    const r = t as { name: string; args?: Type[] };
+    if (r.args?.length) return r.args.map(typeToRuntimeTag);
+    return null;
+  }
+  if (t.kind === "generic") {
+    const g = t as { base: Type; args: Type[] };
+    return g.args.map(typeToRuntimeTag);
+  }
+  return null;
+}
+
+function genIsTypeCheck(leftStr: string, typeExpr: AST.TypeExpr): string {
+  switch (typeExpr.kind) {
+    case "NamedType": {
+      const name = typeExpr.name;
+      if (name === "string") return `typeof ${leftStr} === "string"`;
+      if (name === "number") return `typeof ${leftStr} === "number"`;
+      if (name === "bool") return `typeof ${leftStr} === "boolean"`;
+      if (name === "null") return `${leftStr} === null`;
+      if (name === "bytes") return `(${leftStr} instanceof Uint8Array || (typeof ${leftStr} === "object" && ${leftStr} !== null && ${leftStr}.constructor?.name === "Buffer"))`;
+      if (name === "map") return `((${leftStr} instanceof Map) || ${IS_PLAIN_OBJECT(leftStr)})`;
+      if (name === "list") return `Array.isArray(${leftStr})`;
+      if (name === "set") return `(${leftStr} instanceof Set)`;
+      return `(${leftStr}?.__typename === "${name}")`;
+    }
+    case "GenericType": {
+      const name = typeExpr.name;
+      const args = typeExpr.args;
+      if (name === "list") {
+        const base = `Array.isArray(${leftStr})`;
+        if (args.length > 0) {
+          const typeArgsJson = JSON.stringify(args.map(typeExprToRuntimeTag));
+          return `(${base} && (!${leftStr}.__typeArgs || JSON.stringify(${leftStr}.__typeArgs) === ${JSON.stringify(typeArgsJson)}))`;
+        }
+        return base;
+      }
+      if (name === "map") {
+        const base = `((${leftStr} instanceof Map) || ${IS_PLAIN_OBJECT(leftStr)})`;
+        if (args.length >= 2) {
+          const typeArgsJson = JSON.stringify(args.map(typeExprToRuntimeTag));
+          return `(${base} && (!${leftStr}.__typeArgs || JSON.stringify(${leftStr}.__typeArgs) === ${JSON.stringify(typeArgsJson)}))`;
+        }
+        return base;
+      }
+      if (name === "set") return `(${leftStr} instanceof Set)`;
+      if (args.length > 0) {
+        const typeArgsJson = JSON.stringify(args.map(typeExprToRuntimeTag));
+        return `(${leftStr}?.__typename === "${name}" && ${leftStr}.__typeArgs && JSON.stringify(${leftStr}.__typeArgs) === ${JSON.stringify(typeArgsJson)})`;
+      }
+      return `(${leftStr}?.__typename === "${name}")`;
+    }
+    case "OptionalType": {
+      const inner = genIsTypeCheck(leftStr, typeExpr.inner);
+      return `(${leftStr} === null || ${inner})`;
+    }
+    case "ListType": {
+      const base = `Array.isArray(${leftStr})`;
+      const tag = typeExprToRuntimeTag(typeExpr.elementType);
+      const typeArgsJson = JSON.stringify([tag]);
+      return `(${base} && (!${leftStr}.__typeArgs || JSON.stringify(${leftStr}.__typeArgs) === ${typeArgsJson}))`;
+    }
+    case "MapType": {
+      const base = `((${leftStr} instanceof Map) || ${IS_PLAIN_OBJECT(leftStr)})`;
+      const typeArgsJson = JSON.stringify([typeExprToRuntimeTag(typeExpr.keyType), typeExprToRuntimeTag(typeExpr.valueType)]);
+      return `(${base} && (!${leftStr}.__typeArgs || JSON.stringify(${leftStr}.__typeArgs) === ${typeArgsJson}))`;
+    }
+    case "UnionType":
+      return typeExpr.types.map(t => genIsTypeCheck(leftStr, t)).join(" || ");
+    case "FunctionType":
+      return `(typeof ${leftStr} === "function")`;
+    default:
+      return "false";
+  }
+}
+
+function genIsExpr(ctx: Ctx, node: AST.IsExpr, opts: GenOpts): string {
+  const left = genExpr(ctx, node.expr, opts);
+  return `(${genIsTypeCheck(left, node.type)})`;
 }
 
 export function genLiteral(node: AST.Literal): string {
@@ -67,7 +231,6 @@ export function genBinary(ctx: Ctx, node: AST.BinaryExpr, opts: GenOpts): string
     case "and": return `(${left} && ${right})`;
     case "or": return `(${left} || ${right})`;
     case "^": return `Math.pow(${left}, ${right})`;
-    case "is": return `(${left} instanceof ${right})`;
     case "??": return `(${left} ?? ${right})`;
     default: return `(${left} ${node.op} ${right})`;
   }
@@ -80,7 +243,12 @@ export function genUnary(ctx: Ctx, node: AST.UnaryExpr, opts: GenOpts): string {
 }
 
 export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
-  let callee = genExpr(ctx, node.callee, opts);
+  const calleeExpr = node.callee;
+  const calleeResolved = (calleeExpr as AST.BaseNode).resolvedType;
+  const isGenericFunctionCall = calleeExpr.kind === "IndexExpr" && calleeResolved?.kind === "function";
+  let callee = isGenericFunctionCall
+    ? genExpr(ctx, calleeExpr.object, opts)
+    : genExpr(ctx, calleeExpr, opts);
 
   // Prefix builtin functions (unless it's a class method shadowing the builtin)
   if (node.callee.kind === "Identifier" && 
@@ -97,9 +265,11 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     if (isExtern && !PRIMITIVE_EXTERN_TYPES.has(baseName)) {
       return `new __ms_runtime.${baseName}(${args})`;
     }
-    // User-defined generic types - factory functions, no 'new'
     if (isTypeConstructor(node.callee.object) || ctx.typeFields.has(baseName)) {
-      return `${baseName}(${args})`;
+      const callType = (node as AST.CallExpr & { resolvedType?: Type }).resolvedType;
+      const typeArgs = callType ? getRuntimeTypeArgs(callType) : null;
+      const typeArgsLit = typeArgs ? JSON.stringify(typeArgs) : getTypeArgsLiteralFromIndexExpr(node.callee);
+      return typeArgsLit ? `${baseName}(${args}, ${typeArgsLit})` : `${baseName}(${args})`;
     }
   }
 
@@ -127,12 +297,15 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
   const paramOrder = getParamOrder(node.callee);
   const args = genCallArgs(ctx, node.args, opts, paramOrder);
 
-  // User-defined types use sync factory functions (no 'new', no await)
+  const callType = (node as AST.CallExpr & { resolvedType?: Type }).resolvedType;
+  const typeArgs = callType ? getRuntimeTypeArgs(callType) : null;
+  const typeArgsSuffix = typeArgs ? `, ${JSON.stringify(typeArgs)}` : "";
+
   if (isTypeConstructor(node.callee)) {
-    return `${callee}(${args})`;
+    return `${callee}(${args}${typeArgsSuffix})`;
   }
   if (node.callee.kind === "Identifier" && ctx.typeFields.has(node.callee.name)) {
-    return `${callee}(${args})`;
+    return `${callee}(${args}${typeArgsSuffix})`;
   }
 
   // Implicit await for all function calls
@@ -315,7 +488,14 @@ export function genList(ctx: Ctx, node: AST.ListExpr, opts: GenOpts): string {
     }
     return genExpr(ctx, el, opts);
   });
-  return `[${elements.join(", ")}]`;
+  const arr = elements.length === 0 ? "[]" : `[${elements.join(", ")}]`;
+  const rt = (node as AST.ListExpr & { resolvedType?: Type }).resolvedType;
+  const typeArgs = rt ? getRuntimeTypeArgs(rt) : null;
+  if (typeArgs) {
+    const inner = `const _a=${arr};Object.defineProperty(_a,"__typeArgs",{value:${JSON.stringify(typeArgs)},enumerable:false});return _a`;
+    return opts.syncContext ? `(function(){${inner}})()` : `(await (async function(){${inner}})())`;
+  }
+  return arr;
 }
 
 export function genSet(ctx: Ctx, node: AST.SetExpr, opts: GenOpts): string {
@@ -325,7 +505,15 @@ export function genSet(ctx: Ctx, node: AST.SetExpr, opts: GenOpts): string {
 }
 
 export function genMap(ctx: Ctx, node: AST.MapExpr, opts: GenOpts): string {
-  if (node.entries.length === 0) return "Object.create(null)";
+  if (node.entries.length === 0) {
+    const rt = (node as AST.MapExpr & { resolvedType?: Type }).resolvedType;
+    const typeArgs = rt ? getRuntimeTypeArgs(rt) : null;
+    if (typeArgs) {
+      const inner = `const _m=Object.create(null);Object.defineProperty(_m,"__typeArgs",{value:${JSON.stringify(typeArgs)},enumerable:false});return _m`;
+      return opts.syncContext ? `(function(){${inner}})()` : `(await (async function(){${inner}})())`;
+    }
+    return "Object.create(null)";
+  }
 
   const literalParts: string[] = [];
   const spreadExprs: string[] = [];
@@ -342,7 +530,14 @@ export function genMap(ctx: Ctx, node: AST.MapExpr, opts: GenOpts): string {
   }
   const sources = [...spreadExprs];
   if (literalParts.length > 0) sources.push(`{ ${literalParts.join(", ")} }`);
-  return sources.length === 0 ? "Object.create(null)" : `Object.assign(Object.create(null), ${sources.join(", ")})`;
+  const mapExpr = sources.length === 0 ? "Object.create(null)" : `Object.assign(Object.create(null), ${sources.join(", ")})`;
+  const rt = (node as AST.MapExpr & { resolvedType?: Type }).resolvedType;
+  const typeArgs = rt ? getRuntimeTypeArgs(rt) : null;
+  if (typeArgs) {
+    const inner = `const _m=${mapExpr};Object.defineProperty(_m,"__typeArgs",{value:${JSON.stringify(typeArgs)},enumerable:false});return _m`;
+    return opts.syncContext ? `(function(){${inner}})()` : `(await (async function(){${inner}})())`;
+  }
+  return mapExpr;
 }
 
 export function genTemplate(ctx: Ctx, node: AST.TemplateLiteral, opts: GenOpts): string {

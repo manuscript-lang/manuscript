@@ -1,15 +1,39 @@
 import * as AST from "../../../parser/ast";
-import type { Type, ObjectType, UsingBinding } from "../../types";
+import type { Type, FunctionType, ObjectType, UsingBinding } from "../../types";
 import type { TypeEnvironment } from "../../environment";
 import { Types, typeToString } from "../../types";
 import { isNullable, nonNull } from "../../type-utils";
 import { TypeErrors } from "../../../shared/errors";
-import { astTypeToType, isAssignable, getIterableElementType, isIterable } from "../../type-utils";
+import { astTypeToType, isAssignable, getIterableElementType, isIterable, substituteTypeParams } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, warning, setExpectedType } from "./context";
 import { checkPattern, bindPattern } from "./check-pattern";
 import { consumeSpawnsInExpr } from "./infer-spawn";
+import { inferTypeParams, isNamedArg, getArgExpr } from "./infer-call";
 import { exprContainsEscapingLambda } from "../context-utils";
+
+function setNarrowTypes(env: TypeEnvironment, varName: string, types: Type[], mutable: boolean): void {
+  if (types.length === 1) env.set(varName, types[0]!, mutable);
+  else if (types.length > 1) env.set(varName, Types.union(...types), mutable);
+}
+
+function applyNarrowResult(
+  env: TypeEnvironment,
+  varName: string,
+  narrowType: Type,
+  symbol: { type: Type; mutable: boolean },
+  ctx: InferContext,
+  truthyBranch: boolean
+): void {
+  if (truthyBranch) {
+    env.set(varName, narrowType, symbol.mutable);
+  } else if (symbol.type.kind === "union") {
+    const remaining = symbol.type.types.filter(
+      (t: Type) => !(isAssignable(narrowType, t, ctx.env) && isAssignable(t, narrowType, ctx.env))
+    );
+    setNarrowTypes(env, varName, remaining, symbol.mutable);
+  }
+}
 
 export function checkIfStmt(ctx: InferContext, stmt: AST.IfStmt): void {
   ctx.inferExpr(stmt.condition);
@@ -51,9 +75,17 @@ export function checkIfStmt(ctx: InferContext, stmt: AST.IfStmt): void {
   if (stmt.pattern && stmt.elseReturn) ctx.inferExpr(stmt.elseReturn);
 }
 
-function applyTypeNarrowing(ctx: InferContext, condition: AST.Expr, env: TypeEnvironment, truthyBranch: boolean): void {
+export function applyTypeNarrowing(ctx: InferContext, condition: AST.Expr, env: TypeEnvironment, truthyBranch: boolean): void {
   if (condition.kind === "UnaryExpr" && (condition.op === "not" || condition.op === "!")) {
     applyTypeNarrowing(ctx, condition.operand, env, !truthyBranch);
+    return;
+  }
+  if (condition.kind === "IsExpr") {
+    narrowFromIsExpr(ctx, condition, env, truthyBranch);
+    return;
+  }
+  if (condition.kind === "CallExpr") {
+    narrowFromGuardCall(ctx, condition, env, truthyBranch);
     return;
   }
   if (condition.kind !== "BinaryExpr") return;
@@ -61,31 +93,42 @@ function applyTypeNarrowing(ctx: InferContext, condition: AST.Expr, env: TypeEnv
   if (condition.op === "and") {
     applyTypeNarrowing(ctx, condition.left, env, truthyBranch);
     applyTypeNarrowing(ctx, condition.right, env, truthyBranch);
-  } else if (condition.op === "is") {
-    narrowFromIsCheck(ctx, condition, env, truthyBranch);
   } else if (condition.op === "==" || condition.op === "!=") {
     narrowFromEquality(ctx, condition, env, truthyBranch);
   }
 }
 
-function narrowFromIsCheck(ctx: InferContext, expr: AST.BinaryExpr, env: TypeEnvironment, truthyBranch: boolean): void {
-  if (expr.left.kind !== "Identifier" || expr.right.kind !== "Identifier") return;
-  const varName = expr.left.name;
-  const typeName = expr.right.name;
+function narrowFromIsExpr(ctx: InferContext, expr: AST.IsExpr, env: TypeEnvironment, truthyBranch: boolean): void {
+  if (expr.expr.kind !== "Identifier") return;
+  const varName = expr.expr.name;
+  const symbol = ctx.env.lookup(varName);
+  if (!symbol) return;
+  applyNarrowResult(env, varName, astTypeToType(expr.type), symbol, ctx, truthyBranch);
+}
+
+function narrowFromGuardCall(ctx: InferContext, expr: AST.CallExpr, env: TypeEnvironment, truthyBranch: boolean): void {
+  const fnType = (expr.callee as AST.BaseNode).resolvedType as FunctionType | undefined;
+  if (!fnType || fnType.kind !== "function" || !fnType.predicate) return;
+
+  let argExpr: AST.Expr | undefined;
+  const named = expr.args.find(a => isNamedArg(a) && a.name === fnType.predicate!.paramName);
+  if (named && isNamedArg(named)) argExpr = named.value;
+  else {
+    const paramIndex = fnType.params.findIndex(p => p.name === fnType.predicate!.paramName);
+    if (paramIndex >= 0 && paramIndex < expr.args.length) {
+      const a = expr.args[paramIndex]!;
+      if (!isNamedArg(a)) argExpr = a;
+    }
+  }
+  if (!argExpr || argExpr.kind !== "Identifier") return;
+
+  const varName = argExpr.name;
   const symbol = ctx.env.lookup(varName);
   if (!symbol) return;
 
-  if (truthyBranch) {
-    env.define(varName, ctx.env.lookupType(typeName) ?? Types.ref(typeName), symbol.mutable);
-  } else if (symbol.type.kind === "union") {
-    const remaining = symbol.type.types.filter((t: Type) => {
-      if (t.kind === "ref") return t.name !== typeName;
-      if (t.kind === "object") return (t as ObjectType).name !== typeName;
-      return typeToString(t) !== typeName;
-    });
-    if (remaining.length === 1) env.define(varName, remaining[0]!, symbol.mutable);
-    else if (remaining.length > 1) env.define(varName, Types.union(...remaining), symbol.mutable);
-  }
+  const typeBindings = inferTypeParams(ctx, fnType, expr.args);
+  const narrowType = substituteTypeParams(fnType.predicate.targetType, typeBindings);
+  applyNarrowResult(env, varName, narrowType, symbol, ctx, truthyBranch);
 }
 
 function narrowFromEquality(ctx: InferContext, expr: AST.BinaryExpr, env: TypeEnvironment, truthyBranch: boolean): void {
@@ -114,7 +157,7 @@ function narrowFromNullCheck(ctx: InferContext, varName: string, op: string, env
   const symbol = ctx.env.lookup(varName);
   if (symbol && isNullable(symbol.type)) {
     const isNotNull = (op === "!=" && truthyBranch) || (op === "==" && !truthyBranch);
-    if (isNotNull) env.define(varName, nonNull(symbol.type), symbol.mutable);
+    if (isNotNull) env.set(varName, nonNull(symbol.type), symbol.mutable);
   }
 }
 
@@ -124,15 +167,14 @@ function narrowFromLiteralCheck(ctx: InferContext, varName: string, op: string, 
 
   const isEqual = (op === "==" && truthyBranch) || (op === "!=" && !truthyBranch);
   if (isEqual) {
-    env.define(varName, Types.literal(literal.value as string | number | boolean), symbol.mutable);
+    env.set(varName, Types.literal(literal.value as string | number | boolean), symbol.mutable);
   } else if (symbol.type.kind === "union") {
     const literalStr = JSON.stringify(literal.value);
     const remaining = symbol.type.types.filter((t: Type) => {
       if (t.kind === "literal") return JSON.stringify(t.value) !== literalStr;
       return true;
     });
-    if (remaining.length === 1) env.define(varName, remaining[0]!, symbol.mutable);
-    else if (remaining.length > 1) env.define(varName, Types.union(...remaining), symbol.mutable);
+    setNarrowTypes(env, varName, remaining, symbol.mutable);
   }
 }
 
@@ -157,13 +199,8 @@ function narrowFromMemberEquality(ctx: InferContext, memberExpr: AST.MemberExpr,
     } else nonMatching.push(t);
   }
 
-  if (isEqual && matching.length > 0) {
-    if (matching.length === 1) env.define(varName, matching[0]!, symbol.mutable);
-    else env.define(varName, Types.union(...matching), symbol.mutable);
-  } else if (!isEqual && nonMatching.length > 0) {
-    if (nonMatching.length === 1) env.define(varName, nonMatching[0]!, symbol.mutable);
-    else env.define(varName, Types.union(...nonMatching), symbol.mutable);
-  }
+  if (isEqual && matching.length > 0) setNarrowTypes(env, varName, matching, symbol.mutable);
+  else if (!isEqual && nonMatching.length > 0) setNarrowTypes(env, varName, nonMatching, symbol.mutable);
 }
 
 function narrowFromTypeof(ctx: InferContext, call: AST.CallExpr, op: string, right: AST.Expr, env: TypeEnvironment, truthyBranch: boolean): void {
@@ -185,7 +222,7 @@ function narrowFromTypeof(ctx: InferContext, call: AST.CallExpr, op: string, rig
   const narrowedType = TYPE_MAP[typeStr];
   if (narrowedType) {
     const isEqual = (op === "==" && truthyBranch) || (op === "!=" && !truthyBranch);
-    if (isEqual) env.define(varName, narrowedType, symbol.mutable);
+    if (isEqual) env.set(varName, narrowedType, symbol.mutable);
   }
 }
 

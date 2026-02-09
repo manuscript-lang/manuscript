@@ -107,6 +107,13 @@ function declToFunctionType(
   typeParams: AST.TypeParam[] | undefined,
   isGenerator: boolean,
 ): FunctionType {
+  const predicate =
+    returnType?.kind === "TypePredicateExpr"
+      ? {
+          paramName: returnType.paramName,
+          targetType: astTypeToType(returnType.targetType),
+        }
+      : undefined;
   return {
     kind: "function",
     typeParams: typeParams?.map(p => ({
@@ -119,12 +126,17 @@ function declToFunctionType(
       optional: p.optional,
       rest: p.rest,
     })),
-    returnType: returnType ? astTypeToType(returnType) : Types.unknown,
+    returnType: returnType
+      ? returnType.kind === "TypePredicateExpr"
+        ? Types.bool
+        : astTypeToType(returnType)
+      : Types.unknown,
     isGenerator,
     context: using?.bindings.map(c => ({
       name: c.name,
       type: astTypeToType(c.type),
     })) ?? [],
+    predicate,
   };
 }
 

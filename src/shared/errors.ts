@@ -239,6 +239,14 @@ export const TypeErrors = {
     message: `Cannot assert type '${from}' as '${to}'`,
     hint: `Type assertions require the types to be related (one must be a subtype of the other)`,
   }),
+  typeAssertionNotAllowed: () => ({
+    message: `Type assertion 'as' is not allowed`,
+    hint: `Use 'if x is Type then ...' or a type guard function 'fn guard(x): x is Type'`,
+  }),
+  typeGuardNotForFunctions: (type: string) => ({
+    message: `Type guard target must be a data type, not a function type (got '${type}')`,
+    hint: `Type guards are only for narrowing to data types (e.g. map, list, object types). Use 'is' for runtime checks on functions.`,
+  }),
   unnecessaryNullAssertion: (type: string) => ({
     message: `Unnecessary null assertion on non-nullable type '${type}'`,
     hint: `The expression is already non-nullable, remove the '!'`,

@@ -36,6 +36,7 @@ export function gen(ctx: Ctx, node: AST.Statement | AST.Expr, opts: GenOpts): st
     case "MapExpr":
     case "TemplateLiteral":
     case "SpawnExpr":
+    case "IsExpr":
     case "TypeAssertion":
     case "NullAssertion":
     case "RangeExpr":

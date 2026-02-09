@@ -85,8 +85,16 @@ print(users[0].name)
 print(users[0].scores[1])
 
 // === Empty collections ===
-let empty_list = []
+let empty = []
 // @expect: 0
-print(len(empty_list))
+print(len(empty))
 // @expect: true
-print(len(empty_list) == 0)
+print(len(empty) == 0)
+
+// Typed empty list/map via let annotations
+let empty_nums: list[number] = []
+// @expect: 0
+print(len(empty_nums))
+let empty_m: map[string, number] = {}
+// @expect: 0
+print(len(keys(empty_m)))

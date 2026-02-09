@@ -80,6 +80,11 @@ export class TypeEnvironment {
     this.symbols.set(name, { name, type, mutable, defined: true });
   }
 
+  /** Overwrite binding in this scope (used by type narrowing when same var is narrowed multiple times, e.g. in and). */
+  set(name: string, type: Type, mutable: boolean = false): void {
+    this.symbols.set(name, { name, type, mutable, defined: true });
+  }
+
   /**
    * Look up a variable in the current or parent scopes
    */

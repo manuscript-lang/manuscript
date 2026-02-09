@@ -608,6 +608,98 @@ describe("Type Checker - Type Narrowing", () => {
     return "number"
   return x + "!"`);
   });
+
+  test("is list[number] narrows in then branch", () => {
+    checkOk(`fn first_num(x: list[number] or list[string]): number
+  if x is list[number]
+    return if len(x) > 0 then x[0] else 0
+  return 0`);
+  });
+
+  test("is optional narrows to optional in then branch", () => {
+    checkOk(`type Node
+  v: number
+fn get_val(x: Node?): number?
+  if x is Node?
+    return x?.v
+  return null`);
+  });
+
+  test("not x is string narrows to number in else", () => {
+    checkOk(`fn double(x: number or string): number
+  if not (x is string)
+    return x + x
+  return 0`);
+  });
+});
+
+// ============================================
+// Type guard (predicate) declaration
+// ============================================
+
+describe("Type Checker - Type Guard Declaration", () => {
+  test("type guard has predicate on FunctionType", () => {
+    const result = check(`fn is_string(x: unknown): x is string
+  typeof(x) == "string"`);
+    expect(result.errors).toHaveLength(0);
+    const fnDecl = result.program.body.find(s => s.kind === "FnDecl");
+    expect(fnDecl).toBeDefined();
+    const fnType = (fnDecl as unknown as { resolvedType?: { predicate?: { paramName: string; targetType: { kind: string } } } }).resolvedType;
+    expect(fnType?.predicate?.paramName).toBe("x");
+    expect(fnType?.predicate?.targetType?.kind).toBe("string");
+  });
+
+  test("type guard with wrong predicate param name fails", () => {
+    checkFails(
+      `fn is_string(x: unknown): y is string
+  typeof(x) == "string"`,
+      "is not a function parameter"
+    );
+  });
+
+  test("type guard target cannot be a function type", () => {
+    checkFails(
+      `fn is_fn(f: unknown): f is fn(number): number
+  typeof(f) == "function"`,
+      "Type guard target must be a data type, not a function type"
+    );
+  });
+});
+
+describe("Type Checker - Type Guard Narrowing", () => {
+  test("if guard(x) then x narrowed in then branch", () => {
+    checkOk(`fn is_string(x: unknown): x is string
+  typeof(x) == "string"
+fn use(s: string): string
+  s
+fn demo(raw: unknown): string
+  if is_string(raw)
+    use(raw)
+  else
+    "not-string"`);
+  });
+
+  test("if not guard(x) then x narrowed in else branch", () => {
+    checkOk(`fn is_string(x: unknown): x is string
+  typeof(x) == "string"
+fn demo(raw: unknown): string
+  if not is_string(raw)
+    "not-string"
+  else
+    raw + "!"`);
+  });
+
+  test("guard(a) and guard(b) narrows both", () => {
+    checkOk(`fn is_string(x: unknown): x is string
+  typeof(x) == "string"
+fn is_number(x: unknown): x is number
+  typeof(x) == "number"
+fn demo(a: unknown, b: unknown): string
+  if is_string(a) and is_number(b)
+    a + to_str(b)
+  else
+    "other"`);
+  });
 });
 
 // ============================================

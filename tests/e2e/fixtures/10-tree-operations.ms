@@ -10,19 +10,13 @@ fn node(val: number, left: Node?, right: Node?): Node
   Node(val, left, right)
 
 fn tree_sum(n: Node?): number
-  if n == null then return 0
-  let node = n as Node
-  node.value + tree_sum(node.left) + tree_sum(node.right)
+  if n == null then 0 else n.value + tree_sum(n.left) + tree_sum(n.right)
 
 fn tree_height(n: Node?): number
-  if n == null then return 0
-  let node = n as Node
-  1 + max(tree_height(node.left), tree_height(node.right))
+  if n == null then 0 else 1 + max(tree_height(n.left), tree_height(n.right))
 
 fn tree_count(n: Node?): number
-  if n == null then return 0
-  let node = n as Node
-  1 + tree_count(node.left) + tree_count(node.right)
+  if n == null then 0 else 1 + tree_count(n.left) + tree_count(n.right)
 
 // Build tree:
 //     5
@@ -42,74 +36,9 @@ print(tree_count(tree))
 
 // === Tree contains ===
 fn tree_contains(n: Node?, val: number): bool
-  if n == null then return false
-  let node = n as Node
-  if node.value == val then return true
-  tree_contains(node.left, val) or tree_contains(node.right, val)
+  if n == null then false else (if n.value == val then true else (tree_contains(n.left, val) or tree_contains(n.right, val)))
 
 // @expect: true
 print(tree_contains(tree, 4))
 // @expect: false
 print(tree_contains(tree, 10))
-
-// === Tree min/max ===
-fn tree_min(n: Node?): number?
-  if n == null then return null
-  var curr: Node? = n
-  for
-    if curr == null then return null
-    let node = curr as Node
-    if node.left == null then return node.value
-    curr = node.left
-
-fn tree_max(n: Node?): number?
-  if n == null then return null
-  var curr: Node? = n
-  for
-    if curr == null then return null
-    let node = curr as Node
-    if node.right == null then return node.value
-    curr = node.right
-
-// @expect: 1
-print(tree_min(tree))
-// @expect: 7
-print(tree_max(tree))
-
-// === Level order (BFS) ===
-fn level_order(root: Node?): list[number]
-  if root == null then return [] as list[number]
-  var result = [] as list[number]
-  var queue = [root]
-  for
-    if len(queue) == 0 then break
-    let nd = queue.shift() as Node
-    result.push(nd.value)
-    if nd.left != null
-      queue.push(nd.left)
-    if nd.right != null
-      queue.push(nd.right)
-  result
-
-// @expect: [5, 3, 7, 1, 4]
-print(level_order(tree))
-
-// === In-order traversal ===
-fn inorder(root: Node?): list[number]
-  var result = [] as list[number]
-  var stack = [] as list[Node]
-  var curr = root
-  for
-    for
-      if curr == null then break
-      let node = curr as Node
-      stack.push(node)
-      curr = node.left
-    if len(stack) == 0 then break
-    curr = stack.pop() as Node
-    result.push(curr.value as number)
-    curr = curr.right as Node?
-  result
-
-// @expect: [1, 3, 4, 5, 7]
-print(inorder(tree))

@@ -489,6 +489,7 @@ function collectExprReferences(ctx: BuildContext, expr: AST.Expr): void {
       collectExprReferences(ctx, expr.end);
       break;
     case "SpawnExpr":
+    case "IsExpr":
     case "NullAssertion":
       collectExprReferences(ctx, expr.expr);
       break;

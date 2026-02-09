@@ -47,7 +47,8 @@ print(rest)
 // === Destructuring in function parameter ===
 fn greet_user(user: map)
   let {name} = user
-  "Hello, " + (name as string)
+  let s = if name is string then name else to_str(name)
+  "Hello, " + s
 
 // @expect: Hello, Charlie
 print(greet_user({name: "Charlie", age: 25}))
@@ -56,7 +57,9 @@ print(greet_user({name: "Charlie", age: 25}))
 fn process_config(config: map)
   let name = config.name ?? "default"
   let value = config.value ?? 0
-  (name as string) + ": " + to_str(value as number)
+  let nameStr = if name is string then name else to_str(name)
+  let valueNum = if value is number then value else 0
+  nameStr + ": " + to_str(valueNum)
 
 // @expect: test: 42
 print(process_config({name: "test", value: 42}))

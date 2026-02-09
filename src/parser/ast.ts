@@ -360,6 +360,7 @@ export type Expr =
   | MapExpr
   | TemplateLiteral
   | SpawnExpr
+  | IsExpr
   | TypeAssertion
   | NullAssertion
   | RangeExpr;
@@ -477,6 +478,12 @@ export interface TemplateExpr extends BaseNode {
 export interface SpawnExpr extends BaseNode {
   kind: "SpawnExpr";
   expr: Expr;
+}
+
+export interface IsExpr extends BaseNode {
+  kind: "IsExpr";
+  expr: Expr;
+  type: TypeExpr;
 }
 
 export interface TypeAssertion extends BaseNode {

@@ -49,10 +49,16 @@ print(long_words)`);
   test("nested data structures", async () => {
     const { output } = await executeWithOutput(`
 import { map, reduce } from "std/collections"
+fn get_name(u: map[string, string or number]): string
+  let n = u["name"]
+  if n is string then n else ""
+fn get_age(u: map[string, string or number]): number
+  let a = u["age"]
+  if a is number then a else 0
 let users = [{name: "Alice", age: 30}, {name: "Bob", age: 25}]
-let names = map(users, (u: map[string, string or number]) => u["name"] as string)
+let names = map(users, get_name)
 print(names)
-let ages = map(users, (u: map[string, string or number]) => u["age"] as number)
+let ages = map(users, get_age)
 let total_age = reduce(ages, 0, (a: number, b: number) => a + b)
 print(total_age)`);
     expect(output[0]).toContain("Alice");

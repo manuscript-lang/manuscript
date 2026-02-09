@@ -221,17 +221,25 @@ export function inferTypeParams(ctx: InferContext, fnType: FunctionType, args: (
   let posIdx = 0;
   for (const arg of args) {
     let paramType: Type | undefined;
+    let isRest = false;
     if (isNamedArg(arg)) {
-      paramType = fnType.params.find(p => p.name === arg.name)?.type;
+      const param = fnType.params.find(p => p.name === arg.name);
+      paramType = param?.type;
+      isRest = param?.rest ?? false;
     } else {
-      paramType = fnType.params[posIdx]?.type;
-      posIdx++;
+      const param = fnType.params[Math.min(posIdx, fnType.params.length - 1)];
+      paramType = param?.type;
+      isRest = param?.rest ?? false;
+      if (!isRest) posIdx++;
     }
-    const expected = paramType ? substituteTypeParams(paramType, bindings) : undefined;
+    const effectiveType = paramType && isRest && paramType.kind === "list"
+      ? (paramType as { elementType: Type }).elementType
+      : paramType;
+    const expected = effectiveType ? substituteTypeParams(effectiveType, bindings) : undefined;
     const argExpr = getArgExpr(arg);
     if (expected) setExpectedType(argExpr, expected);
     const argType = ctx.inferExpr(argExpr);
-    if (paramType) unifyTypes(paramType, argType, bindings);
+    if (effectiveType) unifyTypes(effectiveType, argType, bindings);
   }
   return bindings;
 }

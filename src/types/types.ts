@@ -85,6 +85,7 @@ export interface FunctionType extends BaseType {
   returnType: Type;
   isGenerator: boolean;
   context: UsingBinding[];
+  predicate?: { paramName: string; targetType: Type };
 }
 
 export interface TypeParamDef {

@@ -6,6 +6,7 @@ import { astTypeToType, isAssignable, findCommonType, isNullable, nonNull } from
 import type { InferContext } from "./context";
 import { error, warning, recordType, getExpectedType, setExpectedType } from "./context";
 import { checkPattern } from "./check-pattern";
+import { applyTypeNarrowing } from "./check-control-flow";
 import { inferCallExpr } from "./infer-call";
 import { inferIndexExpr, inferMemberExpr, inferPipeExpr } from "./infer-member";
 import { inferSpawnExpr } from "./infer-spawn";
@@ -36,6 +37,10 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
       break;
     case "BinaryExpr":
       type = inferBinaryExpr(ctx, expr);
+      break;
+    case "IsExpr":
+      inferExpr(ctx, expr.expr);
+      type = Types.bool;
       break;
     case "UnaryExpr":
       type = inferUnaryExpr(ctx, expr);
@@ -74,16 +79,10 @@ export function inferExpr(ctx: InferContext, expr: AST.Expr): Type {
       type = inferSpawnExpr(ctx, expr);
       break;
     case "TypeAssertion": {
-      const exprType = inferExpr(ctx, expr.expr);
+      inferExpr(ctx, expr.expr);
       const assertedType = astTypeToType(expr.type);
-      const canAssert =
-        exprType.kind === "unknown" || assertedType.kind === "unknown" ||
-        isAssignable(exprType, assertedType, ctx.env) ||
-        isAssignable(assertedType, exprType, ctx.env);
-      if (!canAssert) {
-        const err = TypeErrors.invalidTypeAssertion(typeToString(exprType), typeToString(assertedType));
-        error(ctx, err.message, expr.loc, err.hint);
-      }
+      const err = TypeErrors.typeAssertionNotAllowed();
+      error(ctx, err.message, expr.loc, err.hint);
       type = assertedType;
       break;
     }
@@ -211,7 +210,7 @@ function inferBinaryExpr(ctx: InferContext, expr: AST.BinaryExpr): Type {
         error(ctx, err.message, expr.loc, err.hint);
       }
       return Types.bool;
-    case "and": case "or": case "is":
+    case "and": case "or":
       return Types.bool;
     case "??":
       if (isNullable(leftType)) return Types.union(nonNull(leftType), rightType);
@@ -283,12 +282,20 @@ function inferLambdaExpr(ctx: InferContext, expr: AST.LambdaExpr, expectedFn?: F
 function inferIfExpr(ctx: InferContext, expr: AST.IfExpr): Type {
   const expectedType = getExpectedType(expr);
   inferExpr(ctx, expr.condition);
-  if (expectedType) {
-    setExpectedType(expr.then, expectedType);
-    setExpectedType(expr.else, expectedType);
+
+  function inferBranch(truthyBranch: boolean, branchExpr: AST.Expr): Type {
+    const branchEnv = ctx.env.child();
+    applyTypeNarrowing(ctx, expr.condition, branchEnv, truthyBranch);
+    const saved = ctx.env;
+    ctx.env = branchEnv;
+    if (expectedType) setExpectedType(branchExpr, expectedType);
+    const t = inferExpr(ctx, branchExpr);
+    ctx.env = saved;
+    return t;
   }
-  const thenType = inferExpr(ctx, expr.then);
-  const elseType = inferExpr(ctx, expr.else);
+
+  const thenType = inferBranch(true, expr.then);
+  const elseType = inferBranch(false, expr.else);
 
   if (isAssignable(thenType, elseType, ctx.env)) return elseType;
   if (isAssignable(elseType, thenType, ctx.env)) return thenType;

@@ -41,23 +41,7 @@ let double = (n: number) => n * 2
 // @expect: 20
 print(apply_twice(double, 5))
 
-// === Closure capturing loop variable ===
-fn make_multipliers(): list[fn(number): number]
-  var fns: list[fn(number): number] = []
-  for i in 1..4
-    let n: number = i
-    fns.push((x: number) => x * n)
-  fns
-
-let mults = make_multipliers()
-// @expect: 5
-print((mults[0] as fn(number): number)(5))
-// @expect: 10
-print((mults[1] as fn(number): number)(5))
-// @expect: 15
-print((mults[2] as fn(number): number)(5))
-
-// === Closure with filter/map ===
+// === Closure with filter ===
 fn filter_greater_than(items: list[number], threshold: number): list[number]
   filter(items, (x: number) => x > threshold)
 

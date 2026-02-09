@@ -347,9 +347,27 @@ describe("Parser - Type Operators", () => {
   test("is type check", () => {
     const result = expr("x is number");
     expect(result).toMatchObject({
-      kind: "BinaryExpr",
-      op: "is",
-      left: { kind: "Identifier", name: "x" },
+      kind: "IsExpr",
+      expr: { kind: "Identifier", name: "x" },
+      type: { kind: "NamedType", name: "number" },
+    });
+  });
+
+  test("is with generic type", () => {
+    const result = expr("x is list[number]");
+    expect(result).toMatchObject({
+      kind: "IsExpr",
+      expr: { kind: "Identifier", name: "x" },
+      type: { kind: "GenericType", name: "list", args: [{ kind: "NamedType", name: "number" }] },
+    });
+  });
+
+  test("is with optional type", () => {
+    const result = expr("x is Node?");
+    expect(result).toMatchObject({
+      kind: "IsExpr",
+      expr: { kind: "Identifier", name: "x" },
+      type: { kind: "OptionalType", inner: { kind: "NamedType", name: "Node" } },
     });
   });
 

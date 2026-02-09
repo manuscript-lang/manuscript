@@ -10,6 +10,21 @@ import { exprContainsEscapingLambda } from "../context-utils";
 
 export function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
   const fnType = fnDeclToType(decl);
+  if (fnType.predicate) {
+    const paramNames = decl.params.map(p => p.name);
+    if (!paramNames.includes(fnType.predicate.paramName)) {
+      error(
+        ctx,
+        `Type guard predicate parameter '${fnType.predicate.paramName}' is not a function parameter`,
+        decl.returnType!.loc,
+        `Predicate must name one of: ${paramNames.join(", ")}`
+      );
+    }
+    if (fnType.predicate.targetType.kind === "function") {
+      const err = TypeErrors.typeGuardNotForFunctions(typeToString(fnType.predicate.targetType));
+      error(ctx, err.message, decl.returnType!.loc, err.hint);
+    }
+  }
   const fnEnv = ctx.env.child();
 
   if (fnType.typeParams?.length) {
@@ -36,7 +51,13 @@ export function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
 
   const bodyEnv = ctx.env.child();
   ctx.env = bodyEnv;
-  for (const stmt of decl.body.statements) ctx.checkStatement(stmt);
+  const stmts = decl.body.statements;
+  for (let i = 0; i < stmts.length; i++) {
+    const stmt = stmts[i]!;
+    if (i === stmts.length - 1 && stmt.kind === "ExprStmt" && decl.returnType && fnType.returnType.kind !== "promise" && fnType.returnType.kind !== "unknown")
+      setExpectedType(stmt.expr, fnType.returnType);
+    ctx.checkStatement(stmt);
+  }
 
   const lastStmt = decl.body.statements[decl.body.statements.length - 1];
   if (lastStmt?.kind === "ExprStmt") {

@@ -216,7 +216,8 @@ let joined = reduce(["a", "b", "c"], "", (acc: string, x: string) => acc + x)
 print(joined)
 
 // Empty reduce
-let emptySum = reduce([] as list[number], 100, (acc: number, x: number) => acc + x)
+let empty: list[number] = []
+let emptySum = reduce(empty, 100, (acc: number, x: number) => acc + x)
 // @expect: 100
 print(emptySum)
 

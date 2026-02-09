@@ -29,6 +29,8 @@ export type GenOpts = {
   classFields: Set<string> | null;
   isGenerator: boolean;
   selfVar?: string;  // Variable name for 'this' in factory functions (e.g., "self")
+  /** When true, list/map with __typeArgs use sync IIFE (e.g. default params in sync factory) */
+  syncContext?: boolean;
 };
 
 // ============================================

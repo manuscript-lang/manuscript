@@ -1,8 +1,8 @@
 import * as AST from "../../../parser/ast";
-import type { Type, ObjectType } from "../../types";
+import type { Type, FunctionType, ObjectType } from "../../types";
 import { Types, typeToString } from "../../types";
 import { TypeErrors } from "../../../shared/errors";
-import { isAssignable, substituteTypeParams, substituteTypeInObject } from "../../type-utils";
+import { isAssignable, substituteTypeParams, substituteTypeInObject, resolveTypeName } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, setExpectedType } from "./context";
 import { inferTypeParams, isNamedArg, getArgExpr } from "./infer-call";
@@ -70,6 +70,38 @@ export function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
     const err = TypeErrors.operationNotAllowedOnUnknown("[]");
     error(ctx, err.message, expr.loc, err.hint);
     return expr.optional ? Types.optional(Types.unknown) : Types.unknown;
+  }
+  if (objectType.kind === "function") {
+    const fnType = objectType as FunctionType;
+    if (!fnType.typeParams?.length) {
+      const err = TypeErrors.indexAccessOnInvalidType(typeToString(objectType));
+      error(ctx, err.message, expr.loc, err.hint);
+      return Types.unknown;
+    }
+    const typeArgExprs = [expr.index];
+    if (expr.typeArgs) typeArgExprs.push(...expr.typeArgs);
+    if (typeArgExprs.length !== fnType.typeParams.length) {
+      error(ctx, `Expected ${fnType.typeParams.length} type argument(s), got ${typeArgExprs.length}`, expr.loc);
+      return Types.unknown;
+    }
+    const bindings = new Map<string, Type>();
+    for (let i = 0; i < fnType.typeParams.length; i++) {
+      const arg = typeArgExprs[i]!;
+      if (arg.kind !== "Identifier") {
+        error(ctx, "Generic type argument must be a type name", arg.loc);
+        return Types.unknown;
+      }
+      bindings.set(fnType.typeParams[i]!.name, resolveTypeName(arg.name, ctx.env));
+    }
+    const instantiated: FunctionType = {
+      ...fnType,
+      params: fnType.params.map(p => ({ ...p, type: substituteTypeParams(p.type, bindings) })),
+      returnType: substituteTypeParams(fnType.returnType, bindings),
+      predicate: fnType.predicate
+        ? { paramName: fnType.predicate.paramName, targetType: substituteTypeParams(fnType.predicate.targetType, bindings) }
+        : undefined,
+    };
+    return instantiated;
   }
   const err = TypeErrors.indexAccessOnInvalidType(typeToString(objectType));
   error(ctx, err.message, expr.loc, err.hint);

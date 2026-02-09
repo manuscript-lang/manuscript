@@ -41,7 +41,7 @@ fn map_with_index(arr: list[string], f: fn(string, number): string): list[string
   result
 
 let items = ["a", "b", "c"]
-let indexed = map_with_index(items, (item, i) => to_str(i) + ":" + (item as string))
+let indexed = map_with_index(items, (item, i) => to_str(i) + ":" + (if item is string then item else to_str(item)))
 // @expect: [0:a, 1:b, 2:c]
 print(indexed)
 

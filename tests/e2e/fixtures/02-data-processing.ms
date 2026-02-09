@@ -42,17 +42,23 @@ print(count_evens_odds(nums))
 // === Object processing ===
 let users = [{name: "Alice", age: 30}, {name: "Bob", age: 25}]
 
-let names = map(users, (u: map[string, string or number]) => u["name"] as string)
+fn get_name(u: map[string, string or number]): string
+  let n = u["name"]
+  if n is string then n else to_str(n)
+let names = map(users, get_name)
 // @expect: [Alice, Bob]
 print(names)
 
-let ages = map(users, (u: map[string, string or number]) => u["age"] as number)
+fn get_age(u: map[string, string or number]): number
+  let a = u["age"]
+  if a is number then a else 0
+let ages = map(users, get_age)
 let total_age = reduce(ages, 0, (a: number, b: number) => a + b)
 // @expect: 55
 print(total_age)
 
 // === Find element ===
-let found = find(users, (u: map[string, string or number]) => (u["name"] as string) == "Bob")
+let found = find(users, (u: map[string, string or number]) => u["name"] is string and u["name"] == "Bob")
 // @expect: {name: Bob, age: 25}
 print(found)
 

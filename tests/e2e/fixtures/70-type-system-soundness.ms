@@ -68,11 +68,11 @@ let null_val: number? = null
 // === Type Assertions ===
 
 let any_val: unknown = 42
-let num_val = any_val as number
+let num_val = if any_val is number then any_val else 0
 
 let str_assert = "hello"
 let bad_assert = str_assert as number
-// @error: Cannot assert
+// @error: Type assertion 'as' is not allowed
 
 // === Never Type Assignability ===
 

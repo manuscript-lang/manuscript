@@ -57,6 +57,7 @@ export function exprNeedsContext(expr: AST.Expr, env: TypeEnvironment, fnDecls: 
     case "MemberExpr": return exprNeedsContext(expr.object, env, fnDecls, cache);
     case "IndexExpr": return exprNeedsContext(expr.object, env, fnDecls, cache) || exprNeedsContext(expr.index, env, fnDecls, cache);
     case "PipeExpr": return exprNeedsContext(expr.left, env, fnDecls, cache) || exprNeedsContext(expr.right, env, fnDecls, cache);
+    case "IsExpr": return exprNeedsContext(expr.expr, env, fnDecls, cache);
     default: return false;
   }
 }
@@ -71,6 +72,7 @@ export function exprContainsEscapingLambda(expr: AST.Expr, ctxVars: Set<string>,
     case "MapExpr": return expr.entries.some(e => exprContainsEscapingLambda(e.value, ctxVars, env, fnDecls, cache));
     case "IfExpr": return exprContainsEscapingLambda(expr.then, ctxVars, env, fnDecls, cache) || exprContainsEscapingLambda(expr.else, ctxVars, env, fnDecls, cache);
     case "CallExpr": return expr.args.some(a => exprContainsEscapingLambda("kind" in a ? a : a.value, ctxVars, env, fnDecls, cache));
+    case "IsExpr": return exprContainsEscapingLambda(expr.expr, ctxVars, env, fnDecls, cache);
     default: return false;
   }
 }

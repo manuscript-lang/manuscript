@@ -35,7 +35,39 @@ describe("CodeGen - Binary Expressions", () => {
   x: number
 let f = Foo(1)
 let check = f is Foo`);
-    expect(js).toContain("instanceof Foo");
+    expect(js).toContain("__typename === \"Foo\"");
+  });
+
+  test("is primitive string", () => {
+    const js = compile("let x = 1\nlet b = x is string");
+    expect(js).toContain("typeof x === \"string\"");
+    expect(js).not.toContain("instanceof");
+  });
+
+  test("is primitive number", () => {
+    const js = compile("let x = 1\nlet b = x is number");
+    expect(js).toContain("typeof x === \"number\"");
+  });
+
+  test("is list (shape only)", () => {
+    const js = compile("let x = []\nlet b = x is list[number]");
+    expect(js).toContain("Array.isArray(x)");
+    expect(js).not.toMatch(/elementType|element.*number/);
+  });
+
+  test("is map (shape only)", () => {
+    const js = compile("let x = {}\nlet b = x is map[string, number]");
+    expect(js).toContain("!Array.isArray(x)");
+    expect(js).toContain("typeof x === \"object\"");
+  });
+
+  test("is optional", () => {
+    const js = compile(`type Node
+  x: number
+let v = null
+let b = v is Node?`);
+    expect(js).toContain("=== null || ");
+    expect(js).toContain("__typename === \"Node\"");
   });
 });
 

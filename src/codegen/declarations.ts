@@ -113,8 +113,9 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
       const params = genParams(ctx, method.params, methodOpts);
       emit(ctx, `${prefix}${method.name}(${params}) {`);
       pushIndent(ctx);
+      emit(ctx, "const _self = this;");
       if (method.body) {
-        genBlock(ctx, method.body, { ...methodOpts, implicitReturn: true });
+        genBlock(ctx, method.body, { ...methodOpts, selfVar: "_self", implicitReturn: true });
       }
       popIndent(ctx);
       emit(ctx, `},`);
@@ -130,17 +131,19 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
   // Generate factory function from fields
   if (fields.length > 0) {
     // Build params in declaration order
-    const allParams = fields
+    const hasTypeParams = (decl.typeParams?.length ?? 0) > 0;
+    let allParams = fields
       .map(f => {
         if (f.embedded) {
           const typeName = EXTERN_TYPES.has(f.name) ? `__ms_runtime.${f.name}` : f.name;
           return `_${f.name} = ${typeName}()`;
         } else if (f.optional || f.defaultValue || f.computed) {
-          if (f.defaultValue) return `${f.name} = ${genExpr(ctx, f.defaultValue, opts)}`;
+          if (f.defaultValue) return `${f.name} = ${genExpr(ctx, f.defaultValue, { ...opts, syncContext: true })}`;
           return `${f.name} = undefined`;
         }
         return f.name;
       }).join(", ");
+    if (hasTypeParams) allParams += ", __typeArgs = []";
 
     emit(ctx, `function ${decl.name}(${allParams}) {`);
     pushIndent(ctx);
@@ -151,6 +154,7 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
       emit(ctx, `const self = Object.create(null);`);
     }
     emit(ctx, `self.__typename = "${decl.name}";`);
+    if (hasTypeParams) emit(ctx, `self.__typeArgs = __typeArgs;`);
     
     // Initialize regular (non-embedded) fields FIRST (for shadowing to work)
     for (const field of fields) {

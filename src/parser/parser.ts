@@ -676,9 +676,25 @@ export class Parser {
                          this.check("LET") || this.check("VAR");
       
       if (isStatement) {
-        // Parse as statement
         const then = this.statement();
-        return { kind: "IfStmt", condition, then, elseIfs: [], loc };
+        const elseIfs: { condition: AST.Expr; body: AST.Block }[] = [];
+        let elseBlock: AST.Block | undefined;
+        this.skipNewlines();
+        while (this.check("ELSE")) {
+          this.advance();
+          if (this.match("IF")) {
+            const elifCond = this.expression();
+            this.expectNewline();
+            const elifBody = this.parseBlock();
+            elseIfs.push({ condition: elifCond, body: elifBody });
+          } else {
+            this.expectNewline();
+            elseBlock = this.parseBlock();
+            break;
+          }
+          this.skipNewlines();
+        }
+        return { kind: "IfStmt", condition, then, elseIfs, else: elseBlock, loc };
       }
       
       // Parse as expression
@@ -1200,6 +1216,8 @@ export class Parser {
     } else if (expr.kind === "BinaryExpr") {
       this.adjustExprLocations(expr.left, baseLoc);
       this.adjustExprLocations(expr.right, baseLoc);
+    } else if (expr.kind === "IsExpr") {
+      this.adjustExprLocations(expr.expr, baseLoc);
     } else if (expr.kind === "IndexExpr") {
       this.adjustExprLocations(expr.object, baseLoc);
       this.adjustExprLocations(expr.index, baseLoc);
@@ -1487,16 +1505,10 @@ export class Parser {
     return { kind: "RangeExpr", start, end, inclusive: false, loc };
   }
 
-  private isExpr(left: AST.Expr): AST.BinaryExpr {
+  private isExpr(left: AST.Expr): AST.IsExpr {
     const loc = this.previous().loc;
-    const right = this.parseType();
-    return {
-      kind: "BinaryExpr",
-      op: "is",
-      left,
-      right: { kind: "Identifier", name: (right as AST.NamedType).name, loc },
-      loc,
-    };
+    const type = this.parseType();
+    return { kind: "IsExpr", expr: left, type, loc };
   }
 
   private asExpr(expr: AST.Expr): AST.TypeAssertion {
