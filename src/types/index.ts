@@ -18,3 +18,9 @@ export {
   getModuleExports,
   type GetModuleExportsResult,
 } from "./module-exports";
+export {
+  runProjectTypecheck,
+  type RunProjectTypecheckOptions,
+  type RunProjectTypecheckResult,
+  type GetInitialEnvResult,
+} from "./project-typecheck";

@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/cli/compiler";
+import { compile } from "../../src/compile";
 import { executeWithOutput } from "../helpers/execution";
 
 describe("E2E: Complex Programs", () => {

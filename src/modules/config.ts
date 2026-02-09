@@ -1,5 +1,4 @@
-import * as fs from "fs/promises";
-import * as path from "path";
+import type { CompileHost } from "../shared/host";
 
 export interface MsTomlConfig {
   projectRoot: string;
@@ -19,38 +18,36 @@ function parseSrcFromToml(content: string): string {
   return match ? match[1]! : DEFAULT_SRC;
 }
 
-export async function findMsToml(startDir: string): Promise<string | null> {
-  let dir = path.resolve(startDir);
-  const root = path.parse(dir).root;
+export async function findMsToml(host: CompileHost, startDir: string): Promise<string | null> {
+  let dir = host.resolvePath(startDir);
+  const root = host.parseRoot(dir);
   while (true) {
-    const candidate = path.join(dir, MS_TOML);
-    try {
-      await fs.access(candidate);
-      return dir;
-    } catch {
-      if (dir === root) return null;
-      dir = path.dirname(dir);
-    }
+    const candidate = host.joinPaths(dir, MS_TOML);
+    const exists = await host.fileExists(candidate);
+    if (exists) return dir;
+    if (dir === root) return null;
+    dir = host.dirname(dir);
   }
 }
 
-export async function loadMsToml(projectRoot: string): Promise<MsTomlConfig> {
-  const tomlPath = path.join(projectRoot, MS_TOML);
+export async function loadMsToml(host: CompileHost, projectRoot: string): Promise<MsTomlConfig> {
+  const tomlPath = host.joinPaths(projectRoot, MS_TOML);
   let content: string;
   try {
-    content = await fs.readFile(tomlPath, "utf-8");
+    content = await host.readFile(tomlPath);
   } catch (e) {
     throw new Error(`Cannot read ${tomlPath}: ${(e as Error).message}`);
   }
   const srcDirName = parseSrcFromToml(content);
-  const srcDir = path.join(projectRoot, srcDirName);
+  const srcDir = host.joinPaths(projectRoot, srcDirName);
   try {
-    const stat = await fs.stat(srcDir);
+    const stat = await host.stat(srcDir);
     if (!stat.isDirectory()) {
       throw new Error(`ms.toml: src "${srcDirName}" is not a directory`);
     }
   } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+    const err = e as Error & { code?: string };
+    if (err?.code === "ENOENT") {
       throw new Error(`ms.toml: src directory "${srcDirName}" does not exist`);
     }
     throw e;

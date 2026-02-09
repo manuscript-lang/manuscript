@@ -1,5 +1,5 @@
 // E2E Test Execution Helpers
-import { compile, check } from "../../src/cli/compiler";
+import { compile, check } from "../../src/compile";
 import { __ms_runtime } from "../../src/runtime/runtime";
 
 /**

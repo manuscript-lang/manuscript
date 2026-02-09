@@ -30,6 +30,7 @@ import {
   type CompletionInfo,
   type DocumentSymbolKind,
 } from "../../src/lsp";
+import { createNodeHost } from "../../src/cli/host";
 
 import * as path from "path";
 import * as fs from "fs/promises";
@@ -37,33 +38,32 @@ import { fileURLToPath } from "node:url";
 import { getProjectConfig } from "./project";
 
 // ============================================
-// Host Implementation
+// Host: entry point builds it, passes down to LanguageService
 // ============================================
 
 const host: LanguageServiceHost = {
-  readFile: (p) => fs.readFile(path.resolve(p), "utf-8"),
+  ...createNodeHost(),
   async listMsFiles(dir: string): Promise<string[]> {
     const out: string[] = [];
     async function walk(d: string): Promise<void> {
-      let entries: { name: string; isFile: () => boolean }[];
       try {
-        entries = await fs.readdir(d, { withFileTypes: true });
-      } catch {
-        return;
-      }
-      for (const e of entries) {
-        const full = path.join(d, e.name);
-        if (e.isFile()) {
-          if (e.name.toLowerCase().endsWith(".ms")) out.push(full);
-        } else {
-          await walk(full);
+        const entries = await fs.readdir(d, { withFileTypes: true });
+        for (const e of entries) {
+          const full = path.join(d, e.name);
+          if (e.isFile()) {
+            if (e.name.toLowerCase().endsWith(".ms")) out.push(full);
+          } else {
+            await walk(full);
+          }
         }
+      } catch {
+        /* ignore */
       }
     }
     await walk(path.resolve(dir));
     return out;
   },
-  getProjectConfig: (filePath) => getProjectConfig(filePath),
+  getProjectConfig,
 };
 
 // ============================================

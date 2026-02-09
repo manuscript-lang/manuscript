@@ -1,4 +1,4 @@
-import * as path from "path";
+import type { CompileHost } from "../shared/host";
 import type * as AST from "../parser/ast";
 import { Parser } from "../parser";
 import { isStdlibImport, stdlibModuleName, getStdlibSource } from "../stdlib/loader";
@@ -21,27 +21,19 @@ function isRelative(specifier: string): boolean {
   return specifier.startsWith("./") || specifier.startsWith("../");
 }
 
-function normalizeAndResolve(
-  projectRoot: string,
-  srcDir: string,
-  specifier: string
-): string {
-  const withExt = specifier.endsWith(EXTENSION_MS)
-    ? specifier
-    : specifier + EXTENSION_MS;
-  const resolved = path.normalize(path.join(srcDir, withExt));
-  return path.resolve(resolved);
+function normalizeAndResolve(host: CompileHost, srcDir: string, specifier: string): string {
+  const withExt = specifier.endsWith(EXTENSION_MS) ? specifier : specifier + EXTENSION_MS;
+  return host.resolvePath(host.joinPaths(srcDir, withExt));
 }
 
-function escapesSrcDir(resolvedPath: string, srcDir: string): boolean {
-  const srcAbs = path.resolve(srcDir);
-  const resolved = path.resolve(resolvedPath);
-  return (
-    resolved !== srcAbs && !resolved.startsWith(srcAbs + path.sep)
-  );
+function escapesSrcDir(host: CompileHost, resolvedPath: string, srcDir: string): boolean {
+  const srcAbs = host.resolvePath(srcDir);
+  const resolved = host.resolvePath(resolvedPath);
+  return resolved !== srcAbs && !resolved.startsWith(srcAbs + host.pathSep);
 }
 
 export function resolveSpecifier(
+  host: CompileHost,
   projectRoot: string,
   srcDir: string,
   specifier: string
@@ -59,8 +51,8 @@ export function resolveSpecifier(
   if (specifier.startsWith(PKG_PREFIX)) {
     return { kind: "external" };
   }
-  const resolved = normalizeAndResolve(projectRoot, srcDir, specifier);
-  if (escapesSrcDir(resolved, srcDir)) {
+  const resolved = normalizeAndResolve(host, srcDir, specifier);
+  if (escapesSrcDir(host, resolved, srcDir)) {
     return {
       message: "Import path must stay under src directory.",
       specifier,
@@ -86,6 +78,7 @@ export interface ModuleGraph {
 }
 
 export async function buildModuleGraph(
+  host: CompileHost,
   entryPath: string,
   projectRoot: string,
   srcDir: string,
@@ -97,10 +90,10 @@ export async function buildModuleGraph(
   const stackOrder: string[] = [];
   const pathToDeps = new Map<string, string[]>();
 
-  const entryAbs = path.resolve(entryPath);
+  const entryAbs = host.resolvePath(entryPath);
 
   async function visit(filePath: string, importerPath?: string, specifier?: string): Promise<void> {
-    const key = path.resolve(filePath);
+    const key = host.resolvePath(filePath);
     if (visited.has(key)) return;
     const stackIndex = stackOrder.indexOf(key);
     if (stackIndex !== -1) {
@@ -141,13 +134,12 @@ export async function buildModuleGraph(
     const thisMap = new Map<string, string>();
     specifierToPath.set(key, thisMap);
     for (const { specifier } of imports) {
-      const result = resolveSpecifier(projectRoot, srcDir, specifier);
+      const result = resolveSpecifier(host, projectRoot, srcDir, specifier);
       if ("kind" in result) {
         if (result.kind === "local") {
           deps.push(result.path);
           thisMap.set(specifier, result.path);
         } else if (result.kind === "stdlib") {
-          // Preload stdlib source into cache for later sync access
           const stdSource = await getStdlibSource(result.module);
           if (!stdSource) {
             errors.push({ message: `Stdlib module not found: "std/${result.module}"`, file: filePath, specifier });
@@ -171,21 +163,21 @@ export async function buildModuleGraph(
     return { order: [], specifierToPath, errors };
   }
 
-  const order = topologicalOrder(pathToDeps);
+  const order = topologicalOrder(host, pathToDeps);
   return { order, specifierToPath, errors };
 }
 
-function topologicalOrder(pathToDeps: Map<string, string[]>): string[] {
+function topologicalOrder(host: CompileHost, pathToDeps: Map<string, string[]>): string[] {
   const nodes = new Set<string>();
   pathToDeps.forEach((_, n) => nodes.add(n));
-  pathToDeps.forEach((deps) => deps.forEach((d) => nodes.add(path.resolve(d))));
+  pathToDeps.forEach((deps) => deps.forEach((d) => nodes.add(host.resolvePath(d))));
   const inDegree = new Map<string, number>();
   for (const n of nodes) {
     inDegree.set(n, 0);
   }
   for (const [from, deps] of pathToDeps) {
     for (const d of deps) {
-      const to = path.resolve(d);
+      const to = host.resolvePath(d);
       if (nodes.has(to)) {
         inDegree.set(to, (inDegree.get(to) ?? 0) + 1);
       }
@@ -200,7 +192,7 @@ function topologicalOrder(pathToDeps: Map<string, string[]>): string[] {
     const n = queue.shift()!;
     result.push(n);
     for (const d of pathToDeps.get(n) ?? []) {
-      const to = path.resolve(d);
+      const to = host.resolvePath(d);
       const deg = (inDegree.get(to) ?? 1) - 1;
       inDegree.set(to, deg);
       if (deg === 0) queue.push(to);

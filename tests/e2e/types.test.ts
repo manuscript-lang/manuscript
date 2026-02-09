@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compile, check } from "../../src/cli/compiler";
+import { compile, check } from "../../src/compile";
 import { executeWithOutput } from "../helpers/execution";
 
 describe("E2E: Types and Enums", () => {

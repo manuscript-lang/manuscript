@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-// Manuscript CLI - ms command
+// Manuscript CLI — thin wrapper over compile package.
+// All commands use the same entry points: compileEntry (run, build, emit), checkEntry (check), runSource (repl), runTestsInSource (test).
 
 import { parseArgs } from "util";
 import * as fs from "fs/promises";
@@ -7,10 +8,20 @@ import * as path from "path";
 import { pathToFileURL } from "url";
 import { Glob } from "bun";
 import * as os from "os";
-import { compile, check, compileProject, formatErrors, type CompileOptions } from "./compiler";
+import {
+  compile,
+  check,
+  compileEntry,
+  checkEntry,
+  formatErrors,
+  runCompiledCode,
+  runSource,
+  runTestsInSource,
+  type CompileOptions,
+} from "../compile";
 import { __ms_runtime } from "../runtime/runtime";
-import { findMsToml } from "../modules";
 import { isCompiledBinary } from "../shared/env";
+import { createNodeHost } from "./host";
 
 function registerRuntimePlugin(): void {
   Bun.plugin({
@@ -115,14 +126,6 @@ function success(message: string): void {
   console.log(`\x1b[32m${message}\x1b[0m`);
 }
 
-async function readFile(filepath: string): Promise<string> {
-  try {
-    return await fs.readFile(filepath, "utf-8");
-  } catch (e) {
-    throw new Error(`Cannot read file: ${filepath}`);
-  }
-}
-
 async function globFiles(patterns: string[]): Promise<string[]> {
   const files: string[] = [];
   
@@ -153,20 +156,23 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
   }
 
   const filepath = path.resolve(files[0]!);
+  const host = createNodeHost();
 
   try {
-    const projectRoot = await findMsToml(path.dirname(filepath));
-    if (projectRoot) {
-      const result = await compileProject(filepath, {
-        typeCheck: !options.noTypecheck,
-        emitRuntimeImport: true,
-        module: "esm",
-      });
-      if (!result.success) {
-        console.error(formatErrors(result.errors));
-        return 1;
-      }
-      const config = result.config!;
+    const result = await compileEntry(filepath, {
+      host,
+      typeCheck: !options.noTypecheck,
+      emitRuntimeImport: true,
+      module: "esm",
+    });
+    if (!result.success) {
+      const source = result.config ? undefined : await host.readFile(host.resolvePath(filepath)).catch(() => undefined);
+      console.error(formatErrors(result.errors, source));
+      return 1;
+    }
+
+    if (result.config) {
+      const config = result.config;
       const outDir = path.join(os.tmpdir(), `ms-run-${Date.now()}`);
       await fs.mkdir(outDir, { recursive: true });
       for (const [fp, code] of result.outputs) {
@@ -192,30 +198,14 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
       }
     }
 
-    const source = await readFile(filepath);
-    const result = compile(source, {
-      filename: filepath,
-      typeCheck: !options.noTypecheck,
-      emitRuntimeImport: false,
-    });
-
-    if (!result.success) {
-      console.error(formatErrors(result.errors, source));
-      return 1;
-    }
-
+    const code = result.outputs.get(filepath)!;
     if (options.emitAst) {
-      console.log(JSON.stringify(result.ast, null, 2));
+      const source = await host.readFile(host.resolvePath(filepath));
+      const r = compile(source, { filename: filepath, typeCheck: false });
+      console.log(JSON.stringify(r.ast, null, 2));
       return 0;
     }
-
-    const code = result.code!;
-    const wrappedCode = `const __ms_runtime = arguments[0];
-return (async () => {
-${code}
-})();`;
-    const fn = new Function(wrappedCode);
-    await fn(__ms_runtime);
+    await runCompiledCode(code, __ms_runtime, { wrapInAsync: true });
     if (__ms_runtime.getTestCount() > 0) {
       __ms_runtime.runTests();
     }
@@ -239,29 +229,29 @@ async function checkCommand(files: string[], options: CLIOptions): Promise<numbe
   }
 
   const firstPath = path.resolve(resolvedFiles[0]!);
-  const projectRoot = await findMsToml(path.dirname(firstPath));
-  if (projectRoot) {
-    const result = await compileProject(firstPath, { typeCheck: true });
-    if (!result.success) {
-      console.error(formatErrors(result.errors));
-      error(`Found ${result.errors.length} error(s)`);
-      return 1;
-    }
-    success(`Checked project (${result.outputs.size} file(s)) with no errors`);
+  const host = createNodeHost();
+  const result = await checkEntry(firstPath, { host, typeCheck: true });
+  if (!result.success) {
+    console.error(formatErrors(result.errors));
+    error(`Found ${result.errors.length} error(s)`);
+    return 1;
+  }
+  if (resolvedFiles.length === 1) {
+    success(result.config ? "Checked project with no errors" : "Checked 1 file(s) with no errors");
     return 0;
   }
 
   let hasErrors = false;
-  let totalErrors = 0;
-  let checkedCount = 0;
-  for (const filepath of resolvedFiles) {
+  let totalErrors = result.errors.length;
+  let checkedCount = 1;
+  for (const filepath of resolvedFiles.slice(1)) {
     try {
-      const source = await readFile(filepath);
-      const result = check(source, { filename: filepath });
-      if (!result.success) {
+      const source = await host.readFile(host.resolvePath(filepath));
+      const fileResult = check(source, { filename: filepath });
+      if (!fileResult.success) {
         hasErrors = true;
-        totalErrors += result.errors.length;
-        console.error(formatErrors(result.errors, source));
+        totalErrors += fileResult.errors.length;
+        console.error(formatErrors(fileResult.errors, source));
       } else {
         log(`\x1b[32m✓\x1b[0m ${filepath}`, options);
       }
@@ -296,38 +286,21 @@ async function testCommand(files: string[], options: CLIOptions): Promise<number
   let passedTests = 0;
   let failedTests = 0;
   const failures: { file: string; name: string; error: string }[] = [];
+  const host = createNodeHost();
 
   for (const filepath of resolvedFiles) {
     try {
-      const source = await readFile(filepath);
-      const result = compile(source, {
-        filename: filepath,
-        typeCheck: !options.noTypecheck,
-        emitRuntimeImport: false, // We inject runtime via Function arguments
-      });
-
-      if (!result.success) {
-        console.error(formatErrors(result.errors, source));
+      const source = await host.readFile(host.resolvePath(filepath));
+      const { success: ok, errors: errs, results: testResults } = await runTestsInSource(
+        source,
+        { filename: filepath, typeCheck: !options.noTypecheck },
+        __ms_runtime
+      );
+      if (!ok) {
+        console.error(formatErrors(errs, source));
         failedTests++;
         continue;
       }
-
-      // Clear previous tests
-      __ms_runtime.clearTests();
-
-      // Execute to register tests
-      const code = result.code!;
-      const wrappedCode = `
-        const __ms_runtime = arguments[0];
-        ${code}
-      `;
-      
-      const fn = new Function(wrappedCode);
-      await fn(__ms_runtime);
-
-      // Run tests and collect results
-      const testResults = await __ms_runtime.runTestsWithResults();
-      
       for (const test of testResults) {
         totalTests++;
         if (test.passed) {
@@ -380,54 +353,58 @@ async function buildCommand(files: string[], options: CLIOptions): Promise<numbe
 
   const outputDir = options.output || "dist";
   const firstPath = path.resolve(resolvedFiles[0]!);
-  const projectRoot = await findMsToml(path.dirname(firstPath));
-  if (projectRoot) {
-    const result = await compileProject(firstPath, {
-      typeCheck: !options.noTypecheck,
-      outDir: outputDir,
-    });
-    if (!result.success) {
-      console.error(formatErrors(result.errors));
-      return 1;
-    }
-    const config = result.config!;
+  const host = createNodeHost();
+  const result = await compileEntry(firstPath, {
+    host,
+    typeCheck: !options.noTypecheck,
+    outDir: outputDir,
+    writeFile: (p, c) => fs.writeFile(path.resolve(p), c, "utf-8"),
+    mkdir: async (p, opts) => {
+      await fs.mkdir(path.resolve(p), opts as { recursive?: boolean });
+    },
+  });
+  if (!result.success) {
+    console.error(formatErrors(result.errors));
+    return 1;
+  }
+  if (result.config) {
     for (const [fp] of result.outputs) {
-      const rel = path.relative(config.srcDir, fp).replace(/\.ms$/i, "") + ".js";
+      const rel = path.relative(result.config!.srcDir, fp).replace(/\.ms$/i, "") + ".js";
       log(`\x1b[32m✓\x1b[0m ${fp} → ${path.join(outputDir, rel)}`, options);
     }
     return 0;
   }
 
   await fs.mkdir(outputDir, { recursive: true });
+  for (const [fp, code] of result.outputs) {
+    const outputName = path.isAbsolute(fp) ? path.basename(fp) : fp;
+    const outPath = path.join(outputDir, outputName.replace(/\.ms$/, ".js"));
+    await fs.mkdir(path.dirname(outPath), { recursive: true });
+    await fs.writeFile(outPath, code);
+    log(`\x1b[32m✓\x1b[0m ${fp} → ${outPath}`, options);
+  }
+  if (resolvedFiles.length === 1) return 0;
 
   let hasErrors = false;
-  for (const filepath of resolvedFiles) {
+  for (const filepath of resolvedFiles.slice(1)) {
     try {
-      const source = await readFile(filepath);
-      const result = compile(source, {
-        filename: filepath,
-        typeCheck: !options.noTypecheck,
-      });
-      if (!result.success) {
+      const source = await host.readFile(host.resolvePath(filepath));
+      const fileResult = compile(source, { filename: filepath, typeCheck: !options.noTypecheck });
+      if (!fileResult.success) {
         hasErrors = true;
-        console.error(formatErrors(result.errors, source));
+        console.error(formatErrors(fileResult.errors, source));
         continue;
       }
-
-      // Use basename for absolute paths to avoid nested directories
-      const outputName = path.isAbsolute(filepath) 
-        ? path.basename(filepath)
-        : filepath;
-
+      const outputName = path.isAbsolute(filepath) ? path.basename(filepath) : filepath;
       if (options.emitAst) {
         const astPath = path.join(outputDir, outputName.replace(/\.ms$/, ".ast.json"));
         await fs.mkdir(path.dirname(astPath), { recursive: true });
-        await fs.writeFile(astPath, JSON.stringify(result.ast, null, 2));
+        await fs.writeFile(astPath, JSON.stringify(fileResult.ast, null, 2));
         log(`\x1b[32m✓\x1b[0m ${filepath} → ${astPath}`, options);
       } else {
         const outPath = path.join(outputDir, outputName.replace(/\.ms$/, ".js"));
         await fs.mkdir(path.dirname(outPath), { recursive: true });
-        await fs.writeFile(outPath, result.code!);
+        await fs.writeFile(outPath, fileResult.code!);
         log(`\x1b[32m✓\x1b[0m ${filepath} → ${outPath}`, options);
       }
     } catch (e: unknown) {
@@ -435,7 +412,6 @@ async function buildCommand(files: string[], options: CLIOptions): Promise<numbe
       hasErrors = true;
     }
   }
-
   return hasErrors ? 1 : 0;
 }
 
@@ -444,27 +420,26 @@ async function emitCommand(files: string[], options: CLIOptions): Promise<number
     error("No file specified. Usage: ms emit <file>");
     return 1;
   }
-
-  const filepath = files[0]!;
-
+  const filepath = path.resolve(files[0]!);
+  const host = createNodeHost();
   try {
-    const source = await readFile(filepath);
-    const result = compile(source, {
-      filename: filepath,
+    const result = await compileEntry(filepath, {
+      host,
       typeCheck: !options.noTypecheck,
     });
-
     if (!result.success) {
+      const source = await host.readFile(host.resolvePath(filepath)).catch(() => undefined);
       console.error(formatErrors(result.errors, source));
       return 1;
     }
-
+    const code = result.outputs.get(filepath) ?? [...result.outputs.values()][0];
     if (options.emitAst) {
-      console.log(JSON.stringify(result.ast, null, 2));
+      const source = await host.readFile(host.resolvePath(filepath));
+      const r = compile(source, { filename: filepath, typeCheck: false });
+      console.log(JSON.stringify(r.ast, null, 2));
     } else {
-      console.log(result.code);
+      console.log(code ?? "");
     }
-
     return 0;
   } catch (e: unknown) {
     error(e instanceof Error ? e.message : String(e));
@@ -526,28 +501,14 @@ Commands:
         return;
       }
 
-      // Try to compile and run
       try {
-        // Wrap expression in a print if it's not a statement
         let code = line;
         if (!line.includes("let ") && !line.includes("var ") && !line.includes("fn ")) {
           code = `print(${line})`;
         }
-
-        const result = compile(code, { 
-          typeCheck: !options.noTypecheck,
-          emitRuntimeImport: false, // We inject runtime via Function arguments
-        });
-
-        if (!result.success) {
-          console.error(formatErrors(result.errors, code));
-        } else {
-          const wrappedCode = `
-            const __ms_runtime = arguments[0];
-            ${result.code}
-          `;
-          const fn = new Function(wrappedCode);
-          await fn(__ms_runtime);
+        const runResult = await runSource(code, { typeCheck: !options.noTypecheck }, __ms_runtime);
+        if (!runResult.success) {
+          console.error(formatErrors(runResult.errors, code));
         }
       } catch (e: unknown) {
         console.error(`Error: ${e instanceof Error ? e.message : String(e)}`);

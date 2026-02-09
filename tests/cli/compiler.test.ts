@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compile, check, parse, formatErrors } from "../../src/cli/compiler";
+import { compile, check, parse, formatErrors } from "../../src/compile";
 
 describe("Compiler Pipeline", () => {
   describe("compile", () => {

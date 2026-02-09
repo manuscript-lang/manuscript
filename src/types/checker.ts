@@ -1,14 +1,20 @@
 // Type Checker - Wrapper around PassManager for backward compatibility
 import type * as AST from "../parser/ast";
+import type { TypeEnvironment } from "./environment";
 import { PassManager, type TypeCheckResult } from "./pass-manager";
 import { createGlobalEnvironment } from "./environment";
-import { resolveStdlibImports } from "../stdlib/loader";
+import type { TypeCheckError } from "./errors";
 
 export type { TypeCheckResult };
 
-export function runSingleFileTypecheck(program: AST.Program): TypeCheckResult {
+export type GetStdlibErrorsFn = (program: AST.Program, env: TypeEnvironment) => TypeCheckError[];
+
+export function runSingleFileTypecheck(
+  program: AST.Program,
+  getStdlibErrors?: GetStdlibErrorsFn
+): TypeCheckResult {
   const env = createGlobalEnvironment();
-  const stdlibErrors = resolveStdlibImports(program, env);
+  const stdlibErrors = getStdlibErrors ? getStdlibErrors(program, env) : [];
   const result = PassManager.createDefault().runWithEnv(program, env);
   result.errors.unshift(...stdlibErrors);
   return result;

@@ -1,16 +1,16 @@
 import { describe, test, expect } from "bun:test";
 import { Parser } from "../../src/parser/parser";
-import { TypeChecker, TypeCheckError, typeToString, Types } from "../../src/types";
+import { runSingleFileTypecheck, typeToString, Types } from "../../src/types";
+import { resolveStdlibImports } from "../../src/stdlib/loader";
 import type { TypeCheckResult, Type } from "../../src/types";
 
 /**
- * Type check source code and return result
+ * Type check source code and return result (with stdlib resolution for tests that use imports).
  */
 export const check = (src: string): TypeCheckResult => {
   const parser = new Parser(src);
   const program = parser.parse();
-  const checker = new TypeChecker();
-  return checker.check(program);
+  return runSingleFileTypecheck(program, resolveStdlibImports);
 };
 
 /**

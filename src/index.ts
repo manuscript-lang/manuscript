@@ -6,3 +6,4 @@ export type { Type, TypeCheckResult, TypeCheckError, FunctionType, ObjectType, U
 export * from "./codegen";
 export * from "./runtime";
 export * from "./cli";
+export * from "./compile";

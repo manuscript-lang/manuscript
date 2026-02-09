@@ -41,3 +41,4 @@ export {
   type RenameLocationInfo,
   type CompletionItemData,
 } from "./service";
+export type { CompileHost } from "../shared/host";

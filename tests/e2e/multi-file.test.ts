@@ -1,11 +1,12 @@
 import { describe, test, expect } from "bun:test";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { compileProject } from "../../src/cli/compiler";
-import { findMsToml, loadMsToml, buildModuleGraph, resolveSpecifier } from "../../src/modules";
+import { compileEntry } from "../../src/compile";
+import { findMsToml, loadMsToml, resolveSpecifier } from "../../src/modules";
+import { createNodeHost } from "../../src/cli/host";
 
 describe("E2E: Multi-file and imports", () => {
-  test("compileProject: two files with import", async () => {
+  test("compileEntry: two files with import", async () => {
     const dir = path.join(process.cwd(), "tests", "e2e", "fixtures", "multi-file-project");
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(
@@ -26,7 +27,8 @@ print(x)
 `
     );
     const entryPath = path.join(dir, "main.ms");
-    const result = await compileProject(entryPath, { typeCheck: true });
+    const host = createNodeHost();
+    const result = await compileEntry(entryPath, { host, typeCheck: true });
     expect(result.success).toBe(true);
     expect(result.outputs.size).toBe(2);
     const mainCode = result.outputs.get(path.resolve(entryPath));
@@ -36,16 +38,22 @@ print(x)
     await fs.rm(dir, { recursive: true, force: true });
   });
 
-  test("compileProject with outDir writes .js files", async () => {
+  test("compileEntry with outDir writes .js files", async () => {
     const dir = path.join(process.cwd(), "tests", "e2e", "fixtures", "multi-file-out");
     const outDir = path.join(dir, "out");
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, "ms.toml"), 'src = "."\n');
     await fs.writeFile(path.join(dir, "lib.ms"), "fn id(x: number): number\n  x\n");
     await fs.writeFile(path.join(dir, "main.ms"), 'import { id } from "lib"\nprint(id(42))\n');
-    const result = await compileProject(path.join(dir, "main.ms"), {
+    const host = createNodeHost();
+    const result = await compileEntry(path.join(dir, "main.ms"), {
+      host,
       typeCheck: true,
       outDir,
+      writeFile: (p, c) => fs.writeFile(path.resolve(p), c, "utf-8"),
+      mkdir: async (p, opts) => {
+        await fs.mkdir(path.resolve(p), opts as { recursive?: boolean });
+      },
     });
     expect(result.success).toBe(true);
     const mainJs = path.join(outDir, "main.js");
@@ -58,15 +66,17 @@ print(x)
   });
 
   test("findMsToml and loadMsToml", async () => {
-    const projectRoot = await findMsToml(process.cwd());
+    const host = createNodeHost();
+    const projectRoot = await findMsToml(host, process.cwd());
     expect(projectRoot).toBe(process.cwd());
-    const config = await loadMsToml(projectRoot!);
+    const config = await loadMsToml(host, projectRoot!);
     expect(config.projectRoot).toBe(process.cwd());
     expect(config.srcDir).toBe(process.cwd());
   });
 
   test("resolveSpecifier: logical path", () => {
-    const result = resolveSpecifier("/proj", "/proj/src", "lib/foo");
+    const host = createNodeHost();
+    const result = resolveSpecifier(host, "/proj", "/proj/src", "lib/foo");
     expect("kind" in result && result.kind === "local").toBe(true);
     if ("kind" in result && result.kind === "local") {
       expect(result.path).toContain("lib");
@@ -75,17 +85,19 @@ print(x)
   });
 
   test("resolveSpecifier: relative rejected", () => {
-    const result = resolveSpecifier("/proj", "/proj/src", "./lib");
+    const host = createNodeHost();
+    const result = resolveSpecifier(host, "/proj", "/proj/src", "./lib");
     expect("message" in result).toBe(true);
     expect((result as { message: string }).message).toContain("Relative");
   });
 
   test("resolveSpecifier: pkg external", () => {
-    const result = resolveSpecifier("/proj", "/proj/src", "pkg:utils");
+    const host = createNodeHost();
+    const result = resolveSpecifier(host, "/proj", "/proj/src", "pkg:utils");
     expect(result).toEqual({ kind: "external" });
   });
 
-  test("compileProject: unresolved module errors on importer file with line", async () => {
+  test("compileEntry: unresolved module errors on importer file with line", async () => {
     const dir = path.join(process.cwd(), "tests", "e2e", "fixtures", "multi-file-unresolved");
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, "ms.toml"), 'src = "."\n');
@@ -94,7 +106,8 @@ print(x)
       'import { add } from "nonexistent"\nlet x = 1\n'
     );
     const entryPath = path.join(dir, "main.ms");
-    const result = await compileProject(entryPath, { typeCheck: true });
+    const host = createNodeHost();
+    const result = await compileEntry(entryPath, { host, typeCheck: true });
     expect(result.success).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
     const moduleError = result.errors.find((e) => e.message.includes("Module not found") || e.message.includes("not found"));

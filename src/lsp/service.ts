@@ -3,6 +3,7 @@
 
 import * as path from "path";
 import { pathToFileURL, fileURLToPath } from "node:url";
+import type { CompileHost } from "../shared/host";
 
 import { SymbolTable } from "./symbols";
 import { buildSymbolTable } from "./symbol-builder";
@@ -41,9 +42,8 @@ import {
   typecheckDocumentInProject,
   typecheckSingle,
   parseSource,
-  type CompileError,
-  type CompileWarning,
-} from "../cli/compiler";
+  type Diagnostic,
+} from "../compile";
 import { resolveSpecifier, type MsTomlConfig } from "../modules";
 import { BUILTIN_PRIMITIVE_TYPES, isStdlibImport } from "../shared/constants";
 import type { Program } from "../parser/ast";
@@ -93,11 +93,10 @@ export interface CompletionItemData {
 }
 
 // ============================================
-// Host interface (I/O boundary)
+// Host interface (I/O boundary) — extends CompileHost so one object does both.
 // ============================================
 
-export interface LanguageServiceHost {
-  readFile(path: string): Promise<string>;
+export interface LanguageServiceHost extends CompileHost {
   listMsFiles(dir: string): Promise<string[]>;
   getProjectConfig(filePath: string): Promise<{ projectRoot: string; config: MsTomlConfig } | null>;
 }
@@ -128,41 +127,29 @@ export class LanguageService {
     this.keywordList = Object.keys(KEYWORDS);
   }
 
-  // ============================================
-  // Document lifecycle
-  // ============================================
+  private cacheDocument(uri: string, program: Program, env: TypeEnvironment): CachedDocument {
+    const symbols = buildSymbolTable(program, env);
+    const cached: CachedDocument = { program, env, symbols };
+    this.cache.set(uri, cached);
+    return cached;
+  }
 
   async validateDocument(filePathOrUri: string, source: string): Promise<DiagnosticInfo[]> {
     const filePath = filePathOrUri.startsWith("file:") ? fileURLToPath(new URL(filePathOrUri)) : filePathOrUri;
     const uri = pathToFileURL(path.resolve(filePath)).href;
+    if (uri === BUILTINS_PATH_URI) return [];
 
-    if (uri === BUILTINS_PATH_URI) {
-      return [];
-    }
-
-    // Try project-level typecheck first
-    const projectResult = await typecheckDocumentInProject(
-      filePath, source,
-      (p) => this.host.readFile(path.resolve(p))
-    );
+    const projectResult = await typecheckDocumentInProject(filePath, source, this.host);
     if (projectResult) {
-      const { program, env, errors, warnings } = projectResult;
-      const symbols = buildSymbolTable(program, env);
-      this.cache.set(uri, { program, env, symbols });
+      this.cacheDocument(uri, projectResult.program, projectResult.env);
       return [
-        ...this.errorsToDiagnostics(errors, filePath),
-        ...this.warningsToDiagnostics(warnings, filePath),
+        ...this.errorsToDiagnostics(projectResult.errors, filePath),
+        ...this.warningsToDiagnostics(projectResult.warnings, filePath),
       ];
     }
-
-    // Fall back to single-file typecheck
     const tc = typecheckSingle(source, { filename: filePath });
-    if (!tc) {
-      const parseResult = parseSource(source, filePath);
-      return this.errorsToDiagnostics(parseResult.errors);
-    }
-    const symbols = buildSymbolTable(tc.program, tc.env);
-    this.cache.set(uri, { program: tc.program, env: tc.env, symbols });
+    if (!tc) return this.errorsToDiagnostics(parseSource(source, filePath).errors);
+    this.cacheDocument(uri, tc.program, tc.env);
     return [
       ...this.errorsToDiagnostics(tc.errors),
       ...this.warningsToDiagnostics(tc.warnings),
@@ -494,25 +481,15 @@ export class LanguageService {
     if (existing) return existing;
     let content: string;
     try {
-      content = await this.host.readFile(path.resolve(depPath));
+      content = await this.host.readFile(this.host.resolvePath(depPath));
     } catch {
       return null;
     }
-    const result = await typecheckDocumentInProject(depPath, content, (p) =>
-      this.host.readFile(path.resolve(p))
-    );
-    if (!result) {
-      const tc = typecheckSingle(content, { filename: depPath });
-      if (!tc) return null;
-      const symbols = buildSymbolTable(tc.program, tc.env);
-      const cached: CachedDocument = { program: tc.program, env: tc.env, symbols };
-      this.cache.set(uri, cached);
-      return cached;
-    }
-    const symbols = buildSymbolTable(result.program, result.env);
-    const cached: CachedDocument = { program: result.program, env: result.env, symbols };
-    this.cache.set(uri, cached);
-    return cached;
+    const result = await typecheckDocumentInProject(depPath, content, this.host);
+    if (result) return this.cacheDocument(uri, result.program, result.env);
+    const tc = typecheckSingle(content, { filename: depPath });
+    if (!tc) return null;
+    return this.cacheDocument(uri, tc.program, tc.env);
   }
 
   private async resolveLocalImport(
@@ -522,7 +499,7 @@ export class LanguageService {
     const filePath = currentUri.startsWith("file:") ? fileURLToPath(new URL(currentUri)) : currentUri;
     const proj = await this.host.getProjectConfig(filePath);
     if (!proj) return null;
-    const resolved = resolveSpecifier(proj.projectRoot, proj.config.srcDir, specifier);
+    const resolved = resolveSpecifier(this.host, proj.projectRoot, proj.config.srcDir, specifier);
     if (!("kind" in resolved) || resolved.kind !== "local") return null;
     return { path: resolved.path };
   }
@@ -628,7 +605,7 @@ export class LanguageService {
       return { definition, references };
     }
 
-    const resolved = resolveSpecifier(projectRoot, config.srcDir, specifier);
+    const resolved = resolveSpecifier(this.host, projectRoot, config.srcDir, specifier);
     if (!("kind" in resolved) || resolved.kind !== "local") return null;
     const depCached = await this.getOrLoadCached(resolved.path);
     if (!depCached) return null;
@@ -686,31 +663,31 @@ export class LanguageService {
 
   private static readonly ERROR_SUFFIX = / at line \d+, column \d+$/;
 
-  private errorsToDiagnostics(errors: CompileError[], entryPath?: string): DiagnosticInfo[] {
+  private errorsToDiagnostics(diagnostics: Diagnostic[], entryPath?: string): DiagnosticInfo[] {
     const entryAbs = entryPath ? path.resolve(entryPath) : undefined;
-    return errors
-      .filter(err => !entryAbs || (err.file && path.resolve(err.file) === entryAbs))
-      .map(err => ({
-        line: err.line ?? 1,
-        col: err.column ?? 1,
-        endCol: (err.column ?? 1) + 10,
-        message: err.message.replace(LanguageService.ERROR_SUFFIX, ""),
+    return diagnostics
+      .filter((d) => !entryAbs || (d.file && path.resolve(d.file) === entryAbs))
+      .map((d) => ({
+        line: d.line ?? 1,
+        col: d.column ?? 1,
+        endCol: (d.column ?? 1) + 10,
+        message: d.message.replace(LanguageService.ERROR_SUFFIX, ""),
         severity: "error" as const,
-        file: err.file,
+        file: d.file,
       }));
   }
 
-  private warningsToDiagnostics(warnings: CompileWarning[], entryPath?: string): DiagnosticInfo[] {
+  private warningsToDiagnostics(diagnostics: Diagnostic[], entryPath?: string): DiagnosticInfo[] {
     const entryAbs = entryPath ? path.resolve(entryPath) : undefined;
-    return warnings
-      .filter(w => !entryAbs || (w.file && path.resolve(w.file) === entryAbs))
-      .map(w => ({
-        line: 1,
-        col: 1,
-        endCol: 2,
-        message: w.message,
+    return diagnostics
+      .filter((d) => !entryAbs || (d.file && path.resolve(d.file) === entryAbs))
+      .map((d) => ({
+        line: d.line ?? 1,
+        col: d.column ?? 1,
+        endCol: (d.column ?? 1) + 10,
+        message: d.message,
         severity: "warning" as const,
-        file: w.file,
+        file: d.file,
       }));
   }
 }
