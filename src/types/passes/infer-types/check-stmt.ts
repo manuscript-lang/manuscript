@@ -53,7 +53,7 @@ export function checkStatement(ctx: InferContext, stmt: AST.Statement): void {
       checkTryStmt(ctx, stmt);
       break;
     case "ThrowStmt":
-      ctx.inferExpr(ctx, stmt.value);
+      ctx.inferExpr(stmt.value);
       break;
     case "WithStmt":
       checkWithStmt(ctx, stmt);
@@ -61,7 +61,7 @@ export function checkStatement(ctx: InferContext, stmt: AST.Statement): void {
     case "ExprStmt":
       if (stmt.expr.kind === "SpawnExpr")
         error(ctx, "spawn result must be used (await, pass to all(), or assign to variable)", stmt.expr.loc);
-      ctx.inferExpr(ctx, stmt.expr);
+      ctx.inferExpr(stmt.expr);
       break;
     case "FnDecl":
       checkFnDecl(ctx, stmt);
@@ -82,7 +82,7 @@ export function checkStatement(ctx: InferContext, stmt: AST.Statement): void {
 function checkLetStmt(ctx: InferContext, stmt: AST.LetStmt): void {
   const declaredType = stmt.type ? astTypeToType(stmt.type) : undefined;
   if (declaredType) setExpectedType(stmt.value, declaredType);
-  const valueType = ctx.inferExpr(ctx, stmt.value);
+  const valueType = ctx.inferExpr(stmt.value);
   const resolvedDeclared = declaredType ?? valueType;
 
   if (stmt.type && !isAssignable(valueType, resolvedDeclared, ctx.env)) {
@@ -111,7 +111,7 @@ function checkLetStmt(ctx: InferContext, stmt: AST.LetStmt): void {
 function checkVarStmt(ctx: InferContext, stmt: AST.VarStmt): void {
   const declaredType = stmt.type ? astTypeToType(stmt.type) : undefined;
   if (declaredType) setExpectedType(stmt.value, declaredType);
-  const valueType = ctx.inferExpr(ctx, stmt.value);
+  const valueType = ctx.inferExpr(stmt.value);
   const resolvedDeclared = declaredType ?? valueType;
 
   if (stmt.type && !isAssignable(valueType, resolvedDeclared, ctx.env)) {
@@ -128,9 +128,9 @@ function checkVarStmt(ctx: InferContext, stmt: AST.VarStmt): void {
 }
 
 function checkAssignStmt(ctx: InferContext, stmt: AST.AssignStmt): void {
-  const targetType = ctx.inferExpr(ctx, stmt.target);
+  const targetType = ctx.inferExpr(stmt.target);
   setExpectedType(stmt.value, targetType);
-  const valueType = ctx.inferExpr(ctx, stmt.value);
+  const valueType = ctx.inferExpr(stmt.value);
 
   if (stmt.target.kind === "Identifier") {
     const symbol = ctx.env.lookup(stmt.target.name);

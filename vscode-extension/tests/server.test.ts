@@ -539,7 +539,7 @@ describe("VSCode Extension - Keyword Recognition", () => {
   });
 });
 
-import { collectSymbols as collectAllSymbols, findScope } from "../../src/types/ast-visitor";
+import { collectSymbols as collectAllSymbols, findScope } from "../../src/lsp/ast-utils";
 
 describe("VSCode Extension - Go to Definition", () => {
   test("finds function definition", () => {
@@ -769,7 +769,8 @@ type Counter
   });
 });
 
-import { visit, visitWithScope } from "../../src/types/ast-visitor";
+import { visit } from "../../src/types/ast-visitor";
+import { visitWithScope } from "../../src/lsp/ast-utils";
 
 describe("VSCode Extension - Find References", () => {
   test("finds all references to a function", () => {

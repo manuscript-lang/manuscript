@@ -12,6 +12,15 @@ import { error, recordType, getExpectedType, setExpectedType } from "./context";
 import { consumeSpawnsInExpr } from "./infer-spawn";
 
 type NamedArg = { name: string; value: AST.Expr };
+type CallArg = AST.Expr | NamedArg;
+
+export function isNamedArg(arg: CallArg): arg is NamedArg {
+  return "name" in arg && "value" in arg;
+}
+
+export function getArgExpr(arg: CallArg): AST.Expr {
+  return isNamedArg(arg) ? arg.value : arg;
+}
 
 export function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
   if (expr.callee.kind === "IndexExpr" && expr.callee.object.kind === "Identifier") {
@@ -57,15 +66,14 @@ export function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
     }
   }
 
-  const calleeType = ctx.inferExpr(ctx, expr.callee);
+  const calleeType = ctx.inferExpr(expr.callee);
 
   if (calleeType.kind === "function") {
     for (let i = 0; i < expr.args.length && i < calleeType.params.length; i++) {
       const param = calleeType.params[i];
       if (param && typeInvolvesPromise(param.type, ctx.env)) {
         const arg = expr.args[i];
-        const argExpr = arg && "kind" in arg ? arg : arg?.value;
-        if (argExpr) consumeSpawnsInExpr(ctx, argExpr);
+        if (arg) consumeSpawnsInExpr(ctx, getArgExpr(arg));
       }
     }
   }
@@ -84,8 +92,7 @@ export function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
   }
 
   for (const arg of expr.args) {
-    if ("name" in arg && "value" in arg) ctx.inferExpr(ctx, arg.value);
-    else ctx.inferExpr(ctx, arg as AST.Expr);
+    ctx.inferExpr(getArgExpr(arg));
   }
   return Types.unknown;
 }
@@ -93,8 +100,8 @@ export function inferCallExpr(ctx: InferContext, expr: AST.CallExpr): Type {
 function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: FunctionType): Type {
   const args = expr.args;
   const expectedType = getExpectedType(expr);
-  const hasNamed = args.some((a) => "name" in a && "value" in a);
-  const hasPositional = args.some((a) => !("name" in a && "value" in a));
+  const hasNamed = args.some(isNamedArg);
+  const hasPositional = args.some(a => !isNamedArg(a));
   if (hasNamed && hasPositional) {
     const err = TypeErrors.mixedPositionalAndNamedArguments();
     error(ctx, err.message, expr.loc, err.hint);
@@ -121,10 +128,10 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
-    if ("name" in arg && "value" in arg) {
+    if (isNamedArg(arg)) {
       const param = params.find(p => p.name === arg.name);
       if (param?.type) setExpectedType(arg.value, param.type);
-      const argType = ctx.inferExpr(ctx, arg.value);
+      const argType = ctx.inferExpr(arg.value);
       if (!param) {
         const err = TypeErrors.unknownParameter(arg.name, params.map(p => p.name).filter(Boolean) as string[]);
         error(ctx, err.message, arg.value.loc, err.hint);
@@ -136,13 +143,13 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
       const paramIndex = Math.min(i, params.length - 1);
       const param = params[paramIndex];
       const expected = param && (param.rest && param.type.kind === "list" ? param.type : param.type);
-      if (expected) setExpectedType(arg as AST.Expr, expected);
-      const argType = ctx.inferExpr(ctx, arg as AST.Expr);
+      if (expected) setExpectedType(arg, expected);
+      const argType = ctx.inferExpr(arg);
       if (param) {
         const expectedType = param.rest && param.type.kind === "list" ? param.type.elementType : param.type;
         if (!isAssignable(argType, expectedType, ctx.env)) {
           const err = TypeErrors.typeMismatch(typeToString(expectedType), typeToString(argType));
-          error(ctx, `Argument ${i + 1}: ${err.message}`, (arg as AST.Expr).loc, err.hint);
+          error(ctx, `Argument ${i + 1}: ${err.message}`, arg.loc, err.hint);
         }
       }
     }
@@ -158,8 +165,8 @@ function inferFunctionCall(ctx: InferContext, expr: AST.CallExpr, fnType: Functi
 
 export function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objType: ObjectType): Type {
   const args = expr.args;
-  const hasNamed = args.some((a) => "name" in a && "value" in a);
-  const hasPositional = args.some((a) => !("name" in a && "value" in a));
+  const hasNamed = args.some(isNamedArg);
+  const hasPositional = args.some(a => !isNamedArg(a));
   if (hasNamed && hasPositional) {
     const err = TypeErrors.mixedPositionalAndNamedArguments();
     error(ctx, err.message, expr.loc, err.hint);
@@ -179,11 +186,11 @@ export function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objT
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
-    if ("name" in arg && "value" in arg) {
+    if (isNamedArg(arg)) {
       const prop = ownProps.find((p: PropertyType) => p.name === arg.name);
       const expected = prop ? (prop.embedded ? ctx.env.lookupType(prop.name) || Types.unknown : prop.type) : undefined;
       if (expected) setExpectedType(arg.value, expected);
-      const argType = ctx.inferExpr(ctx, arg.value);
+      const argType = ctx.inferExpr(arg.value);
       if (!prop) {
         const err = TypeErrors.propertyNotExist(arg.name, objType.name!);
         error(ctx, err.message, arg.value.loc, err.hint);
@@ -194,11 +201,11 @@ export function inferConstructorCall(ctx: InferContext, expr: AST.CallExpr, objT
     } else {
       const prop = ownProps[i];
       const expected = prop ? (prop.embedded ? ctx.env.lookupType(prop.name) || Types.unknown : prop.type) : undefined;
-      if (expected) setExpectedType(arg as AST.Expr, expected);
-      const argType = ctx.inferExpr(ctx, arg as AST.Expr);
+      if (expected) setExpectedType(arg, expected);
+      const argType = ctx.inferExpr(arg);
       if (prop && !isAssignable(argType, expected!, ctx.env)) {
         const err = TypeErrors.typeMismatch(typeToString(expected!), typeToString(argType));
-        error(ctx, `Argument ${i + 1}: ${err.message}`, (arg as AST.Expr).loc, err.hint);
+        error(ctx, `Argument ${i + 1}: ${err.message}`, arg.loc, err.hint);
       }
     }
   }
@@ -214,16 +221,16 @@ export function inferTypeParams(ctx: InferContext, fnType: FunctionType, args: (
   let posIdx = 0;
   for (const arg of args) {
     let paramType: Type | undefined;
-    if ("name" in arg && "value" in arg) {
+    if (isNamedArg(arg)) {
       paramType = fnType.params.find(p => p.name === arg.name)?.type;
     } else {
       paramType = fnType.params[posIdx]?.type;
       posIdx++;
     }
     const expected = paramType ? substituteTypeParams(paramType, bindings) : undefined;
-    const argExpr = "name" in arg && "value" in arg ? arg.value : (arg as AST.Expr);
+    const argExpr = getArgExpr(arg);
     if (expected) setExpectedType(argExpr, expected);
-    const argType = ctx.inferExpr(ctx, argExpr);
+    const argType = ctx.inferExpr(argExpr);
     if (paramType) unifyTypes(paramType, argType, bindings);
   }
   return bindings;

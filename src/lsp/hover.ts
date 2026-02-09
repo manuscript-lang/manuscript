@@ -14,14 +14,8 @@ import {
   formatTypeSignatureFromObject,
   formatInterfaceSignature,
 } from "./format";
-import {
-  findFnDecl,
-  findTypeDecl,
-  findInterfaceDecl,
-  findVariableType,
-  findParameterType,
-  getReceiverTypeAtPosition,
-} from "../types/ast-query";
+import { findFnDecl, findTypeDecl, findInterfaceDecl } from "../types/ast-query";
+import { findVariableType, findParameterType, getReceiverTypeAtPosition } from "./ast-utils";
 
 export interface HoverInfo {
   signature: string;

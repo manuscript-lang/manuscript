@@ -1,17 +1,18 @@
 import * as AST from "../../../parser/ast";
 import type { Type, ObjectType, UsingBinding } from "../../types";
 import type { TypeEnvironment } from "../../environment";
-import { Types, typeToString, isNullable, nonNull } from "../../types";
+import { Types, typeToString } from "../../types";
+import { isNullable, nonNull } from "../../type-utils";
 import { TypeErrors } from "../../../shared/errors";
 import { astTypeToType, isAssignable, getIterableElementType, isIterable } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, warning, setExpectedType } from "./context";
 import { checkPattern, bindPattern } from "./check-pattern";
 import { consumeSpawnsInExpr } from "./infer-spawn";
-import { exprContainsEscapingLambda } from "../context-analysis";
+import { exprContainsEscapingLambda } from "../context-utils";
 
 export function checkIfStmt(ctx: InferContext, stmt: AST.IfStmt): void {
-  ctx.inferExpr(ctx, stmt.condition);
+  ctx.inferExpr(stmt.condition);
 
   const narrowedEnv = ctx.env.child();
   applyTypeNarrowing(ctx, stmt.condition, narrowedEnv, true);
@@ -19,22 +20,22 @@ export function checkIfStmt(ctx: InferContext, stmt: AST.IfStmt): void {
   if (stmt.then.kind === "Block") {
     const savedEnv = ctx.env;
     ctx.env = narrowedEnv;
-    for (const s of stmt.then.statements) ctx.checkStatement(ctx, s);
+    for (const s of stmt.then.statements) ctx.checkStatement(s);
     ctx.env = savedEnv;
   } else {
     const savedEnv = ctx.env;
     ctx.env = narrowedEnv;
-    ctx.checkStatement(ctx, stmt.then);
+    ctx.checkStatement(stmt.then);
     ctx.env = savedEnv;
   }
 
   for (const elif of stmt.elseIfs) {
-    ctx.inferExpr(ctx, elif.condition);
+    ctx.inferExpr(elif.condition);
     const elifEnv = ctx.env.child();
     applyTypeNarrowing(ctx, elif.condition, elifEnv, true);
     const savedEnv = ctx.env;
     ctx.env = elifEnv;
-    for (const s of elif.body.statements) ctx.checkStatement(ctx, s);
+    for (const s of elif.body.statements) ctx.checkStatement(s);
     ctx.env = savedEnv;
   }
 
@@ -43,127 +44,148 @@ export function checkIfStmt(ctx: InferContext, stmt: AST.IfStmt): void {
     applyTypeNarrowing(ctx, stmt.condition, elseEnv, false);
     const savedEnv = ctx.env;
     ctx.env = elseEnv;
-    for (const s of stmt.else.statements) ctx.checkStatement(ctx, s);
+    for (const s of stmt.else.statements) ctx.checkStatement(s);
     ctx.env = savedEnv;
   }
 
-  if (stmt.pattern && stmt.elseReturn) ctx.inferExpr(ctx, stmt.elseReturn);
+  if (stmt.pattern && stmt.elseReturn) ctx.inferExpr(stmt.elseReturn);
 }
 
 function applyTypeNarrowing(ctx: InferContext, condition: AST.Expr, env: TypeEnvironment, truthyBranch: boolean): void {
-  if (condition.kind === "BinaryExpr" && condition.op === "is") {
-    if (condition.left.kind === "Identifier" && condition.right.kind === "Identifier") {
-      const varName = condition.left.name;
-      const typeName = condition.right.name;
-      const symbol = ctx.env.lookup(varName);
-      if (symbol) {
-        if (truthyBranch) {
-          env.define(varName, ctx.env.lookupType(typeName) ?? Types.ref(typeName), symbol.mutable);
-        } else if (symbol.type.kind === "union") {
-          const remaining = symbol.type.types.filter((t: Type) => {
-            if (t.kind === "ref") return t.name !== typeName;
-            if (t.kind === "object") return (t as ObjectType).name !== typeName;
-            return typeToString(t) !== typeName;
-          });
-          if (remaining.length === 1) env.define(varName, remaining[0]!, symbol.mutable);
-          else if (remaining.length > 1) env.define(varName, Types.union(...remaining), symbol.mutable);
-        }
-      }
-    }
-  } else if (condition.kind === "BinaryExpr" &&
-             (condition.op === "!=" || condition.op === "==") &&
-             condition.left.kind === "Identifier" &&
-             condition.right.kind === "Literal" && condition.right.value === null) {
-    const varName = condition.left.name;
-    const symbol = ctx.env.lookup(varName);
-    if (symbol && isNullable(symbol.type)) {
-      const isNotNull = (condition.op === "!=" && truthyBranch) || (condition.op === "==" && !truthyBranch);
-      if (isNotNull) env.define(varName, nonNull(symbol.type), symbol.mutable);
-    }
-  } else if (condition.kind === "BinaryExpr" &&
-             (condition.op === "==" || condition.op === "!=") &&
-             condition.left.kind === "Identifier" &&
-             condition.right.kind === "Literal") {
-    const varName = condition.left.name;
-    const symbol = ctx.env.lookup(varName);
-    if (symbol) {
-      const isEqual = (condition.op === "==" && truthyBranch) || (condition.op === "!=" && !truthyBranch);
-      if (isEqual) {
-        env.define(varName, Types.literal(condition.right.value as string | number | boolean), symbol.mutable);
-      } else if (symbol.type.kind === "union") {
-        const literalStr = JSON.stringify(condition.right.value);
-        const remaining = symbol.type.types.filter((t: Type) => {
-          if (t.kind === "literal") return JSON.stringify(t.value) !== literalStr;
-          return true;
-        });
-        if (remaining.length === 1) env.define(varName, remaining[0]!, symbol.mutable);
-        else if (remaining.length > 1) env.define(varName, Types.union(...remaining), symbol.mutable);
-      }
-    }
-  } else if (condition.kind === "BinaryExpr" &&
-             (condition.op === "==" || condition.op === "!=") &&
-             condition.left.kind === "MemberExpr" &&
-             condition.right.kind === "Literal") {
-    const memberExpr = condition.left as AST.MemberExpr;
-    if (memberExpr.object.kind === "Identifier") {
-      const varName = memberExpr.object.name;
-      const propName = memberExpr.property;
-      const symbol = ctx.env.lookup(varName);
+  if (condition.kind === "UnaryExpr" && (condition.op === "not" || condition.op === "!")) {
+    applyTypeNarrowing(ctx, condition.operand, env, !truthyBranch);
+    return;
+  }
+  if (condition.kind !== "BinaryExpr") return;
 
-      if (symbol && symbol.type.kind === "union") {
-        const isEqual = (condition.op === "==" && truthyBranch) || (condition.op === "!=" && !truthyBranch);
-        const literalValue = condition.right.value;
-        const matching: Type[] = [];
-        const nonMatching: Type[] = [];
-
-        for (const t of symbol.type.types) {
-          const resolved = t.kind === "ref" ? ctx.env.resolveType(t) : t;
-          if (resolved.kind === "object") {
-            const prop = (resolved as ObjectType).properties.find(p => p.name === propName);
-            if (prop && prop.type.kind === "literal" && prop.type.value === literalValue) matching.push(t);
-            else nonMatching.push(t);
-          } else nonMatching.push(t);
-        }
-
-        if (isEqual && matching.length > 0) {
-          if (matching.length === 1) env.define(varName, matching[0]!, symbol.mutable);
-          else env.define(varName, Types.union(...matching), symbol.mutable);
-        } else if (!isEqual && nonMatching.length > 0) {
-          if (nonMatching.length === 1) env.define(varName, nonMatching[0]!, symbol.mutable);
-          else env.define(varName, Types.union(...nonMatching), symbol.mutable);
-        }
-      }
-    }
-  } else if (condition.kind === "BinaryExpr" && condition.op === "and") {
+  if (condition.op === "and") {
     applyTypeNarrowing(ctx, condition.left, env, truthyBranch);
     applyTypeNarrowing(ctx, condition.right, env, truthyBranch);
-  } else if (condition.kind === "BinaryExpr" &&
-             (condition.op === "==" || condition.op === "!=") &&
-             condition.left.kind === "CallExpr") {
-    const call = condition.left as AST.CallExpr;
-    const callee = call.callee;
-    const typeStr = condition.right.kind === "Literal" && typeof condition.right.value === "string" ? condition.right.value : null;
-    if (callee.kind === "Identifier" && callee.name === "typeof" && call.args.length === 1 && typeStr) {
-      const raw = call.args[0];
-      const argExpr: AST.Expr | undefined = raw && "value" in raw ? (raw as { value: AST.Expr }).value : (raw as AST.Expr);
-      if (argExpr?.kind === "Identifier") {
-        const varName = (argExpr as AST.Identifier).name;
-        const symbol = ctx.env.lookup(varName);
-        if (symbol) {
-          let narrowedType: Type | null = null;
-          if (typeStr === "number") narrowedType = Types.number;
-          else if (typeStr === "string") narrowedType = Types.string;
-          else if (typeStr === "boolean") narrowedType = Types.bool;
-          else if (typeStr === "null") narrowedType = Types.null;
-          if (narrowedType) {
-            const isEqual = (condition.op === "==" && truthyBranch) || (condition.op === "!=" && !truthyBranch);
-            if (isEqual) env.define(varName, narrowedType, symbol.mutable);
-          }
-        }
-      }
-    }
-  } else if (condition.kind === "UnaryExpr" && (condition.op === "not" || condition.op === "!")) {
-    applyTypeNarrowing(ctx, condition.operand, env, !truthyBranch);
+  } else if (condition.op === "is") {
+    narrowFromIsCheck(ctx, condition, env, truthyBranch);
+  } else if (condition.op === "==" || condition.op === "!=") {
+    narrowFromEquality(ctx, condition, env, truthyBranch);
+  }
+}
+
+function narrowFromIsCheck(ctx: InferContext, expr: AST.BinaryExpr, env: TypeEnvironment, truthyBranch: boolean): void {
+  if (expr.left.kind !== "Identifier" || expr.right.kind !== "Identifier") return;
+  const varName = expr.left.name;
+  const typeName = expr.right.name;
+  const symbol = ctx.env.lookup(varName);
+  if (!symbol) return;
+
+  if (truthyBranch) {
+    env.define(varName, ctx.env.lookupType(typeName) ?? Types.ref(typeName), symbol.mutable);
+  } else if (symbol.type.kind === "union") {
+    const remaining = symbol.type.types.filter((t: Type) => {
+      if (t.kind === "ref") return t.name !== typeName;
+      if (t.kind === "object") return (t as ObjectType).name !== typeName;
+      return typeToString(t) !== typeName;
+    });
+    if (remaining.length === 1) env.define(varName, remaining[0]!, symbol.mutable);
+    else if (remaining.length > 1) env.define(varName, Types.union(...remaining), symbol.mutable);
+  }
+}
+
+function narrowFromEquality(ctx: InferContext, expr: AST.BinaryExpr, env: TypeEnvironment, truthyBranch: boolean): void {
+  // null check: x != null / x == null
+  if (expr.left.kind === "Identifier" && expr.right.kind === "Literal" && expr.right.value === null) {
+    narrowFromNullCheck(ctx, expr.left.name, expr.op, env, truthyBranch);
+    return;
+  }
+  // literal equality: x == "foo" / x != 42
+  if (expr.left.kind === "Identifier" && expr.right.kind === "Literal") {
+    narrowFromLiteralCheck(ctx, expr.left.name, expr.op, expr.right, env, truthyBranch);
+    return;
+  }
+  // discriminant narrowing: x.tag == "A"
+  if (expr.left.kind === "MemberExpr" && expr.right.kind === "Literal") {
+    narrowFromMemberEquality(ctx, expr.left as AST.MemberExpr, expr.op, expr.right, env, truthyBranch);
+    return;
+  }
+  // typeof narrowing: typeof(x) == "number"
+  if (expr.left.kind === "CallExpr") {
+    narrowFromTypeof(ctx, expr.left as AST.CallExpr, expr.op, expr.right, env, truthyBranch);
+  }
+}
+
+function narrowFromNullCheck(ctx: InferContext, varName: string, op: string, env: TypeEnvironment, truthyBranch: boolean): void {
+  const symbol = ctx.env.lookup(varName);
+  if (symbol && isNullable(symbol.type)) {
+    const isNotNull = (op === "!=" && truthyBranch) || (op === "==" && !truthyBranch);
+    if (isNotNull) env.define(varName, nonNull(symbol.type), symbol.mutable);
+  }
+}
+
+function narrowFromLiteralCheck(ctx: InferContext, varName: string, op: string, literal: AST.Literal, env: TypeEnvironment, truthyBranch: boolean): void {
+  const symbol = ctx.env.lookup(varName);
+  if (!symbol) return;
+
+  const isEqual = (op === "==" && truthyBranch) || (op === "!=" && !truthyBranch);
+  if (isEqual) {
+    env.define(varName, Types.literal(literal.value as string | number | boolean), symbol.mutable);
+  } else if (symbol.type.kind === "union") {
+    const literalStr = JSON.stringify(literal.value);
+    const remaining = symbol.type.types.filter((t: Type) => {
+      if (t.kind === "literal") return JSON.stringify(t.value) !== literalStr;
+      return true;
+    });
+    if (remaining.length === 1) env.define(varName, remaining[0]!, symbol.mutable);
+    else if (remaining.length > 1) env.define(varName, Types.union(...remaining), symbol.mutable);
+  }
+}
+
+function narrowFromMemberEquality(ctx: InferContext, memberExpr: AST.MemberExpr, op: string, literal: AST.Literal, env: TypeEnvironment, truthyBranch: boolean): void {
+  if (memberExpr.object.kind !== "Identifier") return;
+  const varName = memberExpr.object.name;
+  const propName = memberExpr.property;
+  const symbol = ctx.env.lookup(varName);
+  if (!symbol || symbol.type.kind !== "union") return;
+
+  const isEqual = (op === "==" && truthyBranch) || (op === "!=" && !truthyBranch);
+  const literalValue = literal.value;
+  const matching: Type[] = [];
+  const nonMatching: Type[] = [];
+
+  for (const t of symbol.type.types) {
+    const resolved = t.kind === "ref" ? ctx.env.resolveType(t) : t;
+    if (resolved.kind === "object") {
+      const prop = (resolved as ObjectType).properties.find(p => p.name === propName);
+      if (prop && prop.type.kind === "literal" && prop.type.value === literalValue) matching.push(t);
+      else nonMatching.push(t);
+    } else nonMatching.push(t);
+  }
+
+  if (isEqual && matching.length > 0) {
+    if (matching.length === 1) env.define(varName, matching[0]!, symbol.mutable);
+    else env.define(varName, Types.union(...matching), symbol.mutable);
+  } else if (!isEqual && nonMatching.length > 0) {
+    if (nonMatching.length === 1) env.define(varName, nonMatching[0]!, symbol.mutable);
+    else env.define(varName, Types.union(...nonMatching), symbol.mutable);
+  }
+}
+
+function narrowFromTypeof(ctx: InferContext, call: AST.CallExpr, op: string, right: AST.Expr, env: TypeEnvironment, truthyBranch: boolean): void {
+  const callee = call.callee;
+  const typeStr = right.kind === "Literal" && typeof right.value === "string" ? right.value : null;
+  if (callee.kind !== "Identifier" || callee.name !== "typeof" || call.args.length !== 1 || !typeStr) return;
+
+  const raw = call.args[0];
+  const argExpr: AST.Expr | undefined = raw && "value" in raw ? (raw as { value: AST.Expr }).value : (raw as AST.Expr);
+  if (argExpr?.kind !== "Identifier") return;
+
+  const varName = (argExpr as AST.Identifier).name;
+  const symbol = ctx.env.lookup(varName);
+  if (!symbol) return;
+
+  const TYPE_MAP: Record<string, Type> = {
+    "number": Types.number, "string": Types.string, "boolean": Types.bool, "null": Types.null,
+  };
+  const narrowedType = TYPE_MAP[typeStr];
+  if (narrowedType) {
+    const isEqual = (op === "==" && truthyBranch) || (op === "!=" && !truthyBranch);
+    if (isEqual) env.define(varName, narrowedType, symbol.mutable);
   }
 }
 
@@ -173,7 +195,7 @@ export function checkForStmt(ctx: InferContext, stmt: AST.ForStmt): void {
 
   const bodyEnv = ctx.env.child();
   if (stmt.pattern && stmt.iterable) {
-    const iterableType = ctx.inferExpr(ctx, stmt.iterable);
+    const iterableType = ctx.inferExpr(stmt.iterable);
     if (!isIterable(iterableType)) {
       const err = TypeErrors.nonIterableForLoop(typeToString(iterableType));
       error(ctx, err.message, stmt.iterable.loc, err.hint);
@@ -187,13 +209,13 @@ export function checkForStmt(ctx: InferContext, stmt: AST.ForStmt): void {
 
   const savedEnv = ctx.env;
   ctx.env = bodyEnv;
-  ctx.checkBlock(ctx, stmt.body);
+  ctx.checkBlock(stmt.body);
   ctx.env = savedEnv;
   ctx.inLoop = prevInLoop;
 }
 
 export function checkMatchStmt(ctx: InferContext, stmt: AST.MatchStmt): void {
-  const valueType = ctx.inferExpr(ctx, stmt.value);
+  const valueType = ctx.inferExpr(stmt.value);
 
   for (const arm of stmt.arms) {
     const armEnv = ctx.env.child();
@@ -201,14 +223,14 @@ export function checkMatchStmt(ctx: InferContext, stmt: AST.MatchStmt): void {
     ctx.env = armEnv;
     checkPattern(ctx, arm.pattern, valueType);
     if (arm.guard) {
-      const guardType = ctx.inferExpr(ctx, arm.guard);
+      const guardType = ctx.inferExpr(arm.guard);
       if (guardType.kind !== "bool") {
         const err = TypeErrors.guardMustBeBool(typeToString(guardType));
         error(ctx, err.message, arm.guard.loc, err.hint);
       }
     }
-    if (arm.body.kind === "Block") ctx.checkBlock(ctx, arm.body as AST.Block);
-    else ctx.inferExpr(ctx, arm.body as AST.Expr);
+    if (arm.body.kind === "Block") ctx.checkBlock(arm.body as AST.Block);
+    else ctx.inferExpr(arm.body as AST.Expr);
     ctx.env = savedEnv;
   }
 
@@ -277,7 +299,7 @@ export function checkReturnStmt(ctx: InferContext, stmt: AST.ReturnStmt): void {
 
   if (stmt.value) {
     setExpectedType(stmt.value, ctx.currentFunction.returnType);
-    const returnType = ctx.inferExpr(ctx, stmt.value);
+    const returnType = ctx.inferExpr(stmt.value);
     if (!isAssignable(returnType, ctx.currentFunction.returnType, ctx.env)) {
       const err = TypeErrors.typeMismatch(typeToString(ctx.currentFunction.returnType), typeToString(returnType));
       error(ctx, err.message, stmt.loc, err.hint);
@@ -303,17 +325,17 @@ export function checkYieldStmt(ctx: InferContext, stmt: AST.YieldStmt): void {
     return;
   }
   setExpectedType(stmt.value, ctx.currentFunction.returnType);
-  ctx.inferExpr(ctx, stmt.value);
+  ctx.inferExpr(stmt.value);
 }
 
 export function checkTryStmt(ctx: InferContext, stmt: AST.TryStmt): void {
-  ctx.checkBlock(ctx, stmt.body);
+  ctx.checkBlock(stmt.body);
   if (stmt.catch) {
     const catchEnv = ctx.env.child();
     catchEnv.define(stmt.catch.name, Types.ref("Error"));
     const savedEnv = ctx.env;
     ctx.env = catchEnv;
-    ctx.checkBlock(ctx, stmt.catch.body);
+    ctx.checkBlock(stmt.catch.body);
     ctx.env = savedEnv;
   }
 }
@@ -330,7 +352,7 @@ export function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
   }
 
   for (const ctxBinding of stmt.contexts) {
-    const ctxType = ctx.inferExpr(ctx, ctxBinding.expr);
+    const ctxType = ctx.inferExpr(ctxBinding.expr);
     if (!isAssignable(ctxType, closableType, ctx.env)) {
       error(ctx,
         `Expression in 'with' must satisfy Closable (must have close(): void)`,
@@ -357,7 +379,7 @@ export function checkWithStmt(ctx: InferContext, stmt: AST.WithStmt): void {
     ctx.contextDependentSpawnsInWith = new Set();
   }
 
-  ctx.checkBlock(ctx, stmt.body);
+  ctx.checkBlock(stmt.body);
 
   if (isFunctionLevel) {
     const lastStmt = stmt.body.statements[stmt.body.statements.length - 1];

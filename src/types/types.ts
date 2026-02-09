@@ -381,40 +381,23 @@ export const Types = {
 };
 
 // ============================================
-// Type Utilities
+// Type Predicates (narrow without casting)
 // ============================================
 
-/**
- * Check if a type is a primitive type
- */
-export function isPrimitive(type: Type): boolean {
-  return ["number", "string", "bool", "null", "bytes"].includes(type.kind);
-}
-
-/**
- * Check if a type is nullable (can be null)
- */
-export function isNullable(type: Type): boolean {
-  if (type.kind === "null") return true;
-  if (type.kind === "optional") return true;
-  if (type.kind === "union") {
-    return type.types.some(t => t.kind === "null");
-  }
-  return false;
-}
-
-/**
- * Get the non-null version of a type
- */
-export function nonNull(type: Type): Type {
-  if (type.kind === "optional") return type.inner;
-  if (type.kind === "union") {
-    const nonNullTypes = type.types.filter(t => t.kind !== "null");
-    if (nonNullTypes.length === 1) return nonNullTypes[0]!;
-    return Types.union(...nonNullTypes);
-  }
-  return type;
-}
+export function isFunctionType(t: Type): t is FunctionType { return t.kind === "function"; }
+export function isObjectType(t: Type): t is ObjectType { return t.kind === "object"; }
+export function isInterfaceType(t: Type): t is InterfaceType { return t.kind === "interface"; }
+export function isOptionalType(t: Type): t is OptionalType { return t.kind === "optional"; }
+export function isUnionType(t: Type): t is UnionType { return t.kind === "union"; }
+export function isIntersectionType(t: Type): t is IntersectionType { return t.kind === "intersection"; }
+export function isRefType(t: Type): t is TypeRef { return t.kind === "ref"; }
+export function isGenericType(t: Type): t is GenericType { return t.kind === "generic"; }
+export function isListType(t: Type): t is ListType { return t.kind === "list"; }
+export function isMapType(t: Type): t is MapType { return t.kind === "map"; }
+export function isSetType(t: Type): t is SetType { return t.kind === "set"; }
+export function isPromiseType(t: Type): t is PromiseType { return t.kind === "promise"; }
+export function isStreamType(t: Type): t is StreamType { return t.kind === "stream"; }
+export function isTypeVariable(t: Type): t is TypeVariable { return t.kind === "typevar"; }
 
 /**
  * Convert a type to a human-readable string

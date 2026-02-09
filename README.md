@@ -1,25 +1,33 @@
 # Manuscript
 
-A programming language designed for LLM code generation, human review, and static verification.
+**Manuscript** is a programming language for **LLM-generated code**: it is designed so that generated programs are easy to review, safe by construction, and aligned with the npm ecosystem.
 
 ---
 
-## Why another language?
+## What is Manuscript?
 
-TypeScript and Python are excellent languages — expressive, battle-tested, backed by massive ecosystems. But they were designed for humans writing code by hand. When LLMs generate code at scale, different properties matter:
+- **A small, statically typed language** — Indent-scoped syntax, no semicolons or braces. Compiles to JavaScript so you can use npm and existing tooling.
+- **Capability-based** — Side effects (filesystem, network, shell) are declared in function signatures. Code can only do what its signature allows; reviewers see capabilities at a glance.
+- **Single source of truth** — One type definition is the static type, the runtime shape, and the schema for LLM tool definitions. No separate schema files that drift.
+- **Built for the LLM workflow** — Narrow surface area for reliable generation; signatures that make review possible without reading every line; deny-by-default imports and no escape hatches (`eval`, prototype tricks, etc.).
 
-- **Auditability.** Can a reviewer verify what generated code does from its signature alone — without reading the body and every transitive import?
-- **Sandboxing.** Can you constrain what generated code is *able* to do — not just what you *asked* it to do?
-- **Surface area.** The fewer valid ways to express something, the more reliably an LLM generates correct code — and the faster a human reviews it.
-- **Consistency.** If schemas, types, and runtime behavior are defined once, they can't drift apart.
+---
 
-These aren't weaknesses of TypeScript or Python. They're properties neither language was designed to optimize for, because the use case didn't exist when they were created.
+## Benefits
 
-## The thesis
+| Benefit | What it means |
+|--------|----------------|
+| **Auditability** | Reviewers can verify what code does from signatures and `using` clauses alone — no need to read every body and transitive import. |
+| **Sandboxing** | Generated code can only use capabilities you grant (e.g. a specific `Filesystem` or `Shell`). No hidden imports or ambient authority. |
+| **Small surface area** | Fewer valid ways to express things → more reliable LLM output and faster human review. |
+| **No schema/type drift** | One definition updates types, runtime, and LLM-facing schemas together. |
+| **Sync syntax, async runtime** | No `async`/`await` or function coloring. You write straight-line code; the runtime handles concurrency. |
 
-Shrink the language. Make capabilities explicit. Align the type system, the syntax, and the runtime so that **if it compiles, it's safe** — and if it's safe, a human can verify it by reading signatures alone.
+---
 
-That's Manuscript.
+## Why Manuscript?
+
+TypeScript and Python weren’t designed for LLM-generated code at scale. Manuscript takes off the warts: shrink the language, make capabilities explicit, align types with schemas and runtime — so generated code is easier to review and reason about, without the usual escape hatches and hidden authority.
 
 ---
 
@@ -27,7 +35,7 @@ That's Manuscript.
 
 ### 1. Capabilities are in the signature
 
-In most languages, any function can import and use any module — the signature doesn't tell you. In Manuscript, side effects require explicit `using` declarations:
+Side effects require explicit `using` declarations. Callers pass capabilities with `with`; no DI framework.
 
 ```manuscript
 fn read_file(path: string): string using (fs: Filesystem)
@@ -36,23 +44,14 @@ fn read_file(path: string): string using (fs: Filesystem)
 fn deploy(code: string) using (fs: Filesystem, sh: Shell)
   fs.write("app.js", code)
   sh.exec("restart")
-```
 
-A reviewer reads the signature and knows exactly what `deploy` can touch. An LLM can't accidentally generate code that reaches the network when only filesystem access was granted — there's no `import net` to reach for. Callers provide capabilities with `with`:
-
-```manuscript
 with let fs = Filesystem(), let sh = Shell()
-  deploy(code)                              // production
-
-with let fs = MockFilesystem(), let sh = MockShell()
-  deploy(code)                              // test — same code, no mocks library
+  deploy(code)
 ```
-
-No dependency injection framework. No inversion of control containers. The language does it.
 
 ### 2. One definition = type + schema + runtime
 
-A Manuscript type is simultaneously the static type, the constructor, and the schema an LLM sees as a tool definition:
+A type is the static type, the constructor, and the schema an LLM sees. Add a field once; compiler, runtime, and tool definitions stay in sync.
 
 ```manuscript
 type User
@@ -61,15 +60,13 @@ type User
   email?: string
 ```
 
-That's it. One definition — not a schema in one file and a type in another. Add a field and the compiler, the runtime, and any LLM tool definition all update together. They can't drift.
-
 ### 3. No escape hatches
 
-Manuscript compiles to JavaScript — you get the entire npm ecosystem — but access is controlled. There's no `eval`, no `Function` constructor, no prototype access, no globals beyond a fixed set of builtins. Imports are deny-by-default: new code gets no imports until `ms.toml` explicitly allows them per directory or module. Need `lodash` in your utils? Allow it in `ms.toml`. But LLM-generated agent code in `agents/` gets only what you grant it — not the kitchen sink. Maps use null prototypes — `__proto__` is just a key, not an attack vector. Generated code runs in a way that cannot do things it wasn't given permission to do.
+Compiles to JS but access is controlled: no `eval`, no `Function` constructor, no prototype access. Imports are deny-by-default via `ms.toml`. Maps use null prototypes so `__proto__` is just a key.
 
 ### 4. Sync syntax, async runtime
 
-No function coloring. No `async`/`await`. The model writes straight-line code; the runtime handles I/O concurrency automatically. When you need explicit parallelism:
+No `async`/`await`. Explicit parallelism with `spawn` and `race`:
 
 ```manuscript
 let a = spawn fetch_users()
@@ -78,11 +75,9 @@ let users = race([a])
 let orders = race([b])
 ```
 
-An LLM doesn't need to reason about colored functions. A reviewer doesn't need to trace async boundaries.
-
 ### 5. Small, regular syntax
 
-Indent-scoped. No semicolons, no braces. Every construct follows the same shape — keyword, signature, indented body:
+Keyword, signature, indented body — same shape everywhere. Few constructs, used consistently.
 
 ```manuscript
 fn greet(u: User): string
@@ -95,18 +90,11 @@ type Point
 test "greeting works"
   let u = User(id: 1, name: "Alice")
   assert greet(u) == "Hello, Alice"
-
-match status
-  200..299 => "ok"
-  404 => "not found"
-  _ => "error"
 ```
-
-A few constructs, used consistently. LLMs generate it reliably because there's less to get wrong. Humans review it quickly because there's less to read.
 
 ### 6. Composition over inheritance
 
-No classes. No `extends`. No deep inheritance chains for an LLM to trace through. Types compose through embedding — fields and methods are promoted one level, never deeper:
+No classes or `extends`. Types compose via embedding; methods are promoted one level. Interfaces are structural (e.g. any type with `serialize(): string` satisfies `Serializable`).
 
 ```manuscript
 type Animal
@@ -117,16 +105,11 @@ type Animal
 type Dog
   Animal
   breed: string
-
-interface Serializable
-  fn serialize(): string
 ```
-
-`Dog` gets `name` and `speak()` promoted from `Animal`. Any type with a `serialize()` method satisfies `Serializable` — no `implements` keyword. An LLM reads `Dog` and sees everything it has. No method resolution order, no virtual dispatch, no scanning five parent classes to find where a method lives.
 
 ### 7. Simple generics
 
-Generics exist but are deliberately minimal. Just type parameters:
+Type parameters only — no variance, conditional types, or type-level programming.
 
 ```manuscript
 fn first[T](items: list[T]): T?
@@ -140,11 +123,9 @@ type Pair[A, B]
   second: B
 ```
 
-No variance annotations, no conditional types, no type-level programming. Manuscript's generics do what generics should: parameterize types. Nothing more.
-
 ### 8. First-class testing
 
-Tests are language syntax, not a library. LLMs generate code and tests in the same file, same language, with the same capability system:
+Tests are language syntax. Same capability system; no separate test runner config.
 
 ```manuscript
 test "deploy writes and restarts"
@@ -154,11 +135,11 @@ test "deploy writes and restarts"
     assert sh.last_command() == "restart"
 ```
 
-No test runner config. No assertion library import. `manuscript test app.ms` runs every `test` block.
+Run all tests: `manuscript test app.ms`
 
 ### 9. String templates as code
 
-Multi-line templates with `{interpolation}`, `{if}`, and `{for}` — useful for prompt construction:
+Multi-line templates with `{interpolation}`, `{if}`, `{for}` — same language and type-checking, no separate template engine.
 
 ```manuscript
 fn system_prompt(user: User, tools: list[Tool]): string
@@ -171,42 +152,33 @@ fn system_prompt(user: User, tools: list[Tool]): string
   """
 ```
 
-Same language, same types, same compiler checks. No template engine.
-
 ---
 
-## Everything else
+## More syntax
 
 ```manuscript
-// Pipe operator
+// Pipe, destructuring, named params
 users | filter((u) => u.active) | map((u) => u.name) | join(", ")
-
-// Destructuring
 let {name, age} = user
-let [first, ...rest] = items
-
-// Named parameters
 greet(second: "Bar", first: "Foo")
 
-// Generators
-fn count(n: number): Stream[number]
-  for i in 0..n
-    yield i
-
-// Optionals with narrowing
+// Optionals, pattern matching
 fn safe_div(a: number, b: number): number?
   if b == 0
     null
   else
     a / b
 
-// Pattern matching
 match response
   {status: 200, body} => parse(body)
   {status: 404} => null
   _ => throw Error("unexpected")
 
-// Private fields — enforced by compiler
+// Generators, private fields
+fn count(n: number): Stream[number]
+  for i in 0..n
+    yield i
+
 type Account
   _balance: number
   fn deposit(amount: number): number
@@ -218,22 +190,30 @@ type Account
 ## Quick start
 
 ```bash
+# Install (when published)
 bun add -g manuscript
-manuscript run app.ms
-manuscript check app.ms        # type check without running
-manuscript test app.ms         # run test blocks
+
+# From this repo
+bun run ms -- run app.ms
+
+manuscript run app.ms      # run
+manuscript check app.ms    # type-check only
+manuscript test app.ms    # run test blocks
 ```
 
-**VS Code extension:** `cd vscode-extension && ./install.sh`
+**VS Code:** `cd vscode-extension && ./install.sh`
 
 ---
 
 ## Who this is for
 
-- **AI agent builders** who want tool definitions that are also type-checked code
-- **Teams reviewing AI-generated code** who need to verify safety from signatures, not source reading
-- **Anyone building LLM pipelines** where generated code must be sandboxed and capability-controlled
+**You’re shipping or reviewing code that LLMs help write.** Manuscript is for people who want less friction in that loop.
+
+- **AI agent and tool builders** — You expose tools to an LLM and need schemas that stay in sync with real code. In Manuscript, the type *is* the schema: one definition, type-checked by the compiler and usable as the tool spec. No separate OpenAPI or JSON Schema that drifts.
+- **Reviewers of AI-generated code** — You need to trust what a patch does without reading every line and every import. Manuscript’s capability signatures (`using (fs: Filesystem)`) tell you exactly what a function can do; deny-by-default imports mean there are no surprise dependencies. Review the signatures, then skim the rest.
+- **Platform and pipeline teams** — You run or orchestrate LLM-generated code and need guardrails. Manuscript gives you a small, predictable language: no `eval`, no prototype tricks, imports gated by config. You decide what each module or directory is allowed to use; the language enforces it.
+- **Anyone tired of the warts** — You’ve seen generated code that’s async soup, or types that don’t match the API, or “how did this even get network access?” Manuscript is an attempt to take those warts off: one language where the syntax, types, and capabilities line up so that generated code is easier to read, review, and constrain.
 
 ---
 
-[Syntax reference](./syntax.md) · [Standard library](./stdlib.md) · [Design document](./REQUIREMENTS.md) · MIT
+[Syntax reference](./syntax.md) · [Standard library](./stdlib.md) · [Design](./REQUIREMENTS.md) · MIT

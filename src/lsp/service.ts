@@ -36,7 +36,7 @@ import {
   type BuiltinsSymbol,
   type TypeMemberInfo,
 } from "./builtin-symbols";
-import { findConstructorCalleeAt } from "../types/ast-query";
+import { findConstructorCalleeAt } from "./ast-utils";
 import {
   typecheckDocumentInProject,
   typecheckSingle,

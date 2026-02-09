@@ -1,8 +1,8 @@
 import * as AST from "../../../parser/ast";
 import type { Type, FunctionType, ObjectType, ParameterType } from "../../types";
-import { Types, typeToString, isNullable, nonNull } from "../../types";
+import { Types, typeToString } from "../../types";
 import { TypeErrors, RESERVED_PROPERTY_NAMES } from "../../../shared/errors";
-import { astTypeToType, isAssignable, findCommonType } from "../../type-utils";
+import { astTypeToType, isAssignable, findCommonType, isNullable, nonNull } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, warning, recordType, getExpectedType, setExpectedType } from "./context";
 import { checkPattern } from "./check-pattern";
@@ -270,7 +270,7 @@ function inferLambdaExpr(ctx: InferContext, expr: AST.LambdaExpr, expectedFn?: F
 
   let returnType: Type;
   if (expr.body.kind === "Block") {
-    ctx.checkBlock(ctx, expr.body as AST.Block);
+    ctx.checkBlock(expr.body as AST.Block);
     returnType = Types.void;
   } else {
     returnType = inferExpr(ctx, expr.body as AST.Expr);
@@ -309,7 +309,7 @@ function inferMatchExpr(ctx: InferContext, expr: AST.MatchExpr): Type {
 
     let armType: Type;
     if (arm.body.kind === "Block") {
-      ctx.checkBlock(ctx, arm.body as AST.Block);
+      ctx.checkBlock(arm.body as AST.Block);
       armType = Types.void;
     } else {
       if (expectedType) setExpectedType(arm.body as AST.Expr, expectedType);

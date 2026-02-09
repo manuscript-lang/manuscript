@@ -7,7 +7,7 @@ import type {
   UsingBinding,
   ObjectType,
   InterfaceType,
-  MethodType,
+
   OptionalType,
   ListType,
   MapType,
@@ -21,10 +21,10 @@ import type {
   TypeRef,
   TypeVariable,
 } from "./types";
-import { Types, typeToString } from "./types";
+import { Types, typeToString, isObjectType, isInterfaceType, isOptionalType, isFunctionType, isRefType } from "./types";
 import type { TypeEnvironment } from "./environment";
 import { PRIMITIVE_TYPE_MAP, constructGenericType } from "./primitives";
-import { findTypeDecl } from "./ast-query";
+
 
 // Convert AST type expression to internal Type representation
 export function astTypeToType(astType: AST.TypeExpr): Type {
@@ -86,79 +86,56 @@ export function resolveTypeName(name: string, env: TypeEnvironment): Type {
 }
 
 export function getTypeDisplayName(env: TypeEnvironment, type: Type): string | null {
-  if (type.kind === "ref") return type.name;
-  if (type.kind === "object" && (type as ObjectType).name) return (type as ObjectType).name!;
-  if (type.kind === "interface") return (type as InterfaceType).name;
-  if (type.kind === "optional") return getTypeDisplayName(env, (type as OptionalType).inner);
+  if (isRefType(type)) return type.name;
+  if (isObjectType(type) && type.name) return type.name;
+  if (isInterfaceType(type)) return type.name;
+  if (isOptionalType(type)) return getTypeDisplayName(env, type.inner);
   const resolved = env.resolveType(type);
   if (resolved !== type) {
-    if (resolved.kind === "object" && (resolved as ObjectType).name) return (resolved as ObjectType).name!;
-    if (resolved.kind === "ref") return resolved.name;
-    if (resolved.kind === "interface") return (resolved as InterfaceType).name;
+    if (isObjectType(resolved) && resolved.name) return resolved.name;
+    if (isRefType(resolved)) return resolved.name;
+    if (isInterfaceType(resolved)) return resolved.name;
   }
   return null;
 }
 
-// Convert function declaration to FunctionType
-export function fnDeclToType(decl: AST.FnDecl): FunctionType {
-  const params = decl.params.map(p => ({
-    name: p.name,
-    type: p.type ? astTypeToType(p.type) : Types.unknown,
-    optional: p.optional,
-    rest: p.rest,
-  }));
-
-  const returnType = decl.returnType ? astTypeToType(decl.returnType) : Types.unknown;
-
-  const context: UsingBinding[] = decl.using?.bindings.map(c => ({
-    name: c.name,
-    type: astTypeToType(c.type),
-  })) ?? [];
-
-  const typeParams = decl.typeParams?.map(p => ({
-    name: p.name,
-    constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
-  }));
-
+// Shared helper for converting AST declarations to FunctionType
+function declToFunctionType(
+  params: AST.Parameter[],
+  returnType: AST.TypeExpr | undefined,
+  using: AST.UsingClause | undefined,
+  typeParams: AST.TypeParam[] | undefined,
+  isGenerator: boolean,
+): FunctionType {
   return {
     kind: "function",
-    typeParams,
-    params,
-    returnType,
-    isGenerator: decl.isGenerator,
-    context,
+    typeParams: typeParams?.map(p => ({
+      name: p.name,
+      constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
+    })),
+    params: params.map(p => ({
+      name: p.name,
+      type: p.type ? astTypeToType(p.type) : Types.unknown,
+      optional: p.optional,
+      rest: p.rest,
+    })),
+    returnType: returnType ? astTypeToType(returnType) : Types.unknown,
+    isGenerator,
+    context: using?.bindings.map(c => ({
+      name: c.name,
+      type: astTypeToType(c.type),
+    })) ?? [],
   };
+}
+
+// Convert function declaration to FunctionType
+export function fnDeclToType(decl: AST.FnDecl): FunctionType {
+  return declToFunctionType(decl.params, decl.returnType, decl.using, decl.typeParams, decl.isGenerator);
 }
 
 // Convert method declaration to FunctionType
 export function methodToFunctionType(method: AST.MethodDecl): FunctionType {
-  const params = method.params.map(p => ({
-    name: p.name,
-    type: p.type ? astTypeToType(p.type) : Types.unknown,
-    optional: p.optional,
-    rest: p.rest,
-  }));
-
-  const returnType = method.returnType ? astTypeToType(method.returnType) : Types.unknown;
-
-  const context: UsingBinding[] = method.using?.bindings.map(c => ({
-    name: c.name,
-    type: astTypeToType(c.type),
-  })) ?? [];
-
-  const typeParams = method.typeParams?.map(p => ({
-    name: p.name,
-    constraint: p.constraint ? astTypeToType(p.constraint) : undefined,
-  }));
-
-  return {
-    kind: "function",
-    typeParams,
-    params,
-    returnType,
-    isGenerator: false,
-    context,
-  };
+  return declToFunctionType(method.params, method.returnType, method.using, method.typeParams, false);
 }
 
 // Check if source type is assignable to target type
@@ -419,10 +396,10 @@ export function typesEqual(a: Type, b: Type): boolean {
     case "optional":
       return typesEqual((a as OptionalType).inner, (b as OptionalType).inner);
     case "function":
-      const fa = a as FunctionType, fb = b as FunctionType;
-      return paramsMatch(fa.params, fb.params) &&
-             typesEqual(fa.returnType, fb.returnType) &&
-             usingMatch(fa.context, fb.context);
+      if (!isFunctionType(b)) return false;
+      return paramsMatch(a.params, b.params) &&
+             typesEqual(a.returnType, b.returnType) &&
+             usingMatch(a.context, b.context);
     default:
       return typeToString(a) === typeToString(b);
   }
@@ -447,25 +424,6 @@ export function usingMatch(a: UsingBinding[], b: UsingBinding[]): boolean {
     if (!typesEqual(ca.type, cb.type)) return false;
   }
   return true;
-}
-
-// Check if a type has an embedded type by name (Go-style composition)
-// Replaces old inheritance check - now checks for embedded field
-export function extendsType(type: Type, baseName: string, env: TypeEnvironment): boolean {
-  const resolved = type.kind === "ref" ? env.resolveType(type) : type;
-
-  // Direct match
-  if (resolved.kind === "object" && (resolved as ObjectType).name === baseName) {
-    return true;
-  }
-
-  if (resolved.kind === "object") {
-    const obj = resolved as ObjectType;
-    const embedded = obj.properties.find(p => p.embedded && p.name === baseName);
-    if (embedded) return true;
-  }
-
-  return false;
 }
 
 // Check if a type is iterable
@@ -510,15 +468,14 @@ export function findCommonType(types: Type[]): Type {
 // Check if a type involves Promise
 export function typeInvolvesPromise(t: Type, env: TypeEnvironment, visited: Set<string> = new Set()): boolean {
   if (t.kind === "promise") return true;
-  if (t.kind === "list") return typeInvolvesPromise((t as ListType).elementType, env, visited);
-  if (t.kind === "map") return typeInvolvesPromise((t as MapType).valueType, env, visited);
-  if (t.kind === "optional") return typeInvolvesPromise((t as OptionalType).inner, env, visited);
+  if (t.kind === "list") return typeInvolvesPromise(t.elementType, env, visited);
+  if (t.kind === "map") return typeInvolvesPromise(t.valueType, env, visited);
+  if (t.kind === "optional") return typeInvolvesPromise(t.inner, env, visited);
 
-  if (t.kind === "object") {
-    const objType = t as ObjectType;
-    if (objType.name && visited.has(objType.name)) return false;
-    if (objType.name) visited.add(objType.name);
-    for (const prop of objType.properties || []) {
+  if (isObjectType(t)) {
+    if (t.name && visited.has(t.name)) return false;
+    if (t.name) visited.add(t.name);
+    for (const prop of t.properties || []) {
       if (typeInvolvesPromise(prop.type, env, visited)) return true;
     }
   }
@@ -562,8 +519,6 @@ export function substituteTypeParams(type: Type, bindings: Map<string, Type>): T
       return Types.set(substituteTypeParams(type.elementType, bindings));
     case "promise":
       return Types.promise(substituteTypeParams(type.resolveType, bindings));
-    case "stream":
-      return Types.unknown;
     case "optional":
       return Types.optional(substituteTypeParams(type.inner, bindings));
     case "tuple":
@@ -680,5 +635,37 @@ export function unifyTypes(paramType: Type, argType: Type, bindings: Map<string,
     }
     unifyTypes(paramType.returnType, argType.returnType, bindings);
   }
+}
+
+/**
+ * Check if a type is a primitive type
+ */
+export function isPrimitive(type: Type): boolean {
+  return ["number", "string", "bool", "null", "bytes"].includes(type.kind);
+}
+
+/**
+ * Check if a type is nullable (can be null)
+ */
+export function isNullable(type: Type): boolean {
+  if (type.kind === "null") return true;
+  if (type.kind === "optional") return true;
+  if (type.kind === "union") {
+    return type.types.some(t => t.kind === "null");
+  }
+  return false;
+}
+
+/**
+ * Get the non-null version of a type
+ */
+export function nonNull(type: Type): Type {
+  if (type.kind === "optional") return type.inner;
+  if (type.kind === "union") {
+    const nonNullTypes = type.types.filter(t => t.kind !== "null");
+    if (nonNullTypes.length === 1) return nonNullTypes[0]!;
+    return Types.union(...nonNullTypes);
+  }
+  return type;
 }
 

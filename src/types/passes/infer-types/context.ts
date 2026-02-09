@@ -4,9 +4,9 @@ import type { TypeEnvironment } from "../../environment";
 import { TypeCheckError } from "../../errors";
 
 export interface Dispatch {
-  inferExpr: (ctx: InferContext, expr: AST.Expr) => Type;
-  checkStatement: (ctx: InferContext, stmt: AST.Statement) => void;
-  checkBlock: (ctx: InferContext, block: AST.Block) => void;
+  inferExpr: (expr: AST.Expr) => Type;
+  checkStatement: (stmt: AST.Statement) => void;
+  checkBlock: (block: AST.Block) => void;
 }
 
 export interface InferContext {
@@ -15,9 +15,9 @@ export interface InferContext {
   warnings: string[];
   fnDecls: Map<string, AST.FnDecl>;
 
-  inferExpr: (ctx: InferContext, expr: AST.Expr) => Type;
-  checkStatement: (ctx: InferContext, stmt: AST.Statement) => void;
-  checkBlock: (ctx: InferContext, block: AST.Block) => void;
+  inferExpr: (expr: AST.Expr) => Type;
+  checkStatement: (stmt: AST.Statement) => void;
+  checkBlock: (block: AST.Block) => void;
 
   currentFunction: FunctionType | null;
   inLoop: boolean;
@@ -32,17 +32,27 @@ export interface InferContext {
   needsContextCache: Map<string, boolean>;
 }
 
+// Raw dispatch takes ctx as first arg; createInferContext binds it away
+export interface RawDispatch {
+  inferExpr: (ctx: InferContext, expr: AST.Expr) => Type;
+  checkStatement: (ctx: InferContext, stmt: AST.Statement) => void;
+  checkBlock: (ctx: InferContext, block: AST.Block) => void;
+}
+
 export function createInferContext(
   env: TypeEnvironment,
   fnDecls: Map<string, AST.FnDecl>,
-  dispatch: Dispatch
+  dispatch: RawDispatch
 ): InferContext {
-  return {
+  const ctx: InferContext = {
     env,
     errors: [],
     warnings: [],
     fnDecls,
-    ...dispatch,
+    // These are set below after ctx exists
+    inferExpr: null!,
+    checkStatement: null!,
+    checkBlock: null!,
     currentFunction: null,
     inLoop: false,
     currentTypeName: null,
@@ -55,6 +65,11 @@ export function createInferContext(
     insideWithContext: false,
     needsContextCache: new Map(),
   };
+  // Bind dispatch methods to ctx
+  ctx.inferExpr = (expr) => dispatch.inferExpr(ctx, expr);
+  ctx.checkStatement = (stmt) => dispatch.checkStatement(ctx, stmt);
+  ctx.checkBlock = (block) => dispatch.checkBlock(ctx, block);
+  return ctx;
 }
 
 export function error(ctx: InferContext, message: string, loc: AST.SourceLocation, hint?: string): void {

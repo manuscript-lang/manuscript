@@ -1,6 +1,5 @@
 // Type Environment - Symbol tables for type checking
 import type { Type, ObjectType, FunctionType, TypeParameter, UsingBinding } from "./types";
-import { Types } from "./types";
 import { substituteTypeParams, substituteTypeInObject } from "./type-utils";
 import { getBuiltinsTypes } from "../builtin";
 import { PRIMITIVE_TYPE_MAP, type BuiltinMethodRegistry, type BuiltinMemberInfo } from "./primitives";
@@ -176,48 +175,6 @@ export class TypeEnvironment {
    */
   bindTypeParam(name: string, type: Type): void {
     this.typeParams.set(name, type);
-  }
-
-  /**
-   * Look up a type parameter binding
-   */
-  lookupTypeParam(name: string): Type | undefined {
-    const type = this.typeParams.get(name);
-    if (type) return type;
-    if (this.parent) return this.parent.lookupTypeParam(name);
-    return undefined;
-  }
-
-  /**
-   * Substitute type parameters in a type
-   */
-  substitute(type: Type): Type {
-    switch (type.kind) {
-      case "typevar": {
-        const bound = this.lookupTypeParam(type.name);
-        return bound ?? type;
-      }
-      case "list":
-        return Types.list(this.substitute(type.elementType));
-      case "map":
-        return Types.map(this.substitute(type.keyType), this.substitute(type.valueType));
-      case "set":
-        return Types.set(this.substitute(type.elementType));
-      case "optional":
-        return Types.optional(this.substitute(type.inner));
-      case "union":
-        return Types.union(...type.types.map(t => this.substitute(t)));
-      case "function":
-        return {
-          ...type,
-          params: type.params.map(p => ({ ...p, type: this.substitute(p.type) })),
-          returnType: this.substitute(type.returnType),
-        };
-      case "generic":
-        return Types.generic(this.substitute(type.base), type.args.map(a => this.substitute(a)));
-      default:
-        return type;
-    }
   }
 
   // ============================================

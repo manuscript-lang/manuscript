@@ -6,7 +6,7 @@ import { astTypeToType, fnDeclToType, isAssignable } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, recordType, setExpectedType } from "./context";
 import { consumeSpawnsInExpr } from "./infer-spawn";
-import { exprContainsEscapingLambda } from "../context-analysis";
+import { exprContainsEscapingLambda } from "../context-utils";
 
 export function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
   const fnType = fnDeclToType(decl);
@@ -36,7 +36,7 @@ export function checkFnDecl(ctx: InferContext, decl: AST.FnDecl): void {
 
   const bodyEnv = ctx.env.child();
   ctx.env = bodyEnv;
-  for (const stmt of decl.body.statements) ctx.checkStatement(ctx, stmt);
+  for (const stmt of decl.body.statements) ctx.checkStatement(stmt);
 
   const lastStmt = decl.body.statements[decl.body.statements.length - 1];
   if (lastStmt?.kind === "ExprStmt") {
@@ -97,7 +97,7 @@ function checkObjectTypeBody(
       ctx.env = typeEnv;
       const declaredType = member.type ? astTypeToType(member.type) : undefined;
       if (declaredType) setExpectedType(member.defaultValue, declaredType);
-      const valueType = ctx.inferExpr(ctx, member.defaultValue);
+      const valueType = ctx.inferExpr(member.defaultValue);
       if (!member.type && member.computed) {
         const prop = objType.properties.find(p => p.name === member.name);
         if (prop) prop.type = valueType;
@@ -146,7 +146,7 @@ function checkMethodBody(ctx: InferContext, method: AST.MethodDecl, typeObj: Obj
   ctx.env = methodEnv;
   ctx.currentFunction = fnType;
 
-  for (const stmt of method.body!.statements) ctx.checkStatement(ctx, stmt);
+  for (const stmt of method.body!.statements) ctx.checkStatement(stmt);
 
   const lastStmt = method.body!.statements[method.body!.statements.length - 1];
   if (lastStmt?.kind === "ExprStmt" && method.returnType) {
@@ -189,6 +189,6 @@ export function checkTestDecl(ctx: InferContext, decl: AST.TestDecl): void {
   const testEnv = ctx.env.child();
   const savedEnv = ctx.env;
   ctx.env = testEnv;
-  ctx.checkBlock(ctx, decl.body);
+  ctx.checkBlock(decl.body);
   ctx.env = savedEnv;
 }

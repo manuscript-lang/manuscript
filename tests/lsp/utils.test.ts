@@ -14,7 +14,8 @@ import {
   formatTypeSignatureFromObject,
   resolveObjectType,
 } from "../../src/lsp/format";
-import { findFnDecl, findTypeDecl, findConstructorCalleeAt, findTypeMember } from "../../src/types/ast-query";
+import { findFnDecl, findTypeDecl, findTypeMember } from "../../src/types/ast-query";
+import { findConstructorCalleeAt } from "../../src/lsp/ast-utils";
 import type { SymbolDef } from "../../src/lsp/symbols";
 import { Parser } from "../../src/parser";
 import { TypeChecker } from "../../src/types";

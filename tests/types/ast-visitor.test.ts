@@ -4,14 +4,16 @@ import {
   visitStmt,
   visitExpr,
   visitBlock,
-  visitWithScope,
   exprReferences,
   blockReferences,
   stmtReferences,
+} from "../../src/types/ast-visitor";
+import {
+  visitWithScope,
   collectSymbols,
   findScope,
   findNodeAtPosition,
-} from "../../src/types/ast-visitor";
+} from "../../src/lsp/ast-utils";
 import { Parser } from "../../src/parser";
 import type * as AST from "../../src/parser/ast";
 

@@ -5,7 +5,7 @@ import { TypeErrors } from "../../../shared/errors";
 import { isAssignable, substituteTypeParams, substituteTypeInObject } from "../../type-utils";
 import type { InferContext } from "./context";
 import { error, setExpectedType } from "./context";
-import { inferTypeParams } from "./infer-call";
+import { inferTypeParams, isNamedArg, getArgExpr } from "./infer-call";
 
 export function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
   if (expr.object.kind === "Identifier") {
@@ -15,25 +15,25 @@ export function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
         error(ctx, "Generic type arguments must be identifiers, not string literals", expr.index.loc);
         return Types.unknown;
       }
-      ctx.inferExpr(ctx, expr.index);
-      if (expr.typeArgs) for (const arg of expr.typeArgs) ctx.inferExpr(ctx, arg);
+      ctx.inferExpr(expr.index);
+      if (expr.typeArgs) for (const arg of expr.typeArgs) ctx.inferExpr(arg);
       return typeRef;
     }
   }
 
-  let objectType = ctx.inferExpr(ctx, expr.object);
+  let objectType = ctx.inferExpr(expr.object);
   if (expr.optional && objectType.kind === "optional") objectType = objectType.inner;
 
   if (expr.slice) {
     if (expr.slice.start) {
-      const startType = ctx.inferExpr(ctx, expr.slice.start);
+      const startType = ctx.inferExpr(expr.slice.start);
       if (startType.kind !== "number") {
         const err = TypeErrors.indexTypeMismatch("number", typeToString(startType));
         error(ctx, `Slice start index: ${err.message}`, expr.slice.start.loc, err.hint);
       }
     }
     if (expr.slice.end) {
-      const endType = ctx.inferExpr(ctx, expr.slice.end);
+      const endType = ctx.inferExpr(expr.slice.end);
       if (endType.kind !== "number") {
         const err = TypeErrors.indexTypeMismatch("number", typeToString(endType));
         error(ctx, `Slice end index: ${err.message}`, expr.slice.end.loc, err.hint);
@@ -42,7 +42,7 @@ export function inferIndexExpr(ctx: InferContext, expr: AST.IndexExpr): Type {
     return expr.optional ? Types.optional(objectType) : objectType;
   }
 
-  const indexType = ctx.inferExpr(ctx, expr.index);
+  const indexType = ctx.inferExpr(expr.index);
 
   if (objectType.kind === "list") {
     if (indexType.kind !== "number") {
@@ -89,7 +89,7 @@ export function inferMemberExpr(ctx: InferContext, expr: AST.MemberExpr): Type {
     }
   }
 
-  const objectType = ctx.inferExpr(ctx, expr.object);
+  const objectType = ctx.inferExpr(expr.object);
   if (objectType.kind === "unknown") {
     const err = TypeErrors.operationNotAllowedOnUnknown(".");
     error(ctx, err.message, expr.loc, err.hint);
@@ -186,14 +186,14 @@ function substituteBuiltinTypeParams(type: Type, objectType: Type): Type {
 }
 
 export function inferPipeExpr(ctx: InferContext, expr: AST.PipeExpr): Type {
-  const leftType = ctx.inferExpr(ctx, expr.left);
+  const leftType = ctx.inferExpr(expr.left);
   const expectedPipeFn = Types.fn([Types.param("_", leftType)], Types.unknown);
   setExpectedType(expr.right, expectedPipeFn);
 
   if (expr.right.kind === "CallExpr") {
     const callExpr = expr.right;
     setExpectedType(callExpr.callee, expectedPipeFn);
-    const calleeType = ctx.inferExpr(ctx, callExpr.callee);
+    const calleeType = ctx.inferExpr(callExpr.callee);
 
     if (calleeType.kind === "function") {
       const syntheticArgs: (AST.Expr | { name: string; value: AST.Expr })[] = [expr.left, ...callExpr.args];
@@ -216,12 +216,9 @@ export function inferPipeExpr(ctx: InferContext, expr: AST.PipeExpr): Type {
         const paramIndex = i + 1;
         const param = paramIndex < params.length ? params[paramIndex] : params[params.length - 1];
         if (param) {
-          let argType: Type, argLoc: AST.SourceLocation;
-          if ("name" in arg && "value" in arg) {
-            argType = ctx.inferExpr(ctx, arg.value); argLoc = arg.value.loc;
-          } else {
-            argType = ctx.inferExpr(ctx, arg as AST.Expr); argLoc = (arg as AST.Expr).loc;
-          }
+          const argExpr = getArgExpr(arg);
+          const argType = ctx.inferExpr(argExpr);
+          const argLoc = argExpr.loc;
           const expected = param.rest && param.type.kind === "list" ? param.type.elementType : param.type;
           if (!isAssignable(argType, expected, ctx.env)) {
             const err = TypeErrors.typeMismatch(typeToString(expected), typeToString(argType));
@@ -233,13 +230,12 @@ export function inferPipeExpr(ctx: InferContext, expr: AST.PipeExpr): Type {
     }
 
     for (const arg of callExpr.args) {
-      if ("name" in arg && "value" in arg) ctx.inferExpr(ctx, arg.value);
-      else ctx.inferExpr(ctx, arg as AST.Expr);
+      ctx.inferExpr(getArgExpr(arg));
     }
     return Types.unknown;
   }
 
-  const rightType = ctx.inferExpr(ctx, expr.right);
+  const rightType = ctx.inferExpr(expr.right);
   if (rightType.kind === "function") return rightType.returnType;
   return Types.unknown;
 }

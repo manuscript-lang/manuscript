@@ -1,9 +1,9 @@
 import * as AST from "../../../parser/ast";
-import type { Type, FunctionType } from "../../types";
-import { Types } from "../../types";
+import type { Type } from "../../types";
+import { Types, isFunctionType } from "../../types";
 import { typeInvolvesPromise } from "../../type-utils";
 import type { InferContext } from "./context";
-import { exprContainsEscapingLambda, exprNeedsContext } from "../context-analysis";
+import { exprContainsEscapingLambda, exprNeedsContext } from "../context-utils";
 
 export function inferSpawnExpr(ctx: InferContext, expr: AST.SpawnExpr): Type {
   ctx.lastSpawnInWithWasContextDependent = false;
@@ -13,8 +13,8 @@ export function inferSpawnExpr(ctx: InferContext, expr: AST.SpawnExpr): Type {
       exprNeedsContext(expr.expr, ctx.env, ctx.fnDecls, ctx.needsContextCache);
     if (capturesContext) ctx.lastSpawnInWithWasContextDependent = true;
   }
-  const innerType = ctx.inferExpr(ctx, expr.expr);
-  return Types.promise(innerType.kind === "function" ? (innerType as FunctionType).returnType : innerType);
+  const innerType = ctx.inferExpr(expr.expr);
+  return Types.promise(isFunctionType(innerType) ? innerType.returnType : innerType);
 }
 
 export function consumeSpawnsInExpr(ctx: InferContext, expr: AST.Expr): void {
