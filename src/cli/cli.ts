@@ -182,7 +182,8 @@ async function runCommand(files: string[], options: CLIOptions): Promise<number>
       try {
         process.chdir(outDir);
         await import(pathToFileURL(entryOut).href);
-        return process.exitCode ?? 0;
+        const code = process.exitCode;
+        return typeof code === "number" ? code : 0;
       } catch (e: any) {
         error(e?.message ?? String(e));
         return 1;
