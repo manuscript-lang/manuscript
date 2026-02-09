@@ -26,9 +26,6 @@ export const defaultOptions: CodeGenOptions = {
 // Generation context - passed explicitly to all generators
 export type GenOpts = {
   implicitReturn: boolean;
-  classFields: Set<string> | null;
-  isGenerator: boolean;
-  selfVar?: string;  // Variable name for 'this' in factory functions (e.g., "self")
   /** When true, list/map with __typeArgs use sync IIFE (e.g. default params in sync factory) */
   syncContext?: boolean;
 };
@@ -80,6 +77,8 @@ export type Ctx = {
   scopeStack: { defers: AST.Statement[] }[];
   tempCounter: number;
   typeFields: Map<string, Set<string>>; // type name -> field names (for embedding)
+  classFields: Set<string> | null;
+  selfVar: string | undefined;
 };
 
 // Create fresh context
@@ -91,6 +90,8 @@ export function createCtx(options: Partial<CodeGenOptions> = {}): Ctx {
     options: { ...defaultOptions, ...options },
     scopeStack: [],
     tempCounter: 0,
+    classFields: null,
+    selfVar: undefined,
   };
 }
 
@@ -98,8 +99,6 @@ export function createCtx(options: Partial<CodeGenOptions> = {}): Ctx {
 export function createOpts(overrides: Partial<GenOpts> = {}): GenOpts {
   return {
     implicitReturn: false,
-    classFields: null,
-    isGenerator: false,
     ...overrides,
   };
 }
@@ -151,6 +150,8 @@ export function resetCtx(ctx: Ctx): void {
   ctx.scopeStack = [];
   ctx.tempCounter = 0;
   ctx.typeFields = new Map();
+  ctx.classFields = null;
+  ctx.selfVar = undefined;
 }
 
 // Exhaustiveness helper for switch statements

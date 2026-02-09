@@ -1,13 +1,15 @@
-import * as path from "path";
-import { findMsToml, loadMsToml } from "../../src/modules";
+import { findMsToml, loadMsToml, type MsTomlConfig } from "../../src/modules";
+import type { CompileHost } from "../../src/shared/host";
 
 export async function getProjectConfig(
-  filePath: string
-): Promise<{ projectRoot: string; config: Awaited<ReturnType<typeof loadMsToml>> } | null> {
-  const projectRoot = await findMsToml(path.dirname(path.resolve(filePath)));
+  filePath: string,
+  host: CompileHost
+): Promise<{ projectRoot: string; config: MsTomlConfig } | null> {
+  const startDir = host.dirname(host.resolvePath(filePath));
+  const projectRoot = await findMsToml(host, startDir);
   if (!projectRoot) return null;
   try {
-    const config = await loadMsToml(projectRoot);
+    const config = await loadMsToml(host, projectRoot);
     return { projectRoot, config };
   } catch {
     return null;

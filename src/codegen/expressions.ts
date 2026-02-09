@@ -3,7 +3,8 @@ import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
 import { emit, pushIndent, popIndent, tempVar, isTypeConstructor, getParamOrder } from "./types";
 import { STDLIB_FUNCTIONS, EXTERN_TYPES, PRIMITIVE_EXTERN_TYPES, isStdlibExternType } from "../builtin";
-import type { Type, ListType, MapType } from "../types/types";
+import { genPatternCondition as genPatternConditionFromPatterns, genPatternBindings } from "./statements";
+import type { Type, ListType, MapType, SetType, OptionalType, GenericType, TypeRef } from "../types/types";
 import { typeToString } from "../types/types";
 
 // Forward declaration for mutual recursion
@@ -16,11 +17,13 @@ function gen(ctx: Ctx, node: AST.Expr | AST.Statement, opts: GenOpts): string {
   return _gen(ctx, node, opts);
 }
 
+const runtimeRef = (name: string) => `__ms_runtime.${name}`;
+
 // Main expression dispatcher
 export function genExpr(ctx: Ctx, expr: AST.Expr, opts: GenOpts): string {
   switch (expr.kind) {
     case "Literal": return genLiteral(expr);
-    case "Identifier": return genIdentifier(expr, opts);
+    case "Identifier": return genIdentifier(ctx, expr, opts);
     case "BinaryExpr": return genBinary(ctx, expr, opts);
     case "UnaryExpr": return genUnary(ctx, expr, opts);
     case "CallExpr": return genCall(ctx, expr, opts);
@@ -83,15 +86,15 @@ function typeToRuntimeTag(t: Type): string {
       return `map[${typeToRuntimeTag(m.keyType)},${typeToRuntimeTag(m.valueType)}]`;
     }
     case "set":
-      return `set[${typeToRuntimeTag((t as { elementType: Type }).elementType)}]`;
+      return `set[${typeToRuntimeTag((t as SetType).elementType)}]`;
     case "optional":
-      return typeToRuntimeTag((t as { inner: Type }).inner);
+      return typeToRuntimeTag((t as OptionalType).inner);
     case "ref": {
-      const r = t as { name: string; args?: Type[] };
+      const r = t as TypeRef;
       return r.args?.length ? `${r.name}[${r.args.map(typeToRuntimeTag).join(",")}]` : r.name;
     }
     case "generic": {
-      const g = t as { base: Type; args: Type[] };
+      const g = t as GenericType;
       return `${typeToRuntimeTag(g.base)}[${g.args.map(typeToRuntimeTag).join(",")}]`;
     }
     default:
@@ -106,11 +109,16 @@ function typeContainsTypeVar(t: Type): boolean {
     const m = t as MapType;
     return typeContainsTypeVar(m.keyType) || typeContainsTypeVar(m.valueType);
   }
-  if (t.kind === "optional" || t.kind === "ref" || t.kind === "generic") {
-    const g = t as { inner?: Type; args?: Type[]; base?: Type };
-    if (g.inner && typeContainsTypeVar(g.inner)) return true;
-    if (g.args?.some(a => typeContainsTypeVar(a))) return true;
-    if (g.base && typeContainsTypeVar(g.base)) return true;
+  if (t.kind === "set") return typeContainsTypeVar((t as SetType).elementType);
+  if (t.kind === "optional") return typeContainsTypeVar((t as OptionalType).inner);
+  if (t.kind === "ref") {
+    const r = t as TypeRef;
+    return r.args?.some(a => typeContainsTypeVar(a)) ?? false;
+  }
+  if (t.kind === "generic") {
+    const g = t as GenericType;
+    if (typeContainsTypeVar(g.base)) return true;
+    return g.args.some(a => typeContainsTypeVar(a));
   }
   return false;
 }
@@ -123,15 +131,20 @@ function getRuntimeTypeArgs(t: Type): string[] | null {
     return [typeToRuntimeTag(m.keyType), typeToRuntimeTag(m.valueType)];
   }
   if (t.kind === "ref") {
-    const r = t as { name: string; args?: Type[] };
+    const r = t as TypeRef;
     if (r.args?.length) return r.args.map(typeToRuntimeTag);
     return null;
   }
   if (t.kind === "generic") {
-    const g = t as { base: Type; args: Type[] };
+    const g = t as GenericType;
     return g.args.map(typeToRuntimeTag);
   }
   return null;
+}
+
+function withTypeArgsCheck(left: string, base: string, typeArgsJson: string, strict = false): string {
+  if (strict) return `(${base} && ${left}.__typeArgs && JSON.stringify(${left}.__typeArgs) === ${typeArgsJson})`;
+  return `(${base} && (!${left}.__typeArgs || JSON.stringify(${left}.__typeArgs) === ${typeArgsJson}))`;
 }
 
 function genIsTypeCheck(leftStr: string, typeExpr: AST.TypeExpr): string {
@@ -153,42 +166,26 @@ function genIsTypeCheck(leftStr: string, typeExpr: AST.TypeExpr): string {
       const args = typeExpr.args;
       if (name === "list") {
         const base = `Array.isArray(${leftStr})`;
-        if (args.length > 0) {
-          const typeArgsJson = JSON.stringify(args.map(typeExprToRuntimeTag));
-          return `(${base} && (!${leftStr}.__typeArgs || JSON.stringify(${leftStr}.__typeArgs) === ${JSON.stringify(typeArgsJson)}))`;
-        }
+        if (args.length > 0) return withTypeArgsCheck(leftStr, base, JSON.stringify(JSON.stringify(args.map(typeExprToRuntimeTag))));
         return base;
       }
       if (name === "map") {
         const base = `((${leftStr} instanceof Map) || ${IS_PLAIN_OBJECT(leftStr)})`;
-        if (args.length >= 2) {
-          const typeArgsJson = JSON.stringify(args.map(typeExprToRuntimeTag));
-          return `(${base} && (!${leftStr}.__typeArgs || JSON.stringify(${leftStr}.__typeArgs) === ${JSON.stringify(typeArgsJson)}))`;
-        }
+        if (args.length >= 2) return withTypeArgsCheck(leftStr, base, JSON.stringify(JSON.stringify(args.map(typeExprToRuntimeTag))));
         return base;
       }
       if (name === "set") return `(${leftStr} instanceof Set)`;
-      if (args.length > 0) {
-        const typeArgsJson = JSON.stringify(args.map(typeExprToRuntimeTag));
-        return `(${leftStr}?.__typename === "${name}" && ${leftStr}.__typeArgs && JSON.stringify(${leftStr}.__typeArgs) === ${JSON.stringify(typeArgsJson)})`;
-      }
+      if (args.length > 0) return withTypeArgsCheck(leftStr, `${leftStr}?.__typename === "${name}"`, JSON.stringify(JSON.stringify(args.map(typeExprToRuntimeTag))), true);
       return `(${leftStr}?.__typename === "${name}")`;
     }
     case "OptionalType": {
       const inner = genIsTypeCheck(leftStr, typeExpr.inner);
       return `(${leftStr} === null || ${inner})`;
     }
-    case "ListType": {
-      const base = `Array.isArray(${leftStr})`;
-      const tag = typeExprToRuntimeTag(typeExpr.elementType);
-      const typeArgsJson = JSON.stringify([tag]);
-      return `(${base} && (!${leftStr}.__typeArgs || JSON.stringify(${leftStr}.__typeArgs) === ${typeArgsJson}))`;
-    }
-    case "MapType": {
-      const base = `((${leftStr} instanceof Map) || ${IS_PLAIN_OBJECT(leftStr)})`;
-      const typeArgsJson = JSON.stringify([typeExprToRuntimeTag(typeExpr.keyType), typeExprToRuntimeTag(typeExpr.valueType)]);
-      return `(${base} && (!${leftStr}.__typeArgs || JSON.stringify(${leftStr}.__typeArgs) === ${typeArgsJson}))`;
-    }
+    case "ListType":
+      return withTypeArgsCheck(leftStr, `Array.isArray(${leftStr})`, JSON.stringify([typeExprToRuntimeTag(typeExpr.elementType)]));
+    case "MapType":
+      return withTypeArgsCheck(leftStr, `((${leftStr} instanceof Map) || ${IS_PLAIN_OBJECT(leftStr)})`, JSON.stringify([typeExprToRuntimeTag(typeExpr.keyType), typeExprToRuntimeTag(typeExpr.valueType)]));
     case "UnionType":
       return typeExpr.types.map(t => genIsTypeCheck(leftStr, t)).join(" || ");
     case "FunctionType":
@@ -210,14 +207,14 @@ export function genLiteral(node: AST.Literal): string {
   return String(node.value);
 }
 
-export function genIdentifier(node: AST.Identifier, opts: GenOpts): string {
+export function genIdentifier(ctx: Ctx, node: AST.Identifier, opts: GenOpts): string {
   // Don't prefix type names (used as constructors) - they're global
   if (isTypeConstructor(node)) {
     return node.name;
   }
   // Use self.field for factory function pattern, this.field for methods
-  if (opts.classFields?.has(node.name)) {
-    const prefix = opts.selfVar || "this";
+  if (ctx.classFields?.has(node.name)) {
+    const prefix = ctx.selfVar || "this";
     return `${prefix}.${node.name}`;
   }
   return node.name;
@@ -245,70 +242,67 @@ export function genUnary(ctx: Ctx, node: AST.UnaryExpr, opts: GenOpts): string {
 export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
   const calleeExpr = node.callee;
   const calleeResolved = (calleeExpr as AST.BaseNode).resolvedType;
+
+  // Set methods values/entries/keys return iterators in JS; we need lists
+  if (calleeExpr.kind === "MemberExpr" && node.args.length === 0) {
+    const objType = calleeExpr.object.resolvedType;
+    if (objType?.kind === "set" && ["values", "entries", "keys"].includes(calleeExpr.property)) {
+      const obj = genExpr(ctx, calleeExpr.object, opts);
+      return `Array.from(${obj}.${calleeExpr.property}())`;
+    }
+  }
+
+  // Generic constructors like UserType[T](...)
+  if (calleeExpr.kind === "IndexExpr" && calleeExpr.object.kind === "Identifier") {
+    const baseName = calleeExpr.object.name;
+    const isExtern = EXTERN_TYPES.has(baseName) || isStdlibExternType(baseName);
+    if (isExtern && !PRIMITIVE_EXTERN_TYPES.has(baseName)) {
+      return `new ${runtimeRef(baseName)}(${genCallArgs(ctx, node.args, opts)})`;
+    }
+    if (isTypeConstructor(calleeExpr.object) || ctx.typeFields.has(baseName)) {
+      const args = genCallArgs(ctx, node.args, opts);
+      const callType = (node as AST.CallExpr & { resolvedType?: Type }).resolvedType;
+      const typeArgs = callType ? getRuntimeTypeArgs(callType) : null;
+      const typeArgsLit = typeArgs ? JSON.stringify(typeArgs) : getTypeArgsLiteralFromIndexExpr(calleeExpr);
+      return typeArgsLit ? `${baseName}(${args}, ${typeArgsLit})` : `${baseName}(${args})`;
+    }
+  }
+
+  // Extern type constructors (e.g. Context(...)) — not primitives or stdlib functions
+  if (calleeExpr.kind === "Identifier" &&
+      (EXTERN_TYPES.has(calleeExpr.name) || isStdlibExternType(calleeExpr.name)) &&
+      !STDLIB_FUNCTIONS.has(calleeExpr.name) &&
+      !PRIMITIVE_EXTERN_TYPES.has(calleeExpr.name)) {
+    return `new ${runtimeRef(calleeExpr.name)}(${genCallArgs(ctx, node.args, opts)})`;
+  }
+
+  // Resolve callee expression
   const isGenericFunctionCall = calleeExpr.kind === "IndexExpr" && calleeResolved?.kind === "function";
   let callee = isGenericFunctionCall
     ? genExpr(ctx, calleeExpr.object, opts)
     : genExpr(ctx, calleeExpr, opts);
 
-  // Prefix builtin functions (unless it's a class method shadowing the builtin)
-  if (node.callee.kind === "Identifier" && 
-      STDLIB_FUNCTIONS.has(node.callee.name) &&
-      !opts.classFields?.has(node.callee.name)) {
-    callee = `__ms_runtime.${node.callee.name}`;
+  // Prefix builtin functions (unless shadowed by a class field)
+  if (calleeExpr.kind === "Identifier" &&
+      STDLIB_FUNCTIONS.has(calleeExpr.name) &&
+      !ctx.classFields?.has(calleeExpr.name)) {
+    callee = runtimeRef(calleeExpr.name);
   }
 
-  // Handle generic constructors like UserType[T](...)
-  if (node.callee.kind === "IndexExpr" && node.callee.object.kind === "Identifier") {
-    const baseName = node.callee.object.name;
-    const args = genCallArgs(ctx, node.args, opts);
-    const isExtern = EXTERN_TYPES.has(baseName) || isStdlibExternType(baseName);
-    if (isExtern && !PRIMITIVE_EXTERN_TYPES.has(baseName)) {
-      return `new __ms_runtime.${baseName}(${args})`;
-    }
-    if (isTypeConstructor(node.callee.object) || ctx.typeFields.has(baseName)) {
-      const callType = (node as AST.CallExpr & { resolvedType?: Type }).resolvedType;
-      const typeArgs = callType ? getRuntimeTypeArgs(callType) : null;
-      const typeArgsLit = typeArgs ? JSON.stringify(typeArgs) : getTypeArgsLiteralFromIndexExpr(node.callee);
-      return typeArgsLit ? `${baseName}(${args}, ${typeArgsLit})` : `${baseName}(${args})`;
-    }
+  // Type constructors get optional typeArgs suffix, no await
+  if (isTypeConstructor(calleeExpr) ||
+      (calleeExpr.kind === "Identifier" && ctx.typeFields.has(calleeExpr.name))) {
+    const paramOrder = getParamOrder(calleeExpr);
+    const args = genCallArgs(ctx, node.args, opts, paramOrder);
+    const callType = (node as AST.CallExpr & { resolvedType?: Type }).resolvedType;
+    const typeArgs = callType ? getRuntimeTypeArgs(callType) : null;
+    const typeArgsSuffix = typeArgs ? `, ${JSON.stringify(typeArgs)}` : "";
+    return `${callee}(${args}${typeArgsSuffix})`;
   }
 
-  // Extern type constructors (e.g. Context(...))
-  // Primitive types (string, list, map, set) are never constructors
-  if (node.callee.kind === "Identifier" &&
-      (EXTERN_TYPES.has(node.callee.name) || isStdlibExternType(node.callee.name)) &&
-      !STDLIB_FUNCTIONS.has(node.callee.name) &&
-      !PRIMITIVE_EXTERN_TYPES.has(node.callee.name)) {
-    const args = genCallArgs(ctx, node.args, opts);
-    return `new __ms_runtime.${node.callee.name}(${args})`;
-  }
-
-  // Set methods values/entries/keys return iterators in JS; we need lists
-  if (node.callee.kind === "MemberExpr" && node.args.length === 0) {
-    const objType = node.callee.object.resolvedType;
-    if (objType?.kind === "set" && ["values", "entries", "keys"].includes(node.callee.property)) {
-      const obj = genExpr(ctx, node.callee.object, opts);
-      const method = node.callee.property;
-      return `Array.from(${obj}.${method}())`;
-    }
-  }
-
-  // Get param order from callee's resolved type for user-defined functions and types
-  const paramOrder = getParamOrder(node.callee);
+  // Regular function call with implicit await
+  const paramOrder = getParamOrder(calleeExpr);
   const args = genCallArgs(ctx, node.args, opts, paramOrder);
-
-  const callType = (node as AST.CallExpr & { resolvedType?: Type }).resolvedType;
-  const typeArgs = callType ? getRuntimeTypeArgs(callType) : null;
-  const typeArgsSuffix = typeArgs ? `, ${JSON.stringify(typeArgs)}` : "";
-
-  if (isTypeConstructor(node.callee)) {
-    return `${callee}(${args}${typeArgsSuffix})`;
-  }
-  if (node.callee.kind === "Identifier" && ctx.typeFields.has(node.callee.name)) {
-    return `${callee}(${args}${typeArgsSuffix})`;
-  }
-
-  // Implicit await for all function calls
   return `(await ${callee}(${args}))`;
 }
 
@@ -391,12 +385,12 @@ export function genPipe(ctx: Ctx, node: AST.PipeExpr, opts: GenOpts): string {
   if (right.kind === "CallExpr") {
     let callee = genExpr(ctx, right.callee, opts);
     if (right.callee.kind === "Identifier" && STDLIB_FUNCTIONS.has(right.callee.name)) {
-      callee = `__ms_runtime.${right.callee.name}`;
+      callee = runtimeRef(right.callee.name);
     }
     const args = [left, ...right.args.map(a => genExpr(ctx, a as AST.Expr, opts))];
     return `(await ${callee}(${args.join(", ")}))`;
   } else if (right.kind === "Identifier") {
-    const fnName = STDLIB_FUNCTIONS.has(right.name) ? `__ms_runtime.${right.name}` : right.name;
+    const fnName = STDLIB_FUNCTIONS.has(right.name) ? runtimeRef(right.name) : right.name;
     return `(await ${fnName}(${left}))`;
   }
 
@@ -440,45 +434,44 @@ export function genMatchExpr(ctx: Ctx, node: AST.MatchExpr, opts: GenOpts): stri
   const value = genExpr(ctx, node.value, opts);
   const tv = tempVar(ctx, "_m");
 
-  let code = `((_${tv}) => {\n`;
+  const prevOut = ctx.out;
+  ctx.out = [];
+  const savedIndent = ctx.indent;
+  ctx.indent = 0;
+
+  emit(ctx, `((_${tv}) => {`);
+  pushIndent(ctx);
 
   for (const arm of node.arms) {
-    const condition = genPatternCondition(`_${tv}`, arm.pattern);
-    code += `  if (${condition}) {\n`;
+    const condition = genPatternConditionFromPatterns(`_${tv}`, arm.pattern);
+    emit(ctx, `if (${condition}) {`);
+    pushIndent(ctx);
 
-    if (arm.pattern.kind === "IdentifierPattern") {
-      code += `    const ${arm.pattern.name} = _${tv};\n`;
-    }
+    genPatternBindings(ctx, `_${tv}`, arm.pattern);
 
     if (arm.body.kind === "Block") {
-      code += `    // block body\n`;
+      // block body not yet supported in match expr
     } else {
-      code += `    return ${genExpr(ctx, arm.body as AST.Expr, opts)};\n`;
+      emit(ctx, `return ${genExpr(ctx, arm.body as AST.Expr, opts)};`);
     }
 
-    code += `  }\n`;
+    popIndent(ctx);
+    emit(ctx, `}`);
   }
 
-  code += `})(${value})`;
-  return code;
+  popIndent(ctx);
+  emit(ctx, `})(${value})`);
+
+  const result = ctx.out.join("\n");
+  ctx.out = prevOut;
+  ctx.indent = savedIndent;
+  return result;
 }
 
-// Pattern condition for match expressions (simplified version, full in patterns.ts)
-function genPatternCondition(tempVar: string, pattern: AST.Pattern): string {
-  switch (pattern.kind) {
-    case "WildcardPattern": return "true";
-    case "IdentifierPattern": return "true";
-    case "LiteralPattern": return `${tempVar} === ${JSON.stringify(pattern.value)}`;
-    case "TypePattern": {
-      const typeName = pattern.type.kind === "NamedType" ? pattern.type.name : "Object";
-      // Use __typename for Manuscript types, fallback to instanceof for external types
-      return `(${tempVar}?.__typename === "${typeName}" || ${tempVar} instanceof ${typeName})`;
-    }
-    case "RangePattern": return `${tempVar} >= ${pattern.start} && ${tempVar} <= ${pattern.end}`;
-    case "ArrayPattern": return `Array.isArray(${tempVar})`;
-    case "ObjectPattern": return `typeof ${tempVar} === "object" && ${tempVar} !== null`;
-    default: return "true";
-  }
+
+function withTypeArgs(expr: string, varName: string, typeArgs: string[], sync: boolean): string {
+  const inner = `const ${varName}=${expr};Object.defineProperty(${varName},"__typeArgs",{value:${JSON.stringify(typeArgs)},enumerable:false});return ${varName}`;
+  return sync ? `(function(){${inner}})()` : `(await (async function(){${inner}})())`;
 }
 
 export function genList(ctx: Ctx, node: AST.ListExpr, opts: GenOpts): string {
@@ -491,10 +484,7 @@ export function genList(ctx: Ctx, node: AST.ListExpr, opts: GenOpts): string {
   const arr = elements.length === 0 ? "[]" : `[${elements.join(", ")}]`;
   const rt = (node as AST.ListExpr & { resolvedType?: Type }).resolvedType;
   const typeArgs = rt ? getRuntimeTypeArgs(rt) : null;
-  if (typeArgs) {
-    const inner = `const _a=${arr};Object.defineProperty(_a,"__typeArgs",{value:${JSON.stringify(typeArgs)},enumerable:false});return _a`;
-    return opts.syncContext ? `(function(){${inner}})()` : `(await (async function(){${inner}})())`;
-  }
+  if (typeArgs) return withTypeArgs(arr, "_a", typeArgs, !!opts.syncContext);
   return arr;
 }
 
@@ -508,10 +498,7 @@ export function genMap(ctx: Ctx, node: AST.MapExpr, opts: GenOpts): string {
   if (node.entries.length === 0) {
     const rt = (node as AST.MapExpr & { resolvedType?: Type }).resolvedType;
     const typeArgs = rt ? getRuntimeTypeArgs(rt) : null;
-    if (typeArgs) {
-      const inner = `const _m=Object.create(null);Object.defineProperty(_m,"__typeArgs",{value:${JSON.stringify(typeArgs)},enumerable:false});return _m`;
-      return opts.syncContext ? `(function(){${inner}})()` : `(await (async function(){${inner}})())`;
-    }
+    if (typeArgs) return withTypeArgs("Object.create(null)", "_m", typeArgs, !!opts.syncContext);
     return "Object.create(null)";
   }
 
@@ -533,10 +520,7 @@ export function genMap(ctx: Ctx, node: AST.MapExpr, opts: GenOpts): string {
   const mapExpr = sources.length === 0 ? "Object.create(null)" : `Object.assign(Object.create(null), ${sources.join(", ")})`;
   const rt = (node as AST.MapExpr & { resolvedType?: Type }).resolvedType;
   const typeArgs = rt ? getRuntimeTypeArgs(rt) : null;
-  if (typeArgs) {
-    const inner = `const _m=${mapExpr};Object.defineProperty(_m,"__typeArgs",{value:${JSON.stringify(typeArgs)},enumerable:false});return _m`;
-    return opts.syncContext ? `(function(){${inner}})()` : `(await (async function(){${inner}})())`;
-  }
+  if (typeArgs) return withTypeArgs(mapExpr, "_m", typeArgs, !!opts.syncContext);
   return mapExpr;
 }
 
@@ -544,18 +528,18 @@ export function genTemplate(ctx: Ctx, node: AST.TemplateLiteral, opts: GenOpts):
   const parts = node.parts.map(p => {
     if (typeof p === "string") return JSON.stringify(p);
     // Use to_str for interpolated expressions to handle null-prototype objects
-    return `__ms_runtime.to_str(${genExpr(ctx, p.expr, opts)})`;
+    return `${runtimeRef("to_str")}(${genExpr(ctx, p.expr, opts)})`;
   });
   return parts.length === 1 ? parts[0]! : `(${parts.join(" + ")})`;
 }
 
 export function genSpawn(ctx: Ctx, node: AST.SpawnExpr, opts: GenOpts): string {
   const inner = genExpr(ctx, node.expr, opts);
-  return `__ms_runtime.spawn(async () => ${inner})`;
+  return `${runtimeRef("spawn")}(async () => ${inner})`;
 }
 
 export function genRange(ctx: Ctx, node: AST.RangeExpr, opts: GenOpts): string {
   const start = genExpr(ctx, node.start, opts);
   const end = genExpr(ctx, node.end, opts);
-  return `__ms_runtime.range(${start}, ${end}, ${node.inclusive})`;
+  return `${runtimeRef("range")}(${start}, ${end}, ${node.inclusive})`;
 }

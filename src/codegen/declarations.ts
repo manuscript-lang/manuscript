@@ -101,8 +101,10 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
   }
   // Register this type's fields for future embedding
   ctx.typeFields.set(decl.name, classFields);
-  
-  const methodOpts = { ...opts, classFields };
+
+  const prevClassFields = ctx.classFields;
+  const prevSelfVar = ctx.selfVar;
+  ctx.classFields = classFields;
 
   // Generate shared methods object (null prototype for security)
   if (methods.length > 0) {
@@ -110,12 +112,14 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
     pushIndent(ctx);
     for (const method of methods) {
       const prefix = method.isGenerator ? "*" : "async ";
-      const params = genParams(ctx, method.params, methodOpts);
+      const params = genParams(ctx, method.params, opts);
       emit(ctx, `${prefix}${method.name}(${params}) {`);
       pushIndent(ctx);
       emit(ctx, "const _self = this;");
       if (method.body) {
-        genBlock(ctx, method.body, { ...methodOpts, selfVar: "_self", implicitReturn: true });
+        ctx.selfVar = "_self";
+        genBlock(ctx, method.body, { ...opts, implicitReturn: true });
+        ctx.selfVar = prevSelfVar;
       }
       popIndent(ctx);
       emit(ctx, `},`);
@@ -160,7 +164,9 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
     for (const field of fields) {
       if (field.embedded) continue;
       if (field.computed && field.defaultValue) {
-        emit(ctx, `Object.defineProperty(self, "${field.name}", { get() { return ${genExpr(ctx, field.defaultValue, { ...opts, selfVar: "self" })}; } });`);
+        ctx.selfVar = "self";
+        emit(ctx, `Object.defineProperty(self, "${field.name}", { get() { return ${genExpr(ctx, field.defaultValue, opts)}; } });`);
+        ctx.selfVar = prevSelfVar;
       } else {
         emit(ctx, `self.${field.name} = ${field.name};`);
       }
@@ -215,6 +221,9 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
     emit(ctx, "}");
     emit(ctx, "");
   }
+
+  ctx.classFields = prevClassFields;
+  ctx.selfVar = prevSelfVar;
 }
 
 // Generate test declaration

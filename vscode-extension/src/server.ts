@@ -41,8 +41,9 @@ import { getProjectConfig } from "./project";
 // Host: entry point builds it, passes down to LanguageService
 // ============================================
 
+const baseHost = createNodeHost();
 const host: LanguageServiceHost = {
-  ...createNodeHost(),
+  ...baseHost,
   async listMsFiles(dir: string): Promise<string[]> {
     const out: string[] = [];
     async function walk(d: string): Promise<void> {
@@ -63,7 +64,7 @@ const host: LanguageServiceHost = {
     await walk(path.resolve(dir));
     return out;
   },
-  getProjectConfig,
+  getProjectConfig: (filePath) => getProjectConfig(filePath, baseHost),
 };
 
 // ============================================

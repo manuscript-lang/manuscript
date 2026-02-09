@@ -3,7 +3,6 @@ import type * as AST from "../parser/ast";
 import type { Ctx, GenOpts } from "./types";
 import { emit, pushIndent, popIndent, tempVar, pushScope, popScope, addDefer, getTypeName } from "./types";
 import { genExpr } from "./expressions";
-import { genPattern, genPatternCondition, genMatchCondition, genPatternBindings } from "./patterns";
 
 // Forward declaration for mutual recursion with gen()
 export type GenFn = (ctx: Ctx, node: AST.Expr | AST.Statement, opts: GenOpts) => string;
@@ -11,6 +10,116 @@ let _gen: GenFn;
 export function setGen(fn: GenFn): void {
   _gen = fn;
 }
+
+// ============================================
+// Pattern Generators
+// ============================================
+
+// Generate pattern for destructuring (let [x, y] = arr)
+export function genPattern(pattern: AST.Pattern): string {
+  switch (pattern.kind) {
+    case "IdentifierPattern":
+      return pattern.name;
+    case "ArrayPattern": {
+      const elements = pattern.elements.map(el => genPattern(el));
+      return `[${elements.join(", ")}]`;
+    }
+    case "ObjectPattern": {
+      const props = pattern.properties.map(p => {
+        if (p.pattern.kind === "IdentifierPattern" && p.pattern.name === p.key) {
+          return p.key;
+        }
+        return `${p.key}: ${genPattern(p.pattern)}`;
+      });
+      return `{ ${props.join(", ")} }`;
+    }
+    case "RestPattern":
+      return `...${pattern.name}`;
+    default:
+      return "_";
+  }
+}
+
+// Generate match condition for a pattern
+export function genPatternCondition(tv: string, pattern: AST.Pattern): string {
+  switch (pattern.kind) {
+    case "WildcardPattern":
+      return "true";
+    case "IdentifierPattern":
+      return "true";
+    case "LiteralPattern":
+      return `${tv} === ${JSON.stringify(pattern.value)}`;
+    case "TypePattern": {
+      const typeName = pattern.type.kind === "NamedType" ? pattern.type.name : "Object";
+      return `(${tv}?.__typename === "${typeName}" || ${tv} instanceof ${typeName})`;
+    }
+    case "RangePattern":
+      return `${tv} >= ${pattern.start} && ${tv} <= ${pattern.end}`;
+    case "ArrayPattern":
+      return `Array.isArray(${tv})`;
+    case "ObjectPattern":
+      return `typeof ${tv} === "object" && ${tv} !== null`;
+    default:
+      return "true";
+  }
+}
+
+// Generate match condition with optional guard
+export function genMatchCondition(
+  ctx: Ctx,
+  tv: string,
+  pattern: AST.Pattern,
+  guard: AST.Expr | undefined,
+  opts: GenOpts
+): string {
+  let condition = genPatternCondition(tv, pattern);
+
+  if (guard) {
+    if (pattern.kind === "IdentifierPattern") {
+      condition = `${condition} && (((${pattern.name}) => (${genExpr(ctx, guard, opts)}))(${tv}))`;
+    } else {
+      condition = `${condition} && (${genExpr(ctx, guard, opts)})`;
+    }
+  }
+
+  return condition;
+}
+
+// Generate pattern variable bindings
+export function genPatternBindings(ctx: Ctx, tv: string, pattern: AST.Pattern): void {
+  switch (pattern.kind) {
+    case "IdentifierPattern":
+      emit(ctx, `const ${pattern.name} = ${tv};`);
+      break;
+    case "TypePattern":
+      if (pattern.binding) {
+        emit(ctx, `const ${pattern.binding} = ${tv};`);
+      }
+      break;
+    case "ArrayPattern":
+      for (let i = 0; i < pattern.elements.length; i++) {
+        const el = pattern.elements[i];
+        if (!el) continue;
+        if (el.kind === "IdentifierPattern") {
+          emit(ctx, `const ${el.name} = ${tv}[${i}];`);
+        } else if (el.kind === "RestPattern") {
+          emit(ctx, `const ${el.name} = ${tv}.slice(${i});`);
+        }
+      }
+      break;
+    case "ObjectPattern":
+      for (const prop of pattern.properties) {
+        if (prop.pattern.kind === "IdentifierPattern") {
+          emit(ctx, `const ${prop.pattern.name} = ${tv}.${prop.key};`);
+        }
+      }
+      break;
+  }
+}
+
+// ============================================
+// Statement Generators
+// ============================================
 
 // Generate let statement
 export function genLet(ctx: Ctx, stmt: AST.LetStmt, opts: GenOpts): void {
@@ -34,52 +143,14 @@ export function genAssign(ctx: Ctx, stmt: AST.AssignStmt, opts: GenOpts): void {
 
 // Generate if statement
 export function genIf(ctx: Ctx, stmt: AST.IfStmt, opts: GenOpts): void {
-  if (opts.implicitReturn) {
-    genIfWithReturn(ctx, stmt, opts);
-  } else {
-    genIfNormal(ctx, stmt, opts);
-  }
-}
-
-function genIfNormal(ctx: Ctx, stmt: AST.IfStmt, opts: GenOpts): void {
   const cond = genExpr(ctx, stmt.condition, opts);
+  const retOpts = opts.implicitReturn ? { ...opts, implicitReturn: true } : opts;
   emit(ctx, `if (${cond}) {`);
   pushIndent(ctx);
 
   if (stmt.then.kind === "Block") {
-    genBlock(ctx, stmt.then, opts);
-  } else {
-    _gen(ctx, stmt.then, opts);
-  }
-
-  popIndent(ctx);
-
-  for (const elif of stmt.elseIfs) {
-    const elifCond = genExpr(ctx, elif.condition, opts);
-    emit(ctx, `} else if (${elifCond}) {`);
-    pushIndent(ctx);
-    genBlock(ctx, elif.body, opts);
-    popIndent(ctx);
-  }
-
-  if (stmt.else) {
-    emit(ctx, "} else {");
-    pushIndent(ctx);
-    genBlock(ctx, stmt.else, opts);
-    popIndent(ctx);
-  }
-
-  emit(ctx, "}");
-}
-
-function genIfWithReturn(ctx: Ctx, stmt: AST.IfStmt, opts: GenOpts): void {
-  const cond = genExpr(ctx, stmt.condition, opts);
-  emit(ctx, `if (${cond}) {`);
-  pushIndent(ctx);
-
-  if (stmt.then.kind === "Block") {
-    genBlock(ctx, stmt.then, { ...opts, implicitReturn: true });
-  } else if (stmt.then.kind === "ExprStmt") {
+    genBlock(ctx, stmt.then, retOpts);
+  } else if (opts.implicitReturn && stmt.then.kind === "ExprStmt") {
     const expr = stmt.then.expr.kind === "MapExpr"
       ? `(${genExpr(ctx, stmt.then.expr, opts)})`
       : genExpr(ctx, stmt.then.expr, opts);
@@ -94,14 +165,14 @@ function genIfWithReturn(ctx: Ctx, stmt: AST.IfStmt, opts: GenOpts): void {
     const elifCond = genExpr(ctx, elif.condition, opts);
     emit(ctx, `} else if (${elifCond}) {`);
     pushIndent(ctx);
-    genBlock(ctx, elif.body, { ...opts, implicitReturn: true });
+    genBlock(ctx, elif.body, retOpts);
     popIndent(ctx);
   }
 
   if (stmt.else) {
     emit(ctx, "} else {");
     pushIndent(ctx);
-    genBlock(ctx, stmt.else, { ...opts, implicitReturn: true });
+    genBlock(ctx, stmt.else, retOpts);
     popIndent(ctx);
   }
 
@@ -144,14 +215,6 @@ export function genFor(ctx: Ctx, stmt: AST.ForStmt, opts: GenOpts): void {
 
 // Generate match statement
 export function genMatch(ctx: Ctx, stmt: AST.MatchStmt, opts: GenOpts): void {
-  if (opts.implicitReturn) {
-    genMatchWithReturn(ctx, stmt, opts);
-  } else {
-    genMatchNormal(ctx, stmt, opts);
-  }
-}
-
-function genMatchNormal(ctx: Ctx, stmt: AST.MatchStmt, opts: GenOpts): void {
   const value = genExpr(ctx, stmt.value, opts);
   const tv = tempVar(ctx, "_match");
 
@@ -172,43 +235,10 @@ function genMatchNormal(ctx: Ctx, stmt: AST.MatchStmt, opts: GenOpts): void {
     genPatternBindings(ctx, tv, arm.pattern);
 
     if (arm.body.kind === "Block") {
-      genBlock(ctx, arm.body, opts);
+      genBlock(ctx, arm.body, opts.implicitReturn ? { ...opts, implicitReturn: true } : opts);
     } else {
       const expr = genExpr(ctx, arm.body as AST.Expr, opts);
-      emit(ctx, `${expr};`);
-    }
-
-    popIndent(ctx);
-  }
-
-  emit(ctx, "}");
-}
-
-function genMatchWithReturn(ctx: Ctx, stmt: AST.MatchStmt, opts: GenOpts): void {
-  const value = genExpr(ctx, stmt.value, opts);
-  const tv = tempVar(ctx, "_match");
-
-  emit(ctx, `const ${tv} = ${value};`);
-
-  let first = true;
-  for (const arm of stmt.arms) {
-    const condition = genMatchCondition(ctx, tv, arm.pattern, arm.guard, opts);
-
-    if (first) {
-      emit(ctx, `if (${condition}) {`);
-      first = false;
-    } else {
-      emit(ctx, `} else if (${condition}) {`);
-    }
-
-    pushIndent(ctx);
-    genPatternBindings(ctx, tv, arm.pattern);
-
-    if (arm.body.kind === "Block") {
-      genBlock(ctx, arm.body, { ...opts, implicitReturn: true });
-    } else {
-      const expr = genExpr(ctx, arm.body as AST.Expr, opts);
-      emit(ctx, `return ${expr};`);
+      emit(ctx, opts.implicitReturn ? `return ${expr};` : `${expr};`);
     }
 
     popIndent(ctx);
@@ -337,11 +367,11 @@ export function genBlock(ctx: Ctx, block: AST.Block, opts: GenOpts): void {
         continue;
       }
       if (stmt.kind === "MatchStmt") {
-        genMatchWithReturn(ctx, stmt, opts);
+        genMatch(ctx, stmt, opts);
         continue;
       }
       if (stmt.kind === "IfStmt") {
-        genIfWithReturn(ctx, stmt, opts);
+        genIf(ctx, stmt, opts);
         continue;
       }
       if (stmt.kind === "WithStmt") {
