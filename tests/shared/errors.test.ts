@@ -30,6 +30,10 @@ describe("Shared Errors", () => {
     expect(ParserErrors.unexpectedToken(";").message).toContain(";");
     expect(ParserErrors.expectedToken(")", "}").hint).toContain(")");
     expect(ParserErrors.expectedTypeOrFn("let").message).toContain("type");
+    expect(ParserErrors.identifierFollowedByIdentifier("resolve", "send_prompt").message).toContain("without call parentheses");
+    expect(ParserErrors.identifierFollowedByIdentifier("resolve", "send_prompt").hint).toContain("resolve(send_prompt");
+    expect(ParserErrors.spaceBeforeCallParen("resolve").message).toContain("Space between");
+    expect(ParserErrors.spaceBeforeCallParen("resolve").hint).toContain("no space");
   });
 
   test("TypeErrors return message and hint for common cases", () => {

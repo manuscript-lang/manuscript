@@ -79,6 +79,20 @@ describe("E2E: Error Detection", () => {
     expect(result.errors[0]!.phase).toBe("parser");
   });
 
+  test("parser error: identifier followed by identifier without call parentheses", () => {
+    const result = compile("let result = resolve send_prompt(1)");
+    expect(result.success).toBe(false);
+    expect(result.errors[0]!.phase).toBe("parser");
+    expect(result.errors[0]!.message).toContain("without call parentheses");
+  });
+
+  test("parser error: space between identifier and ( in call", () => {
+    const result = compile('let res = resolve (fetch("https://x.com"))');
+    expect(result.success).toBe(false);
+    expect(result.errors[0]!.phase).toBe("parser");
+    expect(result.errors[0]!.message).toContain("Space between");
+  });
+
   test("type error: type mismatch", () => {
     const result = compile(`let x: number = "string"`);
     expect(result.success).toBe(false);
@@ -123,5 +137,18 @@ print("Hello 世界")
 print("emoji: 🎉")`);
     expect(output[0]).toBe("Hello 世界");
     expect(output[1]).toBe("emoji: 🎉");
+  });
+
+  test("generic from_json resolves via runtime", async () => {
+    const { output } = await executeWithOutput(`
+type Point
+  x: number
+  y: number
+let raw = to_json(Point(1, 2))
+let p = from_json[Point](raw)
+print(p.x)
+print(p.y)`);
+    expect(output[0]).toBe("1");
+    expect(output[1]).toBe("2");
   });
 });

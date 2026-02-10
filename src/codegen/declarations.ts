@@ -47,8 +47,9 @@ export function genImport(ctx: Ctx, decl: AST.ImportDecl, opts: GenOpts): void {
 export function genFn(ctx: Ctx, decl: AST.FnDecl, opts: GenOpts): void {
   const params = genParams(ctx, decl.params, opts);
   const prefix = decl.isGenerator ? "function*" : "async function";
+  const exportPrefix = ctx.options.module === "esm" && !decl.name.startsWith("_") ? "export " : "";
 
-  emit(ctx, `${prefix} ${decl.name}(${params}) {`);
+  emit(ctx, `${exportPrefix}${prefix} ${decl.name}(${params}) {`);
   pushIndent(ctx);
 
   // Pull context bindings from runtime stack
@@ -105,6 +106,7 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
   const prevClassFields = ctx.classFields;
   const prevSelfVar = ctx.selfVar;
   ctx.classFields = classFields;
+  const typeExportPrefix = ctx.options.module === "esm" && !decl.name.startsWith("_") ? "export " : "";
 
   // Generate shared methods object (null prototype for security)
   if (methods.length > 0) {
@@ -149,7 +151,7 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
       }).join(", ");
     if (hasTypeParams) allParams += ", __typeArgs = []";
 
-    emit(ctx, `function ${decl.name}(${allParams}) {`);
+    emit(ctx, `${typeExportPrefix}function ${decl.name}(${allParams}) {`);
     pushIndent(ctx);
     
     if (methods.length > 0) {
@@ -210,7 +212,7 @@ export function genType(ctx: Ctx, decl: AST.TypeDecl, opts: GenOpts): void {
     emit(ctx, "");
   } else {
     // Empty type (like Context marker)
-    emit(ctx, `function ${decl.name}() {`);
+    emit(ctx, `${typeExportPrefix}function ${decl.name}() {`);
     pushIndent(ctx);
     if (methods.length > 0) {
       emit(ctx, `return Object.create(${decl.name}$methods);`);

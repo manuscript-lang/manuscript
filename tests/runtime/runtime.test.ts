@@ -47,6 +47,7 @@ describe("Runtime - Extern Functions", () => {
     expect(rt.to_str(42)).toBe("42");
     expect(rt.to_num("42")).toBe(42);
     expect(rt.to_json({ a: 1 })).toBe('{"a":1}');
+    expect(rt.to_json({ __typename: "Message", role: "user", content: "hi" })).toBe('{"role":"user","content":"hi"}');
     expect(rt.from_json('{"a":1}')).toEqual({ a: 1 });
   });
 

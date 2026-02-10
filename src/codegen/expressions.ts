@@ -283,10 +283,16 @@ export function genCall(ctx: Ctx, node: AST.CallExpr, opts: GenOpts): string {
     : genExpr(ctx, calleeExpr, opts);
 
   // Prefix builtin functions (unless shadowed by a class field)
-  if (calleeExpr.kind === "Identifier" &&
-      STDLIB_FUNCTIONS.has(calleeExpr.name) &&
-      !ctx.classFields?.has(calleeExpr.name)) {
-    callee = runtimeRef(calleeExpr.name);
+  const stdlibCalleeName =
+    calleeExpr.kind === "Identifier"
+      ? calleeExpr.name
+      : isGenericFunctionCall && calleeExpr.object.kind === "Identifier"
+        ? calleeExpr.object.name
+        : null;
+  if (stdlibCalleeName &&
+      STDLIB_FUNCTIONS.has(stdlibCalleeName) &&
+      !ctx.classFields?.has(stdlibCalleeName)) {
+    callee = runtimeRef(stdlibCalleeName);
   }
 
   // Type constructors get optional typeArgs suffix, no await

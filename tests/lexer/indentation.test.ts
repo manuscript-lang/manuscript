@@ -169,11 +169,15 @@ describe("Lexer - INDENT/DEDENT balance", () => {
 });
 
 describe("Lexer - Inconsistent indentation", () => {
-  test("rejects inconsistent dedent", () => {
+  test("allows dedent to intermediate level (e.g. continuation then body)", () => {
     const src = `if x
     y
-  z`; // dedent to 2, but never had indent of 2
-    expectLexerError(src, /Inconsistent indentation/);
+  z`;
+    expect(tokenTypes(src)).toEqual([
+      "IF", "IDENTIFIER", "NEWLINE",
+      "INDENT", "IDENTIFIER", "NEWLINE",
+      "DEDENT", "INDENT", "IDENTIFIER", "DEDENT"
+    ]);
   });
 });
 

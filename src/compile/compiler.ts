@@ -198,7 +198,8 @@ function emitPathFromTo(
   const toRel = relPathFromSrc(host, srcDir, toFilePath);
   const fromDir = host.dirname(fromRel + ".js");
   const toFile = toRel + ".js";
-  return host.relative(fromDir, toFile).replace(/\\/g, "/");
+  const r = host.relative(fromDir, toFile).replace(/\\/g, "/");
+  return r.startsWith(".") ? r : "./" + r;
 }
 
 function buildProjectTypecheckInitialEnv(

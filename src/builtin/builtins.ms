@@ -109,6 +109,7 @@ extern fn hash[T](x: T): number
 // Conversion
 extern fn to_str[T](x: T): string
 extern fn to_num(s: string): number
+extern fn getenv(name: string): string
 extern fn to_json[T](x: T): string
 extern fn from_json[T](s: string): T
 

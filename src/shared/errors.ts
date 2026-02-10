@@ -124,6 +124,14 @@ export const ParserErrors = {
     message: `Unexpected token in 'with' expression: '${got}'`,
     hint: "Expected an expression that satisfies Closable (has close(): void)",
   }),
+  identifierFollowedByIdentifier: (first: string, second: string) => ({
+    message: `Identifier '${first}' followed by '${second}' without call parentheses`,
+    hint: `Use parentheses for a call, e.g. ${first}(${second}(...))`,
+  }),
+  spaceBeforeCallParen: (name: string) => ({
+    message: `Space between '${name}' and '(' in call`,
+    hint: `Use ${name}(...) with no space before '('`,
+  }),
 };
 
 // Common error messages with hints for type checker errors

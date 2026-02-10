@@ -21,6 +21,16 @@ describe("Parser - Let Statements", () => {
     });
   });
 
+  test("identifier followed by identifier without parentheses is parse error", () => {
+    expectParseError("let result = resolve send_prompt(1)", /without call parentheses/);
+    expectParseError("let x = foo bar", /without call parentheses/);
+  });
+
+  test("space between identifier and ( in call is parse error", () => {
+    expectParseError('let res = resolve (fetch("https://x.com"))', /Space between .resolve. and .\(./);
+    expectParseError("let x = foo (1)", /Space between .foo. and .\(./);
+  });
+
   test("destructuring let", () => {
     const result = stmt("let {a, b} = obj");
     expect(result).toMatchObject({

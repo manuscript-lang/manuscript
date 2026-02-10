@@ -1,0 +1,62 @@
+---
+description: Manuscript language syntax and conventions for .ms files
+globs: "**/*.ms"
+alwaysApply: false
+---
+
+# Manuscript (.ms) rules
+
+- **Indent-scoped**: Use indentation for blocks (2 spaces). No semicolons or braces.
+- **Core constructs**: `fn`, `type`, `interface`, `test`. Same shape: keyword, signature, indented body.
+
+## Syntax quick reference
+
+```manuscript
+// Types: required, optional (?), default (=), embedded (TypeName alone on line)
+type User
+  id: number
+  name: string
+  email?: string
+  role: string = "user"
+
+// Functions: last expression is return; use return for early exit
+fn greet(u: User): string
+  "Hello, {u.name}"
+
+// Capabilities: declare with using, provide with with
+fn read(path: string): string using (fs: Filesystem)
+  fs.read(path)
+with let fs = Filesystem()
+  read("config.txt")
+
+// Concurrency: spawn returns Promise[T]; consume with race() or resolve()
+let task = spawn work(42)
+let result = race([task])
+
+// Generators: yield in fn returning Stream[T]
+fn count(n: number): Stream[number]
+  for i in 0..n
+    yield i
+
+// Tests: test "description" then indented body; assert for checks
+test "greeting works"
+  let u = User(id: 1, name: "Alice")
+  assert greet(u) == "Hello, Alice"
+```
+
+## Conventions
+
+- **Imports**: `import { X } from "path"` (local first; `pkg:name` for external). See `ms.toml` for allowed modules.
+- **Construction**: Named `User(id: 1, name: "Alice")` or positional `Point(3, 4)`; don't mix.
+- **Control flow**: `if cond then stmt` inline; `match value` with `Pattern => result`, `_ => default`. Range `0..n` is start inclusive, end exclusive.
+- **Interfaces**: Method signatures only; types satisfy implicitly (no `implements`). Use for capability contracts.
+- **Private**: Prefix with `_` for non-exported names.
+
+## Don't
+
+- No `async`/`await`; use `spawn`/`race` for concurrency.
+- No block comments; single-line `//` only.
+- No `eval`, prototype access, or escape hatches; capabilities are explicit via `using`/`with`.
+- Method overrides cannot add capabilities (same or fewer only).
+
+Reference: `syntax.md` (full grammar), `README.md` (concepts). Run: `bun run ms -- run file.ms`, `bun run ms -- test file.ms`.

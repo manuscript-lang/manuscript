@@ -92,7 +92,28 @@ function to_str(x: unknown): string {
   return String(x);
 }
 function to_num(s: string): number { return Number(s); }
-function to_json(x: unknown): string { return JSON.stringify(x); }
+function getenv(name: string): string {
+  if (typeof process !== "undefined" && process.env && typeof process.env[name] === "string") return process.env[name]!;
+  return "";
+}
+
+function stripForJson(x: unknown): unknown {
+  if (x === null || typeof x !== "object") return x;
+  if (Array.isArray(x)) return x.map(stripForJson);
+  if (x instanceof Map || x instanceof Set) return x;
+  const o = x as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(o)) {
+    if (k === "__typename" || k === "__typeArgs") continue;
+    out[k] = stripForJson(o[k]);
+  }
+  return out;
+}
+
+function to_json(x: unknown): string {
+  return JSON.stringify(stripForJson(x));
+}
+
 function from_json(s: string): unknown { return JSON.parse(s); }
 
 function len(x: unknown): number {
@@ -169,6 +190,59 @@ function setIsSubset<T>(a: Set<T>, b: Set<T>): boolean {
   return [...a].every(x => b.has(x));
 }
 
+async function fetchImpl(
+  url: string,
+  options?: { method?: string; body?: string; headers?: Map<string, string> | Record<string, string> }
+): Promise<{ status: number; body: string }> {
+  const method = options?.method ?? "GET";
+  const body = options?.body ?? undefined;
+  const headers = options?.headers;
+  const init: RequestInit = { method, body };
+  if (headers) {
+    init.headers = headers instanceof Map
+      ? Object.fromEntries(headers)
+      : (headers as Record<string, string>);
+  }
+  const res = await globalThis.fetch(url, init);
+  const text = await res.text();
+  return { status: res.status, body: text };
+}
+
+async function fetchStreamImpl(
+  url: string,
+  options?: { method?: string; body?: string; headers?: Map<string, string> | Record<string, string> }
+): Promise<{ status: number; body: AsyncIterable<string> }> {
+  const method = options?.method ?? "GET";
+  const body = options?.body ?? undefined;
+  const headers = options?.headers;
+  const init: RequestInit = { method, body };
+  if (headers) {
+    init.headers = headers instanceof Map
+      ? Object.fromEntries(headers)
+      : (headers as Record<string, string>);
+  }
+  const res = await globalThis.fetch(url, init);
+  if (!res.body) {
+    return { status: res.status, body: (async function* () {})() };
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  const bodyStream = {
+    async *[Symbol.asyncIterator]() {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) return;
+          if (value) yield decoder.decode(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  };
+  return { status: res.status, body: bodyStream };
+}
+
 // ============================================
 // Runtime object (typed view for callers)
 // ============================================
@@ -201,6 +275,7 @@ export interface ManuscriptRuntime {
   hash: (x: unknown) => number;
   to_str: (x: unknown) => string;
   to_num: (s: string) => number;
+  getenv: (name: string) => string;
   to_json: (x: unknown) => string;
   from_json: (s: string) => unknown;
   len: (x: unknown) => number;
@@ -232,6 +307,8 @@ export interface ManuscriptRuntime {
   intersect: <T>(a: Set<T>, b: Set<T>) => Set<T>;
   difference: <T>(a: Set<T>, b: Set<T>) => Set<T>;
   is_subset: <T>(a: Set<T>, b: Set<T>) => boolean;
+  fetch: (url: string, options?: { method?: string; body?: string; headers?: Map<string, string> | Record<string, string> }) => Promise<{ status: number; body: string }>;
+  fetch_stream: (url: string, options?: { method?: string; body?: string; headers?: Map<string, string> | Record<string, string> }) => Promise<{ status: number; body: AsyncIterable<string> }>;
   abs: (x: number) => number | Promise<number>;
   min: (...args: number[]) => number | Promise<number>;
   max: (...args: number[]) => number | Promise<number>;
@@ -278,12 +355,14 @@ const __ms_runtime_impl: Record<string, unknown> = {
   // Extern functions
   print, log, now,
   typeof: typeOf, clone, hash,
-  to_str, to_num, to_json, from_json,
+  to_str, to_num, getenv, to_json, from_json,
   len, keys, values, entries, sort,
   upper, lower, trim, split, join, replace, starts_with, ends_with, substring, matches,
   sqrt, pow, floor, ceil, round, random, random_int,
   panic, error,
   set: setFromList, union: setUnion, intersect: setIntersect, difference: setDifference, is_subset: setIsSubset,
+  fetch: fetchImpl,
+  fetch_stream: fetchStreamImpl,
 };
 
 // Add compiled pure functions from builtins.ms and stdlib modules

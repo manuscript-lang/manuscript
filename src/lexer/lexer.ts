@@ -142,14 +142,17 @@ export class Lexer {
       this.indentStack.push(indent);
       this.tokens.push(this.makeToken("INDENT", null, ""));
     } else if (indent < currentIndent) {
-      while (this.indentStack.length > 1 && 
+      while (this.indentStack.length > 1 &&
              this.indentStack[this.indentStack.length - 1]! > indent) {
         this.indentStack.pop();
         this.tokens.push(this.makeToken("DEDENT", null, ""));
       }
-      // Check for inconsistent indentation
-      if (this.indentStack[this.indentStack.length - 1] !== indent) {
-        const err = LexerErrors.inconsistentIndentation(this.indentStack[this.indentStack.length - 1]!, indent);
+      const top = this.indentStack[this.indentStack.length - 1]!;
+      if (top < indent) {
+        this.indentStack.push(indent);
+        this.tokens.push(this.makeToken("INDENT", null, ""));
+      } else if (top !== indent) {
+        const err = LexerErrors.inconsistentIndentation(top, indent);
         throw new LexerError(err.message, this.currentLoc(), err.hint);
       }
     }

@@ -40,12 +40,14 @@ type InfixParseFn = (left: AST.Expr) => AST.Expr;
 export class Parser {
   private tokens: Token[] = [];
   private pos: number = 0;
+  private source: string = "";
 
   private prefixParsers: Map<TokenType, PrefixParseFn> = new Map();
   private infixParsers: Map<TokenType, InfixParseFn> = new Map();
   private precedences: Map<TokenType, Precedence> = new Map();
 
   constructor(source: string) {
+    this.source = source;
     this.tokens = new Lexer(source).tokenize();
     this.registerParsers();
   }
@@ -209,7 +211,10 @@ export class Parser {
     const name = this.expectIdentifier();
     const typeParams = this.check("LBRACKET") ? this.parseTypeParams() : undefined;
     const params = this.parseParams();
-    const returnType = this.match("COLON") ? this.parseType() : undefined;
+    const returnType =
+      this.match("COLON") ? this.parseType()
+      : (this.check("IDENTIFIER") || this.check("FN")) ? this.parseType()
+      : undefined;
     const using = this.check("USING") ? this.parseUsing() : undefined;
 
     this.expectNewline();
@@ -247,6 +252,7 @@ export class Parser {
 
   private parseParams(): AST.Parameter[] {
     this.expect("LPAREN");
+    this.skipBracketedWhitespace();
     const params: AST.Parameter[] = [];
 
     while (!this.check("RPAREN")) {
@@ -277,8 +283,10 @@ export class Parser {
 
       params.push({ kind: "Parameter", name, type, optional, defaultValue, rest, loc: paramLoc });
 
+      this.skipBracketedWhitespace();
       if (!this.check("RPAREN")) {
         this.expect("COMMA");
+        this.skipBracketedWhitespace();
       }
     }
 
@@ -1020,7 +1028,7 @@ export class Parser {
     const loc = this.current().loc;
     const statements: AST.Statement[] = [];
 
-    this.expect("INDENT");
+    if (this.check("INDENT")) this.advance();
     this.skipNewlines();
 
     while (!this.check("DEDENT") && !this.isAtEnd()) {
@@ -1052,6 +1060,16 @@ export class Parser {
       if (!infixParser) break;
       this.advance();
       left = infixParser(left);
+    }
+
+    if (
+      left.kind === "Identifier" &&
+      this.peek().type === "IDENTIFIER" &&
+      left.name !== "assert"
+    ) {
+      const next = this.peek();
+      const err = ParserErrors.identifierFollowedByIdentifier(left.name, next.raw);
+      throw new ParseError(err.message, next, err.hint);
     }
 
     return left;
@@ -1409,11 +1427,23 @@ export class Parser {
   }
 
   private callExpr(callee: AST.Expr): AST.CallExpr {
-    const loc = this.previous().loc;
+    const lparen = this.previous();
+    if (callee.kind === "Identifier") {
+      const idEnd = callee.loc.offset + callee.name.length;
+      if (lparen.loc.offset > idEnd) {
+        const between = this.source.slice(idEnd, lparen.loc.offset);
+        if (/[ \t]/.test(between)) {
+          const err = ParserErrors.spaceBeforeCallParen(callee.name);
+          throw new ParseError(err.message, lparen, err.hint);
+        }
+      }
+    }
+    const loc = lparen.loc;
     const args: (AST.Expr | { name: string; value: AST.Expr })[] = [];
 
-    while (!this.check("RPAREN")) {
-      // Check for named argument: name: value
+    while (true) {
+      this.skipBracketedWhitespace();
+      if (this.check("RPAREN")) break;
       if (this.check("IDENTIFIER") && this.peekNext().type === "COLON") {
         const name = this.expectIdentifier();
         this.expect("COLON");
@@ -1422,6 +1452,7 @@ export class Parser {
       } else {
         args.push(this.expression());
       }
+      this.skipBracketedWhitespace();
       if (!this.check("RPAREN")) {
         this.expect("COMMA");
       }
@@ -1684,6 +1715,7 @@ export class Parser {
   }
 
   private parsePrimaryType(): AST.TypeExpr {
+    this.skipBracketedWhitespace();
     const token = this.peek();
 
     // Function type: fn(A, B): R
