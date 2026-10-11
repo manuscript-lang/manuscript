@@ -23,7 +23,7 @@ unit var while with
 
 `self` names the implicit implementation receiver; it cannot be declared as a parameter or binding. Built-in type names and alternative constructors are names resolved by the type checker, not lexical keywords.
 
-A `#` outside a text literal begins a comment through the physical line's end. Spaces separate tokens. Tabs in code, including indentation, are rejected; a tab in comment contents is permitted. Literal control characters inside text are rejected: use the defined [text escapes](text-and-bytes.md#text-literals). Semicolons and explicit backslash line continuation are rejected.
+A `#` outside a text literal begins a comment through the physical line's end. Spaces separate tokens. Tabs in code, including indentation, are rejected; a tab in comment contents is permitted. Literal control characters inside text are rejected: use the defined [text escapes](text-and-bytes.md#string-literals). Semicolons and explicit backslash line continuation are rejected.
 
 Numeric tokens use decimal digits only:
 

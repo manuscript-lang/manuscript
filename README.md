@@ -72,3 +72,20 @@ hugo --minify
 The static site is generated in `public/`. Hugo reads the Markdown guides in `design/` directly. Chapter indexes use `_index.md`; each page's front matter sets its title and reading-order weight. New Markdown pages appear automatically. Site settings live in `hugo.toml`.
 
 Hugo Book v13 is vendored in `themes/hugo-book/`, including its MIT license. The exact upstream revision is recorded in `themes/hugo-book/UPSTREAM`.
+
+### Docs CI and GitHub Pages
+
+The `Docs` workflow (`.github/workflows/cicd.yml`) builds the book on branch pushes, pull requests, and manual runs with Hugo Extended 0.146.7. Warnings, broken generated local links, missing anchors, and missing linked assets fail validation. External websites are not checked. The `Language` workflow (`test-language.yml`) continues to test the compiler independently.
+
+To reproduce docs validation with Hugo Extended 0.146.7 and Python 3.9 or newer:
+
+```sh
+hugo --gc --minify --panicOnWarning --baseURL https://manuscript-lang.github.io/manuscript/
+python3 scripts/check-docs-links.py public https://manuscript-lang.github.io/manuscript/
+```
+
+Before the first deployment, a repository administrator must select **Settings → Pages → Build and deployment → Source: GitHub Actions**. Ensure the `github-pages` environment permits deployments from the default branch (currently `main`); any configured approval rules still apply. See [Hugo's GitHub Pages guide](https://gohugo.io/host-and-deploy/deploy-to-github-pages/).
+
+After merge, a default-branch push builds and deploys the book. To rebuild manually, select **Actions → Docs → Run workflow** and choose the default branch. Other branches and PRs validate only, without uploading or deploying a Pages artifact. The deployment build reads the configured Pages URL, including any custom domain, and overrides the local preview URL in `hugo.toml`. Pages must already be enabled for that step; the workflow does not enable it or change repository settings.
+
+Only the deploy job receives `pages: write` and `id-token: write`; the build job has read-only repository and Pages access. No personal access token or `gh-pages` branch is needed, and `public/` remains untracked.

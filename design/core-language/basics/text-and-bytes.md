@@ -72,7 +72,7 @@ Non-finite Float values format as `NaN`, `Infinity`, or `-Infinity`; NaN payload
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slicing syntax. The [data API](../../standard-library/data-and-io/operations.md#text-and-bytes) defines byte length, UTF-8 encoding/decoding, and byte lookup. Scalar and grapheme indexing are unsupported.
+There is no `text[index]` or slicing syntax. The [data API](../../standard-library/data-and-io/operations.md#strings-and-bytes) defines byte length, UTF-8 encoding/decoding, and byte lookup. Scalar and grapheme indexing are unsupported.
 
 A byte position, a Unicode scalar, and a user-visible grapheme are different units. For example, `"é"` has two UTF-8 bytes; `"e\u{301}"` has two scalars but can display as one grapheme. Byte lookup alone cannot select a character.
 
