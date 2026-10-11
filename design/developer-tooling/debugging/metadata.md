@@ -25,3 +25,7 @@ Storage schemas, event ordering/timestamps, and whether source bytes are embedde
 See [build identity](../../compiler/builds/reproducibility.md) and [source value interpretation](debugger-integration.md).
 
 [Previous: Execution traces and overlays](../diagrams/traces.md) · [Next: Generated Go source mapping](../debugging/source-mapping.md)
+
+## Implemented static inspection
+
+`ms inspect <module-or-project>` emits format-1 JSON with a source-derived build identity, original source hashes, deterministic entity IDs, generated declaration names, type descriptions, call sites including implicit cleanup, conservative transitive effects, and statement header spans. Header spans are half-open ranges in original bytes and exclude line terminators. `ms diagram` emits the checked static call graph as Mermaid; it is not a runtime trace. Native checked builds emit their separate executable/toolchain manifest. Generated source uses Go line directives, and source programming faults collect Manuscript function positions. `--debug` retains native symbols and disables optimization/inlining. Run-event transport, full local-value mapping, structural edit transactions, and Delve integration remain additional tooling contracts.

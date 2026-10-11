@@ -1,0 +1,30 @@
+name: Language
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.1'
+          cache: false
+      - name: Check formatting and vet
+        run: make check
+      - name: Unit and native end-to-end tests
+        run: make test
+      - name: Runtime and compiler race checks
+        run: make race
+      - name: Build CLI and check example
+        run: |
+          make build
+          ./ms check examples/hello/ms.toml
+          ./ms lock examples/hello/ms.toml
+          ./ms run examples/hello/ms.toml -- first second

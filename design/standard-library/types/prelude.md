@@ -126,3 +126,11 @@ Status eviction never reuses an ID for different work. An ID the service did not
 The host's authority roots and stream signatures are defined by [CLI hosts](../hosts/cli.md) and [streams](../data-and-io/streams.md). Standard collection, byte, text, numeric, and duration members are defined in [minimum data operations](../data-and-io/operations.md). Source code cannot add implementations or members to intrinsic or standard native types. Source types may implement standard contracts in their own defining module.
 
 General user type packs, optional source parameters, generic operations, and third-party dependency package imports are unsupported. HTTP host registration still needs an API contract.
+
+## Data services and additional host capabilities
+
+`@std/queues.ms` exports `Queue` and `QueueError`; `@std/state.ms` exports `State`; `@std/pools.ms` exports `Pool`, `Lease`, and `PoolError`; `@std/builders.ms` exports `ListBuilder`, `MapBuilder`, `SetBuilder`, `BytesBuilder`, and `StringBuilder`. Their exact contracts live in [queues](../data-and-io/queues.md), [state and pools](../data-and-io/synchronized-state.md), and [builders](../data-and-io/builders.md). None is ambient. Opaque constructor parameter names are not source fields.
+
+`@std/time.ms` also exports `sleep(duration: Duration) -> Unit`, a sequential cancellable delay. Negative duration faults; zero performs a cancellation checkpoint.
+
+`@std/http.ms` exports the bounded request host types in [HTTP](../hosts/http.md). `Network.serve` is a direct-call-only operation requiring a proved shareable handler. `@std/process.ms` exports `Commands`, `CommandOutput`, and `CommandError` in [streams](../data-and-io/streams.md). CLI `Process` additionally has `network: Network & Shareable` and `commands: Commands & Shareable`. Imports provide types, while those fields provide actual authority.

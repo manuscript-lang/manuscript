@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "compiler": "0.1.0",
+  "implementation_sha256": "545465da7440a4154ac3267212d11830fc260a8e9a66565d6e75edc5fcd2a4fb",
+  "toolchain": {
+    "CGO_ENABLED": "1",
+    "GOAMD64": "v1",
+    "GOARCH": "amd64",
+    "GOARM": "",
+    "GOARM64": "",
+    "GOEXPERIMENT": "",
+    "GOFLAGS": "",
+    "GOMIPS": "",
+    "GOMIPS64": "",
+    "GOOS": "linux",
+    "GOPPC64": "",
+    "GORISCV64": "",
+    "GOVERSION": "go1.25.1",
+    "GOWASM": ""
+  }
+}
