@@ -1,0 +1,31 @@
+# Hugo build output and caches
+/public/
+/.hugo-cache/
+/hugo_cache/
+/.hugo-resources/
+/resources/_gen/
+/.hugo_build.lock
+
+# Browser verification artifacts
+/.playwright-mcp/
+/playwright-report/
+/test-results/
+
+# Local environment files (keep shareable templates)
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Operating-system metadata
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Editor backups and local settings
+*.swp
+*.swo
+*~
+.idea/

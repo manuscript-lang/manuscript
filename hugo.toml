@@ -1,0 +1,30 @@
+baseURL = 'http://localhost:4000/'
+languageCode = 'en-us'
+title = 'Manuscript Design'
+theme = 'hugo-book'
+contentDir = 'design'
+resourceDir = '.hugo-resources'
+disableKinds = ['taxonomy', 'term', 'RSS']
+
+[params]
+  BookSection = '/'
+  BookToC = true
+  BookSearch = true
+  BookComments = false
+  BookPortableLinks = 'error'
+  BookTheme = 'auto'
+
+[markup.goldmark.renderer]
+  unsafe = true
+
+[markup.tableOfContents]
+  startLevel = 2
+  endLevel = 2
+
+[markup.highlight]
+  style = 'github'
+
+[[menus.before]]
+  name = 'Overview'
+  pageRef = '/'
+  weight = 1

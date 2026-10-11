@@ -1,0 +1,15 @@
+{{- $destination := .Destination -}}
+{{- $url := urls.Parse $destination -}}
+{{- if and (not $url.IsAbs) (strings.HasSuffix $url.Path ".md") -}}
+  {{- $target := path.Clean (path.Join "/" .Page.File.Dir $url.Path) -}}
+  {{- $target = strings.TrimSuffix ".md" $target -}}
+  {{- $target = strings.TrimSuffix "_index" $target -}}
+  {{- with site.GetPage $target -}}
+    {{- $destination = .RelPermalink -}}
+    {{- with $url.RawQuery }}{{ $destination = printf "%s?%s" $destination . }}{{ end -}}
+    {{- with $url.Fragment }}{{ $destination = printf "%s#%s" $destination . }}{{ end -}}
+  {{- else -}}
+    {{- errorf "Broken design link in %s: %s" .Page.File.Path $.Destination -}}
+  {{- end -}}
+{{- end -}}
+<a href="{{ $destination | safeURL }}"{{ with .Title }} title="{{ . }}"{{ end }}>{{ .Text | safeHTML }}</a>

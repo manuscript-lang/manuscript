@@ -1,0 +1,206 @@
++++
+title = "Runtime binding acceptance cases"
+weight = 103
++++
+
+# Runtime binding acceptance cases
+
+[Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
+
+These design fixtures cover standard API binding, sharing, data, host, and adapter rules alongside [core-language conformance](core-language.md). Check each accepted module and rejected mutation independently.
+
+## Standard imports and declaration identity
+
+```text
+import List from "@std/collections.ms"
+import Decimal from "@std/decimal.ms"
+import Result from "@std/result.ms"
+import map_error from "@std/result.ms"
+
+fn amount() -> Result[Decimal, String]:
+    return ok(value: 12.50d)
+
+test "explicit standard imports":
+    assert [1, 2].length() == 2
+    let outcome = map_error(
+        result: amount(),
+        transform: fn(cause: String) -> Int:
+            return cause.byte_length()
+    )
+    match outcome:
+        ok(value):
+            assert value == 12.50d
+        error(_):
+            assert false
+```
+
+Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove map_error and reject its call. Importing Result alone must not expose map_error, and importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../standard-library/hosts/cli.md).
+
+Accept this independent module without standard imports:
+
+```text
+type List:
+    count: Int
+
+type Result:
+    case Value(value: Int)
+
+fn parallel(value: Int) -> Int:
+    return value
+
+fn ordinary() -> Result:
+    return Result.Value(value: parallel(value: 3))
+
+test "standard spellings are ordinary names":
+    assert List(count: 2).count == 2
+    let forward = parallel
+    assert forward(value: 4) == 4
+    match ordinary():
+        Value(value):
+            assert value == 3
+```
+
+Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected without the standard List import even though a local List exists. Calling this local parallel with a `tasks` pack does not activate the standard binding's special typing. Extracting the local parallel above is accepted as an ordinary function value. Preserve the imported parallel/parallel_map/Background callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, parallel_map, Background, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
+
+Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a module path, a missing standard file/export, and paths or symlinks escaping the standard-library directory. Resolving a standard module in two installation directories with identical pinned contents preserves identity; changing its pinned distribution invalidates module/analysis/code-generation caches. Adapter interfaces may import standard declarations but cannot use that exception to import application files. Imports alone acquire no external authority.
+
+## Error adaptation and inferred packs
+
+```text
+import Result from "@std/result.ms"
+import map_error from "@std/result.ms"
+import ExecutionError from "@std/tasks.ms"
+import parallel from "@std/tasks.ms"
+
+fn identity[T](value: T) -> T:
+    return value
+
+fn probe() -> Result[Unit, ExecutionError]:
+    let first = fn() -> Result[Int, String]:
+        return ok(value: 3)
+    let second = fn() -> Bool:
+        return true
+    let packed = try parallel(tasks: [first, second])
+    let copied = identity(value: packed)
+    let [number, flag] = copied
+    assert flag
+    match number:
+        ok(value):
+            assert value == 3
+        error(_):
+            assert false
+    return ok(value: unit)
+
+test "pack helper":
+    match probe():
+        ok(_):
+            assert true
+        error(_):
+            assert false
+
+test "explicit error conversion":
+    let failed: Result[Int, Int] = error(cause: 7)
+    let translate = fn(cause: Int) -> String:
+        return "Error {cause}"
+    let converted = map_error(result: failed, transform: translate)
+    let expected: Result[Int, String] = error(cause: "Error 7")
+    assert converted == expected
+```
+
+Accept the complete `load` module in [parallel](../../concurrency/parallel.md) too. Replace any error adapter with direct `try` under LoadError and reject the incompatible error type. Moving the probe's `try parallel` directly into the Unit test is rejected. Changing the copied pack pattern to `[number]` is rejected for arity. Passing an existing list as tasks is rejected; qualifying or annotating a source type `Pack` is an unknown-name rejection. `parallel(tasks: [])` can be matched and its success destructured as `[]`.
+
+For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn(id: Int) -> Int`. Reject start operations returning Int or plain Unit; accept only shareable `fn() -> Result[Unit, String]`. Use controlled reporter fixtures to verify String errors, crashes, status expiry, bounded overflow fallback, and reporter-fault fallback without recursive reporting.
+
+## Sharing and contract cleanup
+
+```text
+import Bytes from "@std/bytes.ms"
+import File from "@std/io.ms"
+import IoError from "@std/io.ms"
+import Optional from "@std/optional.ms"
+import Result from "@std/result.ms"
+
+type ClosedFile:
+    marker: Unit
+
+impl File for ClosedFile:
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]:
+        return error(cause: IoError.Closed)
+    fn close() -> Unit:
+        return
+
+test "contract-valued cleanup":
+    with file = File(value: ClosedFile(marker: unit)):
+        match file.read(max_bytes: 1):
+            ok(_):
+                assert false
+            error(cause):
+                assert cause == IoError.Closed
+```
+
+This fake represents an already-closed stream, so its close is idempotent and has no external release obligation. Also accept `(File & Shareable)(value: ClosedFile(marker: unit))` as the with initializer: cleanup works with either view. Reject `with` over a concrete type merely having a method named close without `impl Closeable`. Reject a contract with the wrong close signature. Verify native and source fake shared File values are interchangeable through Files.open's `Result[File & Shareable, IoError]` result.
+
+A bare function parameter carries no sharing proof. Reject a parallel closure capturing that parameter, even if a particular caller passes a safe named function. Accept a plain view over an implementing record containing a bare function field or unsynchronized native state for sequential use, but reject its shared view construction; such storage lacks a type-level sharing guarantee. Accept concurrent captures of shared contract views, shareable concrete receivers, and generic values bounded by both Shareable and the behavioral contract. Reject concurrent captures of plain contract views and bound methods extracted from them, even when a particular runtime receiver is safe. 
+
+Test captured-function wrappers and branch/var merges so an unsafe alternative cannot retain a safe callable proof.
+
+Independently reject this complete module at the parallel call: generic forwarding erases the callable proof even for this safe input.
+
+```text
+import Result from "@std/result.ms"
+import ExecutionError from "@std/tasks.ms"
+import parallel from "@std/tasks.ms"
+
+fn identity[T](value: T) -> T:
+    return value
+
+fn rejected_forwarding() -> Result[Unit, ExecutionError]:
+    let safe = fn() -> Int:
+        return 1
+    let forwarded = identity(value: safe)
+    let [value] = try parallel(tasks: [forwarded])
+    return ok(value: unit)
+```
+
+Replacing forwarded with safe accepts the function. A generic function with `T: Shareable` instead rejects passing safe at bound checking. A `Box[T]` field storing a function does not restore the erased proof; `Box[T: Shareable]` rejects a function type argument. Ordinary generic data values and inferred result packs retain their type-level sharing properties; their behavior is unchanged.
+
+Independently reject extracting `let launch = background.start`, `let mapper = parallel_map[Int, Int]`, `let constructor = Background`, a bare parallel reference, and forwarding these references to identity or a function parameter. These call-only bindings have requirements a plain function type cannot retain. Accept direct explicitly specialized parallel_map calls with proven-safe callbacks. A source wrapper that accepts an ordinary function parameter and forwards it to Background.start is rejected for missing callable proof at that direct call.
+
+## Data and numeric outcomes
+
+Use the accepted modules in [minimum data operations](../../standard-library/data-and-io/operations.md). In addition:
+
+```text
+import Decimal from "@std/decimal.ms"
+import Optional from "@std/optional.ms"
+
+fn quotient(value: Int, divisor: Int) -> Int:
+    return value / divisor
+
+fn remainder(value: Int, divisor: Int) -> Int:
+    return value % divisor
+
+test "numeric boundary rules":
+    assert quotient(value: -7, divisor: 2) == -3
+    assert remainder(value: -7, divisor: 3) == -1
+    assert remainder(value: -9223372036854775808, divisor: -1) == 0
+    let infinity = 1.0 / 0.0
+    let nan = 0.0 / 0.0
+    assert "{infinity}" == "Infinity"
+    assert nan != nan
+    let third = 1d / 3d
+    assert "{third}" == "0.3333333333333333333333333333333333"
+    let absent: Optional[Int] = none
+    assert 1e300.truncate_to_int() == absent
+    assert (2.seconds + 1.seconds) == 3.seconds
+```
+
+Runner-level fault probes use parameters for division by zero, minimum Int/-1, unary minimum Int negation, duration overflow, Decimal overflow, and invalid byte construction. Assert normal subnormal/zero Decimal underflow and halfway ties-to-even. Reject out-of-grid Decimal literals and more than 34 significant digits; accept insignificant trailing zeroes. Map mutation tests verify a/b/a-replacement traversal as a→3,b→2, original snapshot retention, and remove/reinsert ordering. Reject source implementations for standard native collection types.
+
+## Entry, adapter, and lifetime integration
+
+Build the complete [CLI main module](../../standard-library/hosts/cli.md) with an ms.toml selecting it, pass two arguments, and expect `Arguments: 2` plus LF and exit 0. Missing/internal/generic/wrong-signature main must fail checking. Inject SIGINT and SIGTERM during joined work and verify joins/cleanup before exits 130/143. A cleanup fault exits 70. Host escalation is separately classified as incomplete cleanup.
+
+Generate a separate schema package for a minimal interface, a native adapter package importing it, and an application importing both; the pinned Go toolchain must build this without an import cycle. Reject interface imports of an application module, invalid/duplicate bindings, absent acquisition disposers, wrong native symbol signatures, and mutable/invalid foreign result values.
+
+Controlled race probes cover acquisition versus cancellation, completion versus stop, admission versus close, repeated close, and close from an admitted job's nested parallel descendant or reporter. The latter must fault before shutdown instead of self-joining. Generic function specialization probes accept regular self/mutual recursion and reject expanding specialization through calls or stored function values before Go emission.

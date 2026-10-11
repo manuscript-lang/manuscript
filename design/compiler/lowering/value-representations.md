@@ -1,0 +1,43 @@
++++
+title = "Source guarantees and Go representations"
+weight = 94
++++
+
+# Source guarantees and Go representations
+
+[Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
+
+Representations must implement the checked source behavior, including guarantees absent from unrestricted Go values.
+
+The frontend enforces semantics that Go representations do not provide:
+
+| Source guarantee | Go lowering |
+| --- | --- |
+| Checked `Int` | `int64` with checked operations and conversions |
+| `Decimal` | Versioned finite decimal implementation honoring the coefficient/exponent grid, exact literals, and per-operator rounding in the numeric contract |
+| Valid UTF-8 `String` | Validated construction and conversion; no raw string escape |
+| Immutable bytes and collections | Encapsulated storage; copies or exclusive adapter transfer |
+| Ordered maps and sets | Ordered wrappers |
+| Tagged alternatives | Generated typed tags and payloads; exhaustive frontend checking |
+| Guarded recursive data | Inline records/alternatives with immutable container indirection; reject invalid layouts before Go emission |
+| Value equality and hashing | Generated operations for eligible types |
+| Explicit contract implementation | Frontend selection of a unique applicable concrete/generic implementation, then Go interfaces and wrappers |
+| Closures and resource references | GC-retained environments, snapshot captures, and synchronized native closed-state checks |
+| Lexical cleanup | Explicit `with` registrations, shielded `Closeable.close()`, and scope unwind operations |
+| Parallel results | Typed positional packs preserving each exact return value |
+
+Use Go generics where suitable; generated typed pack wrappers handle heterogeneous parallel results without exposing unchecked casts to source.
+
+## Representation boundaries
+
+For example, emitting a raw `int64` does not supply checked arithmetic. A raw Go slice does not establish immutable source bytes. The frontend and runtime cooperate with generated wrappers and operations to preserve those contracts.
+
+Explicit [view constructors](../../core-language/types/contracts.md#explicit-contract-views) create contract wrappers. Plain and shared views may use the same runtime representation, while the frontend and IR retain distinct identities and sharing proofs. Go interface assignment or runtime receiver inspection cannot restore an erased proof.
+
+Generic implementation bodies use checked substitutions; Go method selection cannot resolve overlapping source implementations. Function wrappers retain source labels/order in frontend identity even though Go erases labels. Check [recursive storage rules](../../core-language/types/records.md#recursive-data) before emission; a generated-Go error is not a source type check.
+
+Int division/remainder overflow handling, Float non-finite outcomes, Decimal underflow/overflow, and checked truncation conversions follow [runtime numeric outcomes](../../core-language/basics/numbers-and-booleans.md#runtime-numeric-outcomes), including parameterized runtime operands. Unchecked Go casts or a decimal package's defaults do not establish these semantics.
+
+See [foreign conversions](../../modules-and-capabilities/adapters/value-conversion.md), [type checking](../frontend/type-checker.md), and [scope and capture checking](../frontend/scope-checker.md).
+
+[Previous: Function and concurrency API lowering](../lowering/function-and-task-calls.md) · [Next: Evaluation order and call preparation](../lowering/evaluation-order.md)
