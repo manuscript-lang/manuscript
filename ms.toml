@@ -1,3 +1,0 @@
-# Manuscript project config
-# src = directory under project root where .ms files live (default "src")
-src = "."
