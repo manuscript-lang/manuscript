@@ -76,3 +76,19 @@ func TestInspectionDeterminismAndOriginalSpans(t *testing.T) {
 		t.Fatal(diagram)
 	}
 }
+
+func TestInspectInterface(t *testing.T) {
+	source := "export interface Read[T]:\n    fn get() -> T\n"
+	result := compiler.CompileSource("interface.ms", source, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	inspection := tooling.Inspect(result.Program)
+	if len(inspection.Entities) != 1 {
+		t.Fatal(inspection.Entities)
+	}
+	entity := inspection.Entities[0]
+	if entity.Kind != "interface" || entity.Name != "Read" || !entity.Exported || entity.Span.Start != 7 {
+		t.Fatalf("incorrect interface entity: %+v", entity)
+	}
+}

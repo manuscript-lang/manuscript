@@ -98,3 +98,36 @@ func TestInterpolationSpacesAndPhysicalPositions(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestInterfaceDeclarations(t *testing.T) {
+	source := "export interface Read[T: Equal]:\n    fn get() -> T\ntype Box[T]:\n    value: T\nimpl Read[T] for Box[T]:\n    fn get() -> T:\n        return self.value\n"
+	module, err := parser.Parse("interface.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration := module.Declarations[0]
+	if declaration.Kind != "interface" || !declaration.Export || len(declaration.TypeParams) != 1 || len(declaration.Methods) != 1 {
+		t.Fatalf("incorrect interface declaration: %+v", declaration)
+	}
+	if len(module.Declarations[2].TypeParams) != 0 {
+		t.Fatal("impl declares type parameters")
+	}
+}
+
+func TestRejectInterfaceSyntax(t *testing.T) {
+	for name, source := range map[string]string{
+		"old contract":      "type Read:\n    fn get() -> Int\n",
+		"interface field":   "interface Read:\n    value: Int\n",
+		"interface case":    "interface Read:\n    case Ready\n",
+		"interface body":    "interface Read:\n    fn get() -> Int:\n        return 1\n",
+		"empty interface":   "interface Read:\n",
+		"generic operation": "interface Read:\n    fn get[T]() -> T\n",
+		"reserved keyword":  "type interface:\n    value: Int\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := parser.Parse(name, source); err == nil {
+				t.Fatal("accepted invalid syntax")
+			}
+		})
+	}
+}

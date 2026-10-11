@@ -30,10 +30,10 @@ type UserError:
 type OrderError:
     case Unavailable
 
-type Users:
+interface Users:
     fn get(id: Int) -> Result[User, UserError]
 
-type Orders:
+interface Orders:
     fn for_user(user_id: Int) -> Result[List[Order], OrderError]
 
 type Summary:

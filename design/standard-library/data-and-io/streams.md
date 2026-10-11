@@ -10,15 +10,15 @@ weight = 40
 The stream contracts have explicit cleanup operations and admit both native implementations and source fakes. The standard host exposes `ReadStream & Shareable`, `WriteStream & Shareable`, and `File & Shareable` views of its synchronized receivers. Bare stream contract types remain plain views under the ordinary interface rules.
 
 ```text
-type ReadStream:
+interface ReadStream:
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
     fn close() -> Unit
 
-type WriteStream:
+interface WriteStream:
     fn write(data: Bytes) -> Result[Unit, IoError]
     fn close() -> Unit
 
-type File:
+interface File:
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
     fn close() -> Unit
 ```

@@ -10,7 +10,7 @@ weight = 55
 Import `Closeable` from `@std/cleanup.ms` when naming or implementing the standard cleanup contract. `with` checks its canonical identity rather than reserving its spelling. The standard declaration is:
 
 ```text
-type Closeable:
+interface Closeable:
     fn close() -> Unit
 ```
 

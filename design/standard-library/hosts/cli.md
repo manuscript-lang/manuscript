@@ -25,10 +25,10 @@ type Process:
     network: Network & Shareable
     commands: Commands & Shareable
 
-type Clock:
+interface Clock:
     fn now() -> Instant
 
-type Files:
+interface Files:
     fn open(path: String) -> Result[File & Shareable, IoError]
 ```
 

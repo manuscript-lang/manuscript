@@ -5,7 +5,7 @@ The implementation follows the design book on `main` and its [core language conf
 ## Language and checking
 
 - UTF-8 source with original byte positions across BOM/CRLF normalization, ASCII identifiers, exact four-space suites, comments, delimiter continuation, numeric literals, escapes, and checked interpolation.
-- Exact intrinsic types, nominal immutable records and alternatives, generic types/functions, operation contracts, explicit implementations, plain/shared views, signature and argument-label checking, orphan and overlap rejection, and structural sharing/equality/hashing eligibility.
+- Exact intrinsic types, nominal immutable records and alternatives, `type` records/alternatives, generic types/functions, `interface` operation contracts, explicit implementations with inherited generic parameters and bounds, plain/shared views, signature and argument-label checking, orphan and overlap rejection, and structural sharing/equality/hashing eligibility.
 - Named calls, function values, suite closures, snapshot captures, and rejection of captured assignment. Sharing proofs are retained on eligible source/native functions and closures and erased at plain function parameters, results, fields, and generic forwarding.
 - Local inference, contextual constructors, invariant generic applications, bounds, guarded recursive layouts, and finite generic call specialization. Generic inference uses independently typed arguments; an expected result does not supply missing type arguments.
 - Bindings, name assignment, list/record destructuring, branching, loops, exhaustive alternative matching, returns, assertions, loop exits, lexical `with`, and exact-error `try` propagation. Return completeness includes `Never` and conservative loop rules.
