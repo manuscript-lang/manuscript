@@ -1,10 +1,10 @@
 import Closeable from "@std/cleanup.ms"
 import State from "@std/state.ms"
 
-type OtherClose:
+interface OtherClose:
     fn close(flag: Bool) -> Int
 
-type Disposable:
+interface Disposable:
     fn close() -> Unit
 
 type Resource:

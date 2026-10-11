@@ -1,17 +1,17 @@
-type ReadValue[T]:
+interface ReadValue[T]:
     fn get() -> T
 
-type SameValue[T]:
+interface SameValue[T: Equal]:
     fn same(other: T) -> Bool
 
 type Box[T]:
     value: T
 
-impl[T] ReadValue[T] for Box[T]:
+impl ReadValue[T] for Box[T]:
     fn get() -> T:
         return self.value
 
-impl[T: Equal] SameValue[T] for Box[T]:
+impl SameValue[T] for Box[T]:
     fn same(other: T) -> Bool:
         return self.value == other
 

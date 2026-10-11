@@ -13,7 +13,7 @@ Each `.ms` file is one module. Its resolved filesystem path identifies it; sourc
 
 ## Names and declaration order
 
-Types, module functions, and imported symbols share one ordinary module namespace. Duplicate names, import/declaration collisions, and function overloading are rejected. Imports and declarations may appear in any order: collect names and signatures before checking bodies, so forward references and mutually recursive functions work. Type layout cycles follow the separate [recursive data rule](../../core-language/types/records.md#recursive-data), not module-cycle rules.
+Types, interfaces, module functions, and imported symbols share one ordinary module namespace. Duplicate names, import/declaration collisions, and function overloading are rejected. Imports and declarations may appear in any order: collect names and signatures before checking bodies, so forward references and mutually recursive functions work. Type layout cycles follow the separate [recursive data rule](../../core-language/types/records.md#recursive-data), not module-cycle rules.
 
 The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The compiler bounds `Shareable`, `Equal`, and `Hashable` also have fixed identities. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
 
@@ -53,7 +53,7 @@ export fn issue() -> PrivateToken:
     return PrivateToken(value: "token")
 ```
 
-Exporting a record exposes every field and its constructor; exporting an alternative exposes every case and payload field; exporting a contract exposes every operation. Opaque exports and selective member visibility are unsupported. See [public data surfaces](../../core-language/types/records.md#public-data-surfaces).
+Exporting a record exposes every field and its constructor; exporting an alternative exposes every case and payload field; exporting an `interface` exposes every operation. Opaque exports and selective member visibility are unsupported. See [public data surfaces](../../core-language/types/records.md#public-data-surfaces).
 
 An `impl` belongs to the receiver's nominal data type's defining module and becomes available when that module is loaded. Imported public contracts can be implemented there. Concrete and generic implementations do not re-export declarations. Duplicate or overlapping receiver/instantiated contract pairs are rejected, ignoring bounds when checking overlap; bounds cannot choose competing implementations. These [coherence rules](../../core-language/types/contracts.md#coherence-and-visibility) prevent behavior from depending on unrelated imports.
 

@@ -17,7 +17,7 @@ The reserved words are:
 
 ```text
 and assert break case continue else export false fn for from if
-impl import in let match not or return self test true try type
+impl import in interface let match not or return self test true try type
 unit var while with
 ```
 
@@ -94,21 +94,23 @@ In the EBNF below, braces mean repetition and brackets mean an optional grammar 
 ```ebnf
 Module        = { Import | Declaration } ;
 Import        = "import", Name, "from", PlainStringLiteral, NEWLINE ;
-Declaration   = [ "export" ], (TypeDeclaration | FunctionDeclaration)
+Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration)
               | Implementation | TestDeclaration ;
 
 TypeDeclaration = "type", Name, [ TypeParameters ], ":", NEWLINE,
-                  INDENT, (RecordBody | AlternativeBody | ContractBody), DEDENT ;
+                  INDENT, (RecordBody | AlternativeBody), DEDENT ;
 RecordBody    = Field, { Field } ;
 Field         = Name, ":", Type, NEWLINE ;
 AlternativeBody = CaseDeclaration, { CaseDeclaration } ;
 CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
+InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
+                       INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
 OperationSignature = "fn", Name, "(", [ Parameters ], ")", "->", Type, NEWLINE ;
 
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ Parameters ], ")",
                       "->", Type, Suite ;
-Implementation = "impl", [ TypeParameters ], NamedType, "for", NamedType, ":", NEWLINE,
+Implementation = "impl", NamedType, "for", NamedType, ":", NEWLINE,
                  INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ;
 MethodDeclaration = "fn", Name, "(", [ Parameters ], ")", "->", Type, Suite ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
@@ -126,9 +128,9 @@ TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
 FunctionType  = "fn", "(", [ Parameters ], ")", "->", Type ;
 ```
 
-A type chooses exactly one body form: fields, cases, or operation signatures. Mixing forms is rejected. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Function parameters and results always have explicit types. Source parameter declarations do not accept default arguments, variadic parameters, parameter patterns, or anonymous-function type parameters. Trusted library/API contracts may define optional named arguments without exposing source default-parameter syntax; an omitted API argument is checked against that declared contract.
+A `type` declares either record fields or alternative cases. An `interface` declares one or more operation signatures. Mixing these forms is rejected. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Function parameters and results always have explicit types. Source parameter declarations do not accept default arguments, variadic parameters, parameter patterns, or anonymous-function type parameters. Trusted library/API contracts may define optional named arguments without exposing source default-parameter syntax; an omitted API argument is checked against that declared contract.
 
-Imports and declarations may be interleaved; import visibility and declaration resolution do not depend on written order. Import paths and test names are plain text literals: escapes are permitted, interpolation is rejected. `export` applies to types and named module functions, not tests or implementation blocks. Implementation blocks may introduce type parameters with `impl[T: Bound] Contract[T] for Data[T]:`; every parameter must occur in the nominal receiver application. Contract operations and implementation methods cannot declare their own type parameters. Implementation applicability and overlap follow [contracts](../types/contracts.md#generic-implementations).
+Imports and declarations may be interleaved; import visibility and declaration resolution do not depend on written order. Import paths and test names are plain text literals: escapes are permitted, interpolation is rejected. `export` applies to types, interfaces, and named module functions, not tests or implementation blocks. Implementation blocks declare no type parameters. In `impl Contract[T] for Data[T]:`, `T` comes from the receiver type declaration; applicable bounds come from the type and interface declarations. Every parameter used in the interface or method signatures must occur in the nominal receiver application. Contract operations and implementation methods cannot declare their own type parameters. Implementation applicability and overlap follow [contracts](../types/contracts.md#generic-implementations).
 
 `SharedContractType` requires its `NamedType` to resolve to an operation contract application. `Contract & Shareable` is a value type, including in fields, signatures, and generic arguments; it is not a general intersection facility. Reversed order, additional bounds, and refinements of noncontract types are rejected. Generic `Bounds` retain their existing conjunction syntax, where bound order does not affect the requirements. The compiler-defined name `Shareable` remains unavailable as a standalone value type.
 

@@ -1,4 +1,4 @@
-type Increment:
+interface Increment:
     fn apply(value: Int) -> Int
 
 type Offset:

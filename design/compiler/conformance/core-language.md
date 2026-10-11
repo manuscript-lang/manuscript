@@ -336,7 +336,7 @@ Reject at resolution: a type parameter cannot redefine the intrinsic `Int` ident
 Contract: [operation contracts](../../core-language/types/contracts.md).
 
 ```text
-type Increment:
+interface Increment:
     fn apply(value: Int) -> Int
 
 type Offset:
@@ -375,20 +375,20 @@ Add a multi-module rejection fixture for an implementation outside the concrete 
 Contract: [generic implementations](../../core-language/types/contracts.md#generic-implementations).
 
 ```text
-type ReadValue[T]:
+interface ReadValue[T]:
     fn get() -> T
 
-type SameValue[T]:
+interface SameValue[T: Equal]:
     fn same(other: T) -> Bool
 
 type Box[T]:
     value: T
 
-impl[T] ReadValue[T] for Box[T]:
+impl ReadValue[T] for Box[T]:
     fn get() -> T:
         return self.value
 
-impl[T: Equal] SameValue[T] for Box[T]:
+impl SameValue[T] for Box[T]:
     fn same(other: T) -> Bool:
         return self.value == other
 
@@ -406,16 +406,15 @@ test "generic implementations":
     assert not compare(box: number, other: 8)
 ```
 
-The first block needs no bound to read and return its field. The second requires `Equal` to compare it. `compare` proves that implementation's availability while checking its generic body, without waiting for a concrete instantiation.
+The first block needs no bound to read and return its field. The second inherits `Equal` from the `SameValue` interface to compare it. `compare` proves that implementation's availability while checking its generic body, without waiting for a concrete instantiation.
 
 | Independent variant | Expected outcome |
 | --- | --- |
 | Add a concrete `impl ReadValue[Int] for Box[Int]` supplying `get() -> Int` | Type rejection at declaration: overlap with the generic block, even if the body is identical |
-| Add `impl[U: Shareable] ReadValue[U] for Box[U]` supplying `get() -> U` | Type rejection at declaration: bounds cannot distinguish overlapping blocks |
+| Add another `impl ReadValue[T] for Box[T]` supplying `get() -> T` | Type rejection at declaration: bounds cannot distinguish overlapping blocks |
 | Replace the first block's `ReadValue[T]` with `ReadValue[Int]` | Type rejection at declaration: `get() -> T` does not match the substituted contract result `Int` |
-| Remove `Equal` from the second implementation's parameters | Type rejection at declaration: unconstrained field values cannot be compared |
+| Remove `Equal` from `SameValue`'s interface parameters | Type rejection at declaration: unconstrained field values cannot be compared |
 | Remove `Equal` from `compare`'s parameters | Type rejection in the generic function body: the implementation's bound is not proved |
-| Add unused `U` to the first block's parameter list | Type rejection at declaration: the receiver cannot determine `U` |
 | Replace the first block's receiver `Box[T]` with bare `T` | Type rejection at declaration: receiver must have a defining nominal data declaration |
 | Add `[U]` to an implementation method | Parse rejection: methods cannot introduce their own parameters |
 
@@ -429,7 +428,7 @@ Contract: [shared contract views](../../core-language/types/contracts.md#shared-
 import List from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 
-type ReadValue[T]:
+interface ReadValue[T]:
     fn get() -> T
 
 type Box[T]:
@@ -441,7 +440,7 @@ type SharedReader:
 type CallbackReader:
     read_value: fn() -> Int
 
-impl[T] ReadValue[T] for Box[T]:
+impl ReadValue[T] for Box[T]:
     fn get() -> T:
         return self.value
 

@@ -14,7 +14,7 @@ Review a module boundary by reading its exported types and operations, accepted 
 The following uses application-defined `Item`, `Stock`, and `OrderError` types:
 
 ```text
-type Inventory:
+interface Inventory:
     fn check(items: List[Item]) -> Result[Stock, OrderError]
 
 fn check_stock(

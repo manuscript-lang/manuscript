@@ -58,11 +58,10 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"missing implementation", "cl-10", "impl Increment for Offset:\n    fn apply(value: Int) -> Int:\n        return value + self.delta\n", "", "type"},
 		{"implementation labels", "cl-10", "fn apply(value: Int) -> Int:\n        return value + self.delta", "fn apply(item: Int) -> Int:\n        return item + self.delta", "type"},
 		{"contract no receiver", "cl-10", "Increment(value: offset)", "Increment()", "type"},
-		{"implementation generic signature", "cl-10a", "impl[T] ReadValue[T] for Box[T]:", "impl[T] ReadValue[Int] for Box[T]:", "type"},
-		{"implementation missing bound", "cl-10a", "impl[T: Equal]", "impl[T]", "type"},
+		{"implementation generic signature", "cl-10a", "impl ReadValue[T] for Box[T]:", "impl ReadValue[Int] for Box[T]:", "type"},
+		{"implementation missing bound", "cl-10a", "interface SameValue[T: Equal]", "interface SameValue[T]", "type"},
 		{"implementation unavailable", "cl-10a", "fn compare[T: Equal]", "fn compare[T]", "resolution"},
-		{"unused impl variable", "cl-10a", "impl[T]", "impl[T, U]", "type"},
-		{"blanket implementation", "cl-10a", "ReadValue[T] for Box[T]", "ReadValue[T] for T", "type"},
+		{"blanket implementation", "cl-10a", "ReadValue[T] for Box[T]", "ReadValue[T] for T", "resolution"},
 		{"shared view missing proof", "cl-10b", "fn shared_view[T: ReadValue[Int] & Shareable]", "fn shared_view[T: ReadValue[Int]]", "type"},
 		{"plain view cannot recover proof", "cl-10b", "value: shared)", "value: plain)", "type"},
 		{"function field not shareable", "cl-10b", "ReadValue[Int](value: callback)", "(ReadValue[Int] & Shareable)(value: callback)", "type"},
@@ -167,8 +166,8 @@ func TestGenericRecursionAndNamespaceRules(t *testing.T) {
 		"intrinsic declaration":         "type Int:\n    value: String\n",
 		"intrinsic bound target":        "type Data:\n    value: Int\nimpl Equal for Data:\n    fn compare() -> Unit:\n        return\n",
 		"case ambiguity":                "type First:\n    case Ready(value: Int)\ntype Second:\n    case Ready(value: Int)\nfn wrong() -> First:\n    return Ready(value: 1)\n",
-		"generic overlap":               "type Read[T]:\n    fn get() -> T\ntype Box[T]:\n    value: T\nimpl[T] Read[T] for Box[T]:\n    fn get() -> T:\n        return self.value\nimpl Read[Int] for Box[Int]:\n    fn get() -> Int:\n        return self.value\n",
-		"nested function field sharing": "type Box[T]:\n    value: T\ntype Read:\n    fn get() -> Int\nimpl[T] Read for Box[T]:\n    fn get() -> Int:\n        return 1\nfn one() -> Int:\n    return 1\ntest \"invalid sharing\":\n    let value = Box(value: Box(value: one))\n    let shared = (Read & Shareable)(value: value)\n",
+		"generic overlap":               "interface Read[T]:\n    fn get() -> T\ntype Box[T]:\n    value: T\nimpl Read[T] for Box[T]:\n    fn get() -> T:\n        return self.value\nimpl Read[Int] for Box[Int]:\n    fn get() -> Int:\n        return self.value\n",
+		"nested function field sharing": "type Box[T]:\n    value: T\ninterface Read:\n    fn get() -> Int\nimpl Read for Box[T]:\n    fn get() -> Int:\n        return 1\nfn one() -> Int:\n    return 1\ntest \"invalid sharing\":\n    let value = Box(value: Box(value: one))\n    let shared = (Read & Shareable)(value: value)\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource(name+".ms", source, compiler.Options{})
@@ -197,19 +196,19 @@ func FuzzCompile(f *testing.F) {
 func TestDisjointImplementations(t *testing.T) {
 	for name, source := range map[string]string{
 		"finite types": `import List from "@std/collections.ms"
-type Read[T]:
+interface Read[T]:
     fn get() -> Int
-type Pair[A, B]:
+type Pair[A: Shareable, B]:
     left: A
     right: B
-impl[T] Read[T] for Pair[T, T]:
+impl Read[A] for Pair[A, A]:
     fn get() -> Int:
         return 1
-impl[U: Shareable] Read[U] for Pair[U, List[U]]:
+impl Read[A] for Pair[A, List[A]]:
     fn get() -> Int:
         return 2
 `,
-		"function labels": `type Read:
+		"function labels": `interface Read:
     fn get() -> Int
 type Box[T]:
     value: T
@@ -291,7 +290,7 @@ func TestRejectedModuleBoundaries(t *testing.T) {
 			case "duplicate table":
 				manifest += "[project]\n"
 			case "orphan":
-				other = "export type Read:\n    fn get() -> Int\nexport type Box:\n    value: Int\n"
+				other = "export interface Read:\n    fn get() -> Int\nexport type Box:\n    value: Int\n"
 				main = "import Read from \"./other.ms\"\nimport Box from \"./other.ms\"\nimpl Read for Box:\n    fn get() -> Int:\n        return 1\n"
 			}
 			write(t, root, "ms.toml", manifest)
@@ -384,5 +383,72 @@ func TestPinsNativeCacheAndBuildMetadata(t *testing.T) {
 	write(t, root, "ms.lock", "{}\n")
 	if err := compiler.CheckPin(root); err == nil {
 		t.Fatal("mismatched pins accepted")
+	}
+}
+
+func TestImplementationDeclarationParameters(t *testing.T) {
+	for name, source := range map[string]string{
+		"type bounds": `interface Same[V]:
+    fn same(other: V) -> Bool
+type Box[T: Equal]:
+    value: T
+impl Same[T] for Box[T]:
+    fn same(other: T) -> Bool:
+        return self.value == other
+fn compare[T: Equal](value: Box[T], other: T) -> Bool:
+    return value.same(other: other)
+`,
+		"interface bounds": `interface Same[V: Equal]:
+    fn same(other: V) -> Bool
+interface Read[V]:
+    fn get() -> V
+type Box[T]:
+    value: T
+impl Same[T] for Box[T]:
+    fn same(other: T) -> Bool:
+        return self.value == other
+impl Read[T] for Box[T]:
+    fn get() -> T:
+        return self.value
+fn read[T](value: Box[T]) -> T:
+    return value.get()
+`,
+		"concrete receiver": `interface Read[V]:
+    fn get() -> V
+type Box[T]:
+    value: T
+impl Read[Int] for Box[Int]:
+    fn get() -> Int:
+        return self.value
+`,
+		"partial receiver": `interface Read[V]:
+    fn get() -> V
+type Pair[A, B]:
+    left: A
+    right: B
+impl Read[B] for Pair[Int, B]:
+    fn get() -> B:
+        return self.right
+`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			result := compiler.CompileSource(name+".ms", source, compiler.Options{})
+			if !result.Success() {
+				t.Fatal(result.Diagnostics)
+			}
+		})
+	}
+	for name, source := range map[string]string{
+		"renamed parameter":            "interface Read[V]:\n    fn get() -> V\ntype Box[T]:\n    value: T\nimpl Read[U] for Box[U]:\n    fn get() -> U:\n        return self.value\n",
+		"parameter only in interface":  "interface Read[V]:\n    fn get() -> V\ntype Box[T]:\n    value: T\nimpl Read[T] for Box[Int]:\n    fn get() -> T:\n        return self.value\n",
+		"parameter only in method":     "interface Read:\n    fn get() -> Int\ntype Box[T]:\n    value: T\nimpl Read for Box[Int]:\n    fn get() -> T:\n        return self.value\n",
+		"interface bound availability": "interface Same[V: Equal]:\n    fn same(other: V) -> Bool\ntype Box[T]:\n    value: T\nimpl Same[T] for Box[T]:\n    fn same(other: T) -> Bool:\n        return self.value == other\nfn compare[T](value: Box[T], other: T) -> Bool:\n    return value.same(other: other)\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			result := compiler.CompileSource(name+".ms", source, compiler.Options{})
+			if result.Success() {
+				t.Fatal("accepted invalid implementation")
+			}
+		})
 	}
 }

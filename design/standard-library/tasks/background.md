@@ -29,7 +29,7 @@ import OperationId from "@std/tasks.ms"
 type MailError:
     case Rejected
 
-type Mailer:
+interface Mailer:
     fn send(to: String) -> Result[Unit, MailError]
 
 fn enqueue(emails: Background, mailer: Mailer & Shareable, address: String) -> Result[OperationId, StartError]:
