@@ -2,7 +2,7 @@
 
 import Optional from "@std/optional.ms"
 
-export type System:
+export interface System:
     fn environment(name: String) -> Optional[String]
     fn info() -> SystemInfo
     fn working_directory() -> String

@@ -8,7 +8,7 @@ import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import TlsInfo from "@std/tls.ms"
 
-export type Connection:
+export interface Connection:
     fn close() -> Unit
     fn local_address() -> String
     fn peer_address() -> String
@@ -23,7 +23,7 @@ export type Datagram:
     data: Bytes
     sender: String
 
-export type DatagramSocket:
+export interface DatagramSocket:
     fn address() -> String
     fn close() -> Unit
     fn receive(max_bytes: Int) -> Result[Datagram, LibraryError]
@@ -38,7 +38,7 @@ export type DnsRecord:
     weight: Int
     port: Int
 
-export type Listener:
+export interface Listener:
     fn accept() -> Result[Connection & Shareable, LibraryError]
     fn accept_timeout(timeout: Duration) -> Result[Connection & Shareable, LibraryError]
     fn address() -> String

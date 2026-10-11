@@ -5,11 +5,11 @@ import LibraryError from "@std/errors.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 
-export type File:
+export interface File:
     fn close() -> Unit
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 
-export type Files:
+export interface Files:
     fn open(path: String) -> Result[File & Shareable, IoError]
 
 export type IoError:
@@ -18,11 +18,11 @@ export type IoError:
     case Unavailable
     case Failed(message: String)
 
-export type ReadStream:
+export interface ReadStream:
     fn close() -> Unit
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 
-export type WriteStream:
+export interface WriteStream:
     fn close() -> Unit
     fn flush() -> Result[Unit, IoError]
     fn write(data: Bytes) -> Result[Unit, IoError]

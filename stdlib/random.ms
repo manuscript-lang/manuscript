@@ -4,7 +4,7 @@ import Bytes from "@std/bytes.ms"
 import LibraryError from "@std/errors.ms"
 import Result from "@std/result.ms"
 
-export type Entropy:
+export interface Entropy:
     fn bytes(count: Int) -> Result[Bytes, LibraryError]
 
 export fn secure_int(entropy: Entropy & Shareable, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]

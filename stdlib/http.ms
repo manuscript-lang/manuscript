@@ -22,7 +22,7 @@ export type ClientResponse:
     headers: Map[String, List[String]]
     body: Bytes
 
-export type HttpClient:
+export interface HttpClient:
     fn close() -> Unit
     fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody & Shareable, LibraryError]
     fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream & Shareable, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody & Shareable, LibraryError]
@@ -36,7 +36,7 @@ export type HttpClientOptions:
     cookies: Bool
     tls: TlsOptions
 
-export type HttpExchange:
+export interface HttpExchange:
     fn close() -> Unit
     fn headers() -> Map[String, List[String]]
     fn method() -> String
@@ -59,7 +59,7 @@ export type HttpResponse:
     headers: Map[String, String]
     body: Bytes
 
-export type HttpServer:
+export interface HttpServer:
     fn address() -> String
     fn close() -> Unit
     fn wait() -> Result[Unit, IoError]
@@ -73,7 +73,7 @@ export type HttpServerOptions:
     grace: Duration
     tls: Optional[TlsOptions]
 
-export type Network:
+export interface Network:
     fn bind_datagram(address: String) -> Result[DatagramSocket & Shareable, LibraryError]
     fn close() -> Unit
     fn connect(address: String, timeout: Duration) -> Result[Connection & Shareable, LibraryError]
@@ -93,7 +93,7 @@ export type Network:
     fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket & Shareable, LibraryError]
     fn with_resolver(address: String) -> Result[Network & Shareable, LibraryError]
 
-export type ResponseBody:
+export interface ResponseBody:
     fn close() -> Unit
     fn headers() -> Map[String, List[String]]
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]

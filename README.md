@@ -26,6 +26,8 @@ Project native builds require `ms.lock` to match the compiler/runtime and Go too
 
 Applications export `fn main(process: Process) -> Int`; standard symbols use explicit imports. Start with [the hello project](examples/hello/src/main.ms), [core language fixtures](tests/e2e/testdata/accept), and [implementation coverage](IMPLEMENTATION.md). The implementation follows the current design on `main`, including cleanup, joined/background work, queues, state/pools, builders, and explicit CLI/HTTP/subprocess capabilities. External adapters, advanced host APIs, structural editing, and debugger integration remain design work; the coverage document lists the limits.
 
+Records and alternatives use `type`; operation contracts use `interface`. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declarations, for example `impl ReadValue[T] for Box[T]:`.
+
 ## Packages
 
 | Package | Responsibility |

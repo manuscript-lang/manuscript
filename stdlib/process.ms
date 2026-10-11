@@ -17,5 +17,5 @@ export type CommandOutput:
     stdout: Bytes
     stderr: Bytes
 
-export type Commands:
+export interface Commands:
     fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]

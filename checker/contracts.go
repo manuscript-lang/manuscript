@@ -7,12 +7,12 @@ import (
 func (c *checker) implementation(d *syntax.Declaration) {
 	old := c.scope
 	c.scope = newScope(nil)
-	vars := c.typeVariables(d.TypeParams)
-	contract := c.resolve(d.Contract, false)
-	receiver := c.resolve(d.Receiver, false)
-	if contract.Kind != "contract" {
-		c.error(d.Pos, "type", "implementation target must be an operation contract")
+	// Implementations inherit names and bounds from the nominal receiver declaration.
+	var vars []*Type
+	if symbol := c.names[d.Receiver.Name]; symbol != nil && symbol.Decl != nil && symbol.Kind == "type" {
+		vars = c.typeVariables(symbol.Decl.TypeParams)
 	}
+	receiver := c.resolve(d.Receiver, false)
 	if receiver.Def == nil || receiver.Kind == "contract" || receiver.Def.Symbol.Module != c.module.File {
 		c.error(d.Pos, "type", "implementation receiver must be nominal data defined in this module")
 	}
@@ -31,11 +31,46 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		}
 	}
 	visit(receiver)
-	for _, v := range vars {
-		if !occurs[v.ID] {
-			c.error(d.Pos, "type", "implementation receiver cannot determine "+v.Name)
+	active := vars[:0]
+	specialized := map[string]*Type{}
+	for i, v := range vars {
+		if occurs[v.ID] {
+			active = append(active, v)
+		} else {
+			delete(c.scope.types, v.Name)
+			if i < len(receiver.Args) {
+				specialized[v.ID] = receiver.Args[i]
+			}
 		}
 	}
+	vars = active
+	for _, v := range vars {
+		for i, bound := range v.Bounds {
+			v.Bounds[i] = Sub(bound, specialized)
+		}
+	}
+	contract := c.resolve(d.Contract, false)
+	if contract.Kind != "contract" {
+		c.error(d.Pos, "type", "implementation target must be an interface")
+	}
+	// An interface argument that is a receiver parameter carries the interface's
+	// declared bounds into this implementation, without changing the data type.
+	if contract.Def != nil && len(contract.Args) == len(contract.Def.Variables) {
+		sub := substitution(contract)
+		for i, parameter := range contract.Def.Variables {
+			argument := contract.Args[i]
+			for _, v := range vars {
+				if argument.ID == v.ID {
+					for _, bound := range parameter.Bounds {
+						v.Bounds = append(v.Bounds, Sub(bound, sub))
+					}
+				}
+			}
+		}
+	}
+	// Resolution copies variable types, so refresh applications after adding bounds.
+	receiver = c.resolve(d.Receiver, false)
+	contract = c.resolve(d.Contract, false)
 	for _, m := range c.Methods {
 		if overlap(receiver, contract, m.Receiver, m.Contract, append(append([]*Type{}, vars...), m.Variables...)) {
 			c.error(d.Pos, "type", "duplicate or overlapping implementation")

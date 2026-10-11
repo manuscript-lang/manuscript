@@ -66,6 +66,9 @@ func loadStandardSources() error {
 				return fmt.Errorf("native declarations must not have bodies: %s", d.Pos)
 			}
 			kind := d.Kind
+			if kind == "interface" {
+				kind = "contract"
+			}
 			native := d.Name
 			id := "@std/" + d.Name
 			s := &Symbol{Name: d.Name, ID: id, Kind: "type", Module: module.File, Export: d.Export, Native: native, Decl: d}

@@ -7,12 +7,12 @@ weight = 17
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-An operation contract declares behavior that an implementation must supply. Use it at a boundary where a caller needs a set of operations without depending on one concrete data type.
+An `interface` declaration defines an operation contract: behavior that an implementation must supply. Use it at a boundary where a caller needs a set of operations without depending on one concrete data type.
 
 The following contract refers to application-defined `Money`, `Receipt`, and `PaymentError` types:
 
 ```text
-type Payments:
+interface Payments:
     fn charge(amount: Money) -> Result[Receipt, PaymentError]
 ```
 
@@ -25,7 +25,7 @@ Operation contracts support explicit implementations through `impl Contract for 
 An implementation supplies the contract's operations for the named data type. The implementation relationship is declared explicitly rather than inferred from coincidentally similar operation names.
 
 ```text
-type Increment:
+interface Increment:
     fn apply(value: Int) -> Int
 
 type Offset:
@@ -59,36 +59,36 @@ Exported contracts expose every operation. Types in their operation signatures o
 
 ## Generic implementations
 
-An implementation may declare type parameters immediately after `impl`. Its receiver must be an application of a nominal data declaration in the implementation's module. Every implementation parameter must occur in that receiver application, so matching the receiver determines all implementation arguments; parameters occurring only in the contract or method signatures are rejected.
+An implementation uses generic parameters from its receiver type declaration. Its receiver must be an application of a nominal data declaration in the implementation's module. Parameter names in the receiver application come from that data declaration. Only parameters occurring in the receiver application are in scope for the interface and methods; matching the receiver determines all implementation arguments. Concrete and nested receiver applications remain supported. Interface parameter names need not match data parameter names: an application substitutes the receiver parameters positionally. An undeclared name such as `U` in `impl ReadValue[U] for Box[U]` is rejected when `Box` declares only `T`.
 
 ```text
-type ReadValue[T]:
+interface ReadValue[T]:
     fn get() -> T
 
 type Box[T]:
     value: T
 
-impl[T] ReadValue[T] for Box[T]:
+impl ReadValue[T] for Box[T]:
     fn get() -> T:
         return self.value
 ```
 
-This block implements `ReadValue[Int]` for `Box[Int]`, `ReadValue[String]` for `Box[String]`, and every other well-formed application. Methods use the block's parameters but cannot declare their own. The compiler checks the body once under the declared bounds, with `self: Box[T]`, and checks exact substituted operation signatures. Implementation bounds must prove that every nested type application and operation in the body is legal. At a use, receiver matching supplies the arguments and those arguments must satisfy the block's bounds.
+This block implements `ReadValue[Int]` for `Box[Int]`, `ReadValue[String]` for `Box[String]`, and every other well-formed application. Methods use the receiver declaration's parameters but cannot declare their own. Bounds are inherited from the receiver type declaration and, for interface arguments that are receiver parameters, from the interface declaration. The compiler checks the body once under these inherited bounds, with `self: Box[T]`, and checks exact substituted operation signatures. Inherited bounds must prove that every nested type application and operation in the body is legal. At a use, receiver matching supplies the arguments and those arguments must satisfy the inherited bounds. When a receiver argument is specialized to a concrete type, references to that parameter in other inherited bounds use the concrete type. For example, `Pair[A, B: ReadValue[A]]` with receiver `Pair[Int, B]` gives `B: ReadValue[Int]`.
 
-Bounds can restrict availability:
+Interface parameter bounds can restrict implementation availability without restricting the data type:
 
 ```text
-type SameValue[T]:
+interface SameValue[T: Equal]:
     fn same(other: T) -> Bool
 
-impl[T: Equal] SameValue[T] for Box[T]:
+impl SameValue[T] for Box[T]:
     fn same(other: T) -> Bool:
         return self.value == other
 ```
 
 A `Box[T]` with no proof of `T: Equal` cannot use this implementation. Bounds do not make the receiver shareable beyond the ordinary derivation for its fields.
 
-Two blocks overlap if their receiver and contract applications can simultaneously match the same pair of types. Check this by structurally unifying both pairs, with each block's parameters treated as distinct variables and nominal identities and invariant arguments preserved. Ignore bounds in this check: different bounds cannot select competing implementations. Reject overlap at declaration checking, even if no current call uses it. There is no most-specific selection or specialization.
+Two blocks overlap if their receiver and contract applications can simultaneously match the same pair of types. Check this by structurally unifying both pairs, with each receiver's inherited parameters treated as distinct variables and nominal identities and invariant arguments preserved. Ignore bounds in this check: different bounds cannot select competing implementations. Reject overlap at declaration checking, even if no current call uses it. There is no most-specific selection or specialization.
 
 ```text
 # Rejected alongside the generic block above: both apply to Box[Int].

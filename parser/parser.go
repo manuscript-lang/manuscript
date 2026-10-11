@@ -58,7 +58,7 @@ func parse(file, source string, declarationsOnly bool) (module *syntax.Module, e
 		exported := p.take("export")
 		d := p.declaration()
 		if exported && (d.Kind == "impl" || d.Kind == "test") {
-			p.fail(p.previous(), "only types and named functions can be exported")
+			p.fail(p.previous(), "only types, interfaces, and named functions can be exported")
 		}
 		d.Export = exported
 		module.Declarations = append(module.Declarations, d)
@@ -214,7 +214,6 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Result = &syntax.Type{Name: "Unit", Pos: token.Pos}
 		d.Body = p.suite()
 	case p.take("impl"):
-		d.TypeParams = p.typeParams()
 		d.Contract = p.namedType()
 		p.need("for")
 		d.Receiver = p.namedType()
@@ -239,7 +238,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 		if len(d.Methods) == 0 {
 			p.fail(token, "implementation requires operations")
 		}
-	case p.take("type"):
+	case p.take("type") || p.take("interface"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
 		if p.declarationsOnly && p.peek().Kind != ":" {
@@ -251,6 +250,9 @@ func (p *Parser) declaration() *syntax.Declaration {
 		p.need(lexer.Newline)
 		p.need(lexer.Indent)
 		form := ""
+		if token.Kind == "interface" {
+			form = "interface"
+		}
 		for p.peek().Kind != lexer.Dedent {
 			p.newlines()
 			if p.peek().Kind == lexer.Dedent {
@@ -261,10 +263,13 @@ func (p *Parser) declaration() *syntax.Declaration {
 				next = "alternative"
 			}
 			if p.peek().Kind == "fn" {
-				next = "contract"
+				next = "interface"
+			}
+			if token.Kind == "type" && next == "interface" && !p.declarationsOnly {
+				p.fail(p.peek(), "operation signatures require an interface declaration")
 			}
 			if form != "" && next != form && !p.declarationsOnly {
-				p.fail(p.peek(), "a type cannot mix fields, cases, and operations")
+				p.fail(p.peek(), "a type has only fields or cases; an interface has only operation signatures")
 			}
 			form = next
 			if p.take("case") {
@@ -294,8 +299,8 @@ func (p *Parser) declaration() *syntax.Declaration {
 			}
 		}
 		p.need(lexer.Dedent)
-		if form == "" {
-			p.fail(token, "type body cannot be empty")
+		if form == "" || (form == "interface" && len(d.Methods) == 0) {
+			p.fail(token, "declaration body cannot be empty")
 		}
 		d.Kind = form
 	default:

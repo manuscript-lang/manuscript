@@ -1,5 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
 
-export type Closeable:
+export interface Closeable:
     fn close() -> Unit

@@ -388,11 +388,11 @@ func TestCLISourceTools(t *testing.T) {
 }
 
 func TestNominalIdentityEscapesPathDelimiters(t *testing.T) {
-	result := compiler.CompileSource("data[0]:&.ms", `type Read:
+	result := compiler.CompileSource("data[0]:&.ms", `interface Read:
     fn get() -> Int
 type Box[T]:
     value: T
-impl[T] Read for Box[T]:
+impl Read for Box[T]:
     fn get() -> Int:
         return 3
 test "encoded nominal identity":

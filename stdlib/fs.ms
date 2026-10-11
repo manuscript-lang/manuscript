@@ -18,7 +18,7 @@ export type FileInfo:
     symlink: Bool
     modified: Timestamp
 
-export type FileSystem:
+export interface FileSystem:
     fn canonicalize(path: String) -> Result[String, LibraryError]
     fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Int) -> Result[Unit, LibraryError]
     fn create_directory(path: String, recursive: Bool) -> Result[Unit, LibraryError]

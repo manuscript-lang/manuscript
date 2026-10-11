@@ -1,10 +1,10 @@
-type Apply[T]:
+interface Apply[T]:
     fn apply(value: Int) -> T
 
 type Box[T]:
     value: T
 
-impl[T] Apply[T] for Box[fn(value: Int) -> T]:
+impl Apply[T] for Box[fn(value: Int) -> T]:
     fn apply(value: Int) -> T:
         return self.value(value: value)
 

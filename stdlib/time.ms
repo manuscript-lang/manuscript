@@ -3,7 +3,7 @@
 import LibraryError from "@std/errors.ms"
 import Result from "@std/result.ms"
 
-export type Clock:
+export interface Clock:
     fn now() -> Instant
 
 export type Duration
@@ -12,7 +12,7 @@ export type Instant
 
 export type Timestamp
 
-export type WallClock:
+export interface WallClock:
     fn now() -> Timestamp
 
 export fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, LibraryError]

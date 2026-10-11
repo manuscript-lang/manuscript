@@ -7,7 +7,7 @@ import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import TlsOptions from "@std/tls.ms"
 
-export type WebSocket:
+export interface WebSocket:
     fn close() -> Unit
     fn ping(data: Bytes) -> Result[Unit, LibraryError]
     fn receive() -> Result[Optional[WebSocketMessage], LibraryError]

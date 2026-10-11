@@ -80,8 +80,12 @@ func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program
 			s := &Symbol{Name: d.Name, ID: c.unique("symbol"), Kind: "fn", Module: module.File, Export: d.Export, Decl: d}
 			if d.Kind != "fn" {
 				s.Kind = "type"
-				def := &Definition{Symbol: s, Kind: d.Kind}
-				s.Type = &Type{Name: d.Name, ID: "module/" + hex.EncodeToString([]byte(module.File)) + "#" + d.Name, Kind: d.Kind, Def: def}
+				kind := d.Kind
+				if kind == "interface" {
+					kind = "contract"
+				}
+				def := &Definition{Symbol: s, Kind: kind}
+				s.Type = &Type{Name: d.Name, ID: "module/" + hex.EncodeToString([]byte(module.File)) + "#" + d.Name, Kind: kind, Def: def}
 			}
 			c.addSymbol(d.Name, s, d.Pos)
 		}
