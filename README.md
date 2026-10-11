@@ -88,3 +88,5 @@ For branch protection, require the **Build design book** and **Language checks /
 ```sh
 hugo --minify --panicOnWarning --baseURL "https://example.org/manuscript/"
 ```
+
+Standard library types and signatures live in [`stdlib/`](stdlib/README.md) as Manuscript source. Editor adapters can resolve their declarations through the tooling navigation APIs; `ms stdlib <directory>` exports the pinned source documents.

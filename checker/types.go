@@ -68,6 +68,7 @@ type Program struct {
 	Cleanups         map[*syntax.Statement]*Method
 	Effects          map[string][]string
 	Modules          []*syntax.Module
+	TypeReferences   map[*syntax.Type]*Type
 	Symbols          map[string]map[string]*Symbol
 	Expressions      map[*syntax.Expression]*Info
 	Bindings         map[*syntax.Pattern]*Binding

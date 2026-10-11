@@ -7,7 +7,7 @@ weight = 48
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
-These pages document executable additions to the Go compiler/runtime. Signatures are generated from the same Library/LibraryMethods descriptors used by checking and native dispatch. Types are individually imported from their named module. Standard imports remain pinned with the distribution; there are no ambient new types, wildcard imports, user-defined generic operations, or implicit external authority.
+These pages document executable additions to the Go compiler/runtime. Types and signatures are defined in the pinned Manuscript sources under `stdlib/`; the checker reads those declarations and verifies native runtime ABI signatures against them. Types are individually imported from their named module. Standard imports remain pinned with the distribution; there are no ambient new types, wildcard imports, user-defined generic operations, or implicit external authority.
 
 Each function identity includes its module (`json/parse`, `bigint/parse`, `url/parse`), avoiding same-name binding collisions in generated code. Source import aliases remain unsupported: use a helper module when two exports have the same spelling. Sequential callbacks may suspend and are invoked under the caller's context; sharing proofs are required only by the existing concurrent APIs, not by sequential collection helpers.
 

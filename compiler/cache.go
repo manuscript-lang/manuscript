@@ -10,6 +10,7 @@ import (
 	"github.com/manuscript-lang/manuscript/lexer"
 	"github.com/manuscript-lang/manuscript/parser"
 	msruntime "github.com/manuscript-lang/manuscript/runtime"
+	"github.com/manuscript-lang/manuscript/stdlib"
 	"github.com/manuscript-lang/manuscript/syntax"
 	"io"
 	"io/fs"
@@ -40,7 +41,7 @@ func implementationDigest() string {
 	bundles := []struct {
 		name  string
 		files fs.FS
-	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"compiler", ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}}
+	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"compiler", ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}, {"stdlib", stdlib.Sources}}
 	var data strings.Builder
 	for _, bundle := range bundles {
 

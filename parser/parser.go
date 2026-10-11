@@ -9,11 +9,18 @@ import (
 )
 
 type Parser struct {
-	tokens []lexer.Token
-	at     int
+	tokens           []lexer.Token
+	at               int
+	declarationsOnly bool
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
+	return parse(file, source, false)
+}
+
+// ParseLibrary accepts declaration-only standard modules. Application parsing remains strict.
+func ParseLibrary(file, source string) (*syntax.Module, error) { return parse(file, source, true) }
+func parse(file, source string, declarationsOnly bool) (module *syntax.Module, err error) {
 	tokens, err := lexer.Lex(file, source)
 	if err != nil {
 		return nil, err
@@ -28,7 +35,7 @@ func Parse(file, source string) (module *syntax.Module, err error) {
 			}
 		}
 	}()
-	p := &Parser{tokens: tokens}
+	p := &Parser{tokens: tokens, declarationsOnly: declarationsOnly}
 	module = &syntax.Module{File: file, Source: source}
 	for p.peek().Kind != lexer.EOF {
 		p.newlines()
@@ -192,7 +199,11 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Params = p.parameters()
 		p.need("->")
 		d.Result = p.typ()
-		d.Body = p.suite()
+		if p.declarationsOnly && p.peek().Kind != ":" {
+			p.end()
+		} else {
+			d.Body = p.suite()
+		}
 	case p.take("test"):
 		name := p.need(lexer.String)
 		text := p.text(name)
@@ -231,6 +242,11 @@ func (p *Parser) declaration() *syntax.Declaration {
 	case p.take("type"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
+		if p.declarationsOnly && p.peek().Kind != ":" {
+			p.end()
+			d.Kind = "native"
+			return d
+		}
 		p.need(":")
 		p.need(lexer.Newline)
 		p.need(lexer.Indent)
@@ -247,7 +263,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			if p.peek().Kind == "fn" {
 				next = "contract"
 			}
-			if form != "" && next != form {
+			if form != "" && next != form && !p.declarationsOnly {
 				p.fail(p.peek(), "a type cannot mix fields, cases, and operations")
 			}
 			form = next

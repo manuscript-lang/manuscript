@@ -50,7 +50,7 @@ type checker struct {
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
-	p := &Program{Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
+	p := &Program{TypeReferences: map[*syntax.Type]*Type{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
 	c := &checker{Program: p, captures: map[int]map[*Binding]bool{}}
 	for _, module := range modules {
 		c.module = module
@@ -248,6 +248,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 		}
 		r.Shared = true
 	}
+	c.TypeReferences[t] = &r
 	return &r
 }
 func (c *checker) params(params []syntax.Parameter) []Param {
