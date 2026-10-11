@@ -59,6 +59,8 @@ The end-to-end suite needs the Go toolchain on `PATH` or in `MANUSCRIPT_GO`. It 
 
 ## Read the design book
 
+Read the published book at <https://manuscript-lang.github.io/manuscript/>. Changes to `design/` publish automatically after CI passes on `main`.
+
 The Markdown guides are rendered directly with [Hugo](https://gohugo.io/) and the [Hugo Book theme](https://github.com/alex-shpak/hugo-book). Install Hugo Extended 0.146 or newer.
 
 ```sh
@@ -71,22 +73,22 @@ Open <http://localhost:4000> to browse the chapters, search the book, and follow
 hugo --minify
 ```
 
-The static site is generated in `public/`. Hugo reads the Markdown guides in `design/` directly. Chapter indexes use `_index.md`; each page's front matter sets its title and reading-order weight. New Markdown pages appear automatically. Site settings live in `hugo.toml`.
+The static site is generated in `docs/`, which is committed for GitHub Pages to serve. Edit the Markdown guides in `design/`, then rebuild; files in `docs/` are generated output. Chapter indexes use `_index.md`; each page's front matter sets its title and reading-order weight. New Markdown pages appear automatically. Site settings live in `hugo.toml`. The `static/.nojekyll` marker is copied into `docs/` so Pages serves the Hugo output directly.
 
 Hugo Book v13 is vendored in `themes/hugo-book/`, including its MIT license. The exact upstream revision is recorded in `themes/hugo-book/UPSTREAM`.
 
 ## CI/CD
 
-[The GitHub Actions pipeline](.github/workflows/cicd.yml) builds the design book on every branch push and pull request using Hugo Extended 0.146.7. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.
+[The GitHub Actions pipeline](.github/workflows/cicd.yml) builds the design book on branch pushes and pull requests using Hugo Extended 0.146.7. Pushes that only change generated `docs/` files are skipped. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.
 
 The pipeline also calls [the language checks](.github/workflows/test-language.yml) with Go 1.25.1: formatting, vet, unit and native end-to-end tests, race checks, and a CLI build and example run. Deployment requires both the book build and language checks to pass. The language workflow can also be run independently from the Actions tab.
 
-After validation succeeds on the repository's default branch, the pipeline builds with the GitHub Pages URL and deploys the resulting `public/` artifact. Pull requests and other branches only run validation. You can also run the pipeline manually from the Actions tab; deployment still requires the default branch.
+After validation succeeds on the repository's default branch (`main`), the pipeline builds with the GitHub Pages URL, commits the generated `docs/` files to that branch, and explicitly requests a Pages build. This request is needed because pushes made with `GITHUB_TOKEN` do not trigger Pages builds automatically. Pull requests and other branches only run validation. You can also run the pipeline manually from the Actions tab; publishing still requires the default branch. Outdated runs skip publishing, and a concurrent branch update causes the push to fail rather than overwrite newer work.
 
-To enable deployment, open the repository's **Settings → Pages** and select **GitHub Actions** as the build source. The workflow uses the built-in `GITHUB_TOKEN` and requires no deployment secrets. If the `github-pages` environment has approval rules, deployment waits for those approvals. For a custom domain, configure it in Pages settings; the production build uses the URL reported by Pages.
+Keep **Settings → Pages → Source** set to **Deploy from a branch**, with **main** and **/docs** selected. The workflow uses the built-in `GITHUB_TOKEN` with contents and Pages write permissions; no deployment secrets are required. Repository rules must allow the workflow to push generated documentation to `main`. If branch protection blocks that push, regenerate and merge `docs/` through a pull request instead. For a custom domain, configure it in Pages settings and update `baseURL` in `hugo.toml` before rebuilding the committed output; CI uses the URL reported by Pages.
 
 For branch protection, require the **Build design book** and **Language checks / test** status checks. To reproduce the book validation locally with Hugo Extended 0.146.7:
 
 ```sh
-hugo --minify --panicOnWarning --baseURL "https://example.org/manuscript/"
+hugo --minify --panicOnWarning --destination /tmp/manuscript-book-validation --baseURL "https://example.org/manuscript/"
 ```
