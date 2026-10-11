@@ -3,12 +3,14 @@ package compiler
 import (
 	"bytes"
 	"fmt"
+	support "github.com/manuscript-lang/manuscript"
 	msruntime "github.com/manuscript-lang/manuscript/runtime"
 	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/scanner"
 	"go/token"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -109,6 +111,30 @@ func buildNative(source, output string, debug bool) error {
 		return err
 	}
 	defer os.RemoveAll(dir)
+	if err := fs.WalkDir(support.NativeDependencies, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == "." {
+			return nil
+		}
+		target := filepath.Join(dir, filepath.FromSlash(path))
+		if entry.IsDir() {
+			return os.MkdirAll(target, 0755)
+		}
+		data, err := support.NativeDependencies.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0644)
+	}); err != nil {
+		return err
+	}
+	output, err = filepath.Abs(output)
+	if err != nil {
+		return err
+	}
+
 	filename := filepath.Join(dir, "main.go")
 	if err := os.WriteFile(filename, []byte(standalone), 0600); err != nil {
 		return err
@@ -117,12 +143,13 @@ func buildNative(source, output string, debug bool) error {
 	if tool == "" {
 		tool = "go"
 	}
-	arguments := []string{"build", "-trimpath"}
+	arguments := []string{"build", "-trimpath", "-mod=vendor"}
 	if debug {
 		arguments = append(arguments, "-gcflags=all=-N -l")
 	}
 	arguments = append(arguments, "-o", output, filename)
 	command := exec.Command(tool, arguments...)
+	command.Dir = dir
 	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	data, err := command.CombinedOutput()
 	if err != nil {

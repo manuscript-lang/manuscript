@@ -38,6 +38,8 @@ import parallel from "@std/tasks.ms"
 
 Imports establish stable nominal identities independent of the application. Imported names follow ordinary collision and shadowing rules; unimported standard names are not reserved. A local declaration with the same spelling never acquires standard operators, cleanup recognition, callback checks, or native members.
 
+The [general-purpose package guide](../packages/_index.md) documents additional module exports and [common errors](../packages/contracts.md). Process also exposes FileSystem, Entropy, WallClock and System roots, while its existing Network gains TCP/UDP/TLS/client/DNS operations. These additions retain explicit imports and nominal identities.
+
 ## Syntax and compiler support
 
 Some library identities need compiler support while remaining explicit exports:
@@ -125,7 +127,7 @@ Status eviction never reuses an ID for different work. An ID the service did not
 
 The host's authority roots and stream signatures are defined by [CLI hosts](../hosts/cli.md) and [streams](../data-and-io/streams.md). Standard collection, byte, text, numeric, and duration members are defined in [minimum data operations](../data-and-io/operations.md). Source code cannot add implementations or members to intrinsic or standard native types. Source types may implement standard contracts in their own defining module.
 
-General user type packs, optional source parameters, generic operations, and third-party dependency package imports are unsupported. HTTP host registration still needs an API contract.
+General user type packs, optional source parameters, generic operations, and third-party dependency package imports are unsupported. HTTP host registration follows the [bounded request API](../hosts/http.md#bounded-request-api).
 
 ## Data services and additional host capabilities
 

@@ -262,6 +262,9 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 		}
 		return true
 	}
+	if std(t, "BigInt") || std(t, "Regex") || std(t, "Timestamp") {
+		return property == "Shareable" || (property == "Equal" && !std(t, "Regex"))
+	}
 	if t.Kind == "native" {
 		return false
 	}

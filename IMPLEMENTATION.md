@@ -1,6 +1,6 @@
 # Implementation coverage
 
-The implementation follows the design book on `main` and its [core language conformance cases](design/compiler/conformance/core-language.md). It is a Go compiler with a native Go backend and an embedded runtime. Go 1.25 or newer is required; there are no third-party Go dependencies. This document distinguishes implemented behavior from additional contracts and tooling described in the book.
+The implementation follows the design book on `main` and its [core language conformance cases](design/compiler/conformance/core-language.md). It is a Go compiler with a native Go backend and an embedded runtime. Go 1.25 or newer is required; the required WebSocket/public-suffix dependencies are pinned and vendored for offline native builds. This document distinguishes implemented behavior from additional contracts and tooling described in the book.
 
 ## Language and checking
 
@@ -30,9 +30,12 @@ The implementation follows the design book on `main` and its [core language conf
 | CLI capabilities | Explicit Process arguments/environment, streams, read-only files, monotonic clock, network, commands, checked exit codes, signal cancellation, joined shutdown, and host-root cleanup |
 | HTTP | Explicit Network authority; bounded buffered requests/responses, shared handler proofs, admission/body/output limits, timeout/disconnect cancellation, fault isolation, and grace/cancel/join shutdown |
 | Subprocesses | Explicit Commands authority, joined execution, timeout, aggregate output bounds, captured bytes, exit status, and domain errors; process-group cancellation on platforms exposing that facility |
+| General-purpose packages | Strict codecs/binary numbers, scalar text, Float math/BigInt, exact JSON, CSV/URL/HTML, sequential collection algorithms, hashes/HMAC/PBKDF2/AES-GCM/Ed25519, compression and ZIP/TAR, bounded stream helpers, structured log/test assertions |
+| Additional CLI roots | FileSystem read/write/copy/stat/list/directories/links, WallClock/Timestamp, System info/environment and cryptographic Entropy |
+| Network clients and sockets | Buffered/streaming HTTP/1.1/HTTP/2 clients and servers, pooled transports/cookies/redirects, WebSocket sessions, TCP/Unix/TLS sockets and mutual TLS, bounded DNS record lookup, scoped resolver/policy and cancellation/close joining |
 | Native acquisition | Undelivered files, pool leases, and HTTP servers are disposed if cancellation wins before delivery |
 
-The exact new library APIs and boundary behavior live in the canonical [queue](design/standard-library/data-and-io/queues.md), [state/pool](design/standard-library/data-and-io/synchronized-state.md), [builder](design/standard-library/data-and-io/builders.md), [HTTP](design/standard-library/hosts/http.md), and [subprocess](design/standard-library/data-and-io/streams.md) pages. Source cannot manufacture native host authority.
+The expanded package APIs and boundary behavior live in [general-purpose packages](design/standard-library/packages/_index.md); their signatures come from shared checker/runtime descriptors. The original host/service APIs and boundary behavior live in the canonical [queue](design/standard-library/data-and-io/queues.md), [state/pool](design/standard-library/data-and-io/synchronized-state.md), [builder](design/standard-library/data-and-io/builders.md), [HTTP](design/standard-library/hosts/http.md), and [subprocess](design/standard-library/data-and-io/streams.md) pages. Source cannot manufacture native host authority.
 
 The backend lowers functions and control flow to Go with type-erased runtime values after static checking. Generics use runtime type keys and coherent implementation dispatch; concrete Go layouts and machine-code monomorphization are not implemented. Map and Set use ordered linear storage. Pollable stream I/O supports cancellation/deadlines and concurrent close. Uncooperative native code or nonpollable I/O can still delay joining; forced termination does not constitute successful cleanup.
 
@@ -42,7 +45,7 @@ The backend lowers functions and control flow to Go with type-erased runtime val
 
 `ms lock ms.toml` explicitly records compiler/frontend/runtime content and the selected Go toolchain/target in `ms.lock`. Native project builds reject missing or mismatched pins. Check/emit/source inspection do not need pins. Native artifacts have verified cache entries and `<executable>.ms-build.json` with source/configuration and executable hashes. Unchanged outputs are not rewritten. `compiler.VerifyBuild` checks binary/source identity. This establishes deterministic generated source and artifact identity, without promising byte-identical binaries across environments. Parsing and checking still run before an artifact cache hit.
 
-`ms emit` produces one self-contained Go file with its runtime. Native builds use `-trimpath` without downloading runtime dependencies. Generated source has Go line directives, and programming faults accumulate source function positions. `--debug` disables optimization/inlining while retaining native symbols.
+`ms emit` produces one Go file containing its runtime and imports of the pinned vendored dependencies. Native builds use `-trimpath` using the embedded vendor source bundle without downloading dependencies. Generated source has Go line directives, and programming faults accumulate source function positions. `--debug` disables optimization/inlining while retaining native symbols.
 
 `ms fmt file.ms` validates syntax before atomically replacing a file and preserves comments and literal spellings. `--check` reports formatting drift without writing. `ms check --json` emits format-1 diagnostics. `ms inspect` emits checked entities, generated declaration names, source hashes, original-byte statement header spans, call sites, and effects. `ms diagram` emits their static Mermaid call graph, including implicit cleanup; neither command represents a runtime trace.
 
@@ -53,7 +56,8 @@ The backend lowers functions and control flow to Go with type-erased runtime val
 The book's [outstanding decisions](design/compiler/conformance/scope.md#outstanding-decisions) remain authoritative. The following parts are not implemented:
 
 - External native adapter manifests/ABI, `[adapters]` loading, custom host distributions, and adapter/dependency pins.
-- HTTP clients, streaming responses, WebSocket/session hosts, interactive subprocess streams, and uniform cross-platform descendant supervision.
+- HTTP/3 is excluded by explicit user instruction. Interactive subprocess streams and uniform cross-platform descendant supervision remain separate work.
+- Unicode normalization/graphemes/legacy text codecs, seek/watch/permissions APIs, timezone calendars/tickers, archive extraction and specialized formats. See the [coverage map](design/standard-library/packages/coverage.md) for runnable equivalents and remaining gaps.
 - Full incremental frontend/package compilation, concrete native generic layouts, precise retained-authority classification, and native adapter effect declarations.
 - Transactional structural edits, rich diagnostic spans/related locations, architecture diffs, runtime trace transport, complete local-value metadata, and Delve integration.
 - Test discovery globs, identity beyond display labels, authority injection, and expected-fault assertions, which need the runner contract finalized.

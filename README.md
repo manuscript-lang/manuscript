@@ -20,7 +20,7 @@ go build -o ms ./cmd/ms
 ./ms fmt examples/hello/src/main.ms --check
 ```
 
-`ms check` reports positioned parse, resolution, and type errors. `ms build` creates a native executable. `ms emit` writes a self-contained Go program, including its runtime, that can be built with `go build main.go`. `ms run` and `ms test` build temporary executables. Set `MANUSCRIPT_GO` to select a Go executable outside `PATH`.
+`ms check` reports positioned parse, resolution, and type errors. `ms build` creates a native executable. `ms emit` writes a Go program containing the Manuscript runtime. Build emitted source inside the distribution with `go build -mod=vendor main.go`; copying it elsewhere also requires the pinned `go.mod`, `go.sum`, and `vendor/` tree. `ms build`, `run`, and `test` bundle those dependencies automatically and need no package downloads. `ms run` and `ms test` build temporary executables. Set `MANUSCRIPT_GO` to select a Go executable outside `PATH`.
 
 Project native builds require `ms.lock` to match the compiler/runtime and Go toolchain/target. `ms lock` explicitly creates or updates those pins; run it after selecting your toolchain or updating the compiler. Builds verify cached artifacts and write executable/source metadata. `--debug` on build/run/test disables native optimization and inlining. `ms check --json` provides structured diagnostics.
 

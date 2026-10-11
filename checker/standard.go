@@ -94,4 +94,5 @@ func init() {
 	t = &Type{Name: "T", ID: "@std/parallel_map/T", Kind: "variable", Bounds: []*Type{primitive("Shareable")}}
 	e = &Type{Name: "U", ID: "@std/parallel_map/U", Kind: "variable", Bounds: []*Type{primitive("Shareable")}}
 	addFn("tasks", "parallel_map", []*Type{t, e}, []Param{{"items", standard("List", t)}, {"operation", function([]Param{{"item", t}}, e)}, {"limit", integer}}, standard("Result", standard("List", e), standard("ExecutionError")))
+	libraryStandards(add)
 }

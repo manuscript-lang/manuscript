@@ -691,7 +691,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		i.Type = methods[0].Type
 		i.Proof = receiver.Proof || c.property(receiver.Type, "Shareable", nil)
 		i.Native = methods[0].Native
-		if e.Text == "serve" && std(i.Method.Contract, "Network") {
+		if (e.Text == "serve" || e.Text == "serve_stream") && std(i.Method.Contract, "Network") {
 			c.error(e.Pos, "type", "Network.serve requires a direct call")
 		}
 		if i.Native == "background_start" {

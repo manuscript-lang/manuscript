@@ -44,6 +44,9 @@ func Cleanup(ctx *Execution, resource Value) {
 	}
 }
 func StandardFunction(name, result string) Value {
+	if value, ok := libraryFunction(name, result); ok {
+		return value
+	}
 	switch name {
 	case "panic":
 		return NewFunction([]string{"message"}, "Never", func(_ *Execution, args []Value) Value { return Panic(args[0].(string)) })
