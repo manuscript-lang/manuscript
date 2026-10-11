@@ -72,3 +72,19 @@ hugo --minify
 The static site is generated in `public/`. Hugo reads the Markdown guides in `design/` directly. Chapter indexes use `_index.md`; each page's front matter sets its title and reading-order weight. New Markdown pages appear automatically. Site settings live in `hugo.toml`.
 
 Hugo Book v13 is vendored in `themes/hugo-book/`, including its MIT license. The exact upstream revision is recorded in `themes/hugo-book/UPSTREAM`.
+
+## CI/CD
+
+[The GitHub Actions pipeline](.github/workflows/cicd.yml) builds the design book on every branch push and pull request using Hugo Extended 0.146.7. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.
+
+The pipeline also calls [the language checks](.github/workflows/test-language.yml) with Go 1.25.1: formatting, vet, unit and native end-to-end tests, race checks, and a CLI build and example run. Deployment requires both the book build and language checks to pass. The language workflow can also be run independently from the Actions tab.
+
+After validation succeeds on the repository's default branch, the pipeline builds with the GitHub Pages URL and deploys the resulting `public/` artifact. Pull requests and other branches only run validation. You can also run the pipeline manually from the Actions tab; deployment still requires the default branch.
+
+To enable deployment, open the repository's **Settings → Pages** and select **GitHub Actions** as the build source. The workflow uses the built-in `GITHUB_TOKEN` and requires no deployment secrets. If the `github-pages` environment has approval rules, deployment waits for those approvals. For a custom domain, configure it in Pages settings; the production build uses the URL reported by Pages.
+
+For branch protection, require the **Build design book** and **Language checks / test** status checks. To reproduce the book validation locally with Hugo Extended 0.146.7:
+
+```sh
+hugo --minify --panicOnWarning --baseURL "https://example.org/manuscript/"
+```
