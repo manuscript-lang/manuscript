@@ -26,14 +26,14 @@ These gaps still need concrete contracts.
 | Area | Details still needed | Authoritative page |
 | --- | --- | --- |
 | Test runner | Discovery, test identity, duplicate names, isolation, authority inputs, expected faults, and build inclusion | [Semantic tests](semantic-tests.md#test-runner) |
-| Build pinning | Lock schema, creation/update commands, mismatch behavior, checksums, targets, and build flags | [Reproducibility](../builds/reproducibility.md) |
+| Build distribution | External adapter/dependency locks and supported debugger distribution | [Reproducibility](../builds/reproducibility.md) |
 | Native adapter ABI | Generated Go declarations, receiver construction, disposer types, and compatibility validation | [Adapter manifests](../../modules-and-capabilities/adapters/manifests.md) |
 | Capability analysis | Classification of adapter interfaces, pure contracts, wrappers, and indirect authority | [Authority](../../modules-and-capabilities/capabilities/authority.md) |
-| Queues | Construction, capacity, send/receive results, EOF, and close behavior | [Queues](../../standard-library/data-and-io/queues.md) |
-| State and pools | State operations, acquisition, lease results, capacity, and concurrent use | [State and pools](../../standard-library/data-and-io/synchronized-state.md) |
-| Builders | Construction, mutation, freezing, repeated freeze, and sealed-state errors | [Builders](../../standard-library/data-and-io/builders.md) |
-| HTTP and subprocesses | Host registration, input/output types, limits, streaming, cancellation, and shutdown | [HTTP hosts](../../standard-library/hosts/http.md), [streams](../../standard-library/data-and-io/streams.md) |
-| Source tools | Canonical formatting snapshots, diagnostic codes/schema, edit protocol, and failed-write recovery | [Source tools](../../developer-tooling/source/_index.md) |
+| Queue extensions | Fairness and additional channel patterns beyond the bounded FIFO contract | [Queues](../../standard-library/data-and-io/queues.md) |
+| State and pool extensions | Atomic update APIs, native resource factories, and additional lease contracts | [State and pools](../../standard-library/data-and-io/synchronized-state.md) |
+| Builder extensions | Additional bulk mutation operations beyond sealed snapshot construction | [Builders](../../standard-library/data-and-io/builders.md) |
+| HTTP and subprocess extensions | Streaming, sessions, HTTP clients, and platform descendant supervision | [HTTP hosts](../../standard-library/hosts/http.md), [streams](../../standard-library/data-and-io/streams.md) |
+| Source tools | Rich diagnostic spans, transactional structural edits, and failed-write recovery | [Source tools](../../developer-tooling/source/_index.md) |
 | Diagrams and debugging | Stable node identity, diff/trace formats, stepping behavior, value rendering, and supported debugger versions | [Developer tooling](../../developer-tooling/_index.md) |
 
 For each gap, add exact signatures or data fields, success and failure behavior, an accepted example, and a boundary or rejected example to its concept page. Then add observable conformance expectations. Other guides should link to the rule rather than repeat it.

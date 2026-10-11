@@ -29,3 +29,13 @@ Desktop.ini
 *.swo
 *~
 .idea/
+
+# Local language builds and coverage
+/ms
+/program
+/hello
+/main.go
+/coverage.out
+
+.ms-cache/
+*.ms-build.json

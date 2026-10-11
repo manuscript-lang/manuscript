@@ -15,7 +15,11 @@ Generate deterministic symbol names and declaration order; do not rewrite unchan
 
 ## Details still needed
 
-The lock format and its creation/update commands are unspecified. Define required versions and content checksums, transitive native dependencies, target and build flags, and the behavior on missing or mismatched pins. Ordinary builds must not silently choose new dependency versions.
+`ms lock ms.toml` explicitly creates or updates project-root `ms.lock`, a JSON object with closed fields: `format: 1`, `compiler: "0.1.0"`, `implementation_sha256`, and `toolchain`. The implementation digest covers sorted compiler/frontend and embedded runtime source contents, excluding tests and checkout paths. Toolchain records Go version, OS/architecture, CGO, experiments, and architecture tuning from the selected `MANUSCRIPT_GO`. Pinned builds require empty GOFLAGS and use explicit `-trimpath`; `--debug` additionally disables optimization and inlining.
+
+Project `build`, `run`, and `test` reject missing or mismatched pins and instruct the caller to explicitly run `lock`. Check/format/inspect/emit do not require a native toolchain pin. Standalone module builds record the selected toolchain without claiming a project lock. There are no third-party native dependencies in the supplied runtime. External adapter dependency pins and Delve remain separate future distribution contracts.
+
+Native artifacts are cached under project `.ms-cache/` by generated source, original module/configuration hashes, implementation content, target/toolchain, and debug flags. Cache hits verify metadata and binary content hashes; corruption rebuilds. A matching output is not rewritten. `<executable>.ms-build.json` carries source/configuration hashes and executable identity. `compiler.VerifyBuild` rejects mismatched binaries or supplied source/configuration snapshots before source interpretation. This pins source generation and artifact identity; byte-identical binary reproducibility across environments is not promised.
 
 Pinning Delve keeps the native transport contract aligned with [debugger integration](../../developer-tooling/debugging/debugger-integration.md).
 

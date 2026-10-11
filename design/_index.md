@@ -5,9 +5,9 @@ weight = 1
 
 # Manuscript design guide
 
-Manuscript is a statically typed language for teams where AI writes code and humans review system boundaries, execution flows, and changes. It uses explicit data, ordinary functions, concurrency APIs, and scoped resource cleanup. The compiler will be written in Go and generate Go.
+Manuscript is a statically typed language for teams where AI writes code and humans review system boundaries, execution flows, and changes. It uses explicit data, ordinary functions, concurrency APIs, and scoped resource cleanup. The compiler is written in Go and generates Go.
 
-The whole guide describes Manuscript 0.1. The compiler and runtime are not implemented yet. Rules describe required behavior; examples are design fixtures, not compiler test results. Pages that still need API or tooling decisions name those gaps explicitly.
+The whole guide describes Manuscript 0.1. A working compiler, runtime, CLI, and native conformance suite live in this repository; see [implementation coverage](https://github.com/manuscript-lang/manuscript/blob/main/IMPLEMENTATION.md) for the supported surface and verification commands. Rules describe required behavior. Examples become implementation evidence when corresponding tests execute them; declaration-only fixtures establish acceptance, not runtime behavior. Pages that still need API or tooling decisions name those gaps explicitly.
 
 ## Design constraints
 

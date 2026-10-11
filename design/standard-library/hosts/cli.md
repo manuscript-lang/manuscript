@@ -22,6 +22,8 @@ type Process:
     stderr: WriteStream & Shareable
     files: Files & Shareable
     clock: Clock & Shareable
+    network: Network & Shareable
+    commands: Commands & Shareable
 
 type Clock:
     fn now() -> Instant
@@ -30,7 +32,7 @@ type Files:
     fn open(path: String) -> Result[File & Shareable, IoError]
 ```
 
-Arguments exclude the executable name. Environment is a snapshot; duplicate OS names are resolved by the host before entry. Invalid UTF-8 in process inputs is a startup failure on native stderr with exit 70 before main runs. Relative file paths use the fixed startup working directory. The specified file API opens read-only files. File creation, network/process capabilities, and HTTP registration still need API contracts.
+Arguments exclude the executable name. Environment is a snapshot; duplicate OS names are resolved by the host before entry. Invalid UTF-8 in process inputs is a startup failure on native stderr with exit 70 before main runs. Relative file paths use the fixed startup working directory. The specified file API opens read-only files; file creation remains an additional API contract. Network and command operations are specified in [HTTP](http.md) and [subprocess execution](../data-and-io/streams.md).
 
 The host creates Files, Clock, and stdio behind shared views. Those field types make Process shareable; Files.open preserves sharing in its returned File view. Applications and source fakes follow the same [view-conversion rules](../../core-language/types/contracts.md#shared-contract-views).
 
@@ -54,4 +56,10 @@ This is a complete entry module. Only the Process type name is imported; field/m
 
 Normal main results must be 0–125; other results fault. An unhandled root or cleanup fault exits 70 after attempted cleanup and reports primary/secondary diagnostics on host stderr. SIGINT/SIGTERM request cancellation; after joining and cleanup SIGINT exits 130 and SIGTERM exits 143. The first accepted stop reason is retained; a fault during joining/cleanup takes precedence and exits 70. Parent cancellation unwinds main rather than becoming a normal Result.
 
+The `ms run` launcher forwards SIGINT/SIGTERM to the native host and waits for its joined shutdown before reporting that exit status.
+
 Construct application Background services in main with `with`, inside their dependencies' scopes. Shutdown stops admission, joins services, then releases roots. Uncooperative work/reporters can require [host escalation](../../concurrency/runtime.md#host-escalation); the host exposes its watchdog policy. Escalated exit is incomplete cleanup, not conformance success.
+
+## Additional explicit roots
+
+`Process` also exposes `network: Network & Shareable` and `commands: Commands & Shareable` for the [bounded HTTP host](http.md) and [bounded subprocess execution](../data-and-io/streams.md). These capabilities are synchronized host roots. Network services register under their construction execution and join before host roots are released. The host provides no ambient networking or process constructor.
