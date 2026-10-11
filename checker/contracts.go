@@ -297,6 +297,9 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 		}
 		return true
 	}
+	if std(t, "BigInt") || std(t, "Regex") || std(t, "Timestamp") {
+		return property == "Shareable" || (property == "Equal" && !std(t, "Regex"))
+	}
 	if t.Kind == "native" {
 		return false
 	}
@@ -324,7 +327,7 @@ func (c *checker) methods(receiver *Type, name string) []*Method {
 	if receiver.Kind == "contract" && receiver.Def != nil {
 		for _, op := range receiver.Def.Operations {
 			if op.Name == name {
-				return []*Method{{Contract: receiver, Receiver: receiver, Type: Sub(op.Type, substitution(receiver)), Native: "contract"}}
+				return []*Method{{Contract: receiver, Receiver: receiver, Type: Sub(op.Type, substitution(receiver)), Native: "contract", Decl: standardMethodDeclaration(receiver, name)}}
 			}
 		}
 	}
@@ -353,130 +356,26 @@ func (c *checker) methods(receiver *Type, name string) []*Method {
 	}
 	return methods
 }
+
 func nativeMethod(t *Type, name string) *Method {
-	if t.Kind == "native" && t.Def != nil {
-		for _, operation := range t.Def.Operations {
+	receiver := t
+	if intrinsic := intrinsicOperations[t.ID]; intrinsic != nil {
+		receiver = intrinsic
+	}
+	if receiver.Kind == "native" || receiver != t {
+		for _, operation := range receiver.Def.Operations {
 			if operation.Name == name {
-				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Native: name}
+				native := name
+				if std(t, "Background") && name == "start" {
+					native = "background_start"
+				}
+				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Native: native, Decl: standardMethodDeclaration(receiver, name)}
 			}
 		}
 	}
-	integer := primitive("Int")
-	boolean := primitive("Bool")
-	text := primitive("String")
-	var params []Param
-	var result *Type
-	if std(t, "List") && len(t.Args) == 1 {
-		switch name {
-		case "length":
-			result = integer
-		case "get":
-			params = []Param{{"index", integer}}
-			result = standard("Optional", t.Args[0])
-		case "append":
-			params = []Param{{"value", t.Args[0]}}
-			result = t
-		case "concat":
-			params = []Param{{"values", t}}
-			result = t
-		}
-	}
-	if std(t, "Set") && len(t.Args) == 1 {
-		switch name {
-		case "length":
-			result = integer
-		case "contains", "with_value", "without":
-			params = []Param{{"value", t.Args[0]}}
-			result = t
-			if name == "contains" {
-				result = boolean
-			}
-		}
-	}
-	if std(t, "Map") && len(t.Args) == 2 {
-		switch name {
-		case "length":
-			result = integer
-		case "get", "contains", "without":
-			params = []Param{{"key", t.Args[0]}}
-			result = t
-			if name == "get" {
-				result = standard("Optional", t.Args[1])
-			}
-			if name == "contains" {
-				result = boolean
-			}
-		case "with_entry":
-			params = []Param{{"key", t.Args[0]}, {"value", t.Args[1]}}
-			result = t
-		}
-	}
-	if t.ID == "String" {
-		switch name {
-		case "byte_length":
-			result = integer
-		case "to_bytes":
-			result = standard("Bytes")
-		case "parse_int":
-			result = standard("Optional", integer)
-		}
-	}
-	if std(t, "Bytes") {
-		switch name {
-		case "length":
-			result = integer
-		case "get":
-			params = []Param{{"index", integer}}
-			result = standard("Optional", integer)
-		case "concat":
-			params = []Param{{"values", t}}
-			result = t
-		case "to_text":
-			result = standard("Optional", text)
-		}
-	}
-	if t.ID == "Int" {
-		switch name {
-		case "to_float":
-			result = primitive("Float")
-		case "to_decimal":
-			result = standard("Decimal")
-		}
-	}
-	if t.ID == "Float" || std(t, "Decimal") {
-		switch name {
-		case "truncate_to_int":
-			result = standard("Optional", integer)
-		case "to_float":
-			if std(t, "Decimal") {
-				result = primitive("Float")
-			}
-		}
-	}
-	if std(t, "Background") {
-		switch name {
-		case "close":
-			result = primitive("Unit")
-		case "start":
-			params = []Param{{"operation", function(nil, standard("Result", primitive("Unit"), primitive("String")))}}
-			result = standard("Result", standard("OperationId"), standard("StartError"))
-		case "status":
-			params = []Param{{"id", standard("OperationId")}}
-			result = standard("WorkStatus")
-		case "cancel":
-			params = []Param{{"id", standard("OperationId")}}
-			result = primitive("Unit")
-		}
-	}
-	if result == nil {
-		return nil
-	}
-	native := name
-	if std(t, "Background") && name == "start" {
-		native = "background_start"
-	}
-	return &Method{Receiver: t, Type: function(params, result), Native: native}
+	return nil
 }
+
 func (c *checker) closeable(t *Type) bool {
 	if std(t, "Background") || std(t, "Queue") || std(t, "Pool") || std(t, "Lease") {
 		return true

@@ -43,7 +43,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
-		if std(typ, "Lease") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
+		if std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "Lease") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
 			c.error(e.Pos, "type", "standard type has no source constructor")
 			return i
 		}
@@ -159,8 +159,8 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	} else {
 		if callee.Kind == "member" {
 			receiver := c.expression(callee.Left, nil)
-			if callee.Text == "serve" {
-				methods := c.methods(receiver.Type, "serve")
+			if callee.Text == "serve" || callee.Text == "serve_stream" {
+				methods := c.methods(receiver.Type, callee.Text)
 				if len(methods) == 1 && std(methods[0].Contract, "Network") {
 					callable = &Info{Type: methods[0].Type, Method: methods[0], Native: "http_serve"}
 					c.Expressions[callee] = callable

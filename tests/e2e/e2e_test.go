@@ -412,3 +412,40 @@ test "encoded nominal identity":
 		t.Fatal(err, string(output))
 	}
 }
+
+func TestExpandedLibraryCLICapabilities(t *testing.T) {
+	result := compiler.CompileFile("testdata/projects/library/main.ms", compiler.Options{Entry: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	directory := t.TempDir()
+	binary := filepath.Join(directory, "library")
+	if err := compiler.Build(result.Source, binary); err != nil {
+		t.Fatal(err)
+	}
+	dataPath := filepath.Join(directory, "data")
+	output, err := exec.Command(binary, dataPath).CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, output)
+	}
+	if _, err := os.Stat(dataPath); !os.IsNotExist(err) {
+		t.Fatal("filesystem cleanup failed", err)
+	}
+}
+
+func TestNetworkingStreamingAndWebSocket(t *testing.T) {
+	result := compiler.CompileFile("testdata/projects/networking/main.ms", compiler.Options{Entry: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	binary := filepath.Join(t.TempDir(), "networking")
+	if err := compiler.Build(result.Source, binary); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	data, err := exec.CommandContext(ctx, binary).CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, data)
+	}
+}

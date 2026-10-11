@@ -37,3 +37,7 @@ Functions and closures are ordinary values; runtime tasks are not exposed as sou
 References do not extend an object's open lifetime. Use `with` for deterministic release and `Result` for expected operation failures. See [parallel](../../concurrency/parallel.md), [background services](../tasks/background.md), and [Closeable](../../ownership-and-cleanup/cleanup/closeable.md).
 
 The [standard API contract](prelude.md) defines visibility, signatures, optional arguments, and pack typing.
+
+## General-purpose types
+
+The [package guide](../packages/_index.md) adds opaque `BigInt` (`@std/bigint.ms`), `Regex` (`@std/regex.ms`) and wall-clock `Timestamp` (`@std/time.ms`); `JsonValue`/`JsonLimits` (`@std/json.ms`); structured format/filesystem/archive records; and `LibraryError` (`@std/errors.ms`). New capability contracts are `FileSystem`, `Entropy`, `WallClock` and `System`, supplied by explicit CLI Process fields. TCP/TLS `Connection`, `Listener` and `DatagramSocket` are acquired through the existing Network authority. All names remain individually imported; no additions enter the intrinsic prelude. See [coverage](../packages/coverage.md) for implemented equivalents and remaining gaps.
