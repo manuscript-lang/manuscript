@@ -61,27 +61,8 @@ func callableText(name string, t *checker.Type, variables []*checker.Type, snipp
 	return output.String()
 }
 func description(result compiler.Result, decl *syntax.Declaration) any {
-	if decl == nil || result.Program == nil {
-		return nil
-	}
-	for _, m := range sourceModules(result) {
-		if m.File != decl.Pos.File {
-			continue
-		}
-		lines := strings.Split(m.Source, "\n")
-		line := decl.Pos.Line - 2
-		notes := []string{}
-		for line >= 0 {
-			text := strings.TrimSpace(lines[line])
-			if !strings.HasPrefix(text, "#") {
-				break
-			}
-			notes = append([]string{strings.TrimSpace(strings.TrimPrefix(text, "#"))}, notes...)
-			line--
-		}
-		if len(notes) > 0 {
-			return map[string]string{"kind": "plaintext", "value": strings.Join(notes, "\n")}
-		}
+	if notes := declarationDocumentation(result, decl); notes != "" {
+		return map[string]string{"kind": "markdown", "value": notes}
 	}
 	return nil
 }

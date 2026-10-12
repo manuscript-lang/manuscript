@@ -24,6 +24,7 @@ import Result from "@std/result.ms"
 import TlsError from "@std/tls.ms"
 import TlsInfo from "@std/tls.ms"
 
+# Errors returned by socket, DNS, and network connection operations.
 export type NetworkError:
     case InvalidInput
     case InvalidData
@@ -34,6 +35,7 @@ export type NetworkError:
     case Timeout
     case Failed(message: String)
 
+# A connected stream socket, optionally protected by TLS.
 export interface Connection:
     fn close() -> Unit
     fn local_address() -> String
@@ -46,10 +48,12 @@ export interface Connection:
     fn tls_info() -> Result[TlsInfo, TlsError]
     fn write(data: Bytes, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
 
+# One datagram and the address from which it was received.
 export type Datagram:
     data: Bytes
     sender: String
 
+# A connectionless socket for sending and receiving datagrams.
 export interface DatagramSocket:
     fn address() -> String
     fn close() -> Unit
@@ -63,6 +67,7 @@ export interface DatagramSocket:
         timeout: Optional[Duration] = none
     ) -> Result[Unit, NetworkError]
 
+# DNS record data returned by a typed lookup.
 export type DnsRecord:
     kind: String
     value: String
@@ -70,20 +75,25 @@ export type DnsRecord:
     weight: Int
     port: Int
 
+# A listening socket that accepts incoming connections.
 export interface Listener:
     fn accept(timeout: Optional[Duration] = none) -> Result[Connection, NetworkError]
     fn address() -> String
     fn close() -> Unit
 
+# Reports whether an IP address belongs to a CIDR range.
 export fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]:
 
+# Validates and canonicalizes an IPv4 or IPv6 CIDR range.
 export fn parse_cidr(text: String) -> Result[String, NetworkError]:
 
+# Validates and canonicalizes an IPv4 or IPv6 address.
 export fn parse_ip(text: String) -> Result[String, NetworkError]:
 
 impl Error for NetworkError:
     fn message() -> String:
 
+# Network, DNS, HTTP, and WebSocket operations for the current host.
 export interface Network:
     fn bind_datagram(address: String) -> Result[DatagramSocket, NetworkError]
     fn close() -> Unit
@@ -159,4 +169,5 @@ export interface Network:
     ) -> Result[WebSocket, WebSocketError]
     fn with_resolver(address: String) -> Result[Network, NetworkError]
 
+# Returns network operations for the current host.
 export fn network() -> Network:

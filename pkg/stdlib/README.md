@@ -17,6 +17,8 @@ Modules with executable bodies use the ordinary checker and need no entries in `
 
 Editor adapters can use `tooling.StandardDeclarations` and `tooling.NavigationAt` to find hover and definition locations in `@std` documents.
 
+Hover documentation lives in contiguous `#` comments immediately above a public declaration or operation. The LSP renders this text as Markdown beneath the checked Manuscript signature. Keep the opening sentence direct, then describe behavior that is not clear from the signature: units, defaults, limits, mutation, end-of-stream behavior, and expected errors. Inline Markdown such as code spans is supported.
+
 Run `ms stdlib <directory>` to export the exact pinned source files for an editor that needs documents on disk. These APIs provide navigation data; an editor integration must supply its own LSP server and transport.
 
 For user-facing imports and API behavior, see the [standard-library guide](../../documentation/standard-library/_index.md).

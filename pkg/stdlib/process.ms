@@ -8,6 +8,7 @@ import Optional from "@std/optional.ms"
 import Error from "@std/errors.ms"
 import Result from "@std/result.ms"
 
+# Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:
     case InvalidInput
     case Unavailable
@@ -15,11 +16,13 @@ export type CommandError:
     case OutputLimit
     case Failed(message: String)
 
+# Captured exit status and standard output/error from a completed command.
 export type CommandOutput:
     exit_code: Int
     stdout: Bytes
     stderr: Bytes
 
+# Runs child programs with explicit input, output bounds, and an optional timeout.
 export interface Commands:
     fn run(
         program: String,
@@ -29,6 +32,7 @@ export interface Commands:
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]
 
+# Process and operating-system controls for the current process.
 export interface ProcessControl:
     fn monotonic_time() -> Int
     fn watch_signals(
@@ -67,6 +71,7 @@ export interface ProcessControl:
     fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
     fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
 
+# Identity and invocation details for the current process.
 export type ProcessInfo:
     pid: Int
     parent_pid: Int
@@ -79,6 +84,7 @@ export type ProcessInfo:
     effective_uid: Int
     effective_gid: Int
 
+# Memory statistics for the current process.
 export type MemoryUsage:
     heap_used: Int
     heap_total: Int
@@ -86,10 +92,12 @@ export type MemoryUsage:
     external: Int
     resident: Int
 
+# CPU time consumed by the current process.
 export type CpuUsage:
     user_microseconds: Int
     system_microseconds: Int
 
+# Kernel resource counters for the current process.
 export type ResourceUsage:
     user_microseconds: Int
     system_microseconds: Int
@@ -101,10 +109,12 @@ export type ResourceUsage:
     voluntary_switches: Int
     involuntary_switches: Int
 
+# A stream of operating-system signals selected by `watch_signals`.
 export interface SignalStream:
     fn close() -> Unit
     fn next() -> Result[Int, ProcessError]
 
+# Errors returned by process-control operations.
 export type ProcessError:
     case InvalidInput
     case InvalidData
@@ -122,6 +132,8 @@ impl Error for ProcessError:
 impl Error for CommandError:
     fn message() -> String:
 
+# Returns child-process operations for the current host.
 export fn commands() -> Commands:
 
+# Returns controls and process information for the current process.
 export fn control() -> ProcessControl:

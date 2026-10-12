@@ -7,6 +7,7 @@ import {parse_int, parse_float} from "@std/numbers.ms"
 import from_scalars from "@std/string.ms"
 import {log, sqrt} from "@std/math.ms"
 
+# A TOML value. Date and time values retain their original TOML text.
 export type TomlValue:
     case StringValue(value: String)
     case IntValue(value: Int)
@@ -16,11 +17,13 @@ export type TomlValue:
     case ArrayValue(values: List[TomlValue])
     case TableValue(values: Map[String, TomlValue])
 
+# Errors returned for invalid limits, malformed TOML, or exceeded resource bounds.
 export type TomlError:
     case InvalidInput
     case InvalidData(line: Int, column: Int, reason: String)
     case LimitExceeded
 
+# Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
 export type TomlLimits:
     max_bytes: Optional[Int]
     max_depth: Optional[Int]
@@ -852,6 +855,7 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
 
             return ok(value: TomlValue.ArrayValue(values: result))
 
+# Parses a TOML document into a table value and reports source line and column on invalid input.
 export fn parse(
     text: String,
     limits: Optional[TomlLimits] = none
