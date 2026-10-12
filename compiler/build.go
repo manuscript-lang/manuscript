@@ -99,8 +99,18 @@ func Standalone(source string) (string, error) {
 }
 
 // Build invokes the selected Go toolchain without obtaining external dependencies.
-func Build(source, output string) error { return buildNative(source, output, false) }
-func buildNative(source, output string, debug bool) error {
+func Build(source, output string) error { return BuildWithType(source, output, Release) }
+
+// BuildWithType builds unchecked generated source with an explicit native build type.
+func BuildWithType(source, output string, kind BuildType) error {
+	kind, err := ParseBuildType(string(kind))
+	if err != nil {
+		return err
+	}
+	return buildNative(source, output, kind)
+}
+
+func buildNative(source, output string, kind BuildType) error {
 	standalone, err := Standalone(source)
 	if err != nil {
 		return err
@@ -139,12 +149,7 @@ func buildNative(source, output string, debug bool) error {
 		return err
 	}
 	arguments := []string{"build", "-mod=vendor", "-buildvcs=false"}
-	if !debug {
-		arguments = append(arguments, "-trimpath")
-	}
-	if debug {
-		arguments = append(arguments, "-gcflags=all=-N -l")
-	}
+	arguments = append(arguments, kind.nativeFlags()...)
 	// Build the temporary module, rather than a file with the synthetic
 	// command-line-arguments identity. Internal native adapters must resolve
 	// under the module identity even when the temporary path has symlinked

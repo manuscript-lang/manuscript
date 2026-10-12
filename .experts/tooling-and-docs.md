@@ -1,5 +1,13 @@
 # Tooling and documentation lessons
 
+### Native build levels need artifact evidence
+
+Verified: Go omits recorded linker flags from build information when `-trimpath` is enabled. Check symbol/DWARF sections and executable size to verify stripping, rather than treating a missing recorded `-ldflags` value as a build failure. Both Debug and optimized RelWithDebInfo retain local source paths, so both need source-root-sensitive cache identities.
+
+Apply when: changing native optimization, symbol settings, or build caches.
+Evidence: [build level contract](../documentation/compiler/builds/build-levels.md), [native flags](../compiler/build_type.go), [cache identity](../compiler/cache.go), and [native artifact checks](../compiler/build_type_test.go).
+Verify: build all four levels, execute and restore each artifact, check native optimization settings and debug sections, and compare stripped sizes with RelWithDebInfo.
+
 ### Repository cleanup must remove duplicated work and layers
 
 Decision: the user's codebase cleanup request includes simplifying the implementation as a whole; reorganizing files alone does not satisfy it. Consolidate duplicated behavior and remove avoidable work before adding abstraction layers.

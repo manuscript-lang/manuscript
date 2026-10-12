@@ -73,4 +73,4 @@ Changes to source roots, entry files, aliases, or the pinned standard-library di
 
 See [module exports and imports](../../modules-and-capabilities/modules/declarations.md), [the compilation pipeline](../frontend/pipeline.md), and [incremental compilation](incremental-compilation.md).
 
-[Previous: Cleanup and fault lowering](../lowering/cleanup-and-faults.md) · [Next: Pinned dependencies and deterministic output](reproducibility.md)
+[Previous: Cleanup and fault lowering](../lowering/cleanup-and-faults.md) · [Next: Build levels and binary optimization](build-levels.md)
