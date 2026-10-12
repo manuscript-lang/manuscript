@@ -67,6 +67,7 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		{"build", "missing.ms", "--build-type"},
 		{"build", "missing.ms", "--build-type", ""},
 		{"build", "missing.ms", "--build-type", "Fast"},
+		{"build", "missing.ms", "--build-type", "--help"},
 		{"check", "missing.ms", "--build-type", "Release"},
 		{"emit", "missing.ms", "--build-type", "Debug"},
 		{"build", "missing.ms", "--debug", "--build-type", "Release"},
@@ -77,6 +78,61 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		status, output, errors := invoke(t, args...)
 		if status != 2 || output != "" || errors == "" {
 			t.Fatalf("%v: %d, %q, %q", args, status, output, errors)
+		}
+	}
+}
+
+func TestHelpForEveryCommand(t *testing.T) {
+	t.Setenv("MANUSCRIPT_GO", filepath.Join(t.TempDir(), "missing-go"))
+	for _, command := range []string{
+		"check", "lint", "lsp", "profile", "debug", "build", "emit", "run",
+		"test", "fmt", "inspect", "diagram", "lock", "doc", "stdlib", "help",
+	} {
+		for _, args := range [][]string{
+			{command, "--help"}, {command, "-h"}, {"help", command},
+			{command, "missing.ms", "--help"},
+		} {
+			status, output, errors := invoke(t, args...)
+			if status != 0 || errors != "" || !strings.Contains(output, "Usage: ms "+command) ||
+				!strings.Contains(output, "Options:") || !strings.Contains(output, "Examples:") {
+				t.Fatalf("%v: %d, %q, %q", args, status, output, errors)
+			}
+		}
+	}
+	for command, defaultType := range map[string]string{"build": "Release", "run": "Release", "test": "Release", "profile": "RelWithDebInfo"} {
+		status, output, errors := invoke(t, command, "--help")
+		if status != 0 || errors != "" || !strings.Contains(output, "--build-type") || !strings.Contains(output, "Default build type: "+defaultType) || !strings.Contains(output, "MinSizeRel") {
+			t.Fatalf("build types missing from %s help: %d, %q, %q", command, status, output, errors)
+		}
+	}
+	status, output, errors := invoke(t, "doc", "--stdlib", "--help")
+	if status != 0 || errors != "" || !strings.Contains(output, "ms doc --stdlib --json") {
+		t.Fatalf("stdlib documentation help: %d, %q, %q", status, output, errors)
+	}
+	for _, command := range []string{"check", "build", "stdlib", "doc"} {
+		status, output, errors := invoke(t, command)
+		if status != 2 || output != "" || !strings.Contains(errors, "Usage: ms "+command) {
+			t.Fatalf("missing arguments for %s: %d, %q, %q", command, status, output, errors)
+		}
+	}
+	for _, args := range [][]string{{"help", "unknown"}, {"help", "run", "extra"}, {"unknown", "--help"}} {
+		status, output, errors := invoke(t, args...)
+		if status != 2 || output != "" || errors == "" {
+			t.Fatalf("invalid help request %v: %d, %q, %q", args, status, output, errors)
+		}
+	}
+}
+
+func TestHelpPreservesProgramArgumentsAndOutputPaths(t *testing.T) {
+	for _, args := range [][]string{
+		{"run", "missing.ms", "--", "--help"},
+		{"run", "missing.ms", "--", "-h"},
+		{"emit", "missing.ms", "-o", "--help"},
+		{"run", "missing.ms", "--cpu-profile", "-h"},
+	} {
+		status, output, errors := invoke(t, args...)
+		if status != 1 || output != "" || errors == "" {
+			t.Fatalf("help consumed a path or application argument %v: %d, %q, %q", args, status, output, errors)
 		}
 	}
 }
