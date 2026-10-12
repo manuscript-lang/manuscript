@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 
 type Tree[T: Shareable]:
@@ -7,4 +9,5 @@ type Tree[T: Shareable]:
 test "recursive immutable collection":
     let leaf = Tree[Int](value: 1, children: [])
     let root = Tree[Int](value: 2, children: [leaf])
-    assert root.value == 2
+    if not (root.value == 2):
+        return panic(message: "check failed")

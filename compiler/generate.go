@@ -170,8 +170,6 @@ func (g *generator) statement(s *syntax.Statement) string {
 			return "return rt.Unit{}\n"
 		}
 		return "return " + g.expression(s.Value) + "\n"
-	case "assert":
-		return "rt.Assert(" + g.expression(s.Value) + "," + quote(s.Pos.String()) + ")\n"
 	case "call":
 		return "_ = " + g.expression(s.Value) + "\n"
 	case "break", "continue":

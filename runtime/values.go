@@ -74,11 +74,6 @@ func (f Fault) Error() string {
 }
 
 func Panic(message string) Value { panic(Fault{Message: message}) }
-func Assert(v Value, position string) {
-	if !Bool(v) {
-		Panic("assertion failed at " + position)
-	}
-}
 func Bool(v Value) bool {
 	if b, ok := v.(bool); ok {
 		return b

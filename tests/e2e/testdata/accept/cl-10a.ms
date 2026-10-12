@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 interface ReadValue[T]:
     fn get() -> T
 
@@ -23,7 +25,11 @@ test "generic implementations":
     let text = Box[String](value: "hello")
     let number_view = ReadValue[Int](value: number)
     let text_view = ReadValue[String](value: text)
-    assert number_view.get() == 7
-    assert text_view.get() == "hello"
-    assert compare(box: number, other: 7)
-    assert not compare(box: number, other: 8)
+    if not (number_view.get() == 7):
+        return panic(message: "check failed")
+    if not (text_view.get() == "hello"):
+        return panic(message: "check failed")
+    if not (compare(box: number, other: 7)):
+        return panic(message: "check failed")
+    if not (not compare(box: number, other: 8)):
+        return panic(message: "check failed")

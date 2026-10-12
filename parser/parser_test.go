@@ -40,8 +40,8 @@ func TestRejectSyntax(t *testing.T) {
 		"nested named function": "fn f() -> Unit:\n    fn g() -> Unit:\n        return\n",
 		"empty type":            "type Empty:\n",
 		"mixed type":            "type Mixed:\n    value: Int\n    case Ready\n",
-		"bad escape":            "test \"bad\":\n    assert \"\\q\" == \"\"\n",
-		"invalid scalar":        "test \"bad\":\n    assert \"\\u{D800}\" == \"\"\n",
+		"bad escape":            "import panic from \"@std/faults.ms\"\n\ntest \"bad\":\n    if not (\"\\q\" == \"\"):\n        return panic(message: \"check failed\")\n",
+		"invalid scalar":        "import panic from \"@std/faults.ms\"\n\ntest \"bad\":\n    if not (\"\\u{D800}\" == \"\"):\n        return panic(message: \"check failed\")\n",
 		"numeric suffix":        "fn f() -> Int:\n    return 1_000\n",
 		"indexing":              "fn f() -> Int:\n    return values[0]\n",
 		"single-line lambda":    "fn f() -> Unit:\n    let g = fn() -> Int: 1\n",
@@ -58,7 +58,7 @@ func TestRejectSyntax(t *testing.T) {
 }
 
 func FuzzParse(f *testing.F) {
-	for _, s := range []string{"fn f() -> Unit:\n    return\n", "test \"text\":\n    assert \"{1}\" == \"1\"\n", "type Item:\n    value: Int\n"} {
+	for _, s := range []string{"fn f() -> Unit:\n    return\n", "import panic from \"@std/faults.ms\"\n\ntest \"text\":\n    if not (\"{1}\" == \"1\"):\n        return panic(message: \"check failed\")\n", "type Item:\n    value: Int\n"} {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, source string) {

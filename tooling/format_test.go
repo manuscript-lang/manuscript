@@ -57,7 +57,7 @@ func TestFormatCommentsAndErrors(t *testing.T) {
 	}
 }
 func TestInspectionDeterminismAndOriginalSpans(t *testing.T) {
-	source := "fn one() -> Int:\r\n    return 1\r\ntest \"calls\":\r\n    assert one() == 1\r\n"
+	source := "fn one() -> Int:\r\n    return 1\r\ntest \"calls\":\r\n    if one() != 1:\r\n        return\r\n"
 	result := compiler.CompileSource("inspect.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)

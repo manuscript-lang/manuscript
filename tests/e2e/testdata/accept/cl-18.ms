@@ -20,5 +20,7 @@ test "function suite boundaries":
         transform: fn(value: Int) -> Int:
             return value - 1
     )
-    assert grouped == 2
-    assert final_argument == 2
+    if not (grouped == 2):
+        return panic(message: "check failed")
+    if not (final_argument == 2):
+        return panic(message: "check failed")

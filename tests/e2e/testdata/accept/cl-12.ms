@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import Map from "@std/collections.ms"
 import MapEntry from "@std/collections.ms"
 import Set from "@std/collections.ms"
@@ -18,5 +20,7 @@ fn set_total(values: Set[Int]) -> Int:
 
 test "map entry type":
     let entry = MapEntry[String, Int](key: "a", value: 3)
-    assert entry.key == "a"
-    assert entry.value == 3
+    if not (entry.key == "a"):
+        return panic(message: "check failed")
+    if not (entry.value == 3):
+        return panic(message: "check failed")

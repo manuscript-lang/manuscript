@@ -38,7 +38,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"return incomplete", "cl-06", "    else:\n        panic(message: \"positive value required\")\n", "", "type"},
 		{"condition type", "cl-06", "if value > 0:", "if value:", "type"},
 		{"return type", "cl-06", "return value", "return true", "type"},
-		{"unit return", "cl-06", "    assert value > 0\n", "    return 1\n", "type"},
+		{"unit return", "cl-06", "    if not (value > 0):\n        return panic(message: \"check failed\")\n", "    return 1\n", "type"},
 		{"nonexhaustive", "cl-07", "        Failed(_):\n            return 0\n", "", "type"},
 		{"duplicate case", "cl-07", "        Failed(_):", "        Ready(other):", "type"},
 		{"payload arity", "cl-07", "Ready(value):", "Ready(value, extra):", "type"},
@@ -46,7 +46,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"unreachable wildcard", "cl-07", "            return 0\n", "            return 0\n        _:\n            return 0\n", "type"},
 		{"noniterable", "cl-08", "for value in values:", "for value in 3:", "type"},
 		{"immutable iteration", "cl-08", "total = total + value", "value = 4", "type"},
-		{"break outside loop", "cl-08", "    assert selected_sum(values: []) == 0", "    break", "type"},
+		{"break outside loop", "cl-08", "    if not (selected_sum(values: []) == 0):\n        return panic(message: \"check failed\")", "    break", "type"},
 		{"generic arity", "cl-09", "Box[Int](value: 6)", "Box[Int, String](value: 6)", "type"},
 		{"generic field", "cl-09", "Box[Int](value: 6)", "Box[String](value: 6)", "type"},
 		{"explicit specialization mismatch", "cl-09", "unwrap[Int](box: box)", "unwrap[String](box: box)", "type"},
@@ -79,7 +79,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"result payload", "cl-14", "ok(value: value)", "ok(value: true)", "type"},
 		{"try nonresult", "cl-14", "try checked(value: value)", "try value", "type"},
 		{"try no backward context", "cl-14", "let accepted = try checked(value: value)", "let accepted: Int = try ok(value: 3)", "type"},
-		{"record equality eligibility", "cl-15", "let callback = Callback(handler: increment)", "let callback = Callback(handler: increment)\n    assert callback == callback", "type"},
+		{"record equality eligibility", "cl-15", "let callback = Callback(handler: increment)", "let callback = Callback(handler: increment)\n    if not (callback == callback):\n        return panic(message: \"check failed\")", "type"},
 		{"float hashing", "cl-15", "preserve_key(value: \"key\") == \"key\"", "preserve_key(value: 1.0) == 1.0", "type"},
 		{"list hashing", "cl-15", "preserve_key(value: \"key\") == \"key\"", "preserve_key(value: [1, 2]) == [1, 2]", "type"},
 		{"optional invariance", "cl-15", "let missing: Optional[Int] = none", "let wrong: Optional[Float] = present", "type"},
@@ -129,6 +129,7 @@ func TestCompilerPublicAPIs(t *testing.T) {
 		t.Fatal("emitted unchecked source")
 	}
 }
+
 func write(t *testing.T, root, path, text string) {
 	t.Helper()
 	target := filepath.Join(root, path)
@@ -182,7 +183,7 @@ func TestGenericRecursionAndNamespaceRules(t *testing.T) {
 	}
 }
 func FuzzCompile(f *testing.F) {
-	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import List from \"@std/collections.ms\"\ntest \"list\":\n    let values = [1, 2]\n    assert values.length() == 2\n"} {
+	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import panic from \"@std/faults.ms\"\n\nimport List from \"@std/collections.ms\"\ntest \"list\":\n    let values = [1, 2]\n    if not (values.length() == 2):\n        return panic(message: \"check failed\")\n"} {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, source string) {

@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 import Result from "@std/result.ms"
@@ -7,7 +9,8 @@ fn amount() -> Result[Decimal, String]:
     return ok(value: 12.50d)
 
 test "explicit standard imports":
-    assert [1, 2].length() == 2
+    if not ([1, 2].length() == 2):
+        return panic(message: "check failed")
     let outcome = map_error(
         result: amount(),
         transform: fn(cause: String) -> Int:
@@ -15,6 +18,7 @@ test "explicit standard imports":
     )
     match outcome:
         ok(value):
-            assert value == 12.50d
+            if not (value == 12.50d):
+                return panic(message: "check failed")
         error(_):
-            assert false
+            return panic(message: "Unexpected case")

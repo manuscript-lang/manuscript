@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 
 type State:
@@ -17,5 +19,7 @@ fn loop(state: State) -> Int:
     return count
 
 test "match controls nearest source loop":
-    assert loop(state: State.Ready) == 1
-    assert loop(state: State.Waiting) == 3
+    if not (loop(state: State.Ready) == 1):
+        return panic(message: "check failed")
+    if not (loop(state: State.Waiting) == 3):
+        return panic(message: "check failed")

@@ -8,4 +8,4 @@ fn returned_failure() -> Int:
 
 fn endless() -> Int:
     while true:
-        assert true
+        continue

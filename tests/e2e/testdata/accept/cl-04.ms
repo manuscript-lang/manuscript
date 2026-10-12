@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 
 fn difference(values: List[Int]) -> Int:
@@ -5,10 +7,12 @@ fn difference(values: List[Int]) -> Int:
     return first - second
 
 test "list binding":
-    assert difference(values: [9, 4]) == 5
+    if not (difference(values: [9, 4]) == 5):
+        return panic(message: "check failed")
     let empty: List[Int] = []
     let {value: label} = Label(value: "ready")
-    assert label == "ready"
+    if not (label == "ready"):
+        return panic(message: "check failed")
 
 type Label:
     value: String

@@ -18,7 +18,7 @@ Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical 
 The reserved words are:
 
 ```text
-and assert break case continue else export false fn for from if
+and break case continue else export false fn for from if
 impl import in interface let match not or return self test true try type
 unit var while with
 ```
@@ -149,7 +149,7 @@ Statement     = SimpleStatement, NEWLINE
               | IfStatement | WhileStatement | ForStatement | MatchStatement
               | WithStatement ;
 SimpleStatement = Binding | Assignment | ReturnStatement | "break" | "continue"
-                | "assert", Expression | CallStatement ;
+                | CallStatement ;
 Binding       = ("let" | "var"), (Name, [ ":", Type ] | PositionalPattern | RecordPattern),
                 "=", Expression ;
 Assignment    = Name, "=", Expression ;

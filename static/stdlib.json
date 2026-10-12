@@ -1543,24 +1543,6 @@
       ]
     },
     {
-      "path": "@std/test.ms",
-      "declarations": [
-        {
-          "name": "assert_equal",
-          "kind": "fn",
-          "type": "fn(actual: T, expected: T)-\u003eUnit",
-          "type_parameters": [
-            "T: Equal"
-          ]
-        },
-        {
-          "name": "assert_near",
-          "kind": "fn",
-          "type": "fn(actual: Float, expected: Float, absolute: Float, relative: Float)-\u003eUnit"
-        }
-      ]
-    },
-    {
       "path": "@std/text.ms",
       "declarations": [
         {

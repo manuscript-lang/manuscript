@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 
 fn apply(value: Int, action: fn(value: Int) -> Int) -> Int:
@@ -13,16 +15,21 @@ test "snapshot reassignment and shadowing":
     let action = fn(value: Int) -> Int:
         return value + offset
     offset = 10
-    assert action(value: 3) == 4
+    if not (action(value: 3) == 4):
+        return panic(message: "check failed")
     if true:
         var offset = 20
         offset = 30
-        assert action(value: offset) == 31
-    assert offset == 10
-    assert countdown(value: "ready", count: 4) == "ready"
+        if not (action(value: offset) == 31):
+            return panic(message: "check failed")
+    if not (offset == 10):
+        return panic(message: "check failed")
+    if not (countdown(value: "ready", count: 4) == "ready"):
+        return panic(message: "check failed")
     let factory = fn(value: Int) -> fn(value: Int) -> Int:
         return fn(value: Int) -> Int:
             return value + offset
     let nested = factory(value: 99)
     offset = 100
-    assert nested(value: 1) == 11
+    if not (nested(value: 1) == 11):
+        return panic(message: "check failed")

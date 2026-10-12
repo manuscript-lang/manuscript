@@ -12,6 +12,8 @@ These fixtures check standard imports and API identities, concurrent sharing, da
 ## Standard imports and declaration identity
 
 ```text
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 import Result from "@std/result.ms"
@@ -21,7 +23,8 @@ fn amount() -> Result[Decimal, String]:
     return ok(value: 12.50d)
 
 test "explicit standard imports":
-    assert [1, 2].length() == 2
+    if not ([1, 2].length() == 2):
+        return panic(message: "check failed")
     let outcome = map_error(
         result: amount(),
         transform: fn(cause: String) -> Int:
@@ -29,9 +32,10 @@ test "explicit standard imports":
     )
     match outcome:
         ok(value):
-            assert value == 12.50d
+            if not (value == 12.50d):
+                return panic(message: "check failed")
         error(_):
-            assert false
+            return panic(message: "Unexpected case")
 ```
 
 Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove map_error and reject its call. Importing Result alone must not expose map_error, and importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../standard-library/hosts/cli.md).
@@ -39,6 +43,8 @@ Accept without an `[aliases]` table. Independently remove List and reject its br
 Accept this independent module without standard imports:
 
 ```text
+import panic from "@std/faults.ms"
+
 type List:
     count: Int
 
@@ -52,12 +58,15 @@ fn ordinary() -> Result:
     return Result.Value(value: parallel(value: 3))
 
 test "standard spellings are ordinary names":
-    assert List(count: 2).count == 2
+    if not (List(count: 2).count == 2):
+        return panic(message: "check failed")
     let forward = parallel
-    assert forward(value: 4) == 4
+    if not (forward(value: 4) == 4):
+        return panic(message: "check failed")
     match ordinary():
         Value(value):
-            assert value == 3
+            if not (value == 3):
+                return panic(message: "check failed")
 ```
 
 Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected without the standard List import even though a local List exists. Calling this local parallel with a `tasks` pack does not activate the standard binding's special typing. Extracting the local parallel above is accepted as an ordinary function value.
@@ -69,6 +78,8 @@ Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a
 ## Error adaptation and inferred packs
 
 ```text
+import panic from "@std/faults.ms"
+
 import Result from "@std/result.ms"
 import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
@@ -85,20 +96,22 @@ fn probe() -> Result[Unit, ExecutionError]:
     let packed = try parallel(tasks: [first, second])
     let copied = identity(value: packed)
     let [number, flag] = copied
-    assert flag
+    if not (flag):
+        return panic(message: "check failed")
     match number:
         ok(value):
-            assert value == 3
+            if not (value == 3):
+                return panic(message: "check failed")
         error(_):
-            assert false
+            return panic(message: "Unexpected case")
     return ok(value: unit)
 
 test "pack helper":
     match probe():
         ok(_):
-            assert true
+            let completed = unit
         error(_):
-            assert false
+            return panic(message: "Unexpected case")
 
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(cause: 7)
@@ -106,7 +119,8 @@ test "explicit error conversion":
         return "Error {cause}"
     let converted = map_error(result: failed, transform: translate)
     let expected: Result[Int, String] = error(cause: "Error 7")
-    assert converted == expected
+    if not (converted == expected):
+        return panic(message: "check failed")
 ```
 
 Accept the complete `load` module in [parallel](../../concurrency/parallel.md) too. Replace any error adapter with direct `try` under LoadError and reject the incompatible error type. Moving the probe's `try parallel` directly into the Unit test is rejected. Changing the copied pack pattern to `[number]` is rejected for arity. Passing an existing list as tasks is rejected; qualifying or annotating a source type `Pack` is an unknown-name rejection. `parallel(tasks: [])` can be matched and its success destructured as `[]`.
@@ -116,6 +130,8 @@ For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn
 ## Sharing and contract cleanup
 
 ```text
+import panic from "@std/faults.ms"
+
 import Bytes from "@std/bytes.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
@@ -135,9 +151,10 @@ test "contract-valued cleanup":
     with file = File(value: ClosedFile(marker: unit)):
         match file.read(max_bytes: 1):
             ok(_):
-                assert false
+                return panic(message: "Unexpected case")
             error(cause):
-                assert cause == IoError.Closed
+                if not (cause == IoError.Closed):
+                    return panic(message: "check failed")
 ```
 
 This fake represents an already-closed stream, so its close is idempotent and has no external release obligation. Also accept `(File & Shareable)(value: ClosedFile(marker: unit))` as the with initializer: cleanup works with either view. Reject `with` over a concrete type merely having a method named close without `impl Closeable`. Reject a contract with the wrong close signature. Verify native and source fake shared File values are interchangeable through Files.open's `Result[File & Shareable, IoError]` result.
@@ -175,6 +192,8 @@ Independently reject extracting `let launch = background.start`, `let mapper = p
 Use the accepted modules in [minimum data operations](../../standard-library/data-and-io/operations.md). In addition:
 
 ```text
+import panic from "@std/faults.ms"
+
 import Decimal from "@std/decimal.ms"
 import Optional from "@std/optional.ms"
 
@@ -185,21 +204,29 @@ fn remainder(value: Int, divisor: Int) -> Int:
     return value % divisor
 
 test "numeric boundary rules":
-    assert quotient(value: -7, divisor: 2) == -3
-    assert remainder(value: -7, divisor: 3) == -1
-    assert remainder(value: -9223372036854775808, divisor: -1) == 0
+    if not (quotient(value: -7, divisor: 2) == -3):
+        return panic(message: "check failed")
+    if not (remainder(value: -7, divisor: 3) == -1):
+        return panic(message: "check failed")
+    if not (remainder(value: -9223372036854775808, divisor: -1) == 0):
+        return panic(message: "check failed")
     let infinity = 1.0 / 0.0
     let nan = 0.0 / 0.0
-    assert "{infinity}" == "Infinity"
-    assert nan != nan
+    if not ("{infinity}" == "Infinity"):
+        return panic(message: "check failed")
+    if not (nan != nan):
+        return panic(message: "check failed")
     let third = 1d / 3d
-    assert "{third}" == "0.3333333333333333333333333333333333"
+    if not ("{third}" == "0.3333333333333333333333333333333333"):
+        return panic(message: "check failed")
     let absent: Optional[Int] = none
-    assert 1e300.truncate_to_int() == absent
-    assert (2.seconds + 1.seconds) == 3.seconds
+    if not (1e300.truncate_to_int() == absent):
+        return panic(message: "check failed")
+    if not ((2.seconds + 1.seconds) == 3.seconds):
+        return panic(message: "check failed")
 ```
 
-Runner-level fault probes use parameters for division by zero, minimum Int/-1, unary minimum Int negation, duration overflow, Decimal overflow, and invalid byte construction. Assert normal subnormal/zero Decimal underflow and halfway ties-to-even. Reject out-of-grid Decimal literals and more than 34 significant digits; accept insignificant trailing zeroes. Map mutation tests verify a/b/a-replacement traversal as a→3,b→2, original snapshot retention, and remove/reinsert ordering. Reject source implementations for standard native collection types.
+Runner-level fault probes use parameters for division by zero, minimum Int/-1, unary minimum Int negation, duration overflow, Decimal overflow, and invalid byte construction. Check normal subnormal/zero Decimal underflow and halfway ties-to-even. Reject out-of-grid Decimal literals and more than 34 significant digits; accept insignificant trailing zeroes. Map mutation tests verify a/b/a-replacement traversal as a→3,b→2, original snapshot retention, and remove/reinsert ordering. Reject source implementations for standard native collection types.
 
 ## Entry, adapter, and lifetime integration
 

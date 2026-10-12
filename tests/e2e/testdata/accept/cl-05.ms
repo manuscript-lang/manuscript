@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 fn increase(value: Int) -> Int:
     return value + 1
 
@@ -6,4 +8,5 @@ fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
 
 test "function label compatibility":
     let transform: fn(value: Int) -> Int = increase
-    assert apply(value: 4, transform: transform) == 5
+    if not (apply(value: 4, transform: transform) == 5):
+        return panic(message: "check failed")

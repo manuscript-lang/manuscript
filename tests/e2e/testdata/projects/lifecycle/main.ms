@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import Process from "@std/cli.ms"
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
@@ -49,14 +51,16 @@ export fn main(process: Process) -> Int:
         second: report(output: process.stdout, label: "second", value: 2),
         first: report(output: process.stdout, label: "first", value: 1),
     )
-    assert total == 3
+    if not (total == 3):
+        return panic(message: "check failed")
     let pair = Pair(
         second: report(output: process.stdout, label: "pair second", value: 2),
         first: report(output: process.stdout, label: "pair first", value: 1),
     )
-    assert pair.first + pair.second == 3
+    if not (pair.first + pair.second == 3):
+        return panic(message: "check failed")
     with resource = Resource(label: "normal", output: process.stdout):
-        assert true
+        let completed = unit
     process.stdout.write(data: "after normal\n".to_bytes())
     var count = 0
     while count < 2:
@@ -68,9 +72,10 @@ export fn main(process: Process) -> Int:
             break
     match propagate(output: process.stdout):
         ok(_):
-            assert false
+            return panic(message: "Unexpected case")
         error(_):
-            assert true
-    assert early(output: process.stdout) == 5
+            let completed = unit
+    if not (early(output: process.stdout) == 5):
+        return panic(message: "check failed")
     process.stdout.write(data: "finished\n".to_bytes())
     return 0

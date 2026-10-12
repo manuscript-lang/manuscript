@@ -1,25 +1,26 @@
 +++
-title = "Assertions and programming faults"
+title = "Programming faults"
 weight = 30
 +++
 
-# Assertions and programming faults
+# Programming faults
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A programming fault means an assumption the code relies on has failed. An assertion is one way to check that assumption. For ordinary invalid user input, use conditions and return a [Result](results.md) error so the caller can respond.
+A programming fault means an assumption the code relies on has failed. Use ordinary conditional returns to check that assumption. For ordinary invalid user input, use conditions and return a [Result](results.md) error so the caller can respond.
 
-## Assertions
+## Invariant checks
 
-`assert condition` checks a programming invariant and produces a fault when false.
-
-The condition must have type `Bool` and is evaluated once. `assert` is a statement, not a value-producing expression; numeric or text conditions are rejected.
+Use ordinary `if` and `return` control flow to check an invariant. Import `panic` from `@std/faults.ms` when a violated invariant must produce a programming fault.
 
 ```text
+import panic from "@std/faults.ms"
+
 fn discount_validated(price: Decimal, percent: Decimal) -> Decimal:
-    assert price > 0d
-    assert percent > 0d
-    assert percent < 100d
+    if price <= 0d:
+        return panic(message: "Price must be positive")
+    if percent <= 0d or percent >= 100d:
+        return panic(message: "Percent must be positive and below 100")
     return price * (1d - percent / 100d)
 ```
 

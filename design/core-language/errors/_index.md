@@ -13,4 +13,4 @@ Choose the outcome that matches the situation: `Result` for an expected failure 
 | --- | --- |
 | [Expected failures with Result](results.md) | Return success or domain errors as ordinary values. |
 | [Error propagation with try](propagation.md) | Forward compatible errors without hiding faults or cancellation. |
-| [Assertions and programming faults](faults.md) | Check invariants and understand task failure after cleanup. |
+| [Programming faults](faults.md) | Check invariants and understand task failure after cleanup. |

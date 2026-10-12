@@ -10,12 +10,15 @@ These small examples introduce the same concepts used in larger applications. Th
 ## Bind values and call functions
 
 ```text
+import panic from "@std/faults.ms"
+
 fn greeting(name: String) -> String:
     return "Hello, {name}!"
 
 test "greeting":
     let message = greeting(name: "Ada")
-    assert message == "Hello, Ada!"
+    if not (message == "Hello, Ada!"):
+        return panic(message: "check failed")
 ```
 
 `fn` declares a function. Parameter and return types are explicit; the local binding's type is inferred. Named arguments keep calls readable as signatures grow. Use `var` when a binding needs reassignment. See [bindings](../core-language/basics/bindings.md) and [functions](../core-language/functions/declarations-and-calls.md).
@@ -23,6 +26,8 @@ test "greeting":
 ## Model data and alternatives
 
 ```text
+import panic from "@std/faults.ms"
+
 type Customer:
     name: String
 
@@ -39,7 +44,8 @@ fn describe(result: Lookup) -> String:
 
 test "lookup":
     let customer = Customer(name: "Ada")
-    assert describe(result: Lookup.Found(customer: customer)) == "Ada"
+    if not (describe(result: Lookup.Found(customer: customer)) == "Ada"):
+        return panic(message: "check failed")
 ```
 
 Records have named, immutable fields. Alternatives express one of several cases and matching must be exhaustive. Types are nominal: matching field shapes do not make two declarations interchangeable. See [records](../core-language/types/records.md) and [alternatives](../core-language/types/alternatives.md).
@@ -47,13 +53,16 @@ Records have named, immutable fields. Alternatives express one of several cases 
 ## Collections and optional values
 
 ```text
+import panic from "@std/faults.ms"
+
 let names = ["Ada", "Grace"]
 let more = names.append(value: "Linus")
 match more.get(index: 0):
     some(name):
-        assert name == "Ada"
+        if not (name == "Ada"):
+            return panic(message: "check failed")
     none:
-        assert false
+        return panic(message: "Unexpected case")
 ```
 
 Collections create new values rather than mutating existing ones. Looking up an element returns `Optional[T]`, so absence is visible in the type. Complete modules import `Optional` from `@std/optional.ms`; explicit collection type annotations also import `List` from `@std/collections.ms`. See [collections](../core-language/types/collections.md).

@@ -64,6 +64,8 @@ The same immutable key must retain its equality and hash behavior while stored. 
 With structural derivation, every declared field participates. A display label or cached value is not silently excluded. Model a lookup identity as its own record, then use that record as the key:
 
 ```text
+import panic from "@std/faults.ms"
+
 import Map from "@std/collections.ms"
 
 type CustomerKey:
@@ -76,11 +78,14 @@ type Customer:
 test "domain identity is a value":
     let first = Customer(key: CustomerKey(id: "c1"), display_name: "Ada")
     let renamed = Customer(key: CustomerKey(id: "c1"), display_name: "Ada Lovelace")
-    assert first != renamed
-    assert first.key == renamed.key
+    if not (first != renamed):
+        return panic(message: "check failed")
+    if not (first.key == renamed.key):
+        return panic(message: "check failed")
     let names = Map[CustomerKey, String]().with_entry(key: first.key, value: first.display_name)
     let updated = names.with_entry(key: renamed.key, value: renamed.display_name)
-    assert updated.length() == 1
+    if not (updated.length() == 1):
+        return panic(message: "check failed")
 ```
 
 A domain requiring normalized text identity should construct a canonical key value explicitly. String equality itself remains exact; adding a matching operation name to a type does not change `==` or key lookup.

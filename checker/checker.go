@@ -354,9 +354,6 @@ func (c *checker) statement(s *syntax.Statement) (bool, bool) {
 			c.expression(s.Value, c.result)
 		}
 		return false, false
-	case "assert":
-		i := c.expression(s.Value, primitive("Bool"))
-		return !i.NoReturn, false
 	case "call":
 		i := c.expression(s.Value, nil)
 		return !i.NoReturn, false

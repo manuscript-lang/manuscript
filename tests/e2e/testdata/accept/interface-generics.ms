@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 interface Read[V]:
     fn get() -> V
 
@@ -38,9 +40,13 @@ fn read[T](box: Box[T]) -> T:
 
 test "parameters and bounds belong to interfaces and types":
     let value = Box(value: 7)
-    assert Same[Int](value: value).same(other: 7)
-    assert Comparable(value: 8).same(other: 8)
+    if not (Same[Int](value: value).same(other: 7)):
+        return panic(message: "check failed")
+    if not (Comparable(value: 8).same(other: 8)):
+        return panic(message: "check failed")
     let pair = Pair(left: 1, right: value)
-    assert pair.get() == 7
+    if not (pair.get() == 7):
+        return panic(message: "check failed")
     let callback = Box(value: identity)
-    assert read(box: callback)(value: 9) == 9
+    if not (read(box: callback)(value: 9) == 9):
+        return panic(message: "check failed")

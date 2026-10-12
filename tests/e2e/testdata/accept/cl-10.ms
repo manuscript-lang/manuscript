@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 interface Increment:
     fn apply(value: Int) -> Int
 
@@ -15,4 +17,5 @@ test "explicit contract conversion":
     let offset = Offset(delta: 1)
     let operation = Increment(value: offset)
     let same_view = Increment(value: operation)
-    assert use_increment(operation: same_view) == 5
+    if not (use_increment(operation: same_view) == 5):
+        return panic(message: "check failed")
