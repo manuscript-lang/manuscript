@@ -9,7 +9,7 @@ weight = 19
 
 The type you provide must match the type required at that position. This applies to variable annotations, assignments, arguments, returns, fields, and collection elements. For example, an `Int` cannot silently become a `Float`, and two records do not become interchangeable just because their fields match.
 
-The exception is an expression of type `Never`: it cannot produce a value, so it can appear where any expression value is expected. This exception does not make differently declared function types interchangeable.
+An expression of type `Never` cannot produce a value, so it can appear where any expression value is expected. Errors implementing the standard `Error` interface can also pass directly into an Error boundary; see [error compatibility](../errors/propagation.md#error-compatibility). These rules do not make differently declared function types interchangeable.
 
 ## Exact and nominal identity
 
@@ -17,8 +17,8 @@ The exception is an expression of type `Never`: it cannot produce a value, so it
 | --- | --- |
 | Built-in | Fixed compiler or standard identity |
 | Record or alternative | Defining module, declaration, and ordered type arguments; matching fields or cases do not establish compatibility |
-| Contract view | Nominal contract application, plus whether it is plain or shared; conversions are [explicit](contracts.md#explicit-contract-views) |
-| Generic application | Exact declaration and every ordered argument; `List[Int]` and `List[Float]` are distinct |
+| Contract view | Nominal contract application; conversions are [explicit](contracts.md#explicit-contract-views), except that an implementing error can pass directly into the standard Error boundary |
+| Generic application | Exact declaration and every ordered argument; Result can widen its error to Error while retaining the same success type |
 | Function | Exact parameter labels, declaration order, parameter types, and result type; no variance or label/order adaptation |
 
 Caller-written argument order affects evaluation without changing function identity. A generic bound grants properties, not subtyping. Shared/plain arguments remain distinct during inference; `List[Contract]` fails its element bound, while `List[Contract]` may satisfy it.

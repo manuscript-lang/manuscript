@@ -354,6 +354,28 @@ func (g *generator) arguments(args []syntax.Argument) string {
 }
 func (g *generator) expression(e *syntax.Expression) string {
 	info := g.program.Expressions[e]
+	if info.ErrorSource == nil {
+		return g.expressionValue(e, info)
+	}
+	original := *info
+	original.Type = info.ErrorSource
+	value := g.expressionValue(e, &original)
+	cause := info.ErrorSource
+	if cause.ID == "@std/Result" {
+		cause = cause.Args[1]
+		scope := ""
+		if info.ScopedError {
+			scope = "," + g.typeScope(cause)
+		}
+		return "rt.ErrorResult(" + value + "," + g.key(info.Type) + scope + ")"
+	}
+	if info.ScopedError {
+		return "rt.ViewOf(\"@std/Error\"," + value + "," + g.typeScope(cause) + ")"
+	}
+	return value
+}
+
+func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) string {
 	switch e.Kind {
 	case syntax.KindNumber:
 		if strings.HasSuffix(e.Text, "d") {
@@ -378,7 +400,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 		}
 		return "rt.Text(" + strings.Join(values, ",") + ")"
 	case syntax.KindName, syntax.KindApply:
-		if info.Method != nil && info.Method.Native != "" && info.Method.Native != "contract" {
+		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			member := e.Left
 			return "rt.NativeMemberResult(" + g.expression(member.Left) + "," + quote(member.Text) + "," + g.key(info.Type.Result) + ")"
 		}
@@ -402,7 +424,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 		if info.Constructor != nil {
 			return "rt.NewAlternative(" + g.key(info.Constructor) + "," + quote(info.Case) + ",nil,nil)"
 		}
-		if info.Method != nil && info.Method.Native != "" && info.Method.Native != "contract" {
+		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			return "rt.NativeMemberResult(" + g.expression(e.Left) + "," + quote(e.Text) + "," + g.key(info.Type.Result) + "," + g.typeScope(g.program.Expressions[e.Left].Type) + ")"
 		}
 		if info.Method != nil {
@@ -462,6 +484,13 @@ func (g *generator) expression(e *syntax.Expression) string {
 		}
 		return "&rt.List{Type:" + g.key(info.Type) + ",Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
 	case syntax.KindUnary:
+		if e.Text == "try" {
+			scope := ""
+			if info.ScopedPropagation {
+				scope = "," + g.typeScope(info.PropagatedError)
+			}
+			return "rt.Try(" + g.expression(e.Right) + scope + ")"
+		}
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return "rt.Integer(\"-9223372036854775808\")"
 		}

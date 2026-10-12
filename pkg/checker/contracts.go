@@ -387,6 +387,7 @@ func (c *checker) methods(receiver *Type, name string) []*Method {
 			r.Type = Sub(m.Type, sub)
 			r.Contract = Sub(m.Contract, sub)
 			r.Receiver = receiver
+			r.Variables = nil // Implementation variables are fixed by the receiver.
 			methods = append(methods, &r)
 		}
 	}

@@ -150,7 +150,7 @@ fn order_total(count: Int) -> Result[Int, QuantityError]:
     return ok(value: valid_count * 12)
 ```
 
-A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. The containing function must return a `Result` with the same error type. Use `match` when you want to handle both outcomes yourself.
+A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. Use the same error type, or the common `Error` boundary for errors implementing that interface. Use `match` when you want to handle both outcomes yourself; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
 
 ## Modules
 

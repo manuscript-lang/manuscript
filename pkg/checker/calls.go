@@ -273,7 +273,10 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 			continue
 		}
 		for _, field := range fields {
-			if field.Name == arg.Name && !unify(Sub(field.Type, sub), actual.Type, variableSet(vars), sub) {
+			if field.Name != arg.Name || c.errorAssignable(actual.Type, Sub(field.Type, sub)) {
+				continue
+			}
+			if !unify(Sub(field.Type, sub), actual.Type, variableSet(vars), sub) {
 				c.error(arg.Pos, "type", "constructor arguments conflict with expected type")
 			}
 		}

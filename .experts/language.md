@@ -44,7 +44,7 @@ Verified: when rebasing standard-library work onto current main, migrate new con
 
 ### Error translation does not need a dedicated standard helper
 
-Decision: remove the specialized Result error-mapping helper and keep the documentation focused on ordinary functions and explicit matching. The user's correction rejects extra API machinery for a transformation that existing control flow expresses. Keep `try`'s exact-error-type rule; do not replace the helper with implicit conversions.
+Decision: remove the specialized Result error-mapping helper and keep domain translation in ordinary functions and matching. The newer error simplification permits specific errors to pass directly into the standard Error boundary, including through `try`; unrelated domain errors still require explicit translation. Do not restore a dedicated mapping helper.
 
 Decision: the user rejected both deeply nested Result matches and the elaborate loading examples added to replace them. Keep examples small and focused on the concept being taught. Use compatible `try` calls for a flat success path; do not build contrived domain models or helper layers just to make an example work.
 
@@ -73,7 +73,9 @@ Verify: grouped imports resolve each symbol and its editor location; one-paramet
 
 ### Recover concrete contract receivers through checked matching
 
-Decision: a common Error contract must allow both generic diagnostics and specific handling without discarding the concrete cause. Apply the ordinary operation-contract rules: explicit implementations and views, invariant Result types, and explicit error mapping. Contract matches use concrete record/alternative type patterns with exactly one receiver binding and a final wildcard for other implementations.
+Decision: a common Error contract must allow generic diagnostics and specific handling without discarding the concrete error. The user requested constructing errors once and passing them directly into the root Error interface. An explicit implementation establishes the relationship; assignments, arguments, returns, Result error widening, and `try` can use it without a written view conversion. Ordinary domain fields contain typed details. Unrelated domains and other interfaces retain exact compatibility. Contract matches use concrete record/alternative type patterns with exactly one receiver binding and a final wildcard for other implementations.
+
+Verified: direct or stored standard error `message` methods dispatch through the registered Error implementation, rather than intrinsic receiver dispatch. Receiver type parameters belong to the implementation, not method-level inference. The [compiled error fixture](../tests/e2e/testdata/accept/library-errors.ms) exercises direct and stored diagnostics alongside generic error views.
 
 Apply when: changing Error boundaries, contract views, matching, or native standard implementations.
 Evidence: [contract type patterns](../documentation/core-language/control-flow/pattern-matching.md#contract-type-patterns); [common error boundary](../documentation/core-language/errors/results.md#a-common-error-boundary); [compiled errors and generic patterns](../tests/e2e/testdata/accept/library-errors.ms); [invalid contract patterns](../pkg/compiler/library_test.go).

@@ -72,13 +72,39 @@ import EncodingError from "@std/encoding.ms"
 import Result from "@std/result.ms"
 `
 	for name, source := range map[string]string{
-		"implicit conversion": `fn wrong() -> Error:
-    return JsonError.InvalidData
+		"missing implicit implementation": `type Impostor:
+    detail: String
+fn wrong(value: Impostor) -> Error:
+    return value
 `,
-		"implicit try conversion": `import hex_decode from "@std/encoding.ms"
+		"unimplemented try error": `fn failure() -> Result[Unit, String]:
+    return error(cause: "diagnostic")
 fn wrong() -> Result[Unit, Error]:
-    let bytes = try hex_decode(text: "ff", max_bytes: some(value: 1))
+    let completed = try failure()
     return ok(value: unit)
+`,
+		"result success remains exact": `fn wrong() -> Result[String, Error]:
+    return Result[Int, JsonError].ok(value: 1)
+`,
+		"Error cannot narrow to a domain": `fn wrong(value: Error) -> JsonError:
+    return value
+`,
+		"error lists remain invariant": `import List from "@std/collections.ms"
+fn wrong(values: List[JsonError]) -> List[Error]:
+    return values
+`,
+		"error function types remain invariant": `fn wrong(operation: fn() -> JsonError) -> fn() -> Error:
+    return operation
+`,
+		"other implemented interfaces require a view": `interface Diagnostic:
+    fn message() -> String
+type LocalError:
+    detail: String
+impl Diagnostic for LocalError:
+    fn message() -> String:
+        return self.detail
+fn wrong(value: LocalError) -> Diagnostic:
+    return value
 `,
 		"missing implementation": `type Impostor:
     detail: String
@@ -151,6 +177,32 @@ fn wrong(cause: Error) -> String:
 	}
 }
 
+func TestCommonErrorAcceptsSpecificErrors(t *testing.T) {
+	source := `import Error from "@std/errors.ms"
+import Result from "@std/result.ms"
+import JsonError from "@std/json.ms"
+import hex_decode from "@std/encoding.ms"
+fn general(cause: JsonError) -> Error:
+    return cause
+fn failed() -> Result[Unit, JsonError]:
+    return error(cause: JsonError.InvalidData)
+fn forwarded() -> Result[Unit, Error]:
+    return failed()
+fn propagated() -> Result[Unit, Error]:
+    let bytes = try hex_decode(text: "zz")
+    return ok(value: unit)
+fn constructed() -> Result[Unit, Error]:
+    return error(cause: JsonError.InvalidData)
+`
+	result := CompileSource("direct-errors.ms", source, Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	if strings.Contains(result.Source, "rt.ViewOf(") {
+		t.Fatal("ordinary specific errors gained a runtime view wrapper")
+	}
+}
+
 func TestAllStandardErrorsImplementError(t *testing.T) {
 	for _, module := range checker.StandardLibrary() {
 		for _, declaration := range module.Declarations {
@@ -161,9 +213,9 @@ func TestAllStandardErrorsImplementError(t *testing.T) {
 				source := fmt.Sprintf(`import Error from "@std/errors.ms"
 import %s from %q
 fn diagnostic(cause: %s) -> String:
-    return Error(value: cause).message()
+    return cause.message()
 fn view(cause: %s) -> Error:
-    return Error(value: cause)
+    return cause
 `, declaration.Name, module.Path, declaration.Name, declaration.Name)
 				result := CompileSource("standard-errors.ms", source, Options{})
 				if !result.Success() {
