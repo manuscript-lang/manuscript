@@ -5,7 +5,7 @@ weight = 2
 
 # Standard library module reference
 
-Generated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Signature blocks describe types, not executable declarations.
+Generated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Declaration excerpts omit implementation bodies.
 
 [Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)
 

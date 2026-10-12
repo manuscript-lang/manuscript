@@ -11,19 +11,26 @@ type APIModule struct {
 	Declarations []APIDeclaration `json:"declarations"`
 }
 type APIDeclaration struct {
-	Name       string   `json:"name"`
-	Kind       string   `json:"kind"`
-	Type       string   `json:"type"`
-	Parameters []string `json:"type_parameters,omitempty"`
-	Fields     []string `json:"fields,omitempty"`
-	Cases      []string `json:"cases,omitempty"`
-	Operations []string `json:"operations,omitempty"`
+	// Declaration is a source-syntax excerpt for human documentation. The JSON
+	// snapshot retains its existing machine-readable type and member contracts.
+	Declaration string   `json:"-"`
+	Name        string   `json:"name"`
+	Kind        string   `json:"kind"`
+	Type        string   `json:"type"`
+	Parameters  []string `json:"type_parameters,omitempty"`
+	Fields      []string `json:"fields,omitempty"`
+	Cases       []string `json:"cases,omitempty"`
+	Operations  []string `json:"operations,omitempty"`
 }
 
 // StandardLibrary captures the actual checker definitions, without exposing mutable
 // types. Types and operations are loaded from the bundled standard .ms sources.
 func StandardLibrary() []APIModule {
 	modules := map[string][]*Symbol{}
+	sources := map[string]string{}
+	for _, source := range standardSources {
+		sources[source.File] = source.Source
+	}
 	for path, symbols := range standardModules {
 		for _, symbol := range symbols {
 			if symbol.Export {
@@ -39,7 +46,7 @@ func StandardLibrary() []APIModule {
 		sort.Slice(symbols, func(i, j int) bool { return symbols[i].Name < symbols[j].Name })
 		module := APIModule{Path: path}
 		for _, symbol := range symbols {
-			d := documentSymbol(symbol)
+			d := documentSymbol(symbol, sources[symbol.Module])
 			module.Declarations = append(module.Declarations, d)
 		}
 		result = append(result, module)
@@ -48,8 +55,19 @@ func StandardLibrary() []APIModule {
 	return result
 }
 
-func documentSymbol(symbol *Symbol) APIDeclaration {
+func documentSymbol(symbol *Symbol, source string) APIDeclaration {
 	d := APIDeclaration{Name: symbol.Name, Kind: symbol.Kind, Type: symbol.Type.String()}
+	if decl := symbol.Decl; decl != nil {
+		keyword := "type"
+		if strings.HasPrefix(source[decl.Pos.Offset:], "interface") {
+			keyword = "interface"
+		}
+		d.Declaration = documentDeclaration(decl, keyword, decl.Name)
+	} else if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
+		d.Declaration = documentDeclaration(intrinsic.Def.Symbol.Decl, "type", symbol.Name)
+	} else {
+		d.Declaration = "type " + symbol.Name + "\n"
+	}
 	for _, v := range symbol.Variables {
 		parameter := v.Name
 		for i, b := range v.Bounds {
@@ -113,7 +131,7 @@ func ModuleDocumentation(program *Program) []APIModule {
 			}
 			symbol := program.Symbols[source.File][decl.Name]
 			if symbol != nil && symbol.Decl == decl {
-				module.Declarations = append(module.Declarations, documentSymbol(symbol))
+				module.Declarations = append(module.Declarations, documentSymbol(symbol, source.Source))
 			}
 		}
 		sort.Slice(module.Declarations, func(i, j int) bool { return module.Declarations[i].Name < module.Declarations[j].Name })

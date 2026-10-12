@@ -9,80 +9,80 @@ Import each required symbol with `import Name from "@std/time.ms"`.
 ## Clock {data-api-kind="Interface"}
 
 ```manuscript
-Clock: Clock
-operation now: fn()->Instant
+interface Clock:
+    fn now() -> Instant
 ```
 
 ## Duration {data-api-kind="Native type"}
 
 ```manuscript
-Duration: Duration
+type Duration
 ```
 
 ## Instant {data-api-kind="Native type"}
 
 ```manuscript
-Instant: Instant
+type Instant
 ```
 
 ## Timestamp {data-api-kind="Native type"}
 
 ```manuscript
-Timestamp: Timestamp
+type Timestamp
 ```
 
 ## WallClock {data-api-kind="Interface"}
 
 ```manuscript
-WallClock: WallClock
-operation now: fn()->Timestamp
+interface WallClock:
+    fn now() -> Timestamp
 ```
 
 ## difference {data-api-kind="Function"}
 
 ```manuscript
-difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, LibraryError]
+fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, LibraryError]
 ```
 
 ## format_timestamp {data-api-kind="Function"}
 
 ```manuscript
-format_timestamp: fn(value: Timestamp)->String
+fn format_timestamp(value: Timestamp) -> String
 ```
 
 ## nanoseconds {data-api-kind="Function"}
 
 ```manuscript
-nanoseconds: fn(value: Timestamp)->Int
+fn nanoseconds(value: Timestamp) -> Int
 ```
 
 ## parse_timestamp {data-api-kind="Function"}
 
 ```manuscript
-parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
+fn parse_timestamp(text: String) -> Result[Timestamp, LibraryError]
 ```
 
 ## shift {data-api-kind="Function"}
 
 ```manuscript
-shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, LibraryError]
+fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, LibraryError]
 ```
 
 ## sleep {data-api-kind="Function"}
 
 ```manuscript
-sleep: fn(duration: Duration)->Unit
+fn sleep(duration: Duration) -> Unit
 ```
 
 ## timestamp {data-api-kind="Function"}
 
 ```manuscript
-timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, LibraryError]
+fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, LibraryError]
 ```
 
 ## unix_seconds {data-api-kind="Function"}
 
 ```manuscript
-unix_seconds: fn(value: Timestamp)->Int
+fn unix_seconds(value: Timestamp) -> Int
 ```
 

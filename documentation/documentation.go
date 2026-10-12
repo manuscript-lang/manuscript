@@ -43,25 +43,25 @@ func renderModule(module checker.APIModule, forSite bool) string {
 	}
 	for _, d := range module.Declarations {
 		kind := declarationKind(d.Kind)
+		// Native types with receiver signatures share the checker's interface
+		// representation, but their source declaration remains a type.
+		if d.Kind == "interface" && strings.HasPrefix(d.Declaration, "type ") {
+			kind = "Native type"
+		}
 		if forSite {
 			fmt.Fprintf(&b, "## %s {data-api-kind=%q}\n\n", d.Name, kind)
 		} else {
 			fmt.Fprintf(&b, "## %s\n\n**%s**\n\n", d.Name, kind)
 		}
-		fmt.Fprintf(&b, "```manuscript\n%s: %s\n", d.Name, d.Type)
-		if len(d.Parameters) > 0 {
-			fmt.Fprintf(&b, "type parameters: %s\n", strings.Join(d.Parameters, ", "))
+		if d.Declaration == "" {
+			if forSite {
+				b.WriteString("See [special call rules](../call-rules.md).\n\n")
+			} else {
+				b.WriteString("See [special call rules](#special-call-rules).\n\n")
+			}
+			continue
 		}
-		for _, f := range d.Fields {
-			fmt.Fprintf(&b, "field %s\n", f)
-		}
-		for _, c := range d.Cases {
-			fmt.Fprintf(&b, "case %s\n", c)
-		}
-		for _, op := range d.Operations {
-			fmt.Fprintf(&b, "operation %s\n", op)
-		}
-		b.WriteString("```\n\n")
+		fmt.Fprintf(&b, "```manuscript\n%s```\n\n", d.Declaration)
 	}
 	return b.String()
 }
@@ -70,7 +70,7 @@ func SiteFiles() (map[string][]byte, error) {
 	modules := checker.StandardLibrary()
 	files := map[string][]byte{}
 	var index, full strings.Builder
-	index.WriteString("+++\ntitle = \"Module reference\"\nweight = 2\n+++\n\n# Standard library module reference\n\nGenerated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Signature blocks describe types, not executable declarations.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\nSee [special call rules](../call-rules.md) for constructors, variadic parallel work, and optional arguments.\n\n")
+	index.WriteString("+++\ntitle = \"Module reference\"\nweight = 2\n+++\n\n# Standard library module reference\n\nGenerated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Declaration excerpts omit implementation bodies.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\nSee [special call rules](../call-rules.md) for constructors, variadic parallel work, and optional arguments.\n\n")
 	full.WriteString(StandardLibraryMarkdown())
 	files["design/standard-library/call-rules.md"] = []byte(callRules)
 	for _, module := range modules {

@@ -9,27 +9,27 @@ Import each required symbol with `import Name from "@std/process.ms"`.
 ## CommandError {data-api-kind="Alternative"}
 
 ```manuscript
-CommandError: CommandError
-case InvalidInput
-case Unavailable
-case TimedOut
-case OutputLimit
-case Failed(message: String)
+type CommandError:
+    case InvalidInput
+    case Unavailable
+    case TimedOut
+    case OutputLimit
+    case Failed(message: String)
 ```
 
 ## CommandOutput {data-api-kind="Record"}
 
 ```manuscript
-CommandOutput: CommandOutput
-field exit_code: Int
-field stdout: Bytes
-field stderr: Bytes
+type CommandOutput:
+    exit_code: Int
+    stdout: Bytes
+    stderr: Bytes
 ```
 
 ## Commands {data-api-kind="Interface"}
 
 ```manuscript
-Commands: Commands
-operation run: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration)->Result[CommandOutput, CommandError]
+interface Commands:
+    fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]
 ```
 

@@ -9,74 +9,74 @@ Import each required symbol with `import Name from "@std/net.ms"`.
 ## Connection {data-api-kind="Interface"}
 
 ```manuscript
-Connection: Connection
-operation close: fn()->Unit
-operation local_address: fn()->String
-operation peer_address: fn()->String
-operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
-operation read_timeout: fn(max_bytes: Int, timeout: Duration)->Result[Optional[Bytes], IoError]
-operation shutdown_write: fn()->Result[Unit, LibraryError]
-operation tls_info: fn()->Result[TlsInfo, LibraryError]
-operation write: fn(data: Bytes)->Result[Unit, IoError]
-operation write_timeout: fn(data: Bytes, timeout: Duration)->Result[Unit, IoError]
+interface Connection:
+    fn close() -> Unit
+    fn local_address() -> String
+    fn peer_address() -> String
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn read_timeout(max_bytes: Int, timeout: Duration) -> Result[Optional[Bytes], IoError]
+    fn shutdown_write() -> Result[Unit, LibraryError]
+    fn tls_info() -> Result[TlsInfo, LibraryError]
+    fn write(data: Bytes) -> Result[Unit, IoError]
+    fn write_timeout(data: Bytes, timeout: Duration) -> Result[Unit, IoError]
 ```
 
 ## Datagram {data-api-kind="Record"}
 
 ```manuscript
-Datagram: Datagram
-field data: Bytes
-field sender: String
+type Datagram:
+    data: Bytes
+    sender: String
 ```
 
 ## DatagramSocket {data-api-kind="Interface"}
 
 ```manuscript
-DatagramSocket: DatagramSocket
-operation address: fn()->String
-operation close: fn()->Unit
-operation receive: fn(max_bytes: Int)->Result[Datagram, LibraryError]
-operation receive_timeout: fn(max_bytes: Int, timeout: Duration)->Result[Datagram, LibraryError]
-operation send: fn(data: Bytes, address: String)->Result[Unit, LibraryError]
-operation send_timeout: fn(data: Bytes, address: String, timeout: Duration)->Result[Unit, LibraryError]
+interface DatagramSocket:
+    fn address() -> String
+    fn close() -> Unit
+    fn receive(max_bytes: Int) -> Result[Datagram, LibraryError]
+    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, LibraryError]
+    fn send(data: Bytes, address: String) -> Result[Unit, LibraryError]
+    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, LibraryError]
 ```
 
 ## DnsRecord {data-api-kind="Record"}
 
 ```manuscript
-DnsRecord: DnsRecord
-field kind: String
-field value: String
-field priority: Int
-field weight: Int
-field port: Int
+type DnsRecord:
+    kind: String
+    value: String
+    priority: Int
+    weight: Int
+    port: Int
 ```
 
 ## Listener {data-api-kind="Interface"}
 
 ```manuscript
-Listener: Listener
-operation accept: fn()->Result[Connection, LibraryError]
-operation accept_timeout: fn(timeout: Duration)->Result[Connection, LibraryError]
-operation address: fn()->String
-operation close: fn()->Unit
+interface Listener:
+    fn accept() -> Result[Connection, LibraryError]
+    fn accept_timeout(timeout: Duration) -> Result[Connection, LibraryError]
+    fn address() -> String
+    fn close() -> Unit
 ```
 
 ## contains_ip {data-api-kind="Function"}
 
 ```manuscript
-contains_ip: fn(cidr: String, address: String)->Result[Bool, LibraryError]
+fn contains_ip(cidr: String, address: String) -> Result[Bool, LibraryError]
 ```
 
 ## parse_cidr {data-api-kind="Function"}
 
 ```manuscript
-parse_cidr: fn(text: String)->Result[String, LibraryError]
+fn parse_cidr(text: String) -> Result[String, LibraryError]
 ```
 
 ## parse_ip {data-api-kind="Function"}
 
 ```manuscript
-parse_ip: fn(text: String)->Result[String, LibraryError]
+fn parse_ip(text: String) -> Result[String, LibraryError]
 ```
 
