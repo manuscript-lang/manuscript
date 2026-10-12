@@ -92,3 +92,41 @@ func TestLocalRenameUsesBindingsAndVersions(t *testing.T) {
 		t.Fatal("accepted invalid name")
 	}
 }
+
+func TestMultilineParameterNavigationDuringRecovery(t *testing.T) {
+	for _, ending := range []string{"\n", "\r\n"} {
+		source := strings.ReplaceAll("fn first() -> Int:\n    return 1\nexport fn answer(\n    input: Int,\n) -> Int:\n    return input\nfn broken(\n", "\n", ending)
+		d := document{"file:///tmp/multiline.ms", source, 1}
+		result := analyze(d, map[string]document{d.URI: d})
+		if len(result.Diagnostics) != 1 || result.Diagnostics[0].Position.Line != 8 {
+			t.Fatal(result.Diagnostics)
+		}
+		declaration := Position(source, strings.Index(source, "input:"))
+		use := Position(source, strings.Index(source, "input"+ending))
+		definition := navigation(result, d, use, "textDocument/definition")
+		if definition == nil {
+			t.Fatal("missing parameter definition")
+		}
+		r := definition.([]any)[0].(map[string]any)["range"].(span)
+		if r.Start != declaration || navigation(result, d, declaration, "textDocument/hover") == nil {
+			t.Fatal("incorrect parameter navigation", definition)
+		}
+		if len(references(result, d, use, true)) != 2 {
+			t.Fatal("missing parameter reference")
+		}
+		symbols := documentSymbols(result, d)
+		if len(symbols) != 2 || symbols[1].(map[string]any)["name"] != "answer" {
+			t.Fatal("missing multiline function symbol", symbols)
+		}
+		// Rename intentionally requires a clean workspace.
+		d.Text = source[:strings.Index(source, "fn broken")]
+		result = analyze(d, map[string]document{d.URI: d})
+		edit, err := rename(result, d, declaration, "value")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(edit.(map[string]any)["documentChanges"].([]any)[0].(map[string]any)["edits"].([]any)) != 2 {
+			t.Fatal("incorrect parameter rename", edit)
+		}
+	}
+}

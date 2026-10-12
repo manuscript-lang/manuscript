@@ -1,5 +1,13 @@
 # Tooling and documentation lessons
 
+### Editor recovery must preserve delimiter continuations
+
+Verified: strict parsing accepts multiline parameters, but declaration recovery previously split their column-zero closing delimiters into separate chunks whenever any declaration was malformed. This discarded valid functions and their parameter scopes in the LSP. Recovery now consults the lexer for continuation boundaries while fresh declarations still synchronize after an unmatched opener. Completion snapshots also need a match arm, rather than an ordinary statement, to repair an unfinished `match` suite.
+
+Apply when: changing partial parsing, declaration synchronization, or completion snapshot repair.
+Evidence: [layout rules](../design/core-language/basics/grammar.md#layout-tokens); [recovery regressions](../parser/partial_test.go); [parameter navigation regression](../tooling/lsp/analysis_test.go); [completion regressions](../tooling/lsp/completion_test.go).
+Verify: multiline function parameters retain their original LF/CRLF positions, navigation, and completion when a different declaration is incomplete; an unfinished match does not erase completion in the enclosing function.
+
 ### Standard declarations are source that tools must navigate
 
 Decision: the user asked to keep standard type definitions in Manuscript so editor tooling can use them. Verified architecture: `stdlib/*.ms` supplies public schemas and signatures; `bindings.json` maps identities to native dispatch. Generated documentation and navigation consume this source-backed contract.

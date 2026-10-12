@@ -149,6 +149,22 @@ func TestCompletionSurvivesIndependentSyntaxErrors(t *testing.T) {
 		t.Fatal(items)
 	}
 }
+
+func TestCompletionWithMultilineParameters(t *testing.T) {
+	for _, source := range []string{
+		"fn answer(\n    input: Int,\n) -> Int:\n    return inp|\nfn broken(\n",
+		"import Process from \"@std/cli.ms\"\nexport fn main(\n    process: Process\n) -> Int:\n    let arguments = process.arg|\n    match process.stdout.write(data: \"hello\".to_bytes()):\n",
+	} {
+		items := completeSource(t, source)
+		want := "input"
+		if strings.Contains(source, "Process") {
+			want = "arguments"
+		}
+		if itemNamed(items, want) == nil {
+			t.Fatalf("missing %s: %+v", want, items)
+		}
+	}
+}
 func TestShadowingCompletionUsesNearestType(t *testing.T) {
 	items := completeSource(t, "fn answer(input: Int) -> Unit:\n    if true:\n        let input = \"text\"\n        inp|\n    return unit\n")
 	item := itemNamed(items, "input")

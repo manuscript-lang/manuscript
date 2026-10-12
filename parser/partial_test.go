@@ -66,3 +66,44 @@ func TestPartialDefaultsPreserveExpressionPositions(t *testing.T) {
 		t.Fatal("default expression positions were not rebased", value)
 	}
 }
+
+func TestPartialMultilineDeclarations(t *testing.T) {
+	for _, ending := range []string{"\n", "\r\n"} {
+		source := strings.ReplaceAll(`# prefix
+fn first() -> Int:
+    return 1
+export fn echo(
+value: String,
+) -> String:
+    return value
+fn sum[
+T,
+](
+left: Int,
+right: Int,
+) -> Int:
+    return left + right
+fn broken(
+fn later() -> Int:
+    return 2
+`, "\n", ending)
+		module, issues := ParsePartial("multiline.ms", source)
+		if len(issues) != 1 || len(module.Declarations) != 4 {
+			t.Fatalf("declarations: %v; diagnostics: %v", module.Declarations, issues)
+		}
+		for i, name := range []string{"first", "echo", "sum", "later"} {
+			decl := module.Declarations[i]
+			if decl.Name != name || decl.Pos.Offset != strings.Index(source, "fn "+name) {
+				t.Fatalf("incorrect declaration: %+v", decl)
+			}
+			for _, param := range decl.Params {
+				if param.Pos.Offset != strings.Index(source, param.Name+":") || param.Pos.Line != strings.Count(source[:param.Pos.Offset], "\n")+1 {
+					t.Fatalf("incorrect parameter position: %+v", param)
+				}
+			}
+		}
+		if issues[0].Position.Offset != strings.Index(source, "fn later") {
+			t.Fatal(issues)
+		}
+	}
+}

@@ -395,7 +395,11 @@ func queryEditor(d document, docs map[string]document, c cursorContext) editorAn
 				break
 			}
 		} else if strings.HasSuffix(strings.TrimSpace(text), ":") && (line+1 == len(lines) || strings.TrimSpace(lines[line+1]) == "") {
-			lines = append(lines[:line+1], append([]string{strings.Repeat(" ", indent+4) + "return unit"}, lines[line+1:]...)...)
+			body := []string{strings.Repeat(" ", indent+4) + "return unit"}
+			if strings.HasPrefix(strings.TrimSpace(text), "match ") {
+				body = []string{strings.Repeat(" ", indent+4) + "_:", strings.Repeat(" ", indent+8) + "return unit"}
+			}
+			lines = append(lines[:line+1], append(body, lines[line+1:]...)...)
 		} else {
 			lines[line] = strings.Repeat(" ", indent) + "return unit"
 			if lines[line] == text {
