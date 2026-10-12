@@ -7,14 +7,13 @@ export MANUSCRIPT_GO ?= $(GO)
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: build test e2e race check fmt toolchain payload dist dist-check coverage fuzz book book-check
+.PHONY: toolchain setup tools doctor verify verify-full lint unit repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
 
 build test e2e race fmt coverage fuzz: | toolchain
 
-.PHONY: setup tools doctor verify verify-full lint unit repo-check examples-check licenses licenses-check
 setup: toolchain tools
 
 tools: | toolchain
@@ -23,10 +22,14 @@ tools: | toolchain
 doctor:
 	HUGO="$(HUGO)" sh scripts/doctor.sh
 
-# Routine feedback excludes native compilation. The merge gate runs verify-full.
+# Routine feedback excludes native compilation. The merge gate adds native checks.
 verify: check lint repo-check unit docs-check examples-check licenses-check
 
 verify-full: verify coverage race fuzz book-check dist-check
+
+check:
+	"$(GO)" run ./scripts/repo-check -format
+	"$(GO)" vet ./...
 
 lint:
 	@test -x .tools/staticcheck -a -x .tools/actionlint -a -x .tools/shellcheck || (echo 'Run make setup to install pinned linters'; exit 1)
@@ -34,12 +37,46 @@ lint:
 	.tools/actionlint -shellcheck .tools/shellcheck
 	.tools/shellcheck -x scripts/*.sh
 
+repo-check:
+	"$(GO)" run ./scripts/repo-check
+
 unit:
 	"$(GO)" test ./syntax ./lexer ./parser ./project ./checker ./runtime ./tooling/... ./scripts/repo-check
 
-repo-check:
-	"$(GO)" run ./scripts/repo-check -format
-	"$(GO)" vet ./...
+examples-check:
+	"$(GO)" test ./tests/examples
+
+licenses:
+	"$(GO)" run ./scripts/maintenance licenses
+
+licenses-check:
+	"$(GO)" run ./scripts/maintenance licenses -check
+
+payload: | toolchain
+	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
+
+build: payload
+	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags bundled_toolchain -o ms ./cmd/ms
+
+test:
+	"$(GO)" test ./...
+
+e2e:
+	"$(GO)" test $(E2EFLAGS) ./tests/e2e
+
+race:
+	"$(GO)" test -race ./runtime ./checker ./compiler ./project ./internal/cli ./tooling/...
+
+coverage:
+	@mkdir -p .artifacts/coverage
+	MANUSCRIPT_EXAMPLES_NATIVE=1 "$(GO)" test -covermode=atomic -coverpkg="$$("$(GO)" list ./... | paste -sd, -)" -coverprofile=.artifacts/coverage/coverage.out ./...
+	"$(GO)" tool cover -func=.artifacts/coverage/coverage.out
+	"$(GO)" tool cover -html=.artifacts/coverage/coverage.out -o .artifacts/coverage/index.html
+
+fuzz:
+	"$(GO)" test ./parser -run '^$$' -fuzz '^FuzzParse$$' -fuzztime "$(FUZZTIME)"
+	"$(GO)" test ./parser -run '^$$' -fuzz '^FuzzParsePartial$$' -fuzztime "$(FUZZTIME)"
+	"$(GO)" test ./compiler -run '^$$' -fuzz '^FuzzCompile$$' -fuzztime "$(FUZZTIME)"
 
 fmt:
 	"$(GO)" fmt ./...
@@ -50,7 +87,6 @@ dist: | toolchain
 dist-check: dist
 	"$(GO)" run ./scripts/distcheck ./dist/manuscript-$$("$(GO)" env GOHOSTOS)-$$("$(GO)" env GOHOSTARCH)
 
-.PHONY: docs docs-check
 docs:
 	"$(GO)" run ./scripts/docgen
 
@@ -65,6 +101,5 @@ book-check: docs-check
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir --destination "$(BOOK_CHECK_DIR)" --baseURL "https://example.org/manuscript/"
 	MANUSCRIPT_BOOK_DIR="$(BOOK_CHECK_DIR)" node --test tests/docs/publication.test.cjs
 
-.PHONY: vendor-refresh
 vendor-refresh:
 	"$(GO)" run ./scripts/maintenance vendor
