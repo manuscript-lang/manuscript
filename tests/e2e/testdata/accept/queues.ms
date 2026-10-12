@@ -5,6 +5,25 @@ import List from "@std/collections.ms"
 import parallel_map from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
+test "omitted capacity creates an unbounded queue":
+    let queue = Queue[Int]()
+    let inferred: Queue[Int] = Queue()
+    for unused in [1, 2]:
+        for value in [1, 2, 3, 4, 5]:
+            if not queue.enqueue(value):
+                return panic("unbounded queue rejected an item")
+        if queue.length() != 5:
+            return panic("unbounded queue lost items")
+        for value in [1, 2, 3, 4, 5]:
+            let expected: Optional[Int] = some(value: value)
+            if queue.dequeue() != expected:
+                return panic("unbounded queue lost FIFO order")
+        let missing: Optional[Int] = none
+        if not (queue.is_empty() and queue.dequeue() == missing):
+            return panic("unbounded queue did not drain")
+    if not inferred.enqueue(1):
+        return panic("inferred queue rejected an item")
+
 test "local FIFO aliases and saved methods":
     let queue = Queue[Int](capacity: 2)
     let alias = queue
@@ -45,7 +64,7 @@ test "queue elements include ordinary functions":
             return panic("callback missing")
 
 test "shared queue uses explicit lock scopes":
-    let shared = Synchronized(value: Queue[Int](capacity: 2))
+    let shared = Synchronized(value: Queue[Int]())
     match parallel_map(items: [1, 2, 3, 4], limit: 4, operation: fn(item: Int) -> Unit:
         for unused in [1, 2, 3, 4, 5]:
             with locked = shared.lock():

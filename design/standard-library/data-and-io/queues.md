@@ -7,16 +7,15 @@ weight = 41
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-`Queue[T]` is a bounded, mutable FIFO for single-threaded use. Import it from `@std/queues.ms`. Every operation returns immediately: enqueue returns `false` when full, and dequeue returns `none` when empty.
+`Queue[T]` is a mutable FIFO for single-threaded use. Import it from `@std/queues.ms`. Omit capacity for an unbounded queue, or supply a positive capacity to bound it. Every operation returns immediately: enqueue returns `false` when full, and dequeue returns `none` when empty.
 
 ```manuscript
 import Queue from "@std/queues.ms"
 import panic from "@std/faults.ms"
 
 test "a local queue":
-    let queue = Queue[Int](capacity: 2)
-    if not queue.enqueue(10):
-        return panic("queue is full")
+    let queue = Queue[Int]()
+    queue.enqueue(10)
     match queue.dequeue():
         some(value):
             if value != 10:
@@ -27,7 +26,7 @@ test "a local queue":
 
 ## API
 
-`Queue[T](capacity: Int)` creates an empty queue with a fixed positive capacity. A nonpositive capacity is a programming fault. Elements may be any value type, including functions and contract views. The queue is an opaque reference without equality or hashing; aliases and saved methods use the same queue.
+`Queue[T]()` creates an empty, unbounded queue. `Queue[T](capacity: Int)` creates an empty queue with a fixed positive capacity. A nonpositive capacity is a programming fault. Elements may be any value type, including functions and contract views. The queue is an opaque reference without equality or hashing; aliases and saved methods use the same queue.
 
 ```manuscript
 fn enqueue(value: T) -> Bool
@@ -37,7 +36,7 @@ fn length() -> Int
 fn is_empty() -> Bool
 ```
 
-`enqueue` appends at the back and returns `true`, or leaves the queue unchanged and returns `false` when full. `dequeue` removes the oldest value; `peek` reads it without removal. Both return `none` when empty. Dequeuing frees capacity, and an empty queue may be reused. There is no waiting, close operation, cleanup registration, or end-of-stream state. A queue cannot be a `with` initializer.
+`enqueue` appends at the back and returns `true`, or leaves a bounded queue unchanged and returns `false` when full. An unbounded queue grows as needed and always accepts an enqueue. `dequeue` removes the oldest value; `peek` reads it without removal. Both return `none` when empty. Dequeuing frees capacity, and an empty queue may be reused. There is no waiting, close operation, cleanup registration, or end-of-stream state. A queue cannot be a `with` initializer.
 
 ## Sharing a queue
 
