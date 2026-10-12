@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Parse HTML strings into `HtmlNode` trees with `HtmlAttribute` records, HTML5 recovery, and optional byte, depth, and node limits.
 - Share parsing and AST graph loading across compilation and source tools; make checking, boolean optimization, and Go lowering explicit stages while preserving the checked source model.
 - Group reusable Go packages under `pkg/`; Go callers must update the former root package imports to `github.com/manuscript-lang/manuscript/pkg/...`.
 - Add read-only verification, pinned lint tools, environment diagnostics, and checked package/build boundaries.

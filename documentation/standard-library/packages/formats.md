@@ -7,7 +7,7 @@ weight = 51
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
-Use these modules to parse and write JSON, CSV, and URLs, or escape HTML text. Choose explicit limits for input size and nesting. Each format has its own validation rules, described after the signatures.
+Use these modules to parse and write JSON, CSV, and URLs, or parse HTML into a tree and escape HTML text. Choose explicit limits for input size and nesting. Each format has its own validation rules, described after the signatures.
 
 ## `@std/json.ms`
 
@@ -39,6 +39,7 @@ fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
 
 ```manuscript
 fn escape(text: String) -> String
+fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]
 ```
 
 ## Data records
@@ -110,6 +111,51 @@ Query entries retain duplicates and order. A bare key has an empty value; `+` re
 
 IDNA normalization, a distinction between absent and empty queries, and browser WHATWG URL compatibility remain future work.
 
-## HTML escaping
+## HTML parsing and escaping
+
+`parse` returns an `HtmlNode.Document` containing an HTML5 tree. Match `Element` to work with its tag, namespace, ordered `List[HtmlAttribute]`, and child nodes. `Text`, `Comment`, and `Doctype` preserve their data. These are ordinary Manuscript data values; child lists and attribute records are mutable.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import {parse, HtmlNode} from "@std/html.ms"
+import {Result} from "@std/result.ms"
+import Error from "@std/errors.ms"
+import panic from "@std/faults.ms"
+
+fn text_content(node: HtmlNode) -> String:
+    match node:
+        Text(text): return text
+        Document(children):
+            var text = ""
+            for child in children: text = "{text}{text_content(child)}"
+            return text
+        Element(_, _, _, children):
+            var text = ""
+            for child in children: text = "{text}{text_content(child)}"
+            return text
+        _: return ""
+
+fn read_text() -> Result[String, Error]:
+    let document = try parse(text: "<p>Hello <b>world</b> &amp; friends</p>")
+    return ok(value: text_content(document))
+
+test "read HTML text":
+    match read_text():
+        ok(text):
+            if text != "Hello world & friends": return panic("unexpected text")
+        error(cause): return panic(cause.message())
+```
+
+Parsing follows HTML5 document rules: omitted `html`, `head`, `body`, and table structure are inserted, ordinary HTML names become lowercase, and incomplete or misnested markup is recovered. A snippet is parsed as a document, rather than in a supplied fragment context. Text and attribute entities are decoded; raw script/style text follows HTML5 rules. Attribute order is preserved, including duplicate attributes retained by the parser. HTML namespaces are empty; foreign elements use `svg` or `math`, and namespaced attributes use prefixes such as `xlink`. A doctype's absent public/system identifiers are empty strings. Scripts are retained as text and never executed.
+
+`HtmlLimits` fields are optional and nonnegative:
+
+| Limit | What it counts |
+| --- | --- |
+| `max_bytes` | UTF-8 input bytes, checked before parsing. |
+| `max_depth` | Returned node depth; the document is depth zero. |
+| `max_nodes` | All returned nodes, including the document, text, comments, doctypes, and inserted elements. Attributes are excluded. |
+
+Omitted limits impose no added cap. An empty input produces four nodes (`Document`, `html`, `head`, and `body`) with maximum depth two. Depth and node budgets are checked while converting the native tree, after HTML5 parsing has allocated it; use a byte budget to bound the input first. Negative limits return `HtmlError.InvalidInput`, invalid UTF-8 or a native parser failure returns `InvalidData`, and exceeded budgets return `LimitExceeded`. Recoverable markup errors are accepted.
 
 `escape` handles text and quoted attribute contexts. It does not sanitize HTML or encode JavaScript, CSS, or URL contexts.
