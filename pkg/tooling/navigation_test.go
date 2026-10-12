@@ -171,3 +171,25 @@ func TestNavigationWithinStandardLibrary(t *testing.T) {
 		})
 	}
 }
+
+func TestSourceStandardLibraryNavigation(t *testing.T) {
+	source := "import {parse, TomlValue} from \"@std/toml.ms\"\nfn read() -> Unit:\n    let result = parse(text: \"a=1\")\n"
+	result := compiler.CompileSource("source-navigation.ms", source, compiler.Options{AnalyzeOnly: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for _, offset := range []int{strings.Index(source, "parse"), strings.LastIndex(source, "parse("), strings.Index(source, "TomlValue")} {
+		nav, ok := tooling.NavigationAt(result.Program, "source-navigation.ms", offset)
+		if !ok || nav.Definition.File != "@std/toml.ms" {
+			t.Fatal("missing source standard navigation", nav, ok)
+		}
+	}
+	standard, err := stdlib.Sources.ReadFile("toml.ms")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nav, ok := tooling.NavigationAt(result.Program, "@std/toml.ms", strings.Index(string(standard), "parse_int, parse_float"))
+	if !ok || nav.Definition.File != "@std/numbers.ms" {
+		t.Fatal("missing cross-standard source navigation", nav, ok)
+	}
+}
