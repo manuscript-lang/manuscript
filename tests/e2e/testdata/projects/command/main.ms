@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import Process from "@std/cli.ms"
 import List from "@std/collections.ms"
 
@@ -6,6 +8,7 @@ export fn main(process: Process) -> Int:
         error(_):
             return 1
         ok(output):
-            assert output.exit_code == 0
+            if not (output.exit_code == 0):
+                return panic(message: "check failed")
             process.stdout.write(data: output.stdout)
             return 0

@@ -7,7 +7,7 @@ weight = 32
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-The catalog identifies intrinsic and imported standard values; the core language guide explains their syntax.
+The catalog tells you what a type means and where to import it. The API-typing page is the detailed reference for how standard names resolve and how concurrent callables and results are checked.
 
-- [Core and standard types](catalog.md)
-- [Standard imports and API typing](prelude.md)
+- [Core and standard types](catalog.md) — Find a type, its meaning, and its import path.
+- [Standard imports and API typing](prelude.md) — Check exact import identities, callable types, and standard API rules.

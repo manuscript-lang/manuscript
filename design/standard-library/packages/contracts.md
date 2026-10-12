@@ -5,26 +5,75 @@ weight = 48
 
 # Common package contracts
 
-[Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
+[Standard library guide](../_index.md) · [Coverage](coverage.md) · [Package index](_index.md)
 
-These pages document executable additions to the Go compiler/runtime. Types and signatures are defined in the pinned Manuscript sources under `stdlib/`; the checker reads those declarations and verifies native runtime ABI signatures against them. Types are individually imported from their named module. Standard imports remain pinned with the distribution; there are no ambient new types, wildcard imports, user-defined generic operations, or implicit external authority.
+These rules apply across the general-purpose packages. Exact types and signatures live in the pinned Manuscript files under `stdlib/`. The checker reads those files and verifies that native runtime signatures agree with them.
 
-Each function identity includes its module (`json/parse`, `bigint/parse`, `url/parse`), avoiding same-name binding collisions in generated code. Source import aliases remain unsupported: use a helper module when two exports have the same spelling. Sequential callbacks may suspend and are invoked under the caller's context; all callbacks are ordinary values and can also be passed to concurrent APIs.
+## Imports and callbacks
+
+Import each function or type you name from its module. Standard imports are pinned with the distribution. They add no ambient types, wildcard imports, user-defined generic operations, or automatic access to external services.
+
+Function identity includes the module, so `json/parse`, `bigint/parse`, and `url/parse` remain distinct in generated code. Source import renaming is unsupported; use a helper module if two imports have the same spelling.
+
+Sequential callbacks run under the caller's execution context and may wait for operations. All callbacks are ordinary values and can also be passed to concurrent APIs.
 
 ## Errors
 
-`@std/errors.ms` exports LibraryError with nullary cases InvalidInput, InvalidData, OutOfRange, LimitExceeded, NotFound, AlreadyExists, PermissionDenied, Unsupported, Closed, Timeout, AuthenticationFailed and case Failed(message: String). This small common error alternative keeps new package operations composable with ordinary Result/try. Existing IoError, CommandError and task errors keep their identities and contracts. Error messages are diagnostic, not stable classification codes.
+Import `LibraryError` from `@std/errors.ms`. It has these cases:
 
-Malformed data and unavailable OS services return Result errors. Absence uses Optional. Illegal collection slice bounds, inconsistent programmer assumptions, and assertion failures fault. Parent cancellation unwinds and never becomes EOF/domain error; local network deadline failure returns Timeout. Networking supports verified TLS, DNS records, Unix sockets, streaming HTTP and WebSockets; HTTP/3 is explicitly excluded by user instruction. Native builds bundle pinned dependency sources/licenses and never fetch packages.
+```manuscript
+type LibraryError:
+    case InvalidInput
+    case InvalidData
+    case OutOfRange
+    case LimitExceeded
+    case NotFound
+    case AlreadyExists
+    case PermissionDenied
+    case Unsupported
+    case Closed
+    case Timeout
+    case AuthenticationFailed
+    case Failed(message: String)
+```
 
-Native acquisition disposes an undelivered successful resource when cancellation wins before return. Acquired socket handles use with and share synchronized close admission; retained aliases cannot extend open lifetime.
+This shared error type lets package operations compose through ordinary `Result` and `try`. Existing `IoError`, `CommandError`, and task errors keep their own identities. Use error cases for classification; message text is diagnostic and is not a stable code.
+
+| Situation | Behavior |
+| --- | --- |
+| Malformed data or unavailable OS service | Return an expected Result error. |
+| Missing value | Use Optional. |
+| Illegal collection slice bounds, broken programming assumptions, or explicit invariant violation | Produce a programming fault. |
+| Parent cancellation | Unwind; do not turn cancellation into EOF or a domain error. |
+| Local network deadline expires | Return Timeout, subject to the operation's documented error type. |
+
+If cancellation wins before a newly acquired resource is delivered, native acquisition releases that resource. Delivered socket handles use `with` and synchronized close admission. Retaining another reference never extends the open lifetime.
 
 ## Bounds and native limits
 
-Caller-supplied nonnegative byte/item/depth bounds reject excess rather than truncating success. Pure functions over an already-created String/List/Bytes do not bound the caller's preexisting allocation. Go parsers may allocate one CSV record or ZIP central directory before an item bound can be checked; log serialization creates a record before its byte check. Bound source reads for untrusted inputs, and consult each package's limits. JSON has depth ceiling 512, HTTP has 64 KiB response headers, entropy has 16 MiB per call, and UDP receives at most 65535 bytes. This is not a universal heap/CPU sandbox.
+Byte, item, and depth limits are nonnegative unless a package requires a positive value. Exceeding a bound returns an error, not a truncated success.
 
-Native loops check cancellation between bounded chunks. Individual Go math, regex matching, big-integer operations, directory operations, resolver calls and OS operations can delay cancellation until the native call returns. No forced termination is introduced. Write/copy/remove failures may leave external partial effects; no implicit rollback or transaction is promised.
+A limit on a function's output does not bound input already allocated by the caller. Some native operations also allocate before they can check a limit: CSV may parse one record, ZIP may read the central directory, and logging may construct a full record. Bound source reads and consult each package's behavior section.
 
-## Authority
+| Facility | Native limit |
+| --- | --- |
+| JSON | Depth ceiling of 512. |
+| HTTP | Response headers limited to 64 KiB. |
+| Entropy | 16 MiB per call. |
+| UDP receive | At most 65535 bytes. |
 
-CLI Process adds filesystem, entropy, wall_clock and system roots; existing network and commands roots are extended/reused. Source fakes implement these contracts using ordinary explicit contract views. Pure codecs/path/math/hash functions grant no OS authority. The native CLI roots use the process's OS permissions: filesystem subtree restrictions are not implemented; Network.restrict enforces scoped destination policy. Imports never manufacture authority. New HTTP/socket operations retain TLS verification and use explicit authority values.
+These limits do not form a general memory or CPU sandbox.
+
+## Cancellation and partial effects
+
+Native loops check cancellation between bounded chunks. A single math, regex, big-integer, directory, resolver, or OS call may delay cancellation until it returns. There is no forced termination.
+
+Writing, copying, or removing data can fail after changing an external prefix. Cancellation and errors do not imply rollback or a transaction.
+
+## Access to external services
+
+CLI Process supplies filesystem, entropy, wall_clock, and system roots, alongside network and commands. Source fakes implement the same contracts with explicit contract views.
+
+Pure codec, path, math, and hash functions grant no OS access. Native CLI services use the process's OS permissions. Filesystem subtree restrictions are not implemented; `Network.restrict` narrows destination access. Imports alone grant no authority. HTTP and socket operations use explicit service values and retain TLS verification.
+
+Networking includes DNS, Unix sockets, verified TLS, streaming HTTP, and WebSockets. HTTP/3 is outside the supported scope. Native builds bundle pinned dependency sources and licenses rather than fetching packages.

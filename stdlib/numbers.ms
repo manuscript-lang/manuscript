@@ -10,3 +10,9 @@ export fn format_int(value: Int, radix: Int) -> String
 export fn parse_float(text: String) -> Result[Float, LibraryError]
 
 export fn parse_int(text: String, radix: Int) -> Result[Int, LibraryError]
+
+export fn format_fixed(value: Float, digits: Int) -> Result[String, LibraryError]
+
+export fn format_exponential(value: Float, digits: Int) -> Result[String, LibraryError]
+
+export fn format_precision(value: Float, precision: Int) -> Result[String, LibraryError]

@@ -7,7 +7,7 @@ weight = 42
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Shared application state and pools are synchronized services. A pool lease is an ordinary resource object registered with `with` and returned to the pool by `close()`.
+Use synchronized services for application state shared by requests and background work. A pool supplies leases: acquire a lease in a `with` block, then return it to the pool through close. Keeping a reference to the lease does not extend its lifetime.
 
 Pool references can be shared by requests and background work. A job acquires its own lease under its own scope. Retaining a lease reference does not prolong its lease lifetime.
 
@@ -17,7 +17,8 @@ Access and closure must be coordinated: close waits for or cancels outstanding o
 
 Import `Synchronized` and, when an annotation needs it, `SynchronizedGuard` from `@std/sync.ms`. `Synchronized[T](value: T)` is an opaque reference containing one value and one mutex. Aliases share both. Its only operation is `lock() -> SynchronizedGuard[T]`.
 
-```text
+```manuscript
+import panic from "@std/faults.ms"
 import Synchronized from "@std/sync.ms"
 
 test "a complete update holds one lock":
@@ -25,7 +26,8 @@ test "a complete update holds one lock":
     with locked = counter.lock():
         locked.set(value: locked.get() + 1)
     with locked = counter.lock():
-        assert locked.get() == 1
+        if not (locked.get() == 1):
+            return panic(message: "check failed")
 ```
 
 `lock()` waits cancellably for exclusive admission. The guard exposes `get() -> T`, `set(value: T) -> Unit`, and `close() -> Unit`; it has no source constructor and implements `Closeable`. Use `with` to release it on normal exit, return, loop exits, propagated errors, faults, and cancellation. The synchronized container itself has no close operation. Neither type has equality or hashing.
@@ -44,7 +46,7 @@ Set replaces the stored value immediately. Faults, propagated errors, and cancel
 
 Import `Pool`, `Lease`, and `PoolError` from `@std/pools.ms`. `Pool[T](resources: List[T])` owns a nonempty fixed collection of distinct resource receivers. `T` must be a concrete operation-contract view declaring `close() -> Unit`. Construct views explicitly before pooling; a type variable's implementation bound does not establish this representation at construction. The supplied resources must remain under the pool's exclusive lifecycle management.
 
-```text
+```manuscript
 # Pool[T]
 fn acquire() -> Result[Lease[T], PoolError]
 fn close() -> Unit

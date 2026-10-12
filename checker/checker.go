@@ -40,6 +40,7 @@ func (s *scope) typ(name string) *Type {
 }
 
 type checker struct {
+	scopeMarker string
 	*Program
 	module                  *syntax.Module
 	names                   map[string]*Symbol
@@ -50,8 +51,11 @@ type checker struct {
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
-	p := &Program{TypeReferences: map[*syntax.Type]*Type{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
-	c := &checker{Program: p, captures: map[int]map[*Binding]bool{}}
+	return CheckWithOptions(modules, imports, CheckOptions{})
+}
+func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
+	p := &Program{Flow: map[*syntax.Statement]Flow{}, TypeReferences: map[*syntax.Type]*Type{}, Scopes: map[*syntax.Expression]ScopeState{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
+	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
 	for _, module := range modules {
 		c.module = module
 		c.names = map[string]*Symbol{}
@@ -68,10 +72,10 @@ func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program
 				found = p.Symbols[imports[item]][item.Name]
 			}
 			if found == nil || !found.Export {
-				c.error(item.Pos, "resolution", "module does not export "+item.Name)
+				c.error(item.NamePos, "resolution", "module does not export "+item.Name)
 				continue
 			}
-			c.addSymbol(item.Name, found, item.Pos)
+			c.addSymbol(item.Name, found, item.NamePos)
 		}
 		for _, d := range module.Declarations {
 			if d.Kind == "impl" || d.Kind == "test" {
@@ -268,7 +272,7 @@ func (c *checker) bind(name string, t *Type, mutable bool, pos syntax.Position) 
 	if c.scope.bindings[name] != nil || c.scope.types[name] != nil {
 		c.error(pos, "type", "duplicate local binding "+name)
 	}
-	b := &Binding{Name: name, ID: c.unique("local"), Type: t, Mutable: mutable, Function: c.function}
+	b := &Binding{Name: name, ID: c.unique("local") + "_" + name, Type: t, Mutable: mutable, Function: c.function}
 	c.scope.bindings[name] = b
 	return b
 }
@@ -311,7 +315,11 @@ func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks boo
 	c.scope = old
 	return
 }
-func (c *checker) statement(s *syntax.Statement) (bool, bool) {
+func (c *checker) statement(s *syntax.Statement) (fall, breaks bool) {
+	defer func() { c.Flow[s] = Flow{fall} }()
+	return c.checkStatement(s)
+}
+func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	switch s.Kind {
 	case "bind":
 		var expected *Type
@@ -347,9 +355,6 @@ func (c *checker) statement(s *syntax.Statement) (bool, bool) {
 			c.expression(s.Value, c.result)
 		}
 		return false, false
-	case "assert":
-		i := c.expression(s.Value, primitive("Bool"))
-		return !i.NoReturn, false
 	case "call":
 		i := c.expression(s.Value, nil)
 		return !i.NoReturn, false
@@ -553,6 +558,7 @@ func (c *checker) expression(e *syntax.Expression, expected *Type) *Info {
 	return i
 }
 func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
+	c.captureScope(e)
 	i := &Info{}
 	if e == nil {
 		i.Type = primitive("Unit")
@@ -634,6 +640,12 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			c.error(e.Pos, "resolution", "unknown binding "+e.Text)
 		}
 	case "apply":
+		if callable := c.nativeCallable(e); callable != nil {
+			*i = *callable
+			i.Type = c.specialize(callable.Type, callable.Method.Variables, c.resolveArguments(e.Types), e.Pos)
+			c.Expressions[e.Left] = i
+			return i
+		}
 		if s := c.functionSymbol(e.Left); s != nil {
 			args := c.resolveArguments(e.Types)
 			i.Symbol = s
@@ -682,6 +694,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		i.Method = methods[0]
 		i.Type = methods[0].Type
 		i.Native = methods[0].Native
+		if methods[0].Native != "" && methods[0].Native != "contract" && len(methods[0].Variables) > 0 {
+			c.error(e.Pos, "type", "a generic method value requires explicit specialization")
+		}
 	case "call":
 		return c.call(e, expected)
 	case "lambda":

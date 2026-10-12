@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/archive.ms"`.
 
 Kind: record.
 
-```text
+```manuscript
 ArchiveEntry: ArchiveEntry
 field path: String
 field data: Bytes
@@ -21,7 +21,7 @@ field directory: Bool
 
 Kind: record.
 
-```text
+```manuscript
 ArchiveLimits: ArchiveLimits
 field max_entries: Int
 field max_entry_bytes: Int
@@ -32,7 +32,7 @@ field max_total_bytes: Int
 
 Kind: fn.
 
-```text
+```manuscript
 pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[Bytes, LibraryError]
 ```
 
@@ -40,7 +40,7 @@ pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[By
 
 Kind: fn.
 
-```text
+```manuscript
 unpack: fn(data: Bytes, format: String, limits: ArchiveLimits)->Result[List[ArchiveEntry], LibraryError]
 ```
 

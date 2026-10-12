@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/pools.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Lease: Lease[T]
 type parameters: T
 operation close: fn()->Unit
@@ -21,7 +21,7 @@ operation get: fn()->Result[T, PoolError]
 
 Kind: interface.
 
-```text
+```manuscript
 Pool: Pool[T]
 type parameters: T
 field resources: List[T]
@@ -33,7 +33,7 @@ operation close: fn()->Unit
 
 Kind: alternative.
 
-```text
+```manuscript
 PoolError: PoolError
 case Closed
 ```

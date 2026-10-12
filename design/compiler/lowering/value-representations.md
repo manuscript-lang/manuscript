@@ -7,7 +7,7 @@ weight = 94
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Representations must implement the checked source behavior, including guarantees absent from unrestricted Go values.
+A Go value must preserve the behavior promised by its Manuscript type. For example, generated Int arithmetic must detect overflow, and generated collections must prevent mutation through an alias. The compiler and runtime enforce guarantees that unrestricted Go values do not provide on their own.
 
 The frontend enforces semantics that Go representations do not provide:
 

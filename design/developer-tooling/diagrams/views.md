@@ -7,7 +7,7 @@ weight = 113
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Generated diagrams let a reviewer move from module boundaries to execution flow and data transformations without maintaining a second source of architectural truth.
+Choose a diagram based on the question you need to answer: which modules depend on each other, how work runs, or how data changes. These views come from checked source, so reviewers can follow links back to the code.
 
 The compiler emits three views:
 

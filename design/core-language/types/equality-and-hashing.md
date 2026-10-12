@@ -7,7 +7,7 @@ weight = 16
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Equality describes whether values are equal; hashing supplies the property required by map keys and set elements. These are explicit eligibility requirements on types.
+Equality compares eligible values by their contents. Hashing is the additional property needed to use a value as a map key or set element. The compiler checks these properties from the type. Services, resources, and capabilities do not gain equality automatically.
 
 Equality is by value for eligible data types; services, resources, and capabilities have no implicit equality.
 
@@ -27,7 +27,7 @@ Records compare only with the same instantiated nominal type, field by field. Al
 
 Collections are not `Hashable`. A record containing a collection can be `Equal` but cannot automatically become a map key or set element. Function values and contract views have no implicit equality or hashing.
 
-```text
+```manuscript
 let same = [1, 2] == [1, 2]
 let different = [1, 2] == [2, 1]  # false
 # Rejected at type checking: Float is not Hashable.
@@ -37,7 +37,7 @@ fn accepts_float_keys(values: Map[Float, Int]) -> Unit:
 
 For [guarded recursive data](records.md#recursive-data), eligibility is checked over the finite declaration graph. Every nonrecursive leaf must meet the bound; recursive references reuse the requirement already being checked. A cycle does not establish eligibility if a leaf fails it. Generated equality traverses finite immutable values structurally. Containers still block hashing derivation even when they guard recursive layout.
 
-```text
+```manuscript
 type Tree[T: Equal]:
     value: T
     children: List[Tree[T]]
@@ -63,7 +63,9 @@ The same immutable key must retain its equality and hash behavior while stored. 
 
 With structural derivation, every declared field participates. A display label or cached value is not silently excluded. Model a lookup identity as its own record, then use that record as the key:
 
-```text
+```manuscript
+import panic from "@std/faults.ms"
+
 import Map from "@std/collections.ms"
 
 type CustomerKey:
@@ -76,11 +78,14 @@ type Customer:
 test "domain identity is a value":
     let first = Customer(key: CustomerKey(id: "c1"), display_name: "Ada")
     let renamed = Customer(key: CustomerKey(id: "c1"), display_name: "Ada Lovelace")
-    assert first != renamed
-    assert first.key == renamed.key
+    if not (first != renamed):
+        return panic(message: "check failed")
+    if not (first.key == renamed.key):
+        return panic(message: "check failed")
     let names = Map[CustomerKey, String]().with_entry(key: first.key, value: first.display_name)
     let updated = names.with_entry(key: renamed.key, value: renamed.display_name)
-    assert updated.length() == 1
+    if not (updated.length() == 1):
+        return panic(message: "check failed")
 ```
 
 A domain requiring normalized text identity should construct a canonical key value explicitly. String equality itself remains exact; adding a matching operation name to a type does not change `==` or key lookup.

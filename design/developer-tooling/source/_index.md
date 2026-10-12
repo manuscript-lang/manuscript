@@ -7,7 +7,7 @@ weight = 108
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-Canonical formatting, guarded structural edits, and readable diagnostics operate on the authoritative source.
+Source tools help you keep code consistently formatted and understand errors. The structural-editing design also describes how tools can propose an edit against a specific source revision.
 
 - [Canonical formatting and generated views](formatting.md)
 - [Structural edits and revision guards](structural-editing.md)

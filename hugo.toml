@@ -8,6 +8,7 @@ resourceDir = '.hugo-resources'
 disableKinds = ['taxonomy', 'term', 'RSS']
 
 [params]
+  description = 'Learn Manuscript: readable native programs, explicit contracts, and predictable work lifetimes.'
   BookSection = '/'
   BookToC = true
   BookSearch = true
@@ -24,6 +25,10 @@ disableKinds = ['taxonomy', 'term', 'RSS']
 
 [markup.highlight]
   style = 'github'
+  noClasses = false
+
+[markup.goldmark.parser.attribute]
+  block = true
 
 [[menus.before]]
   name = 'Overview'

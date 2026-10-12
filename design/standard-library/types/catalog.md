@@ -7,6 +7,8 @@ weight = 33
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
+Use this table to find a type's meaning and import path. “Implicit intrinsic” means the type is available without an import. Import other type names from the listed module when you use them in source.
+
 | Type | Meaning | Import from |
 | --- | --- | --- |
 | `Bool` | `true` or `false` | Implicit intrinsic |

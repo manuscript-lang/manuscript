@@ -29,11 +29,14 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.1'
+          go-version-file: .go-version
           cache: false
 
       - name: Check generated standard library documentation
         run: make docs-check
+
+      - name: Check documentation syntax highlighting
+        run: node --test tests/docs/highlighting.test.cjs
 
       - name: Install Hugo Extended
         uses: peaceiris/actions-hugo@v3
@@ -76,7 +79,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.1'
+          go-version-file: .go-version
           cache: false
 
       - name: Check generated standard library documentation

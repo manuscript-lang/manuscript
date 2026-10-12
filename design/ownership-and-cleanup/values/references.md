@@ -7,12 +7,25 @@ weight = 49
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Values are ordinary data or references to runtime objects. Passing, returning, storing, and capturing a reference keeps the same object accessible. It does not invalidate the previous binding, schedule cleanup, or extend a resource's open lifetime.
+Several names can refer to the same object. Passing a reference to a function, putting it in a record, or capturing it in a closure gives another way to access that object. The original reference still works.
 
-Memory is reclaimed by Go garbage collection. External resources are released by explicit calls or `with`. Dropping an object reference, closure, or work ID is not an external cleanup operation.
+## Memory and open resources
 
-A resource factory can return an open object for a caller to place in `with`. Returning an object already registered in a local `with` scope does not cancel that scope's cleanup; callers receive a closed object after the function exits. Closed-resource access is a runtime error.
+Go's garbage collector reclaims memory that is no longer needed. Releasing a file handle, socket, or other external resource is a separate job. Use an explicit `close()` call or a `with` block to arrange that release.
 
-The design does not prevent every missed `with` registration at compile time. Libraries should expose scoped resource APIs and diagnostics for common omissions. There is no move or ownership-transfer mechanism.
+Keeping a reference keeps the object accessible in memory. It does not keep an external resource open. When one reference closes a resource, operations through its other references also see that it is closed. Dropping a reference, closure, or work ID does not itself close anything.
 
-See [Closeable](../cleanup/closeable.md) and [closures](../../core-language/functions/function-values-and-closures.md).
+## Returning a resource
+
+A factory can return an open resource for its caller to put in `with`. But a function must not expect a resource to stay open merely because it returns it from inside a local `with` block. That block still closes the resource before the caller receives it.
+
+| What the function does | What the caller receives |
+| --- | --- |
+| Returns an open resource without registering local cleanup | An open resource; the caller must arrange cleanup. |
+| Returns a resource registered in a local `with` block | A reference to the resource after that block has closed it. |
+
+Later use of a closed resource produces its runtime closed-state error.
+
+The compiler does not catch every missing `with`. Libraries should provide scoped APIs and diagnostics to help callers avoid omissions. Manuscript has no move or ownership-transfer operation.
+
+See [Closeable](../cleanup/closeable.md), [with scopes](../cleanup/scopes.md), and [closures](../../core-language/functions/function-values-and-closures.md).

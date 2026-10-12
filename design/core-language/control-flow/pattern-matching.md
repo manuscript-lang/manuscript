@@ -7,13 +7,13 @@ weight = 26
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A `match` selects a block according to a value's alternative. Each case can bind the data carried by that alternative.
+Use `match` to handle the cases of an alternative type. Each branch can give names to the data carried by its case. For example, a payment may be paid, declined, or pending, and each outcome needs different handling.
 
 A match accepts tagged alternative types, including `Optional` and `Result`. Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is a statement; it cannot initialize a binding as an expression. The scrutinee evaluates once.
 
 The following function handles the `Payment` type declared in [alternatives](../types/alternatives.md):
 
-```text
+```manuscript
 fn describe(payment: Payment) -> String:
     match payment:
         Paid(receipt):
@@ -28,7 +28,7 @@ fn describe(payment: Payment) -> String:
 
 Case payloads bind positions in the declaration's field order. A pattern must give exactly one identifier or `_` placeholder per payload field. Pattern payloads are positional even though constructors always use named fields. Nullary cases use a bare case name without `()`.
 
-```text
+```manuscript
 type Position:
     case Point(x: Int, y: Int)
     case Unknown
@@ -53,7 +53,7 @@ Every case in the example returns its own description. Running the `Paid` branch
 
 `_:` is the wildcard arm. It is permitted once, must be last, binds nothing, and covers every case not already handled. Duplicate cases, unknown cases, an arm after the wildcard, and a wildcard after all cases have been explicitly covered are rejected as invalid or unreachable arms. Qualified and unqualified spellings of the same case count as duplicates.
 
-```text
+```manuscript
 fn paid(payment: Payment) -> Bool:
     match payment:
         Paid(_):

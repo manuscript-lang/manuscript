@@ -9,7 +9,7 @@ weight = 7
 
 A binding gives a name to a value. Choose `let` when the name should keep its value and `var` when you need to assign a replacement.
 
-```text
+```manuscript
 let count: Int = 3
 var remaining = count
 remaining = remaining - 1
@@ -23,7 +23,7 @@ Function parameters and return types are explicit; local annotations are optiona
 
 The following continues the `Customer` and `welcome` declarations in [source structure and syntax](syntax.md):
 
-```text
+```manuscript
 let customer = Customer(name: "Ada", active: true)
 let greeting = welcome(customer: customer)
 let count: Int = 3
@@ -35,7 +35,7 @@ remaining = remaining - 1
 
 Bindings use JavaScript-style positional and record patterns:
 
-```text
+```manuscript
 let [resA, resB] = try parallel(tasks: [first, second])
 let {name, email: customer_email} = customer
 ```
@@ -44,13 +44,15 @@ The parallel fragment needs an enclosing `Result[U, ExecutionError]` function; s
 
 ## Scope and shadowing
 
-Shadowing within one lexical scope is rejected. Nested scopes may shadow outer bindings. An assignment to a `var` changes an existing binding; a declaration in a nested scope introduces a binding with its own lifetime.
+A scope is the part of a program where a name is visible. You cannot declare the same local name twice in one scope. A nested block may declare its own name that hides an outer one; this is called shadowing. Assigning to a `var` updates an existing binding, while declaring a name inside a nested block creates a separate binding.
 
-Every local binding has an initializer. Its names become visible only after the initializer has been checked; it cannot refer to the names it is introducing. If an outer binding has that name, the initializer can refer to the outer binding before the new nested name shadows it. Locals resolve in source order, unlike module declaration signatures, which allow forward references.
+Every local declaration needs an initial value. The new name becomes visible only after that initializer is checked, so a declaration cannot use its own new name to compute the initial value. If an outer scope already has the same name, the initializer can still use that outer binding. Local names become available in source order; module declaration signatures can refer forward to later declarations.
 
-A `var`'s type is fixed by its annotation or first initializer. Later assignments must have that same compatible type; a binding never widens into a union or changes numeric type. Assignment targets are existing mutable local names only. Record fields, collection elements, patterns, parameters, and immutable bindings cannot be reassigned.
+A var keeps the type chosen by its annotation or initializer. Later values must fit that same type. Assigning a Float to an Int var does not change the var's type or create a union.
 
-```text
+Only an existing mutable local name can be an assignment target. You cannot reassign record fields, collection elements, destructuring patterns, parameters, or immutable bindings.
+
+```manuscript
 fn example() -> Unit:
     var remaining = 3
     remaining = 2

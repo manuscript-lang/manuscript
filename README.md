@@ -1,32 +1,93 @@
 # Manuscript
 
-The [design guide](design/_index.md) describes the Manuscript language, runtime, compiler, and developer tooling.
+Manuscript is a statically typed language that compiles to Go and runs as a native executable. Its syntax makes function inputs, expected errors, resource cleanup, and concurrent work explicit.
 
-## Build and run
+Read the [book index](design/_index.md) to choose a topic, or follow [your first program](design/getting-started.md) for a walkthrough. The [glossary](design/glossary.md) explains terms used in the guide. [Implementation coverage](IMPLEMENTATION.md) lists working features and remaining limits.
 
-Install Go 1.25 or newer. The compiler and runtime use only the Go standard library.
+## Get started
+
+Download the archive for your operating system and architecture from
+[Releases](https://github.com/manuscript-lang/manuscript/releases), then extract it.
+The single `ms` binary includes the native build tools and references it needs.
+No separate Go installation or package downloads are needed to build, run, test,
+or profile your programs. Copy `ms` (`ms.exe` on Windows) anywhere on `PATH`;
+it needs no companion SDK directory.
+
+From a source checkout on macOS or Linux, run `make build`. It downloads and
+verifies the pinned Go SDK locally on first use, then builds the self-contained
+`./ms`. Initial setup needs Make, curl, tar, and `sha256sum` or `shasum`, plus
+Internet access. Later builds reuse `toolchain/go/`.
+
+Run these commands from the extracted archive or repository root. Use `.\ms.exe`
+in Windows PowerShell:
 
 ```sh
-go build -o ms ./cmd/ms
 ./ms check examples/hello/ms.toml
 ./ms lock examples/hello/ms.toml
 ./ms run examples/hello/ms.toml -- first second
-# Arguments: 2
-./ms build examples/hello/ms.toml -o hello
-./ms test tests/e2e/testdata/accept/cl-01.ms
-./ms emit examples/hello/ms.toml -o main.go
-./ms inspect examples/hello/ms.toml -o inspection.json
-./ms diagram examples/hello/ms.toml -o calls.mmd
-./ms fmt examples/hello/src/main.ms --check
 ```
 
-`ms check` reports positioned parse, resolution, and type errors. `ms build` creates a native executable. `ms emit` writes a Go program containing the Manuscript runtime. Build emitted source inside the distribution with `go build -mod=vendor main.go`; copying it elsewhere also requires the pinned `go.mod`, `go.sum`, and `vendor/` tree. `ms build`, `run`, and `test` bundle those dependencies automatically and need no package downloads. `ms run` and `ms test` build temporary executables. Set `MANUSCRIPT_GO` to select a Go executable outside `PATH`.
+Expected output:
 
-Project native builds require `ms.lock` to match the compiler/runtime and Go toolchain/target. `ms lock` explicitly creates or updates those pins; run it after selecting your toolchain or updating the compiler. Builds verify cached artifacts and write executable/source metadata. `--debug` on build/run/test disables native optimization and inlining. `ms check --json` provides structured diagnostics.
+```text
+Arguments: 2
+```
 
-Applications export `fn main(process: Process) -> Int`; standard symbols use explicit imports. Start with [the hello project](examples/hello/src/main.ms), [core language fixtures](tests/e2e/testdata/accept), and [implementation coverage](IMPLEMENTATION.md). The implementation follows the current design on `main`, including cleanup, joined/background work, queues, synchronized values/pools, builders, and explicit CLI/HTTP/subprocess capabilities. External adapters, advanced host APIs, structural editing, and debugger integration remain design work; the coverage document lists the limits.
+`check` validates source without running it. `lock` creates or updates the build pins. `run` builds a temporary executable and passes it the arguments after `--`.
 
-Records and alternatives use `type`; operation contracts use `interface`. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declarations, for example `impl ReadValue[T] for Box[T]:`.
+To keep an executable:
+
+```sh
+./ms build examples/hello/ms.toml -o hello
+./hello first second
+./ms test examples/hello/test.ms
+```
+
+Applications export `fn main(process: Process) -> Int`. Standard names need explicit imports. See [the hello source](examples/hello/src/main.ms) and [accepted core-language fixtures](tests/e2e/testdata/accept) for complete examples.
+
+## Choose a command
+
+| Task | Example |
+| --- | --- |
+| Check source and report parse, name, and type errors | `./ms check examples/hello/ms.toml` |
+| Get structured diagnostics | `./ms check examples/hello/ms.toml --json` |
+| Run a module's tests | `./ms test tests/e2e/testdata/accept/cl-01.ms` |
+| Write generated Go | `./ms emit examples/hello/ms.toml -o main.go` |
+| Inspect checked source | `./ms inspect examples/hello/ms.toml -o inspection.json` |
+| Write a call diagram | `./ms diagram examples/hello/ms.toml -o calls.mmd` |
+| Check formatting without writing | `./ms fmt examples/hello/src/main.ms --check` |
+
+`--debug` on build, run, or test disables native optimization and inlining. Native
+commands unpack the embedded build payload into the OS user cache on first use
+and reuse it thereafter. Set `MANUSCRIPT_CACHE_DIR` to choose another writable
+cache directory, or `MANUSCRIPT_GO` to explicitly select another Go executable.
+Native builds disable CGO. Developer binaries built directly with `go build` can
+use Go on `PATH`; `make build` embeds the payload.
+
+## Build pins and generated Go
+
+Project native builds require `ms.lock` to match the compiler/runtime and Go toolchain/target. Run `ms lock` after selecting a toolchain or updating the compiler. Builds verify cached artifacts and write executable/source metadata.
+
+`ms build`, `run`, and `test` bundle pinned dependencies and require no package downloads. `run` and `test` use temporary executables. The distribution pins and vendors its WebSocket and public-suffix dependencies.
+
+The embedded payload contains the Go build driver, compiler, linker, assembler,
+assembly headers, time-zone data, and the standard-library dependency closure
+used by Manuscript's runtime for the six supported targets. It excludes Go's
+tests, documentation, formatter, and unrelated tools.
+
+`ms emit` writes a Go program containing the Manuscript runtime. Building emitted
+source directly requires the repository's pinned `go.mod`, `go.sum`, and `vendor/`
+tree. From a source checkout, use `toolchain/go/bin/go build -mod=vendor main.go`.
+
+## Language and implementation
+
+Use `type` for records and alternatives, and `interface` for operation contracts. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declared parameters, as in `impl ReadValue[T] for Box[T]:`.
+
+The implementation includes cleanup, joined and background work, queues, state and pools, builders, and explicit CLI, HTTP, and subprocess capabilities. External adapters, advanced host APIs, and generalized structural editing still have design work. Check [coverage](IMPLEMENTATION.md) for exact limits.
+
+## Developer tooling
+
+`ms lint`, `ms lsp`, `ms debug`, and `ms profile` provide source hygiene, editor integration, native debugging, and CPU/heap/trace profiling. See the [tooling guide](tooling/README.md), [VS Code extension](extensions/vscode/README.md), and [demo project](examples/tooling-demo/README.md) for installation, supported features, and current limits.
 
 ## Packages
 
@@ -34,12 +95,12 @@ Records and alternatives use `type`; operation contracts use `interface`. Generi
 | --- | --- |
 | `syntax` | Syntax tree, patterns, and source diagnostics |
 | `lexer` | UTF-8 tokens, exact layout, literals, and interpolation boundaries |
-| `parser` | Declarations, types, named calls, expressions, and suites |
+| `parser` | Declarations, types, calls, expressions, and suites |
 | `checker` | Modules, nominal types, inference, contracts, bounds, captures, control flow, and effects |
 | `compiler` | Project loading, checked Go lowering, native builds, pins, caches, and build metadata |
 | `runtime` | Values, data/services, cleanup, concurrency, and explicit host capabilities |
-| `tooling` | Validated formatting, source inspection, and static diagrams |
-| `cmd/ms` | Check, build, emit, run, test, fmt, inspect, diagram, doc, and lock commands |
+| `tooling` | Formatting, semantic lint, typed LSP completion/navigation/refactoring, source metadata, and static diagrams |
+| `cmd/ms` | Check, lint, lsp, profile, debug, build, emit, run, test, fmt, inspect, diagram, doc, stdlib, and lock commands |
 | `tests/e2e` | Syntax fixtures compiled to native executables and observable runtime expectations |
 
 Embedders can use `parser.Parse`, `checker.Check`, `compiler.CompileSource`, `compiler.CompileFile`, `compiler.Standalone`, `compiler.BuildChecked`, `tooling.Format`, and `tooling.Inspect`. `compiler.Build` is the lower-level native build API without project pin validation. Failed checking produces diagnostics and no generated source.
@@ -47,15 +108,20 @@ Embedders can use `parser.Parse`, `checker.Check`, `compiler.CompileSource`, `co
 ## Development
 
 ```sh
-go test ./...
-go test -race ./runtime ./checker ./compiler ./tooling
-go vet ./...
+make test
+make race
+make check
 # Optional parser/compiler robustness checks:
-go test ./parser -run '^$' -fuzz FuzzParse -fuzztime 10s
-go test ./compiler -run '^$' -fuzz FuzzCompile -fuzztime 10s
+toolchain/go/bin/go test ./parser -run '^$' -fuzz FuzzParse -fuzztime 10s
+toolchain/go/bin/go test ./compiler -run '^$' -fuzz FuzzCompile -fuzztime 10s
 ```
 
-The end-to-end suite needs the Go toolchain on `PATH` or in `MANUSCRIPT_GO`. It builds accepted modules, executes their `test` blocks, verifies rejected variants, exercises CLI commands, and checks evaluation order, cleanup, numeric faults, and signal cancellation. `make check`, `make test`, `make race`, and `make build` provide the same entry points. CI runs formatting checks, vet, the complete suite, and race tests.
+Make prepares and selects the bundled toolchain for the end-to-end suite. It builds accepted modules, executes their `test` blocks, verifies rejected variants, exercises CLI commands, and checks evaluation order, cleanup, numeric faults, and signal cancellation. Race checks additionally require a C compiler. CI runs formatting checks, vet, the complete suite, race tests, and `make dist-check`, which exercises a copied single binary with no Go on `PATH`, empty caches, and package downloads disabled.
+
+`make dist` creates a self-contained archive in `dist/`.
+`sh scripts/package.sh <os> <arch>` packages `linux`, `darwin`, or `windows` for
+`amd64` or `arm64`. Distributions contain the binary, examples, and license notices.
+Update `.go-version` and `scripts/toolchains.sha256` together when upgrading Go.
 
 ## Read the documentation
 
@@ -79,11 +145,29 @@ The static site is generated in `docs/`, which is committed for GitHub Pages to 
 
 Hugo Book v13 is vendored in `themes/hugo-book/`, including its MIT license. The exact upstream revision is recorded in `themes/hugo-book/UPSTREAM`.
 
+The documentation's visual design lives in `assets/_custom.scss`, with layout and
+navigation overrides in `layouts/`. The overview uses the `docs-home` shortcode;
+`assets/docs.js` provides theme preferences, copy buttons, and mobile keyboard
+controls. Keep site customizations in these files rather than editing the
+vendored theme. After a presentation change, rebuild `docs/` with `hugo --minify
+--panicOnWarning --cleanDestinationDir`.
+
+Label Manuscript code fences `manuscript`; keep terminal output labeled `text`.
+The docs reuse the VS Code extension's grammar in
+`extensions/vscode/syntaxes/manuscript.tmLanguage.json`. Change lexical rules
+there, then run `node --test tests/docs/highlighting.test.cjs` to check the
+browser adapter before rebuilding the site.
+
 ## CI/CD
 
 [The GitHub Actions pipeline](.github/workflows/cicd.yml) builds the design book on branch pushes and pull requests using Hugo Extended 0.146.7. Pushes that only change generated `docs/` files are skipped. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.
 
 The pipeline also calls [the language checks](.github/workflows/test-language.yml) with Go 1.25.1: formatting, vet, unit and native end-to-end tests, race checks, and a CLI build and example run. Deployment requires both the book build and language checks to pass. The language workflow can also be run independently from the Actions tab.
+
+The [distribution workflow](.github/workflows/release.yml) builds archives for all
+six targets and tests their standalone commands on the native OS and architecture.
+Manual runs produce Actions artifacts; `v*` tags publish verified archives and
+checksums to GitHub Releases.
 
 After validation succeeds on the repository's default branch (`main`), the pipeline builds with the GitHub Pages URL, commits the generated `docs/` files to that branch, and explicitly requests a Pages build. This request is needed because pushes made with `GITHUB_TOKEN` do not trigger Pages builds automatically. Pull requests and other branches only run validation. You can also run the pipeline manually from the Actions tab; publishing still requires the default branch. Outdated runs skip publishing, and a concurrent branch update causes the push to fail rather than overwrite newer work.
 
@@ -138,3 +222,5 @@ reference describes the compiler version bundled with that binary.
 `documentation/call-rules.md` is the canonical source for special call rules;
 `make docs` also regenerates its page in the design book.
 Standard library types and signatures live in [`stdlib/`](stdlib/README.md) as Manuscript source. Editor adapters can resolve their declarations through the tooling navigation APIs; `ms stdlib <directory>` exports the pinned source documents.
+
+Common JavaScript data operations have immutable, typed equivalents on List, String, Map, Set, Bytes, BigInt, and Regex. See the [JavaScript built-in coverage guide](design/standard-library/packages/javascript-builtins.md) for receiver methods, examples, and remaining gaps.

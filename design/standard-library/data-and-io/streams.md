@@ -7,9 +7,11 @@ weight = 40
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The stream contracts have explicit cleanup operations and admit both native implementations and source fakes. The standard host exposes `ReadStream`, `WriteStream`, and `File` views of its synchronized receivers. Bare stream contract types remain plain views under the ordinary interface rules.
+A stream reads or writes bytes over time. Its close operation releases the underlying resource. Native hosts and source fakes can both implement the contracts below.
 
-```text
+The host supplies synchronized `ReadStream`, `WriteStream`, and `File` views. All stream contract values are safe to share; closing a stream still closes it through every alias.
+
+```manuscript
 interface ReadStream:
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
     fn close() -> Unit
@@ -29,7 +31,7 @@ Native wrappers serialize simultaneous reads/writes without holding a lifecycle 
 
 Contract values declaring these exact close operations are eligible for `with` under [Closeable](../../ownership-and-cleanup/cleanup/closeable.md); cleanup does not require concurrent sharing. Source fakes implement the selected stream contract and explicitly construct contract views when substituting for standard host roots or acquisitions; no native File constructor or contract inheritance is needed. Adapters honor [cancellation and undelivered acquisition](../../modules-and-capabilities/adapters/cancellation.md). The bounded subprocess facility is exported by `@std/process.ms`. The CLI host supplies `process.commands: Commands`:
 
-```text
+```manuscript
 # Commands
 fn run(program: String, arguments: List[String], input: Bytes,
        max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]
@@ -40,4 +42,6 @@ type CommandOutput:
     stderr: Bytes
 ```
 
-`CommandError` has `InvalidInput`, `Unavailable`, `TimedOut`, `OutputLimit`, and `Failed(message: String)`. Empty/NUL program names, NUL arguments, negative bounds, and negative timeout return InvalidInput. The total stdout plus stderr bound is nonnegative. Nonzero ordinary exit is an `ok` output with that code. Timeout or output overflow stops and joins the process before returning its error; caller cancellation unwinds after joining. POSIX process groups include descendants in termination. On platforms without process-group support the wrapper controls the direct process, with bounded pipe completion; descendant supervision needs a platform host contract. Interactive subprocess streams remain separate future contracts; [network sockets](../packages/network.md), [streaming HTTP](../packages/http.md) and [WebSockets](../packages/websocket.md) are implemented.
+`CommandError` has `InvalidInput`, `Unavailable`, `TimedOut`, `OutputLimit`, and `Failed(message: String)`. Empty/NUL program names, NUL arguments, negative bounds, and negative timeout return InvalidInput. The total stdout plus stderr bound is nonnegative. Nonzero ordinary exit is an `ok` output with that code. Timeout or output overflow stops and joins the process before returning its error; caller cancellation unwinds after joining. POSIX process groups include descendants in termination.
+
+On platforms without process-group support the wrapper controls the direct process, with bounded pipe completion; descendant supervision needs a platform host contract. Interactive subprocess streams remain separate future contracts; [network sockets](../packages/network.md), [streaming HTTP](../packages/http.md) and [WebSockets](../packages/websocket.md) are implemented.

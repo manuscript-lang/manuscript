@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
@@ -18,8 +20,10 @@ test "data constructor context":
     let failure: Result[Int, String] = error(cause: "unavailable")
     let absent: Optional[Int] = none
     let nested: List[List[Int]] = [[], [1]]
-    assert outcome_value(outcome: success) == 3
-    assert outcome_value(outcome: failure) == -1
+    if not (outcome_value(outcome: success) == 3):
+        return panic(message: "check failed")
+    if not (outcome_value(outcome: failure) == -1):
+        return panic(message: "check failed")
 
 type Box[T]:
     value: T
@@ -35,11 +39,11 @@ test "nested constructor arguments receive inferred context":
     let selected = select(first: Box(value: none), second: Box(value: some(value: 3)))
     match selected.value:
         none:
-            assert true
+            let completed = unit
         some(_):
-            assert false
+            return panic(message: "Unexpected case")
     match request.box.value:
         none:
-            assert true
+            let completed = unit
         some(_):
-            assert false
+            return panic(message: "Unexpected case")

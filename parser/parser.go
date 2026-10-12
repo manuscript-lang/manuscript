@@ -44,14 +44,28 @@ func parse(file, source string, declarationsOnly bool) (module *syntax.Module, e
 		}
 		if p.take("import") {
 			pos := p.previous().Pos
-			name := p.need(lexer.Name).Text
+			names := []lexer.Token{}
+			if p.take("{") {
+				// A named import list is nonempty and permits a trailing comma.
+				for {
+					names = append(names, p.need(lexer.Name))
+					if !p.take(",") || p.peek().Kind == "}" {
+						break
+					}
+				}
+				p.need("}")
+			} else {
+				names = append(names, p.need(lexer.Name))
+			}
 			p.need("from")
 			token := p.need(lexer.String)
 			expr := p.text(token)
 			if len(expr.Parts) != 1 || expr.Parts[0].Value != nil {
 				p.fail(token, "import paths cannot interpolate")
 			}
-			module.Imports = append(module.Imports, &syntax.Import{Pos: pos, Name: name, Path: expr.Parts[0].Text})
+			for _, name := range names {
+				module.Imports = append(module.Imports, &syntax.Import{Pos: pos, NamePos: name.Pos, Name: name.Text, Path: expr.Parts[0].Text})
+			}
 			p.end()
 			continue
 		}
@@ -278,6 +292,9 @@ func (p *Parser) declaration() *syntax.Declaration {
 			} else if p.take("fn") {
 				name := p.need(lexer.Name)
 				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: "fn"}
+				if p.declarationsOnly {
+					m.TypeParams = p.typeParams()
+				}
 				m.Params = p.parameters()
 				p.need("->")
 				m.Result = p.typ()
@@ -336,9 +353,6 @@ func (p *Parser) statement() *syntax.Statement {
 		if p.peek().Kind != lexer.Newline {
 			s.Value = p.expression(0)
 		}
-		p.end()
-	case p.take("assert"):
-		s.Value = p.expression(0)
 		p.end()
 	case p.take("break") || p.take("continue"):
 		p.end()
@@ -565,9 +579,13 @@ func (p *Parser) primary() *syntax.Expression {
 			call := &syntax.Expression{Kind: "call", Pos: e.Pos, Left: e}
 			if !p.take(")") {
 				for {
-					name := p.need(lexer.Name)
-					p.need(":")
-					call.Args = append(call.Args, syntax.Argument{Pos: name.Pos, Name: name.Text, Value: p.expression(0)})
+					arg := syntax.Argument{Pos: p.peek().Pos}
+					if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == ":" {
+						arg.Name = p.need(lexer.Name).Text
+						p.need(":")
+					}
+					arg.Value = p.expression(0)
+					call.Args = append(call.Args, arg)
 					if !p.take(",") {
 						break
 					}

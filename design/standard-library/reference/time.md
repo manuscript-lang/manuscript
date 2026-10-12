@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/time.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Clock: Clock
 operation now: fn()->Instant
 ```
@@ -19,7 +19,7 @@ operation now: fn()->Instant
 
 Kind: native.
 
-```text
+```manuscript
 Duration: Duration
 ```
 
@@ -27,7 +27,7 @@ Duration: Duration
 
 Kind: native.
 
-```text
+```manuscript
 Instant: Instant
 ```
 
@@ -35,7 +35,7 @@ Instant: Instant
 
 Kind: native.
 
-```text
+```manuscript
 Timestamp: Timestamp
 ```
 
@@ -43,7 +43,7 @@ Timestamp: Timestamp
 
 Kind: interface.
 
-```text
+```manuscript
 WallClock: WallClock
 operation now: fn()->Timestamp
 ```
@@ -52,7 +52,7 @@ operation now: fn()->Timestamp
 
 Kind: fn.
 
-```text
+```manuscript
 difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, LibraryError]
 ```
 
@@ -60,7 +60,7 @@ difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, LibraryError
 
 Kind: fn.
 
-```text
+```manuscript
 format_timestamp: fn(value: Timestamp)->String
 ```
 
@@ -68,7 +68,7 @@ format_timestamp: fn(value: Timestamp)->String
 
 Kind: fn.
 
-```text
+```manuscript
 nanoseconds: fn(value: Timestamp)->Int
 ```
 
@@ -76,7 +76,7 @@ nanoseconds: fn(value: Timestamp)->Int
 
 Kind: fn.
 
-```text
+```manuscript
 parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
 ```
 
@@ -84,7 +84,7 @@ parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, LibraryError]
 ```
 
@@ -92,7 +92,7 @@ shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 sleep: fn(duration: Duration)->Unit
 ```
 
@@ -100,7 +100,7 @@ sleep: fn(duration: Duration)->Unit
 
 Kind: fn.
 
-```text
+```manuscript
 timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, LibraryError]
 ```
 
@@ -108,7 +108,7 @@ timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 unix_seconds: fn(value: Timestamp)->Int
 ```
 

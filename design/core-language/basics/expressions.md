@@ -7,7 +7,7 @@ weight = 6
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-An expression produces one value. Statements choose control-flow paths or replace bindings. The following operator set and precedence are closed; an operator missing from this page is rejected rather than inherited from Go.
+An expression produces a value, such as `count + 1`. A statement controls what runs or changes a binding. This page is the reference for operator precedence, allowed operand types, and evaluation order. Only the operators listed here are supported; Go operators are not automatically available.
 
 ## Precedence and grammar
 
@@ -15,7 +15,7 @@ Rows are ordered from highest to lowest precedence.
 
 | Form | Associativity and restriction |
 | --- | --- |
-| Member access `.`, explicit type application `[...]`, named call `(...)` | Left to right; type application is not runtime indexing |
+| Member access `.`, explicit type application `[...]`, call `(...)` | Left to right; type application is not runtime indexing |
 | Prefix `+`, `-`, `try` | Right to left |
 | `*`, `/`, `%` | Left to right |
 | `+`, `-` | Left to right |
@@ -35,7 +35,7 @@ Product       = Prefix, { ("*" | "/" | "%"), Prefix } ;
 Prefix        = ("+" | "-" | "try"), Prefix | Postfix ;
 Postfix       = Primary, { ".", Name | TypeArguments | CallArguments } ;
 CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
-Argument      = Name, ":", Expression ;
+Argument      = [ Name, ":" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
               | "true" | "false" | "unit" | "self" | Name
               | "(", Expression, ")" | SharedViewConstruction | ListLiteral | FunctionExpression ;
@@ -46,7 +46,7 @@ FunctionExpression = "fn", "(", [ Parameters ], ")", "->", Type, Suite ;
 
 The common `Comparison` production makes `a < b == c`, `a == b == c`, and `a < b < c` syntax errors. Comparisons with explicit grouping, such as `(a < b) == flag`, are ordinary Bool equality. `not a == b` means `not (a == b)`. `try read() + 1` means `(try read()) + 1`; use `try (expression)` to propagate the result of a larger expression.
 
-A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. Its brackets cannot index a list. Collection/text lookup and updates use declared library operations; neither `values[0]` nor slicing syntax is supported. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Constructors, explicit contract views such as `Payments(value: card)`, and methods use ordinary named-call syntax.
+A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. Its brackets cannot index a list. Collection/text lookup and updates use declared library operations; neither `values[0]` nor slicing syntax is supported. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Argument labels are optional only for functions and methods with exactly one declared parameter; the checker enforces [call rules](../functions/declarations-and-calls.md#argument-names). Constructors and explicit contract views such as `Payments(value: card)` require labels.
 
 Contract views use `Payments(value: card)`. [Contract views](../types/contracts.md#explicit-contract-views) require an explicit implementation and exactly one `value` argument. There is no separate sharing refinement or shared constructor.
 
@@ -98,7 +98,7 @@ If evaluating a required subexpression exits through Result propagation or a fau
 
 ## Examples
 
-```text
+```manuscript
 fn calculated(value: Int, active: Bool) -> Int:
     let product = 1 + 2 * 3             # 7
     let same = not value == product     # not (value == product)
@@ -107,7 +107,7 @@ fn calculated(value: Int, active: Bool) -> Int:
     return value
 ```
 
-```text
+```manuscript
 fn invalid(value: Int, ratio: Float) -> Bool:
     let mixed = value + ratio           # Type error: exact numeric types differ.
     let indexed = [1, 2, 3][0]          # Syntax error: brackets take types here.
@@ -116,4 +116,4 @@ fn invalid(value: Int, ratio: Float) -> Bool:
 
 Each rejected expression is independent; a parser need not type-check a function after a syntax error. Assignment `=`, compound assignment, bitwise operators, exponentiation, ranges, ternaries, tuples, and expression-valued blocks are not expression forms in this design.
 
-[Previous: Source grammar](grammar.md) · [Next: Bindings and scope](bindings.md)
+[Previous: Source structure and syntax](syntax.md) · [Next: Bindings and scope](bindings.md)

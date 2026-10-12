@@ -5,7 +5,7 @@ weight = 2
 
 # Learn Manuscript
 
-Manuscript combines static types and native executables with code that makes dependencies and execution easy to follow. Public signatures state their contracts; local types can be inferred. Calls name their arguments. Expected failures are values, resources have lexical cleanup, and concurrency is explicit.
+Manuscript combines static types and native executables with code that makes dependencies and execution easy to follow. Public signatures state their contracts; local types can be inferred. Calls to functions with multiple parameters name their arguments; single-parameter calls may omit the label. Expected failures are values, resources have lexical cleanup, and concurrency is explicit.
 
 This introduction follows the example-first approach of [The Swift Programming Language](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/) and [A Tour of Go](https://go.dev/tour/): run a small program, learn a few reusable concepts, then consult the reference for exact rules. Manuscript has its own syntax and semantics.
 

@@ -74,11 +74,6 @@ func (f Fault) Error() string {
 }
 
 func Panic(message string) Value { panic(Fault{Message: message}) }
-func Assert(v Value, position string) {
-	if !Bool(v) {
-		Panic("assertion failed at " + position)
-	}
-}
 func Bool(v Value) bool {
 	if b, ok := v.(bool); ok {
 		return b
@@ -363,7 +358,6 @@ func ResolveType(pattern string, sub map[string]string) string {
 	return out.String()
 }
 func splitType(key string) (name string, args []string) {
-
 	index := strings.IndexByte(key, '[')
 	if index < 0 {
 		return key, nil
@@ -500,6 +494,9 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 				panic(failure)
 			}
 		}()
+		if sourceProfiling.Load() {
+			return profileSource(ctx, position, args, body)
+		}
 		return body(ctx, args)
 	})
 }

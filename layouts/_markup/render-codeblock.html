@@ -1,0 +1,4 @@
+<div class="docs-code" data-language="{{ .Type | default "text" }}">
+  <div class="docs-code-heading"><span>{{ with index .Attributes "filename" }}{{ . }}{{ else }}{{ if in (slice "manuscript" "ms") .Type }}Manuscript{{ else }}{{ .Type | default "Code" }}{{ end }}{{ end }}</span></div>
+  {{ (transform.HighlightCodeBlock . .Options).Wrapped }}
+</div>

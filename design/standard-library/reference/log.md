@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/log.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 write: fn(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LibraryError]
 ```
 

@@ -1,25 +1,26 @@
 +++
-title = "Logging and test assertions"
+title = "Logging"
 weight = 59
 +++
 
-# Logging and test assertions
+# Logging
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
+Write structured logs to an explicit output stream. Logging returns expected errors. Tests use ordinary conditional returns to check their results.
+
 ## `@std/log.ms`
 
-```text
+```manuscript
 fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LibraryError]
 ```
 
-## `@std/test.ms`
+`write` emits one compact UTF-8 JSON line to the supplied shared WriteStream. It contains `level`, `message`, and `fields`. Allowed levels are `debug`, `info`, `warn`, and `error`. Fields are a `Map[String, String]`, sorted by the native JSON serializer.
 
-```text
-fn assert_equal[T: Equal](actual: T, expected: T) -> Unit
-fn assert_near(actual: Float, expected: Float, absolute: Float, relative: Float) -> Unit
-```
+`max_bytes` must be nonnegative and includes the final LF. Excess output returns `LimitExceeded`; it is not truncated. Stream failures become `Failed`. Writes use the stream's existing synchronization, backpressure, and cancellation behavior.
 
-Log.write emits one compact UTF-8 JSON line with level/message/fields to an explicit shared WriteStream. Allowed levels are debug/info/warn/error; fields are Map[String,String], sorted by the native JSON serializer. Max_bytes includes LF and is nonnegative. Exceeding the bound returns LimitExceeded rather than truncated output; stream failures become Failed. Write uses the stream's existing serialization/backpressure/cancellation. No implicit stderr authority, arbitrary object inspection, automatic redaction or recursive failure logging. Caller controls sensitive fields; the serializer may allocate a complete record before checking the bound, so bound inputs for untrusted messages.
+The caller chooses the output and sensitive fields. The function provides no implicit stderr access, arbitrary object inspection, automatic redaction, or recursive failure logging. Serialization may allocate a complete record before checking the byte limit, so bound untrusted inputs too.
 
-Assert_equal uses the existing Equal bound and faults on inequality. Assert_near requires finite nonnegative tolerances, compares difference against max(absolute, relative * max(abs(actual),abs(expected))), rejects NaN, permits equal infinities and rejects opposite infinities. These are ordinary imported functions that supplement the existing test/assert runner. No expected-fault-catching syntax or new authority injection is added. Existing source inspect/diagram/debug metadata remain unchanged. Heap/CPU profile capabilities and richer runtime metrics remain future additions.
+## Tests
+
+Tests use ordinary `if`/`return` guards; see [semantic conformance tests](../../compiler/conformance/semantic-tests.md). No expected-fault-catching syntax or authority injection is added. Heap/CPU profiling and richer runtime metrics remain future work. Existing inspect, diagram, and debug metadata contracts are unchanged.

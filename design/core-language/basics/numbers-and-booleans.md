@@ -7,9 +7,9 @@ weight = 9
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Numeric literals choose a specific numeric type. Manuscript keeps conversions explicit so a function's numeric contract can be read from its signature.
+A number literal has a specific type: `3` is an Int, `0.5` is a Float, and `12.50d` is a Decimal. Convert explicitly when a function needs another numeric type. Boolean values are `true` and `false`.
 
-```text
+```manuscript
 let count = 3
 let ratio = 0.5
 let price = 12.50d
@@ -33,7 +33,7 @@ Arithmetic operands must have the same exact numeric type, and the result has th
 
 Integer literals are checked against the signed 64-bit range at compile time. The magnitude `9223372036854775808` is accepted only as a directly negated integer literal, giving `-9223372036854775808`; parentheses immediately around that literal do not change the check. The positive literal and magnitudes outside either signed boundary are rejected. A Float literal rounds to binary64 using nearest, ties to even; one whose rounded magnitude would be infinite is rejected. Expected numeric types do not change literal types.
 
-```text
+```manuscript
 fn literals() -> Unit:
     let smallest: Int = -9223372036854775808
     let exponent: Float = 1e3
@@ -69,7 +69,7 @@ Decimal literals are accepted only when their exact mathematical value is repres
 
 The following calculation stays in `Decimal` because each numeric literal has a `d` suffix:
 
-```text
+```manuscript
 let price = 100d
 let percent = 15d
 let discounted = price * (1d - percent / 100d)

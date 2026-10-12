@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import Result from "@std/result.ms"
 import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
@@ -14,20 +16,22 @@ fn probe() -> Result[Unit, ExecutionError]:
     let packed = try parallel(tasks: [first, second])
     let copied = identity(value: packed)
     let [number, flag] = copied
-    assert flag
+    if not (flag):
+        return panic(message: "check failed")
     match number:
         ok(value):
-            assert value == 3
+            if not (value == 3):
+                return panic(message: "check failed")
         error(_):
-            assert false
+            return panic(message: "Unexpected case")
     return ok(value: unit)
 
 test "pack helper":
     match probe():
         ok(_):
-            assert true
+            let completed = unit
         error(_):
-            assert false
+            return panic(message: "Unexpected case")
 
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(cause: 7)
@@ -35,4 +39,5 @@ test "explicit error conversion":
         return "Error {cause}"
     let converted = map_error(result: failed, transform: translate)
     let expected: Result[Int, String] = error(cause: "Error 7")
-    assert converted == expected
+    if not (converted == expected):
+        return panic(message: "check failed")

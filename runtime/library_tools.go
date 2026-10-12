@@ -2,32 +2,12 @@ package msruntime
 
 import (
 	"encoding/json"
-	"math"
 	"strings"
 	"unicode/utf8"
 )
 
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryGeneric("test", "assert_equal", "Unit", []LibraryParam{p("T", "Equal")}, []LibraryParam{p("actual", "T"), p("expected", "T")}, func(_ *Execution, _ string, a []Value) Value {
-		if !Equal(a[0], a[1]) {
-			return Panic("assert_equal failed")
-		}
-		return Unit{}
-	})
-	libraryAdd("test", "assert_near", "Unit", []LibraryParam{p("actual", "Float"), p("expected", "Float"), p("absolute", "Float"), p("relative", "Float")}, func(_ *Execution, _ string, a []Value) Value {
-		x, y, abs, rel := a[0].(float64), a[1].(float64), a[2].(float64), a[3].(float64)
-		if abs < 0 || rel < 0 || math.IsNaN(abs) || math.IsNaN(rel) || math.IsInf(abs, 0) || math.IsInf(rel, 0) {
-			return Panic("invalid assertion tolerance")
-		}
-		if x == y {
-			return Unit{}
-		}
-		if math.IsNaN(x) || math.IsNaN(y) || math.IsInf(x, 0) || math.IsInf(y, 0) || math.Abs(x-y) > math.Max(abs, rel*math.Max(math.Abs(x), math.Abs(y))) {
-			return Panic("assert_near failed")
-		}
-		return Unit{}
-	})
 	libraryAdd("log", "write", libraryResult("Unit"), []LibraryParam{p("output", "WriteStream"), p("level", "String"), p("message", "String"), p("fields", "Map[String][String]"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		level := a[1].(string)
 		if level != "debug" && level != "info" && level != "warn" && level != "error" || a[4].(int64) < 0 {
@@ -94,7 +74,7 @@ func init() {
 		}
 		return libraryOK(r, optional("String", string(b), true))
 	})
-	libraryAdd("text", "repeat", libraryResult("String"), []LibraryParam{p("text", "String"), p("count", "Int"), p("max_bytes", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("string", "repeat", libraryResult("String"), []LibraryParam{p("text", "String"), p("count", "Int"), p("max_bytes", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		s := a[0].(string)
 		count, max := a[1].(int64), a[2].(int64)
 		if count < 0 || max < 0 {

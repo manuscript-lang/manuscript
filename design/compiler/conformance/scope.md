@@ -7,7 +7,7 @@ weight = 106
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Implementation order follows the dependencies between the language, library, runtime, compiler, and tooling.
+Use this page to see which parts of the design depend on others and which decisions remain open. The implementation order starts with language checking, adds runtime and library behavior, then builds tooling on those checked facts.
 
 ## Implementation order
 
@@ -32,7 +32,7 @@ These gaps still need concrete contracts.
 | Queue extensions | Fairness and additional channel patterns beyond the bounded FIFO contract | [Queues](../../standard-library/data-and-io/queues.md) |
 | Pool extensions | Native resource factories and additional lease contracts | [Synchronized values and pools](../../standard-library/data-and-io/synchronized-state.md) |
 | Builder extensions | Additional bulk mutation operations beyond sealed snapshot construction | [Builders](../../standard-library/data-and-io/builders.md) |
-| HTTP and subprocess extensions | Streaming, sessions, HTTP clients, and platform descendant supervision | [HTTP hosts](../../standard-library/hosts/http.md), [streams](../../standard-library/data-and-io/streams.md) |
+| HTTP and subprocess extensions | Additional host contracts, interactive subprocess streams, and uniform cross-platform descendant supervision; current HTTP clients, streaming hosts, and WebSockets are covered in [package coverage](../../standard-library/packages/coverage.md) | [HTTP hosts](../../standard-library/hosts/http.md), [streams](../../standard-library/data-and-io/streams.md) |
 | Source tools | Rich diagnostic spans, transactional structural edits, and failed-write recovery | [Source tools](../../developer-tooling/source/_index.md) |
 | Diagrams and debugging | Stable node identity, diff/trace formats, stepping behavior, value rendering, and supported debugger versions | [Developer tooling](../../developer-tooling/_index.md) |
 

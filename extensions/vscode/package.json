@@ -1,0 +1,199 @@
+{
+  "name": "manuscript",
+  "displayName": "Manuscript",
+  "description": "Manuscript diagnostics, formatting, symbols and native debugging",
+  "version": "0.1.0",
+  "publisher": "manuscript-lang",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "main": "./dist/extension.js",
+  "categories": [
+    "Programming Languages",
+    "Debuggers"
+  ],
+  "activationEvents": [
+    "onLanguage:manuscript",
+    "onDebugResolve:manuscript",
+    "onDebugInitialConfigurations:manuscript"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "manuscript",
+        "aliases": [
+          "Manuscript"
+        ],
+        "extensions": [
+          ".ms"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "manuscript",
+        "scopeName": "source.manuscript",
+        "path": "./syntaxes/manuscript.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Manuscript",
+      "properties": {
+        "manuscript.serverPath": {
+          "type": "string",
+          "default": "ms",
+          "description": "Path to the Manuscript compiler and language server."
+        },
+        "manuscript.delvePath": {
+          "type": "string",
+          "default": "dlv",
+          "description": "Path to Delve for native source debugging."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "manuscript.debug",
+        "title": "Manuscript: Debug current file"
+      },
+      {
+        "command": "manuscript.profile",
+        "title": "Manuscript: Capture profile or trace"
+      },
+      {
+        "command": "manuscript.restartServer",
+        "title": "Manuscript: Restart language server"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "manuscript",
+        "label": "Manuscript",
+        "languages": [
+          "manuscript"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Manuscript module, project manifest, or verified debug executable."
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "default": false
+              },
+              "inspection": {
+                "type": "string",
+                "description": "Inspection JSON for a prebuilt executable."
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "manuscript",
+            "request": "launch",
+            "name": "Debug Manuscript",
+            "program": "${file}",
+            "stopOnEntry": false
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Manuscript: Launch",
+            "body": {
+              "type": "manuscript",
+              "request": "launch",
+              "name": "Debug Manuscript",
+              "program": "${file}",
+              "args": []
+            }
+          }
+        ]
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "manuscript",
+        "required": [
+          "command",
+          "project"
+        ],
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "project": {
+            "type": "string"
+          }
+        }
+      }
+    ],
+    "problemMatchers": [
+      {
+        "name": "manuscript",
+        "owner": "manuscript",
+        "fileLocation": [
+          "relative",
+          "${workspaceFolder}"
+        ],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):(\\d+): (?:parse|resolution|type|lowering|MSL\\d+): (.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 4
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "[manuscript]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.defaultFormatter": "manuscript-lang.manuscript"
+      }
+    },
+    "breakpoints": [
+      {
+        "language": "manuscript"
+      }
+    ]
+  },
+  "scripts": {
+    "check": "node --check extension.js && node --check debug-adapter.js && npm test",
+    "package": "vsce package --no-dependencies",
+    "bundle": "esbuild extension.js debug-adapter.js --bundle --platform=node --external:vscode --outdir=dist --minify",
+    "vscode:prepublish": "npm run check && npm run bundle",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.2",
+    "esbuild": "^0.28.2"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "The configured compiler executable runs locally."
+    },
+    "virtualWorkspaces": false
+  }
+}

@@ -83,7 +83,7 @@ The remaining problems sit where the language meets the runtime. Several load-be
 **Smallest fix** (keeps the exact-`E` rule)
 1. Add a prelude function `map_error[T, E, F](result: Result[T, E], transform: fn(cause: E) -> F) -> Result[T, F]` and cite it from `propagation.md:25` as the explicit adapter. Inference already works under `generics.md:71`, because `transform` is an explicitly typed anonymous function.
 2. Rewrite `parallel.md:12-21` as a complete function with an application error alternative:
-   ```text
+   ```manuscript
    let [resA, resB] = try map_error(
        result: parallel(tasks: [first, second]),
        transform: fn(cause: ExecutionError) -> LoadError:

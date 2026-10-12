@@ -51,13 +51,17 @@ test "shared counter protects complete updates":
     match parallel_map(items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], operation: operation, limit: 10):
         ok(_):
             with locked = counter.lock():
-                assert locked.get() == 100
+                if not (locked.get() == 100):
+                    return panic(message: "check failed")
         error(_):
-            assert false
-    assert release_on_return(counter: counter) == 101
+            if not (false):
+                return panic(message: "check failed")
+    if not (release_on_return(counter: counter) == 101):
+        return panic(message: "check failed")
     let outcome = release_on_error(counter: counter)
     with locked = counter.lock():
-        assert locked.get() == 102
+        if not (locked.get() == 102):
+            return panic(message: "check failed")
 
 test "function fields collections and interface views share freely":
     var captured = 7
@@ -68,24 +72,30 @@ test "function fields collections and interface views share freely":
     for stored in callbacks:
         match execute(operation: stored):
             ok(value):
-                assert value == 7
+                if not (value == 7):
+                    return panic(message: "check failed")
             error(_):
-                assert false
+                if not (false):
+                    return panic(message: "check failed")
     let readers: List[Read] = [Read(value: Reader(callback: callback))]
     for reader in readers:
         match execute(operation: reader.get):
             ok(value):
-                assert value == 7
+                if not (value == 7):
+                    return panic(message: "check failed")
             error(_):
-                assert false
+                if not (false):
+                    return panic(message: "check failed")
     let make_function = fn() -> fn(value: Int) -> Int:
         return read_and_add
     match parallel(tasks: [make_function]):
         ok(values):
             let [returned] = values
-            assert returned(value: 3) == 4
+            if not (returned(value: 3) == 4):
+                return panic(message: "check failed")
         error(_):
-            assert false
+            if not (false):
+                return panic(message: "check failed")
 
 test "builders can be captured and stored callbacks can map":
     let builder = ListBuilder[Int]()
@@ -94,9 +104,11 @@ test "builders can be captured and stored callbacks can map":
     let map_items = parallel_map[Int, Unit]
     match map_items(items: [1, 2, 3, 4], operation: append_item, limit: 4):
         ok(_):
-            assert builder.freeze().length() == 4
+            if not (builder.freeze().length() == 4):
+                return panic(message: "check failed")
         error(_):
-            assert false
+            if not (false):
+                return panic(message: "check failed")
 
 test "fault releases guard and preserves committed writes":
     let counter = Synchronized(value: 0)
@@ -106,10 +118,12 @@ test "fault releases guard and preserves committed writes":
             panic(message: "expected")
     match parallel(tasks: [fail]):
         ok(_):
-            assert false
+            if not (false):
+                return panic(message: "check failed")
         error(_):
             with locked = counter.lock():
-                assert locked.get() == 8
+                if not (locked.get() == 8):
+                    return panic(message: "check failed")
 
 test "guard aliases close once and stale methods fault":
     let counter = Synchronized(value: 0)
@@ -122,19 +136,23 @@ test "guard aliases close once and stale methods fault":
         second.set(value: 2)
         match parallel(tasks: [saved_get]):
             ok(_):
-                assert false
+                if not (false):
+                    return panic(message: "check failed")
             error(_):
-                assert second.get() == 2
+                if not (second.get() == 2):
+                    return panic(message: "check failed")
 
 test "ancestor reentry faults without hanging":
     let counter = Synchronized(value: 0)
     with locked = counter.lock():
         let acquire = fn() -> Unit:
             with again = counter.lock():
-                assert false
+                if not (false):
+                    return panic(message: "check failed")
         match parallel(tasks: [acquire]):
             ok(_):
-                assert false
+                if not (false):
+                    return panic(message: "check failed")
             error(_):
                 locked.set(value: 3)
 
@@ -147,4 +165,20 @@ test "loop exits release the guard":
                 continue
             break
     with locked = counter.lock():
-        assert locked.get() == 2
+        if not (locked.get() == 2):
+            return panic(message: "check failed")
+
+
+test "native collection methods preserve ordinary function values":
+    let callbacks = [1, 2].map(transform: fn(value: Int) -> fn() -> Int:
+        return fn() -> Int:
+            return value
+    )
+    match parallel_map(items: callbacks, limit: 2, operation: fn(item: fn() -> Int) -> Int:
+        return item()
+    ):
+        ok(outcomes):
+            if not (outcomes == [1, 2]):
+                return panic(message: "check failed")
+        error(_):
+            return panic(message: "parallel map failed")

@@ -3,6 +3,7 @@ package compiler_test
 import (
 	"github.com/manuscript-lang/manuscript/compiler"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -16,9 +17,76 @@ func fixture(t *testing.T, name string) string {
 	}
 	return string(source)
 }
+
+func TestCallArgumentLabelRejections(t *testing.T) {
+	const declarations = `import List from "@std/collections.ms"
+import Background from "@std/tasks.ms"
+import parallel from "@std/tasks.ms"
+import Result from "@std/result.ms"
+fn one(value: Int) -> Int:
+    return value
+fn two(left: Int, right: Int) -> Int:
+    return left - right
+fn zero() -> Unit:
+    return
+fn identity[T](value: T) -> T:
+    return value
+fn apply(transform: fn(value: Int) -> Int) -> Int:
+    return transform(1)
+type Box:
+    value: Int
+type Choice:
+    case Payload(value: Int)
+interface Read:
+    fn get() -> Int
+impl Read for Box:
+    fn get() -> Int:
+        return self.value
+`
+	for _, variant := range []struct{ name, statement string }{
+		{"two unnamed", "two(1, 2)"},
+		{"first unnamed", "two(1, right: 2)"},
+		{"last unnamed", "two(left: 1, 2)"},
+		{"multi-parameter function value", "let callable = two\n    callable(1, 2)"},
+		{"extra unnamed", "one(1, 2)"},
+		{"duplicate mixed", "one(1, value: 2)"},
+		{"unknown single label", "one(wrong: 1)"},
+		{"missing single argument", "one()"},
+		{"single argument type", "one(true)"},
+		{"zero parameters", "zero(1)"},
+		{"generic duplicate", "identity(1, 2)"},
+		{"record field label", "let box = Box(1)"},
+		{"alternative field label", "let choice = Choice.Payload(1)"},
+		{"contract view label", "let view = Read(Box(value: 1))"},
+		{"optional constructor arguments", "let service = Background(1)"},
+		{"optional parallel arguments", "let result = parallel([])"},
+		{"function type labels", "let transform = fn(item: Int) -> Int:\n        return item\n    apply(transform)"},
+	} {
+		t.Run(variant.name, func(t *testing.T) {
+			source := declarations + "test \"labels\":\n    " + variant.statement + "\n"
+			result := compiler.CompileSource("labels.ms", source, compiler.Options{})
+			if result.Success() {
+				t.Fatal("accepted invalid call")
+			}
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Phase != "type" {
+					t.Fatal("expected type rejection", result.Diagnostics)
+				}
+			}
+		})
+	}
+	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Background, operation: fn() -> Result[Unit, String]) -> Unit:
+    service.start(operation)
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal("ordinary callback with omitted label rejected", result.Diagnostics)
+	}
+}
+
 func TestRejectedConformanceVariants(t *testing.T) {
 	variants := []struct{ name, fixture, old, replacement, phase string }{
 		{"duplicate argument", "cl-01", "deduction: 2,", "amount: 2,", "type"},
+		{"unnamed multi-parameter argument", "cl-01", "deduction: 2,", "2,", "type"},
 		{"missing argument", "cl-01", "deduction: 2,", "", "type"},
 		{"unknown argument", "cl-01", "deduction: 2,", "discount: 2,", "type"},
 		{"unknown value", "cl-01", "return amount - deduction", "return missing", "resolution"},
@@ -38,7 +106,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"return incomplete", "cl-06", "    else:\n        panic(message: \"positive value required\")\n", "", "type"},
 		{"condition type", "cl-06", "if value > 0:", "if value:", "type"},
 		{"return type", "cl-06", "return value", "return true", "type"},
-		{"unit return", "cl-06", "    assert value > 0\n", "    return 1\n", "type"},
+		{"unit return", "cl-06", "    if not (value > 0):\n        return panic(message: \"check failed\")\n", "    return 1\n", "type"},
 		{"nonexhaustive", "cl-07", "        Failed(_):\n            return 0\n", "", "type"},
 		{"duplicate case", "cl-07", "        Failed(_):", "        Ready(other):", "type"},
 		{"payload arity", "cl-07", "Ready(value):", "Ready(value, extra):", "type"},
@@ -46,7 +114,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"unreachable wildcard", "cl-07", "            return 0\n", "            return 0\n        _:\n            return 0\n", "type"},
 		{"noniterable", "cl-08", "for value in values:", "for value in 3:", "type"},
 		{"immutable iteration", "cl-08", "total = total + value", "value = 4", "type"},
-		{"break outside loop", "cl-08", "    assert selected_sum(values: []) == 0", "    break", "type"},
+		{"break outside loop", "cl-08", "    if not (selected_sum(values: []) == 0):\n        return panic(message: \"check failed\")", "    break", "type"},
 		{"generic arity", "cl-09", "Box[Int](value: 6)", "Box[Int, String](value: 6)", "type"},
 		{"generic field", "cl-09", "Box[Int](value: 6)", "Box[String](value: 6)", "type"},
 		{"explicit specialization mismatch", "cl-09", "unwrap[Int](box: box)", "unwrap[String](box: box)", "type"},
@@ -74,7 +142,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"result payload", "cl-14", "ok(value: value)", "ok(value: true)", "type"},
 		{"try nonresult", "cl-14", "try checked(value: value)", "try value", "type"},
 		{"try no backward context", "cl-14", "let accepted = try checked(value: value)", "let accepted: Int = try ok(value: 3)", "type"},
-		{"record equality eligibility", "cl-15", "let callback = Callback(handler: increment)", "let callback = Callback(handler: increment)\n    assert callback == callback", "type"},
+		{"record equality eligibility", "cl-15", "let callback = Callback(handler: increment)", "let callback = Callback(handler: increment)\n    if not (callback == callback):\n        return panic(message: \"check failed\")", "type"},
 		{"float hashing", "cl-15", "preserve_key(value: \"key\") == \"key\"", "preserve_key(value: 1.0) == 1.0", "type"},
 		{"list hashing", "cl-15", "preserve_key(value: \"key\") == \"key\"", "preserve_key(value: [1, 2]) == [1, 2]", "type"},
 		{"optional invariance", "cl-15", "let missing: Optional[Int] = none", "let wrong: Optional[Float] = present", "type"},
@@ -124,6 +192,7 @@ func TestCompilerPublicAPIs(t *testing.T) {
 		t.Fatal("emitted unchecked source")
 	}
 }
+
 func write(t *testing.T, root, path, text string) {
 	t.Helper()
 	target := filepath.Join(root, path)
@@ -176,7 +245,7 @@ func TestGenericRecursionAndNamespaceRules(t *testing.T) {
 	}
 }
 func FuzzCompile(f *testing.F) {
-	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import List from \"@std/collections.ms\"\ntest \"list\":\n    let values = [1, 2]\n    assert values.length() == 2\n"} {
+	for _, s := range []string{"fn f() -> Int:\n    return 1\n", "type Box[T]:\n    value: T\nfn f() -> Box[Int]:\n    return Box(value: 1)\n", "import panic from \"@std/faults.ms\"\n\nimport List from \"@std/collections.ms\"\ntest \"list\":\n    let values = [1, 2]\n    if not (values.length() == 2):\n        return panic(message: \"check failed\")\n"} {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, source string) {
@@ -440,6 +509,81 @@ impl Read[B] for Pair[Int, B]:
 				t.Fatal("accepted invalid implementation")
 			}
 		})
+	}
+}
+
+func TestGroupedLocalImports(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "other.ms", "export type Value:\n    value: Int\nexport fn read(value: Value) -> Int:\n    return value.value\nfn hidden() -> Int:\n    return 1\n")
+	for _, path := range []string{"./other.ms", "@other"} {
+		write(t, root, "ms.toml", "[project]\nname = \"imports\"\nsource = \".\"\nentry = \"./main.ms\"\n[aliases]\n\"@other\" = \"./other.ms\"\n")
+		write(t, root, "main.ms", "import { Value, read } from \""+path+"\"\nfn check() -> Int:\n    return read(value: Value(value: 3))\n")
+		result := compiler.CompileFile(filepath.Join(root, "ms.toml"), compiler.Options{Tests: true})
+		if !result.Success() {
+			t.Fatal(result.Diagnostics)
+		}
+		if len(result.Program.Modules) != 2 {
+			t.Fatal("module loaded more than once")
+		}
+	}
+	for _, name := range []string{"hidden", "missing"} {
+		source := "import { Value, " + name + " } from \"./other.ms\"\n"
+		write(t, root, "main.ms", source)
+		result := compiler.CompileFile(filepath.Join(root, "main.ms"), compiler.Options{})
+		if result.Success() || len(result.Diagnostics) != 1 {
+			t.Fatal(result.Diagnostics)
+		}
+		d := result.Diagnostics[0]
+		if d.Phase != "resolution" || d.Position.Offset != strings.Index(source, name) || !strings.Contains(d.Message, "module does not export "+name) {
+			t.Fatal(d)
+		}
+	}
+}
+
+func TestGroupedImportResolutionErrors(t *testing.T) {
+	for name, source := range map[string]string{
+		"duplicate in group":       "import { List, List } from \"@std/collections.ms\"\n",
+		"duplicate across imports": "import List from \"@std/collections.ms\"\nimport { Map, List } from \"@std/collections.ms\"\n",
+		"declaration collision":    "import { List, Map } from \"@std/collections.ms\"\ntype Map:\n    value: Int\n",
+		"missing export":           "import { List, missing } from \"@std/collections.ms\"\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			result := compiler.CompileSource("imports.ms", source, compiler.Options{})
+			if result.Success() || result.Diagnostics[0].Phase != "resolution" {
+				t.Fatal(result.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestNativeProfilesAndDebugSources(t *testing.T) {
+	root := t.TempDir()
+	source := "import Process from \"@std/cli.ms\"\nexport fn main(process: Process) -> Int:\n    return 0\n"
+	write(t, root, "main.ms", source)
+	cpu := filepath.Join(root, "cpu.pprof")
+	heap := filepath.Join(root, "heap.pprof")
+	trace := filepath.Join(root, "trace.out")
+	result := compiler.CompileFile(filepath.Join(root, "main.ms"), compiler.Options{Entry: true, CPUProfile: cpu, HeapProfile: heap, Trace: trace})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	binary := filepath.Join(root, "program")
+	metadata, err := compiler.BuildChecked(result, binary, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if metadata.SourceRoot != root {
+		t.Fatal("debug source root missing", metadata)
+	}
+	command := exec.Command(binary)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, output)
+	}
+	for _, path := range []string{cpu, heap, trace} {
+		info, err := os.Stat(path)
+		if err != nil || info.Size() == 0 {
+			t.Fatalf("missing profile %s: %v", path, err)
+		}
 	}
 }
 

@@ -7,7 +7,7 @@ weight = 89
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The type checker enforces the core language’s declared contracts before Go emission. A Go representation is not sufficient evidence that a source operation is legal.
+The type checker decides whether source operations satisfy Manuscript's rules before the compiler generates Go. The fact that a value can be represented in Go does not make every use of it legal in Manuscript.
 
 ## Required checks
 
@@ -20,7 +20,7 @@ Accept source according to the [normative grammar](../../core-language/basics/gr
 | Operators | Use the closed precedence and operand table; enforce Bool conditions and short-circuit evaluation without implicit numeric conversion |
 | Function values | Preserve parameter labels/order and exact types; require explicit specialization of generic function values and explicit anonymous signatures |
 | Return completeness | Allow Unit fallthrough/bare returns; reject reachable non-Unit fallthrough; track Never and function-local loop/return boundaries |
-| Mandatory argument names | Reject unnamed, unknown, duplicate, or missing required call arguments and match names to declared parameters, including function-value calls |
+| Argument labels | Resolve an omitted label for a single-parameter function; require labels for multi-parameter functions and constructors; reject unknown labels, duplicate arguments, and missing required arguments, including function-value calls |
 | List literals | Require the canonical standard List import; check homogeneous element types and use annotations or the expected parameter type for empty lists |
 | Parallel API packs | Check zero-argument functions in literal `tasks: [...]` packs and preserve each position's exact return type; see [parallel operations](../../concurrency/parallel.md) |
 | Destructuring bindings | Check positional arity, record fields, renaming, nesting, and duplicate bindings; infer each local's type independently; see [destructuring bindings](../../core-language/basics/destructuring.md) |

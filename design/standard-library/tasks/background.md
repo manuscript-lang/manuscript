@@ -7,9 +7,11 @@ weight = 37
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Import `Background` from `@std/tasks.ms`. It starts and tracks operations under a fixed application or component lifetime. It implements `Closeable`; its callable requirements are defined by the [standard API contract](../types/prelude.md#background-service). Multiple instances can be constructed and passed through ordinary parameters.
+Use `Background` for work managed by an application or component rather than by the caller's immediate request. Import it from `@std/tasks.ms`. The service tracks its operations and implements `Closeable` so shutdown can wait for them.
 
-```text
+You can create several services and pass them as ordinary parameters. The [API reference](../types/prelude.md#background-service) defines which callables they accept.
+
+```manuscript
 with emails = Background(limit: 32):
     with indexing = Background(limit: 4):
         serve(emails: emails, indexing: indexing)
@@ -19,7 +21,7 @@ The constructing host supplies the execution parent. Construct application servi
 
 ## Starting work
 
-```text
+```manuscript
 import Result from "@std/result.ms"
 import map_error from "@std/result.ms"
 import Background from "@std/tasks.ms"
@@ -42,7 +44,9 @@ fn enqueue(emails: Background, mailer: Mailer, address: String) -> Result[Operat
     return emails.start(operation: send)
 ```
 
-Admission is nonblocking and atomic with closure and capacity reservation. `limit` bounds admitted operations that have not yet committed their completion; accepted work starts without an additional unbounded queue. A slot is freed when completion commits, before failure reporting, so a slow reporter does not throttle admission. Rejected work never runs. Automatic retries are not part of `start`.
+Start does not wait for capacity. Accepting work, reserving a slot, and checking closure happen atomically. The `limit` counts accepted operations whose completion has not yet been committed. Accepted work starts without an extra unbounded queue; rejected work never runs.
+
+Completion frees the slot before failure reporting, so a slow reporter cannot hold up new admission. Start does not retry automatically.
 
 Background operations return `Result[Unit, String]`: explicit `ok(value: unit)` on success, or a String error after domain-error adaptation. Successful operations produce status; failures reach the reporter. One operation's failure does not cancel unrelated operations.
 

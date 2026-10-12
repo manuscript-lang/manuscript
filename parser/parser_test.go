@@ -32,7 +32,6 @@ func TestDesignFixtures(t *testing.T) {
 func TestRejectSyntax(t *testing.T) {
 	for name, source := range map[string]string{
 		"module binding":        "let value = 3\n",
-		"positional call":       "fn f() -> Unit:\n    g(1)\n",
 		"comparison chain":      "fn f() -> Bool:\n    return 1 < 2 < 3\n",
 		"two spaces":            "fn f() -> Int:\n  return 1\n",
 		"default argument":      "fn f(value: Int = 1) -> Int:\n    return value\n",
@@ -40,8 +39,8 @@ func TestRejectSyntax(t *testing.T) {
 		"nested named function": "fn f() -> Unit:\n    fn g() -> Unit:\n        return\n",
 		"empty type":            "type Empty:\n",
 		"mixed type":            "type Mixed:\n    value: Int\n    case Ready\n",
-		"bad escape":            "test \"bad\":\n    assert \"\\q\" == \"\"\n",
-		"invalid scalar":        "test \"bad\":\n    assert \"\\u{D800}\" == \"\"\n",
+		"bad escape":            "import panic from \"@std/faults.ms\"\n\ntest \"bad\":\n    if not (\"\\q\" == \"\"):\n        return panic(message: \"check failed\")\n",
+		"invalid scalar":        "import panic from \"@std/faults.ms\"\n\ntest \"bad\":\n    if not (\"\\u{D800}\" == \"\"):\n        return panic(message: \"check failed\")\n",
 		"numeric suffix":        "fn f() -> Int:\n    return 1_000\n",
 		"indexing":              "fn f() -> Int:\n    return values[0]\n",
 		"single-line lambda":    "fn f() -> Unit:\n    let g = fn() -> Int: 1\n",
@@ -58,7 +57,7 @@ func TestRejectSyntax(t *testing.T) {
 }
 
 func FuzzParse(f *testing.F) {
-	for _, s := range []string{"fn f() -> Unit:\n    return\n", "test \"text\":\n    assert \"{1}\" == \"1\"\n", "type Item:\n    value: Int\n"} {
+	for _, s := range []string{"fn f() -> Unit:\n    return\n", "import panic from \"@std/faults.ms\"\n\ntest \"text\":\n    if not (\"{1}\" == \"1\"):\n        return panic(message: \"check failed\")\n", "type Item:\n    value: Int\n"} {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, source string) {
@@ -73,6 +72,22 @@ func TestNamedArgumentValueContinuation(t *testing.T) {
 	source := "fn use(value: Int) -> Unit:\n    return\ntest \"continued argument\":\n    use(value:\n        3\n    )\n"
 	if _, err := parser.Parse("continued.ms", source); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSingleArgumentExpressions(t *testing.T) {
+	for _, expression := range []string{"3", "value", "value + 1", "-3", "true", "unit", "\"text\"", "[1, 2]", "other(3)", "(value)", "3,"} {
+		t.Run(expression, func(t *testing.T) {
+			source := "fn use(value: Int) -> Unit:\n    consume(" + expression + ")\n"
+			module, err := parser.Parse("argument.ms", source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			call := module.Declarations[0].Body[0].Value
+			if len(call.Args) != 1 || call.Args[0].Name != "" || call.Args[0].Pos.Offset != strings.Index(source, expression+")") {
+				t.Fatal("incorrect unlabeled argument", call.Args)
+			}
+		})
 	}
 }
 
@@ -129,5 +144,49 @@ func TestRejectInterfaceSyntax(t *testing.T) {
 				t.Fatal("accepted invalid syntax")
 			}
 		})
+	}
+}
+
+func TestNamedImports(t *testing.T) {
+	for _, source := range []string{
+		"import List from \"@std/collections.ms\"\n",
+		"import { List } from \"@std/collections.ms\"\n",
+		"import { List, Map } from \"@std/collections.ms\"\n",
+		"import {\n    List, # first\n    Map,\n} from \"@std/collections.ms\"\n",
+	} {
+		module, err := parser.Parse("imports.ms", source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []string{"List"}
+		if strings.Contains(source, "Map") {
+			want = append(want, "Map")
+		}
+		if len(module.Imports) != len(want) {
+			t.Fatal(module.Imports)
+		}
+		for i, name := range want {
+			imp := module.Imports[i]
+			if imp.Name != name || imp.Path != "@std/collections.ms" || imp.NamePos.Offset != strings.Index(source, name) {
+				t.Fatalf("incorrect import: %+v", imp)
+			}
+		}
+	}
+}
+
+func TestRejectNamedImports(t *testing.T) {
+	for _, source := range []string{
+		"import {} from \"./mod.ms\"\n",
+		"import { A B } from \"./mod.ms\"\n",
+		"import { A,, B } from \"./mod.ms\"\n",
+		"import { , A } from \"./mod.ms\"\n",
+		"import { A } \"./mod.ms\"\n",
+		"import { A } from \"{path}\"\n",
+		"import { A as B } from \"./mod.ms\"\n",
+		"import A, B from \"./mod.ms\"\n",
+	} {
+		if _, err := parser.Parse("imports.ms", source); err == nil {
+			t.Fatalf("accepted %q", source)
+		}
 	}
 }

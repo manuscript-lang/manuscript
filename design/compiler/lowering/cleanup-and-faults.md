@@ -7,7 +7,7 @@ weight = 96
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Generated cleanup registers `Closeable.close()` for successful `with` initialization and explicitly unwinds exited block scopes. Go's function-level defer alone does not represent nested-block and iteration lifetimes.
+The compiler registers `Closeable.close()` after successful `with` initialization and generates cleanup for each block exit. A Go defer that runs only when a function returns is not enough for resources whose lifetime ends at a nested block or loop iteration.
 
 The backend implements [scope-exit order](../../ownership-and-cleanup/cleanup/exit-order.md) and [fault selection](../../ownership-and-cleanup/cleanup/cleanup-faults.md) as follows:
 

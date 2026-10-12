@@ -15,7 +15,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -33,6 +32,7 @@ type BuildMetadata struct {
 	Sources             map[string]string `json:"sources"`
 	ConfigurationSHA256 string            `json:"configuration_sha256"`
 	ExecutableSHA256    string            `json:"executable_sha256"`
+	SourceRoot          string            `json:"source_root,omitempty"`
 	Debug               bool              `json:"debug"`
 }
 
@@ -64,12 +64,10 @@ func implementationDigest() string {
 	return digest([]byte(data.String()))
 }
 func CurrentPin() (BuildPin, error) {
-	tool := os.Getenv("MANUSCRIPT_GO")
-	if tool == "" {
-		tool = "go"
+	command, err := goCommand("env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOFLAGS", "GOAMD64", "GOARM", "GOARM64", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM")
+	if err != nil {
+		return BuildPin{}, err
 	}
-	command := exec.Command(tool, "env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOFLAGS", "GOAMD64", "GOARM", "GOARM64", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM")
-	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	data, err := command.CombinedOutput()
 	if err != nil {
 		return BuildPin{}, fmt.Errorf("read Go toolchain: %w: %s", err, data)
@@ -169,10 +167,15 @@ func BuildChecked(result Result, output, cacheDir string, debug bool) (BuildMeta
 	for _, module := range result.Program.Modules {
 		metadata.Sources[module.File] = digest([]byte(module.Source))
 	}
+	source := result.Source
+	if debug {
+		source = debugSource(result)
+		metadata.SourceRoot = result.SourceRoot
+	}
 	identity, _ := json.Marshal(struct {
 		Metadata        BuildMetadata
 		GeneratedSHA256 string
-	}{metadata, digest([]byte(result.Source))})
+	}{metadata, digest([]byte(source))})
 	metadata.BuildID = digest(identity)
 	cacheBinary, cacheMetadata := "", ""
 	if cacheDir != "" {
@@ -199,7 +202,7 @@ func BuildChecked(result Result, output, cacheDir string, debug bool) (BuildMeta
 			}
 		}
 	}
-	if err := buildNative(result.Source, output, debug); err != nil {
+	if err := buildNative(source, output, debug); err != nil {
 		return metadata, err
 	}
 	binary, err := os.ReadFile(output)

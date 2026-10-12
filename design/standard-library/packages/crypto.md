@@ -7,9 +7,11 @@ weight = 54
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
+Choose a cryptographic function by its purpose: hashing, keyed authentication, key derivation, encryption, or signatures. These transforms use supplied bytes. Random material comes from an explicit Entropy service.
+
 ## `@std/crypto.ms`
 
-```text
+```manuscript
 fn constant_time_equal(left: Bytes, right: Bytes) -> Bool
 fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Result[Bytes, LibraryError]
 fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, LibraryError]
@@ -23,8 +25,32 @@ fn sign(seed: Bytes, data: Bytes) -> Result[Bytes, LibraryError]
 fn verify(key: Bytes, data: Bytes, signature: Bytes) -> Bool
 ```
 
-Cryptographic transforms are pure; key/nonce generation uses the explicit Entropy root. SHA hashes and HMAC support SHA-256/384/512; unsupported HMAC algorithm names return Unsupported. Hashing checks cancellation between chunks.
+## Choose the operation
 
-Derive_key is PBKDF2-HMAC-SHA256, with positive iterations and length 1–1048576, and periodic cancellation checks. Salt/work factor are explicit application decisions; the function does not claim a password-storage policy. Seal/open use AES-256-GCM: key is 32 bytes, nonce 12 bytes, authentication tag 16 bytes. Seal returns ciphertext with appended tag; open never releases plaintext before authentication. Associated data must match exactly. Reusing a nonce for a key violates the caller's cryptographic contract and is not automatically detected. Invalid key/nonce sizes return InvalidInput; tampering/wrong key returns AuthenticationFailed.
+Cryptographic transforms are pure functions. Obtain random keys and nonces through an explicit `Entropy` service.
 
-Sign/public_key use a 32-byte Ed25519 seed; verify takes a 32-byte public key and signature Bytes, returning false for wrong key/signature lengths or invalid signatures. Generated key/seed material can come from Entropy. These APIs use Bytes explicitly rather than opaque key handles; garbage collection cannot promise zeroization of retained copies. No legacy weak algorithm menu, implicit cryptographic randomness, private-key diagnostic redaction, or certificate issuance is claimed. TLS verification belongs to Network.connect_tls and the HTTP client.
+| Task | Operation and algorithm |
+| --- | --- |
+| Hash bytes | `sha256`, `sha384`, or `sha512`. |
+| Authenticate bytes with a key | HMAC with SHA-256, SHA-384, or SHA-512. Unsupported algorithm names return `Unsupported`. |
+| Derive key bytes from a password | `derive_key`, using PBKDF2-HMAC-SHA256. |
+| Encrypt and authenticate | `seal` / `open`, using AES-256-GCM. |
+| Sign and verify | Ed25519 with `sign` / `verify`. |
+
+Hashing checks cancellation between chunks. Key derivation checks it periodically.
+
+## Key derivation
+
+`derive_key` requires positive iterations and a length from 1 to 1048576. The application chooses the salt and work factor. The function does not define a password-storage policy.
+
+## Authenticated encryption
+
+AES-256-GCM requires a 32-byte key and 12-byte nonce. `seal` appends a 16-byte authentication tag to the ciphertext. `open` authenticates before releasing any plaintext. The associated data must match exactly.
+
+A nonce must not be reused with the same key. The runtime does not detect that reuse. Invalid key or nonce sizes return `InvalidInput`; a wrong key or tampered ciphertext returns `AuthenticationFailed`.
+
+## Signatures and key material
+
+`sign` and `public_key` take a 32-byte Ed25519 seed. `verify` takes a 32-byte public key and signature bytes. It returns false for invalid signatures or wrong key/signature lengths. Use `Entropy` to generate seed material.
+
+These APIs expose keys as `Bytes`, so garbage collection cannot guarantee erasure of retained copies. They provide no weak-algorithm menu, implicit randomness, automatic private-key diagnostic redaction, or certificate issuance. Verified TLS belongs to the Network and HTTP APIs.

@@ -7,8 +7,8 @@ weight = 82
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-Specify how Go implementations preserve source values, cancellation, and explicit resource cleanup and closed-state safety.
+Adapters connect Manuscript code to foreign implementations such as Go. These design contracts explain how an adapter declares its API, validates values, and cooperates with cancellation and cleanup. Check implementation coverage before relying on external adapters.
 
-- [Adapter manifests](manifests.md)
-- [Foreign values and the trust boundary](value-conversion.md)
-- [Foreign cancellation and resource acquisition](cancellation.md)
+- [Adapter manifests](manifests.md) — Declare a foreign adapter API and the facts the compiler trusts.
+- [Foreign values and the trust boundary](value-conversion.md) — Validate foreign values before they enter Manuscript.
+- [Foreign cancellation and resource acquisition](cancellation.md) — Arrange for foreign calls and resource acquisition to respond to stopping.

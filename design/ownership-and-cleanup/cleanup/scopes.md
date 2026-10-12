@@ -7,21 +7,41 @@ weight = 54
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-`with` initializes an immutable binding and registers the cleanup operation for exit from the indented body. A concrete type must explicitly implement `Closeable`; a contract type must explicitly declare `fn close() -> Unit`; a generic parameter must have a bound proving either operation, as specified by [Closeable](closeable.md).
+Use `with` to acquire a resource and close it when an indented block ends. The name introduced by `with` cannot be reassigned.
 
-```text
+```manuscript
 with file = try files.open(path: "data.txt"):
     let chunk = try file.read(max_bytes: 4096)
 ```
 
-This is a body fragment in a function returning `Result[U, IoError]`, with an explicit files capability. A read returns `Optional[Bytes]`: match the chunk to distinguish data from EOF. The standard Files.open result retains a shared File view.
+This fragment belongs inside a function returning `Result[U, IoError]`. The function receives `files` as an explicit capability. `Files.open` returns a shared File view. The read result is `Optional[Bytes]`: match it to distinguish bytes from end-of-input.
 
-The initializer evaluates once. If it fails, no close action is registered. After successful acquisition, registration occurs before any further cancellation checkpoint. Fallthrough, `break`, `continue`, return, propagated error, programming fault, and cancellation execute the registered action for each scope exited, from inner to outer.
+## What happens, step by step
 
-Resources acquired through `with` in a loop close at the end of that iteration. An ordinary resource-valued `let` declaration does not implicitly register cleanup. Returning or capturing a registered object does not remove the action.
+1. Evaluate the initializer once. Here, that means opening the file.
+2. If initialization fails, leave through the initializer's error or fault path. No close action has been registered.
+3. If initialization succeeds, register the resource's close operation before the next cancellation checkpoint.
+4. Run the block.
+5. Close the registered resource when execution leaves the block.
 
-`with` is the language construct; file, transaction, and `Background` behavior comes from ordinary contract implementations. There is no user-defined enter hook or error-suppression hook in this contract.
+Cleanup runs for every exit: reaching the end, `break`, `continue`, `return`, an error forwarded by `try`, a fault, or cancellation. Nested scopes close from inner to outer.
 
-Go's function-level `defer` does not have Manuscript's block lifetime. The compiler explicitly lowers cleanup scopes and unwind paths. [Go defer specification](https://go.dev/ref/spec#Defer_statements)
+## Which values can use with?
 
-See [Closeable](closeable.md), [exit ordering](exit-order.md), and [lowering](../../compiler/lowering/cleanup-and-faults.md).
+The compiler must be able to identify a valid close operation:
+
+| Value's type | Required evidence |
+| --- | --- |
+| Concrete type | An explicit implementation of standard `Closeable`. |
+| Contract view | A declared `fn close() -> Unit` operation. |
+| Generic parameter | A bound proving one of those operations. |
+
+See [Closeable](closeable.md) for the exact checks.
+
+## Keep the lifetime tied to the block
+
+A resource acquired inside a loop closes at the end of that iteration. Returning it or capturing it in a closure does not remove its registered cleanup. An ordinary `let` binding does not register cleanup.
+
+The file, transaction, or background service supplies its own close behavior. `with` adds no custom enter hook or error-suppression hook.
+
+For compiler contributors: Go's function-level `defer` lasts until the function returns, so it cannot by itself implement Manuscript's nested block lifetimes. The compiler generates explicit cleanup for those scopes. See [exit order](exit-order.md), [cleanup lowering](../../compiler/lowering/cleanup-and-faults.md), and the [Go defer specification](https://go.dev/ref/spec#Defer_statements).

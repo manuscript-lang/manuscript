@@ -7,9 +7,11 @@ weight = 4
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A Manuscript source file has the `.ms` extension and is itself a module. It contains imports, types, implementations, named functions, and tests, without an explicit `module` declaration. Executable statements and `let`/`var` bindings belong inside function or test bodies; there is no module initializer. Read the following `src/greeting.ms` example from top to bottom: it defines a customer, then a function that produces a greeting.
+Each Manuscript source file ends in `.ms` and is a module. Put imports, type declarations, implementations, named functions, and tests at the top level. Put executable statements and local `let` or `var` bindings inside a function or test. There is no separate `module` declaration or top-level initializer.
 
-```text
+The following `src/greeting.ms` file defines a customer and a function that creates a greeting. Read it from top to bottom:
+
+```manuscript
 export type Customer:
     name: String
     active: Bool
@@ -25,11 +27,11 @@ export fn welcome(customer: Customer) -> String:
 
 Indentation defines blocks. Source suites require exactly four additional spaces at each nesting level, and the formatter preserves that rule. Tabs in code and semicolons are rejected. Blank and comment-only lines do not change a block. The fields belong to `Customer` because they are indented under its declaration. The first return belongs to the `if` block; the second belongs directly to the function body.
 
-Every supplied function argument is named, including a single argument. Constructors also name their fields. See [declarations and calls](../functions/declarations-and-calls.md) for the call rules.
+Function calls may omit the argument label when the function has exactly one parameter. Functions with more than one parameter require labels on every supplied argument. Constructors name their fields. See [declarations and calls](../functions/declarations-and-calls.md) for the call rules.
 
 Expressions inside parentheses, brackets, or braces can span lines. This lets a call list its arguments on separate lines without changing their evaluation order:
 
-```text
+```manuscript
 let customer = Customer(
     name: "Ada",
     active: true,
@@ -38,7 +40,7 @@ let customer = Customer(
 
 Comments outside text literals begin with `#` and continue through the physical line. Identifiers use ASCII letters, digits, and underscores; text and comments may contain Unicode. Source is UTF-8, and names are case-sensitive.
 
-```text
+```manuscript
 # A local binding can infer its type from the value.
 let count = 3
 ```
@@ -47,7 +49,7 @@ let count = 3
 
 The resolved path of `src/greeting.ms` identifies its module. `export` makes a declaration available outside that module. Another file in `src` can import its customer type with:
 
-```text
+```manuscript
 import Customer from "./greeting.ms"
 ```
 
@@ -57,4 +59,4 @@ The [normative grammar](grammar.md) defines accepted tokens, declarations, inden
 
 Continue with [bindings](bindings.md), [records](../types/records.md), and [function declarations](../functions/declarations-and-calls.md) to understand each declaration in the example.
 
-[Next: Source grammar](grammar.md)
+[Next: Expressions and operators](expressions.md) · [Exact syntax reference](grammar.md)

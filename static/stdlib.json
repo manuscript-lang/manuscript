@@ -41,8 +41,21 @@
       "declarations": [
         {
           "name": "BigInt",
-          "kind": "native",
-          "type": "BigInt"
+          "kind": "interface",
+          "type": "BigInt",
+          "operations": [
+            "add: fn(right: BigInt)-\u003eBigInt",
+            "bit_and: fn(right: BigInt)-\u003eBigInt",
+            "bit_or: fn(right: BigInt)-\u003eBigInt",
+            "bit_xor: fn(right: BigInt)-\u003eBigInt",
+            "compare: fn(right: BigInt)-\u003eInt",
+            "divide: fn(right: BigInt)-\u003eResult[BigInt, LibraryError]",
+            "multiply: fn(right: BigInt)-\u003eBigInt",
+            "remainder: fn(right: BigInt)-\u003eResult[BigInt, LibraryError]",
+            "subtract: fn(right: BigInt)-\u003eBigInt",
+            "to_int: fn()-\u003eOptional[Int]",
+            "to_string: fn(radix: Int)-\u003eString"
+          ]
         },
         {
           "name": "add",
@@ -208,11 +221,26 @@
             "values: List[Int]"
           ],
           "operations": [
+            "at: fn(index: Int)-\u003eOptional[Int]",
             "concat: fn(values: Bytes)-\u003eBytes",
+            "contains: fn(value: Bytes)-\u003eBool",
+            "ends_with: fn(value: Bytes)-\u003eBool",
             "get: fn(index: Int)-\u003eOptional[Int]",
+            "index_of: fn(value: Bytes)-\u003eOptional[Int]",
+            "is_empty: fn()-\u003eBool",
+            "last_index_of: fn(value: Bytes)-\u003eOptional[Int]",
             "length: fn()-\u003eInt",
-            "to_text: fn()-\u003eOptional[String]"
+            "reverse: fn()-\u003eBytes",
+            "slice: fn(start: Int, end: Int)-\u003eBytes",
+            "starts_with: fn(value: Bytes)-\u003eBool",
+            "to_text: fn()-\u003eOptional[String]",
+            "with_value: fn(index: Int, value: Int)-\u003eBytes"
           ]
+        },
+        {
+          "name": "at",
+          "kind": "fn",
+          "type": "fn(data: Bytes, index: Int)-\u003eOptional[Int]"
         },
         {
           "name": "contains",
@@ -220,14 +248,49 @@
           "type": "fn(data: Bytes, value: Bytes)-\u003eBool"
         },
         {
+          "name": "ends_with",
+          "kind": "fn",
+          "type": "fn(data: Bytes, value: Bytes)-\u003eBool"
+        },
+        {
+          "name": "index_of",
+          "kind": "fn",
+          "type": "fn(data: Bytes, value: Bytes)-\u003eOptional[Int]"
+        },
+        {
+          "name": "is_empty",
+          "kind": "fn",
+          "type": "fn(data: Bytes)-\u003eBool"
+        },
+        {
+          "name": "last_index_of",
+          "kind": "fn",
+          "type": "fn(data: Bytes, value: Bytes)-\u003eOptional[Int]"
+        },
+        {
+          "name": "reverse",
+          "kind": "fn",
+          "type": "fn(data: Bytes)-\u003eBytes"
+        },
+        {
           "name": "slice",
           "kind": "fn",
           "type": "fn(data: Bytes, start: Int, end: Int)-\u003eBytes"
         },
         {
+          "name": "starts_with",
+          "kind": "fn",
+          "type": "fn(data: Bytes, value: Bytes)-\u003eBool"
+        },
+        {
           "name": "values",
           "kind": "fn",
           "type": "fn(data: Bytes)-\u003eList[Int]"
+        },
+        {
+          "name": "with_value",
+          "kind": "fn",
+          "type": "fn(data: Bytes, index: Int, value: Int)-\u003eBytes"
         }
       ]
     },
@@ -281,9 +344,54 @@
           ],
           "operations": [
             "append: fn(value: T)-\u003eList[T]",
+            "at: fn(index: Int)-\u003eOptional[T]",
             "concat: fn(values: List[T])-\u003eList[T]",
+            "contains: fn(value: T)-\u003eBool",
+            "copy_within: fn(target: Int, start: Int, end: Int)-\u003eList[T]",
+            "entries: fn()-\u003eList[ListEntry[T]]",
+            "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
+            "fill: fn(value: T, start: Int, end: Int)-\u003eList[T]",
+            "filter: fn(predicate: fn(value: T)-\u003eBool)-\u003eList[T]",
+            "find: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+            "find_index: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[Int]",
+            "find_last: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+            "find_last_index: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[Int]",
+            "first: fn()-\u003eOptional[T]",
+            "flat_map[U]: fn(transform: fn(value: T)-\u003eList[U])-\u003eList[U]",
+            "fold[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
+            "fold_right[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
+            "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
             "get: fn(index: Int)-\u003eOptional[T]",
-            "length: fn()-\u003eInt"
+            "group_by[K: Hashable]: fn(key: fn(value: T)-\u003eK)-\u003eMap[K, List[T]]",
+            "index_of: fn(value: T)-\u003eOptional[Int]",
+            "is_empty: fn()-\u003eBool",
+            "join: fn(separator: String)-\u003eString",
+            "keys: fn()-\u003eList[Int]",
+            "last: fn()-\u003eOptional[T]",
+            "last_index_of: fn(value: T)-\u003eOptional[Int]",
+            "length: fn()-\u003eInt",
+            "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
+            "prepend: fn(value: T)-\u003eList[T]",
+            "reverse: fn()-\u003eList[T]",
+            "slice: fn(start: Int, end: Int)-\u003eList[T]",
+            "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
+            "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
+            "to_set: fn()-\u003eSet[T]",
+            "with_value: fn(index: Int, value: T)-\u003eList[T]",
+            "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
+            "without: fn(index: Int)-\u003eList[T]"
+          ]
+        },
+        {
+          "name": "ListEntry",
+          "kind": "record",
+          "type": "ListEntry[T]",
+          "type_parameters": [
+            "T"
+          ],
+          "fields": [
+            "index: Int",
+            "value: T"
           ]
         },
         {
@@ -295,9 +403,17 @@
             "U"
           ],
           "operations": [
+            "clear: fn()-\u003eMap[T, U]",
             "contains: fn(key: T)-\u003eBool",
+            "entries: fn()-\u003eList[MapEntry[T, U]]",
+            "for_each: fn(operation: fn(key: T, value: U)-\u003eUnit)-\u003eUnit",
             "get: fn(key: T)-\u003eOptional[U]",
+            "keys: fn()-\u003eList[T]",
             "length: fn()-\u003eInt",
+            "merge: fn(other: Map[T, U])-\u003eMap[T, U]",
+            "values: fn()-\u003eList[U]",
+            "with_default: fn(key: T, value: U)-\u003eMap[T, U]",
+            "with_default_from: fn(key: T, create: fn(key: T)-\u003eU)-\u003eMap[T, U]",
             "with_entry: fn(key: T, value: U)-\u003eMap[T, U]",
             "without: fn(key: T)-\u003eMap[T, U]"
           ]
@@ -323,10 +439,45 @@
             "T: Hashable"
           ],
           "operations": [
+            "clear: fn()-\u003eSet[T]",
             "contains: fn(value: T)-\u003eBool",
+            "difference: fn(right: Set[T])-\u003eSet[T]",
+            "entries: fn()-\u003eList[List[T]]",
+            "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
+            "intersection: fn(right: Set[T])-\u003eSet[T]",
+            "is_disjoint_from: fn(right: Set[T])-\u003eBool",
+            "is_subset_of: fn(right: Set[T])-\u003eBool",
+            "is_superset_of: fn(right: Set[T])-\u003eBool",
             "length: fn()-\u003eInt",
+            "symmetric_difference: fn(right: Set[T])-\u003eSet[T]",
+            "union: fn(right: Set[T])-\u003eSet[T]",
+            "values: fn()-\u003eList[T]",
             "with_value: fn(value: T)-\u003eSet[T]",
             "without: fn(value: T)-\u003eSet[T]"
+          ]
+        },
+        {
+          "name": "at",
+          "kind": "fn",
+          "type": "fn(values: List[T], index: Int)-\u003eOptional[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "contains",
+          "kind": "fn",
+          "type": "fn(values: List[T], value: T)-\u003eBool",
+          "type_parameters": [
+            "T: Equal"
+          ]
+        },
+        {
+          "name": "copy_within",
+          "kind": "fn",
+          "type": "fn(values: List[T], target: Int, start: Int, end: Int)-\u003eList[T]",
+          "type_parameters": [
+            "T"
           ]
         },
         {
@@ -338,9 +489,90 @@
           ]
         },
         {
+          "name": "every",
+          "kind": "fn",
+          "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eBool",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "fill",
+          "kind": "fn",
+          "type": "fn(values: List[T], value: T, start: Int, end: Int)-\u003eList[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "filled",
+          "kind": "fn",
+          "type": "fn(value: T, count: Int, max_items: Int)-\u003eResult[List[T], LibraryError]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
           "name": "filter",
           "kind": "fn",
           "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eList[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "find",
+          "kind": "fn",
+          "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "find_index",
+          "kind": "fn",
+          "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eOptional[Int]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "find_last",
+          "kind": "fn",
+          "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "find_last_index",
+          "kind": "fn",
+          "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eOptional[Int]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "first",
+          "kind": "fn",
+          "type": "fn(values: List[T])-\u003eOptional[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "flat_map",
+          "kind": "fn",
+          "type": "fn(values: List[T], transform: fn(value: T)-\u003eList[U])-\u003eList[U]",
+          "type_parameters": [
+            "T",
+            "U"
+          ]
+        },
+        {
+          "name": "flatten",
+          "kind": "fn",
+          "type": "fn(values: List[List[T]])-\u003eList[T]",
           "type_parameters": [
             "T"
           ]
@@ -355,11 +587,109 @@
           ]
         },
         {
+          "name": "fold_right",
+          "kind": "fn",
+          "type": "fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
+          "type_parameters": [
+            "T",
+            "A"
+          ]
+        },
+        {
+          "name": "for_each",
+          "kind": "fn",
+          "type": "fn(values: List[T], operation: fn(value: T)-\u003eUnit)-\u003eUnit",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "group_by",
+          "kind": "fn",
+          "type": "fn(values: List[T], key: fn(value: T)-\u003eK)-\u003eMap[K, List[T]]",
+          "type_parameters": [
+            "T",
+            "K: Hashable"
+          ]
+        },
+        {
+          "name": "index_of",
+          "kind": "fn",
+          "type": "fn(values: List[T], value: T)-\u003eOptional[Int]",
+          "type_parameters": [
+            "T: Equal"
+          ]
+        },
+        {
           "name": "intersection",
           "kind": "fn",
           "type": "fn(left: Set[T], right: Set[T])-\u003eSet[T]",
           "type_parameters": [
             "T: Hashable"
+          ]
+        },
+        {
+          "name": "is_disjoint_from",
+          "kind": "fn",
+          "type": "fn(left: Set[T], right: Set[T])-\u003eBool",
+          "type_parameters": [
+            "T: Hashable"
+          ]
+        },
+        {
+          "name": "is_empty",
+          "kind": "fn",
+          "type": "fn(values: List[T])-\u003eBool",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "is_subset_of",
+          "kind": "fn",
+          "type": "fn(left: Set[T], right: Set[T])-\u003eBool",
+          "type_parameters": [
+            "T: Hashable"
+          ]
+        },
+        {
+          "name": "is_superset_of",
+          "kind": "fn",
+          "type": "fn(left: Set[T], right: Set[T])-\u003eBool",
+          "type_parameters": [
+            "T: Hashable"
+          ]
+        },
+        {
+          "name": "last",
+          "kind": "fn",
+          "type": "fn(values: List[T])-\u003eOptional[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "last_index_of",
+          "kind": "fn",
+          "type": "fn(values: List[T], value: T)-\u003eOptional[Int]",
+          "type_parameters": [
+            "T: Equal"
+          ]
+        },
+        {
+          "name": "list_entries",
+          "kind": "fn",
+          "type": "fn(values: List[T])-\u003eList[ListEntry[T]]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "list_keys",
+          "kind": "fn",
+          "type": "fn(values: List[T])-\u003eList[Int]",
+          "type_parameters": [
+            "T"
           ]
         },
         {
@@ -372,9 +702,54 @@
           ]
         },
         {
+          "name": "map_clear",
+          "kind": "fn",
+          "type": "fn(values: Map[K, V])-\u003eMap[K, V]",
+          "type_parameters": [
+            "K: Hashable",
+            "V"
+          ]
+        },
+        {
+          "name": "map_entries",
+          "kind": "fn",
+          "type": "fn(values: Map[K, V])-\u003eList[MapEntry[K, V]]",
+          "type_parameters": [
+            "K: Hashable",
+            "V"
+          ]
+        },
+        {
+          "name": "map_for_each",
+          "kind": "fn",
+          "type": "fn(values: Map[K, V], operation: fn(key: K, value: V)-\u003eUnit)-\u003eUnit",
+          "type_parameters": [
+            "K: Hashable",
+            "V"
+          ]
+        },
+        {
+          "name": "map_from_entries",
+          "kind": "fn",
+          "type": "fn(entries: List[MapEntry[K, V]])-\u003eMap[K, V]",
+          "type_parameters": [
+            "K: Hashable",
+            "V"
+          ]
+        },
+        {
           "name": "map_keys",
           "kind": "fn",
           "type": "fn(values: Map[K, V])-\u003eList[K]",
+          "type_parameters": [
+            "K: Hashable",
+            "V"
+          ]
+        },
+        {
+          "name": "map_merge",
+          "kind": "fn",
+          "type": "fn(values: Map[K, V], other: Map[K, V])-\u003eMap[K, V]",
           "type_parameters": [
             "K: Hashable",
             "V"
@@ -390,6 +765,37 @@
           ]
         },
         {
+          "name": "map_with_default",
+          "kind": "fn",
+          "type": "fn(values: Map[K, V], key: K, value: V)-\u003eMap[K, V]",
+          "type_parameters": [
+            "K: Hashable",
+            "V"
+          ]
+        },
+        {
+          "name": "map_with_default_from",
+          "kind": "fn",
+          "type": "fn(values: Map[K, V], key: K, create: fn(key: K)-\u003eV)-\u003eMap[K, V]",
+          "type_parameters": [
+            "K: Hashable",
+            "V"
+          ]
+        },
+        {
+          "name": "prepend",
+          "kind": "fn",
+          "type": "fn(values: List[T], value: T)-\u003eList[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "range",
+          "kind": "fn",
+          "type": "fn(start: Int, end: Int, step: Int, max_items: Int)-\u003eResult[List[Int], LibraryError]"
+        },
+        {
           "name": "reverse",
           "kind": "fn",
           "type": "fn(values: List[T])-\u003eList[T]",
@@ -398,9 +804,49 @@
           ]
         },
         {
+          "name": "set_clear",
+          "kind": "fn",
+          "type": "fn(values: Set[T])-\u003eSet[T]",
+          "type_parameters": [
+            "T: Hashable"
+          ]
+        },
+        {
+          "name": "set_entries",
+          "kind": "fn",
+          "type": "fn(values: Set[T])-\u003eList[List[T]]",
+          "type_parameters": [
+            "T: Hashable"
+          ]
+        },
+        {
+          "name": "set_for_each",
+          "kind": "fn",
+          "type": "fn(values: Set[T], operation: fn(value: T)-\u003eUnit)-\u003eUnit",
+          "type_parameters": [
+            "T: Hashable"
+          ]
+        },
+        {
+          "name": "set_values",
+          "kind": "fn",
+          "type": "fn(values: Set[T])-\u003eList[T]",
+          "type_parameters": [
+            "T: Hashable"
+          ]
+        },
+        {
           "name": "slice",
           "kind": "fn",
           "type": "fn(values: List[T], start: Int, end: Int)-\u003eList[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "some",
+          "kind": "fn",
+          "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eBool",
           "type_parameters": [
             "T"
           ]
@@ -424,11 +870,51 @@
           ]
         },
         {
+          "name": "symmetric_difference",
+          "kind": "fn",
+          "type": "fn(left: Set[T], right: Set[T])-\u003eSet[T]",
+          "type_parameters": [
+            "T: Hashable"
+          ]
+        },
+        {
+          "name": "to_set",
+          "kind": "fn",
+          "type": "fn(values: List[T])-\u003eSet[T]",
+          "type_parameters": [
+            "T: Hashable"
+          ]
+        },
+        {
           "name": "union",
           "kind": "fn",
           "type": "fn(left: Set[T], right: Set[T])-\u003eSet[T]",
           "type_parameters": [
             "T: Hashable"
+          ]
+        },
+        {
+          "name": "with_value",
+          "kind": "fn",
+          "type": "fn(values: List[T], index: Int, value: T)-\u003eList[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "with_values",
+          "kind": "fn",
+          "type": "fn(values: List[T], start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
+          "type_parameters": [
+            "T"
+          ]
+        },
+        {
+          "name": "without",
+          "kind": "fn",
+          "type": "fn(values: List[T], index: Int)-\u003eList[T]",
+          "type_parameters": [
+            "T"
           ]
         }
       ]
@@ -1153,6 +1639,16 @@
       "path": "@std/numbers.ms",
       "declarations": [
         {
+          "name": "format_exponential",
+          "kind": "fn",
+          "type": "fn(value: Float, digits: Int)-\u003eResult[String, LibraryError]"
+        },
+        {
+          "name": "format_fixed",
+          "kind": "fn",
+          "type": "fn(value: Float, digits: Int)-\u003eResult[String, LibraryError]"
+        },
+        {
           "name": "format_float",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eString"
@@ -1161,6 +1657,11 @@
           "name": "format_int",
           "kind": "fn",
           "type": "fn(value: Int, radix: Int)-\u003eString"
+        },
+        {
+          "name": "format_precision",
+          "kind": "fn",
+          "type": "fn(value: Float, precision: Int)-\u003eResult[String, LibraryError]"
         },
         {
           "name": "parse_float",
@@ -1363,8 +1864,13 @@
       "declarations": [
         {
           "name": "Regex",
-          "kind": "native",
-          "type": "Regex"
+          "kind": "interface",
+          "type": "Regex",
+          "operations": [
+            "find_all: fn(text: String, max_matches: Int)-\u003eResult[List[String], LibraryError]",
+            "matches: fn(text: String)-\u003eBool",
+            "replace: fn(text: String, replacement: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+          ]
         },
         {
           "name": "compile",
@@ -1413,6 +1919,146 @@
             "E",
             "F"
           ]
+        }
+      ]
+    },
+    {
+      "path": "@std/string.ms",
+      "declarations": [
+        {
+          "name": "at",
+          "kind": "fn",
+          "type": "fn(text: String, index: Int)-\u003eOptional[String]"
+        },
+        {
+          "name": "concat",
+          "kind": "fn",
+          "type": "fn(text: String, values: String)-\u003eString"
+        },
+        {
+          "name": "contains",
+          "kind": "fn",
+          "type": "fn(value: String, text: String)-\u003eBool"
+        },
+        {
+          "name": "ends_with",
+          "kind": "fn",
+          "type": "fn(value: String, suffix: String)-\u003eBool"
+        },
+        {
+          "name": "from_scalars",
+          "kind": "fn",
+          "type": "fn(values: List[Int])-\u003eResult[String, LibraryError]"
+        },
+        {
+          "name": "index_of",
+          "kind": "fn",
+          "type": "fn(text: String, value: String)-\u003eOptional[Int]"
+        },
+        {
+          "name": "join",
+          "kind": "fn",
+          "type": "fn(parts: List[String], separator: String)-\u003eString"
+        },
+        {
+          "name": "last_index_of",
+          "kind": "fn",
+          "type": "fn(text: String, value: String)-\u003eOptional[Int]"
+        },
+        {
+          "name": "lower",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eString"
+        },
+        {
+          "name": "normalize",
+          "kind": "fn",
+          "type": "fn(text: String, form: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+        },
+        {
+          "name": "pad_end",
+          "kind": "fn",
+          "type": "fn(text: String, target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+        },
+        {
+          "name": "pad_start",
+          "kind": "fn",
+          "type": "fn(text: String, target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+        },
+        {
+          "name": "repeat",
+          "kind": "fn",
+          "type": "fn(text: String, count: Int, max_bytes: Int)-\u003eResult[String, LibraryError]"
+        },
+        {
+          "name": "replace",
+          "kind": "fn",
+          "type": "fn(text: String, old: String, new: String, max_replacements: Int)-\u003eString"
+        },
+        {
+          "name": "replace_all",
+          "kind": "fn",
+          "type": "fn(text: String, old: String, new: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+        },
+        {
+          "name": "scalar_at",
+          "kind": "fn",
+          "type": "fn(text: String, index: Int)-\u003eOptional[Int]"
+        },
+        {
+          "name": "scalar_length",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eInt"
+        },
+        {
+          "name": "scalar_values",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eList[Int]"
+        },
+        {
+          "name": "slice",
+          "kind": "fn",
+          "type": "fn(text: String, start: Int, end: Int)-\u003eString"
+        },
+        {
+          "name": "slice_scalars",
+          "kind": "fn",
+          "type": "fn(text: String, start: Int, end: Int)-\u003eResult[String, LibraryError]"
+        },
+        {
+          "name": "split",
+          "kind": "fn",
+          "type": "fn(text: String, separator: String, max_parts: Int)-\u003eList[String]"
+        },
+        {
+          "name": "starts_with",
+          "kind": "fn",
+          "type": "fn(value: String, prefix: String)-\u003eBool"
+        },
+        {
+          "name": "substring",
+          "kind": "fn",
+          "type": "fn(text: String, start: Int, end: Int)-\u003eString"
+        },
+        {
+          "name": "trim",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eString"
+        },
+        {
+          "name": "trim_end",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eString"
+        },
+        {
+          "name": "trim_start",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eString"
+        },
+        {
+          "name": "upper",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eString"
         }
       ]
     },
@@ -1550,99 +2196,6 @@
             "T",
             "U"
           ]
-        }
-      ]
-    },
-    {
-      "path": "@std/test.ms",
-      "declarations": [
-        {
-          "name": "assert_equal",
-          "kind": "fn",
-          "type": "fn(actual: T, expected: T)-\u003eUnit",
-          "type_parameters": [
-            "T: Equal"
-          ]
-        },
-        {
-          "name": "assert_near",
-          "kind": "fn",
-          "type": "fn(actual: Float, expected: Float, absolute: Float, relative: Float)-\u003eUnit"
-        }
-      ]
-    },
-    {
-      "path": "@std/text.ms",
-      "declarations": [
-        {
-          "name": "contains",
-          "kind": "fn",
-          "type": "fn(value: String, text: String)-\u003eBool"
-        },
-        {
-          "name": "ends_with",
-          "kind": "fn",
-          "type": "fn(value: String, suffix: String)-\u003eBool"
-        },
-        {
-          "name": "from_scalars",
-          "kind": "fn",
-          "type": "fn(values: List[Int])-\u003eResult[String, LibraryError]"
-        },
-        {
-          "name": "join",
-          "kind": "fn",
-          "type": "fn(parts: List[String], separator: String)-\u003eString"
-        },
-        {
-          "name": "lower",
-          "kind": "fn",
-          "type": "fn(text: String)-\u003eString"
-        },
-        {
-          "name": "repeat",
-          "kind": "fn",
-          "type": "fn(text: String, count: Int, max_bytes: Int)-\u003eResult[String, LibraryError]"
-        },
-        {
-          "name": "replace",
-          "kind": "fn",
-          "type": "fn(text: String, old: String, new: String, max_replacements: Int)-\u003eString"
-        },
-        {
-          "name": "scalar_length",
-          "kind": "fn",
-          "type": "fn(text: String)-\u003eInt"
-        },
-        {
-          "name": "scalar_values",
-          "kind": "fn",
-          "type": "fn(text: String)-\u003eList[Int]"
-        },
-        {
-          "name": "slice_scalars",
-          "kind": "fn",
-          "type": "fn(text: String, start: Int, end: Int)-\u003eResult[String, LibraryError]"
-        },
-        {
-          "name": "split",
-          "kind": "fn",
-          "type": "fn(text: String, separator: String, max_parts: Int)-\u003eList[String]"
-        },
-        {
-          "name": "starts_with",
-          "kind": "fn",
-          "type": "fn(value: String, prefix: String)-\u003eBool"
-        },
-        {
-          "name": "trim",
-          "kind": "fn",
-          "type": "fn(text: String)-\u003eString"
-        },
-        {
-          "name": "upper",
-          "kind": "fn",
-          "type": "fn(text: String)-\u003eString"
         }
       ]
     },
@@ -1892,6 +2445,12 @@
           "kind": "type",
           "type": "Float",
           "operations": [
+            "is_finite: fn()-\u003eBool",
+            "is_nan: fn()-\u003eBool",
+            "to_exponential: fn(digits: Int)-\u003eResult[String, LibraryError]",
+            "to_fixed: fn(digits: Int)-\u003eResult[String, LibraryError]",
+            "to_precision: fn(precision: Int)-\u003eResult[String, LibraryError]",
+            "to_string: fn()-\u003eString",
             "truncate_to_int: fn()-\u003eOptional[Int]"
           ]
         },
@@ -1906,7 +2465,8 @@
           "type": "Int",
           "operations": [
             "to_decimal: fn()-\u003eDecimal",
-            "to_float: fn()-\u003eFloat"
+            "to_float: fn()-\u003eFloat",
+            "to_string: fn(radix: Int)-\u003eString"
           ]
         },
         {
@@ -1919,9 +2479,34 @@
           "kind": "type",
           "type": "String",
           "operations": [
+            "at: fn(index: Int)-\u003eOptional[String]",
             "byte_length: fn()-\u003eInt",
+            "concat: fn(values: String)-\u003eString",
+            "contains: fn(text: String)-\u003eBool",
+            "ends_with: fn(suffix: String)-\u003eBool",
+            "index_of: fn(value: String)-\u003eOptional[Int]",
+            "last_index_of: fn(value: String)-\u003eOptional[Int]",
+            "lower: fn()-\u003eString",
+            "normalize: fn(form: String, max_bytes: Int)-\u003eResult[String, LibraryError]",
+            "pad_end: fn(target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, LibraryError]",
+            "pad_start: fn(target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, LibraryError]",
             "parse_int: fn()-\u003eOptional[Int]",
-            "to_bytes: fn()-\u003eBytes"
+            "repeat: fn(count: Int, max_bytes: Int)-\u003eResult[String, LibraryError]",
+            "replace: fn(old: String, new: String, max_replacements: Int)-\u003eString",
+            "replace_all: fn(old: String, new: String, max_bytes: Int)-\u003eResult[String, LibraryError]",
+            "scalar_at: fn(index: Int)-\u003eOptional[Int]",
+            "scalar_length: fn()-\u003eInt",
+            "scalar_values: fn()-\u003eList[Int]",
+            "slice: fn(start: Int, end: Int)-\u003eString",
+            "slice_scalars: fn(start: Int, end: Int)-\u003eResult[String, LibraryError]",
+            "split: fn(separator: String, max_parts: Int)-\u003eList[String]",
+            "starts_with: fn(prefix: String)-\u003eBool",
+            "substring: fn(start: Int, end: Int)-\u003eString",
+            "to_bytes: fn()-\u003eBytes",
+            "trim: fn()-\u003eString",
+            "trim_end: fn()-\u003eString",
+            "trim_start: fn()-\u003eString",
+            "upper: fn()-\u003eString"
           ]
         },
         {

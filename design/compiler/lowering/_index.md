@@ -7,7 +7,7 @@ weight = 92
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-Preserve source call order, representations, concurrency API execution, and lexical unwinding.
+Lowering translates checked Manuscript into Go. The generated code must preserve evaluation order, closure captures, concurrency, and block-level cleanup. These pages describe how the compiler carries those guarantees across the translation.
 
 - [Function and concurrency API lowering](function-and-task-calls.md)
 - [Source guarantees and Go representations](value-representations.md)

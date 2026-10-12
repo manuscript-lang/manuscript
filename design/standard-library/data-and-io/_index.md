@@ -7,11 +7,11 @@ weight = 38
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-These facilities support bounded communication, scoped resources, and local construction.
+Choose a facility based on what you need to do: work with immutable values, read or write streams, pass values through a queue, coordinate shared state, or build a value locally. I/O resources need explicit cleanup.
 
-- [Minimum data operations](operations.md)
+- [Minimum data operations](operations.md) — Look up the basic methods on collections, text, bytes, and numeric values.
 
-- [Readers, writers, and streams](streams.md)
-- [Bounded queues](queues.md)
-- [Synchronized values, pools, and leases](synchronized-state.md)
-- [Builders and immutable results](builders.md)
+- [Readers, writers, and streams](streams.md) — Read and write bytes, recognize end-of-input, and close streams.
+- [Bounded queues](queues.md) — Connect producers and consumers with bounded storage.
+- [Synchronized values, pools, and leases](synchronized-state.md) — Coordinate shared state and acquire a pool lease with scoped cleanup.
+- [Builders and immutable results](builders.md) — Construct a value with synchronized mutation, then freeze an immutable snapshot.

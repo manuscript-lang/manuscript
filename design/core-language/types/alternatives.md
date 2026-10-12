@@ -7,9 +7,9 @@ weight = 13
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-An alternative type describes a value that is exactly one of its declared cases. Each case can carry the data needed to explain that possibility.
+Use an alternative type when a value can be one of several declared cases. For example, a payment can be paid, declined, or pending. Each case may carry its own data, such as a receipt or a reason.
 
-```text
+```manuscript
 type Payment:
     case Paid(receipt: String)
     case Declined(reason: String)
@@ -22,7 +22,7 @@ A declaration has at least one case. Case names are unique within the declaratio
 
 ## Construction and identity
 
-```text
+```manuscript
 let payment = Payment.Paid(receipt: "receipt-42")
 let declined: Payment = Declined(reason: "Card rejected")
 ```
@@ -35,7 +35,7 @@ Ordinary lexical name lookup happens first. A local binding, ordinary declaratio
 
 Qualification still resolves `Type` through ordinary lookup. A local value shadowing that name does not act as a module namespace or expose the hidden type's cases.
 
-```text
+```manuscript
 type LeftState:
     case Ready
 

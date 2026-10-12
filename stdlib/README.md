@@ -1,19 +1,20 @@
-The `.ms` files in this directory define the standard library's public types,
-fields, cases, function signatures, and receiver operations. The compiler reads
-these pinned sources directly. Go supplies native implementations, whose ABI
-signatures are checked against the Manuscript declarations during initialization.
+# Standard-library declarations
 
-`bindings.json` maps source identities to native representations and dispatch
-names; it does not define the type schemas. `intrinsics.ms` supplies private
-operation declarations for primitive receivers. The heterogeneous `parallel`
-call remains a compiler intrinsic, marked in its source module.
+The `.ms` files here define public types, fields, cases, function signatures, and receiver operations. The compiler reads this pinned source directly. Go supplies the native implementations; initialization checks that their calling signatures agree with the Manuscript declarations.
 
-These files use the trusted library parser's declaration-only mode: native
-functions and opaque types need no Manuscript body. Application parsing retains
-its normal body and type requirements.
+## Which file defines what?
 
-Editor adapters can use `tooling.StandardDeclarations` and `tooling.NavigationAt`
-for hover and definition locations in `@std` source documents. Run
-`ms stdlib <directory>` to materialize the exact pinned sources for editors that
-require filesystem documents. These APIs provide navigation data; they do not
-implement an LSP server or transport.
+- The `.ms` files define the type schemas and public API.
+- `bindings.json` maps source identities to native representations and dispatch names. It does not define type schemas.
+- `intrinsics.ms` contains private operation declarations for primitive receivers.
+- The heterogeneous `parallel` call is marked in its source module and needs special compiler handling.
+
+These files use a trusted declaration-only parser mode. Native functions and opaque types need no Manuscript body here. Application source still needs the usual bodies and type definitions.
+
+## Editor navigation
+
+Editor adapters can use `tooling.StandardDeclarations` and `tooling.NavigationAt` to find hover and definition locations in `@std` documents.
+
+Run `ms stdlib <directory>` to export the exact pinned source files for an editor that needs documents on disk. These APIs provide navigation data; an editor integration must supply its own LSP server and transport.
+
+For user-facing imports and API behavior, see the [standard-library guide](../design/standard-library/_index.md).

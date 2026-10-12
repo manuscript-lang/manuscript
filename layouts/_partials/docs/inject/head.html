@@ -1,0 +1,5 @@
+<link rel="icon" type="image/svg+xml" href="{{ "favicon.svg" | relURL }}">
+<script>try{const theme=localStorage.getItem('manuscript-theme');if(theme==='light'||theme==='dark')document.documentElement.dataset.theme=theme}catch(_){}</script>
+{{ $grammar := resources.FromString "manuscript-grammar.js" (printf "const manuscriptGrammar = %s;" (readFile "extensions/vscode/syntaxes/manuscript.tmLanguage.json")) }}
+{{ $script := slice $grammar (resources.Get "manuscript-highlight.js") (resources.Get "docs.js") | resources.Concat "docs.js" | resources.Minify | resources.Fingerprint }}
+<script defer src="{{ $script.RelPermalink }}" integrity="{{ $script.Data.Integrity }}"></script>

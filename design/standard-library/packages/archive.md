@@ -7,22 +7,48 @@ weight = 58
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
+Use compress for a byte stream and archive for named file or directory entries. Both operate on data in memory. Set limits on expanded output; unpacking an archive does not write its entries to disk.
+
 ## `@std/compress.ms`
 
-```text
+```manuscript
 fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, LibraryError]
 fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, LibraryError]
 ```
 
 ## `@std/archive.ms`
 
-```text
+```manuscript
 fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, LibraryError]
 fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], LibraryError]
 ```
 
-Compression format strings are gzip, zlib and deflate; other formats return Unsupported. Levels 0–9 and nonnegative output bounds are required. Decompress validates checksums, accepts concatenated gzip members under one cumulative limit, and rejects trailing non-format bytes. Incremental chunk processing checks cancellation; a decompression bomb returns LimitExceeded before retaining expanded output beyond max_bytes. Gzip emission has zero timestamp and no platform/name metadata.
+## Compression behavior
 
-ArchiveEntry fields `path: String`, `data: Bytes`, `directory: Bool`; ArchiveLimits fields `max_entries: Int`, `max_entry_bytes: Int`, `max_total_bytes: Int`. Limits count expanded content and are nonnegative. Pack/unpack support format strings zip/tar, UTF-8 portable relative entry names, regular files and directories; no encrypted archives, device files, sparse files, links or non-UTF-8 names. Entry paths reject absolute roots, backslash, colon, NUL, empty/dot/dot-dot components. Duplicate normalized paths reject. Directory data must be empty. ZIP supports stored/deflated data and validates checksums. Pack retains entry order with deterministic metadata (TAR epoch; ZIP 1980 minimum date). Unsupported types return Unsupported, malformed archive/path returns InvalidData, invalid source entries return InvalidInput.
+Supported format strings are `gzip`, `zlib`, and `deflate`; others return `Unsupported`. Compression levels are 0–9, and output limits must be nonnegative.
 
-Unpack returns immutable data and never writes to disk or grants authority. ZIP's directory metadata is parsed before max_entries can be checked; applications must bound compressed input reads as well as expanded limits. TAR uses native header validation; arbitrary trailing padding/metadata is not a canonical format guarantee. Automatic filesystem extraction is deferred, rather than exposing a lexical-only containment check. Applications can validate decoded entries and write them through explicitly authorized FileSystem operations, but must not claim secure extraction into an existing directory without a trusted containment adapter. Brotli/Zstd remain deferred.
+Decompression validates checksums and rejects trailing bytes that do not belong to the format. Concatenated gzip members share one cumulative output limit. Chunk processing checks cancellation. Excess expanded output returns `LimitExceeded` before the decoder retains output beyond `max_bytes`.
+
+Gzip output has a zero timestamp and no platform or name metadata.
+
+## Archive records and limits
+
+`ArchiveEntry` contains `path: String`, `data: Bytes`, and `directory: Bool`. `ArchiveLimits` contains `max_entries: Int`, `max_entry_bytes: Int`, and `max_total_bytes: Int`. All limits are nonnegative and count expanded content.
+
+Pack and unpack support `zip` and `tar`, with regular files and directories. Names must be UTF-8 portable relative paths. They reject absolute roots, backslashes, colons, NUL, and empty, dot, or dot-dot components. Duplicate normalized paths are rejected. Directory data must be empty.
+
+Encrypted archives, devices, sparse files, links, and non-UTF-8 names are unsupported. ZIP supports stored and deflated entries and validates checksums. Pack preserves entry order with deterministic metadata: TAR uses the epoch and ZIP uses its 1980 minimum date.
+
+| Problem | Error |
+| --- | --- |
+| Unsupported entry type | `Unsupported` |
+| Malformed archive or decoded path | `InvalidData` |
+| Invalid source entry | `InvalidInput` |
+
+## Unpacking does not write files
+
+`unpack` returns immutable entries. It performs no filesystem writes and grants no filesystem access. Automatic extraction is future work.
+
+Bound compressed input reads as well as expanded output. ZIP parses central-directory metadata before checking `max_entries`. TAR uses native header validation; it makes no canonical guarantee about arbitrary trailing padding or metadata.
+
+An application can validate entries and write them through an explicit FileSystem service. Secure extraction into an existing directory still needs a trusted containment adapter; a lexical path check alone is insufficient. Brotli and Zstd remain future work.

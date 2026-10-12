@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 type CustomerId:
     value: String
 
@@ -14,4 +16,5 @@ fn customer_name(customer: Customer) -> String:
 
 test "nominal record and nested binding":
     let customer = Customer(id: CustomerId(value: "c1"), name: "Ada")
-    assert customer_name(customer: customer) == "c1: Ada"
+    if not (customer_name(customer: customer) == "c1: Ada"):
+        return panic(message: "check failed")

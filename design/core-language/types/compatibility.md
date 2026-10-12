@@ -7,7 +7,9 @@ weight = 19
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The compiler uses the same compatibility rules for annotations, assignment, arguments, returns, constructor fields, and collection elements. An expression is assignable to an expected type when its type is exactly that type, except that an expression of `Never` is assignable wherever control cannot produce a value. This exception does not change function-type identity or allow return-type covariance.
+The type you provide must match the type required at that position. This applies to variable annotations, assignments, arguments, returns, fields, and collection elements. For example, an `Int` cannot silently become a `Float`, and two records do not become interchangeable just because their fields match.
+
+The exception is an expression of type `Never`: it cannot produce a value, so it can appear where any expression value is expected. This exception does not make differently declared function types interchangeable.
 
 ## Exact and nominal identity
 
@@ -25,7 +27,7 @@ Type positions use [ordinary name resolution](../../modules-and-capabilities/mod
 
 `Equal` and `Hashable` are [compiler bounds](generics.md#bounds), not standalone value types. Value types have no intersection/refinement syntax; conjunction is available only for generic bounds.
 
-```text
+```manuscript
 fn identity(value: Int) -> Int:
     return value
 
@@ -38,9 +40,13 @@ There are no implicit numeric conversions, optional wrapping/unwrapping, result 
 
 ## Propagating context
 
-An explicit local annotation, assignment target, declared return type, substituted parameter type, record field type, or alternative payload type supplies an expected type to its expression. Expected types propagate through parentheses and recursively into list elements and constructor fields/payloads. They supply missing type arguments for uniquely resolved data constructors such as `none`, `ok`, and `error`. They do not choose between globally ambiguous unqualified constructor names or change independently determined expression types.
+An expected type comes from the place a value is used: a local annotation, assignment target, return declaration, parameter after generic substitution, record field, or alternative payload.
 
-```text
+That type can guide the expressions inside parentheses, list elements, constructor fields, and case payloads. It can supply missing type arguments for a uniquely identified constructor such as `none`, `ok`, or `error`.
+
+Context does not resolve an ambiguous unqualified case name or change a type an expression already determines for itself.
+
+```manuscript
 type Input:
     names: List[Optional[String]]
 
@@ -52,11 +58,20 @@ let failure: Result[Int, String] = error(cause: "unavailable")
 let incomplete = ok(value: 1)
 ```
 
-A context-dependent expression without enough information is rejected, rather than receiving a dynamic or implicit unknown type. Thus bare unannotated `none`, `[]`, and `ok(value: 1)` are incomplete; `some(value: 1)` completely determines `Optional[Int]`. For a nonempty list, independently typed elements can determine context for the remaining elements; `[none, some(value: 1)]` is `List[Optional[Int]]`. If independently typed elements disagree, the list is rejected.
+The compiler rejects expressions whose type cannot be determined. It does not silently assign a dynamic or unknown type.
 
-Context flows through the constructors, literals, and parentheses listed above; it does not flow backward through operators or prefix `try`. Operator operands and a `try` operand must determine their own types before the enclosing expression is checked. In particular, an expected `Int` for `try` does not invent a `Result` error type from the enclosing function's error type.
+| Expression without an annotation | What can be inferred |
+| --- | --- |
+| `none` or `[]` | Not enough information to determine the payload or element type. |
+| `ok(value: 1)` | The success is Int, but the error type is still unknown. |
+| `some(value: 1)` | The complete type is Optional[Int]. |
+| `[none, some(value: 1)]` | The typed some value supplies enough context for List[Optional[Int]]. |
 
-```text
+A list is rejected if its independently typed elements disagree.
+
+Operators and try do not pass an expected result type backward into their operands. Their operands must determine their own types first. For example, knowing that the value unwrapped by try should be Int does not tell the compiler which error type an incomplete Result constructor should have.
+
+```manuscript
 fn known() -> Result[Int, String]:
     let number: Int = try Result[Int, String].ok(value: 1)
     return ok(value: number)

@@ -38,7 +38,7 @@ func NavigationAt(program *checker.Program, file string, offset int) (Navigation
 			continue
 		}
 		for _, imp := range module.Imports {
-			start := imp.Pos.Offset + len("import ")
+			start := imp.NamePos.Offset
 			if offset >= start && offset < start+len(imp.Name) {
 				symbol := program.Symbols[file][imp.Name]
 				if symbol != nil && symbol.Decl != nil {

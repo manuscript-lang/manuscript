@@ -1,9 +1,9 @@
-# Manuscript
+# Manuscript glossary
 
-Terms used in the Manuscript language design.
+For definitions and links across the language, see the [plain-language glossary](design/glossary.md).
 
 ## Functions and sharing
 
-**Shared function**:
-A function value whose type guarantees that its captures and bound receiver are safe for concurrent access. Sharing does not guarantee that captured resources remain open.
-_Avoid_: Parallel function
+**Function value**: an ordinary value that may be stored, passed, returned, and invoked concurrently. Closures capture snapshots of bindings. Captured resources can still close while references to them remain.
+
+See [function values and sharing](design/ownership-and-cleanup/values/sharing.md#function-values). The caller chooses whether to run a function concurrently; no separate function kind or sharing proof is needed.

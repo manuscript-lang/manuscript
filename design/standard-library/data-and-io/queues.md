@@ -7,7 +7,7 @@ weight = 41
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A queue connects producers and consumers through synchronized, bounded storage. It carries shareable values.
+Use a queue to pass values from producers to consumers. `Queue[T]` has synchronized, bounded storage and accepts values of any element type. Send and receive can wait and respond to cancellation. Closing the queue is explicit.
 
 | Facility | Contract |
 | --- | --- |
@@ -21,7 +21,7 @@ Sending and receiving must respond to cancellation. Explicit close is part of th
 
 `Queue[T](capacity: Int)` creates synchronized storage with positive capacity. The queue is opaque, shareable, and neither equal nor hashable. A nonpositive capacity is a programming fault.
 
-```text
+```manuscript
 fn send(value: T) -> Result[Unit, QueueError]
 fn receive() -> Optional[T]
 fn close() -> Unit

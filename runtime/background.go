@@ -136,7 +136,7 @@ func (b *Background) start(ctx *Execution, operation Value) Value {
 			defer func() { failed = recover() }()
 			child := newExecution(owned(b.parent, jobContext, b), jobContext)
 			defer FinishExecution(child)
-			outcome = Invoke(child, operation, nil)
+			outcome = profileWork(child, "background.operation", fmt.Sprint(id), func(execution *Execution) Value { return Invoke(execution, operation, nil) })
 		}()
 		b.commit(job, jobContext, outcome, failed)
 		cancel()

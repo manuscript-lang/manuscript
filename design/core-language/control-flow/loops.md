@@ -7,13 +7,13 @@ weight = 25
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Use `for` / `in` to traverse values and `while` to repeat a block while a Boolean condition holds. `break` exits a loop; `continue` proceeds to its next iteration.
+Use `for` / `in` to visit the values in a collection. Use `while` to repeat work while a Boolean condition is true. Inside either loop, `break` ends the loop and `continue` moves to the next iteration.
 
 Loops are statements, not expressions. Manuscript has no labeled loops, loop-result values, integer-range syntax, or user-defined iteration protocol.
 
 ## Traversing a list
 
-```text
+```manuscript
 fn sum(values: List[Int]) -> Int:
     var total = 0
     for value in values:
@@ -36,7 +36,7 @@ Evaluate a `for`'s iterable expression once before entering the loop. The loop i
 
 `MapEntry[K, V]` is an immutable record with fields `key: K` and `value: V`. It uses the map's key/value eligibility requirements. Its type and named constructor `MapEntry[K, V](key: key, value: value)` are imported from `@std/collections.ms`; field access is ordinary record access. Iteration infers the entry type without requiring an import of its name. It is not a positional pair. Destructure an entry inside the body when convenient.
 
-```text
+```manuscript
 fn total(values: Map[String, Int]) -> Int:
     var sum = 0
     for entry in values:
@@ -49,7 +49,7 @@ fn total(values: Map[String, Int]) -> Int:
 
 ## Repeating while a condition holds
 
-```text
+```manuscript
 fn count_down(start: Int) -> Int:
     var remaining = start
     while remaining > 0:

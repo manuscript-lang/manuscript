@@ -1,0 +1,21 @@
+<nav aria-label="Documentation">
+  {{ partial "docs/search" . }}
+  <a href="{{ .Site.Home.RelPermalink }}" class="nav-overview{{ if .IsHome }} active{{ end }}" {{ if .IsHome }}aria-current="page"{{ end }}><span aria-hidden="true">⌂</span> Overview</a>
+  {{ $current := . }}
+  {{ range slice (dict "label" "Start here" "paths" (slice "getting-started" "learn" "glossary")) (dict "label" "Language & library" "paths" (slice "core-language" "standard-library" "ownership-and-cleanup" "concurrency" "modules-and-capabilities")) (dict "label" "Under the hood" "paths" (slice "compiler" "developer-tooling" "reviews")) }}
+  <div class="nav-group">
+    <p class="nav-label">{{ .label }}</p>
+    {{ range .paths }}
+      {{ with $current.Site.GetPage . }}
+        {{ partial "docs/nav-tree" (dict "Page" . "Current" $current) }}
+      {{ end }}
+    {{ end }}
+  </div>
+  {{ end }}
+  <div class="nav-resources">
+    <span class="nav-label">Resources</span>
+    <a href="https://github.com/manuscript-lang/manuscript">Source on GitHub {{ partial "docs/external-icon" . }}</a>
+    <a href="{{ "stdlib.md" | relURL }}">Documentation for AI {{ partial "docs/external-icon" . }}</a>
+    <p>Version 0.1 <span>· In development</span></p>
+  </div>
+</nav>

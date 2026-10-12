@@ -2,6 +2,8 @@
 
 - Read and apply [language design taste](skills/language-design-taste/SKILL.md) when proposing or reviewing language, standard library, runtime, compiler, or tooling changes.
 - Current design documents and explicit user instructions take precedence over these preferences.
+- Before implementing or reviewing Manuscript changes, read [manuscript-change](skills/manuscript-change/SKILL.md) and consult the relevant experts it routes to.
+- When work establishes a durable lesson or the user corrects a recurring mistake, apply [change-memory](skills/change-memory/SKILL.md) to preserve it alongside the change.
 
 ## Skills
 

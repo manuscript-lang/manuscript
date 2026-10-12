@@ -7,7 +7,9 @@ weight = 15
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The standard module `@std/collections.ms` exports `List[T]`, `Map[K, V]`, and `Set[T]` as immutable collections. Import each name used by the module; ordinary bracket literals also require the canonical List import. Their type arguments describe the elements, keys, and values.
+Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are immutable.
+
+Import each collection type you name from `@std/collections.ms`. Ordinary bracket list literals also require the canonical `List` import.
 
 | Type | Contents |
 | --- | --- |
@@ -19,7 +21,7 @@ The standard module `@std/collections.ms` exports `List[T]`, `Map[K, V]`, and `S
 
 Brackets construct immutable lists of values:
 
-```text
+```manuscript
 let values = [1, 2, 3]
 let empty: List[Int] = []
 ```
@@ -38,7 +40,7 @@ Resource and service references may be stored freely. Retaining them does not ke
 
 Collection applications are invariant. `List[Int]` is not assignable to `List[Float]`; a list inserts neither numeric conversions nor implicit unions of unrelated element types.
 
-```text
+```manuscript
 let nested: List[List[Int]] = [[], [1, 2]]
 # Rejected: incompatible Int and Float elements.
 let mixed = [1, 2.0]

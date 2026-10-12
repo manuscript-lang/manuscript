@@ -7,7 +7,7 @@ weight = 61
 
 [Guide index](_index.md) · [Design index](../_index.md)
 
-This page is the normative contract for joined groups created by `parallel` and `parallel_map`. Other pages link here rather than restate it.
+A parallel call waits for all the operations it started, including their cleanup. This waiting is called joining. A failure or timeout first asks unfinished work to stop, then waits for it. This page defines the exact lifecycle and which outcome the caller receives.
 
 ## Terms
 
@@ -22,7 +22,7 @@ This page is the normative contract for joined groups created by `parallel` and 
 
 `ExecutionError` is exported by `@std/tasks.ms`; import it when naming the result type. Its Crashed payload uses `OperationId`, also exported by `@std/tasks.ms`. The standard declaration is:
 
-```text
+```manuscript
 type ExecutionError:
     case TimedOut
     case Crashed(operation: OperationId, message: String)

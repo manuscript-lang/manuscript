@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/io.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 File: File
 operation close: fn()->Unit
 operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
@@ -20,7 +20,7 @@ operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 
 Kind: interface.
 
-```text
+```manuscript
 Files: Files
 operation open: fn(path: String)->Result[File, IoError]
 ```
@@ -29,7 +29,7 @@ operation open: fn(path: String)->Result[File, IoError]
 
 Kind: alternative.
 
-```text
+```manuscript
 IoError: IoError
 case Closed
 case InvalidInput
@@ -41,7 +41,7 @@ case Failed(message: String)
 
 Kind: interface.
 
-```text
+```manuscript
 ReadStream: ReadStream
 operation close: fn()->Unit
 operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
@@ -51,7 +51,7 @@ operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 
 Kind: interface.
 
-```text
+```manuscript
 WriteStream: WriteStream
 operation close: fn()->Unit
 operation flush: fn()->Result[Unit, IoError]
@@ -62,7 +62,7 @@ operation write: fn(data: Bytes)->Result[Unit, IoError]
 
 Kind: fn.
 
-```text
+```manuscript
 copy: fn(input: ReadStream, output: WriteStream, max_bytes: Int)->Result[Int, LibraryError]
 ```
 
@@ -70,7 +70,7 @@ copy: fn(input: ReadStream, output: WriteStream, max_bytes: Int)->Result[Int, Li
 
 Kind: fn.
 
-```text
+```manuscript
 read_all: fn(input: ReadStream, max_bytes: Int)->Result[Bytes, LibraryError]
 ```
 
@@ -78,7 +78,7 @@ read_all: fn(input: ReadStream, max_bytes: Int)->Result[Bytes, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 read_line: fn(input: ReadStream, max_bytes: Int)->Result[Optional[String], LibraryError]
 ```
 

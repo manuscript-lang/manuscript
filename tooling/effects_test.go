@@ -26,7 +26,7 @@ fn pure() -> Int:
 
 fn direct(resource: Resource) -> Unit:
     with item = resource:
-        assert true
+        return
 
 fn transitive(resource: Resource) -> Unit:
     direct(resource: resource)
@@ -34,7 +34,7 @@ fn transitive(resource: Resource) -> Unit:
 fn nested(resource: Resource) -> Unit:
     let callback = fn() -> Unit:
         with item = resource:
-            assert true
+            return
 
 fn indirect(callback: fn() -> Unit) -> Unit:
     callback()

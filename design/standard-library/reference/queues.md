@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/queues.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Queue: Queue[T]
 type parameters: T
 field capacity: Int
@@ -23,7 +23,7 @@ operation send: fn(value: T)->Result[Unit, QueueError]
 
 Kind: alternative.
 
-```text
+```manuscript
 QueueError: QueueError
 case Closed
 ```

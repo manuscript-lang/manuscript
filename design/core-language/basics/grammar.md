@@ -1,13 +1,15 @@
 +++
 title = "Source grammar"
-weight = 5
+weight = 10.5
 +++
 
 # Source grammar
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-This page defines the accepted source forms. The [expression rules](expressions.md), [type rules](../types/compatibility.md), and individual construct pages determine whether a parsed program is legal. Parser libraries and internal syntax-tree representations are implementation choices.
+This page is the exact syntax reference. Use it to check how a declaration, expression, block, or pattern must be written. If you are learning the language, read [source structure](syntax.md) and the practical concept pages first.
+
+Parsing checks the shape of source. The [expression rules](expressions.md), [type rules](../types/compatibility.md), and concept pages then determine whether that source is legal. The design does not prescribe a parser library or internal syntax-tree format.
 
 ## Source characters and tokens
 
@@ -15,15 +17,15 @@ Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical 
 
 The reserved words are:
 
-```text
-and assert break case continue else export false fn for from if
+```manuscript
+and break case continue else export false fn for from if
 impl import in interface let match not or return self test true try type
 unit var while with
 ```
 
 `self` names the implicit implementation receiver; it cannot be declared as a parameter or binding. Built-in type names and alternative constructors are names resolved by the type checker, not lexical keywords.
 
-A `#` outside a text literal begins a comment through the physical line's end. Spaces separate tokens. Tabs in code, including indentation, are rejected; a tab in comment contents is permitted. Literal control characters inside text are rejected: use the defined [text escapes](text-and-bytes.md#text-literals). Semicolons and explicit backslash line continuation are rejected.
+A `#` outside a text literal begins a comment through the physical line's end. Spaces separate tokens. Tabs in code, including indentation, are rejected; a tab in comment contents is permitted. Literal control characters inside text are rejected: use the defined [text escapes](text-and-bytes.md#string-literals). Semicolons and explicit backslash line continuation are rejected.
 
 Numeric tokens use decimal digits only:
 
@@ -63,7 +65,7 @@ A delimiter opened outside the function body cannot close at body indentation.
 
 Group a function expression when a following comma needs to belong to an enclosing argument list:
 
-```text
+```manuscript
 fn example() -> Int:
     return apply(
         value: 3,
@@ -76,7 +78,7 @@ fn example() -> Int:
 
 Here the function header has twelve leading spaces, its body sixteen, and the grouping close eight. The close ends the function suite before its comma separates the outer argument. The parentheses are grouping, not a tuple or another function kind. An ungrouped suite-bodied function can also be the final argument:
 
-```text
+```manuscript
 fn example() -> Int:
     return apply(
         value: 3,
@@ -93,7 +95,8 @@ In the EBNF below, braces mean repetition and brackets mean an optional grammar 
 
 ```ebnf
 Module        = { Import | Declaration } ;
-Import        = "import", Name, "from", PlainStringLiteral, NEWLINE ;
+Import        = "import", ( Name | "{", Name, { ",", Name }, [ "," ], "}" ),
+                "from", PlainStringLiteral, NEWLINE ;
 Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration)
               | Implementation | TestDeclaration ;
 
@@ -129,7 +132,9 @@ FunctionType  = "fn", "(", [ Parameters ], ")", "->", Type ;
 
 A `type` declares either record fields or alternative cases. An `interface` declares one or more operation signatures. Mixing these forms is rejected. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Function parameters and results always have explicit types. Source parameter declarations do not accept default arguments, variadic parameters, parameter patterns, or anonymous-function type parameters. Trusted library/API contracts may define optional named arguments without exposing source default-parameter syntax; an omitted API argument is checked against that declared contract.
 
-Imports and declarations may be interleaved; import visibility and declaration resolution do not depend on written order. Import paths and test names are plain text literals: escapes are permitted, interpolation is rejected. `export` applies to types, interfaces, and named module functions, not tests or implementation blocks. Implementation blocks declare no type parameters. In `impl Contract[T] for Data[T]:`, `T` comes from the receiver type declaration; applicable bounds come from the type and interface declarations. Every parameter used in the interface or method signatures must occur in the nominal receiver application. Contract operations and implementation methods cannot declare their own type parameters. Implementation applicability and overlap follow [contracts](../types/contracts.md#generic-implementations).
+Imports and declarations may be interleaved; import visibility and declaration resolution do not depend on written order. Import paths and test names are plain text literals: escapes are permitted, interpolation is rejected. `export` applies to types, interfaces, and named module functions, not tests or implementation blocks. Implementation blocks declare no type parameters. In `impl Contract[T] for Data[T]:`, `T` comes from the receiver type declaration; applicable bounds come from the type and interface declarations.
+
+Every parameter used in the interface or method signatures must occur in the nominal receiver application. Contract operations and implementation methods cannot declare their own type parameters. Implementation applicability and overlap follow [contracts](../types/contracts.md#generic-implementations).
 
 Value types have no intersection/refinement syntax. `&` is used only to combine generic bounds, such as `T: Read & Closeable`; bound order does not affect the requirements. `Synchronized[T]` and `SynchronizedGuard[T]` are ordinary imported types, and lock scopes use existing `with` syntax.
 
@@ -143,7 +148,7 @@ Statement     = SimpleStatement, NEWLINE
               | IfStatement | WhileStatement | ForStatement | MatchStatement
               | WithStatement ;
 SimpleStatement = Binding | Assignment | ReturnStatement | "break" | "continue"
-                | "assert", Expression | CallStatement ;
+                | CallStatement ;
 Binding       = ("let" | "var"), (Name, [ ":", Type ] | PositionalPattern | RecordPattern),
                 "=", Expression ;
 Assignment    = Name, "=", Expression ;
@@ -175,7 +180,7 @@ The existing [with construct](../../ownership-and-cleanup/cleanup/scopes.md) sup
 
 ## Rejected forms
 
-```text
+```manuscript
 let count = 3                       # Not a complete module item.
 fn wrong(value: Int = 3) -> Int:     # Default parameter syntax is rejected.
     return value
@@ -188,4 +193,4 @@ fn wrong() -> Int:
 
 Each example is an independent rejected form. A syntax error does not require the parser to continue and produce further type diagnostics for that fragment.
 
-[Previous: Source structure and syntax](syntax.md) · [Next: Expressions and operators](expressions.md)
+[Back to language basics](_index.md) · [Expressions and operators](expressions.md)

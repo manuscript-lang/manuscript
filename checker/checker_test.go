@@ -28,3 +28,25 @@ func TestAcceptedDesignFixtures(t *testing.T) {
 		})
 	}
 }
+
+func TestOmittedLabelPreservesSourceAST(t *testing.T) {
+	source := "fn identity[T](value: T) -> T:\n    return value\nfn call() -> Int:\n    return identity(3)\n"
+	module, err := parser.Parse("argument.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := module.Declarations[1].Body[0].Value
+	for range 2 {
+		program := checker.Check([]*syntax.Module{module}, nil)
+		if len(program.Diagnostics) != 0 {
+			t.Fatal(program.Diagnostics)
+		}
+		if call.Args[0].Name != "" {
+			t.Fatal("checking changed the source argument label")
+		}
+		arguments := program.Expressions[call].Arguments
+		if len(arguments) != 1 || arguments[0].Name != "value" || arguments[0].Value != call.Args[0].Value || arguments[0].Pos != call.Args[0].Pos {
+			t.Fatal("incorrect checked argument mapping", arguments)
+		}
+	}
+}

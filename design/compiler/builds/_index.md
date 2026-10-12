@@ -7,8 +7,8 @@ weight = 97
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-Configure projects and module paths, pin identities, generate stable output, and respect Go package compilation boundaries.
+These pages explain how the compiler locates source files, records the versions used by a build, and reuses cached work. Start with the project manifest if you are setting up an application.
 
-- [Project configuration and module paths](project-configuration.md)
-- [Pinned dependencies and deterministic output](reproducibility.md)
-- [Caching and Go package boundaries](incremental-compilation.md)
+- [Project configuration and module paths](project-configuration.md) — Set the source directory, entry file, and import paths in `ms.toml`.
+- [Pinned dependencies and deterministic output](reproducibility.md) — Record versions and inputs so builds use the intended distribution.
+- [Caching and Go package boundaries](incremental-compilation.md) — Understand what can be cached and when Go must rebuild a package.

@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 
@@ -44,7 +46,11 @@ test "contract views and callbacks":
     let optional: Optional[ReadValue[Int]] = some(value: forwarded)
     let callback = CallbackReader(read_value: seven)
     let callback_view = ReadValue[Int](value: callback)
-    assert first.get() == 7
-    assert copied.get() == 7
-    assert callback_view.get() == 7
-    assert consume(source: holder.reader) == 7
+    if not (first.get() == 7):
+        return panic(message: "check failed")
+    if not (copied.get() == 7):
+        return panic(message: "check failed")
+    if not (callback_view.get() == 7):
+        return panic(message: "check failed")
+    if not (consume(source: holder.reader) == 7):
+        return panic(message: "check failed")

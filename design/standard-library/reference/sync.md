@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/sync.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Synchronized: Synchronized[T]
 type parameters: T
 field value: T
@@ -21,7 +21,7 @@ operation lock: fn()->SynchronizedGuard[T]
 
 Kind: interface.
 
-```text
+```manuscript
 SynchronizedGuard: SynchronizedGuard[T]
 type parameters: T
 operation close: fn()->Unit

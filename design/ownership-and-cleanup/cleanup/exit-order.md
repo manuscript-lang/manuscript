@@ -7,7 +7,7 @@ weight = 56
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A scope's registered `with` cleanup executes on every exit path. Ordinary aliases and aggregates do not add automatic release actions.
+When a scope ends, the runtime runs the cleanup registered by `with`. It closes inner resources before outer ones. Another reference to a resource, including one stored in a record, does not register another close action.
 
 1. Evaluate the pending return value or select the initiating error, fault, or cancellation.
 2. Finish any active joined API call: it cancels unfinished operations if needed and joins them before unwinding into the caller's cleanup.

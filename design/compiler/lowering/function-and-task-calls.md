@@ -7,7 +7,7 @@ weight = 93
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Ordinary functions, closures, and contract methods become Go calls with a hidden execution-context parameter. Closures have environments containing their snapshot captures. Source signatures retain one function kind; every function can suspend.
+The compiler turns functions, closures, and contract methods into Go calls. Each generated call carries an internal execution context for cancellation and deadlines. A closure also keeps its captured snapshots in an environment object. Source code still has one function kind; every function can wait for work.
 
 Explicitly imported `parallel`, `parallel_map`, and `Background` methods lower as typed library calls. Scheduling, cancellation, joining, admission, and shutdown policy live in the standard library/runtime rather than an expanded source intrinsic list. Native runtime primitives start goroutines, signal cancellation, join completion, and synchronize state. The compiler checks the resolved standard API declarations and ordinary callback signatures; a same-spelled application declaration acquires none of that special typing. There is no special background class or task transfer. [Go concurrency specification](https://go.dev/ref/spec#Go_statements)
 

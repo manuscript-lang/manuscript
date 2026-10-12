@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/net.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Connection: Connection
 operation close: fn()->Unit
 operation local_address: fn()->String
@@ -27,7 +27,7 @@ operation write_timeout: fn(data: Bytes, timeout: Duration)->Result[Unit, IoErro
 
 Kind: record.
 
-```text
+```manuscript
 Datagram: Datagram
 field data: Bytes
 field sender: String
@@ -37,7 +37,7 @@ field sender: String
 
 Kind: interface.
 
-```text
+```manuscript
 DatagramSocket: DatagramSocket
 operation address: fn()->String
 operation close: fn()->Unit
@@ -51,7 +51,7 @@ operation send_timeout: fn(data: Bytes, address: String, timeout: Duration)->Res
 
 Kind: record.
 
-```text
+```manuscript
 DnsRecord: DnsRecord
 field kind: String
 field value: String
@@ -64,7 +64,7 @@ field port: Int
 
 Kind: interface.
 
-```text
+```manuscript
 Listener: Listener
 operation accept: fn()->Result[Connection, LibraryError]
 operation accept_timeout: fn(timeout: Duration)->Result[Connection, LibraryError]
@@ -76,7 +76,7 @@ operation close: fn()->Unit
 
 Kind: fn.
 
-```text
+```manuscript
 contains_ip: fn(cidr: String, address: String)->Result[Bool, LibraryError]
 ```
 
@@ -84,7 +84,7 @@ contains_ip: fn(cidr: String, address: String)->Result[Bool, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 parse_cidr: fn(text: String)->Result[String, LibraryError]
 ```
 
@@ -92,7 +92,7 @@ parse_cidr: fn(text: String)->Result[String, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 parse_ip: fn(text: String)->Result[String, LibraryError]
 ```
 

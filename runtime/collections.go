@@ -36,6 +36,15 @@ func constructor(typ string, args []Argument) Value {
 }
 func Construct(typ string, args []Argument) Value { return constructor(typ, args) }
 func NativeMember(receiver Value, name string) Value {
+	return NativeMemberResult(receiver, name, "")
+}
+func NativeMemberResult(receiver Value, name, result string) Value {
+	if function, ok := nativeLibraryMember(receiver, name, result); ok {
+		return function
+	}
+	if native, ok := receiver.(Native); ok {
+		return native.Operation(name)
+	}
 	if name == "milliseconds" || name == "seconds" || name == "minutes" {
 		return duration(receiver, name)
 	}

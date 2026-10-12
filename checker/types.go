@@ -62,8 +62,13 @@ type Info struct {
 	NoReturn    bool
 	Captures    []*Binding
 	TypeArgs    []*Type
+	// Arguments retains written order with omitted function labels resolved.
+	Arguments []syntax.Argument
 }
+type Flow struct{ FallsThrough bool }
 type Program struct {
+	Flow             map[*syntax.Statement]Flow
+	Scopes           map[*syntax.Expression]ScopeState
 	Cleanups         map[*syntax.Statement]*Method
 	Effects          map[string][]string
 	Modules          []*syntax.Module

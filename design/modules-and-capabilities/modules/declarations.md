@@ -7,11 +7,15 @@ weight = 77
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A module defines which declarations belong together and which are available to other code.
-
-Each `.ms` file is one module. Its resolved filesystem path identifies it; source files do not contain `module` declarations. Declarations are internal unless prefixed with `export`. Imports select individual exported symbols from explicit file paths; wildcard imports and cyclic module dependencies are rejected.
+Each `.ms` file is a module: a group of declarations with its own boundary. Use `export` to make a declaration available to other files and `import` to bring an individual exported declaration into the current file. Resolved file paths identify modules. There is no `module` declaration, wildcard import, or cyclic module dependency.
 
 ## Names and declaration order
+
+Import multiple symbols with `import { Name, OtherName } from "./module.ms"`.
+The braces contain a nonempty, comma-separated list; a trailing comma and
+multiple lines are permitted. Each name selects an export and enters the same
+module namespace as a single-symbol import. Duplicate names and collisions are
+errors. Single-symbol `import Name from "./module.ms"` remains supported.
 
 Types, interfaces, module functions, and imported symbols share one ordinary module namespace. Duplicate names, import/declaration collisions, and function overloading are rejected. Imports and declarations may appear in any order: collect names and signatures before checking bodies, so forward references and mutually recursive functions work. Type layout cycles follow the separate [recursive data rule](../../core-language/types/records.md#recursive-data), not module-cycle rules.
 
@@ -27,14 +31,14 @@ Import renaming, namespace imports, re-exports, and wildcard imports have no syn
 
 The file `src/domain/customers.ms` exports a nominal identifier type:
 
-```text
+```manuscript
 export type CustomerId:
     value: String
 ```
 
 The file `src/main.ms` imports the individual symbol:
 
-```text
+```manuscript
 import CustomerId from "./domain/customers.ms"
 ```
 
@@ -44,7 +48,7 @@ Exporting a type makes it part of the module boundary; an internal declaration s
 
 An exported function, data type, or contract cannot expose an internal nominal type through a parameter, result, field, case payload, generic bound, or operation signature. Check the transitive public type surface through nested applications and exposed data members. Exported types from other modules may appear in a public signature without automatically re-exporting their names. Generic parameters themselves are not private nominal declarations.
 
-```text
+```manuscript
 type PrivateToken:
     value: String
 
@@ -59,10 +63,9 @@ An `impl` belongs to the receiver's nominal data type's defining module and beco
 
 ## Standard-library imports
 
-```text
+```manuscript
 import List from "@std/collections.ms"
-import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
+import { Result, map_error } from "@std/result.ms"
 import parallel from "@std/tasks.ms"
 ```
 
@@ -72,11 +75,11 @@ import parallel from "@std/tasks.ms"
 
 A project-root `ms.toml` can define file and directory aliases. With `@domain` mapped to `./src/domain` and `@customers` mapped to `./src/domain/customers.ms`, either import selects the same exported type:
 
-```text
+```manuscript
 import CustomerId from "@domain/customers.ms"
 ```
 
-```text
+```manuscript
 import CustomerId from "@customers"
 ```
 

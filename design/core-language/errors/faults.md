@@ -1,25 +1,26 @@
 +++
-title = "Assertions and programming faults"
+title = "Programming faults"
 weight = 30
 +++
 
-# Assertions and programming faults
+# Programming faults
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A programming fault signals a broken invariant. Expected bad inputs should be validated with control flow and represented by [Result](results.md) when the caller needs a failure value.
+A programming fault means an assumption the code relies on has failed. Use ordinary conditional returns to check that assumption. For ordinary invalid user input, use conditions and return a [Result](results.md) error so the caller can respond.
 
-## Assertions
+## Invariant checks
 
-`assert condition` checks a programming invariant and produces a fault when false.
+Use ordinary `if` and `return` control flow to check an invariant. Import `panic` from `@std/faults.ms` when a violated invariant must produce a programming fault.
 
-The condition must have type `Bool` and is evaluated once. `assert` is a statement, not a value-producing expression; numeric or text conditions are rejected.
+```manuscript
+import panic from "@std/faults.ms"
 
-```text
 fn discount_validated(price: Decimal, percent: Decimal) -> Decimal:
-    assert price > 0d
-    assert percent > 0d
-    assert percent < 100d
+    if price <= 0d:
+        return panic(message: "Price must be positive")
+    if percent <= 0d or percent >= 100d:
+        return panic(message: "Percent must be positive and below 100")
     return price * (1d - percent / 100d)
 ```
 
@@ -31,7 +32,7 @@ An explicit `panic(message: message)` produces a programming fault when code det
 
 Its source type is `fn(message: String) -> Never`. It never completes normally; a call can appear where any expression result type is expected, including an `Int` return position. This does not create a catchable expected-error value or permit normal fallthrough in a non-`Unit` function. See [Unit, Never, and return completeness](../functions/declarations-and-calls.md#unit-and-never).
 
-```text
+```manuscript
 panic(message: "Required invariant was violated.")
 ```
 

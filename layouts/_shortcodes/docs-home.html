@@ -1,0 +1,10 @@
+<section class="docs-hero" aria-labelledby="home-title">
+  <div class="hero-eyebrow">Documentation <span class="version-badge">v0.1</span></div>
+  <h1 id="home-title">Learn Manuscript</h1>
+  <p class="hero-description">{{ .Page.Description | markdownify }}</p>
+  <div class="hero-actions">
+    {{ range slice (dict "title" "Get started" "path" "getting-started" "icon" "terminal") (dict "title" "Take the tour" "path" "learn/tour" "icon" "book") (dict "title" "Module reference" "path" "standard-library/reference" "icon" "code") }}
+    <a class="start-link" href="{{ with $.Site.GetPage .path }}{{ .RelPermalink }}{{ end }}"><span class="start-link-icon">{{ partial "docs/entry-icon" .icon }}</span><span>{{ .title }}</span><span aria-hidden="true">→</span></a>
+    {{ end }}
+  </div>
+</section>

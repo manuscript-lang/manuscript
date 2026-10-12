@@ -7,7 +7,7 @@ weight = 105
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Individual semantic checks must also hold together in complete programs. These programs connect scoped cleanup, concurrency, external I/O, and tooling.
+A feature can pass an isolated test and still fail when combined with other features. These complete-program checks combine cleanup, concurrency, external I/O, and tooling to catch those interactions.
 
 Validate these complete programs as their APIs become concrete:
 

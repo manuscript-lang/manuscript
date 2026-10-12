@@ -7,7 +7,7 @@ weight = 61
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
-Executable checks cover these new library surfaces:
+These executable checks exercise package behavior through the compiler and native runtime. Use the listed fixtures and tests to verify data handling, limits, errors, and cleanup.
 
 - `tests/e2e/testdata/accept/library*.ms`: compiler-to-native execution for exact JSON numbers, duplicate-key/depth failures, codecs, hashes, binary range limits, compression, ZIP, and generic sequential callbacks/function values.
 - `runtime/library_test.go`: malformed strict encodings/numbers, signed 64-bit binary boundaries, surrogate/duplicate-key JSON validation, PBKDF2 vector, AEAD tampering, Ed25519, compression trailing bytes/bombs, ZIP/TAR paths/limits, exclusive filesystem writes, symlink-safe removal, HTTP duplicate headers/status/redirect/limits, and TCP half-close/round-trip, empty/oversized UDP datagrams, socket close/cancellation, and Network close interrupting active HTTP requests.

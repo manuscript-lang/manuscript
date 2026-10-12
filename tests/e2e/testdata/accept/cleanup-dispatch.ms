@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import Closeable from "@std/cleanup.ms"
 import Synchronized from "@std/sync.ms"
 
@@ -12,7 +14,7 @@ type Resource:
 
 impl OtherClose for Resource:
     fn close(flag: Bool) -> Int:
-        assert false
+        return panic(message: "Unexpected case")
         return 0
 
 impl Closeable for Resource:
@@ -27,26 +29,30 @@ impl Disposable for Resource:
 
 fn bound_cleanup[T: Disposable](resource: T) -> Unit:
     with item = resource:
-        assert true
+        let completed = unit
 
 fn canonical_cleanup[T: Closeable](resource: T) -> Unit:
     with item = resource:
-        assert true
+        let completed = unit
 
 test "cleanup uses the selected contract":
     let closed = Synchronized(value: false)
     with resource = Resource(closed: closed):
         with locked = closed.lock():
-            assert not locked.get()
+            if not (not locked.get()):
+                return panic(message: "check failed")
     with locked = closed.lock():
-        assert locked.get()
+        if not (locked.get()):
+            return panic(message: "check failed")
     with locked = closed.lock():
         locked.set(value: false)
     bound_cleanup(resource: Resource(closed: closed))
     with locked = closed.lock():
-        assert locked.get()
+        if not (locked.get()):
+            return panic(message: "check failed")
     with locked = closed.lock():
         locked.set(value: false)
     canonical_cleanup(resource: Resource(closed: closed))
     with locked = closed.lock():
-        assert locked.get()
+        if not (locked.get()):
+            return panic(message: "check failed")

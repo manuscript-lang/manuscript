@@ -7,7 +7,9 @@ weight = 34
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-This page defines standard exports and their binding rules. A trusted manifest may implement them, but cannot change their source identities or typing rules. The implicit prelude contains only the six intrinsic types and three compiler bounds; every declaration below is imported explicitly. Native implementation and compiler support do not make a name globally visible.
+Most standard names must be imported explicitly. Only six intrinsic types and three compiler bounds are available automatically. Native implementation or special compiler support does not make a name globally visible.
+
+This page is the exact reference for standard exports, their identities, and API typing. A trusted manifest may implement these declarations but cannot change their source identities or typing rules.
 
 ## Names and identity
 
@@ -29,7 +31,7 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 | `@std/io.ms` | `Files`, `File`, `ReadStream`, `WriteStream`, `IoError` |
 | `@std/cli.ms` | `Process` |
 
-```text
+```manuscript
 import Result from "@std/result.ms"
 import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
@@ -55,7 +57,7 @@ A missing or substituted List/Decimal import rejects the corresponding literal d
 
 `OperationId` is the single opaque, shareable identity for runtime operations, whether started by a joined group or admitted by a Background service. It has no source constructor and no implicit equality or hashing, and it grants no scheduling, joining, or transfer authority. A Background service's `status` and `cancel` act only on IDs it admitted. `WorkStatus` has nullary cases `Running`, `Succeeded`, `Failed`, `Cancelled`, `Crashed`, and `Unknown`; qualify these case names when necessary. `StartError` has `Closed` and `Full`. `IoError` has `Closed`, `InvalidInput`, `Unavailable`, and `Failed(message: String)`. These are shareable alternatives. Execution errors are defined in [joining](../../concurrency/joining.md).
 
-```text
+```manuscript
 fn panic(message: String) -> Never
 fn check_cancelled() -> Unit
 fn map_error[T, E, F](result: Result[T, E], transform: fn(cause: E) -> F) -> Result[T, F]
@@ -73,21 +75,17 @@ All concurrency names are explicit library exports. The calls below require the 
 
 Standard concurrency callbacks are ordinary function values. Parameters, fields, collections, and generic forwarding preserve their call behavior. Operations may return functions or services; resource lifetime remains governed by explicit cleanup.
 
-### Direct calls only
+### Function values
 
-`parallel`, `parallel_map`, the `Background` constructor, and `Background.start` may appear only as the resolved callee of a direct call. A plain function signature cannot retain their callback-proof requirements.
+`parallel` requires a direct call because its literal pack determines a heterogeneous result shape. The `Background` constructor also remains a direct constructor call.
 
-- `parallel_map[Int, Int](...)` is allowed when its callback has the required proof.
-- `let mapper = parallel_map[Int, Int]`, `let launch = background.start`, and passing either binding to a helper are rejected.
-- Other standard operations follow ordinary function-value rules. Sequential `map_error` may be specialized and stored as a value.
-
-Source contracts cannot express these callback-proof requirements. Restricted background submission views are therefore unsupported.
+`parallel_map[Int, Int]` may be specialized and stored as an ordinary function value. Stored values accept its required arguments; the optional `timeout` argument is available on direct calls. `background.start` and HTTP admission methods may be saved or passed to helpers. Source contracts can expose ordinary callback-taking operations, including wrappers around background submission.
 
 ### Inferred result packs
 
 A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`. Packs are safe to share, but have no equality, hashing, iteration, field access, or indexing. Generic helpers such as `map_error` can therefore preserve a parallel pack without a new source syntax.
 
-```text
+```manuscript
 fn parallel_map[T, U](
     items: List[T],
     operation: fn(item: T) -> U,
@@ -101,7 +99,7 @@ This binding additionally permits the same optional `timeout` argument. `operati
 
 `Background(limit: Int)` constructs a synchronized native service under the current execution context. `limit` must be positive. Its only optional arguments are `reporter: fn(failure: BackgroundFailure) -> Unit`, `drain: Duration`, and `history_limit: Int`. The defaults are the host diagnostic sink, zero drain, and 128 completed statuses. `drain` and `history_limit` must be nonnegative. Retained reporter resources must remain usable through service shutdown.
 
-```text
+```manuscript
 type BackgroundFailure:
     case Failed(operation: OperationId, cause: String)
     case Crashed(operation: OperationId, message: String)

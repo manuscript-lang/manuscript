@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 import Queue from "@std/queues.ms"
 import QueueError from "@std/queues.ms"
@@ -35,55 +37,66 @@ test "bounded queues drain on close":
         queue.close()
         match queue.receive():
             some(value):
-                assert value == 3
+                if not (value == 3):
+                    return panic(message: "check failed")
             none:
-                assert false
+                return panic(message: "Unexpected case")
         match queue.receive():
             some(value):
-                assert value == 4
+                if not (value == 4):
+                    return panic(message: "check failed")
             none:
-                assert false
+                return panic(message: "Unexpected case")
         match queue.receive():
             some(_):
-                assert false
+                return panic(message: "Unexpected case")
             none:
-                assert true
+                let completed = unit
         match queue.send(value: 5):
             ok(_):
-                assert false
+                return panic(message: "Unexpected case")
             error(cause):
-                assert cause == QueueError.Closed
+                if not (cause == QueueError.Closed):
+                    return panic(message: "check failed")
 
 test "atomic state and sealed builders":
     let state = Synchronized(value: 3)
     with locked = state.lock():
-        assert locked.get() == 3
+        if not (locked.get() == 3):
+            return panic(message: "check failed")
         locked.set(value: 4)
     with locked = state.lock():
-        assert locked.get() == 4
+        if not (locked.get() == 4):
+            return panic(message: "check failed")
     let list = ListBuilder[Int]()
     list.append(value: 1)
     list.append(value: 2)
-    assert list.freeze() == [1, 2]
-    assert list.freeze() == [1, 2]
+    if not (list.freeze() == [1, 2]):
+        return panic(message: "check failed")
+    if not (list.freeze() == [1, 2]):
+        return panic(message: "check failed")
     let map = MapBuilder[String, Int]()
     map.with_entry(key: "a", value: 1)
     map.with_entry(key: "a", value: 2)
     let expected: Optional[Int] = some(value: 2)
-    assert map.freeze().get(key: "a") == expected
+    if not (map.freeze().get(key: "a") == expected):
+        return panic(message: "check failed")
     let set = SetBuilder[Int]()
     set.with_value(value: 3)
     set.with_value(value: 3)
-    assert set.freeze().length() == 1
+    if not (set.freeze().length() == 1):
+        return panic(message: "check failed")
     let bytes = BytesBuilder()
     bytes.append(value: 65)
     bytes.concat(values: "B".to_bytes())
     let expected_text: Optional[String] = some(value: "AB")
-    assert bytes.freeze().to_text() == expected_text
+    if not (bytes.freeze().to_text() == expected_text):
+        return panic(message: "check failed")
     let text = StringBuilder()
     text.append(value: "hello")
     text.append(value: " world")
-    assert text.freeze() == "hello world"
+    if not (text.freeze() == "hello world"):
+        return panic(message: "check failed")
 
 test "pool leases guard aliases and release resources":
     let closed = Synchronized(value: false)
@@ -91,25 +104,29 @@ test "pool leases guard aliases and release resources":
     with pool = Pool(resources: [original]):
         match pool.acquire():
             error(_):
-                assert false
+                return panic(message: "Unexpected case")
             ok(acquired):
                 with lease = acquired:
                     match lease.get():
                         error(_):
-                            assert false
+                            return panic(message: "Unexpected case")
                         ok(alias):
                             lease.close()
                             match alias.read(max_bytes: 4):
                                 ok(_):
-                                    assert false
+                                    return panic(message: "Unexpected case")
                                 error(cause):
-                                    assert cause == IoError.Closed
+                                    if not (cause == IoError.Closed):
+                                        return panic(message: "check failed")
                 match acquired.get():
                     ok(_):
-                        assert false
+                        return panic(message: "Unexpected case")
                     error(cause):
-                        assert cause == PoolError.Closed
+                        if not (cause == PoolError.Closed):
+                            return panic(message: "check failed")
         with locked = closed.lock():
-            assert not locked.get()
+            if not (not locked.get()):
+                return panic(message: "check failed")
     with locked = closed.lock():
-        assert locked.get()
+        if not (locked.get()):
+            return panic(message: "check failed")

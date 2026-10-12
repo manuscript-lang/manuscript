@@ -57,7 +57,7 @@ func TestFormatCommentsAndErrors(t *testing.T) {
 	}
 }
 func TestInspectionDeterminismAndOriginalSpans(t *testing.T) {
-	source := "fn one() -> Int:\r\n    return 1\r\ntest \"calls\":\r\n    assert one() == 1\r\n"
+	source := "fn one() -> Int:\r\n    return 1\r\ntest \"calls\":\r\n    if one() != 1:\r\n        return\r\n"
 	result := compiler.CompileSource("inspect.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -90,5 +90,18 @@ func TestInspectInterface(t *testing.T) {
 	entity := inspection.Entities[0]
 	if entity.Kind != "interface" || entity.Name != "Read" || !entity.Exported || entity.Span.Start != 7 {
 		t.Fatalf("incorrect interface entity: %+v", entity)
+	}
+}
+
+func TestFormatGroupedImports(t *testing.T) {
+	input := "import { List,Map, } from \"@std/collections.ms\" # collections\n"
+	want := "import {List, Map,} from \"@std/collections.ms\"  # collections\n"
+	formatted, err := tooling.Format("imports.ms", input)
+	if err != nil || formatted != want {
+		t.Fatalf("got %q, err %v", formatted, err)
+	}
+	twice, err := tooling.Format("imports.ms", formatted)
+	if err != nil || twice != formatted {
+		t.Fatal("formatting is not idempotent", err)
 	}
 }

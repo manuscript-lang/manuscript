@@ -7,21 +7,29 @@ weight = 59
 
 [Design index](../_index.md)
 
-Concurrency is exposed through standard-library APIs. Ordinary calls run sequentially; every function can suspend. `parallel` runs related operations and joins them before returning. A `Background` service manages work with an explicitly chosen longer lifetime.
+An ordinary function call finishes before the caller moves on. Use a concurrency API when operations should run at the same time. Every function can wait for work; there is no separate `async` declaration.
 
-```text
-let [resA, resB] = try parallel(tasks: [first, second])
-```
+## Choose how the work ends
 
-The fragment belongs to a function returning `Result[U, ExecutionError]`; Unit tests match the result instead. See [the complete error-adapting example](parallel.md).
+| Need | Use | When it finishes |
+| --- | --- | --- |
+| Run a fixed set of functions together | `parallel` | Before the call returns, including on failure. |
+| Run one function over a list, with limited concurrency | `parallel_map` | Before the call returns, including on failure. |
+| Start work under a longer-lived service | `Background` | The service tracks it and waits for unfinished work during shutdown. |
 
-Values are ordinary references. There are no source-level task handles, task moves, ownership transfers, or separate async function declarations. Closures snapshot local bindings; resource references remain subject to runtime closed-state checks.
+Parallel APIs *join*: they wait for every started operation to finish its body and cleanup. A timeout requests a stop; it does not let the call return with work still running.
+
+Start with [parallel operations](parallel.md) for a complete example. Then read [joined groups](joining.md) for error outcomes and [cancellation](cancellation.md) for stopping and time budgets. [Runtime contracts](runtime.md) contains the implementation details.
+
+Concurrency APIs accept ordinary function values, including functions passed through parameters or stored in collections. Closures keep snapshots of the surrounding bindings they use. Keeping a resource reference does not keep the resource open; see [sharing](../ownership-and-cleanup/values/sharing.md).
 
 ## Sharing values and updating state
 
 All values may be shared freely, including functions, interface views, collections, and builders. Data is immutable; local `var` bindings are snapshotted by closures. Native mutable objects synchronize their internals. For a complete shared update, import `Synchronized` from `@std/sync.ms`:
 
-```text
+```manuscript
+import Synchronized from "@std/sync.ms"
+
 let counter = Synchronized(value: 0)
 with locked = counter.lock():
     locked.set(value: locked.get() + 1)
@@ -33,7 +41,7 @@ The guard holds the lock until scope exit. Read the [synchronization contract](.
 
 Concurrency adds no intrinsic names or compiler bounds. Import each API or type that the module names:
 
-```text
+```manuscript
 import parallel from "@std/tasks.ms"
 import parallel_map from "@std/tasks.ms"
 import Background from "@std/tasks.ms"
@@ -71,6 +79,7 @@ There is no task adoption, task reparenting, source-level detached work, or dyna
 1. [Parallel operations](parallel.md): calling `parallel`, argument preparation, and typed results
 2. [Joined groups](joining.md): the normative stop, join, and outcome contract for `parallel` and `parallel_map`
 3. [Cancellation and budgets](cancellation.md): cancellation requests, checkpoints, timeouts, and deadlines
-4. [Runtime contracts](runtime.md): atomic transitions, resource acquisition, adapter contexts, and host escalation
+4. [Synchronized values](../standard-library/data-and-io/synchronized-state.md): lock scopes, complete updates, aliases, and reentry
+5. [Runtime contracts](runtime.md): atomic transitions, resource acquisition, adapter contexts, and host escalation
 
 The standard library pages cover [bounded parallel mapping](../standard-library/tasks/parallel-map.md) and [background services](../standard-library/tasks/background.md).

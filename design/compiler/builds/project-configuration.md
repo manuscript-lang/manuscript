@@ -41,7 +41,7 @@ The compiler supplies the minimal intrinsic prelude and the standard modules und
 
 Imports name an exported symbol and a path:
 
-```text
+```manuscript
 import CustomerId from "./domain/customers.ms"
 import Order from "@domain/orders.ms"
 ```
@@ -63,7 +63,9 @@ For an import in `src/main.ms`, the first path resolves to `src/domain/customers
 
 The compiler normalizes resolved paths, including `.` and `..`, and resolves symbolic links to establish one canonical file identity within a build. Importing the same file through a relative path, a file alias, or a directory alias does not create separate modules. Cycle detection and module caching use this identity, so alternate path spellings cannot bypass cycle checks. Stable build metadata records paths relative to the owning project root rather than checkout-specific absolute paths.
 
-Application paths, source directories, user aliases, adapter manifests, and interface modules must resolve inside the project root after symlink resolution. Escapes are compile errors. `@std/...ms` is the sole exception: paths resolve inside the pinned standard-library directory, and normalization/symlinks cannot escape that directory or reach application files. Standard module identity is its distribution version/content identity plus canonical distribution-relative path, independent of its installation location. Standard modules cannot import application modules. Interfaces may use intrinsic types and import standard declarations or other registered interfaces, never application modules. Native Go dependencies are pinned adapter inputs. External Manuscript dependency projects and package acquisition syntax are unsupported.
+Application paths, source directories, user aliases, adapter manifests, and interface modules must resolve inside the project root after symlink resolution. Escapes are compile errors. `@std/...ms` is the sole exception: paths resolve inside the pinned standard-library directory, and normalization/symlinks cannot escape that directory or reach application files. Standard module identity is its distribution version/content identity plus canonical distribution-relative path, independent of its installation location. Standard modules cannot import application modules.
+
+Interfaces may use intrinsic types and import standard declarations or other registered interfaces, never application modules. Native Go dependencies are pinned adapter inputs. External Manuscript dependency projects and package acquisition syntax are unsupported.
 
 Changes to source roots, entry files, aliases, or the pinned standard-library distribution can change the resolved module graph. The compiler includes relevant manifest settings in build and analysis cache identity, alongside source and dependency identities.
 

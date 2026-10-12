@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/errors.ms"`.
 
 Kind: alternative.
 
-```text
+```manuscript
 LibraryError: LibraryError
 case InvalidInput
 case InvalidData

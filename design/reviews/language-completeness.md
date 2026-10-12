@@ -38,7 +38,7 @@ The user selected container-guarded recursive data and explicit concrete-to-cont
 
 Preserve the existing decisions when closing gaps:
 
-- Every supplied call argument is named. Unknown, duplicate, unnamed, and missing required arguments are rejected. Arguments evaluate in written order, independently of parameter declaration order.
+- Functions with exactly one parameter may omit the argument label. Multi-parameter functions and constructors require labels. Unknown labels, duplicate arguments, and missing required arguments are rejected. Arguments evaluate in written order, independently of parameter declaration order.
 - Numeric conversions are explicit. Integer literals infer `Int`, fractional literals infer `Float`, and `d` selects `Decimal`.
 - Records are nominal and immutable. Alternatives are tagged. Matching must cover alternatives without fallthrough.
 - Lists are homogeneous and immutable. Empty list literals can receive their type from an annotation or an expected parameter type. Map and set traversal follows insertion order.
@@ -72,7 +72,7 @@ Keep the public surface small. An omitted feature needs an explicit exclusion; a
 
 The 32 findings below include source references, concrete design probes, proposed decisions, and acceptance checks. Some findings share a dependency: generic dispatch needs contract coherence, host invocation needs standard names, and test discovery needs a build profile. Their proposals must be reconciled before adoption.
 
-Read [core language](#core-language), [modules and application boundaries](#modules-capabilities-and-application-boundaries), or [conformance and tooling](#conformance-and-developer-tooling).
+Read [core language](language-completeness.md#core-language), [modules and application boundaries](language-completeness.md#modules-capabilities-and-application-boundaries), or [conformance and tooling](language-completeness.md#conformance-and-developer-tooling).
 
 Module priorities use P1 for decisions needed by a complete application and P2 for later API or tooling milestones. These identify design dependencies, rather than validated implementation bugs.
 
@@ -370,15 +370,15 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 ## Conformance and developer tooling
 
-### TOOL 01 Test blocks are asserted syntax without a test language contract
+### TOOL 01 Test blocks have syntax without a test language contract
 
 **Reference:** TOOL-01. **Priority:** blocking.
 
-**Evidence:** [compiler/conformance/semantic-tests.md lines 7](../compiler/conformance/semantic-tests.md) introduces `test "name":` and ordinary `assert`; `:19-25` gives one example. `assert` already has semantics at [core-language/errors/faults.md lines 9](../core-language/errors/faults.md). No other design page defines test discovery, placement, result type, isolation, or authority inputs. [core-language/errors/propagation.md lines 7](../core-language/errors/propagation.md) defines `try` using an enclosing function, leaving its meaning inside test blocks open.
+**Evidence:** [compiler/conformance/semantic-tests.md lines 7](../compiler/conformance/semantic-tests.md) introduces `test "name":` and ordinary conditional returns for failed checks. Explicit programming faults are described at [core-language/errors/faults.md lines 9](../core-language/errors/faults.md). No other design page defines test discovery, placement, result type, isolation, or authority inputs. [core-language/errors/propagation.md lines 7](../core-language/errors/propagation.md) defines `try` using an enclosing function, leaving its meaning inside test blocks open.
 
-**Missing decisions:** Are tests top-level declarations in any module, or test-only grammar? Can tests nest? Are duplicate names legal? Do tests in imported modules run? Are bodies implicitly `Unit`, and can they `return` or use `try`? How does conformance assert an expected programming fault when source `try` cannot catch faults? How are fake capability values provided without adding ambient authority?
+**Missing decisions:** Are tests top-level declarations in any module, or test-only grammar? Can tests nest? Are duplicate names legal? Do tests in imported modules run? Are bodies implicitly `Unit`, and can they `return` or use `try`? How does conformance verify an expected programming fault when source `try` cannot catch faults? How are fake capability values provided without adding ambient authority?
 
-**Proposal:** Define module-level zero-parameter test bodies returning `Unit`, included only in a test build. Specify discovery roots independently of the production entry import graph, deterministic identifiers/order, duplicate-name rules, and per-test outcomes. Reject error-propagating `try` in `Unit` tests unless a supported explicit test result type is chosen. Keep expected-fault assertions in a runner-owned fixture mechanism rather than introducing source-level fault catches. Fake capabilities remain ordinary explicitly constructed/supplied values through a test support module.
+**Proposal:** Define module-level zero-parameter test bodies returning `Unit`, included only in a test build. Specify discovery roots independently of the production entry import graph, deterministic identifiers/order, duplicate-name rules, and per-test outcomes. Reject error-propagating `try` in `Unit` tests unless a supported explicit test result type is chosen. Keep expected-fault checks in a runner-owned fixture mechanism rather than introducing source-level fault catches. Fake capabilities remain ordinary explicitly constructed/supplied values through a test support module.
 
 **Acceptance:** One fault fails its test while unrelated tests still run; aggregate success requires every required test to pass. Cover discovery, duplicate names, nested tests, production exclusion, expected faults, and the chosen `try` behavior.
 
@@ -394,7 +394,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Proposal:** Add a registry mapping each normative rule to accepted/rejected fixtures and an observable oracle. Include scalar boundaries/conversions, Bool-only conditions, binding/shadowing rules, UTF-8 and immutable buffer admission, ordered map/set traversal, nominal constructor validation, alternative qualification/payloads/exhaustiveness, explicit implementations/bounds, function-value calls, and Result error compatibility. Numeric edge expectations must follow core-language decisions, not be invented by test authors.
 
-**Acceptance:** Rejection fixtures distinguish parsing, resolution, and typing. Runtime fixtures assert values, calls, or fault categories. Generated-Go snapshots verify generation/source-map stability rather than serve as the semantic oracle. Diagnostic prose remains changeable. Mark settled rules without tests “unverified,” and undecided rules “unresolved.”
+**Acceptance:** Rejection fixtures distinguish parsing, resolution, and typing. Runtime fixtures check values, calls, or fault categories. Generated-Go snapshots verify generation/source-map stability rather than serve as the semantic oracle. Diagnostic prose remains changeable. Mark settled rules without tests “unverified,” and undecided rules “unresolved.”
 
 ### TOOL 03 Complete program evidence is a scenario list not reproducible fixtures
 
@@ -402,7 +402,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Evidence:** [compiler/conformance/programs.md lines 9-16](../compiler/conformance/programs.md) names CLI, HTTP, background-worker, resource, cleanup, and debugger programs with broad outcomes. No source programs, harness inputs, or expected transcripts exist. CLI signatures are explicitly unspecified at [standard-library/hosts/cli.md lines 15](../standard-library/hosts/cli.md); HTTP registration/configuration is unspecified at [standard-library/hosts/http.md lines 15](../standard-library/hosts/http.md).
 
-**Proposal:** For each required program provide complete source, manifest, supplied fake/real capability profile, run procedure, and observable assertions. Separate deterministic harness checks from real integration checks. A bounded server fixture must name measurable limits and expected responses rather than merely “slow clients.” Compiler completeness requires an executable-entry/host contract; that decision and the manifest/build shape belong to the modules/build review. Pending runtime scenarios should be labeled dependencies on the in-progress runtime design, without re-deciding them here.
+**Proposal:** For each required program provide complete source, manifest, supplied fake/real capability profile, run procedure, and observable checks. Separate deterministic harness checks from real integration checks. A bounded server fixture must name measurable limits and expected responses rather than merely “slow clients.” Compiler completeness requires an executable-entry/host contract; that decision and the manifest/build shape belong to the modules/build review. Pending runtime scenarios should be labeled dependencies on the in-progress runtime design, without re-deciding them here.
 
 **Acceptance:** A fresh checkout can run each fixture without undocumented source declarations or host registration. “Conformance passed” names profile, version, fixture set, and platform, rather than claiming all v0.1 obligations from a partial suite.
 

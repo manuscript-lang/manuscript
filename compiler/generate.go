@@ -96,7 +96,11 @@ func generate(program *checker.Program, entry string, options Options) (string, 
 		}
 		out.WriteString("};if rt.RunTests(tests)>0{os.Exit(1)}\n")
 	} else if options.Entry {
-		out.WriteString("os.Exit(rt.RunMain(" + program.Symbols[entry]["main"].ID + ",os.Args[1:]))\n")
+		if options.CPUProfile == "" && options.HeapProfile == "" && options.Trace == "" {
+			out.WriteString("os.Exit(rt.RunMain(" + program.Symbols[entry]["main"].ID + ",os.Args[1:]))\n")
+		} else {
+			out.WriteString("os.Exit(rt.Profile(" + quote(options.CPUProfile) + "," + quote(options.HeapProfile) + "," + quote(options.Trace) + ",func()int{return rt.RunMain(" + program.Symbols[entry]["main"].ID + ",os.Args[1:])}))\n")
+		}
 	} else {
 		out.WriteString("_ = os.Args\n")
 	}
@@ -126,7 +130,7 @@ func (g *generator) function(params []syntax.Parameter, result *syntax.Type, bod
 		out.WriteString(self.ID + " := receiver; _ = " + self.ID + "\n")
 	}
 	out.WriteString(g.body(body))
-	out.WriteString("return rt.Unit{}\n})")
+	out.WriteString("//line manuscript.generated.go:1\nreturn rt.Unit{}\n})")
 	return out.String()
 }
 func (g *generator) body(body []*syntax.Statement) string {
@@ -170,8 +174,6 @@ func (g *generator) statement(s *syntax.Statement) string {
 			return "return rt.Unit{}\n"
 		}
 		return "return " + g.expression(s.Value) + "\n"
-	case "assert":
-		return "rt.Assert(" + g.expression(s.Value) + "," + quote(s.Pos.String()) + ")\n"
 	case "call":
 		return "_ = " + g.expression(s.Value) + "\n"
 	case "break", "continue":
@@ -289,6 +291,10 @@ func (g *generator) expression(e *syntax.Expression) string {
 		}
 		return "rt.Text(" + strings.Join(values, ",") + ")"
 	case "name", "apply":
+		if info.Method != nil && info.Method.Native != "" && info.Method.Native != "contract" {
+			member := e.Left
+			return "rt.NativeMemberResult(" + g.expression(member.Left) + "," + quote(member.Text) + "," + g.key(info.Type.Result) + ")"
+		}
 		if info.Binding != nil {
 			return g.binding(info.Binding)
 		}
@@ -313,6 +319,9 @@ func (g *generator) expression(e *syntax.Expression) string {
 		if info.Constructor != nil {
 			return "rt.NewAlternative(" + g.key(info.Constructor) + "," + quote(info.Case) + ",nil,nil)"
 		}
+		if info.Method != nil && info.Method.Native != "" && info.Method.Native != "contract" {
+			return "rt.NativeMemberResult(" + g.expression(e.Left) + "," + quote(e.Text) + "," + g.key(info.Type.Result) + ")"
+		}
 		if info.Method != nil {
 			return "rt.Bind(" + g.expression(e.Left) + "," + g.key(info.Method.Contract) + "," + quote(e.Text) + ")"
 		}
@@ -321,7 +330,11 @@ func (g *generator) expression(e *syntax.Expression) string {
 		}
 		return "rt.Field(" + g.expression(e.Left) + "," + quote(e.Text) + ")"
 	case "call":
-		args := g.arguments(e.Args)
+		arguments := e.Args
+		if info.Arguments != nil {
+			arguments = info.Arguments
+		}
+		args := g.arguments(arguments)
 		if info.Constructor != nil {
 			if info.Native == "view" {
 				return "rt.ViewOf(" + g.key(info.Type) + "," + g.expression(e.Args[0].Value) + ")"

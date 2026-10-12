@@ -7,16 +7,23 @@ weight = 88
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The compiler design translates Manuscript source into Go while enforcing source contracts that Go alone does not supply. This is an implementation contract for the future compiler.
-
-The compiler is implemented in Go. Parsing, type, scope, and capture checking produce typed intermediate representation with explicit evaluation order, closure captures, cleanup scopes, effects, and source locations. The backend emits one application Go package plus separate adapter interface schema packages, using versioned runtime/native capability packages, then invokes a pinned Go toolchain. Schema packages cannot depend on the application; [adapter bindings](../../modules-and-capabilities/adapters/manifests.md) define the acyclic package direction.
+The compiler turns Manuscript source into Go, then uses Go to build a native executable. Before generating code, it checks Manuscript's own rules; Go accepting the generated program is not enough to prove the source is valid.
 
 ## Following a program through compilation
 
-The compiler first reads the project's `ms.toml`, loads its entry `.ms` file, and discovers modules through relative path imports and optional aliases. Canonical resolved file paths establish module identity. Parsing establishes source structure without module declarations. Import checking resolves exported symbols and rejects dependency cycles; type, scope, and capture checking resolve source types, captures, and scopes. The typed representation records the facts lowering needs to preserve. Emitting and building the application uses the separately versioned runtime and adapters.
+1. **Load the project.** Read `ms.toml`, locate the entry `.ms` file, and follow imports. Resolve relative paths and aliases to canonical file identities so different spellings of one path identify the same module.
+2. **Parse the source.** Read declarations, expressions, and indented blocks. Each file is already a module; it needs no `module` declaration.
+3. **Resolve imports and names.** Find exported declarations and reject module dependency cycles.
+4. **Check the program.** Validate types, scopes, captured values, and source contracts.
+5. **Record checked facts.** Produce a typed intermediate representation, or typed IR. It records evaluation order, closure captures, cleanup scopes, effects, and source locations.
+6. **Generate Go and build.** Translate those facts into Go and invoke the pinned Go toolchain with the versioned runtime and adapters.
 
-The design specifies this pipeline, but does not establish a concrete parser library, AST schema, or internal package layout.
+## Package boundaries in the design
 
-See [project configuration and module paths](../builds/project-configuration.md), [type checking](type-checker.md), [scope and capture checking](scope-checker.md), and [the typed representation](typed-ir.md).
+The compiler is written in Go. The backend design emits one application Go package and separate packages for adapter interface schemas. Schema packages cannot depend on the application package; see [adapter bindings](../../modules-and-capabilities/adapters/manifests.md) for the dependency direction.
 
-[Next: Type checking and source contracts](../frontend/type-checker.md)
+This page defines required behavior. It does not prescribe a parser library, syntax-tree schema, or internal package layout. External adapters remain design work; [implementation coverage](https://github.com/manuscript-lang/manuscript/blob/main/IMPLEMENTATION.md) identifies the working compiler's limits.
+
+Continue with [project configuration](../builds/project-configuration.md), [type checking](type-checker.md), [scope and capture checking](scope-checker.md), and [typed IR](typed-ir.md).
+
+[Next: Type checking and source contracts](type-checker.md)
