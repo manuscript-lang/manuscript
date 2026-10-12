@@ -121,3 +121,20 @@ fn describe(cause: Error) -> String:
 		}
 	}
 }
+
+func TestUniversalToStringNavigation(t *testing.T) {
+	source := "fn text[T](value: T) -> String:\n    return value.toString()\n"
+	result := compiler.CompileSource("conversion.ms", source, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	nav, ok := tooling.NavigationAt(result.Program, "conversion.ms", strings.Index(source, "toString"))
+	if !ok || nav.Definition.File != "@std/intrinsics.ms" || !strings.Contains(nav.Hover, "fn()->String") {
+		t.Fatal("universal method must navigate to its source signature", nav, ok)
+	}
+	for _, effects := range result.Program.Effects {
+		if len(effects) != 0 {
+			t.Fatal("string conversion must not introduce resource effects", effects)
+		}
+	}
+}

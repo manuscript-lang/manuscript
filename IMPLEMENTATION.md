@@ -6,7 +6,7 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 
 ## Language and checking
 
-- UTF-8 source with original byte positions across BOM/CRLF normalization, ASCII identifiers, exact four-space suites, comments, delimiter continuation, numeric literals, escapes, and checked interpolation.
+- UTF-8 source with original byte positions across BOM/CRLF normalization, ASCII identifiers, exact four-space suites, comments, delimiter continuation, numeric literals, escapes, universal `toString()`, and interpolation of every value.
 - Exact intrinsic types, nominal immutable records and alternatives, `type` records/alternatives, generic types/functions, `interface` operation contracts, explicit implementations with inherited generic parameters and bounds, contract views, signature and argument-label checking, module-local extensions for imported source types and overlap rejection, and universal sharing and structural equality/hashing eligibility.
 - Calls with optional labels for single-parameter functions and mandatory labels for multi-parameter functions and constructors, per-call default argument expressions on source functions and methods, function values, suite closures, snapshot captures, and rejection of captured assignment. All function values may be shared through parameters, results, fields, collections, and generic forwarding.
 - Local inference, contextual constructors, invariant generic applications, bounds, guarded recursive layouts, and finite generic call specialization. Generic inference uses independently typed arguments; an expected result does not supply missing type arguments.

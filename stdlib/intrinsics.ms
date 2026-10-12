@@ -7,6 +7,10 @@ import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
 import Optional from "@std/optional.ms"
 
+# Every value has this operation, including unconstrained type parameters.
+interface ValueOperations:
+    fn toString() -> String
+
 interface StringOperations:
     fn normalize(form: String, max_bytes: Int) -> Result[String, StringError]
     fn concat(values: String) -> String

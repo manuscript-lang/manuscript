@@ -39,6 +39,9 @@ func NativeMember(receiver Value, name string) Value {
 	return NativeMemberResult(receiver, name, "")
 }
 func NativeMemberResult(receiver Value, name, result string) Value {
+	if name == "toString" {
+		return NewFunction(nil, "String", func(_ *Execution, _ []Value) Value { return Format(receiver) })
+	}
 	if function, ok := nativeLibraryMember(receiver, name, result); ok {
 		return function
 	}

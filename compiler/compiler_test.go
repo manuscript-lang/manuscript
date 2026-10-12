@@ -85,6 +85,9 @@ impl Read for Box:
 
 func TestRejectedConformanceVariants(t *testing.T) {
 	variants := []struct{ name, fixture, old, replacement, phase string }{
+		{"toString arity", "to-string", "true.toString()", "true.toString(value: 1)", "type"},
+		{"toString result", "to-string", "let convert: fn() -> String", "let convert: fn() -> Int", "type"},
+		{"no implicit string conversion", "to-string", "check(value: person.toString(),", "check(value: person,", "type"},
 		{"duplicate argument", "cl-01", "deduction: 2,", "amount: 2,", "type"},
 		{"unnamed multi-parameter argument", "cl-01", "deduction: 2,", "2,", "type"},
 		{"missing argument", "cl-01", "deduction: 2,", "", "type"},

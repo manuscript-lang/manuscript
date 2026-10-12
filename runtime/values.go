@@ -3,6 +3,7 @@ package msruntime
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -216,6 +217,22 @@ func Text(values ...Value) Value {
 	return text.String()
 }
 func Format(value Value) string {
+	return formatValue(value, 0)
+}
+
+// Opaque resources are deliberately not inspected or invoked while formatting.
+// The depth limit also makes cyclic values supplied by native adapters printable.
+func formatValue(value Value, depth int) string {
+	if depth >= 64 {
+		return "..."
+	}
+	items := func(values []Value) string {
+		parts := make([]string, len(values))
+		for i, value := range values {
+			parts[i] = formatValue(value, depth+1)
+		}
+		return strings.Join(parts, ", ")
+	}
 	switch v := value.(type) {
 	case string:
 		return v
@@ -229,9 +246,67 @@ func Format(value Value) string {
 		return "unit"
 	case Decimal:
 		return v.String()
+	case Record:
+		names := make([]string, 0, len(v.Fields))
+		for name := range v.Fields {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		parts := make([]string, len(names))
+		for i, name := range names {
+			parts[i] = name + ": " + formatValue(v.Fields[name], depth+1)
+		}
+		return displayType(v.Type) + "(" + strings.Join(parts, ", ") + ")"
+	case Alternative:
+		text := displayType(v.Type) + "." + v.Tag
+		if len(v.Fields) > 0 {
+			text += "(" + items(v.Fields) + ")"
+		}
+		return text
+	case List:
+		return "[" + items(v.Items) + "]"
+	case Pack:
+		return "(" + items(v.Items) + ")"
+	case Map:
+		parts := make([]string, len(v.Entries))
+		for i, entry := range v.Entries {
+			parts[i] = formatValue(entry.Key, depth+1) + ": " + formatValue(entry.Value, depth+1)
+		}
+		return "Map(" + strings.Join(parts, ", ") + ")"
+	case Set:
+		return "Set(" + items(v.Items) + ")"
+	case Bytes:
+		parts := make([]string, len(v.Items))
+		for i, b := range v.Items {
+			parts[i] = strconv.Itoa(int(b))
+		}
+		return "Bytes(" + strings.Join(parts, ", ") + ")"
+	case View:
+		return formatValue(v.Receiver, depth+1)
+	case Function, Generic:
+		return "[function]"
+	case Duration:
+		return strconv.FormatInt(int64(v), 10) + "ns"
+	case Instant:
+		return "Instant(" + strconv.FormatInt(v.Tick, 10) + ")"
+	case OperationId:
+		return "OperationId(" + strconv.FormatUint(v.number, 10) + ")"
+	case libraryBigInt:
+		return v.n.String()
+	case libraryTimestamp:
+		return v.t.UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
+	case libraryRegex:
+		return v.pattern.String()
 	}
-	Panic("runtime invariant: nonformattable value")
-	return ""
+	return "[object]"
+}
+
+func displayType(key string) string {
+	name, _ := splitType(key)
+	if at := strings.LastIndexAny(name, "/#"); at >= 0 {
+		name = name[at+1:]
+	}
+	return name
 }
 func Equal(a, b Value) bool {
 	switch x := a.(type) {
@@ -461,6 +536,9 @@ func ConcreteType(value Value) string {
 	}
 }
 func Bind(receiver Value, contract, name string, scopes ...TypeScope) Value {
+	if name == "toString" {
+		return NativeMember(receiver, name)
+	}
 	scope := TypeScope{}
 	if len(scopes) > 0 {
 		scope = scopes[0]
