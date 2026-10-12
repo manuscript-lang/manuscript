@@ -21,3 +21,10 @@ check:
 
 fmt:
 	$(GO) fmt ./...
+
+.PHONY: docs docs-check
+docs:
+	$(GO) run ./cmd/docgen
+
+docs-check:
+	$(GO) run ./cmd/docgen -check

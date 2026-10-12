@@ -1,0 +1,24 @@
++++
+title = "compress"
++++
+
+# @std/compress.ms
+
+Import each required symbol with `import Name from "@std/compress.ms"`.
+
+## compress
+
+Kind: fn.
+
+```text
+compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[Bytes, LibraryError]
+```
+
+## decompress
+
+Kind: fn.
+
+```text
+decompress: fn(data: Bytes, format: String, max_bytes: Int)->Result[Bytes, LibraryError]
+```
+

@@ -1,6 +1,6 @@
 baseURL = 'https://manuscript-lang.github.io/manuscript/'
 languageCode = 'en-us'
-title = 'Manuscript Design'
+title = 'Manuscript'
 theme = 'hugo-book'
 contentDir = 'design'
 publishDir = 'docs'

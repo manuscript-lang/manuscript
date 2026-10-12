@@ -1,6 +1,10 @@
 {{- $destination := .Destination -}}
 {{- $url := urls.Parse $destination -}}
-{{- if and (not $url.IsAbs) (strings.HasSuffix $url.Path ".md") -}}
+{{- if and (not $url.IsAbs) (fileExists (printf "static/%s" (strings.TrimPrefix "/" $url.Path))) -}}
+  {{- $destination = strings.TrimPrefix "/" $url.Path | relURL -}}
+  {{- with $url.RawQuery }}{{ $destination = printf "%s?%s" $destination . }}{{ end -}}
+  {{- with $url.Fragment }}{{ $destination = printf "%s#%s" $destination . }}{{ end -}}
+{{- else if and (not $url.IsAbs) (strings.HasSuffix $url.Path ".md") -}}
   {{- $target := path.Clean (path.Join "/" .Page.File.Dir $url.Path) -}}
   {{- $target = strings.TrimSuffix ".md" $target -}}
   {{- $target = strings.TrimSuffix "_index" $target -}}

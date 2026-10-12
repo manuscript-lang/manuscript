@@ -26,6 +26,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.1'
+          cache: false
+
+      - name: Check generated standard library documentation
+        run: make docs-check
+
       - name: Install Hugo Extended
         uses: peaceiris/actions-hugo@v3
         with:
@@ -63,6 +72,15 @@ jobs:
           if [ "$(git rev-parse FETCH_HEAD)" = "$(git rev-parse HEAD)" ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.1'
+          cache: false
+
+      - name: Check generated standard library documentation
+        run: make docs-check
 
       - name: Install Hugo Extended
         if: steps.current.outputs.publish == 'true'

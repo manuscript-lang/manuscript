@@ -9,6 +9,10 @@ weight = 31
 
 Choose standard types and runtime facilities by the lifetime, cancellation, and authority contracts they provide.
 
+## API reference
+
+[Browse all implemented modules](reference/_index.md), including the intrinsic prelude. The reference is generated from compiler definitions; [special call rules](call-rules.md) cover APIs with contextual signatures.
+
 ## Reading order
 
 ### 1. [Standard types](types/_index.md)

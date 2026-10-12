@@ -1,9 +1,17 @@
 +++
-title = "Overview"
+title = "Manuscript"
 weight = 1
 +++
 
-# Manuscript design guide
+# Manuscript
+
+Build readable native programs with static types, named arguments, explicit dependencies, and predictable work lifetimes.
+
+**[Get started](learn/getting-started.md)** · **[Take the tour](learn/tour.md)** · **[Browse the module reference](standard-library/reference/_index.md)**
+
+For AI tools, the complete implemented standard library is available as [plain Markdown](/stdlib.md) and [structured JSON](/stdlib.json), with an [LLM index](/llms.txt).
+
+## Language and design
 
 Manuscript is a statically typed language for teams where AI writes code and humans review system boundaries, execution flows, and changes. It uses explicit data, ordinary functions, concurrency APIs, and scoped resource cleanup. The compiler is written in Go and generates Go.
 
