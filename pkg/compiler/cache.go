@@ -19,8 +19,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	goruntime "runtime"
 	"sort"
 	"strings"
+	"sync"
 )
 
 type BuildPin struct {
@@ -41,43 +43,79 @@ type BuildMetadata struct {
 }
 
 func digest(data []byte) string { sum := sha256.Sum256(data); return hex.EncodeToString(sum[:]) }
-func implementationDigest() string {
+
+// Embedded inputs are fixed for the life of a process, so hash them once.
+// Files hash concurrently; the combined digest keeps the sorted walk order.
+var implementation = sync.OnceValue(func() string {
 	bundles := []struct {
 		name  string
 		files fs.FS
 	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"frontend", frontend.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"project", project.ImplementationSources}, {"compiler", ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}, {"stdlib", stdlib.Sources}}
+	return bundleDigest(bundles)
+})
+
+func implementationDigest() string { return implementation() }
+
+func bundleDigest(bundles []struct {
+	name  string
+	files fs.FS
+}) string {
 	var data strings.Builder
 	for _, bundle := range bundles {
-
-		fs.WalkDir(bundle.files, ".", func(path string, entry fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if entry.IsDir() || strings.HasSuffix(path, "_test.go") {
-				return nil
-			}
-			contents, err := fs.ReadFile(bundle.files, path)
-			if err != nil {
-				return err
-			}
-			data.WriteString(bundle.name + "/" + path + "\x00" + digest(contents) + "\n")
-			return nil
-		})
-
+		data.WriteString(bundleListing(bundle.name, bundle.files))
 	}
 	return digest([]byte(data.String()))
 }
+
+// Bundle listings are shared by implementation and workspace identities.
+var bundleListings sync.Map
+
+// bundleListing names each non-test file with its content digest in walk order.
+func bundleListing(name string, files fs.FS) string {
+	if listing, ok := bundleListings.Load(name); ok {
+		return listing.(string)
+	}
+	type entry struct{ path, sum string }
+	var entries []*entry
+	fs.WalkDir(files, ".", func(path string, item fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !item.IsDir() && !strings.HasSuffix(path, "_test.go") {
+			entries = append(entries, &entry{path: path})
+		}
+		return nil
+	})
+	var group sync.WaitGroup
+	next := make(chan *entry, len(entries))
+	for _, item := range entries {
+		next <- item
+	}
+	close(next)
+	for range goruntime.GOMAXPROCS(0) {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			for item := range next {
+				if contents, err := fs.ReadFile(files, item.path); err == nil {
+					item.sum = digest(contents)
+				}
+			}
+		}()
+	}
+	group.Wait()
+	var listing strings.Builder
+	for _, item := range entries {
+		if item.sum != "" {
+			listing.WriteString(name + "/" + item.path + "\x00" + item.sum + "\n")
+		}
+	}
+	actual, _ := bundleListings.LoadOrStore(name, listing.String())
+	return actual.(string)
+}
 func CurrentPin() (BuildPin, error) {
-	command, err := goCommand("env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOFLAGS", "GOAMD64", "GOARM", "GOARM64", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM")
+	toolchain, err := queryToolchain()
 	if err != nil {
-		return BuildPin{}, err
-	}
-	data, err := command.CombinedOutput()
-	if err != nil {
-		return BuildPin{}, fmt.Errorf("read Go toolchain: %w: %s", err, data)
-	}
-	var toolchain map[string]string
-	if err := json.Unmarshal(data, &toolchain); err != nil {
 		return BuildPin{}, err
 	}
 	if toolchain["GOFLAGS"] != "" {
@@ -133,6 +171,16 @@ func comparePin(root string, expected, actual BuildPin) error {
 }
 
 func atomicWrite(filename string, data []byte, mode os.FileMode) error {
+	return writeReplacing(filename, data, mode, true)
+}
+
+// replaceFile atomically replaces derived files whose contents are verified
+// or regenerated on use, so it does not wait for them to reach stable storage.
+func replaceFile(filename string, data []byte, mode os.FileMode) error {
+	return writeReplacing(filename, data, mode, false)
+}
+
+func writeReplacing(filename string, data []byte, mode os.FileMode, durable bool) error {
 	existing, err := os.ReadFile(filename)
 	if err == nil && digest(existing) == digest(data) {
 		return os.Chmod(filename, mode)
@@ -151,9 +199,11 @@ func atomicWrite(filename string, data []byte, mode os.FileMode) error {
 		file.Close()
 		return err
 	}
-	if err := file.Sync(); err != nil {
-		file.Close()
-		return err
+	if durable {
+		if err := file.Sync(); err != nil {
+			file.Close()
+			return err
+		}
 	}
 	if err := file.Close(); err != nil {
 		return err
@@ -208,10 +258,12 @@ func BuildCheckedWithType(result Result, output, cacheDir string, kind BuildType
 		source = debugSource(result)
 		metadata.SourceRoot = result.SourceRoot
 	}
+	tags := runtimeTags(result.Program)
 	identity, _ := json.Marshal(struct {
 		Metadata        BuildMetadata
 		GeneratedSHA256 string
-	}{metadata, digest([]byte(source))})
+		RuntimeTags     []string `json:",omitempty"`
+	}{metadata, digest([]byte(source)), tags})
 	metadata.BuildID = digest(identity)
 	cacheBinary, cacheMetadata := "", ""
 	if cacheDir != "" {
@@ -223,12 +275,12 @@ func BuildCheckedWithType(result Result, output, cacheDir string, kind BuildType
 		info, readErr := os.ReadFile(cacheMetadata)
 		if readErr == nil {
 			var cached BuildMetadata
-			binary, binaryErr := os.ReadFile(cacheBinary)
-			if json.Unmarshal(info, &cached) == nil && cached.BuildID == metadata.BuildID && binaryErr == nil && digest(binary) == cached.ExecutableSHA256 {
+			binaryDigest, binaryErr := fileDigest(cacheBinary)
+			if json.Unmarshal(info, &cached) == nil && cached.BuildID == metadata.BuildID && binaryErr == nil && binaryDigest == cached.ExecutableSHA256 {
 				expected := metadata
 				expected.ExecutableSHA256 = cached.ExecutableSHA256
 				if reflect.DeepEqual(expected, cached) {
-					if err := atomicWrite(output, binary, 0755); err != nil {
+					if err := publishArtifact(cacheBinary, output, binaryDigest); err != nil {
 						return metadata, err
 					}
 					return cached, writeBuildMetadata(output, cached)
@@ -236,31 +288,91 @@ func BuildCheckedWithType(result Result, output, cacheDir string, kind BuildType
 			}
 		}
 	}
-	if err := buildNative(source, output, kind); err != nil {
+	built := output
+	if cacheDir != "" {
+		// Build beside the cache entry, then publish one file to both places.
+		staging, err := os.MkdirTemp(cacheDir, ".build-")
+		if err != nil {
+			return metadata, err
+		}
+		defer os.RemoveAll(staging)
+		built = filepath.Join(staging, "program")
+	}
+	if err := buildNative(source, built, kind, tags); err != nil {
 		return metadata, err
 	}
-	binary, err := os.ReadFile(output)
+	executable, err := fileDigest(built)
 	if err != nil {
 		return metadata, err
 	}
-	metadata.ExecutableSHA256 = digest(binary)
+	metadata.ExecutableSHA256 = executable
 	if cacheDir != "" {
-		if err := atomicWrite(cacheBinary, binary, 0755); err != nil {
+		if err := os.Rename(built, cacheBinary); err != nil {
 			return metadata, err
 		}
 		data, _ := json.Marshal(metadata)
-		if err := atomicWrite(cacheMetadata, data, 0600); err != nil {
+		if err := replaceFile(cacheMetadata, data, 0600); err != nil {
+			return metadata, err
+		}
+		if err := publishArtifact(cacheBinary, output, executable); err != nil {
 			return metadata, err
 		}
 	}
 	return metadata, writeBuildMetadata(output, metadata)
 }
+
+func fileDigest(filename string) (string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// publishArtifact places a verified cached executable at target. It shares
+// the file when the file system allows, and leaves a matching target as is.
+// Cache hits re-verify content hashes, so a later change to either name
+// cannot run as the cached artifact.
+func publishArtifact(cached, target, contents string) error {
+	source, err := os.Stat(cached)
+	if err != nil {
+		return err
+	}
+	if existing, err := os.Stat(target); err == nil && existing.Size() == source.Size() {
+		if os.SameFile(source, existing) {
+			return os.Chmod(target, 0755)
+		}
+		if digest, err := fileDigest(target); err == nil && digest == contents {
+			return os.Chmod(target, 0755)
+		}
+	}
+	staging := filepath.Join(filepath.Dir(target), fmt.Sprintf(".manuscript-link-%d-%s", os.Getpid(), contents[:16]))
+	os.Remove(staging)
+	if err := os.Link(cached, staging); err == nil {
+		if err := os.Rename(staging, target); err != nil {
+			os.Remove(staging)
+			return err
+		}
+		return nil
+	}
+	data, err := os.ReadFile(cached)
+	if err != nil {
+		return err
+	}
+	return replaceFile(target, data, 0755)
+}
+
 func writeBuildMetadata(output string, metadata BuildMetadata) error {
 	data, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
 		return err
 	}
-	return atomicWrite(output+".ms-build.json", append(data, '\n'), 0644)
+	return replaceFile(output+".ms-build.json", append(data, '\n'), 0644)
 }
 
 // VerifyBuild refuses stale source or binary metadata before source inspection/debugging.

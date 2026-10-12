@@ -28,6 +28,7 @@ type APIDeclaration struct {
 // StandardLibrary captures the actual checker definitions, without exposing mutable
 // types. Types and operations are loaded from the bundled standard .ms sources.
 func StandardLibrary() []APIModule {
+	ensureStandard()
 	modules := map[string][]*Symbol{}
 	sources := map[string]string{}
 	for _, source := range standardSources {

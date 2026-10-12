@@ -19,6 +19,15 @@ go tool pprof -http=127.0.0.1:8080 cpu.pprof
 go tool trace trace.out
 ```
 
+## Rebuild on save
+
+```sh
+ms run ms.toml --watch -- arg1
+ms test test.ms --watch
+```
+
+`--watch` keeps one `ms` process alive, rebuilds after each saved change to the manifest or any loaded local module, and restarts the program. The running program is interrupted, given five seconds to finish cleanup, and then killed, but only after its replacement builds; a failed edit prints diagnostics and keeps watching. Each restart reports the time from the save. Interrupting `ms` interrupts the program and exits with status 130. See [cache boundaries](builds/incremental-compilation.md) for what a rebuild still compiles and links.
+
 Project lint checks hygiene in every reachable local module and runs semantic rules on the checked program. `--json` reports stable rule codes and module-relative positions.
 
 ## Source inspection and API documentation

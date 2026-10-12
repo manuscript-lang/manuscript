@@ -1,3 +1,5 @@
+//go:build !ms_lean
+
 package msruntime
 
 import (
@@ -191,16 +193,6 @@ func libraryGate(ctx *Execution, gate chan struct{}) {
 	case <-gate:
 	case <-ctx.Context.Done():
 		CheckCancelled(ctx)
-	}
-}
-func libraryInterrupt(ctx *Execution, deadline func(time.Time) error) func() {
-	done := make(chan struct{})
-	stop := context.AfterFunc(ctx.Context, func() { defer close(done); deadline(time.Now()) })
-	return func() {
-		if !stop() {
-			<-done
-		}
-		deadline(time.Time{})
 	}
 }
 func (c *libraryConnection) baseOperation(name string) Function {

@@ -3,14 +3,13 @@ package compiler
 import (
 	"bytes"
 	"fmt"
-	support "github.com/manuscript-lang/manuscript"
 	msruntime "github.com/manuscript-lang/manuscript/pkg/runtime"
 	"go/ast"
+	"go/build/constraint"
 	"go/format"
 	"go/parser"
 	"go/scanner"
 	"go/token"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -74,10 +73,15 @@ func Standalone(source string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		file, err := parser.ParseFile(fset, entry.Name(), data, 0)
+		file, err := parser.ParseFile(fset, entry.Name(), data, parser.ParseComments)
 		if err != nil {
 			return "", err
 		}
+		// Emitted programs carry the full runtime, so omit lean-only files.
+		if !fullRuntimeFile(file) {
+			continue
+		}
+		file.Comments = nil
 		add(file)
 	}
 	paths := []string{}
@@ -107,67 +111,48 @@ func BuildWithType(source, output string, kind BuildType) error {
 	if err != nil {
 		return err
 	}
-	return buildNative(source, output, kind)
+	return buildNative(source, output, kind, nil)
 }
 
-func buildNative(source, output string, kind BuildType) error {
-	dir, err := os.MkdirTemp("", "manuscript-build-")
+func buildNative(source, output string, kind BuildType, tags []string) error {
+	root, err := workspaceRoot()
 	if err != nil {
 		return err
-	}
-	defer os.RemoveAll(dir)
-	if err := fs.WalkDir(support.NativeDependencies, ".", func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == "." {
-			return nil
-		}
-		target := filepath.Join(dir, filepath.FromSlash(path))
-		if entry.IsDir() {
-			return os.MkdirAll(target, 0755)
-		}
-		data, err := support.NativeDependencies.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(target, data, 0644)
-	}); err != nil {
-		return err
-	}
-	// Keep the runtime in its own compilation unit. Merging it into main (as
-	// emit does) forces Go to recompile every host service on application edits.
-	runtimeDir := filepath.Join(dir, "pkg", "runtime")
-	if err := os.MkdirAll(runtimeDir, 0755); err != nil {
-		return err
-	}
-	entries, err := msruntime.Sources.ReadDir(".")
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		data, err := msruntime.Sources.ReadFile(entry.Name())
-		if err != nil {
-			return err
-		}
-		if err := os.WriteFile(filepath.Join(runtimeDir, entry.Name()), data, 0644); err != nil {
-			return err
-		}
 	}
 	output, err = filepath.Abs(output)
 	if err != nil {
 		return err
 	}
-
-	filename := filepath.Join(dir, "main.go")
-	if err := os.WriteFile(filename, []byte(source), 0600); err != nil {
+	dir, err := applicationDir(root, source, kind, tags)
+	if err != nil {
 		return err
 	}
-	arguments := []string{"build", "-mod=vendor", "-buildvcs=false"}
-	arguments = append(arguments, kind.nativeFlags()...)
-	// Build the temporary module, rather than a file with the synthetic
+	packagePath := workspaceModule + "/apps/" + filepath.Base(dir)
+	imports, importErr := sourceImports(source)
+	key, keyErr := replayKey(kind, tags)
+	replayable := importErr == nil && keyErr == nil
+	if replayable {
+		if profile, ok := loadReplay(root, key, imports); ok {
+			if profile.replay(dir, packagePath, output) == nil {
+				return nil
+			}
+			// Go may reuse its cached compilation of this exact source, leaving
+			// nothing to capture; do not retry a failing replay meanwhile.
+			os.Remove(replayPath(root, key))
+		}
+		if err := captureBuild(root, key, dir, packagePath, imports, output, kind, tags); err == nil {
+			return nil
+		}
+		// Report diagnostics from an ordinary build without command tracing.
+	}
+	return goBuild(dir, output, kind, tags)
+}
+
+func goBuild(dir, output string, kind BuildType, tags []string) error {
+	arguments := append(buildArguments(kind, tags), kind.nativeFlags()...)
+	// Build the application package, rather than a file with the synthetic
 	// command-line-arguments identity. Internal native adapters must resolve
-	// under the module identity even when the temporary path has symlinked
+	// under the module identity even when the workspace path has symlinked
 	// ancestors (as on macOS) or platform-specific path spelling.
 	arguments = append(arguments, "-o", output, ".")
 	command, err := goCommand(arguments...)
@@ -180,4 +165,49 @@ func buildNative(source, output string, kind BuildType) error {
 		return fmt.Errorf("Go build failed: %w\n%s", err, data)
 	}
 	return nil
+}
+
+// captureBuild runs go build with command tracing and records a replay profile.
+func captureBuild(root, key, dir, packagePath string, imports []string, output string, kind BuildType, tags []string) error {
+	arguments := append(append(buildArguments(kind, tags), "-x", "-work"), kind.nativeFlags()...)
+	command, err := goCommand(append(arguments, "-o", output, ".")...)
+	if err != nil {
+		return err
+	}
+	command.Dir = dir
+	trace, err := command.CombinedOutput()
+	if work := traceWork(trace); work != "" {
+		defer os.RemoveAll(work)
+	}
+	if err != nil {
+		return err
+	}
+	if profile, ok := captureReplay(trace, dir, packagePath, imports); ok {
+		saveReplay(root, key, profile)
+	}
+	return nil
+}
+
+func buildArguments(kind BuildType, tags []string) []string {
+	arguments := []string{"build", "-mod=vendor", "-buildvcs=false"}
+	if len(tags) > 0 {
+		arguments = append(arguments, "-tags="+strings.Join(tags, ","))
+	}
+	return arguments
+}
+
+// fullRuntimeFile reports whether a runtime file's build constraint holds
+// without the lean runtime tag.
+func fullRuntimeFile(file *ast.File) bool {
+	for _, group := range file.Comments {
+		if group.Pos() >= file.Package {
+			break
+		}
+		for _, comment := range group.List {
+			if expression, err := constraint.Parse(comment.Text); err == nil {
+				return expression.Eval(func(tag string) bool { return false })
+			}
+		}
+	}
+	return true
 }

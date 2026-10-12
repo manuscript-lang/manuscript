@@ -1,13 +1,9 @@
+//go:build !ms_lean
+
 package msruntime
 
 import (
 	"errors"
-	"github.com/manuscript-lang/manuscript/internal/hostos"
-	cpustats "github.com/shirou/gopsutil/v4/cpu"
-	hoststats "github.com/shirou/gopsutil/v4/host"
-	loadstats "github.com/shirou/gopsutil/v4/load"
-	memstats "github.com/shirou/gopsutil/v4/mem"
-	processstats "github.com/shirou/gopsutil/v4/process"
 	"net"
 	"os"
 	"os/user"
@@ -18,11 +14,17 @@ import (
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/manuscript-lang/manuscript/internal/hostos"
+	cpustats "github.com/shirou/gopsutil/v4/cpu"
+	hoststats "github.com/shirou/gopsutil/v4/host"
+	loadstats "github.com/shirou/gopsutil/v4/load"
+	memstats "github.com/shirou/gopsutil/v4/mem"
+	processstats "github.com/shirou/gopsutil/v4/process"
 )
 
 var libraryProcessStarted = time.Now()
 var libraryEnvironmentMu sync.Mutex
-var libraryDirectoryMu sync.Mutex
 
 func init() {
 	libraryAdd("system", "os_type", "String", nil, func(_ *Execution, _ string, _ []Value) Value {
@@ -36,9 +38,6 @@ func init() {
 		values := hostos.Constants()
 		return libraryConstants(values)
 	})
-	libraryAdd("fs", "constants", "Map[String][Int]", nil, func(_ *Execution, _ string, _ []Value) Value {
-		return libraryConstants(hostos.FileConstants())
-	})
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"ProcessControl", "monotonic_time", "Int", nil},
 		{"ProcessControl", "constrained_memory", libraryResult("Int", "ProcessError"), nil},
@@ -46,7 +45,7 @@ func init() {
 		{"ProcessControl", "title", libraryResult("String", "ProcessError"), nil},
 		{"ProcessControl", "set_title", libraryResult("Unit", "ProcessError"), []LibraryParam{{"title", "String"}}},
 		{"ProcessControl", "initialize_groups", libraryResult("Unit", "ProcessError"), []LibraryParam{{"username", "String"}, {"gid", "Int"}}},
-		{"ProcessControl", "replace", libraryResult("Unit", "ProcessError"), []LibraryParam{{"program", "String"}, {"arguments", "List[String]"}, {"environment", "Map[String][String]"}}}, {"FileSystem", "stat_filesystem", libraryResult("FileSystemInfo", "FileSystemError"), []LibraryParam{{"path", "String"}}}, {"FileSystem", "chmod_link", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"mode", "Int"}}}, {"FileHandle", "read_lines", libraryResult("List[String]", "FileSystemError"), []LibraryParam{{"max_bytes", "Optional[Int]"}, {"max_lines", "Optional[Int]"}}}, {"System", "get_priority", libraryResult("Int", "SystemError"), []LibraryParam{{"pid", "Int"}}}, {"System", "set_priority", libraryResult("Unit", "SystemError"), []LibraryParam{{"pid", "Int"}, {"priority", "Int"}}}, {"ProcessControl", "resource_usage", libraryResult("ResourceUsage", "ProcessError"), []LibraryParam{}}, {"ProcessControl", "umask", libraryResult("Int", "ProcessError"), []LibraryParam{{"mask", "Int"}}}, {"ProcessControl", "set_identity", libraryResult("Unit", "ProcessError"), []LibraryParam{{"kind", "String"}, {"id", "Int"}}}, {"ProcessControl", "set_groups", libraryResult("Unit", "ProcessError"), []LibraryParam{{"groups", "List[Int]"}}}, {"FileHandle", "reader", "ReadStream", nil}, {"FileHandle", "writer", "WriteStream", nil}}...)
+		{"ProcessControl", "replace", libraryResult("Unit", "ProcessError"), []LibraryParam{{"program", "String"}, {"arguments", "List[String]"}, {"environment", "Map[String][String]"}}}, {"System", "get_priority", libraryResult("Int", "SystemError"), []LibraryParam{{"pid", "Int"}}}, {"System", "set_priority", libraryResult("Unit", "SystemError"), []LibraryParam{{"pid", "Int"}, {"priority", "Int"}}}, {"ProcessControl", "resource_usage", libraryResult("ResourceUsage", "ProcessError"), []LibraryParam{}}, {"ProcessControl", "umask", libraryResult("Int", "ProcessError"), []LibraryParam{{"mask", "Int"}}}, {"ProcessControl", "set_identity", libraryResult("Unit", "ProcessError"), []LibraryParam{{"kind", "String"}, {"id", "Int"}}}, {"ProcessControl", "set_groups", libraryResult("Unit", "ProcessError"), []LibraryParam{{"groups", "List[Int]"}}}}...)
 
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"System", "hostname", libraryResult("String", "SystemError"), []LibraryParam{}},
@@ -563,43 +562,6 @@ func libraryParseEnvironment(text string) ([]Entry, bool) {
 		entries = append(entries, Entry{key, value})
 	}
 	return entries, true
-}
-
-// Kept here so host path operations can consistently use a live directory after
-// ProcessControl.change_directory, while explicitly constructed fakes stay pinned.
-func libraryHostPath(directory, s string) (string, bool) {
-	if strings.ContainsRune(s, 0) {
-		return "", false
-	}
-	if filepath.IsAbs(s) {
-		return s, true
-	}
-	if directory == "" {
-		libraryDirectoryMu.Lock()
-		defer libraryDirectoryMu.Unlock()
-		var err error
-		directory, err = os.Getwd()
-		if err != nil {
-			return "", false
-		}
-	}
-	return filepath.Join(directory, s), true
-}
-func libraryFileTimes(file *os.File, accessed, modified time.Time) error {
-	return hostos.FileTimes(file, accessed, modified)
-}
-
-func libraryConstants(values map[string]int64) *Map {
-	keys := make([]string, 0, len(values))
-	for key := range values {
-		keys = append(keys, key)
-	}
-	sortStrings(keys)
-	result := &Map{Type: "@std/Map[String][Int]"}
-	for _, key := range keys {
-		result.Entries = append(result.Entries, Entry{key, values[key]})
-	}
-	return result
 }
 
 // Resolve the process's own cgroup path; do not substitute the cgroup mount root
