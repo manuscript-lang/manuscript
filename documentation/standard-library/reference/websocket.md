@@ -47,8 +47,8 @@ type WebSocketMessage:
 
 ```manuscript
 type WebSocketOptions:
-    max_message_bytes: Int
-    timeout: Duration
+    max_message_bytes: Optional[Int] = none
+    timeout: Optional[Duration] = none
     tls: TlsOptions
     compression: Bool
 ```

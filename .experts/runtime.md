@@ -2,19 +2,19 @@
 
 ### Newer stdlib direction needs checkout reconciliation
 
-Decision: the newer stdlib request asks for Node.js/JavaScript contract parity with consolidated grouping and one way to perform an operation; optional limits/timeouts honored when supplied; removal of Pools and Lease everywhere; Equal and Hashable as interfaces; and a priority queue. This supersedes the older derived-only equality preference and any assumption that Pools/Lease must remain public.
+Decision: the stdlib request calls for Node.js/JavaScript contract parity with consolidated grouping and one spelling per operation; optional limits/timeouts honored when supplied; removal of the speculative resource-pooling API; equality and hashing interfaces; and a priority queue. This supersedes the older derived-only equality preference. The combined scheduling service is `Scheduler`, with one lifecycle for immediate and timed work.
 
-Open: the user also asked whether Timers and Background can be combined and whether Background has a better name. The request does not select a final replacement name or scheduling contract. The conversation was in progress when this entry was added; these directions do not establish completed implementation.
+Verified: canonical declarations, runtime dispatch, checker rules, conformance, and generated references now implement this direction. Optional also has presence and extraction methods; keep routine absence handling available without requiring a match.
 
-Apply when: changing library signatures, bounds/interfaces, pools/leases, queue APIs, scheduling, grouping, examples, or documentation.
-Evidence: [the actual user request in Revamp and solidify stdlib](codex://threads/01a13126-1245-730b-9e5d-16ca2dc7501f); [current declarations](../pkg/stdlib/README.md); [current implementation inventory](../documentation/implementation.md).
-Verify: inspect current declarations, bindings, native dispatch, checker rules, conformance, and generated references against the latest direction. Identify pending gaps, preserve omitted/none/explicit-limit behavior, and do not invent a selected name or report this request as already shipped.
+Apply when: changing library signatures, bounds/interfaces, queue APIs, scheduling, grouping, examples, or documentation.
+Evidence: [the user request](codex://threads/01a13126-1245-730b-9e5d-16ca2dc7501f); [current declarations](../pkg/stdlib/README.md); [stdlib contract](../documentation/standard-library/packages/stdlib-contracts.md); [runtime regressions](../pkg/runtime/stdlib_revamp_test.go); [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
+Verify: inspect current declarations and called behavior against the latest direction. Preserve omitted/none/explicit-limit behavior, custom equality/hash coherence, and joined Scheduler shutdown. Do not restore removed APIs from older documentation or another branch.
 
 ### Sharing, resource lifetime, and work lifetime are separate
 
 Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native services synchronize their internals. The user subsequently chose a single-threaded Queue with an optional capacity parameter; shared queue access uses Synchronized guards, including reads. Passing references is permitted without implying internal thread safety. A safe capture is not a declaration of intended authority.
 
-Apply when: changing closures, parallel work, background services, resource wrappers, or pools.
+Apply when: changing closures, parallel work, schedulers, resource wrappers, or owned resources.
 Evidence: [sharing](../documentation/ownership-and-cleanup/values/sharing.md); [joined groups](../documentation/concurrency/joining.md); [scope-exit ordering](../documentation/ownership-and-cleanup/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
 Verify: exercise use after close and shutdown with work still running. Confirm started work completes cleanup before joining returns and stale resource aliases cannot reach a reused handle.
 
@@ -36,7 +36,7 @@ Verify: native error values carry the declared Result's error identity; unrelate
 
 ### Keep concurrency collection helpers removed
 
-Decision: the dedicated concurrent collection-mapping API was removed because the user considers it redundant. Do not restore that helper under another name without a new user direction. Fixed-operation parallel work and Background retain their existing contracts.
+Decision: the dedicated concurrent collection-mapping API was removed because the user considers it redundant. Do not restore that helper under another name without a new user direction. Fixed-operation parallel work and Scheduler retain their existing contracts.
 
 Apply when: adding concurrent collection utilities or revising the task API.
 Evidence: [task declarations](../pkg/stdlib/tasks.ms); [concurrency guide](../documentation/concurrency/_index.md); the user's removal request in this chat.
@@ -58,13 +58,13 @@ Apply when: implementing native descriptor operations alongside cancellable file
 Evidence: [native descriptor bridge](../internal/hostos/hostos.go), [metadata and file operations](../pkg/runtime/library_fs.go), and [pipe cancellation regression](../pkg/runtime/library_host_parity_test.go).
 Verify: `TestExpandedHandleCancellationAndStreamAdapters` and runtime race checks, including cancellation after descriptor metadata access and closure through a shared adapter.
 
-### Host parity preserves Manuscript's scheduling model
+### One scheduler owns immediate and timed work
 
-Decision: when reviewing the Node host expansion, the user asked to simplify timers because they should feel native to Manuscript, not be a blind copy. Use the existing time module and ordinary execution model: sequential `sleep`, concurrent `after`/`every`, one scoped `Timer`, and task-level yielding. Do not duplicate callback/Promise timer families or introduce separate waitable and scheduled handles merely to match Node export names.
+Decision: the stdlib revamp merges the work service and scheduled timers into `Scheduler`, with one ID/status/cancel/restart/report/close lifecycle. Time retains sequential sleep and clock values. Admission/history caps are optional, as are native operation budgets/deadlines. Explicit zero must not be confused with omission.
 
-Apply when: adding scheduling APIs or using another runtime's API inventory as a completeness target.
-Evidence: the user's timer simplification correction; [time declarations](../pkg/stdlib/time.ms), [native host mappings](../documentation/standard-library/packages/node-host.md#timers-and-scheduling), and [scheduling conformance](../pkg/runtime/library_host_parity_test.go).
-Verify: ordinary callbacks remain first-class values, cancellation and close join admitted work, and the inventory maps compositions without restoring duplicate public APIs.
+Apply when: changing scheduling, native adapters, optional limits, or Node/JS coverage mappings.
+Evidence: [task declarations](../pkg/stdlib/tasks.ms), [limit contract](../documentation/standard-library/packages/stdlib-contracts.md), [runtime cases](../pkg/runtime/stdlib_revamp_test.go), and [native host mappings](../documentation/standard-library/packages/node-host.md#timers-and-scheduling).
+Verify: omit a cap and admit more work; supplied caps still reject excess. Restart returns a fresh ID after joining the old operation, and parent shutdown joins callback cleanup. Check native optional arguments in legacy host adapters as well as LibraryMethods.
 
 ### Validate compression completion before publishing tools
 
@@ -73,3 +73,11 @@ Verified: tar EOF can precede the gzip trailer. A complete tar payload with a tr
 Apply when: changing SDK extraction or cache publication.
 Evidence: [extractor](../pkg/compiler/toolchain_cache.go), [interrupted archive and concurrent publication tests](../pkg/compiler/toolchain_test.go).
 Verify: truncated archives fail, leave no published/staging cache, and permit a complete retry; concurrent valid callers reuse one immutable result.
+
+### Native option adapters must respect declared parameter types
+
+Verified: normalizing every runtime record recognized as an options record corrupts generic payloads. An Optional fallback containing JsonLimits must retain Optional fields and shared storage; it is not a limits argument to an I/O adapter. Normalize only a concrete declared parameter matching the record identity, including a concrete Optional parameter after its outer wrapper is removed.
+
+Apply when: changing native argument normalization or generic receiver methods.
+Evidence: [normalization boundary](../pkg/runtime/library_options.go), [runtime Optional regression](../pkg/runtime/optional_test.go), and [compiled record fallback](../tests/e2e/testdata/accept/optional-methods.ms).
+Verify: unwrap_or returns a JsonLimits record with negative and absent Optional fields unchanged and mutations retain its identity; concrete limits passed to their native operations remain validated.

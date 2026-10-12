@@ -8,7 +8,7 @@ import (
 
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("log", "write", libraryResult("Unit", "LogError"), []LibraryParam{p("output", "WriteStream"), p("level", "String"), p("message", "String"), p("fields", "Map[String][String]"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("log", "write", libraryResult("Unit", "LogError"), []LibraryParam{p("output", "WriteStream"), p("level", "String"), p("message", "String"), p("fields", "Map[String][String]"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		level := a[1].(string)
 		if level != "debug" && level != "info" && level != "warn" && level != "error" || a[4].(int64) < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -35,14 +35,14 @@ func init() {
 		}
 		return libraryOK(r, Unit{})
 	})
-	libraryAdd("io", "read_line", libraryResult("Optional[String]", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "read_line", libraryResult("Optional[String]", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[1].(int64)
 		if max <= 0 {
 			return libraryError(r, "InvalidInput", "")
 		}
 		var b []byte
 		for {
-			v := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", int64(1)}}).(Alternative)
+			v := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int", int64(1), true)}}).(Alternative)
 			if v.Tag == "error" {
 				return Alternative{r, "error", v.Fields}
 			}
@@ -74,7 +74,7 @@ func init() {
 		}
 		return libraryOK(r, optional("String", string(b), true))
 	})
-	libraryAdd("string", "repeat", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("count", "Int"), p("max_bytes", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("string", "repeat", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("count", "Int"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
 		s := a[0].(string)
 		count, max := a[1].(int64), a[2].(int64)
 		if count < 0 || max < 0 {
@@ -88,7 +88,7 @@ func init() {
 		}
 		return libraryOK(r, strings.Repeat(s, int(count)))
 	})
-	libraryAdd("regex", "replace", libraryResult("String", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("replacement", "String"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("regex", "replace", libraryResult("String", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("replacement", "String"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[3].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")

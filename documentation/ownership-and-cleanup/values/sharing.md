@@ -15,7 +15,7 @@ Records and collections are mutable. Alternative tags, strings, and bytes retain
 
 Native services and builders synchronize their mutable internals and resource lifecycles. Resource APIs may serialize simultaneous calls or report unsupported overlapping use. Race safety does not make several calls atomic or establish their execution order. Use [Synchronized](../../standard-library/data-and-io/synchronized-state.md#synchronized) when related reads and writes must run under one lock.
 
-Wrappers coordinate the closed-state check, access to the underlying handle, and closure as one lifecycle protocol. A flag check followed by unprotected I/O is insufficient. A stale lease or lock guard must never access a resource or protected value after release.
+Wrappers coordinate the closed-state check, access to the underlying handle, and closure as one lifecycle protocol. A flag check followed by unprotected I/O is insufficient. A stale lock guard must never access a resource or protected value after release.
 
 A [Queue](../../standard-library/data-and-io/queues.md) is a local mutable collection with no internal synchronization. When shared, keep it in one `Synchronized[Queue[T]]` and hold a separately acquired guard for each caller's full use, including reads. Queue aliases and bound methods must follow that same discipline; the compiler does not track or enforce lock ownership. Records may contain queue references. A shallow record clone retains the same queue reference.
 
@@ -27,4 +27,4 @@ A [Queue](../../standard-library/data-and-io/queues.md) is a local mutable colle
 
 Named functions, closures, bound methods, function fields, and function parameters are ordinary values. Copies, generic forwarding, collection storage, and return values preserve their normal call behavior. Concurrency APIs check the function signature, with no separate capture-sharing eligibility or proof-erasure rules. An operation may return another function.
 
-Capture application services and job data for background work, and acquire job resources inside that work's own `with` scopes. A resource captured beyond its `with` scope remains a valid reference, but subsequent operations report closed state. Sharing, resource lifetime, and work lifetime remain separate guarantees.
+Capture application services and job data for scheduled work, and acquire job resources inside that work's own `with` scopes. A resource captured beyond its `with` scope remains a valid reference, but subsequent operations report closed state. Sharing, resource lifetime, and work lifetime remain separate guarantees.

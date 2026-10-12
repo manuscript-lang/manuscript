@@ -25,7 +25,7 @@ Caller-written argument order affects evaluation without changing function ident
 
 Type positions use [ordinary name resolution](../../modules-and-capabilities/modules/declarations.md#names-and-declaration-order). A value shadowing a type name causes an error, not a second lookup in a hidden namespace. Unqualified cases follow [alternative lookup](alternatives.md#construction-and-identity); expected types cannot override a lexical binding or choose an ambiguous case.
 
-`Equal` and `Hashable` are [compiler bounds](generics.md#bounds), not standalone value types. Value types have no intersection/refinement syntax; conjunction is available only for generic bounds.
+`Equal` and `Hashable` are [standard interfaces](equality-and-hashing.md) and can be used as bounds or explicit interface views. Value types have no intersection/refinement syntax; conjunction is available only for generic bounds.
 
 ```manuscript
 fn identity(value: Int) -> Int:

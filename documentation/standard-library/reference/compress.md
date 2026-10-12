@@ -25,12 +25,12 @@ impl Error for CompressionError:
 ## compress {data-api-kind="Function"}
 
 ```manuscript
-fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, CompressionError]
+fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]
 ```
 
 ## decompress {data-api-kind="Function"}
 
 ```manuscript
-fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, CompressionError]
+fn decompress(data: Bytes, format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]
 ```
 

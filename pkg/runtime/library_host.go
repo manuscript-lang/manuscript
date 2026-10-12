@@ -29,14 +29,14 @@ type LibraryMethod struct {
 }
 
 var LibraryMethods = []LibraryMethod{
-	{"FileSystem", "read_file", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_bytes", "Int"}}},
+	{"FileSystem", "read_file", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_bytes", "Optional[Int]"}}},
 	{"FileSystem", "write_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"data", "Bytes"}, {"replace", "Bool"}}},
 	{"FileSystem", "stat", libraryResult("FileInfo", "FileSystemError"), []LibraryParam{{"path", "String"}, {"follow_links", "Bool"}}},
-	{"FileSystem", "list", libraryResult("List[DirectoryEntry]", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_entries", "Int"}}},
+	{"FileSystem", "list", libraryResult("List[DirectoryEntry]", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_entries", "Optional[Int]"}}},
 	{"FileSystem", "create_directory", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}}},
 	{"FileSystem", "remove", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}}},
 	{"FileSystem", "rename", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}}},
-	{"FileSystem", "copy_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_bytes", "Int"}}},
+	{"FileSystem", "copy_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_bytes", "Optional[Int]"}}},
 	{"FileSystem", "canonicalize", libraryResult("String", "FileSystemError"), []LibraryParam{{"path", "String"}}},
 	{"FileSystem", "read_link", libraryResult("String", "FileSystemError"), []LibraryParam{{"path", "String"}}},
 	{"FileSystem", "create_link", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"target", "String"}}},
@@ -46,8 +46,8 @@ var LibraryMethods = []LibraryMethod{
 	{"System", "info", "SystemInfo", nil},
 	{"System", "working_directory", "String", nil},
 	{"System", "environment", "Optional[String]", []LibraryParam{{"name", "String"}}},
-	{"Network", "request", libraryResult("ClientResponse", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
-	{"Network", "lookup", libraryResult("List[String]", "NetworkError"), []LibraryParam{{"name", "String"}, {"max_records", "Int"}, {"timeout", "Duration"}}},
+	{"Network", "request", libraryResult("ClientResponse", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+	{"Network", "lookup", libraryResult("List[String]", "NetworkError"), []LibraryParam{{"name", "String"}, {"max_records", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
 }
 
 func libraryMethod(receiver, name string, body func(*Execution, string, []Value) Value) Function {
@@ -58,7 +58,13 @@ func libraryMethod(receiver, name string, body func(*Execution, string, []Value)
 				labels = append(labels, p.Name)
 			}
 			result := libraryRuntimeType(spec.Result)
-			implementation := func(ctx *Execution, a []Value) Value { return body(ctx, result, a) }
+			implementation := func(ctx *Execution, a []Value) Value {
+				normalized, ok := nativeOptions(name, spec.Params, a)
+				if !ok {
+					return nativeOptionFailure(result)
+				}
+				return body(ctx, result, normalized)
+			}
 			if receiver == "ProcessControl" && name == "watch_signals" {
 				return NewAcquisition(labels, result, implementation, libraryDisposeResource)
 			}
@@ -417,7 +423,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 	}
 	method, address := a[0].(string), a[1].(string)
 	max, timeout := a[4].(int64), a[5].(Duration)
-	if max < 0 || timeout < 0 {
+	if max < 0 || timeout < nativeNoTimeout {
 		return libraryError(r, "InvalidInput", "")
 	}
 	u, err := url.Parse(address)
@@ -443,7 +449,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		req.Header.Set(name, value)
 	}
 	// No ambient proxy or cookie jar. Redirects are returned to the caller for explicit policy decisions.
-	transport := &http.Transport{TLSHandshakeTimeout: time.Duration(timeout), MaxResponseHeaderBytes: 64 * 1024, DisableCompression: true, DisableKeepAlives: true, DialContext: n.dial}
+	transport := &http.Transport{TLSHandshakeTimeout: nativeTransportTimeout(timeout), MaxResponseHeaderBytes: nativeUnlimited, DisableCompression: true, DisableKeepAlives: true, DialContext: n.dial}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	response, err := client.Do(req)
@@ -497,7 +503,7 @@ func libraryNetworkLookup(n *network, ctx *Execution, r string, a []Value) Value
 		return libraryError(r, "Closed", "")
 	}
 	max, timeout := a[1].(int64), a[2].(Duration)
-	if max < 0 || timeout < 0 {
+	if max < 0 || timeout < nativeNoTimeout {
 		return libraryError(r, "InvalidInput", "")
 	}
 	call, cancel := contextWithLibraryTimeout(ctx, timeout)
@@ -528,7 +534,7 @@ func libraryNetworkLookup(n *network, ctx *Execution, r string, a []Value) Value
 }
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("random", "secure_int", libraryResult("Int", "RandomError"), []LibraryParam{p("entropy", "Entropy"), p("min", "Int"), p("max_exclusive", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("random", "secure_int", libraryResult("Int", "RandomError"), []LibraryParam{p("entropy", "Entropy"), p("min", "Int"), p("max_exclusive", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		min, max := a[1].(int64), a[2].(int64)
 		if min >= max {
 			return libraryError(r, "InvalidInput", "")
@@ -615,7 +621,7 @@ func init() {
 	})
 }
 func contextWithLibraryTimeout(ctx *Execution, timeout Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(ctx.Context, time.Duration(timeout))
+	return nativeContextTimeout(ctx.Context, time.Duration(timeout))
 }
 
 var libraryTimestampPattern = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,9})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$`)

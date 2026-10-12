@@ -2,7 +2,7 @@ import Synchronized from "@std/sync.ms"
 import SynchronizedGuard from "@std/sync.ms"
 import Closeable from "@std/cleanup.ms"
 import List from "@std/collections.ms"
-import ListBuilder from "@std/builders.ms"
+import ListBuilder from "@std/collections.ms"
 import Result from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
@@ -181,13 +181,13 @@ test "native collection methods preserve ordinary function values":
             return value
     )
     let first = fn() -> Int:
-        match callbacks.get(index: 0):
+        match callbacks.at(index: 0):
             some(callback):
                 return callback()
             none:
                 return panic(message: "missing callback")
     let second = fn() -> Int:
-        match callbacks.get(index: 1):
+        match callbacks.at(index: 1):
             some(callback):
                 return callback()
             none:

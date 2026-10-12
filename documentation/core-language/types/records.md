@@ -59,7 +59,7 @@ Field writes keep the declared field type. The receiver expression is evaluated 
 
 `.clone()` returns a new record with independent field storage. It is shallow: nested records, collections, callbacks, and resource references are retained. Changing a clone's own field does not change the original; changing a shared nested object affects both.
 
-Record and alternative values and `List`, `Map`, `Set`, and `Bytes` expose a built-in `.clone()`. Native file handles, sockets, queues, synchronization objects, guards, pools, and other service handles do not. A record containing a handle can be cloned, but that keeps the same handle and its existing lifetime.
+Record and alternative values and `List`, `Map`, `Set`, and `Bytes` expose a built-in `.clone()`. Native file handles, sockets, queues, synchronization objects, guards, and other service handles do not. A record containing a handle can be cloned, but that keeps the same handle and its existing lifetime.
 
 ## Domain identity
 

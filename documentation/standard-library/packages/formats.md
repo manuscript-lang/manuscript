@@ -12,15 +12,15 @@ Use these modules to parse and write JSON, CSV, and URLs, or escape HTML text. C
 ## `@std/json.ms`
 
 ```manuscript
-fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, JsonError]
-fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, JsonError]
+fn parse(text: String, limits: Optional[JsonLimits]) -> Result[JsonValue, JsonError]
+fn stringify(value: JsonValue, max_bytes: Optional[Int]) -> Result[String, JsonError]
 ```
 
 ## `@std/csv.ms`
 
 ```manuscript
-fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Result[List[List[String]], CsvError]
-fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Int) -> Result[String, CsvError]
+fn parse(text: String, options: CsvOptions, max_rows: Optional[Int], max_cells: Optional[Int]) -> Result[List[List[String]], CsvError]
+fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Optional[Int]) -> Result[String, CsvError]
 ```
 
 ## `@std/url.ms`
@@ -31,7 +31,7 @@ fn encode_component(text: String) -> String
 fn format(value: Url) -> Result[String, UrlError]
 fn format_query(entries: List[QueryEntry]) -> String
 fn parse(text: String) -> Result[Url, UrlError]
-fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], UrlError]
+fn parse_query(text: String, max_entries: Optional[Int]) -> Result[List[QueryEntry], UrlError]
 fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
 ```
 
@@ -45,9 +45,9 @@ fn escape(text: String) -> String
 
 ```manuscript
 type JsonLimits:
-    max_bytes: Int
-    max_depth: Int
-    max_values: Int
+    max_bytes: Optional[Int]
+    max_depth: Optional[Int]
+    max_values: Optional[Int]
 
 type JsonValue:
     case Null
@@ -88,7 +88,7 @@ Parsing accepts one document. It rejects trailing values, duplicate decoded obje
 | `max_depth` | Container nesting; a root container has depth one. |
 | `max_values` | All values, including the root. Object keys are not counted as values. |
 
-Both parsing and stringify enforce a native depth ceiling of 512. Malformed data returns `InvalidData`; exceeded limits return `LimitExceeded`.
+Omitted budgets impose no added byte, item, or nesting cap. Stringify rejects cyclic values. Malformed data returns `InvalidData`; exceeded limits return `LimitExceeded`.
 
 Stringify produces compact JSON and uses Go's escaping for HTML-sensitive characters. It is not a canonical format for signing.
 

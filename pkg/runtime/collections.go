@@ -54,13 +54,44 @@ func constructor(typ string, args []Argument) Value {
 		}
 		return Bytes{bytes}
 	}
+	if fields := nativeOptionRecords[typ]; fields != nil {
+		present := map[string]bool{}
+		for _, arg := range args {
+			present[arg.Name] = true
+		}
+		for name, fieldType := range fields {
+			if !present[name] {
+				args = append(args, Argument{name, optional(libraryRuntimeType(fieldType), nil, false)})
+			}
+		}
+	}
 	return NewRecord(typ, args)
 }
 func Construct(typ string, args []Argument) Value { return constructor(typ, args) }
 func NativeMember(receiver Value, name string) Value {
 	return NativeMemberResult(receiver, name, "")
 }
-func NativeMemberResult(receiver Value, name, result string) Value {
+func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope) Value {
+	if len(scopes) > 0 {
+		original := NativeMemberResult(receiver, name, result).(Function)
+		originalBody := original.Body
+		original.Body = func(ctx *Execution, args []Value) Value {
+			child := *ctx
+			child.EqualityScope = scopes[0]
+			if len(scopes[0].Args) > 0 {
+				child.EqualityScope = scopes[0].Args[0]
+			}
+			return originalBody(&child, args)
+		}
+		return original
+	}
+	if name == "equals" {
+		return NewFunction([]string{"other"}, "Bool", func(ctx *Execution, args []Value) Value { return EqualIn(ctx, receiver, args[0]) })
+	}
+	if name == "hash" {
+		return NewFunction(nil, "Int", func(ctx *Execution, _ []Value) Value { return HashIn(ctx, receiver) })
+	}
+
 	if name == "clone" {
 		return NewFunction(nil, result, func(_ *Execution, _ []Value) Value { return Clone(receiver) })
 	}
@@ -101,16 +132,9 @@ func NativeMemberResult(receiver Value, name, result string) Value {
 	return NewFunction(labels, "", func(ctx *Execution, args []Value) Value {
 		switch v := receiver.(type) {
 		case *List:
-			element := typeArguments(v.Type)[0]
 			switch name {
 			case "length":
 				return int64(len(v.Items))
-			case "get":
-				i := args[0].(int64)
-				if i < 0 || i >= int64(len(v.Items)) {
-					return optional(element, nil, false)
-				}
-				return optional(element, v.Items[i], true)
 			case "append":
 				v.Items = append(v.Items, args[0])
 				return v
@@ -125,7 +149,7 @@ func NativeMemberResult(receiver Value, name, result string) Value {
 			}
 			found := -1
 			for i, e := range v.Entries {
-				if Equal(e.Key, key) {
+				if EqualIn(ctx, e.Key, key) {
 					found = i
 					break
 				}
@@ -164,7 +188,7 @@ func NativeMemberResult(receiver Value, name, result string) Value {
 			if len(args) > 0 {
 				value = args[0]
 			}
-			found := indexOf(v.Items, value)
+			found := indexOfIn(ctx, v.Items, value)
 			switch name {
 			case "length":
 				return int64(len(v.Items))
@@ -216,12 +240,6 @@ func NativeMemberResult(receiver Value, name, result string) Value {
 			switch name {
 			case "length":
 				return int64(len(v.Items))
-			case "get":
-				i := args[0].(int64)
-				if i < 0 || i >= int64(len(v.Items)) {
-					return optional("Int", nil, false)
-				}
-				return optional("Int", int64(v.Items[i]), true)
 			case "concat":
 				return Bytes{append(append([]byte{}, v.Items...), args[0].(Bytes).Items...)}
 			case "to_text":

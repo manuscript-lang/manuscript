@@ -11,7 +11,7 @@ Import each required symbol with `import Name from "@std/io.ms"`.
 ```manuscript
 interface File:
     fn close() -> Unit
-    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 ```
 
 ## Files {data-api-kind="Interface"}
@@ -43,7 +43,7 @@ impl Error for IoError:
 ```manuscript
 interface ReadStream:
     fn close() -> Unit
-    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 ```
 
 ## WriteStream {data-api-kind="Interface"}
@@ -58,7 +58,7 @@ interface WriteStream:
 ## copy {data-api-kind="Function"}
 
 ```manuscript
-fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = none) -> Result[Int, IoError]
 ```
 
 ## files {data-api-kind="Function"}
@@ -70,13 +70,13 @@ fn files() -> Files
 ## read_all {data-api-kind="Function"}
 
 ```manuscript
-fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
+fn read_all(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Bytes, IoError]
 ```
 
 ## read_line {data-api-kind="Function"}
 
 ```manuscript
-fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
+fn read_line(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Optional[String], IoError]
 ```
 
 ## stderr {data-api-kind="Function"}

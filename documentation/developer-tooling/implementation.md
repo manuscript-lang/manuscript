@@ -60,7 +60,6 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 ## Debugging and profiling
 
-The [VS Code extension](https://github.com/manuscript-lang/manuscript/blob/main/extensions/vscode/README.md) uses the `manuscript` debug type. F5 or **Manuscript: Debug current file** builds the containing project or standalone module without optimization/inlining, verifies executable/source/configuration hashes, and starts native DAP control through a loopback-only Delve listener. Breakpoints and stepping use absolute `.ms` source paths; source frames and locals use Manuscript names. Records, lists, sets, maps, bytes, variants, and interface views expand through lazy source views. Execution, cancellation, work lifetime, background services, leases, and HTTP services appear in a separate inspection scope. Service inspection reads stopped-process data and never invokes application operations. Simple local, record-field, and list-index watch expressions are mapped to their generated storage. Complex watch expressions use Delve's native evaluator.
 
 `ms debug` is also available for Delve's terminal UI. Existing project pin validation remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
 

@@ -48,7 +48,7 @@ import Synchronized from "@std/sync.ms"
 import Optional from "@std/optional.ms"
 
 fn make_queue() -> Synchronized[Queue[Int]]:
-    return Synchronized(value: Queue[Int](capacity: 16))
+    return Synchronized(value: Queue[Int](capacity: some(value: 16)))
 
 fn enqueue(shared: Synchronized[Queue[Int]], value: Int) -> Bool:
     with locked = shared.lock():
@@ -63,4 +63,25 @@ The queue itself has no mutex. The compiler allows references to be passed freel
 
 Wrapping a queue serializes access; it does not add waiting for values or free capacity. Never wait for another operation to fill or drain the queue while holding its lock. Lock acquisition follows the ordinary [Synchronized cancellation and cleanup rules](synchronized-state.md#synchronized).
 
-[Previous: Readers, writers, and streams](streams.md) · [Next: Synchronized values, pools, and leases](synchronized-state.md)
+[Previous: Readers, writers, and streams](streams.md) · [Next: Synchronized values](synchronized-state.md)
+
+## Priority queue
+
+`PriorityQueue[T]` lives in the same module as Queue. Construct it with `compare: fn(left: T, right: T) -> Int` and optional `capacity: Optional[Int]`. Negative comparison results put the left item first; ties retain enqueue order. The queue exposes the same enqueue/dequeue/peek/length/is_empty operations and full/empty results as FIFO Queue.
+
+```manuscript
+import PriorityQueue from "@std/queues.ms"
+
+fn ascending(left: Int, right: Int) -> Int:
+    if left < right: return -1
+    if left > right: return 1
+    return 0
+
+fn work() -> Unit:
+    let pending = PriorityQueue(compare: ascending)
+    pending.enqueue(3)
+    pending.enqueue(1)
+    let first = pending.dequeue()
+```
+
+Enqueue/dequeue use a binary heap with logarithmic comparisons. Comparators must define a consistent order and must not mutate the queue. A comparator fault leaves the stored heap unchanged. Like Queue, it has no waiting or cleanup lifecycle; concurrent access requires one Synchronized guard for every operation.

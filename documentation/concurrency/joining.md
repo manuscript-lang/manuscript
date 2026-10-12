@@ -13,7 +13,7 @@ A parallel call waits for all the operations it started, including their cleanup
 
 | Term | Meaning |
 | --- | --- |
-| Operation | One invocation of a function passed to a concurrency API: a `tasks` position or one `Background.start` submission |
+| Operation | One invocation of a function passed to a concurrency API: a `tasks` position or one `Scheduler.start` submission |
 | Group | The operations started by one `parallel` call |
 | Caller | The execution that called the API; its context is the group's fixed parent |
 | Joined | Every started operation has finished its body and scope cleanup |
@@ -55,6 +55,6 @@ An operation fault becomes `Crashed` rather than unwinding the caller. This is i
 
 ## No per-operation cancellation
 
-No source or adapter API cancels a single operation of a joined group. An adapter that ends a foreign call early reports that through the operation's declared return value, such as an `IoError`; it is not a fault. Joined APIs therefore have no separate cancelled outcome. Background work, which can be cancelled individually, reports cancellation through `WorkStatus.Cancelled`.
+No source or adapter API cancels a single operation of a joined group. An adapter that ends a foreign call early reports that through the operation's declared return value, such as an `IoError`; it is not a fault. Joined APIs therefore have no separate cancelled outcome. Scheduler work, which can be cancelled individually, reports cancellation through `WorkStatus.Cancelled`.
 
 See [parallel operations](parallel.md), [cancellation](cancellation.md), and [scope cleanup](../ownership-and-cleanup/cleanup/exit-order.md).

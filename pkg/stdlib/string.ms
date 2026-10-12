@@ -11,59 +11,63 @@ export type StringError:
     case LimitExceeded
     case Failed(message: String)
 
-export fn contains(value: String, text: String) -> Bool
+fn contains(value: String, text: String) -> Bool
 
-export fn ends_with(value: String, suffix: String) -> Bool
+fn ends_with(value: String, suffix: String) -> Bool
 
 export fn from_scalars(values: List[Int]) -> Result[String, StringError]
 
-export fn join(parts: List[String], separator: String) -> String
+fn join(parts: List[String], separator: String) -> String
 
-export fn lower(text: String) -> String
+fn lower(text: String) -> String
 
-export fn repeat(text: String, count: Int, max_bytes: Int) -> Result[String, StringError]
+fn repeat(text: String, count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]
 
-export fn replace(text: String, old: String, new: String, max_replacements: Int) -> String
+fn replace(text: String, old: String, new: String, max_replacements: Optional[Int] = none) -> String
 
-export fn scalar_length(text: String) -> Int
+fn scalar_length(text: String) -> Int
 
-export fn scalar_values(text: String) -> List[Int]
+fn scalar_values(text: String) -> List[Int]
 
-export fn slice_scalars(text: String, start: Int, end: Int) -> Result[String, StringError]
+fn slice_scalars(text: String, start: Int, end: Int) -> Result[String, StringError]
 
-export fn split(text: String, separator: String, max_parts: Int) -> List[String]
+fn split(text: String, separator: String, max_parts: Optional[Int] = none) -> List[String]
 
-export fn starts_with(value: String, prefix: String) -> Bool
+fn starts_with(value: String, prefix: String) -> Bool
 
-export fn trim(text: String) -> String
+fn trim(text: String) -> String
 
-export fn upper(text: String) -> String
+fn upper(text: String) -> String
 
-export fn at(text: String, index: Int) -> Optional[String]
+fn at(text: String, index: Int) -> Optional[String]
 
-export fn scalar_at(text: String, index: Int) -> Optional[Int]
+fn scalar_at(text: String, index: Int) -> Optional[Int]
 
-export fn index_of(text: String, value: String) -> Optional[Int]
+fn index_of(text: String, value: String) -> Optional[Int]
 
-export fn last_index_of(text: String, value: String) -> Optional[Int]
+fn last_index_of(text: String, value: String) -> Optional[Int]
 
-export fn trim_start(text: String) -> String
+fn trim_start(text: String) -> String
 
-export fn trim_end(text: String) -> String
+fn trim_end(text: String) -> String
 
-export fn slice(text: String, start: Int, end: Int) -> String
+fn slice(text: String, start: Int, end: Int) -> String
 
-export fn substring(text: String, start: Int, end: Int) -> String
+fn substring(text: String, start: Int, end: Int) -> String
 
-export fn pad_start(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+fn pad_start(text: String, target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
 
-export fn pad_end(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+fn pad_end(text: String, target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
 
-export fn replace_all(text: String, old: String, new: String, max_bytes: Int) -> Result[String, StringError]
+fn replace_all(text: String, old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
 
-export fn normalize(text: String, form: String, max_bytes: Int) -> Result[String, StringError]
+fn normalize(text: String, form: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
 
-export fn concat(text: String, values: String) -> String
+fn concat(text: String, values: String) -> String
 
 impl Error for StringError:
     fn message() -> String
+
+export type StringBuilder:
+    fn append(value: String) -> Unit
+    fn freeze() -> String

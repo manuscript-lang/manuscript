@@ -42,7 +42,6 @@ test "checked decrement":
 
 This illustrates the test-block syntax and ordinary conditional returns for failed checks. Runtime tests need fake capabilities, virtual clocks, and barriers to arrange meaningful races, rather than assuming a fixed goroutine schedule.
 
-For an acquisition race, verify that the adapter closes a newly acquired resource if delivery loses to cancellation, and that `with` registers a delivered resource without a cancellation gap. Never recursively close arbitrary parallel result fields or captures. Test aliases invoked after scope exit, concurrent operation/close races, stale pooled leases, reverse close order, and idempotent shutdown. Background tests cover bounded rejection, closed admission, independent siblings, observed domain errors and faults, bounded reporting state, optional drain, cancellation, and joining. A captured `var` keeps its creation-time value; assignment to an outer captured local is rejected.
 
 See [completion and acquisition](../../concurrency/runtime.md#completion-and-resource-acquisition) and [complete-program evidence](programs.md).
 

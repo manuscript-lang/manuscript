@@ -5,7 +5,7 @@ import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
 import Queue from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
-import Background from "@std/tasks.ms"
+import Scheduler from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
 type Person:
@@ -94,10 +94,10 @@ test "generics views bound methods functions and resources":
     check(value: convert(), expected: person.toString())
     check(value: answer.toString(), expected: "[function]")
     check(value: "{answer}", expected: "[function]")
-    let queue = Queue[Int](capacity: 1)
+    let queue = Queue[Int](capacity: some(value: 1))
     check(value: queue.toString(), expected: "[object]")
     check(value: "{queue}", expected: "[object]")
-    with service = Background(limit: 1):
+    with service = Scheduler(limit: some(value: 1)):
         check(value: service.toString(), expected: "[object]")
         check(value: "{service}", expected: "[object]")
         let bound = service.toString

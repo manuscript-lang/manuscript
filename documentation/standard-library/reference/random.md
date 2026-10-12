@@ -36,7 +36,7 @@ fn entropy() -> Entropy
 ## secure_int {data-api-kind="Function"}
 
 ```manuscript
-fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, RandomError]
+fn secure_int(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = none) -> Result[Int, RandomError]
 ```
 
 ## uuid_v4 {data-api-kind="Function"}

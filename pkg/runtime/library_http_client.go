@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"strings"
 	"sync"
-	"time"
 	"unicode/utf8"
 
 	"golang.org/x/net/publicsuffix"
@@ -20,11 +19,11 @@ import (
 func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "http_client", libraryResult("HttpClient", "HttpError"), []LibraryParam{{"options", "HttpClientOptions"}}},
-		{"HttpClient", "send", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
-		{"HttpClient", "send_stream", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
+		{"HttpClient", "send", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"HttpClient", "send_stream", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
 		{"HttpClient", "close", "Unit", nil},
 		{"ResponseBody", "status", "Int", nil}, {"ResponseBody", "headers", "Map[String][List[String]]", nil},
-		{"ResponseBody", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},
+		{"ResponseBody", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int]"}}},
 		{"ResponseBody", "close", "Unit", nil},
 	}...)
 }
@@ -52,15 +51,18 @@ func (n *network) httpOperation(name string) (Function, bool) {
 			f := a[0].(Record).Fields
 			redirects, idle, headerMax := f["max_redirects"].(int64), f["max_idle_connections"].(int64), f["max_header_bytes"].(int64)
 			idleTimeout := f["idle_timeout"].(Duration)
-			if redirects < 0 || idle < 0 || idle > 65536 || headerMax <= 0 || idleTimeout < 0 {
+			if redirects < 0 || idle < 0 || headerMax <= 0 || idleTimeout < nativeNoTimeout {
 				return libraryError(r, "InvalidInput", "")
 			}
 			config, err := libraryHTTPClientTLS(f["tls"])
 			if err != nil {
 				return libraryError(r, "InvalidInput", "")
 			}
+			if idle == nativeUnlimited {
+				idle = 0
+			}
 			config.ServerName = "" // HTTP validates each request's hostname, never a fixed name from a prior origin.
-			transport := &http.Transport{DialContext: n.dial, TLSClientConfig: config, ForceAttemptHTTP2: true, MaxResponseHeaderBytes: headerMax, MaxIdleConns: int(idle), MaxIdleConnsPerHost: int(idle), IdleConnTimeout: time.Duration(idleTimeout), DisableCompression: !f["decompress"].(bool)}
+			transport := &http.Transport{DialContext: n.dial, TLSClientConfig: config, ForceAttemptHTTP2: true, MaxResponseHeaderBytes: headerMax, MaxIdleConns: int(idle), MaxIdleConnsPerHost: int(idle), IdleConnTimeout: nativeTransportTimeout(idleTimeout), DisableCompression: !f["decompress"].(bool)}
 			client := &http.Client{Transport: transport}
 			if f["cookies"].(bool) {
 				client.Jar, _ = cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
@@ -106,7 +108,7 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 	}
 	return libraryAcquisition("HttpClient", name, func(ctx *Execution, r string, a []Value) Value {
 		max, timeout := a[4].(int64), a[5].(Duration)
-		if max < 0 || timeout < 0 {
+		if max < 0 || timeout < nativeNoTimeout {
 			return libraryError(r, "InvalidInput", "")
 		}
 		u, err := url.Parse(a[1].(string))
@@ -382,7 +384,7 @@ func (b *libraryStreamReader) Read(p []byte) (count int, err error) {
 		return 0, nil
 	}
 	if len(b.remainder) == 0 {
-		v := Invoke(b.ctx, Bind(b.stream, "", "read"), []Argument{{"max_bytes", int64(len(p))}}).(Alternative)
+		v := Invoke(b.ctx, Bind(b.stream, "", "read"), []Argument{{"max_bytes", optional("Int", int64(len(p)), true)}}).(Alternative)
 		if v.Tag == "error" {
 			return 0, errors.New("source stream read failed")
 		}

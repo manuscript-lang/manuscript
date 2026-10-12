@@ -13,7 +13,7 @@ Architecture diffs report changed boundaries, capabilities, effects, error types
 
 ## Reviewing a changed boundary
 
-For example, adding a capability parameter changes accepted authority. Adding background submission changes a service lifetime boundary. Adding `with` changes an explicit cleanup boundary. Adding a domain error changes the caller’s expected alternatives. These changes belong in the derived architecture view because they follow from checked source.
+For example, adding a capability parameter changes accepted authority. Adding scheduled submission changes a service lifetime boundary. Adding `with` changes an explicit cleanup boundary. Adding a domain error changes the caller’s expected alternatives. These changes belong in the derived architecture view because they follow from checked source.
 
 The draft defines the reported facts, but does not prescribe a diff rendering format. See [boundary contracts](../../modules-and-capabilities/modules/boundaries.md) and [effect summaries](../../modules-and-capabilities/capabilities/effects.md).
 

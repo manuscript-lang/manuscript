@@ -1,8 +1,8 @@
-import {first_view, first_method, first_generic, first_resource} from "./first.ms"
-import {second_view, second_method, second_generic, second_resource} from "./second.ms"
-import {Item, Resource} from "./domain.ms"
-import {Read, read_view} from "./contracts.ms"
-import ListBuilder from "@std/builders.ms"
+import { first_view, first_method, first_generic, first_resource } from "./first.ms"
+import { second_view, second_method, second_generic, second_resource } from "./second.ms"
+import { Item, Resource } from "./domain.ms"
+import { Read, read_view } from "./contracts.ms"
+import ListBuilder from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
@@ -31,5 +31,5 @@ test "views and functions retain local implementations across modules":
     with second_close = second_resource(resource):
         let active = true
     let values = events.freeze()
-    if values.get(index: 0) != some(value: 10) or values.get(index: 1) != some(value: 20):
+    if values.at(index: 0) != some(value: 10) or values.at(index: 1) != some(value: 20):
         return panic("cleanup views")

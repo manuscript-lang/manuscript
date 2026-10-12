@@ -12,7 +12,7 @@ func TestHostAccessorsRetainRootsAcrossExecutionContexts(t *testing.T) {
 	if err := root.Host.initialize(); err != nil {
 		t.Fatal(err)
 	}
-	contexts := []*Execution{root, inherit(root, context.Background()), Shield(root), newExecution(root, context.Background()), owned(root, context.Background(), &Background{})}
+	contexts := []*Execution{root, inherit(root, context.Background()), Shield(root), newExecution(root, context.Background()), owned(root, context.Background(), &Scheduler{})}
 	for _, spec := range Library {
 		if _, ok := root.Host.values[spec.Name]; !ok {
 			continue

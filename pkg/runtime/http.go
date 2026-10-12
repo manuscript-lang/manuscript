@@ -83,9 +83,15 @@ func (n *network) Operation(name string) Function {
 	}
 	result := "@std/Result[@std/HttpServer][@std/IoError]"
 	return NewAcquisition([]string{"address", "handler", "limit", "max_body_bytes", "max_response_bytes", "timeout", "grace"}, result, func(ctx *Execution, args []Value) Value {
+		params := []LibraryParam{{"address", "String"}, {"handler", ""}, {"limit", "Optional[Int]"}, {"max_body_bytes", "Optional[Int]"}, {"max_response_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}, {"grace", "Optional[Duration]"}}
+		normalized, valid := nativeOptions("serve", params, args)
+		if !valid {
+			return ioError(result, "InvalidInput", "")
+		}
+		args = normalized
 		limit, bodyLimit, responseLimit := args[2].(int64), args[3].(int64), args[4].(int64)
 		timeout, grace := args[5].(Duration), args[6].(Duration)
-		if limit <= 0 || limit > int64(^uint(0)>>1) || bodyLimit < 0 || bodyLimit == int64(^uint64(0)>>1) || responseLimit < 0 || timeout <= 0 || grace < 0 {
+		if limit <= 0 || limit > int64(^uint(0)>>1) || bodyLimit < 0 || responseLimit < 0 || timeout < nativeNoTimeout || grace < nativeNoTimeout {
 			return ioError(result, "InvalidInput", "")
 		}
 		call, finish, admitted := n.beginCall(ctx.Context)
@@ -100,9 +106,9 @@ func (n *network) Operation(name string) Function {
 		if err != nil {
 			return ioError(result, "Unavailable", "")
 		}
-		server := &httpService{listener: listener, parent: ctx, owner: n, handler: args[1], admission: make(chan struct{}, int(limit)), bodyLimit: bodyLimit, responseLimit: responseLimit, timeout: time.Duration(timeout), grace: time.Duration(grace), done: make(chan struct{}), closed: make(chan struct{})}
+		server := &httpService{listener: listener, parent: ctx, owner: n, handler: args[1], admissionLimit: limit, bodyLimit: bodyLimit, responseLimit: responseLimit, timeout: time.Duration(timeout), grace: time.Duration(grace), done: make(chan struct{}), closed: make(chan struct{})}
 		server.context, server.cancel = context.WithCancel(ctx.Context)
-		server.server = &http.Server{Handler: server, ReadHeaderTimeout: server.timeout, MaxHeaderBytes: 64 * 1024, BaseContext: func(net.Listener) context.Context { return server.context }}
+		server.server = &http.Server{Handler: server, ReadHeaderTimeout: server.timeout, MaxHeaderBytes: nativeHTTPHeaderBytes(nativeUnlimited), BaseContext: func(net.Listener) context.Context { return server.context }}
 		n.mu.Lock()
 		if n.closed {
 			n.mu.Unlock()
@@ -134,7 +140,8 @@ type httpService struct {
 	context                  context.Context
 	cancel                   context.CancelFunc
 	handler                  Value
-	admission                chan struct{}
+	admissionLimit           int64
+	admitted                 int64
 	bodyLimit, responseLimit int64
 	timeout, grace           time.Duration
 	done, closed             chan struct{}
@@ -155,22 +162,24 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server closed", http.StatusServiceUnavailable)
 		return
 	}
-	select {
-	case s.admission <- struct{}{}:
-		s.requests.Add(1)
+	if s.admissionLimit != nativeUnlimited && s.admitted >= s.admissionLimit {
 		s.mu.Unlock()
-	default:
-		s.mu.Unlock()
-		http.Error(w, "server busy", http.StatusServiceUnavailable)
+		http.Error(w, "server busy", 503)
 		return
 	}
+	s.admitted++
+	s.requests.Add(1)
+	s.mu.Unlock()
 	defer s.requests.Done()
-	defer func() { <-s.admission }()
-	execution, cancel := context.WithTimeout(r.Context(), s.timeout)
+	defer func() { s.mu.Lock(); s.admitted--; s.mu.Unlock() }()
+
+	execution, cancel := nativeContextTimeout(r.Context(), s.timeout)
 	defer cancel()
 	controller := http.NewResponseController(w)
-	controller.SetReadDeadline(time.Now().Add(s.timeout))
-	controller.SetWriteDeadline(time.Now().Add(s.timeout))
+	if s.timeout >= 0 {
+		controller.SetReadDeadline(time.Now().Add(s.timeout))
+		controller.SetWriteDeadline(time.Now().Add(s.timeout))
+	}
 	if !utf8.ValidString(r.URL.Path) || !utf8.ValidString(r.URL.RawQuery) {
 		http.Error(w, "invalid UTF-8 URL", 400)
 		return
@@ -265,7 +274,7 @@ func (s *httpService) close(ctx *Execution) {
 	}
 	s.closing = true
 	s.mu.Unlock()
-	grace, cancel := context.WithTimeout(context.Background(), s.grace)
+	grace, cancel := nativeContextTimeout(context.Background(), s.grace)
 	shutdownError := s.server.Shutdown(grace)
 	cancel()
 	s.cancel()

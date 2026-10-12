@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	LibraryMethods = append(LibraryMethods, LibraryMethod{"FileSystem", "watch_native", libraryResult("FileWatcher", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}, {"max_entries", "Int"}, {"max_events", "Int"}, {"overflow", "String"}}})
+	LibraryMethods = append(LibraryMethods, LibraryMethod{"FileSystem", "watch_native", libraryResult("FileWatcher", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}, {"max_entries", "Optional[Int]"}, {"max_events", "Optional[Int]"}, {"overflow", "String"}}})
 }
 
 // Native watches consume kernel events independently of next() so recursive

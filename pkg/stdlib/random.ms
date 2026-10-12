@@ -1,5 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
+import Optional from "@std/optional.ms"
 import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import Result from "@std/result.ms"
@@ -12,7 +13,7 @@ export type RandomError:
 export interface Entropy:
     fn bytes(count: Int) -> Result[Bytes, RandomError]
 
-export fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, RandomError]
+export fn secure_int(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = none) -> Result[Int, RandomError]
 
 export fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]
 

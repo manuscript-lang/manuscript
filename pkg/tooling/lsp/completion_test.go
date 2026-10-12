@@ -89,7 +89,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"parameter", "fn answer(input: Int) -> Int:\n    return inp|\n", []string{"input"}, nil},
 		{"locals before cursor", "fn answer() -> Int:\n    let before = 1\n    be|\n    let behind = 2\n    return before\n", []string{"before"}, []string{"behind"}},
 		{"siblings hidden", "fn answer() -> Int:\n    if true:\n        let secret = 1\n    sec|\n    return 0\n", nil, []string{"secret"}},
-		{"list methods", "import List from \"@std/collections.ms\"\nfn count(items: List[Int]) -> Int:\n    return items.|\n", []string{"length", "get", "append", "concat"}, []string{"byte_length", "send"}},
+		{"list methods", "import List from \"@std/collections.ms\"\nfn count(items: List[Int]) -> Int:\n    return items.|\n", []string{"length", "at", "append", "concat"}, []string{"byte_length", "send"}},
 		{"member prefix", "fn size(text: String) -> Int:\n    return text.byte_|\n", []string{"byte_length"}, []string{"parse_int"}},
 		{"record fields", "type Point:\n    x: Int\n    y: String\nfn read(point: Point) -> Int:\n    return point.|\n", []string{"x", "y"}, []string{"length"}},
 		{"native opaque fields", "import Queue from \"@std/queues.ms\"\nfn read(queue: Queue[Int]) -> Unit:\n    queue.|\n", []string{"enqueue", "dequeue", "peek", "length", "is_empty"}, []string{"capacity", "send", "receive", "close"}},
@@ -99,6 +99,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"auto import", "fn work() -> Unit:\n    Que|\n", []string{"Queue"}, nil},
 		{"comments", "fn work() -> Unit:\n    # Que|\n    unit\n", nil, []string{"Queue"}},
 		{"strings", "fn work() -> String:\n    return \"Que|\"\n", nil, []string{"Queue"}},
+		{"optional methods", "import Optional from \"@std/optional.ms\"\nfn work(value: Optional[Int]) -> Int:\n    return value.|\n", []string{"is_some", "is_none", "unwrap", "unwrap_or", "unwrap_or_else"}, []string{"some", "none", "get"}},
 		{"generic alternative", "import Optional from \"@std/optional.ms\"\nfn work() -> Optional[Int]:\n    return Optional[Int].|\n", []string{"some", "none"}, nil},
 	}
 	for _, tt := range tests {

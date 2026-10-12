@@ -18,15 +18,15 @@ Claude Code reviewed the 118 original design pages on 2026-10-11 for simplicity,
 | Finding | Adopted fix and authoritative contract |
 | --- | --- |
 | C1 — incompatible try errors | Explicit Result matching; complete [parallel example](../concurrency/parallel.md); exact-error requirements on body fragments and Unit-test matching |
-| C2 — unresolved/untypable APIs | Closed [prelude](../standard-library/types/prelude.md), inferred packs, exact `item` label, optional arguments, status/reporting; Background uses one `Result[Unit, String]` callable signature |
+| C2 — unresolved/untypable APIs | Closed [prelude](../standard-library/types/prelude.md), inferred packs, exact `item` label, optional arguments, status/reporting; Scheduler uses one `Result[Unit, String]` callable signature |
 | C3 — contract sharing | All values, including contract views and callbacks, may be shared. Native services synchronize access; local Queue access uses an explicit lock; [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) protects complete updates. |
-| C4 — executable/adapter boundary | Exact [CLI entry and host services](../standard-library/hosts/cli.md), standard stream contracts with declared cleanup, [versioned adapter binding](../modules-and-capabilities/adapters/manifests.md), acyclic schema/native/application packages |
+| C4 — executable/adapter boundary | Exact [CLI entry and host services](../standard-library/packages/cli.md), standard stream contracts with declared cleanup, [versioned adapter binding](../modules-and-capabilities/adapters/manifests.md), acyclic schema/native/application packages |
 | C5 — missing data APIs | Normative [immutable data operations](../standard-library/data-and-io/operations.md), text/byte conversion, numeric conversion, collection lookup/update |
 | C6 — numeric semantics | Checked Int division/remainder, IEEE Float outcomes, finite Decimal coefficient/exponent grid and single rounding, literal/conversion boundaries in [numbers](../core-language/basics/numbers-and-booleans.md) |
 
 All six critical objections are addressed in the design. Observable accepted/rejected cases are in [runtime binding conformance](../compiler/conformance/runtime-bindings.md). These are design fixtures, not compiler test results: the compiler/runtime are not implemented.
 
-The adopted fixes preserve named calls, exact error types, explicit contract views, ordinary references, lexical cleanup, and one function kind. We chose a single Background submission signature instead of Claude's proposed intrinsic overload, ordinary contract views with universal sharing, and a finite coefficient/exponent Decimal definition instead of relying on an external package's defaults. Concurrent interface work added bounded generic implementations and overlap rejection; the current examples and host contracts retain those decisions.
+The adopted fixes preserve named calls, exact error types, explicit contract views, ordinary references, lexical cleanup, and one function kind. We chose a single Scheduler submission signature instead of Claude's proposed intrinsic overload, ordinary contract views with universal sharing, and a finite coefficient/exponent Decimal definition instead of relying on an external package's defaults. Concurrent interface work added bounded generic implementations and overlap rejection; the current examples and host contracts retain those decisions.
 
 Additional fixes close generic function specialization growth, descendant/reporter self-joining shutdown, time operators, known-length destructuring, foreign validation failure handling, panic unwind mechanics, and conservative unknown effects. The whole guide targets 0.1. [Scope](../compiler/conformance/scope.md#outstanding-decisions) tracks unfinished runner, build, adapter, library, and tooling details; the historical priority labels below do not imply that those contracts are complete. Built-in case shorthand continues ordinary lexical lookup; its potential shadowing is intentional and qualified cases remain available.
 
@@ -46,8 +46,8 @@ The remaining problems sit where the language meets the runtime. Several load-be
 
 | ID | Objection |
 | --- | --- |
-| **C1** | `try` requires the exact same error type, so every documented `parallel`/`Background` call site is ill-typed. That includes the flagship example. |
-| **C2** | The runtime and standard-library APIs (`panic`, `parallel`, `Background`, …) can't be resolved by name, and several can't be typed under the stated type system. |
+| **C1** | `try` requires the exact same error type, so every documented `parallel`/`Scheduler` call site is ill-typed. That includes the flagship example. |
+| **C2** | The runtime and standard-library APIs (`panic`, `parallel`, `Scheduler`, …) can't be resolved by name, and several can't be typed under the stated type system. |
 | **C3** | Concurrent safety of contract receivers was unspecified in the reviewed draft. The current universal-sharing contract resolves this. |
 | **C4** | Nothing connects a host to running code: no entry contract and no way to create a capability. The planned Go package layout also has an import cycle, and `with` can't accept a contract-typed resource. |
 | **C5** | There is no data API. A list whose length depends on input can't be built, Map/Set values can't be created, and numbers and text can't be converted. |
@@ -73,7 +73,7 @@ The remaining problems sit where the language meets the runtime. Several load-be
   - `concurrency/tasks/operations.md:12`
   - `concurrency/cancellation/deadlines.md:8`
   - `modules-and-capabilities/modules/boundaries.md:24`
-  - `standard-library/tasks/background.md:22` (`StartError`)
+  - `standard-library/tasks/scheduler.md:22` (`StartError`)
   - `concurrency/cancellation/requests.md:8`
 - `documentation/compiler/conformance/semantic-tests.md:13` asks tests to verify `let [resA, resB] = try parallel(...)`. Tests are Unit bodies, where `try` is rejected.
 
@@ -94,13 +94,13 @@ The remaining problems sit where the language meets the runtime. Several load-be
 
 **Evidence — names**
 - `documentation/modules-and-capabilities/modules/declarations.md:13` lists only the intrinsic types and bounds.
-- `panic`, `parallel`, `check_cancelled`, `Background`, `ExecutionError`, `Closeable`, `Duration`, `Instant`, `File`, `WorkId`, `StartError` and `OperationId` are neither intrinsic nor importable. `compiler/builds/project-configuration.md:43` forbids bare logical module names, and `:51` leaves package imports unspecified.
-- Fixtures still call `panic` without an import (`compiler/conformance/core-language.md:180,584`), while CL-01 makes unknown names resolution errors (`core-language.md:36`).
+- `panic`, `parallel`, `check_cancelled`, `Scheduler`, `ExecutionError`, `Closeable`, `Duration`, `Instant`, `File`, `WorkId`, `StartError` and `OperationId` are neither intrinsic nor importable. `pkg/compiler/builds/project-configuration.md:43` forbids bare logical module names, and `:51` leaves package imports unspecified.
+- Fixtures still call `panic` without an import (`pkg/compiler/conformance/core-language.md:180,584`), while CL-01 makes unknown names resolution errors (`core-language.md:36`).
 
 **Evidence — typing**
-- **Heterogeneous packs.** Pack typing is deferred to "trusted API manifests" (`concurrency/parallel.md:30,42`; `compiler/lowering/function-and-task-calls.md:11`). The manifest format is explicitly unspecified (`modules-and-capabilities/adapters/manifests.md:13`). Only literal `tasks:` packs are covered (`type-checker.md:20`), and nothing says what a pack value can do (`standard-library/types/catalog.md:27`, `destructuring.md:14`).
-- **`Background.start`.** It accepts `fn() -> Unit` *or* `fn() -> Result[Unit, E]` for any `E` (`background.md:27`). That is an overload plus a generic operation, both excluded (`declarations.md:11`; `contracts.md:51`; `generics.md:65`).
-- **Background reporter.** The reporter is "configured" (`background.md:27`, `errors/results.md:45`, `errors/faults.md:39`), but the only constructor shown is `Background(limit: 32)` (`background.md:8`). Records and alternatives can't be formatted either (`text-and-bytes.md:45`), so there is no way to report an arbitrary `E`.
+- **Heterogeneous packs.** Pack typing is deferred to "trusted API manifests" (`concurrency/parallel.md:30,42`; `pkg/compiler/lowering/function-and-task-calls.md:11`). The manifest format is explicitly unspecified (`modules-and-capabilities/adapters/manifests.md:13`). Only literal `tasks:` packs are covered (`type-checker.md:20`), and nothing says what a pack value can do (`standard-library/types/catalog.md:27`, `destructuring.md:14`).
+- **`Scheduler.start`.** It accepts `fn() -> Unit` *or* `fn() -> Result[Unit, E]` for any `E` (`background.md:27`). That is an overload plus a generic operation, both excluded (`declarations.md:11`; `contracts.md:51`; `generics.md:65`).
+- **Scheduler reporter.** The reporter is "configured" (`background.md:27`, `errors/results.md:45`, `errors/faults.md:39`), but the only constructor shown is `Scheduler(limit: some(value: 32))` (`background.md:8`). Records and alternatives can't be formatted either (`text-and-bytes.md:45`), so there is no way to report an arbitrary `E`.
 - **Optional arguments.** Trusted APIs may have optional named arguments (`grammar.md:116`, `declarations-and-calls.md:41`), but no page lists which ones.
 
 **Counterexamples**
@@ -114,10 +114,10 @@ The remaining problems sit where the language meets the runtime. Several load-be
   - `tasks` must be a bracket literal, and each `fi` must be a `fn() -> Ri`.
   - `Pack` has no source spelling. It can be inferred into locals and generic parameters, bound as a match payload, and destructured with exact arity.
   - It can't appear in annotations, parameters or fields, and it has no `Equal`.
-- **`Background`.**
-  - Constructor: `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit)`.
+- **`Scheduler`.**
+  - Constructor: `Scheduler(limit: Int, reporter: fn(failure: SchedulerFailure) -> Unit)`.
   - `start` is the single sanctioned intrinsic overload: either `fn() -> Unit` or `fn() -> Result[Unit, E]`.
-  - `BackgroundFailure` is `Failed(work: WorkId, error: String)` or `Crashed(work: WorkId, message: String)`. The `error` text is the deterministic `Type.Case` name, so no formatting protocol is needed.
+  - `SchedulerFailure` is `Failed(work: WorkId, error: String)` or `Crashed(work: WorkId, message: String)`. The `error` text is the deterministic `Type.Case` name, so no formatting protocol is needed.
 - **Other signatures.** Add `check_cancelled() -> Unit` and `panic(message: String) -> Never`.
 
 **Acceptance cases**
@@ -133,14 +133,14 @@ The earlier receiver-proof proposals are superseded. Contract views and function
 **Priority:** CRITICAL (no executable semantics; adapter build blocker)
 
 **Evidence**
-- **Entry.** `project-configuration.md:20` names only an entry *file*. `syntax.md:5` and `grammar.md:120` forbid module initializers. Command and handler registration are unspecified (`hosts/cli.md:15`, `hosts/http.md:15`).
+- **Entry.** `project-configuration.md:20` names only an entry *file*. `syntax.md:5` and `grammar.md:120` forbid module initializers. Command and handler registration are unspecified (`packages/cli.md:15`, `packages/http.md:15`).
 - **Authority roots.** `capabilities/authority.md:7` forbids ambient access, but nothing creates a capability value.
   - `grammar.md:83-86` has no native or extern declaration form.
   - `contracts.md:49` requires an implementation to live in the concrete type's defining module, which native types don't have.
   - `catalog.md:24` lists `File`, `ReadStream` and `WriteStream` without any declaration.
 - **Adapter binding.** `manifests.md:7-13` lists what a manifest must describe, but defines no binding target and no format.
 - **Package cycle.**
-  - `compiler/frontend/pipeline.md:7` and `incremental-compilation.md:9,13` emit one application Go package that imports separately compiled adapter packages.
+  - `pkg/compiler/frontend/pipeline.md:7` and `incremental-compilation.md:9,13` emit one application Go package that imports separately compiled adapter packages.
   - Contracts can mention application types (`contracts.md:9-11`: `Payments` over `Money`, `Receipt`, `PaymentError`).
 - **`with` on contracts.**
   - `with` needs an explicit `impl Closeable` (`cleanup/scopes.md:5`, `closeable.md:5`, `scope-checker.md:9`).
@@ -159,7 +159,7 @@ The earlier receiver-proof proposals are superseded. Contract views and function
   - The entry module exports exactly `fn main() -> Int`. The return value is the exit status (0–125; anything else is a fault).
   - A fault exits with code 70 after cleanup, with diagnostics on stderr.
   - SIGINT or SIGTERM cancels the run context, the program unwinds, and it exits with 130.
-- **Host services.** Import zero-parameter accessors from the standard modules, as specified in [CLI hosts](../standard-library/hosts/cli.md). The parameterless entrypoint and imported accessors supersede the earlier Process-record proposal; no per-function authority enforcement is required.
+- **Host services.** Import zero-parameter accessors from the standard modules, as specified in [Command-line programs](../standard-library/packages/cli.md). The parameterless entrypoint and imported accessors supersede the earlier Process-record proposal; no per-function authority enforcement is required.
 - **Adapter shape** (`manifests.md`, `incremental-compilation.md`).
   - An adapter ships an interface `.ms` module containing only contracts and data over intrinsic/prelude types and its own declarations.
   - Its manifest maps each operation to a Go symbol, with effects and sharing.
@@ -193,7 +193,7 @@ The earlier receiver-proof proposals are superseded. Contract views and function
 - No `Map` value can exist, so `loops.md:35` can only ever see host input.
 
 **Smallest fix.** Add compiler-defined members on the intrinsic types. Member-call syntax already exists, and users can't extend these. All of them return new immutable values.
-- **`List[T]`:** `length() -> Int`, `get(index: Int) -> Optional[T]`, `append(value: T)`, `concat(values: List[T])`.
+- **`List[T]`:** `length() -> Int`, `at(index: Int) -> Optional[T]`, `append(value: T)`, `concat(values: List[T])`.
 - **`Map[K, V]`:**
   - `Map[K, V]()` constructs an empty map. Type arguments can come from the expected type (`generics.md:93`).
   - Members: `length`, `get(key:) -> Optional[V]`, `contains(key:)`, `with_entry(key:, value:)`, `without(key:)`.
@@ -210,7 +210,7 @@ The earlier receiver-proof proposals are superseded. Contract views and function
 
 **Acceptance cases**
 - `positives(values: [3, -1, 2]) == [3, 2]`.
-- `[1].get(index: 5) == none`.
+- `[1].at(index: 5) == none`.
 - After inserting `a`, then `b`, then replacing `a`, the map iterates `a→3, b→2`.
 - `"é".byte_length() == 2`.
 - Bytes containing `0xFF` give `to_text() == none`.
@@ -257,7 +257,7 @@ The earlier receiver-proof proposals are superseded. Contract views and function
 
 **I-01 — Equality and concurrent access**
 
-The earlier sharing-bound proposal is superseded. `Hashable` implies `Equal`; equality and hashing are derived independently of concurrent access. All values may be shared, including values that have no equality or hashing.
+The earlier sharing-bound proposal is superseded. `Hashable` implies `Equal`; equality and hashing use standard interfaces independently of concurrent access. All values may be shared, including values that have no equality or hashing.
 
 **I-02 — Duration/Instant arithmetic contradicts the closed operator table** (fix together with C2)
 - **Evidence.** `deadlines.md:10` writes `clock.now() + 2.seconds`, but `expressions.md:5,49-52,66` is closed and numeric-only. `numbers-and-booleans.md:58` and `grammar.md:36` don't list the units or say whether `n.seconds` works on a non-literal.
@@ -313,15 +313,14 @@ The earlier sharing-bound proposal is superseded. `Hashable` implies `Equal`; eq
 - **Evidence.** `programs.md:11-16` requires programs that need APIs with no signatures:
   - streams (`streams.md:7-15`)
   - queues (`queues.md:15`)
-  - pools (`synchronized-state.md:11`)
   - HTTP (`http.md:15`)
   - subprocesses
   - a debugger session (`debugger-integration.md:13`)
 
   Meanwhile `README.md:31` claims the guides together specify v0.1.
 - **Fix.**
-  - The v0.1 gate covers the C4 CLI with file and stdio streams (with read/write signatures), `parallel`, `Background`, the cleanup-fault program and the acquisition-race program.
-  - Move HTTP, subprocess draining, queues, pools and the debugger session to a labeled next milestone.
+  - The v0.1 gate covers the C4 CLI with file and stdio streams (with read/write signatures), `parallel`, `Scheduler`, the cleanup-fault program and the acquisition-race program.
+  - Move HTTP, subprocess draining, queues and the debugger session to a labeled next milestone.
   - Add normative/deferred status labels to each guide index.
 - **Accept.** Every v0.1 program fixture is complete source plus a manifest plus an expected transcript, using only specified APIs.
 

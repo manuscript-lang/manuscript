@@ -2,6 +2,13 @@
 package nativeabi
 
 var ReceiverFunctions = map[string]map[string]string{
+	"Optional": {
+		"is_some":        "optional/is_some",
+		"is_none":        "optional/is_none",
+		"unwrap":         "optional/unwrap",
+		"unwrap_or":      "optional/unwrap_or",
+		"unwrap_or_else": "optional/unwrap_or_else",
+	},
 	"List": {
 		"group_by":        "collections/group_by",
 		"at":              "collections/at",

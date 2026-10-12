@@ -14,7 +14,7 @@ An ordinary function call finishes before the caller moves on. Use a concurrency
 | Need | Use | When it finishes |
 | --- | --- | --- |
 | Run a fixed set of functions together | `parallel` | Before the call returns, including on failure. |
-| Start work under a longer-lived service | `Background` | The service tracks it and waits for unfinished work during shutdown. |
+| Start work under a longer-lived service | `Scheduler` | The service tracks it and waits for unfinished work during shutdown. |
 
 Parallel APIs *join*: they wait for every started operation to finish its body and cleanup. A timeout requests a stop; it does not let the call return with work still running.
 
@@ -42,7 +42,7 @@ Concurrency adds no intrinsic names or compiler bounds. Import each API or type 
 
 ```manuscript
 import parallel from "@std/tasks.ms"
-import Background from "@std/tasks.ms"
+import Scheduler from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
 import OperationId from "@std/tasks.ms"
 import StartError from "@std/tasks.ms"
@@ -62,13 +62,13 @@ Every operation starts under a fixed execution lifetime. That relationship is ch
 | --- | --- |
 | Ordinary call | Current execution context |
 | `parallel` | Joined group nested under the caller |
-| `Background.start` | The chosen background service's fixed host/component lifetime |
+| `Scheduler.start` | The chosen scheduler's fixed host/component lifetime |
 
-A helper may call `parallel` and return its completed result. It cannot return running work for another scope to adopt. Background work is started directly through the chosen service.
+A helper may call `parallel` and return its completed result. It cannot return running work for another scope to adopt. Scheduler work is started directly through the chosen service.
 
-Passing a `Background` reference shares access to that service. It does not prolong the service's lifetime, move its existing work, change its cancellation parent, or reset deadlines. The creating scope registers shutdown with `with`; aliases reject admission after closure.
+Passing a `Scheduler` reference shares access to that service. It does not prolong the service's lifetime, move its existing work, change its cancellation parent, or reset deadlines. The creating scope registers shutdown with `with`; aliases reject admission after closure.
 
-A request can submit work through an application background service, but accepted work uses the service's execution context. Request resources captured by that work can still close when the request exits; later use reports the resource's closed-state error. Pass request data and application services, and acquire the operation's resources inside it.
+A request can submit work through an application scheduler, but accepted work uses the service's execution context. Request resources captured by that work can still close when the request exits; later use reports the resource's closed-state error. Pass request data and application services, and acquire the operation's resources inside it.
 
 There is no task adoption, task reparenting, source-level detached work, or dynamic ownership graph. Scoped resources and ordinary references follow [resource lifetimes](../ownership-and-cleanup/_index.md).
 
@@ -80,4 +80,4 @@ There is no task adoption, task reparenting, source-level detached work, or dyna
 4. [Synchronized values](../standard-library/data-and-io/synchronized-state.md): lock scopes, complete updates, aliases, and reentry
 5. [Runtime contracts](runtime.md): atomic transitions, resource acquisition, adapter contexts, and host escalation
 
-The standard library describes [background services](../standard-library/tasks/background.md).
+The standard library describes [schedulers](../standard-library/tasks/scheduler.md).

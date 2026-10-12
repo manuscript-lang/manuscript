@@ -22,31 +22,31 @@ export type BigInt:
     fn to_int() -> Optional[Int]
     fn to_string(radix: Int) -> String
 
-export fn add(left: BigInt, right: BigInt) -> BigInt
+fn add(left: BigInt, right: BigInt) -> BigInt
 
-export fn bit_and(left: BigInt, right: BigInt) -> BigInt
+fn bit_and(left: BigInt, right: BigInt) -> BigInt
 
-export fn bit_or(left: BigInt, right: BigInt) -> BigInt
+fn bit_or(left: BigInt, right: BigInt) -> BigInt
 
-export fn bit_xor(left: BigInt, right: BigInt) -> BigInt
+fn bit_xor(left: BigInt, right: BigInt) -> BigInt
 
-export fn compare(left: BigInt, right: BigInt) -> Int
+fn compare(left: BigInt, right: BigInt) -> Int
 
-export fn divide(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
+fn divide(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 
-export fn format(value: BigInt, radix: Int) -> String
+fn format(value: BigInt, radix: Int) -> String
 
 export fn from_int(value: Int) -> BigInt
 
-export fn multiply(left: BigInt, right: BigInt) -> BigInt
+fn multiply(left: BigInt, right: BigInt) -> BigInt
 
-export fn parse(text: String, radix: Int, max_digits: Int) -> Result[BigInt, BigIntError]
+export fn parse(text: String, radix: Int, max_digits: Optional[Int] = none) -> Result[BigInt, BigIntError]
 
-export fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
+fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 
-export fn subtract(left: BigInt, right: BigInt) -> BigInt
+fn subtract(left: BigInt, right: BigInt) -> BigInt
 
-export fn to_int(value: BigInt) -> Optional[Int]
+fn to_int(value: BigInt) -> Optional[Int]
 
 impl Error for BigIntError:
     fn message() -> String

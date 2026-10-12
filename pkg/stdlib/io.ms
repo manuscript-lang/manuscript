@@ -7,7 +7,7 @@ import Result from "@std/result.ms"
 
 export interface File:
     fn close() -> Unit
-    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 
 export interface Files:
     fn open(path: String) -> Result[File, IoError]
@@ -22,18 +22,18 @@ export type IoError:
 
 export interface ReadStream:
     fn close() -> Unit
-    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 
 export interface WriteStream:
     fn close() -> Unit
     fn flush() -> Result[Unit, IoError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 
-export fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
+export fn copy(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = none) -> Result[Int, IoError]
 
-export fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
+export fn read_all(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Bytes, IoError]
 
-export fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
+export fn read_line(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Optional[String], IoError]
 
 impl Error for IoError:
     fn message() -> String

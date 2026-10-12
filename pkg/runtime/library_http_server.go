@@ -15,10 +15,10 @@ func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "serve_stream", libraryResult("HttpServer", "HttpError"), []LibraryParam{{"address", "String"}, {"handler", "fn(exchange:HttpExchange)->Result[Unit][HttpError]"}, {"options", "HttpServerOptions"}}},
 		{"HttpExchange", "method", "String", nil}, {"HttpExchange", "path", "String", nil}, {"HttpExchange", "query", "String", nil}, {"HttpExchange", "headers", "Map[String][List[String]]", nil},
-		{"HttpExchange", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},
+		{"HttpExchange", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int]"}}},
 		{"HttpExchange", "send_headers", libraryResult("Unit", "HttpError"), []LibraryParam{{"status", "Int"}, {"headers", "Map[String][List[String]]"}}},
 		{"HttpExchange", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}}},
-		{"HttpExchange", "upgrade", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Int"}}},
+		{"HttpExchange", "upgrade", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Optional[Int]"}}},
 		{"HttpExchange", "close", "Unit", nil},
 	}...)
 }
@@ -27,7 +27,7 @@ func (n *network) serveStreaming() Function {
 		f := a[2].(Record).Fields
 		limit, bodyMax, responseMax, headerMax := f["max_requests"].(int64), f["max_body_bytes"].(int64), f["max_response_bytes"].(int64), f["max_header_bytes"].(int64)
 		timeout, grace := f["timeout"].(Duration), f["grace"].(Duration)
-		if limit <= 0 || limit > 65536 || bodyMax < 0 || responseMax < 0 || headerMax <= 0 || headerMax > int64(^uint(0)>>1) || timeout <= 0 || grace < 0 {
+		if limit <= 0 || bodyMax < 0 || responseMax < 0 || headerMax <= 0 || headerMax > int64(^uint(0)>>1) || timeout < nativeNoTimeout || grace < nativeNoTimeout {
 			return libraryError(r, "InvalidInput", "")
 		}
 		if !n.listenAllowed(a[0].(string)) {
@@ -42,9 +42,9 @@ func (n *network) serveStreaming() Function {
 		if err != nil {
 			return n.networkFailure(ctx, r, call, err)
 		}
-		server := &httpService{listener: listener, parent: ctx, owner: n, handler: a[1], admission: make(chan struct{}, int(limit)), bodyLimit: bodyMax, responseLimit: responseMax, timeout: time.Duration(timeout), grace: time.Duration(grace), done: make(chan struct{}), closed: make(chan struct{}), streaming: true, headerLimit: headerMax}
+		server := &httpService{listener: listener, parent: ctx, owner: n, handler: a[1], admissionLimit: limit, bodyLimit: bodyMax, responseLimit: responseMax, timeout: time.Duration(timeout), grace: time.Duration(grace), done: make(chan struct{}), closed: make(chan struct{}), streaming: true, headerLimit: headerMax}
 		server.context, server.cancel = context.WithCancel(ctx.Context)
-		server.server = &http.Server{Handler: server, ReadHeaderTimeout: server.timeout, MaxHeaderBytes: int(headerMax), BaseContext: func(net.Listener) context.Context { return server.context }}
+		server.server = &http.Server{Handler: server, ReadHeaderTimeout: server.timeout, MaxHeaderBytes: nativeHTTPHeaderBytes(headerMax), BaseContext: func(net.Listener) context.Context { return server.context }}
 		tlsOption := f["tls"].(Alternative)
 		secure := tlsOption.Tag == "some"
 		if secure {
@@ -106,18 +106,18 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "server closed", 503)
 		return
 	}
-	select {
-	case s.admission <- struct{}{}:
-		s.requests.Add(1)
-		s.mu.Unlock()
-	default:
+	if s.admissionLimit != nativeUnlimited && s.admitted >= s.admissionLimit {
 		s.mu.Unlock()
 		http.Error(w, "server busy", 503)
 		return
 	}
+	s.admitted++
+	s.requests.Add(1)
+	s.mu.Unlock()
 	defer s.requests.Done()
-	defer func() { <-s.admission }()
-	call, cancel := context.WithTimeout(r.Context(), s.timeout)
+	defer func() { s.mu.Lock(); s.admitted--; s.mu.Unlock() }()
+
+	call, cancel := nativeContextTimeout(r.Context(), s.timeout)
 	defer cancel()
 	child := newExecution(s.parent, call)
 	child.HostServices = map[*httpService]bool{s: true}
@@ -129,8 +129,10 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 	exchange.writeGate <- struct{}{}
 	controller := http.NewResponseController(w)
 	controller.EnableFullDuplex()
-	controller.SetReadDeadline(time.Now().Add(s.timeout))
-	controller.SetWriteDeadline(time.Now().Add(s.timeout))
+	if s.timeout >= 0 {
+		controller.SetReadDeadline(time.Now().Add(s.timeout))
+		controller.SetWriteDeadline(time.Now().Add(s.timeout))
+	}
 	stop := context.AfterFunc(s.context, cancel)
 	defer stop()
 	// Hijacked WebSocket connections are not owned by net/http Shutdown. The request

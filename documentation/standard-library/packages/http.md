@@ -1,9 +1,9 @@
 +++
-title = "HTTP clients and streaming hosts"
+title = "HTTP"
 weight = 56
 +++
 
-# HTTP clients and streaming hosts
+# HTTP
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
@@ -14,8 +14,8 @@ Use HttpClient for reusable outbound requests and HttpExchange for streaming req
 ## HttpClient operations
 
 ```manuscript
-fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, HttpError]
-fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, HttpError]
+fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int], timeout: Optional[Duration]) -> Result[ResponseBody, HttpError]
+fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int], timeout: Optional[Duration]) -> Result[ResponseBody, HttpError]
 fn close() -> Unit
 ```
 
@@ -24,7 +24,7 @@ fn close() -> Unit
 ```manuscript
 fn status() -> Int
 fn headers() -> Map[String, List[String]]
-fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]
 fn close() -> Unit
 ```
 
@@ -35,42 +35,42 @@ fn method() -> String
 fn path() -> String
 fn query() -> String
 fn headers() -> Map[String, List[String]]
-fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]
 fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, HttpError]
 fn write(data: Bytes) -> Result[Unit, IoError]
-fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int) -> Result[WebSocket, WebSocketError]
+fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int]) -> Result[WebSocket, WebSocketError]
 fn close() -> Unit
 ```
 
 ## Compatibility
 
-The original [bounded buffered HTTP host](../hosts/http.md) and Network.request remain supported. The new reusable client and streaming host provide HTTP/1.1 and HTTP/2 without changing those existing record types. HTTP/3 is excluded by user instruction.
+Network.serve handles buffered requests, and Network.request returns a buffered response. Reusable clients and streaming servers support HTTP/1.1 and HTTP/2 with the same HTTP record types. HTTP/3 is excluded by user instruction.
 
 ## Configuration
 
 ```manuscript
 type HttpClientOptions:
-    max_redirects: Int
-    max_idle_connections: Int
-    max_header_bytes: Int
-    idle_timeout: Duration
+    max_redirects: Optional[Int]
+    max_idle_connections: Optional[Int]
+    max_header_bytes: Optional[Int]
+    idle_timeout: Optional[Duration]
     decompress: Bool
     cookies: Bool
     tls: TlsOptions
 
 type HttpServerOptions:
-    max_requests: Int
-    max_body_bytes: Int
-    max_response_bytes: Int
-    max_header_bytes: Int
-    timeout: Duration
-    grace: Duration
+    max_requests: Optional[Int]
+    max_body_bytes: Optional[Int]
+    max_response_bytes: Optional[Int]
+    max_header_bytes: Optional[Int]
+    timeout: Optional[Duration]
+    grace: Optional[Duration]
     tls: Optional[TlsOptions]
 ```
 
 ### Option limits
 
-Client redirect counts, idle capacity, and timeouts must be nonnegative. The header limit must be positive, and idle capacity cannot exceed 65536. Server request capacity is 1–65536. Header limits and timeout must be positive. Body and response limits and grace must be nonnegative. With no TLS configuration, the server uses plain HTTP/1.1. With TLS configured, native ALPN negotiation selects HTTP/1.1 or HTTP/2. Credentials/trust come from explicit TlsOptions. No ambient HTTP proxy is read.
+Limits and deadlines are optional. Supplied redirect counts, idle capacity, byte budgets, deadlines, and grace must be nonnegative; supplied header and request-admission caps must be positive. With no TLS configuration, the server uses plain HTTP/1.1. With TLS configured, native ALPN negotiation selects HTTP/1.1 or HTTP/2. Credentials/trust come from explicit TlsOptions. No ambient HTTP proxy is read.
 
 ### Client lifetime
 
@@ -88,9 +88,19 @@ Send_stream borrows an explicitly shared ReadStream for the upload and does not 
 
 Redirects honor max_redirects (zero returns the redirect response), reject TLS downgrade, recheck the Network policy on every destination, and remove explicit Authorization/Cookie/Proxy-Authorization when the origin changes. Automatic cookies are selected by the destination jar rather than copying source-origin headers. HTTP 4xx and 5xx statuses are returned responses, rather than transport errors. Header names/values reject injection and callers cannot set host-managed framing fields.
 
-## Streaming request host
+## Request API
 
-Network.serve_stream accepts an ordinary handler and may be stored as a bound method. The handler signature is `fn(exchange: HttpExchange) -> Result[Unit, HttpError]`. The server establishes a fixed request execution context, bounded admission, body/output/header limits, disconnect cancellation and timeout. The handler may read incrementally, emit headers once and write/flush bounded output, or upgrade to a WebSocket session. Source routes by ordinary method/path branching.
+`Network` and `network()` are exported by `@std/net.ms`. Buffered request/response records, streaming exchanges, and server types live in `@std/http.ms`.
+
+`Network.serve` accepts `fn(request: HttpRequest) -> HttpResponse` and returns a scoped HttpServer. Request headers are bytes, the raw query stays encoded, and source code routes by ordinary method/path branching. Responses require status 200–599, valid header names and values, and a body within any supplied response budget. See [the Network reference](../reference/net.md#network) for its exact optional admission, byte, deadline, and grace parameters.
+
+Client disconnection cancels the request and nested parallel work. Started work joins and registered cleanup runs before the request ends. Handler faults become 500 responses and reach diagnostics; deadline expiry produces 504 where the transport permits it. Oversized buffered request bodies receive 413, and excess admission under a supplied cap receives 503 without invoking a handler.
+
+Schedulers used by handlers retain their construction lifetime. Accepted work uses that scheduler's context rather than the submitting request's deadline or disconnect signal. Construct shared schedulers outside request scopes, keep their dependencies open, and acquire operation resources inside each callback. Close them before releasing application resources.
+
+## Streaming request servers
+
+Network.serve_stream accepts an ordinary handler and may be stored as a bound method. The handler signature is `fn(exchange: HttpExchange) -> Result[Unit, HttpError]`. The server establishes a fixed request execution context, optional admission and body/output/header budgets, disconnect cancellation, and an optional timeout. The handler may read incrementally, emit headers once and write/flush bounded output, or upgrade to a WebSocket session. Source routes by ordinary method/path branching.
 
 ### Response ordering and limits
 
@@ -103,7 +113,7 @@ HttpExchange belongs to its request: retained aliases report Closed once request
 ## Network operations
 
 ```manuscript
-fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ClientResponse, HttpError]
+fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int], timeout: Optional[Duration]) -> Result[ClientResponse, HttpError]
 fn http_client(options: HttpClientOptions) -> Result[HttpClient, HttpError]
 fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, HttpError], options: HttpServerOptions) -> Result[HttpServer, HttpError]
 ```

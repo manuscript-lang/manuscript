@@ -15,8 +15,11 @@ import (
 	"testing"
 )
 
-func TestAllLibraryFunctionsAreImportable(t *testing.T) {
+func TestPublicLibraryFunctionsAreImportable(t *testing.T) {
 	for _, spec := range rt.Library {
+		if checker.StandardExports("@std/" + spec.Module + ".ms")[spec.Name] == nil {
+			continue
+		}
 		t.Run(spec.Module+"/"+spec.Name, func(t *testing.T) {
 			source := fmt.Sprintf("import %s from \"@std/%s.ms\"\n", spec.Name, spec.Module)
 			result := CompileSource("imports.ms", source, Options{})
@@ -49,7 +52,7 @@ import EncodingError from "@std/encoding.ms"
 `,
 		"implicit propagation": `import hex_decode from "@std/encoding.ms"
 fn wrong() -> Result[Unit, JsonError]:
-    let bytes = try hex_decode(text: "ff", max_bytes: 1)
+    let bytes = try hex_decode(text: "ff", max_bytes: some(value: 1))
     return ok(value: unit)
 `,
 	} {
@@ -74,7 +77,7 @@ import Result from "@std/result.ms"
 `,
 		"implicit try conversion": `import hex_decode from "@std/encoding.ms"
 fn wrong() -> Result[Unit, Error]:
-    let bytes = try hex_decode(text: "ff", max_bytes: 1)
+    let bytes = try hex_decode(text: "ff", max_bytes: some(value: 1))
     return ok(value: unit)
 `,
 		"missing implementation": `type Impostor:
@@ -210,11 +213,12 @@ func TestBundledRuntimeImportAliasesAgree(t *testing.T) {
 }
 
 func TestTimeSchedulingAcceptsOrdinaryCallbackValues(t *testing.T) {
-	source := `import after from "@std/time.ms"
+	source := `import Scheduler from "@std/tasks.ms"
 import Result from "@std/result.ms"
 fn start_timer(operation: fn() -> Result[Unit, String]) -> Unit:
-    let schedule = after
-    let timer = schedule(duration: 0.milliseconds, operation: operation)
+    with scheduler = Scheduler():
+        let schedule = scheduler.after
+        let id = schedule(duration: 0.milliseconds, operation: operation)
 `
 	if result := CompileSource("timer-values.ms", source, Options{}); !result.Success() {
 		t.Fatal(result.Diagnostics)

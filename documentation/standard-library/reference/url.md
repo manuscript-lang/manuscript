@@ -73,7 +73,7 @@ fn parse(text: String) -> Result[Url, UrlError]
 ## parse_query {data-api-kind="Function"}
 
 ```manuscript
-fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], UrlError]
+fn parse_query(text: String, max_entries: Optional[Int] = none) -> Result[List[QueryEntry], UrlError]
 ```
 
 ## resolve {data-api-kind="Function"}

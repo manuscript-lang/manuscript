@@ -8,30 +8,29 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
 
 func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
-		{"Network", "connect", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"timeout", "Duration"}}},
-		{"Network", "connect_tls", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"server_name", "String"}, {"timeout", "Duration"}}},
+		{"Network", "connect", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"timeout", "Optional[Duration]"}}},
+		{"Network", "connect_tls", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"server_name", "String"}, {"timeout", "Optional[Duration]"}}},
 		{"Network", "listen", libraryResult("Listener", "NetworkError"), []LibraryParam{{"address", "String"}}},
 		{"Network", "bind_datagram", libraryResult("DatagramSocket", "NetworkError"), []LibraryParam{{"address", "String"}}},
-		{"Connection", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},
-		{"Connection", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}}},
+		{"Connection", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"Connection", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}, {"timeout", "Optional[Duration]"}}},
 		{"Connection", "shutdown_write", libraryResult("Unit", "NetworkError"), nil},
 		{"Connection", "local_address", "String", nil}, {"Connection", "peer_address", "String", nil}, {"Connection", "close", "Unit", nil},
-		{"Listener", "accept", libraryResult("Connection", "NetworkError"), nil}, {"Listener", "address", "String", nil}, {"Listener", "close", "Unit", nil},
-		{"DatagramSocket", "send", libraryResult("Unit", "NetworkError"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}}},
-		{"DatagramSocket", "receive", libraryResult("Datagram", "NetworkError"), []LibraryParam{{"max_bytes", "Int"}}},
+		{"Listener", "accept", libraryResult("Connection", "NetworkError"), []LibraryParam{{"timeout", "Optional[Duration]"}}}, {"Listener", "address", "String", nil}, {"Listener", "close", "Unit", nil},
+		{"DatagramSocket", "send", libraryResult("Unit", "NetworkError"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}, {"timeout", "Optional[Duration]"}}},
+		{"DatagramSocket", "receive", libraryResult("Datagram", "NetworkError"), []LibraryParam{{"max_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
 		{"DatagramSocket", "address", "String", nil}, {"DatagramSocket", "close", "Unit", nil},
 	}...)
 }
 func libraryAcquisition(receiver, name string, body func(*Execution, string, []Value) Value) Function {
 	f := libraryMethod(receiver, name, body)
-	return NewAcquisition(f.Labels, f.Result, func(ctx *Execution, a []Value) Value { return body(ctx, f.Result, a) }, func(ctx *Execution, v Value) {
+	return NewAcquisition(f.Labels, f.Result, func(ctx *Execution, a []Value) Value { return f.Body(ctx, a) }, func(ctx *Execution, v Value) {
 		alt := v.(Alternative)
 		if alt.Tag == "ok" {
 			Invoke(Shield(ctx), Bind(alt.Fields[0], "", "close"), nil)
@@ -50,7 +49,7 @@ func libraryNetworkAcquire(n *network, name string) Function {
 		switch name {
 		case "connect", "connect_tls":
 			timeout := a[len(a)-1].(Duration)
-			if timeout < 0 {
+			if timeout < nativeNoTimeout {
 				return libraryError(r, "InvalidInput", "")
 			}
 			call, cancel := contextWithLibraryTimeout(ctx, timeout)
@@ -204,13 +203,9 @@ func libraryInterrupt(ctx *Execution, deadline func(time.Time) error) func() {
 		deadline(time.Time{})
 	}
 }
-func (c *libraryConnection) Operation(name string) Function {
+func (c *libraryConnection) baseOperation(name string) Function {
 	if name == "tls_info" {
 		return c.tlsInfo()
-	}
-	if name == "read_timeout" || name == "write_timeout" {
-		base := strings.TrimSuffix(name, "_timeout")
-		return libraryTimeoutMethod("Connection", name, base, c.Operation(base))
 	}
 	return libraryMethod("Connection", name, func(ctx *Execution, r string, a []Value) Value {
 		if name == "close" {
@@ -327,10 +322,7 @@ type libraryListener struct {
 	active           sync.WaitGroup
 }
 
-func (l *libraryListener) Operation(name string) Function {
-	if name == "accept_timeout" {
-		return libraryTimeoutMethod("Listener", name, "accept", l.Operation("accept"))
-	}
+func (l *libraryListener) baseOperation(name string) Function {
 	if name == "accept" {
 		return libraryAcquisition("Listener", name, func(ctx *Execution, r string, _ []Value) Value {
 			libraryGate(ctx, l.gate)
@@ -378,7 +370,7 @@ func (l *libraryListener) Operation(name string) Function {
 			}
 			if l.tlsConfig != nil {
 				secure := tls.Server(conn, l.tlsConfig)
-				handshake, done := context.WithTimeout(call, l.handshakeTimeout)
+				handshake, done := nativeContextTimeout(call, l.handshakeTimeout)
 				err = secure.HandshakeContext(handshake)
 				done()
 				if err != nil {
@@ -433,11 +425,7 @@ type libraryDatagram struct {
 	read, write chan struct{}
 }
 
-func (d *libraryDatagram) Operation(name string) Function {
-	if name == "send_timeout" || name == "receive_timeout" {
-		base := strings.TrimSuffix(name, "_timeout")
-		return libraryTimeoutMethod("DatagramSocket", name, base, d.Operation(base))
-	}
+func (d *libraryDatagram) baseOperation(name string) Function {
 	return libraryMethod("DatagramSocket", name, func(ctx *Execution, r string, a []Value) Value {
 		if name == "address" {
 			return d.conn.LocalAddr().String()
@@ -559,7 +547,7 @@ func (n *network) isClosed() bool { n.mu.Lock(); defer n.mu.Unlock(); return n.c
 func libraryTimeoutMethod(receiver, name, base string, operation Function) Function {
 	return libraryMethod(receiver, name, func(ctx *Execution, r string, a []Value) (value Value) {
 		timeout := a[len(a)-1].(Duration)
-		if timeout < 0 {
+		if timeout < nativeNoTimeout {
 			if receiver == "Connection" {
 				return ioError(r, "InvalidInput", "")
 			}
@@ -631,4 +619,25 @@ func (d *libraryDatagram) resolve(ctx *Execution, address string) (*net.UDPAddr,
 		}
 	}
 	return nil, os.ErrPermission
+}
+
+func (c *libraryConnection) Operation(name string) Function {
+	if name == "read" || name == "write" {
+		return libraryTimeoutMethod("Connection", name, name, c.baseOperation(name))
+	}
+	return c.baseOperation(name)
+}
+
+func (l *libraryListener) Operation(name string) Function {
+	if name == "accept" {
+		return libraryTimeoutMethod("Listener", name, name, l.baseOperation(name))
+	}
+	return l.baseOperation(name)
+}
+
+func (d *libraryDatagram) Operation(name string) Function {
+	if name == "send" || name == "receive" {
+		return libraryTimeoutMethod("DatagramSocket", name, name, d.baseOperation(name))
+	}
+	return d.baseOperation(name)
 }

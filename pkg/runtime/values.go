@@ -318,7 +318,11 @@ type equalityIdentity struct {
 	typ, tag string
 }
 type equalityPair struct{ left, right equalityIdentity }
-type equalityState struct{ active map[equalityPair]bool }
+type equalityState struct {
+	active map[equalityPair]bool
+	ctx    *Execution
+	scope  TypeScope
+}
 
 func equalityID(value Value) (equalityIdentity, bool) {
 	switch v := value.(type) {
@@ -336,8 +340,33 @@ func equalityID(value Value) (equalityIdentity, bool) {
 	return equalityIdentity{}, false
 }
 
-func Equal(a, b Value) bool { return equal(a, b, &equalityState{}) }
+func Equal(a, b Value) bool                   { return equal(a, b, &equalityState{}) }
+func EqualIn(ctx *Execution, a, b Value) bool { return EqualSelected(ctx, a, b, ctx.EqualityScope) }
+func EqualSelected(ctx *Execution, a, b Value, scope TypeScope) bool {
+	return equal(a, b, &equalityState{ctx: ctx, scope: scope})
+}
+func Equality(ctx *Execution, operator string, a, b Value, scope TypeScope) Value {
+	result := EqualSelected(ctx, a, b, scope)
+	if operator == "!=" {
+		result = !result
+	}
+	return result
+}
 func equal(a, b Value, state *equalityState) bool {
+	if view, ok := a.(View); ok {
+		a = view.Receiver
+		stateCopy := *state
+		stateCopy.scope = view.Scope
+		state = &stateCopy
+	}
+	if view, ok := b.(View); ok {
+		b = view.Receiver
+	}
+	if state.ctx != nil {
+		if method, ok := implementationFunction(a, "@std/Equal", "equals", state.scope); ok {
+			return Invoke(state.ctx, method, []Argument{{"other", ViewOf("@std/Equal", b, state.scope)}}).(bool)
+		}
+	}
 	if left, ok := equalityID(a); ok {
 		if right, ok := equalityID(b); ok {
 			pair := equalityPair{left, right}
@@ -413,7 +442,7 @@ func equal(a, b Value, state *equalityState) bool {
 		return ok && x.Type == y.Type && x.Tag == y.Tag && equalItemsState(x.Fields, y.Fields, state)
 	case *List:
 		y, ok := b.(*List)
-		return ok && x.Type == y.Type && equalItemsState(x.Items, y.Items, state)
+		return ok && x.Type == y.Type && equalItemsState(x.Items, y.Items, equalityChild(state, 0))
 	case *Set:
 		y, ok := b.(*Set)
 		if !ok || x.Type != y.Type || len(x.Items) != len(y.Items) {
@@ -422,7 +451,7 @@ func equal(a, b Value, state *equalityState) bool {
 		for _, v := range x.Items {
 			found := false
 			for _, other := range y.Items {
-				if equal(v, other, state) {
+				if equal(v, other, equalityChild(state, 0)) {
 					found = true
 					break
 				}
@@ -440,7 +469,7 @@ func equal(a, b Value, state *equalityState) bool {
 		for _, e := range x.Entries {
 			found := false
 			for _, f := range y.Entries {
-				if equal(e.Key, f.Key, state) && equal(e.Value, f.Value, state) {
+				if equal(e.Key, f.Key, equalityChild(state, 0)) && equal(e.Value, f.Value, equalityChild(state, 1)) {
 					found = true
 					break
 				}
@@ -463,14 +492,6 @@ func equalItemsState(a, b []Value, state *equalityState) bool {
 		}
 	}
 	return true
-}
-func indexOf(items []Value, value Value) int {
-	for i, v := range items {
-		if Equal(v, value) {
-			return i
-		}
-	}
-	return -1
 }
 func sameClock(a, b Instant) {
 	if a.Domain != b.Domain {
@@ -602,28 +623,10 @@ func Bind(receiver Value, contract, name string, scopes ...TypeScope) Value {
 	if native, ok := receiver.(Native); ok {
 		return native.Operation(name)
 	}
-	typ := ""
-	switch v := receiver.(type) {
-	case Record:
-		typ = v.Type
-	case Alternative:
-		typ = v.Type
+	if method, ok := implementationFunction(receiver, contract, name, scope); ok {
+		return method
 	}
-	for _, m := range implementations {
-		if m.Name != name || m.Scope != "" && m.Scope != scope.Module {
-			continue
-		}
-		vars := map[string]bool{}
-		for _, v := range m.Variables {
-			vars[v] = true
-		}
-		sub := map[string]string{}
-		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == contract) {
-			typeScopes := map[string]TypeScope{}
-			implementationScopes(m.Receiver, scope, vars, typeScopes)
-			return m.Build(receiver, sub, typeScopes)
-		}
-	}
+
 	return NativeMember(receiver, name)
 }
 
@@ -692,4 +695,42 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 		}
 		return body(ctx, args)
 	})
+}
+
+func implementationFunction(receiver Value, contract, name string, scope TypeScope) (Function, bool) {
+	typ := ConcreteType(receiver)
+	for _, m := range implementations {
+		if m.Name != name || m.Scope != "" && m.Scope != scope.Module {
+			continue
+		}
+		vars := map[string]bool{}
+		for _, v := range m.Variables {
+			vars[v] = true
+		}
+		sub := map[string]string{}
+		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == contract) {
+			typeScopes := map[string]TypeScope{}
+			implementationScopes(m.Receiver, scope, vars, typeScopes)
+			return m.Build(receiver, sub, typeScopes), true
+		}
+	}
+	return Function{}, false
+}
+
+func indexOfIn(ctx *Execution, items []Value, value Value) int {
+	for i, v := range items {
+		if EqualIn(ctx, v, value) {
+			return i
+		}
+	}
+	return -1
+}
+
+func equalityChild(state *equalityState, index int) *equalityState {
+	if index >= len(state.scope.Args) {
+		return state
+	}
+	child := *state
+	child.scope = state.scope.Args[index]
+	return &child
 }

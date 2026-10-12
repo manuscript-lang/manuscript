@@ -25,8 +25,8 @@ func TestSemanticLintUsesReadsAndControlFlow(t *testing.T) {
 
 func TestUnusedImportsFollowResolvedNames(t *testing.T) {
 	for _, source := range []string{
-		"import normalize from \"@std/string.ms\"\nfn answer(normalize: Int) -> Int:\n    return normalize\n",
-		"import normalize from \"@std/string.ms\"\ntype Item:\n    normalize: Int\nfn answer() -> Item:\n    return Item(normalize: 1)\n",
+		"import parse from \"@std/json.ms\"\nfn answer(parse: Int) -> Int:\n    return parse\n",
+		"import parse from \"@std/json.ms\"\ntype Item:\n    parse: Int\nfn answer() -> Item:\n    return Item(parse: 1)\n",
 	} {
 		checked := compiler.CompileSource("source.ms", source, compiler.Options{AnalyzeOnly: true})
 		if !checked.Success() {

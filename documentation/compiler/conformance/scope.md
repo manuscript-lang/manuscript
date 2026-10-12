@@ -14,7 +14,6 @@ Use this page to see which parts of the design depend on others and which decisi
 1. Parse and check the language, including named calls, exact types, contracts, captures, and sharing.
 2. Implement lexical cleanup and atomic start, cancellation, completion, and close transitions together.
 3. Connect standard imports, data operations, CLI host, streams, and adapters; validate complete programs.
-4. Complete the queue, pool, builder, HTTP, and subprocess APIs using the same lifetime and cancellation rules.
 5. Build source tools, diagrams, traces, and debugging on checked compiler facts and matching runtime metadata.
 
 Use the [semantic tests](semantic-tests.md) and [complete programs](programs.md) to check that these parts agree. A written acceptance case becomes evidence only when an implementation runs it and records the result.
@@ -30,9 +29,8 @@ These gaps still need concrete contracts.
 | Native adapter ABI | Generated Go declarations, receiver construction, disposer types, and compatibility validation | [Adapter manifests](../../modules-and-capabilities/adapters/manifests.md) |
 | Capability analysis | Classification of adapter interfaces, pure contracts, wrappers, and indirect authority | [Authority](../../modules-and-capabilities/capabilities/authority.md) |
 | Queue extensions | Blocking channels and wakeup policies beyond the local FIFO contract | [Queues](../../standard-library/data-and-io/queues.md) |
-| Pool extensions | Native resource factories and additional lease contracts | [Synchronized values and pools](../../standard-library/data-and-io/synchronized-state.md) |
 | Builder extensions | Additional bulk mutation operations beyond sealed snapshot construction | [Builders](../../standard-library/data-and-io/builders.md) |
-| HTTP and subprocess extensions | Additional host contracts, interactive subprocess streams, and uniform cross-platform descendant supervision; current HTTP clients, streaming hosts, and WebSockets are covered in [package coverage](../../standard-library/packages/coverage.md) | [HTTP hosts](../../standard-library/hosts/http.md), [streams](../../standard-library/data-and-io/streams.md) |
+| HTTP and subprocess extensions | Additional host contracts, interactive subprocess streams, and uniform cross-platform descendant supervision; current HTTP clients, streaming hosts, and WebSockets are covered in [package coverage](../../standard-library/packages/coverage.md) | [HTTP](../../standard-library/packages/http.md), [streams](../../standard-library/data-and-io/streams.md) |
 | Source tools | Rich diagnostic spans, transactional structural edits, and failed-write recovery | [Source tools](../../developer-tooling/source/_index.md) |
 | Diagrams and debugging | Stable node identity, diff/trace formats, stepping behavior, value rendering, and supported debugger versions | [Developer tooling](../../developer-tooling/_index.md) |
 
@@ -42,4 +40,4 @@ For each gap, add exact signatures or data fields, success and failure behavior,
 
 Actors, detached tasks, task adoption, racing combinators, inheritance, macros, operator overloading, implicit conversions, and user-defined metaprogramming have no supported forms. More specific syntax exclusions appear on the relevant concept pages.
 
-Forced task termination is unsupported. Uncooperative work can delay joining indefinitely; [host escalation](../../concurrency/runtime.md#host-escalation) is an incomplete shutdown, not successful cleanup. See [cancellation](../../concurrency/cancellation.md#propagation-and-checkpoints) and [background shutdown](../../standard-library/tasks/background.md).
+Forced task termination is unsupported. Uncooperative work can delay joining indefinitely; [host escalation](../../concurrency/runtime.md#host-escalation) is an incomplete shutdown, not successful cleanup. See [cancellation](../../concurrency/cancellation.md#propagation-and-checkpoints) and [background shutdown](../../standard-library/tasks/scheduler.md).

@@ -1,8 +1,8 @@
 import Optional from "@std/optional.ms"
-import {Item, Box, Holder, Choice} from "./domain.ms"
-import {Read, invoke, relay, as_view} from "./contracts.ms"
+import { Item, Box, Holder, Choice } from "./domain.ms"
+import { Read, invoke, relay, as_view } from "./contracts.ms"
 import Closeable from "@std/cleanup.ms"
-import ListBuilder from "@std/builders.ms"
+import ListBuilder from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 impl Read[Int] for Item:
@@ -71,7 +71,7 @@ export fn first_resource(resource: Resource) -> Closeable:
 test "first local cleanup":
     let events = ListBuilder[Int]()
     leave(Resource(events: events))
-    if events.freeze().get(index: 0) != some(value: 10):
+    if events.freeze().at(index: 0) != some(value: 10):
         return panic("local cleanup")
 
 export fn mixed[T: Read[Int]](value: T, concrete: Item) -> Int:

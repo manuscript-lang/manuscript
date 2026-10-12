@@ -26,7 +26,7 @@ fn unix_seconds(value: Timestamp) -> Int
 ## `@std/random.ms`
 
 ```manuscript
-fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, RandomError]
+fn secure_int(entropy: Entropy, min: Int, max_exclusive: Optional[Int]) -> Result[Int, RandomError]
 fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]
 ```
 

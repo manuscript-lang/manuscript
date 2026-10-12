@@ -27,8 +27,8 @@ Network.web_socket acquires a client WebSocket for an explicit ws/wss URL, heade
 
 ```manuscript
 type WebSocketOptions:
-    max_message_bytes: Int
-    timeout: Duration
+    max_message_bytes: Optional[Int]
+    timeout: Optional[Duration]
     tls: TlsOptions
     compression: Bool
 
@@ -39,7 +39,7 @@ type WebSocketMessage:
 
 ## Message limits and errors
 
-Client `max_message_bytes` and handshake timeout must be positive. Clients negotiate permessage-deflate only when compression is explicitly enabled. Server upgrade currently accepts uncompressed messages. Bounds apply to decompressed message data as well as wire frames. `receive` returns one complete text or binary message, or `none` when the peer closes normally. Oversized messages return LimitExceeded and terminate transport; invalid text UTF-8 returns InvalidData. Repeated reads after a protocol failure return Closed rather than spinning inside the protocol implementation. Send validates text UTF-8 and bounds outbound message bytes. Ping limits control payloads to 125 bytes.
+Client message caps and handshake deadlines are optional. Supplied message caps must be positive and supplied deadlines nonnegative; zero expires immediately. Clients negotiate permessage-deflate only when compression is explicitly enabled. Server upgrade currently accepts uncompressed messages. Bounds apply to decompressed message data as well as wire frames. `receive` returns one complete text or binary message, or `none` when the peer closes normally. Oversized messages return LimitExceeded and terminate transport; invalid text UTF-8 returns InvalidData. Repeated reads after a protocol failure return Closed rather than spinning inside the protocol implementation. Send validates text UTF-8 and bounds outbound message bytes. Ping limits control payloads to 125 bytes.
 
 ## Concurrent calls and protocol rules
 

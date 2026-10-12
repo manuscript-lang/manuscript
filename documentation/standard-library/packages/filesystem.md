@@ -26,14 +26,14 @@ fn relative(base: String, target: String) -> Result[String, PathError]
 ## FileSystem operations
 
 ```manuscript
-fn read_file(path: String, max_bytes: Int) -> Result[Bytes, FileSystemError]
+fn read_file(path: String, max_bytes: Optional[Int]) -> Result[Bytes, FileSystemError]
 fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, FileSystemError]
 fn stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
-fn list(path: String, max_entries: Int) -> Result[List[DirectoryEntry], FileSystemError]
+fn list(path: String, max_entries: Optional[Int]) -> Result[List[DirectoryEntry], FileSystemError]
 fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
 fn remove(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
 fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
-fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Int) -> Result[Unit, FileSystemError]
+fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Optional[Int]) -> Result[Unit, FileSystemError]
 fn canonicalize(path: String) -> Result[String, FileSystemError]
 fn read_link(path: String) -> Result[String, FileSystemError]
 fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]

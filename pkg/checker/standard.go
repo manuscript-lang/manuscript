@@ -117,8 +117,21 @@ func loadStandardSources() error {
 		c.module = module
 		c.names = map[string]*Symbol{}
 		c.scope = newScope(nil)
-		for _, name := range strings.Fields("Bool Int Float String Unit Never Equal Hashable") {
+		for _, name := range strings.Fields("Bool Int Float String Unit Never") {
 			c.names[name] = &Symbol{Name: name, ID: name, Kind: syntax.KindType, Type: primitive(name), Export: true}
+		}
+		// Prelude equality names refer to the source-backed interfaces.
+		for _, name := range []string{"Equal", "Hashable"} {
+			symbol := standardSymbols[name]
+			imported := false
+			for _, item := range module.Imports {
+				if item.Name == name {
+					imported = true
+				}
+			}
+			if !imported && symbol.Module != module.File {
+				c.names[name] = symbol
+			}
 		}
 		for _, item := range module.Imports {
 			found := standardModules[item.Path][item.Name]
@@ -206,6 +219,24 @@ func loadStandardSources() error {
 				}
 				standardOperationVariables[s.ID+"/"+method.Name] = variables
 				def.Operations = append(def.Operations, Param{method.Name, c.signature(method.Params, method.Result)})
+			}
+		}
+	}
+	// Native adapters implement one omission value: Optional.none. Keep this
+	// source contract explicit instead of inferring defaults from field names.
+	for _, module := range standardSources {
+		for _, declaration := range module.Declarations {
+			parameters := append(append([]syntax.Parameter{}, declaration.Params...), declaration.Fields...)
+			for _, method := range declaration.Methods {
+				parameters = append(parameters, method.Params...)
+			}
+			for _, parameter := range parameters {
+				if parameter.Default == nil {
+					continue
+				}
+				if parameter.Type.Name != "Optional" || parameter.Default.Kind != syntax.KindName || parameter.Default.Text != "none" {
+					return fmt.Errorf("native defaults must be Optional.none: %s", parameter.Pos)
+				}
 			}
 		}
 	}

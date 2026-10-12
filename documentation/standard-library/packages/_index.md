@@ -16,15 +16,16 @@ Find a package by the task you want to perform. Read [common contracts](contract
 - [Time and system information](system.md) — Work with timestamps and query supplied clock or system services.
 - [Cryptography and randomness](crypto.md) — Hash, authenticate, encrypt, sign, and request random bytes.
 - [Networking and TLS](network.md) — Use destination policies, DNS, sockets, and verified TLS.
-- [HTTP clients and streaming hosts](http.md) — Use HTTP clients or request hosts with bounded bodies and cleanup.
+- [HTTP](http.md) — Send requests and serve buffered or streaming responses.
 - [WebSocket sessions](websocket.md) — Send and receive messages within a WebSocket session lifetime.
+- [Command-line programs](cli.md) — Define main, import services, and handle exit and shutdown.
 - [Subprocesses and terminal I/O](process.md) — Read terminal streams and run commands through explicit authority.
 - [Compression and archives](archive.md) — Compress data and handle archive entries with explicit limits.
 - [Logging, testing, and diagnostics](tooling.md)
 
 ## Read a signature
 
-For example, `fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, JsonError]` means:
+For example, `fn parse(text: String, limits: Optional[JsonLimits]) -> Result[JsonValue, JsonError]` means:
 
 - Call the function with named `text` and `limits` arguments.
 - Success returns a `JsonValue`; an expected failure returns a `JsonError`.

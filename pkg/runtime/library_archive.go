@@ -13,8 +13,8 @@ import (
 
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("archive", "pack", libraryResult("Bytes", "ArchiveError"), []LibraryParam{p("entries", "List[ArchiveEntry]"), p("format", "String"), p("max_bytes", "Int")}, libraryArchivePack)
-	libraryAdd("archive", "unpack", libraryResult("List[ArchiveEntry]", "ArchiveError"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("limits", "ArchiveLimits")}, libraryArchiveUnpack)
+	libraryAdd("archive", "pack", libraryResult("Bytes", "ArchiveError"), []LibraryParam{p("entries", "List[ArchiveEntry]"), p("format", "String"), p("max_bytes", "Optional[Int]")}, libraryArchivePack)
+	libraryAdd("archive", "unpack", libraryResult("List[ArchiveEntry]", "ArchiveError"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("limits", "Optional[ArchiveLimits]")}, libraryArchiveUnpack)
 }
 func libraryArchivePath(s string, directory bool) bool {
 	if s == "" || !utf8.ValidString(s) || strings.ContainsAny(s, "\\:\x00") || strings.HasPrefix(s, "/") {

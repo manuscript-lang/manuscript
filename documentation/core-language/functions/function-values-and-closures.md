@@ -100,8 +100,8 @@ Capturing an already-open file keeps the same handle; it does not delay its `wit
 
 Concurrency APIs accept ordinary functions. Function parameters, returned functions, function fields, and generic forwarding work exactly as local function values do. See [function sharing](../../ownership-and-cleanup/values/sharing.md#function-values). A shared resource can still be closed before invocation.
 
-Capture request-data snapshots and application services for background work, then acquire job resources within that operation. `parallel` joins before returning, so an enclosing `with` remains active while its operations run, unless the resource is explicitly closed elsewhere.
+Capture request-data snapshots and application services for scheduled work, then acquire job resources within that operation. `parallel` joins before returning, so an enclosing `with` remains active while its operations run, unless the resource is explicitly closed elsewhere.
 
-See [parallel](../../concurrency/parallel.md), [background services](../../standard-library/tasks/background.md), and [reference sharing](../../ownership-and-cleanup/values/sharing.md).
+See [parallel](../../concurrency/parallel.md), [schedulers](../../standard-library/tasks/scheduler.md), and [reference sharing](../../ownership-and-cleanup/values/sharing.md).
 
 [Previous: Declarations and calls](declarations-and-calls.md) · [Next: Conditionals](../control-flow/conditionals.md)

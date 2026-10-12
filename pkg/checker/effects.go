@@ -134,7 +134,7 @@ func (c *checker) effectSummaries() {
 								add(n, "unknown")
 							}
 						}
-					case "@std/Pool", "@std/Lease", "@std/Background":
+					case "@std/Scheduler":
 						add(n, "write", "unknown")
 					default:
 						if strings.HasSuffix(receiver.Name, "Builder") {

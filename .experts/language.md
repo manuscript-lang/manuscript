@@ -50,15 +50,16 @@ Apply when: adding Result adapters or rewriting examples that combine execution 
 Evidence: the user's removal request; [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [parallel example](../documentation/concurrency/parallel.md).
 Verify: examples compile with explicit Result matches, the standard Result module exports only its type, and regenerated API references agree with its declarations.
 
-### Latest choices can supersede an apparently accepted alternative
+### Equality and hashing are source interfaces
 
-Decision: the concurrency simplification removed compiler sharing bounds: all values may be passed freely, and `Synchronized[T]` guards protect shared mutable access and complete updates. The subsequent local Queue decision requires explicit synchronization for concurrent access. Explicit closure capture lists were rejected; universal sharing supplies the current sharing design.
+Decision: the stdlib revamp explicitly replaces compiler-only equality/hashing bounds with `Equal` and `Hashable` interfaces. Built-in data keeps its value semantics, and explicit implementations select domain identity. Custom equality requires an explicit consistent hash before the type becomes a key; structural hashing cannot silently use different fields.
 
-Historical decision: the user previously reversed custom equality implementations and kept `Equal`/`Hashable` derived. The newer [stdlib request](codex://threads/01a13126-1245-730b-9e5d-16ca2dc7501f) explicitly asks for interfaces, superseding the derived-only preference. That request was in progress when this memory was reconciled; consult [the newer direction](runtime.md#newer-stdlib-direction-needs-checkout-reconciliation) and current source before asserting implementation or choosing dispatch rules.
+Apply when: changing equality operators, generic bounds, contract views, key lookup, or implementation visibility.
+Evidence: [equality rules](../documentation/core-language/types/equality-and-hashing.md), [source interfaces](../pkg/stdlib/equality.ms), and [compiled domain-key fixture](../tests/e2e/testdata/accept/stdlib-revamp.ms).
+Verify: two keys with equal IDs and different labels compare equal and occupy one map entry; an equality override without a hash is rejected as a map key. Keep local implementation selection when forwarding generic arguments.
 
-Apply when: changing bounds, equality, capture syntax, or callable sharing.
-Evidence: [equality reversal](codex://threads/01a12aed-fa8a-7d93-b522-38e95f93fdf5); [capture-list rejection](codex://threads/01a12bf3-438d-7c72-a846-7443cea58e3a); [canonical equality rules](../documentation/core-language/types/equality-and-hashing.md); [current callable sharing rules](../documentation/ownership-and-cleanup/values/sharing.md#function-values).
-Verify: examples follow the target checkout's equality/interface rules and ordinary callback rules. Establish any gap against the newer direction instead of restoring an older preference; an earlier “yes” does not override a later correction.
+Decision: all values may be passed freely; shared mutable state uses Synchronized, and closures have ordinary captures. This remains independent of equality, hashing, cleanup, and work lifetime.
+Evidence: [sharing rules](../documentation/ownership-and-cleanup/values/sharing.md).
 
 ### Syntax improvements need examples across their boundaries
 
@@ -97,7 +98,7 @@ Verify: the counter's Unit-returning method updates `self.val`; aliases observe 
 Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
-Evidence: [CLI host contract](../documentation/standard-library/hosts/cli.md), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
+Evidence: [CLI contract](../documentation/standard-library/packages/cli.md), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.
 
 ### Keep short bodies available without a second function kind
@@ -107,3 +108,11 @@ Decision: the user requested a terse language with single-line functions and con
 Apply when: changing suite parsing, anonymous-function layout, formatting, or syntax documentation.
 Evidence: [canonical suite rules](../documentation/core-language/basics/grammar.md#statements-and-patterns), [parser boundary cases](../pkg/parser/parser_test.go), and [native inline conformance](../tests/e2e/testdata/accept/inline-suites.ms).
 Verify: parse an inline callback inside a call without consuming the enclosing delimiter; execute inline and indented branches together; preserve formatting idempotence and reject multiple statements in an inline body.
+
+### Optional values need presence and extraction methods
+
+Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, `unwrap`, `unwrap_or`, and `unwrap_or_else`. Preserve Optional as an ordinary alternative; these methods do not introduce implicit wrapping, flattening, or new syntax. The private native helpers are implementation bindings, not exported aliases.
+
+Apply when: changing Optional declarations, alternative method lookup, fallback evaluation, or introductory examples.
+Evidence: [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [canonical declaration](../pkg/stdlib/optional.ms), and [compiled method fixture](../tests/e2e/testdata/accept/optional-methods.ms).
+Verify: false and zero are present; eager defaults evaluate normally; lazy defaults run exactly once only for none; unwrap on none faults clearly. Extraction retains nested type arguments and payload identity, stored receiver methods still work, and local alternatives with the same spelling receive no native methods.

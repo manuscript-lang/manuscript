@@ -25,7 +25,7 @@ func init() {
 		if name == "at" {
 			params = append(params, p("index", "Int"))
 		}
-		add(name, "Optional[T]", elements, params, func(_ *Execution, r string, a []Value) Value {
+		add(name, "Optional[T]", elements, params, func(ctx *Execution, r string, a []Value) Value {
 			v := a[0].(*List)
 			i := int64(0)
 			if name == "last" {
@@ -40,7 +40,7 @@ func init() {
 			return Alternative{r, "some", []Value{v.Items[i]}}
 		})
 	}
-	add("is_empty", "Bool", elements, listParam, func(_ *Execution, _ string, a []Value) Value { return len(a[0].(*List).Items) == 0 })
+	add("is_empty", "Bool", elements, listParam, func(ctx *Execution, _ string, a []Value) Value { return len(a[0].(*List).Items) == 0 })
 	for _, name := range []string{"contains", "index_of", "last_index_of"} {
 		result := "Optional[Int]"
 		if name == "contains" {
@@ -54,7 +54,7 @@ func init() {
 			}
 			for i := start; i != end; i += step {
 				CheckCancelled(ctx)
-				if Equal(items[i], a[1]) {
+				if EqualIn(ctx, items[i], a[1]) {
 					if name == "contains" {
 						return true
 					}
@@ -67,14 +67,14 @@ func init() {
 			return Alternative{Type: r, Tag: "none"}
 		})
 	}
-	add("prepend", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T")}, func(_ *Execution, r string, a []Value) Value {
+	add("prepend", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T")}, func(ctx *Execution, r string, a []Value) Value {
 		v := a[0].(*List)
 		v.Items = append(v.Items, nil)
 		copy(v.Items[1:], v.Items[:len(v.Items)-1])
 		v.Items[0] = a[1]
 		return v
 	})
-	add("with_value", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int"), p("value", "T")}, func(_ *Execution, r string, a []Value) Value {
+	add("with_value", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int"), p("value", "T")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
@@ -83,7 +83,7 @@ func init() {
 		items[i] = a[2]
 		return a[0]
 	})
-	add("without", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	add("without", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
@@ -152,14 +152,6 @@ func init() {
 		}
 		return &List{r, out}
 	})
-	add("flatten", "List[T]", elements, []LibraryParam{p("values", "List[List[T]]")}, func(ctx *Execution, r string, a []Value) Value {
-		var out []Value
-		for _, v := range a[0].(*List).Items {
-			CheckCancelled(ctx)
-			out = append(out, v.(*List).Items...)
-		}
-		return &List{r, out}
-	})
 	add("fold_right", "A", []LibraryParam{p("T", ""), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		acc := a[1]
 		items := a[0].(*List).Items
@@ -169,7 +161,7 @@ func init() {
 		}
 		return acc
 	})
-	add("with_values", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("delete_count", "Int"), p("replacement", "List[T]")}, func(_ *Execution, r string, a []Value) Value {
+	add("with_values", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("delete_count", "Int"), p("replacement", "List[T]")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		start, count := a[1].(int64), a[2].(int64)
 		if start < 0 || start > int64(len(items)) || count < 0 || count > int64(len(items))-start {
@@ -189,7 +181,7 @@ func init() {
 		}
 		return a[0]
 	})
-	add("copy_within", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("target", "Int"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	add("copy_within", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("target", "Int"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		t, s, e := a[1].(int64), a[2].(int64), a[3].(int64)
 		librarySlice(len(items), s, e)
@@ -221,13 +213,13 @@ func init() {
 		var out []Value
 		for _, v := range a[0].(*List).Items {
 			CheckCancelled(ctx)
-			if indexOf(out, v) < 0 {
+			if indexOfIn(ctx, out, v) < 0 {
 				out = append(out, v)
 			}
 		}
 		return &Set{r, out}
 	})
-	add("filled", libraryResult("List[T]", "CollectionError"), elements, []LibraryParam{p("value", "T"), p("count", "Int"), p("max_items", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("filled", libraryResult("List[T]", "CollectionError"), elements, []LibraryParam{p("value", "T"), p("count", "Int"), p("max_items", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		count, max := a[1].(int64), a[2].(int64)
 		if count < 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -242,7 +234,7 @@ func init() {
 		}
 		return libraryOK(r, &List{typeArguments(r)[0], out})
 	})
-	add("range", libraryResult("List[Int]", "CollectionError"), nil, []LibraryParam{p("start", "Int"), p("end", "Int"), p("step", "Int"), p("max_items", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("range", libraryResult("List[Int]", "CollectionError"), nil, []LibraryParam{p("start", "Int"), p("end", "Int"), p("step", "Int"), p("max_items", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		start, end, step, max := a[0].(int64), a[1].(int64), a[2].(int64), a[3].(int64)
 		if step == 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -270,7 +262,7 @@ func init() {
 			key := Invoke(ctx, a[1], []Argument{{"value", v}})
 			found := -1
 			for i, e := range out.Entries {
-				if Equal(e.Key, key) {
+				if EqualIn(ctx, e.Key, key) {
 					found = i
 					break
 				}
@@ -294,7 +286,7 @@ func init() {
 			values := a[0].(*Map)
 			for _, e := range values.Entries {
 				CheckCancelled(ctx)
-				if Equal(e.Key, a[1]) {
+				if EqualIn(ctx, e.Key, a[1]) {
 					return values
 				}
 			}
@@ -302,11 +294,11 @@ func init() {
 			if name == "map_with_default_from" {
 				value = Invoke(ctx, value, []Argument{{"key", a[1]}})
 			}
-			return mapPut(values, a[1], value)
+			return mapPut(ctx, values, a[1], value)
 		})
 	}
 
-	add("map_clear", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, _ string, a []Value) Value { a[0].(*Map).Entries = nil; return a[0] })
+	add("map_clear", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, _ string, a []Value) Value { a[0].(*Map).Entries = nil; return a[0] })
 	add("map_entries", "List[MapEntry[K][V]]", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, r string, a []Value) Value {
 		entries := a[0].(*Map).Entries
 		out := make([]Value, len(entries))
@@ -321,7 +313,7 @@ func init() {
 		out := a[0].(*Map)
 		for _, e := range a[1].(*Map).Entries {
 			CheckCancelled(ctx)
-			out = mapPut(out, e.Key, e.Value)
+			out = mapPut(ctx, out, e.Key, e.Value)
 		}
 		return out
 	})
@@ -330,7 +322,7 @@ func init() {
 		for _, v := range a[0].(*List).Items {
 			CheckCancelled(ctx)
 			e := v.(Record)
-			out = mapPut(out, e.Fields["key"], e.Fields["value"])
+			out = mapPut(ctx, out, e.Fields["key"], e.Fields["value"])
 		}
 		return out
 	})
@@ -341,8 +333,8 @@ func init() {
 		}
 		return Unit{}
 	})
-	add("set_clear", "Set[T]", hash, []LibraryParam{p("values", "Set[T]")}, func(_ *Execution, _ string, a []Value) Value { a[0].(*Set).Items = nil; return a[0] })
-	add("set_values", "List[T]", hash, []LibraryParam{p("values", "Set[T]")}, func(_ *Execution, r string, a []Value) Value {
+	add("set_clear", "Set[T]", hash, []LibraryParam{p("values", "Set[T]")}, func(ctx *Execution, _ string, a []Value) Value { a[0].(*Set).Items = nil; return a[0] })
+	add("set_values", "List[T]", hash, []LibraryParam{p("values", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
 		return &List{r, append([]Value{}, a[0].(*Set).Items...)}
 	})
 	add("set_entries", "List[List[T]]", hash, []LibraryParam{p("values", "Set[T]")}, func(ctx *Execution, r string, a []Value) Value {
@@ -375,7 +367,7 @@ func init() {
 			var out []Value
 			for _, v := range left {
 				CheckCancelled(ctx)
-				found := indexOf(right, v) >= 0
+				found := indexOfIn(ctx, right, v) >= 0
 				if name == "symmetric_difference" {
 					if !found {
 						out = append(out, v)
@@ -391,7 +383,7 @@ func init() {
 			}
 			for _, v := range right {
 				CheckCancelled(ctx)
-				if indexOf(left, v) < 0 {
+				if indexOfIn(ctx, left, v) < 0 {
 					out = append(out, v)
 				}
 			}
@@ -400,9 +392,9 @@ func init() {
 	}
 }
 
-func mapPut(values *Map, key, value Value) *Map {
+func mapPut(ctx *Execution, values *Map, key, value Value) *Map {
 	for i, e := range values.Entries {
-		if Equal(e.Key, key) {
+		if EqualIn(ctx, e.Key, key) {
 			values.Entries[i].Value = value
 			return values
 		}

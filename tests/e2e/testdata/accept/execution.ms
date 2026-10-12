@@ -5,7 +5,7 @@ import Result from "@std/result.ms"
 import Optional from "@std/optional.ms"
 import parallel from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
-import Background from "@std/tasks.ms"
+import Scheduler from "@std/tasks.ms"
 import StartError from "@std/tasks.ms"
 import OperationId from "@std/tasks.ms"
 import WorkStatus from "@std/tasks.ms"
@@ -17,16 +17,16 @@ fn run() -> Result[Unit, ExecutionError]:
     offset = 99
     let second = fn() -> Bool:
         return true
-    let [number, flag] = try parallel(timeout: 1.seconds, tasks: [first, second])
+    let [number, flag] = try parallel(timeout: some(value: 1.seconds), tasks: [first, second])
     if not (number == 3):
         return panic(message: "check failed")
     if not (flag):
         return panic(message: "check failed")
-    let [] = try parallel(tasks: [], timeout: 0.seconds)
+    let [] = try parallel(tasks: [], timeout: some(value: 0.seconds))
     return ok(value: unit)
 
-fn background_probe() -> Unit:
-    with service = Background(limit: 1, drain: 2.seconds):
+fn scheduler_probe() -> Unit:
+    with service = Scheduler(limit: some(value: 1), drain: some(value: 2.seconds)):
         let task = fn() -> Result[Unit, String]:
             return ok(value: unit)
         let launch = service.start
@@ -49,7 +49,7 @@ test "joined work and snapshot captures":
             let completed = unit
         error(_):
             return panic(message: "Unexpected case")
-    background_probe()
+    scheduler_probe()
 
 
 fn standard_task() -> Result[Unit, ExecutionError]:

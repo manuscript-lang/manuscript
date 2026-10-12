@@ -107,6 +107,14 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		for _, op := range ops {
 			if op.Name == method.Name {
 				found = true
+				if len(op.Type.Defaults) > 0 {
+					if t.Defaults == nil {
+						t.Defaults = map[string]bool{}
+					}
+					for name, allowed := range op.Type.Defaults {
+						t.Defaults[name] = allowed
+					}
+				}
 				if !Same(t, op.Type) {
 					c.error(method.Pos, "type", "implementation operation signature does not match contract")
 				}
@@ -204,11 +212,14 @@ func (c *checker) implements(receiver, contract *Type) bool {
 	if receiver == nil || contract == nil {
 		return false
 	}
-	if std(contract, "Closeable") && (std(receiver, "Background") || std(receiver, "Pool") || std(receiver, "Lease") || std(receiver, "SynchronizedGuard")) {
+	if std(contract, "Closeable") && (std(receiver, "Scheduler") || std(receiver, "SynchronizedGuard")) {
 		return true
 	}
 	if receiver.ID == contract.ID {
 		return Same(receiver, contract)
+	}
+	if std(contract, "Equal") || std(contract, "Hashable") {
+		return c.property(receiver, contract.Name, nil)
 	}
 	if receiver.Kind == "variable" {
 		for _, bound := range receiver.Bounds {
@@ -244,8 +255,8 @@ func (c *checker) boundsSatisfied(vars []*Type, sub map[string]*Type) bool {
 	return true
 }
 func (c *checker) satisfies(t, bound *Type) bool {
-	if bound.ID == "Equal" || bound.ID == "Hashable" {
-		return c.property(t, bound.ID, nil)
+	if std(bound, "Equal") || std(bound, "Hashable") {
+		return c.property(t, bound.Name, nil)
 	}
 	return c.implements(t, bound)
 }
@@ -269,11 +280,32 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	seen[key] = true
 	if t.Kind == "variable" {
 		for _, b := range t.Bounds {
-			if b.ID == property || b.ID == "Hashable" && property == "Equal" {
+			if std(b, property) || std(b, "Hashable") && property == "Equal" {
 				return true
 			}
 		}
 		return false
+	}
+	// Explicit implementations take precedence over structural data semantics.
+	for _, m := range c.Methods {
+		if !c.methodVisible(m) || !std(m.Contract, property) {
+			continue
+		}
+		sub := map[string]*Type{}
+		if unify(m.Receiver, t, variableSet(m.Variables), sub) && c.boundsSatisfied(m.Variables, sub) {
+			return property != "Hashable" || c.property(t, "Equal", nil)
+		}
+	}
+	if property == "Hashable" {
+		for _, m := range c.Methods {
+			if !c.methodVisible(m) || !std(m.Contract, "Equal") {
+				continue
+			}
+			sub := map[string]*Type{}
+			if unify(m.Receiver, t, variableSet(m.Variables), sub) && c.boundsSatisfied(m.Variables, sub) {
+				return false
+			}
+		}
 	}
 	if t.Kind == "function" {
 		return false
@@ -287,7 +319,7 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	if std(t, "Decimal") || std(t, "Bytes") || std(t, "Duration") || std(t, "Instant") {
 		return true
 	}
-	if std(t, "OperationId") || std(t, "Background") || std(t, "Queue") || std(t, "Synchronized") || std(t, "SynchronizedGuard") || std(t, "Pool") || std(t, "Lease") {
+	if std(t, "OperationId") || std(t, "Scheduler") || std(t, "Queue") || std(t, "PriorityQueue") || std(t, "Synchronized") || std(t, "SynchronizedGuard") {
 		return false
 	}
 	if std(t, "List") || std(t, "Map") || std(t, "Set") {
@@ -358,6 +390,17 @@ func (c *checker) methods(receiver *Type, name string) []*Method {
 			methods = append(methods, &r)
 		}
 	}
+	if len(methods) == 0 && (name == "equals" || name == "hash") {
+		property := "Equal"
+		if name == "hash" {
+			property = "Hashable"
+		}
+		if c.property(receiver, property, nil) {
+			contract := standard(property)
+			operation := contract.Def.Operations[0]
+			return []*Method{{Receiver: receiver, Contract: contract, Type: operation.Type, Native: name, Decl: standardMethodDeclaration(contract, name)}}
+		}
+	}
 	return methods
 }
 
@@ -388,7 +431,7 @@ func nativeMethod(t *Type, name string) *Method {
 	if intrinsic := intrinsicOperations[t.ID]; intrinsic != nil {
 		receiver = intrinsic
 	}
-	if receiver.Kind == syntax.KindNative || receiver != t {
+	if receiver.Kind == syntax.KindNative || receiver != t || receiver.Kind == "alternative" && receiver.Def.Symbol.Native != "" {
 		for _, operation := range receiver.Def.Operations {
 			if operation.Name == name {
 				native := name
@@ -400,7 +443,7 @@ func nativeMethod(t *Type, name string) *Method {
 }
 
 func (c *checker) closeable(t *Type) bool {
-	if std(t, "Background") || std(t, "Pool") || std(t, "Lease") || std(t, "SynchronizedGuard") {
+	if std(t, "Scheduler") || std(t, "SynchronizedGuard") {
 		return true
 	}
 	if t.Kind == "contract" || t.Kind == "variable" {
@@ -430,12 +473,6 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 					c.error(pos, "type", sub[v.ID].String()+" does not satisfy "+b.String())
 				}
 			}
-		}
-	}
-	if (std(t, "Pool") || std(t, "Lease")) && len(t.Args) == 1 {
-		element := t.Args[0]
-		if (element.Kind != "contract" && element.Kind != "variable") || !c.closeable(element) {
-			c.error(pos, "type", "pool elements must be operation contracts declaring close() -> Unit")
 		}
 	}
 

@@ -33,7 +33,7 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 	if count != expected {
 		t.Fatalf("captured %d exports, want %d", count, expected)
 	}
-	for _, key := range []string{"@std/collections.ms#List", "@std/tasks.ms#Background", "@std/cli.ms#arguments", "prelude#String"} {
+	for _, key := range []string{"@std/collections.ms#List", "@std/tasks.ms#Scheduler", "@std/cli.ms#arguments", "prelude#String"} {
 		d, ok := exports[key]
 		if !ok {
 			t.Fatalf("missing %s", key)
@@ -41,7 +41,7 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 		if key == "prelude#String" && (!slices.Contains(d.Operations, "trim: fn()->String") || !slices.Contains(d.Operations, "byte_length: fn()->Int")) {
 			t.Fatalf("missing intrinsic operation: %+v", d)
 		}
-		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T" || !slices.Contains(d.Operations, "map[U]: fn(transform: fn(value: T)->U)->List[U]") || !slices.Contains(d.Operations, "get: fn(index: Int)->Optional[T]")) {
+		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T" || !slices.Contains(d.Operations, "map[U]: fn(transform: fn(value: T)->U)->List[U]") || !slices.Contains(d.Operations, "at: fn(index: Int)->Optional[T]")) {
 			t.Fatalf("lost bounds or native methods: %+v", d)
 		}
 	}
@@ -79,11 +79,10 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 		}
 	}
 	for key, want := range map[string]string{
-		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Int) -> Result[Datagram, NetworkError]\n    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String) -> Result[Unit, NetworkError]\n    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, NetworkError]\n",
+		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]\n",
 		"@std/net.ms#DnsRecord":      "type DnsRecord:\n    kind: String\n    value: String\n    priority: Int\n    weight: Int\n    port: Int\n",
-		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n",
+		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n    fn is_some() -> Bool\n    fn is_none() -> Bool\n    fn unwrap() -> T\n    fn unwrap_or(fallback: T) -> T\n    fn unwrap_or_else(create: fn() -> T) -> T\n",
 		"@std/time.ms#Duration":      "type Duration\n",
-		"@std/collections.ms#fold":   "fn fold[T, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A\n",
 	} {
 		if got := exports[key].Declaration; got != want {
 			t.Errorf("%s declaration:\ngot %s\nwant %s", key, got, want)

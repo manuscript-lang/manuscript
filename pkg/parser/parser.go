@@ -154,7 +154,7 @@ func (p *Parser) parameters(defaults bool) []syntax.Parameter {
 			p.need(":")
 			param := syntax.Parameter{Pos: name.Pos, Name: name.Text, Type: p.typ()}
 			if p.take("=") {
-				if !defaults {
+				if !defaults && !p.declarationsOnly {
 					p.fail(p.previous(), "defaults require a function body")
 				}
 				param.Default = p.expression(0)
@@ -322,13 +322,23 @@ func (p *Parser) declaration() *syntax.Declaration {
 			} else {
 				name := p.need(lexer.Name)
 				p.need(":")
-				d.Fields = append(d.Fields, syntax.Parameter{Pos: name.Pos, Name: name.Text, Type: p.typ()})
+				field := syntax.Parameter{Pos: name.Pos, Name: name.Text, Type: p.typ()}
+				if p.take("=") {
+					if !p.declarationsOnly {
+						p.fail(p.previous(), "field defaults require a native declaration")
+					}
+					field.Default = p.expression(0)
+				}
+				d.Fields = append(d.Fields, field)
 				p.end()
 			}
 		}
 		p.need(lexer.Dedent)
 		if form == "" || (form == "interface" && len(d.Methods) == 0) {
 			p.fail(token, "declaration body cannot be empty")
+		}
+		if p.declarationsOnly && len(d.Cases) > 0 {
+			form = "alternative"
 		}
 		d.Kind = form
 	default:

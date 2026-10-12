@@ -25,7 +25,11 @@ func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...
 	}
 	b.WriteString(":\n")
 	for _, field := range d.Fields {
-		b.WriteString("    " + field.Name + ": " + documentType(field.Type) + "\n")
+		b.WriteString("    " + field.Name + ": " + documentType(field.Type))
+		if field.Default != nil {
+			b.WriteString(" = " + documentDefault(field, source...))
+		}
+		b.WriteByte('\n')
 	}
 	for _, c := range d.Cases {
 		b.WriteString("    case " + c.Name)
@@ -89,7 +93,13 @@ func documentType(t *syntax.Type) string {
 // Keep default expressions in their original source spelling, including calls,
 // strings, and suite closures. Only the containing parameter's delimiters end it.
 func documentDefault(parameter syntax.Parameter, source ...string) string {
+	if parameter.Default != nil && parameter.Default.Kind == syntax.KindName {
+		return parameter.Default.Text
+	}
 	if len(source) == 0 {
+		if parameter.Default != nil && parameter.Default.Kind == syntax.KindName {
+			return parameter.Default.Text
+		}
 		return "..."
 	}
 	tokens, err := lexer.Lex(parameter.Pos.File, source[0])

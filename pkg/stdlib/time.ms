@@ -1,6 +1,5 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import WorkStatus from "@std/tasks.ms"
 import Error from "@std/errors.ms"
 import Result from "@std/result.ms"
 
@@ -40,15 +39,6 @@ export fn unix_seconds(value: Timestamp) -> Int
 
 impl Error for TimeError:
     fn message() -> String
-
-# Scheduled operations run under the construction execution's lifetime.
-export interface Timer:
-    fn close() -> Unit
-    fn restart() -> Result[Unit, TimeError]
-    fn status() -> WorkStatus
-
-export fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
-export fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
 
 export fn clock() -> Clock
 

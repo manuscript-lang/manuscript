@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	LibraryMethods = append(LibraryMethods, LibraryMethod{"ProcessControl", "watch_signals", libraryResult("SignalStream", "ProcessError"), []LibraryParam{{"signals", "List[Int]"}, {"capacity", "Int"}}}, LibraryMethod{"SignalStream", "close", "Unit", nil}, LibraryMethod{"SignalStream", "next", libraryResult("Int", "ProcessError"), nil})
+	LibraryMethods = append(LibraryMethods, LibraryMethod{"ProcessControl", "watch_signals", libraryResult("SignalStream", "ProcessError"), []LibraryParam{{"signals", "List[Int]"}, {"capacity", "Optional[Int]"}}}, LibraryMethod{"SignalStream", "close", "Unit", nil}, LibraryMethod{"SignalStream", "next", libraryResult("Int", "ProcessError"), nil})
 }
 
 type librarySignalStream struct {

@@ -1,4 +1,4 @@
-import ListBuilder from "@std/builders.ms"
+import ListBuilder from "@std/collections.ms"
 import Read from "./contracts.ms"
 
 export interface Original:

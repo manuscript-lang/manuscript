@@ -1,7 +1,7 @@
 import from_int from "@std/bigint.ms"
 import compile from "@std/regex.ms"
 import panic from "@std/faults.ms"
-import { List, ListEntry, Map, MapEntry, Set, flatten, filled, range, map_from_entries } from "@std/collections.ms"
+import { List, ListEntry, Map, MapEntry, Set, filled, range, map_from_entries } from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
@@ -53,23 +53,23 @@ fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
             return error(cause: Error(value: cause))
 
 fn checked_expansion() -> Result[Unit, Error]:
-    if not (try common_result(result: filled(value: "a", count: 3, max_items: 3)) == ["a", "a", "a"]):
+    if not (try common_result(result: filled(value: "a", count: 3, max_items: some(value: 3))) == ["a", "a", "a"]):
         return panic(message: "check failed")
-    if not (try common_result(result: range(start: 0, end: 6, step: 2, max_items: 3)) == [0, 2, 4]):
+    if not (try common_result(result: range(start: 0, end: 6, step: 2, max_items: some(value: 3))) == [0, 2, 4]):
         return panic(message: "check failed")
-    if not (try common_result(result: range(start: 3, end: -1, step: -1, max_items: 4)) == [3, 2, 1, 0]):
+    if not (try common_result(result: range(start: 3, end: -1, step: -1, max_items: some(value: 4))) == [3, 2, 1, 0]):
         return panic(message: "check failed")
-    if not (try common_result(result: "x".pad_start(target_length: 4, padding: "é🙂", max_bytes: 9)) == "é🙂éx"):
+    if not (try common_result(result: "x".pad_start(target_length: 4, padding: "é🙂", max_bytes: some(value: 9))) == "é🙂éx"):
         return panic(message: "check failed")
-    if not (try common_result(result: "x".pad_end(target_length: 4, padding: "é🙂", max_bytes: 9)) == "xé🙂é"):
+    if not (try common_result(result: "x".pad_end(target_length: 4, padding: "é🙂", max_bytes: some(value: 9))) == "xé🙂é"):
         return panic(message: "check failed")
-    if not (try common_result(result: "aba".replace_all(old: "a", new: "é", max_bytes: 5)) == "ébé"):
+    if not (try common_result(result: "aba".replace_all(old: "a", new: "é", max_bytes: some(value: 5))) == "ébé"):
         return panic(message: "check failed")
-    if not (try common_result(result: "é🙂".replace_all(old: "", new: "-", max_bytes: 9)) == "-é-🙂-"):
+    if not (try common_result(result: "é🙂".replace_all(old: "", new: "-", max_bytes: some(value: 9))) == "-é-🙂-"):
         return panic(message: "check failed")
     if not (try common_result(result: "é🙂".slice_scalars(start: 0, end: 1)) == "é"):
         return panic(message: "check failed")
-    if not (try common_result(result: "é".repeat(count: 3, max_bytes: 6)) == "ééé"):
+    if not (try common_result(result: "é".repeat(count: 3, max_bytes: some(value: 6))) == "ééé"):
         return panic(message: "check failed")
     return ok(value: unit)
 
@@ -178,11 +178,11 @@ test "list methods mutate explicit clones and remain typed":
         return panic(message: "check failed")
     if not (original.keys() == [0, 1, 2, 3]):
         return panic(message: "check failed")
-    if not (original.entries().get(index: 0) == some(value: ListEntry(index: 0, value: 3))):
+    if not (original.entries().at(index: 0) == some(value: ListEntry(index: 0, value: 3))):
         return panic(message: "check failed")
     if not (original.to_set().values() == [3, 1, 2]):
         return panic(message: "check failed")
-    if not (flatten(values: [[1, 2], [], [3]]) == [1, 2, 3]):
+    if not ([[1, 2], [], [3]].flat_map(transform: fn(value: List[Int]) -> List[Int]: return value) == [1, 2, 3]):
         return panic(message: "check failed")
     if not (alias == [3, 1, 2, 1]):
         return panic(message: "check failed")
@@ -301,9 +301,9 @@ test "string methods use Unicode scalars":
         return panic(message: "check failed")
     if not ("abc".ends_with(suffix: "bc")):
         return panic(message: "check failed")
-    if not ("a,b,c".split(separator: ",", max_parts: 2) == ["a", "b,c"]):
+    if not ("a,b,c".split(separator: ",", max_parts: some(value: 2)) == ["a", "b"]):
         return panic(message: "check failed")
-    if not ("aba".replace(old: "a", new: "x", max_replacements: 1) == "xba"):
+    if not ("aba".replace(old: "a", new: "x", max_replacements: some(value: 1)) == "xba"):
         return panic(message: "check failed")
     let strip = " hello ".trim
     if not (strip() == "hello"):
@@ -357,26 +357,26 @@ test "bytes have analogous immutable operations":
 test "growth limits and invalid inputs return values":
     let too_large: Result[String, StringError] = error(cause: StringError.LimitExceeded)
     let invalid: Result[String, StringError] = error(cause: StringError.InvalidInput)
-    if not ("x".pad_start(target_length: 4, padding: "é🙂", max_bytes: 8) == too_large):
+    if not ("x".pad_start(target_length: 4, padding: "é🙂", max_bytes: some(value: 8)) == too_large):
         return panic(message: "check failed")
-    if not ("x".pad_end(target_length: 9223372036854775807, padding: "é", max_bytes: 8) == too_large):
+    if not ("x".pad_end(target_length: 9223372036854775807, padding: "é", max_bytes: some(value: 8)) == too_large):
         return panic(message: "check failed")
-    if not ("abc".pad_start(target_length: 1, padding: "", max_bytes: 2) == too_large):
+    if not ("abc".pad_start(target_length: 1, padding: "", max_bytes: some(value: 2)) == too_large):
         return panic(message: "check failed")
-    if not ("x".pad_start(target_length: -1, padding: " ", max_bytes: 8) == invalid):
+    if not ("x".pad_start(target_length: -1, padding: " ", max_bytes: some(value: 8)) == invalid):
         return panic(message: "check failed")
     let unchanged: Result[String, StringError] = ok(value: "x")
-    if not ("x".pad_end(target_length: 4, padding: "", max_bytes: 1) == unchanged):
+    if not ("x".pad_end(target_length: 4, padding: "", max_bytes: some(value: 1)) == unchanged):
         return panic(message: "check failed")
-    if not ("abc".replace_all(old: "", new: "-", max_bytes: 6) == too_large):
+    if not ("abc".replace_all(old: "", new: "-", max_bytes: some(value: 6)) == too_large):
         return panic(message: "check failed")
     let list_limit: Result[List[Int], CollectionError] = error(cause: CollectionError.LimitExceeded)
     let list_invalid: Result[List[Int], CollectionError] = error(cause: CollectionError.InvalidInput)
-    if not (range(start: 0, end: 4, step: 1, max_items: 3) == list_limit):
+    if not (range(start: 0, end: 4, step: 1, max_items: some(value: 3)) == list_limit):
         return panic(message: "check failed")
-    if not (range(start: 0, end: 4, step: 0, max_items: 3) == list_invalid):
+    if not (range(start: 0, end: 4, step: 0, max_items: some(value: 3)) == list_invalid):
         return panic(message: "check failed")
-    if not (filled(value: 1, count: 2, max_items: 1) == list_limit):
+    if not (filled(value: 1, count: 2, max_items: some(value: 1)) == list_limit):
         return panic(message: "check failed")
 
 fn parity(value: Int) -> Int:
@@ -414,13 +414,13 @@ test "grouping and lazy map defaults":
         return panic(message: "check failed")
 
 fn verify_text_and_numbers() -> Result[Unit, Error]:
-    if not (try common_result(result: "é".normalize(form: "NFC", max_bytes: 2)) == "é"):
+    if not (try common_result(result: "é".normalize(form: "NFC", max_bytes: some(value: 2))) == "é"):
         return panic(message: "check failed")
-    if not (try common_result(result: "é".normalize(form: "NFD", max_bytes: 3)) == "é"):
+    if not (try common_result(result: "é".normalize(form: "NFD", max_bytes: some(value: 3))) == "é"):
         return panic(message: "check failed")
-    if not (try common_result(result: "ﬁ".normalize(form: "NFKC", max_bytes: 2)) == "fi"):
+    if not (try common_result(result: "ﬁ".normalize(form: "NFKC", max_bytes: some(value: 2))) == "fi"):
         return panic(message: "check failed")
-    if not (try common_result(result: "ﬁ".normalize(form: "NFKD", max_bytes: 2)) == "fi"):
+    if not (try common_result(result: "ﬁ".normalize(form: "NFKD", max_bytes: some(value: 2))) == "fi"):
         return panic(message: "check failed")
     if not (try common_result(result: 1.5.to_fixed(digits: 3)) == "1.500"):
         return panic(message: "check failed")
@@ -440,23 +440,23 @@ test "normalization, empty separators, and precision formatting":
             let completed = unit
         error(cause):
             return panic(message: cause.message())
-    if not ("é🙂".split(separator: "", max_parts: 8) == ["é", "🙂"]):
+    if not ("é🙂".split(separator: "", max_parts: some(value: 8)) == ["é", "🙂"]):
         return panic(message: "check failed")
     let empty_texts: List[String] = []
-    if not ("".split(separator: "", max_parts: 8) == empty_texts):
+    if not ("".split(separator: "", max_parts: some(value: 8)) == empty_texts):
         return panic(message: "check failed")
-    if not ("é🙂".replace(old: "", new: "-", max_replacements: 1) == "-é🙂"):
+    if not ("é🙂".replace(old: "", new: "-", max_replacements: some(value: 1)) == "-é🙂"):
         return panic(message: "check failed")
-    if not ("".replace(old: "", new: "-", max_replacements: 1) == "-"):
+    if not ("".replace(old: "", new: "-", max_replacements: some(value: 1)) == "-"):
         return panic(message: "check failed")
     if not ("é".concat(values: "🙂") == "é🙂"):
         return panic(message: "check failed")
     let invalid: Result[String, StringError] = error(cause: StringError.InvalidInput)
     let invalid_number: Result[String, NumberError] = error(cause: NumberError.InvalidInput)
     let limit: Result[String, StringError] = error(cause: StringError.LimitExceeded)
-    if not ("é".normalize(form: "invalid", max_bytes: 8) == invalid):
+    if not ("é".normalize(form: "invalid", max_bytes: some(value: 8)) == invalid):
         return panic(message: "check failed")
-    if not ("é".normalize(form: "NFD", max_bytes: 2) == limit):
+    if not ("é".normalize(form: "NFD", max_bytes: some(value: 2)) == limit):
         return panic(message: "check failed")
     if not (1.0.to_fixed(digits: 101) == invalid_number):
         return panic(message: "check failed")
@@ -487,9 +487,9 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
     let pattern = try common_result(result: compile(pattern: "[0-9]+"))
     if not (pattern.matches(text: "a12b3")):
         return panic(message: "check failed")
-    if not (try common_result(result: pattern.find_all(text: "a12b3", max_matches: 2)) == ["12", "3"]):
+    if not (try common_result(result: pattern.find_all(text: "a12b3", max_matches: some(value: 2))) == ["12", "3"]):
         return panic(message: "check failed")
-    if not (try common_result(result: pattern.replace(text: "a12b3", replacement: "x", max_bytes: 4)) == "axbx"):
+    if not (try common_result(result: pattern.replace(text: "a12b3", replacement: "x", max_bytes: some(value: 4))) == "axbx"):
         return panic(message: "check failed")
     return ok(value: unit)
 

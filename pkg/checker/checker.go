@@ -64,8 +64,21 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 		c.names = map[string]*Symbol{}
 		p.Symbols[module.File] = c.names
 		c.scope = newScope(nil)
-		for _, name := range strings.Fields("Bool Int Float String Unit Never Equal Hashable") {
+		for _, name := range strings.Fields("Bool Int Float String Unit Never") {
 			c.names[name] = &Symbol{Name: name, ID: name, Kind: syntax.KindType, Type: primitive(name), Export: true}
+		}
+		// Prelude equality names refer to the source-backed interfaces.
+		for _, name := range []string{"Equal", "Hashable"} {
+			symbol := standardSymbols[name]
+			imported := false
+			for _, item := range module.Imports {
+				if item.Name == name {
+					imported = true
+				}
+			}
+			if !imported && symbol.Module != module.File {
+				c.names[name] = symbol
+			}
 		}
 		for _, item := range module.Imports {
 			var found *Symbol
@@ -210,8 +223,8 @@ func (c *checker) typeVariables(params []syntax.TypeParameter) []*Type {
 	for i, p := range params {
 		for _, b := range p.Bounds {
 			t := c.resolve(b, true)
-			if t.Kind != "contract" && t.ID != "Equal" && t.ID != "Hashable" {
-				c.error(b.Pos, "type", "a bound must be a compiler bound or operation contract")
+			if t.Kind != "contract" {
+				c.error(b.Pos, "type", "a bound must be an interface")
 			}
 			vars[i].Bounds = append(vars[i].Bounds, t)
 		}
@@ -237,9 +250,6 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 	} else {
 		c.error(t.Pos, "resolution", "unknown type "+t.Name)
 		return primitive("<invalid>")
-	}
-	if !bound && (base.ID == "Equal" || base.ID == "Hashable") {
-		c.error(t.Pos, "type", t.Name+" is a bound, not a value type")
 	}
 	r := *base
 	r.Args = nil

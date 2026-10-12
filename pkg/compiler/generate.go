@@ -162,6 +162,9 @@ func (g *generator) function(params []syntax.Parameter, result *syntax.Type, bod
 		out.WriteString(fmt.Sprintf("%s := args[%d]; _ = %s\n", b.ID, i, b.ID))
 		// Checked source values are concrete (including Unit and Optional.none);
 		// Invoke leaves nil only for an omitted argument.
+		if params[i].Default == nil && t.Defaults[params[i].Name] && b.Type.ID == "@std/Optional" {
+			out.WriteString("if " + b.ID + " == nil { " + b.ID + " = rt.NewAlternative(" + g.key(b.Type) + ",\"none\",nil,nil) }\n")
+		}
 		if params[i].Default != nil {
 			pos := params[i].Default.Pos
 			filename := strings.NewReplacer("\n", "_", "\r", "_").Replace(pos.File)
@@ -371,7 +374,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 			return "rt.NewAlternative(" + g.key(info.Constructor) + "," + quote(info.Case) + ",nil,nil)"
 		}
 		if info.Method != nil && info.Method.Native != "" && info.Method.Native != "contract" {
-			return "rt.NativeMemberResult(" + g.expression(e.Left) + "," + quote(e.Text) + "," + g.key(info.Type.Result) + ")"
+			return "rt.NativeMemberResult(" + g.expression(e.Left) + "," + quote(e.Text) + "," + g.key(info.Type.Result) + "," + g.typeScope(g.program.Expressions[e.Left].Type) + ")"
 		}
 		if info.Method != nil {
 			return "rt.Bind(" + g.expression(e.Left) + "," + g.key(info.Method.Contract) + "," + quote(e.Text) + "," + g.typeScope(g.program.Expressions[e.Left].Type) + ")"
@@ -402,9 +405,6 @@ func (g *generator) expression(e *syntax.Expression) string {
 				return "rt.NewAlternative(" + g.key(info.Type) + "," + quote(info.Case) + "," + stringsGo(labels) + "," + args + ")"
 			}
 			return "rt.ConstructWithContext(ctx," + g.key(info.Type) + "," + args + ")"
-		}
-		if info.Native == "background" {
-			return "rt.NewBackground(ctx," + args + ")"
 		}
 		if info.Native == "parallel" {
 			return "rt.ParallelArguments(ctx," + g.key(info.Type) + "," + args + ")"
@@ -444,6 +444,9 @@ func (g *generator) expression(e *syntax.Expression) string {
 				op = "||"
 			}
 			return "(rt.Bool(" + g.expression(e.Left) + ")" + op + "rt.Bool(" + g.expression(e.Right) + "))"
+		}
+		if e.Text == "==" || e.Text == "!=" {
+			return "rt.Equality(ctx," + quote(e.Text) + "," + g.expression(e.Left) + "," + g.expression(e.Right) + "," + g.typeScope(g.program.Expressions[e.Left].Type) + ")"
 		}
 		return "rt.Binary(" + quote(e.Text) + "," + g.expression(e.Left) + "," + g.expression(e.Right) + ")"
 	case syntax.KindLambda:
