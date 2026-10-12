@@ -1,11 +1,9 @@
 +++
 title = "Pattern matching"
-weight = 26
+weight = 3
 +++
 
 # Pattern matching
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use `match` to handle the cases of an alternative type. Each branch can give names to the data carried by its case. For example, a payment may be paid, declined, or pending, and each outcome needs different handling.
 
@@ -98,6 +96,4 @@ A final wildcard is required even when every currently known implementation is l
 
 ## Matching resource references
 
-Matching binds ordinary payload values and references. No binding is consumed, and matching does not register resource cleanup. [Destructuring bindings](../basics/destructuring.md) use brackets or braces; alternative match cases retain their `Case(payload)` syntax. See [aggregate references](../../ownership-and-cleanup/values/aggregates.md).
-
-[Previous: Loops](loops.md) · [Next: Expected failures with Result](../errors/results.md)
+Matching binds ordinary payload values and references. No binding is consumed, and matching does not register resource cleanup. [Destructuring bindings](../types/destructuring.md) use brackets or braces; alternative match cases retain their `Case(payload)` syntax. See [references inside other values](../types/references.md).

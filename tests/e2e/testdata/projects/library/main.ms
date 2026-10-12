@@ -41,7 +41,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
         try common_result(
             result: filesystem().read_file(
                 path: path,
-                max_bytes: some(value: 5)
+                max_bytes: 5
             )
         ) == "hello".to_bytes()
     ):
@@ -69,7 +69,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
         result: secure_int(
             entropy: entropy(),
             min: -2,
-            max_exclusive: some(value: 3)
+            max_exclusive: 3
         )
     )
     if not (random >= -2 and random < 3):
@@ -98,7 +98,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
             try common_result(
                 result: file.read_at(
                     offset: 0,
-                    max_bytes: some(value: 5)
+                    max_bytes: 5
                 )
             ) == "HELLO".to_bytes()
         ):
@@ -113,8 +113,8 @@ fn exercise(path: String) -> Result[Unit, Error]:
         result: filesystem().watch_native(
             path: path,
             recursive: false,
-            max_entries: some(value: 4),
-            max_events: some(value: 16),
+            max_entries: 4,
+            max_events: 16,
             overflow: "error"
         )
     ):

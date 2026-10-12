@@ -49,7 +49,7 @@ test "URL query retains duplicate keys empty values and spaces":
     )
     if parse_query(
         text: "a=1&b=2",
-        max_entries: some(value: 1)
+        max_entries: 1
     ) != limited: return panic("query limit")
 
     let invalid: Result[String, UrlError] = error(cause: UrlError.InvalidData)

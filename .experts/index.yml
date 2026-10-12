@@ -12,7 +12,6 @@ experts:
       - "pkg/compiler/**"
       - "pkg/project/**"
       - "documentation/core-language/**"
-      - "documentation/modules-and-capabilities/**"
       - "tests/e2e/**"
   - id: runtime
     file: runtime.md
@@ -21,7 +20,8 @@ experts:
       - "pkg/runtime/**"
       - "pkg/stdlib/**"
       - "documentation/concurrency/**"
-      - "documentation/ownership-and-cleanup/**"
+      - "documentation/core-language/cleanup/**"
+      - "documentation/core-language/types/references.md"
       - "documentation/standard-library/**"
       - "tests/e2e/testdata/projects/**"
   - id: tooling-and-docs

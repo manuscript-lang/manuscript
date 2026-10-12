@@ -67,7 +67,7 @@ func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info) {
 				continue
 			}
 			for _, param := range info.Type.Params {
-				if param.Name == arg.Name && !unify(param.Type, actual.Type, variableSet(vars), sub) {
+				if param.Name == arg.Name && !c.unifyArgument(param.Type, actual.Type, variableSet(vars), sub) {
 					c.error(arg.Pos, "type", "conflicting generic inference")
 				}
 			}

@@ -22,7 +22,7 @@ test "JSON exact numbers Unicode and nested roundtrip":
         value(
             stringify(
                 value: value(parse(text: "null", limits: none)),
-                max_bytes: some(value: 4)
+                max_bytes: 4
             )
         ) != "null"
     ): return panic("exact budget")
@@ -45,25 +45,19 @@ test "JSON independently enforces byte depth and value budgets":
     if (
         parse(
             text: "null",
-            limits: some(
-                value: JsonLimits(max_bytes: some(value: 3))
-            )
+            limits: JsonLimits(max_bytes: 3)
         ) != limited
     ): return panic("JSON byte budget")
     if (
         parse(
             text: "[[[]]]",
-            limits: some(
-                value: JsonLimits(max_depth: some(value: 2))
-            )
+            limits: JsonLimits(max_depth: 2)
         ) != limited
     ): return panic("JSON depth budget")
     if (
         parse(
             text: "[1,2]",
-            limits: some(
-                value: JsonLimits(max_values: some(value: 2))
-            )
+            limits: JsonLimits(max_values: 2)
         ) != limited
     ): return panic("JSON value budget")
 
@@ -71,8 +65,6 @@ test "JSON independently enforces byte depth and value budgets":
     if (
         parse(
             text: "null",
-            limits: some(
-                value: JsonLimits(max_bytes: some(value: -1))
-            )
+            limits: JsonLimits(max_bytes: -1)
         ) != invalid
     ): return panic("negative JSON budget")

@@ -1,5 +1,4 @@
 import {TaskGroup, Task, ExecutionError} from "@std/tasks.ms"
-import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import List from "@std/collections.ms"
 import Closeable from "@std/cleanup.ms"
@@ -82,7 +81,7 @@ test "typed tasks group joins and cached outcomes":
             return panic("task group failed")
 
 test "empty group joins and closes repeatedly":
-    with group = TaskGroup(timeout: some(value: 0.seconds)):
+    with group = TaskGroup(timeout: 0.seconds):
         match group.join():
             ok(_):
                 group.close()
@@ -92,7 +91,7 @@ test "empty group joins and closes repeatedly":
                 return panic("empty group timed out")
 
 test "zero timeout starts no callback":
-    with group = TaskGroup(timeout: some(value: 0.seconds)):
+    with group = TaskGroup(timeout: 0.seconds):
         let task = group.start(
             fn() -> Int: return panic("zero timeout invoked callback")
         )

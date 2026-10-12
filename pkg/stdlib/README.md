@@ -21,6 +21,6 @@ Run `ms stdlib <directory>` to export the exact pinned source files for an edito
 
 For user-facing imports and API behavior, see the [standard-library guide](../../documentation/standard-library/_index.md).
 
-Filesystem, OS/process, path, and timer contracts are described in the [host package guide](../../documentation/standard-library/packages/node-host.md). The Node.js 24 coverage inventory includes exported APIs and returned handle operations; native signature validation, offline Node path/glob fixtures, and compiled CLI tests keep the mapping reviewable. Platform helpers in `internal/hostos/` are bundled with native dependency sources.
+Filesystem and path contracts are described in the [filesystem guide](../../documentation/standard-library/filesystem.md); [system](../../documentation/standard-library/system.md), [process](../../documentation/standard-library/process.md), and [scheduling](../../documentation/concurrency/scheduling.md) have their own guides. Platform helpers in `internal/hostos/` are bundled with native dependency sources.
 
 Time values and sequential `sleep` live in `@std/time.ms`. `@std/tasks.ms` owns `Scheduler`, which manages immediate, delayed, and repeating work through one operation-ID lifecycle, plus TaskGroup, Task[T], cancellation checks, and scheduler yielding. Limits and deadlines use optional values; receiver operations are the single public API for existing data.

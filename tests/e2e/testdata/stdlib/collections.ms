@@ -105,7 +105,7 @@ test "collection constructors validate bounds and exact limits":
                 start: 3,
                 end: -1,
                 step: -1,
-                max_items: some(value: 4)
+                max_items: 4
             )
         ) != [3, 2, 1, 0]
     ): return panic("descending range")
@@ -123,7 +123,7 @@ test "collection constructors validate bounds and exact limits":
         start: 0,
         end: 3,
         step: 1,
-        max_items: some(value: 2)
+        max_items: 2
     ) != limited: return panic("range budget")
 
 test "collection builders freeze all accumulated values":

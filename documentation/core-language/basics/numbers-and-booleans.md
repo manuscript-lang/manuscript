@@ -1,11 +1,9 @@
 +++
 title = "Numbers and booleans"
-weight = 9
+weight = 3
 +++
 
 # Numbers and booleans
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 A number literal has a specific type: `3` is an Int, `0.5` is a Float, and `12.50d` is a Decimal. Convert explicitly when a function needs another numeric type. Boolean values are `true` and `false`.
 
@@ -27,7 +25,7 @@ Decimal literals require `import Decimal from "@std/decimal.ms"`; Decimal is an 
 
 ## Arithmetic and conversion
 
-Numeric conversions are explicit. Int overflow and invalid Int/Decimal operations produce programming faults; Float operations follow the non-finite rules below. An inferred local type does not authorize an implicit conversion at a call boundary. The [minimum data API](../../standard-library/data-and-io/operations.md#numeric-and-time-conversion) defines the callable conversions.
+Numeric conversions are explicit. Int overflow and invalid Int/Decimal operations produce programming faults; Float operations follow the non-finite rules below. An inferred local type does not authorize an implicit conversion at a call boundary. The [numeric conversion rules](#numeric-conversion) below define the callable conversions.
 
 Arithmetic operands must have the same exact numeric type, and the result has that type. Unary signs retain their operand type. `%` accepts only `Int` operands. Ordering comparisons accept matching numeric types and return `Bool`; equality additionally follows the [Equal rules](../types/equality-and-hashing.md). The [expression table](expressions.md#operand-and-result-types) is authoritative for operator typing.
 
@@ -41,6 +39,18 @@ fn literals() -> Unit:
     # Rejected: an Int token does not become Float from context.
     let mismatch: Float = 1
 ```
+
+## Numeric conversion
+
+| Receiver | Signature/result |
+| --- | --- |
+| `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
+| `Float` | `truncate_to_int() -> Optional[Int]` |
+| `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
+
+Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. Decimal→Float may produce signed infinity or signed zero under the Float rules. Truncation discards the fractional part toward zero, then checks the mathematical integer against the exact signed 64-bit limits before conversion. NaN, infinities, or an out-of-range integer yield `none`.
+
+For example, `1e300.truncate_to_int()` is `none`. Float +2^63 cannot convert to Int, while Float -2^63 can.
 
 ## Runtime numeric outcomes
 
@@ -85,4 +95,8 @@ A Boolean value controls an [if statement](../control-flow/conditionals.md) or [
 
 `milliseconds`, `seconds`, and `minutes` are Int members: `500.milliseconds` and `2.seconds` have type `Duration`. They also work on nonliteral Int expressions; `Instant` represents a monotonic clock instant. They are used by [timeouts and deadlines](../../concurrency/cancellation.md).
 
-[Previous: Destructuring bindings](destructuring.md) · [Next: String and bytes](text-and-bytes.md)
+`Duration` is a signed 64-bit count of nanoseconds. The three unit members work on any Int expression and multiply by 1,000,000, 1,000,000,000, or 60,000,000,000 with overflow checks. Import `duration` from `@std/time.ms` to construct an exact interval from nanoseconds. Integer unit conversions truncate toward zero; floating conversions retain fractional units with binary64 rounding. `Instant` is an opaque monotonic instant in the current run's clock domain; it has no source constructor. Clock adapters and injected test clocks must preserve a single comparable domain within a run. Cross-domain comparison or subtraction faults. Duration arithmetic and Instant shifts/differences check overflow; these compiler-defined operations are enumerated in the [operator table](expressions.md).
+
+`2.seconds` is 2,000,000,000 nanoseconds. Unsupported unit names and mixed arithmetic such as `2.seconds + 1` are type errors.
+
+See [time value methods](../../standard-library/system.md#time-value-methods) for Duration, Instant, and Timestamp operations.

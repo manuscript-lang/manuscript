@@ -1,11 +1,9 @@
 +++
 title = "Optional values"
-weight = 14
+weight = 4
 +++
 
 # Optional values
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use `Optional[T]` when a value may be missing. `some(value: ...)` contains a value of type `T`; `none` means there is no value. Import Optional from `@std/optional.ms`.
 
@@ -23,11 +21,28 @@ let inferred = some(value: 1)  # Optional[Int]
 let explicit = Optional[String].none
 # Rejected: no type determines the absent payload.
 let unknown = none
-# Rejected: no automatic wrapping.
+# Rejected: bindings still require explicit wrapping.
 let wrong: Optional[String] = "Ada"
 ```
 
 There is no implicit unwrapping or flattening: `Optional[Optional[Int]]` differs from `Optional[Int]`. `Result[T, E]` likewise needs both arguments determined; an expected result type can supply the missing argument in `ok(value: ...)` or `error(cause: ...)`. See [compatibility and expected types](compatibility.md).
+
+## Passing optional arguments
+
+A supplied argument for a standard `Optional[T]` parameter may be a `T`. The compiler wraps it as `some(value: ...)` before the call. An argument already typed as `Optional[T]` passes through unchanged, including `none`.
+
+```manuscript
+import Queue from "@std/queues.ms"
+
+let bounded = Queue[Int](capacity: 4)
+let unbounded = Queue[Int]()
+```
+
+This rule applies to functions, methods, function values, constructor fields, and alternative payloads. It wraps exactly one layer: an `Optional[Int]` can be passed to an `Optional[Optional[Int]]` parameter as its payload, but a bare `Int` cannot. The expression evaluates once in written argument order, and the payload retains its identity. Zero, `false`, and empty values remain present.
+
+Generic argument inference can match either the complete optional or its payload. For example, `fn present[T](value: Optional[T]) -> Optional[T]` infers `T = Int` from `present(4)` or from passing an existing `Optional[Int]`. Once a parameter type is known, its payload provides context for an empty list or an incomplete data constructor.
+
+Omission still requires a default or a declared library omission permission. An `Optional[T]` parameter alone remains required. Bindings, assignments, returns, defaults, and collection elements continue to require explicit wrapping; numeric conversion, implicit unwrapping, and recursive wrapping are rejected. A user-defined alternative named `Optional` does not receive this rule. See [declarations and calls](../functions/declarations-and-calls.md#argument-names).
 
 ## Checking and extracting values
 
@@ -80,5 +95,3 @@ Use [Result](../errors/results.md) when a failure needs an explanation. An absen
 ## Data modeling
 
 A [record](records.md) can contain optional fields, such as `email: Optional[String]`. Manuscript has no nullable reference type: put absence in the declared type and handle it with Optional methods or [pattern matching](../control-flow/pattern-matching.md).
-
-[Previous: Alternatives](alternatives.md) · [Next: Collections](collections.md)

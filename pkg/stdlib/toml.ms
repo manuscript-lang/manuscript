@@ -406,7 +406,7 @@ fn decimal_part(text: String) -> Bool:
     let clean = text.replace(
         old: "_",
         new: "",
-        max_replacements: some(value: text.byte_length())
+        max_replacements: text.byte_length()
     )
     return clean == "0" or not clean.starts_with("0")
 
@@ -584,9 +584,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                 .replace(
                     old: "_",
                     new: "",
-                    max_replacements: some(
-                        value: text.byte_length()
-                    )
+                    max_replacements: text.byte_length()
                 )
             ),
             radix: radix
@@ -662,7 +660,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         let number = text.replace(
             old: "_",
             new: "",
-            max_replacements: some(value: text.byte_length())
+            max_replacements: text.byte_length()
         )
 
         match parse_float(number):
@@ -686,7 +684,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         text: text.replace(
             old: "_",
             new: "",
-            max_replacements: some(value: text.byte_length())
+            max_replacements: text.byte_length()
         ),
         radix: 10
     ):
@@ -880,7 +878,7 @@ export fn parse(
     let normalized = text.replace(
         old: "\r\n",
         new: "\n",
-        max_replacements: some(value: text.byte_length())
+        max_replacements: text.byte_length()
     )
     if normalized.contains("\r"): return error(
         cause: TomlError.InvalidData(

@@ -29,7 +29,7 @@ test "logger writes typed escaped records and protects metadata":
         let logger = value(
             create(
                 transport: transport,
-                timestamp: some(value: false)
+                timestamp: false
             )
         )
         let fields = value(
@@ -43,7 +43,7 @@ test "logger writes typed escaped records and protects metadata":
                 let written = value(
                     logger.info(
                         message: "say \"hi\"\nnext",
-                        fields: some(value: values)
+                        fields: values
                     )
                 )
 
@@ -69,8 +69,8 @@ test "levels filter methods and function values":
         let logger = value(
             create(
                 transport: transport,
-                level: some(value: LogLevel.Warn),
-                timestamp: some(value: false)
+                level: LogLevel.Warn,
+                timestamp: false
             )
         )
         if logger.enabled(LogLevel.Info) or not logger.enabled(LogLevel.Warn): return panic(
@@ -124,8 +124,8 @@ test "child bindings snapshot membership and merge without mutating inputs":
         let logger = value(
             create(
                 transport: transport,
-                bindings: some(value: bindings),
-                timestamp: some(value: false)
+                bindings: bindings,
+                timestamp: false
             )
         )
         bindings.with_entry(
@@ -151,7 +151,7 @@ test "child bindings snapshot membership and merge without mutating inputs":
         let child_log = value(
             child.info(
                 message: "child",
-                fields: some(value: fields)
+                fields: fields
             )
         )
         let parent_log = value(logger.fatal(message: "parent"))
@@ -173,8 +173,8 @@ test "limits and invalid JSON reject before writing":
         let logger = value(
             create(
                 transport: transport,
-                timestamp: some(value: false),
-                max_bytes: some(value: (record.to_bytes().length()))
+                timestamp: false,
+                max_bytes: (record.to_bytes().length())
             )
         )
         let written = value(logger.info(message: "x"))
@@ -189,15 +189,15 @@ test "limits and invalid JSON reject before writing":
         let zero = value(
             create(
                 transport: transport,
-                timestamp: some(value: false),
-                max_bytes: some(value: 0)
+                timestamp: false,
+                max_bytes: 0
             )
         )
         if zero.info(message: "") != limited: return panic("zero budget")
 
         match create(
             transport: transport,
-            max_bytes: some(value: -1)
+            max_bytes: -1
         ):
             ok(_): return panic("negative budget accepted")
 
@@ -207,7 +207,7 @@ test "limits and invalid JSON reject before writing":
         let unlimited = value(
             create(
                 transport: transport,
-                timestamp: some(value: false),
+                timestamp: false,
                 max_bytes: none
             )
         )
@@ -218,7 +218,7 @@ test "limits and invalid JSON reject before writing":
         let invalid_data: Result[Unit, LogError] = error(cause: LogError.InvalidData)
         if unlimited.info(
             message: "bad",
-            fields: some(value: bad)
+            fields: bad
         ) != invalid_data: return panic("invalid JSON")
         if output.data != before: return panic("failed log wrote bytes")
 
@@ -253,7 +253,7 @@ test "file transport appends and flushes with scoped cleanup":
             let logger = value(
                 create(
                     transport: transport,
-                    timestamp: some(value: false)
+                    timestamp: false
                 )
             )
             let written = value(logger.info(message: "first"))
@@ -263,7 +263,7 @@ test "file transport appends and flushes with scoped cleanup":
             let logger = value(
                 create(
                     transport: transport,
-                    timestamp: some(value: false)
+                    timestamp: false
                 )
             )
             let written = value(logger.warn(message: "second"))
@@ -288,7 +288,7 @@ test "stdout transport accepts records and leaves stdout open":
         let logger = value(
             create(
                 transport: transport,
-                timestamp: some(value: false)
+                timestamp: false
             )
         )
         let written = value(logger.info(message: "stdout log"))
@@ -323,7 +323,7 @@ test "source transports receive complete records and close through their contrac
         let logger = value(
             create(
                 transport: transport,
-                timestamp: some(value: false)
+                timestamp: false
             )
         )
         let written = value(logger.info(message: "source transport"))

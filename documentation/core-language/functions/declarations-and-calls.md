@@ -1,11 +1,9 @@
 +++
 title = "Declarations and calls"
-weight = 21
+weight = 1
 +++
 
 # Declarations and calls
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 A function names its inputs, declares their types, and declares the type it returns. Its body runs in source order. Use `return` to send a value back to the caller. A short body can stay on one line: `fn double(value: Int) -> Int: return value * 2`. See the [suite rules](../basics/grammar.md#statements-and-patterns) for inline bodies.
 
@@ -45,7 +43,7 @@ TaskGroup.start accepts one zero-argument function and infers a typed Task[T] ha
 
 Match payload bindings such as `some(value):` are patterns, rather than calls; see [pattern matching](../control-flow/pattern-matching.md).
 
-A parameter with a default may be omitted; every other parameter remains required. An `Optional[T]` parameter without a default is still required: callers explicitly supply `none` when absent. Variadic parameters and argument spreading are not supported. Existing trusted library API contracts may explicitly permit omitted named arguments; that permission does not follow from an `Optional` value type. Unknown labels, duplicate arguments, missing required arguments, and unlabeled arguments to multi-parameter functions are compile errors. Supplying both `decrement(3, value: 4)` arguments duplicates the sole parameter and is rejected. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); labels do not authorize numeric or contract conversions.
+A parameter with a default may be omitted; every other parameter remains required. An `Optional[T]` parameter without a default is still required: callers explicitly supply `none` when absent. A supplied `T` is wrapped once as `some(value: ...)` for a standard `Optional[T]` parameter; see [optional arguments](../types/optionals.md#passing-optional-arguments). Variadic parameters and argument spreading are not supported. Existing trusted library API contracts may explicitly permit omitted named arguments; that permission does not follow from an `Optional` value type. Unknown labels, duplicate arguments, missing required arguments, and unlabeled arguments to multi-parameter functions are compile errors. Supplying both `decrement(3, value: 4)` arguments duplicates the sole parameter and is rejected. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); labels do not authorize numeric or contract conversions.
 
 ## Default arguments
 
@@ -148,5 +146,3 @@ A potentially blocking library call suspends the current lightweight task. It do
 Manuscript has one function kind. Sequential code remains sequential when a library operation suspends; explicit concurrent execution is specified in [concurrency](../../concurrency/_index.md).
 
 For functions used as data and the rules for captured values, continue with [function values and closures](function-values-and-closures.md).
-
-[Previous: Type compatibility and expected types](../types/compatibility.md) · [Next: Function values and closures](function-values-and-closures.md)

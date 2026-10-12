@@ -1,11 +1,9 @@
 +++
 title = "Error propagation with try"
-weight = 29
+weight = 2
 +++
 
 # Error propagation with try
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use `try` to continue with a successful Result value or immediately return its error to your caller. This is useful when the current function cannot handle the expected failure itself.
 
@@ -49,6 +47,4 @@ Inside an anonymous function, try returns from that anonymous function, not from
 
 ## Cleanup and cancellation
 
-`try` does not catch programming faults or parent cancellation. A propagated error is a return path and performs [lexical cleanup](../../ownership-and-cleanup/cleanup/_index.md) for the scopes it leaves. A [programming fault](faults.md) or [parent cancellation](../../concurrency/cancellation.md) follows its own unwinding rules.
-
-[Previous: Expected failures with Result](results.md) · [Next: Programming faults](faults.md)
+`try` does not catch programming faults or parent cancellation. A propagated error is a return path and performs [lexical cleanup](../cleanup/_index.md) for the scopes it leaves. A [programming fault](faults.md) or [parent cancellation](../../concurrency/cancellation.md) follows its own unwinding rules.

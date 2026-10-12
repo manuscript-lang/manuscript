@@ -1,6 +1,5 @@
 import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -17,8 +16,8 @@ test "CSV quotes delimiters multiline cells and line endings":
             parse(
                 text: text,
                 options: options,
-                max_rows: some(value: 2),
-                max_cells: some(value: 6)
+                max_rows: 2,
+                max_cells: 6
             )
         ) != rows
     ): return panic("quoted CSV roundtrip")
@@ -48,12 +47,12 @@ test "CSV rejects malformed records invalid options and limits":
     if parse(
         text: "a,b\n",
         options: options,
-        max_cells: some(value: 1)
+        max_cells: 1
     ) != limited: return panic("cell budget")
     if parse(
         text: "a\nb\n",
         options: options,
-        max_rows: some(value: 1)
+        max_rows: 1
     ) != limited: return panic("row budget")
 
     let invalid: Result[String, CsvError] = error(cause: CsvError.InvalidInput)

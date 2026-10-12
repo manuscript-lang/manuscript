@@ -1,11 +1,9 @@
 +++
-title = "Joined groups"
-weight = 61
+title = "Waiting for tasks"
+weight = 2
 +++
 
-# Joined groups and execution outcomes
-
-[Guide index](_index.md) · [Design index](../_index.md)
+# Waiting for tasks
 
 Joining waits for work to finish its body and cleanup. `Task.join()` waits for one successful task; a failed task join waits for its stopped group. `TaskGroup.join()` waits for all submitted work. Closing a group cancels unfinished work and joins it.
 
@@ -49,7 +47,7 @@ An operation ID identifies work for diagnostics. It does not grant scheduling, c
 
 A programming fault takes precedence over a timeout or cancellation outcome. Simultaneous task faults have a scheduling-dependent primary. Outcome commitment and acceptance of a stop share an atomic transition. A completed task is not rerun by joining, and its result is not overwritten by a later stop.
 
-Joining from a cancelled caller cancels and waits for unfinished group work before unwinding. Secondary faults during caller cancellation reach diagnostics. Cleanup remains shielded and may exceed any deadline; uncooperative foreign work falls to [host escalation](runtime.md#host-escalation).
+Joining from a cancelled caller cancels and waits for unfinished group work before unwinding. Secondary faults during caller cancellation reach diagnostics. Cleanup remains shielded and may exceed any deadline; uncooperative foreign work falls to [host escalation](../contributing/concurrent-runtime.md#host-escalation).
 
 ## Scope cleanup and fault observation
 
@@ -59,4 +57,4 @@ A failed group or task join marks the execution failure observed. Closing a grou
 
 Tasks and their descendants cannot join or close their own group or join its task handles. Cross-group cycles are invalid application usage. There is no per-task cancellation; use the group's close boundary or a scheduler's operation-ID cancellation.
 
-See [task groups](task-groups.md), [cancellation](cancellation.md), and [scope cleanup](../ownership-and-cleanup/cleanup/exit-order.md).
+See [task groups](task-groups.md), [cancellation](cancellation.md), and [scope cleanup](../core-language/cleanup/exit-order.md).

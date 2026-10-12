@@ -706,7 +706,10 @@ func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
 	return !info.NoReturn && fall, breaks
 }
 func (c *checker) expression(e *syntax.Expression, expected *Type) *Info {
-	i := c.infer(e, expected)
+	return c.checkExpression(e, c.infer(e, expected), expected)
+}
+
+func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type) *Info {
 	if i.Type == nil {
 		i.Type = primitive("<invalid>")
 	}

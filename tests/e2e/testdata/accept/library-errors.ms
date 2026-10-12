@@ -14,7 +14,7 @@ fn encoding_error(cause: EncodingError) -> ApplicationError:
 fn decode_bad_input() -> Result[Unit, ApplicationError]:
     match hex_decode(
         text: "zz",
-        max_bytes: some(value: 10)
+        max_bytes: 10
     ):
         ok(_):
             return ok(value: unit)
@@ -35,14 +35,14 @@ fn json_error_code(cause: JsonError) -> Int:
 
 test "JSON errors need only JSON cases":
     let limits = JsonLimits(
-        max_bytes: some(value: 100),
-        max_depth: some(value: 8),
-        max_values: some(value: 32)
+        max_bytes: 100,
+        max_depth: 8,
+        max_values: 32
     )
 
     match parse(
         text: "[",
-        limits: some(value: limits)
+        limits: limits
     ):
         ok(_):
             return panic(message: "malformed JSON succeeded")
@@ -80,7 +80,7 @@ impl Error for TaggedError[T]:
 fn decode_generically() -> Result[Unit, Error]:
     let bytes = try hex_decode(
         text: "zz",
-        max_bytes: some(value: 10)
+        max_bytes: 10
     )
     return ok(value: unit)
 

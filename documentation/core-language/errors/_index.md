@@ -1,11 +1,9 @@
 +++
-title = "Errors and validation"
-weight = 27
+title = "Error handling"
+weight = 5
 +++
 
-# Errors and validation
-
-[Core language guide](../_index.md) · [Design index](../../_index.md)
+# Error handling
 
 Choose the outcome that matches the situation: `Result` for an expected failure with an explanation, `Optional` for a missing value, and a fault for a broken programming assumption. These pages show how callers respond to each one.
 

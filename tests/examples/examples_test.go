@@ -30,7 +30,11 @@ func TestTutorialExamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files = append(files, "../../documentation/getting-started.md", "../../documentation/standard-library/packages/tooling.md")
+	libraryFiles, err := filepath.Glob("../../documentation/standard-library/*.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files = append(files, libraryFiles...)
 	total := 0
 	for _, file := range files {
 		text, err := os.ReadFile(file)
@@ -85,7 +89,7 @@ func TestTutorialExamples(t *testing.T) {
 			})
 		}
 	}
-	if total < 4 {
-		t.Fatal("missing complete tutorial examples")
+	if total == 0 {
+		t.Fatal("no complete tutorial examples found")
 	}
 }

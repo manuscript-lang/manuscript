@@ -172,7 +172,7 @@ export fn checkout_total() -> Int:
     return line_total(price: 12, quantity: 3)
 ```
 
-Import standard APIs from `@std/…`, and local code with a relative path. [Module rules](../modules-and-capabilities/modules/declarations.md) cover grouped imports and visibility.
+Import standard APIs from `@std/…`, and local code with a relative path. [Module rules](../core-language/modules/declarations.md) cover grouped imports and visibility.
 
 ## Closures and shared data
 
@@ -220,4 +220,4 @@ let mixed = [1, "two"]    # List elements need a common type.
 line_total(12, 3)         # Name both arguments.
 ```
 
-Keep these cases separate from runnable examples. Continue with the [language reference](../core-language/_index.md) or find an API in the [module reference](../standard-library/reference/_index.md).
+Keep these cases separate from runnable examples. Continue with the [language guide](../core-language/_index.md) or find an API in the [API reference](../standard-library/reference/_index.md).

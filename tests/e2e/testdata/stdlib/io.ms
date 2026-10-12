@@ -42,7 +42,7 @@ test "stream compositions invoke source implementations and preserve EOF":
             copy(
                 input: ReadStream(value: source),
                 output: WriteStream(value: output),
-                max_bytes: some(value: 6)
+                max_bytes: 6
             )
         ) != 6
     ): return panic("copy byte count")
@@ -57,7 +57,7 @@ test "streams enforce byte limits and preserve original errors":
     let limited: Result[Bytes, IoError] = error(cause: IoError.LimitExceeded)
     if read_all(
         input: ReadStream(value: reader),
-        max_bytes: some(value: 2)
+        max_bytes: 2
     ) != limited: return panic("read budget")
 
     reader.closed = true

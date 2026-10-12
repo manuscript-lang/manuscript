@@ -82,6 +82,8 @@ type Info struct {
 	ScopedPropagation bool
 	// Arguments retains written order with omitted function labels resolved.
 	Arguments []syntax.Argument
+	// OptionalArgument wraps this supplied argument once without changing its source type.
+	OptionalArgument *Type
 }
 type Flow struct{ FallsThrough bool }
 type Program struct {

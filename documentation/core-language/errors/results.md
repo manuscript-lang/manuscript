@@ -1,11 +1,9 @@
 +++
 title = "Expected failures with Result"
-weight = 28
+weight = 1
 +++
 
 # Expected failures with Result
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use `Result[T, E]` when an operation can either succeed with a value of type `T` or fail with an expected error of type `E`. Import `Result` from `@std/result.ms`.
 
@@ -47,7 +45,7 @@ This caller chooses a response for either outcome. Another caller could inspect 
 
 ## A common error boundary
 
-For most functions, keep the concrete domain error type. Its typed fields are available directly to callers; see [error details](../../standard-library/packages/contracts.md#error-details).
+For most functions, keep the concrete domain error type. Its typed fields are available directly to callers; see [error details](../../standard-library/contracts.md#error-details).
 
 When a boundary should accept several error types, import `Error` from `@std/errors.ms`. It is an ordinary interface declaring `message() -> String`. Standard errors implement it; custom errors can declare an `impl Error` in their defining module.
 
@@ -66,11 +64,8 @@ fn decode(text: String) -> Result[Bytes, Error]:
 
 An error implementing `Error` can be passed, assigned, or returned directly wherever `Error` is expected. `Result[T, SpecificError]` can also be returned as `Result[T, Error]`; its successful value and original error are preserved. Other error values remain legal in `Result[T, E]`. See [error compatibility](propagation.md#error-compatibility) for propagation rules.
 
-
 ## Results and concurrent execution
 
-Returning `error(cause: cause)` is normal function completion. In a TaskGroup, the domain Result remains the operation's return value and does not cancel siblings. Task.join separately reports ExecutionError; see [task groups](../../concurrency/task-groups.md). A [Scheduler](../../standard-library/tasks/scheduler.md) service reports completion-only domain errors through its configured failure observer.
+Returning `error(cause: cause)` is normal function completion. In a TaskGroup, the domain Result remains the operation's return value and does not cancel siblings. Task.join separately reports ExecutionError; see [task groups](../../concurrency/task-groups.md). A [Scheduler](../../concurrency/scheduling.md) service reports completion-only domain errors through its configured failure observer.
 
 Use [Optional](../types/optionals.md) for absence without an error explanation and [explicit faults](faults.md) for broken programming invariants.
-
-[Previous: Pattern matching](../control-flow/pattern-matching.md) · [Next: Error propagation with try](propagation.md)

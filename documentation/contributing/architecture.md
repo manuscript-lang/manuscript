@@ -72,7 +72,7 @@ The CLI classifies each command's compiler mode in one switch, then checks sourc
 
 | Location | Ownership |
 | --- | --- |
-| `documentation/` | Authored tutorials, exact language rules, compiler/runtime semantics, current implementation inventory, tooling limits, contributor workflow, and explicitly historical reviews |
+| `documentation/` | Authored tutorials, exact language rules, compiler/runtime semantics, tooling limits, contributor workflow |
 | `documentation/standard-library/reference/` and `documentation/standard-library/call-rules.md` | Generated from checked standard declarations and the embedded call rules by `make docs` |
 | `website/` | Hugo configuration, custom layouts/assets, static resources, version archives, and the vendored Hugo Book theme with its license and upstream revision |
 | `website/static/stdlib.md` and `stdlib.json` | Generated API downloads. Hugo mounts the root version and extension grammar directly; neither needs a copied source |
@@ -85,7 +85,7 @@ The CLI classifies each command's compiler mode in one switch, then checks sourc
 | `skills/`, `.experts/`, `AGENTS.md` | Contributor guidance and evidence-backed lessons. `.agents/skills/` and `.claude/skills/` link to the shared skills |
 | `.artifacts/`, `toolchain/`, `dist/`, `.ms-cache/` | Ignored local reports, SDKs, releases, and native artifact caches |
 
-Keep generated sources reproducible through their generator. Do not edit HTML to repair a source rule or copy standard signatures into a second hand-maintained catalog. Use [implementation coverage](../implementation.md) to check which design facilities are actually available.
+Keep generated sources reproducible through their generator. Do not edit HTML to repair a source rule or copy standard signatures into a second hand-maintained catalog. Check the relevant implementation and source-level tests before describing a design as available.
 
 ## Make a change where its behavior lives
 
@@ -105,6 +105,6 @@ Implementation hashes include source from `frontend` and `project` as well as sy
 
 Package tests exercise narrow contracts. `tests/e2e` compiles Manuscript fixtures and checks native behavior, CLI commands, faults, signals, networking, and cross-module dispatch. Declaration-only fixtures demonstrate acceptance, not execution. `tests/docs` checks shared highlighting and the published API pages/downloads. Extension tests exercise editor and debugger integration separately.
 
-Statement coverage helps find unexercised branches; it does not establish language completeness, race freedom, or reliable shutdown. Combine [coverage reports and the development checks](development.md) with the feature inventory and observable source-level cases. Keep unimplemented adapter, incremental compilation, host, and tooling contracts explicitly identified.
+Statement coverage helps find unexercised branches; it does not establish language completeness, race freedom, or reliable shutdown. Combine [coverage reports and the development checks](development.md) with observable source-level cases. Keep unimplemented adapter, incremental compilation, host, and tooling contracts explicitly identified.
 
 `make repo-check` enforces the package dependency policy, frontend isolation from host implementations, complete embedded source inputs, exhaustive checked/lowered syntax kinds, and Go-source release triggers. The checker consumes checked standard declarations for native receiver constraints; runtime ABI comparisons are integration tests. The CLI, native pins, and book share `.msversion`.

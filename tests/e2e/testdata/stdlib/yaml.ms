@@ -241,7 +241,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
         parse(
             text: "é",
             limits: limits(
-                bytes: some(value: 1),
+                bytes: 1,
                 depth: none,
                 values: none
             )
@@ -252,7 +252,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
             text: "[[[]]]",
             limits: limits(
                 bytes: none,
-                depth: some(value: 2),
+                depth: 2,
                 values: none
             )
         ) != limited
@@ -262,7 +262,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
             text: "a:\n  b: 1",
             limits: limits(
                 bytes: none,
-                depth: some(value: 2),
+                depth: 2,
                 values: none
             )
         ) != limited
@@ -273,7 +273,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
             limits: limits(
                 bytes: none,
                 depth: none,
-                values: some(value: 2)
+                values: 2
             )
         ) != limited
     ): return panic("value limit")
@@ -283,7 +283,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
             limits: limits(
                 bytes: none,
                 depth: none,
-                values: some(value: 6)
+                values: 6
             )
         ) != limited
     ): return panic("expanded alias limit")
@@ -291,9 +291,9 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
         parse(
             text: "",
             limits: limits(
-                bytes: some(value: 0),
-                depth: some(value: 1),
-                values: some(value: 1)
+                bytes: 0,
+                depth: 1,
+                values: 1
             )
         ) != parse(text: "", limits: none)
     ): return panic("empty exact limits")
@@ -303,7 +303,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
             limits: limits(
                 bytes: none,
                 depth: none,
-                values: some(value: 0)
+                values: 0
             )
         ) != limited
     ): return panic("zero values")
@@ -312,7 +312,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
             text: "",
             limits: limits(
                 bytes: none,
-                depth: some(value: -1),
+                depth: -1,
                 values: none
             )
         ) != invalid
@@ -321,9 +321,9 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
         parse(
             text: "[1,2]",
             limits: limits(
-                bytes: some(value: 5),
-                depth: some(value: 2),
-                values: some(value: 3)
+                bytes: 5,
+                depth: 2,
+                values: 3
             )
         ) != parse(text: "[1,2]")
     ): return panic("exact limits")

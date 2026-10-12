@@ -1,11 +1,9 @@
 +++
 title = "Generics and bounds"
-weight = 18
+weight = 9
 +++
 
 # Generics and bounds
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 A generic type describes a family of types using type arguments. The arguments make the element or result types visible wherever the type is used.
 
@@ -81,7 +79,7 @@ let value = choose(first: 1, second: 2)  # T = Int
 let mixed = choose(first: 1, second: 2.0)
 ```
 
-Result annotations do not infer function type arguments. Empty lists, `none`, and other expressions requiring context cannot independently provide evidence. Once other arguments determine all parameters, substituted parameter types provide context to those expressions. This process does not reorder evaluation.
+Result annotations do not infer function type arguments. Empty lists, `none`, and other expressions requiring context cannot independently provide evidence. Once other arguments determine all parameters, substituted parameter types provide context to those expressions. For a standard `Optional[T]` parameter, inference first matches an existing optional, then permits a plain payload to determine `T`; see [optional arguments](optionals.md#passing-optional-arguments). This process does not reorder evaluation.
 
 ```manuscript
 fn count[T](values: List[T]) -> Int:
@@ -115,7 +113,7 @@ The same rule checks a generic implementation once under its inherited parameter
 
 Recursive declarations follow [layout rules](records.md#recursive-data). Separately, the compiler requires a finite regular family of recursive generic applications. Along a recursive generic cycle, arguments preserve the original parameters one-to-one in their original positions. `Tree[T]` with `children: List[Tree[T]]` is allowed. Substituting concrete arguments, reordering them, or expanding them on a recursive cycle is rejected; `Grow[T]` containing `List[Grow[List[T]]]` would create an infinite application family. This regularity check follows recursive type references even through function signatures or contracts: an indirect runtime representation does not permit infinitely expanding static instantiations.
 
-The same finite-application requirement covers generic function calls and specialized function values. Follow specialization dependencies through the whole module graph; on a recursive function cycle, the composed substitution must preserve the starting function's type parameters one-to-one in their original positions. Nonrecursive calls may construct different type arguments. Reject expanding recursive specialization before Go emission, even when the recursive call is unreachable at runtime. This prevents both an infinite monomorphization worklist and generic recursion that the Go backend cannot represent.
+The same finite-application requirement covers generic function calls and specialized function values. Follow specialization dependencies through the whole module graph; on a recursive function cycle, the composed substitution must preserve the starting function's type parameters one-to-one in their original positions. Nonrecursive calls may construct different type arguments. Reject expanding recursive specialization before code generation, even when the recursive call is unreachable at runtime. This keeps recursive specialization finite.
 
 ```manuscript
 fn repeat[T](value: T) -> Never:
@@ -130,5 +128,3 @@ Apply the check to mutual recursion and references such as `grow[List[T]]` store
 ## Built-in requirements
 
 `List[T]`, `Queue[T]`, `Synchronized[T]`, and collection values accept arbitrary value types, including functions and contract views. Map keys and set elements require `Hashable`. Equality uses the interfaces described in [equality and hashing](equality-and-hashing.md). Sharing does not register cleanup or extend a resource's open lifetime.
-
-[Previous: Operation contracts](contracts.md) · [Next: Type compatibility and expected types](compatibility.md)

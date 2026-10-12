@@ -42,7 +42,7 @@ test "omitted capacity creates an unbounded queue":
         return panic("inferred queue rejected an item")
 
 test "local FIFO aliases and saved methods":
-    let queue = Queue[Int](capacity: some(value: 2))
+    let queue = Queue[Int](capacity: 2)
     let alias = queue
     let enqueue = alias.enqueue
     let dequeue = queue.dequeue
@@ -70,7 +70,7 @@ test "local FIFO aliases and saved methods":
         return panic("drained queue cannot be reused")
 
 test "queue elements include ordinary functions":
-    let queue = Queue[fn() -> Int](capacity: some(value: 1))
+    let queue = Queue[fn() -> Int](capacity: 1)
     queue.enqueue(
         fn() -> Int:
             return 7

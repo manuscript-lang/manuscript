@@ -8,7 +8,6 @@ import {
 } from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -23,7 +22,7 @@ test "compression formats roundtrip and enforce expanded byte budgets":
                 decompress(
                     data: packed,
                     format: format,
-                    max_bytes: some(value: 17)
+                    max_bytes: 17
                 )
             ) != input
         ): return panic("compression roundtrip")
@@ -35,7 +34,7 @@ test "compression formats roundtrip and enforce expanded byte budgets":
             decompress(
                 data: packed,
                 format: format,
-                max_bytes: some(value: 16)
+                max_bytes: 16
             ) != limited
         ): return panic("expanded byte budget")
 
@@ -80,10 +79,8 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
             unpack(
                 data: packed,
                 format: format,
-                limits: some(
-                    value: ArchiveLimits(
-                        max_entries: some(value: 1)
-                    )
+                limits: ArchiveLimits(
+                    max_entries: 1
                 )
             ) != limited
         ): return panic("entry count")
@@ -91,10 +88,8 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
             unpack(
                 data: packed,
                 format: format,
-                limits: some(
-                    value: ArchiveLimits(
-                        max_entry_bytes: some(value: 4)
-                    )
+                limits: ArchiveLimits(
+                    max_entry_bytes: 4
                 )
             ) != limited
         ): return panic("entry bytes")
@@ -102,10 +97,8 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
             unpack(
                 data: packed,
                 format: format,
-                limits: some(
-                    value: ArchiveLimits(
-                        max_total_bytes: some(value: 7)
-                    )
+                limits: ArchiveLimits(
+                    max_total_bytes: 7
                 )
             ) != limited
         ): return panic("total bytes")

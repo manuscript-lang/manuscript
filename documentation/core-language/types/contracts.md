@@ -1,11 +1,9 @@
 +++
-title = "Operation contracts"
-weight = 17
+title = "Interfaces and implementations"
+weight = 7
 +++
 
-# Operation contracts
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
+# Interfaces and implementations
 
 An interface lists the operations a caller needs. This is an operation contract: a concrete implementation must supply those operations with the declared signatures. Use it when callers should depend on behavior rather than a particular data type.
 
@@ -180,10 +178,8 @@ Both calls satisfy the same bound; neither inserts an implicit conversion at the
 
 All contract values may be passed between operations; concurrent invocation follows the receiver's contract. There is one view type, with ordinary spelling such as `ReadValue[Int]`. Explicit view construction checks the implementation relationship and preserves the receiver reference. No conversion adds synchronization, equality, hashing, cleanup, or lifetime extension. Native services synchronize their internals and lifecycle. Source implementations that need a local mutable queue across concurrent calls keep it behind Synchronized.
 
-## Contracts and external authority
+## Interfaces and services
 
-A capability can be passed as an explicit input when an operation needs an external service, such as storage or payments. Standard host services are also available through imported accessor functions. [Modules and capabilities](../../modules-and-capabilities/modules/_index.md) describes effects, native synchronization obligations, and exported boundary contracts.
+Pass a service as an interface value when a function needs access to storage, networking, or a clock. Applications can also import functions that obtain the current execution's services. See [external services](../../standard-library/services.md) for access and lifetime rules, and [sharing data](../../concurrency/sharing.md) for concurrent use.
 
 Contracts can also appear as [generic bounds](generics.md), where they name the operations required from a type argument.
-
-[Previous: Equality and hashing](equality-and-hashing.md) · [Next: Generics and bounds](generics.md)

@@ -24,7 +24,7 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
             exchange.upgrade(
                 allowed_origins: [],
                 subprotocols: ["echo"],
-                max_message_bytes: some(value: 1024)
+                max_message_bytes: 1024
             )
         ):
             let message = value(socket.receive()).unwrap()
@@ -45,9 +45,9 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
 test "HTTP buffered and streaming clients call a Manuscript handler":
     let net = network()
     let options = HttpServerOptions(
-        max_requests: some(value: 4),
-        timeout: some(value: 3.seconds),
-        grace: some(value: 0.seconds),
+        max_requests: 4,
+        timeout: 3.seconds,
+        grace: 0.seconds,
         tls: none
     )
 
@@ -65,7 +65,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 url: url,
                 headers: Map[String, String](),
                 body: "".to_bytes(),
-                timeout: some(value: 2.seconds)
+                timeout: 2.seconds
             )
         )
         if response.status != 201 or response.body != "hello".to_bytes(): return panic(
@@ -88,16 +88,16 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                     url: url,
                     headers: Map[String, String](),
                     body: "".to_bytes(),
-                    max_response_bytes: some(value: 5),
-                    timeout: some(value: 2.seconds)
+                    max_response_bytes: 5,
+                    timeout: 2.seconds
                 )
             ):
                 if body.status() != 201: return panic("streaming status")
                 if value(
-                    body.read(some(value: 5))
+                    body.read(5)
                 ).unwrap() != "hello".to_bytes(): return panic("streaming bytes")
                 if not value(
-                    body.read(some(value: 5))
+                    body.read(5)
                 ).is_none(): return panic("streaming EOF")
 
         let limited: Result[Unit, HttpError] = error(cause: HttpError.LimitExceeded)
@@ -107,8 +107,8 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             url: url,
             headers: Map[String, String](),
             body: "".to_bytes(),
-            max_response_bytes: some(value: 4),
-            timeout: some(value: 2.seconds)
+            max_response_bytes: 4,
+            timeout: 2.seconds
         ):
             ok(_): return panic("HTTP output budget ignored")
 
@@ -118,8 +118,8 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 test "WebSocket negotiates a protocol and echoes a text frame":
     let net = network()
     let options = HttpServerOptions(
-        timeout: some(value: 3.seconds),
-        grace: some(value: 0.seconds),
+        timeout: 3.seconds,
+        grace: 0.seconds,
         tls: none
     )
 
@@ -131,8 +131,8 @@ test "WebSocket negotiates a protocol and echoes a text frame":
         )
     ):
         let client_options = WebSocketOptions(
-            max_message_bytes: some(value: 1024),
-            timeout: some(value: 2.seconds),
+            max_message_bytes: 1024,
+            timeout: 2.seconds,
             tls: tls_options(),
             compression: false
         )

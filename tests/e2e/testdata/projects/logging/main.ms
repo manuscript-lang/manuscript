@@ -57,7 +57,7 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                         )
                         let logged = try child.info(
                             message: "concurrent",
-                            fields: some(value: fields)
+                            fields: fields
                         )
 
                     return ok(value: unit)
@@ -86,8 +86,8 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
         with transport = try file_transport(path):
             let logger = try create(
                 transport: transport,
-                bindings: some(value: bindings),
-                timestamp: some(value: false)
+                bindings: bindings,
+                timestamp: false
             )
 
             if mode == "concurrent":
@@ -103,13 +103,13 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
         if mode == "limit":
             let logger = try create(
                 transport: transport,
-                max_bytes: some(value: 1)
+                max_bytes: 1
             )
             let logged = try logger.info(message: "too large")
         else:
             let logger = try create(
                 transport: transport,
-                bindings: some(value: bindings)
+                bindings: bindings
             )
 
             if mode == "invalid":
@@ -119,7 +119,7 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
                 )
                 let logged = try logger.info(
                     message: "invalid",
-                    fields: some(value: fields)
+                    fields: fields
                 )
             else if mode == "closed":
                 transport.close()
@@ -131,7 +131,7 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
     with transport = stdout_transport():
         let logger = try create(
             transport: transport,
-            timestamp: some(value: false)
+            timestamp: false
         )
         let logged = try logger.info(message: "still open")
 

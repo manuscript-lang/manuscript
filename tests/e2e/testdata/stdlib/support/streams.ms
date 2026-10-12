@@ -22,7 +22,7 @@ impl ReadStream for MemoryStream:
 
         let chunk = self.data.slice(start: self.offset, end: end)
         self.offset = end
-        return ok(value: some(value: chunk))
+        return ok(value: chunk)
 
     fn close() -> Unit: self.closed = true
 

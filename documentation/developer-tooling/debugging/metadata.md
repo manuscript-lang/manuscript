@@ -5,8 +5,6 @@ weight = 118
 
 # Build, source, and task metadata
 
-[Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
-
 Metadata connects an executable and its runtime events to the exact source that produced them. Debugging and trace tools must check that connection before showing events on source code.
 
 Keep static build facts separate from runtime observations:
@@ -22,9 +20,7 @@ Before enabling debugging or trace overlays, match the manifest to the executabl
 
 Storage schemas, event ordering/timestamps, and whether source bytes are embedded or loaded by hash still need concrete definitions.
 
-See [build identity](../../compiler/builds/reproducibility.md) and [source value interpretation](debugger-integration.md).
-
-[Previous: Execution traces and overlays](../diagrams/traces.md) · [Next: Generated Go source mapping](source-mapping.md)
+See [build identity](../builds/reproducibility.md) and [source value interpretation](debugger-integration.md).
 
 ## Implemented static inspection
 
