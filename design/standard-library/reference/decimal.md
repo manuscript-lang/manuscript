@@ -8,7 +8,7 @@ Import each required symbol with `import Name from "@std/decimal.ms"`.
 
 ## Decimal
 
-Kind: native.
+Kind: interface.
 
 ```text
 Decimal: Decimal

@@ -31,4 +31,4 @@ Every source file is a module. Imports select declarations, and exported declara
 
 ## Current limits
 
-The implementation includes a compiler, runtime, native test runner, formatter, inspection output, and static diagrams. External adapters, advanced host APIs, structural editing, and debugger integration still have design work remaining. Consult [implementation coverage](https://github.com/manuscript-lang/manuscript/blob/main/IMPLEMENTATION.md) before relying on a proposed feature.
+The implementation includes a compiler, runtime, native test runner, formatter, inspection output, and static diagrams. External adapters, structural editing, and debugger integration still have design work remaining. Consult [implementation coverage](https://github.com/manuscript-lang/manuscript/blob/main/IMPLEMENTATION.md) before relying on a proposed feature.

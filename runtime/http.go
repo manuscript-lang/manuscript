@@ -13,12 +13,34 @@ import (
 )
 
 type network struct {
-	mu      sync.Mutex
-	servers []*httpService
-	closed  bool
+	mu        sync.Mutex
+	policy    *networkPolicy
+	resolver  *net.Resolver
+	parent    *network
+	released  chan struct{}
+	servers   []*httpService
+	resources []Value
+	closed    bool
+	calls     map[*libraryNetworkCall]bool
+	active    sync.WaitGroup
 }
 
 func (n *network) Operation(name string) Function {
+	if fn, ok := n.extendedOperation(name); ok {
+		return fn
+	}
+	if fn, ok := n.httpOperation(name); ok {
+		return fn
+	}
+	if name == "connect" || name == "connect_tls" || name == "listen" || name == "bind_datagram" {
+		return libraryNetworkAcquire(n, name)
+	}
+	if name == "request" {
+		return libraryMethod("Network", name, func(ctx *Execution, r string, a []Value) Value { return libraryNetworkRequest(n, ctx, r, a) })
+	}
+	if name == "lookup" {
+		return libraryMethod("Network", name, func(ctx *Execution, r string, a []Value) Value { return libraryNetworkLookup(n, ctx, r, a) })
+	}
 	if name == "close" {
 		return NewFunction(nil, "Unit", func(ctx *Execution, _ []Value) Value {
 			for service := range ctx.HostServices {
@@ -27,11 +49,32 @@ func (n *network) Operation(name string) Function {
 				}
 			}
 			n.mu.Lock()
+			if n.closed {
+				done := n.released
+				n.mu.Unlock()
+				if done != nil {
+					<-done
+				}
+				return Unit{}
+			}
 			n.closed = true
+			n.released = make(chan struct{})
+			defer close(n.released)
+			if n.parent != nil {
+				defer n.parent.forgetResource(n)
+			}
 			servers := append([]*httpService{}, n.servers...)
+			resources := append([]Value{}, n.resources...)
+			for call := range n.calls {
+				call.cancel()
+			}
 			n.mu.Unlock()
 			stack := NewCleanupStack()
+			defer n.active.Wait()
 			defer stack.Unwind()
+			for _, resource := range resources {
+				stack.Push(ctx, resource)
+			}
 			for _, server := range servers {
 				stack.Push(ctx, server)
 			}
@@ -45,19 +88,30 @@ func (n *network) Operation(name string) Function {
 		if limit <= 0 || limit > int64(^uint(0)>>1) || bodyLimit < 0 || bodyLimit == int64(^uint64(0)>>1) || responseLimit < 0 || timeout <= 0 || grace < 0 {
 			return ioError(result, "InvalidInput", "")
 		}
-		n.mu.Lock()
-		defer n.mu.Unlock()
-		if n.closed {
+		call, finish, admitted := n.beginCall(ctx.Context)
+		if !admitted {
 			return ioError(result, "Closed", "")
 		}
-		listener, err := net.Listen("tcp", args[0].(string))
+		defer finish()
+		if !n.listenAllowed(args[0].(string)) {
+			return ioError(result, "Unavailable", "")
+		}
+		listener, err := (&net.ListenConfig{}).Listen(call, "tcp", args[0].(string))
 		if err != nil {
 			return ioError(result, "Unavailable", "")
 		}
 		server := &httpService{listener: listener, parent: ctx, owner: n, handler: args[1], admission: make(chan struct{}, int(limit)), bodyLimit: bodyLimit, responseLimit: responseLimit, timeout: time.Duration(timeout), grace: time.Duration(grace), done: make(chan struct{}), closed: make(chan struct{})}
 		server.context, server.cancel = context.WithCancel(ctx.Context)
 		server.server = &http.Server{Handler: server, ReadHeaderTimeout: server.timeout, MaxHeaderBytes: 64 * 1024, BaseContext: func(net.Listener) context.Context { return server.context }}
+		n.mu.Lock()
+		if n.closed {
+			n.mu.Unlock()
+			listener.Close()
+			server.cancel()
+			return ioError(result, "Closed", "")
+		}
 		n.servers = append(n.servers, server)
+		n.mu.Unlock()
 		registerResource(ctx, server)
 		go func() { server.err = server.server.Serve(listener); close(server.done) }()
 		return Alternative{result, "ok", []Value{ViewOf("@std/HttpServer&Shareable", server)}}
@@ -71,6 +125,8 @@ func (n *network) Operation(name string) Function {
 
 type httpService struct {
 	mu                       sync.Mutex
+	streaming                bool
+	headerLimit              int64
 	listener                 net.Listener
 	server                   *http.Server
 	parent                   *Execution
@@ -89,6 +145,10 @@ type httpService struct {
 }
 
 func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if s.streaming {
+		s.serveStreamingRequest(w, r)
+		return
+	}
 	s.mu.Lock()
 	if s.closing {
 		s.mu.Unlock()

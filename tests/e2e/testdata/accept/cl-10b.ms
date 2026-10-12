@@ -1,7 +1,7 @@
 import List from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 
-type ReadValue[T]:
+interface ReadValue[T]:
     fn get() -> T
 
 type Box[T]:
@@ -13,7 +13,7 @@ type SharedReader:
 type CallbackReader:
     read_value: fn() -> Int
 
-impl[T] ReadValue[T] for Box[T]:
+impl ReadValue[T] for Box[T]:
     fn get() -> T:
         return self.value
 

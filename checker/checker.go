@@ -50,7 +50,7 @@ type checker struct {
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
-	p := &Program{Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
+	p := &Program{TypeReferences: map[*syntax.Type]*Type{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
 	c := &checker{Program: p, captures: map[int]map[*Binding]bool{}}
 	for _, module := range modules {
 		c.module = module
@@ -80,8 +80,12 @@ func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program
 			s := &Symbol{Name: d.Name, ID: c.unique("symbol"), Kind: "fn", Module: module.File, Export: d.Export, Decl: d}
 			if d.Kind != "fn" {
 				s.Kind = "type"
-				def := &Definition{Symbol: s, Kind: d.Kind}
-				s.Type = &Type{Name: d.Name, ID: "module/" + hex.EncodeToString([]byte(module.File)) + "#" + d.Name, Kind: d.Kind, Def: def}
+				kind := d.Kind
+				if kind == "interface" {
+					kind = "contract"
+				}
+				def := &Definition{Symbol: s, Kind: kind}
+				s.Type = &Type{Name: d.Name, ID: "module/" + hex.EncodeToString([]byte(module.File)) + "#" + d.Name, Kind: kind, Def: def}
 			}
 			c.addSymbol(d.Name, s, d.Pos)
 		}
@@ -248,6 +252,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 		}
 		r.Shared = true
 	}
+	c.TypeReferences[t] = &r
 	return &r
 }
 func (c *checker) params(params []syntax.Parameter) []Param {
@@ -691,7 +696,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		i.Type = methods[0].Type
 		i.Proof = receiver.Proof || c.property(receiver.Type, "Shareable", nil)
 		i.Native = methods[0].Native
-		if e.Text == "serve" && std(i.Method.Contract, "Network") {
+		if (e.Text == "serve" || e.Text == "serve_stream") && std(i.Method.Contract, "Network") {
 			c.error(e.Pos, "type", "Network.serve requires a direct call")
 		}
 		if i.Native == "background_start" {

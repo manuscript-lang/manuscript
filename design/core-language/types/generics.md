@@ -67,7 +67,7 @@ let exact = identity[Int](value: 1)
 let inferred = identity(value: 1)
 ```
 
-Type parameters are ordered and their names unique. An application supplies exactly one argument per parameter. Default type arguments, higher-kinded parameters, type aliases, and variadic type parameters are unsupported. Records, alternatives, contracts, named functions, and implementation blocks may be generic. Anonymous functions, contract operations, and implementation methods cannot declare their own type parameters. Methods inherit their implementation block's parameters; see [generic implementations](contracts.md#generic-implementations) for receiver matching, bound checking, and overlap rejection.
+Type parameters are ordered and their names unique. An application supplies exactly one argument per parameter. Default type arguments, higher-kinded parameters, type aliases, and variadic type parameters are unsupported. Records, alternatives, interfaces, and named functions may declare generic parameters. Implementation blocks use the receiver type declaration's parameters and inherit applicable bounds from the type and interface declarations. Anonymous functions, contract operations, and implementation methods cannot declare their own type parameters. Methods inherit the parameters used in their implementation's receiver; see [generic implementations](contracts.md#generic-implementations) for receiver matching, bound checking, and overlap rejection.
 
 Applications are invariant: `Box[Int]` and `Box[Float]` are distinct types. A generic declaration is not an unapplied type or function value. A generic function passed as a value must be explicitly specialized, for example `identity[Int]`.
 
@@ -112,7 +112,7 @@ type Keys[T: Shareable & Hashable]:
 
 Every nested application must satisfy its bounds under enclosing generic assumptions. Omitting the bounds from `Keys` is rejected even if all later uses happen to supply `Int`.
 
-The same rule checks a generic implementation once under its declared parameters and bounds. Its method bodies cannot rely on properties absent from the declared bounds. Matching the receiver determines the implementation arguments; all implementation bounds must hold before its operations or views are available. Bounds may restrict a single implementation's availability, but are ignored when rejecting overlapping implementations. A concrete implementation cannot specialize a pair already covered by a generic block.
+The same rule checks a generic implementation once under its inherited parameters and bounds. Its method bodies cannot rely on properties absent from the inherited bounds. Matching the receiver determines the implementation arguments; all implementation bounds must hold before its operations or views are available. Bounds may restrict a single implementation's availability, but are ignored when rejecting overlapping implementations. A concrete implementation cannot specialize a pair already covered by a generic block.
 
 ## Finite recursive applications
 
@@ -128,7 +128,7 @@ fn grow[T: Shareable](value: T) -> Never:
     return grow[List[T]](value: [value])  # Rejected: expanding specialization.
 ```
 
-Apply the check to mutual recursion and references such as `grow[List[T]]` stored as function values, not only direct self-calls. Include generic implementation method calls and bound methods in specialization dependencies under their block parameters. Generated-code compilation errors are not a substitute for a source diagnostic.
+Apply the check to mutual recursion and references such as `grow[List[T]]` stored as function values, not only direct self-calls. Include generic implementation method calls and bound methods in specialization dependencies under their inherited receiver parameters. Generated-code compilation errors are not a substitute for a source diagnostic.
 
 ## Built-in requirements
 

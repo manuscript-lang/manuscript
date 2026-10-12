@@ -7,12 +7,12 @@ import (
 func (c *checker) implementation(d *syntax.Declaration) {
 	old := c.scope
 	c.scope = newScope(nil)
-	vars := c.typeVariables(d.TypeParams)
-	contract := c.resolve(d.Contract, false)
-	receiver := c.resolve(d.Receiver, false)
-	if contract.Kind != "contract" {
-		c.error(d.Pos, "type", "implementation target must be an operation contract")
+	// Implementations inherit names and bounds from the nominal receiver declaration.
+	var vars []*Type
+	if symbol := c.names[d.Receiver.Name]; symbol != nil && symbol.Decl != nil && symbol.Kind == "type" {
+		vars = c.typeVariables(symbol.Decl.TypeParams)
 	}
+	receiver := c.resolve(d.Receiver, false)
 	if receiver.Def == nil || receiver.Kind == "contract" || receiver.Def.Symbol.Module != c.module.File {
 		c.error(d.Pos, "type", "implementation receiver must be nominal data defined in this module")
 	}
@@ -31,11 +31,46 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		}
 	}
 	visit(receiver)
-	for _, v := range vars {
-		if !occurs[v.ID] {
-			c.error(d.Pos, "type", "implementation receiver cannot determine "+v.Name)
+	active := vars[:0]
+	specialized := map[string]*Type{}
+	for i, v := range vars {
+		if occurs[v.ID] {
+			active = append(active, v)
+		} else {
+			delete(c.scope.types, v.Name)
+			if i < len(receiver.Args) {
+				specialized[v.ID] = receiver.Args[i]
+			}
 		}
 	}
+	vars = active
+	for _, v := range vars {
+		for i, bound := range v.Bounds {
+			v.Bounds[i] = Sub(bound, specialized)
+		}
+	}
+	contract := c.resolve(d.Contract, false)
+	if contract.Kind != "contract" {
+		c.error(d.Pos, "type", "implementation target must be an interface")
+	}
+	// An interface argument that is a receiver parameter carries the interface's
+	// declared bounds into this implementation, without changing the data type.
+	if contract.Def != nil && len(contract.Args) == len(contract.Def.Variables) {
+		sub := substitution(contract)
+		for i, parameter := range contract.Def.Variables {
+			argument := contract.Args[i]
+			for _, v := range vars {
+				if argument.ID == v.ID {
+					for _, bound := range parameter.Bounds {
+						v.Bounds = append(v.Bounds, Sub(bound, sub))
+					}
+				}
+			}
+		}
+	}
+	// Resolution copies variable types, so refresh applications after adding bounds.
+	receiver = c.resolve(d.Receiver, false)
+	contract = c.resolve(d.Contract, false)
 	for _, m := range c.Methods {
 		if overlap(receiver, contract, m.Receiver, m.Contract, append(append([]*Type{}, vars...), m.Variables...)) {
 			c.error(d.Pos, "type", "duplicate or overlapping implementation")
@@ -262,6 +297,9 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 		}
 		return true
 	}
+	if std(t, "BigInt") || std(t, "Regex") || std(t, "Timestamp") {
+		return property == "Shareable" || (property == "Equal" && !std(t, "Regex"))
+	}
 	if t.Kind == "native" {
 		return false
 	}
@@ -289,7 +327,7 @@ func (c *checker) methods(receiver *Type, name string) []*Method {
 	if receiver.Kind == "contract" && receiver.Def != nil {
 		for _, op := range receiver.Def.Operations {
 			if op.Name == name {
-				return []*Method{{Contract: receiver, Receiver: receiver, Type: Sub(op.Type, substitution(receiver)), Native: "contract"}}
+				return []*Method{{Contract: receiver, Receiver: receiver, Type: Sub(op.Type, substitution(receiver)), Native: "contract", Decl: standardMethodDeclaration(receiver, name)}}
 			}
 		}
 	}
@@ -318,130 +356,26 @@ func (c *checker) methods(receiver *Type, name string) []*Method {
 	}
 	return methods
 }
+
 func nativeMethod(t *Type, name string) *Method {
-	if t.Kind == "native" && t.Def != nil {
-		for _, operation := range t.Def.Operations {
+	receiver := t
+	if intrinsic := intrinsicOperations[t.ID]; intrinsic != nil {
+		receiver = intrinsic
+	}
+	if receiver.Kind == "native" || receiver != t {
+		for _, operation := range receiver.Def.Operations {
 			if operation.Name == name {
-				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Native: name}
+				native := name
+				if std(t, "Background") && name == "start" {
+					native = "background_start"
+				}
+				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Native: native, Decl: standardMethodDeclaration(receiver, name)}
 			}
 		}
 	}
-	integer := primitive("Int")
-	boolean := primitive("Bool")
-	text := primitive("String")
-	var params []Param
-	var result *Type
-	if std(t, "List") && len(t.Args) == 1 {
-		switch name {
-		case "length":
-			result = integer
-		case "get":
-			params = []Param{{"index", integer}}
-			result = standard("Optional", t.Args[0])
-		case "append":
-			params = []Param{{"value", t.Args[0]}}
-			result = t
-		case "concat":
-			params = []Param{{"values", t}}
-			result = t
-		}
-	}
-	if std(t, "Set") && len(t.Args) == 1 {
-		switch name {
-		case "length":
-			result = integer
-		case "contains", "with_value", "without":
-			params = []Param{{"value", t.Args[0]}}
-			result = t
-			if name == "contains" {
-				result = boolean
-			}
-		}
-	}
-	if std(t, "Map") && len(t.Args) == 2 {
-		switch name {
-		case "length":
-			result = integer
-		case "get", "contains", "without":
-			params = []Param{{"key", t.Args[0]}}
-			result = t
-			if name == "get" {
-				result = standard("Optional", t.Args[1])
-			}
-			if name == "contains" {
-				result = boolean
-			}
-		case "with_entry":
-			params = []Param{{"key", t.Args[0]}, {"value", t.Args[1]}}
-			result = t
-		}
-	}
-	if t.ID == "String" {
-		switch name {
-		case "byte_length":
-			result = integer
-		case "to_bytes":
-			result = standard("Bytes")
-		case "parse_int":
-			result = standard("Optional", integer)
-		}
-	}
-	if std(t, "Bytes") {
-		switch name {
-		case "length":
-			result = integer
-		case "get":
-			params = []Param{{"index", integer}}
-			result = standard("Optional", integer)
-		case "concat":
-			params = []Param{{"values", t}}
-			result = t
-		case "to_text":
-			result = standard("Optional", text)
-		}
-	}
-	if t.ID == "Int" {
-		switch name {
-		case "to_float":
-			result = primitive("Float")
-		case "to_decimal":
-			result = standard("Decimal")
-		}
-	}
-	if t.ID == "Float" || std(t, "Decimal") {
-		switch name {
-		case "truncate_to_int":
-			result = standard("Optional", integer)
-		case "to_float":
-			if std(t, "Decimal") {
-				result = primitive("Float")
-			}
-		}
-	}
-	if std(t, "Background") {
-		switch name {
-		case "close":
-			result = primitive("Unit")
-		case "start":
-			params = []Param{{"operation", function(nil, standard("Result", primitive("Unit"), primitive("String")))}}
-			result = standard("Result", standard("OperationId"), standard("StartError"))
-		case "status":
-			params = []Param{{"id", standard("OperationId")}}
-			result = standard("WorkStatus")
-		case "cancel":
-			params = []Param{{"id", standard("OperationId")}}
-			result = primitive("Unit")
-		}
-	}
-	if result == nil {
-		return nil
-	}
-	native := name
-	if std(t, "Background") && name == "start" {
-		native = "background_start"
-	}
-	return &Method{Receiver: t, Type: function(params, result), Native: native}
+	return nil
 }
+
 func (c *checker) closeable(t *Type) bool {
 	if std(t, "Background") || std(t, "Queue") || std(t, "Pool") || std(t, "Lease") {
 		return true

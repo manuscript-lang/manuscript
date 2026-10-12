@@ -8,7 +8,7 @@ Import each required symbol with `import Name from "@std/queues.ms"`.
 
 ## Queue
 
-Kind: native.
+Kind: interface.
 
 ```text
 Queue: Queue[T]

@@ -18,7 +18,7 @@ type Payment:
 
 Alternatives are tagged and exhaustively matched. `Paid`, `Declined`, and `Pending` are different cases of `Payment`, even though each carries text.
 
-A declaration has at least one case. Case names are unique within the declaration; payload field names are unique within each case. A case may have no payload, written `case Missing`. Payload types are explicit and fields have no defaults. Record fields, cases, and abstract operations cannot be mixed in one type declaration.
+A declaration has at least one case. Case names are unique within the declaration; payload field names are unique within each case. A case may have no payload, written `case Missing`. Payload types are explicit and fields have no defaults. Record fields and cases cannot be mixed in one `type` declaration. Operation signatures belong to `interface` declarations.
 
 ## Construction and identity
 

@@ -21,5 +21,9 @@ field files: Files & Shareable
 field clock: Clock & Shareable
 field network: Network & Shareable
 field commands: Commands & Shareable
+field filesystem: FileSystem & Shareable
+field entropy: Entropy & Shareable
+field wall_clock: WallClock & Shareable
+field system: System & Shareable
 ```
 

@@ -32,7 +32,7 @@ field stderr: Bytes
 
 ## Commands
 
-Kind: contract.
+Kind: interface.
 
 ```text
 Commands: Commands

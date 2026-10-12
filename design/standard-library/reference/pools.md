@@ -8,7 +8,7 @@ Import each required symbol with `import Name from "@std/pools.ms"`.
 
 ## Lease
 
-Kind: native.
+Kind: interface.
 
 ```text
 Lease: Lease[T]
@@ -19,7 +19,7 @@ operation get: fn()->Result[T, PoolError]
 
 ## Pool
 
-Kind: native.
+Kind: interface.
 
 ```text
 Pool: Pool[T]

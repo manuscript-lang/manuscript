@@ -5,10 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	support "github.com/manuscript-lang/manuscript"
 	"github.com/manuscript-lang/manuscript/checker"
 	"github.com/manuscript-lang/manuscript/lexer"
 	"github.com/manuscript-lang/manuscript/parser"
 	msruntime "github.com/manuscript-lang/manuscript/runtime"
+	"github.com/manuscript-lang/manuscript/stdlib"
 	"github.com/manuscript-lang/manuscript/syntax"
 	"io"
 	"io/fs"
@@ -39,17 +41,25 @@ func implementationDigest() string {
 	bundles := []struct {
 		name  string
 		files fs.FS
-	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"compiler", ImplementationSources}, {"runtime", msruntime.Sources}}
+	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"compiler", ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}, {"stdlib", stdlib.Sources}}
 	var data strings.Builder
 	for _, bundle := range bundles {
-		entries, _ := fs.ReadDir(bundle.files, ".")
-		for _, entry := range entries {
-			if strings.HasSuffix(entry.Name(), "_test.go") {
-				continue
+
+		fs.WalkDir(bundle.files, ".", func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
 			}
-			contents, _ := fs.ReadFile(bundle.files, entry.Name())
-			data.WriteString(bundle.name + "/" + entry.Name() + "\x00" + digest(contents) + "\n")
-		}
+			if entry.IsDir() || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			contents, err := fs.ReadFile(bundle.files, path)
+			if err != nil {
+				return err
+			}
+			data.WriteString(bundle.name + "/" + path + "\x00" + digest(contents) + "\n")
+			return nil
+		})
+
 	}
 	return digest([]byte(data.String()))
 }

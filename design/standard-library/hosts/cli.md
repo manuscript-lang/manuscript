@@ -25,10 +25,10 @@ type Process:
     network: Network & Shareable
     commands: Commands & Shareable
 
-type Clock:
+interface Clock:
     fn now() -> Instant
 
-type Files:
+interface Files:
     fn open(path: String) -> Result[File & Shareable, IoError]
 ```
 
@@ -63,3 +63,7 @@ Construct application Background services in main with `with`, inside their depe
 ## Additional explicit roots
 
 `Process` also exposes `network: Network & Shareable` and `commands: Commands & Shareable` for the [bounded HTTP host](http.md) and [bounded subprocess execution](../data-and-io/streams.md). These capabilities are synchronized host roots. Network services register under their construction execution and join before host roots are released. The host provides no ambient networking or process constructor.
+
+## General-purpose authority roots
+
+Process additionally supplies `filesystem: FileSystem & Shareable`, `entropy: Entropy & Shareable`, `wall_clock: WallClock & Shareable`, and `system: System & Shareable`. Imports come from `@std/fs.ms`, `@std/random.ms`, `@std/time.ms`, and `@std/system.ms` respectively. These roots are host-created; the native CLI grants its OS authority, not a restricted sandbox. Canonical operations are in [general-purpose packages](../packages/_index.md). Existing Files, Network and Commands identities are preserved. Network owns its acquired TCP/UDP/TLS handles and joins them during host-root shutdown.

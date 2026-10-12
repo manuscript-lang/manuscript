@@ -8,7 +8,7 @@ Import each required symbol with `import Name from "@std/builders.ms"`.
 
 ## BytesBuilder
 
-Kind: native.
+Kind: interface.
 
 ```text
 BytesBuilder: BytesBuilder
@@ -19,7 +19,7 @@ operation freeze: fn()->Bytes
 
 ## ListBuilder
 
-Kind: native.
+Kind: interface.
 
 ```text
 ListBuilder: ListBuilder[T]
@@ -30,7 +30,7 @@ operation freeze: fn()->List[T]
 
 ## MapBuilder
 
-Kind: native.
+Kind: interface.
 
 ```text
 MapBuilder: MapBuilder[T, U]
@@ -41,7 +41,7 @@ operation with_entry: fn(key: T, value: U)->Unit
 
 ## SetBuilder
 
-Kind: native.
+Kind: interface.
 
 ```text
 SetBuilder: SetBuilder[T]
@@ -52,7 +52,7 @@ operation with_value: fn(value: T)->Unit
 
 ## StringBuilder
 
-Kind: native.
+Kind: interface.
 
 ```text
 StringBuilder: StringBuilder

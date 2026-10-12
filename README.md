@@ -20,11 +20,13 @@ go build -o ms ./cmd/ms
 ./ms fmt examples/hello/src/main.ms --check
 ```
 
-`ms check` reports positioned parse, resolution, and type errors. `ms build` creates a native executable. `ms emit` writes a self-contained Go program, including its runtime, that can be built with `go build main.go`. `ms run` and `ms test` build temporary executables. Set `MANUSCRIPT_GO` to select a Go executable outside `PATH`.
+`ms check` reports positioned parse, resolution, and type errors. `ms build` creates a native executable. `ms emit` writes a Go program containing the Manuscript runtime. Build emitted source inside the distribution with `go build -mod=vendor main.go`; copying it elsewhere also requires the pinned `go.mod`, `go.sum`, and `vendor/` tree. `ms build`, `run`, and `test` bundle those dependencies automatically and need no package downloads. `ms run` and `ms test` build temporary executables. Set `MANUSCRIPT_GO` to select a Go executable outside `PATH`.
 
 Project native builds require `ms.lock` to match the compiler/runtime and Go toolchain/target. `ms lock` explicitly creates or updates those pins; run it after selecting your toolchain or updating the compiler. Builds verify cached artifacts and write executable/source metadata. `--debug` on build/run/test disables native optimization and inlining. `ms check --json` provides structured diagnostics.
 
 Applications export `fn main(process: Process) -> Int`; standard symbols use explicit imports. Start with [the hello project](examples/hello/src/main.ms), [core language fixtures](tests/e2e/testdata/accept), and [implementation coverage](IMPLEMENTATION.md). The implementation follows the current design on `main`, including cleanup, joined/background work, queues, state/pools, builders, and explicit CLI/HTTP/subprocess capabilities. External adapters, advanced host APIs, structural editing, and debugger integration remain design work; the coverage document lists the limits.
+
+Records and alternatives use `type`; operation contracts use `interface`. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declarations, for example `impl ReadValue[T] for Box[T]:`.
 
 ## Packages
 
@@ -59,6 +61,8 @@ The end-to-end suite needs the Go toolchain on `PATH` or in `MANUSCRIPT_GO`. It 
 
 Start with [the introduction](design/learn/_index.md), [the language tour](design/learn/tour.md), and [the complete module reference](design/standard-library/reference/_index.md).
 
+Read the published book at <https://manuscript-lang.github.io/manuscript/>. Changes to `design/` publish automatically after CI passes on `main`.
+
 The Markdown guides are rendered directly with [Hugo](https://gohugo.io/) and the [Hugo Book theme](https://github.com/alex-shpak/hugo-book). Install Hugo Extended 0.146 or newer.
 
 ```sh
@@ -71,24 +75,24 @@ Open <http://localhost:4000> to browse the chapters, search the book, and follow
 hugo --minify
 ```
 
-The static site is generated in `public/`. Hugo reads the Markdown guides in `design/` directly. Chapter indexes use `_index.md`; each page's front matter sets its title and reading-order weight. New Markdown pages appear automatically. Site settings live in `hugo.toml`.
+The static site is generated in `docs/`, which is committed for GitHub Pages to serve. Edit the Markdown guides in `design/`, then rebuild; files in `docs/` are generated output. Chapter indexes use `_index.md`; each page's front matter sets its title and reading-order weight. New Markdown pages appear automatically. Site settings live in `hugo.toml`. The `static/.nojekyll` marker is copied into `docs/` so Pages serves the Hugo output directly.
 
 Hugo Book v13 is vendored in `themes/hugo-book/`, including its MIT license. The exact upstream revision is recorded in `themes/hugo-book/UPSTREAM`.
 
 ## CI/CD
 
-[The GitHub Actions pipeline](.github/workflows/cicd.yml) builds the design book on every branch push and pull request using Hugo Extended 0.146.7. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.
+[The GitHub Actions pipeline](.github/workflows/cicd.yml) builds the design book on branch pushes and pull requests using Hugo Extended 0.146.7. Pushes that only change generated `docs/` files are skipped. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.
 
 The pipeline also calls [the language checks](.github/workflows/test-language.yml) with Go 1.25.1: formatting, vet, unit and native end-to-end tests, race checks, and a CLI build and example run. Deployment requires both the book build and language checks to pass. The language workflow can also be run independently from the Actions tab.
 
-After validation succeeds on the repository's default branch, the pipeline builds with the GitHub Pages URL and deploys the resulting `public/` artifact. Pull requests and other branches only run validation. You can also run the pipeline manually from the Actions tab; deployment still requires the default branch.
+After validation succeeds on the repository's default branch (`main`), the pipeline builds with the GitHub Pages URL, commits the generated `docs/` files to that branch, and explicitly requests a Pages build. This request is needed because pushes made with `GITHUB_TOKEN` do not trigger Pages builds automatically. Pull requests and other branches only run validation. You can also run the pipeline manually from the Actions tab; publishing still requires the default branch. Outdated runs skip publishing, and a concurrent branch update causes the push to fail rather than overwrite newer work.
 
-To enable deployment, open the repository's **Settings → Pages** and select **GitHub Actions** as the build source. The workflow uses the built-in `GITHUB_TOKEN` and requires no deployment secrets. If the `github-pages` environment has approval rules, deployment waits for those approvals. For a custom domain, configure it in Pages settings; the production build uses the URL reported by Pages.
+Keep **Settings → Pages → Source** set to **Deploy from a branch**, with **main** and **/docs** selected. The workflow uses the built-in `GITHUB_TOKEN` with contents and Pages write permissions; no deployment secrets are required. Repository rules must allow the workflow to push generated documentation to `main`. If branch protection blocks that push, regenerate and merge `docs/` through a pull request instead. For a custom domain, configure it in Pages settings and update `baseURL` in `hugo.toml` before rebuilding the committed output; CI uses the URL reported by Pages.
 
 For branch protection, require the **Build design book** and **Language checks / test** status checks. To reproduce the book validation locally with Hugo Extended 0.146.7:
 
 ```sh
-hugo --minify --panicOnWarning --baseURL "https://example.org/manuscript/"
+hugo --minify --panicOnWarning --destination /tmp/manuscript-book-validation --baseURL "https://example.org/manuscript/"
 ```
 
 ## Generate the standard library reference
@@ -97,8 +101,9 @@ Run `make docs` from the repository root after changing standard definitions.
 `make docs-check` verifies that checked-in outputs match; the Pages workflow runs
 this check before validation and deployment.
 
-`cmd/docgen` reads the checker’s standard registry, including service and host
-definitions, and discovers native method names from the embedded `nativeMethod` case labels, so the shipped binary needs no source checkout.
+`cmd/docgen` reads the checker’s standard registry loaded from the bundled
+`stdlib/*.ms` declarations, including intrinsic receiver operations. The shipped
+binary needs no source checkout.
 It captures checked signatures, generic bounds, fields, cases, and operations
 without maintaining a second API catalog. The intrinsic prelude is included.
 Special contextual calls and constructors are documented in
@@ -132,3 +137,4 @@ reference describes the compiler version bundled with that binary.
 
 `documentation/call-rules.md` is the canonical source for special call rules;
 `make docs` also regenerates its page in the design book.
+Standard library types and signatures live in [`stdlib/`](stdlib/README.md) as Manuscript source. Editor adapters can resolve their declarations through the tooling navigation APIs; `ms stdlib <directory>` exports the pinned source documents.

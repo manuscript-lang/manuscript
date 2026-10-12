@@ -227,6 +227,12 @@ func Format(value Value) string {
 }
 func Equal(a, b Value) bool {
 	switch x := a.(type) {
+	case libraryBigInt:
+		y, ok := b.(libraryBigInt)
+		return ok && x.n.Cmp(y.n) == 0
+	case libraryTimestamp:
+		y, ok := b.(libraryTimestamp)
+		return ok && x.t.Equal(y.t)
 	case int64:
 		y, ok := b.(int64)
 		return ok && x == y

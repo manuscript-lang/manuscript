@@ -12,7 +12,7 @@ The generated reference captures declaration types, bounds, fields, cases, and o
 - `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit, drain: Duration, history_limit: Int)` requires only `limit`. The other arguments are optional; `reporter` must be shareable. `Background.start` requires a shareable operation.
 - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
 - `List`, `Lease`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Lists and durations use literals; other values come from APIs or conversions.
-- Records use their listed fields as named constructor arguments. Alternatives construct one listed case. Contracts describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
+- Records use their listed fields as named constructor arguments. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
 - Generic bounds constrain type arguments. Pool resources require shared contract views. Shared captures and callback restrictions are checked separately from function types.
 
 For lifetime, cancellation, defaults, and host behavior, read the standard library guides. A type signature alone does not establish these guarantees.

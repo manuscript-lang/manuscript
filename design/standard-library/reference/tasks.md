@@ -8,7 +8,7 @@ Import each required symbol with `import Name from "@std/tasks.ms"`.
 
 ## Background
 
-Kind: native.
+Kind: interface.
 
 ```text
 Background: Background

@@ -9,11 +9,18 @@ import (
 )
 
 type Parser struct {
-	tokens []lexer.Token
-	at     int
+	tokens           []lexer.Token
+	at               int
+	declarationsOnly bool
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
+	return parse(file, source, false)
+}
+
+// ParseLibrary accepts declaration-only standard modules. Application parsing remains strict.
+func ParseLibrary(file, source string) (*syntax.Module, error) { return parse(file, source, true) }
+func parse(file, source string, declarationsOnly bool) (module *syntax.Module, err error) {
 	tokens, err := lexer.Lex(file, source)
 	if err != nil {
 		return nil, err
@@ -28,7 +35,7 @@ func Parse(file, source string) (module *syntax.Module, err error) {
 			}
 		}
 	}()
-	p := &Parser{tokens: tokens}
+	p := &Parser{tokens: tokens, declarationsOnly: declarationsOnly}
 	module = &syntax.Module{File: file, Source: source}
 	for p.peek().Kind != lexer.EOF {
 		p.newlines()
@@ -51,7 +58,7 @@ func Parse(file, source string) (module *syntax.Module, err error) {
 		exported := p.take("export")
 		d := p.declaration()
 		if exported && (d.Kind == "impl" || d.Kind == "test") {
-			p.fail(p.previous(), "only types and named functions can be exported")
+			p.fail(p.previous(), "only types, interfaces, and named functions can be exported")
 		}
 		d.Export = exported
 		module.Declarations = append(module.Declarations, d)
@@ -192,7 +199,11 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Params = p.parameters()
 		p.need("->")
 		d.Result = p.typ()
-		d.Body = p.suite()
+		if p.declarationsOnly && p.peek().Kind != ":" {
+			p.end()
+		} else {
+			d.Body = p.suite()
+		}
 	case p.take("test"):
 		name := p.need(lexer.String)
 		text := p.text(name)
@@ -203,7 +214,6 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.Result = &syntax.Type{Name: "Unit", Pos: token.Pos}
 		d.Body = p.suite()
 	case p.take("impl"):
-		d.TypeParams = p.typeParams()
 		d.Contract = p.namedType()
 		p.need("for")
 		d.Receiver = p.namedType()
@@ -228,13 +238,21 @@ func (p *Parser) declaration() *syntax.Declaration {
 		if len(d.Methods) == 0 {
 			p.fail(token, "implementation requires operations")
 		}
-	case p.take("type"):
+	case p.take("type") || p.take("interface"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
+		if p.declarationsOnly && p.peek().Kind != ":" {
+			p.end()
+			d.Kind = "native"
+			return d
+		}
 		p.need(":")
 		p.need(lexer.Newline)
 		p.need(lexer.Indent)
 		form := ""
+		if token.Kind == "interface" {
+			form = "interface"
+		}
 		for p.peek().Kind != lexer.Dedent {
 			p.newlines()
 			if p.peek().Kind == lexer.Dedent {
@@ -245,10 +263,13 @@ func (p *Parser) declaration() *syntax.Declaration {
 				next = "alternative"
 			}
 			if p.peek().Kind == "fn" {
-				next = "contract"
+				next = "interface"
 			}
-			if form != "" && next != form {
-				p.fail(p.peek(), "a type cannot mix fields, cases, and operations")
+			if token.Kind == "type" && next == "interface" && !p.declarationsOnly {
+				p.fail(p.peek(), "operation signatures require an interface declaration")
+			}
+			if form != "" && next != form && !p.declarationsOnly {
+				p.fail(p.peek(), "a type has only fields or cases; an interface has only operation signatures")
 			}
 			form = next
 			if p.take("case") {
@@ -278,8 +299,8 @@ func (p *Parser) declaration() *syntax.Declaration {
 			}
 		}
 		p.need(lexer.Dedent)
-		if form == "" {
-			p.fail(token, "type body cannot be empty")
+		if form == "" || (form == "interface" && len(d.Methods) == 0) {
+			p.fail(token, "declaration body cannot be empty")
 		}
 		d.Kind = form
 	default:

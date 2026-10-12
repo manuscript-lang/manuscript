@@ -8,7 +8,7 @@ Import each required symbol with `import Name from "@std/state.ms"`.
 
 ## State
 
-Kind: native.
+Kind: interface.
 
 ```text
 State: State[T]

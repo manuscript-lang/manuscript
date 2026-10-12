@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/stdlib"
 	"github.com/manuscript-lang/manuscript/syntax"
 	"github.com/manuscript-lang/manuscript/tooling"
 	"os"
@@ -15,17 +16,18 @@ import (
 	"syscall"
 )
 
-const help = `Usage: ms <check|build|emit|run|test|fmt|inspect|diagram|lock|doc> <file.ms|ms.toml> [-o output] [-- program arguments]
+const help = `Usage: ms <check|build|emit|run|test|fmt|inspect|diagram|lock|doc|stdlib> <file.ms|ms.toml> [-o output] [-- program arguments]
 
 check  Parse and type-check without executing source
 build  Build a native executable (default: ./program)
-emit   Emit a self-contained Go program (-o writes a file)
+emit   Emit Go source containing the runtime (-o writes a file)
 run    Build and run an exported main(process: Process) -> Int
 test   Build and execute module test blocks, including imported modules
 fmt    Format a module; --check verifies without writing
 inspect Emit checked symbols, source hashes, call sites, and statement spans as JSON
 diagram Emit the checked static call graph as Mermaid
 doc    Generate public module docs or the bundled stdlib reference (ms doc --help)
+stdlib Materialize standard .ms declarations: ms stdlib <directory>
 lock   Explicitly pin the compiler/runtime, Go toolchain, and target in ms.lock
 
 The Go toolchain is required for build, run, and test.
@@ -48,6 +50,17 @@ func run(args []string) int {
 	if len(args) < 2 {
 		fmt.Fprint(os.Stderr, help)
 		return 2
+	}
+	if args[0] == "stdlib" {
+		if len(args) != 2 {
+			fmt.Fprintln(os.Stderr, "usage: ms stdlib <directory>")
+			return 2
+		}
+		if err := stdlib.Materialize(args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return 0
 	}
 	command, filename := args[0], args[1]
 	output := ""

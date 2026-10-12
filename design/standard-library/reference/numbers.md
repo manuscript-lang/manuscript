@@ -1,0 +1,40 @@
++++
+title = "numbers"
++++
+
+# @std/numbers.ms
+
+Import each required symbol with `import Name from "@std/numbers.ms"`.
+
+## format_float
+
+Kind: fn.
+
+```text
+format_float: fn(value: Float)->String
+```
+
+## format_int
+
+Kind: fn.
+
+```text
+format_int: fn(value: Int, radix: Int)->String
+```
+
+## parse_float
+
+Kind: fn.
+
+```text
+parse_float: fn(text: String)->Result[Float, LibraryError]
+```
+
+## parse_int
+
+Kind: fn.
+
+```text
+parse_int: fn(text: String, radix: Int)->Result[Int, LibraryError]
+```
+

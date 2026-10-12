@@ -1,44 +1,6 @@
 package checker
 
-import (
-	_ "embed"
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"sort"
-	"strconv"
-)
-
-//go:embed contracts.go
-var nativeMethodSource string
-
-func nativeDocumentationNames() []string {
-	file, err := parser.ParseFile(token.NewFileSet(), "contracts.go", nativeMethodSource, 0)
-	if err != nil {
-		panic(err)
-	} // Embedded Go source was compiled into this binary.
-	var names []string
-	for _, decl := range file.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Name.Name != "nativeMethod" {
-			continue
-		}
-		ast.Inspect(fn.Body, func(n ast.Node) bool {
-			if clause, ok := n.(*ast.CaseClause); ok {
-				for _, expr := range clause.List {
-					if literal, ok := expr.(*ast.BasicLit); ok && literal.Kind == token.STRING {
-						name, err := strconv.Unquote(literal.Value)
-						if err == nil {
-							names = append(names, name)
-						}
-					}
-				}
-			}
-			return true
-		})
-	}
-	return names
-}
+import "sort"
 
 // APIModule is a detached documentation snapshot of an importable module.
 type APIModule struct {
@@ -56,13 +18,14 @@ type APIDeclaration struct {
 }
 
 // StandardLibrary captures the actual checker definitions, without exposing mutable
-// types. Native operation candidates come from the nativeMethod source's case labels.
+// types. Types and operations are loaded from the bundled standard .ms sources.
 func StandardLibrary() []APIModule {
-	nativeNames := nativeDocumentationNames()
 	modules := map[string][]*Symbol{}
 	for path, symbols := range standardModules {
 		for _, symbol := range symbols {
-			modules[path] = append(modules[path], symbol)
+			if symbol.Export {
+				modules[path] = append(modules[path], symbol)
+			}
 		}
 	}
 	for _, name := range []string{"Bool", "Int", "Float", "String", "Unit", "Never", "Shareable", "Equal", "Hashable"} {
@@ -73,7 +36,7 @@ func StandardLibrary() []APIModule {
 		sort.Slice(symbols, func(i, j int) bool { return symbols[i].Name < symbols[j].Name })
 		module := APIModule{Path: path}
 		for _, symbol := range symbols {
-			d := documentSymbol(symbol, nativeNames)
+			d := documentSymbol(symbol)
 			module.Declarations = append(module.Declarations, d)
 		}
 		result = append(result, module)
@@ -82,7 +45,7 @@ func StandardLibrary() []APIModule {
 	return result
 }
 
-func documentSymbol(symbol *Symbol, nativeNames []string) APIDeclaration {
+func documentSymbol(symbol *Symbol) APIDeclaration {
 	d := APIDeclaration{Name: symbol.Name, Kind: symbol.Kind, Type: symbol.Type.String()}
 	for _, v := range symbol.Variables {
 		parameter := v.Name
@@ -99,6 +62,9 @@ func documentSymbol(symbol *Symbol, nativeNames []string) APIDeclaration {
 	operations := map[string]string{}
 	if def := symbol.Type.Def; def != nil {
 		d.Kind = def.Kind
+		if symbol.Decl != nil && symbol.Decl.Kind == "interface" {
+			d.Kind = "interface"
+		}
 		for _, f := range def.Fields {
 			d.Fields = append(d.Fields, f.Name+": "+f.Type.String())
 		}
@@ -120,11 +86,9 @@ func documentSymbol(symbol *Symbol, nativeNames []string) APIDeclaration {
 			operations[op.Name] = op.Type.String()
 		}
 	}
-	if symbol.Kind == "type" {
-		for _, name := range nativeNames {
-			if method := nativeMethod(symbol.Type, name); method != nil {
-				operations[name] = method.Type.String()
-			}
+	if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
+		for _, op := range intrinsic.Def.Operations {
+			operations[op.Name] = op.Type.String()
 		}
 	}
 	for name, signature := range operations {
@@ -146,7 +110,7 @@ func ModuleDocumentation(program *Program) []APIModule {
 			}
 			symbol := program.Symbols[source.File][decl.Name]
 			if symbol != nil && symbol.Decl == decl {
-				module.Declarations = append(module.Declarations, documentSymbol(symbol, nil))
+				module.Declarations = append(module.Declarations, documentSymbol(symbol))
 			}
 		}
 		sort.Slice(module.Declarations, func(i, j int) bool { return module.Declarations[i].Name < module.Declarations[j].Name })

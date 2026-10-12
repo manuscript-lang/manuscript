@@ -8,7 +8,7 @@ Import each required symbol with `import Name from "@std/io.ms"`.
 
 ## File
 
-Kind: contract.
+Kind: interface.
 
 ```text
 File: File
@@ -18,7 +18,7 @@ operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 
 ## Files
 
-Kind: contract.
+Kind: interface.
 
 ```text
 Files: Files
@@ -39,7 +39,7 @@ case Failed(message: String)
 
 ## ReadStream
 
-Kind: contract.
+Kind: interface.
 
 ```text
 ReadStream: ReadStream
@@ -49,12 +49,36 @@ operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 
 ## WriteStream
 
-Kind: contract.
+Kind: interface.
 
 ```text
 WriteStream: WriteStream
 operation close: fn()->Unit
 operation flush: fn()->Result[Unit, IoError]
 operation write: fn(data: Bytes)->Result[Unit, IoError]
+```
+
+## copy
+
+Kind: fn.
+
+```text
+copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int)->Result[Int, LibraryError]
+```
+
+## read_all
+
+Kind: fn.
+
+```text
+read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, LibraryError]
+```
+
+## read_line
+
+Kind: fn.
+
+```text
+read_line: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Optional[String], LibraryError]
 ```
 

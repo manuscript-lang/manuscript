@@ -8,7 +8,7 @@ Import each required symbol with `import Name from "@std/cleanup.ms"`.
 
 ## Closeable
 
-Kind: contract.
+Kind: interface.
 
 ```text
 Closeable: Closeable

@@ -38,8 +38,14 @@ Choose standard types and runtime facilities by the lifetime, cancellation, and 
 - [HTTP request hosts](hosts/http.md)
 - [CLI application hosts](hosts/cli.md)
 
+### 5. [General-purpose packages](packages/_index.md)
+
+- [Node.js and Go coverage](packages/coverage.md)
+- [Common package contracts](packages/contracts.md)
+- [Expanded library conformance](packages/conformance.md)
+
 ## Runtime facilities
 
 These are ordinary library facilities with effect, sharing, lifetime, and cancellation contracts. They add no concurrency syntax. Host-created requests, sessions, applications, and CLI runs establish fixed execution contexts. Parallel APIs join before returning; background services implement `Closeable` and join during shutdown.
 
-Standard imports, immutable data, CLI streams, and concurrent APIs have concrete signatures. Queue, pool, builder, HTTP, and subprocess APIs still need details. See [outstanding decisions](../compiler/conformance/scope.md#outstanding-decisions).
+Standard imports, immutable data, CLI streams, and concurrent APIs have concrete signatures. Queue, pool, builder, HTTP server, and buffered subprocess APIs have concrete contracts. The general-purpose package guide adds executable data, codec, filesystem, cryptographic, networking and HTTP client operations. See [outstanding decisions](../compiler/conformance/scope.md#outstanding-decisions).

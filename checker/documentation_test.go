@@ -19,7 +19,11 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 	}
 	expected := 0
 	for _, symbols := range standardModules {
-		expected += len(symbols)
+		for _, symbol := range symbols {
+			if symbol.Export {
+				expected++
+			}
+		}
 	}
 	if count != expected {
 		t.Fatalf("captured %d exports, want %d", count, expected)
