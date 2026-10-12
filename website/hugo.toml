@@ -3,7 +3,7 @@ languageCode = 'en-us'
 title = 'Manuscript'
 theme = 'hugo-book'
 contentDir = '../documentation'
-publishDir = '../docs'
+publishDir = '../.artifacts/book'
 resourceDir = '.hugo-resources'
 disableKinds = ['taxonomy', 'term', 'RSS']
 

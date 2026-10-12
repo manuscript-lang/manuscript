@@ -5,123 +5,65 @@ weight = 2
 
 # Development workflow
 
-Run commands from the repository root. Make downloads and verifies the SDK pinned by `.go-version` and `scripts/toolchains.sha256`, then sets `MANUSCRIPT_GO` and `PATH` consistently. Initial setup needs Make, curl, tar, a SHA-256 utility, and Internet access. Native application builds are offline after setup.
+Run commands from the repository root. The pinned SDK is selected through `.go-version`; Node uses `.node-version`. Initial setup needs Make, curl, tar with xz support, a SHA-256 utility, and Internet access. Install the pinned Node version and Hugo Extended 0.146.7 or newer for editor and book work. A C compiler is required for race checks; Delve is required for native debugger integration.
 
 ```sh
-make build
-make coverage
-make race
-make check
-make fuzz
-make book-check
-make dist-check
+make setup
+make doctor
+make verify
 ```
 
-`make coverage` runs the entire unit and native conformance suite. It writes a statement profile and an HTML report in `.artifacts/coverage/`; CI uploads both. Subprocess-built executables are validated by observable end-to-end expectations, but their execution does not increase Go package coverage. Read percentages alongside accepted/rejected source cases and runtime tests.
+`make setup` installs verified Go and checkout-local pinned linters. `make doctor` reports missing or mismatched prerequisites without downloading anything. `make verify` runs read-only formatting/vet, correctness/simplification/unused-code lint, workflow/shell lint, repository invariants, fast unit tests, checked tutorial examples, generated API freshness, and license freshness. It does not build native conformance executables. Formatting corrections are explicit through `make fmt`; generated sources are explicit through `make docs` and `make licenses`.
 
-`make fuzz` exercises strict parsing, editor recovery, and compilation for ten seconds each; use `FUZZTIME=1m` for a longer local run. Go retains reproducible failures as fuzz corpus inputs. Add a named regression and fix the source behavior before declaring a failure resolved.
+For the complete native validation:
 
-Use `make docs` for generated API sources, `make book` to rebuild committed HTML, and `make book-check` for strict link, highlighting, and publication checks in a temporary directory. Set `HUGO=/path/to/hugo` if Hugo is not on PATH. Hugo Extended 0.146.7 matches CI. Node is required for book and extension checks; a C compiler is required for Go race tests. Delve is required for native debugger integration.
+```sh
+make verify-full
+```
 
-Tests that open HTTP/socket listeners need local loopback access. In a workspace with a read-only home directory, choose writable `GOCACHE` and `GOPATH` paths, for example `/tmp/manuscript-go-cache` and `/tmp/manuscript-go`. These environment requirements are separate from compiler correctness.
+This additionally runs coverage/native conformance, race checks, strict/partial parser and compiler fuzzing, strict book/publication checks, and a standalone distribution test. Set `HUGO=/path/to/hugo` when it is not on PATH. `make build` creates the self-contained `ms` executable.
 
-## Conformance and distributions
+Tests that open HTTP/socket listeners need local loopback access. With a read-only home, choose writable `GOCACHE` and `GOPATH`, for example `/tmp/manuscript-go-cache` and `/tmp/manuscript-go`; `STATICCHECK_CACHE` defaults to ignored `.artifacts/staticcheck/`.
 
-Make prepares and selects the bundled toolchain for the end-to-end suite. It builds accepted modules, executes their `test` blocks, verifies rejected variants, exercises CLI commands, and checks evaluation order, cleanup, numeric faults, and signal cancellation. Race checks additionally require a C compiler. CI runs formatting checks, vet, the complete suite, race tests, and `make dist-check`, which exercises a copied single binary with no Go on `PATH`, empty caches, and package downloads disabled.
+## Conformance and coverage
 
-`make dist` creates a self-contained archive in `dist/`.
-`sh scripts/package.sh <os> <arch>` packages `linux`, `darwin`, or `windows` for
-`amd64` or `arm64`. Distributions contain the binary, examples, and license notices.
-Update `.go-version` and `scripts/toolchains.sha256` together when upgrading Go.
+`make coverage` runs the entire Go suite and native conformance fixtures, with dependency-package instrumentation so runtime calls into `internal/hostos` contribute to coverage. It also executes complete tutorial modules directly from their Markdown source. The profile and HTML report live in `.artifacts/coverage/` and are uploaded by CI. Separately built native subprocesses are checked by observable expectations; their execution does not increase Go package coverage.
+
+The end-to-end suite builds one CLI with a bounded setup, reuses it, and retains per-case temporary projects and processes. Accepted fixtures execute their test blocks; rejected cases verify diagnostics; transcript cases check evaluation order, cleanup, signals, host operations, and module boundaries. The harness imports the CLI implementation so source changes invalidate Go's test cache. For an explicit fresh native run, use `make e2e E2EFLAGS=-count=1`. Native build pins require empty GOFLAGS; pass test flags through E2EFLAGS instead.
+
+Complete tutorial code fences carry a `manuscript-example` JSON comment specifying `test` or `run`, arguments, and expected stdout. `make examples-check` checks them without lowering; coverage executes them. Fragments remain clearly introduced as fragments. Do not maintain another copy of complete examples in test fixtures.
+
+`make fuzz` exercises strict parsing, editor recovery, and compilation for ten seconds each. Set `FUZZTIME=1m` for longer runs. Preserve reproducible failures and add an observable regression before declaring a failure resolved.
+
+`make dist` creates a single-binary archive in `dist/`. `sh scripts/package.sh <os> <arch>` packages Linux, macOS, or Windows for AMD64 or ARM64. `make dist-check` runs a copied binary outside the checkout with empty caches, no Go on PATH, and downloads disabled; compilation, source tools, LSP, debug builds, and profiles must work there. Archives include examples and dependency/SDK notices.
 
 ## Preview and publish the book
 
-Start with [the introduction](../learn/_index.md), [the language tour](../learn/tour.md), and [the complete module reference](../standard-library/reference/_index.md).
-
-Read the published book at <https://manuscript-lang.github.io/manuscript/>. Changes to `documentation/` publish automatically after CI passes on `main`.
-
-Author guides in `documentation/`; site configuration and assets live in `website/`. The Markdown guides are rendered directly with [Hugo](https://gohugo.io/) and the [Hugo Book theme](https://github.com/alex-shpak/hugo-book). Install Hugo Extended 0.146 or newer.
+Author guides in `documentation/`; site configuration, assets, and the vendored theme live in `website/`. Reference Markdown/JSON comes from checked standard declarations. Keep lexical rules in the shared VS Code grammar at `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
 
 ```sh
+make docs
+make book-check
+make book
 hugo --source website server --bind 127.0.0.1 --port 4000 --renderToMemory
 ```
 
-Open <http://localhost:4000> to browse the chapters, search the book, and follow links between concepts. The preview listens only on your computer and reloads when you edit the guides. Mermaid diagrams use the theme's bundled local runtime.
+`make docs-check` detects stale generated references without rewriting them. `make book-check` validates strict Markdown links, highlighting, rendered API signatures, downloads, and obsolete routes under a project URL prefix. `make book` writes the production site into ignored `.artifacts/book/`. Generated HTML is not committed. Use `--cleanDestinationDir` so removed modules cannot survive in the published site.
 
-```sh
-hugo --source website --minify
-```
+The book uses Hugo Extended 0.146.7 in CI and vendored Hugo Book v13, with its license and upstream revision in `website/themes/hugo-book/`. Custom styling lives in `website/assets/_custom.scss`, behavior in `website/assets/docs.js`, and overrides in `website/layouts/`. Keep changes in these files instead of modifying the theme.
 
-The static site is generated in the repository root’s `docs/`, which is committed for GitHub Pages to serve. Edit the Markdown guides in `documentation/`, then rebuild; files in `docs/` are generated output. Chapter indexes use `_index.md`; each page's front matter sets its title and reading-order weight. New Markdown pages appear automatically. Site settings live in `website/hugo.toml`. The `website/static/.nojekyll` marker is copied into `docs/` so Pages serves the Hugo output directly.
+The shared `.msversion` supplies the current release labels. For preserved older sites, add version/URL entries in `website/data/docs_versions.toml`. Relative archive URLs respect the site's base URL; archives open their home page so newer routes do not produce broken links. Preserve snapshots separately from the cleaned current build. See [maintenance and compatibility](maintenance.md) for pin and release changes.
 
-The root `.msversion` file contains the current documentation version (initially
-`0.1.0`, without a `v` prefix). Hugo reads it for the header's version dropdown,
-homepage badge, sidebar, and footer. Change this file and rebuild to update all
-documentation version labels.
+## Continuous integration
 
-When older documentation is available, add its version and published site URL to
-`website/data/docs_versions.toml` as an `[[archives]]` entry. Relative URLs such as
-`versions/v0.1.0/` respect the site's configured base URL; full URLs can point to a
-separate docs host. Selecting an archive opens that version's documentation home,
-so pages added in newer versions do not produce broken links. The current version
-is always included automatically. Archive entries only link to published sites;
-they do not create or preserve snapshots. Keep snapshots outside the generated
-`docs/` directory, which production builds clean before publishing.
+[CI/CD](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) runs on PRs and pushes to `main`, avoiding duplicate feature push/PR runs. Superseded PR runs are cancelled. [Language checks](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/test-language.yml) starts with fast verification, then runs native coverage, races and fuzzing in separate jobs, host compatibility on Linux/macOS/Windows, and extension/native debugger integration. The built CLI is reused by the debugger job. SDK, module/build, lint tool, and npm caches use their pinned inputs.
 
-Hugo Book v13 is vendored in `website/themes/hugo-book/`, including its MIT license. The exact upstream revision is recorded in `website/themes/hugo-book/UPSTREAM`.
+The [distribution workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/release.yml) validates all six OS/architecture targets whenever Go sources or other build inputs change, including internal platform helpers. Manual runs produce artifacts; matching `v*` tags publish verified archives. For branch protection require **Build design book** and **Language checks / test**; the latter aggregates every language job and fails on skipped/cancelled dependencies.
 
-The documentation's visual design lives in `website/assets/_custom.scss`, with layout and
-navigation overrides in `website/layouts/`. The overview uses the `docs-home` shortcode;
-`website/assets/docs.js` provides theme preferences, copy buttons, and mobile keyboard
-controls. Keep site customizations in these files rather than editing the
-vendored theme. After a presentation change, rebuild `docs/` with `hugo --source website --minify
---panicOnWarning --cleanDestinationDir`.
-
-Label Manuscript code fences `manuscript`; keep terminal output labeled `text`.
-The docs reuse the VS Code extension's grammar in
-`extensions/vscode/syntaxes/manuscript.tmLanguage.json`. Change lexical rules
-there, then run `node --test tests/docs/highlighting.test.cjs` to check the
-browser adapter before rebuilding the site.
-
-## Continuous integration and releases
-
-[The GitHub Actions pipeline](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) builds the design book on branch pushes and pull requests using Hugo Extended 0.146.7. Pushes that only change generated `docs/` files are skipped. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.
-
-The pipeline also calls [the language checks](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/test-language.yml) with Go 1.25.1: formatting, vet, statement coverage, unit and native end-to-end tests, parser/compiler fuzz smoke checks, race checks, and a CLI build and example run. Deployment requires both the book build and language checks to pass. The language workflow can also be run independently from the Actions tab.
-
-The [distribution workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/release.yml) builds archives for all
-six targets and tests their standalone commands on the native OS and architecture.
-Manual runs produce Actions artifacts; `v*` tags publish verified archives and
-checksums to GitHub Releases.
-
-After validation succeeds on the repository's default branch (`main`), the pipeline builds with the GitHub Pages URL, commits the generated `docs/` files to that branch, and explicitly requests a Pages build. This request is needed because pushes made with `GITHUB_TOKEN` do not trigger Pages builds automatically. Pull requests and other branches only run validation. You can also run the pipeline manually from the Actions tab; publishing still requires the default branch. Outdated runs skip publishing, and a concurrent branch update causes the push to fail rather than overwrite newer work.
-
-Keep **Settings → Pages → Source** set to **Deploy from a branch**, with **main** and **/docs** selected. The workflow uses the built-in `GITHUB_TOKEN` with contents and Pages write permissions; no deployment secrets are required. Repository rules must allow the workflow to push generated documentation to `main`. If branch protection blocks that push, regenerate and merge `docs/` through a pull request instead. For a custom domain, configure it in Pages settings and update `baseURL` in `website/hugo.toml` before rebuilding the committed output; CI uses the URL reported by Pages.
-
-For branch protection, require the **Build design book** and **Language checks / test** status checks. To reproduce the book validation locally with Hugo Extended 0.146.7:
-
-```sh
-hugo --source website --minify --panicOnWarning --destination /tmp/manuscript-book-validation --baseURL "https://example.org/manuscript/"
-```
+The book job uploads the production output as a Pages artifact after publication checks. After all checks pass on `main`, the deployment job selects Actions publishing and deploys that artifact with the built-in Pages token and OIDC. It needs no permission to push source commits. PRs validate and upload but do not deploy. Pages source is **GitHub Actions**, replacing the former `main /docs` deployment. For custom domains, update the Pages setting and `baseURL` in `website/hugo.toml` together. Confirm a successful deployment separately from a successful merge.
 
 ## Generate the standard library reference
 
-Run `make docs` from the repository root after changing standard definitions.
-`make docs-check` verifies that checked-in outputs match; the Pages workflow runs
-this check before validation and deployment.
+`scripts/docgen` reads the checker's registry from pinned `stdlib/*.ms` source, including intrinsic receiver operations. The API's signatures, generic bounds, fields, cases, and operations have one source authority. Native calling conventions are compared with those declarations in integration tests; frontend initialization does not import the host runtime.
 
-`scripts/docgen` reads the checker’s standard registry loaded from the bundled
-`stdlib/*.ms` declarations, including intrinsic receiver operations. The shipped
-binary needs no source checkout.
-It captures checked signatures, generic bounds, fields, cases, and operations
-without maintaining a second API catalog. The intrinsic prelude is included.
-Special contextual calls and constructors are documented in
-[call rules](https://github.com/manuscript-lang/manuscript/blob/main/tooling/docgen/call-rules.md), which require review when
-`checker/calls.go` changes.
-
-Generated module pages live in `documentation/standard-library/reference/`. Hugo copies
-`website/static/stdlib.md`, `website/static/stdlib.json` (schema version 1), and `website/static/llms.txt`
-to the Pages site root. Relative links support repository Pages prefixes and
-custom domains. `stdlib.md` contains the entire implemented API in one plain-text
-document for LLM ingestion; the JSON has stable sorted modules and declarations.
-The existing design chapters explain behavior and identify proposed extensions.
+Generated module pages live in `documentation/standard-library/reference/`; `website/static/stdlib.md` and `stdlib.json` are downloads. The JSON schema is versioned and sorted. `website/static/llms.txt` points to the plain-text API. Special contextual calls are defined in [call rules](https://github.com/manuscript-lang/manuscript/blob/main/tooling/docgen/call-rules.md), which need review when checker calls change. Update source or generators, then run `make docs` and book checks. Never repair freshness by hand-editing generated output.

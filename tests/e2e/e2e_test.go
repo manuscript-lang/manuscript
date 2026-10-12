@@ -32,17 +32,7 @@ func TestCoreConformance(t *testing.T) {
 	for _, file := range files {
 		t.Run(filepath.Base(file), func(t *testing.T) {
 			result := compiler.CompileFile(file, compiler.Options{Tests: true})
-			for _, d := range result.Diagnostics {
-				t.Error(d)
-			}
-			if !result.Success() {
-				return
-			}
-			binary := filepath.Join(t.TempDir(), "program")
-			if err := compiler.Build(result.Source, binary); err != nil {
-				t.Fatal(err)
-			}
-			data, err := exec.Command(binary).CombinedOutput()
+			data, err := execute(t, result)
 			if err != nil {
 				t.Fatalf("execution failed: %v\n%s", err, data)
 			}
@@ -54,12 +44,7 @@ func TestCoreConformance(t *testing.T) {
 }
 func TestRejectedFixture(t *testing.T) {
 	result := compiler.CompileFile("testdata/reject/cl-03-2.ms", compiler.Options{})
-	if result.Success() {
-		t.Fatal("accepted private type in public surface")
-	}
-	if result.Diagnostics[0].Phase != "type" {
-		t.Fatal(result.Diagnostics)
-	}
+	rejected(t, result, "type", "private")
 }
 func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
 	result := compiler.CompileSource("standalone.ms", "import panic from \"@std/faults.ms\"\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5):\n        return panic(message: \"check failed\")\n", compiler.Options{Tests: true})
@@ -87,7 +72,7 @@ func TestCLIEntryAndNativeBuild(t *testing.T) {
 	if err := compiler.Build(result.Source, executable); err != nil {
 		t.Fatal(err)
 	}
-	data, err := exec.Command(executable, "first", "second").CombinedOutput()
+	data, err := commandOutput(t, executable, "first", "second")
 	if err != nil || string(data) != "Arguments: 2\n" {
 		t.Fatalf("entry transcript %q, error %v", data, err)
 	}
@@ -108,7 +93,7 @@ func TestRuntimeFaults(t *testing.T) {
 			if err := compiler.Build(result.Source, binary); err != nil {
 				t.Fatal(err)
 			}
-			data, err := exec.Command(binary).CombinedOutput()
+			data, err := commandOutput(t, binary)
 			if err == nil || !strings.Contains(string(data), "1 failed") {
 				t.Fatalf("expected runtime fault, got %v, %s", err, data)
 			}
@@ -116,15 +101,7 @@ func TestRuntimeFaults(t *testing.T) {
 	}
 }
 func TestCLICommands(t *testing.T) {
-	tool := os.Getenv("MANUSCRIPT_GO")
-	if tool == "" {
-		tool = "go"
-	}
-	binary := filepath.Join(t.TempDir(), "ms")
-	command := exec.Command(tool, "build", "-o", binary, "../../cmd/ms")
-	if data, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build CLI: %v %s", err, data)
-	}
+	binary := cliBinary
 	project := t.TempDir()
 	for _, name := range []string{"ms.toml", "src/main.ms"} {
 		data, err := os.ReadFile(filepath.Join("../../examples/hello", name))
@@ -140,8 +117,7 @@ func TestCLICommands(t *testing.T) {
 	}
 	manifest := filepath.Join(project, "ms.toml")
 	for _, args := range [][]string{{"check", "testdata/accept/cl-01.ms"}, {"test", "testdata/accept/cl-01.ms"}, {"lock", manifest}, {"run", manifest, "--", "a", "b"}} {
-		command := exec.Command(binary, args...)
-		data, err := command.CombinedOutput()
+		data, err := commandOutput(t, binary, args...)
 		if err != nil {
 			t.Fatalf("%v: %v\n%s", args, err, data)
 		}
@@ -150,7 +126,7 @@ func TestCLICommands(t *testing.T) {
 		}
 	}
 	bundle := filepath.Join(project, "profile")
-	if data, err := exec.Command(binary, "profile", manifest, "-o", bundle).CombinedOutput(); err != nil {
+	if data, err := commandOutput(t, binary, "profile", manifest, "-o", bundle); err != nil {
 		t.Fatalf("profile bundle: %v %s", err, data)
 	}
 	for _, name := range []string{"program", "program.ms-build.json", "inspection.json", "manifest.json", "cpu.pprof", "heap.pprof", "trace.out"} {
@@ -167,7 +143,7 @@ func TestCLICommands(t *testing.T) {
 		t.Fatal("invalid source returned successful CLI status")
 	}
 	output := filepath.Join(t.TempDir(), "main.go")
-	if data, err := exec.Command(binary, "emit", "testdata/accept/cl-01.ms", "-o", output).CombinedOutput(); err != nil {
+	if data, err := commandOutput(t, binary, "emit", "testdata/accept/cl-01.ms", "-o", output); err != nil {
 		t.Fatalf("emit: %v %s", err, data)
 	}
 	if _, err := os.Stat(output); err != nil {
@@ -184,7 +160,7 @@ func TestEvaluationOrderAndEveryCleanupExit(t *testing.T) {
 	if err := compiler.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
-	data, err := exec.Command(binary).CombinedOutput()
+	data, err := commandOutput(t, binary)
 	if err != nil {
 		t.Fatalf("execution: %v %s", err, data)
 	}
@@ -208,14 +184,7 @@ func TestSignalCancelsJoinsAndCleansUp(t *testing.T) {
 	}
 	t.Run("native", func(t *testing.T) { checkSignalShutdown(t, binary) })
 	t.Run("launcher", func(t *testing.T) {
-		tool := os.Getenv("MANUSCRIPT_GO")
-		if tool == "" {
-			tool = "go"
-		}
-		launcher := filepath.Join(t.TempDir(), "ms")
-		if data, err := exec.Command(tool, "build", "-o", launcher, "../../cmd/ms").CombinedOutput(); err != nil {
-			t.Fatalf("build launcher: %v %s", err, data)
-		}
+		launcher := cliBinary
 		checkSignalShutdown(t, launcher, "run", "testdata/projects/signal/main.ms")
 	})
 }
@@ -347,36 +316,29 @@ func TestNativeSubprocessCapability(t *testing.T) {
 	if err := compiler.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
-	output, err := exec.Command(binary).CombinedOutput()
+	output, err := commandOutput(t, binary)
 	if err != nil || string(output) != "hello" {
 		t.Fatalf("subprocess transcript %q error %v", output, err)
 	}
 }
 func TestCLISourceTools(t *testing.T) {
-	tool := os.Getenv("MANUSCRIPT_GO")
-	if tool == "" {
-		tool = "go"
-	}
 	root := t.TempDir()
-	binary := filepath.Join(root, "ms")
-	if output, err := exec.Command(tool, "build", "-o", binary, "../../cmd/ms").CombinedOutput(); err != nil {
-		t.Fatalf("build: %v %s", err, output)
-	}
+	binary := cliBinary
 	filename := filepath.Join(root, "source.ms")
 	source := "fn one( )->Int:\n    return 1 # keep\n"
 	if err := os.WriteFile(filename, []byte(source), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := exec.Command(binary, "fmt", filename, "--check").Run(); err == nil {
+	if _, err := commandOutput(t, binary, "fmt", filename, "--check"); err == nil {
 		t.Fatal("uncanonical formatting passed")
 	}
-	if output, err := exec.Command(binary, "fmt", filename).CombinedOutput(); err != nil {
+	if output, err := commandOutput(t, binary, "fmt", filename); err != nil {
 		t.Fatalf("format: %v %s", err, output)
 	}
-	if err := exec.Command(binary, "fmt", filename, "--check").Run(); err != nil {
+	if _, err := commandOutput(t, binary, "fmt", filename, "--check"); err != nil {
 		t.Fatal(err)
 	}
-	output, err := exec.Command(binary, "inspect", filename).CombinedOutput()
+	output, err := commandOutput(t, binary, "inspect", filename)
 	if err != nil {
 		t.Fatal(err, string(output))
 	}
@@ -384,13 +346,13 @@ func TestCLISourceTools(t *testing.T) {
 	if err := json.Unmarshal(output, &inspection); err != nil || inspection["build_id"] == "" {
 		t.Fatal("invalid inspection", err)
 	}
-	output, err = exec.Command(binary, "diagram", filename).CombinedOutput()
+	output, err = commandOutput(t, binary, "diagram", filename)
 	if err != nil || !strings.Contains(string(output), "flowchart TD") {
 		t.Fatal(err, string(output))
 	}
 	invalid := "fn wrong() -> Int:\n    return missing\n"
 	os.WriteFile(filename, []byte(invalid), 0600)
-	output, err = exec.Command(binary, "check", filename, "--json").CombinedOutput()
+	output, err = commandOutput(t, binary, "check", filename, "--json")
 	if err == nil || !strings.Contains(string(output), "MS2001") {
 		t.Fatal(err, string(output))
 	}
@@ -428,7 +390,7 @@ test "encoded nominal identity":
 	if err := compiler.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
-	output, err := exec.Command(binary).CombinedOutput()
+	output, err := commandOutput(t, binary)
 	if err != nil || !strings.Contains(string(output), "0 failed") {
 		t.Fatal(err, string(output))
 	}
@@ -448,7 +410,7 @@ func TestExpandedLibraryCLICapabilities(t *testing.T) {
 		t.Fatal(err)
 	}
 	dataPath := filepath.Join(directory, "data")
-	output, err := exec.Command(binary, dataPath).CombinedOutput()
+	output, err := commandOutput(t, binary, dataPath)
 	if err != nil {
 		t.Fatalf("%v: %s", err, output)
 	}
@@ -572,7 +534,7 @@ test "defaults use their declaration module":
 	if err := compiler.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
-	data, err := exec.Command(binary).CombinedOutput()
+	data, err := commandOutput(t, binary)
 	if err != nil || !strings.Contains(string(data), "1 tests, 0 failed") {
 		t.Fatalf("%v: %s", err, data)
 	}

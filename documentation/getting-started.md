@@ -68,6 +68,7 @@ The `--` separates compiler options from arguments for your program. Here, `firs
 
 The complete entry module is:
 
+<!-- manuscript-example: {"mode":"run","args":["first","second"],"stdout":"Arguments: 2\n"} -->
 ```manuscript
 import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"

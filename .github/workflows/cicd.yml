@@ -2,14 +2,16 @@ name: CI/CD
 
 on:
   push:
-    branches: ['**']
-    paths-ignore:
-      - 'docs/**'
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   language:
@@ -21,111 +23,58 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Install Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: .go-version
-          cache: false
-
-      - name: Check generated standard library documentation
-        run: make docs-check
-
-      - name: Check documentation syntax highlighting
-        run: node --test tests/docs/highlighting.test.cjs
-
-      - name: Install Hugo Extended
-        uses: peaceiris/actions-hugo@v3
+          cache: true
+      - uses: actions/cache@v4
+        with:
+          path: toolchain/
+          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Prepare pinned SDK
+        run: make toolchain
+      - name: Check generated reference and shared highlighting
+        run: |
+          make docs-check
+          node --test tests/docs/highlighting.test.cjs
+      - uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: '0.146.7'
           extended: true
-
-      - name: Build and validate design book
-        # Exercise project-site URL prefixes as well as Markdown link resolution.
+      - name: Validate project URL prefixes and production output
         run: |
-          hugo --source website --minify --panicOnWarning --cleanDestinationDir --destination "${RUNNER_TEMP}/book-validation" --baseURL "https://example.org/manuscript/"
-          MANUSCRIPT_BOOK_DIR="${RUNNER_TEMP}/book-validation" node --test tests/docs/publication.test.cjs
+          make book-check
+          make book
+          node --test tests/docs/publication.test.cjs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .artifacts/book
 
   pages:
     name: Publish Pages docs
     needs: [build, language]
     if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
     permissions:
-      contents: write
       pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     concurrency:
       group: github-pages
       cancel-in-progress: false
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-
-      - name: Check that this is still the latest commit
-        id: current
-        env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          git fetch origin "$DEFAULT_BRANCH"
-          if [ "$(git rev-parse FETCH_HEAD)" = "$(git rev-parse HEAD)" ]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: .go-version
-          cache: false
-
-      - name: Check generated standard library documentation
-        run: make docs-check
-
-      - name: Install Hugo Extended
-        if: steps.current.outputs.publish == 'true'
-        uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: '0.146.7'
-          extended: true
-
-      - name: Configure GitHub Pages
-        if: steps.current.outputs.publish == 'true'
-        id: pages
-        uses: actions/configure-pages@v5
-
-      - name: Build production design book
-        if: steps.current.outputs.publish == 'true'
-        env:
-          HUGO_BASE_URL: ${{ steps.pages.outputs.base_url }}
-        run: |
-          hugo --source website --minify --panicOnWarning --cleanDestinationDir --baseURL "${HUGO_BASE_URL}/"
-          node --test tests/docs/publication.test.cjs
-
-      - name: Commit generated website to the default branch
-        if: steps.current.outputs.publish == 'true'
-        env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          test -f docs/index.html
-          test -f docs/.nojekyll
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add --all -- docs
-          if ! git diff --cached --quiet; then
-            git commit -m 'docs: publish generated design book'
-            git push origin "HEAD:refs/heads/${DEFAULT_BRANCH}"
-          fi
-
-      - name: Request branch-based Pages build
-        if: steps.current.outputs.publish == 'true'
-        # Pushes made with GITHUB_TOKEN do not automatically trigger Pages builds.
+      # This idempotent migration also handles existing branch-based sites.
+      - name: Select Actions publishing
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh api --method POST "repos/${GH_REPO}/pages/builds"
+        run: gh api --method PUT "repos/${GH_REPO}/pages" -f build_type=workflow
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
+        id: deploy

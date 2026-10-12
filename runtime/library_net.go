@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	for _, m := range []LibraryMethod{
+	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "connect", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"timeout", "Duration"}}},
 		{"Network", "connect_tls", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"server_name", "String"}, {"timeout", "Duration"}}},
 		{"Network", "listen", libraryResult("Listener", "NetworkError"), []LibraryParam{{"address", "String"}}},
@@ -27,9 +27,7 @@ func init() {
 		{"DatagramSocket", "send", libraryResult("Unit", "NetworkError"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}}},
 		{"DatagramSocket", "receive", libraryResult("Datagram", "NetworkError"), []LibraryParam{{"max_bytes", "Int"}}},
 		{"DatagramSocket", "address", "String", nil}, {"DatagramSocket", "close", "Unit", nil},
-	} {
-		LibraryMethods = append(LibraryMethods, m)
-	}
+	}...)
 }
 func libraryAcquisition(receiver, name string, body func(*Execution, string, []Value) Value) Function {
 	f := libraryMethod(receiver, name, body)

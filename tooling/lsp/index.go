@@ -206,15 +206,15 @@ func sourceIndex(result compiler.Result) []occurrence {
 		if e == nil || info == nil {
 			continue
 		}
-		if e.Kind == "name" {
+		if e.Kind == syntax.KindName {
 			if info.Binding != nil {
 				add(localKey(info.Binding), e.Text, e.Pos, false, info.Write, info)
 			} else if info.Symbol != nil {
 				add(symbolKey(info.Symbol), e.Text, e.Pos, false, info.Write, info)
 			}
 		}
-		if e.Kind == "member" && info.Method == nil && e.Left != nil {
-			if receiver := program.Expressions[e.Left]; receiver != nil && receiver.Type != nil && receiver.Type.Kind == "record" && receiver.Type.Def != nil {
+		if e.Kind == syntax.KindMember && info.Method == nil && e.Left != nil {
+			if receiver := program.Expressions[e.Left]; receiver != nil && receiver.Type != nil && receiver.Type.Kind == syntax.KindRecord && receiver.Type.Def != nil {
 				parent := receiver.Type.Def.Symbol
 				add("field:"+symbolKey(parent)+":"+e.Text, e.Text, e.Pos, false, info.Write, info)
 			}
@@ -223,22 +223,22 @@ func sourceIndex(result compiler.Result) []occurrence {
 			parent := info.Constructor.Def
 			if parent != nil && parent.Symbol != nil {
 				left := e
-				if e.Kind == "call" {
+				if e.Kind == syntax.KindCall {
 					left = e.Left
 				}
 				add("case:"+symbolKey(parent.Symbol)+":"+info.Case, info.Case, left.Pos, false, false, info)
-				if left.Kind == "member" {
+				if left.Kind == syntax.KindMember {
 					root := left.Left
-					for root != nil && root.Kind == "apply" {
+					for root != nil && root.Kind == syntax.KindApply {
 						root = root.Left
 					}
-					if root != nil && root.Kind == "name" {
+					if root != nil && root.Kind == syntax.KindName {
 						add(symbolKey(parent.Symbol), root.Text, root.Pos, false, false, &checker.Info{Type: info.Constructor, Symbol: parent.Symbol})
 					}
 				}
 			}
 		}
-		if e.Kind == "call" && info.Constructor != nil && info.Constructor.Kind == "record" && info.Constructor.Def != nil {
+		if e.Kind == syntax.KindCall && info.Constructor != nil && info.Constructor.Kind == syntax.KindRecord && info.Constructor.Def != nil {
 			parent := info.Constructor.Def.Symbol
 			for _, arg := range e.Args {
 				for _, field := range checker.Fields(info.Constructor) {
@@ -248,20 +248,20 @@ func sourceIndex(result compiler.Result) []occurrence {
 				}
 			}
 		}
-		if e.Kind == "member" && info.Method != nil {
+		if e.Kind == syntax.KindMember && info.Method != nil {
 			add(methodKey(info.Method), e.Text, e.Pos, false, info.Write, info)
 		}
-		if e.Kind == "call" && info.Constructor != nil && info.Constructor.Def != nil && e.Left != nil {
+		if e.Kind == syntax.KindCall && info.Constructor != nil && info.Constructor.Def != nil && e.Left != nil {
 			left := e.Left
-			for left.Kind == "apply" {
+			for left.Kind == syntax.KindApply {
 				left = left.Left
 			}
-			if left.Kind == "name" {
+			if left.Kind == syntax.KindName {
 				symbol := info.Constructor.Def.Symbol
 				add(symbolKey(symbol), left.Text, left.Pos, false, false, &checker.Info{Type: info.Constructor, Symbol: symbol})
 			}
 		}
-		if e.Kind == "call" {
+		if e.Kind == syntax.KindCall {
 			var decl *syntax.Declaration
 			if called := program.Expressions[e.Left]; called != nil {
 				if called.Symbol != nil {
@@ -284,7 +284,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 	}
 	visitor := syntax.Visitor{Statement: func(s *syntax.Statement) {
-		if s.Kind == "assign" {
+		if s.Kind == syntax.KindAssign {
 			if b := program.Assignments[s.Value]; b != nil {
 				add(localKey(b), s.Name, s.Pos, false, true, &checker.Info{Type: b.Type, Binding: b})
 			}

@@ -17,7 +17,7 @@ func (c *checker) effectSummaries() {
 	nodes := map[string]*node{}
 	for _, module := range c.Modules {
 		for _, declaration := range module.Declarations {
-			if declaration.Kind == "fn" {
+			if declaration.Kind == syntax.KindFn {
 				symbol := c.Symbols[module.File][declaration.Name]
 				nodes[symbol.ID] = &node{declaration, map[string]bool{}, map[string]bool{}}
 			}
@@ -37,7 +37,7 @@ func (c *checker) effectSummaries() {
 				if statement.Target != nil {
 					add(n, "write")
 				}
-				if statement.Kind != "with" {
+				if statement.Kind != syntax.KindWith {
 					return
 				}
 				method := c.Cleanups[statement]
@@ -50,12 +50,12 @@ func (c *checker) effectSummaries() {
 				}
 			},
 			Expression: func(expression *syntax.Expression) {
-				if expression.Kind == "member" {
-					if receiver := c.Expressions[expression.Left]; receiver != nil && receiver.Type.Kind == "record" && c.Expressions[expression].Method == nil {
+				if expression.Kind == syntax.KindMember {
+					if receiver := c.Expressions[expression.Left]; receiver != nil && receiver.Type.Kind == syntax.KindRecord && c.Expressions[expression].Method == nil {
 						add(n, "read")
 					}
 				}
-				if expression.Kind != "call" {
+				if expression.Kind != syntax.KindCall {
 					return
 				}
 				info := c.Expressions[expression]

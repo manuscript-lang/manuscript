@@ -46,17 +46,17 @@ func documentSymbols(result compiler.Result, d document) []any {
 		if s := result.Program.Symbols[m.File][decl.Name]; s != nil && s.Decl == decl {
 			detail = s.Type.String()
 		}
-		if decl.Kind == "record" || decl.Kind == "contract" || decl.Kind == "alternative" {
+		if decl.Kind == syntax.KindRecord || decl.Kind == "contract" || decl.Kind == "alternative" {
 			kind = 5
 		}
-		if decl.Kind == "interface" {
+		if decl.Kind == syntax.KindInterface {
 			kind = 11
 		}
-		if decl.Kind == "impl" {
+		if decl.Kind == syntax.KindImpl {
 			kind = 5
 			name = decl.Contract.Name + " for " + decl.Receiver.Name
 		}
-		if decl.Kind == "test" {
+		if decl.Kind == syntax.KindTest {
 			name = "test " + decl.Name
 		}
 		children := []any{}

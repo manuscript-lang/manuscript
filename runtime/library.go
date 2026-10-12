@@ -2,7 +2,8 @@ package msruntime
 
 import "strings"
 
-// LibrarySpec is the shared source of truth for checker and native bindings.
+// LibrarySpec describes native calling conventions; integration tests compare
+// them with the authoritative checked Manuscript declarations.
 // Function identities include their module to avoid collisions such as parse/join.
 type LibraryParam struct{ Name, Type string }
 type LibrarySpec struct {

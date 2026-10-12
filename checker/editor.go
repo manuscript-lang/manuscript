@@ -86,7 +86,7 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 	}
 	collect(intrinsicOperations[receiver.ID])
 	fields := map[string]bool{}
-	if receiver.Kind == "record" {
+	if receiver.Kind == syntax.KindRecord {
 		for _, field := range Fields(receiver) {
 			if field.Name == "toString" {
 				continue

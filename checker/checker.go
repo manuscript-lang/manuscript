@@ -3,7 +3,7 @@ package checker
 import (
 	"encoding/hex"
 	"fmt"
-	msruntime "github.com/manuscript-lang/manuscript/runtime"
+	"github.com/manuscript-lang/manuscript/internal/decimal"
 	"github.com/manuscript-lang/manuscript/syntax"
 	"math"
 	"strconv"
@@ -65,7 +65,7 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 		p.Symbols[module.File] = c.names
 		c.scope = newScope(nil)
 		for _, name := range strings.Fields("Bool Int Float String Unit Never Equal Hashable") {
-			c.names[name] = &Symbol{Name: name, ID: name, Kind: "type", Type: primitive(name), Export: true}
+			c.names[name] = &Symbol{Name: name, ID: name, Kind: syntax.KindType, Type: primitive(name), Export: true}
 		}
 		for _, item := range module.Imports {
 			var found *Symbol
@@ -81,12 +81,12 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 			c.addSymbol(item.Name, found, item.NamePos)
 		}
 		for _, d := range module.Declarations {
-			if d.Kind == "impl" || d.Kind == "test" {
+			if d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest {
 				continue
 			}
-			s := &Symbol{Name: d.Name, ID: c.unique("symbol"), Kind: "fn", Module: module.File, Export: d.Export, Decl: d}
-			if d.Kind != "fn" {
-				s.Kind = "type"
+			s := &Symbol{Name: d.Name, ID: c.unique("symbol"), Kind: syntax.KindFn, Module: module.File, Export: d.Export, Decl: d}
+			if d.Kind != syntax.KindFn {
+				s.Kind = syntax.KindType
 				kind := d.Kind
 				if kind == "interface" {
 					kind = "contract"
@@ -97,7 +97,7 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 			c.addSymbol(d.Name, s, d.Pos)
 		}
 		for _, d := range module.Declarations {
-			if d.Kind == "impl" || d.Kind == "test" {
+			if d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest {
 				continue
 			}
 			s := c.names[d.Name]
@@ -107,14 +107,14 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 			old := c.scope
 			c.scope = newScope(nil)
 			s.Variables = c.typeVariables(d.TypeParams)
-			if s.Kind == "type" {
+			if s.Kind == syntax.KindType {
 				s.Type.Def.Variables = s.Variables
 				s.Type.Args = s.Variables
 			}
 			c.scope = old
 		}
 		for _, d := range module.Declarations {
-			if d.Kind == "impl" || d.Kind == "test" {
+			if d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest {
 				continue
 			}
 			s := c.names[d.Name]
@@ -123,7 +123,7 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 			}
 			old := c.scope
 			c.scope = c.variableScope(s.Variables)
-			if s.Kind == "fn" {
+			if s.Kind == syntax.KindFn {
 				s.Type = c.signature(d.Params, d.Result)
 			} else {
 				def := s.Type.Def
@@ -148,18 +148,18 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 			c.scope = old
 		}
 		for _, d := range module.Declarations {
-			if d.Kind == "impl" {
+			if d.Kind == syntax.KindImpl {
 				c.implementation(d)
 			}
 		}
 		for _, d := range module.Declarations {
-			if d.Kind == "fn" {
+			if d.Kind == syntax.KindFn {
 				s := c.names[d.Name]
 				if s.Decl == d {
 					c.checkFunction(d, s.Type, s.Variables, nil)
 				}
 			}
-			if d.Kind == "test" {
+			if d.Kind == syntax.KindTest {
 				c.checkFunction(d, function(nil, primitive("Unit")), nil, nil)
 			}
 		}
@@ -232,7 +232,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 	}
 	if v := c.scope.typ(t.Name); v != nil {
 		base = v
-	} else if s := c.names[t.Name]; s != nil && s.Kind == "type" {
+	} else if s := c.names[t.Name]; s != nil && s.Kind == syntax.KindType {
 		base = s.Type
 	} else {
 		c.error(t.Pos, "resolution", "unknown type "+t.Name)
@@ -339,7 +339,7 @@ func (c *checker) statement(s *syntax.Statement) (fall, breaks bool) {
 }
 func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	switch s.Kind {
-	case "bind":
+	case syntax.KindBind:
 		var expected *Type
 		if s.Type != nil {
 			expected = c.resolve(s.Type, false)
@@ -348,12 +348,12 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		info := c.expression(s.Value, expected)
 		c.pattern(s.Pattern, info.Type, s.Mutable, s.Value)
 		return !info.NoReturn, false
-	case "assign":
+	case syntax.KindAssign:
 		if s.Target != nil {
 			target := c.expression(s.Target, nil)
 			target.Write = true
 			receiver := c.Expressions[s.Target.Left]
-			if receiver == nil || receiver.Type == nil || receiver.Type.Kind != "record" || target.Method != nil {
+			if receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || target.Method != nil {
 				c.error(s.Target.Pos, "type", "assignment requires a record field")
 			}
 			value := c.expression(s.Value, target.Type)
@@ -374,7 +374,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		}
 		i := c.expression(s.Value, b.Type)
 		return !i.NoReturn, false
-	case "return":
+	case syntax.KindReturn:
 		if s.Value == nil {
 			if c.result.ID != "Unit" {
 				c.error(s.Pos, "type", "bare return requires Unit")
@@ -383,15 +383,15 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			c.expression(s.Value, c.result)
 		}
 		return false, false
-	case "call":
+	case syntax.KindCall:
 		i := c.expression(s.Value, nil)
 		return !i.NoReturn, false
-	case "break", "continue":
+	case syntax.KindBreak, syntax.KindContinue:
 		if c.loops == 0 {
 			c.error(s.Pos, "type", s.Kind+" requires an enclosing loop")
 		}
-		return false, s.Kind == "break"
-	case "if":
+		return false, s.Kind == syntax.KindBreak
+	case syntax.KindIf:
 		i := c.expression(s.Value, primitive("Bool"))
 		a, ab := c.block(s.Body, true)
 		b, bb := true, false
@@ -399,14 +399,14 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			b, bb = c.block(s.Else, true)
 		}
 		return !i.NoReturn && (a || b), ab || bb
-	case "while":
+	case syntax.KindWhile:
 		i := c.expression(s.Value, primitive("Bool"))
 		c.loops++
 		_, br := c.block(s.Body, true)
 		c.loops--
-		literalTrue := s.Value.Kind == "bool" && s.Value.Text == "true"
+		literalTrue := s.Value.Kind == syntax.KindBool && s.Value.Text == "true"
 		return !i.NoReturn && (!literalTrue || br), false
-	case "for":
+	case syntax.KindFor:
 		i := c.expression(s.Value, nil)
 		element := primitive("<invalid>")
 		if std(i.Type, "List") || std(i.Type, "Set") {
@@ -428,7 +428,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		c.loops--
 		c.scope = old
 		return !i.NoReturn, false
-	case "with":
+	case syntax.KindWith:
 		i := c.expression(s.Value, nil)
 		if !c.closeable(i.Type) {
 			c.error(s.Pos, "type", "with requires an explicit Closeable implementation or a contract declaring close() -> Unit")
@@ -455,17 +455,17 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		fall, br := c.block(s.Body, false)
 		c.scope = old
 		return !i.NoReturn && fall, br
-	case "match":
+	case syntax.KindMatch:
 		return c.match(s)
 	}
 	return true, false
 }
 func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable bool, source *syntax.Expression) {
 	switch p.Kind {
-	case "name":
+	case syntax.KindName:
 		c.Bindings[p] = c.bind(p.Name, t, mutable, p.Pos)
-	case "record":
-		if t.Kind != "record" {
+	case syntax.KindRecord:
+		if t.Kind != syntax.KindRecord {
 			c.error(p.Pos, "type", "record binding requires a record")
 			return
 		}
@@ -487,9 +487,9 @@ func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable bool, source *synt
 				c.error(f.Pos, "type", "unknown record field "+f.Name)
 			}
 		}
-	case "list":
+	case syntax.KindList:
 		if std(t, "List") && len(t.Args) == 1 {
-			if source != nil && source.Kind == "list" && len(source.Elements) != len(p.Elements) {
+			if source != nil && source.Kind == syntax.KindList && len(source.Elements) != len(p.Elements) {
 				c.error(p.Pos, "type", "statically known list length does not match binding")
 			}
 			for _, child := range p.Elements {
@@ -531,7 +531,7 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 			}
 			wildcard = true
 		} else {
-			if arm.Path.Kind == "member" {
+			if arm.Path.Kind == syntax.KindMember {
 				qualified := c.typeExpression(arm.Path.Left)
 				if qualified == nil || !Same(qualified, info.Type) {
 					c.error(arm.Pos, "type", "pattern belongs to a different alternative")
@@ -589,11 +589,11 @@ func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
 			wildcard = true
 		} else {
 			target = c.typeExpression(arm.Path)
-			if target == nil || (target.Kind != "record" && target.Kind != "alternative") {
+			if target == nil || (target.Kind != syntax.KindRecord && target.Kind != "alternative") {
 				c.error(arm.Pos, "type", "contract pattern requires a concrete record or alternative type")
 				target = nil
 			} else {
-				if len(target.Def.Variables) > 0 && arm.Path.Kind != "apply" {
+				if len(target.Def.Variables) > 0 && arm.Path.Kind != syntax.KindApply {
 					c.error(arm.Pos, "type", "concrete type pattern requires explicit type arguments")
 				}
 				c.wellFormed(target, arm.Pos, map[string]bool{})
@@ -607,7 +607,7 @@ func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
 				seen[key] = true
 				c.ContractPatterns[arm] = target
 				name := arm.Path
-				if name.Kind == "apply" {
+				if name.Kind == syntax.KindApply {
 					name = name.Left
 				}
 				c.Expressions[name] = &Info{Type: target, Symbol: target.Def.Symbol}
@@ -659,7 +659,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		return i
 	}
 	switch e.Kind {
-	case "number":
+	case syntax.KindNumber:
 		name := "Int"
 		if strings.HasSuffix(e.Text, "d") {
 			name = "Decimal"
@@ -667,7 +667,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				c.error(e.Pos, "resolution", "Decimal literal requires the canonical Decimal import")
 			}
 			i.Type = standard("Decimal")
-			if !msruntime.ValidateDecimalLiteral(e.Text) {
+			if !decimal.Valid(e.Text) {
 				c.error(e.Pos, "type", "Decimal literal is outside the exact 34-digit representable grid")
 			}
 		} else if strings.ContainsAny(e.Text, ".eE") {
@@ -683,11 +683,11 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			}
 			i.Type = primitive(name)
 		}
-	case "bool":
+	case syntax.KindBool:
 		i.Type = primitive("Bool")
-	case "unit":
+	case syntax.KindUnit:
 		i.Type = primitive("Unit")
-	case "text":
+	case syntax.KindText:
 		i.Type = primitive("String")
 		for _, part := range e.Parts {
 			if part.Value != nil {
@@ -695,7 +695,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				i.NoReturn = i.NoReturn || p.NoReturn
 			}
 		}
-	case "name":
+	case syntax.KindName:
 		if b := c.scope.binding(e.Text); b != nil {
 			i.Type = b.Type
 			i.Binding = b
@@ -707,7 +707,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			return i
 		}
 		if s := c.names[e.Text]; s != nil {
-			if s.Kind == "type" {
+			if s.Kind == syntax.KindType {
 				c.error(e.Pos, "type", "type name requires a constructor call")
 				i.Type = primitive("<invalid>")
 			} else {
@@ -730,7 +730,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		} else {
 			c.error(e.Pos, "resolution", "unknown binding "+e.Text)
 		}
-	case "apply":
+	case syntax.KindApply:
 		if callable := c.nativeCallable(e); callable != nil {
 			*i = *callable
 			i.Type = c.specialize(callable.Type, callable.Method.Variables, c.resolveArguments(e.Types), e.Pos)
@@ -751,7 +751,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				c.error(e.Pos, "resolution", "unknown generic declaration")
 			}
 		}
-	case "member":
+	case syntax.KindMember:
 		if typ := c.typeExpression(e.Left); typ != nil {
 			cs, ok := caseOf(typ, e.Text)
 			if ok && len(cs.Fields) == 0 {
@@ -767,7 +767,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		receiver := c.expression(e.Left, nil)
 		i.NoReturn = receiver.NoReturn
 		for _, f := range Fields(receiver.Type) {
-			if receiver.Type.Kind == "record" && f.Name == e.Text && e.Text != "toString" {
+			if receiver.Type.Kind == syntax.KindRecord && f.Name == e.Text && e.Text != "toString" {
 				i.Type = f.Type
 				return i
 			}
@@ -788,9 +788,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		if methods[0].Native != "" && methods[0].Native != "contract" && len(methods[0].Variables) > 0 {
 			c.error(e.Pos, "type", "a generic method value requires explicit specialization")
 		}
-	case "call":
+	case syntax.KindCall:
 		return c.call(e, expected)
-	case "lambda":
+	case syntax.KindLambda:
 		c.LambdaParameters[e] = nil
 		t := c.signature(e.Params, e.Result)
 		oldScope, oldResult, oldFunction, oldLoops := c.scope, c.result, c.function, c.loops
@@ -818,7 +818,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			}
 		}
 		c.scope, c.result, c.function, c.loops = oldScope, oldResult, oldFunction, oldLoops
-	case "list":
+	case syntax.KindList:
 		if s := c.names["List"]; s == nil || s != standardSymbols["List"] {
 			c.error(e.Pos, "resolution", "list literal requires the canonical List import")
 		}
@@ -845,8 +845,8 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			i.NoReturn = i.NoReturn || v.NoReturn
 		}
 		i.Type = standard("List", element)
-	case "unary":
-		if e.Text == "-" && e.Right.Kind == "number" && e.Right.Text == "9223372036854775808" {
+	case syntax.KindUnary:
+		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			i.Type = primitive("Int")
 			c.Expressions[e.Right] = &Info{Type: i.Type}
 			return i
@@ -873,7 +873,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			}
 			i.Type = v.Type
 		}
-	case "binary":
+	case syntax.KindBinary:
 		a := c.expression(e.Left, nil)
 		b := c.expression(e.Right, nil)
 		i.NoReturn = a.NoReturn || (e.Text != "and" && e.Text != "or" && b.NoReturn)
@@ -945,8 +945,8 @@ func (c *checker) resolveArguments(args []*syntax.Type) []*Type {
 	return result
 }
 func (c *checker) functionSymbol(e *syntax.Expression) *Symbol {
-	if e.Kind == "name" && c.scope.binding(e.Text) == nil {
-		if s := c.names[e.Text]; s != nil && s.Kind == "fn" {
+	if e.Kind == syntax.KindName && c.scope.binding(e.Text) == nil {
+		if s := c.names[e.Text]; s != nil && s.Kind == syntax.KindFn {
 			return s
 		}
 	}
@@ -956,15 +956,15 @@ func (c *checker) typeExpression(e *syntax.Expression) *Type {
 	if e == nil {
 		return nil
 	}
-	if e.Kind == "name" && c.scope.binding(e.Text) == nil {
+	if e.Kind == syntax.KindName && c.scope.binding(e.Text) == nil {
 		if v := c.scope.typ(e.Text); v != nil {
 			return v
 		}
-		if s := c.names[e.Text]; s != nil && s.Kind == "type" {
+		if s := c.names[e.Text]; s != nil && s.Kind == syntax.KindType {
 			return s.Type
 		}
 	}
-	if e.Kind == "apply" {
+	if e.Kind == syntax.KindApply {
 		t := c.typeExpression(e.Left)
 		if t != nil {
 			r := *t
@@ -989,7 +989,7 @@ func (c *checker) findCase(name string, pos syntax.Position) (*Type, Case) {
 	var found *Type
 	var cs Case
 	for _, s := range c.names {
-		if s.Kind == "type" && s.Type.Kind == "alternative" {
+		if s.Kind == syntax.KindType && s.Type.Kind == "alternative" {
 			if candidate, ok := caseOf(s.Type, name); ok {
 				if found != nil {
 					c.error(pos, "resolution", "ambiguous alternative case "+name)
@@ -1003,7 +1003,7 @@ func (c *checker) findCase(name string, pos syntax.Position) (*Type, Case) {
 	return found, cs
 }
 func (c *checker) contextual(e *syntax.Expression) bool {
-	if e.Kind == "list" {
+	if e.Kind == syntax.KindList {
 		if len(e.Elements) == 0 {
 			return true
 		}
@@ -1014,11 +1014,11 @@ func (c *checker) contextual(e *syntax.Expression) bool {
 		}
 		return true
 	}
-	if e.Kind == "name" {
+	if e.Kind == syntax.KindName {
 		return c.scope.binding(e.Text) == nil && c.names[e.Text] == nil
 	}
-	if e.Kind == "call" {
-		if e.Left.Kind == "name" && (e.Left.Text == "ok" || e.Left.Text == "error") {
+	if e.Kind == syntax.KindCall {
+		if e.Left.Kind == syntax.KindName && (e.Left.Text == "ok" || e.Left.Text == "error") {
 			return c.names[e.Left.Text] == nil && c.scope.binding(e.Left.Text) == nil
 		}
 	}

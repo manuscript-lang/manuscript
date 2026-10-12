@@ -148,7 +148,9 @@ func extractToolchain(archive []byte, destination string) error {
 	for {
 		entry, err := reader.Next()
 		if err == io.EOF {
-			return nil
+			// Tar EOF can precede the gzip trailer. Validate truncation and checksum before publication.
+			_, err := io.Copy(io.Discard, compressed)
+			return err
 		}
 		if err != nil {
 			return err

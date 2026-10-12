@@ -5,5 +5,5 @@ import "embed"
 
 // NativeDependencies includes source and licenses, not a network download hook.
 //
-//go:embed go.mod go.sum vendor internal/hostos/*.go
+//go:embed go.mod go.sum vendor internal/hostos/*.go internal/nativeabi/*.go internal/decimal/*.go
 var NativeDependencies embed.FS

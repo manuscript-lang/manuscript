@@ -137,16 +137,10 @@ func contextAt(d document, p position) (cursorContext, error) {
 			before = append(before, t)
 		}
 	}
-	for i := len(before) - 1; i >= 0; i-- {
-		t := before[i]
-		if t.kind == "\n" {
-			break
-		}
-		if t.kind == "." {
-			c.member = true
-		}
-		break
+	if len(before) > 0 && before[len(before)-1].kind == "." {
+		c.member = true
 	}
+
 	stack := []int{}
 	for index, t := range before {
 		switch t.kind {

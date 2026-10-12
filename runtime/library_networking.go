@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	for _, m := range []LibraryMethod{
+	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "restrict", libraryResult("Network", "NetworkError"), []LibraryParam{{"hosts", "List[String]"}, {"cidrs", "List[String]"}, {"allow_listen", "Bool"}}},
 		{"Network", "with_resolver", libraryResult("Network", "NetworkError"), []LibraryParam{{"address", "String"}}},
 		{"Network", "resolve", libraryResult("List[DnsRecord]", "NetworkError"), []LibraryParam{{"name", "String"}, {"kind", "String"}, {"max_records", "Int"}, {"timeout", "Duration"}}},
@@ -28,9 +28,7 @@ func init() {
 		{"DatagramSocket", "receive_timeout", libraryResult("Datagram", "NetworkError"), []LibraryParam{{"max_bytes", "Int"}, {"timeout", "Duration"}}},
 		{"DatagramSocket", "send_timeout", libraryResult("Unit", "NetworkError"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}, {"timeout", "Duration"}}},
 		{"Listener", "accept_timeout", libraryResult("Connection", "NetworkError"), []LibraryParam{{"timeout", "Duration"}}},
-	} {
-		LibraryMethods = append(LibraryMethods, m)
-	}
+	}...)
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	libraryAdd("tls", "parse_certificates", libraryResult("List[CertificateInfo]", "TlsError"), []LibraryParam{p("pem", "String"), p("max_certificates", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		data := []byte(a[0].(string))

@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	for _, m := range []LibraryMethod{
+	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "serve_stream", libraryResult("HttpServer", "HttpError"), []LibraryParam{{"address", "String"}, {"handler", "fn(exchange:HttpExchange)->Result[Unit][HttpError]"}, {"options", "HttpServerOptions"}}},
 		{"HttpExchange", "method", "String", nil}, {"HttpExchange", "path", "String", nil}, {"HttpExchange", "query", "String", nil}, {"HttpExchange", "headers", "Map[String][List[String]]", nil},
 		{"HttpExchange", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},
@@ -20,9 +20,7 @@ func init() {
 		{"HttpExchange", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}}},
 		{"HttpExchange", "upgrade", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Int"}}},
 		{"HttpExchange", "close", "Unit", nil},
-	} {
-		LibraryMethods = append(LibraryMethods, m)
-	}
+	}...)
 }
 func (n *network) serveStreaming() Function {
 	return libraryAcquisition("Network", "serve_stream", func(ctx *Execution, r string, a []Value) Value {

@@ -69,7 +69,7 @@ func generate(program *checker.Program, entry string, options Options) (string, 
 	var functions []*checker.Symbol
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {
-			if d.Kind == "fn" {
+			if d.Kind == syntax.KindFn {
 				s := program.Symbols[module.File][d.Name]
 				functions = append(functions, s)
 				out.WriteString("var " + s.ID + " rt.Value\n")
@@ -118,7 +118,7 @@ func generate(program *checker.Program, entry string, options Options) (string, 
 		for _, module := range program.Modules {
 			g.module = module.File
 			for _, d := range module.Declarations {
-				if d.Kind != "test" {
+				if d.Kind != syntax.KindTest {
 					continue
 				}
 				out.WriteString("{Name:" + quote(module.File+"::"+d.Name) + ",Run:func()rt.Function{typeArgs:=map[string]string{};_ = typeArgs;return ")
@@ -183,18 +183,18 @@ func (g *generator) body(body []*syntax.Statement) string {
 	return out.String()
 }
 func (g *generator) pattern(p *syntax.Pattern, value string) string {
-	if p.Kind == "name" {
+	if p.Kind == syntax.KindName {
 		b := g.program.Bindings[p]
 		return "var " + b.ID + " rt.Value = " + value + "; _ = " + b.ID + "\n"
 	}
 	tmp := g.temp()
 	out := tmp + " := " + value + "; _ = " + tmp + "\n"
-	if p.Kind == "record" {
+	if p.Kind == syntax.KindRecord {
 		for _, f := range p.Fields {
 			out += g.pattern(f.Pattern, "rt.Field("+tmp+","+quote(f.Name)+")")
 		}
 	}
-	if p.Kind == "list" {
+	if p.Kind == syntax.KindList {
 		positions := g.temp()
 		out += positions + " := rt.Positions(" + tmp + "," + strconv.Itoa(len(p.Elements)) + "); _ = " + positions + "\n"
 		for i, child := range p.Elements {
@@ -205,21 +205,21 @@ func (g *generator) pattern(p *syntax.Pattern, value string) string {
 }
 func (g *generator) statement(s *syntax.Statement) string {
 	switch s.Kind {
-	case "bind":
+	case syntax.KindBind:
 		return g.pattern(s.Pattern, g.expression(s.Value))
-	case "assign":
+	case syntax.KindAssign:
 		if s.Target != nil {
 			return "rt.SetField(" + g.expression(s.Target.Left) + "," + quote(s.Target.Text) + "," + g.expression(s.Value) + ")\n"
 		}
 		return g.programBinding(s.Name, s.Value) + " = " + g.expression(s.Value) + "\n"
-	case "return":
+	case syntax.KindReturn:
 		if s.Value == nil {
 			return "return rt.Unit{}\n"
 		}
 		return "return " + g.expression(s.Value) + "\n"
-	case "call":
+	case syntax.KindCall:
 		return "_ = " + g.expression(s.Value) + "\n"
-	case "break", "continue":
+	case syntax.KindBreak, syntax.KindContinue:
 		out := ""
 		start := 0
 		if len(g.loopCleanup) > 0 {
@@ -231,13 +231,13 @@ func (g *generator) statement(s *syntax.Statement) string {
 		label := g.loopLabels[len(g.loopLabels)-1]
 		label.used = true
 		return out + s.Kind + " " + label.name + "\n"
-	case "if":
+	case syntax.KindIf:
 		out := "if rt.Bool(" + g.expression(s.Value) + "){\n" + g.body(s.Body) + "}"
 		if len(s.Else) > 0 {
 			out += "else{\n" + g.body(s.Else) + "}"
 		}
 		return out + "\n"
-	case "while":
+	case syntax.KindWhile:
 		g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
 		label := &loopLabel{name: g.temp()}
 		g.loopLabels = append(g.loopLabels, label)
@@ -249,7 +249,7 @@ func (g *generator) statement(s *syntax.Statement) string {
 			prefix = label.name + ":\n"
 		}
 		return prefix + "for rt.Bool(" + g.expression(s.Value) + "){\nrt.CheckCancelled(ctx)\n" + body + "}\n"
-	case "for":
+	case syntax.KindFor:
 		b := g.program.LoopBindings[s]
 		g.loopCleanup = append(g.loopCleanup, len(g.cleanups))
 		label := &loopLabel{name: g.temp()}
@@ -262,7 +262,7 @@ func (g *generator) statement(s *syntax.Statement) string {
 			prefix = label.name + ":\n"
 		}
 		return prefix + "for _," + b.ID + " := range rt.Iterate(" + g.expression(s.Value) + "){\n_ = " + b.ID + "\nrt.CheckCancelled(ctx)\n" + body + "}\n"
-	case "with":
+	case syntax.KindWith:
 		b := g.program.LoopBindings[s]
 		cleanup := g.temp()
 		g.cleanups = append(g.cleanups, cleanup)
@@ -275,7 +275,7 @@ func (g *generator) statement(s *syntax.Statement) string {
 			contract = quote("")
 		}
 		return "{\n" + b.ID + " := " + g.expression(s.Value) + "; _ = " + b.ID + "\n" + cleanup + " := cleanupStack.PushContract(ctx," + b.ID + "," + contract + "," + g.typeScope(b.Type) + ")\n" + body + cleanup + ".Run()\n}\n"
-	case "match":
+	case syntax.KindMatch:
 		tmp := g.temp()
 		contractMatch := g.program.Expressions[s.Value].Type.Kind == "contract"
 		out := tmp + " := " + g.expression(s.Value) + "\n"
@@ -323,7 +323,7 @@ func (g *generator) arguments(args []syntax.Argument) string {
 func (g *generator) expression(e *syntax.Expression) string {
 	info := g.program.Expressions[e]
 	switch e.Kind {
-	case "number":
+	case syntax.KindNumber:
 		if strings.HasSuffix(e.Text, "d") {
 			return "rt.DecimalLiteral(" + quote(e.Text) + ")"
 		}
@@ -331,11 +331,11 @@ func (g *generator) expression(e *syntax.Expression) string {
 			return "rt.Float(" + quote(e.Text) + ")"
 		}
 		return "rt.Integer(" + quote(e.Text) + ")"
-	case "bool":
+	case syntax.KindBool:
 		return e.Text
-	case "unit":
+	case syntax.KindUnit:
 		return "rt.Unit{}"
-	case "text":
+	case syntax.KindText:
 		var values []string
 		for _, p := range e.Parts {
 			if p.Value != nil {
@@ -345,7 +345,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 			}
 		}
 		return "rt.Text(" + strings.Join(values, ",") + ")"
-	case "name", "apply":
+	case syntax.KindName, syntax.KindApply:
 		if info.Method != nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			member := e.Left
 			return "rt.NativeMemberResult(" + g.expression(member.Left) + "," + quote(member.Text) + "," + g.key(info.Type.Result) + ")"
@@ -366,7 +366,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 		if info.Constructor != nil {
 			return "rt.NewAlternative(" + g.key(info.Constructor) + "," + quote(info.Case) + ",nil,nil)"
 		}
-	case "member":
+	case syntax.KindMember:
 		if info.Constructor != nil {
 			return "rt.NewAlternative(" + g.key(info.Constructor) + "," + quote(info.Case) + ",nil,nil)"
 		}
@@ -380,7 +380,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 			return "rt.NativeMember(" + g.expression(e.Left) + "," + quote(e.Text) + ")"
 		}
 		return "rt.Field(" + g.expression(e.Left) + "," + quote(e.Text) + ")"
-	case "call":
+	case syntax.KindCall:
 		arguments := e.Args
 		if info.Arguments != nil {
 			arguments = info.Arguments
@@ -423,7 +423,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 			callable = g.expression(e.Left)
 		}
 		return "rt.Invoke(ctx," + callable + "," + args + ")"
-	case "list":
+	case syntax.KindList:
 		var elements []string
 		for _, item := range e.Elements {
 			elements = append(elements, g.expression(item))
@@ -432,12 +432,12 @@ func (g *generator) expression(e *syntax.Expression) string {
 			return "rt.Pack{Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
 		}
 		return "&rt.List{Type:" + g.key(info.Type) + ",Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
-	case "unary":
-		if e.Text == "-" && e.Right.Kind == "number" && e.Right.Text == "9223372036854775808" {
+	case syntax.KindUnary:
+		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return "rt.Integer(\"-9223372036854775808\")"
 		}
 		return "rt.Unary(" + quote(e.Text) + "," + g.expression(e.Right) + ")"
-	case "binary":
+	case syntax.KindBinary:
 		if e.Text == "and" || e.Text == "or" {
 			op := "&&"
 			if e.Text == "or" {
@@ -446,7 +446,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 			return "(rt.Bool(" + g.expression(e.Left) + ")" + op + "rt.Bool(" + g.expression(e.Right) + "))"
 		}
 		return "rt.Binary(" + quote(e.Text) + "," + g.expression(e.Left) + "," + g.expression(e.Right) + ")"
-	case "lambda":
+	case syntax.KindLambda:
 		captures := append([]*checker.Binding{}, info.Captures...)
 		sort.Slice(captures, func(i, j int) bool { return captures[i].ID < captures[j].ID })
 		var declarations, values []string

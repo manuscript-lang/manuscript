@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build one self-contained ms binary with a reduced native build payload.
 set -eu
-repository=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+repository=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repository"
 sh scripts/bootstrap-go.sh
 host_go="$repository/toolchain/go/bin/go"

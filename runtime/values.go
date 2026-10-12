@@ -60,6 +60,8 @@ type Instant struct {
 	Domain *clockDomain
 	Tick   int64
 }
+
+//lint:ignore U1000 A nonzero size keeps distinct clock-domain pointers distinguishable.
 type clockDomain struct{ identity byte }
 type View struct {
 	Type     string
@@ -451,7 +453,6 @@ func equal(a, b Value, state *equalityState) bool {
 	}
 	return false
 }
-func equalItems(a, b []Value) bool { return equalItemsState(a, b, &equalityState{}) }
 func equalItemsState(a, b []Value, state *equalityState) bool {
 	if len(a) != len(b) {
 		return false

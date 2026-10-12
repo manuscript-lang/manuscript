@@ -1,7 +1,7 @@
 package checker
 
 import (
-	rt "github.com/manuscript-lang/manuscript/runtime"
+	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 	"github.com/manuscript-lang/manuscript/syntax"
 	"strings"
 )
@@ -10,29 +10,26 @@ import (
 // For example, equality search requires Equal, join requires List[String], and
 // to_set requires Hashable, without strengthening List's element requirements.
 func nativeReceiverAvailable(c *checker, receiver *Type, name string) bool {
-	spec, ok := rt.NativeLibrarySpec(receiver.Name, name)
-	if !ok {
+	identity, mapped := nativeabi.ReceiverFunctions[receiver.Name][name]
+	if !mapped {
 		return true
 	}
-	vars := map[string]*Type{}
-	for _, v := range spec.Variables {
-		vars[v.Name] = &Type{Name: v.Name, ID: "native-member/" + v.Name, Kind: "variable"}
-	}
-	variables := []*Type{}
-	for _, v := range spec.Variables {
-		variables = append(variables, vars[v.Name])
-	}
-	sub := map[string]*Type{}
-	if !unify(libraryParseType(spec.Params[0].Type, vars), receiver, variableSet(variables), sub) {
+	module, function, _ := strings.Cut(identity, "/")
+	symbol := standardModules["@std/"+module+".ms"][function]
+	if symbol == nil || len(symbol.Type.Params) == 0 {
 		return false
 	}
-	for _, v := range spec.Variables {
-		actual := sub[vars[v.Name].ID]
+	sub := map[string]*Type{}
+	if !unify(symbol.Type.Params[0].Type, receiver, variableSet(symbol.Variables), sub) {
+		return false
+	}
+	for _, variable := range symbol.Variables {
+		actual := sub[variable.ID]
 		if actual == nil {
 			continue
-		} // method's own type variable is checked at specialization
-		for _, bound := range strings.Split(v.Type, "&") {
-			if bound != "" && !c.satisfies(actual, libraryParseType(bound, vars)) {
+		} // Method variables are checked at specialization.
+		for _, bound := range variable.Bounds {
+			if !c.satisfies(actual, Sub(bound, sub)) {
 				return false
 			}
 		}
@@ -45,14 +42,14 @@ func nativeReceiverAvailable(c *checker, receiver *Type, name string) bool {
 // their existing nongeneric operation grammar.
 func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 	member := e
-	if e.Kind == "apply" {
+	if e.Kind == syntax.KindApply {
 		member = e.Left
 	}
-	if member.Kind != "member" || c.typeExpression(member.Left) != nil {
+	if member.Kind != syntax.KindMember || c.typeExpression(member.Left) != nil {
 		return nil
 	}
 	receiver := c.expression(member.Left, nil)
-	if receiver.Type.Kind == "record" && member.Text != "toString" {
+	if receiver.Type.Kind == syntax.KindRecord && member.Text != "toString" {
 		for _, field := range Fields(receiver.Type) {
 			if field.Name == member.Text {
 				return nil
@@ -72,7 +69,7 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info) {
 	vars := info.Method.Variables
 	var supplied []*Type
-	if e.Left.Kind == "apply" {
+	if e.Left.Kind == syntax.KindApply {
 		supplied = c.resolveArguments(e.Left.Types)
 	} else if len(vars) > 0 {
 		sub := map[string]*Type{}
@@ -95,7 +92,7 @@ func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info) {
 		}
 	}
 	copy := *info
-	if len(vars) > 0 || e.Left.Kind == "apply" {
+	if len(vars) > 0 || e.Left.Kind == syntax.KindApply {
 		copy.Type = c.specialize(info.Type, vars, supplied, e.Pos)
 	}
 	c.Expressions[e.Left] = &copy

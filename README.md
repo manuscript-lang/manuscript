@@ -85,4 +85,6 @@ Manuscript is at version 0.1, with a working compiler, runtime, standard library
 
 The [architecture guide](documentation/contributing/architecture.md) maps the compiler and runtime. [Development and publishing](documentation/contributing/development.md) covers setup, checks, generated documentation, and releases.
 
-Language guides live in `documentation/`, and standard declarations live in [stdlib/](stdlib/README.md). The website in `docs/` is generated from those sources.
+Use `make setup`, `make doctor`, and `make verify` for routine development; `make verify-full` runs native validation. Read [maintenance and compatibility](documentation/contributing/maintenance.md) for pin updates and releases.
+
+Language guides live in `documentation/`, and standard declarations live in [stdlib/](stdlib/README.md). The website is generated into ignored `.artifacts/book/` and deployed through GitHub Pages artifacts.

@@ -9,7 +9,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	c.scope = newScope(nil)
 	// Implementations inherit names and bounds from the nominal receiver declaration.
 	var vars []*Type
-	if symbol := c.names[d.Receiver.Name]; symbol != nil && symbol.Decl != nil && symbol.Kind == "type" {
+	if symbol := c.names[d.Receiver.Name]; symbol != nil && symbol.Decl != nil && symbol.Kind == syntax.KindType {
 		// Copy resolved bounds: their names belong to the receiver's module and
 		// need not be imported by a module extending that receiver.
 		sub := map[string]*Type{}
@@ -26,7 +26,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		}
 	}
 	receiver := c.resolve(d.Receiver, false)
-	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" && !c.standardDeclarations || (receiver.Kind != "record" && receiver.Kind != "alternative") {
+	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" && !c.standardDeclarations || (receiver.Kind != syntax.KindRecord && receiver.Kind != "alternative") {
 		c.error(d.Pos, "type", "implementation receiver must be nominal source data")
 	}
 	occurs := map[string]bool{}
@@ -304,7 +304,7 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	if std(t, "BigInt") || std(t, "Regex") || std(t, "Timestamp") {
 		return property == "Equal" && !std(t, "Regex")
 	}
-	if t.Kind == "native" {
+	if t.Kind == syntax.KindNative {
 		return false
 	}
 	if t.Def != nil {
@@ -373,9 +373,9 @@ func (c *checker) currentModule() string {
 }
 
 func nativeMethod(t *Type, name string) *Method {
-	if name == "clone" && (t.Kind == "record" || t.Kind == "alternative" || std(t, "List") || std(t, "Map") || std(t, "Set") || std(t, "Bytes")) {
+	if name == "clone" && (t.Kind == syntax.KindRecord || t.Kind == "alternative" || std(t, "List") || std(t, "Map") || std(t, "Set") || std(t, "Bytes")) {
 		receiver := t
-		if t.Kind == "record" || t.Kind == "alternative" {
+		if t.Kind == syntax.KindRecord || t.Kind == "alternative" {
 			receiver = standardSymbols["CloneOperations"].Type
 		}
 		return &Method{Receiver: t, Type: function(nil, t), Native: name, Decl: standardMethodDeclaration(receiver, name)}
@@ -388,7 +388,7 @@ func nativeMethod(t *Type, name string) *Method {
 	if intrinsic := intrinsicOperations[t.ID]; intrinsic != nil {
 		receiver = intrinsic
 	}
-	if receiver.Kind == "native" || receiver != t {
+	if receiver.Kind == syntax.KindNative || receiver != t {
 		for _, operation := range receiver.Def.Operations {
 			if operation.Name == name {
 				native := name
@@ -449,7 +449,7 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 }
 func (c *checker) declarationChecks(module *syntax.Module) {
 	for _, d := range module.Declarations {
-		if d.Kind == "test" || d.Kind == "impl" {
+		if d.Kind == syntax.KindTest || d.Kind == syntax.KindImpl {
 			continue
 		}
 		s := c.names[d.Name]
@@ -464,7 +464,7 @@ func (c *checker) declarationChecks(module *syntax.Module) {
 				c.public(t, d.Pos, map[string]bool{})
 			}
 		}
-		if s.Kind == "fn" {
+		if s.Kind == syntax.KindFn {
 			check(s.Type)
 		} else {
 			for _, f := range s.Type.Def.Fields {

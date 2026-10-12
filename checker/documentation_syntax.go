@@ -10,7 +10,7 @@ import (
 // documentDeclaration keeps source names and declaration order, omitting function
 // bodies. Native declarations use the same declaration-only syntax as stdlib/*.ms.
 func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...string) string {
-	if d.Kind == "fn" {
+	if d.Kind == syntax.KindFn {
 		// Compiler-bound calls such as parallel have no ordinary declaration.
 		if d.Result == nil {
 			return ""

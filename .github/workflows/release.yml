@@ -5,22 +5,11 @@ on:
     tags: ['v*']
   pull_request:
     paths:
+      - '**/*.go'
       - '.github/workflows/release.yml'
       - '.go-version'
       - 'scripts/**'
-      - 'toolchain_*.go'
-      - 'compiler/**'
-      - 'project/**'
-      - 'internal/cli/**'
-      - 'checker/**'
-      - 'lexer/**'
-      - 'parser/**'
-      - 'syntax/**'
-      - 'runtime/**'
       - 'stdlib/**'
-      - 'tooling/**'
-      - 'cmd/ms/**'
-      - 'native_bundle.go'
       - 'go.mod'
       - 'go.sum'
       - 'vendor/**'
@@ -29,6 +18,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: distributions-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   package:
@@ -40,6 +33,11 @@ jobs:
         arch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v4
+      - name: Check release tag version
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: test "${RELEASE_TAG#v}" = "$(cat .msversion)"
       - name: Build self-contained archive
         run: sh scripts/package.sh "${{ matrix.os }}" "${{ matrix.arch }}"
       - uses: actions/upload-artifact@v4
@@ -82,7 +80,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: .go-version
-          cache: false
+          cache: true
       - uses: actions/download-artifact@v4
         with:
           name: manuscript-${{ matrix.os }}-${{ matrix.arch }}

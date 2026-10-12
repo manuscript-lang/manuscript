@@ -72,7 +72,7 @@ func parse(file, source string, declarationsOnly bool) (module *syntax.Module, e
 		}
 		exported := p.take("export")
 		d := p.declaration()
-		if exported && (d.Kind == "impl" || d.Kind == "test") {
+		if exported && (d.Kind == syntax.KindImpl || d.Kind == syntax.KindTest) {
 			p.fail(p.previous(), "only types, interfaces, and named functions can be exported")
 		}
 		d.Export = exported
@@ -248,7 +248,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			}
 			p.need("fn")
 			name := p.need(lexer.Name)
-			m := &syntax.Declaration{Pos: name.Pos, Kind: "fn", Name: name.Text}
+			m := &syntax.Declaration{Pos: name.Pos, Kind: syntax.KindFn, Name: name.Text}
 			m.Params = p.parameters(true)
 			p.need("->")
 			m.Result = p.typ()
@@ -268,14 +268,14 @@ func (p *Parser) declaration() *syntax.Declaration {
 		d.TypeParams = p.typeParams()
 		if p.declarationsOnly && p.peek().Kind != ":" {
 			p.end()
-			d.Kind = "native"
+			d.Kind = syntax.KindNative
 			return d
 		}
 		p.need(":")
 		p.need(lexer.Newline)
 		p.need(lexer.Indent)
 		form := ""
-		if token.Kind == "interface" {
+		if token.Kind == syntax.KindInterface {
 			form = "interface"
 		}
 		for p.peek().Kind != lexer.Dedent {
@@ -287,10 +287,10 @@ func (p *Parser) declaration() *syntax.Declaration {
 			if p.peek().Kind == "case" {
 				next = "alternative"
 			}
-			if p.peek().Kind == "fn" {
+			if p.peek().Kind == syntax.KindFn {
 				next = "interface"
 			}
-			if token.Kind == "type" && next == "interface" && !p.declarationsOnly {
+			if token.Kind == syntax.KindType && next == "interface" && !p.declarationsOnly {
 				p.fail(p.peek(), "operation signatures require an interface declaration")
 			}
 			if form != "" && next != form && !p.declarationsOnly {
@@ -310,7 +310,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 				p.end()
 			} else if p.take("fn") {
 				name := p.need(lexer.Name)
-				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: "fn"}
+				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: syntax.KindFn}
 				if p.declarationsOnly {
 					m.TypeParams = p.typeParams()
 				}
@@ -378,10 +378,10 @@ func (p *Parser) statement() *syntax.Statement {
 	s := &syntax.Statement{Pos: t.Pos, Kind: t.Kind}
 	switch {
 	case p.take("let") || p.take("var"):
-		s.Kind = "bind"
+		s.Kind = syntax.KindBind
 		s.Mutable = t.Kind == "var"
 		s.Pattern = p.pattern()
-		if s.Pattern.Kind == "name" && p.take(":") {
+		if s.Pattern.Kind == syntax.KindName && p.take(":") {
 			s.Type = p.typ()
 		}
 		p.need("=")
@@ -399,7 +399,7 @@ func (p *Parser) statement() *syntax.Statement {
 		s.Body = p.suite()
 		p.newlines()
 		if p.take("else") {
-			if p.peek().Kind == "if" {
+			if p.peek().Kind == syntax.KindIf {
 				s.Else = []*syntax.Statement{p.statement()}
 			} else {
 				s.Else = p.suite()
@@ -430,7 +430,7 @@ func (p *Parser) statement() *syntax.Statement {
 			}
 			a := syntax.Arm{Pos: p.peek().Pos}
 			if p.take("_") {
-				a.Path = &syntax.Expression{Kind: "name", Text: "_", Pos: a.Pos}
+				a.Path = &syntax.Expression{Kind: syntax.KindName, Text: "_", Pos: a.Pos}
 			} else {
 				a.Path = p.casePath()
 				if p.take("(") {
@@ -457,21 +457,21 @@ func (p *Parser) statement() *syntax.Statement {
 	default:
 		e := p.expression(0)
 		if p.take("=") {
-			if (e.Kind != "name" && e.Kind != "member") || e.Text == "self" {
+			if (e.Kind != syntax.KindName && e.Kind != syntax.KindMember) || e.Text == "self" {
 				p.fail(t, "assignment requires a local binding name or record field")
 			}
-			s.Kind = "assign"
-			if e.Kind == "member" {
+			s.Kind = syntax.KindAssign
+			if e.Kind == syntax.KindMember {
 				s.Target = e
 			} else {
 				s.Name = e.Text
 			}
 			s.Value = p.expression(0)
 		} else {
-			if e.Kind != "call" {
+			if e.Kind != syntax.KindCall {
 				p.fail(t, "only a call can be a standalone expression statement")
 			}
-			s.Kind = "call"
+			s.Kind = syntax.KindCall
 			s.Value = e
 		}
 		p.end()
@@ -482,12 +482,12 @@ func (p *Parser) pattern() *syntax.Pattern {
 	t := p.peek()
 	r := &syntax.Pattern{Pos: t.Pos}
 	if p.take(lexer.Name) {
-		r.Kind = "name"
+		r.Kind = syntax.KindName
 		r.Name = t.Text
 		return r
 	}
 	if p.take("[") {
-		r.Kind = "list"
+		r.Kind = syntax.KindList
 		if !p.take("]") {
 			for {
 				r.Elements = append(r.Elements, p.pattern())
@@ -503,10 +503,10 @@ func (p *Parser) pattern() *syntax.Pattern {
 		return r
 	}
 	if p.take("{") {
-		r.Kind = "record"
+		r.Kind = syntax.KindRecord
 		for {
 			name := p.need(lexer.Name)
-			child := &syntax.Pattern{Kind: "name", Name: name.Text, Pos: name.Pos}
+			child := &syntax.Pattern{Kind: syntax.KindName, Name: name.Text, Pos: name.Pos}
 			if p.take(":") {
 				child = p.pattern()
 			}
@@ -534,9 +534,9 @@ func (p *Parser) expression(min int) *syntax.Expression {
 		p.fail(t, "not requires grouping at this operator position")
 	}
 	if p.take("not") {
-		e = &syntax.Expression{Kind: "unary", Text: t.Text, Pos: t.Pos, Right: p.expression(3)}
+		e = &syntax.Expression{Kind: syntax.KindUnary, Text: t.Text, Pos: t.Pos, Right: p.expression(3)}
 	} else if p.take("+") || p.take("-") || p.take("try") {
-		e = &syntax.Expression{Kind: "unary", Text: t.Text, Pos: t.Pos, Right: p.expression(7)}
+		e = &syntax.Expression{Kind: syntax.KindUnary, Text: t.Text, Pos: t.Pos, Right: p.expression(7)}
 	} else {
 		e = p.primary()
 	}
@@ -551,7 +551,7 @@ func (p *Parser) expression(min int) *syntax.Expression {
 			p.fail(op, "comparison operators cannot chain")
 		}
 		p.at++
-		e = &syntax.Expression{Kind: "binary", Text: op.Text, Pos: op.Pos, Left: e, Right: p.expression(level + 1)}
+		e = &syntax.Expression{Kind: syntax.KindBinary, Text: op.Text, Pos: op.Pos, Left: e, Right: p.expression(level + 1)}
 		if level == 4 {
 			compared = true
 		}
@@ -560,35 +560,35 @@ func (p *Parser) expression(min int) *syntax.Expression {
 }
 func (p *Parser) casePath() *syntax.Expression {
 	t := p.need(lexer.Name)
-	e := &syntax.Expression{Kind: "name", Text: t.Text, Pos: t.Pos}
+	e := &syntax.Expression{Kind: syntax.KindName, Text: t.Text, Pos: t.Pos}
 	if p.take("[") {
-		e = &syntax.Expression{Kind: "apply", Pos: t.Pos, Left: e, Types: p.typeArgs()}
+		e = &syntax.Expression{Kind: syntax.KindApply, Pos: t.Pos, Left: e, Types: p.typeArgs()}
 	}
 	for p.take(".") {
 		name := p.need(lexer.Name)
-		e = &syntax.Expression{Kind: "member", Pos: name.Pos, Left: e, Text: name.Text}
+		e = &syntax.Expression{Kind: syntax.KindMember, Pos: name.Pos, Left: e, Text: name.Text}
 	}
 	return e
 }
 func (p *Parser) primary() *syntax.Expression {
 	t := p.peek()
 	p.at++
-	e := &syntax.Expression{Kind: "name", Text: t.Text, Pos: t.Pos}
+	e := &syntax.Expression{Kind: syntax.KindName, Text: t.Text, Pos: t.Pos}
 	switch t.Kind {
 	case lexer.Name, "self":
 	case lexer.Number:
-		e.Kind = "number"
+		e.Kind = syntax.KindNumber
 	case "true", "false":
-		e.Kind = "bool"
+		e.Kind = syntax.KindBool
 	case "unit":
-		e.Kind = "unit"
+		e.Kind = syntax.KindUnit
 	case lexer.String:
 		e = p.text(t)
 	case "(":
 		e = p.expression(0)
 		p.need(")")
 	case "[":
-		e.Kind = "list"
+		e.Kind = syntax.KindList
 		if !p.take("]") {
 			for {
 				e.Elements = append(e.Elements, p.expression(0))
@@ -602,7 +602,7 @@ func (p *Parser) primary() *syntax.Expression {
 			p.need("]")
 		}
 	case "fn":
-		e.Kind = "lambda"
+		e.Kind = syntax.KindLambda
 		e.Text = ""
 		e.Params = p.parameters(true)
 		p.need("->")
@@ -614,11 +614,11 @@ func (p *Parser) primary() *syntax.Expression {
 	for {
 		if p.take(".") {
 			name := p.need(lexer.Name)
-			e = &syntax.Expression{Kind: "member", Pos: name.Pos, Text: name.Text, Left: e}
+			e = &syntax.Expression{Kind: syntax.KindMember, Pos: name.Pos, Text: name.Text, Left: e}
 		} else if p.take("[") {
-			e = &syntax.Expression{Kind: "apply", Pos: t.Pos, Left: e, Types: p.typeArgs()}
+			e = &syntax.Expression{Kind: syntax.KindApply, Pos: t.Pos, Left: e, Types: p.typeArgs()}
 		} else if p.take("(") {
-			call := &syntax.Expression{Kind: "call", Pos: e.Pos, Left: e}
+			call := &syntax.Expression{Kind: syntax.KindCall, Pos: e.Pos, Left: e}
 			if !p.take(")") {
 				for {
 					arg := syntax.Argument{Pos: p.peek().Pos}
@@ -646,7 +646,7 @@ func (p *Parser) primary() *syntax.Expression {
 }
 func (p *Parser) text(token lexer.Token) *syntax.Expression {
 	raw := token.Text[1 : len(token.Text)-1]
-	e := &syntax.Expression{Kind: "text", Pos: token.Pos}
+	e := &syntax.Expression{Kind: syntax.KindText, Pos: token.Pos}
 	var literal strings.Builder
 	flush := func() {
 		if literal.Len() > 0 {

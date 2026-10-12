@@ -60,10 +60,10 @@ func NavigationAt(program *checker.Program, file string, offset int) (Navigation
 		}
 	}
 	for expression, info := range program.Expressions {
-		if expression.Kind == "name" && matchName(expression.Pos, expression.Text) && info.Symbol != nil && info.Symbol.Decl != nil {
+		if expression.Kind == syntax.KindName && matchName(expression.Pos, expression.Text) && info.Symbol != nil && info.Symbol.Decl != nil {
 			return result(info.Symbol.Name+": "+info.Type.String(), info.Symbol.Decl.Pos)
 		}
-		if expression.Kind == "member" && matchName(expression.Pos, expression.Text) {
+		if expression.Kind == syntax.KindMember && matchName(expression.Pos, expression.Text) {
 			if info.Method != nil && info.Method.Decl != nil {
 				return result(expression.Text+": "+info.Type.String(), info.Method.Decl.Pos)
 			}
