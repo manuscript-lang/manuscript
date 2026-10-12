@@ -13,7 +13,7 @@ e2e:
 	$(GO) test ./tests/e2e
 
 race:
-	$(GO) test -race ./runtime ./checker ./compiler ./tooling
+	$(GO) test -race ./runtime ./checker ./compiler ./tooling/...
 
 check:
 	@test -z "$$($(GO) fmt ./...)" || (echo 'Go files need formatting'; exit 1)

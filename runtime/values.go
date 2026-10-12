@@ -499,6 +499,9 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 				panic(failure)
 			}
 		}()
+		if sourceProfiling.Load() {
+			return profileSource(ctx, position, args, body)
+		}
 		return body(ctx, args)
 	})
 }

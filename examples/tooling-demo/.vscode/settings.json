@@ -1,0 +1,6 @@
+{
+  "manuscript.serverPath": "ms",
+  "manuscript.delvePath": "dlv",
+  "editor.inlayHints.enabled": "on",
+  "[manuscript]": { "editor.defaultFormatter": "manuscript-lang.manuscript" }
+}

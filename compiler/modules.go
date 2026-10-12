@@ -163,20 +163,24 @@ func CompileFile(filename string, options Options) Result {
 		if err != nil {
 			return loadError(filename, err)
 		}
-		options.Entry = !options.Tests
+		options.Entry = !options.Tests && !options.AnalyzeOnly
 	} else {
 		project.Root, err = filepath.EvalSymlinks(project.Root)
 		if err != nil {
 			return loadError(filename, err)
 		}
 	}
+	if options.Module != "" {
+		project.Entry = options.Module
+	}
+	var parseIssues []syntax.Diagnostic
 	var modules []*syntax.Module
 	imports := map[*syntax.Import]string{}
 	active := map[string]bool{}
 	loaded := map[string]*syntax.Module{}
 	var visit func(string) (string, error)
 	visit = func(filename string) (string, error) {
-		canonical, err := inside(project.Root, filename)
+		canonical, err := overlayInside(project.Root, filename, options.Overlay)
 		if err != nil {
 			return "", err
 		}
@@ -190,25 +194,45 @@ func CompileFile(filename string, options Options) Result {
 		}
 		active[canonical] = true
 		defer delete(active, canonical)
-		source, err := os.ReadFile(canonical)
+		var source []byte
+		if text, ok := options.Overlay[canonical]; ok {
+			source = []byte(text)
+		} else {
+			source, err = os.ReadFile(canonical)
+		}
 		if err != nil {
 			return "", err
 		}
-		module, err := parser.Parse(logical, string(source))
-		if err != nil {
-			return "", err
+		var module *syntax.Module
+		if options.Recover && options.AnalyzeOnly {
+			var issues []syntax.Diagnostic
+			module, issues = parser.ParsePartial(logical, string(source))
+			parseIssues = append(parseIssues, issues...)
+		} else {
+			module, err = parser.Parse(logical, string(source))
+			if err != nil {
+				return "", err
+			}
 		}
 		loaded[canonical] = module
 		for _, item := range module.Imports {
 			if strings.HasPrefix(item.Path, "@std/") {
 				continue
 			}
-			target, err := resolveImport(project, canonical, item.Path)
+			target, err := resolveImport(project, canonical, item.Path, options.Overlay)
 			if err != nil {
+				if options.Recover && options.AnalyzeOnly {
+					parseIssues = append(parseIssues, syntax.Diagnostic{Position: item.Pos, Phase: "resolution", Message: err.Error()})
+					continue
+				}
 				return "", syntax.Diagnostic{Position: item.Pos, Phase: "resolution", Message: err.Error()}
 			}
 			key, err := visit(target)
 			if err != nil {
+				if options.Recover && options.AnalyzeOnly {
+					parseIssues = append(parseIssues, syntax.Diagnostic{Position: item.Pos, Phase: "resolution", Message: err.Error()})
+					continue
+				}
 				return "", err
 			}
 			imports[item] = key
@@ -218,16 +242,20 @@ func CompileFile(filename string, options Options) Result {
 	}
 	entry, err := visit(project.Entry)
 	if err != nil {
-		return loadError(filename, err)
+		result := loadError(filename, err)
+		result.SourceRoot = project.Root
+		return result
 	}
 	result := compileModules(modules, imports, entry, options)
+	result.SourceRoot = project.Root
+	result.Diagnostics = append(parseIssues, result.Diagnostics...)
 	if filepath.Base(absolute) == "ms.toml" {
 		result.ProjectRoot = project.Root
 		result.Configuration = project.Configuration
 	}
 	return result
 }
-func resolveImport(project Project, importer, path string) (string, error) {
+func resolveImport(project Project, importer, path string, overlay map[string]string) (string, error) {
 	if strings.Contains(path, "\\") {
 		return "", fmt.Errorf("import paths use / separators")
 	}
@@ -261,7 +289,7 @@ func resolveImport(project Project, importer, path string) (string, error) {
 	} else {
 		return "", fmt.Errorf("imports require a relative path or alias")
 	}
-	return inside(project.Root, target)
+	return overlayInside(project.Root, target, overlay)
 }
 func loadError(file string, err error) Result {
 	if d, ok := err.(syntax.Diagnostic); ok {
@@ -289,4 +317,28 @@ func manifestLine(line string) string {
 		}
 	}
 	return line
+}
+
+// Overlay-only modules still resolve existing parent symlinks and obey project confinement.
+func overlayInside(root, path string, overlay map[string]string) (string, error) {
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(root, path)
+	}
+	canonical, err := inside(root, path)
+	if err == nil {
+		return canonical, nil
+	}
+	if _, ok := overlay[filepath.Clean(path)]; !ok || !os.IsNotExist(err) {
+		return "", err
+	}
+	parent, err := filepath.EvalSymlinks(filepath.Dir(path))
+	if err != nil {
+		return "", err
+	}
+	canonical = filepath.Join(parent, filepath.Base(path))
+	rel, err := filepath.Rel(root, canonical)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("path escapes project root: %s", path)
+	}
+	return canonical, nil
 }

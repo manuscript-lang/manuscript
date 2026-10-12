@@ -1,0 +1,44 @@
+# Manuscript developer tools
+
+Build `ms` with Go 1.25 or newer. The compiler, formatter, linters, and language server require no third-party Go dependencies. Native debugging uses Delve 1.25.2 or newer. The VS Code extension provides its own Manuscript DAP layer over Delve.
+
+```sh
+ms lint source.ms --json
+ms fmt source.ms --check
+ms lsp
+ms debug source.ms -- arg1
+ms run source.ms --cpu-profile cpu.pprof --heap-profile heap.pprof --trace trace.out -- arg1
+go tool pprof -tags cpu.pprof
+go tool pprof -http=127.0.0.1:8080 cpu.pprof
+go tool trace trace.out
+```
+
+## Editor features
+
+The server supports incremental document synchronization with validated UTF-16 ranges, compiler diagnostics and advisory lint codes, hierarchical document symbols, workspace symbol search, semantic tokens, folding, inferred-local type hints, typed hover, definition/type-definition navigation, highlights, project references, signature help, formatting, import organization, and versioned code actions and rename edits.
+
+Completion is derived from the checker's actual lexical scope and member-resolution rules. It resolves shadowing and offers visible parameters/locals, generic-bound operations, substituted record fields and collection/service methods, variant cases, named call arguments, generic/call snippets, standard and project auto-imports, and import names/paths. Used arguments, inaccessible opaque fields, and locals in sibling scopes are excluded. Snippets are offered only when the client supports them. Accepting an auto-import creates an explicit ordinary import.
+
+Incomplete member accesses and calls are analyzed using a private cursor snapshot. Declaration recovery retains unaffected source with original positions. Recovery is exclusive to editor analysis: strict checking, formatting, and native builds never accept repaired source. A parse error elsewhere does not erase completion or outlining for valid declarations. Analysis skips Go lowering and caches normal document results until source or watched files change. Member completion's local benchmark is included in `completion_test.go`.
+
+References and rename cover declaration names, expression uses, assignments, type annotations, imports, named parameter labels, record fields/constructors, and source interface operations. Project scans include unopened modules. Rename checks the proposed workspace snapshot before returning edits and uses document versions for open files and null versions for unopened files. It conservatively rejects a new identifier already present in affected source to prevent capture. Standard-library definitions open as read-only compiler source documents in VS Code. External declarations cannot be renamed. Malformed workspace source must be repaired before rename.
+
+Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid JSON/parameters receive protocol errors without ending the session. A separate reader accepts request cancellation while analysis runs; canceled requests return `RequestCancelled`. Source changes invalidate dependent open-document diagnostics.
+
+## Linting and formatting
+
+`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), and MSL103 (unreachable statement). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
+
+`fmt` preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
+
+## Debugging and profiling
+
+The [VS Code extension](../extensions/vscode/README.md) uses the `manuscript` debug type. F5 or **Manuscript: Debug current file** builds the containing project or standalone module without optimization/inlining, verifies executable/source/configuration hashes, and starts native DAP control through a loopback-only Delve listener. Breakpoints and stepping use absolute `.ms` source paths; source frames and locals use Manuscript names. Records, lists, sets, maps, bytes, variants, and interface views expand through lazy source views. Execution, cancellation, work lifetime, background services, leases, and HTTP services appear in a separate inspection scope. Service inspection reads stopped-process data and never invokes application operations. Simple local, record-field, and list-index watch expressions are mapped to their generated storage. Complex watch expressions use Delve's native evaluator.
+
+`ms debug` is also available for Delve's terminal UI. Existing project pin validation remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
+
+Profiling is explicit and local: CPU/heap use pprof and execution traces use Go tracing. New files are created exclusively with mode 0600; existing files are never overwritten. Profiles flush before process exit, including handled faults and signal cancellation. Source functions contribute `ms.source` CPU labels and `source:<position>` trace regions. Parallel/background operations contribute work labels and trace tasks; joining and lexical cleanup have named trace regions. Profiling preserves authority, cancellation, and work lifetime. Without profiling, source calls take a single atomic branch. A setup or heap-write error returns exit code 70. Use optimized builds for representative samples and retain matching native metadata.
+
+The checker analyzes each affected module rather than incrementally reusing individual syntax/type nodes. Public rename is conservative about identifier collisions. The debugger retains native runtime frames as subdued entries, and complex watch expressions retain native Go syntax. These behaviors are explicit rather than hidden by unsupported capabilities.
+
+`ms profile module-or-project -o new-directory` captures all three profiles and retains the optimized executable, build/source metadata, static inspection, and a bundle manifest for reproducible symbolization. Existing directories are rejected.

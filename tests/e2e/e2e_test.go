@@ -146,6 +146,20 @@ func TestCLICommands(t *testing.T) {
 			t.Fatalf("run transcript %q", data)
 		}
 	}
+	bundle := filepath.Join(project, "profile")
+	if data, err := exec.Command(binary, "profile", manifest, "-o", bundle).CombinedOutput(); err != nil {
+		t.Fatalf("profile bundle: %v %s", err, data)
+	}
+	for _, name := range []string{"program", "program.ms-build.json", "inspection.json", "manifest.json", "cpu.pprof", "heap.pprof", "trace.out"} {
+		info, err := os.Stat(filepath.Join(bundle, name))
+		if err != nil || info.Size() == 0 {
+			t.Fatalf("missing profile artifact %s: %v", name, err)
+		}
+	}
+	if err := exec.Command(binary, "profile", manifest, "-o", bundle).Run(); err == nil {
+		t.Fatal("profile bundle overwrote existing directory")
+	}
+
 	if err := exec.Command(binary, "check", "testdata/reject/cl-03-2.ms").Run(); err == nil {
 		t.Fatal("invalid source returned successful CLI status")
 	}

@@ -51,11 +51,17 @@ After checking source, the backend translates functions and control flow into Go
 
 ### Generated Go and debug builds
 
-`ms emit` produces one Go file containing its runtime and imports of the pinned vendored dependencies. Native builds use `-trimpath` using the embedded vendor source bundle without downloading dependencies. Generated source has Go line directives, and programming faults accumulate source function positions. `--debug` disables optimization/inlining while retaining native symbols.
+`ms emit` produces one Go file containing its runtime and imports of the pinned vendored dependencies. Native release builds use `-trimpath` using the embedded vendor source bundle without downloading dependencies. Generated source has Go line directives, and programming faults accumulate source function positions. `--debug` disables optimization/inlining while retaining native symbols and absolute source mappings. Debug build cache identities include the source root.
 
 ### Formatting and source inspection
 
-`ms fmt file.ms` validates syntax before atomically replacing a file and preserves comments and literal spellings. `--check` reports formatting drift without writing. `ms check --json` emits format-1 diagnostics. `ms inspect` emits checked entities, generated declaration names, source hashes, original-byte statement header spans, call sites, and effects. `ms diagram` emits their static Mermaid call graph, including implicit cleanup; neither command represents a runtime trace.
+`ms fmt file.ms` validates syntax before atomically replacing a file and preserves comments and literal spellings. `--check` reports formatting drift without writing. `ms check --json` emits format-1 diagnostics. `ms inspect` emits checked entities, generated declaration and local names, source hashes, original-byte statement header spans, call sites, and effects. `ms diagram` emits their static Mermaid call graph, including implicit cleanup; neither command represents a runtime trace.
+
+### Editor, lint, debugger, and profiles
+
+`ms lint` reports five advisory hygiene and semantic rules. `ms lsp` supplies typed completion, call snippets, signature help, navigation, project references, checked versioned rename, diagnostics and code actions. Editor-only recovery retains independently valid declarations; strict builds still reject malformed syntax. The [VS Code extension](extensions/vscode/README.md) includes source debugging through Delve and read-only views of records, collections, variants, locals, and execution/service state.
+
+`ms profile` retains CPU/heap profiles, execution traces, executable/build metadata, and source inspection. Runtime work carries source/work/operation labels and cleanup/join trace regions without changing lifetime inheritance. See the [tooling guide](tooling/README.md) for commands and current limits.
 
 ### Test execution
 
@@ -69,7 +75,7 @@ The book's [outstanding decisions](design/compiler/conformance/scope.md#outstand
 - HTTP/3 is excluded by explicit user instruction. Interactive subprocess streams and uniform cross-platform descendant supervision remain separate work.
 - Unicode normalization/graphemes/legacy text codecs, seek/watch/permissions APIs, timezone calendars/tickers, archive extraction and specialized formats. See the [coverage map](design/standard-library/packages/coverage.md) for runnable equivalents and remaining gaps.
 - Full incremental frontend/package compilation, concrete native generic layouts, precise retained-authority classification, and native adapter effect declarations.
-- Transactional structural edits, rich diagnostic spans/related locations, architecture diffs, runtime trace transport, complete local-value metadata, and Delve integration.
+- Transactional structural edits, rich diagnostic spans/related locations, architecture diffs, runtime trace transport, generalized structural value transformations.
 - Test discovery globs, identity beyond display labels, authority injection, and expected-fault checks, which need the runner contract finalized.
 
 The language core, supplied standard APIs, compiler commands, and native conformance tests are usable now. The coverage above is not a claim that every future facility in the design book is complete.
@@ -78,7 +84,7 @@ The language core, supplied standard APIs, compiler commands, and native conform
 
 ```sh
 go test ./...
-go test -race ./runtime ./checker ./compiler ./tooling
+go test -race ./runtime ./checker ./compiler ./tooling/...
 go vet ./...
 go test ./parser -run '^$' -fuzz FuzzParse -fuzztime 10s
 go test ./compiler -run '^$' -fuzz FuzzCompile -fuzztime 10s
