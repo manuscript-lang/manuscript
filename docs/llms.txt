@@ -1,0 +1,24 @@
+# Manuscript
+
+> A statically typed language with explicit contracts, named arguments, scoped cleanup, explicit concurrency, and capability parameters. The compiler lowers to Go.
+
+Links are relative to this file so GitHub Pages project paths and custom domains work alike.
+
+## Learn
+- [Introduction](learn/): audience, features, and reading order
+- [Get started](learn/getting-started/): a complete application and CLI commands
+- [Language tour](learn/tour/): functions, data, and expected failures
+
+## Implemented API
+- [Entire standard library as Markdown](stdlib.md): every standard module, intrinsic prelude, generic bound, field, case, operation, and special call rule
+- [Standard library JSON](stdlib.json): versioned structured declaration snapshot
+- [Module reference](standard-library/reference/): browsable generated pages
+
+## Semantics
+- [Core language](core-language/)
+- [Standard library guide](standard-library/)
+- [Resource lifetimes](ownership-and-cleanup/)
+- [Concurrency](concurrency/)
+- [Modules and capabilities](modules-and-capabilities/)
+
+The generated reference describes implemented signatures. Design chapters describe semantics and may include planned APIs. Do not infer supported APIs from design examples alone.
