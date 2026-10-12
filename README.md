@@ -84,7 +84,7 @@ Project native builds require matching `ms.lock` pins. Run `ms lock` after selec
 | `scripts/` | SDK bootstrap, API generation, payload construction, packaging, and distribution checks |
 | `documentation/` | Authored language guides, implementation status, and contributor docs |
 | `website/` | Hugo configuration, layouts, assets, API downloads, and vendored theme |
-| `docs/` | Generated GitHub Pages output; regenerate with `make book` |
+| `.artifacts/book/` | Ignored generated website, published through GitHub Pages artifacts |
 | `tests/`, `examples/`, `extensions/` | Conformance/publication checks, runnable projects, and VS Code integration |
 
 The [architecture guide](documentation/contributing/architecture.md) traces the packages and tells you where to make each kind of change. Existing public parser/checker/compiler imports remain available.
@@ -92,15 +92,13 @@ The [architecture guide](documentation/contributing/architecture.md) traces the 
 ## Develop and verify
 
 ```sh
-make build
-make coverage
-make race
-make check
-make fuzz
-make book-check
+make setup
+make doctor
+make verify
+make verify-full
 ```
 
-See [development and publishing](documentation/contributing/development.md) for prerequisites, generated files, CI, standalone release checks, and documentation versions. The [tooling guide](documentation/developer-tooling/implementation.md) describes lint, LSP, source inspection, native debugging, and profiles; the [VS Code extension](extensions/vscode/README.md) provides editor setup.
+Read [maintenance and compatibility](documentation/contributing/maintenance.md) for pin updates, dependency notices, and releases. See [development and publishing](documentation/contributing/development.md) for prerequisites, generated files, CI, standalone release checks, and documentation versions. The [tooling guide](documentation/developer-tooling/implementation.md) describes lint, LSP, source inspection, native debugging, and profiles; the [VS Code extension](extensions/vscode/README.md) provides editor setup.
 
 Preview the book with Hugo Extended 0.146.7 or newer:
 

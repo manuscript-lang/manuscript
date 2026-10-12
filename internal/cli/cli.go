@@ -4,6 +4,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	support "github.com/manuscript-lang/manuscript"
 	"github.com/manuscript-lang/manuscript/compiler"
 	"github.com/manuscript-lang/manuscript/stdlib"
 	"github.com/manuscript-lang/manuscript/syntax"
@@ -46,7 +47,7 @@ func Run(args []string) int {
 		return 0
 	}
 	if args[0] == "--version" {
-		fmt.Println("Manuscript 0.1.0")
+		fmt.Println("Manuscript " + support.Version())
 		return 0
 	}
 	if args[0] == "doc" {

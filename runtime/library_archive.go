@@ -94,7 +94,7 @@ func libraryArchivePack(ctx *Execution, r string, a []Value) Value {
 			CheckCancelled(ctx)
 			f := v.(Record).Fields
 			header := &zip.FileHeader{Name: f["path"].(string), Method: zip.Deflate}
-			header.SetModTime(time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC))
+			header.Modified = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 			header.SetMode(0600)
 			if f["directory"].(bool) {
 				header.Name = strings.TrimSuffix(header.Name, "/") + "/"
@@ -175,7 +175,7 @@ func libraryArchiveUnpack(ctx *Execution, r string, a []Value) Value {
 			if err != nil {
 				return libraryError(r, "InvalidData", "")
 			}
-			if header.Typeflag != tar.TypeReg && header.Typeflag != tar.TypeRegA && header.Typeflag != tar.TypeDir {
+			if header.Typeflag != tar.TypeReg && header.Typeflag != 0 /* legacy regular-file encoding */ && header.Typeflag != tar.TypeDir {
 				return libraryError(r, "Unsupported", "")
 			}
 			if code := add(header.Name, header.Typeflag == tar.TypeDir, header.Size, reader); code != "" {

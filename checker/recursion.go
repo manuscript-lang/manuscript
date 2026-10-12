@@ -16,7 +16,7 @@ func (c *checker) finiteApplications() {
 	nodes := map[string]applicationNode{}
 	for _, module := range c.Modules {
 		for _, d := range module.Declarations {
-			if d.Kind == "fn" {
+			if d.Kind == syntax.KindFn {
 				s := c.Symbols[module.File][d.Name]
 				if len(s.Variables) > 0 {
 					nodes[s.ID] = applicationNode{s.Variables, d}

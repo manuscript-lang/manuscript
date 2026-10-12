@@ -64,7 +64,7 @@ func loadStandardSources() error {
 		standardSources = append(standardSources, module)
 		standardModules[module.File] = map[string]*Symbol{}
 		for _, d := range module.Declarations {
-			if d.Kind == "impl" {
+			if d.Kind == syntax.KindImpl {
 				for _, method := range d.Methods {
 					if len(method.Body) > 0 {
 						return fmt.Errorf("native implementations must not have bodies: %s", method.Pos)
@@ -72,7 +72,7 @@ func loadStandardSources() error {
 				}
 				continue
 			}
-			if d.Kind == "test" {
+			if d.Kind == syntax.KindTest {
 				return fmt.Errorf("standard declarations cannot contain implementation bodies: %s", d.Pos)
 			}
 			if len(d.Body) > 0 {
@@ -84,13 +84,13 @@ func loadStandardSources() error {
 			}
 			native := d.Name
 			id := "@std/" + d.Name
-			s := &Symbol{Name: d.Name, ID: id, Kind: "type", Module: module.File, Export: d.Export, Native: native, Decl: d}
-			if d.Kind == "fn" {
+			s := &Symbol{Name: d.Name, ID: id, Kind: syntax.KindType, Module: module.File, Export: d.Export, Native: native, Decl: d}
+			if d.Kind == syntax.KindFn {
 				native = bindings.Functions[module.File+"/"+d.Name]
 				if native == "" {
 					return fmt.Errorf("missing native function binding: %s", d.Pos)
 				}
-				s.Kind = "fn"
+				s.Kind = syntax.KindFn
 				s.Native = native
 				s.ID = "@std/" + native
 			} else {
@@ -118,7 +118,7 @@ func loadStandardSources() error {
 		c.names = map[string]*Symbol{}
 		c.scope = newScope(nil)
 		for _, name := range strings.Fields("Bool Int Float String Unit Never Equal Hashable") {
-			c.names[name] = &Symbol{Name: name, ID: name, Kind: "type", Type: primitive(name), Export: true}
+			c.names[name] = &Symbol{Name: name, ID: name, Kind: syntax.KindType, Type: primitive(name), Export: true}
 		}
 		for _, item := range module.Imports {
 			found := standardModules[item.Path][item.Name]
@@ -129,7 +129,7 @@ func loadStandardSources() error {
 			c.addSymbol(item.Name, found, item.NamePos)
 		}
 		for _, d := range module.Declarations {
-			if d.Kind == "impl" {
+			if d.Kind == syntax.KindImpl {
 				continue
 			}
 			c.addSymbol(d.Name, standardModules[module.File][d.Name], d.Pos)
@@ -140,7 +140,7 @@ func loadStandardSources() error {
 	for _, module := range standardSources {
 		scopeModule(module)
 		for _, d := range module.Declarations {
-			if d.Kind == "impl" {
+			if d.Kind == syntax.KindImpl {
 				continue
 			}
 			s := standardModules[module.File][d.Name]
@@ -150,7 +150,7 @@ func loadStandardSources() error {
 				s.Variables = append(s.Variables, v)
 				c.scope.types[p.Name] = v
 			}
-			if s.Kind == "type" {
+			if s.Kind == syntax.KindType {
 				s.Type.Args = s.Variables
 				s.Type.Def.Variables = s.Variables
 			}
@@ -159,7 +159,7 @@ func loadStandardSources() error {
 	for _, module := range standardSources {
 		scopeModule(module)
 		for _, d := range module.Declarations {
-			if d.Kind == "impl" {
+			if d.Kind == syntax.KindImpl {
 				continue
 			}
 			s := standardModules[module.File][d.Name]
@@ -169,7 +169,7 @@ func loadStandardSources() error {
 					s.Variables[i].Bounds = append(s.Variables[i].Bounds, c.resolve(bound, true))
 				}
 			}
-			if s.Kind == "fn" {
+			if s.Kind == syntax.KindFn {
 				s.Type = c.signature(d.Params, d.Result)
 				continue
 			}
@@ -213,7 +213,7 @@ func loadStandardSources() error {
 	for _, module := range standardSources {
 		scopeModule(module)
 		for _, d := range module.Declarations {
-			if d.Kind != "impl" {
+			if d.Kind != syntax.KindImpl {
 				continue
 			}
 			start := len(c.Methods)
@@ -258,8 +258,8 @@ func loadStandardSources() error {
 			return fmt.Errorf("missing compiler binding marker %s", path)
 		}
 		line := strings.Count(source.Source[:offset], "\n") + 1
-		decl := &syntax.Declaration{Pos: syntax.Position{File: module, Line: line, Column: 1, Offset: offset}, Kind: "fn", Name: name, Export: true}
-		standardModules[module][name] = &Symbol{Name: name, ID: "@std/" + native, Kind: "fn", Module: module, Export: true, Native: native, Decl: decl, Type: function(nil, nil)}
+		decl := &syntax.Declaration{Pos: syntax.Position{File: module, Line: line, Column: 1, Offset: offset}, Kind: syntax.KindFn, Name: name, Export: true}
+		standardModules[module][name] = &Symbol{Name: name, ID: "@std/" + native, Kind: syntax.KindFn, Module: module, Export: true, Native: native, Decl: decl, Type: function(nil, nil)}
 	}
 	for receiver, name := range bindings.IntrinsicReceivers {
 		typ := standardSymbols[name]
@@ -268,7 +268,7 @@ func loadStandardSources() error {
 		}
 		intrinsicOperations[receiver] = typ.Type
 	}
-	return validateStandardNativeBindings()
+	return nil
 }
 
 // StandardModules exposes canonical declarations and their source positions to

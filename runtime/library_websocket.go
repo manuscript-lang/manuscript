@@ -15,15 +15,13 @@ import (
 )
 
 func init() {
-	for _, m := range []LibraryMethod{
+	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "web_socket", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"url", "String"}, {"headers", "Map[String][String]"}, {"subprotocols", "List[String]"}, {"options", "WebSocketOptions"}}},
 		{"WebSocket", "receive", libraryResult("Optional[WebSocketMessage]", "WebSocketError"), nil},
 		{"WebSocket", "send", libraryResult("Unit", "WebSocketError"), []LibraryParam{{"data", "Bytes"}, {"text", "Bool"}}},
 		{"WebSocket", "ping", libraryResult("Unit", "WebSocketError"), []LibraryParam{{"data", "Bytes"}}},
 		{"WebSocket", "subprotocol", "String", nil}, {"WebSocket", "close", "Unit", nil},
-	} {
-		LibraryMethods = append(LibraryMethods, m)
-	}
+	}...)
 }
 func (n *network) webSocketDial() Function {
 	return libraryAcquisition("Network", "web_socket", func(ctx *Execution, r string, a []Value) Value {

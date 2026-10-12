@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '../..');
-const book = process.env.MANUSCRIPT_BOOK_DIR || path.join(root, 'docs');
+const book = process.env.MANUSCRIPT_BOOK_DIR || path.join(root, '.artifacts/book');
 
 test('published API downloads match the current generated reference', () => {
   for (const file of ['stdlib.json', 'stdlib.md']) {

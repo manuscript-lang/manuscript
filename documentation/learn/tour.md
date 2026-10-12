@@ -5,10 +5,11 @@ weight = 2
 
 # A language tour
 
-These small examples introduce the same concepts used in larger applications. The first two blocks are complete modules with executable tests. Later blocks are function-body fragments.
+These small examples introduce the same concepts used in larger applications. The blocks below are complete modules with executable tests. The repository checks them directly from this page.
 
 ## Bind values and call functions
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/faults.ms"
 
@@ -25,6 +26,7 @@ test "greeting":
 
 ## Model data and alternatives
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/faults.ms"
 
@@ -52,20 +54,24 @@ Records have named, mutable fields. Use `.clone()` for an explicit shallow copy.
 
 ## Collections and optional values
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/faults.ms"
+import List from "@std/collections.ms"
+import Optional from "@std/optional.ms"
 
-let names = ["Ada", "Grace"]
-let more = names.append(value: "Linus")
-match more.get(index: 0):
-    some(name):
-        if not (name == "Ada"):
-            return panic(message: "check failed")
-    none:
-        return panic(message: "Unexpected case")
+test "collections":
+    let names = ["Ada", "Grace"]
+    let more = names.append(value: "Linus")
+    match more.get(index: 0):
+        some(name):
+            if not (name == "Ada"):
+                return panic(message: "check failed")
+        none:
+            return panic(message: "Unexpected case")
 ```
 
-Collections create new values rather than mutating existing ones. Looking up an element returns `Optional[T]`, so absence is visible in the type. Complete modules import `Optional` from `@std/optional.ms`; explicit collection type annotations also import `List` from `@std/collections.ms`. See [collections](../core-language/types/collections.md).
+Collections are mutable: `append` updates the list and returns the same list. Use `.clone()` when you need separate storage. Looking up an element returns `Optional[T]`, so absence is visible in the type. Complete modules import `Optional` from `@std/optional.ms`; explicit collection type annotations also import `List` from `@std/collections.ms`. See [collections](../core-language/types/collections.md).
 
 ## Expected failures
 

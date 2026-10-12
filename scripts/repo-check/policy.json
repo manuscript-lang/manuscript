@@ -1,0 +1,86 @@
+{
+  "dependencies": {
+    "syntax": [],
+    "lexer": [
+      "syntax"
+    ],
+    "parser": [
+      "syntax",
+      "lexer"
+    ],
+    "project": [],
+    "stdlib": [],
+    "internal/decimal": [],
+    "internal/nativeabi": [],
+    "internal/hostos": [],
+    "checker": [
+      "syntax",
+      "lexer",
+      "parser",
+      "stdlib",
+      "internal/decimal",
+      "internal/nativeabi"
+    ],
+    "runtime": [
+      "internal/decimal",
+      "internal/nativeabi",
+      "internal/hostos"
+    ],
+    "compiler": [
+      ".",
+      "syntax",
+      "lexer",
+      "parser",
+      "checker",
+      "project",
+      "stdlib",
+      "runtime"
+    ],
+    "tooling": [
+      "syntax",
+      "lexer",
+      "parser",
+      "checker"
+    ],
+    "tooling/docgen": [
+      "checker"
+    ],
+    "tooling/lsp": [
+      "syntax",
+      "lexer",
+      "parser",
+      "checker",
+      "project",
+      "compiler",
+      "tooling"
+    ],
+    "internal/cli": [
+      "compiler",
+      "syntax",
+      "tooling",
+      "tooling/lsp",
+      "tooling/docgen",
+      "checker",
+      "stdlib",
+      "."
+    ],
+    "cmd/ms": [
+      "internal/cli"
+    ]
+  },
+  "pinned": [
+    "syntax",
+    "lexer",
+    "parser",
+    "checker",
+    "project",
+    "compiler",
+    "runtime",
+    "stdlib"
+  ],
+  "bundled": [
+    "internal/decimal",
+    "internal/nativeabi",
+    "internal/hostos"
+  ]
+}

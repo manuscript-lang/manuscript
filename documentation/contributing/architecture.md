@@ -19,6 +19,8 @@ flowchart LR
   Parser --> Syntax
   Compiler --> Checker[checker]
   Checker --> Stdlib[stdlib: source and bindings]
+  Checker --> Facts[internal/decimal and nativeabi]
+  Runtime --> Facts
   Compiler --> Runtime[runtime: embedded native source]
   Tools[tooling and LSP] --> Compiler
   Docs[tooling/docgen] --> Checker
@@ -47,6 +49,7 @@ flowchart LR
 | `tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
 | `tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
 | `tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. `call-rules.md` is the embedded source for special compiler-bound calls |
+| `internal/decimal/`, `internal/nativeabi/` | Lightweight shared decimal literal rules and receiver-to-function identities; checked `.ms` declarations retain signature authority |
 | `internal/hostos/` | Platform helpers for native filesystem, process, and OS operations, included in the embedded dependency bundle |
 | `internal/cli/` | CLI command orchestration, status codes, signal forwarding, and shipped documentation commands |
 | Root Go files | Embedded vendor/module dependencies and optional native toolchain payload. They must remain beside `go.mod`, `vendor/`, and the build payload because Go embed paths cannot traverse a parent directory |
@@ -71,8 +74,8 @@ The CLI classifies each command's compiler mode in one switch, then checks sourc
 | `documentation/standard-library/reference/` and `documentation/standard-library/call-rules.md` | Generated from checked standard declarations and the embedded call rules by `make docs` |
 | `website/` | Hugo configuration, custom layouts/assets, static resources, version archives, and the vendored Hugo Book theme with its license and upstream revision |
 | `website/static/stdlib.md` and `stdlib.json` | Generated API downloads. Hugo mounts the root version and extension grammar directly; neither needs a copied source |
-| `docs/` | Generated HTML, search data, and downloads committed for the current branch-based GitHub Pages deployment |
-| `scripts/` | `bootstrap-go.sh`, `mktoolchain/`, `package.sh`, `distcheck/`, and `docgen/`; all checkout/release maintenance commands live here |
+| `.artifacts/book/` | Ignored generated HTML, search data, and downloads uploaded/deployed as a Pages artifact |
+| `scripts/` | `bootstrap-go.sh`, pinned lint setup/doctor, `mktoolchain/`, `package.sh`, `distcheck/`, `docgen/`, maintenance, and repository checks; all checkout/release maintenance commands live here |
 | `examples/` | The hello project and tooling demo, with their project-specific instructions |
 | `extensions/vscode/` | VS Code client, grammar, snippets, debug adapter, pinned Node dependencies, and editor/DAP tests |
 | `vendor/` | Pinned offline native dependencies and licenses; required for emitted-source and standalone release builds |
@@ -101,3 +104,5 @@ Implementation hashes include source from `project` as well as the frontend, com
 Package tests exercise narrow contracts. `tests/e2e` compiles Manuscript fixtures and checks native behavior, CLI commands, faults, signals, networking, and cross-module dispatch. Declaration-only fixtures demonstrate acceptance, not execution. `tests/docs` checks shared highlighting and the published API pages/downloads. Extension tests exercise editor and debugger integration separately.
 
 Statement coverage helps find unexercised branches; it does not establish language completeness, race freedom, or reliable shutdown. Combine [coverage reports and the development checks](development.md) with the feature inventory and observable source-level cases. Keep unimplemented adapter, incremental compilation, host, and tooling contracts explicitly identified.
+
+`make repo-check` enforces the package dependency policy, frontend isolation from host implementations, complete embedded source inputs, exhaustive checked/lowered syntax kinds, and Go-source release triggers. The checker consumes checked standard declarations for native receiver constraints; runtime ABI comparisons are integration tests. The CLI, native pins, and book share `.msversion`.

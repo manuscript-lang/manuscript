@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	for _, m := range []LibraryMethod{
+	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "http_client", libraryResult("HttpClient", "HttpError"), []LibraryParam{{"options", "HttpClientOptions"}}},
 		{"HttpClient", "send", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
 		{"HttpClient", "send_stream", libraryResult("ResponseBody", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
@@ -26,9 +26,7 @@ func init() {
 		{"ResponseBody", "status", "Int", nil}, {"ResponseBody", "headers", "Map[String][List[String]]", nil},
 		{"ResponseBody", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},
 		{"ResponseBody", "close", "Unit", nil},
-	} {
-		LibraryMethods = append(LibraryMethods, m)
-	}
+	}...)
 }
 
 type libraryHTTPClient struct {

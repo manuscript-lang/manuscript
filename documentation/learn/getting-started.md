@@ -34,6 +34,7 @@ tools and references Manuscript needs and runs independently of the checkout.
 
 The hello project's `src/main.ms` is a complete application:
 
+<!-- manuscript-example: {"mode":"run","args":["first","second"],"stdout":"Arguments: 2\n"} -->
 ```manuscript
 import arguments from "@std/cli.ms"
 import stdout from "@std/io.ms"

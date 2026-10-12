@@ -14,11 +14,11 @@ Verified: Go's test cache does not automatically track source built only by a su
 
 ### Package moves must preserve build identity and publication inputs
 
-Verified: project manifest/import behavior now lives outside `compiler`. Its embedded implementation sources participate in native pins so future resolver changes invalidate build identity. Authored guides live in `documentation/`, site inputs in `website/`, and branch-based Pages output remains in `docs/`. Hugo mounts the shared root version and extension grammar as assets; parent-relative `readFile` calls did not resolve those inputs after the move.
+Verified: project manifest/import behavior now lives outside `compiler`. Its embedded implementation sources participate in native pins so future resolver changes invalidate build identity. Authored guides live in `documentation/`, site inputs in `website/`, and Pages output is built into ignored `.artifacts/book/` and deployed as an Actions artifact. Hugo mounts the shared root version and extension grammar as assets; parent-relative `readFile` calls did not resolve those inputs after the move.
 
 Apply when: extracting a build-affecting package or relocating documentation/site inputs.
 Evidence: [pin input bundles](../compiler/cache.go), [project source embedding](../project/identity.go), [site mounts](../website/hugo.toml), [publication checks](../tests/docs/publication.test.cjs), and [architecture](../documentation/contributing/architecture.md).
-Verify: include moved behavior in implementation hashing and release workflow path filters; run `make docs-check`, `make book-check`, and `make dist-check`. Regenerate `docs/` with destination cleanup and retain the existing Pages output path unless deployment is explicitly migrated.
+Verify: include moved behavior in implementation hashing and release workflow path filters; run `make docs-check`, `make book-check`, and `make dist-check`. Build `.artifacts/book/` with destination cleanup and verify the Pages artifact deployment; generated HTML is no longer a source commit.
 
 ### Editor recovery must preserve delimiter continuations
 
@@ -73,7 +73,7 @@ Decision: show API excerpts in regular Manuscript declaration syntax, rather tha
 
 Verified: styling a code container did not highlight Manuscript examples fenced as `text`. Explicit `manuscript` fences now use the shared grammar, with [tokenization checks](../tests/docs/highlighting.test.cjs). The [documentation generator](../tooling/docgen/documentation.go) emits the same language label so regenerated API pages retain highlighting.
 
-Verify: compare authored Markdown with the base branch, keep semantic changes out of visual work, check desktop and mobile reading pages, and run the strict Hugo build with a repository URL prefix. Verify actual token colors in light and dark mode, unchanged copied text, and plain terminal output. Regenerate `docs/` from the current sources; never resolve generated-page conflicts by retaining stale output.
+Verify: compare authored Markdown with the base branch, keep semantic changes out of visual work, check desktop and mobile reading pages, and run the strict Hugo build with a repository URL prefix. Verify actual token colors in light and dark mode, unchanged copied text, and plain terminal output. Build `.artifacts/book/` from the current sources; never resolve generated-page conflicts by retaining stale output.
 
 ### Source freshness does not establish published freshness
 
@@ -92,3 +92,11 @@ Evidence: [standalone merger](../compiler/build.go), [import-alias regression ch
 Verify: `TestBundledRuntimeImportAliasesAgree`, source-to-native CLI tests, and the packaged binary check with an empty cache and no system Go.
 
 Verified: native compilation must build the temporary module (`go build .`) rather than an absolute source filename. A filename build can give the main package the synthetic `command-line-arguments` identity and reject bundled internal imports when path canonicalization differs, as on macOS temporary paths. [Native build regression](../compiler/library_test.go) exercises a symlinked temporary root; [module build](../compiler/build.go) preserves the dependency namespace.
+
+### Frontend independence retains runtime contract checks
+
+Verified: receiver constraints come from checked standard functions rather than runtime registrations. Shared decimal literal rules and receiver identities live in lightweight internal packages; the checker cannot import runtime/host dependencies under the repository policy. Native signature comparisons are integration tests, including a deliberate mismatch regression.
+
+Apply when: adding standard operations or moving runtime code.
+Evidence: [source receiver constraints](../checker/native_members.go), [ABI tests](../checker/library_test.go), [dependency and bundle policy](../scripts/repo-check/policy.json), and [policy checks](../scripts/repo-check/main.go).
+Verify: run `make verify` and native conformance. New bundled internal sources must enter the dependency bundle and implementation identity.

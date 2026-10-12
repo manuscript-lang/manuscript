@@ -119,7 +119,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 		items = append(items, completionItem{Label: name, Kind: kind, Detail: detail, Documentation: description(result, decl), SortText: fmt.Sprintf("%02d_%s", priority, name), FilterText: name, InsertTextFormat: format, TextEdit: map[string]any{"range": span{Position(d.Text, c.start), Position(d.Text, c.end)}, "newText": insert}})
 	}
 	if c.member {
-		if analysis.expression != nil && analysis.expression.Kind == "member" {
+		if analysis.expression != nil && analysis.expression.Kind == syntax.KindMember {
 			left := analysis.expression.Left
 			if typ := typeExpression(left, analysis.scope); typ != nil {
 				for _, cs := range checker.Cases(typ) {
@@ -184,12 +184,12 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 		}
 	}
 	for name, s := range symbols {
-		if c.typeContext && s.Kind != "type" {
+		if c.typeContext && s.Kind != syntax.KindType {
 			continue
 		}
 		kind := 3
 		insert := callableText(name, s.Type, s.Variables, snippets)
-		if s.Kind == "type" {
+		if s.Kind == syntax.KindType {
 			kind = 7
 			insert = name
 			if c.typeContext && snippets && s.Type.Def != nil && len(s.Type.Def.Variables) > 0 {
@@ -202,7 +202,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 				}
 				insert += "]"
 			}
-			if !c.typeContext && s.Type.Kind == "record" {
+			if !c.typeContext && s.Type.Kind == syntax.KindRecord {
 				signature := &checker.Type{Kind: "function", Params: checker.Fields(s.Type), Result: s.Type}
 				insert = callableText(name, signature, s.Variables, snippets)
 			}
@@ -215,7 +215,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 		if parsed, e := parser.Parse(filename(d.URI), d.Text); e == nil {
 			for _, decl := range parsed.Declarations {
 				kind := 3
-				if decl.Kind == "type" {
+				if decl.Kind == syntax.KindType {
 					kind = 7
 				}
 				add(decl.Name, kind, nil, 2, decl.Name, decl)
@@ -255,12 +255,12 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 		for _, path := range standardPaths() {
 			exports := checker.StandardExportInventory()[path]
 			for _, s := range exports {
-				if seen[s.Name] || !nameMatches(s.Name, c.prefix) || c.typeContext && s.Kind != "type" {
+				if seen[s.Name] || !nameMatches(s.Name, c.prefix) || c.typeContext && s.Kind != syntax.KindType {
 					continue
 				}
 				before := len(items)
 				kind := 3
-				if s.Kind == "type" {
+				if s.Kind == syntax.KindType {
 					kind = 7
 				}
 				add(s.Name, kind, s.Type, 4, callableText(s.Name, s.Type, s.Variables, snippets), s.Decl)
@@ -306,12 +306,12 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 					path = "./" + path
 				}
 				for _, s := range checked.Program.Symbols[m.File] {
-					if !s.Export || s.Decl == nil || s.Decl.Pos.File != m.File || seen[s.Name] || !nameMatches(s.Name, c.prefix) || c.typeContext && s.Kind != "type" {
+					if !s.Export || s.Decl == nil || s.Decl.Pos.File != m.File || seen[s.Name] || !nameMatches(s.Name, c.prefix) || c.typeContext && s.Kind != syntax.KindType {
 						continue
 					}
 					before := len(items)
 					kind := 3
-					if s.Kind == "type" {
+					if s.Kind == syntax.KindType {
 						kind = 7
 					}
 					add(s.Name, kind, s.Type, 4, callableText(s.Name, s.Type, s.Variables, snippets), s.Decl)
@@ -336,15 +336,15 @@ func typeExpression(e *syntax.Expression, state checker.ScopeState) *checker.Typ
 	if e == nil {
 		return nil
 	}
-	if e.Kind == "name" {
+	if e.Kind == syntax.KindName {
 		if t := state.Types[e.Text]; t != nil {
 			return t
 		}
-		if s := state.Symbols[e.Text]; s != nil && s.Kind == "type" {
+		if s := state.Symbols[e.Text]; s != nil && s.Kind == syntax.KindType {
 			return s.Type
 		}
 	}
-	if e.Kind == "apply" {
+	if e.Kind == syntax.KindApply {
 		base := typeExpression(e.Left, state)
 		if base == nil {
 			return nil
@@ -368,7 +368,7 @@ func resolveEditorType(t *syntax.Type, state checker.ScopeState) *checker.Type {
 	}
 	base := state.Types[t.Name]
 	if base == nil {
-		if symbol := state.Symbols[t.Name]; symbol != nil && symbol.Kind == "type" {
+		if symbol := state.Symbols[t.Name]; symbol != nil && symbol.Kind == syntax.KindType {
 			base = symbol.Type
 		}
 	}
@@ -391,7 +391,7 @@ func queryCall(a editorAnalysis) (*syntax.Expression, *checker.Type) {
 		return nil, nil
 	}
 	for e := range a.result.Program.Expressions {
-		if e.Kind != "call" || e.Pos.File != moduleFile(a.result, a.document) {
+		if e.Kind != syntax.KindCall || e.Pos.File != moduleFile(a.result, a.document) {
 			continue
 		}
 		matched := false
@@ -562,7 +562,7 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 			for _, s := range exports {
 				if !imported[s.Name] && nameMatches(s.Name, c.prefix) {
 					kind := 3
-					if s.Kind == "type" {
+					if s.Kind == syntax.KindType {
 						kind = 7
 					}
 					add(s.Name, path, kind, span{Position(d.Text, c.start), Position(d.Text, c.end)}, s.Name)

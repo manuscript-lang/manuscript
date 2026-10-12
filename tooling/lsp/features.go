@@ -88,7 +88,7 @@ func inlayHints(result compiler.Result, d document, requested span) []any {
 		return hints
 	}
 	visitor := syntax.Visitor{Statement: func(s *syntax.Statement) {
-		if s.Kind == "bind" && s.Type == nil && s.Pattern != nil && s.Pattern.Kind == "name" {
+		if s.Kind == syntax.KindBind && s.Type == nil && s.Pattern != nil && s.Pattern.Kind == syntax.KindName {
 			if binding := result.Program.Bindings[s.Pattern]; binding != nil && binding.Type != nil && binding.Type.ID != "<invalid>" {
 				p := Position(d.Text, s.Pattern.Pos.Offset+len(s.Pattern.Name))
 				if (p.Line > requested.Start.Line || p.Line == requested.Start.Line && p.Character >= requested.Start.Character) && (p.Line < requested.End.Line || p.Line == requested.End.Line && p.Character <= requested.End.Character) {

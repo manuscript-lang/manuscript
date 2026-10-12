@@ -7,6 +7,7 @@
 /.hugo_build.lock
 /website/.hugo_build.lock
 /.artifacts/
+/.tools/
 
 # Browser verification artifacts
 /.playwright-mcp/

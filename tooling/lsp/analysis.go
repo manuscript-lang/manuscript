@@ -81,7 +81,7 @@ func module(result compiler.Result, d document) *syntax.Module {
 }
 func at(result compiler.Result, d document, p position, index []occurrence) (*syntax.Expression, *checker.Info) {
 	if entry := occurrenceAt(result, d, p, index); entry != nil {
-		return &syntax.Expression{Pos: entry.pos, Text: entry.name, Kind: "name"}, entry.info
+		return &syntax.Expression{Pos: entry.pos, Text: entry.name, Kind: syntax.KindName}, entry.info
 	}
 	m := module(result, d)
 	if m == nil {

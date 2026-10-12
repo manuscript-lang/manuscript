@@ -73,7 +73,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	}
 	var alternative *Type
 	var cs Case
-	if callee.Kind == "member" {
+	if callee.Kind == syntax.KindMember {
 		alternative = c.typeExpression(callee.Left)
 		if alternative != nil {
 			var ok bool
@@ -84,7 +84,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			}
 		}
 	}
-	if callee.Kind == "name" && c.scope.binding(callee.Text) == nil && c.names[callee.Text] == nil {
+	if callee.Kind == syntax.KindName && c.scope.binding(callee.Text) == nil && c.names[callee.Text] == nil {
 		alternative, cs = c.findCase(callee.Text, callee.Pos)
 	}
 	if alternative != nil {
@@ -102,7 +102,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	var s *Symbol
 	var supplied []*Type
 	explicit := false
-	if callee.Kind == "apply" {
+	if callee.Kind == syntax.KindApply {
 		s = c.functionSymbol(callee.Left)
 		if s != nil {
 			supplied = c.resolveArguments(callee.Types)
@@ -320,7 +320,7 @@ func (c *checker) parallel(e *syntax.Expression) *Info {
 		}
 	}
 	pack := &Type{Kind: "pack", Name: "Pack", ID: "pack"}
-	if tasks == nil || tasks.Kind != "list" {
+	if tasks == nil || tasks.Kind != syntax.KindList {
 		c.error(e.Pos, "type", "parallel tasks must be a bracket literal")
 	} else {
 		for _, task := range tasks.Elements {

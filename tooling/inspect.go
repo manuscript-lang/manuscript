@@ -122,7 +122,7 @@ func Inspect(program *checker.Program) Inspection {
 	}
 	for _, module := range program.Modules {
 		for _, declaration := range module.Declarations {
-			if declaration.Kind == "test" || declaration.Kind == "impl" {
+			if declaration.Kind == syntax.KindTest || declaration.Kind == syntax.KindImpl {
 				continue
 			}
 			symbol := program.Symbols[module.File][declaration.Name]
@@ -139,13 +139,13 @@ func Inspect(program *checker.Program) Inspection {
 				entity.Type = symbol.Type.String()
 				entity.Effects = program.Effects[symbol.ID]
 			}
-			if declaration.Kind == "impl" {
+			if declaration.Kind == syntax.KindImpl {
 				entity.ID = fmt.Sprintf("%s#impl#%d", module.File, declaration.Pos.Offset)
 				entity.Name = declaration.Contract.Name + " for " + declaration.Receiver.Name
 			}
 			result.Entities = append(result.Entities, entity)
 			visitor := syntax.Visitor{Expression: func(e *syntax.Expression) {
-				if e.Kind == "call" {
+				if e.Kind == syntax.KindCall {
 					site := CallSite{ID: fmt.Sprintf("%s#call#%d", module.File, e.Pos.Offset), Owner: entity.ID, Target: "indirect", Kind: "function", Span: sourceSpan(module, e.Pos)}
 					info := program.Expressions[e]
 					if info != nil {
@@ -175,7 +175,7 @@ func Inspect(program *checker.Program) Inspection {
 				}
 			}, Statement: func(s *syntax.Statement) {
 				result.Statements = append(result.Statements, sourceSpan(module, s.Pos))
-				if s.Kind == "with" {
+				if s.Kind == syntax.KindWith {
 					target := "indirect.close"
 					if method := program.Cleanups[s]; method != nil {
 						target = methodIDs[method.ID]

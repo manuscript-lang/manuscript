@@ -11,14 +11,7 @@ import (
 )
 
 func TestMutationCLIRejectsInvalidAssignmentsAndHandleClones(t *testing.T) {
-	tool := os.Getenv("MANUSCRIPT_GO")
-	if tool == "" {
-		tool = "go"
-	}
-	binary := filepath.Join(t.TempDir(), "ms")
-	if output, err := exec.Command(tool, "build", "-o", binary, "../../cmd/ms").CombinedOutput(); err != nil {
-		t.Fatalf("build CLI: %v\n%s", err, output)
-	}
+	binary := cliBinary
 	declarations := `import File from "@std/io.ms"
 import Connection from "@std/net.ms"
 import Synchronized from "@std/sync.ms"
@@ -43,7 +36,7 @@ type Val:
 			}
 			outputFile := filepath.Join(dir, "generated.go")
 			for _, args := range [][]string{{"check", file}, {"emit", file, "-o", outputFile}} {
-				output, err := exec.Command(binary, args...).CombinedOutput()
+				output, err := commandOutput(t, binary, args...)
 				if err == nil || !strings.Contains(string(output), test.diagnostic) {
 					t.Fatalf("%s: expected failed command with %q, got %v\n%s", args[0], test.diagnostic, err, output)
 				}

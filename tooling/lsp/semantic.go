@@ -51,7 +51,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 				kind = 8
 			} else if strings.HasPrefix(entry.key, "case:") {
 				kind = 9
-			} else if entry.info.Symbol != nil && entry.info.Symbol.Kind == "type" {
+			} else if entry.info.Symbol != nil && entry.info.Symbol.Kind == syntax.KindType {
 				kind = 6
 			} else if entry.info.Type != nil && entry.info.Type.Kind == "function" {
 				kind = 5
@@ -67,7 +67,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 				if expression == nil || info == nil || expression.Pos.File != m.File || expression.Text == "" {
 					continue
 				}
-				if info.Symbol != nil && info.Symbol.Kind == "type" {
+				if info.Symbol != nil && info.Symbol.Kind == syntax.KindType {
 					resolved[expression.Pos.Offset] = 6
 				} else if info.Type != nil && info.Type.Kind == "function" {
 					resolved[expression.Pos.Offset] = 5
@@ -110,10 +110,10 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 				kind = resolvedKind
 			}
 			if index > 0 {
-				if tokens[index-1].Kind == "fn" {
+				if tokens[index-1].Kind == syntax.KindFn {
 					kind = 5
 				}
-				if tokens[index-1].Kind == "type" {
+				if tokens[index-1].Kind == syntax.KindType {
 					kind = 6
 				}
 			}

@@ -81,7 +81,7 @@ func CurrentPin() (BuildPin, error) {
 	if toolchain["GOFLAGS"] != "" {
 		return BuildPin{}, fmt.Errorf("pinned builds require empty GOFLAGS; use the explicit debug build option")
 	}
-	return BuildPin{1, "0.1.0", implementationDigest(), toolchain}, nil
+	return BuildPin{1, support.Version(), implementationDigest(), toolchain}, nil
 }
 func WritePin(root string) error {
 	pin, err := CurrentPin()

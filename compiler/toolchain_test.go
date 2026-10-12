@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -63,18 +64,7 @@ func testArchive(t *testing.T, files map[string]string) []byte {
 }
 
 func TestToolchainCacheConcurrentPublicationAndReuse(t *testing.T) {
-	name := "go/bin/go"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
-	}
-	files := map[string]string{name: "compiler", "go/VERSION": "go1.25.1", "go/src/runtime/runtime.go": "package runtime"}
-	for _, tool := range []string{"compile", "link", "asm"} {
-		if runtime.GOOS == "windows" {
-			tool += ".exe"
-		}
-		files["go/pkg/tool/"+runtime.GOOS+"_"+runtime.GOARCH+"/"+tool] = "tool"
-	}
-	archive := testArchive(t, files)
+	archive := completeToolchainArchive(t)
 	cache := t.TempDir()
 	var workers sync.WaitGroup
 	for range 8 {
@@ -135,5 +125,40 @@ func TestIncompleteToolchainNotPublished(t *testing.T) {
 	entries, err := os.ReadDir(cache)
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("failed extraction leaked a cache: %v, %v", entries, err)
+	}
+}
+
+func completeToolchainArchive(t *testing.T) []byte {
+	t.Helper()
+	name := "go/bin/go"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	files := map[string]string{name: "compiler", "go/VERSION": "go1.25.1", "go/src/runtime/runtime.go": "package runtime"}
+	for _, tool := range []string{"compile", "link", "asm"} {
+		if runtime.GOOS == "windows" {
+			tool += ".exe"
+		}
+		files["go/pkg/tool/"+runtime.GOOS+"_"+runtime.GOARCH+"/"+tool] = "tool"
+	}
+	return testArchive(t, files)
+}
+
+func TestTruncatedToolchainNeverPublishesAndCanRetry(t *testing.T) {
+	archive := completeToolchainArchive(t)
+	for _, missing := range []int{1, 8, 16, len(archive) / 2} {
+		t.Run(fmt.Sprint(missing), func(t *testing.T) {
+			cache := t.TempDir()
+			if _, err := materializeToolchain(archive[:len(archive)-missing], cache); err == nil {
+				t.Fatal("published an interrupted archive")
+			}
+			entries, err := os.ReadDir(cache)
+			if err != nil || len(entries) != 0 {
+				t.Fatalf("failed extraction leaked files: %v, %v", entries, err)
+			}
+			if _, err := materializeToolchain(archive, cache); err != nil {
+				t.Fatalf("valid retry failed: %v", err)
+			}
+		})
 	}
 }

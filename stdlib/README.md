@@ -1,6 +1,6 @@
 # Standard-library declarations
 
-The `.ms` files here define public types, fields, cases, function signatures, and receiver operations. The compiler reads this pinned source directly. Go supplies the native implementations; initialization checks that their calling signatures agree with the Manuscript declarations.
+The `.ms` files here define public types, fields, cases, function signatures, and receiver operations. The compiler reads this pinned source directly. Go supplies the native implementations; integration tests check that their calling signatures agree with the Manuscript declarations.
 
 ## Which file defines what?
 

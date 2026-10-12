@@ -197,12 +197,7 @@ func (s *librarySystem) extended(ctx *Execution, r, name string, a []Value) Valu
 	}
 	return Panic("unknown system operation")
 }
-func libraryReadProc(name string) ([]byte, error) {
-	if goruntime.GOOS != "linux" {
-		return nil, errors.ErrUnsupported
-	}
-	return os.ReadFile(name)
-}
+
 func librarySystemMetrics(ctx *Execution, r string) Value {
 	memory, err := memstats.VirtualMemoryWithContext(ctx.Context)
 	CheckCancelled(ctx)

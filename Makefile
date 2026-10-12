@@ -1,45 +1,44 @@
 GO ?= $(CURDIR)/toolchain/go/bin/go
 HUGO ?= hugo
 FUZZTIME ?= 10s
+E2EFLAGS ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export MANUSCRIPT_GO ?= $(GO)
 export PATH := $(dir $(GO)):$(PATH)
+export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
 .PHONY: build test e2e race check fmt toolchain payload dist dist-check coverage fuzz book book-check
 
 toolchain:
 	sh scripts/bootstrap-go.sh
 
-build test e2e race check fmt docs docs-check coverage fuzz: | toolchain
+build test e2e race fmt coverage fuzz: | toolchain
 
-payload: | toolchain
-	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
+.PHONY: setup tools doctor verify verify-full lint unit repo-check examples-check licenses licenses-check
+setup: toolchain tools
 
-build: payload
-	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags bundled_toolchain -o ms ./cmd/ms
+tools: | toolchain
+	sh scripts/bootstrap-tools.sh
 
-test:
-	"$(GO)" test ./...
+doctor:
+	HUGO="$(HUGO)" sh scripts/doctor.sh
 
-e2e:
-	"$(GO)" test ./tests/e2e
+# Routine feedback excludes native compilation. The merge gate runs verify-full.
+verify: check lint repo-check unit docs-check examples-check licenses-check
 
-race:
-	"$(GO)" test -race ./runtime ./checker ./compiler ./project ./internal/cli ./tooling/...
+verify-full: verify coverage race fuzz book-check dist-check
 
-coverage:
-	@mkdir -p .artifacts/coverage
-	"$(GO)" test -covermode=atomic -coverprofile=.artifacts/coverage/coverage.out ./...
-	"$(GO)" tool cover -func=.artifacts/coverage/coverage.out
-	"$(GO)" tool cover -html=.artifacts/coverage/coverage.out -o .artifacts/coverage/index.html
+lint:
+	@test -x .tools/staticcheck -a -x .tools/actionlint -a -x .tools/shellcheck || (echo 'Run make setup to install pinned linters'; exit 1)
+	.tools/staticcheck ./...
+	.tools/actionlint -shellcheck .tools/shellcheck
+	.tools/shellcheck -x scripts/*.sh
 
-fuzz:
-	"$(GO)" test ./parser -run '^$$' -fuzz '^FuzzParse$$' -fuzztime "$(FUZZTIME)"
-	"$(GO)" test ./parser -run '^$$' -fuzz '^FuzzParsePartial$$' -fuzztime "$(FUZZTIME)"
-	"$(GO)" test ./compiler -run '^$$' -fuzz '^FuzzCompile$$' -fuzztime "$(FUZZTIME)"
+unit:
+	"$(GO)" test ./syntax ./lexer ./parser ./project ./checker ./runtime ./tooling/...
 
-check:
-	@test -z "$$("$(GO)" fmt ./...)" || (echo 'Go files need formatting'; exit 1)
+repo-check:
+	"$(GO)" run ./scripts/repo-check -format
 	"$(GO)" vet ./...
 
 fmt:
@@ -65,3 +64,7 @@ book-check: docs-check
 	node --test tests/docs/highlighting.test.cjs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir --destination "$(BOOK_CHECK_DIR)" --baseURL "https://example.org/manuscript/"
 	MANUSCRIPT_BOOK_DIR="$(BOOK_CHECK_DIR)" node --test tests/docs/publication.test.cjs
+
+.PHONY: vendor-refresh
+vendor-refresh:
+	"$(GO)" run ./scripts/maintenance vendor

@@ -55,3 +55,11 @@ Decision: when reviewing the Node host expansion, the user asked to simplify tim
 Apply when: adding scheduling APIs or using another runtime's API inventory as a completeness target.
 Evidence: the user's timer simplification correction; [time declarations](../stdlib/time.ms), [native host mappings](../documentation/standard-library/packages/node-host.md#timers-and-scheduling), and [scheduling conformance](../runtime/library_host_parity_test.go).
 Verify: ordinary callbacks remain first-class values, cancellation and close join admitted work, and the inventory maps compositions without restoring duplicate public APIs.
+
+### Validate compression completion before publishing tools
+
+Verified: tar EOF can precede the gzip trailer. A complete tar payload with a truncated trailer must not become a ready toolchain. Extraction now drains the compressed reader before publication, validating truncation and checksum; retries retain no partial cache.
+
+Apply when: changing SDK extraction or cache publication.
+Evidence: [extractor](../compiler/toolchain_cache.go), [interrupted archive and concurrent publication tests](../compiler/toolchain_test.go).
+Verify: truncated archives fail, leave no published/staging cache, and permit a complete retry; concurrent valid callers reuse one immutable result.

@@ -2,7 +2,7 @@
 # Fetch a verified toolchain into an installation, never a system directory.
 set -eu
 
-repository=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+repository=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 version=$(cat "$repository/.go-version")
 if [ "$#" -eq 0 ]; then
     case $(uname -s) in

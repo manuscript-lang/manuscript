@@ -8,43 +8,111 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  fast:
+    name: Fast feedback
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: .go-version
-          cache: false
-      - name: Check formatting and vet
-        run: make check
-      - name: Unit and native end-to-end tests
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: actions/cache@v4
+        with:
+          path: |
+            toolchain/
+            .tools/
+          key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256', 'scripts/devtools.env', 'scripts/devtools.sha256') }}
+      - name: Prepare verified SDK and pinned linters
+        run: make setup
+      - name: Read-only verification, unit tests, and tutorial checks
+        run: make verify
+
+  conformance:
+    name: Native conformance and coverage
+    needs: fast
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: actions/cache@v4
+        with:
+          path: toolchain/
+          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
+      - name: Unit and native end-to-end coverage, including dependency packages
         run: make coverage
       - uses: actions/upload-artifact@v4
         with:
           name: language-coverage
           path: .artifacts/coverage/
-      - name: Parser and compiler fuzz smoke checks
-        run: make fuzz
-      - name: Runtime and compiler race checks
-        run: make race
-      - name: Build CLI and check example
+      - name: Build bundled CLI and run hello
         run: |
           make build
           ./ms check examples/hello/ms.toml
           ./ms lock examples/hello/ms.toml
           ./ms run examples/hello/ms.toml -- first second
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manuscript-test-cli
+          path: ms
+      - name: Verify offline standalone distribution
+        run: make dist-check
 
+  stress:
+    needs: fast
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [race, fuzz]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/cache@v4
+        with:
+          path: toolchain/
+          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
+      - name: Runtime/compiler stress checks
+        run: make "${{ matrix.check }}"
+
+  extension:
+    name: Editor and native debugger
+    needs: conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+          cache: true
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: manuscript-test-cli
       - name: Install pinned native debugger
-        run: go install github.com/go-delve/delve/cmd/dlv@v1.25.2
+        run: |
+          chmod +x ms
+          go install github.com/go-delve/delve/cmd/dlv@v1.25.2
       - name: Validate and package VS Code extension
         working-directory: extensions/vscode
         run: |
           npm ci
-          npm run check
           npm run package -- --allow-missing-repository
       - name: Native Manuscript DAP integration
         working-directory: extensions/vscode
@@ -54,10 +122,9 @@ jobs:
         with:
           name: manuscript-vscode
           path: extensions/vscode/*.vsix
-      - name: Verify self-contained distribution without system Go
-        run: make dist-check
 
   host-stdlib:
+    needs: fast
     strategy:
       fail-fast: false
       matrix:
@@ -70,11 +137,22 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: .go-version
-          cache: false
+          cache: true
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version-file: .node-version
       - name: Native host compatibility and Node.js coverage
         shell: bash
         run: |
           go test ./runtime ./compiler ./tests/e2e -run 'TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
+
+  # Keep one stable required check; every applicable job must pass before merging.
+  test:
+    needs: [fast, conformance, stress, extension, host-stdlib]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all language checks
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+        run: test "$RESULTS" = 'success,success,success,success,success'
