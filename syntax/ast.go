@@ -28,9 +28,10 @@ type Type struct {
 	Result *Type
 }
 type Parameter struct {
-	Pos  Position
-	Name string
-	Type *Type
+	Pos     Position
+	Name    string
+	Type    *Type
+	Default *Expression
 }
 type TypeParameter struct {
 	Pos    Position

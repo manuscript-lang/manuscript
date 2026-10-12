@@ -22,7 +22,7 @@ let decrement = fn(value: Int) -> Int:
 let result = apply(value: 3, transform: decrement)
 ```
 
-Function types retain parameter names. Calls through values may omit the label when the function type has exactly one parameter; multi-parameter function types require labels on every supplied argument. Labels remain part of function-type identity and compatibility even when a call omits one. Calls have the same suspension and evaluation rules as declared functions.
+Function types retain parameter names. Calls through values may omit the label when the function type has exactly one parameter; multi-parameter function types require labels on every supplied argument. Labels remain part of function-type identity and compatibility even when a call omits one. Calls have the same suspension and evaluation rules as declared functions. Inferred immutable copies retain [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
 
 ## Function type compatibility
 

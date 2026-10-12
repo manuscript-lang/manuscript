@@ -14,6 +14,9 @@ type Type struct {
 	Result         *Type
 	Def            *Definition
 	Bounds         []*Type
+	// Defaults marks omittable parameters on a known source callable.
+	// It is erased by explicit function types and generic inference.
+	Defaults map[string]bool
 }
 type Param struct {
 	Name string
@@ -103,7 +106,11 @@ func (t *Type) String() string {
 	if t.Kind == "function" {
 		var p []string
 		for _, a := range t.Params {
-			p = append(p, a.Name+": "+a.Type.String())
+			label := a.Name + ": " + a.Type.String()
+			if t.Defaults[a.Name] {
+				label += " = ..."
+			}
+			p = append(p, label)
 		}
 		return "fn(" + strings.Join(p, ", ") + ")->" + t.Result.String()
 	}
@@ -159,6 +166,23 @@ func Sub(t *Type, bindings map[string]*Type) *Type {
 		r.Params = append(r.Params, Param{p.Name, Sub(p.Type, bindings)})
 	}
 	r.Result = Sub(t.Result, bindings)
+	return &r
+}
+func requiredType(t *Type) *Type {
+	if t == nil {
+		return nil
+	}
+	r := *t
+	r.Defaults = nil
+	r.Args = nil
+	for _, a := range t.Args {
+		r.Args = append(r.Args, requiredType(a))
+	}
+	r.Params = nil
+	for _, p := range t.Params {
+		r.Params = append(r.Params, Param{p.Name, requiredType(p.Type)})
+	}
+	r.Result = requiredType(t.Result)
 	return &r
 }
 func substitution(t *Type) map[string]*Type {
@@ -229,7 +253,7 @@ func unify(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bo
 		if previous := sub[pattern.ID]; previous != nil {
 			return Same(previous, actual)
 		}
-		sub[pattern.ID] = actual
+		sub[pattern.ID] = requiredType(actual)
 		return true
 	}
 	if pattern.ID != actual.ID || len(pattern.Args) != len(actual.Args) || len(pattern.Params) != len(actual.Params) {

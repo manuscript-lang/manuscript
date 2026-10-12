@@ -57,3 +57,11 @@ Decision: a common Error contract must allow both generic diagnostics and specif
 Apply when: changing Error boundaries, contract views, matching, or native standard implementations.
 Evidence: [contract type patterns](../design/core-language/control-flow/pattern-matching.md#contract-type-patterns); [common error boundary](../design/core-language/errors/results.md#a-common-error-boundary); [compiled errors and generic patterns](../tests/e2e/testdata/accept/library-errors.ms); [invalid contract patterns](../compiler/library_test.go).
 Verify: exact nominal identities and generic arguments determine a match; the receiver and payload survive conversion and propagation; missing implementations, incomplete generic patterns, and missing fallbacks are rejected.
+
+### Default arguments must not leak across callable replacement
+
+Verified: defaults are permissions on a known callable, not part of function-type identity. Retaining that permission on a mutable binding or inferred generic type could let a required-argument function replace a defaulted function, then be called with a missing argument. Explicit function types, mutable bindings, and generic inference erase defaults; inferred immutable copies retain them.
+
+Apply when: changing callable metadata, assignment, generic inference, default arguments, or function-value tooling.
+Evidence: [canonical default rules](../design/core-language/functions/declarations-and-calls.md#default-arguments); [boundary rejection tests](../checker/defaults_test.go); [native default behavior](../tests/e2e/testdata/accept/default-arguments.ms).
+Verify: replace a defaulted function with a required-argument function through a mutable binding and reject omission; reject omission after generic forwarding, while an inferred immutable copy still accepts it.

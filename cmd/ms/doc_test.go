@@ -54,7 +54,7 @@ func TestDocPublicDeclarationsAndFailures(t *testing.T) {
 export type Item:
     value: Int
 
-export fn create(value: Int) -> Item:
+export fn create(value: Int = 7) -> Item:
     return Item(value: value)
 
 fn private_helper() -> Int:
@@ -71,7 +71,7 @@ fn private_helper() -> Int:
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"```manuscript\n", "## Item", "type Item:\n    value: Int", "## create", "fn create(value: Int) -> Item"} {
+	for _, want := range []string{"```manuscript\n", "## Item", "type Item:\n    value: Int", "## create", "fn create(value: Int = 7) -> Item"} {
 		if !strings.Contains(string(data), want) {
 			t.Errorf("missing %q in %s", want, data)
 		}

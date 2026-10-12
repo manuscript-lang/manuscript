@@ -165,7 +165,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		return i
 	}
 	i.Arguments = functionArguments(e.Args, signature.Params)
-	i.NoReturn = callable.NoReturn || c.arguments(i.Arguments, signature.Params)
+	i.NoReturn = callable.NoReturn || c.arguments(i.Arguments, signature.Params, signature.Defaults)
 	i.Type = signature.Result
 	if i.Type != nil && i.Type.ID == "Never" {
 		i.NoReturn = true
@@ -188,7 +188,7 @@ func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument
 	return resolved
 }
 
-func (c *checker) arguments(args []syntax.Argument, params []Param) bool {
+func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...map[string]bool) bool {
 	seen := map[string]bool{}
 	noReturn := false
 	for _, arg := range args {
@@ -216,7 +216,7 @@ func (c *checker) arguments(args []syntax.Argument, params []Param) bool {
 		noReturn = noReturn || v.NoReturn
 	}
 	for _, param := range params {
-		if !seen[param.Name] {
+		if !seen[param.Name] && (len(defaults) == 0 || !defaults[0][param.Name]) {
 			pos := c.modulePosition()
 			if len(args) > 0 {
 				pos = args[0].Pos

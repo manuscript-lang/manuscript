@@ -28,6 +28,9 @@ func signatureHelp(d document, docs map[string]document, p position) (any, error
 	labels := []string{}
 	for _, param := range t.Params {
 		label := param.Name + ": " + param.Type.String()
+		if t.Defaults[param.Name] {
+			label += " = ..."
+		}
 		labels = append(labels, label)
 		parameters = append(parameters, map[string]any{"label": label})
 	}
@@ -91,6 +94,9 @@ func inlayHints(result compiler.Result, d document, requested span) []any {
 			return
 		}
 		statements(e.Body)
+		for _, param := range e.Params {
+			expression(param.Default)
+		}
 		expression(e.Left)
 		expression(e.Right)
 		for _, arg := range e.Args {
@@ -116,8 +122,14 @@ func inlayHints(result compiler.Result, d document, requested span) []any {
 		}
 	}
 	for _, decl := range m.Declarations {
+		for _, param := range decl.Params {
+			expression(param.Default)
+		}
 		statements(decl.Body)
 		for _, method := range decl.Methods {
+			for _, param := range method.Params {
+				expression(param.Default)
+			}
 			statements(method.Body)
 		}
 	}

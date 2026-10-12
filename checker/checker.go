@@ -269,11 +269,23 @@ func (c *checker) params(params []syntax.Parameter) []Param {
 	return result
 }
 func (c *checker) signature(params []syntax.Parameter, result *syntax.Type) *Type {
-	return function(c.params(params), c.resolve(result, false))
+	t := function(c.params(params), c.resolve(result, false))
+	for _, p := range params {
+		if p.Default != nil {
+			if t.Defaults == nil {
+				t.Defaults = map[string]bool{}
+			}
+			t.Defaults[p.Name] = true
+		}
+	}
+	return t
 }
 func (c *checker) bind(name string, t *Type, mutable bool, pos syntax.Position) *Binding {
 	if c.scope.bindings[name] != nil || c.scope.types[name] != nil {
 		c.error(pos, "type", "duplicate local binding "+name)
+	}
+	if mutable {
+		t = requiredType(t)
 	}
 	b := &Binding{Name: name, ID: c.unique("local") + "_" + name, Type: t, Mutable: mutable, Function: c.function}
 	c.scope.bindings[name] = b
@@ -293,6 +305,9 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 		pos := d.Pos
 		if i < len(d.Params) {
 			pos = d.Params[i].Pos
+		}
+		if i < len(d.Params) && d.Params[i].Default != nil {
+			c.expression(d.Params[i].Default, p.Type)
 		}
 		c.Parameters[d] = append(c.Parameters[d], c.bind(p.Name, p.Type, false, pos))
 	}
@@ -620,6 +635,9 @@ func (c *checker) expression(e *syntax.Expression, expected *Type) *Info {
 	if expected != nil && !compatible(i.Type, expected) {
 		c.error(e.Pos, "type", formatMismatch(i.Type, expected))
 	}
+	if expected != nil && expected.Kind == "function" && Same(i.Type, expected) {
+		i.Type = expected
+	}
 	c.Expressions[e] = i
 	return i
 }
@@ -776,6 +794,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		c.loops = 0
 		c.captures[c.function] = map[*Binding]bool{}
 		for index, param := range t.Params {
+			if e.Params[index].Default != nil {
+				c.expression(e.Params[index].Default, param.Type)
+			}
 			c.LambdaParameters[e] = append(c.LambdaParameters[e], c.bind(param.Name, param.Type, false, e.Params[index].Pos))
 		}
 		fall, _ := c.block(e.Body, false)

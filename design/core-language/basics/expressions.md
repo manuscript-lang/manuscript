@@ -41,7 +41,7 @@ Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
               | "(", Expression, ")" | SharedViewConstruction | ListLiteral | FunctionExpression ;
 SharedViewConstruction = "(", SharedContractType, ")", CallArguments ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
-FunctionExpression = "fn", "(", [ Parameters ], ")", "->", Type, Suite ;
+FunctionExpression = "fn", "(", [ FunctionParameters ], ")", "->", Type, Suite ;
 ```
 
 The common `Comparison` production makes `a < b == c`, `a == b == c`, and `a < b < c` syntax errors. Comparisons with explicit grouping, such as `(a < b) == flag`, are ordinary Bool equality. `not a == b` means `not (a == b)`. `try read() + 1` means `(try read()) + 1`; use `try (expression)` to propagate the result of a larger expression.

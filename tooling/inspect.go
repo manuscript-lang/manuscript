@@ -178,6 +178,9 @@ func Inspect(program *checker.Program) Inspection {
 					}
 					result.Calls = append(result.Calls, site)
 				}
+				for _, param := range e.Params {
+					expression(param.Default)
+				}
 				expression(e.Left)
 				expression(e.Right)
 				for _, a := range e.Args {
@@ -212,6 +215,9 @@ func Inspect(program *checker.Program) Inspection {
 					}
 				}
 			}
+			for _, param := range declaration.Params {
+				expression(param.Default)
+			}
 			statements(declaration.Body)
 			implementation := entity
 			for _, method := range declaration.Methods {
@@ -219,6 +225,9 @@ func Inspect(program *checker.Program) Inspection {
 					checked := methods[method]
 					entity = Entity{ID: methodIDs[checked.ID], GoID: checked.ID, Kind: "method", Name: implementation.Name + "." + method.Name, Type: checked.Type.String(), Span: sourceSpan(module, method.Pos), Effects: program.Effects[checked.ID]}
 					result.Entities = append(result.Entities, entity)
+					for _, param := range method.Params {
+						expression(param.Default)
+					}
 					statements(method.Body)
 				}
 			}

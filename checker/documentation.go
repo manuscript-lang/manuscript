@@ -87,7 +87,7 @@ func documentSymbol(symbol *Symbol, source string) APIDeclaration {
 		if strings.HasPrefix(source[decl.Pos.Offset:], "interface") {
 			keyword = "interface"
 		}
-		d.Declaration = documentDeclaration(decl, keyword, decl.Name)
+		d.Declaration = documentDeclaration(decl, keyword, decl.Name, source)
 	} else if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
 		d.Declaration = documentDeclaration(intrinsic.Def.Symbol.Decl, "type", symbol.Name)
 	} else {

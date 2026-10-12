@@ -45,7 +45,7 @@ An implementation must match the contract exactly. After substituting generic ty
 - parameter labels, their declaration order, and parameter types match;
 - result types match.
 
-Missing, extra, duplicate, or mismatched operations are compile errors. A method cannot add defaults or its own generic parameters. Parameter labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility).
+Missing, extra, duplicate, or mismatched operations are compile errors. An implementation method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls through its concrete receiver; interface-view calls still require the interface signature's arguments. Neither interface operations nor methods declare their own generic parameters. Parameter labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility).
 
 ```manuscript
 # Rejected: amount does not match the contract's value label.
