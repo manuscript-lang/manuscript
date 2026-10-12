@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 # Sum three integer values with explicit named arguments.
 export fn total(first: Int, second: Int, third: Int) -> Int:
     return first + second + third
@@ -13,5 +15,4 @@ export fn compute(iterations: Int) -> Int:
 
 test "named arguments":
     if total(first: 10, second: 20, third: 30) != 60:
-        return 1
-    return 0
+        return panic(message: "named argument result differs")

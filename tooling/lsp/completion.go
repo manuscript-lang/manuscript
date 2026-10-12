@@ -222,7 +222,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 		if lineStart == c.start {
 			words = []string{"fn", "type", "interface", "impl", "import", "export", "test"}
 		}
-		templates := map[string]string{"interface": "interface ${1:Name}:\n    ${0:fn operation() -> Unit}", "fn": "fn ${1:name}(${2}) -> ${3:Unit}:\n    ${0:return unit}", "type": "type ${1:Name}:\n    ${0:field: String}", "if": "if ${1:condition}:\n    $0", "for": "for ${1:item} in ${2:items}:\n    $0", "with": "with ${1:resource} = ${2:initializer}:\n    $0", "test": "test \"${1:name}\":\n    ${0:return 0}"}
+		templates := map[string]string{"interface": "interface ${1:Name}:\n    ${0:fn operation() -> Unit}", "fn": "fn ${1:name}(${2}) -> ${3:Unit}:\n    ${0:return unit}", "type": "type ${1:Name}:\n    ${0:field: String}", "if": "if ${1:condition}:\n    $0", "for": "for ${1:item} in ${2:items}:\n    $0", "with": "with ${1:resource} = ${2:initializer}:\n    $0", "test": "test \"${1:name}\":\n    ${0:return unit}"}
 		for _, word := range words {
 			insert := word + " "
 			if snippets {

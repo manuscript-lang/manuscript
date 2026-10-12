@@ -24,14 +24,13 @@ export fn main(process: Process) -> Int:
     with queue = Queue[Int](capacity: 4):
         let admitted = queue.send(value: package.count)
         match admitted:
-            ok(_):
-                unit
             error(_):
                 return 1
-        let checksum = compute(iterations: 3000000)
-        let output = "{package.title}: {sum}; checksum {checksum}\n"
-        match process.stdout.write(data: output.to_bytes()):
             ok(_):
-                return 0
-            error(_):
-                return 1
+                let checksum = compute(iterations: 3000000)
+                let output = "{package.title}: {sum}; checksum {checksum}\n"
+                match process.stdout.write(data: output.to_bytes()):
+                    ok(_):
+                        return 0
+                    error(_):
+                        return 1
