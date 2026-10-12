@@ -72,15 +72,6 @@ func StandardFunction(name, result string) Value {
 		return NewFunction([]string{"items", "operation", "limit"}, result, func(ctx *Execution, args []Value) Value {
 			return ParallelMap(ctx, result, typeArguments(result)[0], []Argument{{"items", args[0]}, {"operation", args[1]}, {"limit", args[2]}})
 		})
-	case "map_error":
-		return NewFunction([]string{"result", "transform"}, result, func(ctx *Execution, args []Value) Value {
-			outcome := args[0].(Alternative)
-			if outcome.Tag == "ok" {
-				return Alternative{result, "ok", outcome.Fields}
-			}
-			cause := Invoke(ctx, args[1], []Argument{{"cause", outcome.Fields[0]}})
-			return Alternative{result, "error", []Value{cause}}
-		})
 	}
 	return Panic("unavailable standard function " + name)
 }

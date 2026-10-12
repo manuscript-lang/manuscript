@@ -24,7 +24,7 @@ The callable must use the exact parameter label `item`, as declared by the stand
 
 Naming Result or ExecutionError in a signature requires their individual imports from `@std/result.ms` and `@std/tasks.ms`. The inferred output list does not require a List import; a source bracket list literal does.
 
-This body fragment requires an enclosing `Result[U, ExecutionError]` function for its outer `try`; translate with `map_error` when using an application error type. Unit tests must match the outer Result instead.
+This body fragment requires an enclosing `Result[U, ExecutionError]` function for its outer `try`; translate with `match` when using an application error type. Unit tests must match the outer Result instead.
 
 The captured users capability is an ordinary Users view. All captures, input elements, and output elements are safe to share, including functions and contract views.
 

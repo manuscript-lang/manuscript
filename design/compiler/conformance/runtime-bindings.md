@@ -17,7 +17,6 @@ import panic from "@std/faults.ms"
 import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 
 fn amount() -> Result[Decimal, String]:
     return ok(value: 12.50d)
@@ -25,12 +24,7 @@ fn amount() -> Result[Decimal, String]:
 test "explicit standard imports":
     if not ([1, 2].length() == 2):
         return panic(message: "check failed")
-    let outcome = map_error(
-        result: amount(),
-        transform: fn(cause: String) -> Int:
-            return cause.byte_length()
-    )
-    match outcome:
+    match amount():
         ok(value):
             if not (value == 12.50d):
                 return panic(message: "check failed")
@@ -38,7 +32,7 @@ test "explicit standard imports":
             return panic(message: "Unexpected case")
 ```
 
-Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove map_error and reject its call. Importing Result alone must not expose map_error, and importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../standard-library/hosts/cli.md).
+Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove panic and reject its call. Importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../standard-library/hosts/cli.md).
 
 Accept this independent module without standard imports:
 
@@ -81,7 +75,6 @@ Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a
 import panic from "@std/faults.ms"
 
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
 
@@ -113,17 +106,25 @@ test "pack helper":
         error(_):
             return panic(message: "Unexpected case")
 
+fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
+    match outcome:
+        ok(value):
+            return ok(value: value)
+        error(cause):
+            return error(cause: "Error {cause}")
+
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(cause: 7)
-    let translate = fn(cause: Int) -> String:
-        return "Error {cause}"
-    let converted = map_error(result: failed, transform: translate)
     let expected: Result[Int, String] = error(cause: "Error 7")
-    if not (converted == expected):
+    if not (describe(outcome: failed) == expected):
+        return panic(message: "check failed")
+    let succeeded: Result[Int, Int] = ok(value: 3)
+    let unchanged: Result[Int, String] = ok(value: 3)
+    if not (describe(outcome: succeeded) == unchanged):
         return panic(message: "check failed")
 ```
 
-Accept the complete `load` module in [parallel](../../concurrency/parallel.md) too. Replace any error adapter with direct `try` under LoadError and reject the incompatible error type. Moving the probe's `try parallel` directly into the Unit test is rejected. Changing the copied pack pattern to `[number]` is rejected for arity. Passing an existing list as tasks is rejected; qualifying or annotating a source type `Pack` is an unknown-name rejection. `parallel(tasks: [])` can be matched and its success destructured as `[]`.
+Accept the complete `load` module in [parallel](../../concurrency/parallel.md) too. Replace any Result match with direct `try` under LoadError and reject the incompatible error type. Moving the probe's `try parallel` directly into the Unit test is rejected. Changing the copied pack pattern to `[number]` is rejected for arity. Passing an existing list as tasks is rejected; qualifying or annotating a source type `Pack` is an unknown-name rejection. `parallel(tasks: [])` can be matched and its success destructured as `[]`.
 
 For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn(id: Int) -> Int`. Reject start operations returning Int or plain Unit; accept only `fn() -> Result[Unit, String]`. Use controlled reporter fixtures to verify String errors, crashes, status expiry, bounded overflow fallback, and reporter-fault fallback without recursive reporting.
 

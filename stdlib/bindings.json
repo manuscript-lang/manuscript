@@ -167,7 +167,6 @@
     "@std/regex.ms/find_all": "regex/find_all",
     "@std/regex.ms/matches": "regex/matches",
     "@std/regex.ms/replace": "regex/replace",
-    "@std/result.ms/map_error": "map_error",
     "@std/tasks.ms/check_cancelled": "check_cancelled",
     "@std/tasks.ms/parallel_map": "parallel_map",
     "@std/string.ms/at": "string/at",

@@ -1909,16 +1909,6 @@
             "ok(value: T)",
             "error(cause: U)"
           ]
-        },
-        {
-          "name": "map_error",
-          "kind": "fn",
-          "type": "fn(result: Result[T, E], transform: fn(cause: E)-\u003eF)-\u003eResult[T, F]",
-          "type_parameters": [
-            "T",
-            "E",
-            "F"
-          ]
         }
       ]
     },
