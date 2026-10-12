@@ -6,7 +6,10 @@ import (
 	rt "github.com/manuscript-lang/manuscript/runtime"
 	goparser "go/parser"
 	"go/token"
+	"os"
+	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -215,5 +218,36 @@ fn start_timer(operation: fn() -> Result[Unit, String]) -> Unit:
 `
 	if result := CompileSource("timer-values.ms", source, Options{}); !result.Success() {
 		t.Fatal(result.Diagnostics)
+	}
+}
+
+func TestNativeBuildInSymlinkedTemporaryDirectory(t *testing.T) {
+	root := t.TempDir()
+	actual, alias := filepath.Join(root, "actual"), filepath.Join(root, "alias")
+	if err := os.Mkdir(actual, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(actual, alias); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, alias)
+	}
+	result := CompileSource("native-path.ms", `test "native module identity":
+    let value = 1
+`, Options{Tests: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	binary := filepath.Join(root, "program")
+	if goruntime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	if err := Build(result.Source, binary); err != nil {
+		t.Fatal(err)
+	}
+	output, err := exec.Command(binary).CombinedOutput()
+	if err != nil || !strings.Contains(string(output), "0 failed") {
+		t.Fatal(err, string(output))
 	}
 }

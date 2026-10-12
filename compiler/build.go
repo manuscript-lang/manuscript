@@ -145,7 +145,11 @@ func buildNative(source, output string, debug bool) error {
 	if debug {
 		arguments = append(arguments, "-gcflags=all=-N -l")
 	}
-	arguments = append(arguments, "-o", output, filename)
+	// Build the temporary module, rather than a file with the synthetic
+	// command-line-arguments identity. Internal native adapters must resolve
+	// under the module identity even when the temporary path has symlinked
+	// ancestors (as on macOS) or platform-specific path spelling.
+	arguments = append(arguments, "-o", output, ".")
 	command, err := goCommand(arguments...)
 	if err != nil {
 		return err

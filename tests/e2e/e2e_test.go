@@ -438,6 +438,9 @@ func TestExpandedLibraryCLICapabilities(t *testing.T) {
 	}
 	directory := t.TempDir()
 	binary := filepath.Join(directory, "library")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	if err := compiler.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}

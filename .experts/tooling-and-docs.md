@@ -70,3 +70,5 @@ Verified: standalone generation merges runtime declarations and deduplicates imp
 Apply when: adding native runtime implementation files or platform adapters.
 Evidence: [standalone merger](../compiler/build.go), [import-alias regression check](../compiler/library_test.go), [native dependency bundle](../native_bundle.go), and [platform bridge](../internal/hostos/hostos.go).
 Verify: `TestBundledRuntimeImportAliasesAgree`, source-to-native CLI tests, and the packaged binary check with an empty cache and no system Go.
+
+Verified: native compilation must build the temporary module (`go build .`) rather than an absolute source filename. A filename build can give the main package the synthetic `command-line-arguments` identity and reject bundled internal imports when path canonicalization differs, as on macOS temporary paths. [Native build regression](../compiler/library_test.go) exercises a symlinked temporary root; [module build](../compiler/build.go) preserves the dependency namespace.
