@@ -64,7 +64,7 @@ test "stable priority queue and optional capacity":
 
     let bounded = PriorityQueue(
         compare: compare,
-        capacity: some(value: 1)
+        capacity: 1
     )
     if not (bounded.enqueue(Key(id: 1, label: "only"))): return panic("enqueue failed")
     if bounded.enqueue(Key(id: 0, label: "full")): return panic("capacity ignored")
@@ -78,7 +78,7 @@ test "limits can be omitted or supplied":
 
     match "ab".repeat(
         count: 3,
-        max_bytes: some(value: 5)
+        max_bytes: 5
     ):
         ok(_): return panic("supplied limit ignored")
         error(_): return
@@ -116,7 +116,7 @@ test "native compositions preserve Optional arguments for source implementations
         "omitted limit did not reach the source implementation"
     )
 
-    let supplied = stream.read(some(value: 8))
+    let supplied = stream.read(8)
     if reader.requested != 8: return panic("supplied limit was not an Optional")
 
     let line = read_line(input: stream)

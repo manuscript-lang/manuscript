@@ -31,7 +31,7 @@ test "big integers validate digits budgets and zero divisors":
     if parse(
         text: "123",
         radix: 10,
-        max_digits: some(value: 2)
+        max_digits: 2
     ) != limited: return panic("digit limit")
 
     let malformed: Result[BigInt, BigIntError] = error(cause: BigIntError.InvalidData)

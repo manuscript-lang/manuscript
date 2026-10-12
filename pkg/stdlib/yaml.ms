@@ -1041,12 +1041,12 @@ export fn parse(
         .replace(
             old: "\r\n",
             new: "\n",
-            max_replacements: some(value: text.byte_length())
+            max_replacements: text.byte_length()
         )
         .replace(
             old: "\r",
             new: "\n",
-            max_replacements: some(value: text.byte_length())
+            max_replacements: text.byte_length()
         )
     )
 

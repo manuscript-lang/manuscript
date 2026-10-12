@@ -44,7 +44,7 @@ export fn emit(logger: Logger) -> Result[Unit, LogError]:
     let ignored = try child.debug(message: "filtered")
     let received = try child.info(
         message: "received \"payload\"\nnext",
-        fields: some(value: fields)
+        fields: fields
     )
     let complete = try logger.warn(message: "complete")
     return ok(value: unit)

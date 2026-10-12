@@ -35,10 +35,10 @@ test "sealed builder mutation faults":
     builder.append(1)
 
 test "zero queue capacity faults":
-    let queue = Queue[Int](capacity: some(value: 0))
+    let queue = Queue[Int](capacity: 0)
 
 test "negative queue capacity faults":
-    let queue = Queue[Int](capacity: some(value: -1))
+    let queue = Queue[Int](capacity: -1)
 
 test "stale synchronized guard faults":
     let state = Synchronized(value: 1)

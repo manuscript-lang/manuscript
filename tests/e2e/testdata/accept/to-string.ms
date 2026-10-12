@@ -197,14 +197,14 @@ test "generics views bound methods functions and resources":
         expected: "[function]"
     )
     check(value: "{answer}", expected: "[function]")
-    let queue = Queue[Int](capacity: some(value: 1))
+    let queue = Queue[Int](capacity: 1)
     check(
         value: queue.toString(),
         expected: "[object]"
     )
     check(value: "{queue}", expected: "[object]")
 
-    with service = Scheduler(limit: some(value: 1)):
+    with service = Scheduler(limit: 1):
         check(
             value: service.toString(),
             expected: "[object]"

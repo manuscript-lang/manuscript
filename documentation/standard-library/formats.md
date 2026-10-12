@@ -62,8 +62,8 @@ import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 test "parse bounded TOML configuration":
-    let limits = TomlLimits(max_bytes: some(value: 1024), max_depth: some(value: 8), max_values: some(value: 64))
-    match parse(text: "[server]\nport = 8080\n", limits: some(value: limits)):
+    let limits = TomlLimits(max_bytes: 1024, max_depth: 8, max_values: 64)
+    match parse(text: "[server]\nport = 8080\n", limits: limits):
         error(cause): return panic(cause.message())
         ok(value):
             match value:

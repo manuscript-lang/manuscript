@@ -1,4 +1,3 @@
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
@@ -57,18 +56,18 @@ fn compare(left: Int, right: Int) -> Int:
 
 fn verify_json() -> Result[Unit, JsonError]:
     let limits = JsonLimits(
-        max_bytes: some(value: 1024),
-        max_depth: some(value: 8),
-        max_values: some(value: 32)
+        max_bytes: 1024,
+        max_depth: 8,
+        max_values: 32
     )
     let value = try parse(
         text: "\{\"large\":9007199254740993,\"ok\":true\}",
-        limits: some(value: limits)
+        limits: limits
     )
     if not (
         try stringify(
             value: value,
-            max_bytes: some(value: 1024)
+            max_bytes: 1024
         ) == "\{\"large\":9007199254740993,\"ok\":true\}"
     ):
         return panic(message: "check failed")
@@ -78,7 +77,7 @@ fn verify_json() -> Result[Unit, JsonError]:
 fn verify_encoding() -> Result[Unit, EncodingError]:
     let bytes = try hex_decode(
         text: "00ff42",
-        max_bytes: some(value: 3)
+        max_bytes: 3
     )
     if not (hex_encode(data: bytes) == "00ff42"):
         return panic(message: "check failed")
@@ -94,7 +93,7 @@ fn verify_encoding() -> Result[Unit, EncodingError]:
 fn verify_url() -> Result[Unit, UrlError]:
     let query = try parse_query(
         text: "a=1&a=2&space=hello+world",
-        max_entries: some(value: 3)
+        max_entries: 3
     )
     if not (query.length() == 3):
         return panic(message: "check failed")
@@ -128,13 +127,13 @@ fn verify_compression() -> Result[Unit, CompressionError]:
         data: "hello hello hello".to_bytes(),
         format: "gzip",
         level: 6,
-        max_bytes: some(value: 256)
+        max_bytes: 256
     )
     if not (
         try decompress(
             data: compressed,
             format: "gzip",
-            max_bytes: some(value: 17)
+            max_bytes: 17
         ) == "hello hello hello".to_bytes()
     ):
         return panic(message: "check failed")
@@ -152,18 +151,16 @@ fn verify_archive() -> Result[Unit, ArchiveError]:
     let archive = try pack(
         entries: entries,
         format: "zip",
-        max_bytes: some(value: 1024)
+        max_bytes: 1024
     )
     if not (
         try unpack(
             data: archive,
             format: "zip",
-            limits: some(
-                value: ArchiveLimits(
-                    max_entries: some(value: 1),
-                    max_entry_bytes: some(value: 5),
-                    max_total_bytes: some(value: 5)
-                )
+            limits: ArchiveLimits(
+                max_entries: 1,
+                max_entry_bytes: 5,
+                max_total_bytes: 5
             )
         ) == entries
     ):
@@ -217,7 +214,7 @@ test "expanded packages run through compiler":
     if not (
         ("a,,b").split(
             separator: ",",
-            max_parts: some(value: 2)
+            max_parts: 2
         ) == ["a", ""]
     ):
         return panic(message: "check failed")
@@ -252,7 +249,7 @@ test "malformed and bounded inputs return errors":
         base64_decode(
             text: "Zh==",
             url_safe: false,
-            max_bytes: some(value: 10)
+            max_bytes: 10
         ) == failure1
     ):
         return panic(message: "check failed")
@@ -263,21 +260,21 @@ test "malformed and bounded inputs return errors":
     if not (
         hex_decode(
             text: "abcd",
-            max_bytes: some(value: 1)
+            max_bytes: 1
         ) == failure2
     ):
         return panic(message: "check failed")
 
     let limits = JsonLimits(
-        max_bytes: some(value: 100),
-        max_depth: some(value: 2),
-        max_values: some(value: 10)
+        max_bytes: 100,
+        max_depth: 2,
+        max_values: 10
     )
     let failure3: Result[JsonValue, JsonError] = error(cause: JsonError.InvalidData)
     if not (
         parse(
             text: "\{\"a\":1,\"a\":2\}",
-            limits: some(value: limits)
+            limits: limits
         ) == failure3
     ):
         return panic(message: "check failed")
@@ -286,7 +283,7 @@ test "malformed and bounded inputs return errors":
     if not (
         parse(
             text: "[[[]]]",
-            limits: some(value: limits)
+            limits: limits
         ) == failure4
     ):
         return panic(message: "check failed")

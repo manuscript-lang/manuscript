@@ -7,7 +7,6 @@ import {
 } from "@std/random.ms"
 import Bytes from "@std/bytes.ms"
 import {List, filled} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -38,7 +37,7 @@ test "random algorithms call Manuscript entropy implementations":
             secure_int(
                 entropy: Entropy(value: source),
                 min: -2,
-                max_exclusive: some(value: 3)
+                max_exclusive: 3
             )
         ) != -2
     ): return panic("random lower bound")
@@ -57,7 +56,7 @@ test "random errors propagate and invalid ranges do not read entropy":
         secure_int(
             entropy: Entropy(value: source),
             min: 3,
-            max_exclusive: some(value: 3)
+            max_exclusive: 3
         ) != invalid
     ): return panic("empty range")
     if source.requested != 0: return panic("invalid range consumed entropy")

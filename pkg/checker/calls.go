@@ -114,7 +114,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 						continue
 					}
 					for _, param := range signature.Params {
-						if param.Name == arg.Name && !unify(param.Type, actual.Type, vars, sub) {
+						if param.Name == arg.Name && !c.unifyArgument(param.Type, actual.Type, vars, sub) {
 							c.error(arg.Pos, "type", "conflicting generic inference")
 						}
 					}
@@ -193,7 +193,7 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 		if expected == nil {
 			c.error(arg.Pos, "type", "unknown argument "+arg.Name)
 		}
-		v := c.expression(arg.Value, expected)
+		v := c.argumentExpression(arg.Value, expected)
 		noReturn = noReturn || v.NoReturn
 	}
 	for _, param := range params {
@@ -265,7 +265,7 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 			if field.Name != arg.Name || c.errorAssignable(actual.Type, Sub(field.Type, sub)) {
 				continue
 			}
-			if !unify(Sub(field.Type, sub), actual.Type, variableSet(vars), sub) {
+			if !c.unifyArgument(Sub(field.Type, sub), actual.Type, variableSet(vars), sub) {
 				c.error(arg.Pos, "type", "constructor arguments conflict with expected type")
 			}
 		}
@@ -283,6 +283,62 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 	r.Args = actualArgs
 	c.wellFormed(&r, pos, map[string]bool{})
 	return &r
+}
+
+// Prefer an already optional value. Otherwise check the payload with its own
+// context (including empty lists and incomplete data constructors), then wrap
+// only the supplied argument. Ordinary expression compatibility stays exact.
+func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info {
+	if !std(expected, "Optional") || len(expected.Args) != 1 {
+		return c.expression(e, expected)
+	}
+	checkpoint := len(c.Diagnostics)
+	info := c.infer(e, expected)
+	payload := expected.Args[0]
+	if compatible(info.Type, expected) {
+		return c.checkExpression(e, info, expected)
+	}
+	if compatible(info.Type, payload) || c.errorAssignable(info.Type, payload) {
+		info = c.checkExpression(e, info, payload)
+		info.OptionalArgument = expected
+		return info
+	}
+	if len(c.Diagnostics) == checkpoint || (info.Constructor == nil && e.Kind != syntax.KindList) {
+		return c.checkExpression(e, info, expected)
+	}
+	diagnostics := append([]syntax.Diagnostic(nil), c.Diagnostics[checkpoint:]...)
+	c.Diagnostics = c.Diagnostics[:checkpoint]
+	info = c.expression(e, payload)
+	if len(c.Diagnostics) == checkpoint {
+		info.OptionalArgument = expected
+		return info
+	}
+	// Retain the original optional-boundary diagnostics when neither form fits.
+	c.Diagnostics = append(c.Diagnostics[:checkpoint], diagnostics...)
+	return info
+}
+
+// Inference matches the complete optional first, then its payload. Failed
+// attempts must not leave substitutions that constrain the second attempt.
+func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bool {
+	attempt := func(target *Type) bool {
+		trial := map[string]*Type{}
+		for key, value := range sub {
+			trial[key] = value
+		}
+		if !unify(target, actual, vars, trial) {
+			return false
+		}
+		for key, value := range trial {
+			sub[key] = value
+		}
+		return true
+	}
+	if attempt(pattern) {
+		return true
+	}
+	return std(pattern, "Optional") && len(pattern.Args) == 1 &&
+		(c.errorAssignable(actual, Sub(pattern.Args[0], sub)) || attempt(pattern.Args[0]))
 }
 
 // Only complete, independently typed arguments contribute inference evidence.

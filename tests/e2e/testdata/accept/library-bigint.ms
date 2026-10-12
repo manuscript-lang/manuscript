@@ -1,4 +1,3 @@
-import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 
 import parse from "@std/bigint.ms"
@@ -11,7 +10,7 @@ fn verify_bigint() -> Result[Unit, BigIntError]:
     let large = try parse(
         text: "18446744073709551616",
         radix: 10,
-        max_digits: some(value: 30)
+        max_digits: 30
     )
     if not (
         (

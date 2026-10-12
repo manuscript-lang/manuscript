@@ -67,7 +67,7 @@ If cancellation wins before a newly acquired resource is delivered, native acqui
 
 ## Optional limits and deadlines
 
-Limit and timeout parameters use `Optional[T] = none`. Omission or explicit `none` adds no operation budget or deadline. Supply `some(value: ...)` to enforce a budget. Optional limit fields in standard option records may also be omitted; `JsonLimits()` and `ArchiveLimits()` have no imposed budgets.
+Limit and timeout parameters use `Optional[T] = none`. Omission or explicit `none` adds no operation budget or deadline. Supply a plain limit or duration to enforce a budget; the compiler wraps it under the [optional argument rules](../core-language/types/optionals.md#passing-optional-arguments). Optional limit fields in standard option records may also be omitted; `JsonLimits()` and `ArchiveLimits()` have no imposed budgets.
 
 ```manuscript
 import Optional from "@std/optional.ms"
@@ -76,7 +76,7 @@ import StringError from "@std/string.ms"
 
 fn repeated() -> Result[String, StringError]:
     let unlimited = try "ab".repeat(count: 3)
-    return "ab".repeat(count: 3, max_bytes: some(value: 6))
+    return "ab".repeat(count: 3, max_bytes: 6)
 ```
 
 Supplied negative bounds are invalid. Zero retains each operation's declared meaning: an output budget allows no output, a zero timeout expires immediately, split's zero limit returns no parts, and a queue's supplied capacity must be positive. Limits are validated even when another limit is omitted.

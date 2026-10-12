@@ -396,7 +396,7 @@ func TestRejectedModuleBoundaries(t *testing.T) {
 
 func TestServiceBoundaries(t *testing.T) {
 	for name, source := range map[string]string{
-		"opaque constructor fields": "import Queue from \"@std/queues.ms\"\ntest \"opaque\":\n    let queue = Queue[Int](capacity: some(value: 1))\n    let capacity = queue.capacity\n",
+		"opaque constructor fields": "import Queue from \"@std/queues.ms\"\ntest \"opaque\":\n    let queue = Queue[Int](capacity: 1)\n    let capacity = queue.capacity\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource(name+".ms", source, compiler.Options{})

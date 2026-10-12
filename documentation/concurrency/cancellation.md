@@ -59,14 +59,14 @@ Cancellation of a lock holder unwinds its `with` scope and closes the guard. It 
 
 Timeouts are named library arguments, not syntax annotations. Duration values come from the standard time API; naming `Duration` requires its own import from `@std/time.ms`.
 
-`TaskGroup(timeout: some(value: 2.seconds))` sets one group budget, starting with the first submission. The budget applies across its operations; `timeout` is the only budget argument.
+`TaskGroup(timeout: 2.seconds)` sets one group budget, starting with the first submission. The budget applies across its operations; `timeout` is the only budget argument.
 
 On expiry, unfinished tasks stop and join before a failed task or group join reports TimedOut. A timeout bounds ordinary work, not cleanup or joining. Foreign code that does not cooperate can delay joining; [host escalation](../contributing/concurrent-runtime.md#host-escalation) is the final fallback.
 
 To share one budget across sequential steps, submit one callback containing those steps:
 
 ```manuscript
-with tasks = TaskGroup(timeout: some(value: 2.seconds)):
+with tasks = TaskGroup(timeout: 2.seconds):
     let task = tasks.start(sync)
     let outcome = try task.join()
 ```

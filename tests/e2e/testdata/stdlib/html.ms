@@ -177,12 +177,10 @@ test "HTML honors optional byte depth and node limits":
         value(
             parse(
                 text: "",
-                limits: some(
-                    value: HtmlLimits(
-                        max_bytes: some(value: 0),
-                        max_depth: some(value: 2),
-                        max_nodes: some(value: 4)
-                    )
+                limits: HtmlLimits(
+                    max_bytes: 0,
+                    max_depth: 2,
+                    max_nodes: 4
                 )
             )
         ) != empty
@@ -191,7 +189,7 @@ test "HTML honors optional byte depth and node limits":
         value(
             parse(
                 text: "é",
-                limits: some(value: HtmlLimits())
+                limits: HtmlLimits()
             )
         ) != value(parse(text: "é"))
     ): return panic("omitted HTML limits")
@@ -200,25 +198,19 @@ test "HTML honors optional byte depth and node limits":
     if (
         parse(
             text: "é",
-            limits: some(
-                value: HtmlLimits(max_bytes: some(value: 1))
-            )
+            limits: HtmlLimits(max_bytes: 1)
         ) != limited
     ): return panic("UTF-8 byte limit")
     if (
         parse(
             text: "",
-            limits: some(
-                value: HtmlLimits(max_depth: some(value: 1))
-            )
+            limits: HtmlLimits(max_depth: 1)
         ) != limited
     ): return panic("implicit node depth limit")
     if (
         parse(
             text: "",
-            limits: some(
-                value: HtmlLimits(max_nodes: some(value: 3))
-            )
+            limits: HtmlLimits(max_nodes: 3)
         ) != limited
     ): return panic("implicit node count limit")
 
@@ -226,9 +218,7 @@ test "HTML honors optional byte depth and node limits":
     if (
         parse(
             text: "",
-            limits: some(
-                value: HtmlLimits(max_nodes: some(value: -1))
-            )
+            limits: HtmlLimits(max_nodes: -1)
         ) != invalid
     ): return panic("negative HTML limit")
     if HtmlError.InvalidData.message() == "": return panic("HTML error diagnostic")

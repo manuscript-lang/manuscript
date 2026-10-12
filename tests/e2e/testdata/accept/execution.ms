@@ -2,7 +2,6 @@ import panic from "@std/faults.ms"
 
 import check_cancelled from "@std/tasks.ms"
 import Result from "@std/result.ms"
-import Optional from "@std/optional.ms"
 import TaskGroup from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
 import Scheduler from "@std/tasks.ms"
@@ -18,7 +17,7 @@ fn run() -> Result[Unit, ExecutionError]:
     let second = fn() -> Bool:
         return true
 
-    with group = TaskGroup(timeout: some(value: 1.seconds)):
+    with group = TaskGroup(timeout: 1.seconds):
         let number_task = group.start(first)
         let flag_task = group.start(second)
         let joined = try group.join()
@@ -29,15 +28,15 @@ fn run() -> Result[Unit, ExecutionError]:
         if not flag:
             return panic(message: "check failed")
 
-    with empty = TaskGroup(timeout: some(value: 0.seconds)):
+    with empty = TaskGroup(timeout: 0.seconds):
         let joined = try empty.join()
 
     return ok(value: unit)
 
 fn scheduler_probe() -> Unit:
     with service = Scheduler(
-        limit: some(value: 1),
-        drain: some(value: 2.seconds)
+        limit: 1,
+        drain: 2.seconds
     ):
         let task = fn() -> Result[Unit, String]:
             return ok(value: unit)

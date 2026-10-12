@@ -34,7 +34,9 @@ let exact: fn(value: Int) -> Int = identity
 let relabeled: fn(amount: Int) -> Int = identity
 ```
 
-There are no implicit numeric conversions, optional wrapping/unwrapping, result wrapping, structural record conversions, unions, or nullable references. An integer literal has type `Int` even under an expected `Float`; use the [explicit conversion API](../basics/numbers-and-booleans.md#numeric-conversion). The type checker does not choose an arbitrary common type for incompatible values.
+At call boundaries, a supplied `T` may be wrapped once for a standard `Optional[T]` parameter; see [optional arguments](optionals.md#passing-optional-arguments). This also applies to constructor fields and alternative payloads. Bindings, assignments, returns, defaults, and collection elements retain exact Optional compatibility.
+
+There are no implicit numeric conversions, optional unwrapping, result wrapping, structural record conversions, unions, or nullable references. An integer literal has type `Int` even under an expected `Float`; use the [explicit conversion API](../basics/numbers-and-booleans.md#numeric-conversion). The type checker does not choose an arbitrary common type for incompatible values.
 
 ## Propagating context
 

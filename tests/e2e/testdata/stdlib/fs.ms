@@ -2,7 +2,6 @@ import {filesystem, FileSystemError, FileHandle} from "@std/fs.ms"
 import {files, read_all, IoError} from "@std/io.ms"
 import {List, Map} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -25,7 +24,7 @@ test "filesystem scoped temporary directories and bounded file reads":
             value(
                 fs.read_file(
                     path: path,
-                    max_bytes: some(value: 5)
+                    max_bytes: 5
                 )
             ) != "hello".to_bytes()
         ): return panic("read file")
@@ -35,7 +34,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         )
         if fs.read_file(
             path: path,
-            max_bytes: some(value: 4)
+            max_bytes: 4
         ) != limited: return panic("file byte limit")
 
         let exists: Result[Unit, FileSystemError] = error(
@@ -55,7 +54,7 @@ test "filesystem scoped temporary directories and bounded file reads":
 
         with input = value(files().open(path)):
             if value(
-                input.read(some(value: 5))
+                input.read(5)
             ).unwrap() != "hello".to_bytes(): return panic("read-only Files host")
 
     match fs.stat(path: directory, follow_links: true):
@@ -85,7 +84,7 @@ test "file handles positional I/O stream adapters and closed errors":
                 value(
                     handle.read_at(
                         offset: 2,
-                        max_bytes: some(value: 2)
+                        max_bytes: 2
                     )
                 ) != "cd".to_bytes()
             ): return panic("positional read")
@@ -109,7 +108,7 @@ test "file handles positional I/O stream adapters and closed errors":
         )
         if handle.read_at(
             offset: 0,
-            max_bytes: some(value: 1)
+            max_bytes: 1
         ) != closed: return panic("closed handle")
 
         handle.close()

@@ -97,7 +97,7 @@ impl File for ClosedFile:
 
 test "contract-valued cleanup":
     with file = File(value: ClosedFile(marker: unit)):
-        match file.read(max_bytes: some(value: 1)):
+        match file.read(max_bytes: 1):
             ok(_):
                 return panic(message: "Unexpected case")
             error(cause):

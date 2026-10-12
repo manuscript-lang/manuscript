@@ -444,7 +444,7 @@ export fn main() -> Int:
     let before = now()
     if clock().now() - before < 0.milliseconds:
         return 1
-    with service = Scheduler(limit: some(value: 1)):
+    with service = Scheduler(limit: 1):
         let task = fn() -> Result[Unit, String]:
             close_output()
             return ok(value: unit)

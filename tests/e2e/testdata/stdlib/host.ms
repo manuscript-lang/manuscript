@@ -36,7 +36,7 @@ test "process environment is live while CLI environment retains its snapshot":
     let assigned = value(
         control().set_environment(
             name: name,
-            value: some(value: "stdlib")
+            value: "stdlib"
         )
     )
     if system().environment(name) != some(value: "stdlib"): return panic(

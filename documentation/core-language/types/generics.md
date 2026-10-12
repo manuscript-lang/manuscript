@@ -79,7 +79,7 @@ let value = choose(first: 1, second: 2)  # T = Int
 let mixed = choose(first: 1, second: 2.0)
 ```
 
-Result annotations do not infer function type arguments. Empty lists, `none`, and other expressions requiring context cannot independently provide evidence. Once other arguments determine all parameters, substituted parameter types provide context to those expressions. This process does not reorder evaluation.
+Result annotations do not infer function type arguments. Empty lists, `none`, and other expressions requiring context cannot independently provide evidence. Once other arguments determine all parameters, substituted parameter types provide context to those expressions. For a standard `Optional[T]` parameter, inference first matches an existing optional, then permits a plain payload to determine `T`; see [optional arguments](optionals.md#passing-optional-arguments). This process does not reorder evaluation.
 
 ```manuscript
 fn count[T](values: List[T]) -> Int:
