@@ -9,7 +9,7 @@ on:
       - '.github/workflows/release.yml'
       - '.go-version'
       - 'scripts/**'
-      - 'stdlib/**'
+      - 'pkg/stdlib/**'
       - 'go.mod'
       - 'go.sum'
       - 'vendor/**'

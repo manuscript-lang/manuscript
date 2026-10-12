@@ -7,7 +7,7 @@ weight = 48
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Package index](_index.md)
 
-These rules apply across the general-purpose packages. Exact types and signatures live in the pinned Manuscript files under `stdlib/`. The checker reads those files and verifies that native runtime signatures agree with them.
+These rules apply across the general-purpose packages. Exact types and signatures live in the pinned Manuscript files under `pkg/stdlib/`. The checker reads those files and verifies that native runtime signatures agree with them.
 
 ## Imports and callbacks
 

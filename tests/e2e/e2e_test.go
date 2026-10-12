@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	// The suite builds cmd/ms in subprocesses. Track its implementation so Go's
 	// test cache is invalidated when CLI code changes, even if the harness does not.
 	_ "github.com/manuscript-lang/manuscript/internal/cli"
@@ -55,7 +55,7 @@ func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(source, "github.com/manuscript-lang/manuscript/runtime") {
+	if strings.Contains(source, "github.com/manuscript-lang/manuscript/pkg/runtime") {
 		t.Fatal("retained runtime import")
 	}
 	if err := os.WriteFile(filepath.Join(t.TempDir(), "main.go"), []byte(source), 0600); err != nil {

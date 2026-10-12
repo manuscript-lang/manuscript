@@ -1,67 +1,67 @@
 {
   "dependencies": {
-    "syntax": [],
-    "lexer": [
-      "syntax"
+    "pkg/syntax": [],
+    "pkg/lexer": [
+      "pkg/syntax"
     ],
-    "parser": [
-      "syntax",
-      "lexer"
+    "pkg/parser": [
+      "pkg/syntax",
+      "pkg/lexer"
     ],
-    "project": [],
-    "stdlib": [],
+    "pkg/project": [],
+    "pkg/stdlib": [],
     "internal/decimal": [],
     "internal/nativeabi": [],
     "internal/hostos": [],
-    "checker": [
-      "syntax",
-      "lexer",
-      "parser",
-      "stdlib",
+    "pkg/checker": [
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/parser",
+      "pkg/stdlib",
       "internal/decimal",
       "internal/nativeabi"
     ],
-    "runtime": [
+    "pkg/runtime": [
       "internal/decimal",
       "internal/nativeabi",
       "internal/hostos"
     ],
-    "compiler": [
+    "pkg/compiler": [
       ".",
-      "syntax",
-      "lexer",
-      "parser",
-      "checker",
-      "project",
-      "stdlib",
-      "runtime"
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/parser",
+      "pkg/checker",
+      "pkg/project",
+      "pkg/stdlib",
+      "pkg/runtime"
     ],
-    "tooling": [
-      "syntax",
-      "lexer",
-      "parser",
-      "checker"
+    "pkg/tooling": [
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/parser",
+      "pkg/checker"
     ],
-    "tooling/docgen": [
-      "checker"
+    "pkg/tooling/docgen": [
+      "pkg/checker"
     ],
-    "tooling/lsp": [
-      "syntax",
-      "lexer",
-      "parser",
-      "checker",
-      "project",
-      "compiler",
-      "tooling"
+    "pkg/tooling/lsp": [
+      "pkg/syntax",
+      "pkg/lexer",
+      "pkg/parser",
+      "pkg/checker",
+      "pkg/project",
+      "pkg/compiler",
+      "pkg/tooling"
     ],
     "internal/cli": [
-      "compiler",
-      "syntax",
-      "tooling",
-      "tooling/lsp",
-      "tooling/docgen",
-      "checker",
-      "stdlib",
+      "pkg/compiler",
+      "pkg/syntax",
+      "pkg/tooling",
+      "pkg/tooling/lsp",
+      "pkg/tooling/docgen",
+      "pkg/checker",
+      "pkg/stdlib",
       "."
     ],
     "cmd/ms": [
@@ -69,14 +69,14 @@
     ]
   },
   "pinned": [
-    "syntax",
-    "lexer",
-    "parser",
-    "checker",
-    "project",
-    "compiler",
-    "runtime",
-    "stdlib"
+    "pkg/syntax",
+    "pkg/lexer",
+    "pkg/parser",
+    "pkg/checker",
+    "pkg/project",
+    "pkg/compiler",
+    "pkg/runtime",
+    "pkg/stdlib"
   ],
   "bundled": [
     "internal/decimal",

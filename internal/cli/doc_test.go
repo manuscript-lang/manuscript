@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/manuscript-lang/manuscript/checker"
+	"github.com/manuscript-lang/manuscript/pkg/checker"
 )
 
 func TestDocOutsideRepository(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/manuscript-lang/manuscript/syntax"
-	"github.com/manuscript-lang/manuscript/tooling"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
 func invoke(t *testing.T, args ...string) (int, string, string) {
@@ -235,7 +235,7 @@ func TestSourceCommandsNeedNoNativeToolchain(t *testing.T) {
 		if status != 0 || output == "" || errors != "" {
 			t.Fatalf("%s: %d, %q", command, status, errors)
 		}
-		if command == "emit" && (!strings.Contains(output, "package main") || strings.Contains(output, `"github.com/manuscript-lang/manuscript/runtime"`)) {
+		if command == "emit" && (!strings.Contains(output, "package main") || strings.Contains(output, `"github.com/manuscript-lang/manuscript/pkg/runtime"`)) {
 			t.Fatal("emit did not bundle runtime")
 		}
 	}

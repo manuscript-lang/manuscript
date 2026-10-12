@@ -5,6 +5,11 @@
 - Before implementing or reviewing Manuscript changes, read [manuscript-change](skills/manuscript-change/SKILL.md) and consult the relevant experts it routes to.
 - When work establishes a durable lesson or the user corrects a recurring mistake, apply [change-memory](skills/change-memory/SKILL.md) to preserve it alongside the change.
 
+## Repository layout
+
+- Reusable Go packages live in `pkg/`; executable entrypoints live in `cmd/`, and private CLI/native helpers live in `internal/`.
+- Keep root Go embed carriers beside `go.mod`, `vendor/`, `.msversion`, and the generated toolchain payload. Package moves must update imports, fixture paths, `scripts/repo-check/policy.json`, release inputs, and expert routes. See [repository architecture](documentation/contributing/architecture.md).
+
 ## Skills
 
 - Shared skills live in `skills/`; `.agents/skills/` and `.claude/skills/` link to the same folders for native discovery.

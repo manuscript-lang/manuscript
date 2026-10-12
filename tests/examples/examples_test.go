@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 )
 
 type example struct {

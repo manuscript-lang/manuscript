@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/manuscript-lang/manuscript/checker"
-	"github.com/manuscript-lang/manuscript/compiler"
-	"github.com/manuscript-lang/manuscript/tooling/docgen"
+	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
 
 const docHelp = `Usage: ms doc <file.ms|ms.toml> [--json] [-o output]

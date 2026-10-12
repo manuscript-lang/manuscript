@@ -3,7 +3,7 @@ package e2e_test
 import (
 	"context"
 	"fmt"
-	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"os"
 	"os/exec"
 	"path/filepath"
