@@ -45,38 +45,11 @@ export interface WallClock:
 
 export fn duration(nanoseconds: Int) -> Duration
 
-fn duration_add(left: Duration, right: Duration) -> Duration
-fn duration_subtract(left: Duration, right: Duration) -> Duration
-fn duration_multiply(value: Duration, factor: Int) -> Duration
-fn duration_divide(value: Duration, divisor: Int) -> Duration
-fn duration_negate(value: Duration) -> Duration
-fn duration_abs(value: Duration) -> Duration
-fn duration_compare(left: Duration, right: Duration) -> Int
-fn duration_nanoseconds(value: Duration) -> Int
-fn duration_microseconds(value: Duration) -> Int
-fn duration_milliseconds(value: Duration) -> Int
-fn duration_seconds(value: Duration) -> Float
-fn duration_minutes(value: Duration) -> Float
-fn duration_hours(value: Duration) -> Float
-
-fn instant_shift(value: Instant, duration: Duration) -> Instant
-fn instant_difference(left: Instant, right: Instant) -> Duration
-fn instant_compare(left: Instant, right: Instant) -> Int
-
-fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
-fn format_timestamp(value: Timestamp) -> String
-fn nanoseconds(value: Timestamp) -> Int
-fn timestamp_compare(left: Timestamp, right: Timestamp) -> Int
-
 export fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]
-
-fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, TimeError]
 
 export fn sleep(duration: Duration) -> Unit
 
 export fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
-
-fn unix_seconds(value: Timestamp) -> Int
 
 impl Error for TimeError:
     fn message() -> String

@@ -1,7 +1,7 @@
-// Package nativeabi maps receiver operations to source-backed native functions.
+// Package nativeabi maps receiver operations to native implementations.
 package nativeabi
 
-var ReceiverFunctions = map[string]map[string]string{
+var ReceiverBindings = map[string]map[string]string{
 	"TaskGroup": {
 		"start": "tasks/task_group_start",
 		"join":  "tasks/task_group_join",

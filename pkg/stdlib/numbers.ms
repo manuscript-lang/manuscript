@@ -8,19 +8,9 @@ export type NumberError:
     case InvalidData
     case OutOfRange
 
-fn format_float(value: Float) -> String
-
-fn format_int(value: Int, radix: Int) -> String
-
 export fn parse_float(text: String) -> Result[Float, NumberError]
 
 export fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]
-
-fn format_fixed(value: Float, digits: Int) -> Result[String, NumberError]
-
-fn format_exponential(value: Float, digits: Int) -> Result[String, NumberError]
-
-fn format_precision(value: Float, precision: Int) -> Result[String, NumberError]
 
 impl Error for NumberError:
     fn message() -> String

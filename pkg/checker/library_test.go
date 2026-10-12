@@ -52,7 +52,33 @@ func libraryParseType(s string, vars map[string]*Type) *Type {
 }
 
 func validateStandardNativeBindings() error {
+	receivers := map[string][2]string{}
+	for receiver, operations := range rt.NativeLibraryBindings {
+		typ := standardSymbols[receiver]
+		if intrinsic := intrinsicOperations[receiver]; intrinsic != nil {
+			typ = intrinsic.Def.Symbol
+		}
+		if typ == nil {
+			return fmt.Errorf("missing native library receiver %s", receiver)
+		}
+		for name, identity := range operations {
+			if standardReceiverBindings[typ.ID+"/"+name] != identity {
+				return fmt.Errorf("native receiver binding does not match source: %s.%s", receiver, name)
+			}
+			receivers[identity] = [2]string{receiver, name}
+		}
+	}
+	if len(receivers) != len(standardReceiverBindings) {
+		return fmt.Errorf("native receiver bindings do not cover source declarations")
+	}
 	for _, spec := range rt.Library {
+		if target, ok := receivers[spec.Module+"/"+spec.Name]; ok {
+			if err := validateNativeReceiverSignature(target[0], target[1], spec); err != nil {
+				return err
+			}
+			delete(receivers, spec.Module+"/"+spec.Name)
+			continue
+		}
 		s := standardModules["@std/"+spec.Module+".ms"][spec.Name]
 		if s == nil {
 			return fmt.Errorf("missing source declaration for native function %s/%s", spec.Module, spec.Name)
@@ -69,6 +95,9 @@ func validateStandardNativeBindings() error {
 		if !Same(s.Type, expected) {
 			return fmt.Errorf("native signature does not match source: %s", s.Decl.Pos)
 		}
+	}
+	for identity := range receivers {
+		return fmt.Errorf("missing native receiver implementation %s", identity)
 	}
 	for _, method := range standardImplementations {
 		found := false
@@ -89,46 +118,6 @@ func validateStandardNativeBindings() error {
 			return fmt.Errorf("unavailable native implementation: %s", method.Decl.Pos)
 		}
 	}
-	for receiver, operations := range rt.NativeLibraryBindings {
-		typ := standardSymbols[receiver]
-		if intrinsic := intrinsicOperations[receiver]; intrinsic != nil {
-			typ = intrinsic.Def.Symbol
-		}
-		if typ == nil {
-			return fmt.Errorf("missing native library receiver %s", receiver)
-		}
-		for name := range operations {
-			spec, ok := rt.NativeLibrarySpec(receiver, name)
-			if !ok {
-				return fmt.Errorf("missing native member function %s.%s", receiver, name)
-			}
-			receiverType := typ.Type
-			if intrinsicOperations[receiver] != nil {
-				receiverType = primitive(receiver)
-			}
-			method := nativeMethod(receiverType, name)
-			if method == nil {
-				return fmt.Errorf("missing native member declaration %s.%s", receiver, name)
-			}
-			vars := map[string]*Type{}
-			for i, v := range typ.Variables {
-				if i < len(spec.Variables) {
-					vars[spec.Variables[i].Name] = v
-				}
-			}
-			for _, v := range method.Variables {
-				vars[v.Name] = v
-			}
-			params := []Param{}
-			for _, p := range spec.Params[1:] {
-				params = append(params, Param{p.Name, libraryParseType(p.Type, vars)})
-			}
-			if !Same(method.Type, function(params, libraryParseType(spec.Result, vars))) {
-				return fmt.Errorf("native member signature does not match source: %s.%s", receiver, name)
-			}
-		}
-	}
-
 	for _, spec := range rt.LibraryMethods {
 		s := standardSymbols[spec.Receiver]
 		if s == nil {
@@ -151,6 +140,63 @@ func validateStandardNativeBindings() error {
 	return nil
 }
 
+func validateNativeReceiverSignature(receiver, name string, spec rt.LibrarySpec) error {
+	typ := standardSymbols[receiver]
+	var receiverType *Type
+	if intrinsic := intrinsicOperations[receiver]; intrinsic != nil {
+		typ = intrinsic.Def.Symbol
+		receiverType = primitive(receiver)
+	} else {
+		receiverType = typ.Type
+	}
+	method := nativeMethod(receiverType, name)
+	if method == nil || len(spec.Params) == 0 {
+		return fmt.Errorf("missing native member declaration %s.%s", receiver, name)
+	}
+	vars := map[string]*Type{}
+	for i, variable := range typ.Variables {
+		if i < len(spec.Variables) {
+			vars[spec.Variables[i].Name] = variable
+		}
+	}
+	for _, variable := range method.Variables {
+		vars[variable.Name] = variable
+	}
+	fixed := map[string]*Type{}
+	for _, requirement := range standardReceiverRequirements[typ.ID+"/"+name] {
+		if requirement.Constraint.Kind != "contract" {
+			fixed[requirement.Variable.ID] = requirement.Constraint
+		}
+	}
+	if len(spec.Variables) != len(typ.Variables)-len(fixed)+len(method.Variables) {
+		return fmt.Errorf("native member variables do not match source: %s.%s", receiver, name)
+	}
+	for _, variable := range spec.Variables {
+		checked := vars[variable.Name]
+		if checked == nil {
+			return fmt.Errorf("unknown native member variable %s in %s.%s", variable.Name, receiver, name)
+		}
+		bounds := append([]*Type{}, checked.Bounds...)
+		for _, requirement := range standardReceiverRequirements[typ.ID+"/"+name] {
+			if requirement.Variable == checked && requirement.Constraint.Kind == "contract" {
+				bounds = append(bounds, requirement.Constraint)
+			}
+		}
+		if len(bounds) == 0 && variable.Type != "" || len(bounds) == 1 && bounds[0].Name != variable.Type || len(bounds) > 1 {
+			return fmt.Errorf("native member bounds do not match source: %s.%s", receiver, name)
+		}
+	}
+	params := []Param{}
+	for _, param := range spec.Params[1:] {
+		params = append(params, Param{param.Name, libraryParseType(param.Type, vars)})
+	}
+	if !Same(Sub(receiverType, fixed), libraryParseType(spec.Params[0].Type, vars)) ||
+		!Same(Sub(method.Type, fixed), function(params, libraryParseType(spec.Result, vars))) {
+		return fmt.Errorf("native member signature does not match source: %s.%s", receiver, name)
+	}
+	return nil
+}
+
 func TestNativeSignaturesMatchDeclarations(t *testing.T) {
 	if err := validateStandardNativeBindings(); err != nil {
 		t.Fatal(err)
@@ -164,4 +210,33 @@ func TestNativeSignatureDriftIsRejected(t *testing.T) {
 	if err := validateStandardNativeBindings(); err == nil {
 		t.Fatal("accepted an incompatible native result")
 	}
+}
+
+func TestNativeReceiverSignatureDriftIsRejected(t *testing.T) {
+	for i, spec := range rt.Library {
+		if spec.Module != "collections" || spec.Name != "contains" {
+			continue
+		}
+		for _, mutation := range []struct {
+			name   string
+			change func(*rt.LibrarySpec)
+		}{
+			{"result", func(s *rt.LibrarySpec) { s.Result = "Never" }},
+			{"receiver", func(s *rt.LibrarySpec) {
+				s.Params = append([]rt.LibraryParam{}, s.Params...)
+				s.Params[0].Type = "Set[T]"
+			}},
+			{"bound", func(s *rt.LibrarySpec) { s.Variables = []rt.LibraryParam{{Name: "T"}} }},
+		} {
+			t.Run(mutation.name, func(t *testing.T) {
+				defer func() { rt.Library[i] = spec }()
+				mutation.change(&rt.Library[i])
+				if err := validateStandardNativeBindings(); err == nil {
+					t.Fatal("accepted an incompatible native receiver signature")
+				}
+			})
+		}
+		return
+	}
+	t.Fatal("missing native list search implementation")
 }

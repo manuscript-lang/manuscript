@@ -1,37 +1,20 @@
 package checker
 
-import (
-	"github.com/manuscript-lang/manuscript/internal/nativeabi"
-	"github.com/manuscript-lang/manuscript/pkg/syntax"
-	"strings"
-)
+import "github.com/manuscript-lang/manuscript/pkg/syntax"
 
-// nativeReceiverAvailable applies the shared function's receiver requirements.
+// nativeReceiverAvailable applies explicit requirements on the checked receiver.
 // For example, equality search requires Equal, join requires List[String], and
 // to_set requires Hashable, without strengthening List's element requirements.
 func nativeReceiverAvailable(c *checker, receiver *Type, name string) bool {
-	identity, mapped := nativeabi.ReceiverFunctions[receiver.Name][name]
-	if !mapped {
-		return true
-	}
-	module, function, _ := strings.Cut(identity, "/")
-	symbol := standardModules["@std/"+module+".ms"][function]
-	if symbol == nil || len(symbol.Type.Params) == 0 {
-		return false
-	}
-	sub := map[string]*Type{}
-	if !unify(symbol.Type.Params[0].Type, receiver, variableSet(symbol.Variables), sub) {
-		return false
-	}
-	for _, variable := range symbol.Variables {
-		actual := sub[variable.ID]
-		if actual == nil {
-			continue
-		} // Method variables are checked at specialization.
-		for _, bound := range variable.Bounds {
-			if !c.satisfies(actual, Sub(bound, sub)) {
+	sub := substitution(receiver)
+	for _, requirement := range standardReceiverRequirements[receiver.ID+"/"+name] {
+		actual := sub[requirement.Variable.ID]
+		if requirement.Constraint.Kind == "contract" {
+			if !c.satisfies(actual, requirement.Constraint) {
 				return false
 			}
+		} else if !Same(actual, requirement.Constraint) {
+			return false
 		}
 	}
 	return true

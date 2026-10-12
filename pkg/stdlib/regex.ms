@@ -17,11 +17,5 @@ export type Regex:
 
 export fn compile(pattern: String) -> Result[Regex, RegexError]
 
-fn find_all(pattern: Regex, text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]
-
-fn matches(pattern: Regex, text: String) -> Bool
-
-fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]
-
 impl Error for RegexError:
     fn message() -> String
