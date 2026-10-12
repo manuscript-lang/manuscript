@@ -30,6 +30,11 @@ func TestTutorialExamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	libraryFiles, err := filepath.Glob("../../documentation/standard-library/*.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files = append(files, libraryFiles...)
 	total := 0
 	for _, file := range files {
 		text, err := os.ReadFile(file)

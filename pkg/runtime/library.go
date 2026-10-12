@@ -44,6 +44,9 @@ func libraryFunction(name, result string) (Value, bool) {
 		labels[i] = p.Name
 	}
 	body := func(ctx *Execution, args []Value) Value { return invokeLibrary(spec, ctx, result, args) }
+	if spec.Module == "log" && spec.Name == "file_transport" {
+		return NewAcquisition(labels, result, body, libraryDisposeResource), true
+	}
 	return NewFunction(labels, result, body), true
 }
 

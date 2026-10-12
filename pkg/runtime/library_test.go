@@ -360,7 +360,9 @@ func TestLibraryStreamErrorsPreserveCauses(t *testing.T) {
 			if !Equal(copied.Fields[0], cause) {
 				t.Fatalf("copy lost output cause: %#v", copied)
 			}
-			result := libraryCall(t, "log/write", stream, "info", "message", &Map{Type: "@std/Map[String][String]"}, int64(1000))
+			transport := newLogTransport(stream, nil)
+			logger := librarySuccess(t, libraryCall(t, "log/create", transport, Alternative{Type: "@std/LogLevel", Tag: "Info"}, &Map{}, false, int64(1000)))
+			result := Invoke(RootExecution(), Bind(logger, "", "info"), []Argument{{"message", "message"}, {"fields", &Map{}}}).(Alternative)
 			libraryFailure(t, result, "Io")
 			wrapped := result.Fields[0].(Alternative)
 			if wrapped.Type != "@std/LogError" || len(wrapped.Fields) != 1 || !Equal(wrapped.Fields[0], cause) {
