@@ -23,3 +23,11 @@ Decision: documentation generation was requested as an `ms` subcommand for users
 Apply when: adding CLI tooling or making claims about installation requirements.
 Evidence: [ms doc request](codex://threads/01a12d4a-0182-7672-aa00-53f2bdfde033); [command implementation](../cmd/ms/doc.go); [CLI documentation tests](../cmd/ms/doc_test.go).
 Verify: exercise the built command from outside the source checkout. Confirm which assets and tools that particular command needs; documentation generation and native compilation can have different prerequisites.
+
+### Polish the documentation design without expanding its prose
+
+Decision: for the documentation redesign, the user selected Tailwind CSS and Vercel as visual references and explicitly asked, “don't just randomly keep adding text.” Favor consistent navigation, typography, spacing, and reading layouts; preserve authored explanations rather than introducing promotional copy to fill the page.
+
+Apply when: redesigning the documentation shell or overview, or extending its visual system.
+Evidence: the user's documentation redesign correction; [Tailwind docs](https://tailwindcss.com/docs/installation/using-vite); [Vercel docs](https://vercel.com/docs); [site-owned visual system](../assets/_custom.scss); [overview presentation](../layouts/_shortcodes/docs-home.html).
+Verify: compare authored Markdown with the base branch, keep semantic changes out of visual work, check desktop and mobile reading pages, and run the strict Hugo build with a repository URL prefix. Regenerate `docs/` from the current sources; never resolve generated-page conflicts by retaining stale output.

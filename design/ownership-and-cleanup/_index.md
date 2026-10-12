@@ -1,5 +1,6 @@
 +++
 title = "Resource lifetimes and cleanup"
+linkTitle = "Resources & cleanup"
 weight = 47
 +++
 

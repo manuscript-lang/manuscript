@@ -1,0 +1,15 @@
+{{ $active := eq .Page .Current }}
+{{ $ancestor := .Page.IsAncestor .Current }}
+{{ if .Page.IsSection }}
+<details class="nav-section" {{ if or $active $ancestor (and .Current.IsHome (eq .Page.Section "learn")) }}open{{ end }}>
+  <summary><span>{{ .Page.LinkTitle }}</span><span class="nav-chevron" aria-hidden="true">›</span></summary>
+  <ul>
+    <li><a href="{{ .Page.RelPermalink }}" {{ if $active }}class="active" aria-current="page"{{ end }}>Overview</a></li>
+    {{ range where .Page.Pages "Params.bookHidden" "ne" true }}
+    <li>{{ partial "docs/nav-tree" (dict "Page" . "Current" $.Current) }}</li>
+    {{ end }}
+  </ul>
+</details>
+{{ else }}
+<a href="{{ .Page.RelPermalink }}" {{ if $active }}class="active" aria-current="page"{{ end }}>{{ .Page.LinkTitle }}</a>
+{{ end }}
