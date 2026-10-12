@@ -69,7 +69,7 @@ func Run(args []string) int {
 	command, filename := args[0], args[1]
 	output := ""
 	cpuProfile, heapProfile, tracePath := "", "", ""
-	formatCheck, structured, debug := false, false, false
+	formatCheck, structured, debug, watch := false, false, false, false
 	buildTypeName := ""
 	buildTypeSet := false
 	var arguments []string
@@ -80,6 +80,8 @@ func Run(args []string) int {
 			i = len(args)
 		case "--debug":
 			debug = true
+		case "--watch":
+			watch = true
 		case "--build-type":
 			i++
 			if i == len(args) || args[i] == "" {
@@ -136,6 +138,10 @@ func Run(args []string) int {
 		fmt.Fprintln(os.Stderr, "unknown command:", command)
 		return 2
 	}
+	if watch && command != "run" && command != "test" {
+		fmt.Fprintln(os.Stderr, "--watch requires run or test")
+		return 2
+	}
 	if formatCheck && command != "fmt" || structured && command != "check" && command != "lint" || debug && command != "build" && command != "run" && command != "test" {
 		fmt.Fprintln(os.Stderr, "flag is not valid for this command")
 		return 2
@@ -160,6 +166,10 @@ func Run(args []string) int {
 	}
 	if (cpuProfile != "" || heapProfile != "" || tracePath != "") && command != "run" {
 		fmt.Fprintln(os.Stderr, "profiling flags require run")
+		return 2
+	}
+	if watch && (cpuProfile != "" || heapProfile != "" || tracePath != "") {
+		fmt.Fprintln(os.Stderr, "--watch cannot be combined with profiling flags")
 		return 2
 	}
 	if command == "fmt" {
@@ -213,6 +223,9 @@ func Run(args []string) int {
 		// Native commands need the build pin; query the toolchain and hash
 		// embedded inputs while the source is parsed and checked.
 		go compiler.CurrentPin()
+	}
+	if watch {
+		return watchProgram(command, filename, options, kind, "", arguments)
 	}
 	result := compiler.CompileFile(filename, options)
 	if structured && command == "check" {

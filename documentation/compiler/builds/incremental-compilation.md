@@ -21,7 +21,7 @@ Project commands store native artifacts in the project's `.ms-cache`. Standalone
 
 Every invocation parses, checks, and lowers source before looking up a native artifact. Cache hits verify compiler/runtime inputs, toolchain/target, build level, generated source, project configuration, source contents, and executable hashes. Source edits, invalid source, mismatched project pins, and corrupt artifacts cannot silently run an old executable. Debuggable artifacts also include the source root in their identity.
 
-An unchanged run avoids native compilation and linking. An edited program still needs Go application compilation and linking; linking the runtime and its dependencies dominates the remaining time. The first build of each runtime variant and build level compiles that runtime. The first build with an empty Go cache also compiles runtime dependencies; first use of a release binary extracts its bundled SDK, and first use of a runtime publishes its workspace. These cold paths are not instant.
+`run --watch` and `test --watch` keep one process across rebuilds, so standard declarations, the toolchain query, and implementation digests are computed once. An unchanged run avoids native compilation and linking. An edited program still needs Go application compilation and linking; linking the runtime and its dependencies dominates the remaining time. The first build of each runtime variant and build level compiles that runtime. The first build with an empty Go cache also compiles runtime dependencies; first use of a release binary extracts its bundled SDK, and first use of a runtime publishes its workspace. These cold paths are not instant.
 
 ## Further frontend caching
 

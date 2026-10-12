@@ -74,6 +74,8 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		{"build", "missing.ms", "--build-type", "Release", "--debug"},
 		{"debug", "missing.ms", "--build-type", "RelWithDebInfo"},
 		{"build", "missing.ms", "--build-type", "Debug", "--build-type", "Release"},
+		{"build", "missing.ms", "--watch"}, {"check", "missing.ms", "--watch"},
+		{"run", "missing.ms", "--watch", "--trace", "trace.out"},
 	} {
 		status, output, errors := invoke(t, args...)
 		if status != 2 || output != "" || errors == "" {
