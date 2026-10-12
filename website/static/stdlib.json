@@ -2327,13 +2327,33 @@
         },
         {
           "name": "Duration",
-          "kind": "native",
-          "type": "Duration"
+          "kind": "interface",
+          "type": "Duration",
+          "operations": [
+            "abs: fn()-\u003eDuration",
+            "add: fn(right: Duration)-\u003eDuration",
+            "compare: fn(right: Duration)-\u003eInt",
+            "divide: fn(divisor: Int)-\u003eDuration",
+            "multiply: fn(factor: Int)-\u003eDuration",
+            "negate: fn()-\u003eDuration",
+            "subtract: fn(right: Duration)-\u003eDuration",
+            "to_hours: fn()-\u003eFloat",
+            "to_microseconds: fn()-\u003eInt",
+            "to_milliseconds: fn()-\u003eInt",
+            "to_minutes: fn()-\u003eFloat",
+            "to_nanoseconds: fn()-\u003eInt",
+            "to_seconds: fn()-\u003eFloat"
+          ]
         },
         {
           "name": "Instant",
-          "kind": "native",
-          "type": "Instant"
+          "kind": "interface",
+          "type": "Instant",
+          "operations": [
+            "compare: fn(right: Instant)-\u003eInt",
+            "difference: fn(right: Instant)-\u003eDuration",
+            "shift: fn(duration: Duration)-\u003eInstant"
+          ]
         },
         {
           "name": "TimeError",
@@ -2354,8 +2374,16 @@
         },
         {
           "name": "Timestamp",
-          "kind": "native",
-          "type": "Timestamp"
+          "kind": "interface",
+          "type": "Timestamp",
+          "operations": [
+            "compare: fn(right: Timestamp)-\u003eInt",
+            "difference: fn(right: Timestamp)-\u003eResult[Duration, TimeError]",
+            "nanoseconds: fn()-\u003eInt",
+            "shift: fn(duration: Duration)-\u003eResult[Timestamp, TimeError]",
+            "to_string: fn()-\u003eString",
+            "unix_seconds: fn()-\u003eInt"
+          ]
         },
         {
           "name": "WallClock",
@@ -2371,29 +2399,14 @@
           "type": "fn()-\u003eClock"
         },
         {
-          "name": "difference",
+          "name": "duration",
           "kind": "fn",
-          "type": "fn(left: Timestamp, right: Timestamp)-\u003eResult[Duration, TimeError]"
-        },
-        {
-          "name": "format_timestamp",
-          "kind": "fn",
-          "type": "fn(value: Timestamp)-\u003eString"
-        },
-        {
-          "name": "nanoseconds",
-          "kind": "fn",
-          "type": "fn(value: Timestamp)-\u003eInt"
+          "type": "fn(nanoseconds: Int)-\u003eDuration"
         },
         {
           "name": "parse_timestamp",
           "kind": "fn",
           "type": "fn(text: String)-\u003eResult[Timestamp, TimeError]"
-        },
-        {
-          "name": "shift",
-          "kind": "fn",
-          "type": "fn(value: Timestamp, duration: Duration)-\u003eResult[Timestamp, TimeError]"
         },
         {
           "name": "sleep",
@@ -2404,11 +2417,6 @@
           "name": "timestamp",
           "kind": "fn",
           "type": "fn(seconds: Int, nanoseconds: Int)-\u003eResult[Timestamp, TimeError]"
-        },
-        {
-          "name": "unix_seconds",
-          "kind": "fn",
-          "type": "fn(value: Timestamp)-\u003eInt"
         },
         {
           "name": "wall_clock",

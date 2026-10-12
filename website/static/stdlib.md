@@ -2674,7 +2674,20 @@ interface Clock:
 **Native type**
 
 ```manuscript
-type Duration
+type Duration:
+    fn add(right: Duration) -> Duration
+    fn subtract(right: Duration) -> Duration
+    fn multiply(factor: Int) -> Duration
+    fn divide(divisor: Int) -> Duration
+    fn negate() -> Duration
+    fn abs() -> Duration
+    fn compare(right: Duration) -> Int
+    fn to_nanoseconds() -> Int
+    fn to_microseconds() -> Int
+    fn to_milliseconds() -> Int
+    fn to_seconds() -> Float
+    fn to_minutes() -> Float
+    fn to_hours() -> Float
 ```
 
 ## Instant
@@ -2682,7 +2695,10 @@ type Duration
 **Native type**
 
 ```manuscript
-type Instant
+type Instant:
+    fn shift(duration: Duration) -> Instant
+    fn difference(right: Instant) -> Duration
+    fn compare(right: Instant) -> Int
 ```
 
 ## TimeError
@@ -2707,7 +2723,13 @@ impl Error for TimeError:
 **Native type**
 
 ```manuscript
-type Timestamp
+type Timestamp:
+    fn to_string() -> String
+    fn unix_seconds() -> Int
+    fn nanoseconds() -> Int
+    fn shift(duration: Duration) -> Result[Timestamp, TimeError]
+    fn difference(right: Timestamp) -> Result[Duration, TimeError]
+    fn compare(right: Timestamp) -> Int
 ```
 
 ## WallClock
@@ -2727,28 +2749,12 @@ interface WallClock:
 fn clock() -> Clock
 ```
 
-## difference
+## duration
 
 **Function**
 
 ```manuscript
-fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
-```
-
-## format_timestamp
-
-**Function**
-
-```manuscript
-fn format_timestamp(value: Timestamp) -> String
-```
-
-## nanoseconds
-
-**Function**
-
-```manuscript
-fn nanoseconds(value: Timestamp) -> Int
+fn duration(nanoseconds: Int) -> Duration
 ```
 
 ## parse_timestamp
@@ -2757,14 +2763,6 @@ fn nanoseconds(value: Timestamp) -> Int
 
 ```manuscript
 fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]
-```
-
-## shift
-
-**Function**
-
-```manuscript
-fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, TimeError]
 ```
 
 ## sleep
@@ -2781,14 +2779,6 @@ fn sleep(duration: Duration) -> Unit
 
 ```manuscript
 fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
-```
-
-## unix_seconds
-
-**Function**
-
-```manuscript
-fn unix_seconds(value: Timestamp) -> Int
 ```
 
 ## wall_clock

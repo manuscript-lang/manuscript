@@ -1,6 +1,6 @@
 import { arguments, environment } from "@std/cli.ms"
 import { stdin, stdout, stderr } from "@std/io.ms"
-import { clock, wall_clock, unix_seconds } from "@std/time.ms"
+import { clock, wall_clock } from "@std/time.ms"
 import entropy from "@std/random.ms"
 import system from "@std/system.ms"
 import network from "@std/net.ms"
@@ -14,7 +14,7 @@ fn check_services() -> Unit:
     let after = clock().now()
     if after - before < 0.milliseconds:
         return panic("clock roots changed")
-    if unix_seconds(wall_clock().now()) <= 0:
+    if wall_clock().now().unix_seconds() <= 0:
         return panic("wall clock unavailable")
     if system().info().cpu_count <= 0:
         return panic("system service unavailable")

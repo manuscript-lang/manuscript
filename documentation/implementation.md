@@ -27,7 +27,7 @@ Start with [your first program](getting-started.md) for a walkthrough. Use the [
 | --- | --- |
 | Numbers | Checked signed 64-bit integers, IEEE binary64 floats, and 34-digit Decimal arithmetic with ties-to-even rounding and exact literal validation |
 | Data values | List, insertion-ordered Map and Set, MapEntry, Bytes, UTF-8 conversion, Optional, and Result |
-| Time | Duration construction/arithmetic, monotonic Clock/Instant domains, sleep, scoped after/every timers, and operation deadlines |
+| Time | Duration construction, arithmetic and unit conversion methods; monotonic Clock/Instant shifts, differences and comparison; Timestamp methods; sleep, scoped after/every timers, and operation deadlines |
 | Cleanup | Checker-selected contract dispatch, registration of delivered `with` values, reverse lexical release on every exit, shielded cleanup, primary/secondary fault preservation, and removal of completed cleanup actions |
 | Joined work | TaskGroup and ordinary generic Task[T] handles, cached typed results, cancellation checkpoints, deadlines, sibling cancellation on faults, and joining before scope exit |
 | Scheduler | Bounded admission/history, fixed construction parent, cancellation, serialized reporting, bounded diagnostic fallback, optional drain, concurrent idempotent close, and nested-service joining |

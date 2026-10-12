@@ -23,6 +23,12 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 		kind = "TaskGroup"
 	case *Task:
 		kind, args = "Task", typeArguments(v.typ)
+	case Duration:
+		kind = "Duration"
+	case Instant:
+		kind = "Instant"
+	case libraryTimestamp:
+		kind = "Timestamp"
 	case Alternative:
 		native, types := splitType(v.Type)
 		if native != "@std/Optional" {

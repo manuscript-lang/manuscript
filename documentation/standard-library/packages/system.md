@@ -12,14 +12,31 @@ Use Timestamp for wall-clock time and Duration for a time interval. Access the c
 ## `@std/time.ms`
 
 ```manuscript
-fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
-fn format_timestamp(value: Timestamp) -> String
-fn nanoseconds(value: Timestamp) -> Int
+fn duration(nanoseconds: Int) -> Duration
 fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]
-fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, TimeError]
 fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
-fn unix_seconds(value: Timestamp) -> Int
+fn clock() -> Clock
+fn wall_clock() -> WallClock
+fn sleep(duration: Duration) -> Unit
 ```
+
+## Time value methods
+
+Use receiver methods for existing time values. For example, `2.seconds.to_milliseconds()` returns `2000`, `start.shift(2.seconds).difference(start)` returns `2.seconds`, and `wall_clock().now().to_string()` formats the current UTC timestamp.
+
+| Type | Methods |
+| --- | --- |
+| Duration | `add(right)`, `subtract(right)`, `multiply(factor)`, `divide(divisor)`, `negate()`, `abs()`, `compare(right)` |
+| Duration | `to_nanoseconds()`, `to_microseconds()`, `to_milliseconds()` return Int; `to_seconds()`, `to_minutes()`, `to_hours()` return Float |
+| Instant | `shift(duration) -> Instant`, `difference(right) -> Duration`, `compare(right) -> Int` |
+| Timestamp | `to_string() -> String`, `unix_seconds() -> Int`, `nanoseconds() -> Int`, `compare(right) -> Int` |
+| Timestamp | `shift(duration) -> Result[Timestamp, TimeError]`, `difference(right) -> Result[Duration, TimeError]` |
+
+`duration(nanoseconds)` constructs an exact signed 64-bit interval. Integer unit conversions and division truncate toward zero; floating conversions retain fractional units with binary64 rounding. Arithmetic overflow, division by zero, and negating or taking the absolute value of the minimum Duration fault. Duration methods agree with the existing addition/subtraction operators.
+
+`compare` returns -1, 0, or 1. Instant shifts preserve the clock domain. Comparing or taking a difference between instants from different domains faults, as do overflowing shifts or differences. Timestamp comparison works across its full calendar range without computing a Duration.
+
+See the [time API reference](../reference/time.md) for exact signatures and [numeric and time conversion](../data-and-io/operations.md#numeric-and-time-conversion) for Int unit members and operators.
 
 ## `@std/system.ms`
 
@@ -62,7 +79,7 @@ Construction accepts UTC years 1–9999 and nanoseconds 0–999999999. Parsing u
 
 Formatting uses UTC. It omits a zero fraction and removes trailing fractional zeroes. `shift` checks the resulting calendar range. `difference` returns `OutOfRange` if its nanosecond result cannot fit in Duration.
 
-There are no Timestamp operators or source constructor. Use the named functions; `unix_seconds` and `nanoseconds` expose the components explicitly.
+Construct timestamps with `timestamp` or `parse_timestamp`; inspect and transform them with receiver methods. `unix_seconds()` and `nanoseconds()` expose whole Unix seconds and the nonnegative fractional nanosecond component. Use `value.to_string()`, `value.shift(duration)`, and `value.difference(right)`.
 
 ## System information
 

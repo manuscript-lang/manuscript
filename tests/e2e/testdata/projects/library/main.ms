@@ -12,7 +12,6 @@ import Result from "@std/result.ms"
 import Error from "@std/errors.ms"
 import uuid_v4 from "@std/random.ms"
 import secure_int from "@std/random.ms"
-import format_timestamp from "@std/time.ms"
 import parse_timestamp from "@std/time.ms"
 import Scheduler from "@std/tasks.ms"
 import sleep from "@std/time.ms"
@@ -48,7 +47,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
     if not (random >= -2 and random < 3):
         return panic(message: "check failed")
     let now = wall_clock().now()
-    if not (try common_result(result: parse_timestamp(text: format_timestamp(value: now))) == now):
+    if not (try common_result(result: parse_timestamp(text: now.to_string())) == now):
         return panic(message: "check failed")
     if not (system().info().cpu_count > 0):
         return panic(message: "check failed")

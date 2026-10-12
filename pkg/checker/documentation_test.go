@@ -80,13 +80,15 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]\n",
 		"@std/net.ms#DnsRecord":      "type DnsRecord:\n    kind: String\n    value: String\n    priority: Int\n    weight: Int\n    port: Int\n",
 		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n    fn is_some() -> Bool\n    fn is_none() -> Bool\n    fn unwrap() -> T\n    fn unwrap_or(fallback: T) -> T\n    fn unwrap_or_else(create: fn() -> T) -> T\n",
-		"@std/time.ms#Duration":      "type Duration\n",
 	} {
 		if got := exports[key].Declaration; got != want {
 			t.Errorf("%s declaration:\ngot %s\nwant %s", key, got, want)
 		}
 	}
 	for key, want := range map[string]string{
+		"@std/time.ms#Duration":    "    fn to_nanoseconds() -> Int",
+		"@std/time.ms#Instant":     "    fn difference(right: Instant) -> Duration",
+		"@std/time.ms#Timestamp":   "    fn shift(duration: Duration) -> Result[Timestamp, TimeError]",
 		"@std/collections.ms#Map":  "type Map[T: Hashable, U]:",
 		"@std/collections.ms#List": "    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]",
 		"@std/bytes.ms#Bytes":      "    values: List[Int]",
