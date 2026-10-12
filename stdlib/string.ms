@@ -1,6 +1,7 @@
 # Canonical standard-library declarations. Implementations are native.
 
 import LibraryError from "@std/errors.ms"
+import Optional from "@std/optional.ms"
 import List from "@std/collections.ms"
 import Result from "@std/result.ms"
 
@@ -31,3 +32,29 @@ export fn starts_with(value: String, prefix: String) -> Bool
 export fn trim(text: String) -> String
 
 export fn upper(text: String) -> String
+
+export fn at(text: String, index: Int) -> Optional[String]
+
+export fn scalar_at(text: String, index: Int) -> Optional[Int]
+
+export fn index_of(text: String, value: String) -> Optional[Int]
+
+export fn last_index_of(text: String, value: String) -> Optional[Int]
+
+export fn trim_start(text: String) -> String
+
+export fn trim_end(text: String) -> String
+
+export fn slice(text: String, start: Int, end: Int) -> String
+
+export fn substring(text: String, start: Int, end: Int) -> String
+
+export fn pad_start(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
+
+export fn pad_end(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
+
+export fn replace_all(text: String, old: String, new: String, max_bytes: Int) -> Result[String, LibraryError]
+
+export fn normalize(text: String, form: String, max_bytes: Int) -> Result[String, LibraryError]
+
+export fn concat(text: String, values: String) -> String

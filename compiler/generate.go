@@ -291,6 +291,10 @@ func (g *generator) expression(e *syntax.Expression) string {
 		}
 		return "rt.Text(" + strings.Join(values, ",") + ")"
 	case "name", "apply":
+		if info.Method != nil && info.Method.Native != "" && info.Method.Native != "contract" {
+			member := e.Left
+			return "rt.NativeMemberResult(" + g.expression(member.Left) + "," + quote(member.Text) + "," + g.key(info.Type.Result) + ")"
+		}
 		if info.Binding != nil {
 			return g.binding(info.Binding)
 		}
@@ -314,6 +318,9 @@ func (g *generator) expression(e *syntax.Expression) string {
 	case "member":
 		if info.Constructor != nil {
 			return "rt.NewAlternative(" + g.key(info.Constructor) + "," + quote(info.Case) + ",nil,nil)"
+		}
+		if info.Method != nil && info.Method.Native != "" && info.Method.Native != "contract" {
+			return "rt.NativeMemberResult(" + g.expression(e.Left) + "," + quote(e.Text) + "," + g.key(info.Type.Result) + ")"
 		}
 		if info.Method != nil {
 			return "rt.Bind(" + g.expression(e.Left) + "," + g.key(info.Method.Contract) + "," + quote(e.Text) + ")"

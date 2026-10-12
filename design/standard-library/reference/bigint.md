@@ -8,10 +8,21 @@ Import each required symbol with `import Name from "@std/bigint.ms"`.
 
 ## BigInt
 
-Kind: native.
+Kind: interface.
 
 ```manuscript
 BigInt: BigInt
+operation add: fn(right: BigInt)->BigInt
+operation bit_and: fn(right: BigInt)->BigInt
+operation bit_or: fn(right: BigInt)->BigInt
+operation bit_xor: fn(right: BigInt)->BigInt
+operation compare: fn(right: BigInt)->Int
+operation divide: fn(right: BigInt)->Result[BigInt, LibraryError]
+operation multiply: fn(right: BigInt)->BigInt
+operation remainder: fn(right: BigInt)->Result[BigInt, LibraryError]
+operation subtract: fn(right: BigInt)->BigInt
+operation to_int: fn()->Optional[Int]
+operation to_string: fn(radix: Int)->String
 ```
 
 ## add

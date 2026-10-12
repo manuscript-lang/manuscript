@@ -8,10 +8,13 @@ Import each required symbol with `import Name from "@std/regex.ms"`.
 
 ## Regex
 
-Kind: native.
+Kind: interface.
 
 ```manuscript
 Regex: Regex
+operation find_all: fn(text: String, max_matches: Int)->Result[List[String], LibraryError]
+operation matches: fn(text: String)->Bool
+operation replace: fn(text: String, replacement: String, max_bytes: Int)->Result[String, LibraryError]
 ```
 
 ## compile

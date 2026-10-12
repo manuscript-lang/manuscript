@@ -2,6 +2,7 @@ package checker
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 )
 
@@ -33,10 +34,10 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 		if !ok {
 			t.Fatalf("missing %s", key)
 		}
-		if key == "prelude#String" && len(d.Operations) != 3 {
+		if key == "prelude#String" && (!slices.Contains(d.Operations, "trim: fn()->String") || !slices.Contains(d.Operations, "byte_length: fn()->Int")) {
 			t.Fatalf("missing intrinsic operation: %+v", d)
 		}
-		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T: Shareable" || len(d.Operations) != 4) {
+		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T: Shareable" || !slices.Contains(d.Operations, "map[U: Shareable]: fn(transform: fn(value: T)->U)->List[U]") || !slices.Contains(d.Operations, "get: fn(index: Int)->Optional[T]")) {
 			t.Fatalf("lost bounds or native methods: %+v", d)
 		}
 	}

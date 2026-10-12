@@ -321,13 +321,13 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	return false
 }
 func (c *checker) methods(receiver *Type, name string) []*Method {
-	if m := nativeMethod(receiver, name); m != nil {
+	if m := nativeMethod(receiver, name); m != nil && nativeReceiverAvailable(c, receiver, name) {
 		return []*Method{m}
 	}
 	if receiver.Kind == "contract" && receiver.Def != nil {
 		for _, op := range receiver.Def.Operations {
 			if op.Name == name {
-				return []*Method{{Contract: receiver, Receiver: receiver, Type: Sub(op.Type, substitution(receiver)), Native: "contract", Decl: standardMethodDeclaration(receiver, name)}}
+				return []*Method{{Contract: receiver, Receiver: receiver, Type: Sub(op.Type, substitution(receiver)), Native: "contract", Decl: standardMethodDeclaration(receiver, name), Variables: standardOperationVariables[receiver.ID+"/"+name]}}
 			}
 		}
 	}
@@ -369,7 +369,7 @@ func nativeMethod(t *Type, name string) *Method {
 				if std(t, "Background") && name == "start" {
 					native = "background_start"
 				}
-				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Native: native, Decl: standardMethodDeclaration(receiver, name)}
+				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Native: native, Decl: standardMethodDeclaration(receiver, name), Variables: standardOperationVariables[receiver.ID+"/"+name]}
 			}
 		}
 	}

@@ -16,6 +16,8 @@ Ordinary functions and methods with exactly one declared parameter permit omitti
 - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
 - `List`, `Lease`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Lists and durations use literals; other values come from APIs or conversions.
 - Records use their listed fields as named constructor arguments. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
+- Native collection methods `map[U: Shareable]`, `flat_map[U: Shareable]`, `group_by[K: Hashable]`, `fold[A]`, and `fold_right[A]` infer method type arguments from supplied callbacks/values. Saving a generic method as a value requires explicit specialization, such as `values.map[String]`. Application-defined interface operations remain nongeneric.
+- List equality searches require `Equal`; `to_set` requires `Hashable`; `join` is available only on `List[String]`. These receiver requirements are inherited from the shared function declarations.
 - Generic bounds constrain type arguments. Pool resources require shared contract views. Shared captures and callback restrictions are checked separately from function types.
 
 For lifetime, cancellation, defaults, and host behavior, read the standard library guides. A type signature alone does not establish these guarantees.
@@ -68,10 +70,21 @@ Import each required symbol with `import Name from "@std/bigint.ms"`.
 
 ## BigInt
 
-Kind: native.
+Kind: interface.
 
 ```manuscript
 BigInt: BigInt
+operation add: fn(right: BigInt)->BigInt
+operation bit_and: fn(right: BigInt)->BigInt
+operation bit_or: fn(right: BigInt)->BigInt
+operation bit_xor: fn(right: BigInt)->BigInt
+operation compare: fn(right: BigInt)->Int
+operation divide: fn(right: BigInt)->Result[BigInt, LibraryError]
+operation multiply: fn(right: BigInt)->BigInt
+operation remainder: fn(right: BigInt)->Result[BigInt, LibraryError]
+operation subtract: fn(right: BigInt)->BigInt
+operation to_int: fn()->Optional[Int]
+operation to_string: fn(radix: Int)->String
 ```
 
 ## add
@@ -283,10 +296,28 @@ Kind: interface.
 ```manuscript
 Bytes: Bytes
 field values: List[Int]
+operation at: fn(index: Int)->Optional[Int]
 operation concat: fn(values: Bytes)->Bytes
+operation contains: fn(value: Bytes)->Bool
+operation ends_with: fn(value: Bytes)->Bool
 operation get: fn(index: Int)->Optional[Int]
+operation index_of: fn(value: Bytes)->Optional[Int]
+operation is_empty: fn()->Bool
+operation last_index_of: fn(value: Bytes)->Optional[Int]
 operation length: fn()->Int
+operation reverse: fn()->Bytes
+operation slice: fn(start: Int, end: Int)->Bytes
+operation starts_with: fn(value: Bytes)->Bool
 operation to_text: fn()->Optional[String]
+operation with_value: fn(index: Int, value: Int)->Bytes
+```
+
+## at
+
+Kind: fn.
+
+```manuscript
+at: fn(data: Bytes, index: Int)->Optional[Int]
 ```
 
 ## contains
@@ -297,6 +328,46 @@ Kind: fn.
 contains: fn(data: Bytes, value: Bytes)->Bool
 ```
 
+## ends_with
+
+Kind: fn.
+
+```manuscript
+ends_with: fn(data: Bytes, value: Bytes)->Bool
+```
+
+## index_of
+
+Kind: fn.
+
+```manuscript
+index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
+```
+
+## is_empty
+
+Kind: fn.
+
+```manuscript
+is_empty: fn(data: Bytes)->Bool
+```
+
+## last_index_of
+
+Kind: fn.
+
+```manuscript
+last_index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
+```
+
+## reverse
+
+Kind: fn.
+
+```manuscript
+reverse: fn(data: Bytes)->Bytes
+```
+
 ## slice
 
 Kind: fn.
@@ -305,12 +376,28 @@ Kind: fn.
 slice: fn(data: Bytes, start: Int, end: Int)->Bytes
 ```
 
+## starts_with
+
+Kind: fn.
+
+```manuscript
+starts_with: fn(data: Bytes, value: Bytes)->Bool
+```
+
 ## values
 
 Kind: fn.
 
 ```manuscript
 values: fn(data: Bytes)->List[Int]
+```
+
+## with_value
+
+Kind: fn.
+
+```manuscript
+with_value: fn(data: Bytes, index: Int, value: Int)->Bytes
 ```
 
 # @std/cleanup.ms
@@ -363,9 +450,53 @@ Kind: interface.
 List: List[T]
 type parameters: T: Shareable
 operation append: fn(value: T)->List[T]
+operation at: fn(index: Int)->Optional[T]
 operation concat: fn(values: List[T])->List[T]
+operation contains: fn(value: T)->Bool
+operation copy_within: fn(target: Int, start: Int, end: Int)->List[T]
+operation entries: fn()->List[ListEntry[T]]
+operation every: fn(predicate: fn(value: T)->Bool)->Bool
+operation fill: fn(value: T, start: Int, end: Int)->List[T]
+operation filter: fn(predicate: fn(value: T)->Bool)->List[T]
+operation find: fn(predicate: fn(value: T)->Bool)->Optional[T]
+operation find_index: fn(predicate: fn(value: T)->Bool)->Optional[Int]
+operation find_last: fn(predicate: fn(value: T)->Bool)->Optional[T]
+operation find_last_index: fn(predicate: fn(value: T)->Bool)->Optional[Int]
+operation first: fn()->Optional[T]
+operation flat_map[U: Shareable]: fn(transform: fn(value: T)->List[U])->List[U]
+operation fold[A]: fn(initial: A, step: fn(accumulator: A, value: T)->A)->A
+operation fold_right[A]: fn(initial: A, step: fn(accumulator: A, value: T)->A)->A
+operation for_each: fn(operation: fn(value: T)->Unit)->Unit
 operation get: fn(index: Int)->Optional[T]
+operation group_by[K: Hashable]: fn(key: fn(value: T)->K)->Map[K, List[T]]
+operation index_of: fn(value: T)->Optional[Int]
+operation is_empty: fn()->Bool
+operation join: fn(separator: String)->String
+operation keys: fn()->List[Int]
+operation last: fn()->Optional[T]
+operation last_index_of: fn(value: T)->Optional[Int]
 operation length: fn()->Int
+operation map[U: Shareable]: fn(transform: fn(value: T)->U)->List[U]
+operation prepend: fn(value: T)->List[T]
+operation reverse: fn()->List[T]
+operation slice: fn(start: Int, end: Int)->List[T]
+operation some: fn(predicate: fn(value: T)->Bool)->Bool
+operation sorted: fn(compare: fn(left: T, right: T)->Int)->List[T]
+operation to_set: fn()->Set[T]
+operation with_value: fn(index: Int, value: T)->List[T]
+operation with_values: fn(start: Int, delete_count: Int, replacement: List[T])->List[T]
+operation without: fn(index: Int)->List[T]
+```
+
+## ListEntry
+
+Kind: record.
+
+```manuscript
+ListEntry: ListEntry[T]
+type parameters: T: Shareable
+field index: Int
+field value: T
 ```
 
 ## Map
@@ -375,9 +506,17 @@ Kind: interface.
 ```manuscript
 Map: Map[T, U]
 type parameters: T: Hashable, U: Shareable
+operation clear: fn()->Map[T, U]
 operation contains: fn(key: T)->Bool
+operation entries: fn()->List[MapEntry[T, U]]
+operation for_each: fn(operation: fn(key: T, value: U)->Unit)->Unit
 operation get: fn(key: T)->Optional[U]
+operation keys: fn()->List[T]
 operation length: fn()->Int
+operation merge: fn(other: Map[T, U])->Map[T, U]
+operation values: fn()->List[U]
+operation with_default: fn(key: T, value: U)->Map[T, U]
+operation with_default_from: fn(key: T, create: fn(key: T)->U)->Map[T, U]
 operation with_entry: fn(key: T, value: U)->Map[T, U]
 operation without: fn(key: T)->Map[T, U]
 ```
@@ -400,10 +539,48 @@ Kind: interface.
 ```manuscript
 Set: Set[T]
 type parameters: T: Shareable & Hashable
+operation clear: fn()->Set[T]
 operation contains: fn(value: T)->Bool
+operation difference: fn(right: Set[T])->Set[T]
+operation entries: fn()->List[List[T]]
+operation for_each: fn(operation: fn(value: T)->Unit)->Unit
+operation intersection: fn(right: Set[T])->Set[T]
+operation is_disjoint_from: fn(right: Set[T])->Bool
+operation is_subset_of: fn(right: Set[T])->Bool
+operation is_superset_of: fn(right: Set[T])->Bool
 operation length: fn()->Int
+operation symmetric_difference: fn(right: Set[T])->Set[T]
+operation union: fn(right: Set[T])->Set[T]
+operation values: fn()->List[T]
 operation with_value: fn(value: T)->Set[T]
 operation without: fn(value: T)->Set[T]
+```
+
+## at
+
+Kind: fn.
+
+```manuscript
+at: fn(values: List[T], index: Int)->Optional[T]
+type parameters: T: Shareable
+```
+
+## contains
+
+Kind: fn.
+
+```manuscript
+contains: fn(values: List[T], value: T)->Bool
+type parameters: T: Shareable & Equal
+```
+
+## copy_within
+
+Kind: fn.
+
+```manuscript
+copy_within: fn(values: List[T], target: Int, start: Int, end: Int)->List[T]
+type parameters: T: Shareable
 ```
 
 ## difference
@@ -415,12 +592,102 @@ difference: fn(left: Set[T], right: Set[T])->Set[T]
 type parameters: T: Hashable
 ```
 
+## every
+
+Kind: fn.
+
+```manuscript
+every: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
+type parameters: T: Shareable
+```
+
+## fill
+
+Kind: fn.
+
+```manuscript
+fill: fn(values: List[T], value: T, start: Int, end: Int)->List[T]
+type parameters: T: Shareable
+```
+
+## filled
+
+Kind: fn.
+
+```manuscript
+filled: fn(value: T, count: Int, max_items: Int)->Result[List[T], LibraryError]
+type parameters: T: Shareable
+```
+
 ## filter
 
 Kind: fn.
 
 ```manuscript
 filter: fn(values: List[T], predicate: fn(value: T)->Bool)->List[T]
+type parameters: T: Shareable
+```
+
+## find
+
+Kind: fn.
+
+```manuscript
+find: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
+type parameters: T: Shareable
+```
+
+## find_index
+
+Kind: fn.
+
+```manuscript
+find_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
+type parameters: T: Shareable
+```
+
+## find_last
+
+Kind: fn.
+
+```manuscript
+find_last: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
+type parameters: T: Shareable
+```
+
+## find_last_index
+
+Kind: fn.
+
+```manuscript
+find_last_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
+type parameters: T: Shareable
+```
+
+## first
+
+Kind: fn.
+
+```manuscript
+first: fn(values: List[T])->Optional[T]
+type parameters: T: Shareable
+```
+
+## flat_map
+
+Kind: fn.
+
+```manuscript
+flat_map: fn(values: List[T], transform: fn(value: T)->List[U])->List[U]
+type parameters: T: Shareable, U: Shareable
+```
+
+## flatten
+
+Kind: fn.
+
+```manuscript
+flatten: fn(values: List[List[T]])->List[T]
 type parameters: T: Shareable
 ```
 
@@ -433,6 +700,42 @@ fold: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
 type parameters: T: Shareable, A
 ```
 
+## fold_right
+
+Kind: fn.
+
+```manuscript
+fold_right: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
+type parameters: T: Shareable, A
+```
+
+## for_each
+
+Kind: fn.
+
+```manuscript
+for_each: fn(values: List[T], operation: fn(value: T)->Unit)->Unit
+type parameters: T: Shareable
+```
+
+## group_by
+
+Kind: fn.
+
+```manuscript
+group_by: fn(values: List[T], key: fn(value: T)->K)->Map[K, List[T]]
+type parameters: T: Shareable, K: Hashable
+```
+
+## index_of
+
+Kind: fn.
+
+```manuscript
+index_of: fn(values: List[T], value: T)->Optional[Int]
+type parameters: T: Shareable & Equal
+```
+
 ## intersection
 
 Kind: fn.
@@ -440,6 +743,78 @@ Kind: fn.
 ```manuscript
 intersection: fn(left: Set[T], right: Set[T])->Set[T]
 type parameters: T: Hashable
+```
+
+## is_disjoint_from
+
+Kind: fn.
+
+```manuscript
+is_disjoint_from: fn(left: Set[T], right: Set[T])->Bool
+type parameters: T: Hashable
+```
+
+## is_empty
+
+Kind: fn.
+
+```manuscript
+is_empty: fn(values: List[T])->Bool
+type parameters: T: Shareable
+```
+
+## is_subset_of
+
+Kind: fn.
+
+```manuscript
+is_subset_of: fn(left: Set[T], right: Set[T])->Bool
+type parameters: T: Hashable
+```
+
+## is_superset_of
+
+Kind: fn.
+
+```manuscript
+is_superset_of: fn(left: Set[T], right: Set[T])->Bool
+type parameters: T: Hashable
+```
+
+## last
+
+Kind: fn.
+
+```manuscript
+last: fn(values: List[T])->Optional[T]
+type parameters: T: Shareable
+```
+
+## last_index_of
+
+Kind: fn.
+
+```manuscript
+last_index_of: fn(values: List[T], value: T)->Optional[Int]
+type parameters: T: Shareable & Equal
+```
+
+## list_entries
+
+Kind: fn.
+
+```manuscript
+list_entries: fn(values: List[T])->List[ListEntry[T]]
+type parameters: T: Shareable
+```
+
+## list_keys
+
+Kind: fn.
+
+```manuscript
+list_keys: fn(values: List[T])->List[Int]
+type parameters: T: Shareable
 ```
 
 ## map
@@ -451,12 +826,57 @@ map: fn(values: List[T], transform: fn(value: T)->U)->List[U]
 type parameters: T: Shareable, U: Shareable
 ```
 
+## map_clear
+
+Kind: fn.
+
+```manuscript
+map_clear: fn(values: Map[K, V])->Map[K, V]
+type parameters: K: Hashable, V: Shareable
+```
+
+## map_entries
+
+Kind: fn.
+
+```manuscript
+map_entries: fn(values: Map[K, V])->List[MapEntry[K, V]]
+type parameters: K: Hashable, V: Shareable
+```
+
+## map_for_each
+
+Kind: fn.
+
+```manuscript
+map_for_each: fn(values: Map[K, V], operation: fn(key: K, value: V)->Unit)->Unit
+type parameters: K: Hashable, V: Shareable
+```
+
+## map_from_entries
+
+Kind: fn.
+
+```manuscript
+map_from_entries: fn(entries: List[MapEntry[K, V]])->Map[K, V]
+type parameters: K: Hashable, V: Shareable
+```
+
 ## map_keys
 
 Kind: fn.
 
 ```manuscript
 map_keys: fn(values: Map[K, V])->List[K]
+type parameters: K: Hashable, V: Shareable
+```
+
+## map_merge
+
+Kind: fn.
+
+```manuscript
+map_merge: fn(values: Map[K, V], other: Map[K, V])->Map[K, V]
 type parameters: K: Hashable, V: Shareable
 ```
 
@@ -469,6 +889,41 @@ map_values: fn(values: Map[K, V])->List[V]
 type parameters: K: Hashable, V: Shareable
 ```
 
+## map_with_default
+
+Kind: fn.
+
+```manuscript
+map_with_default: fn(values: Map[K, V], key: K, value: V)->Map[K, V]
+type parameters: K: Hashable, V: Shareable
+```
+
+## map_with_default_from
+
+Kind: fn.
+
+```manuscript
+map_with_default_from: fn(values: Map[K, V], key: K, create: fn(key: K)->V)->Map[K, V]
+type parameters: K: Hashable, V: Shareable
+```
+
+## prepend
+
+Kind: fn.
+
+```manuscript
+prepend: fn(values: List[T], value: T)->List[T]
+type parameters: T: Shareable
+```
+
+## range
+
+Kind: fn.
+
+```manuscript
+range: fn(start: Int, end: Int, step: Int, max_items: Int)->Result[List[Int], LibraryError]
+```
+
 ## reverse
 
 Kind: fn.
@@ -478,12 +933,57 @@ reverse: fn(values: List[T])->List[T]
 type parameters: T: Shareable
 ```
 
+## set_clear
+
+Kind: fn.
+
+```manuscript
+set_clear: fn(values: Set[T])->Set[T]
+type parameters: T: Hashable
+```
+
+## set_entries
+
+Kind: fn.
+
+```manuscript
+set_entries: fn(values: Set[T])->List[List[T]]
+type parameters: T: Hashable
+```
+
+## set_for_each
+
+Kind: fn.
+
+```manuscript
+set_for_each: fn(values: Set[T], operation: fn(value: T)->Unit)->Unit
+type parameters: T: Hashable
+```
+
+## set_values
+
+Kind: fn.
+
+```manuscript
+set_values: fn(values: Set[T])->List[T]
+type parameters: T: Hashable
+```
+
 ## slice
 
 Kind: fn.
 
 ```manuscript
 slice: fn(values: List[T], start: Int, end: Int)->List[T]
+type parameters: T: Shareable
+```
+
+## some
+
+Kind: fn.
+
+```manuscript
+some: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
 type parameters: T: Shareable
 ```
 
@@ -512,6 +1012,24 @@ sorted: fn(values: List[T], compare: fn(left: T, right: T)->Int)->List[T]
 type parameters: T: Shareable
 ```
 
+## symmetric_difference
+
+Kind: fn.
+
+```manuscript
+symmetric_difference: fn(left: Set[T], right: Set[T])->Set[T]
+type parameters: T: Hashable
+```
+
+## to_set
+
+Kind: fn.
+
+```manuscript
+to_set: fn(values: List[T])->Set[T]
+type parameters: T: Shareable & Hashable
+```
+
 ## union
 
 Kind: fn.
@@ -519,6 +1037,33 @@ Kind: fn.
 ```manuscript
 union: fn(left: Set[T], right: Set[T])->Set[T]
 type parameters: T: Hashable
+```
+
+## with_value
+
+Kind: fn.
+
+```manuscript
+with_value: fn(values: List[T], index: Int, value: T)->List[T]
+type parameters: T: Shareable
+```
+
+## with_values
+
+Kind: fn.
+
+```manuscript
+with_values: fn(values: List[T], start: Int, delete_count: Int, replacement: List[T])->List[T]
+type parameters: T: Shareable
+```
+
+## without
+
+Kind: fn.
+
+```manuscript
+without: fn(values: List[T], index: Int)->List[T]
+type parameters: T: Shareable
 ```
 
 # @std/compress.ms
@@ -1434,6 +1979,22 @@ parse_ip: fn(text: String)->Result[String, LibraryError]
 
 Import each required symbol with `import Name from "@std/numbers.ms"`.
 
+## format_exponential
+
+Kind: fn.
+
+```manuscript
+format_exponential: fn(value: Float, digits: Int)->Result[String, LibraryError]
+```
+
+## format_fixed
+
+Kind: fn.
+
+```manuscript
+format_fixed: fn(value: Float, digits: Int)->Result[String, LibraryError]
+```
+
 ## format_float
 
 Kind: fn.
@@ -1448,6 +2009,14 @@ Kind: fn.
 
 ```manuscript
 format_int: fn(value: Int, radix: Int)->String
+```
+
+## format_precision
+
+Kind: fn.
+
+```manuscript
+format_precision: fn(value: Float, precision: Int)->Result[String, LibraryError]
 ```
 
 ## parse_float
@@ -1675,10 +2244,13 @@ Import each required symbol with `import Name from "@std/regex.ms"`.
 
 ## Regex
 
-Kind: native.
+Kind: interface.
 
 ```manuscript
 Regex: Regex
+operation find_all: fn(text: String, max_matches: Int)->Result[List[String], LibraryError]
+operation matches: fn(text: String)->Bool
+operation replace: fn(text: String, replacement: String, max_bytes: Int)->Result[String, LibraryError]
 ```
 
 ## compile
@@ -1752,6 +2324,226 @@ field value: T
 operation get: fn()->T
 operation set: fn(value: T)->Unit
 operation swap: fn(value: T)->T
+```
+
+# @std/string.ms
+
+Import each required symbol with `import Name from "@std/string.ms"`.
+
+## at
+
+Kind: fn.
+
+```manuscript
+at: fn(text: String, index: Int)->Optional[String]
+```
+
+## concat
+
+Kind: fn.
+
+```manuscript
+concat: fn(text: String, values: String)->String
+```
+
+## contains
+
+Kind: fn.
+
+```manuscript
+contains: fn(value: String, text: String)->Bool
+```
+
+## ends_with
+
+Kind: fn.
+
+```manuscript
+ends_with: fn(value: String, suffix: String)->Bool
+```
+
+## from_scalars
+
+Kind: fn.
+
+```manuscript
+from_scalars: fn(values: List[Int])->Result[String, LibraryError]
+```
+
+## index_of
+
+Kind: fn.
+
+```manuscript
+index_of: fn(text: String, value: String)->Optional[Int]
+```
+
+## join
+
+Kind: fn.
+
+```manuscript
+join: fn(parts: List[String], separator: String)->String
+```
+
+## last_index_of
+
+Kind: fn.
+
+```manuscript
+last_index_of: fn(text: String, value: String)->Optional[Int]
+```
+
+## lower
+
+Kind: fn.
+
+```manuscript
+lower: fn(text: String)->String
+```
+
+## normalize
+
+Kind: fn.
+
+```manuscript
+normalize: fn(text: String, form: String, max_bytes: Int)->Result[String, LibraryError]
+```
+
+## pad_end
+
+Kind: fn.
+
+```manuscript
+pad_end: fn(text: String, target_length: Int, padding: String, max_bytes: Int)->Result[String, LibraryError]
+```
+
+## pad_start
+
+Kind: fn.
+
+```manuscript
+pad_start: fn(text: String, target_length: Int, padding: String, max_bytes: Int)->Result[String, LibraryError]
+```
+
+## repeat
+
+Kind: fn.
+
+```manuscript
+repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, LibraryError]
+```
+
+## replace
+
+Kind: fn.
+
+```manuscript
+replace: fn(text: String, old: String, new: String, max_replacements: Int)->String
+```
+
+## replace_all
+
+Kind: fn.
+
+```manuscript
+replace_all: fn(text: String, old: String, new: String, max_bytes: Int)->Result[String, LibraryError]
+```
+
+## scalar_at
+
+Kind: fn.
+
+```manuscript
+scalar_at: fn(text: String, index: Int)->Optional[Int]
+```
+
+## scalar_length
+
+Kind: fn.
+
+```manuscript
+scalar_length: fn(text: String)->Int
+```
+
+## scalar_values
+
+Kind: fn.
+
+```manuscript
+scalar_values: fn(text: String)->List[Int]
+```
+
+## slice
+
+Kind: fn.
+
+```manuscript
+slice: fn(text: String, start: Int, end: Int)->String
+```
+
+## slice_scalars
+
+Kind: fn.
+
+```manuscript
+slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, LibraryError]
+```
+
+## split
+
+Kind: fn.
+
+```manuscript
+split: fn(text: String, separator: String, max_parts: Int)->List[String]
+```
+
+## starts_with
+
+Kind: fn.
+
+```manuscript
+starts_with: fn(value: String, prefix: String)->Bool
+```
+
+## substring
+
+Kind: fn.
+
+```manuscript
+substring: fn(text: String, start: Int, end: Int)->String
+```
+
+## trim
+
+Kind: fn.
+
+```manuscript
+trim: fn(text: String)->String
+```
+
+## trim_end
+
+Kind: fn.
+
+```manuscript
+trim_end: fn(text: String)->String
+```
+
+## trim_start
+
+Kind: fn.
+
+```manuscript
+trim_start: fn(text: String)->String
+```
+
+## upper
+
+Kind: fn.
+
+```manuscript
+upper: fn(text: String)->String
 ```
 
 # @std/system.ms
@@ -1871,122 +2663,6 @@ Kind: fn.
 ```manuscript
 parallel_map: fn(items: List[T], operation: fn(item: T)->U, limit: Int)->Result[List[U], ExecutionError]
 type parameters: T: Shareable, U: Shareable
-```
-
-# @std/text.ms
-
-Import each required symbol with `import Name from "@std/text.ms"`.
-
-## contains
-
-Kind: fn.
-
-```manuscript
-contains: fn(value: String, text: String)->Bool
-```
-
-## ends_with
-
-Kind: fn.
-
-```manuscript
-ends_with: fn(value: String, suffix: String)->Bool
-```
-
-## from_scalars
-
-Kind: fn.
-
-```manuscript
-from_scalars: fn(values: List[Int])->Result[String, LibraryError]
-```
-
-## join
-
-Kind: fn.
-
-```manuscript
-join: fn(parts: List[String], separator: String)->String
-```
-
-## lower
-
-Kind: fn.
-
-```manuscript
-lower: fn(text: String)->String
-```
-
-## repeat
-
-Kind: fn.
-
-```manuscript
-repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, LibraryError]
-```
-
-## replace
-
-Kind: fn.
-
-```manuscript
-replace: fn(text: String, old: String, new: String, max_replacements: Int)->String
-```
-
-## scalar_length
-
-Kind: fn.
-
-```manuscript
-scalar_length: fn(text: String)->Int
-```
-
-## scalar_values
-
-Kind: fn.
-
-```manuscript
-scalar_values: fn(text: String)->List[Int]
-```
-
-## slice_scalars
-
-Kind: fn.
-
-```manuscript
-slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, LibraryError]
-```
-
-## split
-
-Kind: fn.
-
-```manuscript
-split: fn(text: String, separator: String, max_parts: Int)->List[String]
-```
-
-## starts_with
-
-Kind: fn.
-
-```manuscript
-starts_with: fn(value: String, prefix: String)->Bool
-```
-
-## trim
-
-Kind: fn.
-
-```manuscript
-trim: fn(text: String)->String
-```
-
-## upper
-
-Kind: fn.
-
-```manuscript
-upper: fn(text: String)->String
 ```
 
 # @std/time.ms
@@ -2309,6 +2985,12 @@ Kind: type.
 
 ```manuscript
 Float: Float
+operation is_finite: fn()->Bool
+operation is_nan: fn()->Bool
+operation to_exponential: fn(digits: Int)->Result[String, LibraryError]
+operation to_fixed: fn(digits: Int)->Result[String, LibraryError]
+operation to_precision: fn(precision: Int)->Result[String, LibraryError]
+operation to_string: fn()->String
 operation truncate_to_int: fn()->Optional[Int]
 ```
 
@@ -2328,6 +3010,7 @@ Kind: type.
 Int: Int
 operation to_decimal: fn()->Decimal
 operation to_float: fn()->Float
+operation to_string: fn(radix: Int)->String
 ```
 
 ## Never
@@ -2352,9 +3035,34 @@ Kind: type.
 
 ```manuscript
 String: String
+operation at: fn(index: Int)->Optional[String]
 operation byte_length: fn()->Int
+operation concat: fn(values: String)->String
+operation contains: fn(text: String)->Bool
+operation ends_with: fn(suffix: String)->Bool
+operation index_of: fn(value: String)->Optional[Int]
+operation last_index_of: fn(value: String)->Optional[Int]
+operation lower: fn()->String
+operation normalize: fn(form: String, max_bytes: Int)->Result[String, LibraryError]
+operation pad_end: fn(target_length: Int, padding: String, max_bytes: Int)->Result[String, LibraryError]
+operation pad_start: fn(target_length: Int, padding: String, max_bytes: Int)->Result[String, LibraryError]
 operation parse_int: fn()->Optional[Int]
+operation repeat: fn(count: Int, max_bytes: Int)->Result[String, LibraryError]
+operation replace: fn(old: String, new: String, max_replacements: Int)->String
+operation replace_all: fn(old: String, new: String, max_bytes: Int)->Result[String, LibraryError]
+operation scalar_at: fn(index: Int)->Optional[Int]
+operation scalar_length: fn()->Int
+operation scalar_values: fn()->List[Int]
+operation slice: fn(start: Int, end: Int)->String
+operation slice_scalars: fn(start: Int, end: Int)->Result[String, LibraryError]
+operation split: fn(separator: String, max_parts: Int)->List[String]
+operation starts_with: fn(prefix: String)->Bool
+operation substring: fn(start: Int, end: Int)->String
 operation to_bytes: fn()->Bytes
+operation trim: fn()->String
+operation trim_end: fn()->String
+operation trim_start: fn()->String
+operation upper: fn()->String
 ```
 
 ## Unit

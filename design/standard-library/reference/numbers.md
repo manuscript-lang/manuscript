@@ -6,6 +6,22 @@ title = "numbers"
 
 Import each required symbol with `import Name from "@std/numbers.ms"`.
 
+## format_exponential
+
+Kind: fn.
+
+```manuscript
+format_exponential: fn(value: Float, digits: Int)->Result[String, LibraryError]
+```
+
+## format_fixed
+
+Kind: fn.
+
+```manuscript
+format_fixed: fn(value: Float, digits: Int)->Result[String, LibraryError]
+```
+
 ## format_float
 
 Kind: fn.
@@ -20,6 +36,14 @@ Kind: fn.
 
 ```manuscript
 format_int: fn(value: Int, radix: Int)->String
+```
+
+## format_precision
+
+Kind: fn.
+
+```manuscript
+format_precision: fn(value: Float, precision: Int)->Result[String, LibraryError]
 ```
 
 ## parse_float

@@ -300,6 +300,9 @@ func (p *Parser) declaration() *syntax.Declaration {
 			} else if p.take("fn") {
 				name := p.need(lexer.Name)
 				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: "fn"}
+				if p.declarationsOnly {
+					m.TypeParams = p.typeParams()
+				}
 				m.Params = p.parameters()
 				p.need("->")
 				m.Result = p.typ()

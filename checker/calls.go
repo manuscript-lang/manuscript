@@ -173,6 +173,12 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			}
 		}
 		if callable == nil {
+			callable = c.nativeCallable(callee)
+			if callable != nil {
+				c.specializeNativeCall(e, callable)
+			}
+		}
+		if callable == nil {
 			callable = c.expression(callee, nil)
 		}
 		signature = callable.Type
