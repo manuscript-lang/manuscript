@@ -8,6 +8,8 @@ Apply when: adding standard APIs, changing their signatures, or extending hover/
 Evidence: [source-definition request](codex://threads/01a12ce1-c9ff-70e4-bb2c-51749183e03b); [declaration ownership](../stdlib/README.md); [embedded sources](../stdlib/sources.go); [documentation generator](../cmd/docgen/main.go).
 Verify: native calling signatures agree with the declarations, editor definitions reach the declaration, and generated references pass the existing freshness check. Update the source or generator when output changes.
 
+Decision: the string utility module is `@std/string.ms`, matching the intrinsic `String` type. The user requested this spelling when expanding built-in parity. Receiver operations need no module import; standalone string functions use this canonical module. Evidence: [declarations](../stdlib/string.ms), [native bindings](../stdlib/bindings.json), and [data package guide](../design/standard-library/packages/data.md). When renaming a module, verify imports, native dispatch identities, virtual editor documents, and generated reference paths together.
+
 ### Teach a runnable path before formal reference
 
 Decision: simplify the reading path, explain one concept at a time, and give each exact rule one home. A basic destructuring example should not require the reader to understand parallel work and error propagation. The docs revamp requested simpler explanations without losing precise semantics.

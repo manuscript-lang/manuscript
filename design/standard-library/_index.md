@@ -40,6 +40,7 @@ Use this chapter to find standard types and operations. Most names need an expli
 
 ### 5. [General-purpose packages](packages/_index.md)
 
+- [JavaScript built-in coverage](packages/javascript-builtins.md) — Find method equivalents and semantic differences.
 - [Node.js and Go coverage](packages/coverage.md) — See what is implemented and what remains outside the library.
 - [Common package contracts](packages/contracts.md) — Review the errors, limits, and authority rules shared by packages.
 - [Expanded library conformance](packages/conformance.md) — Find executable checks for package behavior and limits.

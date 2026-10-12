@@ -74,7 +74,7 @@ func init() {
 		}
 		return libraryOK(r, optional("String", string(b), true))
 	})
-	libraryAdd("text", "repeat", libraryResult("String"), []LibraryParam{p("text", "String"), p("count", "Int"), p("max_bytes", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("string", "repeat", libraryResult("String"), []LibraryParam{p("text", "String"), p("count", "Int"), p("max_bytes", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		s := a[0].(string)
 		count, max := a[1].(int64), a[2].(int64)
 		if count < 0 || max < 0 {

@@ -4,7 +4,10 @@ import LibraryError from "@std/errors.ms"
 import List from "@std/collections.ms"
 import Result from "@std/result.ms"
 
-export type Regex
+export type Regex:
+    fn matches(text: String) -> Bool
+    fn find_all(text: String, max_matches: Int) -> Result[List[String], LibraryError]
+    fn replace(text: String, replacement: String, max_bytes: Int) -> Result[String, LibraryError]
 
 export fn compile(pattern: String) -> Result[Regex, LibraryError]
 

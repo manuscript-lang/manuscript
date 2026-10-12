@@ -15,6 +15,7 @@ var standardSymbols map[string]*Symbol
 var standardModules map[string]map[string]*Symbol
 var standardSources []*syntax.Module
 var intrinsicOperations map[string]*Type
+var standardOperationVariables = map[string][]*Type{}
 
 type standardBindings struct {
 	NativeTypes        map[string]string `json:"native_types"`
@@ -167,6 +168,22 @@ func loadStandardSources() error {
 					c.error(method.Pos, "type", "duplicate operation "+method.Name)
 				}
 				seen[method.Name] = true
+				c.scope = c.variableScope(s.Variables)
+				var variables []*Type
+				for _, param := range method.TypeParams {
+					if c.scope.types[param.Name] != nil {
+						c.error(param.Pos, "type", "native method variable shadows receiver variable")
+					}
+					variable := &Type{Name: param.Name, ID: s.ID + "/" + method.Name + "/" + param.Name, Kind: "variable"}
+					variables = append(variables, variable)
+					c.scope.types[param.Name] = variable
+				}
+				for i, param := range method.TypeParams {
+					for _, bound := range param.Bounds {
+						variables[i].Bounds = append(variables[i].Bounds, c.resolve(bound, true))
+					}
+				}
+				standardOperationVariables[s.ID+"/"+method.Name] = variables
 				def.Operations = append(def.Operations, Param{method.Name, c.signature(method.Params, method.Result)})
 			}
 		}

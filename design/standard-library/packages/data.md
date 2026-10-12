@@ -9,7 +9,7 @@ weight = 49
 
 Use these modules for text transformations, raw bytes, encodings, collection algorithms, and regular expressions. Import the functions you need from the module above each signature block. Read the behavior sections for indexing, ordering, and limit rules.
 
-## `@std/text.ms`
+## `@std/string.ms`
 
 ```text
 fn contains(value: String, text: String) -> Bool
@@ -88,8 +88,8 @@ Text is valid UTF-8. Scalar operations count Unicode code points, rather than by
 - `from_scalars` rejects surrogate code points and values outside the Unicode range.
 - `slice_scalars` uses a half-open range: include `start`, exclude `end`. Invalid bounds return `OutOfRange`.
 - `trim` uses Unicode White_Space. `upper` and `lower` use Go's locale-independent Unicode mappings; they do not normalize combining sequences.
-- `split` keeps empty parts. It requires a nonempty separator and positive `max_parts`; the final part contains any remainder.
-- `replace` uses literal text. `old` must be nonempty and `max_replacements` nonnegative; zero means no replacements.
+- `split` keeps empty parts. It requires positive `max_parts`; the final part contains any remainder. An empty separator splits Unicode scalars.
+- `replace` uses literal text. `max_replacements` must be nonnegative; zero means no replacements. An empty `old` inserts at scalar boundaries.
 - `repeat` requires nonnegative `count` and `max_bytes`. It checks the size multiplication before allocating.
 - An empty search string succeeds for contains, prefix, and suffix checks.
 
@@ -131,4 +131,4 @@ Invalid widths return `InvalidInput`. Bad offsets, truncated input, and values t
 
 `replace` uses literal replacement text, without `$` capture interpolation. It enforces `max_bytes` and never returns a partial output as success.
 
-Unicode normalization, grapheme segmentation, non-UTF-8 codecs, and capture-group match records remain future work.
+The string module also provides bounded Unicode normalization; see [JavaScript built-in coverage](javascript-builtins.md). Grapheme segmentation, non-UTF-8 codecs, and capture-group match records remain future work.

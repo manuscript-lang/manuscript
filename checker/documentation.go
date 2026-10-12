@@ -1,6 +1,9 @@
 package checker
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // APIModule is a detached documentation snapshot of an importable module.
 type APIModule struct {
@@ -83,7 +86,7 @@ func documentSymbol(symbol *Symbol) APIDeclaration {
 			d.Cases = append(d.Cases, value)
 		}
 		for _, op := range def.Operations {
-			operations[op.Name] = op.Type.String()
+			operations[documentOperationName(symbol.Type, op.Name)] = op.Type.String()
 		}
 	}
 	if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
@@ -118,4 +121,25 @@ func ModuleDocumentation(program *Program) []APIModule {
 	}
 	sort.Slice(modules, func(i, j int) bool { return modules[i].Path < modules[j].Path })
 	return modules
+}
+
+func documentOperationName(receiver *Type, name string) string {
+	variables := standardOperationVariables[receiver.ID+"/"+name]
+	if len(variables) == 0 {
+		return name
+	}
+	var params []string
+	for _, v := range variables {
+		parameter := v.Name
+		for i, b := range v.Bounds {
+			if i == 0 {
+				parameter += ": "
+			} else {
+				parameter += " & "
+			}
+			parameter += b.String()
+		}
+		params = append(params, parameter)
+	}
+	return name + "[" + strings.Join(params, ", ") + "]"
 }

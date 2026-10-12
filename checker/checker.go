@@ -649,6 +649,12 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			c.error(e.Pos, "resolution", "unknown binding "+e.Text)
 		}
 	case "apply":
+		if callable := c.nativeCallable(e); callable != nil {
+			*i = *callable
+			i.Type = c.specialize(callable.Type, callable.Method.Variables, c.resolveArguments(e.Types), e.Pos)
+			c.Expressions[e.Left] = i
+			return i
+		}
 		if s := c.functionSymbol(e.Left); s != nil {
 			args := c.resolveArguments(e.Types)
 			i.Symbol = s
@@ -702,6 +708,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		i.Type = methods[0].Type
 		i.Proof = receiver.Proof || c.property(receiver.Type, "Shareable", nil)
 		i.Native = methods[0].Native
+		if methods[0].Native != "" && methods[0].Native != "contract" && len(methods[0].Variables) > 0 {
+			c.error(e.Pos, "type", "a generic method value requires explicit specialization")
+		}
 		if (e.Text == "serve" || e.Text == "serve_stream") && std(i.Method.Contract, "Network") {
 			c.error(e.Pos, "type", "Network.serve requires a direct call")
 		}

@@ -16,6 +16,8 @@ Apply when: removing or renaming language constructs or standard APIs.
 Evidence: [successive corrections in Remove assert; use if return](codex://threads/01a12e19-ae70-752b-8c66-be8d59177006).
 Verify: inventory related exported helpers and aliases before editing, regenerate references, then check every surface covered by the removal request. Follow an explicit zero-reference request when deciding whether rejection tests should retain the old spelling.
 
+Verified: when rebasing standard-library work onto current main, migrate new conformance fixtures and documentation examples to ordinary `if not (...)` checks returning `panic`; do not restore the removed testing module or its native bindings from a stash. The source-level [built-in parity fixture](../tests/e2e/testdata/accept/builtin-parity.ms) exercises this form, and [standard bindings](../stdlib/bindings.json) remain free of the removed module.
+
 ### Latest choices can supersede an apparently accepted alternative
 
 Decision: keep `Equal` and `Hashable` derived and `Shareable` compiler-verified. The user briefly requested custom equality implementations, then explicitly reversed that choice. Explicit closure capture lists were also rejected; the rejection did not establish a replacement sharing design.

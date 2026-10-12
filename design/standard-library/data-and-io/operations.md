@@ -3,7 +3,7 @@ title = "Minimum data operations"
 weight = 39
 +++
 
-# Minimum data operations
+# Core data operations
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
@@ -12,6 +12,8 @@ This is the reference for basic methods on standard data types. These methods be
 Import standard types when naming them. Ordinary bracket list literals need `List`. A type inferred from a return value does not need its own import unless you name it in source. Updates produce new immutable values and leave the original unchanged. Sizes and indexes use `Int`; allocation failure is a host failure.
 
 A single-parameter operation may omit its argument label. Multi-parameter operations require the exact labels below.
+
+[JavaScript built-in coverage](../packages/javascript-builtins.md) describes the expanded receiver surface and exact differences.
 
 ## Collections
 
@@ -69,7 +71,7 @@ test "dynamic immutable data":
 
 `String.to_bytes` uses UTF-8. `Bytes.to_text` succeeds exactly for valid UTF-8, preserving contents without normalization; invalid bytes produce `none`. Byte `get` follows list index behavior and returns the unsigned byte as Int. An empty `Bytes(values: [])` is valid.
 
-`parse_int` accepts exactly an optional ASCII `+` or `-` followed by one or more ASCII decimal digits and an in-range mathematical value. It permits leading zeros, rejects whitespace, separators, fractions, exponents, and any unconsumed character, and returns `none` for invalid or out-of-range input. Runtime parsing is distinct from the stricter source literal grammar. Scalar/grapheme indexing and additional parsing/formatting APIs are unsupported.
+`parse_int` accepts exactly an optional ASCII `+` or `-` followed by one or more ASCII decimal digits and an in-range mathematical value. It permits leading zeros, rejects whitespace, separators, fractions, exponents, and any unconsumed character, and returns `none` for invalid or out-of-range input. Runtime parsing is distinct from the stricter source literal grammar. Additional scalar indexing, text transformations, collection algorithms, and numeric formatting are described in [JavaScript built-in coverage](../packages/javascript-builtins.md); the canonical signatures live in the generated reference. Grapheme and locale operations remain unsupported.
 
 ```text
 import panic from "@std/faults.ms"
