@@ -46,11 +46,20 @@ type Binding struct {
 }
 type Method struct {
 	ID                       string
+	Module                   string
+	Local                    bool
 	Receiver, Contract, Type *Type
 	Variables                []*Type
 	Decl                     *syntax.Declaration
 	Native                   string
 }
+
+// VisibleIn keeps extensions in their declaring module. Implementations owned
+// by the receiver's defining module remain available wherever the type is used.
+func (m *Method) VisibleIn(module string) bool {
+	return !m.Local || m.Module == module
+}
+
 type Info struct {
 	Type        *Type
 	Symbol      *Symbol

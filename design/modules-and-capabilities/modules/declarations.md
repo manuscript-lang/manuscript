@@ -59,7 +59,7 @@ export fn issue() -> PrivateToken:
 
 Exporting a record exposes every field and its constructor; exporting an alternative exposes every case and payload field; exporting an `interface` exposes every operation. Opaque exports and selective member visibility are unsupported. See [public data surfaces](../../core-language/types/records.md#public-data-surfaces).
 
-An `impl` belongs to the receiver's nominal data type's defining module and becomes available when that module is loaded. Imported public contracts can be implemented there. Concrete and generic implementations do not re-export declarations. Duplicate or overlapping receiver/instantiated contract pairs are rejected, ignoring bounds when checking overlap; bounds cannot choose competing implementations. These [coherence rules](../../core-language/types/contracts.md#coherence-and-visibility) prevent behavior from depending on unrelated imports.
+An `impl` in a source type's defining module becomes available wherever that type is used. An `impl` for an imported source type is local to the declaring module and does not become visible through imports. The interface may be local or imported. Concrete and generic implementations follow the same [coherence and visibility rules](../../core-language/types/contracts.md#coherence-and-visibility), including overlap rejection within the visible set and preservation of the selected implementation in explicit contract views.
 
 ## Standard-library imports
 

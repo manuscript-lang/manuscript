@@ -123,7 +123,7 @@ Status eviction never reuses an ID for different work. An ID the service did not
 
 ## Capabilities and data operations
 
-The host's authority roots and stream signatures are defined by [CLI hosts](../hosts/cli.md) and [streams](../data-and-io/streams.md). Standard collection, byte, text, numeric, and duration members are defined in [minimum data operations](../data-and-io/operations.md). Source code cannot add implementations or members to intrinsic or standard native types. Source types may implement standard contracts in their own defining module.
+The host's authority roots and stream signatures are defined by [CLI hosts](../hosts/cli.md) and [streams](../data-and-io/streams.md). Standard collection, byte, text, numeric, and duration members are defined in [minimum data operations](../data-and-io/operations.md). Source code cannot add implementations or members to intrinsic or standard-library types. Source types may implement standard contracts in their defining module or through [local extensions](../../core-language/types/contracts.md#coherence-and-visibility).
 
 General user type packs, optional source parameters, generic operations, and third-party dependency package imports are unsupported. HTTP host registration follows the [bounded request API](../hosts/http.md#bounded-request-api).
 

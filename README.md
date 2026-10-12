@@ -81,7 +81,7 @@ tree. From a source checkout, use `toolchain/go/bin/go build -mod=vendor main.go
 
 ## Language and implementation
 
-Use `type` for records and alternatives, and `interface` for operation contracts. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declared parameters, as in `impl ReadValue[T] for Box[T]:`.
+Use `type` for records and alternatives, and `interface` for operation contracts. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declared parameters, as in `impl ReadValue[T] for Box[T]:`. Implementations for imported source types are [local extensions](design/core-language/types/contracts.md#coherence-and-visibility), visible only in the module declaring them.
 
 The implementation includes cleanup, joined and background work, queues, state and pools, builders, and explicit CLI, HTTP, and subprocess capabilities. External adapters, advanced host APIs, and generalized structural editing still have design work. Check [coverage](IMPLEMENTATION.md) for exact limits.
 

@@ -50,12 +50,16 @@ type Member struct {
 	Declaration *syntax.Declaration
 }
 
-func Members(program *Program, receiver *Type) []Member {
+// Members includes local extensions only when their module is supplied.
+func Members(program *Program, receiver *Type, module ...string) []Member {
 	result := []Member{}
 	if program == nil || receiver == nil {
 		return result
 	}
 	c := &checker{Program: program}
+	if len(module) > 0 {
+		c.module = &syntax.Module{File: module[0]}
+	}
 	candidates := map[string]bool{}
 	var collect func(*Type)
 	collect = func(t *Type) {

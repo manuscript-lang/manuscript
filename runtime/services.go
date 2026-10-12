@@ -300,7 +300,7 @@ func (l *Lease) Operation(name string) Function {
 			return Alternative{result, "error", []Value{Alternative{Type: "@std/PoolError", Tag: "Closed"}}}
 		}
 		view := l.resource.(View)
-		return Alternative{result, "ok", []Value{View{view.Type, &leaseReceiver{lease: l, value: view}}}}
+		return Alternative{result, "ok", []Value{View{Type: view.Type, Receiver: &leaseReceiver{lease: l, value: view}, Scope: view.Scope}}}
 	})
 }
 func (l *Lease) close(ctx *Execution) {

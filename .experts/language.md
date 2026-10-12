@@ -1,5 +1,13 @@
 # Language lessons
 
+### Local implementations must remain selected across module boundaries
+
+Verified: accepting an implementation for an imported source type requires more than relaxing receiver ownership. The checker limits extensions to their declaring module; views, bound methods, cleanup, and generic specialization retain that selection at runtime. A global receiver/contract lookup would silently select another module's extension. Inherited receiver bounds also need their resolved nominal identities, rather than resolving their source spelling again in the extending module.
+
+Apply when: changing implementation visibility, generic evidence, contract wrappers, cleanup dispatch, or editor member lookup.
+Evidence: [coherence and visibility](../design/core-language/types/contracts.md#coherence-and-visibility); [boundary and inherited-bound checks](../compiler/local_extensions_test.go); [native cross-module dispatch fixture](../tests/e2e/testdata/projects/local_extensions/main.ms); [editor visibility and navigation](../tooling/lsp/completion_test.go).
+Verify: two modules implement the same imported pair with different results; returned views and specialized functions retain their results, while raw values do not acquire either extension in a third module. Forwarding a generic argument must not change dispatch on statically concrete receivers in the callee.
+
 ### Read the current decision before restoring an older design
 
 Decision: the language rebuild was directed to use the new design on `main`. Earlier designs and assistant proposals can conflict with subsequent user corrections. Establish the target contract from the latest direction and canonical pages before borrowing old implementation ideas.

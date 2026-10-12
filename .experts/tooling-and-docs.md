@@ -30,6 +30,8 @@ Verify: exercise a copied binary outside the checkout with empty caches, no Go o
 
 Decision: for the documentation redesign, the user selected Tailwind CSS and Vercel as visual references and explicitly asked, “don't just randomly keep adding text.” Favor consistent navigation, typography, spacing, and reading layouts; preserve authored explanations rather than introducing promotional copy to fill the page.
 
+Decision: use `ms` as the documentation logo, including the header and favicon, rather than a single `m`. Check the mark at desktop and mobile sizes when changing [branding](../layouts/_partials/docs/brand.html) or the [favicon](../static/favicon.svg).
+
 Apply when: redesigning the documentation shell or overview, or extending its visual system.
 Evidence: the user's documentation redesign correction; [Tailwind docs](https://tailwindcss.com/docs/installation/using-vite); [Vercel docs](https://vercel.com/docs); [site-owned visual system](../assets/_custom.scss); [overview presentation](../layouts/_shortcodes/docs-home.html).
 Decision: the user requested reuse of VS Code highlighting code where possible. The docs use the extension's [TextMate grammar](../extensions/vscode/syntaxes/manuscript.tmLanguage.json) as their single source of lexical rules, through a small [browser adapter](../assets/manuscript-highlight.js). Keep language patterns in the shared grammar instead of adding a separate keyword list for the website.

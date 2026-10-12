@@ -10,11 +10,24 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	// Implementations inherit names and bounds from the nominal receiver declaration.
 	var vars []*Type
 	if symbol := c.names[d.Receiver.Name]; symbol != nil && symbol.Decl != nil && symbol.Kind == "type" {
-		vars = c.typeVariables(symbol.Decl.TypeParams)
+		// Copy resolved bounds: their names belong to the receiver's module and
+		// need not be imported by a module extending that receiver.
+		sub := map[string]*Type{}
+		for _, parameter := range symbol.Variables {
+			v := &Type{Name: parameter.Name, ID: c.unique("typevar"), Kind: "variable"}
+			vars = append(vars, v)
+			c.scope.types[v.Name] = v
+			sub[parameter.ID] = v
+		}
+		for i, parameter := range symbol.Variables {
+			for _, bound := range parameter.Bounds {
+				vars[i].Bounds = append(vars[i].Bounds, Sub(bound, sub))
+			}
+		}
 	}
 	receiver := c.resolve(d.Receiver, false)
-	if receiver.Def == nil || receiver.Kind == "contract" || receiver.Def.Symbol.Module != c.module.File {
-		c.error(d.Pos, "type", "implementation receiver must be nominal data defined in this module")
+	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" || (receiver.Kind != "record" && receiver.Kind != "alternative") {
+		c.error(d.Pos, "type", "implementation receiver must be nominal source data")
 	}
 	occurs := map[string]bool{}
 	var visit func(*Type)
@@ -72,7 +85,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 	receiver = c.resolve(d.Receiver, false)
 	contract = c.resolve(d.Contract, false)
 	for _, m := range c.Methods {
-		if overlap(receiver, contract, m.Receiver, m.Contract, append(append([]*Type{}, vars...), m.Variables...)) {
+		if c.methodVisible(m) && overlap(receiver, contract, m.Receiver, m.Contract, append(append([]*Type{}, vars...), m.Variables...)) {
 			c.error(d.Pos, "type", "duplicate or overlapping implementation")
 			break
 		}
@@ -102,7 +115,8 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		if !found {
 			c.error(method.Pos, "type", "extra operation "+method.Name)
 		}
-		c.Methods = append(c.Methods, &Method{ID: c.unique("method"), Receiver: receiver, Contract: contract, Variables: vars, Decl: method, Type: t})
+		local := receiver.Def != nil && receiver.Def.Symbol != nil && receiver.Def.Symbol.Module != c.module.File
+		c.Methods = append(c.Methods, &Method{ID: c.unique("method"), Module: c.module.File, Local: local, Receiver: receiver, Contract: contract, Variables: vars, Decl: method, Type: t})
 	}
 	for _, op := range ops {
 		if !seen[op.Name] {
@@ -205,6 +219,9 @@ func (c *checker) implements(receiver, contract *Type) bool {
 		return false
 	}
 	for _, m := range c.Methods {
+		if !c.methodVisible(m) {
+			continue
+		}
 		sub := map[string]*Type{}
 		if unify(m.Receiver, receiver, variableSet(m.Variables), sub) && Same(Sub(m.Contract, sub), contract) && c.boundsSatisfied(m.Variables, sub) {
 			return true
@@ -329,7 +346,7 @@ func (c *checker) methods(receiver *Type, name string) []*Method {
 	}
 	var methods []*Method
 	for _, m := range c.Methods {
-		if m.Decl == nil || m.Decl.Name != name {
+		if !c.methodVisible(m) || m.Decl == nil || m.Decl.Name != name {
 			continue
 		}
 		sub := map[string]*Type{}
@@ -342,6 +359,17 @@ func (c *checker) methods(receiver *Type, name string) []*Method {
 		}
 	}
 	return methods
+}
+
+func (c *checker) methodVisible(m *Method) bool {
+	return m.VisibleIn(c.currentModule())
+}
+
+func (c *checker) currentModule() string {
+	if c.module != nil {
+		return c.module.File
+	}
+	return ""
 }
 
 func nativeMethod(t *Type, name string) *Method {

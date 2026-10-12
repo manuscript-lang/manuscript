@@ -322,7 +322,7 @@ func TestReproducibleOutput(t *testing.T) {
 }
 
 func TestRejectedModuleBoundaries(t *testing.T) {
-	for _, name := range []string{"escape", "symlink", "cycle", "missing extension", "reserved alias", "duplicate table", "orphan"} {
+	for _, name := range []string{"escape", "symlink", "cycle", "missing extension", "reserved alias", "duplicate table"} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
 			manifest := "[project]\nname = \"example\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n"
@@ -352,9 +352,6 @@ func TestRejectedModuleBoundaries(t *testing.T) {
 				manifest += "[aliases]\n\"@std\" = \"./src\"\n"
 			case "duplicate table":
 				manifest += "[project]\n"
-			case "orphan":
-				other = "export interface Read:\n    fn get() -> Int\nexport type Box:\n    value: Int\n"
-				main = "import Read from \"./other.ms\"\nimport Box from \"./other.ms\"\nimpl Read for Box:\n    fn get() -> Int:\n        return 1\n"
 			}
 			write(t, root, "ms.toml", manifest)
 			write(t, root, "src/main.ms", main)
