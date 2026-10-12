@@ -6,6 +6,7 @@ import Error from "@std/errors.ms"
 import parse_int from "@std/numbers.ms"
 import from_scalars from "@std/string.ms"
 
+# A YAML value represented as null, boolean, number text, string, array, or object.
 export type YamlValue:
     case Null
     case BoolValue(value: Bool)
@@ -14,12 +15,14 @@ export type YamlValue:
     case ArrayValue(values: List[YamlValue])
     case ObjectValue(values: Map[String, YamlValue])
 
+# Errors returned for malformed YAML, unsupported features, or exceeded resource limits.
 export type YamlError:
     case InvalidInput
     case InvalidData(line: Int, column: Int, reason: String)
     case UnsupportedFeature(line: Int, reason: String)
     case LimitExceeded
 
+# Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
 export type YamlLimits:
     max_bytes: Optional[Int]
     max_depth: Optional[Int]
@@ -1014,6 +1017,7 @@ fn validate(context: Context, value: YamlValue, depth: Int) -> Result[Unit, Yaml
 
     return ok(value: unit)
 
+# Parses a YAML document. Unsupported YAML features and invalid input include source locations.
 export fn parse(
     text: String,
     limits: Optional[YamlLimits] = none

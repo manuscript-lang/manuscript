@@ -6,6 +6,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/project"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"path/filepath"
+	"strings"
 )
 
 func analyze(d document, docs map[string]document) compiler.Result {
@@ -110,7 +111,12 @@ func navigation(result compiler.Result, d document, p position, method string) a
 		return nil
 	}
 	if method == "textDocument/hover" {
-		return map[string]any{"contents": map[string]any{"kind": "plaintext", "value": e.Text + ": " + i.Type.String()}, "range": span{Position(d.Text, e.Pos.Offset), Position(d.Text, e.Pos.Offset+len(e.Text))}}
+		value := "```manuscript\n" + e.Text + ": " + i.Type.String() + "\n```"
+		docs := hoverDocumentation(result, i)
+		if docs != "" {
+			value += "\n\n" + docs
+		}
+		return map[string]any{"contents": map[string]any{"kind": "markdown", "value": value}, "range": span{Position(d.Text, e.Pos.Offset), Position(d.Text, e.Pos.Offset+len(e.Text))}}
 	}
 	if selected := occurrenceAt(result, d, p, index); selected != nil {
 		for _, entry := range index {
@@ -137,6 +143,64 @@ func navigation(result compiler.Result, d document, p position, method string) a
 	}
 	return nil
 }
+
+func documentationDeclaration(info *checker.Info) *syntax.Declaration {
+	if info == nil {
+		return nil
+	}
+	if info.Method != nil && info.Method.Decl != nil {
+		return info.Method.Decl
+	}
+	if info.Symbol != nil {
+		return info.Symbol.Decl
+	}
+	return nil
+}
+
+func hoverDocumentation(result compiler.Result, info *checker.Info) string {
+	if docs := declarationDocumentation(result, documentationDeclaration(info)); docs != "" {
+		return docs
+	}
+	if info == nil || info.Method == nil {
+		return ""
+	}
+	for _, receiver := range []*checker.Type{info.Method.Receiver, info.Method.Contract} {
+		if receiver != nil && receiver.Def != nil && receiver.Def.Symbol != nil {
+			if docs := declarationDocumentation(result, receiver.Def.Symbol.Decl); docs != "" {
+				return docs
+			}
+		}
+	}
+	return ""
+}
+
+// declarationDocumentation reads the contiguous # comment block immediately
+// above a declaration. The source remains the single documentation authority
+// for project modules and immutable standard-library documents alike.
+func declarationDocumentation(result compiler.Result, decl *syntax.Declaration) string {
+	if decl == nil {
+		return ""
+	}
+	for _, m := range sourceModules(result) {
+		if m.File != decl.Pos.File {
+			continue
+		}
+		lines := strings.Split(m.Source, "\n")
+		line := decl.Pos.Line - 2
+		var notes []string
+		for line >= 0 {
+			text := strings.TrimSpace(lines[line])
+			if !strings.HasPrefix(text, "#") {
+				break
+			}
+			notes = append([]string{strings.TrimSpace(strings.TrimPrefix(text, "#"))}, notes...)
+			line--
+		}
+		return strings.TrimSpace(strings.Join(notes, "\n"))
+	}
+	return ""
+}
+
 func declaration(result compiler.Result, i *checker.Info) syntax.Position {
 	if i.Symbol != nil && i.Symbol.Decl != nil {
 		return i.Symbol.Decl.Pos

@@ -4,11 +4,13 @@ import Error from "@std/errors.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 
+# Errors returned while parsing or converting arbitrary-precision integers.
 export type BigIntError:
     case InvalidInput
     case InvalidData
     case LimitExceeded
 
+# An arbitrary-precision signed integer with explicit arithmetic operations.
 export type BigInt:
     fn add(right: BigInt) -> BigInt:
     fn subtract(right: BigInt) -> BigInt:
@@ -22,8 +24,10 @@ export type BigInt:
     fn to_int() -> Optional[Int]:
     fn to_string(radix: Int) -> String:
 
+# Converts a machine-sized integer without loss.
 export fn from_int(value: Int) -> BigInt:
 
+# Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
 export fn parse(
     text: String,
     radix: Int,
