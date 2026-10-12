@@ -111,10 +111,6 @@ func BuildWithType(source, output string, kind BuildType) error {
 }
 
 func buildNative(source, output string, kind BuildType) error {
-	standalone, err := Standalone(source)
-	if err != nil {
-		return err
-	}
 	dir, err := os.MkdirTemp("", "manuscript-build-")
 	if err != nil {
 		return err
@@ -139,13 +135,32 @@ func buildNative(source, output string, kind BuildType) error {
 	}); err != nil {
 		return err
 	}
+	// Keep the runtime in its own compilation unit. Merging it into main (as
+	// emit does) forces Go to recompile every host service on application edits.
+	runtimeDir := filepath.Join(dir, "pkg", "runtime")
+	if err := os.MkdirAll(runtimeDir, 0755); err != nil {
+		return err
+	}
+	entries, err := msruntime.Sources.ReadDir(".")
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		data, err := msruntime.Sources.ReadFile(entry.Name())
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(runtimeDir, entry.Name()), data, 0644); err != nil {
+			return err
+		}
+	}
 	output, err = filepath.Abs(output)
 	if err != nil {
 		return err
 	}
 
 	filename := filepath.Join(dir, "main.go")
-	if err := os.WriteFile(filename, []byte(standalone), 0600); err != nil {
+	if err := os.WriteFile(filename, []byte(source), 0600); err != nil {
 		return err
 	}
 	arguments := []string{"build", "-mod=vendor", "-buildvcs=false"}

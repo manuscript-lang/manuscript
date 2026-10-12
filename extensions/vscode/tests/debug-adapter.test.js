@@ -67,6 +67,7 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
     const items = locals.variables.find(variable => variable.name === 'items'); assert.equal(items.type, 'List[Int]');
     const values = await response(request('variables', { variablesReference: items.variablesReference })); assert.equal(values.variables.length, 3);
     const watch = await response(request('evaluate',{frameId:stack.stackFrames[0].id,expression:'box.count',context:'watch'}));assert.equal(watch.result,'42');
+    const element = await response(request('evaluate',{frameId:stack.stackFrames[0].id,expression:'items[0]',context:'watch'}));assert.equal(element.result,'1');
     const optional = locals.variables.find(variable => variable.name === 'optional'); assert.equal(optional.value, 'some');
     const payload = await response(request('variables', { variablesReference: optional.variablesReference })); assert.equal(payload.variables[0].value, '5');
     const queue = locals.variables.find(variable => variable.name === 'queue');
@@ -84,7 +85,7 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
 test('watch rewriting respects quoted text and native member names',()=>{
  const metadata=new Map([['local5_box',{name:'box'}],['local6_count',{name:'count'}]]);
  const vars=[{name:'local5_box',type:'interface {}(main.Record)'},{name:'local6_count',type:'interface {}(int64)'}];
- assert.equal(rewriteExpression('box.count',vars,metadata),'local5_box.(main.Record).Fields["count"]');
+ assert.equal(rewriteExpression('box.count',vars,metadata),'local5_box.(data).Fields["count"]');
  assert.equal(rewriteExpression('count + len("count")',vars,metadata),'local6_count + len("count")');
 });
 
@@ -104,4 +105,14 @@ test('dead native stack slots cannot masquerade as source containers', () => {
   assert.equal(value.variablesReference, 0);
   const specialized = adapter.render({ name: 'items', type: 'interface {}(main.List)', value: 'interface {}(main.List) {Type: "@std/List[String]", Items: []}', variablesReference: 5 }, 'items', 'List[T]');
   assert.equal(specialized.type, 'List[String]');
+});
+
+test('watch rewriting and rendering support a separately compiled runtime',()=>{
+ const metadata=new Map([['local5_box',{name:'box'}],['local6_items',{name:'items'}]]);
+ const vars=[{name:'local5_box',type:'interface {}(github.com/manuscript-lang/manuscript/pkg/runtime.Record)'},{name:'local6_items',type:'interface {}(*github.com/manuscript-lang/manuscript/pkg/runtime.List)'}];
+ assert.equal(rewriteExpression('box.count',vars,metadata),'local5_box.(data).Fields["count"]');
+ assert.equal(rewriteExpression('items[0]',vars,metadata),'local6_items.(data).Items[0]');
+ const adapter = new ManuscriptAdapter(new PassThrough());
+ assert.equal(adapter.render({...vars[0],value:'{Type: "Box"}',variablesReference:1}).type,'Box');
+ assert.equal(adapter.render({...vars[1],value:'{Type: "@std/List[Int]"}',variablesReference:2}).type,'List[Int]');
 });

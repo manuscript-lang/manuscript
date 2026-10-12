@@ -113,6 +113,10 @@ Verify: regenerate both reference sources and the website with destination clean
 
 ### Standalone runtime imports share one alias namespace
 
+Verified: native builds keep the embedded runtime in its own package; merging it into the application forced Go to recompile host services after every source edit. Release `-trimpath` allows package-cache reuse across temporary build directories. Keep single-file merging confined to `emit`. A separately compiled runtime also changes Delve type names, so debugger watches use Delve's `.(data)` rather than hard-coded `main.Record` assertions.
+Evidence: [native assembly](../pkg/compiler/build.go), [cache boundaries](../documentation/compiler/builds/incremental-compilation.md), [standalone artifact invalidation](../tests/e2e/run_cache_test.go), and [native debugger checks](../extensions/vscode/tests/debug-adapter.test.js).
+Verify: run native conformance and the native DAP test; compare both unchanged runs and edited-source builds with warm Go caches. Unchanged runs exercise executable caching and do not establish runtime package reuse after edits.
+
 Verified: standalone generation merges runtime declarations and deduplicates imports by import path. Inconsistent aliases for the same Go package can pass ordinary runtime package compilation while breaking every emitted application. Platform helper packages also need inclusion in the standalone dependency bundle; embedding the main runtime sources alone does not carry imported repository packages.
 
 Apply when: adding native runtime implementation files or platform adapters.

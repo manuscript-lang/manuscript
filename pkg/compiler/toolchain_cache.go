@@ -51,16 +51,7 @@ func validateToolchain(root string) error {
 
 func bundledGoRoot() (string, error) {
 	bundledToolchain.Do(func() {
-		cache := os.Getenv("MANUSCRIPT_CACHE_DIR")
-		if cache == "" {
-			var err error
-			cache, err = os.UserCacheDir()
-			if err != nil {
-				bundledToolchain.err = err
-				return
-			}
-		}
-		absolute, err := filepath.Abs(cache)
+		absolute, err := userCacheRoot()
 		if err != nil {
 			bundledToolchain.err = err
 			return
@@ -68,6 +59,28 @@ func bundledGoRoot() (string, error) {
 		bundledToolchain.root, bundledToolchain.err = materializeToolchain(support.GoToolchainArchive, filepath.Join(absolute, "manuscript", "toolchains"))
 	})
 	return bundledToolchain.root, bundledToolchain.err
+}
+
+func userCacheRoot() (string, error) {
+	cache := os.Getenv("MANUSCRIPT_CACHE_DIR")
+	if cache == "" {
+		var err error
+		cache, err = os.UserCacheDir()
+		if err != nil {
+			return "", err
+		}
+	}
+	return filepath.Abs(cache)
+}
+
+// DefaultBuildCacheDir supplies a persistent per-user cache for module runs
+// without a project. Build identity and executable hashes are still verified.
+func DefaultBuildCacheDir() (string, error) {
+	root, err := userCacheRoot()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "manuscript", "artifacts"), nil
 }
 
 // Publish only a complete build payload. Concurrent ms processes can extract independently;

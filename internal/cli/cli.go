@@ -323,6 +323,14 @@ func Run(args []string) int {
 		fmt.Println("Built", output)
 		return 0
 	default:
+		if cache == "" {
+			var err error
+			cache, err = compiler.DefaultBuildCacheDir()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+		}
 		directory, err := os.MkdirTemp("", "manuscript-run-")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
