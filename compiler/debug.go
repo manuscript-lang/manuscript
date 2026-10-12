@@ -6,7 +6,7 @@ import (
 )
 
 // debugSource binds generated line directives to the actual source tree. Native
-// release builds retain portable logical paths; debug caches include this root.
+// release builds retain portable logical paths; builds with debugging information include this root.
 func debugSource(result Result) string {
 	if result.SourceRoot == "" {
 		return result.Source

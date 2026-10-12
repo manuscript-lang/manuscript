@@ -57,7 +57,17 @@ Applications export `fn main() -> Int`. Standard names need explicit imports. Se
 | Write a call diagram | `./ms diagram examples/hello/ms.toml -o calls.mmd` |
 | Check formatting without writing | `./ms fmt examples/hello/src/main.ms --check` |
 
-`--debug` on build, run, or test disables native optimization and inlining. Native
+`--build-type` on build, run, or test selects `Debug`, `Release` (default),
+`RelWithDebInfo`, or `MinSizeRel`; names are case-insensitive. For example:
+
+```sh
+./ms build examples/hello/ms.toml --build-type MinSizeRel -o hello
+./ms run examples/hello/ms.toml --build-type Debug -- first second
+```
+
+`--debug` remains an alias for `--build-type Debug`. See
+[build levels](documentation/compiler/builds/build-levels.md)
+for optimization and symbol settings. Native
 commands unpack the embedded build payload into the OS user cache on first use
 and reuse it thereafter. Set `MANUSCRIPT_CACHE_DIR` to choose another writable
 cache directory, or `MANUSCRIPT_GO` to explicitly select another Go executable.

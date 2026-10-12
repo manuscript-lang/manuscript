@@ -64,6 +64,15 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		{"check", "missing.ms", "--check"}, {"fmt", "missing.ms", "--json"},
 		{"check", "missing.ms", "--debug"}, {"check", "missing.ms", "--trace", "trace.out"},
 		{"stdlib", "out", "extra"},
+		{"build", "missing.ms", "--build-type"},
+		{"build", "missing.ms", "--build-type", ""},
+		{"build", "missing.ms", "--build-type", "Fast"},
+		{"check", "missing.ms", "--build-type", "Release"},
+		{"emit", "missing.ms", "--build-type", "Debug"},
+		{"build", "missing.ms", "--debug", "--build-type", "Release"},
+		{"build", "missing.ms", "--build-type", "Release", "--debug"},
+		{"debug", "missing.ms", "--build-type", "RelWithDebInfo"},
+		{"build", "missing.ms", "--build-type", "Debug", "--build-type", "Release"},
 	} {
 		status, output, errors := invoke(t, args...)
 		if status != 2 || output != "" || errors == "" {
