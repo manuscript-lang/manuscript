@@ -1,6 +1,6 @@
 # Manuscript for VS Code
 
-Build `ms` with Go 1.25+, place it on PATH, or configure `manuscript.serverPath`. Install Delve with `go install github.com/go-delve/delve/cmd/dlv@v1.25.2` or configure `manuscript.delvePath`. No separate Go extension is required.
+Download the self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), place it on PATH, or configure `manuscript.serverPath`. A source checkout can build it with `make build`, which prepares Go automatically. Native debugging additionally uses Delve 1.25.2 or newer from [Delve Releases](https://github.com/go-delve/delve/releases), or a configured `manuscript.delvePath`. No separate Go installation or Go extension is required to use `ms`.
 
 Open `.ms` files for typed lexical/member completion, named argument completion and call snippets, auto-imports, signature help, diagnostics, type hover, definition/type navigation, project references and checked rename, hierarchical/workspace symbols, semantic highlighting, folding, type hints, formatting, import organization, and lint fixes. Completion works during unfinished calls and member accesses. Source synchronization uses UTF-16 incremental edits. **Manuscript: Restart language server** reloads compiler/debugger paths.
 

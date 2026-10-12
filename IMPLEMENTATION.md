@@ -1,6 +1,6 @@
 # Implementation coverage
 
-This page tells you what the current compiler and runtime support and what remains design work. The compiler is written in Go and builds native executables through a Go backend. You need Go 1.25 or newer. WebSocket and public-suffix dependencies are pinned and vendored, so native builds need no package downloads.
+This page tells you what the current compiler and runtime support and what remains design work. The compiler is written in Go and builds native executables through a Go backend. Release binaries embed reduced Go 1.25.1 build tools and references; source builds prepare them automatically with `make build`. WebSocket and public-suffix dependencies are pinned and vendored, so native builds need no package downloads.
 
 Start with [your first program](design/getting-started.md) for a walkthrough. Use the [design book](design/_index.md) for language rules and the [conformance fixtures](design/compiler/conformance/core-language.md) for accepted and rejected examples.
 
@@ -50,6 +50,16 @@ After checking source, the backend translates functions and control flow into Go
 `ms lock ms.toml` explicitly records compiler/frontend/runtime content and the selected Go toolchain/target in `ms.lock`. Native project builds reject missing or mismatched pins. Check/emit/source inspection do not need pins. Native artifacts have verified cache entries and `<executable>.ms-build.json` with source/configuration and executable hashes. Unchanged outputs are not rewritten. `compiler.VerifyBuild` checks binary/source identity. The compiler generates deterministic source and records artifact identity. Native binaries are not promised to be byte-identical across environments. Parsing and checking still run before an artifact cache hit.
 
 ### Generated Go and debug builds
+
+`ms` embeds a compressed build payload and atomically materializes it in the user
+cache under its content hash. It contains the Go build driver, compiler, linker,
+assembler, assembly headers, the runtime's standard-library dependency closure
+for six targets, time-zone data, and licenses. Go tests, documentation, and unrelated
+tools are excluded. Pins and native builds share discovery with `GOTOOLCHAIN=local`,
+`GOENV=off`, and `CGO_ENABLED=0`, requiring no host Go or C compiler.
+`MANUSCRIPT_GO` explicitly overrides tool selection; direct developer binaries
+without an embedded payload retain a PATH fallback. `make dist` packages the
+single binary, examples, and licenses for Linux, macOS, and Windows on AMD64 and ARM64.
 
 `ms emit` produces one Go file containing its runtime and imports of the pinned vendored dependencies. Native release builds use `-trimpath` using the embedded vendor source bundle without downloading dependencies. Generated source has Go line directives, and programming faults accumulate source function positions. `--debug` disables optimization/inlining while retaining native symbols and absolute source mappings. Debug build cache identities include the source root.
 

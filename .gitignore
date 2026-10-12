@@ -47,3 +47,7 @@ Desktop.ini
 
 # Local recordings and generated demo artifacts
 /artifacts/tooling-demo/
+/toolchain/
+/dist/
+/.build-payload.tar.gz
+/.build-payload.tar.gz.overlay.json

@@ -1,30 +1,44 @@
-GO ?= go
+GO ?= $(CURDIR)/toolchain/go/bin/go
 export MANUSCRIPT_GO ?= $(GO)
 
-.PHONY: build test e2e race check fmt
+.PHONY: build test e2e race check fmt toolchain payload dist dist-check
 
-build:
-	$(GO) build -o ms ./cmd/ms
+toolchain:
+	sh scripts/bootstrap-go.sh
+
+build test e2e race check fmt docs docs-check: | toolchain
+
+payload: | toolchain
+	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
+
+build: payload
+	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags bundled_toolchain -o ms ./cmd/ms
 
 test:
-	$(GO) test ./...
+	"$(GO)" test ./...
 
 e2e:
-	$(GO) test ./tests/e2e
+	"$(GO)" test ./tests/e2e
 
 race:
-	$(GO) test -race ./runtime ./checker ./compiler ./tooling/...
+	"$(GO)" test -race ./runtime ./checker ./compiler ./tooling/...
 
 check:
-	@test -z "$$($(GO) fmt ./...)" || (echo 'Go files need formatting'; exit 1)
-	$(GO) vet ./...
+	@test -z "$$("$(GO)" fmt ./...)" || (echo 'Go files need formatting'; exit 1)
+	"$(GO)" vet ./...
 
 fmt:
-	$(GO) fmt ./...
+	"$(GO)" fmt ./...
+
+dist: | toolchain
+	sh scripts/package.sh
+
+dist-check: dist
+	"$(GO)" run ./scripts/distcheck ./dist/manuscript-$$("$(GO)" env GOHOSTOS)-$$("$(GO)" env GOHOSTARCH)
 
 .PHONY: docs docs-check
 docs:
-	$(GO) run ./cmd/docgen
+	"$(GO)" run ./cmd/docgen
 
 docs-check:
-	$(GO) run ./cmd/docgen -check
+	"$(GO)" run ./cmd/docgen -check

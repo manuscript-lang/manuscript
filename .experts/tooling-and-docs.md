@@ -18,11 +18,11 @@ Verify: run the displayed source and commands with the stated prerequisites; che
 
 ### User tooling must work in the shipped binary
 
-Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
+Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
 
 Apply when: adding CLI tooling or making claims about installation requirements.
-Evidence: [ms doc request](codex://threads/01a12d4a-0182-7672-aa00-53f2bdfde033); [command implementation](../cmd/ms/doc.go); [CLI documentation tests](../cmd/ms/doc_test.go).
-Verify: exercise the built command from outside the source checkout. Confirm which assets and tools that particular command needs; documentation generation and native compilation can have different prerequisites.
+Evidence: [ms doc request](codex://threads/01a12d4a-0182-7672-aa00-53f2bdfde033); [native build contract](../design/compiler/builds/reproducibility.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
+Verify: exercise a copied binary outside the checkout with empty caches, no Go on PATH, and package downloads disabled. Include ordinary/debug builds and profiling so the reduced payload covers emitted runtime references. Confirm actual external prerequisites for tools such as Delve separately; do not generalize one command's prerequisites to all tooling.
 
 ### Polish the documentation design without expanding its prose
 
