@@ -1,25 +1,45 @@
 # Manuscript
 
-Manuscript is a statically typed language that compiles to Go and runs as a native executable. Its syntax makes function inputs, expected errors, resource cleanup, and concurrent work explicit.
+A statically typed language for making programs easy to follow.
 
-Read the [book index](documentation/_index.md) to choose a topic, or follow [your first program](documentation/getting-started.md) for a walkthrough. The [glossary](documentation/glossary.md) explains terms used in the guide. [Implementation coverage](documentation/implementation.md) lists working features and remaining limits.
+Manuscript makes function inputs, expected failures, resource cleanup, and concurrent work visible in source. Write `.ms` files, compile them to Go, and run them as native executables.
 
-## Get started
+[Read the book](https://manuscript-lang.github.io/manuscript/) · [Take the tour](documentation/learn/tour.md) · [Download Manuscript](https://github.com/manuscript-lang/manuscript/releases)
 
-Download the archive for your operating system and architecture from
-[Releases](https://github.com/manuscript-lang/manuscript/releases), then extract it.
-The single `ms` binary includes the native build tools and references it needs.
-No separate Go installation or package downloads are needed to build, run, test,
-or profile your programs. Copy `ms` (`ms.exe` on Windows) anywhere on `PATH`;
-it needs no companion SDK directory.
+## A first look
 
-From a source checkout on macOS or Linux, run `make build`. It downloads and
-verifies the pinned Go SDK locally on first use, then builds the self-contained
-`./ms`. Initial setup needs Make, curl, tar, and `sha256sum` or `shasum`, plus
-Internet access. Later builds reuse `toolchain/go/`.
+This complete program prints the number of arguments it receives:
 
-Run these commands from the extracted archive or repository root. Use `.\ms.exe`
-in Windows PowerShell:
+```manuscript
+import arguments from "@std/cli.ms"
+import stdout from "@std/io.ms"
+
+export fn main() -> Int:
+    let message = "Arguments: {arguments().length()}\n"
+    match stdout().write(data: message.to_bytes()):
+        ok(_):
+            return 0
+        error(_):
+            return 1
+```
+
+Imports name the standard services the program uses. `let` infers the local value's type, and `match` handles both outcomes of the write. The integer returned by `main` becomes the program's exit code.
+
+## Why Manuscript?
+
+- **Readable calls.** Functions declare their input and output types. Calls with multiple parameters name each argument.
+- **Explicit data and errors.** Nominal types distinguish domain concepts; alternatives require exhaustive matching. Expected failures use typed `Result` values.
+- **Scoped cleanup.** A `with` block closes its registered resources when the scope ends, including on errors and cancellation.
+- **Visible concurrency.** Ordinary calls run sequentially. Start concurrent work explicitly, join parallel operations, and give background work a service lifetime.
+- **Native programs.** The compiler produces native executables through Go. The single `ms` binary bundles the build tools, runtime, and standard library it needs.
+
+The [language tour](documentation/learn/tour.md) introduces the syntax. [Features and boundaries](documentation/learn/features.md) explains the design in more detail.
+
+## Try it
+
+Download and extract the [release archive](https://github.com/manuscript-lang/manuscript/releases) for your operating system and architecture. It includes `ms` and the hello project shown above. No separate Go installation or package downloads are needed to build and run programs; you can also copy the binary anywhere on `PATH`.
+
+From the extracted directory, run:
 
 ```sh
 ./ms check examples/hello/ms.toml
@@ -27,99 +47,42 @@ in Windows PowerShell:
 ./ms run examples/hello/ms.toml -- first second
 ```
 
-Expected output:
+In Windows PowerShell, use `.\ms.exe` instead of `./ms`.
 
 ```text
 Arguments: 2
 ```
 
-`check` validates source without running it. `lock` creates or updates the build pins. `run` builds a temporary executable and passes it the arguments after `--`.
+`check` validates the source. `lock` records the project's build pins; rerun it after changing Manuscript or the target toolchain. `run` builds a temporary executable and passes it the arguments after `--`.
 
-To keep an executable:
+To keep a standalone executable or run the included test:
 
 ```sh
 ./ms build examples/hello/ms.toml -o hello
-./hello first second
 ./ms test examples/hello/test.ms
 ```
 
-Applications export `fn main() -> Int`. Standard names need explicit imports. See [the hello source](examples/hello/src/main.ms) and [accepted core-language fixtures](tests/e2e/testdata/accept) for complete examples.
+Use `./ms --help` to list commands, or `./ms help run` for a command's options and examples. Every command supports `--help`.
 
-## Choose a command
+Follow [your first program](documentation/getting-started.md) for a walkthrough of the source and project manifest. To build `ms` from a source checkout on macOS or Linux, run `make build`; initial setup needs Make, curl, tar, a SHA-256 utility, and Internet access to fetch the pinned Go SDK.
 
-Run `./ms --help` to list commands. Every command supports `-h` and `--help`,
-including `./ms lsp --help` and `./ms doc --stdlib --help`.
-Use `./ms help run` or `./ms run --help` for options, defaults, and examples.
+## Keep exploring
 
-| Task | Example |
+| You want to… | Start here |
 | --- | --- |
-| Check source and report parse, name, and type errors | `./ms check examples/hello/ms.toml` |
-| Get structured diagnostics | `./ms check examples/hello/ms.toml --json` |
-| Run a module's tests | `./ms test tests/e2e/testdata/accept/cl-01.ms` |
-| Write generated Go | `./ms emit examples/hello/ms.toml -o main.go` |
-| Inspect checked source | `./ms inspect examples/hello/ms.toml -o inspection.json` |
-| Write a call diagram | `./ms diagram examples/hello/ms.toml -o calls.mmd` |
-| Check formatting without writing | `./ms fmt examples/hello/src/main.ms --check` |
+| Learn the language | [Language tour](documentation/learn/tour.md) and [core language](documentation/core-language/_index.md) |
+| Find a standard type or function | [Standard library](documentation/standard-library/_index.md) and [API reference](documentation/standard-library/reference/_index.md) |
+| Understand cleanup and concurrent work | [Resource lifetimes](documentation/ownership-and-cleanup/_index.md) and [concurrency](documentation/concurrency/_index.md) |
+| Set up your editor or use source tools | [VS Code extension](extensions/vscode/README.md) and [tooling guide](documentation/developer-tooling/implementation.md) |
+| Understand build pins and caches | [Reproducible builds](documentation/compiler/builds/reproducibility.md) |
+| Choose optimization and debugging settings | [Build levels](documentation/compiler/builds/build-levels.md) |
 
-`--build-type` on build, run, or test selects `Debug`, `Release` (default),
-`RelWithDebInfo`, or `MinSizeRel`; names are case-insensitive. For example:
+## Project status
 
-```sh
-./ms build examples/hello/ms.toml --build-type MinSizeRel -o hello
-./ms run examples/hello/ms.toml --build-type Debug -- first second
-```
+Manuscript is at version 0.1, with a working compiler, runtime, standard library, native test runner, formatter, and editor tooling. The language and tools are still evolving. External adapters, incremental frontend compilation, and some tooling APIs remain design work. Check [implementation coverage](documentation/implementation.md) for supported features and current limits.
 
-`--debug` remains an alias for `--build-type Debug`. See
-[build levels](documentation/compiler/builds/build-levels.md)
-for optimization and symbol settings. Native
-commands unpack the embedded build payload into the OS user cache on first use
-and reuse it thereafter. Set `MANUSCRIPT_CACHE_DIR` to choose another writable
-cache directory, or `MANUSCRIPT_GO` to explicitly select another Go executable.
-Native builds disable CGO. Developer binaries built directly with `go build` can
-use Go on `PATH`; `make build` embeds the payload.
+## Contribute
 
-## Features and limits
+The [architecture guide](documentation/contributing/architecture.md) maps the compiler and runtime. [Development and publishing](documentation/contributing/development.md) covers setup, checks, generated documentation, and releases.
 
-The implementation includes nominal types, generics, explicit interfaces, Result errors, lexical cleanup, joined and background work, synchronized state, queues, pools, builders, and imported CLI/network/subprocess host services. Standard declarations live in [stdlib/](stdlib/README.md); the [generated module reference](documentation/standard-library/reference/_index.md) comes from those declarations.
-
-Read [implementation coverage](documentation/implementation.md) before relying on a feature. External adapters, incremental frontend compilation, and some host/tooling APIs remain design work. The [language tour](documentation/learn/tour.md) introduces supported syntax; the [glossary](documentation/glossary.md) explains its terms.
-
-Project native builds require matching `ms.lock` pins. Run `ms lock` after selecting a toolchain or updating the compiler. Release binaries embed their build tools and pinned dependencies. `MANUSCRIPT_GO` selects an explicit alternative, and `MANUSCRIPT_CACHE_DIR` selects the bundled-toolchain cache. See [reproducible builds](documentation/compiler/builds/reproducibility.md) for details.
-
-## Repository map
-
-| Location | Contents |
-| --- | --- |
-| `syntax/`, `lexer/`, `parser/`, `checker/` | Source model and language frontend |
-| `project/` | Manifest validation, aliases, canonical paths, and editor overlays |
-| `compiler/` | Module graph, checked Go lowering, native builds, pins, and caches |
-| `runtime/`, `stdlib/` | Native implementation and Manuscript standard declarations |
-| `tooling/`, `internal/cli/`, `cmd/ms/` | Source tools, LSP, API rendering, and executable entry point |
-| `scripts/` | SDK bootstrap, API generation, payload construction, packaging, and distribution checks |
-| `documentation/` | Authored language guides, implementation status, and contributor docs |
-| `website/` | Hugo configuration, layouts, assets, API downloads, and vendored theme |
-| `docs/` | Generated GitHub Pages output; regenerate with `make book` |
-| `tests/`, `examples/`, `extensions/` | Conformance/publication checks, runnable projects, and VS Code integration |
-
-The [architecture guide](documentation/contributing/architecture.md) traces the packages and tells you where to make each kind of change. Existing public parser/checker/compiler imports remain available.
-
-## Develop and verify
-
-```sh
-make build
-make coverage
-make race
-make check
-make fuzz
-make book-check
-```
-
-See [development and publishing](documentation/contributing/development.md) for prerequisites, generated files, CI, standalone release checks, and documentation versions. The [tooling guide](documentation/developer-tooling/implementation.md) describes lint, LSP, source inspection, native debugging, and profiles; the [VS Code extension](extensions/vscode/README.md) provides editor setup.
-
-Preview the book with Hugo Extended 0.146.7 or newer:
-
-```sh
-hugo --source website server --bind 127.0.0.1 --port 4000 --renderToMemory
-```
-
-Read the [published book](https://manuscript-lang.github.io/manuscript/). Its language rules and signatures are maintained in `documentation/` and `stdlib/`, respectively.
+Language guides live in `documentation/`, and standard declarations live in [stdlib/](stdlib/README.md). The website in `docs/` is generated from those sources.
