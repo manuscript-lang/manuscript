@@ -29,6 +29,8 @@ type Instant
 
 ```manuscript
 type TimeError:
+    case InvalidInput
+    case Closed
     case InvalidData
     case OutOfRange
 ```
@@ -36,6 +38,15 @@ type TimeError:
 ```manuscript
 impl Error for TimeError:
     fn message() -> String
+```
+
+## Timer {data-api-kind="Interface"}
+
+```manuscript
+interface Timer:
+    fn close() -> Unit
+    fn restart() -> Result[Unit, TimeError]
+    fn status() -> WorkStatus
 ```
 
 ## Timestamp {data-api-kind="Native type"}
@@ -51,10 +62,22 @@ interface WallClock:
     fn now() -> Timestamp
 ```
 
+## after {data-api-kind="Function"}
+
+```manuscript
+fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
+```
+
 ## difference {data-api-kind="Function"}
 
 ```manuscript
 fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
+```
+
+## every {data-api-kind="Function"}
+
+```manuscript
+fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
 ```
 
 ## format_timestamp {data-api-kind="Function"}

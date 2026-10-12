@@ -50,3 +50,25 @@ jobs:
           path: extensions/vscode/*.vsix
       - name: Verify self-contained distribution without system Go
         run: make dist-check
+
+  host-stdlib:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Native host compatibility and Node.js coverage
+        shell: bash
+        run: |
+          go test ./runtime ./compiler ./tests/e2e -run 'TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'

@@ -46,9 +46,12 @@ GOOS="$target_os" GOARCH="$target_arch" "$host_go" build -tags bundled_toolchain
 mkdir -p "$bundle/examples/hello/src" "$bundle/licenses"
 cp examples/hello/ms.toml "$bundle/examples/hello/"
 cp examples/hello/src/main.ms "$bundle/examples/hello/src/"
-cp vendor/github.com/gorilla/websocket/LICENSE "$bundle/licenses/gorilla-websocket.txt"
-cp vendor/golang.org/x/net/LICENSE "$bundle/licenses/golang-x-net.txt"
-cp vendor/golang.org/x/net/PATENTS "$bundle/licenses/golang-x-net-PATENTS.txt"
+# Ship each vendored dependency's license under its source identity.
+find vendor -type f \( -name 'LICENSE*' -o -name 'COPYING*' -o -name 'PATENTS*' \) | while IFS= read -r notice; do
+    destination="$bundle/licenses/$notice"
+    mkdir -p "$(dirname "$destination")"
+    cp "$notice" "$destination"
+done
 cp "$target_sdk/LICENSE" "$bundle/licenses/go.txt"
 cp "$target_sdk/PATENTS" "$bundle/licenses/go-PATENTS.txt"
 cp scripts/distribution-README.txt "$bundle/README.txt"

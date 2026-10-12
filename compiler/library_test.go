@@ -4,6 +4,13 @@ import (
 	"fmt"
 	"github.com/manuscript-lang/manuscript/checker"
 	rt "github.com/manuscript-lang/manuscript/runtime"
+	goparser "go/parser"
+	"go/token"
+	"os"
+	"os/exec"
+	"path/filepath"
+	goruntime "runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -164,5 +171,83 @@ fn view(cause: %s) -> Error:
 				}
 			})
 		}
+	}
+}
+
+// Standalone folds runtime files into one Go file and deduplicates imports by
+// path. Different aliases for the same import would pass package tests but fail
+// every emitted program; catch that drift before invoking the native compiler.
+func TestBundledRuntimeImportAliasesAgree(t *testing.T) {
+	entries, err := rt.Sources.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliases := map[string]string{}
+	for _, entry := range entries {
+		data, err := rt.Sources.ReadFile(entry.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		file, err := goparser.ParseFile(token.NewFileSet(), entry.Name(), data, goparser.ImportsOnly)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, spec := range file.Imports {
+			path, err := strconv.Unquote(spec.Path.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			alias := filepath.Base(path)
+			if spec.Name != nil {
+				alias = spec.Name.Name
+			}
+			if prior, ok := aliases[path]; ok && prior != alias {
+				t.Errorf("%s imports %s as %s; bundled runtime also uses %s", entry.Name(), path, alias, prior)
+			}
+			aliases[path] = alias
+		}
+	}
+}
+
+func TestTimeSchedulingAcceptsOrdinaryCallbackValues(t *testing.T) {
+	source := `import after from "@std/time.ms"
+import Result from "@std/result.ms"
+fn start_timer(operation: fn() -> Result[Unit, String]) -> Unit:
+    let schedule = after
+    let timer = schedule(duration: 0.milliseconds, operation: operation)
+`
+	if result := CompileSource("timer-values.ms", source, Options{}); !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+}
+
+func TestNativeBuildInSymlinkedTemporaryDirectory(t *testing.T) {
+	root := t.TempDir()
+	actual, alias := filepath.Join(root, "actual"), filepath.Join(root, "alias")
+	if err := os.Mkdir(actual, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(actual, alias); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, alias)
+	}
+	result := CompileSource("native-path.ms", `test "native module identity":
+    let value = 1
+`, Options{Tests: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	binary := filepath.Join(root, "program")
+	if goruntime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	if err := Build(result.Source, binary); err != nil {
+		t.Fatal(err)
+	}
+	output, err := exec.Command(binary).CombinedOutput()
+	if err != nil || !strings.Contains(string(output), "0 failed") {
+		t.Fatal(err, string(output))
 	}
 }

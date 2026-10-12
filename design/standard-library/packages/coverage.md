@@ -16,9 +16,9 @@ This table maps common Node.js and Go tasks to Manuscript facilities. It tells y
 | Array/Map/Set, slices/maps/sort | Immutable receiver methods, searches, map/filter/flat_map/fold/stable sort, grouping, set relations, builders | Implemented |
 | Math, strconv, math/big | Float math, strict number conversion, BigInt, existing Decimal | Implemented; complex/advanced distributions deferred |
 | JSON, encoding/json/csv, net/url, html | Exact-number JsonValue, bounded CSV, ordered query codecs, URL records, escaping | Implemented |
-| path/filepath, fs/io/fs | Native pure paths, explicit read/write/copy/stat/list/create/remove/rename/links | Implemented; seek/watch/permissions APIs deferred |
+| path/filepath, fs/io/fs | Native and explicit POSIX/Windows paths; bounded file handles, seek, directory cursors, filtered copy trees, typed glob, native/polling watch, permissions and timestamps | Implemented functional equivalents; [host limits](node-host.md) |
 | stream, io, bufio/readline | Existing ReadStream/WriteStream plus bounded copy/read_all/read_line | Implemented functional option; no Node stream events |
-| time/timers/os/process info | Monotonic Clock/sleep, wall Timestamp, System snapshots/environment | Implemented; timezone/calendar/ticker APIs deferred |
+| time/timers/os/process info | Monotonic Clock/sleep, wall Timestamp, sleep and scoped after/every scheduling, OS queries and process control | Implemented functional equivalents; [host limits](node-host.md); timezone/calendar deferred |
 | crypto/crypto/rand | Entropy, UUID, unbiased integers, SHA/HMAC/PBKDF2, AES-GCM, Ed25519 | Implemented; broader algorithms/key containers deferred |
 | net/dgram/dns | TCP/Unix sockets, UDP, bounded DNS A/AAAA/CNAME/MX/NS/TXT/PTR/SRV, scoped resolver and destination policy | Implemented |
 | tls/https | Verified TLS, custom trust/client certificates, mutual TLS listener, certificate parsing/verification and negotiated metadata | Implemented |

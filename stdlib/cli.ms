@@ -1,6 +1,7 @@
 # Canonical standard-library declarations. Implementations are native.
 
 import Clock from "@std/time.ms"
+import ProcessControl from "@std/process.ms"
 import Commands from "@std/process.ms"
 import Entropy from "@std/random.ms"
 import FileSystem from "@std/fs.ms"
@@ -27,3 +28,4 @@ export type Process:
     entropy: Entropy
     wall_clock: WallClock
     system: System
+    control: ProcessControl

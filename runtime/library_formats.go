@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/url"
 
-	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -102,28 +101,6 @@ func init() {
 			parts[i] = url.QueryEscape(f["key"].(string)) + "=" + url.QueryEscape(f["value"].(string))
 		}
 		return strings.Join(parts, "&")
-	})
-	for name, f := range map[string]func(string) string{"normalize": filepath.Clean, "basename": filepath.Base, "dirname": filepath.Dir, "extension": filepath.Ext} {
-		add("path", name, "String", []LibraryParam{p("path", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
-	}
-	add("path", "join", "String", []LibraryParam{p("parts", "List[String]")}, func(_ *Execution, _ string, a []Value) Value {
-		parts := libraryStringValues(a[0])
-		if len(parts) == 0 {
-			return "."
-		}
-		return filepath.Join(parts...)
-	})
-	add("path", "is_absolute", "Bool", []LibraryParam{p("path", "String")}, func(_ *Execution, _ string, a []Value) Value { return filepath.IsAbs(a[0].(string)) })
-	add("path", "relative", libraryResult("String", "PathError"), []LibraryParam{p("base", "String"), p("target", "String")}, func(_ *Execution, r string, a []Value) Value {
-		base, target := a[0].(string), a[1].(string)
-		if !filepath.IsAbs(base) || !filepath.IsAbs(target) {
-			return libraryError(r, "InvalidInput", "")
-		}
-		v, err := filepath.Rel(base, target)
-		if err != nil {
-			return libraryError(r, "InvalidInput", "")
-		}
-		return libraryOK(r, v)
 	})
 	add("net", "parse_ip", libraryResult("String", "NetworkError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		ip := net.ParseIP(a[0].(string))
