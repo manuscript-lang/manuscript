@@ -34,6 +34,8 @@ For example, emitting a raw `int64` does not supply checked arithmetic. A raw Go
 
 Explicit [view constructors](../../core-language/types/contracts.md#explicit-contract-views) create ordinary contract wrappers. There is one contract-view identity and no sharing proof in the frontend or IR. Native mutable objects must synchronize their internals.
 
+Contract wrappers and bound methods retain the selected implementation scope. Generic specialization carries that scope with each type argument, including nested receiver arguments; forwarding a bounded parameter must preserve its implementation evidence. Cleanup dispatch obeys the same scope rules.
+
 Generic implementation bodies use checked substitutions; Go method selection cannot resolve overlapping source implementations. Function wrappers retain source labels/order in frontend identity even though Go erases labels. Check [recursive storage rules](../../core-language/types/records.md#recursive-data) before emission; a generated-Go error is not a source type check.
 
 Int division/remainder overflow handling, Float non-finite outcomes, Decimal underflow/overflow, and checked truncation conversions follow [runtime numeric outcomes](../../core-language/basics/numbers-and-booleans.md#runtime-numeric-outcomes), including parameterized runtime operands. Unchecked Go casts or a decimal package's defaults do not establish these semantics.

@@ -58,17 +58,44 @@ The rejected block is an alternative negative example, not a second block to add
 
 ## Coherence and visibility
 
-Declare an implementation in the module that defines its concrete type. The contract may be imported, but the concrete type must be local to that module. Each concrete type and applied contract pair has exactly one implementation; duplicates are rejected.
+An implementation declared in the concrete type's defining module is available wherever that type is used. An implementation declared for an imported source type is a **local extension**, visible only within the module declaring the implementation. The interface may be local or imported in either case. No new syntax is needed.
 
-Importing the concrete type loads that module and its implementations. Importing an unrelated module cannot add methods to the type later. This keeps behavior independent of unrelated imports.
+For example, `offset.ms` exports a record:
 
-Concrete and generic implementation blocks obey the same defining-module rule. Orphan implementations, blanket implementations for a bare type parameter, specialization, generic operations, and implementation inheritance are unsupported. Contracts can be generic but cannot have fields, cases, default bodies, associated types, or static operations. A contract declares at least one operation. An implementation does not re-export either its type or its contract.
+```text
+export type Offset:
+    delta: Int
+```
+
+Another module can add its own interface implementation:
+
+```text
+import Offset from "./offset.ms"
+
+export interface Double:
+    fn doubled() -> Int
+
+impl Double for Offset:
+    fn doubled() -> Int:
+        return self.delta * 2
+
+export fn double_view(value: Offset) -> Double:
+    return Double(value: value)
+```
+
+Inside this module, `Offset(delta: 3).doubled()` returns `6`. Importing `double_view` or `Double` elsewhere does not make `doubled` available on raw `Offset` values. Calling `double_view(Offset(delta: 3)).doubled()` works there because the returned view retains the selected implementation.
+
+Each module sees the receiver's defining-module implementations plus its own local extensions. Reject duplicate or overlapping receiver/contract pairs within that visible set, including attempts to replace a defining-module implementation. Separate modules may define the same local pair independently; neither extension becomes visible through imports, including transitive imports. Different interfaces with the same operation name still require an explicit view to disambiguate.
+
+Views, bound methods, and specialized generic functions retain the implementation selected where they are created. A generic bound uses the implementation evidence supplied at specialization, including when forwarded to another generic function. Calls on statically concrete types inside a function use that function's declaring module. Passing a raw concrete value does not carry additional conformance into another module.
+
+Concrete and generic blocks obey the same visibility rules. Receivers must be source-defined nominal records or alternatives; intrinsic and standard-library receivers, interfaces, bare type parameters, specialization, generic operations, and implementation inheritance remain unsupported. Contracts can be generic but cannot have fields, cases, default bodies, associated types, or static operations. A contract declares at least one operation. An implementation does not re-export either its type or its contract.
 
 Exported contracts expose every operation. Types in their operation signatures obey the [public surface rules](records.md#public-data-surfaces).
 
 ## Generic implementations
 
-An implementation uses generic parameters from its receiver type declaration. Its receiver must be an application of a nominal data declaration in the implementation's module. Parameter names in the receiver application come from that data declaration. Only parameters occurring in the receiver application are in scope for the interface and methods; matching the receiver determines all implementation arguments. Concrete and nested receiver applications remain supported. Interface parameter names need not match data parameter names: an application substitutes the receiver parameters positionally. An undeclared name such as `U` in `impl ReadValue[U] for Box[U]` is rejected when `Box` declares only `T`.
+An implementation uses generic parameters from its receiver type declaration. Its receiver must be an application of a local or imported source nominal data declaration. Parameter names in the receiver application come from that data declaration. Inherited bounds retain their original nominal identities; an extending module need not import the names used in those bounds. Only parameters occurring in the receiver application are in scope for the interface and methods; matching the receiver determines all implementation arguments. Concrete and nested receiver applications remain supported. Interface parameter names need not match data parameter names: an application substitutes the receiver parameters positionally. An undeclared name such as `U` in `impl ReadValue[U] for Box[U]` is rejected when `Box` declares only `T`.
 
 ```manuscript
 interface ReadValue[T]:
@@ -99,7 +126,7 @@ impl SameValue[T] for Box[T]:
 
 A `Box[T]` with no proof of `T: Equal` cannot use this implementation. All receivers are safe to share; equality remains a separate property.
 
-Two blocks overlap if their receiver and contract applications can simultaneously match the same pair of types. Check this by structurally unifying both pairs, with each receiver's inherited parameters treated as distinct variables and nominal identities and invariant arguments preserved. Ignore bounds in this check: different bounds cannot select competing implementations. Reject overlap at declaration checking, even if no current call uses it. There is no most-specific selection or specialization.
+Two blocks overlap if their receiver and contract applications can simultaneously match the same pair of types. Check this by structurally unifying both pairs, with each receiver's inherited parameters treated as distinct variables and nominal identities and invariant arguments preserved. Ignore bounds in this check: different bounds cannot select competing implementations. Reject overlap between implementations visible in the same module at declaration checking, even if no current call uses it. There is no most-specific selection or specialization.
 
 ```manuscript
 # Rejected alongside the generic block above: both apply to Box[Int].

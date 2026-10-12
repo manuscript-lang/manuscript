@@ -126,7 +126,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 				}
 			} else if result.Program != nil {
 				if info := result.Program.Expressions[left]; info != nil && info.Type != nil {
-					for _, member := range checker.Members(result.Program, info.Type) {
+					for _, member := range checker.Members(result.Program, info.Type, left.Pos.File) {
 						kind := 5
 						insert := member.Name
 						if member.Kind == "method" {
