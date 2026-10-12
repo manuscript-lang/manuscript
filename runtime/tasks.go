@@ -13,11 +13,12 @@ type Execution struct {
 	Leases       map[*Lease]bool
 	HostServices map[*httpService]bool
 	Lifetime     *workLifetime
+	Host         *hostRoots
 }
 type cancelled struct{}
 
 func RootExecution() *Execution {
-	return &Execution{Context: context.Background(), Lifetime: &workLifetime{}}
+	return &Execution{Context: context.Background(), Lifetime: &workLifetime{}, Host: &hostRoots{}}
 }
 func CheckCancelled(ctx *Execution) {
 	if ctx != nil && ctx.Context.Err() != nil {

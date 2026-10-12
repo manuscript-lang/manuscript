@@ -60,7 +60,7 @@ fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit,
 
 ## Authority and restrictions
 
-`process.network: Network` remains the authority root, imported from `@std/http.ms`. Acquired Connection, Listener and DatagramSocket views are individually imported from `@std/net.ms`, closed with `with`, and also owned by Network. Network.close stops admission, cancels and joins in-flight DNS/dials/HTTP acquisition, closes owned services and handles, and waits for admitted I/O. Concurrent close callers join the same shutdown. Imports never manufacture native network authority.
+Import `network() -> Network` from `@std/http.ms` to obtain the current execution's network service. Acquired Connection, Listener and DatagramSocket views are individually imported from `@std/net.ms`, closed with `with`, and also owned by Network. Network.close stops admission, cancels and joins in-flight DNS/dials/HTTP acquisition, closes owned services and handles, and waits for admitted I/O. Concurrent close callers join the same shutdown. Repeated accessor calls return the same host root.
 
 ### Narrowing destination access
 

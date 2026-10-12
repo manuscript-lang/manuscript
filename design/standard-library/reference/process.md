@@ -145,3 +145,15 @@ interface SignalStream:
     fn next() -> Result[Int, ProcessError]
 ```
 
+## commands {data-api-kind="Function"}
+
+```manuscript
+fn commands() -> Commands
+```
+
+## control {data-api-kind="Function"}
+
+```manuscript
+fn control() -> ProcessControl
+```
+

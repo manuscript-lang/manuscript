@@ -27,6 +27,12 @@ impl Error for RandomError:
     fn message() -> String
 ```
 
+## entropy {data-api-kind="Function"}
+
+```manuscript
+fn entropy() -> Entropy
+```
+
 ## secure_int {data-api-kind="Function"}
 
 ```manuscript

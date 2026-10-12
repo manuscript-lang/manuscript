@@ -18,3 +18,5 @@ export fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]
 
 impl Error for RandomError:
     fn message() -> String
+
+export fn entropy() -> Entropy

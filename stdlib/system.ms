@@ -82,3 +82,5 @@ export type SystemError:
 
 impl Error for SystemError:
     fn message() -> String
+
+export fn system() -> System

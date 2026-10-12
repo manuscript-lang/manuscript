@@ -56,15 +56,15 @@ type Val:
 }
 
 func TestClonedRecordRetainsFileHandleLifetime(t *testing.T) {
-	const source = `import Process from "@std/cli.ms"
+	const source = `import files from "@std/io.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
 import Optional from "@std/optional.ms"
 type Holder:
     file: File
     label: String
-export fn main(process: Process) -> Int:
-    match process.files.open("data.txt"):
+export fn main() -> Int:
+    match files().open("data.txt"):
         ok(file):
             match file.read(1):
                 ok(chunk):

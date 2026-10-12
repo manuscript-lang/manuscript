@@ -69,11 +69,12 @@ The `--` separates compiler options from arguments for your program. Here, `firs
 The complete entry module is:
 
 ```manuscript
-import Process from "@std/cli.ms"
+import arguments from "@std/cli.ms"
+import stdout from "@std/io.ms"
 
-export fn main(process: Process) -> Int:
-    let message = "Arguments: {process.arguments.length()}\n"
-    match process.stdout.write(data: message.to_bytes()):
+export fn main() -> Int:
+    let message = "Arguments: {arguments().length()}\n"
+    match stdout().write(data: message.to_bytes()):
         ok(_):
             return 0
         error(_):
@@ -82,10 +83,10 @@ export fn main(process: Process) -> Int:
 
 Read it from top to bottom:
 
-- `import` makes the standard `Process` type available in this file.
-- `export fn main` defines the application's entry function. The CLI host passes in `process`; the returned integer becomes the exit code.
+- `import` selects the argument and standard-output accessors used by this file.
+- `export fn main` defines the application's entry function. The CLI host calls it with no arguments; the returned integer becomes the exit code.
 - `let` names a value. The string inserts the argument count inside `{...}` and ends with a newline, `\n`.
-- `process.stdout` gives access to standard output. `write` takes a named `data` argument containing bytes, so `to_bytes()` converts the text first.
+- `stdout()` returns the current execution's standard output. `write` takes a named `data` argument containing bytes, so `to_bytes()` converts the text first.
 - `write` returns a `Result`. The `match` handles both outcomes: success returns exit code `0`, and failure returns `1`. The `_` means this example ignores the outcome's payload.
 
 Four spaces start each nested block. Functions with multiple parameters name every supplied argument. A single-parameter function may omit its argument label.

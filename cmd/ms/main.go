@@ -27,7 +27,7 @@ lint   Check source hygiene; --json emits stable rule codes
 check  Parse and type-check without executing source
 build  Build a native executable (default: ./program)
 emit   Emit Go source containing the runtime (-o writes a file)
-run    Build and run an exported main(process: Process) -> Int
+run    Build and run an exported main() -> Int
 test   Build and execute module test blocks, including imported modules
 fmt    Format a module; --check verifies without writing
 inspect Emit checked symbols, source hashes, call sites, and statement spans as JSON

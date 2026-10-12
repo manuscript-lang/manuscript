@@ -28,7 +28,9 @@ test('Manuscript values use source names and lazy structured handles', async () 
 test('native DAP source stepping and Manuscript record/list/variant rendering', { skip: !process.env.MANUSCRIPT_DAP_TEST, timeout: 60000 }, async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test '));
   const program = path.join(directory, 'main.ms');
-  await fs.writeFile(program, 'import Process from "@std/cli.ms"\nimport List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main(process: Process) -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1\n');
+  const source = 'import List from "@std/collections.ms"\nimport Optional from "@std/optional.ms"\nimport Queue from "@std/queues.ms"\ntype Box:\n    label: String\n    count: Int\nexport fn main() -> Int:\n    let box = Box(label: "value", count: 42)\n    let items = [1, 2, 3]\n    let optional = Optional[Int].some(value: 5)\n    let queue = Queue[Int](capacity: 4)\n    queue.enqueue(value: box.count)\n    return box.count - 42 + queue.length() - 1\n';
+  await fs.writeFile(program, source);
+  const returnLine = source.split('\n').findIndex(line => line.trim().startsWith('return box.')) + 1;
   const output = new PassThrough(); const messages = []; const waiters = [];
   const adapter = new ManuscriptAdapter(output, { compiler: process.env.MANUSCRIPT_MS, delve: process.env.MANUSCRIPT_DLV });
   const parser = new Framing(message => { messages.push(message); for (const wake of waiters.splice(0)) wake(); });
@@ -43,7 +45,7 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
     assert.equal(capabilities.supportsSetExpression, false);
     const launch = request('launch', { program, stopOnEntry: false });
     await wait(message => message.event === 'initialized');
-    const breakpoints = await response(request('setBreakpoints', { source: { path: program }, breakpoints: [{ line: 14 }] }));
+    const breakpoints = await response(request('setBreakpoints', { source: { path: program }, breakpoints: [{ line: returnLine }] }));
     assert.equal(breakpoints.breakpoints[0].verified, true);
     const configured = request('configurationDone');
     const stopped = await wait(message => message.event === 'stopped');
@@ -52,7 +54,7 @@ test('native DAP source stepping and Manuscript record/list/variant rendering', 
     assert.equal(stack.stackFrames[0].name, 'main');
     for (const item of stack.stackFrames.filter(item => item.source?.path?.endsWith('.ms'))) {
       assert.equal(item.source.path, program);
-      assert.ok(item.line >= 1 && item.line <= 14, 'runtime frame inherited a Manuscript line directive');
+      assert.ok(item.line >= 1 && item.line <= returnLine, 'runtime frame inherited a Manuscript line directive');
     }
     const scopes = await response(request('scopes', { frameId: stack.stackFrames[0].id }));
     assert.equal(scopes.scopes[0].name, 'Manuscript locals');

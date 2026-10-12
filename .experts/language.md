@@ -81,3 +81,11 @@ Decision: ordinary record fields and collections are mutable. The user rejected 
 Apply when: changing fields, collection updates, aliases, copies, equality, or concurrency guidance.
 Evidence: [record contract](../design/core-language/types/records.md#mutation-and-cloning); [collection contract](../design/core-language/types/collections.md#mutation-and-copies); [native conformance](../tests/e2e/testdata/accept/mutation.ms); [resource clone rejection](../compiler/mutation_test.go); [CLI rejection and shared file lifetime](../tests/e2e/mutation_test.go).
 Verify: the counter's Unit-returning method updates `self.val`; aliases observe mutation; a clone's outer storage stays separate while its nested references remain shared. Native resource clone calls are rejected. Protect concurrent mutation with existing Synchronized guards; do not restore removed sharing bounds.
+
+### Parameterless main and imported host accessors
+
+Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
+
+Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
+Evidence: [CLI host contract](../design/standard-library/hosts/cli.md), [entry validation](../compiler/compiler.go), and [execution-local accessors](../runtime/host.go).
+Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.

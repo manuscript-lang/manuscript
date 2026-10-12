@@ -146,3 +146,9 @@ interface ResponseBody:
     fn status() -> Int
 ```
 
+## network {data-api-kind="Function"}
+
+```manuscript
+fn network() -> Network
+```
+

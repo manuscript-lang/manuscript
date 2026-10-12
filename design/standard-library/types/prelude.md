@@ -27,9 +27,9 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 | `@std/cleanup.ms` | `Closeable` |
 | `@std/tasks.ms` | `parallel`, `check_cancelled`, `ExecutionError`, `OperationId`, `Background`, `BackgroundFailure`, `WorkStatus`, `StartError` |
 | `@std/faults.ms` | `panic` |
-| `@std/time.ms` | `Duration`, `Instant`, `Clock` |
-| `@std/io.ms` | `Files`, `File`, `ReadStream`, `WriteStream`, `IoError` |
-| `@std/cli.ms` | `Process` |
+| `@std/time.ms` | `Duration`, `Instant`, `Clock`, `clock`, `wall_clock` |
+| `@std/io.ms` | `Files`, `File`, `ReadStream`, `WriteStream`, `IoError`, `stdin`, `stdout`, `stderr`, `files` |
+| `@std/cli.ms` | `arguments`, `environment` |
 
 ```manuscript
 import Result from "@std/result.ms"
@@ -39,7 +39,7 @@ import parallel from "@std/tasks.ms"
 
 Imports establish stable nominal identities independent of the application. Imported names follow ordinary collision and shadowing rules; unimported standard names are not reserved. A local declaration with the same spelling never acquires standard operators, cleanup recognition, callback checks, or native members.
 
-The [general-purpose package guide](../packages/_index.md) documents additional module exports and [common errors](../packages/contracts.md). Process also exposes FileSystem, Entropy, WallClock and System roots, while its existing Network gains TCP/UDP/TLS/client/DNS operations. These additions retain explicit imports and nominal identities.
+The [general-purpose package guide](../packages/_index.md) documents additional module exports and [common errors](../packages/contracts.md). Imported accessors provide FileSystem, Entropy, WallClock, System, and Network services. Network includes TCP/UDP/TLS/client/DNS operations. These additions retain explicit imports and nominal identities.
 
 ## Syntax and compiler support
 
@@ -52,7 +52,7 @@ Some library identities need compiler support while remaining explicit exports:
 - `with` recognizes the canonical Closeable implementation, or an operation contract declaring the exact close signature. A module writing `impl Closeable` or a Closeable bound imports that name; using an already-typed resource does not require an otherwise unused import.
 - Runtime API special checks attach to the resolved standard callee. A user-defined `parallel` is an ordinary function and never receives pack rules.
 
-A missing or substituted List/Decimal import rejects the corresponding literal during resolution/type checking. Inferred library values may be matched, traversed, or used through their declared members without importing every type in their public signatures. Naming such a type or using its unqualified expression constructors requires its own import. Primitive receiver members in the [data API](../data-and-io/operations.md) are fixed standard bindings and can likewise produce inferred library values; they add no ambient type names. Imports supply declarations, not files, clocks, or other external authority.
+A missing or substituted List/Decimal import rejects the corresponding literal during resolution/type checking. Inferred library values may be matched, traversed, or used through their declared members without importing every type in their public signatures. Naming such a type or using its unqualified expression constructors requires its own import. Primitive receiver members in the [data API](../data-and-io/operations.md) are fixed standard bindings and can likewise produce inferred library values; they add no ambient type names. Importing a type supplies its declaration; imported host accessor functions return services from the current execution.
 
 `OperationId` is the single opaque identity for runtime operations, whether started by a joined group or admitted by a Background service. It has no source constructor and no implicit equality or hashing, and it grants no scheduling, joining, or transfer authority. A Background service's `status` and `cancel` act only on IDs it admitted. `WorkStatus` has nullary cases `Running`, `Succeeded`, `Failed`, `Cancelled`, `Crashed`, and `Unknown`; qualify these case names when necessary. `StartError` has `Closed` and `Full`. `IoError` has `Closed`, `InvalidInput`, `Unavailable`, and `Failed(message: String)`. These are ordinary alternatives. Execution errors are defined in [joining](../../concurrency/joining.md).
 
@@ -121,4 +121,4 @@ General user type packs, optional source parameters, generic operations, and thi
 
 `@std/time.ms` also exports `sleep(duration: Duration) -> Unit`, a sequential cancellable delay. Negative duration faults; zero performs a cancellation checkpoint.
 
-`@std/http.ms` exports the bounded request host types in [HTTP](../hosts/http.md). `Network.serve` accepts an ordinary handler and may be stored as a bound method. `@std/process.ms` exports `Commands`, `CommandOutput`, and `CommandError` in [streams](../data-and-io/streams.md). CLI `Process` additionally has `network: Network` and `commands: Commands`. Imports provide types, while those fields provide actual authority.
+`@std/http.ms` exports the bounded request host types in [HTTP](../hosts/http.md). `Network.serve` accepts an ordinary handler and may be stored as a bound method. `@std/process.ms` exports `Commands`, `CommandOutput`, and `CommandError` in [streams](../data-and-io/streams.md). Import `network()` from `@std/http.ms` and `commands()` from `@std/process.ms` to obtain those host services.

@@ -215,3 +215,9 @@ interface TemporaryDirectory:
 fn constants() -> Map[String, Int]
 ```
 
+## filesystem {data-api-kind="Function"}
+
+```manuscript
+fn filesystem() -> FileSystem
+```
+

@@ -50,7 +50,7 @@ func TestDocOutsideRepository(t *testing.T) {
 func TestDocPublicDeclarationsAndFailures(t *testing.T) {
 	directory := t.TempDir()
 	source := filepath.Join(directory, "library.ms")
-	code := `import Process from "@std/cli.ms"
+	code := `import arguments from "@std/cli.ms"
 export type Item:
     value: Int
 
@@ -76,7 +76,7 @@ fn private_helper() -> Int:
 			t.Errorf("missing %q in %s", want, data)
 		}
 	}
-	for _, private := range []string{"private_helper", "## Process", "return Item", "field value:", "create: fn("} {
+	for _, private := range []string{"private_helper", "## arguments", "return Item", "field value:", "create: fn("} {
 		if strings.Contains(string(data), private) {
 			t.Errorf("included non-public declaration %q", private)
 		}

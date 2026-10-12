@@ -43,7 +43,7 @@ To keep an executable:
 ./ms test examples/hello/test.ms
 ```
 
-Applications export `fn main(process: Process) -> Int`. Standard names need explicit imports. See [the hello source](examples/hello/src/main.ms) and [accepted core-language fixtures](tests/e2e/testdata/accept) for complete examples.
+Applications export `fn main() -> Int`. Standard names need explicit imports. See [the hello source](examples/hello/src/main.ms) and [accepted core-language fixtures](tests/e2e/testdata/accept) for complete examples.
 
 ## Choose a command
 
@@ -83,7 +83,7 @@ source directly requires the repository's pinned `go.mod`, `go.sum`, `vendor/` t
 
 Use `type` for records and alternatives, and `interface` for operation contracts. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declared parameters, as in `impl ReadValue[T] for Box[T]:`. Implementations for imported source types are [local extensions](design/core-language/types/contracts.md#coherence-and-visibility), visible only in the module declaring them.
 
-The implementation includes cleanup, joined and background work, queues, state and pools, builders, and explicit CLI, HTTP, and subprocess capabilities. External adapters, advanced host APIs, and generalized structural editing still have design work. Check [coverage](IMPLEMENTATION.md) for exact limits.
+The implementation includes cleanup, joined and background work, queues, state and pools, builders, and imported CLI, HTTP, and subprocess host services. External adapters, advanced host APIs, and generalized structural editing still have design work. Check [coverage](IMPLEMENTATION.md) for exact limits.
 
 ## Developer tooling
 
@@ -98,7 +98,7 @@ The implementation includes cleanup, joined and background work, queues, state a
 | `parser` | Declarations, types, calls, expressions, and suites |
 | `checker` | Modules, nominal types, inference, contracts, bounds, captures, control flow, and effects |
 | `compiler` | Project loading, checked Go lowering, native builds, pins, caches, and build metadata |
-| `runtime` | Values, data/services, cleanup, concurrency, and explicit host capabilities |
+| `runtime` | Values, data/services, cleanup, concurrency, and imported host services |
 | `tooling` | Formatting, semantic lint, typed LSP completion/navigation/refactoring, source metadata, and static diagrams |
 | `cmd/ms` | Check, lint, lsp, profile, debug, build, emit, run, test, fmt, inspect, diagram, doc, stdlib, and lock commands |
 | `tests/e2e` | Syntax fixtures compiled to native executables and observable runtime expectations |

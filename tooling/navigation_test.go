@@ -10,17 +10,17 @@ import (
 
 func TestStandardLibraryNavigation(t *testing.T) {
 	source := `import List from "@std/collections.ms"
-import Process from "@std/cli.ms"
+import system from "@std/system.ms"
 fn length(values: List[Int]) -> Int:
     return values.length()
-fn os_name(process: Process) -> String:
-    return process.system.info().os
+fn os_name() -> String:
+    return system().info().os
 `
 	result := compiler.CompileSource("navigation.ms", source, compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, item := range []struct{ needle, file, definition string }{{"List from", "@std/collections.ms", "type List"}, {"List[Int]", "@std/collections.ms", "type List"}, {"length()", "@std/collections.ms", "length()"}, {"system.info", "@std/cli.ms", "system:"}, {"info()", "@std/system.ms", "info()"}, {".os", "@std/system.ms", "os:"}} {
+	for _, item := range []struct{ needle, file, definition string }{{"List from", "@std/collections.ms", "type List"}, {"List[Int]", "@std/collections.ms", "type List"}, {"length()", "@std/collections.ms", "length()"}, {"system()", "@std/system.ms", "fn system()"}, {"info()", "@std/system.ms", "info()"}, {".os", "@std/system.ms", "os:"}} {
 		offset := strings.LastIndex(source, item.needle)
 		if item.needle == ".os" {
 			offset++
@@ -144,8 +144,8 @@ func TestNavigationWithinStandardLibrary(t *testing.T) {
 		{"collections.ms", "Optional from", "optional.ms", "Optional"},
 		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
 		{"collections.ms", "List[T]) ->", "collections.ms", "List"},
-		{"cli.ms", "System from", "system.ms", "System"},
-		{"cli.ms", "System\n", "system.ms", "System"},
+		{"cli.ms", "List from", "collections.ms", "List"},
+		{"cli.ms", "List[String]", "collections.ms", "List"},
 	} {
 		t.Run(item.file+"/"+item.needle, func(t *testing.T) {
 			data, err := stdlib.Sources.ReadFile(item.file)

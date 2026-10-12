@@ -1,7 +1,12 @@
+import control from "@std/process.ms"
+import arguments from "@std/cli.ms"
+import entropy from "@std/random.ms"
+import filesystem from "@std/fs.ms"
+import system from "@std/system.ms"
+import wall_clock from "@std/time.ms"
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
-import Process from "@std/cli.ms"
 import Result from "@std/result.ms"
 import Error from "@std/errors.ms"
 import uuid_v4 from "@std/random.ms"
@@ -23,30 +28,30 @@ fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
         error(cause):
             return error(cause: Error(value: cause))
 
-fn exercise(process: Process, path: String) -> Result[Unit, Error]:
-    let written = try common_result(result: process.filesystem.write_file(path: path, data: "hello".to_bytes(), replace: false))
-    if not (try common_result(result: process.filesystem.read_file(path: path, max_bytes: 5)) == "hello".to_bytes()):
+fn exercise(path: String) -> Result[Unit, Error]:
+    let written = try common_result(result: filesystem().write_file(path: path, data: "hello".to_bytes(), replace: false))
+    if not (try common_result(result: filesystem().read_file(path: path, max_bytes: 5)) == "hello".to_bytes()):
         return panic(message: "check failed")
-    let info = try common_result(result: process.filesystem.stat(path: path, follow_links: true))
+    let info = try common_result(result: filesystem().stat(path: path, follow_links: true))
     if not (info.size == 5):
         return panic(message: "check failed")
     if not (not info.directory):
         return panic(message: "check failed")
-    let bytes = try common_result(result: process.entropy.bytes(count: 16))
+    let bytes = try common_result(result: entropy().bytes(count: 16))
     if not (bytes.length() == 16):
         return panic(message: "check failed")
-    let identifier = try common_result(result: uuid_v4(entropy: process.entropy))
+    let identifier = try common_result(result: uuid_v4(entropy: entropy()))
     if not (identifier.byte_length() == 36):
         return panic(message: "check failed")
-    let random = try common_result(result: secure_int(entropy: process.entropy, min: -2, max_exclusive: 3))
+    let random = try common_result(result: secure_int(entropy: entropy(), min: -2, max_exclusive: 3))
     if not (random >= -2 and random < 3):
         return panic(message: "check failed")
-    let now = process.wall_clock.now()
+    let now = wall_clock().now()
     if not (try common_result(result: parse_timestamp(text: format_timestamp(value: now))) == now):
         return panic(message: "check failed")
-    if not (process.system.info().cpu_count > 0):
+    if not (system().info().cpu_count > 0):
         return panic(message: "check failed")
-    with file = try common_result(result: process.filesystem.open(path: path, flags: "r+", mode: 384)):
+    with file = try common_result(result: filesystem().open(path: path, flags: "r+", mode: 384)):
         let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO".to_bytes()))
         if not (try common_result(result: file.read_at(offset: 0, max_bytes: 5)) == "HELLO".to_bytes()):
             return panic(message: "positional I/O failed")
@@ -54,8 +59,8 @@ fn exercise(process: Process, path: String) -> Result[Unit, Error]:
         let resized = try common_result(result: file.truncate(size: 3))
         if not ((try common_result(result: file.stat())).size == 3):
             return panic(message: "handle stat failed")
-    with watcher = try common_result(result: process.filesystem.watch_native(path: path, recursive: false, max_entries: 4, max_events: 16, overflow: "error")):
-        let appended = try common_result(result: process.filesystem.append_file(path: path, data: "!".to_bytes()))
+    with watcher = try common_result(result: filesystem().watch_native(path: path, recursive: false, max_entries: 4, max_events: 16, overflow: "error")):
+        let appended = try common_result(result: filesystem().append_file(path: path, data: "!".to_bytes()))
         let events = try common_result(result: watcher.next())
         if not (events.length() > 0):
             return panic(message: "native watch returned no event")
@@ -74,19 +79,19 @@ fn exercise(process: Process, path: String) -> Result[Unit, Error]:
     let windows = win32()
     if not (windows.parse("C:/work/file.txt").extension == ".txt"):
         return panic(message: "Windows path parse failed")
-    let control = try common_result(result: process.control.info())
-    if not (control.pid > 0):
+    let process_info = try common_result(result: control().info())
+    if not (process_info.pid > 0):
         return panic(message: "process information failed")
-    let memory = try common_result(result: process.control.memory_usage())
+    let memory = try common_result(result: control().memory_usage())
     if not (memory.heap_system > 0):
         return panic(message: "memory information failed")
-    let removed = try common_result(result: process.filesystem.remove(path: path, recursive: false))
+    let removed = try common_result(result: filesystem().remove(path: path, recursive: false))
     return ok(value: unit)
 
-export fn main(process: Process) -> Int:
-    match process.arguments.get(index: 0):
+export fn main() -> Int:
+    match arguments().get(index: 0):
         some(path):
-            match exercise(process: process, path: path):
+            match exercise(path: path):
                 ok(_):
                     return 0
                 error(_):

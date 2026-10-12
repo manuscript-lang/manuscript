@@ -11,10 +11,10 @@ These capabilities cover the native application tasks in Node.js 24's `fs/promis
 
 ## Files and directories
 
-Use `process.filesystem` for path operations. Acquire handles inside `with`. This fragment belongs in a function returning `Result[Unit, FileSystemError]`:
+Import `filesystem()` from `@std/fs.ms` for path operations. Acquire handles inside `with`. This fragment belongs in a function returning `Result[Unit, FileSystemError]`:
 
 ```manuscript
-with file = try process.filesystem.open(path: path, flags: "r+", mode: 384):
+with file = try filesystem().open(path: path, flags: "r+", mode: 384):
     let written = try file.write_at(offset: 0, data: "HELLO".to_bytes())
     let bytes = try file.read_at(offset: 0, max_bytes: 5)
     let synced = try file.sync()
@@ -70,7 +70,7 @@ Globs support segment wildcards, character classes, `**`, brace alternatives, nu
 
 ## OS and current process
 
-`process.system` supplies OS queries. `process.control` supplies current-process authority; `process.commands` continues to run bounded, joined child commands. Process records keep argument/environment snapshots; request a fresh environment through the control capability after mutation.
+Import `system()` from `@std/system.ms` for OS queries, and `control()` and `commands()` from `@std/process.ms`. `system()` supplies OS queries. `control()` supplies current-process authority; `commands()` continues to run bounded, joined child commands. CLI `arguments()` and `environment()` retain startup snapshots; request a fresh environment through the control capability after mutation.
 
 | Node.js facility | Manuscript operation |
 | --- | --- |
@@ -81,7 +81,7 @@ Globs support segment wildcards, character classes, `**`, brace alternatives, nu
 | `networkInterfaces` | `network_interfaces`, one record per address |
 | `release`, `version`, `machine` | `os_release`, `os_version`, `machine` |
 | `getPriority`, `setPriority`, `constants` | `get_priority`, `set_priority`, `system.constants()` |
-| `process.pid`, `ppid`, `argv`, `argv0`, `execPath`, `platform`, `arch`, identity getters | `ProcessControl.info`, `Process.arguments` |
+| `process.pid`, `ppid`, `argv`, `argv0`, `execPath`, `platform`, `arch`, identity getters | `ProcessControl.info`, `arguments()` |
 | `env`, `loadEnvFile` | `environment`, `set_environment`, bounded `load_environment` |
 | `cwd`, `chdir` | `working_directory`, `change_directory` |
 | `memoryUsage`, `cpuUsage`, `resourceUsage`, `uptime`, `hrtime` | `memory_usage`, `cpu_usage`, `resource_usage`, `uptime`, `monotonic_time` (nanoseconds), or host monotonic `Clock` |

@@ -9,7 +9,7 @@ import (
 
 func TestMutationRejections(t *testing.T) {
 	declarations := `import List from "@std/collections.ms"
-import Process from "@std/cli.ms"
+import stdout from "@std/io.ms"
 import File from "@std/io.ms"
 import Synchronized from "@std/sync.ms"
 import SynchronizedGuard from "@std/sync.ms"
@@ -28,7 +28,7 @@ impl Read for Val:
 		{"method assignment", "fn f(value: Val) -> Unit:\n    value.get = 1\n", "assignment requires a record field"},
 		{"local binding remains fixed", "fn f() -> Unit:\n    let value = Val(val: 0)\n    value = Val(val: 1)\n", "cannot assign immutable binding"},
 		{"parameter binding remains fixed", "fn f(value: Val) -> Unit:\n    value = Val(val: 1)\n", "cannot assign immutable binding"},
-		{"resource clone", "fn f(process: Process) -> Unit:\n    process.stdout.clone()\n", "unknown or ambiguous member clone"},
+		{"resource clone", "fn f() -> Unit:\n    stdout().clone()\n", "unknown or ambiguous member clone"},
 		{"file clone", "fn f(file: File) -> Unit:\n    file.clone()\n", "unknown or ambiguous member clone"},
 		{"socket clone", "import Connection from \"@std/net.ms\"\nfn f(socket: Connection) -> Unit:\n    socket.clone()\n", "unknown or ambiguous member clone"},
 		{"lock clone", "fn f(lock: Synchronized[Int]) -> Unit:\n    lock.clone()\n", "unknown or ambiguous member clone"},

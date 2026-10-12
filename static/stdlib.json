@@ -361,25 +361,14 @@
       "path": "@std/cli.ms",
       "declarations": [
         {
-          "name": "Process",
-          "kind": "record",
-          "type": "Process",
-          "fields": [
-            "arguments: List[String]",
-            "environment: Map[String, String]",
-            "stdin: ReadStream",
-            "stdout: WriteStream",
-            "stderr: WriteStream",
-            "files: Files",
-            "clock: Clock",
-            "network: Network",
-            "commands: Commands",
-            "filesystem: FileSystem",
-            "entropy: Entropy",
-            "wall_clock: WallClock",
-            "system: System",
-            "control: ProcessControl"
-          ]
+          "name": "arguments",
+          "kind": "fn",
+          "type": "fn()-\u003eList[String]"
+        },
+        {
+          "name": "environment",
+          "kind": "fn",
+          "type": "fn()-\u003eMap[String, String]"
         }
       ]
     },
@@ -1439,6 +1428,11 @@
           "name": "constants",
           "kind": "fn",
           "type": "fn()-\u003eMap[String, Int]"
+        },
+        {
+          "name": "filesystem",
+          "kind": "fn",
+          "type": "fn()-\u003eFileSystem"
         }
       ]
     },
@@ -1606,6 +1600,11 @@
             "read: fn(max_bytes: Int)-\u003eResult[Optional[Bytes], IoError]",
             "status: fn()-\u003eInt"
           ]
+        },
+        {
+          "name": "network",
+          "kind": "fn",
+          "type": "fn()-\u003eNetwork"
         }
       ]
     },
@@ -1673,6 +1672,11 @@
           "type": "fn(input: ReadStream, output: WriteStream, max_bytes: Int)-\u003eResult[Int, IoError]"
         },
         {
+          "name": "files",
+          "kind": "fn",
+          "type": "fn()-\u003eFiles"
+        },
+        {
           "name": "read_all",
           "kind": "fn",
           "type": "fn(input: ReadStream, max_bytes: Int)-\u003eResult[Bytes, IoError]"
@@ -1681,6 +1685,21 @@
           "name": "read_line",
           "kind": "fn",
           "type": "fn(input: ReadStream, max_bytes: Int)-\u003eResult[Optional[String], IoError]"
+        },
+        {
+          "name": "stderr",
+          "kind": "fn",
+          "type": "fn()-\u003eWriteStream"
+        },
+        {
+          "name": "stdin",
+          "kind": "fn",
+          "type": "fn()-\u003eReadStream"
+        },
+        {
+          "name": "stdout",
+          "kind": "fn",
+          "type": "fn()-\u003eWriteStream"
         }
       ]
     },
@@ -2432,6 +2451,16 @@
             "close: fn()-\u003eUnit",
             "next: fn()-\u003eResult[Int, ProcessError]"
           ]
+        },
+        {
+          "name": "commands",
+          "kind": "fn",
+          "type": "fn()-\u003eCommands"
+        },
+        {
+          "name": "control",
+          "kind": "fn",
+          "type": "fn()-\u003eProcessControl"
         }
       ]
     },
@@ -2484,6 +2513,11 @@
           "implements": [
             "Error"
           ]
+        },
+        {
+          "name": "entropy",
+          "kind": "fn",
+          "type": "fn()-\u003eEntropy"
         },
         {
           "name": "secure_int",
@@ -2889,6 +2923,11 @@
           "name": "os_type",
           "kind": "fn",
           "type": "fn()-\u003eString"
+        },
+        {
+          "name": "system",
+          "kind": "fn",
+          "type": "fn()-\u003eSystem"
         }
       ]
     },
@@ -3047,6 +3086,11 @@
           "type": "fn(duration: Duration, operation: fn()-\u003eResult[Unit, String])-\u003eResult[Timer, TimeError]"
         },
         {
+          "name": "clock",
+          "kind": "fn",
+          "type": "fn()-\u003eClock"
+        },
+        {
           "name": "difference",
           "kind": "fn",
           "type": "fn(left: Timestamp, right: Timestamp)-\u003eResult[Duration, TimeError]"
@@ -3090,6 +3134,11 @@
           "name": "unix_seconds",
           "kind": "fn",
           "type": "fn(value: Timestamp)-\u003eInt"
+        },
+        {
+          "name": "wall_clock",
+          "kind": "fn",
+          "type": "fn()-\u003eWallClock"
         }
       ]
     },

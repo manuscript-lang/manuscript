@@ -7,52 +7,51 @@ weight = 46
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A CLI application starts at an exported `fn main(process: Process) -> Int`. The host creates the run context and Process value, calls main once, then waits for work and cleanup before reporting the exit code.
+A CLI application starts at an exported `fn main() -> Int`. The host creates the execution context and host services, calls main once with no arguments, then waits for work and cleanup before reporting the exit code.
 
-The selected entry module must export exactly one nongeneric main with that parameter name, type, and result. Missing or internal main, or a different signature, is a compile error. Other exports are allowed.
+The selected entry module must export exactly one nongeneric main with no parameters and an Int result. Missing or internal main, or a different signature, is a compile error. Other exports are allowed.
 
-## Explicit authority roots
+## Importing host services
 
-`Process` is a standard record:
+Import the accessor for each service an application uses. Accessors are ordinary zero-parameter functions backed by the current execution's host services:
 
-```manuscript
-type Process:
-    arguments: List[String]
-    environment: Map[String, String]
-    stdin: ReadStream
-    stdout: WriteStream
-    stderr: WriteStream
-    files: Files
-    clock: Clock
-    network: Network
-    commands: Commands
+| Import from | Accessors |
+| --- | --- |
+| `@std/cli.ms` | `arguments() -> List[String]`, `environment() -> Map[String, String]` |
+| `@std/io.ms` | `stdin() -> ReadStream`, `stdout() -> WriteStream`, `stderr() -> WriteStream`, `files() -> Files` |
+| `@std/fs.ms` | `filesystem() -> FileSystem` |
+| `@std/http.ms` | `network() -> Network` |
+| `@std/process.ms` | `commands() -> Commands`, `control() -> ProcessControl` |
+| `@std/time.ms` | `clock() -> Clock`, `wall_clock() -> WallClock` |
+| `@std/random.ms` | `entropy() -> Entropy` |
+| `@std/system.ms` | `system() -> System` |
 
-interface Clock:
-    fn now() -> Instant
-
-interface Files:
-    fn open(path: String) -> Result[File, IoError]
-```
-
-Arguments exclude the executable name. Environment is a snapshot; duplicate OS names are resolved by the host before entry. Invalid UTF-8 in process inputs is a startup failure on native stderr with exit 70 before main runs. Relative file paths on native CLI roots use the live process working directory; explicitly constructed filesystem capabilities can retain a fixed base. The specified file API opens read-only files; file creation remains an additional API contract. Network and command operations are specified in [HTTP](http.md) and [subprocess execution](../data-and-io/streams.md).
-
-The host creates Files, Clock, and stdio behind ordinary contract views. Process and the File returned by Files.open are safe for concurrent access. Applications and source fakes follow the same [view-conversion rules](../../core-language/types/contracts.md#explicit-contract-views).
-
-Importing an interface supplies no authority. Files, clock, stdio, and environment arrive only through Process. The host closes roots after main and its scoped services finish; the application registers acquired files with `with`. Early root-stream closure affects every alias.
+Type names and functions still require explicit imports when named in source. Importing an accessor does not add other declarations to scope. Calling it returns the existing service; repeated calls do not construct new roots. Helpers, callbacks, parallel work, and imported modules use the services of their invocation execution. Background services retain their construction execution's services.
 
 ```manuscript
-import Process from "@std/cli.ms"
+import arguments from "@std/cli.ms"
+import stdout from "@std/io.ms"
 
-export fn main(process: Process) -> Int:
-    let message = "Arguments: {process.arguments.length()}\n"
-    match process.stdout.write(data: message.to_bytes()):
+export fn main() -> Int:
+    let message = "Arguments: {arguments().length()}\n"
+    match stdout().write(data: message.to_bytes()):
         ok(_):
             return 0
         error(_):
             return 1
 ```
 
-This is a complete entry module. Only the Process type name is imported; field/method results and match cases are inferred from its public signatures. The import supplies the interface, while the host supplies the authority-bearing value. On success its transcript is `Arguments: N` followed by LF and exit 0. Stream signatures are defined in [streams](../data-and-io/streams.md).
+On success this program prints `Arguments: N` followed by LF and exits 0. Stream signatures are defined in [streams](../data-and-io/streams.md).
+
+Arguments exclude the executable name. Environment is a startup snapshot; duplicate OS names are resolved by the host before entry. Invalid UTF-8 in process inputs is a startup failure on native stderr with exit 70 before main runs. Relative file paths on native CLI roots use the live process working directory; explicitly constructed filesystem services can retain a fixed base.
+
+The native CLI grants its ordinary OS filesystem, networking, and subprocess access. There are no per-function dependency declarations, injected replacements, or manifest permission enforcement. Explicit interface parameters remain useful for substituting source fakes in helpers; applications may also call imported host accessors directly.
+
+## Resources and tests
+
+The host creates synchronized service implementations behind ordinary contract views. The host closes roots after main and its scoped work finish. Applications register acquired files and other resources with `with`; retaining a reference does not prolong their open lifetime. Closing a root stream affects every alias in that execution.
+
+Each source test receives fresh host roots with an empty argument list and its own environment snapshot. Imported accessors work in test bodies. Roots close after test work joins, and closing a root in one test does not close another test's root wrapper. No fake host or API replacement facility is implied by these accessors.
 
 ## Exit and shutdown
 
@@ -62,12 +61,6 @@ The `ms run` launcher forwards SIGINT/SIGTERM to the native host and waits for i
 
 Construct application Background services in main with `with`, inside their dependencies' scopes. Shutdown stops admission, joins services, then releases roots. Uncooperative work/reporters can require [host escalation](../../concurrency/runtime.md#host-escalation); the host exposes its watchdog policy. Escalated exit is incomplete cleanup, not conformance success.
 
-## Additional explicit roots
+Network services register under their construction execution and join before host roots are released. Network owns acquired TCP/UDP/TLS handles and joins them during host-root shutdown. The bounded HTTP and subprocess contracts are in [HTTP](http.md) and [streams](../data-and-io/streams.md). The filesystem, entropy, wall-clock, and system contracts are in [general-purpose packages](../packages/_index.md).
 
-`Process` also exposes `network: Network` and `commands: Commands` for the [bounded HTTP host](http.md) and [bounded subprocess execution](../data-and-io/streams.md). These capabilities are synchronized host roots. Network services register under their construction execution and join before host roots are released. The host provides no ambient networking or process constructor.
-
-## General-purpose authority roots
-
-Process additionally supplies `filesystem: FileSystem`, `entropy: Entropy`, `wall_clock: WallClock`, and `system: System`. Imports come from `@std/fs.ms`, `@std/random.ms`, `@std/time.ms`, and `@std/system.ms` respectively. These roots are host-created; the native CLI grants its OS authority, not a restricted sandbox. Canonical operations are in [general-purpose packages](../packages/_index.md). Existing Files, Network and Commands identities are preserved. Network owns its acquired TCP/UDP/TLS handles and joins them during host-root shutdown.
-
-`control: ProcessControl` supplies current-process information and explicit environment, directory, identity, signal, and umask operations. See [host package contracts](../packages/node-host.md) for their process-wide effects and native limitations.
+The imported `control()` accessor returns ProcessControl for current-process information and explicit environment, directory, identity, signal, and umask operations. See [host package contracts](../packages/node-host.md) for their process-wide effects and native limitations.

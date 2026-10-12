@@ -42,7 +42,7 @@ fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
 
 ## Authority and records
 
-Process supplies `filesystem: FileSystem`. FileSystem uses a fixed startup directory for relative paths and the CLI process's native OS permissions. It is not restricted to a sandboxed subtree. The existing Files capability remains read-only.
+Import `filesystem() -> FileSystem` from `@std/fs.ms` to obtain the current execution's filesystem service. The native FileSystem root uses the live process working directory for relative paths and the CLI process's native OS permissions. It is not restricted to a sandboxed subtree. The existing Files capability remains read-only.
 
 Importing a type or constructing a path string grants no file access. Source fakes can implement the same contract. NUL paths return `InvalidInput`; filenames that cannot be represented as text return `Unsupported`. A temporary directory must be explicitly removed; dropping its path string does not remove it.
 

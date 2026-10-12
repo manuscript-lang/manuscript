@@ -52,7 +52,7 @@ import Duration from "@std/time.ms"
 
 These are independent imports, not a required bundle. Importing one does not expose the others. Work status and failure reporting are also explicit standard exports; the [standard API contract](../standard-library/types/prelude.md#names-and-identity) lists their paths. Ordinary Result annotations and error-adaptation helpers use their own imports from `@std/result.ms`.
 
-Scheduling, cancellation, joining, time budgets, and service shutdown belong to these library/runtime APIs. The compiler checks callback signatures and the fixed parallel pack shape by the resolved standard binding identity. Its hidden execution context is an internal calling convention, not an ambient source capability or a new intrinsic type. A user function named parallel remains an ordinary function.
+Scheduling, cancellation, joining, time budgets, and service shutdown belong to these library/runtime APIs. The compiler checks callback signatures and the fixed parallel pack shape by the resolved standard binding identity. Its hidden execution context is an internal calling convention and carries host roots used by imported accessors; it is not a source type. A user function named parallel remains an ordinary function.
 
 ## Fixed lifetimes
 

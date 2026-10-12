@@ -1,6 +1,6 @@
+import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 
-import Process from "@std/cli.ms"
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
 import parallel from "@std/tasks.ms"
@@ -13,8 +13,8 @@ impl Closeable for Resource:
     fn close() -> Unit:
         self.output.write(data: "close {self.label}\n".to_bytes())
 
-export fn main(process: Process) -> Int:
-    let output = process.stdout
+export fn main() -> Int:
+    let output = stdout()
     let child = fn() -> Unit:
         with resource = Resource(label: "child", output: output):
             output.write(data: "ready\n".to_bytes())

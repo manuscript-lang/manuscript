@@ -1,4 +1,4 @@
-import Process from "@std/cli.ms"
+import stdout from "@std/io.ms"
 import List from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Queue from "@std/queues.ms"
@@ -10,7 +10,7 @@ type Package:
     count: Int
 
 # A real entry point: records, generics, a local queue, and a native workload.
-export fn main(process: Process) -> Int:
+export fn main() -> Int:
     let package = Package(title: "Manuscript", count: 42)
     let values = [10, 20, 30]
     let optional = Optional[Int].some(value: 5)
@@ -26,7 +26,7 @@ export fn main(process: Process) -> Int:
         return 1
     let checksum = compute(iterations: 3000000)
     let output = "{package.title}: {sum}; checksum {checksum}\n"
-    match process.stdout.write(data: output.to_bytes()):
+    match stdout().write(data: output.to_bytes()):
         ok(_):
             return 0
         error(_):

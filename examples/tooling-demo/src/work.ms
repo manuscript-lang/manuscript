@@ -1,4 +1,3 @@
-import Process from "@std/cli.ms"
 import List from "@std/collections.ms"
 import parallel from "@std/tasks.ms"
 
@@ -10,7 +9,7 @@ fn compute() -> Int:
         index = index + 1
     return result
 
-export fn main(process: Process) -> Int:
+export fn main() -> Int:
     let first = fn() -> Int:
         return compute()
     let second = fn() -> Int:

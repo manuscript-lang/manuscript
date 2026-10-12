@@ -102,3 +102,7 @@ impl Error for ProcessError:
 
 impl Error for CommandError:
     fn message() -> String
+
+export fn commands() -> Commands
+
+export fn control() -> ProcessControl
