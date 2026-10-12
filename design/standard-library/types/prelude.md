@@ -13,7 +13,7 @@ This page is the exact reference for standard exports, their identities, and API
 
 ## Names and identity
 
-Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Equal`, and `Hashable`, as specified by [module declarations](../../modules-and-capabilities/modules/declarations.md). The two bounds describe equality and hashing; all values are safe to share. Ordinary behavior requirements use imported operation contracts.
+Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Equal`, and `Hashable`, as specified by [module declarations](../../modules-and-capabilities/modules/declarations.md). The two bounds describe equality and hashing; passing values requires no sharing bound. Ordinary behavior requirements use imported operation contracts.
 
 `@std` is a reserved directory supplied by the pinned compiler/runtime distribution. Each path below is a standard module, and each name is an individual export. There are no wildcard imports or automatic imports of other exports from the same module.
 
@@ -81,7 +81,7 @@ Standard concurrency callbacks are ordinary function values. Parameters, fields,
 
 ### Inferred result packs
 
-A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`. Packs are safe to share, but have no equality, hashing, iteration, field access, or indexing. An ordinary generic identity function can preserve a parallel pack without a new source syntax.
+A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`. Packs may be passed between operations, but have no equality, hashing, iteration, field access, or indexing. An ordinary generic identity function can preserve a parallel pack without a new source syntax.
 
 ```manuscript
 fn parallel_map[T, U](
@@ -127,7 +127,7 @@ General user type packs, optional source parameters, generic operations, and thi
 
 ## Data services and additional host capabilities
 
-`@std/queues.ms` exports `Queue` and `QueueError`; `@std/sync.ms` exports `Synchronized` and `SynchronizedGuard`; `@std/pools.ms` exports `Pool`, `Lease`, and `PoolError`; `@std/builders.ms` exports `ListBuilder`, `MapBuilder`, `SetBuilder`, `BytesBuilder`, and `StringBuilder`. Their exact contracts live in [queues](../data-and-io/queues.md), [synchronized values and pools](../data-and-io/synchronized-state.md), and [builders](../data-and-io/builders.md). None is ambient. Opaque constructor parameter names are not source fields.
+`@std/queues.ms` exports `Queue`; `@std/sync.ms` exports `Synchronized` and `SynchronizedGuard`; `@std/pools.ms` exports `Pool`, `Lease`, and `PoolError`; `@std/builders.ms` exports `ListBuilder`, `MapBuilder`, `SetBuilder`, `BytesBuilder`, and `StringBuilder`. Their exact contracts live in [queues](../data-and-io/queues.md), [synchronized values and pools](../data-and-io/synchronized-state.md), and [builders](../data-and-io/builders.md). None is ambient. Opaque constructor parameter names are not source fields.
 
 `@std/time.ms` also exports `sleep(duration: Duration) -> Unit`, a sequential cancellable delay. Negative duration faults; zero performs a cancellation checkpoint.
 

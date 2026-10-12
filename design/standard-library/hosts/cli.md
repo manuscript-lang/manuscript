@@ -36,7 +36,7 @@ interface Files:
 
 Arguments exclude the executable name. Environment is a snapshot; duplicate OS names are resolved by the host before entry. Invalid UTF-8 in process inputs is a startup failure on native stderr with exit 70 before main runs. Relative file paths use the fixed startup working directory. The specified file API opens read-only files; file creation remains an additional API contract. Network and command operations are specified in [HTTP](http.md) and [subprocess execution](../data-and-io/streams.md).
 
-The host creates Files, Clock, and stdio behind ordinary contract views. Process and the File returned by Files.open are safe to share, like every source value. Applications and source fakes follow the same [view-conversion rules](../../core-language/types/contracts.md#explicit-contract-views).
+The host creates Files, Clock, and stdio behind ordinary contract views. Process and the File returned by Files.open are safe for concurrent access. Applications and source fakes follow the same [view-conversion rules](../../core-language/types/contracts.md#explicit-contract-views).
 
 Importing an interface supplies no authority. Files, clock, stdio, and environment arrive only through Process. The host closes roots after main and its scoped services finish; the application registers acquired files with `with`. Early root-stream closure affects every alias.
 

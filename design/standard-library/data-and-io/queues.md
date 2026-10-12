@@ -1,34 +1,67 @@
 +++
-title = "Bounded queues"
+title = "Local queues"
 weight = 41
 +++
 
-# Bounded queues
+# Local queues
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Use a queue to pass values from producers to consumers. `Queue[T]` has synchronized, bounded storage and accepts values of any element type. Send and receive can wait and respond to cancellation. Closing the queue is explicit.
+`Queue[T]` is a bounded, mutable FIFO for single-threaded use. Import it from `@std/queues.ms`. Every operation returns immediately: enqueue returns `false` when full, and dequeue returns `none` when empty.
 
-| Facility | Contract |
-| --- | --- |
-| `Queue[T]` | Arbitrary value elements; synchronized bounded queue; cancellable send/receive; explicit close |
+```manuscript
+import Queue from "@std/queues.ms"
+import panic from "@std/faults.ms"
 
-## Using the contract
-
-Sending and receiving must respond to cancellation. Explicit close is part of the contract, so shutdown needs a deliberate end to admission and communication. A queue is a library facility and does not introduce another concurrency syntax.
+test "a local queue":
+    let queue = Queue[Int](capacity: 2)
+    if not queue.enqueue(10):
+        return panic("queue is full")
+    match queue.dequeue():
+        some(value):
+            if value != 10:
+                return panic("unexpected value")
+        none:
+            return panic("queue is empty")
+```
 
 ## API
 
-`Queue[T](capacity: Int)` creates synchronized storage with positive capacity. The queue is opaque and neither equal nor hashable. A nonpositive capacity is a programming fault.
+`Queue[T](capacity: Int)` creates an empty queue with a fixed positive capacity. A nonpositive capacity is a programming fault. Elements may be any value type, including functions and contract views. The queue is an opaque reference without equality or hashing; aliases and saved methods use the same queue.
 
 ```manuscript
-fn send(value: T) -> Result[Unit, QueueError]
-fn receive() -> Optional[T]
-fn close() -> Unit
+fn enqueue(value: T) -> Bool
+fn dequeue() -> Optional[T]
+fn peek() -> Optional[T]
+fn length() -> Int
+fn is_empty() -> Bool
 ```
 
-Import `Queue` and `QueueError` from `@std/queues.ms`; `QueueError` has the nullary case `Closed`. Send waits for space, receive waits for a value, and both respond to caller cancellation. Close atomically stops send admission and wakes all waiters. Already buffered values drain in FIFO order; once drained, receive returns `none`, including repeated receives. Blocked and later senders return `error(cause: QueueError.Closed)`. Close is idempotent and is eligible for `with`. A committed send or receive may precede cancellation; cancellation does not roll back queue effects.
+`enqueue` appends at the back and returns `true`, or leaves the queue unchanged and returns `false` when full. `dequeue` removes the oldest value; `peek` reads it without removal. Both return `none` when empty. Dequeuing frees capacity, and an empty queue may be reused. There is no waiting, close operation, cleanup registration, or end-of-stream state. A queue cannot be a `with` initializer.
 
-See [collection elements](../../core-language/types/collections.md) and [cooperative cancellation](../../concurrency/cancellation.md#propagation-and-checkpoints).
+## Sharing a queue
 
-[Previous: Readers, writers, and streams](../data-and-io/streams.md) · [Next: Synchronized values, pools, and leases](../data-and-io/synchronized-state.md)
+For concurrent access, put the queue in one `Synchronized[Queue[T]]` and hold its guard throughout every operation, including reads. Each caller acquires its own guard from the same wrapper:
+
+```manuscript
+import Queue from "@std/queues.ms"
+import Synchronized from "@std/sync.ms"
+import Optional from "@std/optional.ms"
+
+fn make_queue() -> Synchronized[Queue[Int]]:
+    return Synchronized(value: Queue[Int](capacity: 16))
+
+fn enqueue(shared: Synchronized[Queue[Int]], value: Int) -> Bool:
+    with locked = shared.lock():
+        return locked.get().enqueue(value)
+
+fn dequeue(shared: Synchronized[Queue[Int]]) -> Optional[Int]:
+    with locked = shared.lock():
+        return locked.get().dequeue()
+```
+
+The queue itself has no mutex. The compiler allows references to be passed freely and does not enforce this locking discipline. A queue or bound method obtained through `locked.get()` remains an alias after the guard closes; it must not be used concurrently outside that lock. Wrapping the same queue in two separate synchronized containers does not coordinate them. Store the queue directly in one wrapper and share that wrapper.
+
+Wrapping a queue serializes access; it does not add waiting for values or free capacity. Never wait for another operation to fill or drain the queue while holding its lock. Lock acquisition follows the ordinary [Synchronized cancellation and cleanup rules](synchronized-state.md#synchronized).
+
+[Previous: Readers, writers, and streams](streams.md) · [Next: Synchronized values, pools, and leases](synchronized-state.md)

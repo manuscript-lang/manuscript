@@ -2196,18 +2196,11 @@ Import each required symbol with `import Name from "@std/queues.ms"`.
 Queue: Queue[T]
 type parameters: T
 field capacity: Int
-operation close: fn()->Unit
-operation receive: fn()->Optional[T]
-operation send: fn(value: T)->Result[Unit, QueueError]
-```
-
-## QueueError
-
-**Alternative**
-
-```manuscript
-QueueError: QueueError
-case Closed
+operation dequeue: fn()->Optional[T]
+operation enqueue: fn(value: T)->Bool
+operation is_empty: fn()->Bool
+operation length: fn()->Int
+operation peek: fn()->Optional[T]
 ```
 
 # @std/random.ms

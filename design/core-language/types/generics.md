@@ -30,7 +30,7 @@ The compiler-defined bounds are `Equal` and `Hashable`. They express comparison 
 | `Hashable` | Type supports hashing consistent with equality |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
-Bounds are checked at every application. `Hashable` implies `Equal` for bound satisfaction and body checking. All values are safe to share without a bound. Contract types do not gain equality or hashing.
+Bounds are checked at every application. `Hashable` implies `Equal` for bound satisfaction and body checking. All values may be passed between operations without a sharing bound; this does not add synchronization to mutable objects. Contract types do not gain equality or hashing.
 
 `Equal` and `Hashable` are not standalone value types, generic type arguments, view constructors, or implementation targets. Their intrinsic names cannot be redefined by module declarations, imports, or type parameters. Concurrent access requires no compiler-defined bound.
 

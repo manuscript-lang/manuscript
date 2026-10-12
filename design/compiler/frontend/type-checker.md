@@ -31,7 +31,7 @@ Accept source according to the [normative grammar](../../core-language/basics/gr
 | Recursive types and specialization | Reject inline storage cycles and expanding generic type/function specialization, including mutual calls and specialized function values; permit regular recursion guarded by immutable collection storage |
 | Equality and hashing | Derive only the specified properties; reject Float/collection keys and data containing ineligible components |
 | Explicit implementations | Match substituted operation names/labels/order/types exactly, check generic bodies and receiver-determined parameters, reject overlap ignoring bounds, enforce module-local extension visibility, and require explicit contract views |
-| Standard bindings | Resolve the minimal intrinsic prelude and explicit standard imports by canonical identity; check ordinary function signatures and exact contract views. All values are safe to share |
+| Standard bindings | Resolve the minimal intrinsic prelude and explicit standard imports by canonical identity; check ordinary function signatures and exact contract views. Passing values requires no sharing bound; queue synchronization is the caller's responsibility |
 | Public signatures | Reject internal nominal types leaking through exported fields, signatures, bounds, or operation surfaces |
 | Iteration | Admit List/Set/Map only, bind immutable element/MapEntry types, evaluate iterable once, and reject loop control outside the current function's loops |
 | Result propagation | Recognize the canonical standard Result identity; require the same exact error type at a try expression in the current function; do not infer missing operand type arguments backward |

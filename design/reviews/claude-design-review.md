@@ -19,7 +19,7 @@ Claude Code reviewed the 118 original design pages on 2026-10-11 for simplicity,
 | --- | --- |
 | C1 — incompatible try errors | Explicit Result matching; complete [parallel example](../concurrency/parallel.md); exact-error requirements on body fragments and Unit-test matching |
 | C2 — unresolved/untypable APIs | Closed [prelude](../standard-library/types/prelude.md), inferred packs, exact `item` label, optional arguments, status/reporting; Background uses one `Result[Unit, String]` callable signature |
-| C3 — contract sharing | All values, including contract views and callbacks, may be shared. Native mutable objects synchronize access; [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) protects complete updates. |
+| C3 — contract sharing | All values, including contract views and callbacks, may be shared. Native services synchronize access; local Queue access uses an explicit lock; [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) protects complete updates. |
 | C4 — executable/adapter boundary | Exact [CLI entry and Process](../standard-library/hosts/cli.md), standard stream contracts with declared cleanup, [versioned adapter binding](../modules-and-capabilities/adapters/manifests.md), acyclic schema/native/application packages |
 | C5 — missing data APIs | Normative [immutable data operations](../standard-library/data-and-io/operations.md), text/byte conversion, numeric conversion, collection lookup/update |
 | C6 — numeric semantics | Checked Int division/remainder, IEEE Float outcomes, finite Decimal coefficient/exponent grid and single rounding, literal/conversion boundaries in [numbers](../core-language/basics/numbers-and-booleans.md) |
@@ -132,7 +132,7 @@ The remaining problems sit where the language meets the runtime. Several load-be
 
 ### C3 — Concurrent safety of contract receivers
 
-The earlier receiver-proof proposals are superseded. All contract views and function values may be used concurrently. Native implementations synchronize mutable internals, including builders; source programs use [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) to protect complete updates. Sharing does not keep resources open or register cleanup.
+The earlier receiver-proof proposals are superseded. Contract views and function values may be passed freely. Their operations retain the receiver's concurrency contract. Native services and builders synchronize their internals; source programs use [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) to protect complete updates. Sharing does not keep resources open or register cleanup.
 
 ### C4 — No path from host to running code with real authority
 **Priority:** CRITICAL (no executable semantics; adapter build blocker)

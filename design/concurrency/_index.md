@@ -25,7 +25,7 @@ Concurrency APIs accept ordinary function values, including functions passed thr
 
 ## Sharing values and updating state
 
-All values may be shared freely, including functions, interface views, collections, and builders. Data is immutable; local `var` bindings are snapshotted by closures. Native mutable objects synchronize their internals. For a complete shared update, import `Synchronized` from `@std/sync.ms`:
+All values may be shared freely, including functions, interface views, collections, and builders. Records and collection snapshots are immutable; local `var` bindings are snapshotted by closures. Services and builders synchronize their internals. A local mutable `Queue` requires an explicit lock for concurrent access. For a complete shared update, import `Synchronized` from `@std/sync.ms`:
 
 ```manuscript
 import Synchronized from "@std/sync.ms"
@@ -35,7 +35,7 @@ with locked = counter.lock():
     locked.set(value: locked.get() + 1)
 ```
 
-The guard holds the lock until scope exit. Read the [synchronization contract](../standard-library/data-and-io/synchronized-state.md#synchronized) for cancellation, aliases, and reentry. Sharing does not extend a resource's open lifetime.
+The guard holds the lock until scope exit. Read the [synchronization contract](../standard-library/data-and-io/synchronized-state.md#synchronized) for cancellation, aliases, and reentry. For a shared FIFO, store a `Queue[T]` inside one `Synchronized` and hold its guard for every access; see [local queues](../standard-library/data-and-io/queues.md#sharing-a-queue). Sharing does not extend a resource's open lifetime.
 
 ## Importing concurrency APIs
 

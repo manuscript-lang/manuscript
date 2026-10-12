@@ -124,7 +124,7 @@ impl SameValue[T] for Box[T]:
         return self.value == other
 ```
 
-A `Box[T]` with no proof of `T: Equal` cannot use this implementation. All receivers are safe to share; equality remains a separate property.
+A `Box[T]` with no proof of `T: Equal` cannot use this implementation. Receiver references may be passed freely; equality remains a separate property.
 
 Two blocks overlap if their receiver and contract applications can simultaneously match the same pair of types. Check this by structurally unifying both pairs, with each receiver's inherited parameters treated as distinct variables and nominal identities and invariant arguments preserved. Ignore bounds in this check: different bounds cannot select competing implementations. Reject overlap between implementations visible in the same module at declaration checking, even if no current call uses it. There is no most-specific selection or specialization.
 
@@ -141,7 +141,7 @@ Implementations of `ReadValue[Int]` and `ReadValue[String]` for the same receive
 
 Create a contract view explicitly with `Contract(value: concrete)`. For a generic contract, use `Contract[T](value: concrete)`. The concrete type must have an applicable declared implementation and satisfy its bounds; a matching method name alone is not enough.
 
-A view keeps the same receiver reference without copying native state or extending its resource lifetime. Every receiver is safe to share, and native implementations synchronize their mutable internals.
+A view keeps the same receiver reference without copying native state or extending its resource lifetime. The receiver retains its concurrency contract: passing a view does not add a lock to a local mutable collection.
 
 ```manuscript
 fn use_increment(operation: Increment) -> Int:
@@ -162,7 +162,7 @@ Write generic view arguments explicitly or supply an expected application of the
 
 A concrete receiver or generic parameter may call an operation directly when exactly one implemented/bounded contract supplies its name. Otherwise select a view, such as `Increment(value: offset).apply(value: 1)`. Arguments and result types cannot resolve operation-name ambiguity. A bound method retains its receiver and has the operation's ordinary function type.
 
-A contract type satisfies its own exact named generic bound without a source `impl`. For example, `Converter[Int]` satisfies `T: Converter[Int]`, but not `T: Converter[String]`. All such values are safe to share.
+A contract type satisfies its own exact named generic bound without a source `impl`. For example, `Converter[Int]` satisfies `T: Converter[Int]`, but not `T: Converter[String]`. All such values may be passed between operations.
 
 ```manuscript
 fn invoke[T: Increment](operation: T) -> Int:
@@ -176,7 +176,7 @@ Both calls satisfy the same bound; neither inserts an implicit conversion at the
 
 ## Concurrent use
 
-All contract values may be shared and invoked concurrently. There is one view type, with ordinary spelling such as `ReadValue[Int]`. Explicit view construction checks the implementation relationship and preserves the receiver reference. No conversion adds synchronization, equality, hashing, cleanup, or lifetime extension. Every native implementation must synchronize its own mutable internals and lifecycle; source implementations use immutable fields and synchronized services.
+All contract values may be passed between operations; concurrent invocation follows the receiver's contract. There is one view type, with ordinary spelling such as `ReadValue[Int]`. Explicit view construction checks the implementation relationship and preserves the receiver reference. No conversion adds synchronization, equality, hashing, cleanup, or lifetime extension. Native services synchronize their internals and lifecycle. Source implementations that need a local mutable queue across concurrent calls keep it behind Synchronized.
 
 ## Contracts and external authority
 

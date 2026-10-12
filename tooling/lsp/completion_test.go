@@ -92,7 +92,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"list methods", "import List from \"@std/collections.ms\"\nfn count(items: List[Int]) -> Int:\n    return items.|\n", []string{"length", "get", "append", "concat"}, []string{"byte_length", "send"}},
 		{"member prefix", "fn size(text: String) -> Int:\n    return text.byte_|\n", []string{"byte_length"}, []string{"parse_int"}},
 		{"record fields", "type Point:\n    x: Int\n    y: String\nfn read(point: Point) -> Int:\n    return point.|\n", []string{"x", "y"}, []string{"length"}},
-		{"native opaque fields", "import Queue from \"@std/queues.ms\"\nfn read(queue: Queue[Int]) -> Unit:\n    queue.|\n", []string{"send", "receive", "close"}, []string{"capacity"}},
+		{"native opaque fields", "import Queue from \"@std/queues.ms\"\nfn read(queue: Queue[Int]) -> Unit:\n    queue.|\n", []string{"enqueue", "dequeue", "peek", "length", "is_empty"}, []string{"capacity", "send", "receive", "close"}},
 		{"named arguments incomplete call", "fn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer() -> Int:\n    return sum(le|\n", []string{"left"}, []string{"right"}},
 		{"used arguments omitted", "fn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer() -> Int:\n    return sum(left: 1, |\n", []string{"right"}, []string{"left"}},
 		{"typed argument expression", "fn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer(input: Int) -> Int:\n    return sum(left: inp|\n", []string{"input"}, nil},
