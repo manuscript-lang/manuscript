@@ -38,7 +38,7 @@ const replayFormat = 1
 // replayWork is the go command's spelling of its temporary build directory.
 const replayWork = "$WORK"
 
-func replayKey(kind BuildType) (string, error) {
+func replayKey(kind BuildType, tags []string) (string, error) {
 	tool, _, err := goToolchain()
 	if err != nil {
 		return "", err
@@ -51,9 +51,10 @@ func replayKey(kind BuildType) (string, error) {
 		Format    int
 		Tool      string
 		Kind      BuildType
+		Tags      []string
 		Flags     []string
 		Toolchain map[string]string
-	}{replayFormat, tool, kind, kind.nativeFlags(), toolchain})
+	}{replayFormat, tool, kind, tags, kind.nativeFlags(), toolchain})
 	return digest(identity), nil
 }
 
@@ -183,7 +184,8 @@ func captureReplay(trace []byte, dir, packagePath string, imports []string) (*re
 	if err != nil {
 		return nil, false
 	}
-	// The application's own archive is recreated in the replay work directory.
+	// Only the application's own archive is recreated in the replay work
+	// directory; dependencies the go command just compiled there are not.
 	profile.ImportConfig = strings.ReplaceAll(string(importConfig), work, replayWork)
 	profile.LinkConfig = strings.ReplaceAll(string(linkConfig), work, replayWork)
 	for _, config := range []string{profile.ImportConfig, profile.LinkConfig} {
@@ -193,7 +195,7 @@ func captureReplay(trace []byte, dir, packagePath string, imports []string) (*re
 				if !found {
 					return nil, false
 				}
-				if strings.HasPrefix(archive, replayWork) {
+				if archive == filepath.Join(replayWork, "b001", "_pkg_.a") {
 					continue
 				}
 				if !filepath.IsAbs(archive) {

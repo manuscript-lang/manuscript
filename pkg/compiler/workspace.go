@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -115,10 +116,10 @@ func writeWorkspace(dir string) error {
 // applicationDir places generated source in a package named by its content,
 // so identical builds produce the same package path and concurrent builds of
 // different programs never share a directory.
-func applicationDir(root, source string, kind BuildType) (string, error) {
+func applicationDir(root, source string, kind BuildType, tags []string) (string, error) {
 	apps := filepath.Join(root, "apps")
 	removeExpiredApplications(apps)
-	dir := filepath.Join(apps, digest([]byte(string(kind) + "\x00" + source))[:32])
+	dir := filepath.Join(apps, digest([]byte(string(kind) + "\x00" + strings.Join(tags, ",") + "\x00" + source))[:32])
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", err
 	}

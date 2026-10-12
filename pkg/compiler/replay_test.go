@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestSplitTraceCommand(t *testing.T) {
@@ -25,6 +26,8 @@ func TestSplitTraceCommand(t *testing.T) {
 	}
 }
 
+// testProgram returns generated source unique to this run, so Go's package
+// cache cannot satisfy its compilation and leave nothing to record.
 func testProgram(t *testing.T, label string) string {
 	t.Helper()
 	result := CompileSource("main.ms", fmt.Sprintf(`import stdout from "@std/io.ms"
@@ -35,7 +38,7 @@ export fn main() -> Int:
             return 0
         error(_):
             return 1
-`, label), Options{Entry: true})
+`, fmt.Sprint(label, " ", time.Now().UnixNano())), Options{Entry: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
@@ -62,15 +65,18 @@ func TestNativeBuildReplaysRecordedCommands(t *testing.T) {
 	t.Setenv("MANUSCRIPT_CACHE_DIR", t.TempDir())
 	dir := t.TempDir()
 	for _, kind := range []BuildType{Release, Debug} {
-		first := executableName(dir, "first-"+string(kind))
-		if err := buildNative(testProgram(t, "first "+string(kind)), first, kind); err != nil {
-			t.Fatal(err)
+		// A cold Debug runtime compiles inside the go command's work directory,
+		// which cannot be replayed; the next build finds it in Go's cache.
+		for _, label := range []string{"cold", "first"} {
+			if err := buildNative(testProgram(t, label+" "+string(kind)), executableName(dir, label+"-"+string(kind)), kind, nil); err != nil {
+				t.Fatal(err)
+			}
 		}
 		root, err := workspaceRoot()
 		if err != nil {
 			t.Fatal(err)
 		}
-		key, err := replayKey(kind)
+		key, err := replayKey(kind, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -90,7 +96,7 @@ func TestNativeBuildReplaysRecordedCommands(t *testing.T) {
 			t.Fatal(err)
 		}
 		fallback := executableName(dir, "fallback-"+string(kind))
-		if err := buildNative(testProgram(t, "fallback "+string(kind)), fallback, kind); err != nil {
+		if err := buildNative(testProgram(t, "fallback "+string(kind)), fallback, kind, nil); err != nil {
 			t.Fatal(err)
 		}
 		if got := runProgram(t, fallback); !strings.Contains(got, "fallback "+string(kind)) {
@@ -100,7 +106,7 @@ func TestNativeBuildReplaysRecordedCommands(t *testing.T) {
 			t.Fatal("fallback did not refresh the replay profile")
 		}
 		replayed := executableName(dir, "second-"+string(kind))
-		if err := buildNative(source, replayed, kind); err != nil {
+		if err := buildNative(source, replayed, kind, nil); err != nil {
 			t.Fatal(err)
 		}
 		if got := runProgram(t, replayed); !strings.Contains(got, "second "+string(kind)) {
@@ -111,11 +117,14 @@ func TestNativeBuildReplaysRecordedCommands(t *testing.T) {
 
 func TestReplayRequiresMatchingImportsAndArchives(t *testing.T) {
 	t.Setenv("MANUSCRIPT_CACHE_DIR", t.TempDir())
-	if err := buildNative(testProgram(t, "seed"), executableName(t.TempDir(), "seed"), Release); err != nil {
-		t.Fatal(err)
+	// The first build may compile the runtime itself and record nothing.
+	for _, label := range []string{"cold", "seed"} {
+		if err := buildNative(testProgram(t, label), executableName(t.TempDir(), label), Release, nil); err != nil {
+			t.Fatal(err)
+		}
 	}
 	root, _ := workspaceRoot()
-	key, err := replayKey(Release)
+	key, err := replayKey(Release, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +156,7 @@ func TestConcurrentNativeBuildsShareWorkspace(t *testing.T) {
 		go func() {
 			defer group.Done()
 			// Pairs build identical source into distinct outputs.
-			errors[i] = buildNative(testProgram(t, fmt.Sprint("program ", i/2)), executableName(dir, fmt.Sprint("program", i)), Release)
+			errors[i] = buildNative(testProgram(t, fmt.Sprint("program ", i/2)), executableName(dir, fmt.Sprint("program", i)), Release, nil)
 		}()
 	}
 	group.Wait()

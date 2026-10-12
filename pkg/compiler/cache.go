@@ -258,10 +258,12 @@ func BuildCheckedWithType(result Result, output, cacheDir string, kind BuildType
 		source = debugSource(result)
 		metadata.SourceRoot = result.SourceRoot
 	}
+	tags := runtimeTags(result.Program)
 	identity, _ := json.Marshal(struct {
 		Metadata        BuildMetadata
 		GeneratedSHA256 string
-	}{metadata, digest([]byte(source))})
+		RuntimeTags     []string `json:",omitempty"`
+	}{metadata, digest([]byte(source)), tags})
 	metadata.BuildID = digest(identity)
 	cacheBinary, cacheMetadata := "", ""
 	if cacheDir != "" {
@@ -296,7 +298,7 @@ func BuildCheckedWithType(result Result, output, cacheDir string, kind BuildType
 		defer os.RemoveAll(staging)
 		built = filepath.Join(staging, "program")
 	}
-	if err := buildNative(source, built, kind); err != nil {
+	if err := buildNative(source, built, kind, tags); err != nil {
 		return metadata, err
 	}
 	executable, err := fileDigest(built)

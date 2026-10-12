@@ -58,8 +58,13 @@ func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
 	if strings.Contains(source, "github.com/manuscript-lang/manuscript/pkg/runtime") {
 		t.Fatal("retained runtime import")
 	}
-	if err := os.WriteFile(filepath.Join(t.TempDir(), "main.go"), []byte(source), 0600); err != nil {
+	// Emitted source is a complete program against the vendored dependencies.
+	executable := filepath.Join(t.TempDir(), "standalone")
+	if err := compiler.Build(source, executable); err != nil {
 		t.Fatal(err)
+	}
+	if data, err := commandOutput(t, executable); err != nil || !strings.Contains(string(data), "0 failed") {
+		t.Fatalf("standalone transcript %q, error %v", data, err)
 	}
 }
 
