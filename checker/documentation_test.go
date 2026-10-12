@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/manuscript-lang/manuscript/parser"
+	"github.com/manuscript-lang/manuscript/syntax"
 )
 
 func TestStandardLibrarySnapshot(t *testing.T) {
@@ -97,5 +98,36 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 		if !strings.Contains(exports[key].Declaration, want) {
 			t.Errorf("%s lost source syntax %q: %s", key, want, exports[key].Declaration)
 		}
+	}
+}
+
+func TestModuleDocumentationRetainsDefaults(t *testing.T) {
+	source := `fn helper(left: Int, right: Int) -> Int:
+    return left + right
+export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: fn(value: Int) -> Int = (fn(value: Int) -> Int:
+    return value + 1
+)) -> Int:
+    return callback(second)
+`
+	module, err := parser.Parse("defaults.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := Check([]*syntax.Module{module}, nil)
+	if len(program.Diagnostics) != 0 {
+		t.Fatal(program.Diagnostics)
+	}
+	documentation := ModuleDocumentation(program)
+	if len(documentation) != 1 || len(documentation[0].Declarations) != 1 {
+		t.Fatal(documentation)
+	}
+	declaration := documentation[0].Declarations[0].Declaration
+	for _, want := range []string{"first: Int = -3", "second: Int = helper(left: first, right: 2)", `text: String = "literal, )"`, "callback: fn(value: Int) -> Int = (fn(value: Int) -> Int:\n    return value + 1\n)"} {
+		if !strings.Contains(declaration, want) {
+			t.Errorf("default missing %q: %s", want, declaration)
+		}
+	}
+	if strings.Contains(declaration, "return callback") {
+		t.Fatal("included function body", declaration)
 	}
 }
