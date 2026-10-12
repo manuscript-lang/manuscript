@@ -45,7 +45,31 @@ The rule applies to ordinary functions, methods, function values, and library AP
 
 Match payload bindings such as `some(value):` are patterns, rather than calls; see [pattern matching](../control-flow/pattern-matching.md).
 
-Source declarations cannot define default or optional parameters, variadic parameters, or argument spreading. An `Optional[T]` source parameter is still required: callers explicitly supply `none` when absent. Existing trusted library API contracts may explicitly permit omitted named arguments; that permission does not follow from an `Optional` value type. Unknown labels, duplicate arguments, missing required arguments, and unlabeled arguments to multi-parameter functions are compile errors. Supplying both `decrement(3, value: 4)` arguments duplicates the sole parameter and is rejected. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); labels do not authorize numeric or contract conversions.
+A parameter with a default may be omitted; every other parameter remains required. An `Optional[T]` parameter without a default is still required: callers explicitly supply `none` when absent. Variadic parameters and argument spreading are not supported. Existing trusted library API contracts may explicitly permit omitted named arguments; that permission does not follow from an `Optional` value type. Unknown labels, duplicate arguments, missing required arguments, and unlabeled arguments to multi-parameter functions are compile errors. Supplying both `decrement(3, value: 4)` arguments duplicates the sole parameter and is rejected. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); labels do not authorize numeric or contract conversions.
+
+## Default arguments
+
+Write `= expression` after a parameter's type to supply a default:
+
+```manuscript
+fn subtract(amount: Int, deduction: Int = 1) -> Int:
+    return amount - deduction
+
+fn example() -> Int:
+    let usual = subtract(amount: 5)
+    let explicit = subtract(amount: 5, deduction: 2)
+    return usual + explicit
+```
+
+`usual` is `4` and `explicit` is `3`. A function whose sole parameter has a default also accepts `function()`. Multi-parameter functions still require labels on every supplied argument, even when only one is supplied. Defaults may appear before required parameters because labels identify arguments.
+
+A default is checked against its explicit parameter type in the function's lexical scope. It may use imports, module declarations, earlier parameters, and an implementation method's `self`. Current and later parameters are not yet in scope. Anonymous functions may use captured outer bindings in defaults; those bindings follow the ordinary snapshot and sharing rules.
+
+Evaluate the callable and all supplied arguments first, in written order. Then evaluate omitted defaults once each in parameter declaration order, before entering the body. Defaults run afresh on each invocation; supplying a value skips its default entirely. Explicit `none`, `unit`, `false`, and zero are supplied values. A failing default prevents later defaults and the body from running. `try` in a default propagates from the called function under its declared result type.
+
+Named functions, anonymous functions, and implementation methods with bodies may declare defaults. Interface operation signatures, function-type annotations, record fields, and alternative payloads cannot. A method default permits omission through its concrete receiver or inferred bound method value; calls through an interface view follow the interface's required signature. Defaults do not provide generic inference: omitted arguments supply no type evidence, and a generic default must type-check under the declared bounds.
+
+An inferred immutable local copy of a callable retains its defaults. Explicit function-type annotations, mutable bindings, function parameters and results, fields, and generic forwarding require the full argument list. Defaults are not part of function-type identity; a defaulted function can be passed wherever its complete labeled signature is expected.
 
 ## Collections as arguments
 
@@ -71,7 +95,7 @@ See [collections](../types/collections.md) for list literals and element require
 
 Execution and argument evaluation follow source order. When arguments contain calls, those calls run in the order written before the outer function receives their results. Named arguments do not reorder execution to match the parameter declaration.
 
-Evaluate the callable expression, including a method receiver, once before its arguments. Then evaluate argument expressions from left to right in their written order. Arrange the resulting values into declaration order only after evaluation. A failed or nonreturning expression prevents all later arguments and the outer invocation from running. Constructor fields follow the same rule.
+Evaluate the callable expression, including a method receiver, once before its arguments. Then evaluate supplied argument expressions from left to right in their written order. Arrange those values into declaration order after their evaluation, then evaluate omitted [defaults](#default-arguments) in the called function before its body. A failed or nonreturning supplied expression prevents all later arguments and the outer invocation from running. Constructor fields follow the same rule.
 
 This also matters for [concurrency APIs](../../concurrency/parallel.md#preparation): argument preparation and closure creation happen in the caller before any operation starts.
 

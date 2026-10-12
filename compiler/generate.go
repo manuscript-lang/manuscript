@@ -151,11 +151,19 @@ func (g *generator) function(params []syntax.Parameter, result *syntax.Type, bod
 		labels = append(labels, p.Name)
 	}
 	out.WriteString("rt.NewSourceFunction(" + stringsGo(labels) + "," + g.key(t.Result) + "," + quote(result.Pos.String()) + ",func(ctx *rt.Execution,args []rt.Value)rt.Value{\ncleanupStack:=rt.NewCleanupStack();defer cleanupStack.Unwind()\n")
-	for i, b := range bindings {
-		out.WriteString(fmt.Sprintf("%s := args[%d]; _ = %s\n", b.ID, i, b.ID))
-	}
 	if self != nil {
 		out.WriteString(self.ID + " := receiver; _ = " + self.ID + "\n")
+	}
+	for i, b := range bindings {
+		out.WriteString(fmt.Sprintf("%s := args[%d]; _ = %s\n", b.ID, i, b.ID))
+		// Checked source values are concrete (including Unit and Optional.none);
+		// Invoke leaves nil only for an omitted argument.
+		if params[i].Default != nil {
+			pos := params[i].Default.Pos
+			filename := strings.NewReplacer("\n", "_", "\r", "_").Replace(pos.File)
+			fmt.Fprintf(&out, "//line %s:%d\n", filename, pos.Line)
+			out.WriteString("if " + b.ID + " == nil { " + b.ID + " = " + g.expression(params[i].Default) + " }\n")
+		}
 	}
 	out.WriteString(g.body(body))
 	out.WriteString("//line manuscript.generated.go:1\nreturn rt.Unit{}\n})")

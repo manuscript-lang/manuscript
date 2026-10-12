@@ -76,6 +76,7 @@ func rebase(module *syntax.Module, offset, lines int) {
 		for i := range params {
 			position(&params[i].Pos)
 			typ(params[i].Type)
+			expression(params[i].Default)
 		}
 	}
 	typ = func(t *syntax.Type) {

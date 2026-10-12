@@ -168,7 +168,7 @@ func contextAt(d document, p position) (cursorContext, error) {
 		if previous.kind != "name" && previous.kind != "]" && previous.kind != ")" {
 			continue
 		}
-		if at >= 2 && before[at-2].text == "fn" {
+		if functionParametersAt(before, at) {
 			continue
 		}
 		c.callOpen = t.start
@@ -212,7 +212,56 @@ func contextAt(d document, p position) (cursorContext, error) {
 	lineStart := strings.LastIndex(d.Text[:c.start], "\n") + 1
 	line := strings.TrimSpace(d.Text[lineStart:c.start])
 	c.typeContext = strings.HasSuffix(line, "->") || strings.Contains(line, "let ") && strings.Contains(line, ":") && !strings.Contains(line, "=") || (strings.HasPrefix(line, "fn ") || strings.HasPrefix(line, "export fn ")) && strings.Contains(line, ":")
+	// A default is an expression inside a function header. Track only separators
+	// at that parameter list's depth so nested calls and types keep their context.
+	for index := len(stack) - 1; index >= 0; index-- {
+		at := stack[index]
+		if before[at].kind != "(" || !functionParametersAt(before, at) {
+			continue
+		}
+		depth, defaultValue := 0, false
+		for _, token := range before[at+1:] {
+			switch token.kind {
+			case "(", "[", "{":
+				depth++
+			case ")", "]", "}":
+				depth--
+			case "=":
+				if depth == 0 {
+					defaultValue = true
+				}
+			case ",":
+				if depth == 0 {
+					defaultValue = false
+				}
+			}
+		}
+		if defaultValue {
+			c.typeContext = false
+		}
+		break
+	}
 	return c, nil
+}
+func functionParametersAt(tokens []editorToken, at int) bool {
+	if at > 0 && tokens[at-1].text == "fn" {
+		return true
+	}
+	previous := at - 1
+	if previous >= 0 && tokens[previous].kind == "]" {
+		depth := 1
+		previous--
+		for previous >= 0 && depth > 0 {
+			if tokens[previous].kind == "]" {
+				depth++
+			}
+			if tokens[previous].kind == "[" {
+				depth--
+			}
+			previous--
+		}
+	}
+	return previous > 0 && tokens[previous].kind == "name" && tokens[previous-1].text == "fn"
 }
 func copyDocuments(docs map[string]document) map[string]document {
 	copy := map[string]document{}

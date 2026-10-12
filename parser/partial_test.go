@@ -54,3 +54,15 @@ func TestPartialGroupedImportsPreserveSymbolOffsets(t *testing.T) {
 		}
 	}
 }
+
+func TestPartialDefaultsPreserveExpressionPositions(t *testing.T) {
+	source := "fn broken(\nfn later(first: Int = 3, second: Int = first + 1) -> Int:\n    return second\n"
+	module, issues := ParsePartial("defaults.ms", source)
+	if len(issues) == 0 || len(module.Declarations) != 1 {
+		t.Fatal(module, issues)
+	}
+	value := module.Declarations[0].Params[1].Default
+	if value.Left.Pos.Line != 2 || value.Left.Pos.Offset != strings.Index(source, "first +") || value.Right.Pos.Offset != strings.Index(source, "1)") {
+		t.Fatal("default expression positions were not rebased", value)
+	}
+}

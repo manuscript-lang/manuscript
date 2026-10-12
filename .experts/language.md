@@ -49,3 +49,11 @@ Decision: support grouped symbol imports, and allow an omitted call label for a 
 Apply when: changing imports, calls, grammar, or editor assistance.
 Evidence: [grouped-import request](codex://threads/01a12e1a-7d2d-7646-b5fc-2dc8fdd60038); [single-parameter request](codex://threads/01a12e4a-98e8-775e-9e6c-c101a8ac300d).
 Verify: grouped imports resolve each symbol and its editor location; one-parameter calls exercise both spellings, multi-parameter calls require labels, and missing arguments still fail. Consult current grammar and compatibility rules for methods, constructors, and function values rather than assuming identical boundaries.
+
+### Default arguments must not leak across callable replacement
+
+Verified: defaults are permissions on a known callable, not part of function-type identity. Retaining that permission on a mutable binding or inferred generic type could let a required-argument function replace a defaulted function, then be called with a missing argument. Explicit function types, mutable bindings, and generic inference erase defaults; inferred immutable copies retain them.
+
+Apply when: changing callable metadata, assignment, generic inference, default arguments, or function-value tooling.
+Evidence: [canonical default rules](../design/core-language/functions/declarations-and-calls.md#default-arguments); [boundary rejection tests](../checker/defaults_test.go); [native default behavior](../tests/e2e/testdata/accept/default-arguments.ms).
+Verify: replace a defaulted function with a required-argument function through a mutable binding and reject omission; reject omission after generic forwarding, while an inferred immutable copy still accepts it.
