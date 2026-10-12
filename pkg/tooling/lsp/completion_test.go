@@ -233,6 +233,24 @@ func TestExpandedStandardMembersAndInterfaceSnippet(t *testing.T) {
 	}
 }
 
+func TestTimeReceiverCompletion(t *testing.T) {
+	for _, test := range []struct {
+		typ     string
+		methods []string
+	}{
+		{"Duration", []string{"add", "multiply", "to_nanoseconds", "to_seconds"}},
+		{"Instant", []string{"shift", "difference", "compare"}},
+		{"Timestamp", []string{"to_string", "unix_seconds", "nanoseconds", "shift", "difference", "compare"}},
+	} {
+		items := completeSource(t, "import "+test.typ+" from \"@std/time.ms\"\nfn work(value: "+test.typ+") -> Unit:\n    value.|\n")
+		for _, method := range test.methods {
+			if itemNamed(items, method) == nil {
+				t.Errorf("%s missing %s: %v", test.typ, method, items)
+			}
+		}
+	}
+}
+
 func TestGroupedImportCompletion(t *testing.T) {
 	for _, source := range []string{"import { List, Ma| } from \"@std/collections.ms\"\n", "import {\n    List,\n    Ma|,\n} from \"@std/collections.ms\"\n"} {
 		items := completeSource(t, source)
