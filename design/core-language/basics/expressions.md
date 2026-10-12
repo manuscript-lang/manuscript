@@ -15,7 +15,7 @@ Rows are ordered from highest to lowest precedence.
 
 | Form | Associativity and restriction |
 | --- | --- |
-| Member access `.`, explicit type application `[...]`, named call `(...)` | Left to right; type application is not runtime indexing |
+| Member access `.`, explicit type application `[...]`, call `(...)` | Left to right; type application is not runtime indexing |
 | Prefix `+`, `-`, `try` | Right to left |
 | `*`, `/`, `%` | Left to right |
 | `+`, `-` | Left to right |
@@ -35,7 +35,7 @@ Product       = Prefix, { ("*" | "/" | "%"), Prefix } ;
 Prefix        = ("+" | "-" | "try"), Prefix | Postfix ;
 Postfix       = Primary, { ".", Name | TypeArguments | CallArguments } ;
 CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
-Argument      = Name, ":", Expression ;
+Argument      = [ Name, ":" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
               | "true" | "false" | "unit" | "self" | Name
               | "(", Expression, ")" | SharedViewConstruction | ListLiteral | FunctionExpression ;
@@ -46,7 +46,7 @@ FunctionExpression = "fn", "(", [ Parameters ], ")", "->", Type, Suite ;
 
 The common `Comparison` production makes `a < b == c`, `a == b == c`, and `a < b < c` syntax errors. Comparisons with explicit grouping, such as `(a < b) == flag`, are ordinary Bool equality. `not a == b` means `not (a == b)`. `try read() + 1` means `(try read()) + 1`; use `try (expression)` to propagate the result of a larger expression.
 
-A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. Its brackets cannot index a list. Collection/text lookup and updates use declared library operations; neither `values[0]` nor slicing syntax is supported. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Constructors, explicit contract views such as `Payments(value: card)`, and methods use ordinary named-call syntax.
+A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. Its brackets cannot index a list. Collection/text lookup and updates use declared library operations; neither `values[0]` nor slicing syntax is supported. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Argument labels are optional only for functions and methods with exactly one declared parameter; the checker enforces [call rules](../functions/declarations-and-calls.md#argument-names). Constructors and explicit contract views such as `Payments(value: card)` require labels.
 
 A shared view uses `(Payments & Shareable)(value: card)`. The parenthesized type must be followed immediately by its named call; it is not a function value or a binary `&` expression. [Contract views](../types/contracts.md#shared-contract-views) define the required implementation and sharing proofs, generic context, and single `value` argument.
 

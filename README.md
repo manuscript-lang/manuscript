@@ -70,7 +70,7 @@ The implementation includes cleanup, joined and background work, queues, state a
 | --- | --- |
 | `syntax` | Syntax tree, patterns, and source diagnostics |
 | `lexer` | UTF-8 tokens, exact layout, literals, and interpolation boundaries |
-| `parser` | Declarations, types, named calls, expressions, and suites |
+| `parser` | Declarations, types, calls, expressions, and suites |
 | `checker` | Modules, nominal types, inference, contracts, bounds, captures, control flow, and effects |
 | `compiler` | Project loading, checked Go lowering, native builds, pins, caches, and build metadata |
 | `runtime` | Values, data/services, cleanup, concurrency, and explicit host capabilities |

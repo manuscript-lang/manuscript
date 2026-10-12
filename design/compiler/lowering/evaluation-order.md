@@ -7,7 +7,7 @@ weight = 95
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Named arguments can be written in a different order from the parameters in a declaration. Generated Go must still evaluate them in the order the caller wrote. Resolve the names first, evaluate each argument into a temporary value, then arrange those values for the Go call. Preserve short-circuit behavior too.
+Named arguments can be written in a different order from the parameters in a declaration. Generated Go must still evaluate them in the order the caller wrote. Resolve the names first, including an omitted label on a single-parameter function. Evaluate each argument into a temporary value, then arrange those values for the Go call. Preserve short-circuit behavior too.
 
 A `tasks: [...]` literal constructs a typed pack of function values in source order. Constructing closures snapshots their local captures; it does not invoke their bodies. If preparation fails, the concurrency API has not started work. Native acquisitions during preparation retain their explicit delivery/cleanup contracts.
 

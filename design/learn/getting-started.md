@@ -34,7 +34,7 @@ export fn main(process: Process) -> Int:
 
 The import names the one standard declaration this module needs. `main` receives the process capability, including arguments and output streams. `let` binds a value with an inferred local type. String interpolation inserts the argument count. `write(data: ...)` names its argument and returns a `Result`; the match handles success and failure. The returned integer becomes the exit status.
 
-Indentation defines blocks. Every supplied call argument is named; zero-argument calls use `()`. Public functions are explicitly exported, and each `.ms` file is a module.
+Indentation defines blocks. A function with one parameter permits calls such as `process.stdout.write(message.to_bytes())` or `process.stdout.write(data: message.to_bytes())`. Functions with multiple parameters require labels on every supplied argument; zero-parameter calls use `()`. Public functions are explicitly exported, and each `.ms` file is a module.
 
 ## Build and inspect
 

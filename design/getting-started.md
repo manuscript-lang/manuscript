@@ -75,7 +75,7 @@ Read it from top to bottom:
 - `process.stdout` gives access to standard output. `write` takes a named `data` argument containing bytes, so `to_bytes()` converts the text first.
 - `write` returns a `Result`. The `match` handles both outcomes: success returns exit code `0`, and failure returns `1`. The `_` means this example ignores the outcome's payload.
 
-Four spaces start each nested block. Function calls name every supplied argument, including a call with only one argument.
+Four spaces start each nested block. Functions with multiple parameters name every supplied argument. A single-parameter function may omit its argument label.
 
 ## 5. Build a standalone executable
 

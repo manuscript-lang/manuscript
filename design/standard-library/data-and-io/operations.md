@@ -11,6 +11,8 @@ This is the reference for basic methods on standard data types. These methods be
 
 Import standard types when naming them. Ordinary bracket list literals need `List`. A type inferred from a return value does not need its own import unless you name it in source. Updates produce new immutable values and leave the original unchanged. Sizes and indexes use `Int`; allocation failure is a host failure.
 
+A single-parameter operation may omit its argument label. Multi-parameter operations require the exact labels below.
+
 ## Collections
 
 | Receiver or constructor | Signature/result |

@@ -131,7 +131,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			if !explicit {
 				sub := map[string]*Type{}
 				vars := variableSet(s.Variables)
-				for _, arg := range e.Args {
+				for _, arg := range functionArguments(e.Args, signature.Params) {
 					if c.contextual(arg.Value) {
 						continue
 					}
@@ -183,6 +183,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		c.error(e.Pos, "type", "callee is not a function")
 		return i
 	}
+	i.Arguments = functionArguments(e.Args, signature.Params)
 	params := signature.Params
 	if s != nil && s.Native == "parallel_map" {
 		for _, arg := range e.Args {
@@ -191,7 +192,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			}
 		}
 	}
-	i.NoReturn = callable.NoReturn || c.arguments(e.Args, params)
+	i.NoReturn = callable.NoReturn || c.arguments(i.Arguments, params)
 	i.Type = signature.Result
 	if i.Native == "http_serve" {
 		for _, arg := range e.Args {
@@ -209,7 +210,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		}
 	}
 	if i.Native == "background_start" {
-		for _, arg := range e.Args {
+		for _, arg := range i.Arguments {
 			if arg.Name == "operation" && !c.Expressions[arg.Value].Proof {
 				c.error(arg.Pos, "type", "Background.start requires a shareable callable")
 			}
@@ -220,10 +221,32 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	}
 	return i
 }
+
+// Only a callable with one declared parameter permits an omitted label.
+// Keep the source AST intact for tools and repeated checking.
+func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument {
+	if len(params) != 1 {
+		return args
+	}
+	resolved := append([]syntax.Argument(nil), args...)
+	for index := range resolved {
+		if resolved[index].Name == "" {
+			resolved[index].Name = params[0].Name
+		}
+	}
+	return resolved
+}
+
 func (c *checker) arguments(args []syntax.Argument, params []Param) bool {
 	seen := map[string]bool{}
 	noReturn := false
 	for _, arg := range args {
+		if arg.Name == "" {
+			c.error(arg.Pos, "type", "argument labels are required for this call")
+			v := c.expression(arg.Value, nil)
+			noReturn = noReturn || v.NoReturn
+			continue
+		}
 		if seen[arg.Name] {
 			c.error(arg.Pos, "type", "duplicate argument "+arg.Name)
 		}

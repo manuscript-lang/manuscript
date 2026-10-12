@@ -63,6 +63,8 @@ type Info struct {
 	Proof, NoReturn bool
 	Captures        []*Binding
 	TypeArgs        []*Type
+	// Arguments retains written order with omitted function labels resolved.
+	Arguments []syntax.Argument
 }
 type Flow struct{ FallsThrough bool }
 type Program struct {
