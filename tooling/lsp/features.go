@@ -118,6 +118,7 @@ func inlayHints(result compiler.Result, d document, requested span) []any {
 			for _, arm := range s.Arms {
 				statements(arm.Body)
 			}
+			expression(s.Target)
 			expression(s.Value)
 		}
 	}

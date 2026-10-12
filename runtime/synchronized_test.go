@@ -144,9 +144,9 @@ func TestSharedBuilderFreezeRace(t *testing.T) {
 			}
 		}()
 	}
-	snapshot := Invoke(root, builder.Operation("freeze"), nil).(List)
+	snapshot := Invoke(root, builder.Operation("freeze"), nil).(*List)
 	wait.Wait()
-	again := Invoke(root, builder.Operation("freeze"), nil).(List)
+	again := Invoke(root, builder.Operation("freeze"), nil).(*List)
 	if len(snapshot.Items) != len(again.Items) {
 		t.Fatal("frozen snapshot changed")
 	}

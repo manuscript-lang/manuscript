@@ -11,6 +11,10 @@ import Optional from "@std/optional.ms"
 interface ValueOperations:
     fn toString() -> String
 
+# Data values have a shallow clone returning the concrete receiver type.
+interface CloneOperations[T]:
+    fn clone() -> T
+
 interface StringOperations:
     fn normalize(form: String, max_bytes: Int) -> Result[String, StringError]
     fn concat(values: String) -> String

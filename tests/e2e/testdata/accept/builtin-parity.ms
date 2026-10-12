@@ -73,7 +73,7 @@ fn checked_expansion() -> Result[Unit, Error]:
         return panic(message: "check failed")
     return ok(value: unit)
 
-test "list methods are immutable, typed, and composable":
+test "list methods mutate explicit clones and remain typed":
     let original = [3, 1, 2, 1]
     let alias = original
     if not (original.at(index: -1) == some(value: 1)):
@@ -108,15 +108,15 @@ test "list methods are immutable, typed, and composable":
         return panic(message: "check failed")
     if not (original.last_index_of(value: 8) == absent):
         return panic(message: "check failed")
-    if not (original.prepend(value: 0) == [0, 3, 1, 2, 1]):
+    if not (original.clone().prepend(value: 0) == [0, 3, 1, 2, 1]):
         return panic(message: "check failed")
-    if not (original.with_value(index: -1, value: 9) == [3, 1, 2, 9]):
+    if not (original.clone().with_value(index: -1, value: 9) == [3, 1, 2, 9]):
         return panic(message: "check failed")
-    if not (original.without(index: 1) == [3, 2, 1]):
+    if not (original.clone().without(index: 1) == [3, 2, 1]):
         return panic(message: "check failed")
     if not (original.slice(start: 1, end: 3) == [1, 2]):
         return panic(message: "check failed")
-    if not (original.reverse() == [1, 2, 1, 3]):
+    if not (original.clone().reverse() == [1, 2, 1, 3]):
         return panic(message: "check failed")
     if not (original.sorted(compare: compare) == [1, 1, 2, 3]):
         return panic(message: "check failed")
@@ -164,17 +164,17 @@ test "list methods are immutable, typed, and composable":
     let convert = original.map[String]
     if not (convert(transform: stringify) == ["3", "1", "2", "1"]):
         return panic(message: "check failed")
-    let reverse = original.reverse
+    let reverse = original.clone().reverse
     if not (reverse() == [1, 2, 1, 3]):
         return panic(message: "check failed")
     let reduce = original.fold[Int]
     if not (reduce(initial: 0, step: total) == 7):
         return panic(message: "check failed")
-    if not (original.with_values(start: 1, delete_count: 2, replacement: [8, 9, 10]) == [3, 8, 9, 10, 1]):
+    if not (original.clone().with_values(start: 1, delete_count: 2, replacement: [8, 9, 10]) == [3, 8, 9, 10, 1]):
         return panic(message: "check failed")
-    if not (original.fill(value: 0, start: 1, end: 3) == [3, 0, 0, 1]):
+    if not (original.clone().fill(value: 0, start: 1, end: 3) == [3, 0, 0, 1]):
         return panic(message: "check failed")
-    if not (original.copy_within(target: 1, start: 0, end: 3) == [3, 3, 1, 2]):
+    if not (original.clone().copy_within(target: 1, start: 0, end: 3) == [3, 3, 1, 2]):
         return panic(message: "check failed")
     if not (original.keys() == [0, 1, 2, 3]):
         return panic(message: "check failed")
@@ -190,7 +190,7 @@ test "list methods are immutable, typed, and composable":
 test "map enumeration, merge, and clear preserve insertion order":
     let original = Map[String, Int]().with_entry(key: "a", value: 1).with_entry(key: "b", value: 2)
     let other = Map[String, Int]().with_entry(key: "b", value: 3).with_entry(key: "c", value: 4)
-    let merged = original.merge(other: other)
+    let merged = original.clone().merge(other: other)
     if not (merged.keys() == ["a", "b", "c"]):
         return panic(message: "check failed")
     if not (merged.values() == [1, 3, 4]):
@@ -205,7 +205,7 @@ test "map enumeration, merge, and clear preserve insertion order":
     let get_keys = merged.keys
     if not (get_keys() == ["a", "b", "c"]):
         return panic(message: "check failed")
-    if not (original.clear().length() == 0):
+    if not (original.clone().clear().length() == 0):
         return panic(message: "check failed")
     if not (original.values() == [1, 2]):
         return panic(message: "check failed")
@@ -245,7 +245,7 @@ test "set algebra and enumeration preserve source values":
     if not (left.entries() == [[1, 1], [2, 2], [3, 3]]):
         return panic(message: "check failed")
     left.for_each(operation: observe)
-    if not (left.clear() == empty):
+    if not (left.clone().clear() == empty):
         return panic(message: "check failed")
     if not (left.values() == [1, 2, 3]):
         return panic(message: "check failed")
@@ -406,9 +406,9 @@ test "grouping and lazy map defaults":
         return panic(message: "check failed")
     if not (original.with_default_from(key: "a", create: must_not_run) == original):
         return panic(message: "check failed")
-    if not (original.with_default(key: "b", value: 2).values() == [1, 2]):
+    if not (original.clone().with_default(key: "b", value: 2).values() == [1, 2]):
         return panic(message: "check failed")
-    if not (original.with_default_from(key: "c", create: default_value).values() == [1, 3]):
+    if not (original.clone().with_default_from(key: "c", create: default_value).values() == [1, 3]):
         return panic(message: "check failed")
     if not (original.values() == [1]):
         return panic(message: "check failed")

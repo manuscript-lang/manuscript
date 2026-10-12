@@ -11,13 +11,13 @@ Every source value may be passed between concurrent operations. Passing a refere
 
 ## Data and services
 
-Records, alternatives, bytes, and collections are immutable. A `var` reassigns a local binding; it does not make a record field mutable. Closures snapshot captured bindings, including a mutable local's current value, and cannot assign to captured outer locals.
+Records and collections are mutable. Alternative tags, strings, and bytes retain their value behavior. `let` fixes a binding, while `var` permits reassignment; neither freezes a referenced record or collection. Closures snapshot captured bindings, including a mutable local's current value, and cannot assign to captured outer locals.
 
 Native services and builders synchronize their mutable internals and resource lifecycles. Resource APIs may serialize simultaneous calls or report unsupported overlapping use. Race safety does not make several calls atomic or establish their execution order. Use [Synchronized](../../standard-library/data-and-io/synchronized-state.md#synchronized) when related reads and writes must run under one lock.
 
 Wrappers coordinate the closed-state check, access to the underlying handle, and closure as one lifecycle protocol. A flag check followed by unprotected I/O is insufficient. A stale lease or lock guard must never access a resource or protected value after release.
 
-A [Queue](../../standard-library/data-and-io/queues.md) is a local mutable collection with no internal synchronization. When shared, keep it in one `Synchronized[Queue[T]]` and hold a separately acquired guard for each caller's full use, including reads. Queue aliases and bound methods must follow that same discipline; the compiler does not track or enforce lock ownership. Immutable records may contain queue references without making the referenced queue immutable.
+A [Queue](../../standard-library/data-and-io/queues.md) is a local mutable collection with no internal synchronization. When shared, keep it in one `Synchronized[Queue[T]]` and hold a separately acquired guard for each caller's full use, including reads. Queue aliases and bound methods must follow that same discipline; the compiler does not track or enforce lock ownership. Records may contain queue references. A shallow record clone retains the same queue reference.
 
 ## Contract views
 

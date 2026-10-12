@@ -48,7 +48,7 @@ test "lookup":
         return panic(message: "check failed")
 ```
 
-Records have named, immutable fields. Alternatives express one of several cases and matching must be exhaustive. Types are nominal: matching field shapes do not make two declarations interchangeable. See [records](../core-language/types/records.md) and [alternatives](../core-language/types/alternatives.md).
+Records have named, mutable fields. Use `.clone()` for an explicit shallow copy. Alternatives express one of several cases and matching must be exhaustive. Types are nominal: matching field shapes do not make two declarations interchangeable. See [records](../core-language/types/records.md) and [alternatives](../core-language/types/alternatives.md).
 
 ## Collections and optional values
 

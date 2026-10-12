@@ -160,7 +160,7 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 		if err != nil {
 			return libraryError(r, "InvalidInput", "")
 		}
-		for _, entry := range a[2].(Map).Entries {
+		for _, entry := range a[2].(*Map).Entries {
 			key, value := entry.Key.(string), entry.Value.(string)
 			if !libraryHeaderName(key) || strings.ContainsAny(value, "\r\n\x00") || strings.EqualFold(key, "Host") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
 				return libraryError(r, "InvalidInput", "")
@@ -337,8 +337,8 @@ func (b *libraryResponseBody) Operation(name string) Function {
 		return ioError(r, "Failed", "empty read without EOF")
 	})
 }
-func libraryHTTPHeaders(headers http.Header) Map {
-	out := Map{Type: "@std/Map[String][@std/List[String]]"}
+func libraryHTTPHeaders(headers http.Header) *Map {
+	out := &Map{Type: "@std/Map[String][@std/List[String]]"}
 	for _, key := range sortedHeaderNames(headers) {
 		out.Entries = append(out.Entries, Entry{key, libraryStrings(headers.Values(key))})
 	}

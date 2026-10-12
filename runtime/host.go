@@ -232,7 +232,7 @@ func Process(arguments []string) (Value, error) {
 		}
 		values[i] = a
 	}
-	environment := Map{Type: "@std/Map[String][String]"}
+	environment := &Map{Type: "@std/Map[String][String]"}
 	for _, entry := range os.Environ() {
 		if !utf8.ValidString(entry) {
 			return nil, fmt.Errorf("process environment is not valid UTF-8")
@@ -252,7 +252,7 @@ func Process(arguments []string) (Value, error) {
 			}
 		}
 	}
-	return Record{"@std/Process", map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{directory}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{directory}), "arguments": List{"@std/List[String]", values}, "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: "@std/Result[Unit][@std/IoError]"}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: "@std/Result[Unit][@std/IoError]"}), "files": ViewOf("@std/Files", &files{directory}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}}, nil
+	return Record{"@std/Process", map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{directory}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{directory}), "arguments": &List{"@std/List[String]", values}, "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: "@std/Result[Unit][@std/IoError]"}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: "@std/Result[Unit][@std/IoError]"}), "files": ViewOf("@std/Files", &files{directory}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}}, nil
 }
 func RunMain(main Value, arguments []string) (exit int) {
 	exit = 70

@@ -24,8 +24,8 @@ func TestUniversalFormatting(t *testing.T) {
 		{"field order", Record{Type: "module/123#Point[Int]", Fields: map[string]Value{"z": int64(2), "a": true}}, "Point(a: true, z: 2)"},
 		{"alternative", Alternative{Type: "@std/Result[Int][String]", Tag: "ok", Fields: []Value{int64(3)}}, "Result.ok(3)"},
 		{"pack", Pack{Items: []Value{true, Unit{}}}, "(true, unit)"},
-		{"empty map", Map{}, "Map()"},
-		{"empty set", Set{}, "Set()"},
+		{"empty map", &Map{}, "Map()"},
+		{"empty set", &Set{}, "Set()"},
 		{"empty bytes", Bytes{}, "Bytes()"},
 		{"duration", Duration(-2000000), "-2000000ns"},
 		{"instant", Instant{Tick: 42}, "Instant(42)"},
@@ -65,7 +65,7 @@ func TestFormattingCyclesAndSharedValues(t *testing.T) {
 		t.Fatal("cyclic value did not terminate", got)
 	}
 	shared := Record{Type: "Leaf", Fields: map[string]Value{"value": int64(1)}}
-	if got := Format(List{Items: []Value{shared, shared}}); got != "[Leaf(value: 1), Leaf(value: 1)]" {
+	if got := Format(&List{Items: []Value{shared, shared}}); got != "[Leaf(value: 1), Leaf(value: 1)]" {
 		t.Fatal("sharing changed formatting", got)
 	}
 }

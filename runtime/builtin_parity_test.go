@@ -46,7 +46,7 @@ func TestCollectionCallbackOrderAndShortCircuit(t *testing.T) {
 	}
 }
 
-func TestListUpdatesDoNotAliasStorage(t *testing.T) {
+func TestListCloneSeparatesUpdateStorage(t *testing.T) {
 	original := libraryList("Int", []Value{int64(1), int64(2), int64(3), int64(4)})
 	for _, test := range []struct {
 		name string
@@ -61,7 +61,7 @@ func TestListUpdatesDoNotAliasStorage(t *testing.T) {
 		{"with_values", []Argument{{"start", int64(0)}, {"delete_count", int64(0)}, {"replacement", original}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			result := Invoke(RootExecution(), NativeMember(original, test.name), test.args).(List)
+			result := Invoke(RootExecution(), NativeMember(Clone(original), test.name), test.args).(*List)
 			result.Items[0] = int64(99) // model a subsequent builder/native adapter write
 			if !Equal(original, libraryList("Int", []Value{int64(1), int64(2), int64(3), int64(4)})) {
 				t.Fatal("update shared source storage", original)
@@ -95,7 +95,7 @@ func TestRangeOverflowAndLimits(t *testing.T) {
 		{0, 1, -1, 0, nil},
 		{0, 0, 1, 0, nil},
 	} {
-		value := librarySuccess(t, libraryCall(t, "collections/range", test.start, test.end, test.step, test.max)).(List)
+		value := librarySuccess(t, libraryCall(t, "collections/range", test.start, test.end, test.step, test.max)).(*List)
 		if value.Type != "@std/List[Int]" || !slices.Equal(value.Items, test.want) {
 			t.Fatal(value)
 		}

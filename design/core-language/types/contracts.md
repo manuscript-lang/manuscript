@@ -36,7 +36,7 @@ impl Increment for Offset:
         return value + self.delta
 ```
 
-`self` is an implicit receiver binding inside each implementation method, with the concrete receiver type. It is not written as a parameter, is not supplied as a call argument, and cannot be redeclared. The receiver does not add a field to the contract. Methods follow the ordinary immutable-field and reference rules.
+`self` is an implicit receiver binding inside each implementation method, with the concrete receiver type. It is not written as a parameter, is not supplied as a call argument, and cannot be redeclared. The receiver does not add a field to the contract. Methods follow the ordinary mutable-field and reference rules.
 
 An implementation must match the contract exactly. After substituting generic type arguments, check:
 

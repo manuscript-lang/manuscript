@@ -349,6 +349,16 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		c.pattern(s.Pattern, info.Type, s.Mutable, s.Value)
 		return !info.NoReturn, false
 	case "assign":
+		if s.Target != nil {
+			target := c.expression(s.Target, nil)
+			target.Write = true
+			receiver := c.Expressions[s.Target.Left]
+			if receiver == nil || receiver.Type == nil || receiver.Type.Kind != "record" || target.Method != nil {
+				c.error(s.Target.Pos, "type", "assignment requires a record field")
+			}
+			value := c.expression(s.Value, target.Type)
+			return !target.NoReturn && !value.NoReturn, false
+		}
 		b := c.scope.binding(s.Name)
 		if b == nil {
 			c.error(s.Pos, "resolution", "unknown binding "+s.Name)

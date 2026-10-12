@@ -16,10 +16,11 @@ The frontend enforces semantics that Go representations do not provide:
 | Checked `Int` | `int64` with checked operations and conversions |
 | `Decimal` | Versioned finite decimal implementation honoring the coefficient/exponent grid, exact literals, and per-operator rounding in the numeric contract |
 | Valid UTF-8 `String` | Validated construction and conversion; no raw string escape |
-| Immutable bytes and collections | Encapsulated storage; copies or exclusive adapter transfer |
+| Mutable records and collections | Shared record field storage and pointer-backed collection headers; explicit shallow clone |
+| Immutable bytes | Encapsulated storage; copies or exclusive adapter transfer |
 | Ordered maps and sets | Ordered wrappers |
 | Tagged alternatives | Generated typed tags and payloads; exhaustive frontend checking |
-| Guarded recursive data | Inline records/alternatives with immutable container indirection; reject invalid layouts before Go emission |
+| Guarded recursive data | Records/alternatives with collection indirection; reject invalid layouts before Go emission |
 | Value equality and hashing | Generated operations for eligible types |
 | Explicit contract implementation | Frontend selection of a unique applicable concrete/generic implementation, then Go interfaces and wrappers |
 | Closures and resource references | GC-retained environments, snapshot captures, and synchronized native closed-state checks |

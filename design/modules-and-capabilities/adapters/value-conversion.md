@@ -9,7 +9,7 @@ weight = 84
 
 An adapter must validate foreign values before exposing them as Manuscript values. For example, a Go string may contain invalid UTF-8, while a Manuscript String may not. Conversion must preserve every guarantee of the source type.
 
-Adapters validate UTF-8, alternative tags and payloads, required non-nil values, and numeric ranges. They preserve immutability and copy buffers unless exclusive ownership can be established. Mutable Go storage, unrestricted Go interfaces, and runtime task internals are not exposed to Manuscript source. Raw Go dependencies may use ambient authority, so source capability checking is not a sandbox for adapter code.
+Adapters validate UTF-8, alternative tags and payloads, required non-nil values, and numeric ranges. They preserve value and reference behavior and copy immutable byte buffers unless exclusive ownership can be established. Mutable collection storage stays behind checked collection operations; unrestricted Go interfaces and runtime task internals are not exposed to Manuscript source. Raw Go dependencies may use ambient authority, so source capability checking is not a sandbox for adapter code.
 
 ## Preserving invariants
 

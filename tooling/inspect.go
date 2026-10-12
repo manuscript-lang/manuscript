@@ -207,6 +207,7 @@ func Inspect(program *checker.Program) Inspection {
 						}
 						result.Calls = append(result.Calls, CallSite{ID: fmt.Sprintf("%s#cleanup#%d", module.File, s.Pos.Offset), Owner: entity.ID, Target: target, Kind: "cleanup", Span: sourceSpan(module, s.Pos)})
 					}
+					expression(s.Target)
 					expression(s.Value)
 					statements(s.Body)
 					statements(s.Else)

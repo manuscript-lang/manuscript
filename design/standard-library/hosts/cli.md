@@ -13,7 +13,7 @@ The selected entry module must export exactly one nongeneric main with that para
 
 ## Explicit authority roots
 
-`Process` is a standard immutable record:
+`Process` is a standard record:
 
 ```manuscript
 type Process:

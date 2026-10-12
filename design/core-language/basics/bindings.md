@@ -50,7 +50,7 @@ Every local declaration needs an initial value. The new name becomes visible onl
 
 A var keeps the type chosen by its annotation or initializer. Later values must fit that same type. Assigning a Float to an Int var does not change the var's type or create a union.
 
-Only an existing mutable local name can be an assignment target. You cannot reassign record fields, collection elements, destructuring patterns, parameters, or immutable bindings.
+Assignment targets an existing `var` binding or a record field, such as `customer.name`. Record fields may be assigned through `let` bindings, parameters, and `self`. You cannot reassign parameters, `let` bindings, destructuring patterns, or collection positions with assignment syntax; collection methods update their contents.
 
 ```manuscript
 fn example() -> Unit:
@@ -63,7 +63,7 @@ Only a simple name binding accepts a type annotation. Destructuring patterns inf
 
 ## Reassignment and references
 
-A mutable binding does not make the value's fields mutable. A `var` holding a [record](../types/records.md) can receive another record, while each record remains immutable.
+Binding mutability and object mutation are separate. A `var` holding a [record](../types/records.md) can receive another record. Both `let` and `var` bindings permit updating that record's fields. Assignment of a record or collection retains the same instance; `.clone()` creates a separate shallow copy.
 
 Assignment replaces the value of the binding; it does not close the previous resource or invalidate aliases. `with` registers a fixed resource for cleanup and uses an immutable binding. See [ordinary references](../../ownership-and-cleanup/values/references.md).
 

@@ -11,7 +11,7 @@ import (
 )
 
 func hostResponse(status int64, text string) Value {
-	return Record{"@std/HttpResponse", map[string]Value{"status": status, "headers": Map{"@std/Map[String][String]", nil}, "body": Bytes{[]byte(text)}}}
+	return Record{"@std/HttpResponse", map[string]Value{"status": status, "headers": &Map{"@std/Map[String][String]", nil}, "body": Bytes{[]byte(text)}}}
 }
 func serveTest(t *testing.T, root *Execution, handler Function, bodyLimit int64) *httpService {
 	t.Helper()
@@ -173,7 +173,7 @@ func TestSubprocessOutputAndLimit(t *testing.T) {
 	root := RootExecution()
 	commands := &commands{}
 	for limit, tag := range map[int64]string{8: "ok", 2: "error"} {
-		result := Invoke(root, commands.Operation("run"), []Argument{{"program", "/bin/printf"}, {"arguments", List{Items: []Value{"hello"}}}, {"input", Bytes{}}, {"max_output_bytes", limit}, {"timeout", Duration(time.Second)}}).(Alternative)
+		result := Invoke(root, commands.Operation("run"), []Argument{{"program", "/bin/printf"}, {"arguments", &List{Items: []Value{"hello"}}}, {"input", Bytes{}}, {"max_output_bytes", limit}, {"timeout", Duration(time.Second)}}).(Alternative)
 		if result.Tag != tag {
 			t.Fatal(result)
 		}
@@ -186,7 +186,7 @@ func TestSubprocessOutputAndLimit(t *testing.T) {
 			t.Fatal(result)
 		}
 	}
-	result := Invoke(root, commands.Operation("run"), []Argument{{"program", "/bin/printf"}, {"arguments", List{}}, {"input", Bytes{}}, {"max_output_bytes", int64(8)}, {"timeout", Duration(0)}}).(Alternative)
+	result := Invoke(root, commands.Operation("run"), []Argument{{"program", "/bin/printf"}, {"arguments", &List{}}, {"input", Bytes{}}, {"max_output_bytes", int64(8)}, {"timeout", Duration(0)}}).(Alternative)
 	if result.Tag != "error" || result.Fields[0].(Alternative).Tag != "TimedOut" {
 		t.Fatal(result)
 	}

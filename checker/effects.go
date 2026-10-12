@@ -35,6 +35,9 @@ func (c *checker) effectSummaries() {
 		var cleanup func([]*syntax.Statement)
 		cleanup = func(body []*syntax.Statement) {
 			for _, statement := range body {
+				if statement.Target != nil {
+					add(n, "write")
+				}
 				if statement.Kind == "with" {
 					method := c.Cleanups[statement]
 					if method != nil && method.ID != "" {
@@ -55,6 +58,11 @@ func (c *checker) effectSummaries() {
 		cleanup(n.body)
 		walkStatements(n.body, func(expression *syntax.Expression) {
 			cleanup(expression.Body)
+			if expression.Kind == "member" {
+				if receiver := c.Expressions[expression.Left]; receiver != nil && receiver.Type.Kind == "record" && c.Expressions[expression].Method == nil {
+					add(n, "read")
+				}
+			}
 			if expression.Kind != "call" {
 				return
 			}
@@ -66,7 +74,8 @@ func (c *checker) effectSummaries() {
 			if info.Constructor != nil {
 				return
 			}
-			if info.Native == "toString" {
+			if info.Native == "toString" || info.Native == "clone" {
+				add(n, "read")
 				return
 			}
 			if info.Symbol != nil {
@@ -122,6 +131,18 @@ func (c *checker) effectSummaries() {
 					}
 					if name == "enqueue" || name == "dequeue" {
 						add(n, "write")
+					}
+				case "@std/List", "@std/Map", "@std/Set":
+					add(n, "read")
+					if collectionMutation(receiver, name) {
+						add(n, "write")
+					}
+					if len(method.Type.Params) > 0 {
+						for _, param := range method.Type.Params {
+							if param.Type.Kind == "function" {
+								add(n, "unknown")
+							}
+						}
 					}
 				case "@std/Pool", "@std/Lease", "@std/Background":
 					add(n, "write", "unknown")

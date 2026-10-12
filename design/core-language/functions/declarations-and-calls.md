@@ -87,7 +87,7 @@ let total = sum([1, 2, 3])
 let empty = sum([])
 ```
 
-The argument supplies one immutable list. An existing `List[Int]` can be passed as `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list. Function values use the ordinary type `fn(values: List[Int]) -> Int`, and functions with multiple list parameters require labels on every supplied argument.
+The argument supplies one list reference. An existing `List[Int]` can be passed as `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list. Function values use the ordinary type `fn(values: List[Int]) -> Int`, and functions with multiple list parameters require labels on every supplied argument.
 
 See [collections](../types/collections.md) for list literals and element requirements.
 

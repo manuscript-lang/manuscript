@@ -208,6 +208,9 @@ func (g *generator) statement(s *syntax.Statement) string {
 	case "bind":
 		return g.pattern(s.Pattern, g.expression(s.Value))
 	case "assign":
+		if s.Target != nil {
+			return "rt.SetField(" + g.expression(s.Target.Left) + "," + quote(s.Target.Text) + "," + g.expression(s.Value) + ")\n"
+		}
 		return g.programBinding(s.Name, s.Value) + " = " + g.expression(s.Value) + "\n"
 	case "return":
 		if s.Value == nil {
@@ -428,7 +431,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 		if info.Type.Kind == "pack" {
 			return "rt.Pack{Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
 		}
-		return "rt.List{Type:" + g.key(info.Type) + ",Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
+		return "&rt.List{Type:" + g.key(info.Type) + ",Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
 	case "unary":
 		if e.Text == "-" && e.Right.Kind == "number" && e.Right.Text == "9223372036854775808" {
 			return "rt.Integer(\"-9223372036854775808\")"

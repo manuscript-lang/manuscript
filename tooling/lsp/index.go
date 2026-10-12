@@ -208,15 +208,15 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 		if e.Kind == "name" {
 			if info.Binding != nil {
-				add(localKey(info.Binding), e.Text, e.Pos, false, false, info)
+				add(localKey(info.Binding), e.Text, e.Pos, false, info.Write, info)
 			} else if info.Symbol != nil {
-				add(symbolKey(info.Symbol), e.Text, e.Pos, false, false, info)
+				add(symbolKey(info.Symbol), e.Text, e.Pos, false, info.Write, info)
 			}
 		}
 		if e.Kind == "member" && info.Method == nil && e.Left != nil {
 			if receiver := program.Expressions[e.Left]; receiver != nil && receiver.Type != nil && receiver.Type.Kind == "record" && receiver.Type.Def != nil {
 				parent := receiver.Type.Def.Symbol
-				add("field:"+symbolKey(parent)+":"+e.Text, e.Text, e.Pos, false, false, info)
+				add("field:"+symbolKey(parent)+":"+e.Text, e.Text, e.Pos, false, info.Write, info)
 			}
 		}
 		if info.Constructor != nil && info.Case != "" {
@@ -311,6 +311,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 			for _, arm := range s.Arms {
 				body(arm.Body)
 			}
+			expression(s.Target)
 			expression(s.Value)
 		}
 	}

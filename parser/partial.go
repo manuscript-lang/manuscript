@@ -136,6 +136,7 @@ func rebase(module *syntax.Module, offset, lines int) {
 			position(&s.Pos)
 			pattern(s.Pattern)
 			typ(s.Type)
+			expression(s.Target)
 			expression(s.Value)
 			body(s.Body)
 			body(s.Else)

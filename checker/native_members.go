@@ -52,6 +52,13 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 		return nil
 	}
 	receiver := c.expression(member.Left, nil)
+	if receiver.Type.Kind == "record" && member.Text != "toString" {
+		for _, field := range Fields(receiver.Type) {
+			if field.Name == member.Text {
+				return nil
+			}
+		}
+	}
 	methods := c.methods(receiver.Type, member.Text)
 	if len(methods) != 1 || methods[0].Native == "" || methods[0].Native == "contract" {
 		return nil

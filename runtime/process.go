@@ -68,8 +68,8 @@ func (c *commands) Operation(name string) Function {
 		if program == "" || strings.ContainsRune(program, 0) || limit < 0 || timeout < 0 {
 			return failure("InvalidInput", "")
 		}
-		arguments := make([]string, len(args[1].(List).Items))
-		for i, arg := range args[1].(List).Items {
+		arguments := make([]string, len(args[1].(*List).Items))
+		for i, arg := range args[1].(*List).Items {
 			arguments[i] = arg.(string)
 			if strings.ContainsRune(arguments[i], 0) {
 				return failure("InvalidInput", "")

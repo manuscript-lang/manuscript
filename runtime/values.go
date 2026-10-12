@@ -3,6 +3,7 @@ package msruntime
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -174,13 +175,14 @@ func NewAlternative(typ, tag string, labels []string, args []Argument) Value {
 	}
 	return Alternative{typ, tag, values}
 }
-func Field(value Value, name string) Value { return value.(Record).Fields[name] }
-func Tag(value Value) string               { return value.(Alternative).Tag }
-func Payload(value Value, index int) Value { return value.(Alternative).Fields[index] }
+func Field(value Value, name string) Value           { return value.(Record).Fields[name] }
+func SetField(value Value, name string, field Value) { value.(Record).Fields[name] = field }
+func Tag(value Value) string                         { return value.(Alternative).Tag }
+func Payload(value Value, index int) Value           { return value.(Alternative).Fields[index] }
 func Positions(value Value, length int) []Value {
 	var values []Value
 	switch v := value.(type) {
-	case List:
+	case *List:
 		values = v.Items
 	case Pack:
 		values = v.Items
@@ -194,11 +196,11 @@ func Positions(value Value, length int) []Value {
 }
 func Iterate(value Value) []Value {
 	switch v := value.(type) {
-	case List:
-		return v.Items
-	case Set:
-		return v.Items
-	case Map:
+	case *List:
+		return append([]Value{}, v.Items...)
+	case *Set:
+		return append([]Value{}, v.Items...)
+	case *Map:
 		values := make([]Value, len(v.Entries))
 		args := typeArguments(v.Type)
 		for i, e := range v.Entries {
@@ -263,17 +265,17 @@ func formatValue(value Value, depth int) string {
 			text += "(" + items(v.Fields) + ")"
 		}
 		return text
-	case List:
+	case *List:
 		return "[" + items(v.Items) + "]"
 	case Pack:
 		return "(" + items(v.Items) + ")"
-	case Map:
+	case *Map:
 		parts := make([]string, len(v.Entries))
 		for i, entry := range v.Entries {
 			parts[i] = formatValue(entry.Key, depth+1) + ": " + formatValue(entry.Value, depth+1)
 		}
 		return "Map(" + strings.Join(parts, ", ") + ")"
-	case Set:
+	case *Set:
 		return "Set(" + items(v.Items) + ")"
 	case Bytes:
 		parts := make([]string, len(v.Items))
@@ -308,7 +310,45 @@ func displayType(key string) string {
 	}
 	return name
 }
-func Equal(a, b Value) bool {
+
+type equalityIdentity struct {
+	pointer  any
+	typ, tag string
+}
+type equalityPair struct{ left, right equalityIdentity }
+type equalityState struct{ active map[equalityPair]bool }
+
+func equalityID(value Value) (equalityIdentity, bool) {
+	switch v := value.(type) {
+	case Record:
+		return equalityIdentity{reflect.ValueOf(v.Fields).UnsafePointer(), v.Type, "record"}, true
+	case *List:
+		return equalityIdentity{v, v.Type, "list"}, true
+	case *Map:
+		return equalityIdentity{v, v.Type, "map"}, true
+	case *Set:
+		return equalityIdentity{v, v.Type, "set"}, true
+	case Alternative:
+		return equalityIdentity{reflect.ValueOf(v.Fields).UnsafePointer(), v.Type, v.Tag}, true
+	}
+	return equalityIdentity{}, false
+}
+
+func Equal(a, b Value) bool { return equal(a, b, &equalityState{}) }
+func equal(a, b Value, state *equalityState) bool {
+	if left, ok := equalityID(a); ok {
+		if right, ok := equalityID(b); ok {
+			pair := equalityPair{left, right}
+			if state.active[pair] {
+				return true
+			}
+			if state.active == nil {
+				state.active = map[equalityPair]bool{}
+			}
+			state.active[pair] = true
+			defer delete(state.active, pair)
+		}
+	}
 	switch x := a.(type) {
 	case libraryBigInt:
 		y, ok := b.(libraryBigInt)
@@ -361,37 +401,44 @@ func Equal(a, b Value) bool {
 			return false
 		}
 		for k, v := range x.Fields {
-			if !Equal(v, y.Fields[k]) {
+			if !equal(v, y.Fields[k], state) {
 				return false
 			}
 		}
 		return true
 	case Alternative:
 		y, ok := b.(Alternative)
-		return ok && x.Type == y.Type && x.Tag == y.Tag && equalItems(x.Fields, y.Fields)
-	case List:
-		y, ok := b.(List)
-		return ok && x.Type == y.Type && equalItems(x.Items, y.Items)
-	case Set:
-		y, ok := b.(Set)
+		return ok && x.Type == y.Type && x.Tag == y.Tag && equalItemsState(x.Fields, y.Fields, state)
+	case *List:
+		y, ok := b.(*List)
+		return ok && x.Type == y.Type && equalItemsState(x.Items, y.Items, state)
+	case *Set:
+		y, ok := b.(*Set)
 		if !ok || x.Type != y.Type || len(x.Items) != len(y.Items) {
 			return false
 		}
 		for _, v := range x.Items {
-			if indexOf(y.Items, v) < 0 {
+			found := false
+			for _, other := range y.Items {
+				if equal(v, other, state) {
+					found = true
+					break
+				}
+			}
+			if !found {
 				return false
 			}
 		}
 		return true
-	case Map:
-		y, ok := b.(Map)
+	case *Map:
+		y, ok := b.(*Map)
 		if !ok || x.Type != y.Type || len(x.Entries) != len(y.Entries) {
 			return false
 		}
 		for _, e := range x.Entries {
 			found := false
 			for _, f := range y.Entries {
-				if Equal(e.Key, f.Key) && Equal(e.Value, f.Value) {
+				if equal(e.Key, f.Key, state) && equal(e.Value, f.Value, state) {
 					found = true
 					break
 				}
@@ -404,12 +451,13 @@ func Equal(a, b Value) bool {
 	}
 	return false
 }
-func equalItems(a, b []Value) bool {
+func equalItems(a, b []Value) bool { return equalItemsState(a, b, &equalityState{}) }
+func equalItemsState(a, b []Value, state *equalityState) bool {
 	if len(a) != len(b) {
 		return false
 	}
 	for i, v := range a {
-		if !Equal(v, b[i]) {
+		if !equal(v, b[i], state) {
 			return false
 		}
 	}

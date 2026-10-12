@@ -96,8 +96,8 @@ func init() {
 		return libraryOK(r, libraryList("@std/QueryEntry", items))
 	})
 	add("url", "format_query", "String", []LibraryParam{p("entries", "List[QueryEntry]")}, func(_ *Execution, _ string, a []Value) Value {
-		parts := make([]string, len(a[0].(List).Items))
-		for i, v := range a[0].(List).Items {
+		parts := make([]string, len(a[0].(*List).Items))
+		for i, v := range a[0].(*List).Items {
 			f := v.(Record).Fields
 			parts[i] = url.QueryEscape(f["key"].(string)) + "=" + url.QueryEscape(f["value"].(string))
 		}
@@ -199,7 +199,7 @@ func libraryJSONParse(ctx *Execution, r string, a []Value) Value {
 				return alt("ArrayValue", libraryList("@std/JsonValue", items)), nil
 			}
 			if v == '{' {
-				m := Map{Type: "@std/Map[String][@std/JsonValue]"}
+				m := &Map{Type: "@std/Map[String][@std/JsonValue]"}
 				seen := map[string]bool{}
 				for decoder.More() {
 					key, err := decoder.Token()
@@ -333,7 +333,7 @@ func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
 			if err := write("["); err != nil {
 				return err
 			}
-			for i, x := range v.Fields[0].(List).Items {
+			for i, x := range v.Fields[0].(*List).Items {
 				if i > 0 {
 					if err := write(","); err != nil {
 						return err
@@ -348,7 +348,7 @@ func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
 			if err := write("{"); err != nil {
 				return err
 			}
-			for i, e := range v.Fields[0].(Map).Entries {
+			for i, e := range v.Fields[0].(*Map).Entries {
 				if i > 0 {
 					if err := write(","); err != nil {
 						return err
@@ -424,7 +424,7 @@ func libraryCSVStringify(ctx *Execution, r string, a []Value) Value {
 	writer := csv.NewWriter(w)
 	writer.Comma = delimiter
 	writer.UseCRLF = crlf
-	for _, row := range a[0].(List).Items {
+	for _, row := range a[0].(*List).Items {
 		CheckCancelled(ctx)
 		if err := writer.Write(libraryStringValues(row)); err != nil {
 			return libraryError(r, "LimitExceeded", "")
