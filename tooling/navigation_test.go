@@ -138,3 +138,37 @@ func TestUniversalToStringNavigation(t *testing.T) {
 		}
 	}
 }
+
+func TestNavigationWithinStandardLibrary(t *testing.T) {
+	result := compiler.CompileSource("navigation.ms", "", compiler.Options{AnalyzeOnly: true})
+	for _, item := range []struct{ file, needle, target, name string }{
+		{"collections.ms", "Optional from", "optional.ms", "Optional"},
+		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
+		{"collections.ms", "List[T]) ->", "collections.ms", "List"},
+		{"cli.ms", "System from", "system.ms", "System"},
+		{"cli.ms", "System\n", "system.ms", "System"},
+	} {
+		t.Run(item.file+"/"+item.needle, func(t *testing.T) {
+			data, err := stdlib.Sources.ReadFile(item.file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			offset := strings.LastIndex(string(data), item.needle)
+			if offset < 0 {
+				t.Fatal("missing source reference")
+			}
+			nav, ok := tooling.NavigationAt(result.Program, "@std/"+item.file, offset)
+			if !ok || nav.Definition.File != "@std/"+item.target || nav.Hover == "" {
+				t.Fatalf("missing standard navigation: %+v, %v", nav, ok)
+			}
+			target, err := stdlib.Sources.ReadFile(item.target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			header := string(target[nav.Definition.Start:nav.Definition.End])
+			if !strings.Contains(header, "type "+item.name) && !strings.Contains(header, "interface "+item.name) {
+				t.Fatalf("wrong definition: %+v", nav)
+			}
+		})
+	}
+}

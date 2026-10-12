@@ -12,9 +12,12 @@ Verify: multiline function parameters retain their original LF/CRLF positions, n
 
 Decision: the user asked to keep standard type definitions in Manuscript so editor tooling can use them. Verified architecture: `stdlib/*.ms` supplies public schemas and signatures; `bindings.json` maps identities to native dispatch. Generated documentation and navigation consume this source-backed contract.
 
+Verified: navigation must continue after the first jump into a standard declaration. Register the virtual document scheme with the language client and retain the standard loader's resolved type references for tooling; reparsing library signatures as executable workspace modules loses their checked context. Keep virtual documents immutable and outside workspace source overlays.
+
 Apply when: adding standard APIs, changing their signatures, or extending hover/navigation/documentation.
 Evidence: [source-definition request](codex://threads/01a12ce1-c9ff-70e4-bb2c-51749183e03b); [declaration ownership](../stdlib/README.md); [embedded sources](../stdlib/sources.go); [documentation generator](../cmd/docgen/main.go).
-Verify: native calling signatures agree with the declarations, editor definitions reach the declaration, and generated references pass the existing freshness check. Update the source or generator when output changes.
+Evidence for continued navigation: [standard loader](../checker/standard.go), [virtual document analysis](../tooling/lsp/analysis.go), [navigation regression tests](../tooling/lsp/features_test.go), [read-only session test](../tooling/lsp/server_test.go), and [client restart test](../extensions/vscode/tests/extension.test.js).
+Verify: native calling signatures agree with the declarations, editor definitions reach the declaration and can follow imports and signature types from there, and generated references pass the existing freshness check. Update the source or generator when output changes.
 
 Decision: the string utility module is `@std/string.ms`, matching the intrinsic `String` type. The user requested this spelling when expanding built-in parity. Receiver operations need no module import; standalone string functions use this canonical module. Evidence: [declarations](../stdlib/string.ms), [native bindings](../stdlib/bindings.json), and [data package guide](../design/standard-library/packages/data.md). When renaming a module, verify imports, native dispatch identities, virtual editor documents, and generated reference paths together.
 

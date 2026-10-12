@@ -7,7 +7,7 @@ const path = require('node:path');
 
 test('editor commands pass argument arrays, discover projects, and require trust', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript editor '));
-  const commands = new Map(), builds = [], terminals = [], errors = [];
+  const commands = new Map(), builds = [], terminals = [], errors = [], clientOptions = [];
   const dispose = { dispose() {} };
   let started = false, stopped = false, debugConfig, provider;
   const vscode = {
@@ -34,6 +34,7 @@ test('editor commands pass argument arrays, discover projects, and require trust
   Module._load = function (name, ...args) {
     if (name === 'vscode') return vscode;
     if (name === 'vscode-languageclient/node') return { LanguageClient: class {
+      constructor(id, name, server, options) { clientOptions.push(options); }
       async start() { started = true; } async stop() { stopped = true; }
       async sendRequest(method, params) { assert.equal(method, "manuscript/standardLibrarySource"); assert.equal(params.textDocument.uri, "manuscript-stdlib:/collections.ms"); return "export type List[T]:"; }
     } };
@@ -46,7 +47,14 @@ test('editor commands pass argument arrays, discover projects, and require trust
     await fs.writeFile(path.join(root, 'ms.toml'), '[project]');
     await extension.activate({ subscriptions: [] });
     assert.equal(started, true);
+    const expectedSelector = [
+      { scheme: 'file', language: 'manuscript' },
+      { scheme: 'manuscript-stdlib', language: 'manuscript' },
+    ];
+    assert.deepEqual(clientOptions[0].documentSelector, expectedSelector);
     assert.equal(await provider.provideTextDocumentContent({ toString: () => "manuscript-stdlib:/collections.ms" }), "export type List[T]:");
+    await commands.get('manuscript.restartServer')();
+    assert.deepEqual(clientOptions[1].documentSelector, expectedSelector);
     await commands.get('manuscript.debug')();
     assert.equal(debugConfig.type, 'manuscript');
     assert.equal(debugConfig.program, path.join(root, 'ms.toml'));

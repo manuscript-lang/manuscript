@@ -1,9 +1,11 @@
 package lsp
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 )
@@ -74,5 +76,85 @@ func TestStaleVersionAndClose(t *testing.T) {
 	}
 	if strings.Count(output.String(), "publishDiagnostics") != 2 || strings.Contains(output.String(), "\"severity\":1") {
 		t.Fatal(output.String())
+	}
+}
+
+func TestStandardLibrarySession(t *testing.T) {
+	uri := "manuscript-stdlib:/collections.ms"
+	source, err := standardLibrarySource(uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := frame("textDocument/didOpen", nil, map[string]any{"textDocument": document{uri, source, 1}})
+	input += frame("textDocument/didChange", nil, map[string]any{
+		"textDocument":   document{URI: uri, Version: 2},
+		"contentChanges": []any{map[string]any{"text": "invalid edited source"}},
+	})
+	for i, request := range []struct{ method, needle string }{
+		{"textDocument/definition", "Optional[T]"},
+		{"textDocument/definition", "List[T]) ->"},
+		{"textDocument/hover", "Optional[T]"},
+		{"textDocument/typeDefinition", "Optional[T]"},
+		{"textDocument/documentSymbol", "Optional[T]"},
+		{"textDocument/formatting", "Optional[T]"},
+		{"textDocument/codeAction", "Optional[T]"},
+		{"textDocument/prepareRename", "Optional[T]"},
+	} {
+		input += frame(request.method, i+1, map[string]any{
+			"textDocument": document{URI: uri},
+			"position":     Position(source, strings.LastIndex(source, request.needle)),
+		})
+	}
+	input += frame("shutdown", 9, nil) + frame("exit", nil, nil)
+	var output bytes.Buffer
+	if err := Serve(strings.NewReader(input), &output); err != nil {
+		t.Fatal(err)
+	}
+	reader := bufio.NewReader(&output)
+	responses := map[int]map[string]any{}
+	for {
+		body, err := readFrame(reader)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		var message map[string]any
+		if err := json.Unmarshal(body, &message); err != nil {
+			t.Fatal(err)
+		}
+		if id, ok := message["id"].(float64); ok {
+			responses[int(id)] = message
+		} else if message["method"] == "textDocument/publishDiagnostics" {
+			if diagnostics := message["params"].(map[string]any)["diagnostics"].([]any); len(diagnostics) != 0 {
+				t.Fatal("diagnostics on checked standard declarations", diagnostics)
+			}
+		}
+	}
+	for id := 1; id <= 9; id++ {
+		if responses[id] == nil {
+			t.Fatalf("missing response %d", id)
+		}
+		if id != 8 && responses[id]["error"] != nil {
+			t.Fatal(responses[id])
+		}
+	}
+	for id, target := range map[int]string{1: "optional.ms", 2: "collections.ms", 4: "optional.ms"} {
+		locations, ok := responses[id]["result"].([]any)
+		if !ok || len(locations) != 1 || locations[0].(map[string]any)["uri"] != "manuscript-stdlib:///"+target {
+			t.Fatal("missing standard navigation", responses[id])
+		}
+	}
+	if responses[3]["result"] == nil || len(responses[5]["result"].([]any)) == 0 {
+		t.Fatal("missing hover or standard document symbols", responses)
+	}
+	for _, id := range []int{6, 7} {
+		if len(responses[id]["result"].([]any)) != 0 {
+			t.Fatal("offered edits to standard declarations", responses[id])
+		}
+	}
+	if responses[8]["error"] == nil {
+		t.Fatal("allowed standard-library rename")
 	}
 }
