@@ -35,7 +35,7 @@ function exec(command, args) {
 }
 function runtimeKind(variable) {
   const text = variable.type || '';
-  const match = /(?:main|msruntime)\.(Record|Alternative|List|Set|Map|Pack|Bytes|View|Unit|Function|Scheduler|Queue|PriorityQueue|Synchronized|SynchronizedGuard|OperationId)(?:\)|$)/.exec(text);
+  const match = /(?:main|msruntime|runtime)\.(Record|Alternative|List|Set|Map|Pack|Bytes|View|Unit|Function|Scheduler|Queue|PriorityQueue|Synchronized|SynchronizedGuard|OperationId)(?:\)|$)/.exec(text);
   return match ? match[1] : '';
 }
 function sourceType(native) {
@@ -69,8 +69,10 @@ function rewriteExpression(expression, variables, metadata) {
   const simple=/^([A-Za-z_][A-Za-z0-9_]*)(?:\.([A-Za-z_][A-Za-z0-9_]*)|\[(\d+)\])?$/.exec(expression.trim());
   if(simple && visible.has(simple[1])) {
     const variable=visible.get(simple[1]);const kind=runtimeKind(variable);
-    if(simple[2] && kind==='Record') return `${variable.name}.(main.Record).Fields[${JSON.stringify(simple[2])}]`;
-    if(simple[3] && ['List','Set','Pack','Bytes'].includes(kind)) return `${variable.name}.(main.${kind}).Items[${simple[3]}]`;
+    // Delve's .(data) exposes the concrete interface value without depending
+    // on runtime package names, and retains pointers for collection access.
+    if(simple[2] && kind==='Record') return `${variable.name}.(data).Fields[${JSON.stringify(simple[2])}]`;
+    if(simple[3] && ['List','Set','Pack','Bytes'].includes(kind)) return `${variable.name}.(data).Items[${simple[3]}]`;
     if(!simple[2] && !simple[3]) return variable.name;
   }
   let result='',at=0;

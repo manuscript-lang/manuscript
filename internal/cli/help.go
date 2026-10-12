@@ -43,7 +43,8 @@ Start with:
 
 Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
 Release binaries bundle the Go toolchain. MANUSCRIPT_GO selects another Go
-executable; MANUSCRIPT_CACHE_DIR selects the bundled-toolchain cache directory.
+executable; MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains
+and standalone run/test/debug/profile artifacts.
 `
 
 // Keep command usage next to its explanation so flags and defaults are visible

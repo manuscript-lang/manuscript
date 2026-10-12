@@ -34,7 +34,36 @@ func stringsGo(values []string) string {
 }
 func (g *generator) temp() string { g.serial++; return fmt.Sprintf("temporary%d", g.serial) }
 func (g *generator) key(t *checker.Type) string {
-	return "rt.ResolveType(" + quote(checker.TypeKey(t)) + ", typeArgs)"
+	key := quote(checker.TypeKey(t))
+	if !hasTypeVariable(t) {
+		return key
+	}
+	return "rt.ResolveType(" + key + ", typeArgs)"
+}
+
+// Only the structure encoded by TypeKey needs substitution. Definitions and
+// bounds can be recursive and do not participate in the runtime key.
+func hasTypeVariable(t *checker.Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.Kind == "variable" {
+		return true
+	}
+	for _, arg := range t.Args {
+		if hasTypeVariable(arg) {
+			return true
+		}
+	}
+	if t.Kind == "function" {
+		for _, param := range t.Params {
+			if hasTypeVariable(param.Type) {
+				return true
+			}
+		}
+		return hasTypeVariable(t.Result)
+	}
+	return false
 }
 
 func (g *generator) typeScope(t *checker.Type) string {
