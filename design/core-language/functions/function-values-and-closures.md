@@ -62,7 +62,7 @@ with file = try files.open(path: "data.txt"):
 # A later callback invocation reports IoError.Closed.
 ```
 
-The acquisition fragment belongs to a function returning `Result[U, IoError]`; callbacks is an explicitly supplied registration service. The acquired File and callback are ordinary shareable values.
+The acquisition fragment belongs to a function returning `Result[U, IoError]`; callbacks is an explicitly supplied registration service. The acquired File and callback are ordinary values.
 
 Capturing a resource does not extend its open lifetime or cancel its `with` cleanup. Resource methods detect closed state at runtime. This applies equally to resources passed through explicit parameters or retained in records.
 

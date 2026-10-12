@@ -32,7 +32,7 @@ The compiler-defined bounds are `Equal` and `Hashable`. They express comparison 
 
 Bounds are checked at every application. `Hashable` implies `Equal` for bound satisfaction and body checking. All values are safe to share without a bound. Contract types do not gain equality or hashing.
 
-`Equal` and `Hashable` are not standalone value types, generic type arguments, view constructors, or implementation targets. Their intrinsic names cannot be redefined by module declarations, imports, or type parameters. `Shareable` is no longer a compiler-defined name or bound.
+`Equal` and `Hashable` are not standalone value types, generic type arguments, view constructors, or implementation targets. Their intrinsic names cannot be redefined by module declarations, imports, or type parameters. Concurrent access requires no compiler-defined bound.
 
 ```manuscript
 # Rejected: a compiler bound is not a parameter type.

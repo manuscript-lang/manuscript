@@ -527,7 +527,7 @@ test "contract views and callbacks":
         return panic(message: "check failed")
 ```
 
-All view helpers and function-bearing records in this fixture are shareable. Accept ordinary contract views in lists, optionals, fields, and concurrent callbacks; accept generic forwarding and returned functions. View construction evaluates its receiver once and neither copies nor closes native state. Reject mismatched contract applications, implicit concrete-to-contract conversions, function equality, and value-type intersection syntax.
+All view helpers and function-bearing records in this fixture may be shared. Accept ordinary contract views in lists, optionals, fields, and concurrent callbacks; accept generic forwarding and returned functions. View construction evaluates its receiver once and neither copies nor closes native state. Reject mismatched contract applications, implicit concrete-to-contract conversions, function equality, and value-type intersection syntax.
 
 ## CL-11: Recursive records require immutable-container indirection
 

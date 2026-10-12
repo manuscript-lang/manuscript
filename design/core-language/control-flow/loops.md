@@ -22,7 +22,7 @@ fn sum(values: List[Int]) -> Int:
     return total
 ```
 
-The list contains shareable integers. Each iteration binds an element and updates the accumulator. Addition uses checked `Int` arithmetic, so overflow is a [programming fault](../errors/faults.md).
+The list contains integers. Each iteration binds an element and updates the accumulator. Addition uses checked `Int` arithmetic, so overflow is a [programming fault](../errors/faults.md).
 
 ## Iterable types and binding
 

@@ -30,7 +30,7 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 | Pools and leases | Fixed resource pools, cancellable acquisition, guarded contract views, stale-alias rejection, single capacity return, operation cancellation/joining, and reverse owned-resource release |
 | Builders | Synchronized List/Map/Set/Bytes/String builders, immutable sealed snapshots, idempotent freeze, and rejection of mutation after sealing |
 | CLI capabilities | Explicit Process arguments/environment, streams, read-only files, monotonic clock, network, commands, checked exit codes, signal cancellation, joined shutdown, and host-root cleanup |
-| HTTP | Explicit Network authority; bounded buffered requests/responses, ordinary shareable handlers, admission/body/output limits, timeout/disconnect cancellation, fault isolation, and grace/cancel/join shutdown |
+| HTTP | Explicit Network authority; bounded buffered requests/responses, ordinary handlers, admission/body/output limits, timeout/disconnect cancellation, fault isolation, and grace/cancel/join shutdown |
 | Subprocesses | Explicit Commands authority, joined execution, timeout, aggregate output bounds, captured bytes, exit status, and domain errors; process-group cancellation on platforms exposing that facility |
 | General-purpose packages | Strict codecs/binary numbers, scalar text, Float math/BigInt, exact JSON, CSV/URL/HTML, sequential collection algorithms, hashes/HMAC/PBKDF2/AES-GCM/Ed25519, compression and ZIP/TAR, bounded stream helpers, structured logging |
 | Additional CLI roots | FileSystem read/write/copy/stat/list/directories/links, WallClock/Timestamp, System info/environment and cryptographic Entropy |

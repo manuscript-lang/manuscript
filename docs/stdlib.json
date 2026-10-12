@@ -167,7 +167,7 @@
           "kind": "interface",
           "type": "ListBuilder[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ],
           "operations": [
             "append: fn(value: T)-\u003eUnit",
@@ -180,7 +180,7 @@
           "type": "MapBuilder[T, U]",
           "type_parameters": [
             "T: Hashable",
-            "U: Shareable"
+            "U"
           ],
           "operations": [
             "freeze: fn()-\u003eMap[T, U]",
@@ -317,17 +317,17 @@
           "fields": [
             "arguments: List[String]",
             "environment: Map[String, String]",
-            "stdin: ReadStream \u0026 Shareable",
-            "stdout: WriteStream \u0026 Shareable",
-            "stderr: WriteStream \u0026 Shareable",
-            "files: Files \u0026 Shareable",
-            "clock: Clock \u0026 Shareable",
-            "network: Network \u0026 Shareable",
-            "commands: Commands \u0026 Shareable",
-            "filesystem: FileSystem \u0026 Shareable",
-            "entropy: Entropy \u0026 Shareable",
-            "wall_clock: WallClock \u0026 Shareable",
-            "system: System \u0026 Shareable"
+            "stdin: ReadStream",
+            "stdout: WriteStream",
+            "stderr: WriteStream",
+            "files: Files",
+            "clock: Clock",
+            "network: Network",
+            "commands: Commands",
+            "filesystem: FileSystem",
+            "entropy: Entropy",
+            "wall_clock: WallClock",
+            "system: System"
           ]
         }
       ]
@@ -340,7 +340,7 @@
           "kind": "interface",
           "type": "List[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ],
           "operations": [
             "append: fn(value: T)-\u003eList[T]",
@@ -357,7 +357,7 @@
             "find_last: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
             "find_last_index: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[Int]",
             "first: fn()-\u003eOptional[T]",
-            "flat_map[U: Shareable]: fn(transform: fn(value: T)-\u003eList[U])-\u003eList[U]",
+            "flat_map[U]: fn(transform: fn(value: T)-\u003eList[U])-\u003eList[U]",
             "fold[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
             "fold_right[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
             "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
@@ -370,7 +370,7 @@
             "last: fn()-\u003eOptional[T]",
             "last_index_of: fn(value: T)-\u003eOptional[Int]",
             "length: fn()-\u003eInt",
-            "map[U: Shareable]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
+            "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
             "prepend: fn(value: T)-\u003eList[T]",
             "reverse: fn()-\u003eList[T]",
             "slice: fn(start: Int, end: Int)-\u003eList[T]",
@@ -387,7 +387,7 @@
           "kind": "record",
           "type": "ListEntry[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ],
           "fields": [
             "index: Int",
@@ -400,7 +400,7 @@
           "type": "Map[T, U]",
           "type_parameters": [
             "T: Hashable",
-            "U: Shareable"
+            "U"
           ],
           "operations": [
             "clear: fn()-\u003eMap[T, U]",
@@ -424,7 +424,7 @@
           "type": "MapEntry[T, U]",
           "type_parameters": [
             "T: Hashable",
-            "U: Shareable"
+            "U"
           ],
           "fields": [
             "key: T",
@@ -436,7 +436,7 @@
           "kind": "interface",
           "type": "Set[T]",
           "type_parameters": [
-            "T: Shareable \u0026 Hashable"
+            "T: Hashable"
           ],
           "operations": [
             "clear: fn()-\u003eSet[T]",
@@ -461,7 +461,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], index: Int)-\u003eOptional[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -469,7 +469,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], value: T)-\u003eBool",
           "type_parameters": [
-            "T: Shareable \u0026 Equal"
+            "T: Equal"
           ]
         },
         {
@@ -477,7 +477,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], target: Int, start: Int, end: Int)-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -493,7 +493,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eBool",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -501,7 +501,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], value: T, start: Int, end: Int)-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -509,7 +509,7 @@
           "kind": "fn",
           "type": "fn(value: T, count: Int, max_items: Int)-\u003eResult[List[T], LibraryError]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -517,7 +517,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -525,7 +525,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -533,7 +533,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eOptional[Int]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -541,7 +541,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -549,7 +549,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eOptional[Int]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -557,7 +557,7 @@
           "kind": "fn",
           "type": "fn(values: List[T])-\u003eOptional[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -565,8 +565,8 @@
           "kind": "fn",
           "type": "fn(values: List[T], transform: fn(value: T)-\u003eList[U])-\u003eList[U]",
           "type_parameters": [
-            "T: Shareable",
-            "U: Shareable"
+            "T",
+            "U"
           ]
         },
         {
@@ -574,7 +574,7 @@
           "kind": "fn",
           "type": "fn(values: List[List[T]])-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -582,7 +582,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
           "type_parameters": [
-            "T: Shareable",
+            "T",
             "A"
           ]
         },
@@ -591,7 +591,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
           "type_parameters": [
-            "T: Shareable",
+            "T",
             "A"
           ]
         },
@@ -600,7 +600,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], operation: fn(value: T)-\u003eUnit)-\u003eUnit",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -608,7 +608,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], key: fn(value: T)-\u003eK)-\u003eMap[K, List[T]]",
           "type_parameters": [
-            "T: Shareable",
+            "T",
             "K: Hashable"
           ]
         },
@@ -617,7 +617,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], value: T)-\u003eOptional[Int]",
           "type_parameters": [
-            "T: Shareable \u0026 Equal"
+            "T: Equal"
           ]
         },
         {
@@ -641,7 +641,7 @@
           "kind": "fn",
           "type": "fn(values: List[T])-\u003eBool",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -665,7 +665,7 @@
           "kind": "fn",
           "type": "fn(values: List[T])-\u003eOptional[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -673,7 +673,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], value: T)-\u003eOptional[Int]",
           "type_parameters": [
-            "T: Shareable \u0026 Equal"
+            "T: Equal"
           ]
         },
         {
@@ -681,7 +681,7 @@
           "kind": "fn",
           "type": "fn(values: List[T])-\u003eList[ListEntry[T]]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -689,7 +689,7 @@
           "kind": "fn",
           "type": "fn(values: List[T])-\u003eList[Int]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -697,8 +697,8 @@
           "kind": "fn",
           "type": "fn(values: List[T], transform: fn(value: T)-\u003eU)-\u003eList[U]",
           "type_parameters": [
-            "T: Shareable",
-            "U: Shareable"
+            "T",
+            "U"
           ]
         },
         {
@@ -707,7 +707,7 @@
           "type": "fn(values: Map[K, V])-\u003eMap[K, V]",
           "type_parameters": [
             "K: Hashable",
-            "V: Shareable"
+            "V"
           ]
         },
         {
@@ -716,7 +716,7 @@
           "type": "fn(values: Map[K, V])-\u003eList[MapEntry[K, V]]",
           "type_parameters": [
             "K: Hashable",
-            "V: Shareable"
+            "V"
           ]
         },
         {
@@ -725,7 +725,7 @@
           "type": "fn(values: Map[K, V], operation: fn(key: K, value: V)-\u003eUnit)-\u003eUnit",
           "type_parameters": [
             "K: Hashable",
-            "V: Shareable"
+            "V"
           ]
         },
         {
@@ -734,7 +734,7 @@
           "type": "fn(entries: List[MapEntry[K, V]])-\u003eMap[K, V]",
           "type_parameters": [
             "K: Hashable",
-            "V: Shareable"
+            "V"
           ]
         },
         {
@@ -743,7 +743,7 @@
           "type": "fn(values: Map[K, V])-\u003eList[K]",
           "type_parameters": [
             "K: Hashable",
-            "V: Shareable"
+            "V"
           ]
         },
         {
@@ -752,7 +752,7 @@
           "type": "fn(values: Map[K, V], other: Map[K, V])-\u003eMap[K, V]",
           "type_parameters": [
             "K: Hashable",
-            "V: Shareable"
+            "V"
           ]
         },
         {
@@ -761,7 +761,7 @@
           "type": "fn(values: Map[K, V])-\u003eList[V]",
           "type_parameters": [
             "K: Hashable",
-            "V: Shareable"
+            "V"
           ]
         },
         {
@@ -770,7 +770,7 @@
           "type": "fn(values: Map[K, V], key: K, value: V)-\u003eMap[K, V]",
           "type_parameters": [
             "K: Hashable",
-            "V: Shareable"
+            "V"
           ]
         },
         {
@@ -779,7 +779,7 @@
           "type": "fn(values: Map[K, V], key: K, create: fn(key: K)-\u003eV)-\u003eMap[K, V]",
           "type_parameters": [
             "K: Hashable",
-            "V: Shareable"
+            "V"
           ]
         },
         {
@@ -787,7 +787,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], value: T)-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -800,7 +800,7 @@
           "kind": "fn",
           "type": "fn(values: List[T])-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -840,7 +840,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], start: Int, end: Int)-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -848,7 +848,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], predicate: fn(value: T)-\u003eBool)-\u003eBool",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -866,7 +866,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -882,7 +882,7 @@
           "kind": "fn",
           "type": "fn(values: List[T])-\u003eSet[T]",
           "type_parameters": [
-            "T: Shareable \u0026 Hashable"
+            "T: Hashable"
           ]
         },
         {
@@ -898,7 +898,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], index: Int, value: T)-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -906,7 +906,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         },
         {
@@ -914,7 +914,7 @@
           "kind": "fn",
           "type": "fn(values: List[T], index: Int)-\u003eList[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ]
         }
       ]
@@ -1166,8 +1166,8 @@
           "type": "HttpClient",
           "operations": [
             "close: fn()-\u003eUnit",
-            "send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-\u003eResult[ResponseBody \u0026 Shareable, LibraryError]",
-            "send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream \u0026 Shareable, max_response_bytes: Int, timeout: Duration)-\u003eResult[ResponseBody \u0026 Shareable, LibraryError]"
+            "send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-\u003eResult[ResponseBody, LibraryError]",
+            "send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration)-\u003eResult[ResponseBody, LibraryError]"
           ]
         },
         {
@@ -1196,7 +1196,7 @@
             "query: fn()-\u003eString",
             "read: fn(max_bytes: Int)-\u003eResult[Optional[Bytes], IoError]",
             "send_headers: fn(status: Int, headers: Map[String, List[String]])-\u003eResult[Unit, LibraryError]",
-            "upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)-\u003eResult[WebSocket \u0026 Shareable, LibraryError]",
+            "upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)-\u003eResult[WebSocket, LibraryError]",
             "write: fn(data: Bytes)-\u003eResult[Unit, IoError]"
           ]
         },
@@ -1251,24 +1251,24 @@
           "kind": "interface",
           "type": "Network",
           "operations": [
-            "bind_datagram: fn(address: String)-\u003eResult[DatagramSocket \u0026 Shareable, LibraryError]",
+            "bind_datagram: fn(address: String)-\u003eResult[DatagramSocket, LibraryError]",
             "close: fn()-\u003eUnit",
-            "connect: fn(address: String, timeout: Duration)-\u003eResult[Connection \u0026 Shareable, LibraryError]",
-            "connect_tls: fn(address: String, server_name: String, timeout: Duration)-\u003eResult[Connection \u0026 Shareable, LibraryError]",
-            "connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)-\u003eResult[Connection \u0026 Shareable, LibraryError]",
-            "connect_unix: fn(path: String, timeout: Duration)-\u003eResult[Connection \u0026 Shareable, LibraryError]",
-            "http_client: fn(options: HttpClientOptions)-\u003eResult[HttpClient \u0026 Shareable, LibraryError]",
-            "listen: fn(address: String)-\u003eResult[Listener \u0026 Shareable, LibraryError]",
-            "listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)-\u003eResult[Listener \u0026 Shareable, LibraryError]",
-            "listen_unix: fn(path: String)-\u003eResult[Listener \u0026 Shareable, LibraryError]",
+            "connect: fn(address: String, timeout: Duration)-\u003eResult[Connection, LibraryError]",
+            "connect_tls: fn(address: String, server_name: String, timeout: Duration)-\u003eResult[Connection, LibraryError]",
+            "connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)-\u003eResult[Connection, LibraryError]",
+            "connect_unix: fn(path: String, timeout: Duration)-\u003eResult[Connection, LibraryError]",
+            "http_client: fn(options: HttpClientOptions)-\u003eResult[HttpClient, LibraryError]",
+            "listen: fn(address: String)-\u003eResult[Listener, LibraryError]",
+            "listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)-\u003eResult[Listener, LibraryError]",
+            "listen_unix: fn(path: String)-\u003eResult[Listener, LibraryError]",
             "lookup: fn(name: String, max_records: Int, timeout: Duration)-\u003eResult[List[String], LibraryError]",
             "request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-\u003eResult[ClientResponse, LibraryError]",
             "resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)-\u003eResult[List[DnsRecord], LibraryError]",
-            "restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)-\u003eResult[Network \u0026 Shareable, LibraryError]",
-            "serve: fn(address: String, handler: fn(request: HttpRequest)-\u003eHttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)-\u003eResult[HttpServer \u0026 Shareable, IoError]",
-            "serve_stream: fn(address: String, handler: fn(exchange: HttpExchange \u0026 Shareable)-\u003eResult[Unit, LibraryError], options: HttpServerOptions)-\u003eResult[HttpServer \u0026 Shareable, LibraryError]",
-            "web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)-\u003eResult[WebSocket \u0026 Shareable, LibraryError]",
-            "with_resolver: fn(address: String)-\u003eResult[Network \u0026 Shareable, LibraryError]"
+            "restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)-\u003eResult[Network, LibraryError]",
+            "serve: fn(address: String, handler: fn(request: HttpRequest)-\u003eHttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)-\u003eResult[HttpServer, IoError]",
+            "serve_stream: fn(address: String, handler: fn(exchange: HttpExchange)-\u003eResult[Unit, LibraryError], options: HttpServerOptions)-\u003eResult[HttpServer, LibraryError]",
+            "web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)-\u003eResult[WebSocket, LibraryError]",
+            "with_resolver: fn(address: String)-\u003eResult[Network, LibraryError]"
           ]
         },
         {
@@ -1301,7 +1301,7 @@
           "kind": "interface",
           "type": "Files",
           "operations": [
-            "open: fn(path: String)-\u003eResult[File \u0026 Shareable, IoError]"
+            "open: fn(path: String)-\u003eResult[File, IoError]"
           ]
         },
         {
@@ -1337,17 +1337,17 @@
         {
           "name": "copy",
           "kind": "fn",
-          "type": "fn(input: ReadStream \u0026 Shareable, output: WriteStream \u0026 Shareable, max_bytes: Int)-\u003eResult[Int, LibraryError]"
+          "type": "fn(input: ReadStream, output: WriteStream, max_bytes: Int)-\u003eResult[Int, LibraryError]"
         },
         {
           "name": "read_all",
           "kind": "fn",
-          "type": "fn(input: ReadStream \u0026 Shareable, max_bytes: Int)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(input: ReadStream, max_bytes: Int)-\u003eResult[Bytes, LibraryError]"
         },
         {
           "name": "read_line",
           "kind": "fn",
-          "type": "fn(input: ReadStream \u0026 Shareable, max_bytes: Int)-\u003eResult[Optional[String], LibraryError]"
+          "type": "fn(input: ReadStream, max_bytes: Int)-\u003eResult[Optional[String], LibraryError]"
         }
       ]
     },
@@ -1395,7 +1395,7 @@
         {
           "name": "write",
           "kind": "fn",
-          "type": "fn(output: WriteStream \u0026 Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int)-\u003eResult[Unit, LibraryError]"
+          "type": "fn(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int)-\u003eResult[Unit, LibraryError]"
         }
       ]
     },
@@ -1612,8 +1612,8 @@
           "kind": "interface",
           "type": "Listener",
           "operations": [
-            "accept: fn()-\u003eResult[Connection \u0026 Shareable, LibraryError]",
-            "accept_timeout: fn(timeout: Duration)-\u003eResult[Connection \u0026 Shareable, LibraryError]",
+            "accept: fn()-\u003eResult[Connection, LibraryError]",
+            "accept_timeout: fn(timeout: Duration)-\u003eResult[Connection, LibraryError]",
             "address: fn()-\u003eString",
             "close: fn()-\u003eUnit"
           ]
@@ -1740,7 +1740,7 @@
           "kind": "interface",
           "type": "Lease[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ],
           "operations": [
             "close: fn()-\u003eUnit",
@@ -1752,7 +1752,7 @@
           "kind": "interface",
           "type": "Pool[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ],
           "fields": [
             "resources: List[T]"
@@ -1815,7 +1815,7 @@
           "kind": "interface",
           "type": "Queue[T]",
           "type_parameters": [
-            "T: Shareable"
+            "T"
           ],
           "fields": [
             "capacity: Int"
@@ -1850,12 +1850,12 @@
         {
           "name": "secure_int",
           "kind": "fn",
-          "type": "fn(entropy: Entropy \u0026 Shareable, min: Int, max_exclusive: Int)-\u003eResult[Int, LibraryError]"
+          "type": "fn(entropy: Entropy, min: Int, max_exclusive: Int)-\u003eResult[Int, LibraryError]"
         },
         {
           "name": "uuid_v4",
           "kind": "fn",
-          "type": "fn(entropy: Entropy \u0026 Shareable)-\u003eResult[String, LibraryError]"
+          "type": "fn(entropy: Entropy)-\u003eResult[String, LibraryError]"
         }
       ]
     },
@@ -1918,27 +1918,6 @@
             "T",
             "E",
             "F"
-          ]
-        }
-      ]
-    },
-    {
-      "path": "@std/state.ms",
-      "declarations": [
-        {
-          "name": "State",
-          "kind": "interface",
-          "type": "State[T]",
-          "type_parameters": [
-            "T: Shareable"
-          ],
-          "fields": [
-            "value: T"
-          ],
-          "operations": [
-            "get: fn()-\u003eT",
-            "set: fn(value: T)-\u003eUnit",
-            "swap: fn(value: T)-\u003eT"
           ]
         }
       ]
@@ -2084,6 +2063,38 @@
       ]
     },
     {
+      "path": "@std/sync.ms",
+      "declarations": [
+        {
+          "name": "Synchronized",
+          "kind": "interface",
+          "type": "Synchronized[T]",
+          "type_parameters": [
+            "T"
+          ],
+          "fields": [
+            "value: T"
+          ],
+          "operations": [
+            "lock: fn()-\u003eSynchronizedGuard[T]"
+          ]
+        },
+        {
+          "name": "SynchronizedGuard",
+          "kind": "interface",
+          "type": "SynchronizedGuard[T]",
+          "type_parameters": [
+            "T"
+          ],
+          "operations": [
+            "close: fn()-\u003eUnit",
+            "get: fn()-\u003eT",
+            "set: fn(value: T)-\u003eUnit"
+          ]
+        }
+      ]
+    },
+    {
       "path": "@std/system.ms",
       "declarations": [
         {
@@ -2182,8 +2193,8 @@
           "kind": "fn",
           "type": "fn(items: List[T], operation: fn(item: T)-\u003eU, limit: Int)-\u003eResult[List[U], ExecutionError]",
           "type_parameters": [
-            "T: Shareable",
-            "U: Shareable"
+            "T",
+            "U"
           ]
         }
       ]
@@ -2462,11 +2473,6 @@
           "name": "Never",
           "kind": "type",
           "type": "Never"
-        },
-        {
-          "name": "Shareable",
-          "kind": "type",
-          "type": "Shareable"
         },
         {
           "name": "String",

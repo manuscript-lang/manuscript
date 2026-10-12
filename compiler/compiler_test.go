@@ -589,8 +589,8 @@ func TestNativeProfilesAndDebugSources(t *testing.T) {
 
 func TestSynchronizedBoundaries(t *testing.T) {
 	for name, source := range map[string]string{
-		"removed bound":       "fn old[T: Shareable](value: T) -> T:\n    return value\n",
-		"removed view syntax": "interface Read:\n    fn get() -> Int\nfn old(value: Read & Shareable) -> Unit:\n    return\n",
+		"unknown bound":       "fn old[T: MissingBound](value: T) -> T:\n    return value\n",
+		"removed view syntax": "interface Read:\n    fn get() -> Int\nfn old(value: Read & Equal) -> Unit:\n    return\n",
 		"guard constructor":   "import SynchronizedGuard from \"@std/sync.ms\"\nfn invalid() -> Unit:\n    let guard = SynchronizedGuard[Int]()\n",
 		"unguarded access":    "import Synchronized from \"@std/sync.ms\"\nfn invalid() -> Unit:\n    let cell = Synchronized(value: 0)\n    cell.set(value: 1)\n",
 		"cell equality":       "import Synchronized from \"@std/sync.ms\"\nfn invalid() -> Bool:\n    let cell = Synchronized(value: 0)\n    return cell == cell\n",

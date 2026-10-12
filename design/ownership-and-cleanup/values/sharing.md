@@ -23,6 +23,6 @@ Wrappers coordinate the closed-state check, access to the underlying handle, and
 
 ## Function values
 
-Named functions, closures, bound methods, function fields, and function parameters are ordinary shareable values. Copies, generic forwarding, collection storage, and return values preserve their normal call behavior. Concurrency APIs check the function signature, with no separate capture-sharing eligibility or proof-erasure rules. An operation may return another function.
+Named functions, closures, bound methods, function fields, and function parameters are ordinary values. Copies, generic forwarding, collection storage, and return values preserve their normal call behavior. Concurrency APIs check the function signature, with no separate capture-sharing eligibility or proof-erasure rules. An operation may return another function.
 
 Capture application services and job data for background work, and acquire job resources inside that work's own `with` scopes. A resource captured beyond its `with` scope remains a valid reference, but subsequent operations report closed state. Sharing, resource lifetime, and work lifetime remain separate guarantees.
