@@ -95,4 +95,4 @@ The [architecture guide](documentation/contributing/architecture.md) maps the co
 
 Use `make setup`, `make doctor`, and `make verify` for routine development; `make verify-full` runs native validation. Read [maintenance and compatibility](documentation/contributing/maintenance.md) for pin updates and releases.
 
-Language guides live in `documentation/`, and standard declarations live in [stdlib/](stdlib/README.md). The website is generated into ignored `.artifacts/book/` and deployed through GitHub Pages artifacts.
+Go implementation packages live in `pkg/`, command entrypoints in `cmd/`, and private helpers in `internal/`. Language guides live in `documentation/`, and standard declarations live in [pkg/stdlib/](pkg/stdlib/README.md). The website is generated into ignored `.artifacts/book/` and deployed through GitHub Pages artifacts.

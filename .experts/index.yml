@@ -4,12 +4,12 @@ experts:
     file: language.md
     topics: [syntax, types, imports, arguments, removals, sharing, language decisions]
     paths:
-      - "syntax/**"
-      - "lexer/**"
-      - "parser/**"
-      - "checker/**"
-      - "compiler/**"
-      - "project/**"
+      - "pkg/syntax/**"
+      - "pkg/lexer/**"
+      - "pkg/parser/**"
+      - "pkg/checker/**"
+      - "pkg/compiler/**"
+      - "pkg/project/**"
       - "documentation/core-language/**"
       - "documentation/modules-and-capabilities/**"
       - "tests/e2e/**"
@@ -17,8 +17,8 @@ experts:
     file: runtime.md
     topics: [concurrency, cancellation, cleanup, resources, networking, native APIs]
     paths:
-      - "runtime/**"
-      - "stdlib/**"
+      - "pkg/runtime/**"
+      - "pkg/stdlib/**"
       - "documentation/concurrency/**"
       - "documentation/ownership-and-cleanup/**"
       - "documentation/standard-library/**"
@@ -27,15 +27,15 @@ experts:
     file: tooling-and-docs.md
     topics: [documentation, generated references, editor tooling, navigation, CLI, builds]
     paths:
-      - "tooling/**"
+      - "pkg/tooling/**"
       - "extensions/**"
       - "documentation/**"
       - "website/**"
       - "internal/cli/**"
-      - "project/**"
-      - "stdlib/**"
+      - "pkg/project/**"
+      - "pkg/stdlib/**"
       - "cmd/**"
-      - "compiler/**"
+      - "pkg/compiler/**"
       - "scripts/**"
       - ".github/workflows/**"
       - "README.md"

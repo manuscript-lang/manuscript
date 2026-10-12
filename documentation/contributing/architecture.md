@@ -5,7 +5,9 @@ weight = 1
 
 # Repository architecture
 
-Manuscript uses one Go module. Packages follow the language pipeline and its independently usable tools. Tests stay beside the implementation they exercise; native conformance and publication checks live in `tests/`.
+Manuscript uses one Go module. Reusable implementation packages live in `pkg/`; command entrypoints live in `cmd/`, and private CLI and native helpers live in `internal/`. Tests stay beside the implementation they exercise; native conformance and publication checks live in `tests/`.
+
+The root groups implementation (`pkg/`, `cmd/`, `internal/`), documentation (`documentation/`, `website/`), integrations and examples (`extensions/`, `examples/`), and repository support (`scripts/`, `tests/`, `skills/`, `vendor/`). Go module files, build/version configuration, the README, and contributor guidance remain at the root.
 
 ## Follow one compilation
 
@@ -23,7 +25,7 @@ flowchart LR
   Runtime --> Facts
   Compiler --> Runtime[runtime: embedded native source]
   Tools[tooling and LSP] --> Compiler
-  Docs[tooling/docgen] --> Checker
+  Docs[pkg/tooling/docgen] --> Checker
 ```
 
 1. `internal/cli` validates command options and selects a compiler mode. `cmd/ms` only translates the returned status into the process exit code.
@@ -38,23 +40,23 @@ flowchart LR
 
 | Package or directory | Responsibility and starting point |
 | --- | --- |
-| `syntax/` | Syntax tree, patterns, positions, and diagnostics in `ast.go` and `diagnostics.go`; shared executable-syntax traversal in `walk.go` |
-| `lexer/` | Tokenization and layout in `lexer.go`; original-position checks in `lexer_test.go` |
-| `parser/` | Strict source parsing in `parser.go`; editor recovery in `partial.go` |
-| `checker/` | Checking entry point in `checker.go`; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
-| `project/` | Manifest parsing in `manifest.go`; confined import and overlay resolution in `paths.go` |
-| `compiler/` | Public orchestration in `compiler.go` and `modules.go`; lowering in `generate.go`; native source assembly in `build.go`; pin/artifact identity in `cache.go`; SDK selection/materialization in `toolchain*.go` |
-| `runtime/` | Value and numeric semantics; work lifetimes in `tasks.go`, `background.go`, and `lifetime.go`; cleanup, synchronization, services, and host implementations; domain-specific native standard-library operations in `library_*.go` |
-| `stdlib/` | Public `.ms` declarations, `bindings.json` native identities, and embedded sources. This is the standard signature authority |
-| `tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
-| `tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
-| `tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. `call-rules.md` is the embedded source for special compiler-bound calls |
+| `pkg/syntax/` | Syntax tree, patterns, positions, and diagnostics in `ast.go` and `diagnostics.go`; shared executable-syntax traversal in `walk.go` |
+| `pkg/lexer/` | Tokenization and layout in `lexer.go`; original-position checks in `lexer_test.go` |
+| `pkg/parser/` | Strict source parsing in `parser.go`; editor recovery in `partial.go` |
+| `pkg/checker/` | Checking entry point in `checker.go`; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
+| `pkg/project/` | Manifest parsing in `manifest.go`; confined import and overlay resolution in `paths.go` |
+| `pkg/compiler/` | Public orchestration in `compiler.go` and `modules.go`; lowering in `generate.go`; native source assembly in `build.go`; pin/artifact identity in `cache.go`; SDK selection/materialization in `toolchain*.go` |
+| `pkg/runtime/` | Value and numeric semantics; work lifetimes in `tasks.go`, `background.go`, and `lifetime.go`; cleanup, synchronization, services, and host implementations; domain-specific native standard-library operations in `library_*.go` |
+| `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities, and embedded sources. This is the standard signature authority |
+| `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
+| `pkg/tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
+| `pkg/tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. `call-rules.md` is the embedded source for special compiler-bound calls |
 | `internal/decimal/`, `internal/nativeabi/` | Lightweight shared decimal literal rules and receiver-to-function identities; checked `.ms` declarations retain signature authority |
 | `internal/hostos/` | Platform helpers for native filesystem, process, and OS operations, included in the embedded dependency bundle |
 | `internal/cli/` | CLI command orchestration, status codes, signal forwarding, and shipped documentation commands |
 | Root Go files | Embedded vendor/module dependencies and optional native toolchain payload. They must remain beside `go.mod`, `vendor/`, and the build payload because Go embed paths cannot traverse a parent directory |
 
-The frontend's public import paths stay at the repository root. `compiler.Project` and `compiler.ReadProject` remain available for existing callers; their implementation now belongs to `project`. The documentation renderer is `tooling/docgen`, with the Go package name `docgen`.
+Public Go imports use `github.com/manuscript-lang/manuscript/pkg/<package>`, including `pkg/tooling/lsp` and `pkg/tooling/docgen`. Callers using the former root package paths must update their imports. `compiler.Project` and `compiler.ReadProject` remain available; their implementation belongs to `project`. The documentation renderer has the Go package name `docgen`. Manuscript imports such as `@std/time.ms` keep their existing names.
 
 ## Keep shared behavior in one implementation
 

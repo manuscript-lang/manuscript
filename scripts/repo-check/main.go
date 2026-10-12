@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/scripts/internal/devtool"
-	"github.com/manuscript-lang/manuscript/syntax"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -77,7 +77,7 @@ func check() error {
 	}
 	var issues []string
 	issues = append(issues, dependencyIssues(rules, packages)...)
-	hashFile, err := parser.ParseFile(token.NewFileSet(), "compiler/cache.go", nil, 0)
+	hashFile, err := parser.ParseFile(token.NewFileSet(), "pkg/compiler/cache.go", nil, 0)
 	if err != nil {
 		return err
 	}
@@ -99,12 +99,12 @@ func check() error {
 		}
 		return true
 	})
-	hashed["compiler"] = true // Its unqualified ImplementationSources is in the same package.
+	hashed["pkg/compiler"] = true // Its unqualified ImplementationSources is in the same package.
 	for _, name := range rules.Pinned {
 		if !hashed[name] {
 			issues = append(issues, "implementation hash omits "+name)
 		}
-		if name == "stdlib" {
+		if name == "pkg/stdlib" {
 			continue
 		} // Only the authoritative .ms and binding data enter native identity.
 		p := packages[name]
@@ -163,10 +163,10 @@ func check() error {
 		path, function string
 		kinds          []string
 	}{
-		{"compiler/generate.go", "statement", syntax.StatementKinds()},
-		{"compiler/generate.go", "expression", syntax.ExpressionKinds()},
-		{"checker/checker.go", "checkStatement", syntax.StatementKinds()},
-		{"checker/checker.go", "infer", syntax.ExpressionKinds()},
+		{"pkg/compiler/generate.go", "statement", syntax.StatementKinds()},
+		{"pkg/compiler/generate.go", "expression", syntax.ExpressionKinds()},
+		{"pkg/checker/checker.go", "checkStatement", syntax.StatementKinds()},
+		{"pkg/checker/checker.go", "infer", syntax.ExpressionKinds()},
 	} {
 		missing, err := missingKinds(stage.path, stage.function, stage.kinds)
 		if err != nil {
@@ -263,7 +263,7 @@ func dependencyIssues(rules policy, packages map[string]pkg) []string {
 		if _, ok := rules.Dependencies[name]; !ok {
 			issues = append(issues, "package needs an explicit dependency policy: "+name)
 		}
-		if name == "runtime" || strings.HasPrefix(name, "internal/") && name != "internal/cli" {
+		if name == "pkg/runtime" || strings.HasPrefix(name, "internal/") && name != "internal/cli" {
 			continue
 		}
 		for _, dependency := range p.Imports {
@@ -277,7 +277,7 @@ func dependencyIssues(rules policy, packages map[string]pkg) []string {
 
 func missingKinds(path, function string, kinds []string) ([]string, error) {
 	constants := map[string]string{}
-	definitions, err := parser.ParseFile(token.NewFileSet(), "syntax/kinds.go", nil, 0)
+	definitions, err := parser.ParseFile(token.NewFileSet(), "pkg/syntax/kinds.go", nil, 0)
 	if err != nil {
 		return nil, err
 	}

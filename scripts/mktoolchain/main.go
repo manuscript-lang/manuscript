@@ -56,7 +56,7 @@ func build() error {
 	// Keep references for each supported native target, including cross builds.
 	for _, target := range []string{"linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64", "windows/arm64"} {
 		parts := strings.Split(target, "/")
-		command := exec.Command(hostGo, "list", "-mod=vendor", "-deps", "-json", "./runtime")
+		command := exec.Command(hostGo, "list", "-mod=vendor", "-deps", "-json", "./pkg/runtime")
 		command.Env = append(os.Environ(), "GOROOT="+hostRoot, "GOOS="+parts[0], "GOARCH="+parts[1], "CGO_ENABLED=0", "GOTOOLCHAIN=local", "GOENV=off", "GOFLAGS=")
 		data, err := command.Output()
 		if err != nil {

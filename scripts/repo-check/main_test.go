@@ -7,13 +7,13 @@ import (
 )
 
 func TestBoundaryRejectsHostRuntimeInFrontend(t *testing.T) {
-	rules := policy{Dependencies: map[string][]string{"checker": {"syntax"}, "syntax": {}}}
-	packages := map[string]pkg{"checker": {Imports: []string{module + "/syntax", module + "/runtime"}}, "syntax": {}}
+	rules := policy{Dependencies: map[string][]string{"pkg/checker": {"pkg/syntax"}, "pkg/syntax": {}}}
+	packages := map[string]pkg{"pkg/checker": {Imports: []string{module + "/pkg/syntax", module + "/pkg/runtime"}}, "pkg/syntax": {}}
 	issues := dependencyIssues(rules, packages)
-	if len(issues) != 1 || !strings.Contains(issues[0], "checker imports forbidden package runtime") {
+	if len(issues) != 1 || !strings.Contains(issues[0], "pkg/checker imports forbidden package pkg/runtime") {
 		t.Fatal(issues)
 	}
-	packages["checker"] = pkg{Imports: []string{module + "/syntax"}}
+	packages["pkg/checker"] = pkg{Imports: []string{module + "/pkg/syntax"}}
 	if issues := dependencyIssues(rules, packages); len(issues) != 0 {
 		t.Fatal(issues)
 	}
@@ -21,7 +21,7 @@ func TestBoundaryRejectsHostRuntimeInFrontend(t *testing.T) {
 
 func TestMissingNodeCannotSilentlyReachLowering(t *testing.T) {
 	t.Chdir("../..")
-	missing, err := missingKinds("compiler/generate.go", "expression", []string{"lambda", "future-node"})
+	missing, err := missingKinds("pkg/compiler/generate.go", "expression", []string{"lambda", "future-node"})
 	if err != nil || len(missing) != 1 || missing[0] != "future-node" {
 		t.Fatal(missing, err)
 	}

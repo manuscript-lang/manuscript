@@ -41,7 +41,7 @@ repo-check:
 	"$(GO)" run ./scripts/repo-check
 
 unit:
-	"$(GO)" test ./syntax ./lexer ./parser ./project ./checker ./runtime ./tooling/... ./scripts/repo-check
+	"$(GO)" test ./pkg/syntax ./pkg/lexer ./pkg/parser ./pkg/project ./pkg/checker ./pkg/runtime ./pkg/tooling/... ./scripts/repo-check
 
 examples-check:
 	"$(GO)" test ./tests/examples
@@ -65,7 +65,7 @@ e2e:
 	"$(GO)" test $(E2EFLAGS) ./tests/e2e
 
 race:
-	"$(GO)" test -race ./runtime ./checker ./compiler ./project ./internal/cli ./tooling/...
+	"$(GO)" test -race ./pkg/runtime ./pkg/checker ./pkg/compiler ./pkg/project ./internal/cli ./pkg/tooling/...
 
 coverage:
 	@mkdir -p .artifacts/coverage
@@ -74,9 +74,9 @@ coverage:
 	"$(GO)" tool cover -html=.artifacts/coverage/coverage.out -o .artifacts/coverage/index.html
 
 fuzz:
-	"$(GO)" test ./parser -run '^$$' -fuzz '^FuzzParse$$' -fuzztime "$(FUZZTIME)"
-	"$(GO)" test ./parser -run '^$$' -fuzz '^FuzzParsePartial$$' -fuzztime "$(FUZZTIME)"
-	"$(GO)" test ./compiler -run '^$$' -fuzz '^FuzzCompile$$' -fuzztime "$(FUZZTIME)"
+	"$(GO)" test ./pkg/parser -run '^$$' -fuzz '^FuzzParse$$' -fuzztime "$(FUZZTIME)"
+	"$(GO)" test ./pkg/parser -run '^$$' -fuzz '^FuzzParsePartial$$' -fuzztime "$(FUZZTIME)"
+	"$(GO)" test ./pkg/compiler -run '^$$' -fuzz '^FuzzCompile$$' -fuzztime "$(FUZZTIME)"
 
 fmt:
 	"$(GO)" fmt ./...
