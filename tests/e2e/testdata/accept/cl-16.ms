@@ -11,6 +11,7 @@ fn outcome_value(outcome: Result[Int, String]) -> Int:
     match outcome:
         ok(value):
             return value
+
         error(_):
             return -1
 
@@ -19,7 +20,10 @@ test "data constructor context":
     let success: Result[Int, String] = ok(value: 3)
     let failure: Result[Int, String] = error(cause: "unavailable")
     let absent: Optional[Int] = none
-    let nested: List[List[Int]] = [[], [1]]
+    let nested: List[List[Int]] = [
+        [],
+        [1]
+    ]
     if not (outcome_value(outcome: success) == 3):
         return panic(message: "check failed")
     if not (outcome_value(outcome: failure) == -1):
@@ -36,14 +40,21 @@ fn select[T](first: T, second: T) -> T:
 
 test "nested constructor arguments receive inferred context":
     let request = Request(box: Box(value: none))
-    let selected = select(first: Box(value: none), second: Box(value: some(value: 3)))
+    let selected = select(
+        first: Box(value: none),
+        second: Box(value: some(value: 3))
+    )
+
     match selected.value:
         none:
             let completed = unit
+
         some(_):
             return panic(message: "Unexpected case")
+
     match request.box.value:
         none:
             let completed = unit
+
         some(_):
             return panic(message: "Unexpected case")

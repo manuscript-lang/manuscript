@@ -4,6 +4,7 @@ package tooling
 import (
 	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,10 +12,13 @@ import (
 
 // Format preserves comments and token spellings. Invalid syntax never produces output.
 func Format(filename, source string) (string, error) {
-	if _, issues := frontend.Parse(filename, source, false); len(issues) != 0 {
-		return "", issues[0]
+	module, err := parseFormatSource(filename, source)
+	if err != nil {
+		return "", err
 	}
 	normalized := strings.ReplaceAll(source, "\r\n", "\n")
+	lines := strings.Split(normalized, "\n")
+	breaks := paragraphBreaks(module, lines)
 	tokens, err := lexer.Lex(filename, normalized)
 	if err != nil {
 		return "", err
@@ -29,7 +33,11 @@ func Format(filename, source string) (string, error) {
 	}
 	var output []string
 	blank := true
-	for index, line := range strings.Split(normalized, "\n") {
+	for index, line := range lines {
+		if breaks[index+1] && !blank {
+			output = append(output, "")
+			blank = true
+		}
 		parts := byLine[index+1]
 		if len(parts) == 0 {
 			trimmed := strings.TrimSpace(line)
@@ -68,11 +76,25 @@ func Format(filename, source string) (string, error) {
 		output = output[:len(output)-1]
 	}
 	result := strings.Join(output, "\n") + "\n"
-	if _, issues := frontend.Parse(filename, result, false); len(issues) != 0 {
-		return "", issues[0]
+	result, err = formatExpressionLayout(filename, result)
+	if err != nil {
+		return "", err
+	}
+	if _, err := parseFormatSource(filename, result); err != nil {
+		return "", err
 	}
 	return result, nil
 }
+
+// Use the same strict frontend entrypoint as compilation and editor tooling.
+func parseFormatSource(filename, source string) (*syntax.Module, error) {
+	module, issues := frontend.Parse(filename, source, false)
+	if len(issues) != 0 {
+		return nil, issues[0]
+	}
+	return module, nil
+}
+
 func tokenSpace(tokens []lexer.Token, at int) bool {
 	current, previous := tokens[at].Kind, tokens[at-1].Kind
 	if strings.Contains(" ) ] } , . : ", " "+current+" ") {

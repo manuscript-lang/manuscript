@@ -174,7 +174,22 @@ func TestStructuredDiagnosticsAndFailedEmit(t *testing.T) {
 }
 
 func TestFormattingCheckAndPermissionPreservation(t *testing.T) {
-	file := sourceFile(t, "fn value() -> Int:   \n    return 3   \n")
+	for _, tc := range []struct {
+		name, source, want string
+	}{
+		{"spacing", "fn value() -> Int:   \n    return 3   \n", "fn value() -> Int:\n    return 3\n"},
+		{"paragraphs", "fn value() -> Int:\n    if true: return 3\n    return 0\n", "fn value() -> Int:\n    if true: return 3\n\n    return 0\n"},
+		{"expressions", "fn value() -> Int:\n    return sum(left: read(1), right: 2)\n", "fn value() -> Int:\n    return sum(\n        left: read(1),\n        right: 2\n    )\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checkFormattingAndPermissions(t, tc.source, tc.want)
+		})
+	}
+}
+
+func checkFormattingAndPermissions(t *testing.T, source, want string) {
+	t.Helper()
+	file := sourceFile(t, source)
 	originalInfo, err := os.Stat(file)
 	if err != nil {
 		t.Fatal(err)
@@ -187,6 +202,13 @@ func TestFormattingCheckAndPermissionPreservation(t *testing.T) {
 	}
 	if status, _, errors := invoke(t, "fmt", file); status != 0 {
 		t.Fatal(errors)
+	}
+	formatted, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(formatted) != want {
+		t.Fatalf("formatted source: %q, want %q", formatted, want)
 	}
 	if status, _, errors := invoke(t, "fmt", file, "--check"); status != 0 {
 		t.Fatal(errors)

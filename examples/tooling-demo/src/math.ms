@@ -8,9 +8,11 @@ export fn total(first: Int, second: Int, third: Int) -> Int:
 export fn compute(iterations: Int) -> Int:
     var index = 0
     var result = 0
+
     while index < iterations:
         result = result + index % 7
         index = index + 1
+
     return result
 
 test "named arguments":

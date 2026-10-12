@@ -29,4 +29,5 @@ test "derived value equality":
         return panic(message: "check failed")
     if not (preserve_key(value: "key") == "key"):
         return panic(message: "check failed")
+
     let callback = Callback(handler: increment)

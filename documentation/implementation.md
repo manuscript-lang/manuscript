@@ -69,7 +69,7 @@ single binary, examples, and licenses for Linux, macOS, and Windows on AMD64 and
 
 ### Formatting and source inspection
 
-`ms fmt file.ms` validates syntax before atomically replacing a file and preserves comments and literal spellings. `--check` reports formatting drift without writing. `ms check --json` emits format-1 diagnostics. `ms inspect` emits checked entities, generated declaration and local names, source hashes, original-byte statement header spans, call sites, and effects. `ms diagram` emits their static Mermaid call graph, including implicit cleanup; neither command represents a runtime trace.
+`ms fmt file.ms` validates syntax before atomically replacing a file, preserves comments and literal spellings, adds paragraph breaks around declarations and control-flow sections, and wraps long or complex expressions with consistent continuation indentation while keeping inline bodies and guard groups compact. See the [formatting rules](developer-tooling/implementation.md#linting-and-formatting). `--check` reports formatting drift without writing. `ms check --json` emits format-1 diagnostics. `ms inspect` emits checked entities, generated declaration and local names, source hashes, original-byte statement header spans, call sites, and effects. `ms diagram` emits their static Mermaid call graph, including implicit cleanup; neither command represents a runtime trace.
 
 ### Editor, lint, debugger, and profiles
 

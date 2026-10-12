@@ -1,6 +1,6 @@
 import Optional from "@std/optional.ms"
-import { Item, Box, Holder, Choice } from "./domain.ms"
-import { Read, invoke, relay, as_view } from "./contracts.ms"
+import {Item, Box, Holder, Choice} from "./domain.ms"
+import {Read, invoke, relay, as_view} from "./contracts.ms"
 import Closeable from "@std/cleanup.ms"
 import ListBuilder from "@std/collections.ms"
 import panic from "@std/faults.ms"
@@ -21,6 +21,7 @@ impl Read[Int] for Choice:
         match self:
             Some(value):
                 return value + delta()
+
             Empty:
                 return delta()
 
@@ -43,12 +44,21 @@ export fn second_generic() -> fn(value: Item) -> Int:
 
 test "second local extensions":
     let item = Item(value: 2)
-    if item.get() != 22 or invoke(item) != 22 or relay(item) != 22:
+    if (
+        item.get() != 22
+        or invoke(item) != 22
+        or relay(item) != 22
+    ):
         return panic("local dispatch")
     if as_view(item).get() != 22:
         return panic("generic view")
+
     let holder = Holder(value: item)
-    if holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22:
+    if (
+        holder.get() != 22
+        or invoke(holder) != 22
+        or holder.extract() != 22
+    ):
         return panic("nested generic dispatch")
     if Box(value: "hello").get() != "hello":
         return panic("generic extension")

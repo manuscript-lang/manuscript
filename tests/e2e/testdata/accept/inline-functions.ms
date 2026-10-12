@@ -16,23 +16,29 @@ test "inline callbacks survive contextual rechecking":
     )
     if not (value == 4):
         return panic(message: "check failed")
+
     let transform = Transform(
         operation: fn(value: Int) -> Int:
             return value + 2
     )
     if not (transform.operation(value: 3) == 5):
         return panic(message: "check failed")
+
     with group = TaskGroup():
-        let first_task = group.start(fn() -> Int:
-            return 4
+        let first_task = group.start(
+            fn() -> Int:
+                return 4
         )
+
         match group.join():
             ok(_):
                 match first_task.join():
                     ok(value):
                         if value != 4:
                             return panic(message: "check failed")
+
                     error(_):
                         return panic("task result unavailable")
+
             error(_):
                 return panic(message: "Unexpected case")

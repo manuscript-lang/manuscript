@@ -12,6 +12,7 @@ fn probe() -> Result[Unit, ExecutionError]:
         return ok(value: 3)
     let second = fn() -> Bool:
         return true
+
     with group = TaskGroup():
         let number_task = identity(group.start(first))
         let flag_task = group.start(second)
@@ -19,18 +20,22 @@ fn probe() -> Result[Unit, ExecutionError]:
         let flag = try flag_task.join()
         if not (flag):
             return panic(message: "check failed")
+
         match number:
             ok(value):
                 if not (value == 3):
                     return panic(message: "check failed")
+
             error(_):
                 return panic(message: "Unexpected case")
+
         return ok(value: unit)
 
 test "typed task helper":
     match probe():
         ok(_):
             let completed = unit
+
         error(_):
             return panic(message: "Unexpected case")
 
@@ -38,6 +43,7 @@ fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
     match outcome:
         ok(value):
             return ok(value: value)
+
         error(cause):
             return error(cause: "Error {cause}")
 
@@ -46,6 +52,7 @@ test "explicit error conversion":
     let expected: Result[Int, String] = error(cause: "Error 7")
     if not (describe(outcome: failed) == expected):
         return panic(message: "check failed")
+
     let succeeded: Result[Int, Int] = ok(value: 3)
     let unchanged: Result[Int, String] = ok(value: 3)
     if not (describe(outcome: succeeded) == unchanged):
