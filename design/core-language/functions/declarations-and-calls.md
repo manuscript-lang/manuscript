@@ -9,7 +9,7 @@ weight = 21
 
 A function names its inputs, declares their types, and declares the type it returns. Its body runs in source order. Use `return` to send a value back to the caller.
 
-```text
+```manuscript
 fn decrement(value: Int) -> Int:
     return value - 1
 
@@ -30,7 +30,7 @@ Parameters belong to the function body's lexical scope. A local declaration cann
 
 A function with exactly one declared parameter accepts either `function(value)` or `function(name: value)`. The omitted label resolves to that sole parameter. Functions with more than one parameter require `name: value` for every supplied argument; the name identifies the declared parameter.
 
-```text
+```manuscript
 fn reduce(amount: Int, deduction: Int) -> Int:
     return amount - deduction
 
@@ -51,7 +51,7 @@ Source declarations cannot define default or optional parameters, variadic param
 
 To accept a variable number of values, declare an ordinary list parameter:
 
-```text
+```manuscript
 fn sum(values: List[Int]) -> Int:
     var total = 0
     for value in values:
@@ -79,7 +79,7 @@ This also matters for [concurrency APIs](../../concurrency/parallel.md#preparati
 
 `unit` is the single value of `Unit`. A `Unit` function may use `return`, `return unit`, or fall through the end of its body. Other functions must return a compatible value on every reachable normal exit; bare `return` and reachable fallthrough are compile errors. There is no implicit return of a block's final expression.
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn check_positive(value: Int) -> Unit:
@@ -108,7 +108,7 @@ Expression evaluation also has no normal successor when a necessarily evaluated 
 
 Track evaluation separately from result typing: `1 + panic(message: "stop")` has type `Int` under the [operator rules](../basics/expressions.md#never-operands), but cannot complete normally. A failed initializer accordingly prevents the following statement from being reachable.
 
-```text
+```manuscript
 fn incomplete(active: Bool) -> Int:
     if active:
         return 1

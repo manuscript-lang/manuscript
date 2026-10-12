@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/state.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 State: State[T]
 type parameters: T: Shareable
 field value: T

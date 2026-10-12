@@ -11,7 +11,7 @@ Use these modules for text transformations, raw bytes, encodings, collection alg
 
 ## `@std/text.ms`
 
-```text
+```manuscript
 fn contains(value: String, text: String) -> Bool
 fn ends_with(value: String, suffix: String) -> Bool
 fn from_scalars(values: List[Int]) -> Result[String, LibraryError]
@@ -30,7 +30,7 @@ fn upper(text: String) -> String
 
 ## `@std/bytes.ms`
 
-```text
+```manuscript
 fn contains(data: Bytes, value: Bytes) -> Bool
 fn slice(data: Bytes, start: Int, end: Int) -> Bytes
 fn values(data: Bytes) -> List[Int]
@@ -38,7 +38,7 @@ fn values(data: Bytes) -> List[Int]
 
 ## `@std/encoding.ms`
 
-```text
+```manuscript
 fn base64_decode(text: String, url_safe: Bool, max_bytes: Int) -> Result[Bytes, LibraryError]
 fn base64_encode(data: Bytes, url_safe: Bool) -> String
 fn hex_decode(text: String, max_bytes: Int) -> Result[Bytes, LibraryError]
@@ -47,7 +47,7 @@ fn hex_encode(data: Bytes) -> String
 
 ## `@std/binary.ms`
 
-```text
+```manuscript
 fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, LibraryError]
 fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, LibraryError]
 fn write_float(value: Float, little_endian: Bool) -> Bytes
@@ -56,7 +56,7 @@ fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> R
 
 ## `@std/collections.ms`
 
-```text
+```manuscript
 fn difference[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
 fn filter[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> List[T]
 fn fold[T: Shareable, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
@@ -74,7 +74,7 @@ fn union[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
 
 ## `@std/regex.ms`
 
-```text
+```manuscript
 fn compile(pattern: String) -> Result[Regex, LibraryError]
 fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], LibraryError]
 fn matches(pattern: Regex, text: String) -> Bool

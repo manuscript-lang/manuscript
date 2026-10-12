@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/fs.ms"`.
 
 Kind: record.
 
-```text
+```manuscript
 DirectoryEntry: DirectoryEntry
 field name: String
 field directory: Bool
@@ -21,7 +21,7 @@ field symlink: Bool
 
 Kind: record.
 
-```text
+```manuscript
 FileInfo: FileInfo
 field name: String
 field size: Int
@@ -34,7 +34,7 @@ field modified: Timestamp
 
 Kind: interface.
 
-```text
+```manuscript
 FileSystem: FileSystem
 operation canonicalize: fn(path: String)->Result[String, LibraryError]
 operation copy_file: fn(source: String, destination: String, replace: Bool, max_bytes: Int)->Result[Unit, LibraryError]

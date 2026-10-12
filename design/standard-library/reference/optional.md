@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/optional.ms"`.
 
 Kind: alternative.
 
-```text
+```manuscript
 Optional: Optional[T]
 type parameters: T
 case some(value: T)

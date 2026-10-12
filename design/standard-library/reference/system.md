@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/system.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 System: System
 operation environment: fn(name: String)->Optional[String]
 operation info: fn()->SystemInfo
@@ -21,7 +21,7 @@ operation working_directory: fn()->String
 
 Kind: record.
 
-```text
+```manuscript
 SystemInfo: SystemInfo
 field os: String
 field architecture: String

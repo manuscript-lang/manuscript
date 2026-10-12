@@ -13,7 +13,7 @@ A programming fault means an assumption the code relies on has failed. Use ordin
 
 Use ordinary `if` and `return` control flow to check an invariant. Import `panic` from `@std/faults.ms` when a violated invariant must produce a programming fault.
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn discount_validated(price: Decimal, percent: Decimal) -> Decimal:
@@ -32,7 +32,7 @@ An explicit `panic(message: message)` produces a programming fault when code det
 
 Its source type is `fn(message: String) -> Never`. It never completes normally; a call can appear where any expression result type is expected, including an `Int` return position. This does not create a catchable expected-error value or permit normal fallthrough in a non-`Unit` function. See [Unit, Never, and return completeness](../functions/declarations-and-calls.md#unit-and-never).
 
-```text
+```manuscript
 panic(message: "Required invariant was violated.")
 ```
 

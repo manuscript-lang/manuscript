@@ -31,7 +31,7 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 | `@std/io.ms` | `Files`, `File`, `ReadStream`, `WriteStream`, `IoError` |
 | `@std/cli.ms` | `Process` |
 
-```text
+```manuscript
 import Result from "@std/result.ms"
 import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
@@ -57,7 +57,7 @@ A missing or substituted List/Decimal import rejects the corresponding literal d
 
 `OperationId` is the single opaque, shareable identity for runtime operations, whether started by a joined group or admitted by a Background service. It has no source constructor and no implicit equality or hashing, and it grants no scheduling, joining, or transfer authority. A Background service's `status` and `cancel` act only on IDs it admitted. `WorkStatus` has nullary cases `Running`, `Succeeded`, `Failed`, `Cancelled`, `Crashed`, and `Unknown`; qualify these case names when necessary. `StartError` has `Closed` and `Full`. `IoError` has `Closed`, `InvalidInput`, `Unavailable`, and `Failed(message: String)`. These are shareable alternatives. Execution errors are defined in [joining](../../concurrency/joining.md).
 
-```text
+```manuscript
 fn panic(message: String) -> Never
 fn check_cancelled() -> Unit
 fn map_error[T, E, F](result: Result[T, E], transform: fn(cause: E) -> F) -> Result[T, F]
@@ -91,7 +91,7 @@ A pack can be inferred into a local, carried through an inferred generic type ar
 
 Packs derive `Shareable` position by position, but have no equality, hashing, iteration, field access, or indexing. Generic helpers such as `map_error` can therefore preserve a parallel pack without a new source syntax.
 
-```text
+```manuscript
 fn parallel_map[T: Shareable, U: Shareable](
     items: List[T],
     operation: fn(item: T) -> U,
@@ -105,7 +105,7 @@ This binding additionally permits the same optional `timeout` argument. `operati
 
 `Background(limit: Int)` constructs a synchronized native service under the current execution context. `limit` must be positive. Its only optional arguments are `reporter: fn(failure: BackgroundFailure) -> Unit`, `drain: Duration`, and `history_limit: Int`. The defaults are the host diagnostic sink, zero drain, and 128 completed statuses. `drain` and `history_limit` must be nonnegative. A supplied reporter must be shareable; retained reporter captures must remain usable through service shutdown.
 
-```text
+```manuscript
 type BackgroundFailure:
     case Failed(operation: OperationId, cause: String)
     case Crashed(operation: OperationId, message: String)

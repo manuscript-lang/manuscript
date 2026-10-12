@@ -9,7 +9,7 @@ weight = 36
 
 Use `parallel_map` to apply one function to a list of inputs concurrently. Supply a limit to bound the number of active calls. The returned list keeps input order, even when calls finish in another order. Import the function from `@std/tasks.ms`.
 
-```text
+```manuscript
 let lookup = fn(item: UserId) -> Result[User, UserError]:
     return users.get(id: item)
 

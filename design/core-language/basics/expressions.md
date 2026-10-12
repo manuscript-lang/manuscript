@@ -98,7 +98,7 @@ If evaluating a required subexpression exits through Result propagation or a fau
 
 ## Examples
 
-```text
+```manuscript
 fn calculated(value: Int, active: Bool) -> Int:
     let product = 1 + 2 * 3             # 7
     let same = not value == product     # not (value == product)
@@ -107,7 +107,7 @@ fn calculated(value: Int, active: Bool) -> Int:
     return value
 ```
 
-```text
+```manuscript
 fn invalid(value: Int, ratio: Float) -> Bool:
     let mixed = value + ratio           # Type error: exact numeric types differ.
     let indexed = [1, 2, 3][0]          # Syntax error: brackets take types here.

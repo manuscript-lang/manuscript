@@ -13,7 +13,7 @@ A module boundary tells callers which data and operations they may use. Keep tho
 
 The following uses application-defined `Item`, `Stock`, and `OrderError` types:
 
-```text
+```manuscript
 interface Inventory:
     fn check(items: List[Item]) -> Result[Stock, OrderError]
 

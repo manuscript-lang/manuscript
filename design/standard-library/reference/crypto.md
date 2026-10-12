@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/crypto.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 constant_time_equal: fn(left: Bytes, right: Bytes)->Bool
 ```
 
@@ -18,7 +18,7 @@ constant_time_equal: fn(left: Bytes, right: Bytes)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Result[Bytes, LibraryError]
 ```
 
@@ -26,7 +26,7 @@ derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Resu
 
 Kind: fn.
 
-```text
+```manuscript
 hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, LibraryError]
 ```
 
@@ -34,7 +34,7 @@ hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, LibraryError
 
 Kind: fn.
 
-```text
+```manuscript
 open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->Result[Bytes, LibraryError]
 ```
 
@@ -42,7 +42,7 @@ open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->R
 
 Kind: fn.
 
-```text
+```manuscript
 public_key: fn(seed: Bytes)->Result[Bytes, LibraryError]
 ```
 
@@ -50,7 +50,7 @@ public_key: fn(seed: Bytes)->Result[Bytes, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Result[Bytes, LibraryError]
 ```
 
@@ -58,7 +58,7 @@ seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Re
 
 Kind: fn.
 
-```text
+```manuscript
 sha256: fn(data: Bytes)->Bytes
 ```
 
@@ -66,7 +66,7 @@ sha256: fn(data: Bytes)->Bytes
 
 Kind: fn.
 
-```text
+```manuscript
 sha384: fn(data: Bytes)->Bytes
 ```
 
@@ -74,7 +74,7 @@ sha384: fn(data: Bytes)->Bytes
 
 Kind: fn.
 
-```text
+```manuscript
 sha512: fn(data: Bytes)->Bytes
 ```
 
@@ -82,7 +82,7 @@ sha512: fn(data: Bytes)->Bytes
 
 Kind: fn.
 
-```text
+```manuscript
 sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, LibraryError]
 ```
 
@@ -90,7 +90,7 @@ sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 verify: fn(key: Bytes, data: Bytes, signature: Bytes)->Bool
 ```
 

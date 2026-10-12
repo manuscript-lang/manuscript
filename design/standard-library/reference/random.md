@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/random.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Entropy: Entropy
 operation bytes: fn(count: Int)->Result[Bytes, LibraryError]
 ```
@@ -19,7 +19,7 @@ operation bytes: fn(count: Int)->Result[Bytes, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, LibraryError]
 ```
 
@@ -27,7 +27,7 @@ secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Resu
 
 Kind: fn.
 
-```text
+```manuscript
 uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, LibraryError]
 ```
 

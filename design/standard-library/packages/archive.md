@@ -11,14 +11,14 @@ Use compress for a byte stream and archive for named file or directory entries. 
 
 ## `@std/compress.ms`
 
-```text
+```manuscript
 fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, LibraryError]
 fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, LibraryError]
 ```
 
 ## `@std/archive.ms`
 
-```text
+```manuscript
 fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, LibraryError]
 fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], LibraryError]
 ```

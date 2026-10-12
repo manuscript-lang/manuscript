@@ -3,7 +3,7 @@ Each fenced accepted fixture is an independent .ms module, with its application 
 "><meta name=theme-color media="(prefers-color-scheme: light)" content="#ffffff"><meta name=theme-color media="(prefers-color-scheme: dark)" content="#343a40"><meta name=color-scheme content="light dark"><meta property="og:url" content="https://manuscript-lang.github.io/manuscript/compiler/conformance/core-language/"><meta property="og:site_name" content="Manuscript"><meta property="og:title" content="Core-language conformance fixtures"><meta property="og:description" content="Core-language conformance fixtures# Guide index · Chapter index · Design index These fixtures check whether the compiler accepts or rejects core-language programs and whether executed expressions behave as specified. They complement the semantic test plan . Host behavior, resource lifetimes, and concurrency have separate fixtures.
 Each fenced accepted fixture is an independent .ms module, with its application types and helper functions included. Its module-level test body has the ordinary Unit return contract. A rejected variant replaces or removes exactly the indicated text in that fixture, leaving the rest unchanged. If a variant introduces a standard declaration, add its individual import unless missing-import rejection is the behavior under test. Test each variant independently: combining unrelated errors makes the expected diagnostic ambiguous."><meta property="og:locale" content="en_us"><meta property="og:type" content="article"><meta property="article:section" content="compiler"><meta itemprop=name content="Core-language conformance fixtures"><meta itemprop=description content="Core-language conformance fixtures# Guide index · Chapter index · Design index These fixtures check whether the compiler accepts or rejects core-language programs and whether executed expressions behave as specified. They complement the semantic test plan . Host behavior, resource lifetimes, and concurrency have separate fixtures.
 Each fenced accepted fixture is an independent .ms module, with its application types and helper functions included. Its module-level test body has the ordinary Unit return contract. A rejected variant replaces or removes exactly the indicated text in that fixture, leaving the rest unchanged. If a variant introduces a standard declaration, add its individual import unless missing-import rejection is the behavior under test. Test each variant independently: combining unrelated errors makes the expected diagnostic ambiguous."><meta itemprop=wordCount content="5540"><title>Core-language conformance fixtures | Manuscript
-</title><link rel=icon href=/manuscript/favicon.png><link rel=manifest href=/manuscript/manifest.json><link rel=canonical href=https://manuscript-lang.github.io/manuscript/compiler/conformance/core-language/><link rel=stylesheet href=/manuscript/book.min.a276496db538fcb33208bc3e2ff6c7870245e94952955631e7a58204ce99422c.css integrity="sha256-onZJbbU4/LMyCLw+L/bHhwJF6UlSlVYx56WCBM6ZQiw=" crossorigin=anonymous><script defer src=/manuscript/fuse.min.js></script><script defer src=/manuscript/en.search.min.67eca677a2b80e3cee3e4759000b631df754bd9807feab0c7cf81ad1640afc08.js integrity="sha256-Z+ymd6K4DjzuPkdZAAtjHfdUvZgH/qsMfPga0WQK/Ag=" crossorigin=anonymous></script><link rel=icon type=image/svg+xml href=/manuscript/favicon.svg><script>try{const e=localStorage.getItem("manuscript-theme");(e==="light"||e==="dark")&&(document.documentElement.dataset.theme=e)}catch{}</script><script defer src=/manuscript/docs.min.6c77789c6f9a49a8292ad1a16162284f8fa2f8b6240afb2bb7a14287e3f802a8.js integrity="sha256-bHd4nG+aSagpKtGhYWIoT4+i+LYkCvsrt6FCh+P4Aqg="></script></head><body dir=ltr class="book-kind-page book-type-compiler"><input type=checkbox class="hidden toggle" id=menu-control>
+</title><link rel=icon href=/manuscript/favicon.png><link rel=manifest href=/manuscript/manifest.json><link rel=canonical href=https://manuscript-lang.github.io/manuscript/compiler/conformance/core-language/><link rel=stylesheet href=/manuscript/book.min.a276496db538fcb33208bc3e2ff6c7870245e94952955631e7a58204ce99422c.css integrity="sha256-onZJbbU4/LMyCLw+L/bHhwJF6UlSlVYx56WCBM6ZQiw=" crossorigin=anonymous><script defer src=/manuscript/fuse.min.js></script><script defer src=/manuscript/en.search.min.050eee9f9eb00a5f5a0ef4d60305cd792ac26a6f63b07097d4150e8fcb9be99d.js integrity="sha256-BQ7un56wCl9aDvTWAwXNeSrCam9jsHCX1BUOj8ub6Z0=" crossorigin=anonymous></script><link rel=icon type=image/svg+xml href=/manuscript/favicon.svg><script>try{const e=localStorage.getItem("manuscript-theme");(e==="light"||e==="dark")&&(document.documentElement.dataset.theme=e)}catch{}</script><script defer src=/manuscript/docs.min.1e6daaa9cd5ee02603df8fb08a9fadb36021be25a21b72fe61769c4c05abaa35.js integrity="sha256-Hm2qqc1e4CYD34+wip+ts2AhviWiG3L+YXacTAWrqjU="></script></head><body dir=ltr class="book-kind-page book-type-compiler"><input type=checkbox class="hidden toggle" id=menu-control>
 <input type=checkbox class="hidden toggle" id=toc-control>
 <a class=skip-link href=#main-content>Skip to content</a><header class=docs-topbar><div class=topbar-inner><a class=docs-brand href=/manuscript/ aria-label="Manuscript documentation home"><span class=brand-mark aria-hidden=true>m</span>
 <span>Manuscript <span class=brand-subtitle>Documentation</span></span></a><nav class=topbar-links aria-label=Primary><a class=current href=/manuscript/>Docs</a>
@@ -19,477 +19,477 @@ Each fenced accepted fixture is an independent .ms module, with its application 
 · <a href=/manuscript/>Design index</a></p><p>These fixtures check whether the compiler accepts or rejects core-language programs and whether executed expressions behave as specified. They complement the <a href=/manuscript/compiler/conformance/semantic-tests/>semantic test plan</a>
 . Host behavior, resource lifetimes, and concurrency have separate fixtures.</p><p>Each fenced accepted fixture is an independent <code>.ms</code> module, with its application types and helper functions included. Its module-level <code>test</code> body has the ordinary <code>Unit</code> return contract. A rejected variant replaces or removes exactly the indicated text in that fixture, leaving the rest unchanged. If a variant introduces a standard declaration, add its individual import unless missing-import rejection is the behavior under test. Test each variant independently: combining unrelated errors makes the expected diagnostic ambiguous.</p><p>The expected stage identifies the violated contract: <strong>parse</strong> for invalid source structure; <strong>resolution</strong> for an unknown or ambiguous symbol; <strong>type</strong> for incompatible types, shapes, labels, bounds, or control flow after parsing and resolution. A checker may combine its resolution and type passes, but must identify the specified cause at the offending source span. Diagnostic wording and internal pass layout are implementation choices. Accepted fixtures must satisfy the stated checks, rather than merely generate Go that compiles.</p><h2 id=cl-01-layout-and-named-call-syntax>CL-01: Layout and named-call syntax<a class=anchor href=#cl-01-layout-and-named-call-syntax>#</a></h2><p>Contract: <a href=/manuscript/core-language/basics/syntax/>source syntax</a>
 and <a href=/manuscript/core-language/functions/declarations-and-calls/>declarations and calls</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn subtract(amount: Int, deduction: Int) -&gt; Int:
-</span></span><span class=line><span class=cl>    return amount - deduction
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;named multiline call&#34;:
-</span></span><span class=line><span class=cl>    let remaining = subtract(
-</span></span><span class=line><span class=cl>        deduction: 2,
-</span></span><span class=line><span class=cl>        amount: 9,
-</span></span><span class=line><span class=cl>    )
-</span></span><span class=line><span class=cl>    if not (remaining == 7):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>This accepts trailing commas and multiline calls while mapping labels to declared parameters. Reordering the written labels does not change the parameter mapping.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the call with <code>subtract(amount: 9, deduction: 2)</code></td><td>Accept; <code>remaining</code> is <code>Int</code> and equals 7</td></tr><tr><td>Replace it with <code>subtract(9, 2)</code></td><td>Type rejection: multi-parameter functions require argument labels</td></tr><tr><td>Replace it with <code>subtract(amount: 9, amount: 2)</code></td><td>Type rejection: duplicate supplied argument and missing <code>deduction</code></td></tr><tr><td>Replace it with <code>subtract(amount: 9)</code></td><td>Type rejection: missing required <code>deduction</code></td></tr><tr><td>Replace it with <code>subtract(amount: 9, discount: 2)</code></td><td>Type rejection: unknown argument name <code>discount</code></td></tr><tr><td>Replace <code>return amount - deduction</code> with <code>return missing</code></td><td>Resolution rejection: unknown binding <code>missing</code></td></tr><tr><td>Remove the indentation before the function&rsquo;s <code>return</code></td><td>Parse rejection: missing function block/module-level return</td></tr></tbody></table><p>Add lexical rejection fixtures for tabs, inconsistent dedentation, and unterminated delimiters as specified by the syntax chapter. Preserve the error&rsquo;s actual cause rather than reporting a later missing return.</p><h2 id=cl-02-arithmetic-grouping-and-boolean-short-circuiting>CL-02: Arithmetic grouping and Boolean short-circuiting<a class=anchor href=#cl-02-arithmetic-grouping-and-boolean-short-circuiting>#</a></h2><p>Contract: <a href=/manuscript/core-language/basics/expressions/>expressions and operators</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+fn subtract(amount: Int, deduction: Int) -&gt; Int:
+    return amount - deduction
+
+test &#34;named multiline call&#34;:
+    let remaining = subtract(
+        deduction: 2,
+        amount: 9,
+    )
+    if not (remaining == 7):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>This accepts trailing commas and multiline calls while mapping labels to declared parameters. Reordering the written labels does not change the parameter mapping.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the call with <code>subtract(amount: 9, deduction: 2)</code></td><td>Accept; <code>remaining</code> is <code>Int</code> and equals 7</td></tr><tr><td>Replace it with <code>subtract(9, 2)</code></td><td>Type rejection: multi-parameter functions require argument labels</td></tr><tr><td>Replace it with <code>subtract(amount: 9, amount: 2)</code></td><td>Type rejection: duplicate supplied argument and missing <code>deduction</code></td></tr><tr><td>Replace it with <code>subtract(amount: 9)</code></td><td>Type rejection: missing required <code>deduction</code></td></tr><tr><td>Replace it with <code>subtract(amount: 9, discount: 2)</code></td><td>Type rejection: unknown argument name <code>discount</code></td></tr><tr><td>Replace <code>return amount - deduction</code> with <code>return missing</code></td><td>Resolution rejection: unknown binding <code>missing</code></td></tr><tr><td>Remove the indentation before the function&rsquo;s <code>return</code></td><td>Parse rejection: missing function block/module-level return</td></tr></tbody></table><p>Add lexical rejection fixtures for tabs, inconsistent dedentation, and unterminated delimiters as specified by the syntax chapter. Preserve the error&rsquo;s actual cause rather than reporting a later missing return.</p><h2 id=cl-02-arithmetic-grouping-and-boolean-short-circuiting>CL-02: Arithmetic grouping and Boolean short-circuiting<a class=anchor href=#cl-02-arithmetic-grouping-and-boolean-short-circuiting>#</a></h2><p>Contract: <a href=/manuscript/core-language/basics/expressions/>expressions and operators</a>
 and <a href=/manuscript/core-language/basics/numbers-and-booleans/>numeric operations</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn invalid_division(zero: Int) -&gt; Bool:
-</span></span><span class=line><span class=cl>    return 1 / zero == 0
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;grouping and short circuit&#34;:
-</span></span><span class=line><span class=cl>    if not (2 + 3 * 4 == 14):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not ((2 + 3) * 4 == 20):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (10 - 3 - 2 == 5):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (true or invalid_division(zero: 0)):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (not (false and invalid_division(zero: 0))):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>Both short-circuit checks must complete without invoking the invalid division. This observes control flow, not only operator result types.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace <code>2 + 3 * 4</code> with <code>2 + 3.0 * 4.0</code></td><td>Type rejection: mixed <code>Int</code> and <code>Float</code>, without implicit conversion</td></tr><tr><td>Replace <code>true or invalid_division(zero: 0)</code> with <code>1 or invalid_division(zero: 0)</code></td><td>Type rejection: logical operand must be <code>Bool</code></td></tr><tr><td>Replace a comparison with <code>1 &lt; 2 &lt; 3</code></td><td>Parse rejection: comparison operators cannot chain</td></tr><tr><td>Replace <code>true or invalid_division(zero: 0)</code> with <code>true or panic(message: "skipped")</code></td><td>Accept and evaluate to true: the skipped Never operand is admissible as Bool</td></tr><tr><td>Replace <code>false and invalid_division(zero: 0)</code> with <code>false and panic(message: "skipped")</code></td><td>Accept and evaluate to false: the right Never operand is not evaluated</td></tr></tbody></table><p>Integer overflow and division-by-zero fixtures must expect programming faults even if the backend could evaluate a wrapping Go operation. Use parameterized helpers to exercise runtime inputs rather than relying only on constant folding. Literal-range rejection is a separate compile-time fixture.</p><h2 id=cl-03-nominal-constructors-and-record-bindings>CL-03: Nominal constructors and record bindings<a class=anchor href=#cl-03-nominal-constructors-and-record-bindings>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/records/>records</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+fn invalid_division(zero: Int) -&gt; Bool:
+    return 1 / zero == 0
+
+test &#34;grouping and short circuit&#34;:
+    if not (2 + 3 * 4 == 14):
+        return panic(message: &#34;check failed&#34;)
+    if not ((2 + 3) * 4 == 20):
+        return panic(message: &#34;check failed&#34;)
+    if not (10 - 3 - 2 == 5):
+        return panic(message: &#34;check failed&#34;)
+    if not (true or invalid_division(zero: 0)):
+        return panic(message: &#34;check failed&#34;)
+    if not (not (false and invalid_division(zero: 0))):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>Both short-circuit checks must complete without invoking the invalid division. This observes control flow, not only operator result types.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace <code>2 + 3 * 4</code> with <code>2 + 3.0 * 4.0</code></td><td>Type rejection: mixed <code>Int</code> and <code>Float</code>, without implicit conversion</td></tr><tr><td>Replace <code>true or invalid_division(zero: 0)</code> with <code>1 or invalid_division(zero: 0)</code></td><td>Type rejection: logical operand must be <code>Bool</code></td></tr><tr><td>Replace a comparison with <code>1 &lt; 2 &lt; 3</code></td><td>Parse rejection: comparison operators cannot chain</td></tr><tr><td>Replace <code>true or invalid_division(zero: 0)</code> with <code>true or panic(message: "skipped")</code></td><td>Accept and evaluate to true: the skipped Never operand is admissible as Bool</td></tr><tr><td>Replace <code>false and invalid_division(zero: 0)</code> with <code>false and panic(message: "skipped")</code></td><td>Accept and evaluate to false: the right Never operand is not evaluated</td></tr></tbody></table><p>Integer overflow and division-by-zero fixtures must expect programming faults even if the backend could evaluate a wrapping Go operation. Use parameterized helpers to exercise runtime inputs rather than relying only on constant folding. Literal-range rejection is a separate compile-time fixture.</p><h2 id=cl-03-nominal-constructors-and-record-bindings>CL-03: Nominal constructors and record bindings<a class=anchor href=#cl-03-nominal-constructors-and-record-bindings>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/records/>records</a>
 and <a href=/manuscript/core-language/basics/destructuring/>destructuring</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type CustomerId:
-</span></span><span class=line><span class=cl>    value: String
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type OrderId:
-</span></span><span class=line><span class=cl>    value: String
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Customer:
-</span></span><span class=line><span class=cl>    id: CustomerId
-</span></span><span class=line><span class=cl>    name: String
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn customer_name(customer: Customer) -&gt; String:
-</span></span><span class=line><span class=cl>    let {id: {value}, name: display_name} = customer
-</span></span><span class=line><span class=cl>    return &#34;{value}: {display_name}&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;nominal record and nested binding&#34;:
-</span></span><span class=line><span class=cl>    let customer = Customer(id: CustomerId(value: &#34;c1&#34;), name: &#34;Ada&#34;)
-</span></span><span class=line><span class=cl>    if not (customer_name(customer: customer) == &#34;c1: Ada&#34;):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Use <code>OrderId(value: "c1")</code> for the customer&rsquo;s <code>id</code></td><td>Type rejection: nominal <code>OrderId</code> is not <code>CustomerId</code></td></tr><tr><td>Omit <code>name</code> in <code>Customer(...)</code></td><td>Type rejection: missing field</td></tr><tr><td>Add <code>active: true</code> to <code>Customer(...)</code></td><td>Type rejection: unknown field</td></tr><tr><td>Supply <code>name</code> twice</td><td>Type rejection: duplicate field</td></tr><tr><td>Bind <code>{email}</code> from <code>customer</code></td><td>Type rejection: unknown record field</td></tr><tr><td>Bind <code>{id: value, name: value}</code></td><td>Type rejection: duplicate local binding</td></tr><tr><td>Assign <code>customer.name = "Grace"</code> after construction</td><td>Parse rejection: assignment accepts a binding name, not a field target</td></tr></tbody></table><p>Public-surface rejection fixture:</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import List from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type PrivateId:
-</span></span><span class=line><span class=cl>    value: String
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>export type PublicRecord:
-</span></span><span class=line><span class=cl>    ids: List[PrivateId]</span></span></code></pre></div></div><p>Reject at type checking: the exported field exposes the internal nominal <code>PrivateId</code> through a nested application. Changing <code>type PrivateId</code> to <code>export type PrivateId</code> accepts the module. Public closure is not satisfied merely because the outer standard <code>List</code> type is public.</p><h2 id=cl-04-positional-bindings-and-list-shape>CL-04: Positional bindings and list shape<a class=anchor href=#cl-04-positional-bindings-and-list-shape>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/collections/>collections</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+type CustomerId:
+    value: String
+
+type OrderId:
+    value: String
+
+type Customer:
+    id: CustomerId
+    name: String
+
+fn customer_name(customer: Customer) -&gt; String:
+    let {id: {value}, name: display_name} = customer
+    return &#34;{value}: {display_name}&#34;
+
+test &#34;nominal record and nested binding&#34;:
+    let customer = Customer(id: CustomerId(value: &#34;c1&#34;), name: &#34;Ada&#34;)
+    if not (customer_name(customer: customer) == &#34;c1: Ada&#34;):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Use <code>OrderId(value: "c1")</code> for the customer&rsquo;s <code>id</code></td><td>Type rejection: nominal <code>OrderId</code> is not <code>CustomerId</code></td></tr><tr><td>Omit <code>name</code> in <code>Customer(...)</code></td><td>Type rejection: missing field</td></tr><tr><td>Add <code>active: true</code> to <code>Customer(...)</code></td><td>Type rejection: unknown field</td></tr><tr><td>Supply <code>name</code> twice</td><td>Type rejection: duplicate field</td></tr><tr><td>Bind <code>{email}</code> from <code>customer</code></td><td>Type rejection: unknown record field</td></tr><tr><td>Bind <code>{id: value, name: value}</code></td><td>Type rejection: duplicate local binding</td></tr><tr><td>Assign <code>customer.name = "Grace"</code> after construction</td><td>Parse rejection: assignment accepts a binding name, not a field target</td></tr></tbody></table><p>Public-surface rejection fixture:</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import List from &#34;@std/collections.ms&#34;
+
+type PrivateId:
+    value: String
+
+export type PublicRecord:
+    ids: List[PrivateId]</code></pre></div><p>Reject at type checking: the exported field exposes the internal nominal <code>PrivateId</code> through a nested application. Changing <code>type PrivateId</code> to <code>export type PrivateId</code> accepts the module. Public closure is not satisfied merely because the outer standard <code>List</code> type is public.</p><h2 id=cl-04-positional-bindings-and-list-shape>CL-04: Positional bindings and list shape<a class=anchor href=#cl-04-positional-bindings-and-list-shape>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/collections/>collections</a>
 and <a href=/manuscript/core-language/basics/destructuring/>destructuring</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>import List from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn difference(values: List[Int]) -&gt; Int:
-</span></span><span class=line><span class=cl>    let [first, second] = values
-</span></span><span class=line><span class=cl>    return first - second
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;list binding&#34;:
-</span></span><span class=line><span class=cl>    if not (difference(values: [9, 4]) == 5):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    let empty: List[Int] = []
-</span></span><span class=line><span class=cl>    let {value: label} = Label(value: &#34;ready&#34;)
-</span></span><span class=line><span class=cl>    if not (label == &#34;ready&#34;):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Label:
-</span></span><span class=line><span class=cl>    value: String</span></span></code></pre></div></div><p>The empty literal gets its type from the annotation. <code>difference</code>&rsquo;s binding is checked against <code>List[Int]</code>; its exact length is validated when the function runs.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace <code>[9, 4]</code> with <code>[9, 4.0]</code></td><td>Type rejection: heterogeneous numeric list without explicit conversion</td></tr><tr><td>Replace <code>let empty: List[Int] = []</code> with <code>let empty = []</code></td><td>Type rejection: insufficient element-type information</td></tr><tr><td>Replace the binding with <code>let (first, second) = values</code></td><td>Parse rejection: parenthesized positional binding is unsupported</td></tr><tr><td>Replace the test call with <code>difference(values: [9])</code></td><td>Function accepts <code>List[Int]</code>; evaluation faults at dynamic destructuring</td></tr><tr><td>Replace the empty declaration with <code>let [only] = [1, 2]</code></td><td>Type rejection: statically known length mismatch; no extra value is discarded</td></tr><tr><td>Annotate <code>let [first, second]: List[Int] = values</code></td><td>Parse rejection: only simple name bindings accept annotations</td></tr></tbody></table><p>A literal-length mismatch in the binding itself is a compile-time shape error; a list parameter&rsquo;s runtime length is a programming-fault check. Optional optimization must not turn acceptance of the parameterized function into an invented fixed-length parameter type.</p><h2 id=cl-05-function-values-retain-parameter-labels>CL-05: Function values retain parameter labels<a class=anchor href=#cl-05-function-values-retain-parameter-labels>#</a></h2><p>Contract: <a href=/manuscript/core-language/functions/function-values-and-closures/>function values</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn increase(value: Int) -&gt; Int:
-</span></span><span class=line><span class=cl>    return value + 1
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn apply(value: Int, transform: fn(value: Int) -&gt; Int) -&gt; Int:
-</span></span><span class=line><span class=cl>    return transform(value: value)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;function label compatibility&#34;:
-</span></span><span class=line><span class=cl>    let transform: fn(value: Int) -&gt; Int = increase
-</span></span><span class=line><span class=cl>    if not (apply(value: 4, transform: transform) == 5):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Rename only <code>increase</code>&rsquo;s parameter and body binding to <code>item</code></td><td>Type rejection: <code>fn(item: Int) -> Int</code> is incompatible with <code>fn(value: Int) -> Int</code></td></tr><tr><td>Call <code>transform(item: value)</code> in <code>apply</code></td><td>Type rejection: unknown function-value argument label</td></tr><tr><td>Change <code>increase</code> to return <code>Float</code> with body <code>return 1.0</code></td><td>Type rejection at assignment/call: function result contract differs</td></tr><tr><td>Change it to return <code>Never</code> with body <code>panic(message: "stop")</code></td><td>Type rejection at assignment: <code>Never</code> expression compatibility does not make function result types covariant</td></tr><tr><td>Change the <code>apply</code> call to omit <code>transform</code></td><td>Type rejection: required function argument is missing</td></tr></tbody></table><h2 id=cl-06-return-completeness-and-boolean-conditions>CL-06: Return completeness and Boolean conditions<a class=anchor href=#cl-06-return-completeness-and-boolean-conditions>#</a></h2><p>Contract: <a href=/manuscript/core-language/functions/declarations-and-calls/>declarations and calls</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+import List from &#34;@std/collections.ms&#34;
+
+fn difference(values: List[Int]) -&gt; Int:
+    let [first, second] = values
+    return first - second
+
+test &#34;list binding&#34;:
+    if not (difference(values: [9, 4]) == 5):
+        return panic(message: &#34;check failed&#34;)
+    let empty: List[Int] = []
+    let {value: label} = Label(value: &#34;ready&#34;)
+    if not (label == &#34;ready&#34;):
+        return panic(message: &#34;check failed&#34;)
+
+type Label:
+    value: String</code></pre></div><p>The empty literal gets its type from the annotation. <code>difference</code>&rsquo;s binding is checked against <code>List[Int]</code>; its exact length is validated when the function runs.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace <code>[9, 4]</code> with <code>[9, 4.0]</code></td><td>Type rejection: heterogeneous numeric list without explicit conversion</td></tr><tr><td>Replace <code>let empty: List[Int] = []</code> with <code>let empty = []</code></td><td>Type rejection: insufficient element-type information</td></tr><tr><td>Replace the binding with <code>let (first, second) = values</code></td><td>Parse rejection: parenthesized positional binding is unsupported</td></tr><tr><td>Replace the test call with <code>difference(values: [9])</code></td><td>Function accepts <code>List[Int]</code>; evaluation faults at dynamic destructuring</td></tr><tr><td>Replace the empty declaration with <code>let [only] = [1, 2]</code></td><td>Type rejection: statically known length mismatch; no extra value is discarded</td></tr><tr><td>Annotate <code>let [first, second]: List[Int] = values</code></td><td>Parse rejection: only simple name bindings accept annotations</td></tr></tbody></table><p>A literal-length mismatch in the binding itself is a compile-time shape error; a list parameter&rsquo;s runtime length is a programming-fault check. Optional optimization must not turn acceptance of the parameterized function into an invented fixed-length parameter type.</p><h2 id=cl-05-function-values-retain-parameter-labels>CL-05: Function values retain parameter labels<a class=anchor href=#cl-05-function-values-retain-parameter-labels>#</a></h2><p>Contract: <a href=/manuscript/core-language/functions/function-values-and-closures/>function values</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+fn increase(value: Int) -&gt; Int:
+    return value + 1
+
+fn apply(value: Int, transform: fn(value: Int) -&gt; Int) -&gt; Int:
+    return transform(value: value)
+
+test &#34;function label compatibility&#34;:
+    let transform: fn(value: Int) -&gt; Int = increase
+    if not (apply(value: 4, transform: transform) == 5):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Rename only <code>increase</code>&rsquo;s parameter and body binding to <code>item</code></td><td>Type rejection: <code>fn(item: Int) -> Int</code> is incompatible with <code>fn(value: Int) -> Int</code></td></tr><tr><td>Call <code>transform(item: value)</code> in <code>apply</code></td><td>Type rejection: unknown function-value argument label</td></tr><tr><td>Change <code>increase</code> to return <code>Float</code> with body <code>return 1.0</code></td><td>Type rejection at assignment/call: function result contract differs</td></tr><tr><td>Change it to return <code>Never</code> with body <code>panic(message: "stop")</code></td><td>Type rejection at assignment: <code>Never</code> expression compatibility does not make function result types covariant</td></tr><tr><td>Change the <code>apply</code> call to omit <code>transform</code></td><td>Type rejection: required function argument is missing</td></tr></tbody></table><h2 id=cl-06-return-completeness-and-boolean-conditions>CL-06: Return completeness and Boolean conditions<a class=anchor href=#cl-06-return-completeness-and-boolean-conditions>#</a></h2><p>Contract: <a href=/manuscript/core-language/functions/declarations-and-calls/>declarations and calls</a>
 , <a href=/manuscript/core-language/control-flow/conditionals/>conditionals</a>
 , and <a href=/manuscript/core-language/errors/faults/>faults</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn positive(value: Int) -&gt; Int:
-</span></span><span class=line><span class=cl>    if value &gt; 0:
-</span></span><span class=line><span class=cl>        return value
-</span></span><span class=line><span class=cl>    else:
-</span></span><span class=line><span class=cl>        panic(message: &#34;positive value required&#34;)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn discard(value: Int) -&gt; Unit:
-</span></span><span class=line><span class=cl>    if not (value &gt; 0):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;return contracts&#34;:
-</span></span><span class=line><span class=cl>    if not (positive(value: 3) == 3):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    discard(value: 1)</span></span></code></pre></div></div><p>The faulting branch has no normal successor. <code>discard</code> accepts normal fallthrough because it returns <code>Unit</code>.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Remove the <code>else</code> branch in <code>positive</code></td><td>Type rejection: a reachable path falls through a non-<code>Unit</code> function</td></tr><tr><td>Replace <code>if value > 0</code> with <code>if value</code></td><td>Type rejection: condition must be <code>Bool</code></td></tr><tr><td>Replace <code>return value</code> with <code>return true</code></td><td>Type rejection: returned value is not <code>Int</code></td></tr><tr><td>Replace <code>discard</code>&rsquo;s body with <code>return 1</code></td><td>Type rejection: <code>Int</code> result in a <code>Unit</code> function</td></tr><tr><td>Replace it with <code>return</code> or <code>return unit</code></td><td>Accept: explicit Unit return, like fallthrough</td></tr></tbody></table><p>Unreachable statements must still parse, resolve, and type-check; they do not repair a missing return on a reachable path.</p><h2 id=cl-07-alternatives-positional-payload-patterns-and-exhaustiveness>CL-07: Alternatives, positional payload patterns, and exhaustiveness<a class=anchor href=#cl-07-alternatives-positional-payload-patterns-and-exhaustiveness>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/alternatives/>alternatives</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+fn positive(value: Int) -&gt; Int:
+    if value &gt; 0:
+        return value
+    else:
+        panic(message: &#34;positive value required&#34;)
+
+fn discard(value: Int) -&gt; Unit:
+    if not (value &gt; 0):
+        return panic(message: &#34;check failed&#34;)
+
+test &#34;return contracts&#34;:
+    if not (positive(value: 3) == 3):
+        return panic(message: &#34;check failed&#34;)
+    discard(value: 1)</code></pre></div><p>The faulting branch has no normal successor. <code>discard</code> accepts normal fallthrough because it returns <code>Unit</code>.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Remove the <code>else</code> branch in <code>positive</code></td><td>Type rejection: a reachable path falls through a non-<code>Unit</code> function</td></tr><tr><td>Replace <code>if value > 0</code> with <code>if value</code></td><td>Type rejection: condition must be <code>Bool</code></td></tr><tr><td>Replace <code>return value</code> with <code>return true</code></td><td>Type rejection: returned value is not <code>Int</code></td></tr><tr><td>Replace <code>discard</code>&rsquo;s body with <code>return 1</code></td><td>Type rejection: <code>Int</code> result in a <code>Unit</code> function</td></tr><tr><td>Replace it with <code>return</code> or <code>return unit</code></td><td>Accept: explicit Unit return, like fallthrough</td></tr></tbody></table><p>Unreachable statements must still parse, resolve, and type-check; they do not repair a missing return on a reachable path.</p><h2 id=cl-07-alternatives-positional-payload-patterns-and-exhaustiveness>CL-07: Alternatives, positional payload patterns, and exhaustiveness<a class=anchor href=#cl-07-alternatives-positional-payload-patterns-and-exhaustiveness>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/alternatives/>alternatives</a>
 and <a href=/manuscript/core-language/control-flow/pattern-matching/>pattern matching</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Outcome:
-</span></span><span class=line><span class=cl>    case Ready(value: Int)
-</span></span><span class=line><span class=cl>    case Failed(reason: String)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn score(outcome: Outcome) -&gt; Int:
-</span></span><span class=line><span class=cl>    match outcome:
-</span></span><span class=line><span class=cl>        Ready(value):
-</span></span><span class=line><span class=cl>            return value
-</span></span><span class=line><span class=cl>        Failed(_):
-</span></span><span class=line><span class=cl>            return 0
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;alternative result&#34;:
-</span></span><span class=line><span class=cl>    if not (score(outcome: Outcome.Ready(value: 8)) == 8):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (score(outcome: Outcome.Failed(reason: &#34;unavailable&#34;)) == 0):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>Constructors name payload fields; payload patterns bind positions in declaration order. Matching has no fallthrough.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Remove <code>Failed</code> arm</td><td>Type rejection: non-exhaustive match</td></tr><tr><td>Add another <code>Ready(other)</code> arm</td><td>Type rejection: duplicate/unreachable arm</td></tr><tr><td>Replace <code>Ready(value)</code> with <code>Ready(value, extra)</code></td><td>Type rejection: payload arity mismatch</td></tr><tr><td>Replace <code>Ready(value)</code> with <code>Ready(value: local)</code></td><td>Parse rejection: payload patterns are positional, not named-call syntax</td></tr><tr><td>Use <code>Outcome.Ready(amount: 8)</code> in the constructor</td><td>Type rejection: wrong payload field name</td></tr><tr><td>Add a final <code>_:</code> arm instead of <code>Failed</code></td><td>Accept; wildcard covers the remaining case</td></tr><tr><td>Add <code>_:</code> with body <code>return 0</code> after both existing arms</td><td>Type rejection: every case is already covered, so the wildcard is unreachable</td></tr></tbody></table><p>Add ambiguity fixtures with two visible alternative types declaring <code>Ready</code>: unqualified construction must be rejected at resolution even when an expected result type could identify one; qualified construction succeeds. Match-case lookup is governed by the scrutinee type.</p><h2 id=cl-08-iteration-and-nearest-loop-control-flow>CL-08: Iteration and nearest-loop control flow<a class=anchor href=#cl-08-iteration-and-nearest-loop-control-flow>#</a></h2><p>Contract: <a href=/manuscript/core-language/control-flow/loops/>loops</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>import List from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn selected_sum(values: List[Int]) -&gt; Int:
-</span></span><span class=line><span class=cl>    var total = 0
-</span></span><span class=line><span class=cl>    for value in values:
-</span></span><span class=line><span class=cl>        if value == 0:
-</span></span><span class=line><span class=cl>            continue
-</span></span><span class=line><span class=cl>        if value &lt; 0:
-</span></span><span class=line><span class=cl>            break
-</span></span><span class=line><span class=cl>        total = total + value
-</span></span><span class=line><span class=cl>    return total
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;iteration control&#34;:
-</span></span><span class=line><span class=cl>    if not (selected_sum(values: [2, 0, 3, -1, 9]) == 5):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (selected_sum(values: []) == 0):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the iterable <code>values</code> with <code>3</code></td><td>Type rejection: <code>Int</code> is not an admitted iterable</td></tr><tr><td>Assign <code>value = 4</code> in the loop body</td><td>Type rejection: iteration binding is immutable</td></tr><tr><td>Put <code>break</code> in the test body outside a loop</td><td>Type rejection: no enclosing loop</td></tr><tr><td>Put <code>continue</code> inside a nested anonymous function without its own loop</td><td>Type rejection: loop control cannot cross a function boundary</td></tr></tbody></table><p>For nested loops, verify that <code>break</code> and <code>continue</code> select the nearest enclosing loop. For <code>while</code>, verify that the condition is reevaluated and must have type <code>Bool</code>.</p><h2 id=cl-09-generic-declaration-inference-and-bounds>CL-09: Generic declaration, inference, and bounds<a class=anchor href=#cl-09-generic-declaration-inference-and-bounds>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/generics/>generics</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+type Outcome:
+    case Ready(value: Int)
+    case Failed(reason: String)
+
+fn score(outcome: Outcome) -&gt; Int:
+    match outcome:
+        Ready(value):
+            return value
+        Failed(_):
+            return 0
+
+test &#34;alternative result&#34;:
+    if not (score(outcome: Outcome.Ready(value: 8)) == 8):
+        return panic(message: &#34;check failed&#34;)
+    if not (score(outcome: Outcome.Failed(reason: &#34;unavailable&#34;)) == 0):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>Constructors name payload fields; payload patterns bind positions in declaration order. Matching has no fallthrough.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Remove <code>Failed</code> arm</td><td>Type rejection: non-exhaustive match</td></tr><tr><td>Add another <code>Ready(other)</code> arm</td><td>Type rejection: duplicate/unreachable arm</td></tr><tr><td>Replace <code>Ready(value)</code> with <code>Ready(value, extra)</code></td><td>Type rejection: payload arity mismatch</td></tr><tr><td>Replace <code>Ready(value)</code> with <code>Ready(value: local)</code></td><td>Parse rejection: payload patterns are positional, not named-call syntax</td></tr><tr><td>Use <code>Outcome.Ready(amount: 8)</code> in the constructor</td><td>Type rejection: wrong payload field name</td></tr><tr><td>Add a final <code>_:</code> arm instead of <code>Failed</code></td><td>Accept; wildcard covers the remaining case</td></tr><tr><td>Add <code>_:</code> with body <code>return 0</code> after both existing arms</td><td>Type rejection: every case is already covered, so the wildcard is unreachable</td></tr></tbody></table><p>Add ambiguity fixtures with two visible alternative types declaring <code>Ready</code>: unqualified construction must be rejected at resolution even when an expected result type could identify one; qualified construction succeeds. Match-case lookup is governed by the scrutinee type.</p><h2 id=cl-08-iteration-and-nearest-loop-control-flow>CL-08: Iteration and nearest-loop control flow<a class=anchor href=#cl-08-iteration-and-nearest-loop-control-flow>#</a></h2><p>Contract: <a href=/manuscript/core-language/control-flow/loops/>loops</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+import List from &#34;@std/collections.ms&#34;
+
+fn selected_sum(values: List[Int]) -&gt; Int:
+    var total = 0
+    for value in values:
+        if value == 0:
+            continue
+        if value &lt; 0:
+            break
+        total = total + value
+    return total
+
+test &#34;iteration control&#34;:
+    if not (selected_sum(values: [2, 0, 3, -1, 9]) == 5):
+        return panic(message: &#34;check failed&#34;)
+    if not (selected_sum(values: []) == 0):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the iterable <code>values</code> with <code>3</code></td><td>Type rejection: <code>Int</code> is not an admitted iterable</td></tr><tr><td>Assign <code>value = 4</code> in the loop body</td><td>Type rejection: iteration binding is immutable</td></tr><tr><td>Put <code>break</code> in the test body outside a loop</td><td>Type rejection: no enclosing loop</td></tr><tr><td>Put <code>continue</code> inside a nested anonymous function without its own loop</td><td>Type rejection: loop control cannot cross a function boundary</td></tr></tbody></table><p>For nested loops, verify that <code>break</code> and <code>continue</code> select the nearest enclosing loop. For <code>while</code>, verify that the condition is reevaluated and must have type <code>Bool</code>.</p><h2 id=cl-09-generic-declaration-inference-and-bounds>CL-09: Generic declaration, inference, and bounds<a class=anchor href=#cl-09-generic-declaration-inference-and-bounds>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/generics/>generics</a>
 and <a href=/manuscript/core-language/types/equality-and-hashing/>equality</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Box[T: Shareable]:
-</span></span><span class=line><span class=cl>    value: T
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn unwrap[T: Shareable](box: Box[T]) -&gt; T:
-</span></span><span class=line><span class=cl>    return box.value
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn same[T: Shareable &amp; Equal](left: T, right: T) -&gt; Bool:
-</span></span><span class=line><span class=cl>    return left == right
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;generic argument inference&#34;:
-</span></span><span class=line><span class=cl>    let box = Box[Int](value: 6)
-</span></span><span class=line><span class=cl>    if not (unwrap(box: box) == 6):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (unwrap[Int](box: box) == 6):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (same(left: 6, right: 6)):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>Inference uses independently typed supplied arguments. Explicit and inferred applications must select the same substitution. Generic bodies are checked against declared bounds, not only the concrete types used by these tests.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Use <code>Box[Int, String](value: 6)</code></td><td>Type rejection: generic arity mismatch</td></tr><tr><td>Use <code>Box[String](value: 6)</code></td><td>Type rejection: field is not the substituted <code>String</code> type</td></tr><tr><td>Use <code>unwrap[String](box: box)</code></td><td>Type rejection: invariant <code>Box[Int]</code> is not <code>Box[String]</code></td></tr><tr><td>Use <code>same(left: 6, right: 6.0)</code></td><td>Type rejection: supplied types do not yield one exact <code>T</code></td></tr><tr><td>Remove <code>Equal</code> from <code>same</code>&rsquo;s bound</td><td>Type rejection in generic body: <code>T</code> does not establish equality</td></tr><tr><td>Use the undeclared type parameter <code>U</code> in <code>Box</code>&rsquo;s field</td><td>Resolution rejection: unknown type <code>U</code></td></tr></tbody></table><p>Separate fixture:</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import Optional from &#34;@std/optional.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn absent[T: Shareable]() -&gt; Optional[T]:
-</span></span><span class=line><span class=cl>    return none
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;result context does not infer function arguments&#34;:
-</span></span><span class=line><span class=cl>    let value: Optional[Int] = absent[Int]()</span></span></code></pre></div></div><p>Accept the explicit call. Replacing <code>absent[Int]()</code> with <code>absent()</code> is a type rejection: result context cannot infer a generic function&rsquo;s type arguments. An expected constructor payload type may provide context for <code>none</code> or an empty list without introducing result-context function inference.</p><p>Intrinsic-name rejection fixture:</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>type Box[Int]:
-</span></span><span class=line><span class=cl>    value: Int</span></span></code></pre></div></div><p>Reject at resolution: a type parameter cannot redefine the intrinsic <code>Int</code> identity. <code>Int</code> is a resolved name rather than a lexical keyword, so this is not a grammar rejection. Apply the same namespace check to module declarations/imports and fixed compiler-bound names, without prohibiting ordinary local shadowing where the module rules permit it.</p><h2 id=cl-10-explicit-implementations-and-contract-conversion>CL-10: Explicit implementations and contract conversion<a class=anchor href=#cl-10-explicit-implementations-and-contract-conversion>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/contracts/>operation contracts</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>interface Increment:
-</span></span><span class=line><span class=cl>    fn apply(value: Int) -&gt; Int
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Offset:
-</span></span><span class=line><span class=cl>    delta: Int
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>impl Increment for Offset:
-</span></span><span class=line><span class=cl>    fn apply(value: Int) -&gt; Int:
-</span></span><span class=line><span class=cl>        return value + self.delta
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn use_increment(operation: Increment) -&gt; Int:
-</span></span><span class=line><span class=cl>    return operation.apply(value: 4)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;explicit contract conversion&#34;:
-</span></span><span class=line><span class=cl>    let offset = Offset(delta: 1)
-</span></span><span class=line><span class=cl>    let operation = Increment(value: offset)
-</span></span><span class=line><span class=cl>    let same_view = Increment(value: operation)
-</span></span><span class=line><span class=cl>    if not (use_increment(operation: same_view) == 5):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p><code>self</code> is implicit in the implementation body, never a source call argument. Conversion retains the concrete value; applying the same view constructor to an existing exact contract value is an identity conversion. The contract cannot be constructed without a value providing its declared implementation or already having that exact contract type.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Pass <code>offset</code> directly as <code>operation</code></td><td>Type rejection: conversion to the contract must be explicit</td></tr><tr><td>Remove the <code>impl</code> declaration</td><td>Type rejection at conversion: <code>Offset</code> does not implement <code>Increment</code></td></tr><tr><td>Rename implementation parameter/body binding from <code>value</code> to <code>item</code></td><td>Type rejection: operation labels do not match the contract</td></tr><tr><td>Change implementation result/body to <code>Float</code>/<code>return 1.0</code></td><td>Type rejection: result signature mismatch</td></tr><tr><td>Add <code>self: Offset</code> to the implementation parameter list</td><td>Parse rejection: reserved <code>self</code> cannot be declared as a parameter</td></tr><tr><td>Repeat the same <code>impl Increment for Offset</code> declaration</td><td>Type rejection: duplicate implementation</td></tr><tr><td>Replace <code>Increment(value: offset)</code> with <code>Increment()</code></td><td>Type rejection: conversion requires the concrete <code>value</code> argument</td></tr></tbody></table><p>Add a multi-module rejection fixture for an implementation outside the concrete type&rsquo;s defining module; path/import mechanics follow <a href=/manuscript/compiler/conformance/semantic-tests/>module conformance</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+type Box[T: Shareable]:
+    value: T
+
+fn unwrap[T: Shareable](box: Box[T]) -&gt; T:
+    return box.value
+
+fn same[T: Shareable &amp; Equal](left: T, right: T) -&gt; Bool:
+    return left == right
+
+test &#34;generic argument inference&#34;:
+    let box = Box[Int](value: 6)
+    if not (unwrap(box: box) == 6):
+        return panic(message: &#34;check failed&#34;)
+    if not (unwrap[Int](box: box) == 6):
+        return panic(message: &#34;check failed&#34;)
+    if not (same(left: 6, right: 6)):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>Inference uses independently typed supplied arguments. Explicit and inferred applications must select the same substitution. Generic bodies are checked against declared bounds, not only the concrete types used by these tests.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Use <code>Box[Int, String](value: 6)</code></td><td>Type rejection: generic arity mismatch</td></tr><tr><td>Use <code>Box[String](value: 6)</code></td><td>Type rejection: field is not the substituted <code>String</code> type</td></tr><tr><td>Use <code>unwrap[String](box: box)</code></td><td>Type rejection: invariant <code>Box[Int]</code> is not <code>Box[String]</code></td></tr><tr><td>Use <code>same(left: 6, right: 6.0)</code></td><td>Type rejection: supplied types do not yield one exact <code>T</code></td></tr><tr><td>Remove <code>Equal</code> from <code>same</code>&rsquo;s bound</td><td>Type rejection in generic body: <code>T</code> does not establish equality</td></tr><tr><td>Use the undeclared type parameter <code>U</code> in <code>Box</code>&rsquo;s field</td><td>Resolution rejection: unknown type <code>U</code></td></tr></tbody></table><p>Separate fixture:</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import Optional from &#34;@std/optional.ms&#34;
+
+fn absent[T: Shareable]() -&gt; Optional[T]:
+    return none
+
+test &#34;result context does not infer function arguments&#34;:
+    let value: Optional[Int] = absent[Int]()</code></pre></div><p>Accept the explicit call. Replacing <code>absent[Int]()</code> with <code>absent()</code> is a type rejection: result context cannot infer a generic function&rsquo;s type arguments. An expected constructor payload type may provide context for <code>none</code> or an empty list without introducing result-context function inference.</p><p>Intrinsic-name rejection fixture:</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>type Box[Int]:
+    value: Int</code></pre></div><p>Reject at resolution: a type parameter cannot redefine the intrinsic <code>Int</code> identity. <code>Int</code> is a resolved name rather than a lexical keyword, so this is not a grammar rejection. Apply the same namespace check to module declarations/imports and fixed compiler-bound names, without prohibiting ordinary local shadowing where the module rules permit it.</p><h2 id=cl-10-explicit-implementations-and-contract-conversion>CL-10: Explicit implementations and contract conversion<a class=anchor href=#cl-10-explicit-implementations-and-contract-conversion>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/contracts/>operation contracts</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+interface Increment:
+    fn apply(value: Int) -&gt; Int
+
+type Offset:
+    delta: Int
+
+impl Increment for Offset:
+    fn apply(value: Int) -&gt; Int:
+        return value + self.delta
+
+fn use_increment(operation: Increment) -&gt; Int:
+    return operation.apply(value: 4)
+
+test &#34;explicit contract conversion&#34;:
+    let offset = Offset(delta: 1)
+    let operation = Increment(value: offset)
+    let same_view = Increment(value: operation)
+    if not (use_increment(operation: same_view) == 5):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p><code>self</code> is implicit in the implementation body, never a source call argument. Conversion retains the concrete value; applying the same view constructor to an existing exact contract value is an identity conversion. The contract cannot be constructed without a value providing its declared implementation or already having that exact contract type.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Pass <code>offset</code> directly as <code>operation</code></td><td>Type rejection: conversion to the contract must be explicit</td></tr><tr><td>Remove the <code>impl</code> declaration</td><td>Type rejection at conversion: <code>Offset</code> does not implement <code>Increment</code></td></tr><tr><td>Rename implementation parameter/body binding from <code>value</code> to <code>item</code></td><td>Type rejection: operation labels do not match the contract</td></tr><tr><td>Change implementation result/body to <code>Float</code>/<code>return 1.0</code></td><td>Type rejection: result signature mismatch</td></tr><tr><td>Add <code>self: Offset</code> to the implementation parameter list</td><td>Parse rejection: reserved <code>self</code> cannot be declared as a parameter</td></tr><tr><td>Repeat the same <code>impl Increment for Offset</code> declaration</td><td>Type rejection: duplicate implementation</td></tr><tr><td>Replace <code>Increment(value: offset)</code> with <code>Increment()</code></td><td>Type rejection: conversion requires the concrete <code>value</code> argument</td></tr></tbody></table><p>Add a multi-module rejection fixture for an implementation outside the concrete type&rsquo;s defining module; path/import mechanics follow <a href=/manuscript/compiler/conformance/semantic-tests/>module conformance</a>
 . Contract method ambiguity on a concrete value is resolved by explicit conversion to the selected contract.</p><h2 id=cl-10a-generic-implementations-and-nonoverlap>CL-10a: Generic implementations and nonoverlap<a class=anchor href=#cl-10a-generic-implementations-and-nonoverlap>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/contracts/#generic-implementations>generic implementations</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>interface ReadValue[T]:
-</span></span><span class=line><span class=cl>    fn get() -&gt; T
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>interface SameValue[T: Equal]:
-</span></span><span class=line><span class=cl>    fn same(other: T) -&gt; Bool
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Box[T]:
-</span></span><span class=line><span class=cl>    value: T
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>impl ReadValue[T] for Box[T]:
-</span></span><span class=line><span class=cl>    fn get() -&gt; T:
-</span></span><span class=line><span class=cl>        return self.value
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>impl SameValue[T] for Box[T]:
-</span></span><span class=line><span class=cl>    fn same(other: T) -&gt; Bool:
-</span></span><span class=line><span class=cl>        return self.value == other
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn compare[T: Equal](box: Box[T], other: T) -&gt; Bool:
-</span></span><span class=line><span class=cl>    return box.same(other: other)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;generic implementations&#34;:
-</span></span><span class=line><span class=cl>    let number = Box[Int](value: 7)
-</span></span><span class=line><span class=cl>    let text = Box[String](value: &#34;hello&#34;)
-</span></span><span class=line><span class=cl>    let number_view = ReadValue[Int](value: number)
-</span></span><span class=line><span class=cl>    let text_view = ReadValue[String](value: text)
-</span></span><span class=line><span class=cl>    if not (number_view.get() == 7):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (text_view.get() == &#34;hello&#34;):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (compare(box: number, other: 7)):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (not compare(box: number, other: 8)):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>The first block needs no bound to read and return its field. The second inherits <code>Equal</code> from the <code>SameValue</code> interface to compare it. <code>compare</code> proves that implementation&rsquo;s availability while checking its generic body, without waiting for a concrete instantiation.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Add a concrete <code>impl ReadValue[Int] for Box[Int]</code> supplying <code>get() -> Int</code></td><td>Type rejection at declaration: overlap with the generic block, even if the body is identical</td></tr><tr><td>Add another <code>impl ReadValue[T] for Box[T]</code> supplying <code>get() -> T</code></td><td>Type rejection at declaration: bounds cannot distinguish overlapping blocks</td></tr><tr><td>Replace the first block&rsquo;s <code>ReadValue[T]</code> with <code>ReadValue[Int]</code></td><td>Type rejection at declaration: <code>get() -> T</code> does not match the substituted contract result <code>Int</code></td></tr><tr><td>Remove <code>Equal</code> from <code>SameValue</code>&rsquo;s interface parameters</td><td>Type rejection at declaration: unconstrained field values cannot be compared</td></tr><tr><td>Remove <code>Equal</code> from <code>compare</code>&rsquo;s parameters</td><td>Type rejection in the generic function body: the implementation&rsquo;s bound is not proved</td></tr><tr><td>Replace the first block&rsquo;s receiver <code>Box[T]</code> with bare <code>T</code></td><td>Type rejection at declaration: receiver must have a defining nominal data declaration</td></tr><tr><td>Add <code>[U]</code> to an implementation method</td><td>Parse rejection: methods cannot introduce their own parameters</td></tr></tbody></table><p>Also accept disjoint concrete implementations for different receiver applications when no generic block covers them, and two different contract applications for one receiver. For the latter, use explicit views to disambiguate equal operation names. Reject expanding recursive implementation specialization under the ordinary finite-application check. The defining-module rule applies equally to concrete and generic blocks.</p><h2 id=cl-10b-plain-and-shared-contract-views>CL-10b: Plain and shared contract views<a class=anchor href=#cl-10b-plain-and-shared-contract-views>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/contracts/#shared-contract-views>shared contract views</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+interface ReadValue[T]:
+    fn get() -&gt; T
+
+interface SameValue[T: Equal]:
+    fn same(other: T) -&gt; Bool
+
+type Box[T]:
+    value: T
+
+impl ReadValue[T] for Box[T]:
+    fn get() -&gt; T:
+        return self.value
+
+impl SameValue[T] for Box[T]:
+    fn same(other: T) -&gt; Bool:
+        return self.value == other
+
+fn compare[T: Equal](box: Box[T], other: T) -&gt; Bool:
+    return box.same(other: other)
+
+test &#34;generic implementations&#34;:
+    let number = Box[Int](value: 7)
+    let text = Box[String](value: &#34;hello&#34;)
+    let number_view = ReadValue[Int](value: number)
+    let text_view = ReadValue[String](value: text)
+    if not (number_view.get() == 7):
+        return panic(message: &#34;check failed&#34;)
+    if not (text_view.get() == &#34;hello&#34;):
+        return panic(message: &#34;check failed&#34;)
+    if not (compare(box: number, other: 7)):
+        return panic(message: &#34;check failed&#34;)
+    if not (not compare(box: number, other: 8)):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>The first block needs no bound to read and return its field. The second inherits <code>Equal</code> from the <code>SameValue</code> interface to compare it. <code>compare</code> proves that implementation&rsquo;s availability while checking its generic body, without waiting for a concrete instantiation.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Add a concrete <code>impl ReadValue[Int] for Box[Int]</code> supplying <code>get() -> Int</code></td><td>Type rejection at declaration: overlap with the generic block, even if the body is identical</td></tr><tr><td>Add another <code>impl ReadValue[T] for Box[T]</code> supplying <code>get() -> T</code></td><td>Type rejection at declaration: bounds cannot distinguish overlapping blocks</td></tr><tr><td>Replace the first block&rsquo;s <code>ReadValue[T]</code> with <code>ReadValue[Int]</code></td><td>Type rejection at declaration: <code>get() -> T</code> does not match the substituted contract result <code>Int</code></td></tr><tr><td>Remove <code>Equal</code> from <code>SameValue</code>&rsquo;s interface parameters</td><td>Type rejection at declaration: unconstrained field values cannot be compared</td></tr><tr><td>Remove <code>Equal</code> from <code>compare</code>&rsquo;s parameters</td><td>Type rejection in the generic function body: the implementation&rsquo;s bound is not proved</td></tr><tr><td>Replace the first block&rsquo;s receiver <code>Box[T]</code> with bare <code>T</code></td><td>Type rejection at declaration: receiver must have a defining nominal data declaration</td></tr><tr><td>Add <code>[U]</code> to an implementation method</td><td>Parse rejection: methods cannot introduce their own parameters</td></tr></tbody></table><p>Also accept disjoint concrete implementations for different receiver applications when no generic block covers them, and two different contract applications for one receiver. For the latter, use explicit views to disambiguate equal operation names. Reject expanding recursive implementation specialization under the ordinary finite-application check. The defining-module rule applies equally to concrete and generic blocks.</p><h2 id=cl-10b-plain-and-shared-contract-views>CL-10b: Plain and shared contract views<a class=anchor href=#cl-10b-plain-and-shared-contract-views>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/contracts/#shared-contract-views>shared contract views</a>
 and <a href=/manuscript/ownership-and-cleanup/values/sharing/>sharing</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>import List from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>import Optional from &#34;@std/optional.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>interface ReadValue[T]:
-</span></span><span class=line><span class=cl>    fn get() -&gt; T
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Box[T]:
-</span></span><span class=line><span class=cl>    value: T
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type SharedReader:
-</span></span><span class=line><span class=cl>    reader: ReadValue[Int] &amp; Shareable
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type CallbackReader:
-</span></span><span class=line><span class=cl>    read_value: fn() -&gt; Int
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>impl ReadValue[T] for Box[T]:
-</span></span><span class=line><span class=cl>    fn get() -&gt; T:
-</span></span><span class=line><span class=cl>        return self.value
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>impl ReadValue[Int] for CallbackReader:
-</span></span><span class=line><span class=cl>    fn get() -&gt; Int:
-</span></span><span class=line><span class=cl>        return self.read_value()
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn seven() -&gt; Int:
-</span></span><span class=line><span class=cl>    return 7
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn local_view[T: ReadValue[Int]](source: T) -&gt; ReadValue[Int]:
-</span></span><span class=line><span class=cl>    return ReadValue[Int](value: source)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn shared_view[T: ReadValue[Int] &amp; Shareable](source: T) -&gt; ReadValue[Int] &amp; Shareable:
-</span></span><span class=line><span class=cl>    return (ReadValue[Int] &amp; Shareable)(value: source)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn consume_shared[T: ReadValue[Int] &amp; Shareable](source: T) -&gt; Int:
-</span></span><span class=line><span class=cl>    return source.get()
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;plain and shared views&#34;:
-</span></span><span class=line><span class=cl>    let box = Box[Int](value: 7)
-</span></span><span class=line><span class=cl>    let plain = local_view(source: box)
-</span></span><span class=line><span class=cl>    let shared = shared_view(source: box)
-</span></span><span class=line><span class=cl>    let identity = (ReadValue[Int] &amp; Shareable)(value: shared)
-</span></span><span class=line><span class=cl>    let erased = ReadValue[Int](value: identity)
-</span></span><span class=line><span class=cl>    let holder = SharedReader(reader: identity)
-</span></span><span class=line><span class=cl>    let readers: List[ReadValue[Int] &amp; Shareable] = [holder.reader]
-</span></span><span class=line><span class=cl>    let optional: Optional[ReadValue[Int] &amp; Shareable] = some(value: shared)
-</span></span><span class=line><span class=cl>    let callback = CallbackReader(read_value: seven)
-</span></span><span class=line><span class=cl>    let local_callback = ReadValue[Int](value: callback)
-</span></span><span class=line><span class=cl>    if not (plain.get() == 7):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (erased.get() == 7):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (local_callback.get() == 7):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (consume_shared(source: holder.reader) == 7):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p><code>local_view</code> must be accepted with no sharing bound on its generic receiver. <code>shared_view</code> retains its proof through the returned type and the record field; the same implementation supplies every view. CallbackReader&rsquo;s bare function field carries no callable-sharing promise, so the record is nonshareable even though this particular initializer is a safe named function. Its plain view and sequential call are accepted. View conversion evaluates the receiver once and neither copies nor closes native state. The collection and optional declarations exercise refined types inside generic arguments.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Remove <code>Shareable</code> from <code>shared_view</code>&rsquo;s generic bound</td><td>Type rejection in its body: receiver sharing is not proved</td></tr><tr><td>Construct <code>(ReadValue[Int] & Shareable)(value: plain)</code> or use <code>erased</code> instead</td><td>Type rejection: a plain view cannot recover its hidden receiver&rsquo;s sharing guarantee</td></tr><tr><td>Replace the callback&rsquo;s plain view constructor with <code>(ReadValue[Int] & Shareable)(value: callback)</code></td><td>Type rejection: the bare function field gives its receiver no sharing proof</td></tr><tr><td>Pass <code>plain</code> to <code>consume_shared</code></td><td>Type rejection at the generic application: named contract bound holds, sharing bound does not</td></tr><tr><td>Change the list to <code>List[ReadValue[Int]] = [plain]</code></td><td>Type rejection: plain contract type fails the collection element bound</td></tr><tr><td>Initialize <code>SharedReader(reader: plain)</code></td><td>Type rejection: plain and shared field types differ</td></tr><tr><td>Replace <code>ReadValue[Int](value: identity)</code> with <code>identity</code></td><td>Accepted: the inferred local retains the shared type rather than erasing it</td></tr><tr><td>Annotate that replacement as <code>let erased: ReadValue[Int] = identity</code></td><td>Type rejection: discarding sharing is not implicit</td></tr><tr><td>Replace the shared constructor in <code>shared_view</code> with <code>ReadValue[Int](value: source)</code></td><td>Type rejection at return: expected shared type cannot refine a plain constructor</td></tr><tr><td>Replace <code>ReadValue[Int] & Shareable</code> in the record field with <code>Int & Shareable</code></td><td>Type rejection: only an operation contract can have this refinement</td></tr><tr><td>Replace the field type with <code>Shareable & ReadValue[Int]</code></td><td>Parse rejection: reversed order is not a value-type form</td></tr><tr><td>Replace the field type with <code>ReadValue[Int] & Equal</code></td><td>Parse rejection: only the <code>Shareable</code> refinement is admitted</td></tr></tbody></table><p>With a trusted native nonshareable receiver fixture, accept a plain view and sequential calls, reject its shared view construction, and reject concurrently used closures retaining its plain view or bound method. A shared receiver&rsquo;s method supplies receiver-sharing proof, subject to the existing callable-boundary rules. Verify that a shared service may return a nonshareable local result without making that result shareable. These checks must use frontend proofs rather than Go interface assignability or runtime receiver inspection.</p><h2 id=cl-11-recursive-records-require-immutable-container-indirection>CL-11: Recursive records require immutable-container indirection<a class=anchor href=#cl-11-recursive-records-require-immutable-container-indirection>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/records/>records</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+import List from &#34;@std/collections.ms&#34;
+import Optional from &#34;@std/optional.ms&#34;
+
+interface ReadValue[T]:
+    fn get() -&gt; T
+
+type Box[T]:
+    value: T
+
+type SharedReader:
+    reader: ReadValue[Int] &amp; Shareable
+
+type CallbackReader:
+    read_value: fn() -&gt; Int
+
+impl ReadValue[T] for Box[T]:
+    fn get() -&gt; T:
+        return self.value
+
+impl ReadValue[Int] for CallbackReader:
+    fn get() -&gt; Int:
+        return self.read_value()
+
+fn seven() -&gt; Int:
+    return 7
+
+fn local_view[T: ReadValue[Int]](source: T) -&gt; ReadValue[Int]:
+    return ReadValue[Int](value: source)
+
+fn shared_view[T: ReadValue[Int] &amp; Shareable](source: T) -&gt; ReadValue[Int] &amp; Shareable:
+    return (ReadValue[Int] &amp; Shareable)(value: source)
+
+fn consume_shared[T: ReadValue[Int] &amp; Shareable](source: T) -&gt; Int:
+    return source.get()
+
+test &#34;plain and shared views&#34;:
+    let box = Box[Int](value: 7)
+    let plain = local_view(source: box)
+    let shared = shared_view(source: box)
+    let identity = (ReadValue[Int] &amp; Shareable)(value: shared)
+    let erased = ReadValue[Int](value: identity)
+    let holder = SharedReader(reader: identity)
+    let readers: List[ReadValue[Int] &amp; Shareable] = [holder.reader]
+    let optional: Optional[ReadValue[Int] &amp; Shareable] = some(value: shared)
+    let callback = CallbackReader(read_value: seven)
+    let local_callback = ReadValue[Int](value: callback)
+    if not (plain.get() == 7):
+        return panic(message: &#34;check failed&#34;)
+    if not (erased.get() == 7):
+        return panic(message: &#34;check failed&#34;)
+    if not (local_callback.get() == 7):
+        return panic(message: &#34;check failed&#34;)
+    if not (consume_shared(source: holder.reader) == 7):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p><code>local_view</code> must be accepted with no sharing bound on its generic receiver. <code>shared_view</code> retains its proof through the returned type and the record field; the same implementation supplies every view. CallbackReader&rsquo;s bare function field carries no callable-sharing promise, so the record is nonshareable even though this particular initializer is a safe named function. Its plain view and sequential call are accepted. View conversion evaluates the receiver once and neither copies nor closes native state. The collection and optional declarations exercise refined types inside generic arguments.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Remove <code>Shareable</code> from <code>shared_view</code>&rsquo;s generic bound</td><td>Type rejection in its body: receiver sharing is not proved</td></tr><tr><td>Construct <code>(ReadValue[Int] & Shareable)(value: plain)</code> or use <code>erased</code> instead</td><td>Type rejection: a plain view cannot recover its hidden receiver&rsquo;s sharing guarantee</td></tr><tr><td>Replace the callback&rsquo;s plain view constructor with <code>(ReadValue[Int] & Shareable)(value: callback)</code></td><td>Type rejection: the bare function field gives its receiver no sharing proof</td></tr><tr><td>Pass <code>plain</code> to <code>consume_shared</code></td><td>Type rejection at the generic application: named contract bound holds, sharing bound does not</td></tr><tr><td>Change the list to <code>List[ReadValue[Int]] = [plain]</code></td><td>Type rejection: plain contract type fails the collection element bound</td></tr><tr><td>Initialize <code>SharedReader(reader: plain)</code></td><td>Type rejection: plain and shared field types differ</td></tr><tr><td>Replace <code>ReadValue[Int](value: identity)</code> with <code>identity</code></td><td>Accepted: the inferred local retains the shared type rather than erasing it</td></tr><tr><td>Annotate that replacement as <code>let erased: ReadValue[Int] = identity</code></td><td>Type rejection: discarding sharing is not implicit</td></tr><tr><td>Replace the shared constructor in <code>shared_view</code> with <code>ReadValue[Int](value: source)</code></td><td>Type rejection at return: expected shared type cannot refine a plain constructor</td></tr><tr><td>Replace <code>ReadValue[Int] & Shareable</code> in the record field with <code>Int & Shareable</code></td><td>Type rejection: only an operation contract can have this refinement</td></tr><tr><td>Replace the field type with <code>Shareable & ReadValue[Int]</code></td><td>Parse rejection: reversed order is not a value-type form</td></tr><tr><td>Replace the field type with <code>ReadValue[Int] & Equal</code></td><td>Parse rejection: only the <code>Shareable</code> refinement is admitted</td></tr></tbody></table><p>With a trusted native nonshareable receiver fixture, accept a plain view and sequential calls, reject its shared view construction, and reject concurrently used closures retaining its plain view or bound method. A shared receiver&rsquo;s method supplies receiver-sharing proof, subject to the existing callable-boundary rules. Verify that a shared service may return a nonshareable local result without making that result shareable. These checks must use frontend proofs rather than Go interface assignability or runtime receiver inspection.</p><h2 id=cl-11-recursive-records-require-immutable-container-indirection>CL-11: Recursive records require immutable-container indirection<a class=anchor href=#cl-11-recursive-records-require-immutable-container-indirection>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/records/>records</a>
 and <a href=/manuscript/core-language/types/generics/>generics</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>import List from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Tree[T: Shareable]:
-</span></span><span class=line><span class=cl>    value: T
-</span></span><span class=line><span class=cl>    children: List[Tree[T]]
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;recursive immutable collection&#34;:
-</span></span><span class=line><span class=cl>    let leaf = Tree[Int](value: 1, children: [])
-</span></span><span class=line><span class=cl>    let root = Tree[Int](value: 2, children: [leaf])
-</span></span><span class=line><span class=cl>    if not (root.value == 2):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>Accept: removing the <code>List</code> storage edge leaves no inline record/alternative cycle, and recursive applications preserve <code>T</code> unchanged.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the <code>children</code> field type with <code>Tree[T]</code></td><td>Type rejection at declaration: unguarded inline cycle</td></tr><tr><td>Replace it with <code>Optional[Tree[T]]</code></td><td>Type rejection at declaration: <code>Optional</code> does not provide storage indirection</td></tr><tr><td>Replace it with <code>Result[Tree[T], String]</code></td><td>Type rejection at declaration: <code>Result</code> does not provide storage indirection</td></tr><tr><td>Replace it with <code>List[Tree[List[T]]]</code></td><td>Type rejection at declaration: recursive application expands the type parameter</td></tr></tbody></table><p>The declaration check must reject the offending type before constructor errors in the test obscure the cycle. Mutual-recursion fixtures within one module must apply the same graph rule across every participating record/alternative. An import cycle is a separate module rejection, not a substitute for the inline-layout check.</p><h2 id=cl-12-collection-iteration-has-concrete-element-types>CL-12: Collection iteration has concrete element types<a class=anchor href=#cl-12-collection-iteration-has-concrete-element-types>#</a></h2><p>Contract: <a href=/manuscript/core-language/control-flow/loops/>loops</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+import List from &#34;@std/collections.ms&#34;
+
+type Tree[T: Shareable]:
+    value: T
+    children: List[Tree[T]]
+
+test &#34;recursive immutable collection&#34;:
+    let leaf = Tree[Int](value: 1, children: [])
+    let root = Tree[Int](value: 2, children: [leaf])
+    if not (root.value == 2):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>Accept: removing the <code>List</code> storage edge leaves no inline record/alternative cycle, and recursive applications preserve <code>T</code> unchanged.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the <code>children</code> field type with <code>Tree[T]</code></td><td>Type rejection at declaration: unguarded inline cycle</td></tr><tr><td>Replace it with <code>Optional[Tree[T]]</code></td><td>Type rejection at declaration: <code>Optional</code> does not provide storage indirection</td></tr><tr><td>Replace it with <code>Result[Tree[T], String]</code></td><td>Type rejection at declaration: <code>Result</code> does not provide storage indirection</td></tr><tr><td>Replace it with <code>List[Tree[List[T]]]</code></td><td>Type rejection at declaration: recursive application expands the type parameter</td></tr></tbody></table><p>The declaration check must reject the offending type before constructor errors in the test obscure the cycle. Mutual-recursion fixtures within one module must apply the same graph rule across every participating record/alternative. An import cycle is a separate module rejection, not a substitute for the inline-layout check.</p><h2 id=cl-12-collection-iteration-has-concrete-element-types>CL-12: Collection iteration has concrete element types<a class=anchor href=#cl-12-collection-iteration-has-concrete-element-types>#</a></h2><p>Contract: <a href=/manuscript/core-language/control-flow/loops/>loops</a>
 and <a href=/manuscript/core-language/types/collections/>collections</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>import Map from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>import MapEntry from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>import Set from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn map_total(values: Map[String, Int]) -&gt; Int:
-</span></span><span class=line><span class=cl>    var total = 0
-</span></span><span class=line><span class=cl>    for entry in values:
-</span></span><span class=line><span class=cl>        let {key, value} = entry
-</span></span><span class=line><span class=cl>        let label: String = key
-</span></span><span class=line><span class=cl>        total = total + value
-</span></span><span class=line><span class=cl>    return total
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn set_total(values: Set[Int]) -&gt; Int:
-</span></span><span class=line><span class=cl>    var total = 0
-</span></span><span class=line><span class=cl>    for value in values:
-</span></span><span class=line><span class=cl>        total = total + value
-</span></span><span class=line><span class=cl>    return total
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;map entry type&#34;:
-</span></span><span class=line><span class=cl>    let entry = MapEntry[String, Int](key: &#34;a&#34;, value: 3)
-</span></span><span class=line><span class=cl>    if not (entry.key == &#34;a&#34;):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (entry.value == 3):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>Accept these functions with the <a href=/manuscript/standard-library/data-and-io/operations/>minimum collection API</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+import Map from &#34;@std/collections.ms&#34;
+import MapEntry from &#34;@std/collections.ms&#34;
+import Set from &#34;@std/collections.ms&#34;
+
+fn map_total(values: Map[String, Int]) -&gt; Int:
+    var total = 0
+    for entry in values:
+        let {key, value} = entry
+        let label: String = key
+        total = total + value
+    return total
+
+fn set_total(values: Set[Int]) -&gt; Int:
+    var total = 0
+    for value in values:
+        total = total + value
+    return total
+
+test &#34;map entry type&#34;:
+    let entry = MapEntry[String, Int](key: &#34;a&#34;, value: 3)
+    if not (entry.key == &#34;a&#34;):
+        return panic(message: &#34;check failed&#34;)
+    if not (entry.value == 3):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>Accept these functions with the <a href=/manuscript/standard-library/data-and-io/operations/>minimum collection API</a>
 . The map loop element is <code>MapEntry[String, Int]</code>, whose record fields are <code>key: String</code> and <code>value: Int</code>; the set loop element is <code>Int</code>.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace map-loop <code>entry</code> with <code>[key, value]</code></td><td>Parse rejection: a loop introduces one identifier, not a destructuring pattern</td></tr><tr><td>Bind <code>{missing}</code> from <code>entry</code></td><td>Type rejection: unknown map-entry record field</td></tr><tr><td>Declare <code>let label: Int = key</code></td><td>Type rejection: map key is <code>String</code>, not <code>Int</code></td></tr><tr><td>Replace <code>Set[Int]</code> with <code>Set[Float]</code></td><td>Type rejection: <code>Float</code> is not <code>Hashable</code></td></tr><tr><td>Replace <code>Map[String, Int]</code> with <code>Map[List[Int], Int]</code></td><td>Type rejection: collections are not hashable keys</td></tr></tbody></table><p>Runtime collection fixtures use the minimum constructor/update API: verify insertion-order traversal for maps and sets, and evaluate an effectful iterable expression exactly once. The concrete expectations are in <a href=/manuscript/compiler/conformance/runtime-bindings/>runtime bindings</a>
 .</p><h2 id=cl-13-lexical-text-forms-and-declaration-only-modules>CL-13: Lexical text forms and declaration-only modules<a class=anchor href=#cl-13-lexical-text-forms-and-declaration-only-modules>#</a></h2><p>Contract: <a href=/manuscript/core-language/basics/grammar/>source grammar</a>
 and <a href=/manuscript/core-language/basics/text-and-bytes/>text</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn echo(value: String) -&gt; String:
-</span></span><span class=line><span class=cl>    return value
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;text source forms&#34;:
-</span></span><span class=line><span class=cl>    if not (echo(value: &#34;\{literal\}&#34;) == &#34;\{literal\}&#34;):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (&#34;\u{1F600}&#34; == &#34;😀&#34;):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (&#34;value: {3}&#34; == &#34;value: 3&#34;):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    let no_value: Unit = unit</span></span></code></pre></div></div><p>Escaped braces are literal text; unescaped braces select interpolation. Source UTF-8 encoding and Unicode scalar validation are part of parsing text, independent of later text-conversion APIs.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the scalar escape with <code>"\u{D800}"</code></td><td>Parse rejection: surrogate is not a Unicode scalar</td></tr><tr><td>Replace it with <code>"\u{110000}"</code></td><td>Parse rejection: scalar exceeds the Unicode range</td></tr><tr><td>Replace an escape with <code>"\q"</code></td><td>Parse rejection: unknown escape</td></tr><tr><td>Replace <code>echo</code>&rsquo;s function name with the reserved word <code>if</code></td><td>Parse rejection: reserved word is not an identifier</td></tr><tr><td>Add module-level <code>let extra = 1</code> after the test</td><td>Parse rejection: executable bindings belong in a block</td></tr><tr><td>Replace <code>let no_value: Unit = unit</code> with <code>let no_value: Unit = 0</code></td><td>Type rejection: <code>Int</code> is not <code>Unit</code></td></tr><tr><td>Replace it with <code>let smallest: Int = -9223372036854775808</code></td><td>Accept: directly negated minimum Int literal</td></tr><tr><td>Replace it with <code>let too_large = 9223372036854775808</code></td><td>Type rejection: positive literal is outside Int range</td></tr><tr><td>Replace it with <code>let too_large = 1e400</code></td><td>Type rejection: Float literal would round to infinity</td></tr><tr><td>Replace it with <code>let unknown = 01</code></td><td>Parse rejection: leading-zero numeric spelling is not supported</td></tr></tbody></table><p>Equivalent LF and CRLF encodings must produce the same parsed structure after documented newline normalization. Invalid UTF-8 input must be rejected rather than silently replaced. Blank/comment-only lines do not introduce suites, and comment markers within text remain text.</p><h2 id=cl-14-result-propagation-preserves-the-declared-error-type>CL-14: Result propagation preserves the declared error type<a class=anchor href=#cl-14-result-propagation-preserves-the-declared-error-type>#</a></h2><p>Contract: <a href=/manuscript/core-language/errors/results/>Result</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+fn echo(value: String) -&gt; String:
+    return value
+
+test &#34;text source forms&#34;:
+    if not (echo(value: &#34;\{literal\}&#34;) == &#34;\{literal\}&#34;):
+        return panic(message: &#34;check failed&#34;)
+    if not (&#34;\u{1F600}&#34; == &#34;😀&#34;):
+        return panic(message: &#34;check failed&#34;)
+    if not (&#34;value: {3}&#34; == &#34;value: 3&#34;):
+        return panic(message: &#34;check failed&#34;)
+    let no_value: Unit = unit</code></pre></div><p>Escaped braces are literal text; unescaped braces select interpolation. Source UTF-8 encoding and Unicode scalar validation are part of parsing text, independent of later text-conversion APIs.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the scalar escape with <code>"\u{D800}"</code></td><td>Parse rejection: surrogate is not a Unicode scalar</td></tr><tr><td>Replace it with <code>"\u{110000}"</code></td><td>Parse rejection: scalar exceeds the Unicode range</td></tr><tr><td>Replace an escape with <code>"\q"</code></td><td>Parse rejection: unknown escape</td></tr><tr><td>Replace <code>echo</code>&rsquo;s function name with the reserved word <code>if</code></td><td>Parse rejection: reserved word is not an identifier</td></tr><tr><td>Add module-level <code>let extra = 1</code> after the test</td><td>Parse rejection: executable bindings belong in a block</td></tr><tr><td>Replace <code>let no_value: Unit = unit</code> with <code>let no_value: Unit = 0</code></td><td>Type rejection: <code>Int</code> is not <code>Unit</code></td></tr><tr><td>Replace it with <code>let smallest: Int = -9223372036854775808</code></td><td>Accept: directly negated minimum Int literal</td></tr><tr><td>Replace it with <code>let too_large = 9223372036854775808</code></td><td>Type rejection: positive literal is outside Int range</td></tr><tr><td>Replace it with <code>let too_large = 1e400</code></td><td>Type rejection: Float literal would round to infinity</td></tr><tr><td>Replace it with <code>let unknown = 01</code></td><td>Parse rejection: leading-zero numeric spelling is not supported</td></tr></tbody></table><p>Equivalent LF and CRLF encodings must produce the same parsed structure after documented newline normalization. Invalid UTF-8 input must be rejected rather than silently replaced. Blank/comment-only lines do not introduce suites, and comment markers within text remain text.</p><h2 id=cl-14-result-propagation-preserves-the-declared-error-type>CL-14: Result propagation preserves the declared error type<a class=anchor href=#cl-14-result-propagation-preserves-the-declared-error-type>#</a></h2><p>Contract: <a href=/manuscript/core-language/errors/results/>Result</a>
 and <a href=/manuscript/core-language/errors/propagation/>try propagation</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>import Result from &#34;@std/result.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Problem:
-</span></span><span class=line><span class=cl>    case Missing(reason: String)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type OtherProblem:
-</span></span><span class=line><span class=cl>    case Invalid(reason: String)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn checked(value: Int) -&gt; Result[Int, Problem]:
-</span></span><span class=line><span class=cl>    if value &lt; 0:
-</span></span><span class=line><span class=cl>        return error(cause: Problem.Missing(reason: &#34;negative&#34;))
-</span></span><span class=line><span class=cl>    return ok(value: value)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn doubled(value: Int) -&gt; Result[Int, Problem]:
-</span></span><span class=line><span class=cl>    let accepted = try checked(value: value)
-</span></span><span class=line><span class=cl>    return ok(value: accepted * 2)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn summarize(outcome: Result[Int, Problem]) -&gt; Int:
-</span></span><span class=line><span class=cl>    match outcome:
-</span></span><span class=line><span class=cl>        ok(value):
-</span></span><span class=line><span class=cl>            return value
-</span></span><span class=line><span class=cl>        error(_):
-</span></span><span class=line><span class=cl>            return -1
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;unchanged propagated error&#34;:
-</span></span><span class=line><span class=cl>    if not (summarize(outcome: doubled(value: 3)) == 6):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (summarize(outcome: doubled(value: -1)) == -1):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>Successful construction obtains the complete <code>Result[Int, Problem]</code> type from the declared return contract. Propagation leaves the remaining body unexecuted on an expected error; it does not introduce an implicit error union or conversion.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Change only <code>doubled</code>&rsquo;s declared error type to <code>OtherProblem</code></td><td>Type rejection at <code>try</code>: incompatible propagated error</td></tr><tr><td>Change <code>doubled</code> to return <code>Int</code>, and its final return to <code>return accepted * 2</code></td><td>Type rejection at <code>try</code>: enclosing function must return compatible <code>Result</code></td></tr><tr><td>Replace <code>ok(value: value)</code> with <code>ok(value: true)</code></td><td>Type rejection: wrong successful payload type</td></tr><tr><td>Replace the error payload with <code>OtherProblem.Invalid(reason: "negative")</code></td><td>Type rejection: wrong declared error payload type</td></tr><tr><td>Replace the <code>try</code> operand with <code>value</code></td><td>Type rejection: operand is not <code>Result</code></td></tr><tr><td>Replace the local binding with <code>let accepted: Int = try ok(value: 3)</code></td><td>Type rejection: annotation does not propagate through <code>try</code> to infer the missing error type</td></tr><tr><td>Replace the local binding with <code>let accepted = try Result[Int, Problem].ok(value: value)</code></td><td>Accept: qualification establishes both Result arguments before propagation</td></tr></tbody></table><p>An anonymous function establishes its own propagation boundary. Test that an inner <code>Unit</code> closure cannot use <code>try</code> merely because its enclosing function returns <code>Result</code>; the inner function&rsquo;s signature controls compatibility.</p><h2 id=cl-15-equality-eligibility-does-not-imply-hashing-eligibility>CL-15: Equality eligibility does not imply hashing eligibility<a class=anchor href=#cl-15-equality-eligibility-does-not-imply-hashing-eligibility>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/equality-and-hashing/>equality and hashing</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>import List from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>import Decimal from &#34;@std/decimal.ms&#34;
-</span></span><span class=line><span class=cl>import Optional from &#34;@std/optional.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Callback:
-</span></span><span class=line><span class=cl>    handler: fn(value: Int) -&gt; Int
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn increment(value: Int) -&gt; Int:
-</span></span><span class=line><span class=cl>    return value + 1
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn preserve_key[K: Hashable](value: K) -&gt; K:
-</span></span><span class=line><span class=cl>    return value
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;derived value equality&#34;:
-</span></span><span class=line><span class=cl>    let present: Optional[Int] = some(value: 1)
-</span></span><span class=line><span class=cl>    let same: Optional[Int] = some(value: 1)
-</span></span><span class=line><span class=cl>    let missing: Optional[Int] = none
-</span></span><span class=line><span class=cl>    if not (present == same):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (present != missing):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (1.00d == 1d):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not ([1, 2] == [1, 2]):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not ([1, 2] != [2, 1]):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (preserve_key(value: &#34;key&#34;) == &#34;key&#34;):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    let callback = Callback(handler: increment)</span></span></code></pre></div></div><p>Optional equality compares its tag and eligible payload. Decimal equality compares numeric values despite different trailing zeroes. List equality observes positions rather than treating a list as a set. Eligibility is checked recursively on record fields.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Add <code>if callback == callback:</code> with a <code>return</code> body</td><td>Type rejection: a function field makes <code>Callback</code> ineligible for equality</td></tr><tr><td>Add <code>if increment == increment:</code> with a <code>return</code> body</td><td>Type rejection: function values have no equality</td></tr><tr><td>Use <code>preserve_key(value: [1, 2])</code></td><td>Type rejection: equal lists are not hashable</td></tr><tr><td>Use <code>preserve_key(value: 1.0)</code></td><td>Type rejection: <code>Float</code> is equal-comparable but not hashable</td></tr><tr><td>Declare <code>let wrong: Optional[Float] = present</code></td><td>Type rejection: invariant optional applications differ</td></tr></tbody></table><p>Test generated record/alternative equality with eligible scalar leaves and reject derivations containing a noneligible leaf. Do not treat sharing eligibility, identical object references, or a user-written marker implementation as evidence of equality.</p><h2 id=cl-16-expected-data-types-supply-constructor-context>CL-16: Expected data types supply constructor context<a class=anchor href=#cl-16-expected-data-types-supply-constructor-context>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/compatibility/>compatibility and expected types</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+import Result from &#34;@std/result.ms&#34;
+
+type Problem:
+    case Missing(reason: String)
+
+type OtherProblem:
+    case Invalid(reason: String)
+
+fn checked(value: Int) -&gt; Result[Int, Problem]:
+    if value &lt; 0:
+        return error(cause: Problem.Missing(reason: &#34;negative&#34;))
+    return ok(value: value)
+
+fn doubled(value: Int) -&gt; Result[Int, Problem]:
+    let accepted = try checked(value: value)
+    return ok(value: accepted * 2)
+
+fn summarize(outcome: Result[Int, Problem]) -&gt; Int:
+    match outcome:
+        ok(value):
+            return value
+        error(_):
+            return -1
+
+test &#34;unchanged propagated error&#34;:
+    if not (summarize(outcome: doubled(value: 3)) == 6):
+        return panic(message: &#34;check failed&#34;)
+    if not (summarize(outcome: doubled(value: -1)) == -1):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>Successful construction obtains the complete <code>Result[Int, Problem]</code> type from the declared return contract. Propagation leaves the remaining body unexecuted on an expected error; it does not introduce an implicit error union or conversion.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Change only <code>doubled</code>&rsquo;s declared error type to <code>OtherProblem</code></td><td>Type rejection at <code>try</code>: incompatible propagated error</td></tr><tr><td>Change <code>doubled</code> to return <code>Int</code>, and its final return to <code>return accepted * 2</code></td><td>Type rejection at <code>try</code>: enclosing function must return compatible <code>Result</code></td></tr><tr><td>Replace <code>ok(value: value)</code> with <code>ok(value: true)</code></td><td>Type rejection: wrong successful payload type</td></tr><tr><td>Replace the error payload with <code>OtherProblem.Invalid(reason: "negative")</code></td><td>Type rejection: wrong declared error payload type</td></tr><tr><td>Replace the <code>try</code> operand with <code>value</code></td><td>Type rejection: operand is not <code>Result</code></td></tr><tr><td>Replace the local binding with <code>let accepted: Int = try ok(value: 3)</code></td><td>Type rejection: annotation does not propagate through <code>try</code> to infer the missing error type</td></tr><tr><td>Replace the local binding with <code>let accepted = try Result[Int, Problem].ok(value: value)</code></td><td>Accept: qualification establishes both Result arguments before propagation</td></tr></tbody></table><p>An anonymous function establishes its own propagation boundary. Test that an inner <code>Unit</code> closure cannot use <code>try</code> merely because its enclosing function returns <code>Result</code>; the inner function&rsquo;s signature controls compatibility.</p><h2 id=cl-15-equality-eligibility-does-not-imply-hashing-eligibility>CL-15: Equality eligibility does not imply hashing eligibility<a class=anchor href=#cl-15-equality-eligibility-does-not-imply-hashing-eligibility>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/equality-and-hashing/>equality and hashing</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+import List from &#34;@std/collections.ms&#34;
+import Decimal from &#34;@std/decimal.ms&#34;
+import Optional from &#34;@std/optional.ms&#34;
+
+type Callback:
+    handler: fn(value: Int) -&gt; Int
+
+fn increment(value: Int) -&gt; Int:
+    return value + 1
+
+fn preserve_key[K: Hashable](value: K) -&gt; K:
+    return value
+
+test &#34;derived value equality&#34;:
+    let present: Optional[Int] = some(value: 1)
+    let same: Optional[Int] = some(value: 1)
+    let missing: Optional[Int] = none
+    if not (present == same):
+        return panic(message: &#34;check failed&#34;)
+    if not (present != missing):
+        return panic(message: &#34;check failed&#34;)
+    if not (1.00d == 1d):
+        return panic(message: &#34;check failed&#34;)
+    if not ([1, 2] == [1, 2]):
+        return panic(message: &#34;check failed&#34;)
+    if not ([1, 2] != [2, 1]):
+        return panic(message: &#34;check failed&#34;)
+    if not (preserve_key(value: &#34;key&#34;) == &#34;key&#34;):
+        return panic(message: &#34;check failed&#34;)
+    let callback = Callback(handler: increment)</code></pre></div><p>Optional equality compares its tag and eligible payload. Decimal equality compares numeric values despite different trailing zeroes. List equality observes positions rather than treating a list as a set. Eligibility is checked recursively on record fields.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Add <code>if callback == callback:</code> with a <code>return</code> body</td><td>Type rejection: a function field makes <code>Callback</code> ineligible for equality</td></tr><tr><td>Add <code>if increment == increment:</code> with a <code>return</code> body</td><td>Type rejection: function values have no equality</td></tr><tr><td>Use <code>preserve_key(value: [1, 2])</code></td><td>Type rejection: equal lists are not hashable</td></tr><tr><td>Use <code>preserve_key(value: 1.0)</code></td><td>Type rejection: <code>Float</code> is equal-comparable but not hashable</td></tr><tr><td>Declare <code>let wrong: Optional[Float] = present</code></td><td>Type rejection: invariant optional applications differ</td></tr></tbody></table><p>Test generated record/alternative equality with eligible scalar leaves and reject derivations containing a noneligible leaf. Do not treat sharing eligibility, identical object references, or a user-written marker implementation as evidence of equality.</p><h2 id=cl-16-expected-data-types-supply-constructor-context>CL-16: Expected data types supply constructor context<a class=anchor href=#cl-16-expected-data-types-supply-constructor-context>#</a></h2><p>Contract: <a href=/manuscript/core-language/types/compatibility/>compatibility and expected types</a>
 , <a href=/manuscript/core-language/types/optionals/>Optional</a>
 , and <a href=/manuscript/core-language/errors/results/>Result</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>import List from &#34;@std/collections.ms&#34;
-</span></span><span class=line><span class=cl>import Optional from &#34;@std/optional.ms&#34;
-</span></span><span class=line><span class=cl>import Result from &#34;@std/result.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>type Input:
-</span></span><span class=line><span class=cl>    names: List[Optional[String]]
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn outcome_value(outcome: Result[Int, String]) -&gt; Int:
-</span></span><span class=line><span class=cl>    match outcome:
-</span></span><span class=line><span class=cl>        ok(value):
-</span></span><span class=line><span class=cl>            return value
-</span></span><span class=line><span class=cl>        error(_):
-</span></span><span class=line><span class=cl>            return -1
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;data constructor context&#34;:
-</span></span><span class=line><span class=cl>    let input = Input(names: [none, some(value: &#34;Ada&#34;)])
-</span></span><span class=line><span class=cl>    let success: Result[Int, String] = ok(value: 3)
-</span></span><span class=line><span class=cl>    let failure: Result[Int, String] = error(cause: &#34;unavailable&#34;)
-</span></span><span class=line><span class=cl>    let absent: Optional[Int] = none
-</span></span><span class=line><span class=cl>    let nested: List[List[Int]] = [[], [1]]
-</span></span><span class=line><span class=cl>    if not (outcome_value(outcome: success) == 3):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (outcome_value(outcome: failure) == -1):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>The field, binding annotation, or substituted parameter determines missing data arguments; it does not convert an independently known incompatible type. Forward declarations and contextual list elements do not require module-level execution.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Remove <code>: Result[Int, String]</code> from <code>success</code></td><td>Type rejection: <code>ok</code>&rsquo;s payload does not determine the error type</td></tr><tr><td>Remove it from <code>failure</code></td><td>Type rejection: <code>error</code>&rsquo;s payload does not determine the success type</td></tr><tr><td>Remove <code>: Optional[Int]</code> from <code>absent</code></td><td>Type rejection: <code>none</code> supplies no payload type</td></tr><tr><td>Change <code>some(value: "Ada")</code> to <code>some(value: 3)</code></td><td>Type rejection: independently known payload conflicts with expected <code>String</code></td></tr><tr><td>Replace <code>none</code> for <code>absent</code> with <code>3</code></td><td>Type rejection: no implicit Optional wrapping</td></tr><tr><td>Replace <code>ok(value: 3)</code> for <code>success</code> with <code>3</code></td><td>Type rejection: no implicit Result wrapping</td></tr></tbody></table><p>Add a nonempty-list fixture <code>[none, some(value: 1)]</code>: the independently typed <code>some</code> determines <code>Optional[Int]</code> for the absent element. Reject <code>[some(value: 1), some(value: "one")]</code>; no implicit union is formed. These data-constructor rules do not infer a missing generic function specialization from its result context; CL-09 checks that separate boundary.</p><h2 id=cl-17-nonreturning-subexpressions-determine-control-flow-exits>CL-17: Nonreturning subexpressions determine control-flow exits<a class=anchor href=#cl-17-nonreturning-subexpressions-determine-control-flow-exits>#</a></h2><p>Contract: <a href=/manuscript/core-language/functions/declarations-and-calls/#unit-and-never>Unit and Never</a>
-.</p><p>The following independent module is a type-checking fixture; its faulting functions are not invoked as passing tests.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn failed_initializer() -&gt; Never:
-</span></span><span class=line><span class=cl>    let impossible: Int = panic(message: &#34;initializer cannot return&#34;)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn returned_failure() -&gt; Int:
-</span></span><span class=line><span class=cl>    return panic(message: &#34;result cannot return&#34;)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn endless() -&gt; Int:
-</span></span><span class=line><span class=cl>    while true:
-</span></span><span class=line><span class=cl>        continue</span></span></code></pre></div></div><p>Accept: the initializer and return expression cannot produce values; the literal-true loop has no reachable break and therefore no normal exit. An expected annotation does not make a <code>Never</code> expression return an <code>Int</code> at runtime.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the initializer with <code>0</code></td><td>Type rejection: the <code>Never</code> function now reaches normal fallthrough</td></tr><tr><td>Replace the binding with <code>let impossible: Int = 1 + panic(message: "stop")</code></td><td>Accept: the operator result is Int, but its required right operand cannot return</td></tr><tr><td>Replace the binding with <code>let impossible: Bool = not panic(message: "stop")</code></td><td>Accept: <code>not</code> selects Bool, but its required operand cannot return</td></tr><tr><td>Replace the binding with <code>let impossible: Int = panic(message: "left") + panic(message: "right")</code></td><td>Type rejection: two Never operands supply no numeric candidate, even under an Int annotation</td></tr><tr><td>Replace the binding with <code>let impossible: Int = -panic(message: "stop")</code></td><td>Type rejection: unary numeric selection requires an independently known numeric operand</td></tr><tr><td>Replace the binding with <code>let possible: Bool = false and panic(message: "skipped")</code></td><td>Type rejection: the Never function has reachable fallthrough because the right operand is skipped</td></tr><tr><td>Replace the binding with <code>let possible: Bool = true or panic(message: "skipped")</code></td><td>Type rejection: short circuiting permits normal fallthrough</td></tr><tr><td>Add <code>return unit</code> after its initializer</td><td>Type rejection: unreachable returns still must match the declared result type</td></tr><tr><td>Replace <code>return panic(...)</code> with bare <code>return</code></td><td>Type rejection: a non-Unit function requires a value</td></tr><tr><td>Replace <code>while true</code> with <code>while not false</code></td><td>Type rejection: nonliteral conditions retain a possible exit; no constant folding proves return completeness</td></tr><tr><td>Add a reachable <code>break</code> inside <code>endless</code></td><td>Type rejection: the loop can exit and the <code>Int</code> function then falls through</td></tr></tbody></table><p>Extend the fixture with a nested loop whose own break does not exit the outer literal-true loop. A closure&rsquo;s return likewise does not return from its enclosing function. Nonreturning callable/argument evaluation prevents later arguments and the outer call from running, under the ordinary evaluation-order contract.</p><h2 id=cl-18-suite-bodied-function-expressions-resume-the-enclosing-layout>CL-18: Suite-bodied function expressions resume the enclosing layout<a class=anchor href=#cl-18-suite-bodied-function-expressions-resume-the-enclosing-layout>#</a></h2><p>Contract: <a href=/manuscript/core-language/basics/grammar/#anonymous-function-suites-inside-delimiters>anonymous-function suites</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+import List from &#34;@std/collections.ms&#34;
+import Optional from &#34;@std/optional.ms&#34;
+import Result from &#34;@std/result.ms&#34;
+
+type Input:
+    names: List[Optional[String]]
+
+fn outcome_value(outcome: Result[Int, String]) -&gt; Int:
+    match outcome:
+        ok(value):
+            return value
+        error(_):
+            return -1
+
+test &#34;data constructor context&#34;:
+    let input = Input(names: [none, some(value: &#34;Ada&#34;)])
+    let success: Result[Int, String] = ok(value: 3)
+    let failure: Result[Int, String] = error(cause: &#34;unavailable&#34;)
+    let absent: Optional[Int] = none
+    let nested: List[List[Int]] = [[], [1]]
+    if not (outcome_value(outcome: success) == 3):
+        return panic(message: &#34;check failed&#34;)
+    if not (outcome_value(outcome: failure) == -1):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>The field, binding annotation, or substituted parameter determines missing data arguments; it does not convert an independently known incompatible type. Forward declarations and contextual list elements do not require module-level execution.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Remove <code>: Result[Int, String]</code> from <code>success</code></td><td>Type rejection: <code>ok</code>&rsquo;s payload does not determine the error type</td></tr><tr><td>Remove it from <code>failure</code></td><td>Type rejection: <code>error</code>&rsquo;s payload does not determine the success type</td></tr><tr><td>Remove <code>: Optional[Int]</code> from <code>absent</code></td><td>Type rejection: <code>none</code> supplies no payload type</td></tr><tr><td>Change <code>some(value: "Ada")</code> to <code>some(value: 3)</code></td><td>Type rejection: independently known payload conflicts with expected <code>String</code></td></tr><tr><td>Replace <code>none</code> for <code>absent</code> with <code>3</code></td><td>Type rejection: no implicit Optional wrapping</td></tr><tr><td>Replace <code>ok(value: 3)</code> for <code>success</code> with <code>3</code></td><td>Type rejection: no implicit Result wrapping</td></tr></tbody></table><p>Add a nonempty-list fixture <code>[none, some(value: 1)]</code>: the independently typed <code>some</code> determines <code>Optional[Int]</code> for the absent element. Reject <code>[some(value: 1), some(value: "one")]</code>; no implicit union is formed. These data-constructor rules do not infer a missing generic function specialization from its result context; CL-09 checks that separate boundary.</p><h2 id=cl-17-nonreturning-subexpressions-determine-control-flow-exits>CL-17: Nonreturning subexpressions determine control-flow exits<a class=anchor href=#cl-17-nonreturning-subexpressions-determine-control-flow-exits>#</a></h2><p>Contract: <a href=/manuscript/core-language/functions/declarations-and-calls/#unit-and-never>Unit and Never</a>
+.</p><p>The following independent module is a type-checking fixture; its faulting functions are not invoked as passing tests.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+fn failed_initializer() -&gt; Never:
+    let impossible: Int = panic(message: &#34;initializer cannot return&#34;)
+
+fn returned_failure() -&gt; Int:
+    return panic(message: &#34;result cannot return&#34;)
+
+fn endless() -&gt; Int:
+    while true:
+        continue</code></pre></div><p>Accept: the initializer and return expression cannot produce values; the literal-true loop has no reachable break and therefore no normal exit. An expected annotation does not make a <code>Never</code> expression return an <code>Int</code> at runtime.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace the initializer with <code>0</code></td><td>Type rejection: the <code>Never</code> function now reaches normal fallthrough</td></tr><tr><td>Replace the binding with <code>let impossible: Int = 1 + panic(message: "stop")</code></td><td>Accept: the operator result is Int, but its required right operand cannot return</td></tr><tr><td>Replace the binding with <code>let impossible: Bool = not panic(message: "stop")</code></td><td>Accept: <code>not</code> selects Bool, but its required operand cannot return</td></tr><tr><td>Replace the binding with <code>let impossible: Int = panic(message: "left") + panic(message: "right")</code></td><td>Type rejection: two Never operands supply no numeric candidate, even under an Int annotation</td></tr><tr><td>Replace the binding with <code>let impossible: Int = -panic(message: "stop")</code></td><td>Type rejection: unary numeric selection requires an independently known numeric operand</td></tr><tr><td>Replace the binding with <code>let possible: Bool = false and panic(message: "skipped")</code></td><td>Type rejection: the Never function has reachable fallthrough because the right operand is skipped</td></tr><tr><td>Replace the binding with <code>let possible: Bool = true or panic(message: "skipped")</code></td><td>Type rejection: short circuiting permits normal fallthrough</td></tr><tr><td>Add <code>return unit</code> after its initializer</td><td>Type rejection: unreachable returns still must match the declared result type</td></tr><tr><td>Replace <code>return panic(...)</code> with bare <code>return</code></td><td>Type rejection: a non-Unit function requires a value</td></tr><tr><td>Replace <code>while true</code> with <code>while not false</code></td><td>Type rejection: nonliteral conditions retain a possible exit; no constant folding proves return completeness</td></tr><tr><td>Add a reachable <code>break</code> inside <code>endless</code></td><td>Type rejection: the loop can exit and the <code>Int</code> function then falls through</td></tr></tbody></table><p>Extend the fixture with a nested loop whose own break does not exit the outer literal-true loop. A closure&rsquo;s return likewise does not return from its enclosing function. Nonreturning callable/argument evaluation prevents later arguments and the outer call from running, under the ordinary evaluation-order contract.</p><h2 id=cl-18-suite-bodied-function-expressions-resume-the-enclosing-layout>CL-18: Suite-bodied function expressions resume the enclosing layout<a class=anchor href=#cl-18-suite-bodied-function-expressions-resume-the-enclosing-layout>#</a></h2><p>Contract: <a href=/manuscript/core-language/basics/grammar/#anonymous-function-suites-inside-delimiters>anonymous-function suites</a>
 and <a href=/manuscript/core-language/functions/function-values-and-closures/>function values</a>
-.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>import panic from &#34;@std/faults.ms&#34;
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>fn apply(value: Int, transform: fn(value: Int) -&gt; Int) -&gt; Int:
-</span></span><span class=line><span class=cl>    return transform(value: value)
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>test &#34;function suite boundaries&#34;:
-</span></span><span class=line><span class=cl>    let dormant = fn() -&gt; Int:
-</span></span><span class=line><span class=cl>        return panic(message: &#34;body is not run at creation&#34;)
-</span></span><span class=line><span class=cl>    let grouped = apply(
-</span></span><span class=line><span class=cl>        transform: (
-</span></span><span class=line><span class=cl>            fn(value: Int) -&gt; Int:
-</span></span><span class=line><span class=cl>                if value &gt; 0:
-</span></span><span class=line><span class=cl>                    return value - 1
-</span></span><span class=line><span class=cl>                return 0
-</span></span><span class=line><span class=cl>        ),
-</span></span><span class=line><span class=cl>        value: 3,
-</span></span><span class=line><span class=cl>    )
-</span></span><span class=line><span class=cl>    let final_argument = apply(
-</span></span><span class=line><span class=cl>        value: 3,
-</span></span><span class=line><span class=cl>        transform: fn(value: Int) -&gt; Int:
-</span></span><span class=line><span class=cl>            return value - 1
-</span></span><span class=line><span class=cl>    )
-</span></span><span class=line><span class=cl>    if not (grouped == 2):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)
-</span></span><span class=line><span class=cl>    if not (final_argument == 2):
-</span></span><span class=line><span class=cl>        return panic(message: &#34;check failed&#34;)</span></span></code></pre></div></div><p>The unused closure&rsquo;s body must not run. Its dedent terminates both the function expression and the surrounding binding statement, so the next binding does not require an extra blank line. The grouped closure ends before the outer argument comma; the final ungrouped closure resumes the still-open call&rsquo;s continuation when its body dedents. The nested <code>if</code> dedents within the active function suite rather than ending the enclosing call.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace <code>dormant</code>&rsquo;s function expression with <code>fn() -> Int: 1</code></td><td>Parse rejection: a function body requires a statement suite</td></tr><tr><td>Indent the final call-closing <code>)</code> to the closure-body level</td><td>Parse rejection: a delimiter opened outside the function body cannot close at body indentation</td></tr><tr><td>Add <code>let after = 1</code> at the next test-body indentation without a blank line after <code>dormant</code></td><td>Accept: synthetic statement boundary follows the function-expression suite</td></tr><tr><td>Replace the anonymous expression with a nested named <code>fn dormant() -> Int:</code> declaration</td><td>Parse rejection: named functions are not local statements</td></tr></tbody></table><h2 id=coverage-and-evidence>Coverage and evidence<a class=anchor href=#coverage-and-evidence>#</a></h2><p>Maintain one independently checked fixture for each accepted module and each rejected variant. Record actual compiler results separately from the expected outcomes here. Scalar conversions, collection construction, and numeric edge behavior have <a href=/manuscript/compiler/conformance/runtime-bindings/>runtime acceptance cases</a>
+.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>import panic from &#34;@std/faults.ms&#34;
+
+fn apply(value: Int, transform: fn(value: Int) -&gt; Int) -&gt; Int:
+    return transform(value: value)
+
+test &#34;function suite boundaries&#34;:
+    let dormant = fn() -&gt; Int:
+        return panic(message: &#34;body is not run at creation&#34;)
+    let grouped = apply(
+        transform: (
+            fn(value: Int) -&gt; Int:
+                if value &gt; 0:
+                    return value - 1
+                return 0
+        ),
+        value: 3,
+    )
+    let final_argument = apply(
+        value: 3,
+        transform: fn(value: Int) -&gt; Int:
+            return value - 1
+    )
+    if not (grouped == 2):
+        return panic(message: &#34;check failed&#34;)
+    if not (final_argument == 2):
+        return panic(message: &#34;check failed&#34;)</code></pre></div><p>The unused closure&rsquo;s body must not run. Its dedent terminates both the function expression and the surrounding binding statement, so the next binding does not require an extra blank line. The grouped closure ends before the outer argument comma; the final ungrouped closure resumes the still-open call&rsquo;s continuation when its body dedents. The nested <code>if</code> dedents within the active function suite rather than ending the enclosing call.</p><table><thead><tr><th>Independent variant</th><th>Expected outcome</th></tr></thead><tbody><tr><td>Replace <code>dormant</code>&rsquo;s function expression with <code>fn() -> Int: 1</code></td><td>Parse rejection: a function body requires a statement suite</td></tr><tr><td>Indent the final call-closing <code>)</code> to the closure-body level</td><td>Parse rejection: a delimiter opened outside the function body cannot close at body indentation</td></tr><tr><td>Add <code>let after = 1</code> at the next test-body indentation without a blank line after <code>dormant</code></td><td>Accept: synthetic statement boundary follows the function-expression suite</td></tr><tr><td>Replace the anonymous expression with a nested named <code>fn dormant() -> Int:</code> declaration</td><td>Parse rejection: named functions are not local statements</td></tr></tbody></table><h2 id=coverage-and-evidence>Coverage and evidence<a class=anchor href=#coverage-and-evidence>#</a></h2><p>Maintain one independently checked fixture for each accepted module and each rejected variant. Record actual compiler results separately from the expected outcomes here. Scalar conversions, collection construction, and numeric edge behavior have <a href=/manuscript/compiler/conformance/runtime-bindings/>runtime acceptance cases</a>
 .</p></article><footer class=book-footer><div class="flex flex-wrap justify-between"><span><a href=/manuscript/compiler/conformance/ class="flex align-center"><img src=/manuscript/icons/backward.svg class=book-icon alt=Backward>
 <span>Conformance and scope</span>
 </a></span><span><a href=/manuscript/compiler/conformance/runtime-bindings/ class="flex align-center"><span>Runtime binding acceptance cases</span>

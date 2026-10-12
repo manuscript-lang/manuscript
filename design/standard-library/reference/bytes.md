@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/bytes.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Bytes: Bytes
 field values: List[Int]
 operation concat: fn(values: Bytes)->Bytes
@@ -23,7 +23,7 @@ operation to_text: fn()->Optional[String]
 
 Kind: fn.
 
-```text
+```manuscript
 contains: fn(data: Bytes, value: Bytes)->Bool
 ```
 
@@ -31,7 +31,7 @@ contains: fn(data: Bytes, value: Bytes)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 slice: fn(data: Bytes, start: Int, end: Int)->Bytes
 ```
 
@@ -39,7 +39,7 @@ slice: fn(data: Bytes, start: Int, end: Int)->Bytes
 
 Kind: fn.
 
-```text
+```manuscript
 values: fn(data: Bytes)->List[Int]
 ```
 

@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/csv.ms"`.
 
 Kind: record.
 
-```text
+```manuscript
 CsvOptions: CsvOptions
 field delimiter: String
 field line_ending: String
@@ -20,7 +20,7 @@ field line_ending: String
 
 Kind: fn.
 
-```text
+```manuscript
 parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Result[List[List[String]], LibraryError]
 ```
 
@@ -28,7 +28,7 @@ parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Res
 
 Kind: fn.
 
-```text
+```manuscript
 stringify: fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)->Result[String, LibraryError]
 ```
 

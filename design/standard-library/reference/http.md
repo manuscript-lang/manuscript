@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 Kind: record.
 
-```text
+```manuscript
 ClientResponse: ClientResponse
 field status: Int
 field headers: Map[String, List[String]]
@@ -21,7 +21,7 @@ field body: Bytes
 
 Kind: interface.
 
-```text
+```manuscript
 HttpClient: HttpClient
 operation close: fn()->Unit
 operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, LibraryError]
@@ -32,7 +32,7 @@ operation send_stream: fn(method: String, url: String, headers: Map[String, Stri
 
 Kind: record.
 
-```text
+```manuscript
 HttpClientOptions: HttpClientOptions
 field max_redirects: Int
 field max_idle_connections: Int
@@ -47,7 +47,7 @@ field tls: TlsOptions
 
 Kind: interface.
 
-```text
+```manuscript
 HttpExchange: HttpExchange
 operation close: fn()->Unit
 operation headers: fn()->Map[String, List[String]]
@@ -64,7 +64,7 @@ operation write: fn(data: Bytes)->Result[Unit, IoError]
 
 Kind: record.
 
-```text
+```manuscript
 HttpRequest: HttpRequest
 field method: String
 field path: String
@@ -77,7 +77,7 @@ field body: Bytes
 
 Kind: record.
 
-```text
+```manuscript
 HttpResponse: HttpResponse
 field status: Int
 field headers: Map[String, String]
@@ -88,7 +88,7 @@ field body: Bytes
 
 Kind: interface.
 
-```text
+```manuscript
 HttpServer: HttpServer
 operation address: fn()->String
 operation close: fn()->Unit
@@ -99,7 +99,7 @@ operation wait: fn()->Result[Unit, IoError]
 
 Kind: record.
 
-```text
+```manuscript
 HttpServerOptions: HttpServerOptions
 field max_requests: Int
 field max_body_bytes: Int
@@ -114,7 +114,7 @@ field tls: Optional[TlsOptions]
 
 Kind: interface.
 
-```text
+```manuscript
 Network: Network
 operation bind_datagram: fn(address: String)->Result[DatagramSocket & Shareable, LibraryError]
 operation close: fn()->Unit
@@ -140,7 +140,7 @@ operation with_resolver: fn(address: String)->Result[Network & Shareable, Librar
 
 Kind: interface.
 
-```text
+```manuscript
 ResponseBody: ResponseBody
 operation close: fn()->Unit
 operation headers: fn()->Map[String, List[String]]

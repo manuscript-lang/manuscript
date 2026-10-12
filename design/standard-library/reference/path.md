@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/path.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 basename: fn(path: String)->String
 ```
 
@@ -18,7 +18,7 @@ basename: fn(path: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 dirname: fn(path: String)->String
 ```
 
@@ -26,7 +26,7 @@ dirname: fn(path: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 extension: fn(path: String)->String
 ```
 
@@ -34,7 +34,7 @@ extension: fn(path: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 is_absolute: fn(path: String)->Bool
 ```
 
@@ -42,7 +42,7 @@ is_absolute: fn(path: String)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 join: fn(parts: List[String])->String
 ```
 
@@ -50,7 +50,7 @@ join: fn(parts: List[String])->String
 
 Kind: fn.
 
-```text
+```manuscript
 normalize: fn(path: String)->String
 ```
 
@@ -58,7 +58,7 @@ normalize: fn(path: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 relative: fn(base: String, target: String)->Result[String, LibraryError]
 ```
 

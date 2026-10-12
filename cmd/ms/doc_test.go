@@ -26,7 +26,7 @@ func TestDocOutsideRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"operation to_bytes:", "operation start:", "history_limit", "# @std/http.ms"} {
+	for _, want := range []string{"```manuscript\n", "operation to_bytes:", "operation start:", "history_limit", "# @std/http.ms"} {
 		if !strings.Contains(string(markdown), want) {
 			t.Errorf("missing %q", want)
 		}
@@ -71,7 +71,7 @@ fn private_helper() -> Int:
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"## Item", "field value: Int", "## create", "fn(value: Int)->Item"} {
+	for _, want := range []string{"```manuscript\n", "## Item", "field value: Int", "## create", "fn(value: Int)->Item"} {
 		if !strings.Contains(string(data), want) {
 			t.Errorf("missing %q in %s", want, data)
 		}

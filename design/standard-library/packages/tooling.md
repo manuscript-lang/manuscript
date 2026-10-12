@@ -11,7 +11,7 @@ Write structured logs to an explicit output stream. Logging returns expected err
 
 ## `@std/log.ms`
 
-```text
+```manuscript
 fn write(output: WriteStream&Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LibraryError]
 ```
 
