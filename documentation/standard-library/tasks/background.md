@@ -57,7 +57,7 @@ Bind the operation's data in an ordinary closure; there is no function-plus-argu
 
 ## Lifetime and shutdown
 
-Pass `Background` directly. Its `start` binding follows the [direct-call restriction](../types/prelude.md#direct-calls-only). Sharing or dropping a service reference or work ID does not change its lifetime or cancel work. Work never transfers between services.
+Pass `Background` directly. Its `start` method can also be stored as a bound function; see [special call rules](../call-rules.md). Sharing or dropping a service reference or work ID does not change its lifetime or cancel work. Work never transfers between services.
 
 `close() -> Unit` is idempotent and does not finish until admitted work and its cleanup have ended:
 

@@ -22,12 +22,12 @@ These are type expressions: a list of text, a map from text to integers, optiona
 
 ## Bounds
 
-The compiler-defined bounds are `Equal` and `Hashable`. They express comparison and key requirements; ordinary behavioral requirements use named operation contracts. Generic declarations use `[T, U]`, with bounds such as `T: Equal` or `T: Read & Closeable`.
+`T: Equal` means that values of `T` can be compared with `==` and `!=`. `T: Hashable` means that values of `T` can also be map keys or set elements. The compiler checks these requirements; you do not implement them yourself. See [equality and hashing](equality-and-hashing.md) for examples. Other requirements use named operation contracts. Generic declarations use `[T, U]`, with bounds such as `T: Equal` or `T: Read & Closeable`.
 
 | Bound | Required property |
 | --- | --- |
-| `Equal` | Type supports eligible value equality |
-| `Hashable` | Type supports hashing consistent with equality |
+| `Equal` | Values can be compared by their contents with `==` and `!=` |
+| `Hashable` | Values can be map keys or set elements; also supports equality |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
 Bounds are checked at every application. `Hashable` implies `Equal` for bound satisfaction and body checking. All values may be passed between operations without a sharing bound; this does not add synchronization to mutable objects. Contract types do not gain equality or hashing.

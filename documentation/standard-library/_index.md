@@ -3,49 +3,17 @@ title = "Standard library"
 weight = 31
 +++
 
-# Standard library guide
+# Standard library
 
-[Design index](../_index.md)
+Import standard types and functions from `@std/…` modules.
 
-Use this chapter to find standard types and operations. Most names need an explicit import from an `@std/...ms` module. Start with the type catalog, or choose a task from the sections below. The package pages list exact signatures and explain their limits.
+- [Module reference](reference/_index.md): signatures and import paths.
+- [Types and imports](types/catalog.md)
+- [Collections, text, and numbers](data-and-io/operations.md)
+- [Files](reference/fs.md), [JSON](reference/json.md), and [HTTP](reference/http.md)
+- [Streams](data-and-io/streams.md)
+- [Shared state](data-and-io/synchronized-state.md)
+- [Background work](tasks/background.md)
+- [Command-line applications](hosts/cli.md)
 
-## API reference
-
-[Browse all implemented modules](reference/_index.md), including the intrinsic prelude. The reference is generated from compiler definitions; [special call rules](call-rules.md) cover APIs with contextual signatures.
-
-## Reading order
-
-### 1. [Standard types](types/_index.md)
-
-- [Core and standard types](types/catalog.md) — Find a type, its meaning, and its import path.
-- [Standard imports and API typing](types/prelude.md) — Check exact import identities, callable types, and standard API rules.
-
-### 2. [Concurrent APIs and host lifetimes](tasks/_index.md)
-
-- [Background services](tasks/background.md) — Start work under a service that tracks it and waits during shutdown.
-
-### 3. [Data, state, and I/O](data-and-io/_index.md)
-
-- [Minimum data operations](data-and-io/operations.md) — Look up the basic methods on collections, text, bytes, and numeric values.
-- [Readers, writers, and streams](data-and-io/streams.md) — Read and write bytes, recognize end-of-input, and close streams.
-- [Local queues](data-and-io/queues.md) — Use a bounded FIFO locally, or share it through Synchronized.
-- [Synchronized values, pools, and leases](data-and-io/synchronized-state.md) — Coordinate shared state and acquire a pool lease with scoped cleanup.
-- [Builders and immutable snapshots](data-and-io/builders.md) — Construct a value with synchronized mutation, then freeze an immutable snapshot.
-
-### 4. [Application hosts](hosts/_index.md)
-
-- [HTTP request hosts](hosts/http.md) — Use HTTP clients or request hosts with bounded bodies and cleanup.
-- [CLI application hosts](hosts/cli.md)
-
-### 5. [General-purpose packages](packages/_index.md)
-
-- [JavaScript built-in coverage](packages/javascript-builtins.md) — Find method equivalents and semantic differences.
-- [Node.js and Go coverage](packages/coverage.md) — See what is implemented and what remains outside the library.
-- [Common package contracts](packages/contracts.md) — Review the errors, limits, and authority rules shared by packages.
-- [Expanded library conformance](packages/conformance.md) — Find executable checks for package behavior and limits.
-
-## Runtime facilities
-
-These are ordinary library facilities with effect, sharing, lifetime, and cancellation contracts. They add no concurrency syntax. Host-created requests, sessions, applications, and CLI runs establish fixed execution contexts. Parallel APIs join before returning; background services implement `Closeable` and join during shutdown.
-
-Standard imports, immutable data, CLI streams, and concurrent APIs have concrete signatures. Queue, pool, builder, HTTP server, and buffered subprocess APIs have concrete contracts. The general-purpose package guide adds executable data, codec, filesystem, cryptographic, networking and HTTP client operations. See [outstanding decisions](../compiler/conformance/scope.md#outstanding-decisions).
+[Special call rules](call-rules.md) explain APIs with additional compiler checks.

@@ -1,6 +1,7 @@
 {{- $destination := .Destination -}}
 {{- $url := urls.Parse $destination -}}
-{{- if and (not $url.IsAbs) (fileExists (printf "static/%s" (strings.TrimPrefix "/" $url.Path))) -}}
+{{- /* Only explicit downloads are static; parent-relative Markdown paths must resolve as pages. */ -}}
+{{- if and (not $url.IsAbs) (in (slice "/stdlib.md" "/stdlib.json" "/llms.txt") $url.Path) -}}
   {{- $destination = strings.TrimPrefix "/" $url.Path | relURL -}}
   {{- with $url.RawQuery }}{{ $destination = printf "%s?%s" $destination . }}{{ end -}}
   {{- with $url.Fragment }}{{ $destination = printf "%s#%s" $destination . }}{{ end -}}
