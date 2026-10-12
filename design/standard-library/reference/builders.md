@@ -6,9 +6,7 @@ title = "builders"
 
 Import each required symbol with `import Name from "@std/builders.ms"`.
 
-## BytesBuilder
-
-Kind: interface.
+## BytesBuilder {data-api-kind="Interface"}
 
 ```manuscript
 BytesBuilder: BytesBuilder
@@ -17,9 +15,7 @@ operation concat: fn(values: Bytes)->Unit
 operation freeze: fn()->Bytes
 ```
 
-## ListBuilder
-
-Kind: interface.
+## ListBuilder {data-api-kind="Interface"}
 
 ```manuscript
 ListBuilder: ListBuilder[T]
@@ -28,9 +24,7 @@ operation append: fn(value: T)->Unit
 operation freeze: fn()->List[T]
 ```
 
-## MapBuilder
-
-Kind: interface.
+## MapBuilder {data-api-kind="Interface"}
 
 ```manuscript
 MapBuilder: MapBuilder[T, U]
@@ -39,9 +33,7 @@ operation freeze: fn()->Map[T, U]
 operation with_entry: fn(key: T, value: U)->Unit
 ```
 
-## SetBuilder
-
-Kind: interface.
+## SetBuilder {data-api-kind="Interface"}
 
 ```manuscript
 SetBuilder: SetBuilder[T]
@@ -50,9 +42,7 @@ operation freeze: fn()->Set[T]
 operation with_value: fn(value: T)->Unit
 ```
 
-## StringBuilder
-
-Kind: interface.
+## StringBuilder {data-api-kind="Interface"}
 
 ```manuscript
 StringBuilder: StringBuilder

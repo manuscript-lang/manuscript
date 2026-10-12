@@ -28,7 +28,7 @@ Import each required symbol with `import Name from "@std/archive.ms"`.
 
 ## ArchiveEntry
 
-Kind: record.
+**Record**
 
 ```manuscript
 ArchiveEntry: ArchiveEntry
@@ -39,7 +39,7 @@ field directory: Bool
 
 ## ArchiveLimits
 
-Kind: record.
+**Record**
 
 ```manuscript
 ArchiveLimits: ArchiveLimits
@@ -50,7 +50,7 @@ field max_total_bytes: Int
 
 ## pack
 
-Kind: fn.
+**Function**
 
 ```manuscript
 pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[Bytes, LibraryError]
@@ -58,7 +58,7 @@ pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[By
 
 ## unpack
 
-Kind: fn.
+**Function**
 
 ```manuscript
 unpack: fn(data: Bytes, format: String, limits: ArchiveLimits)->Result[List[ArchiveEntry], LibraryError]
@@ -70,7 +70,7 @@ Import each required symbol with `import Name from "@std/bigint.ms"`.
 
 ## BigInt
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 BigInt: BigInt
@@ -89,7 +89,7 @@ operation to_string: fn(radix: Int)->String
 
 ## add
 
-Kind: fn.
+**Function**
 
 ```manuscript
 add: fn(left: BigInt, right: BigInt)->BigInt
@@ -97,7 +97,7 @@ add: fn(left: BigInt, right: BigInt)->BigInt
 
 ## bit_and
 
-Kind: fn.
+**Function**
 
 ```manuscript
 bit_and: fn(left: BigInt, right: BigInt)->BigInt
@@ -105,7 +105,7 @@ bit_and: fn(left: BigInt, right: BigInt)->BigInt
 
 ## bit_or
 
-Kind: fn.
+**Function**
 
 ```manuscript
 bit_or: fn(left: BigInt, right: BigInt)->BigInt
@@ -113,7 +113,7 @@ bit_or: fn(left: BigInt, right: BigInt)->BigInt
 
 ## bit_xor
 
-Kind: fn.
+**Function**
 
 ```manuscript
 bit_xor: fn(left: BigInt, right: BigInt)->BigInt
@@ -121,7 +121,7 @@ bit_xor: fn(left: BigInt, right: BigInt)->BigInt
 
 ## compare
 
-Kind: fn.
+**Function**
 
 ```manuscript
 compare: fn(left: BigInt, right: BigInt)->Int
@@ -129,7 +129,7 @@ compare: fn(left: BigInt, right: BigInt)->Int
 
 ## divide
 
-Kind: fn.
+**Function**
 
 ```manuscript
 divide: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
@@ -137,7 +137,7 @@ divide: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
 
 ## format
 
-Kind: fn.
+**Function**
 
 ```manuscript
 format: fn(value: BigInt, radix: Int)->String
@@ -145,7 +145,7 @@ format: fn(value: BigInt, radix: Int)->String
 
 ## from_int
 
-Kind: fn.
+**Function**
 
 ```manuscript
 from_int: fn(value: Int)->BigInt
@@ -153,7 +153,7 @@ from_int: fn(value: Int)->BigInt
 
 ## multiply
 
-Kind: fn.
+**Function**
 
 ```manuscript
 multiply: fn(left: BigInt, right: BigInt)->BigInt
@@ -161,7 +161,7 @@ multiply: fn(left: BigInt, right: BigInt)->BigInt
 
 ## parse
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, LibraryError]
@@ -169,7 +169,7 @@ parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, LibraryErro
 
 ## remainder
 
-Kind: fn.
+**Function**
 
 ```manuscript
 remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
@@ -177,7 +177,7 @@ remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
 
 ## subtract
 
-Kind: fn.
+**Function**
 
 ```manuscript
 subtract: fn(left: BigInt, right: BigInt)->BigInt
@@ -185,7 +185,7 @@ subtract: fn(left: BigInt, right: BigInt)->BigInt
 
 ## to_int
 
-Kind: fn.
+**Function**
 
 ```manuscript
 to_int: fn(value: BigInt)->Optional[Int]
@@ -197,7 +197,7 @@ Import each required symbol with `import Name from "@std/binary.ms"`.
 
 ## read_float
 
-Kind: fn.
+**Function**
 
 ```manuscript
 read_float: fn(data: Bytes, offset: Int, little_endian: Bool)->Result[Float, LibraryError]
@@ -205,7 +205,7 @@ read_float: fn(data: Bytes, offset: Int, little_endian: Bool)->Result[Float, Lib
 
 ## read_integer
 
-Kind: fn.
+**Function**
 
 ```manuscript
 read_integer: fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Int, LibraryError]
@@ -213,7 +213,7 @@ read_integer: fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endi
 
 ## write_float
 
-Kind: fn.
+**Function**
 
 ```manuscript
 write_float: fn(value: Float, little_endian: Bool)->Bytes
@@ -221,7 +221,7 @@ write_float: fn(value: Float, little_endian: Bool)->Bytes
 
 ## write_integer
 
-Kind: fn.
+**Function**
 
 ```manuscript
 write_integer: fn(value: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Bytes, LibraryError]
@@ -233,7 +233,7 @@ Import each required symbol with `import Name from "@std/builders.ms"`.
 
 ## BytesBuilder
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 BytesBuilder: BytesBuilder
@@ -244,7 +244,7 @@ operation freeze: fn()->Bytes
 
 ## ListBuilder
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 ListBuilder: ListBuilder[T]
@@ -255,7 +255,7 @@ operation freeze: fn()->List[T]
 
 ## MapBuilder
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 MapBuilder: MapBuilder[T, U]
@@ -266,7 +266,7 @@ operation with_entry: fn(key: T, value: U)->Unit
 
 ## SetBuilder
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 SetBuilder: SetBuilder[T]
@@ -277,7 +277,7 @@ operation with_value: fn(value: T)->Unit
 
 ## StringBuilder
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 StringBuilder: StringBuilder
@@ -291,7 +291,7 @@ Import each required symbol with `import Name from "@std/bytes.ms"`.
 
 ## Bytes
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Bytes: Bytes
@@ -314,7 +314,7 @@ operation with_value: fn(index: Int, value: Int)->Bytes
 
 ## at
 
-Kind: fn.
+**Function**
 
 ```manuscript
 at: fn(data: Bytes, index: Int)->Optional[Int]
@@ -322,7 +322,7 @@ at: fn(data: Bytes, index: Int)->Optional[Int]
 
 ## contains
 
-Kind: fn.
+**Function**
 
 ```manuscript
 contains: fn(data: Bytes, value: Bytes)->Bool
@@ -330,7 +330,7 @@ contains: fn(data: Bytes, value: Bytes)->Bool
 
 ## ends_with
 
-Kind: fn.
+**Function**
 
 ```manuscript
 ends_with: fn(data: Bytes, value: Bytes)->Bool
@@ -338,7 +338,7 @@ ends_with: fn(data: Bytes, value: Bytes)->Bool
 
 ## index_of
 
-Kind: fn.
+**Function**
 
 ```manuscript
 index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
@@ -346,7 +346,7 @@ index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
 
 ## is_empty
 
-Kind: fn.
+**Function**
 
 ```manuscript
 is_empty: fn(data: Bytes)->Bool
@@ -354,7 +354,7 @@ is_empty: fn(data: Bytes)->Bool
 
 ## last_index_of
 
-Kind: fn.
+**Function**
 
 ```manuscript
 last_index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
@@ -362,7 +362,7 @@ last_index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
 
 ## reverse
 
-Kind: fn.
+**Function**
 
 ```manuscript
 reverse: fn(data: Bytes)->Bytes
@@ -370,7 +370,7 @@ reverse: fn(data: Bytes)->Bytes
 
 ## slice
 
-Kind: fn.
+**Function**
 
 ```manuscript
 slice: fn(data: Bytes, start: Int, end: Int)->Bytes
@@ -378,7 +378,7 @@ slice: fn(data: Bytes, start: Int, end: Int)->Bytes
 
 ## starts_with
 
-Kind: fn.
+**Function**
 
 ```manuscript
 starts_with: fn(data: Bytes, value: Bytes)->Bool
@@ -386,7 +386,7 @@ starts_with: fn(data: Bytes, value: Bytes)->Bool
 
 ## values
 
-Kind: fn.
+**Function**
 
 ```manuscript
 values: fn(data: Bytes)->List[Int]
@@ -394,7 +394,7 @@ values: fn(data: Bytes)->List[Int]
 
 ## with_value
 
-Kind: fn.
+**Function**
 
 ```manuscript
 with_value: fn(data: Bytes, index: Int, value: Int)->Bytes
@@ -406,7 +406,7 @@ Import each required symbol with `import Name from "@std/cleanup.ms"`.
 
 ## Closeable
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Closeable: Closeable
@@ -419,7 +419,7 @@ Import each required symbol with `import Name from "@std/cli.ms"`.
 
 ## Process
 
-Kind: record.
+**Record**
 
 ```manuscript
 Process: Process
@@ -444,7 +444,7 @@ Import each required symbol with `import Name from "@std/collections.ms"`.
 
 ## List
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 List: List[T]
@@ -490,7 +490,7 @@ operation without: fn(index: Int)->List[T]
 
 ## ListEntry
 
-Kind: record.
+**Record**
 
 ```manuscript
 ListEntry: ListEntry[T]
@@ -501,7 +501,7 @@ field value: T
 
 ## Map
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Map: Map[T, U]
@@ -523,7 +523,7 @@ operation without: fn(key: T)->Map[T, U]
 
 ## MapEntry
 
-Kind: record.
+**Record**
 
 ```manuscript
 MapEntry: MapEntry[T, U]
@@ -534,7 +534,7 @@ field value: U
 
 ## Set
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Set: Set[T]
@@ -558,7 +558,7 @@ operation without: fn(value: T)->Set[T]
 
 ## at
 
-Kind: fn.
+**Function**
 
 ```manuscript
 at: fn(values: List[T], index: Int)->Optional[T]
@@ -567,7 +567,7 @@ type parameters: T: Shareable
 
 ## contains
 
-Kind: fn.
+**Function**
 
 ```manuscript
 contains: fn(values: List[T], value: T)->Bool
@@ -576,7 +576,7 @@ type parameters: T: Shareable & Equal
 
 ## copy_within
 
-Kind: fn.
+**Function**
 
 ```manuscript
 copy_within: fn(values: List[T], target: Int, start: Int, end: Int)->List[T]
@@ -585,7 +585,7 @@ type parameters: T: Shareable
 
 ## difference
 
-Kind: fn.
+**Function**
 
 ```manuscript
 difference: fn(left: Set[T], right: Set[T])->Set[T]
@@ -594,7 +594,7 @@ type parameters: T: Hashable
 
 ## every
 
-Kind: fn.
+**Function**
 
 ```manuscript
 every: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
@@ -603,7 +603,7 @@ type parameters: T: Shareable
 
 ## fill
 
-Kind: fn.
+**Function**
 
 ```manuscript
 fill: fn(values: List[T], value: T, start: Int, end: Int)->List[T]
@@ -612,7 +612,7 @@ type parameters: T: Shareable
 
 ## filled
 
-Kind: fn.
+**Function**
 
 ```manuscript
 filled: fn(value: T, count: Int, max_items: Int)->Result[List[T], LibraryError]
@@ -621,7 +621,7 @@ type parameters: T: Shareable
 
 ## filter
 
-Kind: fn.
+**Function**
 
 ```manuscript
 filter: fn(values: List[T], predicate: fn(value: T)->Bool)->List[T]
@@ -630,7 +630,7 @@ type parameters: T: Shareable
 
 ## find
 
-Kind: fn.
+**Function**
 
 ```manuscript
 find: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
@@ -639,7 +639,7 @@ type parameters: T: Shareable
 
 ## find_index
 
-Kind: fn.
+**Function**
 
 ```manuscript
 find_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
@@ -648,7 +648,7 @@ type parameters: T: Shareable
 
 ## find_last
 
-Kind: fn.
+**Function**
 
 ```manuscript
 find_last: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
@@ -657,7 +657,7 @@ type parameters: T: Shareable
 
 ## find_last_index
 
-Kind: fn.
+**Function**
 
 ```manuscript
 find_last_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
@@ -666,7 +666,7 @@ type parameters: T: Shareable
 
 ## first
 
-Kind: fn.
+**Function**
 
 ```manuscript
 first: fn(values: List[T])->Optional[T]
@@ -675,7 +675,7 @@ type parameters: T: Shareable
 
 ## flat_map
 
-Kind: fn.
+**Function**
 
 ```manuscript
 flat_map: fn(values: List[T], transform: fn(value: T)->List[U])->List[U]
@@ -684,7 +684,7 @@ type parameters: T: Shareable, U: Shareable
 
 ## flatten
 
-Kind: fn.
+**Function**
 
 ```manuscript
 flatten: fn(values: List[List[T]])->List[T]
@@ -693,7 +693,7 @@ type parameters: T: Shareable
 
 ## fold
 
-Kind: fn.
+**Function**
 
 ```manuscript
 fold: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
@@ -702,7 +702,7 @@ type parameters: T: Shareable, A
 
 ## fold_right
 
-Kind: fn.
+**Function**
 
 ```manuscript
 fold_right: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
@@ -711,7 +711,7 @@ type parameters: T: Shareable, A
 
 ## for_each
 
-Kind: fn.
+**Function**
 
 ```manuscript
 for_each: fn(values: List[T], operation: fn(value: T)->Unit)->Unit
@@ -720,7 +720,7 @@ type parameters: T: Shareable
 
 ## group_by
 
-Kind: fn.
+**Function**
 
 ```manuscript
 group_by: fn(values: List[T], key: fn(value: T)->K)->Map[K, List[T]]
@@ -729,7 +729,7 @@ type parameters: T: Shareable, K: Hashable
 
 ## index_of
 
-Kind: fn.
+**Function**
 
 ```manuscript
 index_of: fn(values: List[T], value: T)->Optional[Int]
@@ -738,7 +738,7 @@ type parameters: T: Shareable & Equal
 
 ## intersection
 
-Kind: fn.
+**Function**
 
 ```manuscript
 intersection: fn(left: Set[T], right: Set[T])->Set[T]
@@ -747,7 +747,7 @@ type parameters: T: Hashable
 
 ## is_disjoint_from
 
-Kind: fn.
+**Function**
 
 ```manuscript
 is_disjoint_from: fn(left: Set[T], right: Set[T])->Bool
@@ -756,7 +756,7 @@ type parameters: T: Hashable
 
 ## is_empty
 
-Kind: fn.
+**Function**
 
 ```manuscript
 is_empty: fn(values: List[T])->Bool
@@ -765,7 +765,7 @@ type parameters: T: Shareable
 
 ## is_subset_of
 
-Kind: fn.
+**Function**
 
 ```manuscript
 is_subset_of: fn(left: Set[T], right: Set[T])->Bool
@@ -774,7 +774,7 @@ type parameters: T: Hashable
 
 ## is_superset_of
 
-Kind: fn.
+**Function**
 
 ```manuscript
 is_superset_of: fn(left: Set[T], right: Set[T])->Bool
@@ -783,7 +783,7 @@ type parameters: T: Hashable
 
 ## last
 
-Kind: fn.
+**Function**
 
 ```manuscript
 last: fn(values: List[T])->Optional[T]
@@ -792,7 +792,7 @@ type parameters: T: Shareable
 
 ## last_index_of
 
-Kind: fn.
+**Function**
 
 ```manuscript
 last_index_of: fn(values: List[T], value: T)->Optional[Int]
@@ -801,7 +801,7 @@ type parameters: T: Shareable & Equal
 
 ## list_entries
 
-Kind: fn.
+**Function**
 
 ```manuscript
 list_entries: fn(values: List[T])->List[ListEntry[T]]
@@ -810,7 +810,7 @@ type parameters: T: Shareable
 
 ## list_keys
 
-Kind: fn.
+**Function**
 
 ```manuscript
 list_keys: fn(values: List[T])->List[Int]
@@ -819,7 +819,7 @@ type parameters: T: Shareable
 
 ## map
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map: fn(values: List[T], transform: fn(value: T)->U)->List[U]
@@ -828,7 +828,7 @@ type parameters: T: Shareable, U: Shareable
 
 ## map_clear
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_clear: fn(values: Map[K, V])->Map[K, V]
@@ -837,7 +837,7 @@ type parameters: K: Hashable, V: Shareable
 
 ## map_entries
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_entries: fn(values: Map[K, V])->List[MapEntry[K, V]]
@@ -846,7 +846,7 @@ type parameters: K: Hashable, V: Shareable
 
 ## map_for_each
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_for_each: fn(values: Map[K, V], operation: fn(key: K, value: V)->Unit)->Unit
@@ -855,7 +855,7 @@ type parameters: K: Hashable, V: Shareable
 
 ## map_from_entries
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_from_entries: fn(entries: List[MapEntry[K, V]])->Map[K, V]
@@ -864,7 +864,7 @@ type parameters: K: Hashable, V: Shareable
 
 ## map_keys
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_keys: fn(values: Map[K, V])->List[K]
@@ -873,7 +873,7 @@ type parameters: K: Hashable, V: Shareable
 
 ## map_merge
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_merge: fn(values: Map[K, V], other: Map[K, V])->Map[K, V]
@@ -882,7 +882,7 @@ type parameters: K: Hashable, V: Shareable
 
 ## map_values
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_values: fn(values: Map[K, V])->List[V]
@@ -891,7 +891,7 @@ type parameters: K: Hashable, V: Shareable
 
 ## map_with_default
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_with_default: fn(values: Map[K, V], key: K, value: V)->Map[K, V]
@@ -900,7 +900,7 @@ type parameters: K: Hashable, V: Shareable
 
 ## map_with_default_from
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_with_default_from: fn(values: Map[K, V], key: K, create: fn(key: K)->V)->Map[K, V]
@@ -909,7 +909,7 @@ type parameters: K: Hashable, V: Shareable
 
 ## prepend
 
-Kind: fn.
+**Function**
 
 ```manuscript
 prepend: fn(values: List[T], value: T)->List[T]
@@ -918,7 +918,7 @@ type parameters: T: Shareable
 
 ## range
 
-Kind: fn.
+**Function**
 
 ```manuscript
 range: fn(start: Int, end: Int, step: Int, max_items: Int)->Result[List[Int], LibraryError]
@@ -926,7 +926,7 @@ range: fn(start: Int, end: Int, step: Int, max_items: Int)->Result[List[Int], Li
 
 ## reverse
 
-Kind: fn.
+**Function**
 
 ```manuscript
 reverse: fn(values: List[T])->List[T]
@@ -935,7 +935,7 @@ type parameters: T: Shareable
 
 ## set_clear
 
-Kind: fn.
+**Function**
 
 ```manuscript
 set_clear: fn(values: Set[T])->Set[T]
@@ -944,7 +944,7 @@ type parameters: T: Hashable
 
 ## set_entries
 
-Kind: fn.
+**Function**
 
 ```manuscript
 set_entries: fn(values: Set[T])->List[List[T]]
@@ -953,7 +953,7 @@ type parameters: T: Hashable
 
 ## set_for_each
 
-Kind: fn.
+**Function**
 
 ```manuscript
 set_for_each: fn(values: Set[T], operation: fn(value: T)->Unit)->Unit
@@ -962,7 +962,7 @@ type parameters: T: Hashable
 
 ## set_values
 
-Kind: fn.
+**Function**
 
 ```manuscript
 set_values: fn(values: Set[T])->List[T]
@@ -971,7 +971,7 @@ type parameters: T: Hashable
 
 ## slice
 
-Kind: fn.
+**Function**
 
 ```manuscript
 slice: fn(values: List[T], start: Int, end: Int)->List[T]
@@ -980,7 +980,7 @@ type parameters: T: Shareable
 
 ## some
 
-Kind: fn.
+**Function**
 
 ```manuscript
 some: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
@@ -989,7 +989,7 @@ type parameters: T: Shareable
 
 ## sort_ints
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sort_ints: fn(values: List[Int])->List[Int]
@@ -997,7 +997,7 @@ sort_ints: fn(values: List[Int])->List[Int]
 
 ## sort_strings
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sort_strings: fn(values: List[String])->List[String]
@@ -1005,7 +1005,7 @@ sort_strings: fn(values: List[String])->List[String]
 
 ## sorted
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sorted: fn(values: List[T], compare: fn(left: T, right: T)->Int)->List[T]
@@ -1014,7 +1014,7 @@ type parameters: T: Shareable
 
 ## symmetric_difference
 
-Kind: fn.
+**Function**
 
 ```manuscript
 symmetric_difference: fn(left: Set[T], right: Set[T])->Set[T]
@@ -1023,7 +1023,7 @@ type parameters: T: Hashable
 
 ## to_set
 
-Kind: fn.
+**Function**
 
 ```manuscript
 to_set: fn(values: List[T])->Set[T]
@@ -1032,7 +1032,7 @@ type parameters: T: Shareable & Hashable
 
 ## union
 
-Kind: fn.
+**Function**
 
 ```manuscript
 union: fn(left: Set[T], right: Set[T])->Set[T]
@@ -1041,7 +1041,7 @@ type parameters: T: Hashable
 
 ## with_value
 
-Kind: fn.
+**Function**
 
 ```manuscript
 with_value: fn(values: List[T], index: Int, value: T)->List[T]
@@ -1050,7 +1050,7 @@ type parameters: T: Shareable
 
 ## with_values
 
-Kind: fn.
+**Function**
 
 ```manuscript
 with_values: fn(values: List[T], start: Int, delete_count: Int, replacement: List[T])->List[T]
@@ -1059,7 +1059,7 @@ type parameters: T: Shareable
 
 ## without
 
-Kind: fn.
+**Function**
 
 ```manuscript
 without: fn(values: List[T], index: Int)->List[T]
@@ -1072,7 +1072,7 @@ Import each required symbol with `import Name from "@std/compress.ms"`.
 
 ## compress
 
-Kind: fn.
+**Function**
 
 ```manuscript
 compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[Bytes, LibraryError]
@@ -1080,7 +1080,7 @@ compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[By
 
 ## decompress
 
-Kind: fn.
+**Function**
 
 ```manuscript
 decompress: fn(data: Bytes, format: String, max_bytes: Int)->Result[Bytes, LibraryError]
@@ -1092,7 +1092,7 @@ Import each required symbol with `import Name from "@std/crypto.ms"`.
 
 ## constant_time_equal
 
-Kind: fn.
+**Function**
 
 ```manuscript
 constant_time_equal: fn(left: Bytes, right: Bytes)->Bool
@@ -1100,7 +1100,7 @@ constant_time_equal: fn(left: Bytes, right: Bytes)->Bool
 
 ## derive_key
 
-Kind: fn.
+**Function**
 
 ```manuscript
 derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Result[Bytes, LibraryError]
@@ -1108,7 +1108,7 @@ derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Resu
 
 ## hmac
 
-Kind: fn.
+**Function**
 
 ```manuscript
 hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, LibraryError]
@@ -1116,7 +1116,7 @@ hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, LibraryError
 
 ## open
 
-Kind: fn.
+**Function**
 
 ```manuscript
 open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->Result[Bytes, LibraryError]
@@ -1124,7 +1124,7 @@ open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->R
 
 ## public_key
 
-Kind: fn.
+**Function**
 
 ```manuscript
 public_key: fn(seed: Bytes)->Result[Bytes, LibraryError]
@@ -1132,7 +1132,7 @@ public_key: fn(seed: Bytes)->Result[Bytes, LibraryError]
 
 ## seal
 
-Kind: fn.
+**Function**
 
 ```manuscript
 seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Result[Bytes, LibraryError]
@@ -1140,7 +1140,7 @@ seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Re
 
 ## sha256
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sha256: fn(data: Bytes)->Bytes
@@ -1148,7 +1148,7 @@ sha256: fn(data: Bytes)->Bytes
 
 ## sha384
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sha384: fn(data: Bytes)->Bytes
@@ -1156,7 +1156,7 @@ sha384: fn(data: Bytes)->Bytes
 
 ## sha512
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sha512: fn(data: Bytes)->Bytes
@@ -1164,7 +1164,7 @@ sha512: fn(data: Bytes)->Bytes
 
 ## sign
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, LibraryError]
@@ -1172,7 +1172,7 @@ sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, LibraryError]
 
 ## verify
 
-Kind: fn.
+**Function**
 
 ```manuscript
 verify: fn(key: Bytes, data: Bytes, signature: Bytes)->Bool
@@ -1184,7 +1184,7 @@ Import each required symbol with `import Name from "@std/csv.ms"`.
 
 ## CsvOptions
 
-Kind: record.
+**Record**
 
 ```manuscript
 CsvOptions: CsvOptions
@@ -1194,7 +1194,7 @@ field line_ending: String
 
 ## parse
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Result[List[List[String]], LibraryError]
@@ -1202,7 +1202,7 @@ parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Res
 
 ## stringify
 
-Kind: fn.
+**Function**
 
 ```manuscript
 stringify: fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)->Result[String, LibraryError]
@@ -1214,7 +1214,7 @@ Import each required symbol with `import Name from "@std/decimal.ms"`.
 
 ## Decimal
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Decimal: Decimal
@@ -1228,7 +1228,7 @@ Import each required symbol with `import Name from "@std/encoding.ms"`.
 
 ## base64_decode
 
-Kind: fn.
+**Function**
 
 ```manuscript
 base64_decode: fn(text: String, url_safe: Bool, max_bytes: Int)->Result[Bytes, LibraryError]
@@ -1236,7 +1236,7 @@ base64_decode: fn(text: String, url_safe: Bool, max_bytes: Int)->Result[Bytes, L
 
 ## base64_encode
 
-Kind: fn.
+**Function**
 
 ```manuscript
 base64_encode: fn(data: Bytes, url_safe: Bool)->String
@@ -1244,7 +1244,7 @@ base64_encode: fn(data: Bytes, url_safe: Bool)->String
 
 ## hex_decode
 
-Kind: fn.
+**Function**
 
 ```manuscript
 hex_decode: fn(text: String, max_bytes: Int)->Result[Bytes, LibraryError]
@@ -1252,7 +1252,7 @@ hex_decode: fn(text: String, max_bytes: Int)->Result[Bytes, LibraryError]
 
 ## hex_encode
 
-Kind: fn.
+**Function**
 
 ```manuscript
 hex_encode: fn(data: Bytes)->String
@@ -1264,7 +1264,7 @@ Import each required symbol with `import Name from "@std/errors.ms"`.
 
 ## LibraryError
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 LibraryError: LibraryError
@@ -1288,7 +1288,7 @@ Import each required symbol with `import Name from "@std/faults.ms"`.
 
 ## panic
 
-Kind: fn.
+**Function**
 
 ```manuscript
 panic: fn(message: String)->Never
@@ -1300,7 +1300,7 @@ Import each required symbol with `import Name from "@std/fs.ms"`.
 
 ## DirectoryEntry
 
-Kind: record.
+**Record**
 
 ```manuscript
 DirectoryEntry: DirectoryEntry
@@ -1311,7 +1311,7 @@ field symlink: Bool
 
 ## FileInfo
 
-Kind: record.
+**Record**
 
 ```manuscript
 FileInfo: FileInfo
@@ -1324,7 +1324,7 @@ field modified: Timestamp
 
 ## FileSystem
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 FileSystem: FileSystem
@@ -1348,7 +1348,7 @@ Import each required symbol with `import Name from "@std/html.ms"`.
 
 ## escape
 
-Kind: fn.
+**Function**
 
 ```manuscript
 escape: fn(text: String)->String
@@ -1360,7 +1360,7 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 ## ClientResponse
 
-Kind: record.
+**Record**
 
 ```manuscript
 ClientResponse: ClientResponse
@@ -1371,7 +1371,7 @@ field body: Bytes
 
 ## HttpClient
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 HttpClient: HttpClient
@@ -1382,7 +1382,7 @@ operation send_stream: fn(method: String, url: String, headers: Map[String, Stri
 
 ## HttpClientOptions
 
-Kind: record.
+**Record**
 
 ```manuscript
 HttpClientOptions: HttpClientOptions
@@ -1397,7 +1397,7 @@ field tls: TlsOptions
 
 ## HttpExchange
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 HttpExchange: HttpExchange
@@ -1414,7 +1414,7 @@ operation write: fn(data: Bytes)->Result[Unit, IoError]
 
 ## HttpRequest
 
-Kind: record.
+**Record**
 
 ```manuscript
 HttpRequest: HttpRequest
@@ -1427,7 +1427,7 @@ field body: Bytes
 
 ## HttpResponse
 
-Kind: record.
+**Record**
 
 ```manuscript
 HttpResponse: HttpResponse
@@ -1438,7 +1438,7 @@ field body: Bytes
 
 ## HttpServer
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 HttpServer: HttpServer
@@ -1449,7 +1449,7 @@ operation wait: fn()->Result[Unit, IoError]
 
 ## HttpServerOptions
 
-Kind: record.
+**Record**
 
 ```manuscript
 HttpServerOptions: HttpServerOptions
@@ -1464,7 +1464,7 @@ field tls: Optional[TlsOptions]
 
 ## Network
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Network: Network
@@ -1490,7 +1490,7 @@ operation with_resolver: fn(address: String)->Result[Network & Shareable, Librar
 
 ## ResponseBody
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 ResponseBody: ResponseBody
@@ -1506,7 +1506,7 @@ Import each required symbol with `import Name from "@std/io.ms"`.
 
 ## File
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 File: File
@@ -1516,7 +1516,7 @@ operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 
 ## Files
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Files: Files
@@ -1525,7 +1525,7 @@ operation open: fn(path: String)->Result[File & Shareable, IoError]
 
 ## IoError
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 IoError: IoError
@@ -1537,7 +1537,7 @@ case Failed(message: String)
 
 ## ReadStream
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 ReadStream: ReadStream
@@ -1547,7 +1547,7 @@ operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 
 ## WriteStream
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 WriteStream: WriteStream
@@ -1558,7 +1558,7 @@ operation write: fn(data: Bytes)->Result[Unit, IoError]
 
 ## copy
 
-Kind: fn.
+**Function**
 
 ```manuscript
 copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int)->Result[Int, LibraryError]
@@ -1566,7 +1566,7 @@ copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_byt
 
 ## read_all
 
-Kind: fn.
+**Function**
 
 ```manuscript
 read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, LibraryError]
@@ -1574,7 +1574,7 @@ read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, Libra
 
 ## read_line
 
-Kind: fn.
+**Function**
 
 ```manuscript
 read_line: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Optional[String], LibraryError]
@@ -1586,7 +1586,7 @@ Import each required symbol with `import Name from "@std/json.ms"`.
 
 ## JsonLimits
 
-Kind: record.
+**Record**
 
 ```manuscript
 JsonLimits: JsonLimits
@@ -1597,7 +1597,7 @@ field max_values: Int
 
 ## JsonValue
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 JsonValue: JsonValue
@@ -1611,7 +1611,7 @@ case ObjectValue(values: Map[String, JsonValue])
 
 ## parse
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, LibraryError]
@@ -1619,7 +1619,7 @@ parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, LibraryError]
 
 ## stringify
 
-Kind: fn.
+**Function**
 
 ```manuscript
 stringify: fn(value: JsonValue, max_bytes: Int)->Result[String, LibraryError]
@@ -1631,7 +1631,7 @@ Import each required symbol with `import Name from "@std/log.ms"`.
 
 ## write
 
-Kind: fn.
+**Function**
 
 ```manuscript
 write: fn(output: WriteStream & Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LibraryError]
@@ -1643,7 +1643,7 @@ Import each required symbol with `import Name from "@std/math.ms"`.
 
 ## abs
 
-Kind: fn.
+**Function**
 
 ```manuscript
 abs: fn(value: Float)->Float
@@ -1651,7 +1651,7 @@ abs: fn(value: Float)->Float
 
 ## abs_int
 
-Kind: fn.
+**Function**
 
 ```manuscript
 abs_int: fn(value: Int)->Int
@@ -1659,7 +1659,7 @@ abs_int: fn(value: Int)->Int
 
 ## acos
 
-Kind: fn.
+**Function**
 
 ```manuscript
 acos: fn(value: Float)->Float
@@ -1667,7 +1667,7 @@ acos: fn(value: Float)->Float
 
 ## asin
 
-Kind: fn.
+**Function**
 
 ```manuscript
 asin: fn(value: Float)->Float
@@ -1675,7 +1675,7 @@ asin: fn(value: Float)->Float
 
 ## atan
 
-Kind: fn.
+**Function**
 
 ```manuscript
 atan: fn(value: Float)->Float
@@ -1683,7 +1683,7 @@ atan: fn(value: Float)->Float
 
 ## atan2
 
-Kind: fn.
+**Function**
 
 ```manuscript
 atan2: fn(y: Float, x: Float)->Float
@@ -1691,7 +1691,7 @@ atan2: fn(y: Float, x: Float)->Float
 
 ## ceil
 
-Kind: fn.
+**Function**
 
 ```manuscript
 ceil: fn(value: Float)->Float
@@ -1699,7 +1699,7 @@ ceil: fn(value: Float)->Float
 
 ## cos
 
-Kind: fn.
+**Function**
 
 ```manuscript
 cos: fn(value: Float)->Float
@@ -1707,7 +1707,7 @@ cos: fn(value: Float)->Float
 
 ## cosh
 
-Kind: fn.
+**Function**
 
 ```manuscript
 cosh: fn(value: Float)->Float
@@ -1715,7 +1715,7 @@ cosh: fn(value: Float)->Float
 
 ## e
 
-Kind: fn.
+**Function**
 
 ```manuscript
 e: fn()->Float
@@ -1723,7 +1723,7 @@ e: fn()->Float
 
 ## exp
 
-Kind: fn.
+**Function**
 
 ```manuscript
 exp: fn(value: Float)->Float
@@ -1731,7 +1731,7 @@ exp: fn(value: Float)->Float
 
 ## floor
 
-Kind: fn.
+**Function**
 
 ```manuscript
 floor: fn(value: Float)->Float
@@ -1739,7 +1739,7 @@ floor: fn(value: Float)->Float
 
 ## hypot
 
-Kind: fn.
+**Function**
 
 ```manuscript
 hypot: fn(left: Float, right: Float)->Float
@@ -1747,7 +1747,7 @@ hypot: fn(left: Float, right: Float)->Float
 
 ## is_finite
 
-Kind: fn.
+**Function**
 
 ```manuscript
 is_finite: fn(value: Float)->Bool
@@ -1755,7 +1755,7 @@ is_finite: fn(value: Float)->Bool
 
 ## is_nan
 
-Kind: fn.
+**Function**
 
 ```manuscript
 is_nan: fn(value: Float)->Bool
@@ -1763,7 +1763,7 @@ is_nan: fn(value: Float)->Bool
 
 ## log
 
-Kind: fn.
+**Function**
 
 ```manuscript
 log: fn(value: Float)->Float
@@ -1771,7 +1771,7 @@ log: fn(value: Float)->Float
 
 ## log10
 
-Kind: fn.
+**Function**
 
 ```manuscript
 log10: fn(value: Float)->Float
@@ -1779,7 +1779,7 @@ log10: fn(value: Float)->Float
 
 ## log2
 
-Kind: fn.
+**Function**
 
 ```manuscript
 log2: fn(value: Float)->Float
@@ -1787,7 +1787,7 @@ log2: fn(value: Float)->Float
 
 ## max
 
-Kind: fn.
+**Function**
 
 ```manuscript
 max: fn(left: Float, right: Float)->Float
@@ -1795,7 +1795,7 @@ max: fn(left: Float, right: Float)->Float
 
 ## min
 
-Kind: fn.
+**Function**
 
 ```manuscript
 min: fn(left: Float, right: Float)->Float
@@ -1803,7 +1803,7 @@ min: fn(left: Float, right: Float)->Float
 
 ## pi
 
-Kind: fn.
+**Function**
 
 ```manuscript
 pi: fn()->Float
@@ -1811,7 +1811,7 @@ pi: fn()->Float
 
 ## pow
 
-Kind: fn.
+**Function**
 
 ```manuscript
 pow: fn(base: Float, exponent: Float)->Float
@@ -1819,7 +1819,7 @@ pow: fn(base: Float, exponent: Float)->Float
 
 ## remainder
 
-Kind: fn.
+**Function**
 
 ```manuscript
 remainder: fn(left: Float, right: Float)->Float
@@ -1827,7 +1827,7 @@ remainder: fn(left: Float, right: Float)->Float
 
 ## round
 
-Kind: fn.
+**Function**
 
 ```manuscript
 round: fn(value: Float)->Float
@@ -1835,7 +1835,7 @@ round: fn(value: Float)->Float
 
 ## sin
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sin: fn(value: Float)->Float
@@ -1843,7 +1843,7 @@ sin: fn(value: Float)->Float
 
 ## sinh
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sinh: fn(value: Float)->Float
@@ -1851,7 +1851,7 @@ sinh: fn(value: Float)->Float
 
 ## sqrt
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sqrt: fn(value: Float)->Float
@@ -1859,7 +1859,7 @@ sqrt: fn(value: Float)->Float
 
 ## tan
 
-Kind: fn.
+**Function**
 
 ```manuscript
 tan: fn(value: Float)->Float
@@ -1867,7 +1867,7 @@ tan: fn(value: Float)->Float
 
 ## tanh
 
-Kind: fn.
+**Function**
 
 ```manuscript
 tanh: fn(value: Float)->Float
@@ -1875,7 +1875,7 @@ tanh: fn(value: Float)->Float
 
 ## truncate
 
-Kind: fn.
+**Function**
 
 ```manuscript
 truncate: fn(value: Float)->Float
@@ -1887,7 +1887,7 @@ Import each required symbol with `import Name from "@std/net.ms"`.
 
 ## Connection
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Connection: Connection
@@ -1904,7 +1904,7 @@ operation write_timeout: fn(data: Bytes, timeout: Duration)->Result[Unit, IoErro
 
 ## Datagram
 
-Kind: record.
+**Record**
 
 ```manuscript
 Datagram: Datagram
@@ -1914,7 +1914,7 @@ field sender: String
 
 ## DatagramSocket
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 DatagramSocket: DatagramSocket
@@ -1928,7 +1928,7 @@ operation send_timeout: fn(data: Bytes, address: String, timeout: Duration)->Res
 
 ## DnsRecord
 
-Kind: record.
+**Record**
 
 ```manuscript
 DnsRecord: DnsRecord
@@ -1941,7 +1941,7 @@ field port: Int
 
 ## Listener
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Listener: Listener
@@ -1953,7 +1953,7 @@ operation close: fn()->Unit
 
 ## contains_ip
 
-Kind: fn.
+**Function**
 
 ```manuscript
 contains_ip: fn(cidr: String, address: String)->Result[Bool, LibraryError]
@@ -1961,7 +1961,7 @@ contains_ip: fn(cidr: String, address: String)->Result[Bool, LibraryError]
 
 ## parse_cidr
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse_cidr: fn(text: String)->Result[String, LibraryError]
@@ -1969,7 +1969,7 @@ parse_cidr: fn(text: String)->Result[String, LibraryError]
 
 ## parse_ip
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse_ip: fn(text: String)->Result[String, LibraryError]
@@ -1981,7 +1981,7 @@ Import each required symbol with `import Name from "@std/numbers.ms"`.
 
 ## format_exponential
 
-Kind: fn.
+**Function**
 
 ```manuscript
 format_exponential: fn(value: Float, digits: Int)->Result[String, LibraryError]
@@ -1989,7 +1989,7 @@ format_exponential: fn(value: Float, digits: Int)->Result[String, LibraryError]
 
 ## format_fixed
 
-Kind: fn.
+**Function**
 
 ```manuscript
 format_fixed: fn(value: Float, digits: Int)->Result[String, LibraryError]
@@ -1997,7 +1997,7 @@ format_fixed: fn(value: Float, digits: Int)->Result[String, LibraryError]
 
 ## format_float
 
-Kind: fn.
+**Function**
 
 ```manuscript
 format_float: fn(value: Float)->String
@@ -2005,7 +2005,7 @@ format_float: fn(value: Float)->String
 
 ## format_int
 
-Kind: fn.
+**Function**
 
 ```manuscript
 format_int: fn(value: Int, radix: Int)->String
@@ -2013,7 +2013,7 @@ format_int: fn(value: Int, radix: Int)->String
 
 ## format_precision
 
-Kind: fn.
+**Function**
 
 ```manuscript
 format_precision: fn(value: Float, precision: Int)->Result[String, LibraryError]
@@ -2021,7 +2021,7 @@ format_precision: fn(value: Float, precision: Int)->Result[String, LibraryError]
 
 ## parse_float
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse_float: fn(text: String)->Result[Float, LibraryError]
@@ -2029,7 +2029,7 @@ parse_float: fn(text: String)->Result[Float, LibraryError]
 
 ## parse_int
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse_int: fn(text: String, radix: Int)->Result[Int, LibraryError]
@@ -2041,7 +2041,7 @@ Import each required symbol with `import Name from "@std/optional.ms"`.
 
 ## Optional
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 Optional: Optional[T]
@@ -2056,7 +2056,7 @@ Import each required symbol with `import Name from "@std/path.ms"`.
 
 ## basename
 
-Kind: fn.
+**Function**
 
 ```manuscript
 basename: fn(path: String)->String
@@ -2064,7 +2064,7 @@ basename: fn(path: String)->String
 
 ## dirname
 
-Kind: fn.
+**Function**
 
 ```manuscript
 dirname: fn(path: String)->String
@@ -2072,7 +2072,7 @@ dirname: fn(path: String)->String
 
 ## extension
 
-Kind: fn.
+**Function**
 
 ```manuscript
 extension: fn(path: String)->String
@@ -2080,7 +2080,7 @@ extension: fn(path: String)->String
 
 ## is_absolute
 
-Kind: fn.
+**Function**
 
 ```manuscript
 is_absolute: fn(path: String)->Bool
@@ -2088,7 +2088,7 @@ is_absolute: fn(path: String)->Bool
 
 ## join
 
-Kind: fn.
+**Function**
 
 ```manuscript
 join: fn(parts: List[String])->String
@@ -2096,7 +2096,7 @@ join: fn(parts: List[String])->String
 
 ## normalize
 
-Kind: fn.
+**Function**
 
 ```manuscript
 normalize: fn(path: String)->String
@@ -2104,7 +2104,7 @@ normalize: fn(path: String)->String
 
 ## relative
 
-Kind: fn.
+**Function**
 
 ```manuscript
 relative: fn(base: String, target: String)->Result[String, LibraryError]
@@ -2116,7 +2116,7 @@ Import each required symbol with `import Name from "@std/pools.ms"`.
 
 ## Lease
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Lease: Lease[T]
@@ -2127,7 +2127,7 @@ operation get: fn()->Result[T, PoolError]
 
 ## Pool
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Pool: Pool[T]
@@ -2139,7 +2139,7 @@ operation close: fn()->Unit
 
 ## PoolError
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 PoolError: PoolError
@@ -2152,7 +2152,7 @@ Import each required symbol with `import Name from "@std/process.ms"`.
 
 ## CommandError
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 CommandError: CommandError
@@ -2165,7 +2165,7 @@ case Failed(message: String)
 
 ## CommandOutput
 
-Kind: record.
+**Record**
 
 ```manuscript
 CommandOutput: CommandOutput
@@ -2176,7 +2176,7 @@ field stderr: Bytes
 
 ## Commands
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Commands: Commands
@@ -2189,7 +2189,7 @@ Import each required symbol with `import Name from "@std/queues.ms"`.
 
 ## Queue
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Queue: Queue[T]
@@ -2202,7 +2202,7 @@ operation send: fn(value: T)->Result[Unit, QueueError]
 
 ## QueueError
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 QueueError: QueueError
@@ -2215,7 +2215,7 @@ Import each required symbol with `import Name from "@std/random.ms"`.
 
 ## Entropy
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Entropy: Entropy
@@ -2224,7 +2224,7 @@ operation bytes: fn(count: Int)->Result[Bytes, LibraryError]
 
 ## secure_int
 
-Kind: fn.
+**Function**
 
 ```manuscript
 secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, LibraryError]
@@ -2232,7 +2232,7 @@ secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Resu
 
 ## uuid_v4
 
-Kind: fn.
+**Function**
 
 ```manuscript
 uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, LibraryError]
@@ -2244,7 +2244,7 @@ Import each required symbol with `import Name from "@std/regex.ms"`.
 
 ## Regex
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Regex: Regex
@@ -2255,7 +2255,7 @@ operation replace: fn(text: String, replacement: String, max_bytes: Int)->Result
 
 ## compile
 
-Kind: fn.
+**Function**
 
 ```manuscript
 compile: fn(pattern: String)->Result[Regex, LibraryError]
@@ -2263,7 +2263,7 @@ compile: fn(pattern: String)->Result[Regex, LibraryError]
 
 ## find_all
 
-Kind: fn.
+**Function**
 
 ```manuscript
 find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String], LibraryError]
@@ -2271,7 +2271,7 @@ find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String
 
 ## matches
 
-Kind: fn.
+**Function**
 
 ```manuscript
 matches: fn(pattern: Regex, text: String)->Bool
@@ -2279,7 +2279,7 @@ matches: fn(pattern: Regex, text: String)->Bool
 
 ## replace
 
-Kind: fn.
+**Function**
 
 ```manuscript
 replace: fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)->Result[String, LibraryError]
@@ -2291,7 +2291,7 @@ Import each required symbol with `import Name from "@std/result.ms"`.
 
 ## Result
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 Result: Result[T, U]
@@ -2302,7 +2302,7 @@ case error(cause: U)
 
 ## map_error
 
-Kind: fn.
+**Function**
 
 ```manuscript
 map_error: fn(result: Result[T, E], transform: fn(cause: E)->F)->Result[T, F]
@@ -2315,7 +2315,7 @@ Import each required symbol with `import Name from "@std/state.ms"`.
 
 ## State
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 State: State[T]
@@ -2332,7 +2332,7 @@ Import each required symbol with `import Name from "@std/string.ms"`.
 
 ## at
 
-Kind: fn.
+**Function**
 
 ```manuscript
 at: fn(text: String, index: Int)->Optional[String]
@@ -2340,7 +2340,7 @@ at: fn(text: String, index: Int)->Optional[String]
 
 ## concat
 
-Kind: fn.
+**Function**
 
 ```manuscript
 concat: fn(text: String, values: String)->String
@@ -2348,7 +2348,7 @@ concat: fn(text: String, values: String)->String
 
 ## contains
 
-Kind: fn.
+**Function**
 
 ```manuscript
 contains: fn(value: String, text: String)->Bool
@@ -2356,7 +2356,7 @@ contains: fn(value: String, text: String)->Bool
 
 ## ends_with
 
-Kind: fn.
+**Function**
 
 ```manuscript
 ends_with: fn(value: String, suffix: String)->Bool
@@ -2364,7 +2364,7 @@ ends_with: fn(value: String, suffix: String)->Bool
 
 ## from_scalars
 
-Kind: fn.
+**Function**
 
 ```manuscript
 from_scalars: fn(values: List[Int])->Result[String, LibraryError]
@@ -2372,7 +2372,7 @@ from_scalars: fn(values: List[Int])->Result[String, LibraryError]
 
 ## index_of
 
-Kind: fn.
+**Function**
 
 ```manuscript
 index_of: fn(text: String, value: String)->Optional[Int]
@@ -2380,7 +2380,7 @@ index_of: fn(text: String, value: String)->Optional[Int]
 
 ## join
 
-Kind: fn.
+**Function**
 
 ```manuscript
 join: fn(parts: List[String], separator: String)->String
@@ -2388,7 +2388,7 @@ join: fn(parts: List[String], separator: String)->String
 
 ## last_index_of
 
-Kind: fn.
+**Function**
 
 ```manuscript
 last_index_of: fn(text: String, value: String)->Optional[Int]
@@ -2396,7 +2396,7 @@ last_index_of: fn(text: String, value: String)->Optional[Int]
 
 ## lower
 
-Kind: fn.
+**Function**
 
 ```manuscript
 lower: fn(text: String)->String
@@ -2404,7 +2404,7 @@ lower: fn(text: String)->String
 
 ## normalize
 
-Kind: fn.
+**Function**
 
 ```manuscript
 normalize: fn(text: String, form: String, max_bytes: Int)->Result[String, LibraryError]
@@ -2412,7 +2412,7 @@ normalize: fn(text: String, form: String, max_bytes: Int)->Result[String, Librar
 
 ## pad_end
 
-Kind: fn.
+**Function**
 
 ```manuscript
 pad_end: fn(text: String, target_length: Int, padding: String, max_bytes: Int)->Result[String, LibraryError]
@@ -2420,7 +2420,7 @@ pad_end: fn(text: String, target_length: Int, padding: String, max_bytes: Int)->
 
 ## pad_start
 
-Kind: fn.
+**Function**
 
 ```manuscript
 pad_start: fn(text: String, target_length: Int, padding: String, max_bytes: Int)->Result[String, LibraryError]
@@ -2428,7 +2428,7 @@ pad_start: fn(text: String, target_length: Int, padding: String, max_bytes: Int)
 
 ## repeat
 
-Kind: fn.
+**Function**
 
 ```manuscript
 repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, LibraryError]
@@ -2436,7 +2436,7 @@ repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, LibraryErro
 
 ## replace
 
-Kind: fn.
+**Function**
 
 ```manuscript
 replace: fn(text: String, old: String, new: String, max_replacements: Int)->String
@@ -2444,7 +2444,7 @@ replace: fn(text: String, old: String, new: String, max_replacements: Int)->Stri
 
 ## replace_all
 
-Kind: fn.
+**Function**
 
 ```manuscript
 replace_all: fn(text: String, old: String, new: String, max_bytes: Int)->Result[String, LibraryError]
@@ -2452,7 +2452,7 @@ replace_all: fn(text: String, old: String, new: String, max_bytes: Int)->Result[
 
 ## scalar_at
 
-Kind: fn.
+**Function**
 
 ```manuscript
 scalar_at: fn(text: String, index: Int)->Optional[Int]
@@ -2460,7 +2460,7 @@ scalar_at: fn(text: String, index: Int)->Optional[Int]
 
 ## scalar_length
 
-Kind: fn.
+**Function**
 
 ```manuscript
 scalar_length: fn(text: String)->Int
@@ -2468,7 +2468,7 @@ scalar_length: fn(text: String)->Int
 
 ## scalar_values
 
-Kind: fn.
+**Function**
 
 ```manuscript
 scalar_values: fn(text: String)->List[Int]
@@ -2476,7 +2476,7 @@ scalar_values: fn(text: String)->List[Int]
 
 ## slice
 
-Kind: fn.
+**Function**
 
 ```manuscript
 slice: fn(text: String, start: Int, end: Int)->String
@@ -2484,7 +2484,7 @@ slice: fn(text: String, start: Int, end: Int)->String
 
 ## slice_scalars
 
-Kind: fn.
+**Function**
 
 ```manuscript
 slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, LibraryError]
@@ -2492,7 +2492,7 @@ slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, LibraryErr
 
 ## split
 
-Kind: fn.
+**Function**
 
 ```manuscript
 split: fn(text: String, separator: String, max_parts: Int)->List[String]
@@ -2500,7 +2500,7 @@ split: fn(text: String, separator: String, max_parts: Int)->List[String]
 
 ## starts_with
 
-Kind: fn.
+**Function**
 
 ```manuscript
 starts_with: fn(value: String, prefix: String)->Bool
@@ -2508,7 +2508,7 @@ starts_with: fn(value: String, prefix: String)->Bool
 
 ## substring
 
-Kind: fn.
+**Function**
 
 ```manuscript
 substring: fn(text: String, start: Int, end: Int)->String
@@ -2516,7 +2516,7 @@ substring: fn(text: String, start: Int, end: Int)->String
 
 ## trim
 
-Kind: fn.
+**Function**
 
 ```manuscript
 trim: fn(text: String)->String
@@ -2524,7 +2524,7 @@ trim: fn(text: String)->String
 
 ## trim_end
 
-Kind: fn.
+**Function**
 
 ```manuscript
 trim_end: fn(text: String)->String
@@ -2532,7 +2532,7 @@ trim_end: fn(text: String)->String
 
 ## trim_start
 
-Kind: fn.
+**Function**
 
 ```manuscript
 trim_start: fn(text: String)->String
@@ -2540,7 +2540,7 @@ trim_start: fn(text: String)->String
 
 ## upper
 
-Kind: fn.
+**Function**
 
 ```manuscript
 upper: fn(text: String)->String
@@ -2552,7 +2552,7 @@ Import each required symbol with `import Name from "@std/system.ms"`.
 
 ## System
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 System: System
@@ -2563,7 +2563,7 @@ operation working_directory: fn()->String
 
 ## SystemInfo
 
-Kind: record.
+**Record**
 
 ```manuscript
 SystemInfo: SystemInfo
@@ -2578,7 +2578,7 @@ Import each required symbol with `import Name from "@std/tasks.ms"`.
 
 ## Background
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Background: Background
@@ -2590,7 +2590,7 @@ operation status: fn(id: OperationId)->WorkStatus
 
 ## BackgroundFailure
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 BackgroundFailure: BackgroundFailure
@@ -2600,7 +2600,7 @@ case Crashed(operation: OperationId, message: String)
 
 ## ExecutionError
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 ExecutionError: ExecutionError
@@ -2610,7 +2610,7 @@ case Crashed(operation: OperationId, message: String)
 
 ## OperationId
 
-Kind: native.
+**Native type**
 
 ```manuscript
 OperationId: OperationId
@@ -2618,7 +2618,7 @@ OperationId: OperationId
 
 ## StartError
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 StartError: StartError
@@ -2628,7 +2628,7 @@ case Full
 
 ## WorkStatus
 
-Kind: alternative.
+**Alternative**
 
 ```manuscript
 WorkStatus: WorkStatus
@@ -2642,7 +2642,7 @@ case Unknown
 
 ## check_cancelled
 
-Kind: fn.
+**Function**
 
 ```manuscript
 check_cancelled: fn()->Unit
@@ -2650,7 +2650,7 @@ check_cancelled: fn()->Unit
 
 ## parallel
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parallel: fn()-><unknown>
@@ -2658,7 +2658,7 @@ parallel: fn()-><unknown>
 
 ## parallel_map
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parallel_map: fn(items: List[T], operation: fn(item: T)->U, limit: Int)->Result[List[U], ExecutionError]
@@ -2671,7 +2671,7 @@ Import each required symbol with `import Name from "@std/time.ms"`.
 
 ## Clock
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 Clock: Clock
@@ -2680,7 +2680,7 @@ operation now: fn()->Instant
 
 ## Duration
 
-Kind: native.
+**Native type**
 
 ```manuscript
 Duration: Duration
@@ -2688,7 +2688,7 @@ Duration: Duration
 
 ## Instant
 
-Kind: native.
+**Native type**
 
 ```manuscript
 Instant: Instant
@@ -2696,7 +2696,7 @@ Instant: Instant
 
 ## Timestamp
 
-Kind: native.
+**Native type**
 
 ```manuscript
 Timestamp: Timestamp
@@ -2704,7 +2704,7 @@ Timestamp: Timestamp
 
 ## WallClock
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 WallClock: WallClock
@@ -2713,7 +2713,7 @@ operation now: fn()->Timestamp
 
 ## difference
 
-Kind: fn.
+**Function**
 
 ```manuscript
 difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, LibraryError]
@@ -2721,7 +2721,7 @@ difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, LibraryError
 
 ## format_timestamp
 
-Kind: fn.
+**Function**
 
 ```manuscript
 format_timestamp: fn(value: Timestamp)->String
@@ -2729,7 +2729,7 @@ format_timestamp: fn(value: Timestamp)->String
 
 ## nanoseconds
 
-Kind: fn.
+**Function**
 
 ```manuscript
 nanoseconds: fn(value: Timestamp)->Int
@@ -2737,7 +2737,7 @@ nanoseconds: fn(value: Timestamp)->Int
 
 ## parse_timestamp
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
@@ -2745,7 +2745,7 @@ parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
 
 ## shift
 
-Kind: fn.
+**Function**
 
 ```manuscript
 shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, LibraryError]
@@ -2753,7 +2753,7 @@ shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, LibraryError]
 
 ## sleep
 
-Kind: fn.
+**Function**
 
 ```manuscript
 sleep: fn(duration: Duration)->Unit
@@ -2761,7 +2761,7 @@ sleep: fn(duration: Duration)->Unit
 
 ## timestamp
 
-Kind: fn.
+**Function**
 
 ```manuscript
 timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, LibraryError]
@@ -2769,7 +2769,7 @@ timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, LibraryError]
 
 ## unix_seconds
 
-Kind: fn.
+**Function**
 
 ```manuscript
 unix_seconds: fn(value: Timestamp)->Int
@@ -2781,7 +2781,7 @@ Import each required symbol with `import Name from "@std/tls.ms"`.
 
 ## CertificateInfo
 
-Kind: record.
+**Record**
 
 ```manuscript
 CertificateInfo: CertificateInfo
@@ -2795,7 +2795,7 @@ field der: Bytes
 
 ## TlsInfo
 
-Kind: record.
+**Record**
 
 ```manuscript
 TlsInfo: TlsInfo
@@ -2808,7 +2808,7 @@ field verified: Bool
 
 ## TlsOptions
 
-Kind: record.
+**Record**
 
 ```manuscript
 TlsOptions: TlsOptions
@@ -2822,7 +2822,7 @@ field require_client_certificate: Bool
 
 ## parse_certificates
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[CertificateInfo], LibraryError]
@@ -2830,7 +2830,7 @@ parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[Certific
 
 ## verify_certificates
 
-Kind: fn.
+**Function**
 
 ```manuscript
 verify_certificates: fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)->Result[Unit, LibraryError]
@@ -2842,7 +2842,7 @@ Import each required symbol with `import Name from "@std/url.ms"`.
 
 ## QueryEntry
 
-Kind: record.
+**Record**
 
 ```manuscript
 QueryEntry: QueryEntry
@@ -2852,7 +2852,7 @@ field value: String
 
 ## Url
 
-Kind: record.
+**Record**
 
 ```manuscript
 Url: Url
@@ -2866,7 +2866,7 @@ field fragment: String
 
 ## decode_component
 
-Kind: fn.
+**Function**
 
 ```manuscript
 decode_component: fn(text: String)->Result[String, LibraryError]
@@ -2874,7 +2874,7 @@ decode_component: fn(text: String)->Result[String, LibraryError]
 
 ## encode_component
 
-Kind: fn.
+**Function**
 
 ```manuscript
 encode_component: fn(text: String)->String
@@ -2882,7 +2882,7 @@ encode_component: fn(text: String)->String
 
 ## format
 
-Kind: fn.
+**Function**
 
 ```manuscript
 format: fn(value: Url)->Result[String, LibraryError]
@@ -2890,7 +2890,7 @@ format: fn(value: Url)->Result[String, LibraryError]
 
 ## format_query
 
-Kind: fn.
+**Function**
 
 ```manuscript
 format_query: fn(entries: List[QueryEntry])->String
@@ -2898,7 +2898,7 @@ format_query: fn(entries: List[QueryEntry])->String
 
 ## parse
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse: fn(text: String)->Result[Url, LibraryError]
@@ -2906,7 +2906,7 @@ parse: fn(text: String)->Result[Url, LibraryError]
 
 ## parse_query
 
-Kind: fn.
+**Function**
 
 ```manuscript
 parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], LibraryError]
@@ -2914,7 +2914,7 @@ parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], Librar
 
 ## resolve
 
-Kind: fn.
+**Function**
 
 ```manuscript
 resolve: fn(base: Url, reference: String)->Result[Url, LibraryError]
@@ -2926,7 +2926,7 @@ Import each required symbol with `import Name from "@std/websocket.ms"`.
 
 ## WebSocket
 
-Kind: interface.
+**Interface**
 
 ```manuscript
 WebSocket: WebSocket
@@ -2939,7 +2939,7 @@ operation subprotocol: fn()->String
 
 ## WebSocketMessage
 
-Kind: record.
+**Record**
 
 ```manuscript
 WebSocketMessage: WebSocketMessage
@@ -2949,7 +2949,7 @@ field text: Bool
 
 ## WebSocketOptions
 
-Kind: record.
+**Record**
 
 ```manuscript
 WebSocketOptions: WebSocketOptions
@@ -2965,7 +2965,7 @@ Intrinsic names; no import required.
 
 ## Bool
 
-Kind: type.
+**Type**
 
 ```manuscript
 Bool: Bool
@@ -2973,7 +2973,7 @@ Bool: Bool
 
 ## Equal
 
-Kind: type.
+**Type**
 
 ```manuscript
 Equal: Equal
@@ -2981,7 +2981,7 @@ Equal: Equal
 
 ## Float
 
-Kind: type.
+**Type**
 
 ```manuscript
 Float: Float
@@ -2996,7 +2996,7 @@ operation truncate_to_int: fn()->Optional[Int]
 
 ## Hashable
 
-Kind: type.
+**Type**
 
 ```manuscript
 Hashable: Hashable
@@ -3004,7 +3004,7 @@ Hashable: Hashable
 
 ## Int
 
-Kind: type.
+**Type**
 
 ```manuscript
 Int: Int
@@ -3015,7 +3015,7 @@ operation to_string: fn(radix: Int)->String
 
 ## Never
 
-Kind: type.
+**Type**
 
 ```manuscript
 Never: Never
@@ -3023,7 +3023,7 @@ Never: Never
 
 ## Shareable
 
-Kind: type.
+**Type**
 
 ```manuscript
 Shareable: Shareable
@@ -3031,7 +3031,7 @@ Shareable: Shareable
 
 ## String
 
-Kind: type.
+**Type**
 
 ```manuscript
 String: String
@@ -3067,7 +3067,7 @@ operation upper: fn()->String
 
 ## Unit
 
-Kind: type.
+**Type**
 
 ```manuscript
 Unit: Unit

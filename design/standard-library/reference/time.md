@@ -6,107 +6,81 @@ title = "time"
 
 Import each required symbol with `import Name from "@std/time.ms"`.
 
-## Clock
-
-Kind: interface.
+## Clock {data-api-kind="Interface"}
 
 ```manuscript
 Clock: Clock
 operation now: fn()->Instant
 ```
 
-## Duration
-
-Kind: native.
+## Duration {data-api-kind="Native type"}
 
 ```manuscript
 Duration: Duration
 ```
 
-## Instant
-
-Kind: native.
+## Instant {data-api-kind="Native type"}
 
 ```manuscript
 Instant: Instant
 ```
 
-## Timestamp
-
-Kind: native.
+## Timestamp {data-api-kind="Native type"}
 
 ```manuscript
 Timestamp: Timestamp
 ```
 
-## WallClock
-
-Kind: interface.
+## WallClock {data-api-kind="Interface"}
 
 ```manuscript
 WallClock: WallClock
 operation now: fn()->Timestamp
 ```
 
-## difference
-
-Kind: fn.
+## difference {data-api-kind="Function"}
 
 ```manuscript
 difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, LibraryError]
 ```
 
-## format_timestamp
-
-Kind: fn.
+## format_timestamp {data-api-kind="Function"}
 
 ```manuscript
 format_timestamp: fn(value: Timestamp)->String
 ```
 
-## nanoseconds
-
-Kind: fn.
+## nanoseconds {data-api-kind="Function"}
 
 ```manuscript
 nanoseconds: fn(value: Timestamp)->Int
 ```
 
-## parse_timestamp
-
-Kind: fn.
+## parse_timestamp {data-api-kind="Function"}
 
 ```manuscript
 parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
 ```
 
-## shift
-
-Kind: fn.
+## shift {data-api-kind="Function"}
 
 ```manuscript
 shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, LibraryError]
 ```
 
-## sleep
-
-Kind: fn.
+## sleep {data-api-kind="Function"}
 
 ```manuscript
 sleep: fn(duration: Duration)->Unit
 ```
 
-## timestamp
-
-Kind: fn.
+## timestamp {data-api-kind="Function"}
 
 ```manuscript
 timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, LibraryError]
 ```
 
-## unix_seconds
-
-Kind: fn.
+## unix_seconds {data-api-kind="Function"}
 
 ```manuscript
 unix_seconds: fn(value: Timestamp)->Int

@@ -6,9 +6,7 @@ title = "fs"
 
 Import each required symbol with `import Name from "@std/fs.ms"`.
 
-## DirectoryEntry
-
-Kind: record.
+## DirectoryEntry {data-api-kind="Record"}
 
 ```manuscript
 DirectoryEntry: DirectoryEntry
@@ -17,9 +15,7 @@ field directory: Bool
 field symlink: Bool
 ```
 
-## FileInfo
-
-Kind: record.
+## FileInfo {data-api-kind="Record"}
 
 ```manuscript
 FileInfo: FileInfo
@@ -30,9 +26,7 @@ field symlink: Bool
 field modified: Timestamp
 ```
 
-## FileSystem
-
-Kind: interface.
+## FileSystem {data-api-kind="Interface"}
 
 ```manuscript
 FileSystem: FileSystem

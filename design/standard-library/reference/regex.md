@@ -6,9 +6,7 @@ title = "regex"
 
 Import each required symbol with `import Name from "@std/regex.ms"`.
 
-## Regex
-
-Kind: interface.
+## Regex {data-api-kind="Interface"}
 
 ```manuscript
 Regex: Regex
@@ -17,33 +15,25 @@ operation matches: fn(text: String)->Bool
 operation replace: fn(text: String, replacement: String, max_bytes: Int)->Result[String, LibraryError]
 ```
 
-## compile
-
-Kind: fn.
+## compile {data-api-kind="Function"}
 
 ```manuscript
 compile: fn(pattern: String)->Result[Regex, LibraryError]
 ```
 
-## find_all
-
-Kind: fn.
+## find_all {data-api-kind="Function"}
 
 ```manuscript
 find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String], LibraryError]
 ```
 
-## matches
-
-Kind: fn.
+## matches {data-api-kind="Function"}
 
 ```manuscript
 matches: fn(pattern: Regex, text: String)->Bool
 ```
 
-## replace
-
-Kind: fn.
+## replace {data-api-kind="Function"}
 
 ```manuscript
 replace: fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)->Result[String, LibraryError]

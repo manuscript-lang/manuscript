@@ -6,9 +6,7 @@ title = "bytes"
 
 Import each required symbol with `import Name from "@std/bytes.ms"`.
 
-## Bytes
-
-Kind: interface.
+## Bytes {data-api-kind="Interface"}
 
 ```manuscript
 Bytes: Bytes
@@ -29,89 +27,67 @@ operation to_text: fn()->Optional[String]
 operation with_value: fn(index: Int, value: Int)->Bytes
 ```
 
-## at
-
-Kind: fn.
+## at {data-api-kind="Function"}
 
 ```manuscript
 at: fn(data: Bytes, index: Int)->Optional[Int]
 ```
 
-## contains
-
-Kind: fn.
+## contains {data-api-kind="Function"}
 
 ```manuscript
 contains: fn(data: Bytes, value: Bytes)->Bool
 ```
 
-## ends_with
-
-Kind: fn.
+## ends_with {data-api-kind="Function"}
 
 ```manuscript
 ends_with: fn(data: Bytes, value: Bytes)->Bool
 ```
 
-## index_of
-
-Kind: fn.
+## index_of {data-api-kind="Function"}
 
 ```manuscript
 index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
 ```
 
-## is_empty
-
-Kind: fn.
+## is_empty {data-api-kind="Function"}
 
 ```manuscript
 is_empty: fn(data: Bytes)->Bool
 ```
 
-## last_index_of
-
-Kind: fn.
+## last_index_of {data-api-kind="Function"}
 
 ```manuscript
 last_index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
 ```
 
-## reverse
-
-Kind: fn.
+## reverse {data-api-kind="Function"}
 
 ```manuscript
 reverse: fn(data: Bytes)->Bytes
 ```
 
-## slice
-
-Kind: fn.
+## slice {data-api-kind="Function"}
 
 ```manuscript
 slice: fn(data: Bytes, start: Int, end: Int)->Bytes
 ```
 
-## starts_with
-
-Kind: fn.
+## starts_with {data-api-kind="Function"}
 
 ```manuscript
 starts_with: fn(data: Bytes, value: Bytes)->Bool
 ```
 
-## values
-
-Kind: fn.
+## values {data-api-kind="Function"}
 
 ```manuscript
 values: fn(data: Bytes)->List[Int]
 ```
 
-## with_value
-
-Kind: fn.
+## with_value {data-api-kind="Function"}
 
 ```manuscript
 with_value: fn(data: Bytes, index: Int, value: Int)->Bytes

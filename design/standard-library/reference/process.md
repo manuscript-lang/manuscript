@@ -6,9 +6,7 @@ title = "process"
 
 Import each required symbol with `import Name from "@std/process.ms"`.
 
-## CommandError
-
-Kind: alternative.
+## CommandError {data-api-kind="Alternative"}
 
 ```manuscript
 CommandError: CommandError
@@ -19,9 +17,7 @@ case OutputLimit
 case Failed(message: String)
 ```
 
-## CommandOutput
-
-Kind: record.
+## CommandOutput {data-api-kind="Record"}
 
 ```manuscript
 CommandOutput: CommandOutput
@@ -30,9 +26,7 @@ field stdout: Bytes
 field stderr: Bytes
 ```
 
-## Commands
-
-Kind: interface.
+## Commands {data-api-kind="Interface"}
 
 ```manuscript
 Commands: Commands

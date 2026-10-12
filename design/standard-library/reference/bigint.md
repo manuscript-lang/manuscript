@@ -6,9 +6,7 @@ title = "bigint"
 
 Import each required symbol with `import Name from "@std/bigint.ms"`.
 
-## BigInt
-
-Kind: interface.
+## BigInt {data-api-kind="Interface"}
 
 ```manuscript
 BigInt: BigInt
@@ -25,105 +23,79 @@ operation to_int: fn()->Optional[Int]
 operation to_string: fn(radix: Int)->String
 ```
 
-## add
-
-Kind: fn.
+## add {data-api-kind="Function"}
 
 ```manuscript
 add: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
-## bit_and
-
-Kind: fn.
+## bit_and {data-api-kind="Function"}
 
 ```manuscript
 bit_and: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
-## bit_or
-
-Kind: fn.
+## bit_or {data-api-kind="Function"}
 
 ```manuscript
 bit_or: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
-## bit_xor
-
-Kind: fn.
+## bit_xor {data-api-kind="Function"}
 
 ```manuscript
 bit_xor: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
-## compare
-
-Kind: fn.
+## compare {data-api-kind="Function"}
 
 ```manuscript
 compare: fn(left: BigInt, right: BigInt)->Int
 ```
 
-## divide
-
-Kind: fn.
+## divide {data-api-kind="Function"}
 
 ```manuscript
 divide: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
 ```
 
-## format
-
-Kind: fn.
+## format {data-api-kind="Function"}
 
 ```manuscript
 format: fn(value: BigInt, radix: Int)->String
 ```
 
-## from_int
-
-Kind: fn.
+## from_int {data-api-kind="Function"}
 
 ```manuscript
 from_int: fn(value: Int)->BigInt
 ```
 
-## multiply
-
-Kind: fn.
+## multiply {data-api-kind="Function"}
 
 ```manuscript
 multiply: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
-## parse
-
-Kind: fn.
+## parse {data-api-kind="Function"}
 
 ```manuscript
 parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, LibraryError]
 ```
 
-## remainder
-
-Kind: fn.
+## remainder {data-api-kind="Function"}
 
 ```manuscript
 remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
 ```
 
-## subtract
-
-Kind: fn.
+## subtract {data-api-kind="Function"}
 
 ```manuscript
 subtract: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
-## to_int
-
-Kind: fn.
+## to_int {data-api-kind="Function"}
 
 ```manuscript
 to_int: fn(value: BigInt)->Optional[Int]

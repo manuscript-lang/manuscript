@@ -6,9 +6,7 @@ title = "cli"
 
 Import each required symbol with `import Name from "@std/cli.ms"`.
 
-## Process
-
-Kind: record.
+## Process {data-api-kind="Record"}
 
 ```manuscript
 Process: Process

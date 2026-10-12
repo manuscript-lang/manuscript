@@ -6,9 +6,7 @@ title = "decimal"
 
 Import each required symbol with `import Name from "@std/decimal.ms"`.
 
-## Decimal
-
-Kind: interface.
+## Decimal {data-api-kind="Interface"}
 
 ```manuscript
 Decimal: Decimal

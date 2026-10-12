@@ -6,241 +6,181 @@ title = "math"
 
 Import each required symbol with `import Name from "@std/math.ms"`.
 
-## abs
-
-Kind: fn.
+## abs {data-api-kind="Function"}
 
 ```manuscript
 abs: fn(value: Float)->Float
 ```
 
-## abs_int
-
-Kind: fn.
+## abs_int {data-api-kind="Function"}
 
 ```manuscript
 abs_int: fn(value: Int)->Int
 ```
 
-## acos
-
-Kind: fn.
+## acos {data-api-kind="Function"}
 
 ```manuscript
 acos: fn(value: Float)->Float
 ```
 
-## asin
-
-Kind: fn.
+## asin {data-api-kind="Function"}
 
 ```manuscript
 asin: fn(value: Float)->Float
 ```
 
-## atan
-
-Kind: fn.
+## atan {data-api-kind="Function"}
 
 ```manuscript
 atan: fn(value: Float)->Float
 ```
 
-## atan2
-
-Kind: fn.
+## atan2 {data-api-kind="Function"}
 
 ```manuscript
 atan2: fn(y: Float, x: Float)->Float
 ```
 
-## ceil
-
-Kind: fn.
+## ceil {data-api-kind="Function"}
 
 ```manuscript
 ceil: fn(value: Float)->Float
 ```
 
-## cos
-
-Kind: fn.
+## cos {data-api-kind="Function"}
 
 ```manuscript
 cos: fn(value: Float)->Float
 ```
 
-## cosh
-
-Kind: fn.
+## cosh {data-api-kind="Function"}
 
 ```manuscript
 cosh: fn(value: Float)->Float
 ```
 
-## e
-
-Kind: fn.
+## e {data-api-kind="Function"}
 
 ```manuscript
 e: fn()->Float
 ```
 
-## exp
-
-Kind: fn.
+## exp {data-api-kind="Function"}
 
 ```manuscript
 exp: fn(value: Float)->Float
 ```
 
-## floor
-
-Kind: fn.
+## floor {data-api-kind="Function"}
 
 ```manuscript
 floor: fn(value: Float)->Float
 ```
 
-## hypot
-
-Kind: fn.
+## hypot {data-api-kind="Function"}
 
 ```manuscript
 hypot: fn(left: Float, right: Float)->Float
 ```
 
-## is_finite
-
-Kind: fn.
+## is_finite {data-api-kind="Function"}
 
 ```manuscript
 is_finite: fn(value: Float)->Bool
 ```
 
-## is_nan
-
-Kind: fn.
+## is_nan {data-api-kind="Function"}
 
 ```manuscript
 is_nan: fn(value: Float)->Bool
 ```
 
-## log
-
-Kind: fn.
+## log {data-api-kind="Function"}
 
 ```manuscript
 log: fn(value: Float)->Float
 ```
 
-## log10
-
-Kind: fn.
+## log10 {data-api-kind="Function"}
 
 ```manuscript
 log10: fn(value: Float)->Float
 ```
 
-## log2
-
-Kind: fn.
+## log2 {data-api-kind="Function"}
 
 ```manuscript
 log2: fn(value: Float)->Float
 ```
 
-## max
-
-Kind: fn.
+## max {data-api-kind="Function"}
 
 ```manuscript
 max: fn(left: Float, right: Float)->Float
 ```
 
-## min
-
-Kind: fn.
+## min {data-api-kind="Function"}
 
 ```manuscript
 min: fn(left: Float, right: Float)->Float
 ```
 
-## pi
-
-Kind: fn.
+## pi {data-api-kind="Function"}
 
 ```manuscript
 pi: fn()->Float
 ```
 
-## pow
-
-Kind: fn.
+## pow {data-api-kind="Function"}
 
 ```manuscript
 pow: fn(base: Float, exponent: Float)->Float
 ```
 
-## remainder
-
-Kind: fn.
+## remainder {data-api-kind="Function"}
 
 ```manuscript
 remainder: fn(left: Float, right: Float)->Float
 ```
 
-## round
-
-Kind: fn.
+## round {data-api-kind="Function"}
 
 ```manuscript
 round: fn(value: Float)->Float
 ```
 
-## sin
-
-Kind: fn.
+## sin {data-api-kind="Function"}
 
 ```manuscript
 sin: fn(value: Float)->Float
 ```
 
-## sinh
-
-Kind: fn.
+## sinh {data-api-kind="Function"}
 
 ```manuscript
 sinh: fn(value: Float)->Float
 ```
 
-## sqrt
-
-Kind: fn.
+## sqrt {data-api-kind="Function"}
 
 ```manuscript
 sqrt: fn(value: Float)->Float
 ```
 
-## tan
-
-Kind: fn.
+## tan {data-api-kind="Function"}
 
 ```manuscript
 tan: fn(value: Float)->Float
 ```
 
-## tanh
-
-Kind: fn.
+## tanh {data-api-kind="Function"}
 
 ```manuscript
 tanh: fn(value: Float)->Float
 ```
 
-## truncate
-
-Kind: fn.
+## truncate {data-api-kind="Function"}
 
 ```manuscript
 truncate: fn(value: Float)->Float

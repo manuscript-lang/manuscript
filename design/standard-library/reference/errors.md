@@ -6,9 +6,7 @@ title = "errors"
 
 Import each required symbol with `import Name from "@std/errors.ms"`.
 
-## LibraryError
-
-Kind: alternative.
+## LibraryError {data-api-kind="Alternative"}
 
 ```manuscript
 LibraryError: LibraryError

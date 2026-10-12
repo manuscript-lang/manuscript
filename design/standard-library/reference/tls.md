@@ -6,9 +6,7 @@ title = "tls"
 
 Import each required symbol with `import Name from "@std/tls.ms"`.
 
-## CertificateInfo
-
-Kind: record.
+## CertificateInfo {data-api-kind="Record"}
 
 ```manuscript
 CertificateInfo: CertificateInfo
@@ -20,9 +18,7 @@ field not_after: Timestamp
 field der: Bytes
 ```
 
-## TlsInfo
-
-Kind: record.
+## TlsInfo {data-api-kind="Record"}
 
 ```manuscript
 TlsInfo: TlsInfo
@@ -33,9 +29,7 @@ field peer_certificates: List[Bytes]
 field verified: Bool
 ```
 
-## TlsOptions
-
-Kind: record.
+## TlsOptions {data-api-kind="Record"}
 
 ```manuscript
 TlsOptions: TlsOptions
@@ -47,17 +41,13 @@ field alpn: List[String]
 field require_client_certificate: Bool
 ```
 
-## parse_certificates
-
-Kind: fn.
+## parse_certificates {data-api-kind="Function"}
 
 ```manuscript
 parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[CertificateInfo], LibraryError]
 ```
 
-## verify_certificates
-
-Kind: fn.
+## verify_certificates {data-api-kind="Function"}
 
 ```manuscript
 verify_certificates: fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)->Result[Unit, LibraryError]

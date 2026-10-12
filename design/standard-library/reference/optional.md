@@ -6,9 +6,7 @@ title = "optional"
 
 Import each required symbol with `import Name from "@std/optional.ms"`.
 
-## Optional
-
-Kind: alternative.
+## Optional {data-api-kind="Alternative"}
 
 ```manuscript
 Optional: Optional[T]

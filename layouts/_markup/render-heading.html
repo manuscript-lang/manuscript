@@ -1,0 +1,7 @@
+<h{{ .Level }} id="{{ .Anchor }}"{{ with .Attributes.class }} class="{{ . }}"{{ end }}>
+  {{- .Text -}}
+  {{- with index .Attributes "data-api-kind" }} <span class="api-kind">{{ . }}</span>{{ end -}}
+  {{- if default true .Attributes.anchor -}}
+  <a class="anchor" href="#{{ .Anchor }}">#</a>
+  {{- end -}}
+</h{{ .Level }}>
