@@ -39,7 +39,14 @@ type CallSite struct {
 	Kind   string `json:"kind"`
 	Span   Span   `json:"span"`
 }
+type Local struct {
+	GoID string `json:"go_id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Span Span   `json:"span"`
+}
 type Inspection struct {
+	Locals     []Local    `json:"locals"`
 	Format     int        `json:"format"`
 	BuildID    string     `json:"build_id"`
 	Sources    []Source   `json:"sources"`
@@ -59,6 +66,50 @@ func sourceSpan(module *syntax.Module, pos syntax.Position) Span {
 }
 func Inspect(program *checker.Program) Inspection {
 	result := Inspection{Format: 1, Sources: []Source{}, Entities: []Entity{}, Calls: []CallSite{}, Statements: []Span{}}
+	result.Locals = []Local{}
+	modules := map[string]*syntax.Module{}
+	for _, module := range program.Modules {
+		modules[module.File] = module
+	}
+	local := func(binding *checker.Binding, pos syntax.Position) {
+		if binding == nil {
+			return
+		}
+		module := modules[pos.File]
+		if module == nil {
+			return
+		}
+		result.Locals = append(result.Locals, Local{binding.ID, binding.Name, binding.Type.String(), sourceSpan(module, pos)})
+	}
+	for declaration, binding := range program.Self {
+		local(binding, declaration.Pos)
+	}
+	for pattern, binding := range program.Bindings {
+		local(binding, pattern.Pos)
+	}
+	for statement, binding := range program.LoopBindings {
+		local(binding, statement.Pos)
+	}
+	for declaration, bindings := range program.Parameters {
+		for index, binding := range bindings {
+			if index < len(declaration.Params) {
+				local(binding, declaration.Params[index].Pos)
+			}
+		}
+	}
+	for expression, bindings := range program.LambdaParameters {
+		for index, binding := range bindings {
+			if index < len(expression.Params) {
+				local(binding, expression.Params[index].Pos)
+			}
+		}
+	}
+	for arm, bindings := range program.ArmBindings {
+		for _, binding := range bindings {
+			local(binding, arm.Pos)
+		}
+	}
+	sort.Slice(result.Locals, func(i, j int) bool { return result.Locals[i].GoID < result.Locals[j].GoID })
 	symbolIDs := map[*checker.Symbol]string{}
 	methodIDs := map[string]string{}
 	methods := map[*syntax.Declaration]*checker.Method{}

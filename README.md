@@ -58,7 +58,11 @@ Project native builds require `ms.lock` to match the compiler/runtime and Go too
 
 Use `type` for records and alternatives, and `interface` for operation contracts. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declared parameters, as in `impl ReadValue[T] for Box[T]:`.
 
-The implementation includes cleanup, joined and background work, queues, state and pools, builders, and explicit CLI, HTTP, and subprocess capabilities. External adapters, advanced host APIs, structural editing, and debugger integration still have design work. Check [coverage](IMPLEMENTATION.md) for exact limits.
+The implementation includes cleanup, joined and background work, queues, state and pools, builders, and explicit CLI, HTTP, and subprocess capabilities. External adapters, advanced host APIs, and generalized structural editing still have design work. Check [coverage](IMPLEMENTATION.md) for exact limits.
+
+## Developer tooling
+
+`ms lint`, `ms lsp`, `ms debug`, and `ms profile` provide source hygiene, editor integration, native debugging, and CPU/heap/trace profiling. See the [tooling guide](tooling/README.md), [VS Code extension](extensions/vscode/README.md), and [demo project](examples/tooling-demo/README.md) for installation, supported features, and current limits.
 
 ## Packages
 
@@ -70,8 +74,8 @@ The implementation includes cleanup, joined and background work, queues, state a
 | `checker` | Modules, nominal types, inference, contracts, bounds, captures, control flow, and effects |
 | `compiler` | Project loading, checked Go lowering, native builds, pins, caches, and build metadata |
 | `runtime` | Values, data/services, cleanup, concurrency, and explicit host capabilities |
-| `tooling` | Validated formatting, source inspection, and static diagrams |
-| `cmd/ms` | Check, build, emit, run, test, fmt, inspect, diagram, doc, and lock commands |
+| `tooling` | Formatting, semantic lint, typed LSP completion/navigation/refactoring, source metadata, and static diagrams |
+| `cmd/ms` | Check, lint, lsp, profile, debug, build, emit, run, test, fmt, inspect, diagram, doc, stdlib, and lock commands |
 | `tests/e2e` | Syntax fixtures compiled to native executables and observable runtime expectations |
 
 Embedders can use `parser.Parse`, `checker.Check`, `compiler.CompileSource`, `compiler.CompileFile`, `compiler.Standalone`, `compiler.BuildChecked`, `tooling.Format`, and `tooling.Inspect`. `compiler.Build` is the lower-level native build API without project pin validation. Failed checking produces diagnostics and no generated source.

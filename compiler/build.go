@@ -143,7 +143,10 @@ func buildNative(source, output string, debug bool) error {
 	if tool == "" {
 		tool = "go"
 	}
-	arguments := []string{"build", "-trimpath", "-mod=vendor"}
+	arguments := []string{"build", "-mod=vendor"}
+	if !debug {
+		arguments = append(arguments, "-trimpath")
+	}
 	if debug {
 		arguments = append(arguments, "-gcflags=all=-N -l")
 	}

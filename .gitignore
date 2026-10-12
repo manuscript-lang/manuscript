@@ -39,3 +39,11 @@ Desktop.ini
 
 .ms-cache/
 *.ms-build.json
+
+# Editor extension build dependencies and packages
+/extensions/vscode/node_modules/
+/extensions/vscode/*.vsix
+/extensions/vscode/dist/
+
+# Local recordings and generated demo artifacts
+/artifacts/tooling-demo/

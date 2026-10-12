@@ -96,7 +96,11 @@ func generate(program *checker.Program, entry string, options Options) (string, 
 		}
 		out.WriteString("};if rt.RunTests(tests)>0{os.Exit(1)}\n")
 	} else if options.Entry {
-		out.WriteString("os.Exit(rt.RunMain(" + program.Symbols[entry]["main"].ID + ",os.Args[1:]))\n")
+		if options.CPUProfile == "" && options.HeapProfile == "" && options.Trace == "" {
+			out.WriteString("os.Exit(rt.RunMain(" + program.Symbols[entry]["main"].ID + ",os.Args[1:]))\n")
+		} else {
+			out.WriteString("os.Exit(rt.Profile(" + quote(options.CPUProfile) + "," + quote(options.HeapProfile) + "," + quote(options.Trace) + ",func()int{return rt.RunMain(" + program.Symbols[entry]["main"].ID + ",os.Args[1:])}))\n")
+		}
 	} else {
 		out.WriteString("_ = os.Args\n")
 	}
@@ -126,7 +130,7 @@ func (g *generator) function(params []syntax.Parameter, result *syntax.Type, bod
 		out.WriteString(self.ID + " := receiver; _ = " + self.ID + "\n")
 	}
 	out.WriteString(g.body(body))
-	out.WriteString("return rt.Unit{}\n})")
+	out.WriteString("//line manuscript.generated.go:1\nreturn rt.Unit{}\n})")
 	return out.String()
 }
 func (g *generator) body(body []*syntax.Statement) string {

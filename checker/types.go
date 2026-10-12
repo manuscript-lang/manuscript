@@ -64,7 +64,10 @@ type Info struct {
 	Captures        []*Binding
 	TypeArgs        []*Type
 }
+type Flow struct{ FallsThrough bool }
 type Program struct {
+	Flow             map[*syntax.Statement]Flow
+	Scopes           map[*syntax.Expression]ScopeState
 	Cleanups         map[*syntax.Statement]*Method
 	Effects          map[string][]string
 	Modules          []*syntax.Module

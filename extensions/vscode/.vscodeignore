@@ -1,0 +1,7 @@
+node_modules/**
+extension.js
+package-lock.json
+**/*.test.js
+
+debug-adapter.js
+!dist/**

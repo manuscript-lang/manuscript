@@ -40,6 +40,7 @@ func (s *scope) typ(name string) *Type {
 }
 
 type checker struct {
+	scopeMarker string
 	*Program
 	module                  *syntax.Module
 	names                   map[string]*Symbol
@@ -50,8 +51,11 @@ type checker struct {
 }
 
 func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program {
-	p := &Program{TypeReferences: map[*syntax.Type]*Type{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
-	c := &checker{Program: p, captures: map[int]map[*Binding]bool{}}
+	return CheckWithOptions(modules, imports, CheckOptions{})
+}
+func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
+	p := &Program{Flow: map[*syntax.Statement]Flow{}, TypeReferences: map[*syntax.Type]*Type{}, Scopes: map[*syntax.Expression]ScopeState{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
+	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
 	for _, module := range modules {
 		c.module = module
 		c.names = map[string]*Symbol{}
@@ -274,7 +278,7 @@ func (c *checker) bind(name string, t *Type, mutable, proof bool, pos syntax.Pos
 	if c.scope.bindings[name] != nil || c.scope.types[name] != nil {
 		c.error(pos, "type", "duplicate local binding "+name)
 	}
-	b := &Binding{Name: name, ID: c.unique("local"), Type: t, Mutable: mutable, Proof: proof, Function: c.function}
+	b := &Binding{Name: name, ID: c.unique("local") + "_" + name, Type: t, Mutable: mutable, Proof: proof, Function: c.function}
 	c.scope.bindings[name] = b
 	return b
 }
@@ -317,7 +321,11 @@ func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks boo
 	c.scope = old
 	return
 }
-func (c *checker) statement(s *syntax.Statement) (bool, bool) {
+func (c *checker) statement(s *syntax.Statement) (fall, breaks bool) {
+	defer func() { c.Flow[s] = Flow{fall} }()
+	return c.checkStatement(s)
+}
+func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	switch s.Kind {
 	case "bind":
 		var expected *Type
@@ -557,6 +565,7 @@ func (c *checker) expression(e *syntax.Expression, expected *Type) *Info {
 	return i
 }
 func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
+	c.captureScope(e)
 	i := &Info{}
 	if e == nil {
 		i.Type = primitive("Unit")

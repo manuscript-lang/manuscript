@@ -128,6 +128,7 @@ func ParallelMap(ctx *Execution, result, listType string, args []Argument) Value
 	return Alternative{result, "ok", []Value{List{listType, values}}}
 }
 func joined(parent *Execution, operations []func(*Execution) Value, limit int, timeout *Duration) ([]Value, Value) {
+	defer profileRegion(parent, "parallel.join")()
 	CheckCancelled(parent)
 	if timeout != nil && *timeout < 0 {
 		Panic("timeout must be nonnegative")
@@ -197,7 +198,7 @@ func joined(parent *Execution, operations []func(*Execution) Value, limit int, t
 					value := func() Value {
 						child := newExecution(parent, group)
 						defer FinishExecution(child)
-						return operations[index](child)
+						return profileWork(child, "parallel.operation", fmt.Sprint(index), operations[index])
 					}()
 					mu.Lock()
 					if !stopped && group.Err() == nil {
@@ -237,6 +238,7 @@ func NewCleanup(ctx *Execution, resource Value) *CleanupAction {
 	return &CleanupAction{execution: ctx, resource: resource}
 }
 func (action *CleanupAction) Run() {
+	defer profileRegion(action.execution, "with.cleanup")()
 	pending := recover()
 	var cleanup any
 	if !action.done {

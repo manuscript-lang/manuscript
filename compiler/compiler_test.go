@@ -3,6 +3,7 @@ package compiler_test
 import (
 	"github.com/manuscript-lang/manuscript/compiler"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -495,5 +496,36 @@ func TestGroupedImportResolutionErrors(t *testing.T) {
 				t.Fatal(result.Diagnostics)
 			}
 		})
+	}
+}
+
+func TestNativeProfilesAndDebugSources(t *testing.T) {
+	root := t.TempDir()
+	source := "import Process from \"@std/cli.ms\"\nexport fn main(process: Process) -> Int:\n    return 0\n"
+	write(t, root, "main.ms", source)
+	cpu := filepath.Join(root, "cpu.pprof")
+	heap := filepath.Join(root, "heap.pprof")
+	trace := filepath.Join(root, "trace.out")
+	result := compiler.CompileFile(filepath.Join(root, "main.ms"), compiler.Options{Entry: true, CPUProfile: cpu, HeapProfile: heap, Trace: trace})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	binary := filepath.Join(root, "program")
+	metadata, err := compiler.BuildChecked(result, binary, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if metadata.SourceRoot != root {
+		t.Fatal("debug source root missing", metadata)
+	}
+	command := exec.Command(binary)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, output)
+	}
+	for _, path := range []string{cpu, heap, trace} {
+		info, err := os.Stat(path)
+		if err != nil || info.Size() == 0 {
+			t.Fatalf("missing profile %s: %v", path, err)
+		}
 	}
 }

@@ -28,3 +28,23 @@ jobs:
           ./ms check examples/hello/ms.toml
           ./ms lock examples/hello/ms.toml
           ./ms run examples/hello/ms.toml -- first second
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned native debugger
+        run: go install github.com/go-delve/delve/cmd/dlv@v1.25.2
+      - name: Validate and package VS Code extension
+        working-directory: extensions/vscode
+        run: |
+          npm ci
+          npm run check
+          npm run package -- --allow-missing-repository
+      - name: Native Manuscript DAP integration
+        working-directory: extensions/vscode
+        run: |
+          MANUSCRIPT_DAP_TEST=1 MANUSCRIPT_MS="$GITHUB_WORKSPACE/ms" MANUSCRIPT_DLV="$(go env GOPATH)/bin/dlv" MANUSCRIPT_DAP_ADAPTER="$PWD/dist/debug-adapter.js" node tests/debug-adapter.test.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manuscript-vscode
+          path: extensions/vscode/*.vsix
