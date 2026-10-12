@@ -141,6 +141,8 @@ Implementations of `ReadValue[Int]` and `ReadValue[String]` for the same receive
 
 Create a contract view explicitly with `Contract(value: concrete)`. For a generic contract, use `Contract[T](value: concrete)`. The concrete type must have an applicable declared implementation and satisfy its bounds; a matching method name alone is not enough.
 
+The standard `Error` boundary accepts implementing errors directly, including through Result forwarding and `try`. It keeps the original receiver and typed fields; see [error compatibility](../errors/propagation.md#error-compatibility).
+
 A view keeps the same receiver reference without copying native state or extending its resource lifetime. The receiver retains its concurrency contract: passing a view does not add a lock to a local mutable collection.
 
 ```manuscript

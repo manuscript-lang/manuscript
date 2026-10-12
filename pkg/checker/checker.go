@@ -653,7 +653,17 @@ func (c *checker) expression(e *syntax.Expression, expected *Type) *Info {
 		i.NoReturn = true
 	}
 	if expected != nil && !compatible(i.Type, expected) {
-		c.error(e.Pos, "type", formatMismatch(i.Type, expected))
+		if c.errorAssignable(i.Type, expected) {
+			i.ErrorSource = i.Type
+			cause := i.Type
+			if std(cause, "Result") {
+				cause = cause.Args[1]
+			}
+			i.ScopedError = c.errorNeedsScope(cause)
+			i.Type = expected
+		} else {
+			c.error(e.Pos, "type", formatMismatch(i.Type, expected))
+		}
 	}
 	if expected != nil && expected.Kind == "function" && Same(i.Type, expected) {
 		i.Type = expected
@@ -872,8 +882,15 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			if !std(v.Type, "Result") || len(v.Type.Args) != 2 {
 				c.error(e.Pos, "type", "try requires Result")
 			} else {
-				if !std(c.result, "Result") || len(c.result.Args) != 2 || !Same(c.result.Args[1], v.Type.Args[1]) {
-					c.error(e.Pos, "type", "try requires an enclosing Result with the same error type")
+				if !std(c.result, "Result") || len(c.result.Args) != 2 {
+					c.error(e.Pos, "type", "try requires an enclosing Result")
+				} else if !Same(c.result.Args[1], v.Type.Args[1]) {
+					if c.errorAssignable(v.Type.Args[1], c.result.Args[1]) {
+						i.PropagatedError = v.Type.Args[1]
+						i.ScopedPropagation = c.errorNeedsScope(v.Type.Args[1])
+					} else {
+						c.error(e.Pos, "type", "try requires the same error type or an Error boundary implemented by the specific error")
+					}
 				}
 				i.Type = v.Type.Args[0]
 			}

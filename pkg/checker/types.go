@@ -75,6 +75,11 @@ type Info struct {
 	Write       bool
 	Captures    []*Binding
 	TypeArgs    []*Type
+	// ErrorSource retains the concrete type when an Error boundary accepts it.
+	ErrorSource       *Type
+	ScopedError       bool
+	PropagatedError   *Type
+	ScopedPropagation bool
 	// Arguments retains written order with omitted function labels resolved.
 	Arguments []syntax.Argument
 }

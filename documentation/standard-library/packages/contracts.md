@@ -19,14 +19,43 @@ Sequential callbacks run under the caller's execution context and may wait for o
 
 ## Errors
 
-Each package returns a named error type from its own module: `JsonError` from `@std/json.ms`, `EncodingError` from `@std/encoding.ms`, `FileSystemError` from `@std/fs.ms`, and so on. Each type contains the cases relevant to that domain; its exact definition is in the [generated reference](../reference/_index.md). For example, `JsonError` has only `InvalidInput`, `InvalidData`, and `LimitExceeded`.
+An error is an ordinary value returned in `Result[T, E]`. Standard packages define errors for their own domain, such as `JsonError` and `IoError`; their cases and fields appear in the [generated reference](../reference/_index.md). Match the result to handle an error, or use `try` to return it unchanged to a compatible error boundary.
 
-All standard error types explicitly implement `Error` from `@std/errors.ms`, an ordinary operation contract with `message() -> String`. Specific API signatures retain their domain error type. A generic boundary uses `Result[T, Error]`; use an ordinary Result match and return `error(cause: Error(value: cause))`. The explicit view preserves the original receiver, case, and payload. See the [executable filesystem/random/time example](https://github.com/manuscript-lang/manuscript/blob/main/tests/e2e/testdata/projects/library/main.ms).
+### Error details
 
-Handle a concrete error with its ordinary case match. Handle a generic `Error` by calling `message()`, or use a [contract type match](../../core-language/control-flow/pattern-matching.md#contract-type-patterns) to recover a concrete error such as `JsonError(cause)`, then match its cases. The final wildcard handles other implementations. Custom errors participate through an ordinary `impl Error for CustomError` in their defining module. `Error` does not constrain `Result`'s error parameter or turn faults and cancellation into expected failures.
+Put typed information directly in an error record or alternative case. Each field has its own type. A domain error does not need an `Error` implementation to be returned or propagated.
 
-`try` propagates the declared error type; it does not convert unrelated types or implicitly construct an Error view. This replaces the former shared `LibraryError` contract: update imports and return annotations, and qualify cases such as `JsonError.InvalidData` when multiple imported types define the same case name.
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import Result from "@std/result.ms"
+import panic from "@std/faults.ms"
 
+type ReadError:
+    path: String
+    attempt: Int
+    retryable: Bool
+
+fn failed_read() -> Result[Unit, ReadError]:
+    return error(cause: ReadError(path: "settings.json", attempt: 2, retryable: true))
+
+test "read typed error fields":
+    match failed_read():
+        ok(_):
+            return panic(message: "failed read succeeded")
+        error(cause):
+            if cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable:
+                return panic(message: "missing error details")
+```
+
+Records and their fields retain ordinary mutable value semantics. Add a cause field when an error needs to preserve another failure; its type can be that specific domain error.
+
+### Several error types at one boundary
+
+Use `Error` from `@std/errors.ms` when a boundary should handle several error types through one `message() -> String` operation. Standard errors implement this interface; custom errors can declare an ordinary `impl Error` in their defining module.
+
+Pass or return a specific error directly where `Error` is expected. Functions returning `Result[T, Error]` can use `try` with specific standard errors, or forward a `Result[T, SpecificError]` with the same success type. The original error and its fields are retained. Call `message()` for a diagnostic, or use a [contract type match](../../core-language/control-flow/pattern-matching.md#contract-type-patterns) to recover the concrete error. See [common error boundaries](../../core-language/errors/results.md#a-common-error-boundary) for an example.
+
+Unrelated domain errors still need an explicit translation. The Error interface does not constrain Result's error parameter or turn faults and cancellation into expected failures.
 
 | Situation | Behavior |
 | --- | --- |

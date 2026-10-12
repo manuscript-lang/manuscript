@@ -47,25 +47,25 @@ This caller chooses a response for either outcome. Another caller could inspect 
 
 ## A common error boundary
 
-Import `Error` from `@std/errors.ms` when a boundary should accept multiple error domains. It is an ordinary interface declaring `message() -> String`. Standard errors implement it; user errors can declare an ordinary `impl Error` in their defining module.
+For most functions, keep the concrete domain error type. Its typed fields are available directly to callers; see [error details](../../standard-library/packages/contracts.md#error-details).
 
-```text
+When a boundary should accept several error types, import `Error` from `@std/errors.ms`. It is an ordinary interface declaring `message() -> String`. Standard errors implement it; custom errors can declare an `impl Error` in their defining module.
+
+```manuscript
 import Bytes from "@std/bytes.ms"
 import Error from "@std/errors.ms"
 import hex_decode from "@std/encoding.ms"
 import Result from "@std/result.ms"
 
 fn decode(text: String) -> Result[Bytes, Error]:
-    match hex_decode(text: text, max_bytes: some(value: 1024)):
-        ok(value):
-            return ok(value: value)
-        error(cause):
-            return error(cause: Error(value: cause))
+    let bytes = try hex_decode(text: text)
+    return ok(value: bytes)
 ```
 
-The conversion preserves the original `EncodingError` case and payload. A caller may handle any error with `cause.message()`, or select a specific implementation using a [contract type pattern](../control-flow/pattern-matching.md#contract-type-patterns). A caller that needs only encoding errors can keep `Result[Bytes, EncodingError]` and match its cases directly.
+`try` passes the original `EncodingError` into the common Error boundary. A caller may handle it with `cause.message()`, or recover its specific type and fields using a [contract type pattern](../control-flow/pattern-matching.md#contract-type-patterns). A caller that needs only encoding errors can keep `Result[Bytes, EncodingError]` and match its cases directly.
 
-`Error` is explicitly imported and has no special inheritance or exception machinery. Other error values remain legal in `Result[T, E]`. Conversion at a generic boundary is explicit, and `try` still requires the [same error type](propagation.md#error-compatibility).
+An error implementing `Error` can be passed, assigned, or returned directly wherever `Error` is expected. `Result[T, SpecificError]` can also be returned as `Result[T, Error]`; its successful value and original error are preserved. Other error values remain legal in `Result[T, E]`. See [error compatibility](propagation.md#error-compatibility) for propagation rules.
+
 
 ## Results and concurrent execution
 

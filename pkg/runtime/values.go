@@ -152,12 +152,27 @@ func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 	}
 	return g.Build(sub, typeScopes)
 }
-func Try(value Value) Value {
+func Try(value Value, scopes ...TypeScope) Value {
 	v := value.(Alternative)
 	if v.Tag == "error" {
-		panic(propagation{v.Fields[0]})
+		cause := v.Fields[0]
+		if len(scopes) > 0 {
+			cause = ViewOf("@std/Error", cause, scopes[0])
+		}
+		panic(propagation{cause})
 	}
 	return v.Fields[0]
+}
+
+// ErrorResult changes a Result's static error boundary while retaining the
+// original payload. Only scoped implementation evidence requires a view.
+func ErrorResult(value Value, result string, scopes ...TypeScope) Value {
+	v := value.(Alternative)
+	v.Type = result
+	if v.Tag == "error" && len(scopes) > 0 {
+		v.Fields = []Value{ViewOf("@std/Error", v.Fields[0], scopes[0])}
+	}
+	return v
 }
 func NewRecord(typ string, args []Argument) Value {
 	fields := map[string]Value{}
@@ -583,6 +598,9 @@ func ViewOf(contract string, receiver Value, scopes ...TypeScope) Value {
 		scope = scopes[0]
 	}
 	if v, ok := receiver.(View); ok {
+		if v.Type == contract {
+			return receiver
+		}
 		receiver = v.Receiver
 		scope = v.Scope
 	}
@@ -592,7 +610,7 @@ func ContractReceiver(value Value) Value {
 	if view, ok := value.(View); ok {
 		return view.Receiver
 	}
-	return Panic("runtime invariant: expected contract view")
+	return value
 }
 func ConcreteType(value Value) string {
 	switch value := value.(type) {

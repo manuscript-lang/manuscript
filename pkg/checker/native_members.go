@@ -57,7 +57,9 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 		}
 	}
 	methods := c.methods(receiver.Type, member.Text)
-	if len(methods) != 1 || methods[0].Native == "" || methods[0].Native == "contract" {
+	// Implementations have already specialized their receiver variables. They
+	// dispatch through the contract, rather than native receiver operations.
+	if len(methods) != 1 || methods[0].Contract != nil || methods[0].Native == "" || methods[0].Native == "contract" {
 		return nil
 	}
 	m := methods[0]

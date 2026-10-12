@@ -27,20 +27,22 @@ The success types differ: the called function returns a decimal, while the enclo
 
 ## Error compatibility
 
-A caller with a different error contract must translate the error explicitly using [pattern matching](../control-flow/pattern-matching.md). `try` does not invent a conversion or combine unrelated error types into an implicit union.
+`try` accepts the same error type as the enclosing function, or a specific error implementing the common `Error` interface when the enclosing function returns `Result[U, Error]`.
 
-Keep a chain of fallible calls flat with `try` when their error types match. Translate errors explicitly at a boundary when needed.
+Keep a chain of fallible calls flat with `try` when their error boundaries are compatible. Translate unrelated domain errors explicitly when needed.
 
-If the called operation returns `Result[T, E]`, the function using `try` must return `Result[U, E]`. The success type may change from `T` to `U`, but the error type `E` must be exactly the same. Two error types are not interchangeable just because they implement the same interface. Convert explicitly before constructing the Result that try uses.
+If the called operation returns `Result[T, E]`, the enclosing function can return `Result[U, E]`. If `E` implements `Error`, it can instead return `Result[U, Error]`. The success type may change from `T` to `U`. The original error, its concrete type, and its fields pass through unchanged; no cause wrapper or manual Result match is needed.
 
-A common `Error` boundary follows the same rule: first match the Result and construct `Error(value: cause)` on its error branch, then use `try` on the explicitly converted Result. See [common error boundaries](results.md#a-common-error-boundary).
+This common boundary also accepts direct assignments, arguments, and returns of a specific error, and forwarding `Result[T, E]` as `Result[T, Error]` with the same success type. An explicit `impl Error` establishes the relationship; matching method names alone do not. See [common error boundaries](results.md#a-common-error-boundary).
+
+Unrelated domain error types still require explicit translation with [pattern matching](../control-flow/pattern-matching.md). An Error value cannot narrow to a specific domain error without a type match. Other interfaces, collection types, and function types keep their ordinary exact compatibility rules.
 
 The expression after `try` is evaluated once. Try binds more tightly than arithmetic, so `try operation() + 1` means `(try operation()) + 1`.
 
 The compiler rejects try when:
 
 - its expression is not a Result;
-- its error type differs from the enclosing function's error type;
+- its error type differs from the enclosing function's error type and cannot pass into its Error boundary;
 - the enclosing function or test returns Unit.
 
 Inside an anonymous function, try returns from that anonymous function, not from its caller or surrounding function. See [expressions](../basics/expressions.md) and [type compatibility](../types/compatibility.md).

@@ -164,7 +164,7 @@ func check() error {
 		kinds          []string
 	}{
 		{"pkg/compiler/generate.go", "statement", syntax.StatementKinds()},
-		{"pkg/compiler/generate.go", "expression", syntax.ExpressionKinds()},
+		{"pkg/compiler/generate.go", "expressionValue", syntax.ExpressionKinds()},
 		{"pkg/checker/checker.go", "checkStatement", syntax.StatementKinds()},
 		{"pkg/checker/checker.go", "infer", syntax.ExpressionKinds()},
 	} {
