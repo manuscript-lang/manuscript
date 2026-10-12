@@ -59,13 +59,13 @@ export type FileInfo:
 
 # Filesystem operations and resource factories for the current host.
 export interface FileSystem:
-# Opens a path using host flag and mode bit values.
+    # Opens a path using host flag and mode bit values.
     fn open_flags(
         path: String,
         flags: Int,
         mode: Int
     ) -> Result[FileHandle, FileSystemError]
-# Returns entries matching the supplied include and exclude patterns.
+    # Returns entries matching the supplied include and exclude patterns.
     fn glob_entries(
         path: String,
         options: GlobOptions,
@@ -75,7 +75,7 @@ export interface FileSystem:
             ) -> Bool
         ]
     ) -> Result[List[PathEntry], FileSystemError]
-# Copies a file or tree according to the supplied replacement and size policies.
+    # Copies a file or tree according to the supplied replacement and size policies.
     fn copy(
         source: String,
         destination: String,
@@ -87,7 +87,7 @@ export interface FileSystem:
             ) -> Bool
         ]
     ) -> Result[Unit, FileSystemError]
-# Watches filesystem changes. Limits bound tracked paths and queued events.
+    # Watches filesystem changes. Limits bound tracked paths and queued events.
     fn watch_native(
         path: String,
         recursive: Bool,
@@ -95,25 +95,25 @@ export interface FileSystem:
         max_events: Optional[Int] = none,
         overflow: String
     ) -> Result[FileWatcher, FileSystemError]
-# Resolves symlinks and returns the canonical absolute path.
+    # Resolves symlinks and returns the canonical absolute path.
     fn canonicalize(path: String) -> Result[String, FileSystemError]
-# Copies one file; existing destinations are replaced only when requested.
+    # Copies one file; existing destinations are replaced only when requested.
     fn copy_file(
         source: String,
         destination: String,
         replace: Bool,
         max_bytes: Optional[Int] = none
     ) -> Result[Unit, FileSystemError]
-# Creates a directory, optionally creating missing parents.
+    # Creates a directory, optionally creating missing parents.
     fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
-# Creates a symbolic link at `path` pointing to `target`.
+    # Creates a symbolic link at `path` pointing to `target`.
     fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
-# Lists a directory, optionally limiting the number of returned entries.
+    # Lists a directory, optionally limiting the number of returned entries.
     fn list(
         path: String,
         max_entries: Optional[Int] = none
     ) -> Result[List[DirectoryEntry], FileSystemError]
-# Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
+    # Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
     fn read_file(
         path: String,
         max_bytes: Optional[Int] = none

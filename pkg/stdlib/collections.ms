@@ -11,9 +11,9 @@ export type CollectionError:
 
 # An ordered collection of values with indexing, iteration, and transformation operations.
 export type List[T]:
-# Returns a shallow copy with independent list storage.
+    # Returns a shallow copy with independent list storage.
     fn clone() -> List[T]:
-# Returns the value at a zero-based index, or `none` when out of range.
+    # Returns the value at a zero-based index, or `none` when out of range.
     fn at(index: Int) -> Optional[T]:
     fn contains(value: T) -> Bool:
     fn index_of(value: T) -> Optional[Int]:
@@ -24,30 +24,30 @@ export type List[T]:
     fn prepend(value: T) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
-# Returns the half-open range from `start` up to but excluding `end`.
+    # Returns the half-open range from `start` up to but excluding `end`.
     fn slice(start: Int, end: Int) -> List[T]:
     fn reverse() -> List[T]:
-# Returns a new list sorted by negative/zero/positive comparator results.
+    # Returns a new list sorted by negative/zero/positive comparator results.
     fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
-# Keeps matching values in their original order.
+    # Keeps matching values in their original order.
     fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
     fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
     fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
     fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
-# Returns true when at least one value satisfies the predicate.
+    # Returns true when at least one value satisfies the predicate.
     fn some(predicate: fn(value: T) -> Bool) -> Bool:
-# Returns true when every value satisfies the predicate; empty lists return true.
+    # Returns true when every value satisfies the predicate; empty lists return true.
     fn every(predicate: fn(value: T) -> Bool) -> Bool:
     fn for_each(operation: fn(value: T) -> Unit) -> Unit:
     fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]:
     fn map[U](transform: fn(value: T) -> U) -> List[U]:
     fn flat_map[U](transform: fn(value: T) -> List[U]) -> List[U]:
-# Reduces values from left to right, starting with `initial`.
+    # Reduces values from left to right, starting with `initial`.
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
-# Reduces values from right to left, starting with `initial`.
+    # Reduces values from right to left, starting with `initial`.
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
-# Replaces `delete_count` values at `start` with the replacement list.
+    # Replaces `delete_count` values at `start` with the replacement list.
     fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
@@ -61,11 +61,11 @@ export type List[T]:
 
 # A mutable key-value collection. Keys use explicit `Hashable` value semantics.
 export type Map[T: Hashable, U]:
-# Returns a shallow copy with independent map storage.
+    # Returns a shallow copy with independent map storage.
     fn clone() -> Map[T, U]:
-# Sets `key` to `value` only when the key is absent.
+    # Sets `key` to `value` only when the key is absent.
     fn with_default(key: T, value: U) -> Map[T, U]:
-# Creates a value only when the key is absent.
+    # Creates a value only when the key is absent.
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
     fn keys() -> List[T]:
