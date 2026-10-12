@@ -46,7 +46,7 @@ type Scheduler struct {
 }
 
 func inherit(parent *Execution, ctx context.Context) *Execution {
-	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: parent.Owners, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
+	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: parent.Owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
 }
 func owned(parent *Execution, ctx context.Context, owner *Scheduler) *Execution {
 	owners := map[*Scheduler]bool{}
@@ -54,7 +54,7 @@ func owned(parent *Execution, ctx context.Context, owner *Scheduler) *Execution 
 		owners[key] = value
 	}
 	owners[owner] = true
-	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: owners, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
+	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
 }
 func NewScheduler(ctx *Execution, args []Argument) Value {
 	limit, historyLimit := int64(0), int64(-1)

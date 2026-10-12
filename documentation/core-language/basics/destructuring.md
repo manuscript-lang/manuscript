@@ -12,15 +12,12 @@ Destructuring gives names to parts of a value in one declaration. Use brackets, 
 ## Positional bindings
 
 ```manuscript
-let [resA, resB] = try parallel(tasks: [first, second])
 let [first_name, second_name] = names
 ```
 
-The parallel fragment requires an enclosing `Result[U, ExecutionError]` function; Unit tests match the outer Result. See [explicit error adaptation](../../concurrency/parallel.md).
+Positions bind from left to right.
 
-Positions bind from left to right. Fixed positional results preserve each position's individual type, as described by [parallel operations](../../concurrency/parallel.md). A fixed result's arity must match the pattern at compile time.
-
-A `List[T]` can also be destructured; every bound position has type `T`. Its length must match the pattern. A mismatch is statically known only when the initializer is syntactically a list literal (ignoring grouping); a mismatch then is a compile error. Other list expressions are checked at runtime and mismatch faults, even when a previous binding happened to use a literal. Fixed packs always retain static arity. Destructuring does not silently discard extra elements or create values for missing positions.
+A `List[T]` can be destructured; every bound position has type `T`. Its length must match the pattern. A mismatch is statically known only when the initializer is syntactically a list literal (ignoring grouping); a mismatch then is a compile error. Other list expressions are checked at runtime and mismatch faults, even when a previous binding happened to use a literal. Destructuring does not silently discard extra elements or create values for missing positions.
 
 Use brackets for positional patterns. `let (resA, resB) = value` is not a binding pattern.
 

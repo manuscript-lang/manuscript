@@ -3,7 +3,7 @@ import panic from "@std/faults.ms"
 
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 
 type Resource:
     label: String
@@ -21,5 +21,7 @@ export fn main() -> Int:
             while true:
                 continue
     with resource = Resource(label: "parent", output: output):
-        let outcome = parallel(tasks: [child])
-        return 0
+        with group = TaskGroup():
+            group.start(child)
+            group.join()
+            return 0

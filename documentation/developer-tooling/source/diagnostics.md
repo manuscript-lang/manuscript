@@ -13,7 +13,7 @@ Each diagnostic has a stable rule code, a readable message, and a primary source
 
 ## Explaining a violated rule
 
-For example, a non-function entry in a parallel pack should identify the required callable type and source position. An invalid `with` initializer should identify the missing concrete implementation, contract operation, or generic-bound proof. A missing match alternative or unnamed argument should identify the relevant declaration and call-site location. Runtime closed-resource errors carry operation and source locations separately from static diagnostics.
+For example, a non-function argument to TaskGroup.start should identify the required callable type and source position. An invalid `with` initializer should identify the missing concrete implementation, contract operation, or generic-bound proof. A missing match alternative or unnamed argument should identify the relevant declaration and call-site location. Runtime closed-resource errors carry operation and source locations separately from static diagnostics.
 
 `ms check file.ms --json` emits `{"format": 1, "diagnostics": [...]}`. Each diagnostic has `code`, `phase`, `message`, and `position` with `file`, one-based `line`/UTF-8 byte `column`, and original-byte `offset`. Empty results use `[]`. CRLF normalization preserves original offsets.
 

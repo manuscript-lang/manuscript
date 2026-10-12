@@ -23,7 +23,6 @@ func TestUniversalFormatting(t *testing.T) {
 		{"empty record", Record{Type: "module/123#Empty", Fields: map[string]Value{}}, "Empty()"},
 		{"field order", Record{Type: "module/123#Point[Int]", Fields: map[string]Value{"z": int64(2), "a": true}}, "Point(a: true, z: 2)"},
 		{"alternative", Alternative{Type: "@std/Result[Int][String]", Tag: "ok", Fields: []Value{int64(3)}}, "Result.ok(3)"},
-		{"pack", Pack{Items: []Value{true, Unit{}}}, "(true, unit)"},
 		{"empty map", &Map{}, "Map()"},
 		{"empty set", &Set{}, "Set()"},
 		{"empty bytes", Bytes{}, "Bytes()"},

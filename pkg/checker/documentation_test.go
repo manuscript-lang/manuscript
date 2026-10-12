@@ -64,9 +64,7 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 		for _, d := range module.Declarations {
 			exports[module.Path+"#"+d.Name] = d
 			if d.Declaration == "" {
-				if module.Path != "@std/tasks.ms" || d.Name != "parallel" {
-					t.Errorf("missing declaration for %s#%s", module.Path, d.Name)
-				}
+				t.Errorf("missing declaration for %s#%s", module.Path, d.Name)
 				continue
 			}
 			parsed, err := parser.ParseLibrary(module.Path, d.Declaration)

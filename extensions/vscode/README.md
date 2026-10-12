@@ -6,7 +6,7 @@ Open `.ms` files for typed lexical/member completion, named argument completion 
 
 Use F5 with the generated **Debug Manuscript** configuration or **Manuscript: Debug current file**. The extension's Manuscript DAP layer compiles a debug executable, verifies its build/source metadata, and delegates native control to Delve. It displays source frame and variable names, lazy records/collections/variants/views, simple source watch expressions, and a separate execution/service inspection scope. It reads stopped-process state without invoking application operations. Project builds require a current `ms.lock`; create/update it explicitly with `ms lock path/to/ms.toml`. Running/debugging requires a trusted workspace.
 
-**Manuscript: Capture profile or trace** selects CPU pprof, heap pprof, or execution tracing, chooses a new output file, and runs the containing project or source in a terminal. CPU labels and trace regions identify source functions; parallel/background work carries task attribution. Open artifacts with `go tool pprof` or `go tool trace`.
+**Manuscript: Capture profile or trace** selects CPU pprof, heap pprof, or execution tracing, chooses a new output file, and runs the containing project or source in a terminal. CPU labels and trace regions identify source functions; task-group/scheduled work carries task attribution. Open artifacts with `go tool pprof` or `go tool trace`.
 
 Project manifests provide detected build/check/test/lint tasks with positioned problem matching. Process invocation uses argument arrays rather than a shell. Indentation defaults to four spaces and Manuscript is the default formatter for `.ms` files.
 

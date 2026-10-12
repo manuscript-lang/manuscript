@@ -212,7 +212,7 @@ func (c *checker) implements(receiver, contract *Type) bool {
 	if receiver == nil || contract == nil {
 		return false
 	}
-	if std(contract, "Closeable") && (std(receiver, "Scheduler") || std(receiver, "SynchronizedGuard")) {
+	if std(contract, "Closeable") && (std(receiver, "TaskGroup") || std(receiver, "Scheduler") || std(receiver, "SynchronizedGuard")) {
 		return true
 	}
 	if receiver.ID == contract.ID {
@@ -310,7 +310,7 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	if t.Kind == "function" {
 		return false
 	}
-	if t.Kind == "contract" || t.Kind == "pack" {
+	if t.Kind == "contract" {
 		return false
 	}
 	if t.Kind == "primitive" {
@@ -319,7 +319,7 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	if std(t, "Decimal") || std(t, "Bytes") || std(t, "Duration") || std(t, "Instant") {
 		return true
 	}
-	if std(t, "OperationId") || std(t, "Scheduler") || std(t, "Queue") || std(t, "PriorityQueue") || std(t, "Synchronized") || std(t, "SynchronizedGuard") {
+	if std(t, "Task") || std(t, "TaskGroup") || std(t, "OperationId") || std(t, "Scheduler") || std(t, "Queue") || std(t, "PriorityQueue") || std(t, "Synchronized") || std(t, "SynchronizedGuard") {
 		return false
 	}
 	if std(t, "List") || std(t, "Map") || std(t, "Set") {
@@ -443,7 +443,7 @@ func nativeMethod(t *Type, name string) *Method {
 }
 
 func (c *checker) closeable(t *Type) bool {
-	if std(t, "Scheduler") || std(t, "SynchronizedGuard") {
+	if std(t, "TaskGroup") || std(t, "Scheduler") || std(t, "SynchronizedGuard") {
 		return true
 	}
 	if t.Kind == "contract" || t.Kind == "variable" {

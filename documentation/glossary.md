@@ -32,7 +32,7 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Sharing](ownership-and-cleanup/values/sharing.md) | Values may be passed between operations. Local mutable queues need explicit synchronization; sharing does not keep resources open. |
 | [Capability / authority](modules-and-capabilities/capabilities/authority.md) | A service object that permits external operations, obtained through a host accessor or passed to a helper. |
 | [Effect](modules-and-capabilities/capabilities/effects.md) | External behavior reachable from an operation, such as reading, writing, or calling a service. |
-| [Operation / group](concurrency/joining.md#terms) | One invocation started by a concurrency API / the invocations started by one parallel call. |
+| [Operation / group](concurrency/joining.md#terms) | One invocation started by a concurrency API / the invocations started by one task group. |
 | [Join](concurrency/joining.md) | Wait until every started operation has finished, including its cleanup. |
 | [Execution context](concurrency/_index.md#fixed-lifetimes) | Runtime state carrying an operation's cancellation signal and deadline. The runtime passes it internally. |
 | [Cancellation checkpoint](concurrency/cancellation.md#propagation-and-checkpoints) | A point where work checks whether it should stop and unwind. |

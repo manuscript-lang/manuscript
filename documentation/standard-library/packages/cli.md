@@ -26,7 +26,7 @@ Import the accessor for each service an application uses. Accessors are ordinary
 | `@std/random.ms` | `entropy() -> Entropy` |
 | `@std/system.ms` | `system() -> System` |
 
-Type names and functions still require explicit imports when named in source. Importing an accessor does not add other declarations to scope. Calling it returns the existing service; repeated calls do not construct new roots. Helpers, callbacks, parallel work, and imported modules use the services of their invocation execution. Scheduler services retain their construction execution's services.
+Type names and functions still require explicit imports when named in source. Importing an accessor does not add other declarations to scope. Calling it returns the existing service; repeated calls do not construct new roots. Helpers, callbacks, task-group work, and imported modules use the services of their invocation execution. Scheduler services retain their construction execution's services.
 
 ```manuscript
 import arguments from "@std/cli.ms"

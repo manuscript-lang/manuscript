@@ -34,11 +34,11 @@ Use this table to find a type's meaning and import path. â€œImplicit intrinsicâ€
 | `Files`, `IoError` | File capability contract and expected I/O failures | `@std/io.ms` |
 | `Clock` | Monotonic clock capability contract | `@std/time.ms` |
 
-Functions and closures are ordinary values; runtime tasks are not exposed as source ownership types. Fixed parallel result packs preserve positional types and use bracket destructuring; they are not homogeneous lists.
+Functions and closures are ordinary values. TaskGroup.start returns an ordinary typed Task[T] handle; joining preserves T without changing the group's fixed work lifetime.
 
-References do not extend an object's open lifetime. Use `with` for deterministic release and `Result` for expected operation failures. See [parallel](../../concurrency/parallel.md), [schedulers](../tasks/scheduler.md), and [Closeable](../../ownership-and-cleanup/cleanup/closeable.md).
+References do not extend an object's open lifetime. Use `with` for deterministic release and `Result` for expected operation failures. See [task groups](../../concurrency/task-groups.md), [schedulers](../tasks/scheduler.md), and [Closeable](../../ownership-and-cleanup/cleanup/closeable.md).
 
-The [standard API contract](prelude.md) defines visibility, signatures, optional arguments, and pack typing.
+The [standard API contract](prelude.md) defines visibility, signatures, optional arguments, and generic task typing.
 
 ## General-purpose types
 

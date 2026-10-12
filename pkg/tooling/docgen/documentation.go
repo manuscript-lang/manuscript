@@ -73,7 +73,7 @@ func SiteFiles() (map[string][]byte, error) {
 	modules := checker.StandardLibrary()
 	files := map[string][]byte{}
 	var index, full strings.Builder
-	index.WriteString("+++\ntitle = \"Module reference\"\nweight = 2\n+++\n\n# Standard library module reference\n\nGenerated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Declaration excerpts omit implementation bodies.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\nSee [special call rules](../call-rules.md) for constructors, variadic parallel work, and optional arguments.\n\n")
+	index.WriteString("+++\ntitle = \"Module reference\"\nweight = 2\n+++\n\n# Standard library module reference\n\nGenerated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Declaration excerpts omit implementation bodies.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\nSee [special call rules](../call-rules.md) for constructors, generic receiver methods, and optional arguments.\n\n")
 	full.WriteString(StandardLibraryMarkdown())
 	files["documentation/standard-library/call-rules.md"] = []byte(callRules)
 	for _, module := range modules {

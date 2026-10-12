@@ -17,7 +17,7 @@ Claude Code reviewed the 118 original design pages on 2026-10-11 for simplicity,
 
 | Finding | Adopted fix and authoritative contract |
 | --- | --- |
-| C1 — incompatible try errors | Explicit Result matching; complete [parallel example](../concurrency/parallel.md); exact-error requirements on body fragments and Unit-test matching |
+| C1 — incompatible try errors | Explicit Result matching; complete [parallel example](../concurrency/task-groups.md); exact-error requirements on body fragments and Unit-test matching |
 | C2 — unresolved/untypable APIs | Closed [prelude](../standard-library/types/prelude.md), inferred packs, exact `item` label, optional arguments, status/reporting; Scheduler uses one `Result[Unit, String]` callable signature |
 | C3 — contract sharing | All values, including contract views and callbacks, may be shared. Native services synchronize access; local Queue access uses an explicit lock; [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) protects complete updates. |
 | C4 — executable/adapter boundary | Exact [CLI entry and host services](../standard-library/packages/cli.md), standard stream contracts with declared cleanup, [versioned adapter binding](../modules-and-capabilities/adapters/manifests.md), acyclic schema/native/application packages |
@@ -65,7 +65,7 @@ The remaining problems sit where the language meets the runtime. Several load-be
 - `propagation.md:25`: error conversion needs an explicit adapter, but no adapter exists anywhere.
 - `propagation.md:29`: `try` is rejected in Unit functions and Unit test bodies.
 - `documentation/compiler/frontend/type-checker.md:31,34` restate both rules.
-- `documentation/concurrency/parallel.md:18-21`: one body contains `try parallel(...)` (error type `ExecutionError`), `try resA` (`UserError`) and `try resB` (`OrderError`).
+- `documentation/concurrency/task-groups.md:18-21`: one body contains `try parallel(...)` (error type `ExecutionError`), `try resA` (`UserError`) and `try resB` (`OrderError`).
 - The same pattern appears at:
   - `concurrency/README.md:8`
   - `core-language/basics/bindings.md:34`
@@ -98,7 +98,7 @@ The remaining problems sit where the language meets the runtime. Several load-be
 - Fixtures still call `panic` without an import (`pkg/compiler/conformance/core-language.md:180,584`), while CL-01 makes unknown names resolution errors (`core-language.md:36`).
 
 **Evidence — typing**
-- **Heterogeneous packs.** Pack typing is deferred to "trusted API manifests" (`concurrency/parallel.md:30,42`; `pkg/compiler/lowering/function-and-task-calls.md:11`). The manifest format is explicitly unspecified (`modules-and-capabilities/adapters/manifests.md:13`). Only literal `tasks:` packs are covered (`type-checker.md:20`), and nothing says what a pack value can do (`standard-library/types/catalog.md:27`, `destructuring.md:14`).
+- **Heterogeneous packs.** Pack typing is deferred to "trusted API manifests" (`concurrency/task-groups.md:30,42`; `pkg/compiler/lowering/function-and-task-calls.md:11`). The manifest format is explicitly unspecified (`modules-and-capabilities/adapters/manifests.md:13`). Only literal `tasks:` packs are covered (`type-checker.md:20`), and nothing says what a pack value can do (`standard-library/types/catalog.md:27`, `destructuring.md:14`).
 - **`Scheduler.start`.** It accepts `fn() -> Unit` *or* `fn() -> Result[Unit, E]` for any `E` (`background.md:27`). That is an overload plus a generic operation, both excluded (`declarations.md:11`; `contracts.md:51`; `generics.md:65`).
 - **Scheduler reporter.** The reporter is "configured" (`background.md:27`, `errors/results.md:45`, `errors/faults.md:39`), but the only constructor shown is `Scheduler(limit: some(value: 32))` (`background.md:8`). Records and alternatives can't be formatted either (`text-and-bytes.md:45`), so there is no way to report an arbitrary `E`.
 - **Optional arguments.** Trusted APIs may have optional named arguments (`grammar.md:116`, `declarations-and-calls.md:41`), but no page lists which ones.

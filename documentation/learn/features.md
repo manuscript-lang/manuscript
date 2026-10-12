@@ -11,7 +11,7 @@ weight = 3
 | Transform a list of items | [Collections](../core-language/types/collections.md) |
 | Handle a missing value or failed operation | [Optional values](../core-language/types/optionals.md) and [results](../core-language/errors/results.md) |
 | Close a file when finished | [A `with` block](../ownership-and-cleanup/cleanup/scopes.md) |
-| Run several operations together | [Parallel work](../concurrency/parallel.md) |
+| Run several operations together | [Task groups](../concurrency/task-groups.md) |
 | Update data shared by tasks | [Synchronized state](../standard-library/data-and-io/synchronized-state.md) |
 | Share code between files | [Imports and exports](../modules-and-capabilities/modules/declarations.md) |
 

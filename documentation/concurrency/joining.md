@@ -7,54 +7,56 @@ weight = 61
 
 [Guide index](_index.md) · [Design index](../_index.md)
 
-A parallel call waits for all the operations it started, including their cleanup. This waiting is called joining. A failure or timeout first asks unfinished work to stop, then waits for it. This page defines the exact lifecycle and which outcome the caller receives.
+Joining waits for work to finish its body and cleanup. `Task.join()` waits for one successful task; a failed task join waits for its stopped group. `TaskGroup.join()` waits for all submitted work. Closing a group cancels unfinished work and joins it.
 
 ## Terms
 
 | Term | Meaning |
 | --- | --- |
-| Operation | One invocation of a function passed to a concurrency API: a `tasks` position or one `Scheduler.start` submission |
-| Group | The operations started by one `parallel` call |
-| Caller | The execution that called the API; its context is the group's fixed parent |
-| Joined | Every started operation has finished its body and scope cleanup |
+| Operation | One invocation submitted through `TaskGroup.start` or `Scheduler.start` |
+| Group | Operations submitted to one `TaskGroup` |
+| Parent | The execution that constructed the group; it fixes cancellation and host roots |
+| Joined | Every required operation has finished its body and cleanup |
 
 ## Execution errors
 
-`ExecutionError` is exported by `@std/tasks.ms`; import it when naming the result type. Its Crashed payload uses `OperationId`, also exported by `@std/tasks.ms`. The standard declaration is:
+`ExecutionError` and its diagnostic `OperationId` are exported by `@std/tasks.ms`:
 
 ```manuscript
 type ExecutionError:
     case TimedOut
+    case Cancelled
     case Crashed(operation: OperationId, message: String)
 ```
 
-`OperationId` identifies runtime work for diagnostics; it does not grant scheduling, joining, or transfer authority. Secondary faults are retained in runtime diagnostics associated with the primary outcome.
+An operation ID identifies work for diagnostics. It does not grant scheduling, cancellation, or joining authority.
 
 ## Group lifecycle
 
-1. **Prepare.** The caller evaluates arguments in written order. If preparation fails, no operation starts. See [preparation](parallel.md#preparation).
-2. **Start.** An empty pack returns `ok` immediately and starts no work, whatever the timeout. A zero timeout on nonempty input stops the group before any operation starts. Otherwise `parallel` starts every position.
-3. **Stop.** The first of these triggers stops the group: an operation faults, the group's `timeout` expires, or the caller's context is cancelled or reaches its inherited deadline. Stopping prevents further starts and requests cancellation of unfinished operations. Returning a domain `error(cause: ...)` is ordinary completion and never stops the group.
-4. **Join.** The API waits for every started operation, including its cleanup. Joining is not bounded by the timeout; uncooperative work falls to [host escalation](runtime.md#host-escalation).
-5. **Report.** After joining, the caller observes the first matching row:
+1. **Construct.** Store the construction execution as the fixed parent. Register shutdown with that execution's work lifetime; lexical `with` provides an earlier cleanup boundary.
+2. **Start.** Each `start` prepares its callback and admits one typed task. A group timeout starts with the first submission. A stopped group returns a stopped handle without invoking further callbacks; a joined or closed group rejects submission with a programming fault.
+3. **Stop.** A task fault, timeout, parent cancellation, or explicit close cancels unfinished work. Returning a domain error is ordinary completion. Task outcomes committed before the stop remain available.
+4. **Join.** Group joining seals admission and waits for every started operation, including nested service shutdown and cleanup. A successful individual task join leaves admission open. Joining is never bounded by the timeout.
+5. **Report.** Group joins and failed task joins use the outcome order below. A successful individual task join returns that task's committed value.
 
 | Condition after joining | Caller observes |
 | --- | --- |
-| The caller's own context was cancelled or reached its inherited deadline | The caller unwinds; no Result is delivered. Operation faults become secondary diagnostics |
-| An operation faulted, in its body or cleanup | `error(cause: Crashed(...))` for the primary fault |
-| The group's `timeout` expired before every operation committed | `error(cause: TimedOut)` |
-| Otherwise | `ok(value: ...)` with each operation's exact return value in input order |
+| The joining caller's own context was cancelled or reached its inherited deadline | The caller unwinds after cancellation and joining; no Result is delivered |
+| A task faulted in its body or cleanup | `error(cause: Crashed(...))` for the first committed fault |
+| The group's timeout expired while work was outstanding | `error(cause: TimedOut)` |
+| Explicit close cancelled unfinished work, or the fixed parent stopped while another active execution joined | `error(cause: Cancelled)` |
+| Otherwise | Group join returns `ok(value: unit)`; task join returns its cached value |
 
-The first row is checked against the caller's context, not the group's derived context. Both can report an expired deadline; only the group's own timer yields `TimedOut`, and only to a caller that is still active.
+A programming fault takes precedence over a timeout or cancellation outcome. Simultaneous task faults have a scheduling-dependent primary. Outcome commitment and acceptance of a stop share an atomic transition. A completed task is not rerun by joining, and its result is not overwritten by a later stop.
 
-The primary fault is the first fault committed to the group's outcome. When operations fault concurrently, which one is primary depends on scheduling. Successful value order never does. Commitment of an operation's outcome and acceptance of a stop are atomic; an operation that committed before the stop keeps its outcome. See [atomic transitions](runtime.md#atomic-transitions).
+Joining from a cancelled caller cancels and waits for unfinished group work before unwinding. Secondary faults during caller cancellation reach diagnostics. Cleanup remains shielded and may exceed any deadline; uncooperative foreign work falls to [host escalation](runtime.md#host-escalation).
 
-## Faults are isolated at the group boundary
+## Scope cleanup and fault observation
 
-An operation fault becomes `Crashed` rather than unwinding the caller. This is intentional and matches how hosts isolate a failed request: the faulted operation has already unwound through its own cleanup, its siblings have been cancelled and joined, and the caller is the only remaining place that can respond. No faulted state is resumed. The caller's own faults still unwind it; [try](../core-language/errors/propagation.md) propagates only `Result` errors.
+`close()` stops admission, cancels unfinished work, waits for all started operations, and releases the group from its fixed work lifetime. It is safe to close repeatedly or through aliases. Successfully committed task results survive closure; unfinished task handles report cancellation to an active joining execution.
 
-## No per-operation cancellation
+A failed group or task join marks the execution failure observed. Closing a group with an unobserved task programming fault surfaces a cleanup fault, so starting work and dropping its handle cannot silently discard a crash. Returning domain errors does not create a cleanup fault.
 
-No source or adapter API cancels a single operation of a joined group. An adapter that ends a foreign call early reports that through the operation's declared return value, such as an `IoError`; it is not a fault. Joined APIs therefore have no separate cancelled outcome. Scheduler work, which can be cancelled individually, reports cancellation through `WorkStatus.Cancelled`.
+Tasks and their descendants cannot join or close their own group or join its task handles. Cross-group cycles are invalid application usage. There is no per-task cancellation; use the group's close boundary or a scheduler's operation-ID cancellation.
 
-See [parallel operations](parallel.md), [cancellation](cancellation.md), and [scope cleanup](../ownership-and-cleanup/cleanup/exit-order.md).
+See [task groups](task-groups.md), [cancellation](cancellation.md), and [scope cleanup](../ownership-and-cleanup/cleanup/exit-order.md).

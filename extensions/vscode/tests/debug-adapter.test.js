@@ -116,3 +116,26 @@ test('watch rewriting and rendering support a separately compiled runtime',()=>{
  assert.equal(adapter.render({...vars[0],value:'{Type: "Box"}',variablesReference:1}).type,'Box');
  assert.equal(adapter.render({...vars[1],value:'{Type: "@std/List[Int]"}',variablesReference:2}).type,'List[Int]');
 });
+
+test('typed task handles and groups expose work state without native bookkeeping', async () => {
+  const adapter = new ManuscriptAdapter(new PassThrough());
+  const task = adapter.render({ name: 'task', type: 'interface {}(*main.Task)', value: 'interface {}(*main.Task) {committed: true}', variablesReference: 3 }, 'task', 'Task[Int]');
+  assert.equal(task.type, 'Task[Int]');
+  adapter.children = async () => [
+    { name: 'id', type: 'main.OperationId', value: '{number: 7}', variablesReference: 0 },
+    { name: 'value', type: 'interface {}(int64)', value: '7', variablesReference: 0 },
+    { name: 'committed', type: 'bool', value: 'true', variablesReference: 0 },
+    { name: 'done', type: 'chan struct {}', value: 'channel', variablesReference: 0 },
+  ];
+  const fields = await adapter.valueChildren(adapter.handles.get(task.variablesReference), {});
+  assert.deepEqual(fields.map(field => field.name), ['Operation', 'Result', 'Completed']);
+  assert.equal(fields[1].value, '7');
+  const group = adapter.render({ name: 'group', type: 'interface {}(*main.TaskGroup)', value: 'group', variablesReference: 5 }, 'group', 'TaskGroup');
+  adapter.children = async () => [
+    { name: 'active', type: 'int', value: '2', variablesReference: 0 },
+    { name: 'sealed', type: 'bool', value: 'false', variablesReference: 0 },
+    { name: 'mu', type: 'sync.Mutex', value: 'mutex', variablesReference: 0 },
+  ];
+  const state = await adapter.valueChildren(adapter.handles.get(group.variablesReference), {});
+  assert.deepEqual(state.map(field => field.name), ['Active tasks', 'Joined']);
+});

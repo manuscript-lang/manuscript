@@ -13,7 +13,7 @@ After checking source, the compiler stores the program in a typed intermediate r
 | --- | --- |
 | Types, comparison bounds, and resolved operations | Preserve nominal contract identity and substituted generic implementation selection; select representations and validate API contracts |
 | Argument names and parameters | Resolve omitted single-parameter labels and preserve checked parameter mapping and written evaluation order |
-| Lists and fixed positional packs | Retain homogeneous element types or each position's exact type |
+| Lists and typed tasks | Retain homogeneous element types and each Task[T] result type |
 | Destructuring | Retain shapes, field bindings, and extraction order |
 | Closure environments | Record snapshot captures and receiver references |
 | `with` registration and cleanup scopes | Resolve `close()` and unwind exited scopes |

@@ -90,7 +90,7 @@ Ordinary [expected-type compatibility](../types/compatibility.md) still admits N
 
 Subexpressions evaluate from left to right. A binary operator evaluates its left operand once, then its right operand once, then applies the operator. The right side of `false and expression` and `true or expression` is not evaluated. Both branches must nevertheless type-check.
 
-A call evaluates its callable or method receiver first and its supplied argument expressions once each in written order. Parameter declaration order does not reorder evaluation. Field access evaluates its receiver once. Explicit type arguments have no runtime evaluation. List elements evaluate in written order; an enclosing expected positional-pack contract can retain distinct per-position types, while ordinary [list literals](../types/collections.md) remain homogeneous.
+A call evaluates its callable or method receiver first and its supplied argument expressions once each in written order. Parameter declaration order does not reorder evaluation. Field access evaluates its receiver once. Explicit type arguments have no runtime evaluation. List elements evaluate in written order; [list literals](../types/collections.md) remain homogeneous.
 
 A function expression creates a function value; its statement body runs on invocation, not creation. Its capture behavior is specified by [function values and closures](../functions/function-values-and-closures.md). String interpolation evaluates each embedded expression once in written order and then formats it, as specified by [text and bytes](text-and-bytes.md).
 

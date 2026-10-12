@@ -38,7 +38,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
-		if std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
+		if std(typ, "Task") || std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
 			c.error(e.Pos, "type", "standard type has no source constructor")
 			return i
 		}
@@ -109,9 +109,6 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		i.Symbol = s
 		i.Native = s.Native
 		signature = s.Type
-		if s.Native == "parallel" {
-			return c.parallel(e)
-		}
 		if len(s.Variables) > 0 {
 			if !explicit {
 				sub := map[string]*Type{}
@@ -291,43 +288,6 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 	r.Args = actualArgs
 	c.wellFormed(&r, pos, map[string]bool{})
 	return &r
-}
-func (c *checker) parallel(e *syntax.Expression) *Info {
-	i := &Info{Native: "parallel"}
-	var tasks *syntax.Expression
-	seen := map[string]bool{}
-	for _, a := range e.Args {
-		if seen[a.Name] {
-			c.error(a.Pos, "type", "duplicate argument "+a.Name)
-		}
-		seen[a.Name] = true
-		switch a.Name {
-		case "tasks":
-			tasks = a.Value
-		case "timeout":
-			v := c.expression(a.Value, standard("Optional", standard("Duration")))
-			i.NoReturn = i.NoReturn || v.NoReturn
-		default:
-			c.error(a.Pos, "type", "unknown parallel argument "+a.Name)
-		}
-	}
-	pack := &Type{Kind: "pack", Name: "Pack", ID: "pack"}
-	if tasks == nil || tasks.Kind != syntax.KindList {
-		c.error(e.Pos, "type", "parallel tasks must be a bracket literal")
-	} else {
-		for _, task := range tasks.Elements {
-			v := c.expression(task, nil)
-			i.NoReturn = i.NoReturn || v.NoReturn
-			if v.Type.Kind != "function" || len(v.Type.Params) != 0 {
-				c.error(task.Pos, "type", "parallel task requires fn() -> T")
-				continue
-			}
-			pack.Args = append(pack.Args, v.Type.Result)
-		}
-		c.Expressions[tasks] = &Info{Type: pack}
-	}
-	i.Type = standard("Result", pack, standard("ExecutionError"))
-	return i
 }
 
 // Only complete, independently typed arguments contribute inference evidence.

@@ -126,7 +126,21 @@ func TestCleanupStackReleasesCompletedActions(t *testing.T) {
 		t.Fatal("retained completed scopes or closed twice")
 	}
 }
-func TestParallelJoinsFaultedSiblings(t *testing.T) {
+
+// runTasks exercises the public group lifecycle for existing service regressions.
+func runTasks(ctx *Execution, result string, operations []Value, timeout *Duration) Value {
+	var args []Argument
+	if timeout != nil {
+		args = []Argument{{"timeout", *timeout}}
+	}
+	group := NewTaskGroup(ctx, args).(*TaskGroup)
+	defer group.close(Shield(ctx))
+	for _, operation := range operations {
+		group.start(ctx, "@std/Task["+operation.(Function).Result+"]", operation)
+	}
+	return group.join(ctx, result)
+}
+func TestTaskGroupJoinsFaultedSiblings(t *testing.T) {
 	started := make(chan struct{})
 	cleaned := make(chan struct{})
 	first := NewFunction(nil, "Int", func(_ *Execution, _ []Value) Value { <-started; return Panic("work failed") })
@@ -137,7 +151,7 @@ func TestParallelJoinsFaultedSiblings(t *testing.T) {
 		CheckCancelled(ctx)
 		return int64(2)
 	})
-	outcome := Parallel(RootExecution(), "result", []Value{first, second}, nil).(Alternative)
+	outcome := runTasks(RootExecution(), "result", []Value{first, second}, nil).(Alternative)
 	if outcome.Tag != "error" || outcome.Fields[0].(Alternative).Tag != "Crashed" {
 		t.Fatal(outcome)
 	}
@@ -150,14 +164,14 @@ func TestParallelJoinsFaultedSiblings(t *testing.T) {
 		t.Fatal("returned before sibling cleanup")
 	}
 }
-func TestParallelEmptyZeroTimeoutAndParentCancellation(t *testing.T) {
+func TestTaskGroupEmptyZeroTimeoutAndParentCancellation(t *testing.T) {
 	zero := Duration(0)
-	if Parallel(RootExecution(), "result", nil, &zero).(Alternative).Tag != "ok" {
+	if runTasks(RootExecution(), "result", nil, &zero).(Alternative).Tag != "ok" {
 		t.Fatal("empty group timed out")
 	}
 	var started atomic.Bool
 	task := NewFunction(nil, "Int", func(_ *Execution, _ []Value) Value { started.Store(true); return int64(1) })
-	outcome := Parallel(RootExecution(), "result", []Value{task}, &zero).(Alternative)
+	outcome := runTasks(RootExecution(), "result", []Value{task}, &zero).(Alternative)
 	if outcome.Tag != "error" || started.Load() {
 		t.Fatal("zero timeout started work")
 	}
@@ -169,7 +183,7 @@ func TestParallelEmptyZeroTimeoutAndParentCancellation(t *testing.T) {
 		return Panic("cleanup fault after cancellation")
 	})
 	go func() { <-entered; cancel() }()
-	if _, ok := recovered(func() { Parallel(&Execution{Context: ctx}, "result", []Value{task}, nil) }).(cancelled); !ok {
+	if _, ok := recovered(func() { runTasks(&Execution{Context: ctx}, "result", []Value{task}, nil) }).(cancelled); !ok {
 		t.Fatal("parent cancellation became a Result")
 	}
 }
@@ -240,7 +254,7 @@ func TestSchedulerCannotJoinItselfOrNestedDescendant(t *testing.T) {
 	b := NewScheduler(ctx, []Argument{{"limit", int64(1)}, {"reporter", reporter}, {"drain", Duration(time.Second)}}).(*Scheduler)
 	operation := NewFunction(nil, "@std/Result[Unit][String]", func(child *Execution, _ []Value) Value {
 		nested := NewFunction(nil, "Unit", func(grandchild *Execution, _ []Value) Value { b.close(grandchild); return Unit{} })
-		result := Parallel(child, "result", []Value{nested}, nil).(Alternative)
+		result := runTasks(child, "result", []Value{nested}, nil).(Alternative)
 		if result.Tag != "error" {
 			return Panic("self close was accepted")
 		}
@@ -307,7 +321,7 @@ func TestJoinedOperationCannotDetachNestedScheduler(t *testing.T) {
 		<-started
 		return int64(1)
 	})
-	outcome := Parallel(RootExecution(), "result", []Value{task}, nil).(Alternative)
+	outcome := runTasks(RootExecution(), "result", []Value{task}, nil).(Alternative)
 	if outcome.Tag != "ok" {
 		t.Fatal(outcome)
 	}

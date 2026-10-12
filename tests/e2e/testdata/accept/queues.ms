@@ -2,7 +2,7 @@ import Queue from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import Optional from "@std/optional.ms"
 import List from "@std/collections.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
 test "omitted capacity creates an unbounded queue":
@@ -82,10 +82,15 @@ test "shared queue uses explicit lock scopes":
         operation(item: 3)
     let task4 = fn() -> Unit:
         operation(item: 4)
-    match parallel(tasks: [task1, task2, task3, task4]):
-        ok(_):
-            with locked = shared.lock():
-                if not locked.get().is_empty():
-                    return panic("shared queue did not drain")
-        error(_):
-            return panic("shared work failed")
+    with group = TaskGroup():
+        group.start(task1)
+        group.start(task2)
+        group.start(task3)
+        group.start(task4)
+        match group.join():
+            ok(_):
+                with locked = shared.lock():
+                    if not locked.get().is_empty():
+                        return panic("shared queue did not drain")
+            error(_):
+                return panic("shared work failed")

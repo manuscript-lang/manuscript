@@ -7,17 +7,17 @@ weight = 114
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Read this diagram from the preparation step downward. The two branches run concurrently, then meet at a join. It shows how [parallel](../../concurrency/parallel.md) handles ordinary results, faults, timeouts, and caller cancellation.
+Read this diagram from the preparation step downward. The two branches run concurrently, then meet at a join. It shows how [task groups](../../concurrency/task-groups.md) handles ordinary results, faults, timeouts, and caller cancellation.
 
 ```mermaid
 flowchart TD
-    R[Prepare first and second functions] --> A[Call parallel with a 2 second timeout]
+    R[Prepare first and second functions] --> A[Construct TaskGroup with a 2 second timeout]
     A --> I[Start first operation]
     A --> S[Start second operation]
     I --> W[Observe completion outcomes]
     S --> W
     W -->|Both complete normally| J[Join operations and cleanup]
-    J --> V[Return ordered domain Results]
+    J --> V[Read each typed task result]
     W -->|Operation fault or API timeout| C[Cancel unfinished operations]
     P[Caller cancellation or deadline] -.-> C
     C --> K[Join all operations and cleanup]

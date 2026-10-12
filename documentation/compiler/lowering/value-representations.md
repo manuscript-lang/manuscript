@@ -25,9 +25,9 @@ The frontend enforces semantics that Go representations do not provide:
 | Explicit contract implementation | Frontend selection of a unique applicable concrete/generic implementation, then Go interfaces and wrappers |
 | Closures and resource references | GC-retained environments, snapshot captures, and synchronized native closed-state checks |
 | Lexical cleanup | Explicit `with` registrations, shielded `Closeable.close()`, and scope unwind operations |
-| Parallel results | Typed positional packs preserving each exact return value |
+| Task results | Native Task[T] handles retaining cached, exactly typed return values |
 
-Use Go generics where suitable; generated typed pack wrappers handle heterogeneous parallel results without exposing unchecked casts to source.
+The frontend checks Task[T] through ordinary generics. Native handles retain runtime value storage; source cannot perform unchecked casts.
 
 ## Representation boundaries
 

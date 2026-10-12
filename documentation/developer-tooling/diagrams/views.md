@@ -14,7 +14,7 @@ The compiler emits three views:
 | View | Contents |
 | --- | --- |
 | System | Modules, exported operations, capabilities, external resources |
-| Flow | Calls, branches, loops, parallel groups, scheduler admission, joins, errors, cancellation, deadlines |
+| Flow | Calls, branches, loops, task groups, scheduler admission, joins, errors, cancellation, deadlines |
 | Detail | Data transformations, types, implementations, source locations |
 
 Nodes link to typed source and contracts. System and detailed flow views label execution-lifetime and cancellation edges separately from value dependencies. Loops remain loops; the compiler does not expand them into hypothetical executions. Dynamic dispatch shows a contract and known targets; unresolved behavior remains explicitly unresolved.

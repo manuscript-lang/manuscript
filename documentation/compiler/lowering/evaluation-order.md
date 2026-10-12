@@ -9,10 +9,10 @@ weight = 95
 
 Named arguments can be written in a different order from the parameters in a declaration. Generated Go must still evaluate them in the order the caller wrote. Resolve the names first, including an omitted label on a single-parameter function. Evaluate each argument into a temporary value, then arrange those values for the Go call. Preserve short-circuit behavior too.
 
-A `tasks: [...]` literal constructs a typed pack of function values in source order. Constructing closures snapshots their local captures; it does not invoke their bodies. If preparation fails, the concurrency API has not started work. Native acquisitions during preparation retain their explicit delivery/cleanup contracts.
+Each TaskGroup.start prepares its callback before submitting that operation. Constructing closures snapshots their local captures without invoking their bodies. Earlier submissions may already be running while later callbacks are prepared; lexical group cleanup stops and joins them if later preparation fails. Native acquisitions retain their explicit delivery/cleanup contracts.
 
-Ordinary list elements evaluate left to right; an existing list argument evaluates once. Destructuring evaluates the initializer once and extracts bindings in written pattern order, retaining each positional result type.
+Ordinary list elements evaluate left to right; an existing list argument evaluates once. Destructuring evaluates the initializer once and extracts bindings in written pattern order, retaining each selected value's type.
 
 A `with` initializer evaluates once, then registers the initialized object's resolved close method before exposing another cancellation checkpoint. Later alias assignment does not change that receiver.
 
-See [source call order](../../core-language/functions/declarations-and-calls.md), [operation preparation](../../concurrency/parallel.md#preparation), and [with scopes](../../ownership-and-cleanup/cleanup/scopes.md).
+See [source call order](../../core-language/functions/declarations-and-calls.md), [operation preparation](../../concurrency/task-groups.md#preparation), and [with scopes](../../ownership-and-cleanup/cleanup/scopes.md).

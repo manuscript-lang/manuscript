@@ -41,7 +41,7 @@ let explicit = decrement(value: 3)
 
 The rule applies to ordinary functions, methods, function values, and library APIs. Count the callable's declared parameters, including optional API parameters, rather than the arguments supplied at a particular call. A method's implicit receiver does not count as a parameter. Constructors and explicit contract views still require labels, including `some(value: ...)`, `ok(value: ...)`, `error(cause: ...)`, and `Contract(value: receiver)`. A zero-parameter function uses `()`.
 
-`parallel` receives an ordered pack of zero-argument functions through `tasks: [first, second]`, with options such as `timeout: 2.seconds` supplied by name. Its heterogeneous results are specified in [parallel operations](../../concurrency/parallel.md).
+TaskGroup.start accepts one zero-argument function and infers a typed Task[T] handle. Task and group joins use ordinary receiver calls; see [task groups](../../concurrency/task-groups.md).
 
 Match payload bindings such as `some(value):` are patterns, rather than calls; see [pattern matching](../control-flow/pattern-matching.md).
 
@@ -97,7 +97,7 @@ Execution and argument evaluation follow source order. When arguments contain ca
 
 Evaluate the callable expression, including a method receiver, once before its arguments. Then evaluate supplied argument expressions from left to right in their written order. Arrange those values into declaration order after their evaluation, then evaluate omitted [defaults](#default-arguments) in the called function before its body. A failed or nonreturning supplied expression prevents all later arguments and the outer invocation from running. Constructor fields follow the same rule.
 
-This also matters for [concurrency APIs](../../concurrency/parallel.md#preparation): argument preparation and closure creation happen in the caller before any operation starts.
+This also matters for [concurrency APIs](../../concurrency/task-groups.md#preparation): each callback is prepared in the caller before that operation starts; earlier group submissions may already be running.
 
 ## Unit and Never
 

@@ -1,5 +1,6 @@
-import List from "@std/collections.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
+import ExecutionError from "@std/tasks.ms"
+import Result from "@std/result.ms"
 
 fn compute() -> Int:
     var index = 0
@@ -9,16 +10,19 @@ fn compute() -> Int:
         index = index + 1
     return result
 
+fn compare() -> Result[Int, ExecutionError]:
+    with group = TaskGroup():
+        let first = group.start(compute)
+        let second = group.start(compute)
+        let left = try first.join()
+        let right = try second.join()
+        if left != right:
+            return ok(value: 1)
+        return ok(value: 0)
+
 export fn main() -> Int:
-    let first = fn() -> Int:
-        return compute()
-    let second = fn() -> Int:
-        return compute()
-    match parallel(tasks: [first, second]):
-        ok(values):
-            let [left, right] = values
-            if left != right:
-                return 1
-            return 0
+    match compare():
+        ok(code):
+            return code
         error(_):
             return 1

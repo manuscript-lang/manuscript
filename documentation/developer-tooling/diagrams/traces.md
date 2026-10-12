@@ -15,6 +15,6 @@ Concurrent task scheduling and external effects can vary between executions. The
 
 Trace overlays are enabled only when metadata matches the executable. Operation identities, fixed execution parents and API join relationships, and effective deadlines come from the build/runtime metadata contract.
 
-See [metadata identity checks](../debugging/metadata.md) and [scheduling guarantees](../../concurrency/parallel.md#preparation).
+See [metadata identity checks](../debugging/metadata.md) and [scheduling guarantees](../../concurrency/task-groups.md#preparation).
 
 [Previous: Architecture diffs](architecture-diffs.md) · [Next: Build, source, and task metadata](../debugging/metadata.md)

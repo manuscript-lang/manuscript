@@ -3,7 +3,7 @@ import panic from "@std/faults.ms"
 import check_cancelled from "@std/tasks.ms"
 import Result from "@std/result.ms"
 import Optional from "@std/optional.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
 import Scheduler from "@std/tasks.ms"
 import StartError from "@std/tasks.ms"
@@ -17,12 +17,18 @@ fn run() -> Result[Unit, ExecutionError]:
     offset = 99
     let second = fn() -> Bool:
         return true
-    let [number, flag] = try parallel(timeout: some(value: 1.seconds), tasks: [first, second])
-    if not (number == 3):
-        return panic(message: "check failed")
-    if not (flag):
-        return panic(message: "check failed")
-    let [] = try parallel(tasks: [], timeout: some(value: 0.seconds))
+    with group = TaskGroup(timeout: some(value: 1.seconds)):
+        let number_task = group.start(first)
+        let flag_task = group.start(second)
+        let joined = try group.join()
+        let number = try number_task.join()
+        let flag = try flag_task.join()
+        if not (number == 3):
+            return panic(message: "check failed")
+        if not flag:
+            return panic(message: "check failed")
+    with empty = TaskGroup(timeout: some(value: 0.seconds)):
+        let joined = try empty.join()
     return ok(value: unit)
 
 fn scheduler_probe() -> Unit:
@@ -53,11 +59,14 @@ test "joined work and snapshot captures":
 
 
 fn standard_task() -> Result[Unit, ExecutionError]:
-    let [] = try parallel(tasks: [])
+    with empty = TaskGroup():
+        let joined = try empty.join()
     let checkpoint = check_cancelled
-    let [completed] = try parallel(tasks: [checkpoint])
-    if not (completed == unit):
-        return panic(message: "check failed")
+    with group = TaskGroup():
+        let task = group.start(checkpoint)
+        let completed = try task.join()
+        if not (completed == unit):
+            return panic(message: "check failed")
     return ok(value: unit)
 
 test "standard functions can run concurrently":

@@ -166,7 +166,7 @@ func Inspect(program *checker.Program) Inspection {
 							site.Kind = "construct"
 							site.Target = info.Constructor.String()
 						}
-						if info.Native == "parallel" || info.Native == "http_serve" {
+						if info.Native == "http_serve" {
 							site.Kind = info.Native
 							site.Target = info.Native
 						}

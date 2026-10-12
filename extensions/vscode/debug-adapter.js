@@ -35,7 +35,7 @@ function exec(command, args) {
 }
 function runtimeKind(variable) {
   const text = variable.type || '';
-  const match = /(?:main|msruntime|runtime)\.(Record|Alternative|List|Set|Map|Pack|Bytes|View|Unit|Function|Scheduler|Queue|PriorityQueue|Synchronized|SynchronizedGuard|OperationId)(?:\)|$)/.exec(text);
+  const match = /(?:main|msruntime|runtime)\.(Record|Alternative|List|Set|Map|Bytes|View|Unit|Function|TaskGroup|Task|Scheduler|Queue|PriorityQueue|Synchronized|SynchronizedGuard|OperationId)(?:\)|$)/.exec(text);
   return match ? match[1] : '';
 }
 function sourceType(native) {
@@ -72,7 +72,7 @@ function rewriteExpression(expression, variables, metadata) {
     // Delve's .(data) exposes the concrete interface value without depending
     // on runtime package names, and retains pointers for collection access.
     if(simple[2] && kind==='Record') return `${variable.name}.(data).Fields[${JSON.stringify(simple[2])}]`;
-    if(simple[3] && ['List','Set','Pack','Bytes'].includes(kind)) return `${variable.name}.(data).Items[${simple[3]}]`;
+    if(simple[3] && ['List','Set','Bytes'].includes(kind)) return `${variable.name}.(data).Items[${simple[3]}]`;
     if(!simple[2] && !simple[3]) return variable.name;
   }
   let result='',at=0;
@@ -152,7 +152,7 @@ class ManuscriptAdapter {
     const kind = runtimeKind(variable);
     // Native stack slots can cease to contain a dead source local after GC.
     // Do not present a recycled primitive or corrupt runtime type as a container.
-    const expectedContainer = /^(List|Set|Map|Pack|Bytes|Optional|Result)(?:\[|$)/.exec(declaredType || '');
+    const expectedContainer = /^(List|Set|Map|Bytes|Optional|Result)(?:\[|$)/.exec(declaredType || '');
     if (expectedContainer && (primitive || (embedded && runtimeType(embedded[1]).split('[')[0] !== expectedContainer[1]))) {
       result.type = declaredType; result.value = '<unavailable after last use>'; result.variablesReference = 0;
       return result;
@@ -176,12 +176,12 @@ class ManuscriptAdapter {
       children = await this.children(children[0].variablesReference);
     }
     if (handle.kind === 'Execution') {
-      const names = { Context: 'Cancellation context', Lifetime: 'Work lifetime', Owners: 'Scheduler services', HostServices: 'HTTP services' };
+      const names = { Context: 'Cancellation context', Lifetime: 'Work lifetime', Owners: 'Scheduler services', TaskGroups: 'Task groups', HostServices: 'HTTP services' };
       return children.filter(v => names[v.name]).map(v => ({ ...v, name: names[v.name] }));
     }
-    const serviceFields={PriorityQueue:{capacity:'Capacity',items:'Queued priorities',compare:'Comparator'},Queue:{capacity:'Capacity',items:'Queued values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Scheduler:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'}}[handle.kind];
+    const serviceFields={TaskGroup:{active:'Active tasks',sealed:'Joined',closing:'Closing',closed:'Closed',failure:'Execution failure'},Task:{id:'Operation',value:'Result',committed:'Completed',group:'Task group'},PriorityQueue:{capacity:'Capacity',items:'Queued priorities',compare:'Comparator'},Queue:{capacity:'Capacity',items:'Queued values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Scheduler:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'}}[handle.kind];
     if(serviceFields) return children.filter(v=>serviceFields[v.name]).map(v=>this.render(v,serviceFields[v.name]));
-    const fieldName = { Record: 'Fields', Alternative: 'Fields', List: 'Items', Set: 'Items', Pack: 'Items', Bytes: 'Items', Map: 'Entries', View: 'Receiver' }[handle.kind];
+    const fieldName = { Record: 'Fields', Alternative: 'Fields', List: 'Items', Set: 'Items', Bytes: 'Items', Map: 'Entries', View: 'Receiver' }[handle.kind];
     if (!fieldName) return children.map(v => this.render(v));
     const field = children.find(v => v.name === fieldName);
     if (!field || !field.variablesReference) return children.map(v => this.render(v));

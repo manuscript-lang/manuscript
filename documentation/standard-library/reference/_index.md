@@ -9,7 +9,7 @@ Generated from the bundled standard-library declarations. This is the implemente
 
 [Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)
 
-See [special call rules](../call-rules.md) for constructors, variadic parallel work, and optional arguments.
+See [special call rules](../call-rules.md) for constructors, generic receiver methods, and optional arguments.
 
 - [@std/archive.ms](archive.md)
 - [@std/bigint.ms](bigint.md)

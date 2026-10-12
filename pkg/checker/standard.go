@@ -22,7 +22,6 @@ var standardOperationVariables = map[string][]*Type{}
 type standardBindings struct {
 	NativeTypes        map[string]string `json:"native_types"`
 	Functions          map[string]string `json:"functions"`
-	SpecialFunctions   map[string]string `json:"special_functions"`
 	IntrinsicReceivers map[string]string `json:"intrinsic_receivers"`
 	Implementations    map[string]string `json:"implementations"`
 }
@@ -270,28 +269,6 @@ func loadStandardSources() error {
 		return fmt.Errorf("invalid standard declarations: %v", c.Diagnostics)
 	}
 	standardTypeReferences = c.TypeReferences
-	for path, native := range bindings.SpecialFunctions {
-		at := strings.LastIndexByte(path, '/')
-		module, name := path[:at], path[at+1:]
-		var source *syntax.Module
-		for _, m := range standardSources {
-			if m.File == module {
-				source = m
-				break
-			}
-		}
-		if source == nil {
-			return fmt.Errorf("missing special binding source %s", path)
-		}
-		marker := "# compiler binding: " + name
-		offset := strings.Index(source.Source, marker)
-		if offset < 0 {
-			return fmt.Errorf("missing compiler binding marker %s", path)
-		}
-		line := strings.Count(source.Source[:offset], "\n") + 1
-		decl := &syntax.Declaration{Pos: syntax.Position{File: module, Line: line, Column: 1, Offset: offset}, Kind: syntax.KindFn, Name: name, Export: true}
-		standardModules[module][name] = &Symbol{Name: name, ID: "@std/" + native, Kind: syntax.KindFn, Module: module, Export: true, Native: native, Decl: decl, Type: function(nil, nil)}
-	}
 	for receiver, name := range bindings.IntrinsicReceivers {
 		typ := standardSymbols[name]
 		if typ == nil {

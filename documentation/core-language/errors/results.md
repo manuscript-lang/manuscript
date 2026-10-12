@@ -69,7 +69,7 @@ The conversion preserves the original `EncodingError` case and payload. A caller
 
 ## Results and concurrent execution
 
-Returning `error(cause: cause)` is normal function completion. In `parallel`, the domain `Result` remains the operation's return value and does not cancel siblings. The outer API result separately reports `ExecutionError`; see [parallel operations](../../concurrency/parallel.md). A [Scheduler](../../standard-library/tasks/scheduler.md) service reports completion-only domain errors through its configured failure observer.
+Returning `error(cause: cause)` is normal function completion. In a TaskGroup, the domain Result remains the operation's return value and does not cancel siblings. Task.join separately reports ExecutionError; see [task groups](../../concurrency/task-groups.md). A [Scheduler](../../standard-library/tasks/scheduler.md) service reports completion-only domain errors through its configured failure observer.
 
 Use [Optional](../types/optionals.md) for absence without an error explanation and [explicit faults](faults.md) for broken programming invariants.
 

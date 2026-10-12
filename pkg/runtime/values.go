@@ -44,7 +44,6 @@ type List struct {
 	Type  string
 	Items []Value
 }
-type Pack struct{ Items []Value }
 type Map struct {
 	Type    string
 	Entries []Entry
@@ -186,8 +185,6 @@ func Positions(value Value, length int) []Value {
 	switch v := value.(type) {
 	case *List:
 		values = v.Items
-	case Pack:
-		values = v.Items
 	default:
 		Panic("runtime invariant: positional binding")
 	}
@@ -269,8 +266,6 @@ func formatValue(value Value, depth int) string {
 		return text
 	case *List:
 		return "[" + items(v.Items) + "]"
-	case Pack:
-		return "(" + items(v.Items) + ")"
 	case *Map:
 		parts := make([]string, len(v.Entries))
 		for i, entry := range v.Entries {

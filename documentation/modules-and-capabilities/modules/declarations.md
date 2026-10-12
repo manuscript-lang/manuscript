@@ -21,7 +21,7 @@ Types, interfaces, module functions, and imported symbols share one ordinary mod
 
 The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The source-backed standard interfaces `Equal` and `Hashable` also have fixed identities; importing them explicitly is permitted. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
 
-All other standard declarations are explicit imports from the compiler-supplied `@std` directory, including `Decimal`, `Bytes`, collections, `Optional`, `Result`, `Closeable`, and runtime/host APIs. The [standard imports and API typing](../../standard-library/types/prelude.md) page lists their modules. These names are ordinary exports: without an import, a module may declare its own `Result`, `List`, or `parallel`. Import/declaration collisions still fail. Compiler support follows the canonical standard declaration identity, never its spelling. Optional/Result case shorthand becomes visible when its alternative type is imported and follows ordinary lookup and ambiguity rules; qualify `Result[T, E].error` when a local spelling shadows it.
+All other standard declarations are explicit imports from the compiler-supplied `@std` directory, including `Decimal`, `Bytes`, collections, `Optional`, `Result`, `Closeable`, and runtime/host APIs. The [standard imports and API typing](../../standard-library/types/prelude.md) page lists their modules. These names are ordinary exports: without an import, a module may declare its own `Result`, `List`, or `TaskGroup`. Import/declaration collisions still fail. Compiler support follows the canonical standard declaration identity, never its spelling. Optional/Result case shorthand becomes visible when its alternative type is imported and follows ordinary lookup and ambiguity rules; qualify `Result[T, E].error` when a local spelling shadows it.
 
 An unqualified case shorthand is considered only when ordinary lexical name lookup finds no binding or declaration of that name. The candidate cases come from visible alternative types declared in the module or imported by name. Exactly one candidate is required; an expected type cannot choose among multiple candidates. `Type.Case` explicitly selects the nominal alternative. Match-pattern case lookup uses the scrutinee type, as specified by [pattern matching](../../core-language/control-flow/pattern-matching.md).
 
@@ -66,10 +66,10 @@ An `impl` in a source type's defining module becomes available wherever that typ
 ```manuscript
 import { List, Map } from "@std/collections.ms"
 import Result from "@std/result.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 ```
 
-`@std` is always available without an `[aliases]` entry and cannot be overridden. Importing one export does not bring its signature's other type names into scope. For example, importing `parallel` permits matching its inferred result, but writing `Result` or `ExecutionError` in an annotation requires their own imports. Importing a contract supplies its interface. Separately imported host accessors return service values when called.
+`@std` is always available without an `[aliases]` entry and cannot be overridden. Importing one export does not bring its signature's other type names into scope. For example, importing TaskGroup permits constructing a group and matching inferred join results, but writing `Result` or `ExecutionError` in an annotation requires their own imports. Importing a contract supplies its interface. Separately imported host accessors return service values when called.
 
 ## Optional aliases
 

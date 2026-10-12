@@ -5,7 +5,7 @@ import entropy from "@std/random.ms"
 import system from "@std/system.ms"
 import network from "@std/net.ms"
 import panic from "@std/faults.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 
 fn check_services() -> Unit:
     if arguments().length() != 0:
@@ -32,15 +32,17 @@ fn check_services() -> Unit:
         error(_):
             return panic("entropy unavailable")
 
-test "host accessors work in callbacks and parallel executions":
+test "host accessors work in callbacks and task executions":
     let check = check_services
     check()
-    match parallel(tasks: [check, check]):
-        ok(_):
-            return
-        error(_):
-            return panic("parallel host access failed")
-
+    with group = TaskGroup():
+        group.start(check)
+        group.start(check)
+        match group.join():
+            ok(_):
+                return
+            error(_):
+                return panic("task host access failed")
 test "repeated accessors retain closed root state":
     stdin().close()
     stdout().close()

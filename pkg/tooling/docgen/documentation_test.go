@@ -65,13 +65,6 @@ func TestSourceDeclarationsReachDocumentation(t *testing.T) {
 		if module.Path == "@std/collections.ms" && !strings.Contains(renderModule(module, true), "## List {data-api-kind=\"Native type\"}") {
 			t.Error("native receiver signatures must not label List as a source interface")
 		}
-		if module.Path == "@std/tasks.ms" {
-			if !strings.Contains(renderModule(module, true), "## parallel {data-api-kind=\"Function\"}\n\nSee [special call rules](../call-rules.md).") {
-				t.Error("compiler-bound parallel must link to its call rules")
-			}
-			if !strings.Contains(RenderModule(module), "See [special call rules](#special-call-rules).") {
-				t.Error("portable reference must link to its included call rules")
-			}
-		}
+
 	}
 }
