@@ -29,6 +29,8 @@ The success types differ: the called function returns a decimal, while the enclo
 
 A caller with a different error contract must translate the error explicitly using [pattern matching](../control-flow/pattern-matching.md). `try` does not invent a conversion or combine unrelated error types into an implicit union.
 
+Keep a chain of fallible calls flat with `try` when their error types match. Translate errors explicitly at a boundary when needed.
+
 If the called operation returns `Result[T, E]`, the function using `try` must return `Result[U, E]`. The success type may change from `T` to `U`, but the error type `E` must be exactly the same. Two error types are not interchangeable just because they implement the same interface. Convert explicitly before constructing the Result that try uses.
 
 A common `Error` boundary follows the same rule: first match the Result and construct `Error(value: cause)` on its error branch, then use `try` on the explicitly converted Result. See [common error boundaries](results.md#a-common-error-boundary).

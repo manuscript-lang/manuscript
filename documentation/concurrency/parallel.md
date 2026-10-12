@@ -12,73 +12,32 @@ Use `parallel` to run a fixed set of operations at the same time. Pass functions
 ## Calling parallel
 
 ```manuscript
-import List from "@std/collections.ms"
 import Result from "@std/result.ms"
-import ExecutionError from "@std/tasks.ms"
-import parallel from "@std/tasks.ms"
+import { ExecutionError, parallel } from "@std/tasks.ms"
 
-type User:
-    id: Int
+fn combine() -> Result[String, ExecutionError]:
+    let first = fn() -> String: return "hello"
+    let second = fn() -> Int: return 42
 
-type Order:
-    id: Int
-
-type UserError:
-    case Missing
-
-type OrderError:
-    case Unavailable
-
-interface Users:
-    fn get(id: Int) -> Result[User, UserError]
-
-interface Orders:
-    fn for_user(user_id: Int) -> Result[List[Order], OrderError]
-
-type Summary:
-    user: User
-    orders: List[Order]
-
-type LoadError:
-    case Execution(cause: ExecutionError)
-    case UserFailure(cause: UserError)
-    case OrderFailure(cause: OrderError)
-
-fn load(user_id: Int, users: Users, orders: Orders) -> Result[Summary, LoadError]:
-    let first = fn() -> Result[User, UserError]:
-        return users.get(id: user_id)
-    let second = fn() -> Result[List[Order], OrderError]:
-        return orders.for_user(user_id: user_id)
-
-    match parallel(tasks: [first, second]):
-        error(cause):
-            return error(cause: LoadError.Execution(cause: cause))
-        ok(results):
-            let [user_result, orders_result] = results
-            match user_result:
-                error(cause):
-                    return error(cause: LoadError.UserFailure(cause: cause))
-                ok(user):
-                    match orders_result:
-                        error(cause):
-                            return error(cause: LoadError.OrderFailure(cause: cause))
-                        ok(user_orders):
-                            return ok(value: Summary(user: user, orders: user_orders))
+    let [text, number] = try parallel(tasks: [first, second])
+    return ok(value: "{text} {number}")
 ```
+
+`try` propagates an execution error. On success, `text` is a `String` and `number` is an `Int`.
 
 ## Preparation
 
-Before parallel starts anything, the caller evaluates arguments, task-pack entries, receivers, and captured values in written order. In this example, creating first and second captures snapshots of user_id and the shared services. Their bodies run later, after preparation succeeds and parallel starts the operations under its group execution context.
+Before parallel starts anything, the caller evaluates arguments, task-pack entries, receivers, and captured values in written order. In this example, creating `first` and `second` creates function values. Their bodies run later, after preparation succeeds and parallel starts the operations under its group execution context.
 
 If preparation fails, no operation has started. Preparation may have external effects; the runtime does not undo them. Resources acquired during preparation require their own `with` scopes or acquisition API contracts.
 
-Passing `users.get(...)` instead of a function executes that call during preparation; it is not a way to schedule the call concurrently, and it is a type error when the result is not callable. Ordinary calls inside a function remain sequential unless another concurrency API is invoked.
+Passing `first()` instead of `first` executes that call during preparation; it is not a way to schedule the call concurrently, and it is a type error when the result is not callable. Ordinary calls inside a function remain sequential unless another concurrency API is invoked.
 
 Concurrent scheduling and external effect order are nondeterministic. Sharing a resource does not imply that simultaneous operations on it are semantically valid; its API must serialize access or report unsupported concurrent use. See [closures](../core-language/functions/function-values-and-closures.md) and [resource sharing](../ownership-and-cleanup/values/sharing.md).
 
 ## Ordered, typed results
 
-A literal task pack is a fixed set of positions, each holding a zero-argument function. Positions may have different return types. The result preserves both their types and their input order. Here, user_result is Result[User, UserError] and orders_result is Result[List[Order], OrderError], whichever operation finishes first.
+A literal task pack is a fixed set of positions, each holding a zero-argument function. Positions may have different return types. The result preserves both their types and their input order. Here, `text` is a `String` and `number` is an `Int`, whichever operation finishes first.
 
 The brackets do not force these different types into a homogeneous `List[T]`. Fixed positional packs require type-system support for heterogeneous inputs and outputs; `parallel` itself remains an API call, with no special concurrency keyword. Ordinary list literals outside a positional-pack contract keep their homogeneous list rules.
 
@@ -91,10 +50,10 @@ Pack arity is preserved: `parallel(tasks: [first])` returns a one-position succe
 | Function returns | Result position contains |
 | --- | --- |
 | `String` | `String` |
-| `Result[Stock, OrderError]` | `Result[Stock, OrderError]` |
+| `Result[T, E]` | `Result[T, E]` |
 | `Optional[String]` | `Optional[String]` |
 
-A returned domain `error(cause: ...)` is ordinary completion. It does not stop sibling operations and is not flattened into the outer Result. In the example, `match` handles each Result and translates its error into LoadError. Use `try` when the enclosing function has the same error type; see [error compatibility](../core-language/errors/propagation.md#error-compatibility). There is no source task-result wrapper beyond the outer Result.
+A returned domain `error(cause: ...)` is ordinary completion. It does not stop sibling operations and is not flattened into the outer Result. Use `match` when choosing a response for different outcomes and `try` when forwarding a compatible error; see [error compatibility](../core-language/errors/propagation.md#error-compatibility). There is no source task-result wrapper beyond the outer Result.
 
 No operation remains running after `parallel` exits, on any path. An operation fault or an expired `timeout` stops and joins the group; caller cancellation joins the group and then unwinds the caller. The complete rules are in [joined groups](joining.md#group-lifecycle).
 
