@@ -6,9 +6,7 @@ title = "state"
 
 Import each required symbol with `import Name from "@std/state.ms"`.
 
-## State
-
-Kind: interface.
+## State {data-api-kind="Interface"}
 
 ```manuscript
 State: State[T]

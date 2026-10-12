@@ -11,6 +11,29 @@ import (
 )
 
 func RenderModule(module checker.APIModule) string {
+	return renderModule(module, false)
+}
+
+func declarationKind(kind string) string {
+	switch kind {
+	case "fn":
+		return "Function"
+	case "record":
+		return "Record"
+	case "alternative":
+		return "Alternative"
+	case "interface":
+		return "Interface"
+	case "type":
+		return "Type"
+	case "native":
+		return "Native type"
+	default:
+		return kind
+	}
+}
+
+func renderModule(module checker.APIModule, forSite bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n", module.Path)
 	if module.Path == "prelude" {
@@ -19,7 +42,13 @@ func RenderModule(module checker.APIModule) string {
 		fmt.Fprintf(&b, "Import each required symbol with `import Name from %q`.\n\n", module.Path)
 	}
 	for _, d := range module.Declarations {
-		fmt.Fprintf(&b, "## %s\n\nKind: %s.\n\n```manuscript\n%s: %s\n", d.Name, d.Kind, d.Name, d.Type)
+		kind := declarationKind(d.Kind)
+		if forSite {
+			fmt.Fprintf(&b, "## %s {data-api-kind=%q}\n\n", d.Name, kind)
+		} else {
+			fmt.Fprintf(&b, "## %s\n\n**%s**\n\n", d.Name, kind)
+		}
+		fmt.Fprintf(&b, "```manuscript\n%s: %s\n", d.Name, d.Type)
 		if len(d.Parameters) > 0 {
 			fmt.Fprintf(&b, "type parameters: %s\n", strings.Join(d.Parameters, ", "))
 		}
@@ -46,7 +75,7 @@ func SiteFiles() (map[string][]byte, error) {
 	files["design/standard-library/call-rules.md"] = []byte(callRules)
 	for _, module := range modules {
 		name := strings.TrimSuffix(strings.TrimPrefix(module.Path, "@std/"), ".ms")
-		body := RenderModule(module)
+		body := renderModule(module, true)
 		files["design/standard-library/reference/"+name+".md"] = []byte(fmt.Sprintf("+++\ntitle = %q\n+++\n\n", name) + body)
 		fmt.Fprintf(&index, "- [%s](%s.md)\n", module.Path, name)
 	}

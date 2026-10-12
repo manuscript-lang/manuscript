@@ -6,17 +6,13 @@ title = "compress"
 
 Import each required symbol with `import Name from "@std/compress.ms"`.
 
-## compress
-
-Kind: fn.
+## compress {data-api-kind="Function"}
 
 ```manuscript
 compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[Bytes, LibraryError]
 ```
 
-## decompress
-
-Kind: fn.
+## decompress {data-api-kind="Function"}
 
 ```manuscript
 decompress: fn(data: Bytes, format: String, max_bytes: Int)->Result[Bytes, LibraryError]

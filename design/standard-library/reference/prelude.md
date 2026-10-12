@@ -6,25 +6,19 @@ title = "prelude"
 
 Intrinsic names; no import required.
 
-## Bool
-
-Kind: type.
+## Bool {data-api-kind="Type"}
 
 ```manuscript
 Bool: Bool
 ```
 
-## Equal
-
-Kind: type.
+## Equal {data-api-kind="Type"}
 
 ```manuscript
 Equal: Equal
 ```
 
-## Float
-
-Kind: type.
+## Float {data-api-kind="Type"}
 
 ```manuscript
 Float: Float
@@ -37,17 +31,13 @@ operation to_string: fn()->String
 operation truncate_to_int: fn()->Optional[Int]
 ```
 
-## Hashable
-
-Kind: type.
+## Hashable {data-api-kind="Type"}
 
 ```manuscript
 Hashable: Hashable
 ```
 
-## Int
-
-Kind: type.
+## Int {data-api-kind="Type"}
 
 ```manuscript
 Int: Int
@@ -56,25 +46,19 @@ operation to_float: fn()->Float
 operation to_string: fn(radix: Int)->String
 ```
 
-## Never
-
-Kind: type.
+## Never {data-api-kind="Type"}
 
 ```manuscript
 Never: Never
 ```
 
-## Shareable
-
-Kind: type.
+## Shareable {data-api-kind="Type"}
 
 ```manuscript
 Shareable: Shareable
 ```
 
-## String
-
-Kind: type.
+## String {data-api-kind="Type"}
 
 ```manuscript
 String: String
@@ -108,9 +92,7 @@ operation trim_start: fn()->String
 operation upper: fn()->String
 ```
 
-## Unit
-
-Kind: type.
+## Unit {data-api-kind="Type"}
 
 ```manuscript
 Unit: Unit

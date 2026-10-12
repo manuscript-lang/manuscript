@@ -6,9 +6,7 @@ title = "websocket"
 
 Import each required symbol with `import Name from "@std/websocket.ms"`.
 
-## WebSocket
-
-Kind: interface.
+## WebSocket {data-api-kind="Interface"}
 
 ```manuscript
 WebSocket: WebSocket
@@ -19,9 +17,7 @@ operation send: fn(data: Bytes, text: Bool)->Result[Unit, LibraryError]
 operation subprotocol: fn()->String
 ```
 
-## WebSocketMessage
-
-Kind: record.
+## WebSocketMessage {data-api-kind="Record"}
 
 ```manuscript
 WebSocketMessage: WebSocketMessage
@@ -29,9 +25,7 @@ field data: Bytes
 field text: Bool
 ```
 
-## WebSocketOptions
-
-Kind: record.
+## WebSocketOptions {data-api-kind="Record"}
 
 ```manuscript
 WebSocketOptions: WebSocketOptions

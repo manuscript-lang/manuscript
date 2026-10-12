@@ -6,9 +6,7 @@ title = "io"
 
 Import each required symbol with `import Name from "@std/io.ms"`.
 
-## File
-
-Kind: interface.
+## File {data-api-kind="Interface"}
 
 ```manuscript
 File: File
@@ -16,18 +14,14 @@ operation close: fn()->Unit
 operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 ```
 
-## Files
-
-Kind: interface.
+## Files {data-api-kind="Interface"}
 
 ```manuscript
 Files: Files
 operation open: fn(path: String)->Result[File & Shareable, IoError]
 ```
 
-## IoError
-
-Kind: alternative.
+## IoError {data-api-kind="Alternative"}
 
 ```manuscript
 IoError: IoError
@@ -37,9 +31,7 @@ case Unavailable
 case Failed(message: String)
 ```
 
-## ReadStream
-
-Kind: interface.
+## ReadStream {data-api-kind="Interface"}
 
 ```manuscript
 ReadStream: ReadStream
@@ -47,9 +39,7 @@ operation close: fn()->Unit
 operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 ```
 
-## WriteStream
-
-Kind: interface.
+## WriteStream {data-api-kind="Interface"}
 
 ```manuscript
 WriteStream: WriteStream
@@ -58,25 +48,19 @@ operation flush: fn()->Result[Unit, IoError]
 operation write: fn(data: Bytes)->Result[Unit, IoError]
 ```
 
-## copy
-
-Kind: fn.
+## copy {data-api-kind="Function"}
 
 ```manuscript
 copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int)->Result[Int, LibraryError]
 ```
 
-## read_all
-
-Kind: fn.
+## read_all {data-api-kind="Function"}
 
 ```manuscript
 read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, LibraryError]
 ```
 
-## read_line
-
-Kind: fn.
+## read_line {data-api-kind="Function"}
 
 ```manuscript
 read_line: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Optional[String], LibraryError]
