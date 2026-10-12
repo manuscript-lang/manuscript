@@ -3,6 +3,19 @@ name: Manuscript distributions
 on:
   push:
     tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - '.go-version'
+      - 'scripts/**'
+      - 'toolchain_*.go'
+      - 'compiler/**'
+      - 'runtime/**'
+      - 'cmd/ms/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/**'
+      - 'examples/hello/**'
   workflow_dispatch:
 
 permissions:
