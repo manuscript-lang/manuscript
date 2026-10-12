@@ -7,7 +7,7 @@ weight = 110
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Structural tools operate on resolved program entities, such as functions, symbols, and match cases.
+Structural editing changes a program entity, such as a function or a resolved symbol. For example, a rename follows references to that symbol instead of replacing every matching word. Revision guards ensure the source has not changed since the edit was prepared.
 
 The compiler exposes typed syntax, symbol references, effect summaries, scope/capture/sharing checks, and control flow. Operations include replacing a function, renaming a symbol, and adding a match case.
 

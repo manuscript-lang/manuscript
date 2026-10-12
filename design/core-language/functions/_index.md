@@ -7,7 +7,7 @@ weight = 20
 
 [Core language guide](../_index.md) · [Design index](../../_index.md)
 
-Functions make inputs and outputs explicit. Learn declaration and call rules first, then use functions as values and account for the values a closure captures.
+Functions take named inputs and return a declared type. First learn how to declare and call them. Then learn how to pass a function as a value and what it keeps from its surrounding scope.
 
 | Concept | What you will learn |
 | --- | --- |

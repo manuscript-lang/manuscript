@@ -7,7 +7,7 @@ weight = 42
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Shared application state and pools are synchronized services. A pool lease is an ordinary resource object registered with `with` and returned to the pool by `close()`.
+Use synchronized services for application state shared by requests and background work. A pool supplies leases: acquire a lease in a `with` block, then return it to the pool through close. Keeping a reference to the lease does not extend its lifetime.
 
 Pool references can be shared by requests and background work. A job acquires its own lease under its own scope. Retaining a lease reference does not prolong its lease lifetime.
 

@@ -7,7 +7,7 @@ weight = 12
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A record is a nominal type with named, immutable fields. Use it to give domain data an explicit shape.
+A record groups named fields into one value. Its fields cannot be changed after construction. Each record declaration creates a distinct type; this is called nominal typing. Use a record when data has a known shape, such as a customer with a name and email.
 
 ```text
 type Customer:

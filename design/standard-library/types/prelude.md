@@ -7,7 +7,9 @@ weight = 34
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-This page defines standard exports and their binding rules. A trusted manifest may implement them, but cannot change their source identities or typing rules. The implicit prelude contains only the six intrinsic types and three compiler bounds; every declaration below is imported explicitly. Native implementation and compiler support do not make a name globally visible.
+Most standard names must be imported explicitly. Only six intrinsic types and three compiler bounds are available automatically. Native implementation or special compiler support does not make a name globally visible.
+
+This page is the exact reference for standard exports, their identities, and API typing. A trusted manifest may implement these declarations but cannot change their source identities or typing rules.
 
 ## Names and identity
 
@@ -85,7 +87,9 @@ Source contracts cannot express these callback-proof requirements. Restricted ba
 
 ### Inferred result packs
 
-A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`. Packs derive `Shareable` position by position, but have no equality, hashing, iteration, field access, or indexing. Generic helpers such as `map_error` can therefore preserve a parallel pack without a new source syntax.
+A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`.
+
+Packs derive `Shareable` position by position, but have no equality, hashing, iteration, field access, or indexing. Generic helpers such as `map_error` can therefore preserve a parallel pack without a new source syntax.
 
 ```text
 fn parallel_map[T: Shareable, U: Shareable](

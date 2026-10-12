@@ -7,7 +7,7 @@ weight = 58
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Files, sockets, stream bodies, transactions, and pool leases are ordinary runtime objects implementing `Closeable`. Their memory is garbage collected; release of external handles or activity is explicit or scoped with `with`.
+Files, sockets, stream bodies, transactions, and pool leases need explicit release. Their object memory is garbage collected, but their external handles or activity are released through `close()` or a `with` block. These resource objects implement `Closeable`.
 
 | Object | Automatic close behavior |
 | --- | --- |

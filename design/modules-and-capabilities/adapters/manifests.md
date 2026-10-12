@@ -7,7 +7,7 @@ weight = 83
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Adapters are trusted Go implementations of operation contracts, exposed through plain or shared views according to their declared receiver-sharing guarantee. The [standard API contract](../../standard-library/types/prelude.md) is normative for standard APIs; a manifest implements rather than invents their source semantics.
+An adapter connects a Manuscript operation contract to a trusted Go implementation. Its manifest declares the facts the compiler needs, including whether its receiver is safe to share concurrently. A standard adapter must implement the [standard API rules](../../standard-library/types/prelude.md), rather than change them.
 
 ## Interface modules and package direction
 

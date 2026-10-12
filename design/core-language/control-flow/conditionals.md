@@ -7,7 +7,7 @@ weight = 24
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-An `if` statement chooses whether to execute a block. An `else` block handles the other path.
+Use `if` to run a block when a Boolean condition is true. Add `else` to run a different block when it is false. Only the selected branch runs.
 
 ```text
 fn status(active: Bool) -> String:

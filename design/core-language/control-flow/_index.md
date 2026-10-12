@@ -7,7 +7,7 @@ weight = 23
 
 [Core language guide](../_index.md) · [Design index](../../_index.md)
 
-Control flow consists of `if` / `else`, `match`, `for` / `in`, `while`, `break`, `continue`, and `return`. Choose conditionals for Boolean decisions, loops for repeated work, and matching for alternative data. Scope exits also run lexical cleanup.
+Use `if` for a Boolean decision, `match` for the cases of an alternative, and loops for repeated work. Leaving a block also runs any cleanup registered in that block.
 
 | Concept | What you will learn |
 | --- | --- |

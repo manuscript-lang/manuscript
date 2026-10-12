@@ -7,7 +7,7 @@ weight = 41
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A queue connects producers and consumers through synchronized, bounded storage. It carries shareable values.
+Use a queue to pass values from producers to consumers. `Queue[T]` has synchronized, bounded storage and requires shareable elements. Send and receive can wait and respond to cancellation. Closing the queue is explicit.
 
 | Facility | Contract |
 | --- | --- |

@@ -7,7 +7,7 @@ weight = 118
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Debugging and trace inspection need enough metadata to connect generated execution to the source program that produced it.
+Metadata connects an executable and its runtime events to the exact source that produced them. Debugging and trace tools must check that connection before showing events on source code.
 
 Keep static build facts separate from runtime observations:
 
@@ -28,4 +28,6 @@ See [build identity](../../compiler/builds/reproducibility.md) and [source value
 
 ## Implemented static inspection
 
-`ms inspect <module-or-project>` emits format-1 JSON with a source-derived build identity, original source hashes, deterministic entity IDs, generated declaration names, type descriptions, call sites including implicit cleanup, conservative transitive effects, and statement header spans. Header spans are half-open ranges in original bytes and exclude line terminators. `ms diagram` emits the checked static call graph as Mermaid; it is not a runtime trace. Native checked builds emit their separate executable/toolchain manifest. Generated source uses Go line directives, and source programming faults collect Manuscript function positions. `--debug` retains native symbols and disables optimization/inlining. Run-event transport, full local-value mapping, structural edit transactions, and Delve integration remain additional tooling contracts.
+`ms inspect <module-or-project>` emits format-1 JSON with a source-derived build identity, original source hashes, deterministic entity IDs, generated declaration names, type descriptions, call sites including implicit cleanup, conservative transitive effects, and statement header spans. Header spans are half-open ranges in original bytes and exclude line terminators. `ms diagram` emits the checked static call graph as Mermaid; it is not a runtime trace. Native checked builds emit their separate executable/toolchain manifest.
+
+Generated source uses Go line directives, and source programming faults collect Manuscript function positions. `--debug` retains native symbols and disables optimization/inlining. Run-event transport, full local-value mapping, structural edit transactions, and Delve integration remain additional tooling contracts.

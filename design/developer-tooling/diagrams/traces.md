@@ -7,7 +7,7 @@ weight = 116
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A flow diagram describes possible program behavior. A trace overlay connects that diagram to execution observed in one build.
+A flow diagram shows what a program can do. A trace records what happened during one run. A trace overlay places those observations on the matching diagram so you can follow timing and outcomes.
 
 ## Matching observations to source
 

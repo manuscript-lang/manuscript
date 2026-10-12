@@ -7,7 +7,7 @@ weight = 62
 
 [Guide index](_index.md) · [Design index](../_index.md)
 
-Cancellation follows fixed execution lifetimes. Request work inherits the request's context; accepted background work inherits its background service's context. A cancellation request asks work to stop; it does not establish that the work has stopped.
+Cancellation asks work to stop. It does not mean the work has already stopped; code must reach a checkpoint, leave its scopes, and finish cleanup. Request work follows the request's execution lifetime. Accepted background work follows its background service's lifetime.
 
 ## Requests
 

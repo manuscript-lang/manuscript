@@ -7,7 +7,7 @@ weight = 6
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-An expression produces one value. Statements choose control-flow paths or replace bindings. The following operator set and precedence are closed; an operator missing from this page is rejected rather than inherited from Go.
+An expression produces a value, such as `count + 1`. A statement controls what runs or changes a binding. This page is the reference for operator precedence, allowed operand types, and evaluation order. Only the operators listed here are supported; Go operators are not automatically available.
 
 ## Precedence and grammar
 
@@ -116,4 +116,4 @@ fn invalid(value: Int, ratio: Float) -> Bool:
 
 Each rejected expression is independent; a parser need not type-check a function after a syntax error. Assignment `=`, compound assignment, bitwise operators, exponentiation, ranges, ternaries, tuples, and expression-valued blocks are not expression forms in this design.
 
-[Previous: Source grammar](grammar.md) · [Next: Bindings and scope](bindings.md)
+[Previous: Source structure and syntax](syntax.md) · [Next: Bindings and scope](bindings.md)

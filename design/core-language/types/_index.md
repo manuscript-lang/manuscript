@@ -7,9 +7,7 @@ weight = 11
 
 [Core language guide](../_index.md) · [Design index](../../_index.md)
 
-`type` declares records or alternatives; `interface` declares an operation contract. A declaration uses exactly one form. Choose fields for domain data, alternatives for a set of possibilities, and an operation contract for required behavior.
-
-Core and standard types also include `Unit`, whose only value is `unit`, and `Never`, which has no possible value. See [function returns](../functions/declarations-and-calls.md#unit-and-never) for their control-flow rules and the [standard type catalog](../../standard-library/types/catalog.md) for the full list.
+Choose a type based on the data you need to represent. Use a record for named fields, an alternative for a fixed set of cases, and an interface for operations a caller needs. Generic types let you reuse a model with different element types.
 
 | Concept | What you will learn |
 | --- | --- |

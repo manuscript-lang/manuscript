@@ -7,7 +7,9 @@ weight = 15
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The standard module `@std/collections.ms` exports `List[T]`, `Map[K, V]`, and `Set[T]` as immutable collections. Import each name used by the module; ordinary bracket literals also require the canonical List import. Their type arguments describe the elements, keys, and values.
+Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are immutable.
+
+Import each collection type you name from `@std/collections.ms`. Ordinary bracket list literals also require the canonical `List` import.
 
 | Type | Contents |
 | --- | --- |

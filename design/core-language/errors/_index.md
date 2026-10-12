@@ -7,7 +7,7 @@ weight = 27
 
 [Core language guide](../_index.md) · [Design index](../../_index.md)
 
-Distinguish expected failures, missing values, and programming faults. Return Result for expected failures, use Optional for absence, and assert an invariant when its violation means the program is incorrect. Each has its own handling rules.
+Choose the outcome that matches the situation: `Result` for an expected failure with an explanation, `Optional` for a missing value, and a fault for a broken programming assumption. These pages show how callers respond to each one.
 
 | Concept | What you will learn |
 | --- | --- |

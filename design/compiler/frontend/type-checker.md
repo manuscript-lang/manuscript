@@ -7,7 +7,7 @@ weight = 89
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The type checker enforces the core language’s declared contracts before Go emission. A Go representation is not sufficient evidence that a source operation is legal.
+The type checker decides whether source operations satisfy Manuscript's rules before the compiler generates Go. The fact that a value can be represented in Go does not make every use of it legal in Manuscript.
 
 ## Required checks
 

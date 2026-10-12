@@ -7,6 +7,8 @@ weight = 51
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
+Use these modules to parse and write JSON, CSV, and URLs, or escape HTML text. Choose explicit limits for input size and nesting. Each format has its own validation rules, described after the signatures.
+
 ## `@std/json.ms`
 
 ```text
@@ -72,10 +74,42 @@ type Url:
     fragment: String
 ```
 
-JSON numbers retain exact valid token text, including integers larger than 2^53. Stringify validates NumberValue text, since source may construct that case directly. No reflection-based record serialization, execution hooks, or implicit Float conversion. Parse consumes one document, rejects trailing values, duplicate decoded keys, and unpaired surrogate escapes. Object order follows Map insertion order. Nonnegative limits count UTF-8 input/output bytes, container depth (root container is one), and all values (root is one; object keys are not values). Parsing and stringify also enforce a native depth ceiling of 512. Malformed data returns InvalidData; bounds return LimitExceeded. Stringify is compact and Go JSON-escapes HTML-sensitive characters; it is not a canonical signing serialization.
+## JSON behavior
 
-CSV delimiters are one non-NUL ASCII byte other than quote/CR/LF; line_ending is LF or CRLF. Row/cell/output limits are nonnegative. Go encoding/csv quoting applies: doubled quotes, no trimming or type inference, variable-width rows, ignored blank lines, and CRLF normalization including inside quoted cells. Max_cells counts all returned cells; exceeding a bound returns LimitExceeded. Input String is already resident; one record is parsed before its row/cell limit is checked. Applications must bound source reads before CSV parsing. Serialization ends every row with the selected terminator. Formula-like spreadsheet values are not rewritten.
+JSON numbers keep their exact valid token text, including integers larger than 2^53. They are not automatically converted to `Float`. `stringify` also validates `NumberValue` text because an application can construct that case directly.
 
-URL parse requires an absolute hierarchical URL and rejects userinfo. Scheme/host normalize to lowercase; port is none or 0–65535. Path retains escaped separators, query remains encoded, fragment is decoded. Resolve follows Go net/url reference resolution. Url is an ordinary record: format/resolve validate source-created values. Unsupported opaque URLs return InvalidData. Query entries preserve duplicates/order; bare keys become empty values and `+` means space. Component encoding preserves only ASCII unreserved characters, and decoding rejects invalid UTF-8. IDNA normalization, absent-versus-empty query distinction, and browser WHATWG URL compatibility are deferred.
+Parsing accepts one document. It rejects trailing values, duplicate decoded object keys, and unpaired surrogate escapes. Object order follows Map insertion order. There is no reflection-based record serialization or execution hook.
 
-HTML escape protects text and quoted attribute contexts. It is not a sanitizer or a JavaScript/CSS/URL-context encoder.
+`JsonLimits` uses nonnegative limits:
+
+| Limit | What it counts |
+| --- | --- |
+| `max_bytes` | UTF-8 input bytes. Stringify separately limits output bytes. |
+| `max_depth` | Container nesting; a root container has depth one. |
+| `max_values` | All values, including the root. Object keys are not counted as values. |
+
+Both parsing and stringify enforce a native depth ceiling of 512. Malformed data returns `InvalidData`; exceeded limits return `LimitExceeded`.
+
+Stringify produces compact JSON and uses Go's escaping for HTML-sensitive characters. It is not a canonical format for signing.
+
+## CSV behavior
+
+The delimiter must be one non-NUL ASCII byte other than quote, CR, or LF. `line_ending` is LF or CRLF. Row, cell, and output limits must be nonnegative; `max_cells` counts every returned cell.
+
+Go's `encoding/csv` quoting rules apply: quotes are doubled, values are not trimmed or converted to other types, rows may have different widths, and blank lines are ignored. CRLF is normalized, including inside quoted cells. Serialization ends every row with the selected terminator. Formula-like spreadsheet values are left as supplied.
+
+Exceeded limits return `LimitExceeded`. The input String is already in memory, and the parser reads one record before checking its row and cell limits. Bound the source read before parsing untrusted CSV.
+
+## URL behavior
+
+`parse` requires an absolute hierarchical URL and rejects user information. Scheme and host become lowercase. The optional port is in the range 0–65535.
+
+The path keeps escaped separators, the query stays encoded, and the fragment is decoded. `resolve` follows Go's `net/url` rules. `Url` is an ordinary record, so `format` and `resolve` validate values constructed by application code too. Unsupported opaque URLs return `InvalidData`.
+
+Query entries retain duplicates and order. A bare key has an empty value; `+` represents a space. Component encoding preserves only ASCII unreserved characters. Decoding rejects invalid UTF-8.
+
+IDNA normalization, a distinction between absent and empty queries, and browser WHATWG URL compatibility remain future work.
+
+## HTML escaping
+
+`escape` handles text and quoted attribute contexts. It does not sanitize HTML or encode JavaScript, CSS, or URL contexts.

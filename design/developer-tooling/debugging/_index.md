@@ -7,7 +7,7 @@ weight = 117
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-Match build metadata, map generated Go locations, and interpret values and runtime frames in source terms.
+These pages describe the source locations and runtime metadata needed to debug Manuscript through generated Go. They also explain the planned debugger bridge. Start with metadata before reading the integration details.
 
 - [Build, source, and task metadata](metadata.md)
 - [Generated Go source mapping](source-mapping.md)

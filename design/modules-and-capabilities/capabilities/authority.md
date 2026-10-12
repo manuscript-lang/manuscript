@@ -7,7 +7,7 @@ weight = 80
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A capability is how external authority reaches Manuscript code. Read capability parameters to identify the services an operation can access.
+A capability is a passed-in object that lets a function use an external service. For example, a function that reads files receives a file service rather than silently accessing a global filesystem. Look at capability parameters to see which services the function can use.
 
 Capabilities represent external authority such as storage, network access, a clock, or a model client. They are explicit inputs. Manuscript source has no ambient application access to these services. Standard shareable capability implementations support concurrent calls; shared internal state must be synchronized. Resource methods also enforce closed state.
 

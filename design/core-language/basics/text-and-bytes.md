@@ -7,7 +7,7 @@ weight = 10
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-`String` is an intrinsic immutable, valid UTF-8 text type. `Bytes`, imported from `@std/bytes.ms`, is an immutable byte sequence. Choose text for character data and bytes for data whose interpretation is defined by an external format.
+Use `String` for text and `Bytes` for raw data. Both are immutable. Strings always contain valid UTF-8 and are available without an import. Import `Bytes` from `@std/bytes.ms` when naming that type. A byte sequence may need decoding before it can be treated as text.
 
 ## String literals
 
@@ -72,7 +72,7 @@ Non-finite Float values format as `NaN`, `Infinity`, or `-Infinity`; NaN payload
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slicing syntax. The [data API](../../standard-library/data-and-io/operations.md#text-and-bytes) defines byte length, UTF-8 encoding/decoding, and byte lookup. Scalar and grapheme indexing are unsupported.
+There is no `text[index]` or slicing syntax. The [data API](../../standard-library/data-and-io/operations.md#strings-and-bytes) defines byte length, UTF-8 encoding/decoding, and byte lookup. Scalar and grapheme indexing are unsupported.
 
 A byte position, a Unicode scalar, and a user-visible grapheme are different units. For example, `"é"` has two UTF-8 bytes; `"e\u{301}"` has two scalars but can display as one grapheme. Byte lookup alone cannot select a character.
 

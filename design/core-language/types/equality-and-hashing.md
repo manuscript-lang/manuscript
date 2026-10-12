@@ -7,7 +7,7 @@ weight = 16
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Equality describes whether values are equal; hashing supplies the property required by map keys and set elements. These are explicit eligibility requirements on types.
+Equality compares eligible values by their contents. Hashing is the additional property needed to use a value as a map key or set element. The compiler checks these properties from the type. Services, resources, and capabilities do not gain equality automatically.
 
 Equality is by value for eligible shareable data types; services, resources, and capabilities have no implicit equality.
 

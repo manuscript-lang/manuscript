@@ -7,7 +7,7 @@ weight = 115
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A source change can alter a system boundary even when its textual diff is small. Architecture diffs make those derived contract changes visible.
+A small source edit can change what a system can access or how long work runs. An architecture diff highlights those changes to boundaries and behavior, alongside the ordinary text diff.
 
 Architecture diffs report changed boundaries, capabilities, effects, error types, cleanup scopes, concurrency, and deadlines. These facts derive from compiler analysis. Explanations of intent are supplementary.
 

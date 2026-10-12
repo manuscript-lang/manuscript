@@ -7,7 +7,9 @@ weight = 45
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-An HTTP host establishes a fixed execution context for each request, with admission limits, body limits, deadline policy, disconnect cancellation, backpressure, and fault isolation.
+The HTTP host gives each request its own execution context and limits. It controls admission, body sizes, deadlines, disconnect cancellation, backpressure, and fault isolation. Handlers use parallel APIs for joined work and `with` for request resources.
+
+If the client disconnects, the host cancels the request and its nested groups. Those groups finish joining and registered cleanup runs before the request ends.
 
 Request handlers use `parallel` or `parallel_map` for joined work and `with` for request resources. Client disconnection cancels the request and its nested groups; those groups join and registered cleanup runs before request execution ends.
 

@@ -7,7 +7,7 @@ weight = 36
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Import `parallel_map` from `@std/tasks.ms`. It runs the same function over a dynamic list, with a bounded number of active invocations. Its result is an ordinary homogeneous list in input order.
+Use `parallel_map` to apply one function to a list of inputs concurrently. Supply a limit to bound the number of active calls. The returned list keeps input order, even when calls finish in another order. Import the function from `@std/tasks.ms`.
 
 ```text
 let lookup = fn(item: UserId) -> Result[User, UserError]:

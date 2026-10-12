@@ -7,6 +7,8 @@ weight = 49
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
+Use these modules for text transformations, raw bytes, encodings, collection algorithms, and regular expressions. Import the functions you need from the module above each signature block. Read the behavior sections for indexing, ordering, and limit rules.
+
 ## `@std/text.ms`
 
 ```text
@@ -79,14 +81,54 @@ fn matches(pattern: Regex, text: String) -> Bool
 fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Int) -> Result[String, LibraryError]
 ```
 
-## Behavior
+## Text behavior
 
-Text remains valid UTF-8; scalar functions use Unicode code points, not bytes or grapheme clusters. From_scalars rejects surrogates/out-of-range values; slice_scalars returns OutOfRange for invalid half-open ranges. Trim uses Unicode White_Space; upper/lower use locale-independent Go Unicode mappings. These mappings do not normalize combining sequences. Split preserves empty parts and requires a nonempty separator and positive max_parts; its final part retains the remainder. Replacement is literal, requires nonempty old and nonnegative max_replacements; zero replaces nothing. Repeat requires nonnegative count/max_bytes and checks multiplication before allocation. Empty contains/prefix/suffix matches succeed.
+Text is valid UTF-8. Scalar operations count Unicode code points, rather than bytes or user-perceived characters such as a letter plus a combining mark.
 
-Bytes slice and collection slice use half-open bounds and fault on negative/reversed/out-of-range indexes. Values returns unsigned bytes as Int. Updates/algorithms return new immutable values. Map/filter/fold invoke callbacks sequentially in input order and preserve ordinary cancellation/fault propagation. Sorted is stable; compare returns negative/zero/positive Int and must define a consistent total preorder. No comparator call order/count is promised. Map keys/values retain insertion order. Set intersection/difference retain left order; union appends previously absent right values. Generic functions may be explicitly specialized and stored as function values; they introduce no new compiler bounds.
+- `from_scalars` rejects surrogate code points and values outside the Unicode range.
+- `slice_scalars` uses a half-open range: include `start`, exclude `end`. Invalid bounds return `OutOfRange`.
+- `trim` uses Unicode White_Space. `upper` and `lower` use Go's locale-independent Unicode mappings; they do not normalize combining sequences.
+- `split` keeps empty parts. It requires a nonempty separator and positive `max_parts`; the final part contains any remainder.
+- `replace` uses literal text. `old` must be nonempty and `max_replacements` nonnegative; zero means no replacements.
+- `repeat` requires nonnegative `count` and `max_bytes`. It checks the size multiplication before allocating.
+- An empty search string succeeds for contains, prefix, and suffix checks.
 
-Hex uses lowercase output, accepts either case on input, and rejects odd digits or whitespace. Base64 is padded standard or URL-safe according to url_safe; decoder rejects whitespace, wrong alphabet, malformed padding, and nonzero unused bits. Nonnegative max_bytes bounds decoded output; excess returns LimitExceeded. Existing Bytes.to_text is strict UTF-8 decoding; there is no replacement decoder.
+## Bytes and collections
 
-Binary integer widths are 1/2/4/8 bytes; signed values use two's complement. Unsigned 64-bit input above MaxInt64 returns OutOfRange. Invalid widths return InvalidInput; offset/truncation/representation errors return OutOfRange. Float reads/writes are IEEE binary64. Endianness is explicit; true means little endian. No unsafe memory reinterpretation or implicit numeric conversion.
+Byte and collection slices also use half-open ranges. Negative, reversed, or out-of-range bounds produce a programming fault. `values` returns each unsigned byte as an `Int`.
 
-Regex is an opaque immutable/shareable Go RE2-style compiled pattern. Backreferences/lookaround are invalid; there is no JavaScript backtracking engine. Compile errors return InvalidData. Find_all returns whole matches, is bounded by nonnegative max_matches, and returns LimitExceeded rather than truncating. Go regexp zero-width advancement/adjacent-match rules apply. Replace uses literal replacement (no `$` capture interpolation), enforces max_bytes, and never exposes a partial successful result. Unicode normalization, grapheme segmentation, non-UTF-8 text codecs, and capture-group match records remain future additions.
+Updates and algorithms return new immutable values. They leave the original values unchanged.
+
+| Operation | Ordering rule |
+| --- | --- |
+| `map`, `filter`, `fold` | Callbacks run sequentially in input order, with ordinary cancellation and fault behavior. |
+| `sorted` | Sorting is stable. The comparator returns a negative, zero, or positive `Int` and must define a consistent total preorder. Its call order and call count are unspecified. |
+| `map_keys`, `map_values` | Preserve insertion order. |
+| Set intersection and difference | Preserve the left set's order. |
+| Set union | Keep left order, then append previously absent right values. |
+
+You may explicitly specialize a generic function and store it as a function value. These operations add no compiler bounds.
+
+## Encodings
+
+Hex output uses lowercase. Hex input accepts either case but rejects odd digit counts and whitespace.
+
+Base64 uses padded standard or URL-safe encoding according to `url_safe`. Decoding rejects whitespace, the wrong alphabet, malformed padding, and nonzero unused bits. `max_bytes` must be nonnegative; excess decoded output returns `LimitExceeded`.
+
+`Bytes.to_text` strictly decodes UTF-8. Invalid text is an error; there is no decoder that silently substitutes replacement characters.
+
+## Binary numbers
+
+Integer widths are 1, 2, 4, or 8 bytes. Signed integers use two's complement. An unsigned 64-bit input above `MaxInt64` returns `OutOfRange`.
+
+Invalid widths return `InvalidInput`. Bad offsets, truncated input, and values that cannot fit the requested representation return `OutOfRange`. Float reads and writes use IEEE binary64. `little_endian: true` explicitly selects little-endian order. These functions do not reinterpret unsafe memory or convert numeric types implicitly.
+
+## Regular expressions
+
+`Regex` is an opaque, immutable, shareable compiled Go RE2-style pattern. Backreferences and lookaround are invalid; compile failures return `InvalidData`.
+
+`find_all` returns whole matches. `max_matches` must be nonnegative, and exceeding it returns `LimitExceeded` instead of a truncated success. Go regexp rules govern zero-width and adjacent matches.
+
+`replace` uses literal replacement text, without `$` capture interpolation. It enforces `max_bytes` and never returns a partial output as success.
+
+Unicode normalization, grapheme segmentation, non-UTF-8 codecs, and capture-group match records remain future work.

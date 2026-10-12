@@ -7,7 +7,7 @@ weight = 50
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-`Shareable` means safe concurrent access. It does not keep a resource open or register cleanup. A closure may retain a resource after its `with` scope exits; later operations then report the resource's closed-state error.
+`Shareable` means a value is safe to access concurrently. It says nothing about how long a resource stays open and does not register cleanup. A closure can keep a reference after its `with` block ends, but later use still reports the resource's closed-state error.
 
 ## Data and services
 

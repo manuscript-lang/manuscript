@@ -7,7 +7,7 @@ weight = 17
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-An `interface` declaration defines an operation contract: behavior that an implementation must supply. Use it at a boundary where a caller needs a set of operations without depending on one concrete data type.
+An interface lists the operations a caller needs. This is an operation contract: a concrete implementation must supply those operations with the declared signatures. Use it when callers should depend on behavior rather than a particular data type.
 
 The following contract refers to application-defined `Money`, `Receipt`, and `PaymentError` types:
 
@@ -38,7 +38,14 @@ impl Increment for Offset:
 
 `self` is an implicit receiver binding inside each implementation method, with the concrete receiver type. It is not written as a parameter, is not supplied as a call argument, and cannot be redeclared. The receiver does not add a field to the contract. Methods follow the ordinary immutable-field and reference rules.
 
-Each operation is implemented exactly once, with the same operation name, parameter labels in the same declaration order, parameter types, and result type after substituting contract type arguments. Parameter labels/order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). Missing, extra, duplicate, or mismatched operations are compile errors. An implementation method cannot add defaults or its own type parameters.
+An implementation must match the contract exactly. After substituting generic type arguments, check:
+
+- every operation appears exactly once;
+- operation names match;
+- parameter labels, their declaration order, and parameter types match;
+- result types match.
+
+Missing, extra, duplicate, or mismatched operations are compile errors. A method cannot add defaults or its own generic parameters. Parameter labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility).
 
 ```text
 # Rejected: amount does not match the contract's value label.
@@ -51,7 +58,9 @@ The rejected block is an alternative negative example, not a second block to add
 
 ## Coherence and visibility
 
-An implementation is declared in the concrete type's defining module. It may implement an imported public contract, but cannot implement a contract for a type defined elsewhere. There is exactly one implementation for each concrete type and instantiated contract pair in a program. Duplicate implementations are rejected. Importing the concrete type loads its defining module and makes its implementations available; an unrelated module import cannot add methods retroactively.
+Declare an implementation in the module that defines its concrete type. The contract may be imported, but the concrete type must be local to that module. Each concrete type and applied contract pair has exactly one implementation; duplicates are rejected.
+
+Importing the concrete type loads that module and its implementations. Importing an unrelated module cannot add methods to the type later. This keeps behavior independent of unrelated imports.
 
 Concrete and generic implementation blocks obey the same defining-module rule. Orphan implementations, blanket implementations for a bare type parameter, specialization, generic operations, and implementation inheritance are unsupported. Contracts can be generic but cannot have fields, cases, default bodies, associated types, or static operations. A contract declares at least one operation. An implementation does not re-export either its type or its contract.
 
@@ -73,7 +82,9 @@ impl ReadValue[T] for Box[T]:
         return self.value
 ```
 
-This block implements `ReadValue[Int]` for `Box[Int]`, `ReadValue[String]` for `Box[String]`, and every other well-formed application. Methods use the receiver declaration's parameters but cannot declare their own. Bounds are inherited from the receiver type declaration and, for interface arguments that are receiver parameters, from the interface declaration. The compiler checks the body once under these inherited bounds, with `self: Box[T]`, and checks exact substituted operation signatures. Inherited bounds must prove that every nested type application and operation in the body is legal. At a use, receiver matching supplies the arguments and those arguments must satisfy the inherited bounds. When a receiver argument is specialized to a concrete type, references to that parameter in other inherited bounds use the concrete type. For example, `Pair[A, B: ReadValue[A]]` with receiver `Pair[Int, B]` gives `B: ReadValue[Int]`.
+This block implements `ReadValue[Int]` for `Box[Int]`, `ReadValue[String]` for `Box[String]`, and every other well-formed application. Methods use the receiver declaration's parameters but cannot declare their own. Bounds are inherited from the receiver type declaration and, for interface arguments that are receiver parameters, from the interface declaration. The compiler checks the body once under these inherited bounds, with `self: Box[T]`, and checks exact substituted operation signatures.
+
+Inherited bounds must prove that every nested type application and operation in the body is legal. At a use, receiver matching supplies the arguments and those arguments must satisfy the inherited bounds. When a receiver argument is specialized to a concrete type, references to that parameter in other inherited bounds use the concrete type. For example, `Pair[A, B: ReadValue[A]]` with receiver `Pair[Int, B]` gives `B: ReadValue[Int]`.
 
 Interface parameter bounds can restrict implementation availability without restricting the data type:
 
@@ -101,7 +112,9 @@ Implementations of `ReadValue[Int]` and `ReadValue[String]` for the same receive
 
 ## Explicit contract views
 
-Concrete-to-contract conversion is explicit, written `Contract(value: concrete)`, or `Contract[T](value: concrete)` for a generic contract application. It succeeds at type checking only if that exact concrete type has an applicable declared implementation, including any implementation bounds. A method with the right spelling alone is insufficient. A plain contract view does not require or promise `Shareable`; it may retain a local nonshareable receiver. The wrapper retains the same concrete receiver reference; it does not copy native state or add resource-lifetime guarantees.
+Create a contract view explicitly with `Contract(value: concrete)`. For a generic contract, use `Contract[T](value: concrete)`. The concrete type must have an applicable declared implementation and satisfy its bounds; a matching method name alone is not enough.
+
+A plain view can hold a local receiver that is not shareable. The view keeps the same receiver reference. It does not copy native state, keep a resource open, or make concurrent access safe.
 
 ```text
 fn use_increment(operation: Increment) -> Int:

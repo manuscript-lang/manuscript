@@ -7,7 +7,9 @@ weight = 39
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-These standard native members form the data API. Their signatures belong to the canonical intrinsic or imported standard receiver type; they do not expand the intrinsic name or bound list. Import standard types when naming them, including List for ordinary bracket literals. Inferred return types and receiver members do not require importing otherwise unused type names. They use ordinary named calls with the exact labels below. Updates return new immutable values and leave every alias of the original unchanged. Allocation failure is a host failure. Sizes and indexes use `Int`.
+This is the reference for basic methods on standard data types. These methods belong to the canonical intrinsic or imported receiver type. They do not introduce new global names or compiler bounds.
+
+Import standard types when naming them. Ordinary bracket list literals need `List`. A type inferred from a return value does not need its own import unless you name it in source. Updates produce new immutable values and leave the original unchanged. Sizes and indexes use `Int`; allocation failure is a host failure.
 
 ## Collections
 

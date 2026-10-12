@@ -7,15 +7,21 @@ weight = 59
 
 [Design index](../_index.md)
 
-Concurrency is exposed through standard-library APIs. Ordinary calls run sequentially; every function can suspend. `parallel` runs related operations and joins them before returning. A `Background` service manages work with an explicitly chosen longer lifetime.
+An ordinary function call finishes before the caller moves on. Use a concurrency API when operations should run at the same time. Every function can wait for work; there is no separate `async` declaration.
 
-```text
-let [resA, resB] = try parallel(tasks: [first, second])
-```
+## Choose how the work ends
 
-The fragment belongs to a function returning `Result[U, ExecutionError]`; Unit tests match the result instead. See [the complete error-adapting example](parallel.md).
+| Need | Use | When it finishes |
+| --- | --- | --- |
+| Run a fixed set of functions together | `parallel` | Before the call returns, including on failure. |
+| Run one function over a list, with limited concurrency | `parallel_map` | Before the call returns, including on failure. |
+| Start work under a longer-lived service | `Background` | The service tracks it and waits for unfinished work during shutdown. |
 
-Values are ordinary references. There are no source-level task handles, task moves, ownership transfers, or separate async function declarations. Closures snapshot local bindings; resource references remain subject to runtime closed-state checks.
+Parallel APIs *join*: they wait for every started operation to finish its body and cleanup. A timeout requests a stop; it does not let the call return with work still running.
+
+Start with [parallel operations](parallel.md) for a complete example. Then read [joined groups](joining.md) for error outcomes and [cancellation](cancellation.md) for stopping and time budgets. [Runtime contracts](runtime.md) contains the implementation details.
+
+Functions passed to a concurrency API must be safe to call concurrently. Closures keep snapshots of the surrounding bindings they use. Keeping a resource reference does not keep the resource open; see [sharing](../ownership-and-cleanup/values/sharing.md).
 
 ## Importing concurrency APIs
 

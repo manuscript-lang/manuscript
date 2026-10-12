@@ -7,7 +7,9 @@ weight = 43
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A builder supports mutable local construction and creates an immutable snapshot when frozen. Builder aliases are ordinary references; freezing may seal the builder so later mutation reports a runtime error.
+A builder lets you mutate a value while constructing it locally, then freeze an immutable snapshot. Aliases refer to the same builder. Freezing may seal it so later mutation returns a runtime error.
+
+An unsynchronized mutable builder cannot be shared concurrently. Freezing transfers no compiler-tracked ownership; the frozen collection still has to meet its ordinary element bounds.
 
 Builders with unsynchronized mutable state are not eligible for concurrent sharing. There is no consuming function type or compiler-tracked ownership transfer. Frozen contents follow the ordinary collection element bounds.
 

@@ -7,7 +7,7 @@ weight = 55
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Import `Closeable` from `@std/cleanup.ms` when naming or implementing the standard cleanup contract. `with` checks its canonical identity rather than reserving its spelling. The standard declaration is:
+`Closeable` is the standard cleanup contract. Import it from `@std/cleanup.ms` to name or implement it. A `with` block checks the identity of that standard contract, so an unrelated interface with the same spelling does not replace it. Its declaration is:
 
 ```text
 interface Closeable:

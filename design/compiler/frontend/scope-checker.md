@@ -7,7 +7,7 @@ weight = 90
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The frontend validates cleanup registration and closure captures without a general ownership or lifetime checker.
+The compiler checks which names a closure captures and which cleanup actions each scope must run. It does not prove that every resource reference stays within its open lifetime. Runtime closed-state checks still matter.
 
 | Source operation | Required check |
 | --- | --- |

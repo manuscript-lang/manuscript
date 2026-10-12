@@ -7,7 +7,7 @@ weight = 112
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-Choose a derived view, inspect architectural changes, and relate observed execution to static flow.
+Diagrams show relationships derived from checked source: which functions call each other, where work runs concurrently, and what changes across revisions. Execution traces add what actually happened during a run.
 
 - [System, flow, and detail views](views.md)
 - [Reading a concurrent-flow diagram](flow.md)

@@ -7,7 +7,7 @@ weight = 100
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Incremental work has two boundaries: compiler analysis can reuse source-derived summaries, while Go rebuilds at package granularity.
+Caching can save the compiler from repeating parsing and checking. It cannot always save Go from rebuilding an application package. This page separates those two boundaries and explains what must be included in a cache key.
 
 Cache parsing, checking, and module summaries by source, relevant project configuration, and dependency identity. Use canonical resolved file identity for modules; imports through different path spellings or aliases share a module summary.
 
