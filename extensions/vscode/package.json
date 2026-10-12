@@ -180,7 +180,7 @@
     "package": "vsce package --no-dependencies",
     "bundle": "esbuild extension.js debug-adapter.js --bundle --platform=node --external:vscode --outdir=dist --minify",
     "vscode:prepublish": "npm run check && npm run bundle",
-    "test": "node --test --test-isolation=none tests/*.test.js"
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
