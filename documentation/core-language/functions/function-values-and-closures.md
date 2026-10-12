@@ -41,7 +41,7 @@ fn adapt() -> Unit:
     let result = apply(value: 3, transform: renamed)
 ```
 
-The rejected binding is a negative example; removing it leaves a valid function. Anonymous functions require explicit parameter and result types and an indented body, exactly as specified in the [grammar](../basics/grammar.md). An annotation on the receiving variable does not omit those signatures. A generic function must be instantiated before it is stored as a value; `identity[Int]` is a function value, while a bare polymorphic `identity` is not. Bound method values have the operation's function type with the receiver already bound and excluded from the parameter list.
+The rejected binding is a negative example; removing it leaves a valid function. Anonymous functions require explicit parameter and result types and an inline or indented body, exactly as specified in the [grammar](../basics/grammar.md). An annotation on the receiving variable does not omit those signatures. A generic function must be instantiated before it is stored as a value; `identity[Int]` is a function value, while a bare polymorphic `identity` is not. Bound method values have the operation's function type with the receiver already bound and excluded from the parameter list.
 
 An anonymous function forms its own function boundary for `return`, `try`, `break`, and `continue`. Its control-flow exits cannot exit the containing function or loop. Capture and sharing behavior remains governed by the separate contracts below.
 

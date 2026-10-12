@@ -44,7 +44,7 @@ An adjacent identifier character cannot follow a numeric token, except for its d
 
 ## Layout tokens
 
-At module level, code starts in column zero. A suite is a nonempty block introduced by `:` at the end of a logical header. Its first significant line is indented exactly four spaces beyond its header line's leading indentation. Further statements use that same indentation; nested suites add another four spaces. A dedent returns to an enclosing suite's indentation. Unexpected indentation and dedents to other columns are errors. Blank and comment-only lines do not open or close suites.
+At module level, code starts in column zero. A suite is introduced by `:`. An inline suite contains exactly one simple statement after the colon; an indented suite is a nonempty block with the colon at the end of a logical header. An indented suite's first significant line is indented exactly four spaces beyond its header line's leading indentation. Further statements use that same indentation; nested suites add another four spaces. A dedent returns to an enclosing suite's indentation. Unexpected indentation and dedents to other columns are errors. Blank and comment-only lines do not open or close suites.
 
 The grammar uses `NEWLINE`, `INDENT`, and `DEDENT` for these logical boundaries. End of file supplies the final `NEWLINE` if needed and closes outstanding suites. Empty bodies have no `pass` shorthand: each suite must contain a statement or declaration appropriate to its context.
 
@@ -52,7 +52,7 @@ Inside `()`, `[]`, and `{}`, ordinary physical newlines do not produce `NEWLINE`
 
 ### Anonymous-function suites inside delimiters
 
-A function expression still has an indented statement suite when it appears inside a call, list, or grouping delimiter. This is the exception to newline suppression.
+A function expression may have an inline suite or an indented statement suite inside a call, list, or grouping delimiter. An inline body ends at the enclosing comma or closing delimiter. An indented body follows these layout rules. This is the exception to newline suppression.
 
 At a function expression's header-ending `:`:
 
@@ -87,7 +87,7 @@ fn example() -> Int:
     )
 ```
 
-Its header has eight leading spaces, its body twelve, and the enclosing call closes at four. A single-line `fn(...) -> T: expression` body is rejected. Binding an anonymous function first and then passing its name is also valid. When a suite-bodied expression completes a surrounding simple statement with no enclosing expression delimiter still open, its suite boundary also terminates that statement: the parser supplies the outer `NEWLINE` after the expression's `DEDENT`. It does not require a second physical blank line. When a delimiter remains open, continuation resumes until that delimiter closes and the surrounding statement ends normally.
+Its header has eight leading spaces, its body twelve, and the enclosing call closes at four. Use `fn(value: Int) -> Int: return value - 1` for an inline function. Returns remain explicit; a bare value expression is rejected. Binding an anonymous function first and then passing its name is also valid. When a suite-bodied expression completes a surrounding simple statement with no enclosing expression delimiter still open, its suite boundary also terminates that statement: the parser supplies the outer `NEWLINE` after the expression's `DEDENT`. It does not require a second physical blank line. When a delimiter remains open, continuation resumes until that delimiter closes and the surrounding statement ends normally.
 
 ## Modules, declarations, and types
 
@@ -145,7 +145,7 @@ There are no module-level executable statements or `let`/`var` bindings. Functio
 ## Statements and patterns
 
 ```ebnf
-Suite         = ":", NEWLINE, INDENT, Statement, { Statement }, DEDENT ;
+Suite         = ":", (SimpleStatement | NEWLINE, INDENT, Statement, { Statement }, DEDENT) ;
 Statement     = SimpleStatement, NEWLINE
               | IfStatement | WhileStatement | ForStatement | MatchStatement
               | WithStatement ;
@@ -175,6 +175,17 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 ```
 
 `CallStatement` must resolve to a call expression; arithmetic expressions or bare names are not standalone statements. Assignment replaces an existing `var` binding or updates a record field. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
+
+Inline suites work for functions, methods, tests, branches, loops, cleanup scopes, and match arms. They contain one simple statement, with no semicolon separators or nested compound statements. For example:
+
+```manuscript
+fn double(value: Int) -> Int: return value * 2
+fn positive(value: Int) -> Bool:
+    if value > 0: return true
+    else: return false
+```
+
+`else` and `else if` must start on separate lines at the corresponding `if` header's indentation. Each branch may have its own inline body. Inline and indented branches may be mixed.
 
 `else if` is two words; `elif` is not syntax. Alternative match patterns use exact positional case payloads, not constructor argument labels. On a contract view, the same pattern syntax names a complete concrete record or alternative type and exactly one receiver binding; a final wildcard is required. Their exhaustiveness, wildcard position, and binding checks are in [pattern matching](../control-flow/pattern-matching.md). `if`, `match`, loops, and `with` are statements, not value-producing expressions. Local type/implementation/import/test declarations are not accepted. Nested named function declarations are rejected; bind an anonymous function to a local name instead.
 

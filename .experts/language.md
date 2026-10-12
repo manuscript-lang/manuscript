@@ -97,3 +97,11 @@ Decision: applications export `fn main() -> Int` and import the standard service
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
 Evidence: [CLI host contract](../documentation/standard-library/hosts/cli.md), [entry validation](../compiler/compiler.go), and [execution-local accessors](../runtime/host.go).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.
+
+### Keep short bodies available without a second function kind
+
+Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `else if`. Inline suites use the existing colon and explicit statement/return semantics; they do not introduce implicit returns or a separate callable kind.
+
+Apply when: changing suite parsing, anonymous-function layout, formatting, or syntax documentation.
+Evidence: [canonical suite rules](../documentation/core-language/basics/grammar.md#statements-and-patterns), [parser boundary cases](../parser/parser_test.go), and [native inline conformance](../tests/e2e/testdata/accept/inline-suites.ms).
+Verify: parse an inline callback inside a call without consuming the enclosing delimiter; execute inline and indented branches together; preserve formatting idempotence and reject multiple statements in an inline body.
