@@ -6,22 +6,20 @@ title = "sync"
 
 Import each required symbol with `import Name from "@std/sync.ms"`.
 
-## Synchronized {data-api-kind="Interface"}
+## Synchronized {data-api-kind="Native type"}
 
 ```manuscript
-Synchronized: Synchronized[T]
-type parameters: T
-field value: T
-operation lock: fn()->SynchronizedGuard[T]
+type Synchronized[T]:
+    value: T
+    fn lock() -> SynchronizedGuard[T]
 ```
 
-## SynchronizedGuard {data-api-kind="Interface"}
+## SynchronizedGuard {data-api-kind="Native type"}
 
 ```manuscript
-SynchronizedGuard: SynchronizedGuard[T]
-type parameters: T
-operation close: fn()->Unit
-operation get: fn()->T
-operation set: fn(value: T)->Unit
+type SynchronizedGuard[T]:
+    fn get() -> T
+    fn set(value: T) -> Unit
+    fn close() -> Unit
 ```
 

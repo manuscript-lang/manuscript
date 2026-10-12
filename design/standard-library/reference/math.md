@@ -9,180 +9,180 @@ Import each required symbol with `import Name from "@std/math.ms"`.
 ## abs {data-api-kind="Function"}
 
 ```manuscript
-abs: fn(value: Float)->Float
+fn abs(value: Float) -> Float
 ```
 
 ## abs_int {data-api-kind="Function"}
 
 ```manuscript
-abs_int: fn(value: Int)->Int
+fn abs_int(value: Int) -> Int
 ```
 
 ## acos {data-api-kind="Function"}
 
 ```manuscript
-acos: fn(value: Float)->Float
+fn acos(value: Float) -> Float
 ```
 
 ## asin {data-api-kind="Function"}
 
 ```manuscript
-asin: fn(value: Float)->Float
+fn asin(value: Float) -> Float
 ```
 
 ## atan {data-api-kind="Function"}
 
 ```manuscript
-atan: fn(value: Float)->Float
+fn atan(value: Float) -> Float
 ```
 
 ## atan2 {data-api-kind="Function"}
 
 ```manuscript
-atan2: fn(y: Float, x: Float)->Float
+fn atan2(y: Float, x: Float) -> Float
 ```
 
 ## ceil {data-api-kind="Function"}
 
 ```manuscript
-ceil: fn(value: Float)->Float
+fn ceil(value: Float) -> Float
 ```
 
 ## cos {data-api-kind="Function"}
 
 ```manuscript
-cos: fn(value: Float)->Float
+fn cos(value: Float) -> Float
 ```
 
 ## cosh {data-api-kind="Function"}
 
 ```manuscript
-cosh: fn(value: Float)->Float
+fn cosh(value: Float) -> Float
 ```
 
 ## e {data-api-kind="Function"}
 
 ```manuscript
-e: fn()->Float
+fn e() -> Float
 ```
 
 ## exp {data-api-kind="Function"}
 
 ```manuscript
-exp: fn(value: Float)->Float
+fn exp(value: Float) -> Float
 ```
 
 ## floor {data-api-kind="Function"}
 
 ```manuscript
-floor: fn(value: Float)->Float
+fn floor(value: Float) -> Float
 ```
 
 ## hypot {data-api-kind="Function"}
 
 ```manuscript
-hypot: fn(left: Float, right: Float)->Float
+fn hypot(left: Float, right: Float) -> Float
 ```
 
 ## is_finite {data-api-kind="Function"}
 
 ```manuscript
-is_finite: fn(value: Float)->Bool
+fn is_finite(value: Float) -> Bool
 ```
 
 ## is_nan {data-api-kind="Function"}
 
 ```manuscript
-is_nan: fn(value: Float)->Bool
+fn is_nan(value: Float) -> Bool
 ```
 
 ## log {data-api-kind="Function"}
 
 ```manuscript
-log: fn(value: Float)->Float
+fn log(value: Float) -> Float
 ```
 
 ## log10 {data-api-kind="Function"}
 
 ```manuscript
-log10: fn(value: Float)->Float
+fn log10(value: Float) -> Float
 ```
 
 ## log2 {data-api-kind="Function"}
 
 ```manuscript
-log2: fn(value: Float)->Float
+fn log2(value: Float) -> Float
 ```
 
 ## max {data-api-kind="Function"}
 
 ```manuscript
-max: fn(left: Float, right: Float)->Float
+fn max(left: Float, right: Float) -> Float
 ```
 
 ## min {data-api-kind="Function"}
 
 ```manuscript
-min: fn(left: Float, right: Float)->Float
+fn min(left: Float, right: Float) -> Float
 ```
 
 ## pi {data-api-kind="Function"}
 
 ```manuscript
-pi: fn()->Float
+fn pi() -> Float
 ```
 
 ## pow {data-api-kind="Function"}
 
 ```manuscript
-pow: fn(base: Float, exponent: Float)->Float
+fn pow(base: Float, exponent: Float) -> Float
 ```
 
 ## remainder {data-api-kind="Function"}
 
 ```manuscript
-remainder: fn(left: Float, right: Float)->Float
+fn remainder(left: Float, right: Float) -> Float
 ```
 
 ## round {data-api-kind="Function"}
 
 ```manuscript
-round: fn(value: Float)->Float
+fn round(value: Float) -> Float
 ```
 
 ## sin {data-api-kind="Function"}
 
 ```manuscript
-sin: fn(value: Float)->Float
+fn sin(value: Float) -> Float
 ```
 
 ## sinh {data-api-kind="Function"}
 
 ```manuscript
-sinh: fn(value: Float)->Float
+fn sinh(value: Float) -> Float
 ```
 
 ## sqrt {data-api-kind="Function"}
 
 ```manuscript
-sqrt: fn(value: Float)->Float
+fn sqrt(value: Float) -> Float
 ```
 
 ## tan {data-api-kind="Function"}
 
 ```manuscript
-tan: fn(value: Float)->Float
+fn tan(value: Float) -> Float
 ```
 
 ## tanh {data-api-kind="Function"}
 
 ```manuscript
-tanh: fn(value: Float)->Float
+fn tanh(value: Float) -> Float
 ```
 
 ## truncate {data-api-kind="Function"}
 
 ```manuscript
-truncate: fn(value: Float)->Float
+fn truncate(value: Float) -> Float
 ```
 
