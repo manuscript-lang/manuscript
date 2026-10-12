@@ -13,28 +13,27 @@ The root groups implementation (`pkg/`, `cmd/`, `internal/`), documentation (`do
 
 ```mermaid
 flowchart LR
-  CLI[cmd/ms → internal/cli] --> Compiler[compiler]
-  Compiler --> Project[project: manifest and paths]
-  Compiler --> Parser[parser]
-  Parser --> Lexer[lexer]
-  Lexer --> Syntax[syntax]
-  Parser --> Syntax
-  Compiler --> Checker[checker]
-  Checker --> Stdlib[stdlib: source and bindings]
-  Checker --> Facts[internal/decimal and nativeabi]
-  Runtime --> Facts
-  Compiler --> Runtime[runtime: embedded native source]
-  Tools[tooling and LSP] --> Compiler
-  Docs[pkg/tooling/docgen] --> Checker
+  CLI[CLI or compiler API] --> Parse[frontend: parse and resolve imports]
+  Parse --> AST[syntax: AST graph]
+  AST --> Check[checker: types and semantic facts]
+  Check --> Optimize[compiler: optimization facts]
+  Optimize --> Lower[compiler: Go lowering]
+  Lower --> Native[native build and runtime]
+  SyntaxTools[formatting and declaration completion] --> Parse
+  Check --> SourceTools[lint, inspection, docs, and LSP]
+  Parse --> Project[project: paths and overlays]
+  Check --> Stdlib[checked standard declarations]
 ```
 
 1. `internal/cli` validates command options and selects a compiler mode. `cmd/ms` only translates the returned status into the process exit code.
 2. `project.ReadProject` validates `[project]` and `[aliases]`. `project.ResolveImport` and `SourcePath` establish canonical paths, including editor overlays, confined to the project root. This package needs no checker or native tools.
-3. `compiler.CompileFile` follows imports, detects cycles, deduplicates canonical module identities, and supplies modules in dependency order. The resolver supplies canonical keys once; graph traversal does not resolve them again. `CompileSource` accepts in-memory source with standard imports; local imports require `CompileFile`.
-4. `lexer` produces layout-aware UTF-8 tokens with original source positions. `parser` produces `syntax.Module` trees. Partial parsing is restricted to editor analysis; it never grants permission to build invalid source.
+3. `compiler.CompileSource` and `CompileFile` load source through `frontend`, then converge on `compile` in `pkg/compiler/compiler.go`. `frontend.LoadFile` follows imports, detects cycles, deduplicates canonical module identities, and supplies a `frontend.Graph` in dependency order. Its module loader resolves canonical keys once. `LoadSource` accepts in-memory source with standard imports; local imports require file loading.
+4. `frontend.Parse` selects strict or recovering parsing for compilation, formatting, and completion. `lexer` produces layout-aware UTF-8 tokens with original source positions; `parser` produces `syntax.Module` trees. Compilation permits recovery only with `AnalyzeOnly`. Recovered ASTs retain diagnostics, which prevent generated output. Standard declaration loading uses the parser's library mode inside `checker`.
 5. `checker` resolves declarations, nominal types, bounds, selected implementations, control flow, captures, cleanup, and effects. Its checked program retains the information used by lowering, documentation, and editor tools.
-6. `compiler` lowers a successful checked program to Go. Check, lint, inspection, diagrams, documentation, and lock commands stop after checking. Application entry validation can run without lowering; editor analysis can omit that requirement. Diagnostics prevent generated output. `Standalone` merges checked output and the embedded runtime without a runtime package dependency.
-7. Native builds compile the embedded runtime as a separate package in their generated temporary module, disable VCS stamping, query the selected toolchain once, use that same pin for project verification and artifact metadata, and check cache hashes. Pin and metadata comparison operates on typed values rather than serializing both sides back to JSON. Builds embed vendored dependency sources and write executable metadata. Standalone execution commands use a per-user artifact cache; projects use `.ms-cache`. Only the lock command needs a toolchain query among the source commands.
+6. Check, lint, inspection, diagrams, documentation, and lock commands stop after checking. Application entry validation can run without lowering; editor analysis can omit that requirement. Formatting uses only the shared parsing stage.
+7. `compiler.optimize` derives a lowering view from a successful checked program. It folds literal boolean expressions, including short-circuiting, without rewriting source nodes or discarding checked identities and effects. An effectful left operand still runs: `operation() and false` cannot become `false`. Numeric operations retain runtime fault behavior. Go performs native optimization according to the selected build type.
+8. `compiler.lowerGo` consumes the checked program and optimization facts. Module assembly, function bodies, statements, and expressions have focused implementation files. `Standalone` merges generated output and the embedded runtime without a runtime package dependency.
+9. Native builds compile the embedded runtime as a separate package in their generated temporary module, disable VCS stamping, query the selected toolchain once, use that same pin for project verification and artifact metadata, and check cache hashes. Pin and metadata comparison operates on typed values rather than serializing both sides back to JSON. Builds embed vendored dependency sources and write executable metadata. Standalone execution commands use a per-user artifact cache; projects use `.ms-cache`. Only the lock command needs a toolchain query among the source commands.
 
 ## Know what each package owns
 
@@ -43,9 +42,10 @@ flowchart LR
 | `pkg/syntax/` | Syntax tree, patterns, positions, and diagnostics in `ast.go` and `diagnostics.go`; shared executable-syntax traversal in `walk.go` |
 | `pkg/lexer/` | Tokenization and layout in `lexer.go`; original-position checks in `lexer_test.go` |
 | `pkg/parser/` | Strict source parsing in `parser.go`; editor recovery in `partial.go` |
+| `pkg/frontend/` | Shared parsing and in-memory AST loading in `source.go`; project/module graph loading, canonical snapshots, and import diagnostics in `modules.go` |
 | `pkg/checker/` | Checking entry point in `checker.go`; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
 | `pkg/project/` | Manifest parsing in `manifest.go`; confined import and overlay resolution in `paths.go` |
-| `pkg/compiler/` | Public orchestration in `compiler.go` and `modules.go`; lowering in `generate.go`; native source assembly in `build.go`; pin/artifact identity in `cache.go`; SDK selection/materialization in `toolchain*.go` |
+| `pkg/compiler/` | Shared pipeline in `compiler.go`; optimization facts in `optimize.go`; Go module assembly in `generate.go` and lowering in `lower_*.go`; native source assembly in `build.go`; pin/artifact identity in `cache.go`; SDK selection/materialization in `toolchain*.go` |
 | `pkg/runtime/` | Value and numeric semantics; work lifetimes in `tasks.go`, `scheduler.go`, and `lifetime.go`; cleanup, synchronization, services, and host implementations; domain-specific native standard-library operations in `library_*.go` |
 | `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities, and embedded sources. This is the standard signature authority |
 | `pkg/tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
@@ -99,7 +99,7 @@ Keep generated sources reproducible through their generator. Do not edit HTML to
 | Documentation | Canonical Markdown or generator → `make docs-check` → `make book-check` → `make book`; source freshness alone does not establish published freshness |
 | Build packaging | Embedded source/dependency/toolchain inputs → pins and cache → copied standalone binary; `make dist-check` removes host Go and disables package downloads |
 
-Implementation hashes include source from `project` as well as the frontend, compiler, runtime, standard declarations, and dependency bundle. When moving build-affecting behavior to a new package, include that package's embedded implementation sources in pin identity. Otherwise an implementation update can silently retain stale build pins.
+Implementation hashes include source from `frontend` and `project` as well as syntax, parsing, checking, the compiler, runtime, standard declarations, and dependency bundle. When moving build-affecting behavior to a new package, include that package's embedded implementation sources in pin identity. Otherwise an implementation update can silently retain stale build pins.
 
 ## Read the evidence correctly
 

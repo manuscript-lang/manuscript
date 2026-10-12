@@ -18,6 +18,8 @@ Apply when: organizing packages, extracting helpers, or adding another frontend/
 Evidence: [shared traversal](../pkg/syntax/walk.go), [semantic lint](../pkg/tooling/lint_program.go), [CLI modes](../internal/cli/cli.go), [analysis entry regression](../pkg/compiler/metadata_test.go), and [default/list editor regressions](../pkg/tooling/lsp/defaults_test.go).
 Verify: identify the duplicate traversal, query, serialization, or forwarding path that disappears. Preserve source-level checking, default evaluation, module identity, and native conformance; a smaller file tree alone is not evidence of simplification.
 
+Verified: optimization uses a separate lowering view of checked source. Rewriting or removing AST nodes would break the pointer identities used by editor queries, lint, effects, and source maps. Parsing and resolution diagnostics travel with the AST graph, including during recovery; folding a short-circuited expression never permits an invalid operand to bypass checking. Evidence: [shared pipeline](../pkg/compiler/compiler.go), [source model regressions](../pkg/compiler/pipeline_test.go), and [native side-effect regression](../tests/e2e/testdata/accept/boolean-optimization.ms).
+
 Verified: Go's test cache does not automatically track source built only by a subprocess. The native end-to-end harness imports the CLI implementation as a test dependency so changing CLI code invalidates its cached result. Evidence: [native harness dependency](../tests/e2e/e2e_test.go). For a final native run after command changes, use `go test -count=1 ./tests/e2e` with the pinned toolchain.
 
 ### Package moves must preserve build identity and publication inputs
@@ -37,7 +39,7 @@ Verify: run native conformance and `make dist-check` after a package move, along
 Verified: native Optional defaults are written as `= none` in the standard function, method, or constructor-field declaration. Constructor omission follows that source metadata. Application implementations inherit standard interface default permissions and receive a concrete `none`, while native compositions pass `some(n)` through source-defined streams. Inferring default permission merely from a field's name would create a second schema; passing raw integers through an Optional interface would break source implementations.
 
 Apply when: adding native defaults, changing source/native signatures, or implementing stream compositions.
-Evidence: [standard source checks](../pkg/checker/standard.go), [constructor/ABI regressions](../pkg/checker/stdlib_revamp_test.go), [native emission](../pkg/compiler/generate.go), and [compiled stream boundary](../tests/e2e/testdata/accept/stdlib-revamp.ms).
+Evidence: [standard source checks](../pkg/checker/standard.go), [constructor/ABI regressions](../pkg/checker/stdlib_revamp_test.go), [native emission](../pkg/compiler/lower_functions.go), and [compiled stream boundary](../tests/e2e/testdata/accept/stdlib-revamp.ms).
 Verify: inspect the generated declaration for `= none`; omit a limit through an application-defined ReadStream and match `none`; run read_line over that implementation and match its supplied `some(1)`. Migrate embedded source fixtures in native debugger tests too: an invalid constructor argument can leave a DAP launch waiting for initialization instead of surfacing its build diagnostic.
 
 ### Editor recovery must preserve delimiter continuations

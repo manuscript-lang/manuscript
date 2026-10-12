@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Share parsing and AST graph loading across compilation and source tools; make checking, boolean optimization, and Go lowering explicit stages while preserving the checked source model.
 - Group reusable Go packages under `pkg/`; Go callers must update the former root package imports to `github.com/manuscript-lang/manuscript/pkg/...`.
 - Add read-only verification, pinned lint tools, environment diagnostics, and checked package/build boundaries.
 - Publish documentation through GitHub Pages artifacts; generated HTML is no longer committed.
