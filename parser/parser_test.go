@@ -32,7 +32,6 @@ func TestDesignFixtures(t *testing.T) {
 func TestRejectSyntax(t *testing.T) {
 	for name, source := range map[string]string{
 		"module binding":        "let value = 3\n",
-		"positional call":       "fn f() -> Unit:\n    g(1)\n",
 		"comparison chain":      "fn f() -> Bool:\n    return 1 < 2 < 3\n",
 		"two spaces":            "fn f() -> Int:\n  return 1\n",
 		"default argument":      "fn f(value: Int = 1) -> Int:\n    return value\n",
@@ -73,6 +72,22 @@ func TestNamedArgumentValueContinuation(t *testing.T) {
 	source := "fn use(value: Int) -> Unit:\n    return\ntest \"continued argument\":\n    use(value:\n        3\n    )\n"
 	if _, err := parser.Parse("continued.ms", source); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSingleArgumentExpressions(t *testing.T) {
+	for _, expression := range []string{"3", "value", "value + 1", "-3", "true", "unit", "\"text\"", "[1, 2]", "other(3)", "(value)", "3,"} {
+		t.Run(expression, func(t *testing.T) {
+			source := "fn use(value: Int) -> Unit:\n    consume(" + expression + ")\n"
+			module, err := parser.Parse("argument.ms", source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			call := module.Declarations[0].Body[0].Value
+			if len(call.Args) != 1 || call.Args[0].Name != "" || call.Args[0].Pos.Offset != strings.Index(source, expression+")") {
+				t.Fatal("incorrect unlabeled argument", call.Args)
+			}
+		})
 	}
 }
 

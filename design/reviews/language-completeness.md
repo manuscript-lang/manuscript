@@ -36,7 +36,7 @@ The user selected container-guarded recursive data and explicit concrete-to-cont
 
 Preserve the existing decisions when closing gaps:
 
-- Every supplied call argument is named. Unknown, duplicate, unnamed, and missing required arguments are rejected. Arguments evaluate in written order, independently of parameter declaration order.
+- Functions with exactly one parameter may omit the argument label. Multi-parameter functions and constructors require labels. Unknown labels, duplicate arguments, and missing required arguments are rejected. Arguments evaluate in written order, independently of parameter declaration order.
 - Numeric conversions are explicit. Integer literals infer `Int`, fractional literals infer `Float`, and `d` selects `Decimal`.
 - Records are nominal and immutable. Alternatives are tagged. Matching must cover alternatives without fallthrough.
 - Lists are homogeneous and immutable. Empty list literals can receive their type from an annotation or an expected parameter type. Map and set traversal follows insertion order.

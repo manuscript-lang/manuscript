@@ -596,9 +596,13 @@ func (p *Parser) primary() *syntax.Expression {
 			call := &syntax.Expression{Kind: "call", Pos: e.Pos, Left: e}
 			if !p.take(")") {
 				for {
-					name := p.need(lexer.Name)
-					p.need(":")
-					call.Args = append(call.Args, syntax.Argument{Pos: name.Pos, Name: name.Text, Value: p.expression(0)})
+					arg := syntax.Argument{Pos: p.peek().Pos}
+					if p.peek().Kind == lexer.Name && p.tokens[p.at+1].Kind == ":" {
+						arg.Name = p.need(lexer.Name).Text
+						p.need(":")
+					}
+					arg.Value = p.expression(0)
+					call.Args = append(call.Args, arg)
 					if !p.take(",") {
 						break
 					}

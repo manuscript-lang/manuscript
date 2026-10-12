@@ -13,7 +13,7 @@ A function names its inputs, declares their types, and declares the type it retu
 fn decrement(value: Int) -> Int:
     return value - 1
 
-let remaining = decrement(value: 3)
+let remaining = decrement(3)
 ```
 
 Function parameters and return types are explicit; local annotations are optional. The caller can infer `remaining` as `Int` from the function's declared return type.
@@ -28,22 +28,24 @@ Parameters belong to the function body's lexical scope. A local declaration cann
 
 ## Argument names
 
-Every supplied function argument must use `name: value`, including calls with a single argument. The name identifies the declared parameter. An unnamed argument is a compile error.
+A function with exactly one declared parameter accepts either `function(value)` or `function(name: value)`. The omitted label resolves to that sole parameter. Functions with more than one parameter require `name: value` for every supplied argument; the name identifies the declared parameter.
 
 ```text
 fn reduce(amount: Int, deduction: Int) -> Int:
     return amount - deduction
 
 let remaining = reduce(amount: 10, deduction: 3)
+let next = decrement(3)
+let explicit = decrement(value: 3)
 ```
 
-The rule applies to ordinary functions, methods, function values, and concurrency library APIs. Constructors name their fields, including `some(value: ...)`, `ok(value: ...)`, and `error(cause: ...)`. A call with no supplied arguments uses `()`.
+The rule applies to ordinary functions, methods, function values, and library APIs. Count the callable's declared parameters, including optional API parameters, rather than the arguments supplied at a particular call. A method's implicit receiver does not count as a parameter. Constructors and explicit contract views still require labels, including `some(value: ...)`, `ok(value: ...)`, `error(cause: ...)`, and `Contract(value: receiver)`. A zero-parameter function uses `()`.
 
 `parallel` receives an ordered pack of zero-argument functions through `tasks: [first, second]`, with options such as `timeout: 2.seconds` supplied by name. Its heterogeneous results are specified in [parallel operations](../../concurrency/parallel.md).
 
 Match payload bindings such as `some(value):` are patterns, rather than calls; see [pattern matching](../control-flow/pattern-matching.md).
 
-Source declarations cannot define default or optional parameters, positional arguments, variadic parameters, or argument spreading. An `Optional[T]` source parameter is still required: callers explicitly supply `none` when absent. Existing trusted library API contracts may explicitly permit omitted named arguments; that permission does not follow from an `Optional` value type. Unknown, duplicate, and missing required argument names are compile errors. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); labels do not authorize numeric or contract conversions.
+Source declarations cannot define default or optional parameters, variadic parameters, or argument spreading. An `Optional[T]` source parameter is still required: callers explicitly supply `none` when absent. Existing trusted library API contracts may explicitly permit omitted named arguments; that permission does not follow from an `Optional` value type. Unknown labels, duplicate arguments, missing required arguments, and unlabeled arguments to multi-parameter functions are compile errors. Supplying both `decrement(3, value: 4)` arguments duplicates the sole parameter and is rejected. Supplied values must be compatible with the declared parameter types under [type compatibility](../types/compatibility.md); labels do not authorize numeric or contract conversions.
 
 ## Collections as arguments
 
@@ -57,11 +59,11 @@ fn sum(values: List[Int]) -> Int:
 
     return total
 
-let total = sum(values: [1, 2, 3])
-let empty = sum(values: [])
+let total = sum([1, 2, 3])
+let empty = sum([])
 ```
 
-The named argument supplies one immutable list. An existing `List[Int]` can be passed as `sum(values: existing_values)`. The parameter is required even for an empty list. Function values use the ordinary type `fn(values: List[Int]) -> Int`, and multiple list parameters need no additional call syntax.
+The argument supplies one immutable list. An existing `List[Int]` can be passed as `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list. Function values use the ordinary type `fn(values: List[Int]) -> Int`, and functions with multiple list parameters require labels on every supplied argument.
 
 See [collections](../types/collections.md) for list literals and element requirements.
 

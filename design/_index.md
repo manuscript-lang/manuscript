@@ -38,7 +38,7 @@ Keep the [plain-language glossary](glossary.md) nearby when a term is unfamiliar
 
 A file is a module. It imports the declarations it needs and exports the declarations other files may use. Most standard-library names need an explicit import; a small set of basic types is available everywhere.
 
-Functions declare their parameter and return types. Local variables can infer their types from their initial values. Every supplied argument has a name, such as `welcome(name: "Ada")`.
+Functions declare their parameter and return types. Local variables can infer their types from their initial values. Functions with multiple parameters require named arguments. A single-parameter function accepts either `welcome("Ada")` or `welcome(name: "Ada")`.
 
 Calls run sequentially unless you explicitly start concurrent work. Every function can wait for an operation to finish; there is no separate `async` function syntax. Parallel calls wait for all their started operations before returning. Background work belongs to a service with a fixed lifetime.
 

@@ -10,7 +10,7 @@ Manuscript aims to make a program's public contracts, dependencies, and work lif
 | Feature | What it gives you | Exact rules |
 | --- | --- | --- |
 | Static, nominal types | Distinct domain types and explicit public signatures | [Types](../core-language/types/_index.md) |
-| Named arguments | Calls that state each supplied value's role | [Calls](../core-language/functions/declarations-and-calls.md) |
+| Argument labels | Named arguments for functions with multiple parameters; optional labels for single-parameter calls | [Calls](../core-language/functions/declarations-and-calls.md) |
 | Records and alternatives | Immutable data and exhaustive case handling | [Data modeling](../core-language/types/alternatives.md) |
 | Expected failures as values | Typed success and error paths | [Results](../core-language/errors/results.md) |
 | Explicit contracts | Conformance declared with `impl` | [Contracts](../core-language/types/contracts.md) |

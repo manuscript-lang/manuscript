@@ -16,12 +16,12 @@ fn greeting(name: String) -> String:
     return "Hello, {name}!"
 
 test "greeting":
-    let message = greeting(name: "Ada")
+    let message = greeting("Ada")
     if not (message == "Hello, Ada!"):
         return panic(message: "check failed")
 ```
 
-`fn` declares a function. Parameter and return types are explicit; the local binding's type is inferred. Named arguments keep calls readable as signatures grow. Use `var` when a binding needs reassignment. See [bindings](../core-language/basics/bindings.md) and [functions](../core-language/functions/declarations-and-calls.md).
+`fn` declares a function. Parameter and return types are explicit; the local binding's type is inferred. A single-parameter call can omit the label, as above, or use `greeting(name: "Ada")`. Functions with multiple parameters require named arguments. Use `var` when a binding needs reassignment. See [bindings](../core-language/basics/bindings.md) and [functions](../core-language/functions/declarations-and-calls.md).
 
 ## Model data and alternatives
 

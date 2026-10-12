@@ -17,9 +17,80 @@ func fixture(t *testing.T, name string) string {
 	}
 	return string(source)
 }
+
+func TestCallArgumentLabelRejections(t *testing.T) {
+	const declarations = `import List from "@std/collections.ms"
+import Background from "@std/tasks.ms"
+import parallel from "@std/tasks.ms"
+import Result from "@std/result.ms"
+fn one(value: Int) -> Int:
+    return value
+fn two(left: Int, right: Int) -> Int:
+    return left - right
+fn zero() -> Unit:
+    return
+fn identity[T](value: T) -> T:
+    return value
+fn apply(transform: fn(value: Int) -> Int) -> Int:
+    return transform(1)
+type Box:
+    value: Int
+type Choice:
+    case Payload(value: Int)
+interface Read:
+    fn get() -> Int
+impl Read for Box:
+    fn get() -> Int:
+        return self.value
+`
+	for _, variant := range []struct{ name, statement string }{
+		{"two unnamed", "two(1, 2)"},
+		{"first unnamed", "two(1, right: 2)"},
+		{"last unnamed", "two(left: 1, 2)"},
+		{"multi-parameter function value", "let callable = two\n    callable(1, 2)"},
+		{"extra unnamed", "one(1, 2)"},
+		{"duplicate mixed", "one(1, value: 2)"},
+		{"unknown single label", "one(wrong: 1)"},
+		{"missing single argument", "one()"},
+		{"single argument type", "one(true)"},
+		{"zero parameters", "zero(1)"},
+		{"generic duplicate", "identity(1, 2)"},
+		{"record field label", "let box = Box(1)"},
+		{"alternative field label", "let choice = Choice.Payload(1)"},
+		{"contract view label", "let view = Read(Box(value: 1))"},
+		{"optional constructor arguments", "let service = Background(1)"},
+		{"optional parallel arguments", "let result = parallel([])"},
+		{"function type labels", "let transform = fn(item: Int) -> Int:\n        return item\n    apply(transform)"},
+	} {
+		t.Run(variant.name, func(t *testing.T) {
+			source := declarations + "test \"labels\":\n    " + variant.statement + "\n"
+			result := compiler.CompileSource("labels.ms", source, compiler.Options{})
+			if result.Success() {
+				t.Fatal("accepted invalid call")
+			}
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Phase != "type" {
+					t.Fatal("expected type rejection", result.Diagnostics)
+				}
+			}
+		})
+	}
+	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Background, operation: fn() -> Result[Unit, String]) -> Unit:
+    service.start(operation)
+`, compiler.Options{})
+	found := false
+	for _, diagnostic := range result.Diagnostics {
+		found = found || strings.Contains(diagnostic.Message, "Background.start requires a shareable callable")
+	}
+	if !found {
+		t.Fatal("omitted label bypassed callback sharing check", result.Diagnostics)
+	}
+}
+
 func TestRejectedConformanceVariants(t *testing.T) {
 	variants := []struct{ name, fixture, old, replacement, phase string }{
 		{"duplicate argument", "cl-01", "deduction: 2,", "amount: 2,", "type"},
+		{"unnamed multi-parameter argument", "cl-01", "deduction: 2,", "2,", "type"},
 		{"missing argument", "cl-01", "deduction: 2,", "", "type"},
 		{"unknown argument", "cl-01", "deduction: 2,", "discount: 2,", "type"},
 		{"unknown value", "cl-01", "return amount - deduction", "return missing", "resolution"},

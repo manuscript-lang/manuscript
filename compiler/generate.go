@@ -323,7 +323,11 @@ func (g *generator) expression(e *syntax.Expression) string {
 		}
 		return "rt.Field(" + g.expression(e.Left) + "," + quote(e.Text) + ")"
 	case "call":
-		args := g.arguments(e.Args)
+		arguments := e.Args
+		if info.Arguments != nil {
+			arguments = info.Arguments
+		}
+		args := g.arguments(arguments)
 		if info.Constructor != nil {
 			if info.Native == "view" {
 				return "rt.ViewOf(" + g.key(info.Type) + "," + g.expression(e.Args[0].Value) + ")"
