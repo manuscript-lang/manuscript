@@ -17,6 +17,6 @@ Delve DAP provides native debugger transport; a Manuscript debugger layer render
 
 The required debug conformance program steps through API admission, concurrent operations, joining, and cleanup. It must demonstrate source stepping, value rendering, and operation and service inspection together; native line mapping alone cannot establish that behavior.
 
-See [complete-program evidence](../../pkg/compiler/conformance/programs.md), [metadata](metadata.md), and [Go line mapping](source-mapping.md).
+See [complete-program evidence](../../compiler/conformance/programs.md), [metadata](metadata.md), and [Go line mapping](source-mapping.md).
 
 [Previous: Generated Go source mapping](source-mapping.md)

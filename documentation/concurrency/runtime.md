@@ -23,7 +23,7 @@ User callbacks, failure reporters, resource cleanup, and joining run outside tra
 
 An operation must not join itself or an execution ancestor. Closing its own scheduler, including from nested parallel descendants or reporter callbacks joined by that service, faults before initiating shutdown. Check the fixed execution-parent chain, not just the current operation ID. Hosts close services from outside their admitted work. Cross-service cyclic shutdown is invalid library usage and must be avoided by host shutdown ordering.
 
-The conformance suite uses controlled barriers and race stress for admission versus closure, cancellation versus completion, and concurrent shutdown. See [semantic tests](../pkg/compiler/conformance/semantic-tests.md).
+The conformance suite uses controlled barriers and race stress for admission versus closure, cancellation versus completion, and concurrent shutdown. See [semantic tests](../compiler/conformance/semantic-tests.md).
 
 ## Completion and resource acquisition
 
@@ -54,7 +54,7 @@ Fixed parent relationships can use Go context derivation directly; there is no m
 
 Cleanup receives a shielded context that ignores the initiating cancellation and expired ordinary-work deadline. It preserves authority; a host cleanup/escalation policy is separate from the request budget. Adapters must support safe resource closure and must not return from a cancelled operation while its foreign work is still outstanding.
 
-See [blocking adapters](../modules-and-capabilities/adapters/cancellation.md), [deadlines](cancellation.md#deadlines), and [runtime/library layering](../pkg/compiler/lowering/function-and-task-calls.md).
+See [blocking adapters](../modules-and-capabilities/adapters/cancellation.md), [deadlines](cancellation.md#deadlines), and [runtime/library layering](../compiler/lowering/function-and-task-calls.md).
 
 ## Host escalation
 

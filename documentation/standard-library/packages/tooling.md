@@ -23,4 +23,4 @@ The caller chooses the output and sensitive fields. The function provides no imp
 
 ## Tests
 
-Tests use ordinary `if`/`return` guards; see [semantic conformance tests](../../pkg/compiler/conformance/semantic-tests.md). No expected-fault-catching syntax or authority injection is added. Heap/CPU profiling and richer runtime metrics remain future work. Existing inspect, diagram, and debug metadata contracts are unchanged.
+Tests use ordinary `if`/`return` guards; see [semantic conformance tests](../../compiler/conformance/semantic-tests.md). No expected-fault-catching syntax or authority injection is added. Heap/CPU profiling and richer runtime metrics remain future work. Existing inspect, diagram, and debug metadata contracts are unchanged.

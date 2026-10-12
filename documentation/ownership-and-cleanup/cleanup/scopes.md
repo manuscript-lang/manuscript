@@ -44,4 +44,4 @@ A resource acquired inside a loop closes at the end of that iteration. Returning
 
 The file, transaction, or scheduler supplies its own close behavior. `with` adds no custom enter hook or error-suppression hook.
 
-For compiler contributors: Go's function-level `defer` lasts until the function returns, so it cannot by itself implement Manuscript's nested block lifetimes. The compiler generates explicit cleanup for those scopes. See [exit order](exit-order.md), [cleanup lowering](../../pkg/compiler/lowering/cleanup-and-faults.md), and the [Go defer specification](https://go.dev/ref/spec#Defer_statements).
+For compiler contributors: Go's function-level `defer` lasts until the function returns, so it cannot by itself implement Manuscript's nested block lifetimes. The compiler generates explicit cleanup for those scopes. See [exit order](exit-order.md), [cleanup lowering](../../compiler/lowering/cleanup-and-faults.md), and the [Go defer specification](https://go.dev/ref/spec#Defer_statements).

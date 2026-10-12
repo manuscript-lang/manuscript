@@ -23,6 +23,6 @@ For example, a cross-file rename is stale when a referenced file changes, even i
 
 The wire schema and recovery from I/O failure or process interruption still need definitions. The implementation must provide recovery before claiming transactional multi-file edits.
 
-See [typed compiler facts](../../pkg/compiler/frontend/typed-ir.md) and [structured diagnostics](diagnostics.md).
+See [typed compiler facts](../../compiler/frontend/typed-ir.md) and [structured diagnostics](diagnostics.md).
 
 [Previous: Canonical formatting and generated views](formatting.md) · [Next: Readable and structured diagnostics](diagnostics.md)

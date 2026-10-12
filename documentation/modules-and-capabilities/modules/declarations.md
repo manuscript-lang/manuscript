@@ -85,7 +85,7 @@ import CustomerId from "@customers"
 
 Each example is an alternative import spelling for the same `CustomerId`. Aliases change how a path is written; module identity and visibility still follow the resolved file. Relative imports and aliases that resolve to the same file refer to the same module.
 
-Missing files, unknown aliases, missing exports, and cyclic module dependencies are compile errors. The [project configuration](../../pkg/compiler/builds/project-configuration.md) defines alias resolution and filesystem identity.
+Missing files, unknown aliases, missing exports, and cyclic module dependencies are compile errors. The [project configuration](../../compiler/builds/project-configuration.md) defines alias resolution and filesystem identity.
 
 See [source structure](../../core-language/basics/syntax.md) and [boundary contracts](boundaries.md).
 
