@@ -1,0 +1,38 @@
+version: 1
+experts:
+  - id: language
+    file: language.md
+    topics: [syntax, types, imports, arguments, removals, sharing, language decisions]
+    paths:
+      - "syntax/**"
+      - "lexer/**"
+      - "parser/**"
+      - "checker/**"
+      - "compiler/**"
+      - "design/core-language/**"
+      - "design/modules-and-capabilities/**"
+      - "tests/e2e/**"
+  - id: runtime
+    file: runtime.md
+    topics: [concurrency, cancellation, cleanup, resources, networking, native APIs]
+    paths:
+      - "runtime/**"
+      - "stdlib/**"
+      - "design/concurrency/**"
+      - "design/ownership-and-cleanup/**"
+      - "design/standard-library/**"
+      - "tests/e2e/testdata/projects/**"
+  - id: tooling-and-docs
+    file: tooling-and-docs.md
+    topics: [documentation, generated references, editor tooling, navigation, CLI, builds]
+    paths:
+      - "tooling/**"
+      - "extensions/**"
+      - "documentation/**"
+      - "stdlib/**"
+      - "cmd/**"
+      - "compiler/**"
+      - "design/**"
+      - ".github/workflows/**"
+      - "README.md"
+      - "IMPLEMENTATION.md"
