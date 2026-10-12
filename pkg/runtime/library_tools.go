@@ -1,40 +1,12 @@
 package msruntime
 
 import (
-	"encoding/json"
 	"strings"
 	"unicode/utf8"
 )
 
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("log", "write", libraryResult("Unit", "LogError"), []LibraryParam{p("output", "WriteStream"), p("level", "String"), p("message", "String"), p("fields", "Map[String][String]"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
-		level := a[1].(string)
-		if level != "debug" && level != "info" && level != "warn" && level != "error" || a[4].(int64) < 0 {
-			return libraryError(r, "InvalidInput", "")
-		}
-		m := map[string]string{}
-		for _, e := range a[3].(*Map).Entries {
-			m[e.Key.(string)] = e.Value.(string)
-		}
-		data, err := json.Marshal(struct {
-			Level   string            `json:"level"`
-			Message string            `json:"message"`
-			Fields  map[string]string `json:"fields"`
-		}{level, a[2].(string), m})
-		if err != nil {
-			return libraryError(r, "InvalidData", "")
-		}
-		if int64(len(data)) >= a[4].(int64) {
-			return libraryError(r, "LimitExceeded", "")
-		}
-		data = append(data, '\n')
-		v := Invoke(ctx, Bind(a[0], "", "write"), []Argument{{"data", Bytes{data}}}).(Alternative)
-		if v.Tag == "error" {
-			return libraryErrorFields(r, "Io", v.Fields)
-		}
-		return libraryOK(r, Unit{})
-	})
 	libraryAdd("io", "read_line", libraryResult("Optional[String]", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[1].(int64)
 		if max <= 0 {

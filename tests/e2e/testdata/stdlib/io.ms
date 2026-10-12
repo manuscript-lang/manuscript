@@ -6,9 +6,7 @@ import {
     read_line,
     copy
 } from "@std/io.ms"
-import {write, LogError} from "@std/log.ms"
 import Bytes from "@std/bytes.ms"
-import {List, Map} from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
@@ -67,60 +65,3 @@ test "streams enforce byte limits and preserve original errors":
     if read_all(input: ReadStream(value: reader)) != closed: return panic(
         "read error identity"
     )
-
-test "logging writes escaped structured records through a source stream":
-    let output = MemoryStream(
-        data: "".to_bytes(),
-        offset: 0,
-        closed: false
-    )
-    let fields = Map[String, String]().with_entry(key: "key", value: "value")
-    let written = value(
-        write(
-            output: WriteStream(value: output),
-            level: "info",
-            message: "say \"hi\"",
-            fields: fields
-        )
-    )
-    if (
-        output.data.to_text() != some(
-            value: "\{\"level\":\"info\",\"message\":\"say \\\"hi\\\"\",\"fields\":\{\"key\":\"value\"\}\}\n"
-        )
-    ): return panic("log record")
-
-    let before = output.data.clone()
-    let invalid: Result[Unit, LogError] = error(cause: LogError.InvalidInput)
-    if (
-        write(
-            output: WriteStream(value: output),
-            level: "invalid",
-            message: "",
-            fields: fields
-        ) != invalid
-    ): return panic("log level")
-
-    let limited: Result[Unit, LogError] = error(cause: LogError.LimitExceeded)
-    if (
-        write(
-            output: WriteStream(value: output),
-            level: "info",
-            message: "x",
-            fields: fields,
-            max_bytes: some(value: 1)
-        ) != limited
-    ): return panic("log budget")
-    if output.data != before: return panic("failed log wrote bytes")
-
-    output.closed = true
-    let closed: Result[Unit, LogError] = error(
-        cause: LogError.Io(cause: IoError.Closed)
-    )
-    if (
-        write(
-            output: WriteStream(value: output),
-            level: "info",
-            message: "x",
-            fields: fields
-        ) != closed
-    ): return panic("log lost stream cause")

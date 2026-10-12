@@ -20,7 +20,7 @@ var NativeImplementations = []NativeImplementationSpec{
 			if cause.Tag == "Crashed" && len(cause.Fields) == 2 {
 				return cause.Fields[1].(string)
 			}
-			if cause.Type == "@std/LogError" && cause.Tag == "Io" {
+			if cause.Type == "@std/LogError" && (cause.Tag == "Io" || cause.Tag == "FileSystem") {
 				return Invoke(ctx, Bind(cause.Fields[0], "@std/Error", "message"), nil)
 			}
 			return strings.TrimPrefix(cause.Type, "@std/") + "." + cause.Tag
