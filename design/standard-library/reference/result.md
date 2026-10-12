@@ -6,23 +6,11 @@ title = "result"
 
 Import each required symbol with `import Name from "@std/result.ms"`.
 
-## Result
+## Result {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-Result: Result[T, U]
-type parameters: T, U
-case ok(value: T)
-case error(cause: U)
-```
-
-## map_error
-
-Kind: fn.
-
-```text
-map_error: fn(result: Result[T, E], transform: fn(cause: E)->F)->Result[T, F]
-type parameters: T, E, F
+```manuscript
+type Result[T, U]:
+    case ok(value: T)
+    case error(cause: U)
 ```
 

@@ -7,13 +7,13 @@ weight = 28
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Use `Result[T, E]` when an operation can either succeed with a value of type `T` or fail with an expected error of type `E`. Import `Result` from `@std/result.ms`; import its `map_error` helper separately if you use it.
+Use `Result[T, E]` when an operation can either succeed with a value of type `T` or fail with an expected error of type `E`. Import `Result` from `@std/result.ms`.
 
 Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can inspect the result with `match` or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
 
 ## Returning a domain error
 
-```text
+```manuscript
 type DiscountError:
     case InvalidPrice
     case InvalidPercent
@@ -33,7 +33,7 @@ The function checks inputs before calculating. It returns an explicit error for 
 
 The following continues the declarations above:
 
-```text
+```manuscript
 fn discount_message(price: Decimal, percent: Decimal) -> String:
     let outcome = discount(price: price, percent: percent)
     match outcome:
@@ -51,15 +51,16 @@ Import `Error` from `@std/errors.ms` when a boundary should accept multiple erro
 
 ```text
 import Bytes from "@std/bytes.ms"
-import {Error, as_error} from "@std/errors.ms"
-import {EncodingError, hex_decode} from "@std/encoding.ms"
-import {Result, map_error} from "@std/result.ms"
+import Error from "@std/errors.ms"
+import hex_decode from "@std/encoding.ms"
+import Result from "@std/result.ms"
 
 fn decode(text: String) -> Result[Bytes, Error]:
-    return map_error(
-        result: hex_decode(text: text, max_bytes: 1024),
-        transform: as_error[EncodingError],
-    )
+    match hex_decode(text: text, max_bytes: 1024):
+        ok(value):
+            return ok(value: value)
+        error(cause):
+            return error(cause: Error(value: cause))
 ```
 
 The conversion preserves the original `EncodingError` case and payload. A caller may handle any error with `cause.message()`, or select a specific implementation using a [contract type pattern](../control-flow/pattern-matching.md#contract-type-patterns). A caller that needs only encoding errors can keep `Result[Bytes, EncodingError]` and match its cases directly.

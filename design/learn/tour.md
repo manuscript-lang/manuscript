@@ -9,7 +9,7 @@ These small examples introduce the same concepts used in larger applications. Th
 
 ## Bind values and call functions
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn greeting(name: String) -> String:
@@ -25,7 +25,7 @@ test "greeting":
 
 ## Model data and alternatives
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 type Customer:
@@ -52,7 +52,7 @@ Records have named, immutable fields. Alternatives express one of several cases 
 
 ## Collections and optional values
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 let names = ["Ada", "Grace"]

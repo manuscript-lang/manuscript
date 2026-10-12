@@ -12,6 +12,6 @@ Choose a facility based on what you need to do: work with immutable values, read
 - [Minimum data operations](operations.md) — Look up the basic methods on collections, text, bytes, and numeric values.
 
 - [Readers, writers, and streams](streams.md) — Read and write bytes, recognize end-of-input, and close streams.
-- [Bounded queues](queues.md) — Connect producers and consumers with bounded storage.
-- [Synchronized state, pools, and leases](synchronized-state.md) — Coordinate shared state and acquire a pool lease with scoped cleanup.
-- [Local builders and immutable results](builders.md) — Construct a value with local mutation, then freeze an immutable snapshot.
+- [Local queues](queues.md) — Use a bounded FIFO locally, or share it through Synchronized.
+- [Synchronized values, pools, and leases](synchronized-state.md) — Coordinate shared state and acquire a pool lease with scoped cleanup.
+- [Builders and immutable results](builders.md) — Construct a value with synchronized mutation, then freeze an immutable snapshot.

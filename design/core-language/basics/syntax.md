@@ -11,7 +11,7 @@ Each Manuscript source file ends in `.ms` and is a module. Put imports, type dec
 
 The following `src/greeting.ms` file defines a customer and a function that creates a greeting. Read it from top to bottom:
 
-```text
+```manuscript
 export type Customer:
     name: String
     active: Bool
@@ -31,7 +31,7 @@ Function calls may omit the argument label when the function has exactly one par
 
 Expressions inside parentheses, brackets, or braces can span lines. This lets a call list its arguments on separate lines without changing their evaluation order:
 
-```text
+```manuscript
 let customer = Customer(
     name: "Ada",
     active: true,
@@ -40,7 +40,7 @@ let customer = Customer(
 
 Comments outside text literals begin with `#` and continue through the physical line. Identifiers use ASCII letters, digits, and underscores; text and comments may contain Unicode. Source is UTF-8, and names are case-sensitive.
 
-```text
+```manuscript
 # A local binding can infer its type from the value.
 let count = 3
 ```
@@ -49,7 +49,7 @@ let count = 3
 
 The resolved path of `src/greeting.ms` identifies its module. `export` makes a declaration available outside that module. Another file in `src` can import its customer type with:
 
-```text
+```manuscript
 import Customer from "./greeting.ms"
 ```
 

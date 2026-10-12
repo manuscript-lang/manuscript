@@ -6,243 +6,183 @@ title = "math"
 
 Import each required symbol with `import Name from "@std/math.ms"`.
 
-## abs
+## abs {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-abs: fn(value: Float)->Float
+```manuscript
+fn abs(value: Float) -> Float
 ```
 
-## abs_int
+## abs_int {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-abs_int: fn(value: Int)->Int
+```manuscript
+fn abs_int(value: Int) -> Int
 ```
 
-## acos
+## acos {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-acos: fn(value: Float)->Float
+```manuscript
+fn acos(value: Float) -> Float
 ```
 
-## asin
+## asin {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-asin: fn(value: Float)->Float
+```manuscript
+fn asin(value: Float) -> Float
 ```
 
-## atan
+## atan {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-atan: fn(value: Float)->Float
+```manuscript
+fn atan(value: Float) -> Float
 ```
 
-## atan2
+## atan2 {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-atan2: fn(y: Float, x: Float)->Float
+```manuscript
+fn atan2(y: Float, x: Float) -> Float
 ```
 
-## ceil
+## ceil {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-ceil: fn(value: Float)->Float
+```manuscript
+fn ceil(value: Float) -> Float
 ```
 
-## cos
+## cos {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-cos: fn(value: Float)->Float
+```manuscript
+fn cos(value: Float) -> Float
 ```
 
-## cosh
+## cosh {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-cosh: fn(value: Float)->Float
+```manuscript
+fn cosh(value: Float) -> Float
 ```
 
-## e
+## e {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-e: fn()->Float
+```manuscript
+fn e() -> Float
 ```
 
-## exp
+## exp {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-exp: fn(value: Float)->Float
+```manuscript
+fn exp(value: Float) -> Float
 ```
 
-## floor
+## floor {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-floor: fn(value: Float)->Float
+```manuscript
+fn floor(value: Float) -> Float
 ```
 
-## hypot
+## hypot {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-hypot: fn(left: Float, right: Float)->Float
+```manuscript
+fn hypot(left: Float, right: Float) -> Float
 ```
 
-## is_finite
+## is_finite {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-is_finite: fn(value: Float)->Bool
+```manuscript
+fn is_finite(value: Float) -> Bool
 ```
 
-## is_nan
+## is_nan {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-is_nan: fn(value: Float)->Bool
+```manuscript
+fn is_nan(value: Float) -> Bool
 ```
 
-## log
+## log {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-log: fn(value: Float)->Float
+```manuscript
+fn log(value: Float) -> Float
 ```
 
-## log10
+## log10 {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-log10: fn(value: Float)->Float
+```manuscript
+fn log10(value: Float) -> Float
 ```
 
-## log2
+## log2 {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-log2: fn(value: Float)->Float
+```manuscript
+fn log2(value: Float) -> Float
 ```
 
-## max
+## max {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-max: fn(left: Float, right: Float)->Float
+```manuscript
+fn max(left: Float, right: Float) -> Float
 ```
 
-## min
+## min {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-min: fn(left: Float, right: Float)->Float
+```manuscript
+fn min(left: Float, right: Float) -> Float
 ```
 
-## pi
+## pi {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-pi: fn()->Float
+```manuscript
+fn pi() -> Float
 ```
 
-## pow
+## pow {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-pow: fn(base: Float, exponent: Float)->Float
+```manuscript
+fn pow(base: Float, exponent: Float) -> Float
 ```
 
-## remainder
+## remainder {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-remainder: fn(left: Float, right: Float)->Float
+```manuscript
+fn remainder(left: Float, right: Float) -> Float
 ```
 
-## round
+## round {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-round: fn(value: Float)->Float
+```manuscript
+fn round(value: Float) -> Float
 ```
 
-## sin
+## sin {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sin: fn(value: Float)->Float
+```manuscript
+fn sin(value: Float) -> Float
 ```
 
-## sinh
+## sinh {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sinh: fn(value: Float)->Float
+```manuscript
+fn sinh(value: Float) -> Float
 ```
 
-## sqrt
+## sqrt {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sqrt: fn(value: Float)->Float
+```manuscript
+fn sqrt(value: Float) -> Float
 ```
 
-## tan
+## tan {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-tan: fn(value: Float)->Float
+```manuscript
+fn tan(value: Float) -> Float
 ```
 
-## tanh
+## tanh {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-tanh: fn(value: Float)->Float
+```manuscript
+fn tanh(value: Float) -> Float
 ```
 
-## truncate
+## truncate {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-truncate: fn(value: Float)->Float
+```manuscript
+fn truncate(value: Float) -> Float
 ```
 

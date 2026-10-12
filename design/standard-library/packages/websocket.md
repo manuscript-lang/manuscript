@@ -13,7 +13,7 @@ A WebSocket session sends and receives complete text or binary messages over a c
 
 ## WebSocket operations
 
-```text
+```manuscript
 fn receive() -> Result[Optional[WebSocketMessage], WebSocketError]
 fn send(data: Bytes, text: Bool) -> Result[Unit, WebSocketError]
 fn ping(data: Bytes) -> Result[Unit, WebSocketError]
@@ -23,9 +23,9 @@ fn close() -> Unit
 
 ## Acquiring a session
 
-Network.web_socket acquires a client WebSocket for an explicit ws/wss URL, headers, subprotocols and WebSocketOptions. HttpExchange.upgrade acquires the server session inside an admitted request. Both return shared views with synchronized operations and explicit close. Wss retains hostname/chain verification, explicit TLS roots/client certificates and destination restrictions.
+Network.web_socket acquires a client WebSocket for an explicit ws/wss URL, headers, subprotocols and WebSocketOptions. HttpExchange.upgrade acquires the server session inside an admitted request. Both return contract views with synchronized operations and explicit close. Wss retains hostname/chain verification, explicit TLS roots/client certificates and destination restrictions.
 
-```text
+```manuscript
 type WebSocketOptions:
     max_message_bytes: Int
     timeout: Duration
@@ -49,6 +49,6 @@ One read and one write can run concurrently. Two reads, or two writes, are seria
 
 The server session remains inside the HTTP request lifetime. Disconnect, request timeout and server/Network shutdown interrupt blocking receives/writes, close the hijacked socket and join the handler's nested work. Close is idempotent, attempts a normal close control frame with a short bounded write deadline, then releases the handle and joins admitted operations. Source must not retain a session as detached work outside the request. Client sessions remain owned by their Network and lexical with scope. HTTP/3 is unrelated to the supported WebSocket transport and is excluded from this expansion by user request.
 
-```text
-fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket&Shareable, WebSocketError]
+```manuscript
+fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, WebSocketError]
 ```

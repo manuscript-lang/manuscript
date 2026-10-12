@@ -19,8 +19,6 @@ func libraryParseType(s string, vars map[string]*Type) *Type {
 		}
 		return function(ps, libraryParseType(s[end+3:], vars))
 	}
-	shared := strings.HasSuffix(s, "&Shareable")
-	s = strings.TrimSuffix(s, "&Shareable")
 	name := s
 	var args []*Type
 	if at := strings.IndexByte(s, '['); at >= 0 {
@@ -48,11 +46,6 @@ func libraryParseType(s string, vars map[string]*Type) *Type {
 		t = standard(name, args...)
 	} else {
 		t = primitive(name)
-	}
-	if shared {
-		copy := *t
-		copy.Shared = true
-		t = &copy
 	}
 	return t
 }
@@ -95,6 +88,46 @@ func validateStandardNativeBindings() error {
 			return fmt.Errorf("unavailable native implementation: %s", method.Decl.Pos)
 		}
 	}
+	for receiver, operations := range rt.NativeLibraryBindings {
+		typ := standardSymbols[receiver]
+		if intrinsic := intrinsicOperations[receiver]; intrinsic != nil {
+			typ = intrinsic.Def.Symbol
+		}
+		if typ == nil {
+			return fmt.Errorf("missing native library receiver %s", receiver)
+		}
+		for name := range operations {
+			spec, ok := rt.NativeLibrarySpec(receiver, name)
+			if !ok {
+				return fmt.Errorf("missing native member function %s.%s", receiver, name)
+			}
+			receiverType := typ.Type
+			if intrinsicOperations[receiver] != nil {
+				receiverType = primitive(receiver)
+			}
+			method := nativeMethod(receiverType, name)
+			if method == nil {
+				return fmt.Errorf("missing native member declaration %s.%s", receiver, name)
+			}
+			vars := map[string]*Type{}
+			for i, v := range typ.Variables {
+				if i < len(spec.Variables) {
+					vars[spec.Variables[i].Name] = v
+				}
+			}
+			for _, v := range method.Variables {
+				vars[v.Name] = v
+			}
+			params := []Param{}
+			for _, p := range spec.Params[1:] {
+				params = append(params, Param{p.Name, libraryParseType(p.Type, vars)})
+			}
+			if !Same(method.Type, function(params, libraryParseType(spec.Result, vars))) {
+				return fmt.Errorf("native member signature does not match source: %s.%s", receiver, name)
+			}
+		}
+	}
+
 	for _, spec := range rt.LibraryMethods {
 		s := standardSymbols[spec.Receiver]
 		if s == nil {

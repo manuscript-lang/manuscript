@@ -1,9 +1,7 @@
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
-import Queue from "@std/queues.ms"
-import QueueError from "@std/queues.ms"
-import State from "@std/state.ms"
+import Synchronized from "@std/sync.ms"
 import Pool from "@std/pools.ms"
 import PoolError from "@std/pools.ms"
 import File from "@std/io.ms"
@@ -18,51 +16,27 @@ import BytesBuilder from "@std/builders.ms"
 import StringBuilder from "@std/builders.ms"
 
 type MemoryFile:
-    closed: State[Bool]
+    closed: Synchronized[Bool]
 
 impl File for MemoryFile:
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]:
-        if self.closed.get():
-            return error(cause: IoError.Closed)
+        with locked = self.closed.lock():
+            if locked.get():
+                return error(cause: IoError.Closed)
         return ok(value: some(value: "data".to_bytes()))
     fn close() -> Unit:
-        self.closed.set(value: true)
-
-test "bounded queues drain on close":
-    with queue = Queue[Int](capacity: 2):
-        let accepted = queue.send(value: 3)
-        let second = queue.send(value: 4)
-        queue.close()
-        match queue.receive():
-            some(value):
-                if not (value == 3):
-                    return panic(message: "check failed")
-            none:
-                return panic(message: "Unexpected case")
-        match queue.receive():
-            some(value):
-                if not (value == 4):
-                    return panic(message: "check failed")
-            none:
-                return panic(message: "Unexpected case")
-        match queue.receive():
-            some(_):
-                return panic(message: "Unexpected case")
-            none:
-                let completed = unit
-        match queue.send(value: 5):
-            ok(_):
-                return panic(message: "Unexpected case")
-            error(cause):
-                if not (cause == QueueError.Closed):
-                    return panic(message: "check failed")
+        with locked = self.closed.lock():
+            locked.set(value: true)
 
 test "atomic state and sealed builders":
-    let state = State(value: 3)
-    if not (state.swap(value: 4) == 3):
-        return panic(message: "check failed")
-    if not (state.get() == 4):
-        return panic(message: "check failed")
+    let state = Synchronized(value: 3)
+    with locked = state.lock():
+        if not (locked.get() == 3):
+            return panic(message: "check failed")
+        locked.set(value: 4)
+    with locked = state.lock():
+        if not (locked.get() == 4):
+            return panic(message: "check failed")
     let list = ListBuilder[Int]()
     list.append(value: 1)
     list.append(value: 2)
@@ -94,8 +68,8 @@ test "atomic state and sealed builders":
         return panic(message: "check failed")
 
 test "pool leases guard aliases and release resources":
-    let closed = State(value: false)
-    let original = (File & Shareable)(value: MemoryFile(closed: closed))
+    let closed = Synchronized(value: false)
+    let original = (File)(value: MemoryFile(closed: closed))
     with pool = Pool(resources: [original]):
         match pool.acquire():
             error(_):
@@ -119,7 +93,9 @@ test "pool leases guard aliases and release resources":
                     error(cause):
                         if not (cause == PoolError.Closed):
                             return panic(message: "check failed")
-        if not (not closed.get()):
+        with locked = closed.lock():
+            if not (not locked.get()):
+                return panic(message: "check failed")
+    with locked = closed.lock():
+        if not (locked.get()):
             return panic(message: "check failed")
-    if not (closed.get()):
-        return panic(message: "check failed")

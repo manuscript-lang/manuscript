@@ -185,25 +185,25 @@ func ioError(result, tag, message string) Value {
 type files struct{ directory string }
 
 func (f *files) Operation(name string) Function {
-	return NewAcquisition([]string{"path"}, "@std/Result[@std/File&Shareable][@std/IoError]", func(ctx *Execution, args []Value) Value {
+	return NewAcquisition([]string{"path"}, "@std/Result[@std/File][@std/IoError]", func(ctx *Execution, args []Value) Value {
 		CheckCancelled(ctx)
 		name := args[0].(string)
 		if strings.ContainsRune(name, 0) {
-			return ioError("@std/Result[@std/File&Shareable][@std/IoError]", "InvalidInput", "")
+			return ioError("@std/Result[@std/File][@std/IoError]", "InvalidInput", "")
 		}
 		if !filepath.IsAbs(name) {
 			name = filepath.Join(f.directory, name)
 		}
 		file, err := os.Open(name)
 		if err != nil {
-			return ioError("@std/Result[@std/File&Shareable][@std/IoError]", "Unavailable", "")
+			return ioError("@std/Result[@std/File][@std/IoError]", "Unavailable", "")
 		}
 		resource := &stream{file: file, owned: true, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}
 		if ctx.Context.Err() != nil {
 			file.Close()
 			CheckCancelled(ctx)
 		}
-		return Alternative{"@std/Result[@std/File&Shareable][@std/IoError]", "ok", []Value{ViewOf("@std/File&Shareable", resource)}}
+		return Alternative{"@std/Result[@std/File][@std/IoError]", "ok", []Value{ViewOf("@std/File", resource)}}
 	}, func(ctx *Execution, value Value) {
 		result := value.(Alternative)
 		if result.Tag == "ok" {
@@ -252,7 +252,7 @@ func Process(arguments []string) (Value, error) {
 			}
 		}
 	}
-	return Record{"@std/Process", map[string]Value{"filesystem": ViewOf("@std/FileSystem&Shareable", &libraryFileSystem{directory}), "entropy": ViewOf("@std/Entropy&Shareable", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock&Shareable", libraryWallClock{}), "system": ViewOf("@std/System&Shareable", &librarySystem{directory}), "arguments": List{"@std/List[String]", values}, "environment": environment, "stdin": ViewOf("@std/ReadStream&Shareable", &stream{file: os.Stdin, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}), "stdout": ViewOf("@std/WriteStream&Shareable", &stream{file: os.Stdout, resultType: "@std/Result[Unit][@std/IoError]"}), "stderr": ViewOf("@std/WriteStream&Shareable", &stream{file: os.Stderr, resultType: "@std/Result[Unit][@std/IoError]"}), "files": ViewOf("@std/Files&Shareable", &files{directory}), "network": ViewOf("@std/Network&Shareable", &network{}), "commands": ViewOf("@std/Commands&Shareable", &commands{}), "clock": ViewOf("@std/Clock&Shareable", &clock{&clockDomain{}, time.Now()})}}, nil
+	return Record{"@std/Process", map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{directory}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{directory}), "arguments": List{"@std/List[String]", values}, "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: "@std/Result[Unit][@std/IoError]"}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: "@std/Result[Unit][@std/IoError]"}), "files": ViewOf("@std/Files", &files{directory}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}}, nil
 }
 func RunMain(main Value, arguments []string) (exit int) {
 	exit = 70

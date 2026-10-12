@@ -1,5 +1,5 @@
 import panic from "@std/faults.ms"
-import {Result, map_error} from "@std/result.ms"
+import Result from "@std/result.ms"
 import {parse, JsonError, JsonLimits} from "@std/json.ms"
 import {EncodingError, hex_decode} from "@std/encoding.ms"
 
@@ -11,8 +11,11 @@ fn encoding_error(cause: EncodingError) -> ApplicationError:
     return Encoding(cause: cause)
 
 fn decode_bad_input() -> Result[Unit, ApplicationError]:
-    let bytes = try map_error(result: hex_decode(text: "zz", max_bytes: 10), transform: encoding_error)
-    return ok(value: unit)
+    match hex_decode(text: "zz", max_bytes: 10):
+        ok(_):
+            return ok(value: unit)
+        error(cause):
+            return error(cause: encoding_error(cause))
 
 fn json_error_code(cause: JsonError) -> Int:
     match cause:
@@ -32,13 +35,13 @@ test "JSON errors need only JSON cases":
             if json_error_code(cause) != 2:
                 return panic(message: "wrong JSON cause")
 
-test "explicit error mapping preserves the cause through try":
+test "explicit error mapping preserves the cause":
     let expected: Result[Unit, ApplicationError] = error(cause: Encoding(cause: EncodingError.InvalidData))
     if decode_bad_input() != expected:
         return panic(message: "error mapping lost its cause")
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
-import {Error, as_error} from "@std/errors.ms"
+import Error from "@std/errors.ms"
 import IoError from "@std/io.ms"
 import List from "@std/collections.ms"
 
@@ -49,7 +52,7 @@ impl Error for CustomError:
     fn message() -> String:
         return self.detail
 
-type TaggedError[T: Shareable]:
+type TaggedError[T]:
     detail: T
 
 impl Error for TaggedError[T]:
@@ -57,7 +60,14 @@ impl Error for TaggedError[T]:
         return "tagged failure"
 
 fn decode_generically() -> Result[Unit, Error]:
-    let bytes = try map_error(result: hex_decode(text: "zz", max_bytes: 10), transform: as_error[EncodingError])
+    match hex_decode(text: "zz", max_bytes: 10):
+        ok(_):
+            return ok(value: unit)
+        error(cause):
+            return error(cause: Error(value: cause))
+
+fn propagate_generic() -> Result[Unit, Error]:
+    let completed = try decode_generically()
     return ok(value: unit)
 
 fn describe_error(cause: Error) -> String:
@@ -88,7 +98,7 @@ fn tagged_detail(cause: Error) -> String:
         _:
             return cause.message()
 
-fn generic_type_pattern[T: Shareable](cause: Error, expected: T) -> Bool:
+fn generic_type_pattern[T](cause: Error, expected: T) -> Bool:
     match cause:
         TaggedError[T](_):
             return true
@@ -105,10 +115,10 @@ test "generic handling preserves the concrete error and its payload":
     let custom = Error(value: CustomError(detail: "application diagnostic"))
     if describe_error(custom) != "application diagnostic":
         return panic(message: "generic fallback did not use custom implementation")
-    let wrapped = as_error(cause: json)
+    let wrapped = Error(value: json)
     if describe_error(wrapped) != "malformed JSON":
         return panic(message: "repeated views changed concrete identity")
-    match decode_generically():
+    match propagate_generic():
         ok(_):
             return panic(message: "invalid data succeeded")
         error(cause):
@@ -129,9 +139,9 @@ test "type patterns compare exact generic applications":
     if generic_type_pattern(cause: integer, expected: "different type"):
         return panic(message: "generic type pattern matched wrong application")
 
-test "shared Error views retain matching and sharing":
-    let shared = (Error & Shareable)(value: CustomError(detail: "shared diagnostic"))
-    let errors: List[Error & Shareable] = [shared]
+test "Error views can be stored and matched":
+    let shared = Error(value: CustomError(detail: "shared diagnostic"))
+    let errors: List[Error] = [shared]
     match errors.get(index: 0):
         some(cause):
             match cause:
@@ -146,7 +156,6 @@ test "shared Error views retain matching and sharing":
 import {LogError} from "@std/log.ms"
 import {CommandError} from "@std/process.ms"
 import {ExecutionError, StartError} from "@std/tasks.ms"
-import {QueueError} from "@std/queues.ms"
 import {PoolError} from "@std/pools.ms"
 
 test "standard diagnostics preserve messages and wrapped causes":
@@ -159,8 +168,6 @@ test "standard diagnostics preserve messages and wrapped causes":
         return panic(message: "execution error has no diagnostic")
     if Error(value: StartError.Full).message() != "StartError.Full":
         return panic(message: "start error has no diagnostic")
-    if Error(value: QueueError.Closed).message() != "QueueError.Closed":
-        return panic(message: "queue error has no diagnostic")
     if Error(value: PoolError.Closed).message() != "PoolError.Closed":
         return panic(message: "pool error has no diagnostic")
 
@@ -182,22 +189,24 @@ fn match_label(view: Label[String]) -> String:
         _:
             return view.label()
 
-import State from "@std/state.ms"
+import Synchronized from "@std/sync.ms"
 
-fn counted_view(count: State[Int]) -> Label[String]:
-    count.set(count.get() + 1)
+fn counted_view(count: Synchronized[Int]) -> Label[String]:
+    with locked = count.lock():
+        locked.set(value: locked.get() + 1)
     return Label[String](value: Labelled(value: "label diagnostic"))
 
 test "contract matches evaluate once and preserve ordinary contract semantics":
-    let count = State(value: 0)
+    let count = Synchronized(value: 0)
     match counted_view(count):
         Labelled[String](receiver):
             if receiver.value != "label diagnostic":
                 return panic(message: "unrelated contract pattern lost receiver")
         _:
             return panic(message: "unrelated contract pattern did not run")
-    if count.get() != 1:
-        return panic(message: "contract scrutinee was evaluated more than once")
+    with locked = count.lock():
+        if locked.get() != 1:
+            return panic(message: "contract scrutinee was evaluated more than once")
     let view = Label[String](value: Labelled(value: "separate handler"))
     if match_label(view) != "separate handler":
         return panic(message: "contract match depended on Error identity")

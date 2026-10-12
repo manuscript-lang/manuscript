@@ -5,6 +5,8 @@ bookSearchExclude = true
 weight = 122
 +++
 
+> Historical review: sharing-proof, shared-view, and State discussions below describe the former design. The current language shares all values freely and uses [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) for explicit critical sections.
+
 # Language completeness review and decision status
 
 [Design index](../_index.md)
@@ -24,13 +26,13 @@ This review covers core language semantics, modules and capabilities, data APIs,
 | CORE-05, CORE-07 | [Compatibility](../core-language/types/compatibility.md) and [generics](../core-language/types/generics.md): exact/invariant identity, bounded constructor context, argument-only function inference, and checked generic bodies |
 | CORE-06 | [Equality and hashing](../core-language/types/equality-and-hashing.md): closed eligibility, structural equality, mathematical map/set equality, and no Float/collection hashing |
 | CORE-08 | [Recursive data](../core-language/types/records.md#recursive-data): regular recursion through immutable collection storage; reject inline storage cycles and expanding applications |
-| CORE-09, M02 implementation rules | [Contracts](../core-language/types/contracts.md): implicit self, exact operation signatures, concrete/generic implementations, overlap rejection independent of bounds, defining-module coherence, explicit plain/shared views, and unambiguous dispatch |
+| CORE-09, M02 implementation rules | [Contracts](../core-language/types/contracts.md): implicit self, exact operation signatures, concrete/generic implementations, overlap rejection independent of bounds, defining-module coherence, explicit contract views, and unambiguous dispatch |
 | CORE-10 function compatibility, CORE-11 | [Function values](../core-language/functions/function-values-and-closures.md#function-type-compatibility) and [returns](../core-language/functions/declarations-and-calls.md#unit-and-never): exact labels/order/types, Unit value/fallthrough, Never evaluation, and complete non-Unit returns |
 | CORE-12, CORE-13 | [Matching](../core-language/control-flow/pattern-matching.md) and [loops](../core-language/control-flow/loops.md): positional payloads, explicit final wildcard, closed iteration domains, MapEntry, and function-local loop control |
 | M01, M02 names and visibility | [Modules](../modules-and-capabilities/modules/declarations.md): declaration/name collection, collisions, public type closure, and explicit exclusions for renaming/re-exports |
 | TOOL-02 core coverage | [Conformance fixtures](../compiler/conformance/core-language.md) and [checker requirements](../compiler/frontend/type-checker.md): accepted modules, isolated rejection variants, and observable rule checks |
 
-The user selected container-guarded recursive data and explicit concrete-to-contract conversion. The subsequent interface decision admits generic implementation blocks and distinct plain/shared contract views; plain views may retain local receivers, while `Contract & Shareable` preserves a statically proved sharing guarantee. Existing resource, capture, and concurrent execution policies remain in their separate guides. CORE-03 is now closed as a core design rule: [numeric outcomes](../core-language/basics/numbers-and-booleans.md#runtime-numeric-outcomes) and [conversion APIs](../standard-library/data-and-io/operations.md) define the remaining behavior. Source test bodies have a static Unit contract; test discovery and execution remain tooling work.
+The user selected container-guarded recursive data and explicit concrete-to-contract conversion. The current interface design admits generic implementation blocks and ordinary contract views. Every value may be shared; equality and hashing remain separate derived properties. Existing resource, capture, and concurrent execution policies remain in their separate guides. CORE-03 is now closed as a core design rule: [numeric outcomes](../core-language/basics/numbers-and-booleans.md#runtime-numeric-outcomes) and [conversion APIs](../standard-library/data-and-io/operations.md) define the remaining behavior. Source test bodies have a static Unit contract; test discovery and execution remain tooling work.
 
 ## What is already settled
 
@@ -142,7 +144,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** CORE-06. **Priority:** semantic blocker.
 
-**Evidence.** [core-language/types/equality-and-hashing.md lines 7-23](../core-language/types/equality-and-hashing.md) says eligible shareable types get generated value equality/hash and Hashable requires Equal. It never defines "eligible". [core-language/types/collections.md lines 28-34](../core-language/types/collections.md) establishes hash requirements and insertion-order iteration, but not collection equality.
+**Evidence.** [core-language/types/equality-and-hashing.md lines 7-23](../core-language/types/equality-and-hashing.md) says eligible types get generated value equality/hash and Hashable requires Equal. It never defines "eligible". [core-language/types/collections.md lines 28-34](../core-language/types/collections.md) establishes hash requirements and insertion-order iteration, but not collection equality.
 
 **Example.** Can `Map[Float, String]`, `Set[Customer]`, or `Set[List[Int]]` compile? Do two maps with identical entries but reverse insertion order compare equal? Does a record with a function field support `==`? Are numerically equal Decimals with different scale hash-equivalent?
 

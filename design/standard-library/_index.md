@@ -28,9 +28,9 @@ Use this chapter to find standard types and operations. Most names need an expli
 
 - [Minimum data operations](data-and-io/operations.md) — Look up the basic methods on collections, text, bytes, and numeric values.
 - [Readers, writers, and streams](data-and-io/streams.md) — Read and write bytes, recognize end-of-input, and close streams.
-- [Bounded queues](data-and-io/queues.md) — Connect producers and consumers with bounded storage.
-- [Synchronized state, pools, and leases](data-and-io/synchronized-state.md) — Coordinate shared state and acquire a pool lease with scoped cleanup.
-- [Local builders and immutable snapshots](data-and-io/builders.md) — Construct a value with local mutation, then freeze an immutable snapshot.
+- [Local queues](data-and-io/queues.md) — Use a bounded FIFO locally, or share it through Synchronized.
+- [Synchronized values, pools, and leases](data-and-io/synchronized-state.md) — Coordinate shared state and acquire a pool lease with scoped cleanup.
+- [Builders and immutable snapshots](data-and-io/builders.md) — Construct a value with synchronized mutation, then freeze an immutable snapshot.
 
 ### 4. [Application hosts](hosts/_index.md)
 
@@ -39,6 +39,7 @@ Use this chapter to find standard types and operations. Most names need an expli
 
 ### 5. [General-purpose packages](packages/_index.md)
 
+- [JavaScript built-in coverage](packages/javascript-builtins.md) — Find method equivalents and semantic differences.
 - [Node.js and Go coverage](packages/coverage.md) — See what is implemented and what remains outside the library.
 - [Common package contracts](packages/contracts.md) — Review the errors, limits, and authority rules shared by packages.
 - [Expanded library conformance](packages/conformance.md) — Find executable checks for package behavior and limits.

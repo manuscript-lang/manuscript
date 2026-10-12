@@ -6,41 +6,36 @@ title = "random"
 
 Import each required symbol with `import Name from "@std/random.ms"`.
 
-## Entropy
+## Entropy {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-Entropy: Entropy
-operation bytes: fn(count: Int)->Result[Bytes, RandomError]
+```manuscript
+interface Entropy:
+    fn bytes(count: Int) -> Result[Bytes, RandomError]
 ```
 
-## RandomError
+## RandomError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-RandomError: RandomError
-implements: Error
-case InvalidInput
-case LimitExceeded
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type RandomError:
+    case InvalidInput
+    case LimitExceeded
+    case Failed(message: String)
 ```
 
-## secure_int
-
-Kind: fn.
-
-```text
-secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, RandomError]
+```manuscript
+impl Error for RandomError:
+    fn message() -> String
 ```
 
-## uuid_v4
+## secure_int {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, RandomError]
+```
 
-```text
-uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, RandomError]
+## uuid_v4 {data-api-kind="Function"}
+
+```manuscript
+fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]
 ```
 

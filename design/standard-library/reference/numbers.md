@@ -6,48 +6,59 @@ title = "numbers"
 
 Import each required symbol with `import Name from "@std/numbers.ms"`.
 
-## NumberError
+## NumberError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-NumberError: NumberError
-implements: Error
-case InvalidInput
-case InvalidData
-case OutOfRange
-operation message: fn()->String
+```manuscript
+type NumberError:
+    case InvalidInput
+    case InvalidData
+    case OutOfRange
 ```
 
-## format_float
-
-Kind: fn.
-
-```text
-format_float: fn(value: Float)->String
+```manuscript
+impl Error for NumberError:
+    fn message() -> String
 ```
 
-## format_int
+## format_exponential {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-format_int: fn(value: Int, radix: Int)->String
+```manuscript
+fn format_exponential(value: Float, digits: Int) -> Result[String, NumberError]
 ```
 
-## parse_float
+## format_fixed {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-parse_float: fn(text: String)->Result[Float, NumberError]
+```manuscript
+fn format_fixed(value: Float, digits: Int) -> Result[String, NumberError]
 ```
 
-## parse_int
+## format_float {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn format_float(value: Float) -> String
+```
 
-```text
-parse_int: fn(text: String, radix: Int)->Result[Int, NumberError]
+## format_int {data-api-kind="Function"}
+
+```manuscript
+fn format_int(value: Int, radix: Int) -> String
+```
+
+## format_precision {data-api-kind="Function"}
+
+```manuscript
+fn format_precision(value: Float, precision: Int) -> Result[String, NumberError]
+```
+
+## parse_float {data-api-kind="Function"}
+
+```manuscript
+fn parse_float(text: String) -> Result[Float, NumberError]
+```
+
+## parse_int {data-api-kind="Function"}
+
+```manuscript
+fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]
 ```
 

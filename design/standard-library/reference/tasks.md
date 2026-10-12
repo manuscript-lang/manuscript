@@ -6,87 +6,75 @@ title = "tasks"
 
 Import each required symbol with `import Name from "@std/tasks.ms"`.
 
-## Background
+## Background {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-Background: Background
-operation cancel: fn(id: OperationId)->Unit
-operation close: fn()->Unit
-operation start: fn(operation: fn()->Result[Unit, String])->Result[OperationId, StartError]
-operation status: fn(id: OperationId)->WorkStatus
+```manuscript
+type Background:
+    fn cancel(id: OperationId) -> Unit
+    fn close() -> Unit
+    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
+    fn status(id: OperationId) -> WorkStatus
 ```
 
-## BackgroundFailure
+## BackgroundFailure {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-BackgroundFailure: BackgroundFailure
-case Failed(operation: OperationId, cause: String)
-case Crashed(operation: OperationId, message: String)
+```manuscript
+type BackgroundFailure:
+    case Failed(operation: OperationId, cause: String)
+    case Crashed(operation: OperationId, message: String)
 ```
 
-## ExecutionError
+## ExecutionError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-ExecutionError: ExecutionError
-implements: Error
-case TimedOut
-case Crashed(operation: OperationId, message: String)
-operation message: fn()->String
+```manuscript
+type ExecutionError:
+    case TimedOut
+    case Crashed(operation: OperationId, message: String)
 ```
 
-## OperationId
-
-Kind: native.
-
-```text
-OperationId: OperationId
+```manuscript
+impl Error for ExecutionError:
+    fn message() -> String
 ```
 
-## StartError
+## OperationId {data-api-kind="Native type"}
 
-Kind: alternative.
-
-```text
-StartError: StartError
-implements: Error
-case Closed
-case Full
-operation message: fn()->String
+```manuscript
+type OperationId
 ```
 
-## WorkStatus
+## StartError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-WorkStatus: WorkStatus
-case Running
-case Succeeded
-case Failed
-case Cancelled
-case Crashed
-case Unknown
+```manuscript
+type StartError:
+    case Closed
+    case Full
 ```
 
-## check_cancelled
-
-Kind: fn.
-
-```text
-check_cancelled: fn()->Unit
+```manuscript
+impl Error for StartError:
+    fn message() -> String
 ```
 
-## parallel
+## WorkStatus {data-api-kind="Alternative"}
 
-Kind: fn.
-
-```text
-parallel: fn()-><unknown>
+```manuscript
+type WorkStatus:
+    case Running
+    case Succeeded
+    case Failed
+    case Cancelled
+    case Crashed
+    case Unknown
 ```
+
+## check_cancelled {data-api-kind="Function"}
+
+```manuscript
+fn check_cancelled() -> Unit
+```
+
+## parallel {data-api-kind="Function"}
+
+See [special call rules](../call-rules.md).
 

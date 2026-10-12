@@ -15,21 +15,19 @@ Import each function or type you name from its module. Standard imports are pinn
 
 Function identity includes the module, so `json/parse`, `bigint/parse`, and `url/parse` remain distinct in generated code. Source import renaming is unsupported; use a helper module if two imports have the same spelling.
 
-Sequential callbacks run under the caller's execution context and may wait for operations. Collection helpers that invoke them sequentially do not require the callable-sharing proof used by concurrent APIs.
+Sequential callbacks run under the caller's execution context and may wait for operations. All callbacks are ordinary values and can also be passed to concurrent APIs.
 
 ## Errors
 
 Each package returns a named error type from its own module: `JsonError` from `@std/json.ms`, `EncodingError` from `@std/encoding.ms`, `FileSystemError` from `@std/fs.ms`, and so on. Each type contains the cases relevant to that domain; its exact definition is in the [generated reference](../reference/_index.md). For example, `JsonError` has only `InvalidInput`, `InvalidData`, and `LimitExceeded`.
 
-`NetworkError` covers sockets, DNS, and network policy; HTTP, WebSocket, and certificate operations return `HttpError`, `WebSocketError`, and `TlsError` respectively, including when acquired through `Network`. Stream helpers return `IoError` and preserve underlying stream failures. Logging wraps a sink failure as `LogError.Io(cause: IoError)`.
-
-All standard error types explicitly implement `Error` from `@std/errors.ms`, an ordinary operation contract with `message() -> String`. Specific API signatures retain their domain error type. A generic boundary uses `Result[T, Error]`; choose it explicitly with `Error(value: cause)` or `map_error(result: outcome, transform: as_error[SpecificError])`. The `as_error` helper is imported from `@std/errors.ms` and preserves the original receiver, case, and payload. See the [executable filesystem/random/time example](https://github.com/manuscript-lang/manuscript/blob/main/tests/e2e/testdata/projects/library/main.ms).
+All standard error types explicitly implement `Error` from `@std/errors.ms`, an ordinary operation contract with `message() -> String`. Specific API signatures retain their domain error type. A generic boundary uses `Result[T, Error]`; use an ordinary Result match and return `error(cause: Error(value: cause))`. The explicit view preserves the original receiver, case, and payload. See the [executable filesystem/random/time example](https://github.com/manuscript-lang/manuscript/blob/main/tests/e2e/testdata/projects/library/main.ms).
 
 Handle a concrete error with its ordinary case match. Handle a generic `Error` by calling `message()`, or use a [contract type match](../../core-language/control-flow/pattern-matching.md#contract-type-patterns) to recover a concrete error such as `JsonError(cause)`, then match its cases. The final wildcard handles other implementations. Custom errors participate through an ordinary `impl Error for CustomError` in their defining module. `Error` does not constrain `Result`'s error parameter or turn faults and cancellation into expected failures.
 
 `try` propagates the declared error type; it does not convert unrelated types or implicitly construct an Error view. This replaces the former shared `LibraryError` contract: update imports and return annotations, and qualify cases such as `JsonError.InvalidData` when multiple imported types define the same case name.
 
-Use specific error cases for classification. `message()` and `Failed(message: String)` diagnostics are human-readable text, not stable error codes. A native `Failed` preserves its diagnostic text; a payloadless native error reports its qualified case, such as `JsonError.InvalidData`. `LogError.Io` delegates to its underlying `IoError`. Command, queue, pool, and task errors also implement `Error` while retaining their distinct cases and identities.
+Use specific error cases for classification. `message()` and `Failed(message: String)` diagnostics are human-readable text, not stable error codes. A native `Failed` preserves its diagnostic text; a payloadless native error reports its qualified case, such as `JsonError.InvalidData`. `LogError.Io` delegates to its underlying `IoError`. Command, pool, and task errors also implement `Error` while retaining their distinct cases and identities.
 
 | Situation | Behavior |
 | --- | --- |
@@ -64,7 +62,7 @@ Writing, copying, or removing data can fail after changing an external prefix. C
 
 ## Access to external services
 
-CLI Process supplies filesystem, entropy, wall_clock, and system roots, alongside network and commands. Source fakes implement the same contracts with explicit shared views.
+CLI Process supplies filesystem, entropy, wall_clock, and system roots, alongside network and commands. Source fakes implement the same contracts with explicit contract views.
 
 Pure codec, path, math, and hash functions grant no OS access. Native CLI services use the process's OS permissions. Filesystem subtree restrictions are not implemented; `Network.restrict` narrows destination access. Imports alone grant no authority. HTTP and socket operations use explicit service values and retain TLS verification.
 

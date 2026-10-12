@@ -6,25 +6,24 @@ title = "log"
 
 Import each required symbol with `import Name from "@std/log.ms"`.
 
-## LogError
+## LogError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-LogError: LogError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case Io(cause: IoError)
-operation message: fn()->String
+```manuscript
+type LogError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case Io(cause: IoError)
 ```
 
-## write
+```manuscript
+impl Error for LogError:
+    fn message() -> String
+```
 
-Kind: fn.
+## write {data-api-kind="Function"}
 
-```text
-write: fn(output: WriteStream & Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LogError]
+```manuscript
+fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LogError]
 ```
 

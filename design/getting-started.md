@@ -68,7 +68,7 @@ The `--` separates compiler options from arguments for your program. Here, `firs
 
 The complete entry module is:
 
-```text
+```manuscript
 import Process from "@std/cli.ms"
 
 export fn main(process: Process) -> Int:

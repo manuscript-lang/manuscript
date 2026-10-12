@@ -6,169 +6,457 @@ title = "collections"
 
 Import each required symbol with `import Name from "@std/collections.ms"`.
 
-## List
+## CollectionError {data-api-kind="Alternative"}
 
-Kind: interface.
-
-```text
-List: List[T]
-type parameters: T: Shareable
-operation append: fn(value: T)->List[T]
-operation concat: fn(values: List[T])->List[T]
-operation get: fn(index: Int)->Optional[T]
-operation length: fn()->Int
+```manuscript
+type CollectionError:
+    case InvalidInput
+    case LimitExceeded
 ```
 
-## Map
-
-Kind: interface.
-
-```text
-Map: Map[T, U]
-type parameters: T: Hashable, U: Shareable
-operation contains: fn(key: T)->Bool
-operation get: fn(key: T)->Optional[U]
-operation length: fn()->Int
-operation with_entry: fn(key: T, value: U)->Map[T, U]
-operation without: fn(key: T)->Map[T, U]
+```manuscript
+impl Error for CollectionError:
+    fn message() -> String
 ```
 
-## MapEntry
+## List {data-api-kind="Native type"}
 
-Kind: record.
-
-```text
-MapEntry: MapEntry[T, U]
-type parameters: T: Hashable, U: Shareable
-field key: T
-field value: U
+```manuscript
+type List[T]:
+    fn at(index: Int) -> Optional[T]
+    fn contains(value: T) -> Bool
+    fn index_of(value: T) -> Optional[Int]
+    fn last_index_of(value: T) -> Optional[Int]
+    fn first() -> Optional[T]
+    fn last() -> Optional[T]
+    fn is_empty() -> Bool
+    fn prepend(value: T) -> List[T]
+    fn with_value(index: Int, value: T) -> List[T]
+    fn without(index: Int) -> List[T]
+    fn slice(start: Int, end: Int) -> List[T]
+    fn reverse() -> List[T]
+    fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]
+    fn filter(predicate: fn(value: T) -> Bool) -> List[T]
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]
+    fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]
+    fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]
+    fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]
+    fn some(predicate: fn(value: T) -> Bool) -> Bool
+    fn every(predicate: fn(value: T) -> Bool) -> Bool
+    fn for_each(operation: fn(value: T) -> Unit) -> Unit
+    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]
+    fn map[U](transform: fn(value: T) -> U) -> List[U]
+    fn flat_map[U](transform: fn(value: T) -> List[U]) -> List[U]
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+    fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]
+    fn fill(value: T, start: Int, end: Int) -> List[T]
+    fn copy_within(target: Int, start: Int, end: Int) -> List[T]
+    fn to_set() -> Set[T]
+    fn keys() -> List[Int]
+    fn entries() -> List[ListEntry[T]]
+    fn join(separator: String) -> String
+    fn append(value: T) -> List[T]
+    fn concat(values: List[T]) -> List[T]
+    fn get(index: Int) -> Optional[T]
+    fn length() -> Int
 ```
 
-## Set
+## ListEntry {data-api-kind="Record"}
 
-Kind: interface.
-
-```text
-Set: Set[T]
-type parameters: T: Shareable & Hashable
-operation contains: fn(value: T)->Bool
-operation length: fn()->Int
-operation with_value: fn(value: T)->Set[T]
-operation without: fn(value: T)->Set[T]
+```manuscript
+type ListEntry[T]:
+    index: Int
+    value: T
 ```
 
-## difference
+## Map {data-api-kind="Native type"}
 
-Kind: fn.
-
-```text
-difference: fn(left: Set[T], right: Set[T])->Set[T]
-type parameters: T: Hashable
+```manuscript
+type Map[T: Hashable, U]:
+    fn with_default(key: T, value: U) -> Map[T, U]
+    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]
+    fn clear() -> Map[T, U]
+    fn keys() -> List[T]
+    fn values() -> List[U]
+    fn entries() -> List[MapEntry[T, U]]
+    fn merge(other: Map[T, U]) -> Map[T, U]
+    fn for_each(operation: fn(key: T, value: U) -> Unit) -> Unit
+    fn contains(key: T) -> Bool
+    fn get(key: T) -> Optional[U]
+    fn length() -> Int
+    fn with_entry(key: T, value: U) -> Map[T, U]
+    fn without(key: T) -> Map[T, U]
 ```
 
-## filter
+## MapEntry {data-api-kind="Record"}
 
-Kind: fn.
-
-```text
-filter: fn(values: List[T], predicate: fn(value: T)->Bool)->List[T]
-type parameters: T: Shareable
+```manuscript
+type MapEntry[T: Hashable, U]:
+    key: T
+    value: U
 ```
 
-## fold
+## Set {data-api-kind="Native type"}
 
-Kind: fn.
-
-```text
-fold: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
-type parameters: T: Shareable, A
+```manuscript
+type Set[T: Hashable]:
+    fn union(right: Set[T]) -> Set[T]
+    fn intersection(right: Set[T]) -> Set[T]
+    fn difference(right: Set[T]) -> Set[T]
+    fn symmetric_difference(right: Set[T]) -> Set[T]
+    fn is_subset_of(right: Set[T]) -> Bool
+    fn is_superset_of(right: Set[T]) -> Bool
+    fn is_disjoint_from(right: Set[T]) -> Bool
+    fn clear() -> Set[T]
+    fn values() -> List[T]
+    fn entries() -> List[List[T]]
+    fn for_each(operation: fn(value: T) -> Unit) -> Unit
+    fn contains(value: T) -> Bool
+    fn length() -> Int
+    fn with_value(value: T) -> Set[T]
+    fn without(value: T) -> Set[T]
 ```
 
-## intersection
+## at {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-intersection: fn(left: Set[T], right: Set[T])->Set[T]
-type parameters: T: Hashable
+```manuscript
+fn at[T](values: List[T], index: Int) -> Optional[T]
 ```
 
-## map
+## contains {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-map: fn(values: List[T], transform: fn(value: T)->U)->List[U]
-type parameters: T: Shareable, U: Shareable
+```manuscript
+fn contains[T: Equal](values: List[T], value: T) -> Bool
 ```
 
-## map_keys
+## copy_within {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-map_keys: fn(values: Map[K, V])->List[K]
-type parameters: K: Hashable, V: Shareable
+```manuscript
+fn copy_within[T](values: List[T], target: Int, start: Int, end: Int) -> List[T]
 ```
 
-## map_values
+## difference {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-map_values: fn(values: Map[K, V])->List[V]
-type parameters: K: Hashable, V: Shareable
+```manuscript
+fn difference[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
 ```
 
-## reverse
+## every {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-reverse: fn(values: List[T])->List[T]
-type parameters: T: Shareable
+```manuscript
+fn every[T](values: List[T], predicate: fn(value: T) -> Bool) -> Bool
 ```
 
-## slice
+## fill {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-slice: fn(values: List[T], start: Int, end: Int)->List[T]
-type parameters: T: Shareable
+```manuscript
+fn fill[T](values: List[T], value: T, start: Int, end: Int) -> List[T]
 ```
 
-## sort_ints
+## filled {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sort_ints: fn(values: List[Int])->List[Int]
+```manuscript
+fn filled[T](value: T, count: Int, max_items: Int) -> Result[List[T], CollectionError]
 ```
 
-## sort_strings
+## filter {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sort_strings: fn(values: List[String])->List[String]
+```manuscript
+fn filter[T](values: List[T], predicate: fn(value: T) -> Bool) -> List[T]
 ```
 
-## sorted
+## find {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sorted: fn(values: List[T], compare: fn(left: T, right: T)->Int)->List[T]
-type parameters: T: Shareable
+```manuscript
+fn find[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[T]
 ```
 
-## union
+## find_index {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn find_index[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[Int]
+```
 
-```text
-union: fn(left: Set[T], right: Set[T])->Set[T]
-type parameters: T: Hashable
+## find_last {data-api-kind="Function"}
+
+```manuscript
+fn find_last[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[T]
+```
+
+## find_last_index {data-api-kind="Function"}
+
+```manuscript
+fn find_last_index[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[Int]
+```
+
+## first {data-api-kind="Function"}
+
+```manuscript
+fn first[T](values: List[T]) -> Optional[T]
+```
+
+## flat_map {data-api-kind="Function"}
+
+```manuscript
+fn flat_map[T, U](values: List[T], transform: fn(value: T) -> List[U]) -> List[U]
+```
+
+## flatten {data-api-kind="Function"}
+
+```manuscript
+fn flatten[T](values: List[List[T]]) -> List[T]
+```
+
+## fold {data-api-kind="Function"}
+
+```manuscript
+fn fold[T, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+```
+
+## fold_right {data-api-kind="Function"}
+
+```manuscript
+fn fold_right[T, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+```
+
+## for_each {data-api-kind="Function"}
+
+```manuscript
+fn for_each[T](values: List[T], operation: fn(value: T) -> Unit) -> Unit
+```
+
+## group_by {data-api-kind="Function"}
+
+```manuscript
+fn group_by[T, K: Hashable](values: List[T], key: fn(value: T) -> K) -> Map[K, List[T]]
+```
+
+## index_of {data-api-kind="Function"}
+
+```manuscript
+fn index_of[T: Equal](values: List[T], value: T) -> Optional[Int]
+```
+
+## intersection {data-api-kind="Function"}
+
+```manuscript
+fn intersection[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
+```
+
+## is_disjoint_from {data-api-kind="Function"}
+
+```manuscript
+fn is_disjoint_from[T: Hashable](left: Set[T], right: Set[T]) -> Bool
+```
+
+## is_empty {data-api-kind="Function"}
+
+```manuscript
+fn is_empty[T](values: List[T]) -> Bool
+```
+
+## is_subset_of {data-api-kind="Function"}
+
+```manuscript
+fn is_subset_of[T: Hashable](left: Set[T], right: Set[T]) -> Bool
+```
+
+## is_superset_of {data-api-kind="Function"}
+
+```manuscript
+fn is_superset_of[T: Hashable](left: Set[T], right: Set[T]) -> Bool
+```
+
+## last {data-api-kind="Function"}
+
+```manuscript
+fn last[T](values: List[T]) -> Optional[T]
+```
+
+## last_index_of {data-api-kind="Function"}
+
+```manuscript
+fn last_index_of[T: Equal](values: List[T], value: T) -> Optional[Int]
+```
+
+## list_entries {data-api-kind="Function"}
+
+```manuscript
+fn list_entries[T](values: List[T]) -> List[ListEntry[T]]
+```
+
+## list_keys {data-api-kind="Function"}
+
+```manuscript
+fn list_keys[T](values: List[T]) -> List[Int]
+```
+
+## map {data-api-kind="Function"}
+
+```manuscript
+fn map[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]
+```
+
+## map_clear {data-api-kind="Function"}
+
+```manuscript
+fn map_clear[K: Hashable, V](values: Map[K, V]) -> Map[K, V]
+```
+
+## map_entries {data-api-kind="Function"}
+
+```manuscript
+fn map_entries[K: Hashable, V](values: Map[K, V]) -> List[MapEntry[K, V]]
+```
+
+## map_for_each {data-api-kind="Function"}
+
+```manuscript
+fn map_for_each[K: Hashable, V](values: Map[K, V], operation: fn(key: K, value: V) -> Unit) -> Unit
+```
+
+## map_from_entries {data-api-kind="Function"}
+
+```manuscript
+fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) -> Map[K, V]
+```
+
+## map_keys {data-api-kind="Function"}
+
+```manuscript
+fn map_keys[K: Hashable, V](values: Map[K, V]) -> List[K]
+```
+
+## map_merge {data-api-kind="Function"}
+
+```manuscript
+fn map_merge[K: Hashable, V](values: Map[K, V], other: Map[K, V]) -> Map[K, V]
+```
+
+## map_values {data-api-kind="Function"}
+
+```manuscript
+fn map_values[K: Hashable, V](values: Map[K, V]) -> List[V]
+```
+
+## map_with_default {data-api-kind="Function"}
+
+```manuscript
+fn map_with_default[K: Hashable, V](values: Map[K, V], key: K, value: V) -> Map[K, V]
+```
+
+## map_with_default_from {data-api-kind="Function"}
+
+```manuscript
+fn map_with_default_from[K: Hashable, V](values: Map[K, V], key: K, create: fn(key: K) -> V) -> Map[K, V]
+```
+
+## prepend {data-api-kind="Function"}
+
+```manuscript
+fn prepend[T](values: List[T], value: T) -> List[T]
+```
+
+## range {data-api-kind="Function"}
+
+```manuscript
+fn range(start: Int, end: Int, step: Int, max_items: Int) -> Result[List[Int], CollectionError]
+```
+
+## reverse {data-api-kind="Function"}
+
+```manuscript
+fn reverse[T](values: List[T]) -> List[T]
+```
+
+## set_clear {data-api-kind="Function"}
+
+```manuscript
+fn set_clear[T: Hashable](values: Set[T]) -> Set[T]
+```
+
+## set_entries {data-api-kind="Function"}
+
+```manuscript
+fn set_entries[T: Hashable](values: Set[T]) -> List[List[T]]
+```
+
+## set_for_each {data-api-kind="Function"}
+
+```manuscript
+fn set_for_each[T: Hashable](values: Set[T], operation: fn(value: T) -> Unit) -> Unit
+```
+
+## set_values {data-api-kind="Function"}
+
+```manuscript
+fn set_values[T: Hashable](values: Set[T]) -> List[T]
+```
+
+## slice {data-api-kind="Function"}
+
+```manuscript
+fn slice[T](values: List[T], start: Int, end: Int) -> List[T]
+```
+
+## some {data-api-kind="Function"}
+
+```manuscript
+fn some[T](values: List[T], predicate: fn(value: T) -> Bool) -> Bool
+```
+
+## sort_ints {data-api-kind="Function"}
+
+```manuscript
+fn sort_ints(values: List[Int]) -> List[Int]
+```
+
+## sort_strings {data-api-kind="Function"}
+
+```manuscript
+fn sort_strings(values: List[String]) -> List[String]
+```
+
+## sorted {data-api-kind="Function"}
+
+```manuscript
+fn sorted[T](values: List[T], compare: fn(left: T, right: T) -> Int) -> List[T]
+```
+
+## symmetric_difference {data-api-kind="Function"}
+
+```manuscript
+fn symmetric_difference[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
+```
+
+## to_set {data-api-kind="Function"}
+
+```manuscript
+fn to_set[T: Hashable](values: List[T]) -> Set[T]
+```
+
+## union {data-api-kind="Function"}
+
+```manuscript
+fn union[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
+```
+
+## with_value {data-api-kind="Function"}
+
+```manuscript
+fn with_value[T](values: List[T], index: Int, value: T) -> List[T]
+```
+
+## with_values {data-api-kind="Function"}
+
+```manuscript
+fn with_values[T](values: List[T], start: Int, delete_count: Int, replacement: List[T]) -> List[T]
+```
+
+## without {data-api-kind="Function"}
+
+```manuscript
+fn without[T](values: List[T], index: Int) -> List[T]
 ```
 

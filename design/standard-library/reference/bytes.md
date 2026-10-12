@@ -6,40 +6,90 @@ title = "bytes"
 
 Import each required symbol with `import Name from "@std/bytes.ms"`.
 
-## Bytes
+## Bytes {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-Bytes: Bytes
-field values: List[Int]
-operation concat: fn(values: Bytes)->Bytes
-operation get: fn(index: Int)->Optional[Int]
-operation length: fn()->Int
-operation to_text: fn()->Optional[String]
+```manuscript
+type Bytes:
+    values: List[Int]
+    fn contains(value: Bytes) -> Bool
+    fn slice(start: Int, end: Int) -> Bytes
+    fn at(index: Int) -> Optional[Int]
+    fn index_of(value: Bytes) -> Optional[Int]
+    fn last_index_of(value: Bytes) -> Optional[Int]
+    fn starts_with(value: Bytes) -> Bool
+    fn ends_with(value: Bytes) -> Bool
+    fn reverse() -> Bytes
+    fn with_value(index: Int, value: Int) -> Bytes
+    fn is_empty() -> Bool
+    fn concat(values: Bytes) -> Bytes
+    fn get(index: Int) -> Optional[Int]
+    fn length() -> Int
+    fn to_text() -> Optional[String]
 ```
 
-## contains
+## at {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-contains: fn(data: Bytes, value: Bytes)->Bool
+```manuscript
+fn at(data: Bytes, index: Int) -> Optional[Int]
 ```
 
-## slice
+## contains {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-slice: fn(data: Bytes, start: Int, end: Int)->Bytes
+```manuscript
+fn contains(data: Bytes, value: Bytes) -> Bool
 ```
 
-## values
+## ends_with {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn ends_with(data: Bytes, value: Bytes) -> Bool
+```
 
-```text
-values: fn(data: Bytes)->List[Int]
+## index_of {data-api-kind="Function"}
+
+```manuscript
+fn index_of(data: Bytes, value: Bytes) -> Optional[Int]
+```
+
+## is_empty {data-api-kind="Function"}
+
+```manuscript
+fn is_empty(data: Bytes) -> Bool
+```
+
+## last_index_of {data-api-kind="Function"}
+
+```manuscript
+fn last_index_of(data: Bytes, value: Bytes) -> Optional[Int]
+```
+
+## reverse {data-api-kind="Function"}
+
+```manuscript
+fn reverse(data: Bytes) -> Bytes
+```
+
+## slice {data-api-kind="Function"}
+
+```manuscript
+fn slice(data: Bytes, start: Int, end: Int) -> Bytes
+```
+
+## starts_with {data-api-kind="Function"}
+
+```manuscript
+fn starts_with(data: Bytes, value: Bytes) -> Bool
+```
+
+## values {data-api-kind="Function"}
+
+```manuscript
+fn values(data: Bytes) -> List[Int]
+```
+
+## with_value {data-api-kind="Function"}
+
+```manuscript
+fn with_value(data: Bytes, index: Int, value: Int) -> Bytes
 ```
 

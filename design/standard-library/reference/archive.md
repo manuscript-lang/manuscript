@@ -6,56 +6,49 @@ title = "archive"
 
 Import each required symbol with `import Name from "@std/archive.ms"`.
 
-## ArchiveEntry
+## ArchiveEntry {data-api-kind="Record"}
 
-Kind: record.
-
-```text
-ArchiveEntry: ArchiveEntry
-field path: String
-field data: Bytes
-field directory: Bool
+```manuscript
+type ArchiveEntry:
+    path: String
+    data: Bytes
+    directory: Bool
 ```
 
-## ArchiveError
+## ArchiveError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-ArchiveError: ArchiveError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case Unsupported
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type ArchiveError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case Unsupported
+    case Failed(message: String)
 ```
 
-## ArchiveLimits
-
-Kind: record.
-
-```text
-ArchiveLimits: ArchiveLimits
-field max_entries: Int
-field max_entry_bytes: Int
-field max_total_bytes: Int
+```manuscript
+impl Error for ArchiveError:
+    fn message() -> String
 ```
 
-## pack
+## ArchiveLimits {data-api-kind="Record"}
 
-Kind: fn.
-
-```text
-pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[Bytes, ArchiveError]
+```manuscript
+type ArchiveLimits:
+    max_entries: Int
+    max_entry_bytes: Int
+    max_total_bytes: Int
 ```
 
-## unpack
+## pack {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, ArchiveError]
+```
 
-```text
-unpack: fn(data: Bytes, format: String, limits: ArchiveLimits)->Result[List[ArchiveEntry], ArchiveError]
+## unpack {data-api-kind="Function"}
+
+```manuscript
+fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], ArchiveError]
 ```
 

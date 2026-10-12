@@ -6,34 +6,31 @@ title = "compress"
 
 Import each required symbol with `import Name from "@std/compress.ms"`.
 
-## CompressionError
+## CompressionError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-CompressionError: CompressionError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case Unsupported
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type CompressionError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case Unsupported
+    case Failed(message: String)
 ```
 
-## compress
-
-Kind: fn.
-
-```text
-compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[Bytes, CompressionError]
+```manuscript
+impl Error for CompressionError:
+    fn message() -> String
 ```
 
-## decompress
+## compress {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, CompressionError]
+```
 
-```text
-decompress: fn(data: Bytes, format: String, max_bytes: Int)->Result[Bytes, CompressionError]
+## decompress {data-api-kind="Function"}
+
+```manuscript
+fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, CompressionError]
 ```
 

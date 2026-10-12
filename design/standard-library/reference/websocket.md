@@ -6,55 +6,50 @@ title = "websocket"
 
 Import each required symbol with `import Name from "@std/websocket.ms"`.
 
-## WebSocket
+## WebSocket {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-WebSocket: WebSocket
-operation close: fn()->Unit
-operation ping: fn(data: Bytes)->Result[Unit, WebSocketError]
-operation receive: fn()->Result[Optional[WebSocketMessage], WebSocketError]
-operation send: fn(data: Bytes, text: Bool)->Result[Unit, WebSocketError]
-operation subprotocol: fn()->String
+```manuscript
+interface WebSocket:
+    fn close() -> Unit
+    fn ping(data: Bytes) -> Result[Unit, WebSocketError]
+    fn receive() -> Result[Optional[WebSocketMessage], WebSocketError]
+    fn send(data: Bytes, text: Bool) -> Result[Unit, WebSocketError]
+    fn subprotocol() -> String
 ```
 
-## WebSocketError
+## WebSocketError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-WebSocketError: WebSocketError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case PermissionDenied
-case Closed
-case Timeout
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type WebSocketError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Closed
+    case Timeout
+    case Failed(message: String)
 ```
 
-## WebSocketMessage
-
-Kind: record.
-
-```text
-WebSocketMessage: WebSocketMessage
-field data: Bytes
-field text: Bool
+```manuscript
+impl Error for WebSocketError:
+    fn message() -> String
 ```
 
-## WebSocketOptions
+## WebSocketMessage {data-api-kind="Record"}
 
-Kind: record.
+```manuscript
+type WebSocketMessage:
+    data: Bytes
+    text: Bool
+```
 
-```text
-WebSocketOptions: WebSocketOptions
-field max_message_bytes: Int
-field timeout: Duration
-field tls: TlsOptions
-field compression: Bool
+## WebSocketOptions {data-api-kind="Record"}
+
+```manuscript
+type WebSocketOptions:
+    max_message_bytes: Int
+    timeout: Duration
+    tls: TlsOptions
+    compression: Bool
 ```
 

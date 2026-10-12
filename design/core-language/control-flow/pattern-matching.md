@@ -13,7 +13,7 @@ A match accepts tagged alternative types, including `Optional` and `Result`, and
 
 The following function handles the `Payment` type declared in [alternatives](../types/alternatives.md):
 
-```text
+```manuscript
 fn describe(payment: Payment) -> String:
     match payment:
         Paid(receipt):
@@ -28,7 +28,7 @@ fn describe(payment: Payment) -> String:
 
 Case payloads bind positions in the declaration's field order. A pattern must give exactly one identifier or `_` placeholder per payload field. Pattern payloads are positional even though constructors always use named fields. Nullary cases use a bare case name without `()`.
 
-```text
+```manuscript
 type Position:
     case Point(x: Int, y: Int)
     case Unknown
@@ -53,7 +53,7 @@ Every case in the example returns its own description. Running the `Paid` branch
 
 `_:` is the wildcard arm. It is permitted once, must be last, binds nothing, and covers every case not already handled. Duplicate cases, unknown cases, an arm after the wildcard, and a wildcard after all cases have been explicitly covered are rejected as invalid or unreachable arms. Qualified and unqualified spellings of the same case count as duplicates.
 
-```text
+```manuscript
 fn paid(payment: Payment) -> Bool:
     match payment:
         Paid(_):
@@ -94,7 +94,7 @@ The type must be an imported or local nominal record or alternative with an appl
 
 Generic patterns name the complete application, such as `MyError[Int](cause)`; `MyError[String]` is a different pattern. An in-scope generic parameter may supply an argument, as in `MyError[T](cause)`. Matching uses exact runtime nominal identities and type arguments, with the first matching arm selected. Duplicate statically identical type patterns are rejected. A pattern cannot name a different contract, a bare type parameter, or an individual alternative case.
 
-A final wildcard is required even when every currently known implementation is listed: contracts are open to other implementations. It binds nothing; use the original contract value for generic handling. The same rules apply to plain and shared views. The scrutinee evaluates once; matching retains the same receiver reference and does not copy it, add cleanup, or catch faults and cancellation. See [contract views](../types/contracts.md#explicit-contract-views).
+A final wildcard is required even when every currently known implementation is listed: contracts are open to other implementations. It binds nothing; use the original contract value for generic handling. The scrutinee evaluates once; matching retains the same receiver reference and does not copy it, add cleanup, or catch faults and cancellation. See [contract views](../types/contracts.md#explicit-contract-views).
 
 ## Matching resource references
 

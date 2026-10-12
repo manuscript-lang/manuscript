@@ -9,9 +9,9 @@ weight = 49
 
 Use these modules for text transformations, raw bytes, encodings, collection algorithms, and regular expressions. Import the functions you need from the module above each signature block. Read the behavior sections for indexing, ordering, and limit rules.
 
-## `@std/text.ms`
+## `@std/string.ms`
 
-```text
+```manuscript
 fn contains(value: String, text: String) -> Bool
 fn ends_with(value: String, suffix: String) -> Bool
 fn from_scalars(values: List[Int]) -> Result[String, TextError]
@@ -30,7 +30,7 @@ fn upper(text: String) -> String
 
 ## `@std/bytes.ms`
 
-```text
+```manuscript
 fn contains(data: Bytes, value: Bytes) -> Bool
 fn slice(data: Bytes, start: Int, end: Int) -> Bytes
 fn values(data: Bytes) -> List[Int]
@@ -38,7 +38,7 @@ fn values(data: Bytes) -> List[Int]
 
 ## `@std/encoding.ms`
 
-```text
+```manuscript
 fn base64_decode(text: String, url_safe: Bool, max_bytes: Int) -> Result[Bytes, EncodingError]
 fn base64_encode(data: Bytes, url_safe: Bool) -> String
 fn hex_decode(text: String, max_bytes: Int) -> Result[Bytes, EncodingError]
@@ -47,7 +47,7 @@ fn hex_encode(data: Bytes) -> String
 
 ## `@std/binary.ms`
 
-```text
+```manuscript
 fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]
 fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]
 fn write_float(value: Float, little_endian: Bool) -> Bytes
@@ -56,25 +56,25 @@ fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> R
 
 ## `@std/collections.ms`
 
-```text
+```manuscript
 fn difference[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
-fn filter[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> List[T]
-fn fold[T: Shareable, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+fn filter[T](values: List[T], predicate: fn(value: T) -> Bool) -> List[T]
+fn fold[T, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
 fn intersection[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
-fn map[T: Shareable, U: Shareable](values: List[T], transform: fn(value: T) -> U) -> List[U]
-fn map_keys[K: Hashable, V: Shareable](values: Map[K, V]) -> List[K]
-fn map_values[K: Hashable, V: Shareable](values: Map[K, V]) -> List[V]
-fn reverse[T: Shareable](values: List[T]) -> List[T]
-fn slice[T: Shareable](values: List[T], start: Int, end: Int) -> List[T]
+fn map[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]
+fn map_keys[K: Hashable, V](values: Map[K, V]) -> List[K]
+fn map_values[K: Hashable, V](values: Map[K, V]) -> List[V]
+fn reverse[T](values: List[T]) -> List[T]
+fn slice[T](values: List[T], start: Int, end: Int) -> List[T]
 fn sort_ints(values: List[Int]) -> List[Int]
 fn sort_strings(values: List[String]) -> List[String]
-fn sorted[T: Shareable](values: List[T], compare: fn(left: T, right: T) -> Int) -> List[T]
+fn sorted[T](values: List[T], compare: fn(left: T, right: T) -> Int) -> List[T]
 fn union[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
 ```
 
 ## `@std/regex.ms`
 
-```text
+```manuscript
 fn compile(pattern: String) -> Result[Regex, RegexError]
 fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], RegexError]
 fn matches(pattern: Regex, text: String) -> Bool
@@ -88,8 +88,8 @@ Text is valid UTF-8. Scalar operations count Unicode code points, rather than by
 - `from_scalars` rejects surrogate code points and values outside the Unicode range.
 - `slice_scalars` uses a half-open range: include `start`, exclude `end`. Invalid bounds return `OutOfRange`.
 - `trim` uses Unicode White_Space. `upper` and `lower` use Go's locale-independent Unicode mappings; they do not normalize combining sequences.
-- `split` keeps empty parts. It requires a nonempty separator and positive `max_parts`; the final part contains any remainder.
-- `replace` uses literal text. `old` must be nonempty and `max_replacements` nonnegative; zero means no replacements.
+- `split` keeps empty parts. It requires positive `max_parts`; the final part contains any remainder. An empty separator splits Unicode scalars.
+- `replace` uses literal text. `max_replacements` must be nonnegative; zero means no replacements. An empty `old` inserts at scalar boundaries.
 - `repeat` requires nonnegative `count` and `max_bytes`. It checks the size multiplication before allocating.
 - An empty search string succeeds for contains, prefix, and suffix checks.
 
@@ -125,10 +125,10 @@ Invalid widths return `InvalidInput`. Bad offsets, truncated input, and values t
 
 ## Regular expressions
 
-`Regex` is an opaque, immutable, shareable compiled Go RE2-style pattern. Backreferences and lookaround are invalid; compile failures return `InvalidData`.
+`Regex` is an opaque, immutable compiled Go RE2-style pattern. Backreferences and lookaround are invalid; compile failures return `InvalidData`.
 
 `find_all` returns whole matches. `max_matches` must be nonnegative, and exceeding it returns `LimitExceeded` instead of a truncated success. Go regexp rules govern zero-width and adjacent matches.
 
 `replace` uses literal replacement text, without `$` capture interpolation. It enforces `max_bytes` and never returns a partial output as success.
 
-Unicode normalization, grapheme segmentation, non-UTF-8 codecs, and capture-group match records remain future work.
+The string module also provides bounded Unicode normalization; see [JavaScript built-in coverage](javascript-builtins.md). Grapheme segmentation, non-UTF-8 codecs, and capture-group match records remain future work.

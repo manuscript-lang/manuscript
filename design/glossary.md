@@ -27,7 +27,7 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Closure / capture](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. Captured bindings are snapshots. |
 | [Alias](ownership-and-cleanup/values/references.md) | Another reference to the same object. Closing a resource affects every alias. |
 | [Resource lifetime](ownership-and-cleanup/_index.md) | How long a file, connection, or other external resource remains open and usable. |
-| [Shareable](ownership-and-cleanup/values/sharing.md) | Safe to access concurrently. It does not keep a resource open. |
+| [Sharing](ownership-and-cleanup/values/sharing.md) | Values may be passed between operations. Local mutable queues need explicit synchronization; sharing does not keep resources open. |
 | [Capability / authority](modules-and-capabilities/capabilities/authority.md) | A passed-in object that permits external operations, such as file or network access. |
 | [Effect](modules-and-capabilities/capabilities/effects.md) | External behavior reachable from an operation, such as reading, writing, or calling a service. |
 | [Operation / group](concurrency/joining.md#terms) | One invocation started by a concurrency API / the invocations started by one parallel call. |

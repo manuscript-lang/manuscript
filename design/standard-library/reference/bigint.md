@@ -6,128 +6,112 @@ title = "bigint"
 
 Import each required symbol with `import Name from "@std/bigint.ms"`.
 
-## BigInt
+## BigInt {data-api-kind="Native type"}
 
-Kind: native.
-
-```text
-BigInt: BigInt
+```manuscript
+type BigInt:
+    fn add(right: BigInt) -> BigInt
+    fn subtract(right: BigInt) -> BigInt
+    fn multiply(right: BigInt) -> BigInt
+    fn divide(right: BigInt) -> Result[BigInt, BigIntError]
+    fn remainder(right: BigInt) -> Result[BigInt, BigIntError]
+    fn compare(right: BigInt) -> Int
+    fn bit_and(right: BigInt) -> BigInt
+    fn bit_or(right: BigInt) -> BigInt
+    fn bit_xor(right: BigInt) -> BigInt
+    fn to_int() -> Optional[Int]
+    fn to_string(radix: Int) -> String
 ```
 
-## BigIntError
+## BigIntError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-BigIntError: BigIntError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type BigIntError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
 ```
 
-## add
-
-Kind: fn.
-
-```text
-add: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+impl Error for BigIntError:
+    fn message() -> String
 ```
 
-## bit_and
+## add {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-bit_and: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn add(left: BigInt, right: BigInt) -> BigInt
 ```
 
-## bit_or
+## bit_and {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-bit_or: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn bit_and(left: BigInt, right: BigInt) -> BigInt
 ```
 
-## bit_xor
+## bit_or {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-bit_xor: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn bit_or(left: BigInt, right: BigInt) -> BigInt
 ```
 
-## compare
+## bit_xor {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-compare: fn(left: BigInt, right: BigInt)->Int
+```manuscript
+fn bit_xor(left: BigInt, right: BigInt) -> BigInt
 ```
 
-## divide
+## compare {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-divide: fn(left: BigInt, right: BigInt)->Result[BigInt, BigIntError]
+```manuscript
+fn compare(left: BigInt, right: BigInt) -> Int
 ```
 
-## format
+## divide {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-format: fn(value: BigInt, radix: Int)->String
+```manuscript
+fn divide(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 ```
 
-## from_int
+## format {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-from_int: fn(value: Int)->BigInt
+```manuscript
+fn format(value: BigInt, radix: Int) -> String
 ```
 
-## multiply
+## from_int {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-multiply: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn from_int(value: Int) -> BigInt
 ```
 
-## parse
+## multiply {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, BigIntError]
+```manuscript
+fn multiply(left: BigInt, right: BigInt) -> BigInt
 ```
 
-## remainder
+## parse {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, BigIntError]
+```manuscript
+fn parse(text: String, radix: Int, max_digits: Int) -> Result[BigInt, BigIntError]
 ```
 
-## subtract
+## remainder {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-subtract: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 ```
 
-## to_int
+## subtract {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn subtract(left: BigInt, right: BigInt) -> BigInt
+```
 
-```text
-to_int: fn(value: BigInt)->Optional[Int]
+## to_int {data-api-kind="Function"}
+
+```manuscript
+fn to_int(value: BigInt) -> Optional[Int]
 ```
 

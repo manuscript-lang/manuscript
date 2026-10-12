@@ -299,7 +299,7 @@ func TestLibraryErrorsKeepDomainIdentity(t *testing.T) {
 		{"encoding/hex_decode", "EncodingError", "InvalidData", []Value{"zz", int64(10)}},
 		{"numbers/parse_int", "NumberError", "OutOfRange", []Value{"9223372036854775808", int64(10)}},
 		{"binary/write_integer", "BinaryError", "OutOfRange", []Value{int64(256), int64(1), false, false}},
-		{"text/from_scalars", "TextError", "InvalidInput", []Value{libraryList("Int", []Value{int64(-1)})}},
+		{"string/from_scalars", "StringError", "InvalidInput", []Value{libraryList("Int", []Value{int64(-1)})}},
 		{"url/parse_query", "UrlError", "LimitExceeded", []Value{"a=1", int64(0)}},
 		{"regex/compile", "RegexError", "InvalidData", []Value{"["}},
 		{"time/parse_timestamp", "TimeError", "InvalidData", []Value{"yesterday"}},

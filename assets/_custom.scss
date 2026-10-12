@@ -54,7 +54,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .docs-topbar { position: sticky; top: 0; z-index: 5; height: var(--docs-header-height); background: var(--body-background); border-bottom: 1px solid var(--gray-200); }
 .topbar-inner { max-width: 90rem; height: 100%; margin: auto; padding: 0 2rem; display: flex; align-items: center; gap: 2.5rem; }
 .docs-brand { display: flex; align-items: center; gap: .75rem; flex: none; color: var(--docs-heading) !important; font-size: 1.1rem; font-weight: 700; letter-spacing: -.035em; }
-.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #171717; color: #fff; font: italic bold 29px Georgia, serif; padding-bottom: 4px; }
+.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #171717; color: #fff; font: italic bold 22px Georgia, serif; letter-spacing: -.075em; padding: 0 2px 3px 0; }
 .brand-subtitle { display: block; font-size: .7rem; font-weight: 500; letter-spacing: .02em; color: var(--docs-muted); margin-top: 2px; }
 .external-icon { display: inline-block; width: .85em; height: .85em; flex: none; vertical-align: baseline; }
 .topbar-links { display: flex; align-items: center; gap: 1.75rem; margin-left: auto; height: 100%; font-size: .85rem; font-weight: 500; }
@@ -104,6 +104,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .markdown h1 { font-size: clamp(1.8rem, 3vw, 2.5rem); margin-bottom: 1.25rem; }
 .markdown h2 { font-size: 1.35rem; margin-top: 2.5rem; padding-top: 0; border: 0; }
 .markdown h3 { font-size: 1.1rem; margin-top: 2rem; }
+.api-kind { display: inline-block; vertical-align: middle; margin-left: .65rem; padding: .1rem .4rem; border: 1px solid var(--gray-200); border-radius: 4px; background: var(--gray-100); color: var(--docs-muted); font-size: .65rem; font-weight: 500; line-height: 1.6; letter-spacing: 0; }
 .markdown h1 + p { font-size: 1.06rem; line-height: 1.75; color: var(--docs-muted); }
 .markdown a { text-underline-offset: 3px; }
 .markdown a[href]:not(.start-link) { color: var(--docs-prose-link); }
@@ -187,7 +188,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
   .topbar-links .github-link { display: none; }
   .brand-subtitle { display: none; }
   .docs-brand { font-size: 1rem; gap: .5rem; }
-  .brand-mark { width: 29px; height: 29px; font-size: 25px; }
+  .brand-mark { width: 29px; height: 29px; font-size: 19px; }
   .theme-toggle { width: 29px; height: 29px; }
   .book-page, .docs-home-layout .book-page { padding: 1.1rem 1.25rem; }
   .hero-actions { grid-template-columns: 1fr; gap: .6rem; }

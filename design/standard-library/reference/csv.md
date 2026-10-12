@@ -6,42 +6,37 @@ title = "csv"
 
 Import each required symbol with `import Name from "@std/csv.ms"`.
 
-## CsvError
+## CsvError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-CsvError: CsvError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type CsvError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
 ```
 
-## CsvOptions
-
-Kind: record.
-
-```text
-CsvOptions: CsvOptions
-field delimiter: String
-field line_ending: String
+```manuscript
+impl Error for CsvError:
+    fn message() -> String
 ```
 
-## parse
+## CsvOptions {data-api-kind="Record"}
 
-Kind: fn.
-
-```text
-parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Result[List[List[String]], CsvError]
+```manuscript
+type CsvOptions:
+    delimiter: String
+    line_ending: String
 ```
 
-## stringify
+## parse {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Result[List[List[String]], CsvError]
+```
 
-```text
-stringify: fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)->Result[String, CsvError]
+## stringify {data-api-kind="Function"}
+
+```manuscript
+fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Int) -> Result[String, CsvError]
 ```
 

@@ -26,7 +26,7 @@ func TestDocOutsideRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"operation to_bytes:", "operation start:", "history_limit", "# @std/http.ms"} {
+	for _, want := range []string{"```manuscript\n", "fn to_bytes() -> Bytes", "fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]", "history_limit", "# @std/http.ms"} {
 		if !strings.Contains(string(markdown), want) {
 			t.Errorf("missing %q", want)
 		}
@@ -71,12 +71,12 @@ fn private_helper() -> Int:
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"## Item", "field value: Int", "## create", "fn(value: Int)->Item"} {
+	for _, want := range []string{"```manuscript\n", "## Item", "type Item:\n    value: Int", "## create", "fn create(value: Int) -> Item"} {
 		if !strings.Contains(string(data), want) {
 			t.Errorf("missing %q in %s", want, data)
 		}
 	}
-	for _, private := range []string{"private_helper", "## Process"} {
+	for _, private := range []string{"private_helper", "## Process", "return Item", "field value:", "create: fn("} {
 		if strings.Contains(string(data), private) {
 			t.Errorf("included non-public declaration %q", private)
 		}

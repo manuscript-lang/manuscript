@@ -11,7 +11,7 @@ You can store a function in a local binding and pass it to another function. Wri
 
 A closure is a function value that keeps values from its surrounding scope. It captures snapshots of the bindings it uses. There is no separate function kind that consumes or transfers those captures.
 
-```text
+```manuscript
 fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
     return transform(value: value)
 
@@ -28,7 +28,7 @@ Function types retain parameter names. Calls through values may omit the label w
 
 Parameter names, declaration order, parameter types, and result type are all part of function-type identity. Compatibility is invariant: a different label, reordered signature, or different result type requires an explicit adapter function. Caller-written argument order may vary without changing the function's declared type.
 
-```text
+```manuscript
 fn subtract_one(amount: Int) -> Int:
     return amount - 1
 
@@ -53,7 +53,7 @@ Immutable data is retained by value/reference as appropriate for its representat
 
 ## Resource captures
 
-```text
+```manuscript
 with file = try files.open(path: "data.txt"):
     let reader = fn() -> Result[Optional[Bytes], IoError]:
         return file.read(max_bytes: 4096)
@@ -62,13 +62,13 @@ with file = try files.open(path: "data.txt"):
 # A later callback invocation reports IoError.Closed.
 ```
 
-The acquisition fragment belongs to a function returning `Result[U, IoError]`; callbacks is an explicitly supplied registration service. The standard acquisition retains File & Shareable, so concurrent callback use can preserve the receiver's sharing proof.
+The acquisition fragment belongs to a function returning `Result[U, IoError]`; callbacks is an explicitly supplied registration service. The acquired File and callback are ordinary values.
 
 Capturing a resource does not extend its open lifetime or cancel its `with` cleanup. Resource methods detect closed state at runtime. This applies equally to resources passed through explicit parameters or retained in records.
 
 ## Concurrent invocation
 
-Concurrency APIs accept ordinary functions with a proved safe captured environment. Local copies retain that proof; storage, generic forwarding, and source function boundaries erase it. The exact boundaries are in [function sharing](../../ownership-and-cleanup/values/sharing.md#function-values). A safely shared resource can still be closed before invocation.
+Concurrency APIs accept ordinary functions. Function parameters, returned functions, function fields, and generic forwarding work exactly as local function values do. See [function sharing](../../ownership-and-cleanup/values/sharing.md#function-values). A shared resource can still be closed before invocation.
 
 Capture request-data snapshots and application services for background work, then acquire job resources within that operation. `parallel` joins before returning, so an enclosing `with` remains active while its operations run, unless the resource is explicitly closed elsewhere.
 

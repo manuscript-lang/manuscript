@@ -10,12 +10,16 @@ The generated reference captures declaration types, bounds, fields, cases, and o
 
 Ordinary functions and methods with exactly one declared parameter permit omitting its argument label. Functions with multiple parameters require labels on every supplied argument, including when optional API parameters are omitted. Constructors and contract views retain their labels. Function-type labels remain part of type identity.
 
-- `parallel(tasks: [fn() -> T, ...], timeout: Duration)` accepts a literal pack of zero-argument callbacks with possibly different result types. `timeout` is optional. The result is `Result[Pack, ExecutionError]`, where pack positions retain callback result types. Callbacks and results must be shareable. Its generated base signature contains `<unknown>` because this result is computed per call.
-- `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit, drain: Duration, history_limit: Int)` requires only `limit`. The other arguments are optional; `reporter` must be shareable. `Background.start` requires a shareable operation.
+- `parallel(tasks: [fn() -> T, ...], timeout: Duration)` accepts a literal pack of zero-argument callbacks with possibly different result types. `timeout` is optional. The result is `Result[Pack, ExecutionError]`, where pack positions retain callback result types. Callbacks and results are ordinary values, including functions and contract views. Its result type is computed per call.
+- `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit, drain: Duration, history_limit: Int)` requires only `limit`. The other arguments are optional. Reporters and start operations are ordinary callbacks; start may be stored as a bound method.
+- `Queue[T]()` creates an unbounded local FIFO. Its optional `capacity: Int` constructor argument sets a fixed positive bound; a nonpositive explicit capacity is a programming fault. Shared access requires `Synchronized[Queue[T]]`.
+- `Synchronized[T](value: T)` stores a value behind a mutex. Its `lock()` returns a `SynchronizedGuard[T]` for `with`; guard get/set require an active acquisition, and close releases it.
 - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
-- `List`, `Lease`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Lists and durations use literals; other values come from APIs or conversions.
+- `List`, `Lease`, `SynchronizedGuard`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Lists and durations use literals; other values come from APIs or conversions.
 - Records use their listed fields as named constructor arguments. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
-- Generic bounds constrain type arguments. Pool resources require shared contract views. Shared captures and callback restrictions are checked separately from function types.
+- Native collection methods `map[U]`, `flat_map[U]`, `group_by[K: Hashable]`, `fold[A]`, and `fold_right[A]` infer method type arguments from supplied callbacks/values. Saving a generic method as a value requires explicit specialization, such as `values.map[String]`. Application-defined interface operations remain nongeneric.
+- List equality searches require `Equal`; `to_set` requires `Hashable`; `join` is available only on `List[String]`. These receiver requirements are inherited from the shared function declarations.
+- Generic bounds constrain type arguments. Pool resources require contract views declaring close. There is no sharing bound or separate callable proof.
 
 For lifetime, cancellation, defaults, and host behavior, read the standard library guides. A type signature alone does not establish these guarantees.
 
@@ -25,55 +29,58 @@ Import each required symbol with `import Name from "@std/archive.ms"`.
 
 ## ArchiveEntry
 
-Kind: record.
+**Record**
 
-```text
-ArchiveEntry: ArchiveEntry
-field path: String
-field data: Bytes
-field directory: Bool
+```manuscript
+type ArchiveEntry:
+    path: String
+    data: Bytes
+    directory: Bool
 ```
 
 ## ArchiveError
 
-Kind: alternative.
+**Alternative**
 
-```text
-ArchiveError: ArchiveError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case Unsupported
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type ArchiveError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case Unsupported
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for ArchiveError:
+    fn message() -> String
 ```
 
 ## ArchiveLimits
 
-Kind: record.
+**Record**
 
-```text
-ArchiveLimits: ArchiveLimits
-field max_entries: Int
-field max_entry_bytes: Int
-field max_total_bytes: Int
+```manuscript
+type ArchiveLimits:
+    max_entries: Int
+    max_entry_bytes: Int
+    max_total_bytes: Int
 ```
 
 ## pack
 
-Kind: fn.
+**Function**
 
-```text
-pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[Bytes, ArchiveError]
+```manuscript
+fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, ArchiveError]
 ```
 
 ## unpack
 
-Kind: fn.
+**Function**
 
-```text
-unpack: fn(data: Bytes, format: String, limits: ArchiveLimits)->Result[List[ArchiveEntry], ArchiveError]
+```manuscript
+fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], ArchiveError]
 ```
 
 # @std/bigint.ms
@@ -82,127 +89,141 @@ Import each required symbol with `import Name from "@std/bigint.ms"`.
 
 ## BigInt
 
-Kind: native.
+**Native type**
 
-```text
-BigInt: BigInt
+```manuscript
+type BigInt:
+    fn add(right: BigInt) -> BigInt
+    fn subtract(right: BigInt) -> BigInt
+    fn multiply(right: BigInt) -> BigInt
+    fn divide(right: BigInt) -> Result[BigInt, BigIntError]
+    fn remainder(right: BigInt) -> Result[BigInt, BigIntError]
+    fn compare(right: BigInt) -> Int
+    fn bit_and(right: BigInt) -> BigInt
+    fn bit_or(right: BigInt) -> BigInt
+    fn bit_xor(right: BigInt) -> BigInt
+    fn to_int() -> Optional[Int]
+    fn to_string(radix: Int) -> String
 ```
 
 ## BigIntError
 
-Kind: alternative.
+**Alternative**
 
-```text
-BigIntError: BigIntError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type BigIntError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for BigIntError:
+    fn message() -> String
 ```
 
 ## add
 
-Kind: fn.
+**Function**
 
-```text
-add: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn add(left: BigInt, right: BigInt) -> BigInt
 ```
 
 ## bit_and
 
-Kind: fn.
+**Function**
 
-```text
-bit_and: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn bit_and(left: BigInt, right: BigInt) -> BigInt
 ```
 
 ## bit_or
 
-Kind: fn.
+**Function**
 
-```text
-bit_or: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn bit_or(left: BigInt, right: BigInt) -> BigInt
 ```
 
 ## bit_xor
 
-Kind: fn.
+**Function**
 
-```text
-bit_xor: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn bit_xor(left: BigInt, right: BigInt) -> BigInt
 ```
 
 ## compare
 
-Kind: fn.
+**Function**
 
-```text
-compare: fn(left: BigInt, right: BigInt)->Int
+```manuscript
+fn compare(left: BigInt, right: BigInt) -> Int
 ```
 
 ## divide
 
-Kind: fn.
+**Function**
 
-```text
-divide: fn(left: BigInt, right: BigInt)->Result[BigInt, BigIntError]
+```manuscript
+fn divide(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 ```
 
 ## format
 
-Kind: fn.
+**Function**
 
-```text
-format: fn(value: BigInt, radix: Int)->String
+```manuscript
+fn format(value: BigInt, radix: Int) -> String
 ```
 
 ## from_int
 
-Kind: fn.
+**Function**
 
-```text
-from_int: fn(value: Int)->BigInt
+```manuscript
+fn from_int(value: Int) -> BigInt
 ```
 
 ## multiply
 
-Kind: fn.
+**Function**
 
-```text
-multiply: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn multiply(left: BigInt, right: BigInt) -> BigInt
 ```
 
 ## parse
 
-Kind: fn.
+**Function**
 
-```text
-parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, BigIntError]
+```manuscript
+fn parse(text: String, radix: Int, max_digits: Int) -> Result[BigInt, BigIntError]
 ```
 
 ## remainder
 
-Kind: fn.
+**Function**
 
-```text
-remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, BigIntError]
+```manuscript
+fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 ```
 
 ## subtract
 
-Kind: fn.
+**Function**
 
-```text
-subtract: fn(left: BigInt, right: BigInt)->BigInt
+```manuscript
+fn subtract(left: BigInt, right: BigInt) -> BigInt
 ```
 
 ## to_int
 
-Kind: fn.
+**Function**
 
-```text
-to_int: fn(value: BigInt)->Optional[Int]
+```manuscript
+fn to_int(value: BigInt) -> Optional[Int]
 ```
 
 # @std/binary.ms
@@ -211,46 +232,49 @@ Import each required symbol with `import Name from "@std/binary.ms"`.
 
 ## BinaryError
 
-Kind: alternative.
+**Alternative**
 
-```text
-BinaryError: BinaryError
-implements: Error
-case InvalidInput
-case OutOfRange
-operation message: fn()->String
+```manuscript
+type BinaryError:
+    case InvalidInput
+    case OutOfRange
+```
+
+```manuscript
+impl Error for BinaryError:
+    fn message() -> String
 ```
 
 ## read_float
 
-Kind: fn.
+**Function**
 
-```text
-read_float: fn(data: Bytes, offset: Int, little_endian: Bool)->Result[Float, BinaryError]
+```manuscript
+fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]
 ```
 
 ## read_integer
 
-Kind: fn.
+**Function**
 
-```text
-read_integer: fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Int, BinaryError]
+```manuscript
+fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]
 ```
 
 ## write_float
 
-Kind: fn.
+**Function**
 
-```text
-write_float: fn(value: Float, little_endian: Bool)->Bytes
+```manuscript
+fn write_float(value: Float, little_endian: Bool) -> Bytes
 ```
 
 ## write_integer
 
-Kind: fn.
+**Function**
 
-```text
-write_integer: fn(value: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Bytes, BinaryError]
+```manuscript
+fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]
 ```
 
 # @std/builders.ms
@@ -259,56 +283,53 @@ Import each required symbol with `import Name from "@std/builders.ms"`.
 
 ## BytesBuilder
 
-Kind: interface.
+**Native type**
 
-```text
-BytesBuilder: BytesBuilder
-operation append: fn(value: Int)->Unit
-operation concat: fn(values: Bytes)->Unit
-operation freeze: fn()->Bytes
+```manuscript
+type BytesBuilder:
+    fn append(value: Int) -> Unit
+    fn concat(values: Bytes) -> Unit
+    fn freeze() -> Bytes
 ```
 
 ## ListBuilder
 
-Kind: interface.
+**Native type**
 
-```text
-ListBuilder: ListBuilder[T]
-type parameters: T: Shareable
-operation append: fn(value: T)->Unit
-operation freeze: fn()->List[T]
+```manuscript
+type ListBuilder[T]:
+    fn append(value: T) -> Unit
+    fn freeze() -> List[T]
 ```
 
 ## MapBuilder
 
-Kind: interface.
+**Native type**
 
-```text
-MapBuilder: MapBuilder[T, U]
-type parameters: T: Hashable, U: Shareable
-operation freeze: fn()->Map[T, U]
-operation with_entry: fn(key: T, value: U)->Unit
+```manuscript
+type MapBuilder[T: Hashable, U]:
+    fn freeze() -> Map[T, U]
+    fn with_entry(key: T, value: U) -> Unit
 ```
 
 ## SetBuilder
 
-Kind: interface.
+**Native type**
 
-```text
-SetBuilder: SetBuilder[T]
-type parameters: T: Hashable
-operation freeze: fn()->Set[T]
-operation with_value: fn(value: T)->Unit
+```manuscript
+type SetBuilder[T: Hashable]:
+    fn freeze() -> Set[T]
+    fn with_value(value: T) -> Unit
 ```
 
 ## StringBuilder
 
-Kind: interface.
+**Native type**
 
-```text
-StringBuilder: StringBuilder
-operation append: fn(value: String)->Unit
-operation freeze: fn()->String
+```manuscript
+type StringBuilder:
+    fn append(value: String) -> Unit
+    fn freeze() -> String
 ```
 
 # @std/bytes.ms
@@ -317,39 +338,113 @@ Import each required symbol with `import Name from "@std/bytes.ms"`.
 
 ## Bytes
 
-Kind: interface.
+**Native type**
 
-```text
-Bytes: Bytes
-field values: List[Int]
-operation concat: fn(values: Bytes)->Bytes
-operation get: fn(index: Int)->Optional[Int]
-operation length: fn()->Int
-operation to_text: fn()->Optional[String]
+```manuscript
+type Bytes:
+    values: List[Int]
+    fn contains(value: Bytes) -> Bool
+    fn slice(start: Int, end: Int) -> Bytes
+    fn at(index: Int) -> Optional[Int]
+    fn index_of(value: Bytes) -> Optional[Int]
+    fn last_index_of(value: Bytes) -> Optional[Int]
+    fn starts_with(value: Bytes) -> Bool
+    fn ends_with(value: Bytes) -> Bool
+    fn reverse() -> Bytes
+    fn with_value(index: Int, value: Int) -> Bytes
+    fn is_empty() -> Bool
+    fn concat(values: Bytes) -> Bytes
+    fn get(index: Int) -> Optional[Int]
+    fn length() -> Int
+    fn to_text() -> Optional[String]
+```
+
+## at
+
+**Function**
+
+```manuscript
+fn at(data: Bytes, index: Int) -> Optional[Int]
 ```
 
 ## contains
 
-Kind: fn.
+**Function**
 
-```text
-contains: fn(data: Bytes, value: Bytes)->Bool
+```manuscript
+fn contains(data: Bytes, value: Bytes) -> Bool
+```
+
+## ends_with
+
+**Function**
+
+```manuscript
+fn ends_with(data: Bytes, value: Bytes) -> Bool
+```
+
+## index_of
+
+**Function**
+
+```manuscript
+fn index_of(data: Bytes, value: Bytes) -> Optional[Int]
+```
+
+## is_empty
+
+**Function**
+
+```manuscript
+fn is_empty(data: Bytes) -> Bool
+```
+
+## last_index_of
+
+**Function**
+
+```manuscript
+fn last_index_of(data: Bytes, value: Bytes) -> Optional[Int]
+```
+
+## reverse
+
+**Function**
+
+```manuscript
+fn reverse(data: Bytes) -> Bytes
 ```
 
 ## slice
 
-Kind: fn.
+**Function**
 
-```text
-slice: fn(data: Bytes, start: Int, end: Int)->Bytes
+```manuscript
+fn slice(data: Bytes, start: Int, end: Int) -> Bytes
+```
+
+## starts_with
+
+**Function**
+
+```manuscript
+fn starts_with(data: Bytes, value: Bytes) -> Bool
 ```
 
 ## values
 
-Kind: fn.
+**Function**
 
-```text
-values: fn(data: Bytes)->List[Int]
+```manuscript
+fn values(data: Bytes) -> List[Int]
+```
+
+## with_value
+
+**Function**
+
+```manuscript
+fn with_value(data: Bytes, index: Int, value: Int) -> Bytes
 ```
 
 # @std/cleanup.ms
@@ -358,11 +453,11 @@ Import each required symbol with `import Name from "@std/cleanup.ms"`.
 
 ## Closeable
 
-Kind: interface.
+**Interface**
 
-```text
-Closeable: Closeable
-operation close: fn()->Unit
+```manuscript
+interface Closeable:
+    fn close() -> Unit
 ```
 
 # @std/cli.ms
@@ -371,193 +466,607 @@ Import each required symbol with `import Name from "@std/cli.ms"`.
 
 ## Process
 
-Kind: record.
+**Record**
 
-```text
-Process: Process
-field arguments: List[String]
-field environment: Map[String, String]
-field stdin: ReadStream & Shareable
-field stdout: WriteStream & Shareable
-field stderr: WriteStream & Shareable
-field files: Files & Shareable
-field clock: Clock & Shareable
-field network: Network & Shareable
-field commands: Commands & Shareable
-field filesystem: FileSystem & Shareable
-field entropy: Entropy & Shareable
-field wall_clock: WallClock & Shareable
-field system: System & Shareable
+```manuscript
+type Process:
+    arguments: List[String]
+    environment: Map[String, String]
+    stdin: ReadStream
+    stdout: WriteStream
+    stderr: WriteStream
+    files: Files
+    clock: Clock
+    network: Network
+    commands: Commands
+    filesystem: FileSystem
+    entropy: Entropy
+    wall_clock: WallClock
+    system: System
 ```
 
 # @std/collections.ms
 
 Import each required symbol with `import Name from "@std/collections.ms"`.
 
+## CollectionError
+
+**Alternative**
+
+```manuscript
+type CollectionError:
+    case InvalidInput
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for CollectionError:
+    fn message() -> String
+```
+
 ## List
 
-Kind: interface.
+**Native type**
 
-```text
-List: List[T]
-type parameters: T: Shareable
-operation append: fn(value: T)->List[T]
-operation concat: fn(values: List[T])->List[T]
-operation get: fn(index: Int)->Optional[T]
-operation length: fn()->Int
+```manuscript
+type List[T]:
+    fn at(index: Int) -> Optional[T]
+    fn contains(value: T) -> Bool
+    fn index_of(value: T) -> Optional[Int]
+    fn last_index_of(value: T) -> Optional[Int]
+    fn first() -> Optional[T]
+    fn last() -> Optional[T]
+    fn is_empty() -> Bool
+    fn prepend(value: T) -> List[T]
+    fn with_value(index: Int, value: T) -> List[T]
+    fn without(index: Int) -> List[T]
+    fn slice(start: Int, end: Int) -> List[T]
+    fn reverse() -> List[T]
+    fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]
+    fn filter(predicate: fn(value: T) -> Bool) -> List[T]
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]
+    fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]
+    fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]
+    fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]
+    fn some(predicate: fn(value: T) -> Bool) -> Bool
+    fn every(predicate: fn(value: T) -> Bool) -> Bool
+    fn for_each(operation: fn(value: T) -> Unit) -> Unit
+    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]
+    fn map[U](transform: fn(value: T) -> U) -> List[U]
+    fn flat_map[U](transform: fn(value: T) -> List[U]) -> List[U]
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+    fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]
+    fn fill(value: T, start: Int, end: Int) -> List[T]
+    fn copy_within(target: Int, start: Int, end: Int) -> List[T]
+    fn to_set() -> Set[T]
+    fn keys() -> List[Int]
+    fn entries() -> List[ListEntry[T]]
+    fn join(separator: String) -> String
+    fn append(value: T) -> List[T]
+    fn concat(values: List[T]) -> List[T]
+    fn get(index: Int) -> Optional[T]
+    fn length() -> Int
+```
+
+## ListEntry
+
+**Record**
+
+```manuscript
+type ListEntry[T]:
+    index: Int
+    value: T
 ```
 
 ## Map
 
-Kind: interface.
+**Native type**
 
-```text
-Map: Map[T, U]
-type parameters: T: Hashable, U: Shareable
-operation contains: fn(key: T)->Bool
-operation get: fn(key: T)->Optional[U]
-operation length: fn()->Int
-operation with_entry: fn(key: T, value: U)->Map[T, U]
-operation without: fn(key: T)->Map[T, U]
+```manuscript
+type Map[T: Hashable, U]:
+    fn with_default(key: T, value: U) -> Map[T, U]
+    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]
+    fn clear() -> Map[T, U]
+    fn keys() -> List[T]
+    fn values() -> List[U]
+    fn entries() -> List[MapEntry[T, U]]
+    fn merge(other: Map[T, U]) -> Map[T, U]
+    fn for_each(operation: fn(key: T, value: U) -> Unit) -> Unit
+    fn contains(key: T) -> Bool
+    fn get(key: T) -> Optional[U]
+    fn length() -> Int
+    fn with_entry(key: T, value: U) -> Map[T, U]
+    fn without(key: T) -> Map[T, U]
 ```
 
 ## MapEntry
 
-Kind: record.
+**Record**
 
-```text
-MapEntry: MapEntry[T, U]
-type parameters: T: Hashable, U: Shareable
-field key: T
-field value: U
+```manuscript
+type MapEntry[T: Hashable, U]:
+    key: T
+    value: U
 ```
 
 ## Set
 
-Kind: interface.
+**Native type**
 
-```text
-Set: Set[T]
-type parameters: T: Shareable & Hashable
-operation contains: fn(value: T)->Bool
-operation length: fn()->Int
-operation with_value: fn(value: T)->Set[T]
-operation without: fn(value: T)->Set[T]
+```manuscript
+type Set[T: Hashable]:
+    fn union(right: Set[T]) -> Set[T]
+    fn intersection(right: Set[T]) -> Set[T]
+    fn difference(right: Set[T]) -> Set[T]
+    fn symmetric_difference(right: Set[T]) -> Set[T]
+    fn is_subset_of(right: Set[T]) -> Bool
+    fn is_superset_of(right: Set[T]) -> Bool
+    fn is_disjoint_from(right: Set[T]) -> Bool
+    fn clear() -> Set[T]
+    fn values() -> List[T]
+    fn entries() -> List[List[T]]
+    fn for_each(operation: fn(value: T) -> Unit) -> Unit
+    fn contains(value: T) -> Bool
+    fn length() -> Int
+    fn with_value(value: T) -> Set[T]
+    fn without(value: T) -> Set[T]
+```
+
+## at
+
+**Function**
+
+```manuscript
+fn at[T](values: List[T], index: Int) -> Optional[T]
+```
+
+## contains
+
+**Function**
+
+```manuscript
+fn contains[T: Equal](values: List[T], value: T) -> Bool
+```
+
+## copy_within
+
+**Function**
+
+```manuscript
+fn copy_within[T](values: List[T], target: Int, start: Int, end: Int) -> List[T]
 ```
 
 ## difference
 
-Kind: fn.
+**Function**
 
-```text
-difference: fn(left: Set[T], right: Set[T])->Set[T]
-type parameters: T: Hashable
+```manuscript
+fn difference[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
+```
+
+## every
+
+**Function**
+
+```manuscript
+fn every[T](values: List[T], predicate: fn(value: T) -> Bool) -> Bool
+```
+
+## fill
+
+**Function**
+
+```manuscript
+fn fill[T](values: List[T], value: T, start: Int, end: Int) -> List[T]
+```
+
+## filled
+
+**Function**
+
+```manuscript
+fn filled[T](value: T, count: Int, max_items: Int) -> Result[List[T], CollectionError]
 ```
 
 ## filter
 
-Kind: fn.
+**Function**
 
-```text
-filter: fn(values: List[T], predicate: fn(value: T)->Bool)->List[T]
-type parameters: T: Shareable
+```manuscript
+fn filter[T](values: List[T], predicate: fn(value: T) -> Bool) -> List[T]
+```
+
+## find
+
+**Function**
+
+```manuscript
+fn find[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[T]
+```
+
+## find_index
+
+**Function**
+
+```manuscript
+fn find_index[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[Int]
+```
+
+## find_last
+
+**Function**
+
+```manuscript
+fn find_last[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[T]
+```
+
+## find_last_index
+
+**Function**
+
+```manuscript
+fn find_last_index[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[Int]
+```
+
+## first
+
+**Function**
+
+```manuscript
+fn first[T](values: List[T]) -> Optional[T]
+```
+
+## flat_map
+
+**Function**
+
+```manuscript
+fn flat_map[T, U](values: List[T], transform: fn(value: T) -> List[U]) -> List[U]
+```
+
+## flatten
+
+**Function**
+
+```manuscript
+fn flatten[T](values: List[List[T]]) -> List[T]
 ```
 
 ## fold
 
-Kind: fn.
+**Function**
 
-```text
-fold: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
-type parameters: T: Shareable, A
+```manuscript
+fn fold[T, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+```
+
+## fold_right
+
+**Function**
+
+```manuscript
+fn fold_right[T, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+```
+
+## for_each
+
+**Function**
+
+```manuscript
+fn for_each[T](values: List[T], operation: fn(value: T) -> Unit) -> Unit
+```
+
+## group_by
+
+**Function**
+
+```manuscript
+fn group_by[T, K: Hashable](values: List[T], key: fn(value: T) -> K) -> Map[K, List[T]]
+```
+
+## index_of
+
+**Function**
+
+```manuscript
+fn index_of[T: Equal](values: List[T], value: T) -> Optional[Int]
 ```
 
 ## intersection
 
-Kind: fn.
+**Function**
 
-```text
-intersection: fn(left: Set[T], right: Set[T])->Set[T]
-type parameters: T: Hashable
+```manuscript
+fn intersection[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
+```
+
+## is_disjoint_from
+
+**Function**
+
+```manuscript
+fn is_disjoint_from[T: Hashable](left: Set[T], right: Set[T]) -> Bool
+```
+
+## is_empty
+
+**Function**
+
+```manuscript
+fn is_empty[T](values: List[T]) -> Bool
+```
+
+## is_subset_of
+
+**Function**
+
+```manuscript
+fn is_subset_of[T: Hashable](left: Set[T], right: Set[T]) -> Bool
+```
+
+## is_superset_of
+
+**Function**
+
+```manuscript
+fn is_superset_of[T: Hashable](left: Set[T], right: Set[T]) -> Bool
+```
+
+## last
+
+**Function**
+
+```manuscript
+fn last[T](values: List[T]) -> Optional[T]
+```
+
+## last_index_of
+
+**Function**
+
+```manuscript
+fn last_index_of[T: Equal](values: List[T], value: T) -> Optional[Int]
+```
+
+## list_entries
+
+**Function**
+
+```manuscript
+fn list_entries[T](values: List[T]) -> List[ListEntry[T]]
+```
+
+## list_keys
+
+**Function**
+
+```manuscript
+fn list_keys[T](values: List[T]) -> List[Int]
 ```
 
 ## map
 
-Kind: fn.
+**Function**
 
-```text
-map: fn(values: List[T], transform: fn(value: T)->U)->List[U]
-type parameters: T: Shareable, U: Shareable
+```manuscript
+fn map[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]
+```
+
+## map_clear
+
+**Function**
+
+```manuscript
+fn map_clear[K: Hashable, V](values: Map[K, V]) -> Map[K, V]
+```
+
+## map_entries
+
+**Function**
+
+```manuscript
+fn map_entries[K: Hashable, V](values: Map[K, V]) -> List[MapEntry[K, V]]
+```
+
+## map_for_each
+
+**Function**
+
+```manuscript
+fn map_for_each[K: Hashable, V](values: Map[K, V], operation: fn(key: K, value: V) -> Unit) -> Unit
+```
+
+## map_from_entries
+
+**Function**
+
+```manuscript
+fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) -> Map[K, V]
 ```
 
 ## map_keys
 
-Kind: fn.
+**Function**
 
-```text
-map_keys: fn(values: Map[K, V])->List[K]
-type parameters: K: Hashable, V: Shareable
+```manuscript
+fn map_keys[K: Hashable, V](values: Map[K, V]) -> List[K]
+```
+
+## map_merge
+
+**Function**
+
+```manuscript
+fn map_merge[K: Hashable, V](values: Map[K, V], other: Map[K, V]) -> Map[K, V]
 ```
 
 ## map_values
 
-Kind: fn.
+**Function**
 
-```text
-map_values: fn(values: Map[K, V])->List[V]
-type parameters: K: Hashable, V: Shareable
+```manuscript
+fn map_values[K: Hashable, V](values: Map[K, V]) -> List[V]
+```
+
+## map_with_default
+
+**Function**
+
+```manuscript
+fn map_with_default[K: Hashable, V](values: Map[K, V], key: K, value: V) -> Map[K, V]
+```
+
+## map_with_default_from
+
+**Function**
+
+```manuscript
+fn map_with_default_from[K: Hashable, V](values: Map[K, V], key: K, create: fn(key: K) -> V) -> Map[K, V]
+```
+
+## prepend
+
+**Function**
+
+```manuscript
+fn prepend[T](values: List[T], value: T) -> List[T]
+```
+
+## range
+
+**Function**
+
+```manuscript
+fn range(start: Int, end: Int, step: Int, max_items: Int) -> Result[List[Int], CollectionError]
 ```
 
 ## reverse
 
-Kind: fn.
+**Function**
 
-```text
-reverse: fn(values: List[T])->List[T]
-type parameters: T: Shareable
+```manuscript
+fn reverse[T](values: List[T]) -> List[T]
+```
+
+## set_clear
+
+**Function**
+
+```manuscript
+fn set_clear[T: Hashable](values: Set[T]) -> Set[T]
+```
+
+## set_entries
+
+**Function**
+
+```manuscript
+fn set_entries[T: Hashable](values: Set[T]) -> List[List[T]]
+```
+
+## set_for_each
+
+**Function**
+
+```manuscript
+fn set_for_each[T: Hashable](values: Set[T], operation: fn(value: T) -> Unit) -> Unit
+```
+
+## set_values
+
+**Function**
+
+```manuscript
+fn set_values[T: Hashable](values: Set[T]) -> List[T]
 ```
 
 ## slice
 
-Kind: fn.
+**Function**
 
-```text
-slice: fn(values: List[T], start: Int, end: Int)->List[T]
-type parameters: T: Shareable
+```manuscript
+fn slice[T](values: List[T], start: Int, end: Int) -> List[T]
+```
+
+## some
+
+**Function**
+
+```manuscript
+fn some[T](values: List[T], predicate: fn(value: T) -> Bool) -> Bool
 ```
 
 ## sort_ints
 
-Kind: fn.
+**Function**
 
-```text
-sort_ints: fn(values: List[Int])->List[Int]
+```manuscript
+fn sort_ints(values: List[Int]) -> List[Int]
 ```
 
 ## sort_strings
 
-Kind: fn.
+**Function**
 
-```text
-sort_strings: fn(values: List[String])->List[String]
+```manuscript
+fn sort_strings(values: List[String]) -> List[String]
 ```
 
 ## sorted
 
-Kind: fn.
+**Function**
 
-```text
-sorted: fn(values: List[T], compare: fn(left: T, right: T)->Int)->List[T]
-type parameters: T: Shareable
+```manuscript
+fn sorted[T](values: List[T], compare: fn(left: T, right: T) -> Int) -> List[T]
+```
+
+## symmetric_difference
+
+**Function**
+
+```manuscript
+fn symmetric_difference[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
+```
+
+## to_set
+
+**Function**
+
+```manuscript
+fn to_set[T: Hashable](values: List[T]) -> Set[T]
 ```
 
 ## union
 
-Kind: fn.
+**Function**
 
-```text
-union: fn(left: Set[T], right: Set[T])->Set[T]
-type parameters: T: Hashable
+```manuscript
+fn union[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
+```
+
+## with_value
+
+**Function**
+
+```manuscript
+fn with_value[T](values: List[T], index: Int, value: T) -> List[T]
+```
+
+## with_values
+
+**Function**
+
+```manuscript
+fn with_values[T](values: List[T], start: Int, delete_count: Int, replacement: List[T]) -> List[T]
+```
+
+## without
+
+**Function**
+
+```manuscript
+fn without[T](values: List[T], index: Int) -> List[T]
 ```
 
 # @std/compress.ms
@@ -566,33 +1075,36 @@ Import each required symbol with `import Name from "@std/compress.ms"`.
 
 ## CompressionError
 
-Kind: alternative.
+**Alternative**
 
-```text
-CompressionError: CompressionError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case Unsupported
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type CompressionError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case Unsupported
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for CompressionError:
+    fn message() -> String
 ```
 
 ## compress
 
-Kind: fn.
+**Function**
 
-```text
-compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[Bytes, CompressionError]
+```manuscript
+fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, CompressionError]
 ```
 
 ## decompress
 
-Kind: fn.
+**Function**
 
-```text
-decompress: fn(data: Bytes, format: String, max_bytes: Int)->Result[Bytes, CompressionError]
+```manuscript
+fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, CompressionError]
 ```
 
 # @std/crypto.ms
@@ -601,103 +1113,106 @@ Import each required symbol with `import Name from "@std/crypto.ms"`.
 
 ## CryptoError
 
-Kind: alternative.
+**Alternative**
 
-```text
-CryptoError: CryptoError
-implements: Error
-case InvalidInput
-case Unsupported
-case AuthenticationFailed
-operation message: fn()->String
+```manuscript
+type CryptoError:
+    case InvalidInput
+    case Unsupported
+    case AuthenticationFailed
+```
+
+```manuscript
+impl Error for CryptoError:
+    fn message() -> String
 ```
 
 ## constant_time_equal
 
-Kind: fn.
+**Function**
 
-```text
-constant_time_equal: fn(left: Bytes, right: Bytes)->Bool
+```manuscript
+fn constant_time_equal(left: Bytes, right: Bytes) -> Bool
 ```
 
 ## derive_key
 
-Kind: fn.
+**Function**
 
-```text
-derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Result[Bytes, CryptoError]
+```manuscript
+fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Result[Bytes, CryptoError]
 ```
 
 ## hmac
 
-Kind: fn.
+**Function**
 
-```text
-hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, CryptoError]
+```manuscript
+fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError]
 ```
 
 ## open
 
-Kind: fn.
+**Function**
 
-```text
-open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->Result[Bytes, CryptoError]
+```manuscript
+fn open(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]
 ```
 
 ## public_key
 
-Kind: fn.
+**Function**
 
-```text
-public_key: fn(seed: Bytes)->Result[Bytes, CryptoError]
+```manuscript
+fn public_key(seed: Bytes) -> Result[Bytes, CryptoError]
 ```
 
 ## seal
 
-Kind: fn.
+**Function**
 
-```text
-seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Result[Bytes, CryptoError]
+```manuscript
+fn seal(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]
 ```
 
 ## sha256
 
-Kind: fn.
+**Function**
 
-```text
-sha256: fn(data: Bytes)->Bytes
+```manuscript
+fn sha256(data: Bytes) -> Bytes
 ```
 
 ## sha384
 
-Kind: fn.
+**Function**
 
-```text
-sha384: fn(data: Bytes)->Bytes
+```manuscript
+fn sha384(data: Bytes) -> Bytes
 ```
 
 ## sha512
 
-Kind: fn.
+**Function**
 
-```text
-sha512: fn(data: Bytes)->Bytes
+```manuscript
+fn sha512(data: Bytes) -> Bytes
 ```
 
 ## sign
 
-Kind: fn.
+**Function**
 
-```text
-sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, CryptoError]
+```manuscript
+fn sign(seed: Bytes, data: Bytes) -> Result[Bytes, CryptoError]
 ```
 
 ## verify
 
-Kind: fn.
+**Function**
 
-```text
-verify: fn(key: Bytes, data: Bytes, signature: Bytes)->Bool
+```manuscript
+fn verify(key: Bytes, data: Bytes, signature: Bytes) -> Bool
 ```
 
 # @std/csv.ms
@@ -706,41 +1221,44 @@ Import each required symbol with `import Name from "@std/csv.ms"`.
 
 ## CsvError
 
-Kind: alternative.
+**Alternative**
 
-```text
-CsvError: CsvError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type CsvError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for CsvError:
+    fn message() -> String
 ```
 
 ## CsvOptions
 
-Kind: record.
+**Record**
 
-```text
-CsvOptions: CsvOptions
-field delimiter: String
-field line_ending: String
+```manuscript
+type CsvOptions:
+    delimiter: String
+    line_ending: String
 ```
 
 ## parse
 
-Kind: fn.
+**Function**
 
-```text
-parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Result[List[List[String]], CsvError]
+```manuscript
+fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Result[List[List[String]], CsvError]
 ```
 
 ## stringify
 
-Kind: fn.
+**Function**
 
-```text
-stringify: fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)->Result[String, CsvError]
+```manuscript
+fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Int) -> Result[String, CsvError]
 ```
 
 # @std/decimal.ms
@@ -749,12 +1267,12 @@ Import each required symbol with `import Name from "@std/decimal.ms"`.
 
 ## Decimal
 
-Kind: interface.
+**Native type**
 
-```text
-Decimal: Decimal
-operation to_float: fn()->Float
-operation truncate_to_int: fn()->Optional[Int]
+```manuscript
+type Decimal:
+    fn to_float() -> Float
+    fn truncate_to_int() -> Optional[Int]
 ```
 
 # @std/encoding.ms
@@ -763,47 +1281,50 @@ Import each required symbol with `import Name from "@std/encoding.ms"`.
 
 ## EncodingError
 
-Kind: alternative.
+**Alternative**
 
-```text
-EncodingError: EncodingError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type EncodingError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for EncodingError:
+    fn message() -> String
 ```
 
 ## base64_decode
 
-Kind: fn.
+**Function**
 
-```text
-base64_decode: fn(text: String, url_safe: Bool, max_bytes: Int)->Result[Bytes, EncodingError]
+```manuscript
+fn base64_decode(text: String, url_safe: Bool, max_bytes: Int) -> Result[Bytes, EncodingError]
 ```
 
 ## base64_encode
 
-Kind: fn.
+**Function**
 
-```text
-base64_encode: fn(data: Bytes, url_safe: Bool)->String
+```manuscript
+fn base64_encode(data: Bytes, url_safe: Bool) -> String
 ```
 
 ## hex_decode
 
-Kind: fn.
+**Function**
 
-```text
-hex_decode: fn(text: String, max_bytes: Int)->Result[Bytes, EncodingError]
+```manuscript
+fn hex_decode(text: String, max_bytes: Int) -> Result[Bytes, EncodingError]
 ```
 
 ## hex_encode
 
-Kind: fn.
+**Function**
 
-```text
-hex_encode: fn(data: Bytes)->String
+```manuscript
+fn hex_encode(data: Bytes) -> String
 ```
 
 # @std/errors.ms
@@ -812,20 +1333,11 @@ Import each required symbol with `import Name from "@std/errors.ms"`.
 
 ## Error
 
-Kind: interface.
+**Interface**
 
-```text
-Error: Error
-operation message: fn()->String
-```
-
-## as_error
-
-Kind: fn.
-
-```text
-as_error: fn(cause: E)->Error
-type parameters: E: Error
+```manuscript
+interface Error:
+    fn message() -> String
 ```
 
 # @std/faults.ms
@@ -834,10 +1346,10 @@ Import each required symbol with `import Name from "@std/faults.ms"`.
 
 ## panic
 
-Kind: fn.
+**Function**
 
-```text
-panic: fn(message: String)->Never
+```manuscript
+fn panic(message: String) -> Never
 ```
 
 # @std/fs.ms
@@ -846,64 +1358,67 @@ Import each required symbol with `import Name from "@std/fs.ms"`.
 
 ## DirectoryEntry
 
-Kind: record.
+**Record**
 
-```text
-DirectoryEntry: DirectoryEntry
-field name: String
-field directory: Bool
-field symlink: Bool
+```manuscript
+type DirectoryEntry:
+    name: String
+    directory: Bool
+    symlink: Bool
 ```
 
 ## FileInfo
 
-Kind: record.
+**Record**
 
-```text
-FileInfo: FileInfo
-field name: String
-field size: Int
-field directory: Bool
-field symlink: Bool
-field modified: Timestamp
+```manuscript
+type FileInfo:
+    name: String
+    size: Int
+    directory: Bool
+    symlink: Bool
+    modified: Timestamp
 ```
 
 ## FileSystem
 
-Kind: interface.
+**Interface**
 
-```text
-FileSystem: FileSystem
-operation canonicalize: fn(path: String)->Result[String, FileSystemError]
-operation copy_file: fn(source: String, destination: String, replace: Bool, max_bytes: Int)->Result[Unit, FileSystemError]
-operation create_directory: fn(path: String, recursive: Bool)->Result[Unit, FileSystemError]
-operation create_link: fn(path: String, target: String)->Result[Unit, FileSystemError]
-operation list: fn(path: String, max_entries: Int)->Result[List[DirectoryEntry], FileSystemError]
-operation read_file: fn(path: String, max_bytes: Int)->Result[Bytes, FileSystemError]
-operation read_link: fn(path: String)->Result[String, FileSystemError]
-operation remove: fn(path: String, recursive: Bool)->Result[Unit, FileSystemError]
-operation rename: fn(source: String, destination: String)->Result[Unit, FileSystemError]
-operation stat: fn(path: String, follow_links: Bool)->Result[FileInfo, FileSystemError]
-operation temporary_directory: fn(prefix: String)->Result[String, FileSystemError]
-operation write_file: fn(path: String, data: Bytes, replace: Bool)->Result[Unit, FileSystemError]
+```manuscript
+interface FileSystem:
+    fn canonicalize(path: String) -> Result[String, FileSystemError]
+    fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Int) -> Result[Unit, FileSystemError]
+    fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+    fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
+    fn list(path: String, max_entries: Int) -> Result[List[DirectoryEntry], FileSystemError]
+    fn read_file(path: String, max_bytes: Int) -> Result[Bytes, FileSystemError]
+    fn read_link(path: String) -> Result[String, FileSystemError]
+    fn remove(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+    fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
+    fn stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
+    fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
+    fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, FileSystemError]
 ```
 
 ## FileSystemError
 
-Kind: alternative.
+**Alternative**
 
-```text
-FileSystemError: FileSystemError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case NotFound
-case AlreadyExists
-case PermissionDenied
-case Unsupported
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type FileSystemError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case NotFound
+    case AlreadyExists
+    case PermissionDenied
+    case Unsupported
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for FileSystemError:
+    fn message() -> String
 ```
 
 # @std/html.ms
@@ -912,10 +1427,10 @@ Import each required symbol with `import Name from "@std/html.ms"`.
 
 ## escape
 
-Kind: fn.
+**Function**
 
-```text
-escape: fn(text: String)->String
+```manuscript
+fn escape(text: String) -> String
 ```
 
 # @std/http.ms
@@ -924,161 +1439,164 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 ## ClientResponse
 
-Kind: record.
+**Record**
 
-```text
-ClientResponse: ClientResponse
-field status: Int
-field headers: Map[String, List[String]]
-field body: Bytes
+```manuscript
+type ClientResponse:
+    status: Int
+    headers: Map[String, List[String]]
+    body: Bytes
 ```
 
 ## HttpClient
 
-Kind: interface.
+**Interface**
 
-```text
-HttpClient: HttpClient
-operation close: fn()->Unit
-operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, HttpError]
-operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream & Shareable, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, HttpError]
+```manuscript
+interface HttpClient:
+    fn close() -> Unit
+    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, HttpError]
+    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, HttpError]
 ```
 
 ## HttpClientOptions
 
-Kind: record.
+**Record**
 
-```text
-HttpClientOptions: HttpClientOptions
-field max_redirects: Int
-field max_idle_connections: Int
-field max_header_bytes: Int
-field idle_timeout: Duration
-field decompress: Bool
-field cookies: Bool
-field tls: TlsOptions
+```manuscript
+type HttpClientOptions:
+    max_redirects: Int
+    max_idle_connections: Int
+    max_header_bytes: Int
+    idle_timeout: Duration
+    decompress: Bool
+    cookies: Bool
+    tls: TlsOptions
 ```
 
 ## HttpError
 
-Kind: alternative.
+**Alternative**
 
-```text
-HttpError: HttpError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case PermissionDenied
-case Closed
-case Timeout
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type HttpError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Closed
+    case Timeout
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for HttpError:
+    fn message() -> String
 ```
 
 ## HttpExchange
 
-Kind: interface.
+**Interface**
 
-```text
-HttpExchange: HttpExchange
-operation close: fn()->Unit
-operation headers: fn()->Map[String, List[String]]
-operation method: fn()->String
-operation path: fn()->String
-operation query: fn()->String
-operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
-operation send_headers: fn(status: Int, headers: Map[String, List[String]])->Result[Unit, HttpError]
-operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)->Result[WebSocket & Shareable, WebSocketError]
-operation write: fn(data: Bytes)->Result[Unit, IoError]
+```manuscript
+interface HttpExchange:
+    fn close() -> Unit
+    fn headers() -> Map[String, List[String]]
+    fn method() -> String
+    fn path() -> String
+    fn query() -> String
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, HttpError]
+    fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int) -> Result[WebSocket, WebSocketError]
+    fn write(data: Bytes) -> Result[Unit, IoError]
 ```
 
 ## HttpRequest
 
-Kind: record.
+**Record**
 
-```text
-HttpRequest: HttpRequest
-field method: String
-field path: String
-field query: String
-field headers: Map[String, Bytes]
-field body: Bytes
+```manuscript
+type HttpRequest:
+    method: String
+    path: String
+    query: String
+    headers: Map[String, Bytes]
+    body: Bytes
 ```
 
 ## HttpResponse
 
-Kind: record.
+**Record**
 
-```text
-HttpResponse: HttpResponse
-field status: Int
-field headers: Map[String, String]
-field body: Bytes
+```manuscript
+type HttpResponse:
+    status: Int
+    headers: Map[String, String]
+    body: Bytes
 ```
 
 ## HttpServer
 
-Kind: interface.
+**Interface**
 
-```text
-HttpServer: HttpServer
-operation address: fn()->String
-operation close: fn()->Unit
-operation wait: fn()->Result[Unit, IoError]
+```manuscript
+interface HttpServer:
+    fn address() -> String
+    fn close() -> Unit
+    fn wait() -> Result[Unit, IoError]
 ```
 
 ## HttpServerOptions
 
-Kind: record.
+**Record**
 
-```text
-HttpServerOptions: HttpServerOptions
-field max_requests: Int
-field max_body_bytes: Int
-field max_response_bytes: Int
-field max_header_bytes: Int
-field timeout: Duration
-field grace: Duration
-field tls: Optional[TlsOptions]
+```manuscript
+type HttpServerOptions:
+    max_requests: Int
+    max_body_bytes: Int
+    max_response_bytes: Int
+    max_header_bytes: Int
+    timeout: Duration
+    grace: Duration
+    tls: Optional[TlsOptions]
 ```
 
 ## Network
 
-Kind: interface.
+**Interface**
 
-```text
-Network: Network
-operation bind_datagram: fn(address: String)->Result[DatagramSocket & Shareable, NetworkError]
-operation close: fn()->Unit
-operation connect: fn(address: String, timeout: Duration)->Result[Connection & Shareable, NetworkError]
-operation connect_tls: fn(address: String, server_name: String, timeout: Duration)->Result[Connection & Shareable, NetworkError]
-operation connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)->Result[Connection & Shareable, NetworkError]
-operation connect_unix: fn(path: String, timeout: Duration)->Result[Connection & Shareable, NetworkError]
-operation http_client: fn(options: HttpClientOptions)->Result[HttpClient & Shareable, HttpError]
-operation listen: fn(address: String)->Result[Listener & Shareable, NetworkError]
-operation listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)->Result[Listener & Shareable, NetworkError]
-operation listen_unix: fn(path: String)->Result[Listener & Shareable, NetworkError]
-operation lookup: fn(name: String, max_records: Int, timeout: Duration)->Result[List[String], NetworkError]
-operation request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ClientResponse, HttpError]
-operation resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)->Result[List[DnsRecord], NetworkError]
-operation restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)->Result[Network & Shareable, NetworkError]
-operation serve: fn(address: String, handler: fn(request: HttpRequest)->HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)->Result[HttpServer & Shareable, IoError]
-operation serve_stream: fn(address: String, handler: fn(exchange: HttpExchange & Shareable)->Result[Unit, HttpError], options: HttpServerOptions)->Result[HttpServer & Shareable, HttpError]
-operation web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)->Result[WebSocket & Shareable, WebSocketError]
-operation with_resolver: fn(address: String)->Result[Network & Shareable, NetworkError]
+```manuscript
+interface Network:
+    fn bind_datagram(address: String) -> Result[DatagramSocket, NetworkError]
+    fn close() -> Unit
+    fn connect(address: String, timeout: Duration) -> Result[Connection, NetworkError]
+    fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection, NetworkError]
+    fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection, NetworkError]
+    fn connect_unix(path: String, timeout: Duration) -> Result[Connection, NetworkError]
+    fn http_client(options: HttpClientOptions) -> Result[HttpClient, HttpError]
+    fn listen(address: String) -> Result[Listener, NetworkError]
+    fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener, NetworkError]
+    fn listen_unix(path: String) -> Result[Listener, NetworkError]
+    fn lookup(name: String, max_records: Int, timeout: Duration) -> Result[List[String], NetworkError]
+    fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ClientResponse, HttpError]
+    fn resolve(name: String, kind: String, max_records: Int, timeout: Duration) -> Result[List[DnsRecord], NetworkError]
+    fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network, NetworkError]
+    fn serve(address: String, handler: fn(request: HttpRequest) -> HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration) -> Result[HttpServer, IoError]
+    fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, HttpError], options: HttpServerOptions) -> Result[HttpServer, HttpError]
+    fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, WebSocketError]
+    fn with_resolver(address: String) -> Result[Network, NetworkError]
 ```
 
 ## ResponseBody
 
-Kind: interface.
+**Interface**
 
-```text
-ResponseBody: ResponseBody
-operation close: fn()->Unit
-operation headers: fn()->Map[String, List[String]]
-operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
-operation status: fn()->Int
+```manuscript
+interface ResponseBody:
+    fn close() -> Unit
+    fn headers() -> Map[String, List[String]]
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn status() -> Int
 ```
 
 # @std/io.ms
@@ -1087,82 +1605,85 @@ Import each required symbol with `import Name from "@std/io.ms"`.
 
 ## File
 
-Kind: interface.
+**Interface**
 
-```text
-File: File
-operation close: fn()->Unit
-operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
+```manuscript
+interface File:
+    fn close() -> Unit
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 ```
 
 ## Files
 
-Kind: interface.
+**Interface**
 
-```text
-Files: Files
-operation open: fn(path: String)->Result[File & Shareable, IoError]
+```manuscript
+interface Files:
+    fn open(path: String) -> Result[File, IoError]
 ```
 
 ## IoError
 
-Kind: alternative.
+**Alternative**
 
-```text
-IoError: IoError
-implements: Error
-case Closed
-case InvalidInput
-case Unavailable
-case InvalidData
-case LimitExceeded
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type IoError:
+    case Closed
+    case InvalidInput
+    case Unavailable
+    case InvalidData
+    case LimitExceeded
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for IoError:
+    fn message() -> String
 ```
 
 ## ReadStream
 
-Kind: interface.
+**Interface**
 
-```text
-ReadStream: ReadStream
-operation close: fn()->Unit
-operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
+```manuscript
+interface ReadStream:
+    fn close() -> Unit
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 ```
 
 ## WriteStream
 
-Kind: interface.
+**Interface**
 
-```text
-WriteStream: WriteStream
-operation close: fn()->Unit
-operation flush: fn()->Result[Unit, IoError]
-operation write: fn(data: Bytes)->Result[Unit, IoError]
+```manuscript
+interface WriteStream:
+    fn close() -> Unit
+    fn flush() -> Result[Unit, IoError]
+    fn write(data: Bytes) -> Result[Unit, IoError]
 ```
 
 ## copy
 
-Kind: fn.
+**Function**
 
-```text
-copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int)->Result[Int, IoError]
+```manuscript
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
 ```
 
 ## read_all
 
-Kind: fn.
+**Function**
 
-```text
-read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, IoError]
+```manuscript
+fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
 ```
 
 ## read_line
 
-Kind: fn.
+**Function**
 
-```text
-read_line: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Optional[String], IoError]
+```manuscript
+fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
 ```
 
 # @std/json.ms
@@ -1171,56 +1692,59 @@ Import each required symbol with `import Name from "@std/json.ms"`.
 
 ## JsonError
 
-Kind: alternative.
+**Alternative**
 
-```text
-JsonError: JsonError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type JsonError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for JsonError:
+    fn message() -> String
 ```
 
 ## JsonLimits
 
-Kind: record.
+**Record**
 
-```text
-JsonLimits: JsonLimits
-field max_bytes: Int
-field max_depth: Int
-field max_values: Int
+```manuscript
+type JsonLimits:
+    max_bytes: Int
+    max_depth: Int
+    max_values: Int
 ```
 
 ## JsonValue
 
-Kind: alternative.
+**Alternative**
 
-```text
-JsonValue: JsonValue
-case Null
-case BoolValue(value: Bool)
-case NumberValue(text: String)
-case StringValue(value: String)
-case ArrayValue(values: List[JsonValue])
-case ObjectValue(values: Map[String, JsonValue])
+```manuscript
+type JsonValue:
+    case Null
+    case BoolValue(value: Bool)
+    case NumberValue(text: String)
+    case StringValue(value: String)
+    case ArrayValue(values: List[JsonValue])
+    case ObjectValue(values: Map[String, JsonValue])
 ```
 
 ## parse
 
-Kind: fn.
+**Function**
 
-```text
-parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, JsonError]
+```manuscript
+fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, JsonError]
 ```
 
 ## stringify
 
-Kind: fn.
+**Function**
 
-```text
-stringify: fn(value: JsonValue, max_bytes: Int)->Result[String, JsonError]
+```manuscript
+fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, JsonError]
 ```
 
 # @std/log.ms
@@ -1229,24 +1753,27 @@ Import each required symbol with `import Name from "@std/log.ms"`.
 
 ## LogError
 
-Kind: alternative.
+**Alternative**
 
-```text
-LogError: LogError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case Io(cause: IoError)
-operation message: fn()->String
+```manuscript
+type LogError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case Io(cause: IoError)
+```
+
+```manuscript
+impl Error for LogError:
+    fn message() -> String
 ```
 
 ## write
 
-Kind: fn.
+**Function**
 
-```text
-write: fn(output: WriteStream & Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LogError]
+```manuscript
+fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LogError]
 ```
 
 # @std/math.ms
@@ -1255,242 +1782,242 @@ Import each required symbol with `import Name from "@std/math.ms"`.
 
 ## abs
 
-Kind: fn.
+**Function**
 
-```text
-abs: fn(value: Float)->Float
+```manuscript
+fn abs(value: Float) -> Float
 ```
 
 ## abs_int
 
-Kind: fn.
+**Function**
 
-```text
-abs_int: fn(value: Int)->Int
+```manuscript
+fn abs_int(value: Int) -> Int
 ```
 
 ## acos
 
-Kind: fn.
+**Function**
 
-```text
-acos: fn(value: Float)->Float
+```manuscript
+fn acos(value: Float) -> Float
 ```
 
 ## asin
 
-Kind: fn.
+**Function**
 
-```text
-asin: fn(value: Float)->Float
+```manuscript
+fn asin(value: Float) -> Float
 ```
 
 ## atan
 
-Kind: fn.
+**Function**
 
-```text
-atan: fn(value: Float)->Float
+```manuscript
+fn atan(value: Float) -> Float
 ```
 
 ## atan2
 
-Kind: fn.
+**Function**
 
-```text
-atan2: fn(y: Float, x: Float)->Float
+```manuscript
+fn atan2(y: Float, x: Float) -> Float
 ```
 
 ## ceil
 
-Kind: fn.
+**Function**
 
-```text
-ceil: fn(value: Float)->Float
+```manuscript
+fn ceil(value: Float) -> Float
 ```
 
 ## cos
 
-Kind: fn.
+**Function**
 
-```text
-cos: fn(value: Float)->Float
+```manuscript
+fn cos(value: Float) -> Float
 ```
 
 ## cosh
 
-Kind: fn.
+**Function**
 
-```text
-cosh: fn(value: Float)->Float
+```manuscript
+fn cosh(value: Float) -> Float
 ```
 
 ## e
 
-Kind: fn.
+**Function**
 
-```text
-e: fn()->Float
+```manuscript
+fn e() -> Float
 ```
 
 ## exp
 
-Kind: fn.
+**Function**
 
-```text
-exp: fn(value: Float)->Float
+```manuscript
+fn exp(value: Float) -> Float
 ```
 
 ## floor
 
-Kind: fn.
+**Function**
 
-```text
-floor: fn(value: Float)->Float
+```manuscript
+fn floor(value: Float) -> Float
 ```
 
 ## hypot
 
-Kind: fn.
+**Function**
 
-```text
-hypot: fn(left: Float, right: Float)->Float
+```manuscript
+fn hypot(left: Float, right: Float) -> Float
 ```
 
 ## is_finite
 
-Kind: fn.
+**Function**
 
-```text
-is_finite: fn(value: Float)->Bool
+```manuscript
+fn is_finite(value: Float) -> Bool
 ```
 
 ## is_nan
 
-Kind: fn.
+**Function**
 
-```text
-is_nan: fn(value: Float)->Bool
+```manuscript
+fn is_nan(value: Float) -> Bool
 ```
 
 ## log
 
-Kind: fn.
+**Function**
 
-```text
-log: fn(value: Float)->Float
+```manuscript
+fn log(value: Float) -> Float
 ```
 
 ## log10
 
-Kind: fn.
+**Function**
 
-```text
-log10: fn(value: Float)->Float
+```manuscript
+fn log10(value: Float) -> Float
 ```
 
 ## log2
 
-Kind: fn.
+**Function**
 
-```text
-log2: fn(value: Float)->Float
+```manuscript
+fn log2(value: Float) -> Float
 ```
 
 ## max
 
-Kind: fn.
+**Function**
 
-```text
-max: fn(left: Float, right: Float)->Float
+```manuscript
+fn max(left: Float, right: Float) -> Float
 ```
 
 ## min
 
-Kind: fn.
+**Function**
 
-```text
-min: fn(left: Float, right: Float)->Float
+```manuscript
+fn min(left: Float, right: Float) -> Float
 ```
 
 ## pi
 
-Kind: fn.
+**Function**
 
-```text
-pi: fn()->Float
+```manuscript
+fn pi() -> Float
 ```
 
 ## pow
 
-Kind: fn.
+**Function**
 
-```text
-pow: fn(base: Float, exponent: Float)->Float
+```manuscript
+fn pow(base: Float, exponent: Float) -> Float
 ```
 
 ## remainder
 
-Kind: fn.
+**Function**
 
-```text
-remainder: fn(left: Float, right: Float)->Float
+```manuscript
+fn remainder(left: Float, right: Float) -> Float
 ```
 
 ## round
 
-Kind: fn.
+**Function**
 
-```text
-round: fn(value: Float)->Float
+```manuscript
+fn round(value: Float) -> Float
 ```
 
 ## sin
 
-Kind: fn.
+**Function**
 
-```text
-sin: fn(value: Float)->Float
+```manuscript
+fn sin(value: Float) -> Float
 ```
 
 ## sinh
 
-Kind: fn.
+**Function**
 
-```text
-sinh: fn(value: Float)->Float
+```manuscript
+fn sinh(value: Float) -> Float
 ```
 
 ## sqrt
 
-Kind: fn.
+**Function**
 
-```text
-sqrt: fn(value: Float)->Float
+```manuscript
+fn sqrt(value: Float) -> Float
 ```
 
 ## tan
 
-Kind: fn.
+**Function**
 
-```text
-tan: fn(value: Float)->Float
+```manuscript
+fn tan(value: Float) -> Float
 ```
 
 ## tanh
 
-Kind: fn.
+**Function**
 
-```text
-tanh: fn(value: Float)->Float
+```manuscript
+fn tanh(value: Float) -> Float
 ```
 
 ## truncate
 
-Kind: fn.
+**Function**
 
-```text
-truncate: fn(value: Float)->Float
+```manuscript
+fn truncate(value: Float) -> Float
 ```
 
 # @std/net.ms
@@ -1499,110 +2026,113 @@ Import each required symbol with `import Name from "@std/net.ms"`.
 
 ## Connection
 
-Kind: interface.
+**Interface**
 
-```text
-Connection: Connection
-operation close: fn()->Unit
-operation local_address: fn()->String
-operation peer_address: fn()->String
-operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
-operation read_timeout: fn(max_bytes: Int, timeout: Duration)->Result[Optional[Bytes], IoError]
-operation shutdown_write: fn()->Result[Unit, NetworkError]
-operation tls_info: fn()->Result[TlsInfo, TlsError]
-operation write: fn(data: Bytes)->Result[Unit, IoError]
-operation write_timeout: fn(data: Bytes, timeout: Duration)->Result[Unit, IoError]
+```manuscript
+interface Connection:
+    fn close() -> Unit
+    fn local_address() -> String
+    fn peer_address() -> String
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn read_timeout(max_bytes: Int, timeout: Duration) -> Result[Optional[Bytes], IoError]
+    fn shutdown_write() -> Result[Unit, NetworkError]
+    fn tls_info() -> Result[TlsInfo, TlsError]
+    fn write(data: Bytes) -> Result[Unit, IoError]
+    fn write_timeout(data: Bytes, timeout: Duration) -> Result[Unit, IoError]
 ```
 
 ## Datagram
 
-Kind: record.
+**Record**
 
-```text
-Datagram: Datagram
-field data: Bytes
-field sender: String
+```manuscript
+type Datagram:
+    data: Bytes
+    sender: String
 ```
 
 ## DatagramSocket
 
-Kind: interface.
+**Interface**
 
-```text
-DatagramSocket: DatagramSocket
-operation address: fn()->String
-operation close: fn()->Unit
-operation receive: fn(max_bytes: Int)->Result[Datagram, NetworkError]
-operation receive_timeout: fn(max_bytes: Int, timeout: Duration)->Result[Datagram, NetworkError]
-operation send: fn(data: Bytes, address: String)->Result[Unit, NetworkError]
-operation send_timeout: fn(data: Bytes, address: String, timeout: Duration)->Result[Unit, NetworkError]
+```manuscript
+interface DatagramSocket:
+    fn address() -> String
+    fn close() -> Unit
+    fn receive(max_bytes: Int) -> Result[Datagram, NetworkError]
+    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, NetworkError]
+    fn send(data: Bytes, address: String) -> Result[Unit, NetworkError]
+    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, NetworkError]
 ```
 
 ## DnsRecord
 
-Kind: record.
+**Record**
 
-```text
-DnsRecord: DnsRecord
-field kind: String
-field value: String
-field priority: Int
-field weight: Int
-field port: Int
+```manuscript
+type DnsRecord:
+    kind: String
+    value: String
+    priority: Int
+    weight: Int
+    port: Int
 ```
 
 ## Listener
 
-Kind: interface.
+**Interface**
 
-```text
-Listener: Listener
-operation accept: fn()->Result[Connection & Shareable, NetworkError]
-operation accept_timeout: fn(timeout: Duration)->Result[Connection & Shareable, NetworkError]
-operation address: fn()->String
-operation close: fn()->Unit
+```manuscript
+interface Listener:
+    fn accept() -> Result[Connection, NetworkError]
+    fn accept_timeout(timeout: Duration) -> Result[Connection, NetworkError]
+    fn address() -> String
+    fn close() -> Unit
 ```
 
 ## NetworkError
 
-Kind: alternative.
+**Alternative**
 
-```text
-NetworkError: NetworkError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case PermissionDenied
-case Unsupported
-case Closed
-case Timeout
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type NetworkError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Unsupported
+    case Closed
+    case Timeout
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for NetworkError:
+    fn message() -> String
 ```
 
 ## contains_ip
 
-Kind: fn.
+**Function**
 
-```text
-contains_ip: fn(cidr: String, address: String)->Result[Bool, NetworkError]
+```manuscript
+fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]
 ```
 
 ## parse_cidr
 
-Kind: fn.
+**Function**
 
-```text
-parse_cidr: fn(text: String)->Result[String, NetworkError]
+```manuscript
+fn parse_cidr(text: String) -> Result[String, NetworkError]
 ```
 
 ## parse_ip
 
-Kind: fn.
+**Function**
 
-```text
-parse_ip: fn(text: String)->Result[String, NetworkError]
+```manuscript
+fn parse_ip(text: String) -> Result[String, NetworkError]
 ```
 
 # @std/numbers.ms
@@ -1611,47 +2141,74 @@ Import each required symbol with `import Name from "@std/numbers.ms"`.
 
 ## NumberError
 
-Kind: alternative.
+**Alternative**
 
-```text
-NumberError: NumberError
-implements: Error
-case InvalidInput
-case InvalidData
-case OutOfRange
-operation message: fn()->String
+```manuscript
+type NumberError:
+    case InvalidInput
+    case InvalidData
+    case OutOfRange
+```
+
+```manuscript
+impl Error for NumberError:
+    fn message() -> String
+```
+
+## format_exponential
+
+**Function**
+
+```manuscript
+fn format_exponential(value: Float, digits: Int) -> Result[String, NumberError]
+```
+
+## format_fixed
+
+**Function**
+
+```manuscript
+fn format_fixed(value: Float, digits: Int) -> Result[String, NumberError]
 ```
 
 ## format_float
 
-Kind: fn.
+**Function**
 
-```text
-format_float: fn(value: Float)->String
+```manuscript
+fn format_float(value: Float) -> String
 ```
 
 ## format_int
 
-Kind: fn.
+**Function**
 
-```text
-format_int: fn(value: Int, radix: Int)->String
+```manuscript
+fn format_int(value: Int, radix: Int) -> String
+```
+
+## format_precision
+
+**Function**
+
+```manuscript
+fn format_precision(value: Float, precision: Int) -> Result[String, NumberError]
 ```
 
 ## parse_float
 
-Kind: fn.
+**Function**
 
-```text
-parse_float: fn(text: String)->Result[Float, NumberError]
+```manuscript
+fn parse_float(text: String) -> Result[Float, NumberError]
 ```
 
 ## parse_int
 
-Kind: fn.
+**Function**
 
-```text
-parse_int: fn(text: String, radix: Int)->Result[Int, NumberError]
+```manuscript
+fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]
 ```
 
 # @std/optional.ms
@@ -1660,13 +2217,12 @@ Import each required symbol with `import Name from "@std/optional.ms"`.
 
 ## Optional
 
-Kind: alternative.
+**Alternative**
 
-```text
-Optional: Optional[T]
-type parameters: T
-case some(value: T)
-case none
+```manuscript
+type Optional[T]:
+    case some(value: T)
+    case none
 ```
 
 # @std/path.ms
@@ -1675,69 +2231,72 @@ Import each required symbol with `import Name from "@std/path.ms"`.
 
 ## PathError
 
-Kind: alternative.
+**Alternative**
 
-```text
-PathError: PathError
-implements: Error
-case InvalidInput
-operation message: fn()->String
+```manuscript
+type PathError:
+    case InvalidInput
+```
+
+```manuscript
+impl Error for PathError:
+    fn message() -> String
 ```
 
 ## basename
 
-Kind: fn.
+**Function**
 
-```text
-basename: fn(path: String)->String
+```manuscript
+fn basename(path: String) -> String
 ```
 
 ## dirname
 
-Kind: fn.
+**Function**
 
-```text
-dirname: fn(path: String)->String
+```manuscript
+fn dirname(path: String) -> String
 ```
 
 ## extension
 
-Kind: fn.
+**Function**
 
-```text
-extension: fn(path: String)->String
+```manuscript
+fn extension(path: String) -> String
 ```
 
 ## is_absolute
 
-Kind: fn.
+**Function**
 
-```text
-is_absolute: fn(path: String)->Bool
+```manuscript
+fn is_absolute(path: String) -> Bool
 ```
 
 ## join
 
-Kind: fn.
+**Function**
 
-```text
-join: fn(parts: List[String])->String
+```manuscript
+fn join(parts: List[String]) -> String
 ```
 
 ## normalize
 
-Kind: fn.
+**Function**
 
-```text
-normalize: fn(path: String)->String
+```manuscript
+fn normalize(path: String) -> String
 ```
 
 ## relative
 
-Kind: fn.
+**Function**
 
-```text
-relative: fn(base: String, target: String)->Result[String, PathError]
+```manuscript
+fn relative(base: String, target: String) -> Result[String, PathError]
 ```
 
 # @std/pools.ms
@@ -1746,36 +2305,37 @@ Import each required symbol with `import Name from "@std/pools.ms"`.
 
 ## Lease
 
-Kind: interface.
+**Native type**
 
-```text
-Lease: Lease[T]
-type parameters: T: Shareable
-operation close: fn()->Unit
-operation get: fn()->Result[T, PoolError]
+```manuscript
+type Lease[T]:
+    fn close() -> Unit
+    fn get() -> Result[T, PoolError]
 ```
 
 ## Pool
 
-Kind: interface.
+**Native type**
 
-```text
-Pool: Pool[T]
-type parameters: T: Shareable
-field resources: List[T]
-operation acquire: fn()->Result[Lease[T], PoolError]
-operation close: fn()->Unit
+```manuscript
+type Pool[T]:
+    resources: List[T]
+    fn acquire() -> Result[Lease[T], PoolError]
+    fn close() -> Unit
 ```
 
 ## PoolError
 
-Kind: alternative.
+**Alternative**
 
-```text
-PoolError: PoolError
-implements: Error
-case Closed
-operation message: fn()->String
+```manuscript
+type PoolError:
+    case Closed
+```
+
+```manuscript
+impl Error for PoolError:
+    fn message() -> String
 ```
 
 # @std/process.ms
@@ -1784,37 +2344,40 @@ Import each required symbol with `import Name from "@std/process.ms"`.
 
 ## CommandError
 
-Kind: alternative.
+**Alternative**
 
-```text
-CommandError: CommandError
-implements: Error
-case InvalidInput
-case Unavailable
-case TimedOut
-case OutputLimit
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type CommandError:
+    case InvalidInput
+    case Unavailable
+    case TimedOut
+    case OutputLimit
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for CommandError:
+    fn message() -> String
 ```
 
 ## CommandOutput
 
-Kind: record.
+**Record**
 
-```text
-CommandOutput: CommandOutput
-field exit_code: Int
-field stdout: Bytes
-field stderr: Bytes
+```manuscript
+type CommandOutput:
+    exit_code: Int
+    stdout: Bytes
+    stderr: Bytes
 ```
 
 ## Commands
 
-Kind: interface.
+**Interface**
 
-```text
-Commands: Commands
-operation run: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration)->Result[CommandOutput, CommandError]
+```manuscript
+interface Commands:
+    fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]
 ```
 
 # @std/queues.ms
@@ -1823,26 +2386,16 @@ Import each required symbol with `import Name from "@std/queues.ms"`.
 
 ## Queue
 
-Kind: interface.
+**Native type**
 
-```text
-Queue: Queue[T]
-type parameters: T: Shareable
-field capacity: Int
-operation close: fn()->Unit
-operation receive: fn()->Optional[T]
-operation send: fn(value: T)->Result[Unit, QueueError]
-```
-
-## QueueError
-
-Kind: alternative.
-
-```text
-QueueError: QueueError
-implements: Error
-case Closed
-operation message: fn()->String
+```manuscript
+type Queue[T]:
+    capacity: Int
+    fn enqueue(value: T) -> Bool
+    fn dequeue() -> Optional[T]
+    fn peek() -> Optional[T]
+    fn length() -> Int
+    fn is_empty() -> Bool
 ```
 
 # @std/random.ms
@@ -1851,40 +2404,43 @@ Import each required symbol with `import Name from "@std/random.ms"`.
 
 ## Entropy
 
-Kind: interface.
+**Interface**
 
-```text
-Entropy: Entropy
-operation bytes: fn(count: Int)->Result[Bytes, RandomError]
+```manuscript
+interface Entropy:
+    fn bytes(count: Int) -> Result[Bytes, RandomError]
 ```
 
 ## RandomError
 
-Kind: alternative.
+**Alternative**
 
-```text
-RandomError: RandomError
-implements: Error
-case InvalidInput
-case LimitExceeded
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type RandomError:
+    case InvalidInput
+    case LimitExceeded
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for RandomError:
+    fn message() -> String
 ```
 
 ## secure_int
 
-Kind: fn.
+**Function**
 
-```text
-secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, RandomError]
+```manuscript
+fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, RandomError]
 ```
 
 ## uuid_v4
 
-Kind: fn.
+**Function**
 
-```text
-uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, RandomError]
+```manuscript
+fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]
 ```
 
 # @std/regex.ms
@@ -1893,55 +2449,61 @@ Import each required symbol with `import Name from "@std/regex.ms"`.
 
 ## Regex
 
-Kind: native.
+**Native type**
 
-```text
-Regex: Regex
+```manuscript
+type Regex:
+    fn matches(text: String) -> Bool
+    fn find_all(text: String, max_matches: Int) -> Result[List[String], RegexError]
+    fn replace(text: String, replacement: String, max_bytes: Int) -> Result[String, RegexError]
 ```
 
 ## RegexError
 
-Kind: alternative.
+**Alternative**
 
-```text
-RegexError: RegexError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type RegexError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for RegexError:
+    fn message() -> String
 ```
 
 ## compile
 
-Kind: fn.
+**Function**
 
-```text
-compile: fn(pattern: String)->Result[Regex, RegexError]
+```manuscript
+fn compile(pattern: String) -> Result[Regex, RegexError]
 ```
 
 ## find_all
 
-Kind: fn.
+**Function**
 
-```text
-find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String], RegexError]
+```manuscript
+fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], RegexError]
 ```
 
 ## matches
 
-Kind: fn.
+**Function**
 
-```text
-matches: fn(pattern: Regex, text: String)->Bool
+```manuscript
+fn matches(pattern: Regex, text: String) -> Bool
 ```
 
 ## replace
 
-Kind: fn.
+**Function**
 
-```text
-replace: fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)->Result[String, RegexError]
+```manuscript
+fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Int) -> Result[String, RegexError]
 ```
 
 # @std/result.ms
@@ -1950,39 +2512,274 @@ Import each required symbol with `import Name from "@std/result.ms"`.
 
 ## Result
 
-Kind: alternative.
+**Alternative**
 
-```text
-Result: Result[T, U]
-type parameters: T, U
-case ok(value: T)
-case error(cause: U)
+```manuscript
+type Result[T, U]:
+    case ok(value: T)
+    case error(cause: U)
 ```
 
-## map_error
+# @std/string.ms
 
-Kind: fn.
+Import each required symbol with `import Name from "@std/string.ms"`.
 
-```text
-map_error: fn(result: Result[T, E], transform: fn(cause: E)->F)->Result[T, F]
-type parameters: T, E, F
+## StringError
+
+**Alternative**
+
+```manuscript
+type StringError:
+    case InvalidInput
+    case OutOfRange
+    case LimitExceeded
+    case Failed(message: String)
 ```
 
-# @std/state.ms
+```manuscript
+impl Error for StringError:
+    fn message() -> String
+```
 
-Import each required symbol with `import Name from "@std/state.ms"`.
+## at
 
-## State
+**Function**
 
-Kind: interface.
+```manuscript
+fn at(text: String, index: Int) -> Optional[String]
+```
 
-```text
-State: State[T]
-type parameters: T: Shareable
-field value: T
-operation get: fn()->T
-operation set: fn(value: T)->Unit
-operation swap: fn(value: T)->T
+## concat
+
+**Function**
+
+```manuscript
+fn concat(text: String, values: String) -> String
+```
+
+## contains
+
+**Function**
+
+```manuscript
+fn contains(value: String, text: String) -> Bool
+```
+
+## ends_with
+
+**Function**
+
+```manuscript
+fn ends_with(value: String, suffix: String) -> Bool
+```
+
+## from_scalars
+
+**Function**
+
+```manuscript
+fn from_scalars(values: List[Int]) -> Result[String, StringError]
+```
+
+## index_of
+
+**Function**
+
+```manuscript
+fn index_of(text: String, value: String) -> Optional[Int]
+```
+
+## join
+
+**Function**
+
+```manuscript
+fn join(parts: List[String], separator: String) -> String
+```
+
+## last_index_of
+
+**Function**
+
+```manuscript
+fn last_index_of(text: String, value: String) -> Optional[Int]
+```
+
+## lower
+
+**Function**
+
+```manuscript
+fn lower(text: String) -> String
+```
+
+## normalize
+
+**Function**
+
+```manuscript
+fn normalize(text: String, form: String, max_bytes: Int) -> Result[String, StringError]
+```
+
+## pad_end
+
+**Function**
+
+```manuscript
+fn pad_end(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+```
+
+## pad_start
+
+**Function**
+
+```manuscript
+fn pad_start(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+```
+
+## repeat
+
+**Function**
+
+```manuscript
+fn repeat(text: String, count: Int, max_bytes: Int) -> Result[String, StringError]
+```
+
+## replace
+
+**Function**
+
+```manuscript
+fn replace(text: String, old: String, new: String, max_replacements: Int) -> String
+```
+
+## replace_all
+
+**Function**
+
+```manuscript
+fn replace_all(text: String, old: String, new: String, max_bytes: Int) -> Result[String, StringError]
+```
+
+## scalar_at
+
+**Function**
+
+```manuscript
+fn scalar_at(text: String, index: Int) -> Optional[Int]
+```
+
+## scalar_length
+
+**Function**
+
+```manuscript
+fn scalar_length(text: String) -> Int
+```
+
+## scalar_values
+
+**Function**
+
+```manuscript
+fn scalar_values(text: String) -> List[Int]
+```
+
+## slice
+
+**Function**
+
+```manuscript
+fn slice(text: String, start: Int, end: Int) -> String
+```
+
+## slice_scalars
+
+**Function**
+
+```manuscript
+fn slice_scalars(text: String, start: Int, end: Int) -> Result[String, StringError]
+```
+
+## split
+
+**Function**
+
+```manuscript
+fn split(text: String, separator: String, max_parts: Int) -> List[String]
+```
+
+## starts_with
+
+**Function**
+
+```manuscript
+fn starts_with(value: String, prefix: String) -> Bool
+```
+
+## substring
+
+**Function**
+
+```manuscript
+fn substring(text: String, start: Int, end: Int) -> String
+```
+
+## trim
+
+**Function**
+
+```manuscript
+fn trim(text: String) -> String
+```
+
+## trim_end
+
+**Function**
+
+```manuscript
+fn trim_end(text: String) -> String
+```
+
+## trim_start
+
+**Function**
+
+```manuscript
+fn trim_start(text: String) -> String
+```
+
+## upper
+
+**Function**
+
+```manuscript
+fn upper(text: String) -> String
+```
+
+# @std/sync.ms
+
+Import each required symbol with `import Name from "@std/sync.ms"`.
+
+## Synchronized
+
+**Native type**
+
+```manuscript
+type Synchronized[T]:
+    value: T
+    fn lock() -> SynchronizedGuard[T]
+```
+
+## SynchronizedGuard
+
+**Native type**
+
+```manuscript
+type SynchronizedGuard[T]:
+    fn get() -> T
+    fn set(value: T) -> Unit
+    fn close() -> Unit
 ```
 
 # @std/system.ms
@@ -1991,24 +2788,24 @@ Import each required symbol with `import Name from "@std/system.ms"`.
 
 ## System
 
-Kind: interface.
+**Interface**
 
-```text
-System: System
-operation environment: fn(name: String)->Optional[String]
-operation info: fn()->SystemInfo
-operation working_directory: fn()->String
+```manuscript
+interface System:
+    fn environment(name: String) -> Optional[String]
+    fn info() -> SystemInfo
+    fn working_directory() -> String
 ```
 
 ## SystemInfo
 
-Kind: record.
+**Record**
 
-```text
-SystemInfo: SystemInfo
-field os: String
-field architecture: String
-field cpu_count: Int
+```manuscript
+type SystemInfo:
+    os: String
+    architecture: String
+    cpu_count: Int
 ```
 
 # @std/tasks.ms
@@ -2017,216 +2814,91 @@ Import each required symbol with `import Name from "@std/tasks.ms"`.
 
 ## Background
 
-Kind: interface.
+**Native type**
 
-```text
-Background: Background
-operation cancel: fn(id: OperationId)->Unit
-operation close: fn()->Unit
-operation start: fn(operation: fn()->Result[Unit, String])->Result[OperationId, StartError]
-operation status: fn(id: OperationId)->WorkStatus
+```manuscript
+type Background:
+    fn cancel(id: OperationId) -> Unit
+    fn close() -> Unit
+    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
+    fn status(id: OperationId) -> WorkStatus
 ```
 
 ## BackgroundFailure
 
-Kind: alternative.
+**Alternative**
 
-```text
-BackgroundFailure: BackgroundFailure
-case Failed(operation: OperationId, cause: String)
-case Crashed(operation: OperationId, message: String)
+```manuscript
+type BackgroundFailure:
+    case Failed(operation: OperationId, cause: String)
+    case Crashed(operation: OperationId, message: String)
 ```
 
 ## ExecutionError
 
-Kind: alternative.
+**Alternative**
 
-```text
-ExecutionError: ExecutionError
-implements: Error
-case TimedOut
-case Crashed(operation: OperationId, message: String)
-operation message: fn()->String
+```manuscript
+type ExecutionError:
+    case TimedOut
+    case Crashed(operation: OperationId, message: String)
+```
+
+```manuscript
+impl Error for ExecutionError:
+    fn message() -> String
 ```
 
 ## OperationId
 
-Kind: native.
+**Native type**
 
-```text
-OperationId: OperationId
+```manuscript
+type OperationId
 ```
 
 ## StartError
 
-Kind: alternative.
+**Alternative**
 
-```text
-StartError: StartError
-implements: Error
-case Closed
-case Full
-operation message: fn()->String
+```manuscript
+type StartError:
+    case Closed
+    case Full
+```
+
+```manuscript
+impl Error for StartError:
+    fn message() -> String
 ```
 
 ## WorkStatus
 
-Kind: alternative.
+**Alternative**
 
-```text
-WorkStatus: WorkStatus
-case Running
-case Succeeded
-case Failed
-case Cancelled
-case Crashed
-case Unknown
+```manuscript
+type WorkStatus:
+    case Running
+    case Succeeded
+    case Failed
+    case Cancelled
+    case Crashed
+    case Unknown
 ```
 
 ## check_cancelled
 
-Kind: fn.
+**Function**
 
-```text
-check_cancelled: fn()->Unit
+```manuscript
+fn check_cancelled() -> Unit
 ```
 
 ## parallel
 
-Kind: fn.
+**Function**
 
-```text
-parallel: fn()-><unknown>
-```
-
-# @std/text.ms
-
-Import each required symbol with `import Name from "@std/text.ms"`.
-
-## TextError
-
-Kind: alternative.
-
-```text
-TextError: TextError
-implements: Error
-case InvalidInput
-case OutOfRange
-case LimitExceeded
-operation message: fn()->String
-```
-
-## contains
-
-Kind: fn.
-
-```text
-contains: fn(value: String, text: String)->Bool
-```
-
-## ends_with
-
-Kind: fn.
-
-```text
-ends_with: fn(value: String, suffix: String)->Bool
-```
-
-## from_scalars
-
-Kind: fn.
-
-```text
-from_scalars: fn(values: List[Int])->Result[String, TextError]
-```
-
-## join
-
-Kind: fn.
-
-```text
-join: fn(parts: List[String], separator: String)->String
-```
-
-## lower
-
-Kind: fn.
-
-```text
-lower: fn(text: String)->String
-```
-
-## repeat
-
-Kind: fn.
-
-```text
-repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, TextError]
-```
-
-## replace
-
-Kind: fn.
-
-```text
-replace: fn(text: String, old: String, new: String, max_replacements: Int)->String
-```
-
-## scalar_length
-
-Kind: fn.
-
-```text
-scalar_length: fn(text: String)->Int
-```
-
-## scalar_values
-
-Kind: fn.
-
-```text
-scalar_values: fn(text: String)->List[Int]
-```
-
-## slice_scalars
-
-Kind: fn.
-
-```text
-slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, TextError]
-```
-
-## split
-
-Kind: fn.
-
-```text
-split: fn(text: String, separator: String, max_parts: Int)->List[String]
-```
-
-## starts_with
-
-Kind: fn.
-
-```text
-starts_with: fn(value: String, prefix: String)->Bool
-```
-
-## trim
-
-Kind: fn.
-
-```text
-trim: fn(text: String)->String
-```
-
-## upper
-
-Kind: fn.
-
-```text
-upper: fn(text: String)->String
-```
+See [special call rules](#special-call-rules).
 
 # @std/time.ms
 
@@ -2234,120 +2906,123 @@ Import each required symbol with `import Name from "@std/time.ms"`.
 
 ## Clock
 
-Kind: interface.
+**Interface**
 
-```text
-Clock: Clock
-operation now: fn()->Instant
+```manuscript
+interface Clock:
+    fn now() -> Instant
 ```
 
 ## Duration
 
-Kind: native.
+**Native type**
 
-```text
-Duration: Duration
+```manuscript
+type Duration
 ```
 
 ## Instant
 
-Kind: native.
+**Native type**
 
-```text
-Instant: Instant
+```manuscript
+type Instant
 ```
 
 ## TimeError
 
-Kind: alternative.
+**Alternative**
 
-```text
-TimeError: TimeError
-implements: Error
-case InvalidData
-case OutOfRange
-operation message: fn()->String
+```manuscript
+type TimeError:
+    case InvalidData
+    case OutOfRange
+```
+
+```manuscript
+impl Error for TimeError:
+    fn message() -> String
 ```
 
 ## Timestamp
 
-Kind: native.
+**Native type**
 
-```text
-Timestamp: Timestamp
+```manuscript
+type Timestamp
 ```
 
 ## WallClock
 
-Kind: interface.
+**Interface**
 
-```text
-WallClock: WallClock
-operation now: fn()->Timestamp
+```manuscript
+interface WallClock:
+    fn now() -> Timestamp
 ```
 
 ## difference
 
-Kind: fn.
+**Function**
 
-```text
-difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, TimeError]
+```manuscript
+fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
 ```
 
 ## format_timestamp
 
-Kind: fn.
+**Function**
 
-```text
-format_timestamp: fn(value: Timestamp)->String
+```manuscript
+fn format_timestamp(value: Timestamp) -> String
 ```
 
 ## nanoseconds
 
-Kind: fn.
+**Function**
 
-```text
-nanoseconds: fn(value: Timestamp)->Int
+```manuscript
+fn nanoseconds(value: Timestamp) -> Int
 ```
 
 ## parse_timestamp
 
-Kind: fn.
+**Function**
 
-```text
-parse_timestamp: fn(text: String)->Result[Timestamp, TimeError]
+```manuscript
+fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]
 ```
 
 ## shift
 
-Kind: fn.
+**Function**
 
-```text
-shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, TimeError]
+```manuscript
+fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, TimeError]
 ```
 
 ## sleep
 
-Kind: fn.
+**Function**
 
-```text
-sleep: fn(duration: Duration)->Unit
+```manuscript
+fn sleep(duration: Duration) -> Unit
 ```
 
 ## timestamp
 
-Kind: fn.
+**Function**
 
-```text
-timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, TimeError]
+```manuscript
+fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
 ```
 
 ## unix_seconds
 
-Kind: fn.
+**Function**
 
-```text
-unix_seconds: fn(value: Timestamp)->Int
+```manuscript
+fn unix_seconds(value: Timestamp) -> Int
 ```
 
 # @std/tls.ms
@@ -2356,73 +3031,76 @@ Import each required symbol with `import Name from "@std/tls.ms"`.
 
 ## CertificateInfo
 
-Kind: record.
+**Record**
 
-```text
-CertificateInfo: CertificateInfo
-field subject: String
-field issuer: String
-field dns_names: List[String]
-field not_before: Timestamp
-field not_after: Timestamp
-field der: Bytes
+```manuscript
+type CertificateInfo:
+    subject: String
+    issuer: String
+    dns_names: List[String]
+    not_before: Timestamp
+    not_after: Timestamp
+    der: Bytes
 ```
 
 ## TlsError
 
-Kind: alternative.
+**Alternative**
 
-```text
-TlsError: TlsError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case AuthenticationFailed
-operation message: fn()->String
+```manuscript
+type TlsError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case AuthenticationFailed
+```
+
+```manuscript
+impl Error for TlsError:
+    fn message() -> String
 ```
 
 ## TlsInfo
 
-Kind: record.
+**Record**
 
-```text
-TlsInfo: TlsInfo
-field version: Int
-field cipher_suite: Int
-field alpn: String
-field peer_certificates: List[Bytes]
-field verified: Bool
+```manuscript
+type TlsInfo:
+    version: Int
+    cipher_suite: Int
+    alpn: String
+    peer_certificates: List[Bytes]
+    verified: Bool
 ```
 
 ## TlsOptions
 
-Kind: record.
+**Record**
 
-```text
-TlsOptions: TlsOptions
-field server_name: String
-field roots_pem: String
-field certificate_pem: String
-field private_key_pem: String
-field alpn: List[String]
-field require_client_certificate: Bool
+```manuscript
+type TlsOptions:
+    server_name: String
+    roots_pem: String
+    certificate_pem: String
+    private_key_pem: String
+    alpn: List[String]
+    require_client_certificate: Bool
 ```
 
 ## parse_certificates
 
-Kind: fn.
+**Function**
 
-```text
-parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[CertificateInfo], TlsError]
+```manuscript
+fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
 ```
 
 ## verify_certificates
 
-Kind: fn.
+**Function**
 
-```text
-verify_certificates: fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)->Result[Unit, TlsError]
+```manuscript
+fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
 ```
 
 # @std/url.ms
@@ -2431,95 +3109,98 @@ Import each required symbol with `import Name from "@std/url.ms"`.
 
 ## QueryEntry
 
-Kind: record.
+**Record**
 
-```text
-QueryEntry: QueryEntry
-field key: String
-field value: String
+```manuscript
+type QueryEntry:
+    key: String
+    value: String
 ```
 
 ## Url
 
-Kind: record.
+**Record**
 
-```text
-Url: Url
-field scheme: String
-field host: String
-field port: Optional[Int]
-field path: String
-field query: String
-field fragment: String
+```manuscript
+type Url:
+    scheme: String
+    host: String
+    port: Optional[Int]
+    path: String
+    query: String
+    fragment: String
 ```
 
 ## UrlError
 
-Kind: alternative.
+**Alternative**
 
-```text
-UrlError: UrlError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type UrlError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for UrlError:
+    fn message() -> String
 ```
 
 ## decode_component
 
-Kind: fn.
+**Function**
 
-```text
-decode_component: fn(text: String)->Result[String, UrlError]
+```manuscript
+fn decode_component(text: String) -> Result[String, UrlError]
 ```
 
 ## encode_component
 
-Kind: fn.
+**Function**
 
-```text
-encode_component: fn(text: String)->String
+```manuscript
+fn encode_component(text: String) -> String
 ```
 
 ## format
 
-Kind: fn.
+**Function**
 
-```text
-format: fn(value: Url)->Result[String, UrlError]
+```manuscript
+fn format(value: Url) -> Result[String, UrlError]
 ```
 
 ## format_query
 
-Kind: fn.
+**Function**
 
-```text
-format_query: fn(entries: List[QueryEntry])->String
+```manuscript
+fn format_query(entries: List[QueryEntry]) -> String
 ```
 
 ## parse
 
-Kind: fn.
+**Function**
 
-```text
-parse: fn(text: String)->Result[Url, UrlError]
+```manuscript
+fn parse(text: String) -> Result[Url, UrlError]
 ```
 
 ## parse_query
 
-Kind: fn.
+**Function**
 
-```text
-parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], UrlError]
+```manuscript
+fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], UrlError]
 ```
 
 ## resolve
 
-Kind: fn.
+**Function**
 
-```text
-resolve: fn(base: Url, reference: String)->Result[Url, UrlError]
+```manuscript
+fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
 ```
 
 # @std/websocket.ms
@@ -2528,54 +3209,57 @@ Import each required symbol with `import Name from "@std/websocket.ms"`.
 
 ## WebSocket
 
-Kind: interface.
+**Interface**
 
-```text
-WebSocket: WebSocket
-operation close: fn()->Unit
-operation ping: fn(data: Bytes)->Result[Unit, WebSocketError]
-operation receive: fn()->Result[Optional[WebSocketMessage], WebSocketError]
-operation send: fn(data: Bytes, text: Bool)->Result[Unit, WebSocketError]
-operation subprotocol: fn()->String
+```manuscript
+interface WebSocket:
+    fn close() -> Unit
+    fn ping(data: Bytes) -> Result[Unit, WebSocketError]
+    fn receive() -> Result[Optional[WebSocketMessage], WebSocketError]
+    fn send(data: Bytes, text: Bool) -> Result[Unit, WebSocketError]
+    fn subprotocol() -> String
 ```
 
 ## WebSocketError
 
-Kind: alternative.
+**Alternative**
 
-```text
-WebSocketError: WebSocketError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case PermissionDenied
-case Closed
-case Timeout
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type WebSocketError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Closed
+    case Timeout
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for WebSocketError:
+    fn message() -> String
 ```
 
 ## WebSocketMessage
 
-Kind: record.
+**Record**
 
-```text
-WebSocketMessage: WebSocketMessage
-field data: Bytes
-field text: Bool
+```manuscript
+type WebSocketMessage:
+    data: Bytes
+    text: Bool
 ```
 
 ## WebSocketOptions
 
-Kind: record.
+**Record**
 
-```text
-WebSocketOptions: WebSocketOptions
-field max_message_bytes: Int
-field timeout: Duration
-field tls: TlsOptions
-field compression: Bool
+```manuscript
+type WebSocketOptions:
+    max_message_bytes: Int
+    timeout: Duration
+    tls: TlsOptions
+    compression: Bool
 ```
 
 # prelude
@@ -2584,79 +3268,103 @@ Intrinsic names; no import required.
 
 ## Bool
 
-Kind: type.
+**Type**
 
-```text
-Bool: Bool
+```manuscript
+type Bool
 ```
 
 ## Equal
 
-Kind: type.
+**Type**
 
-```text
-Equal: Equal
+```manuscript
+type Equal
 ```
 
 ## Float
 
-Kind: type.
+**Type**
 
-```text
-Float: Float
-operation truncate_to_int: fn()->Optional[Int]
+```manuscript
+type Float:
+    fn to_precision(precision: Int) -> Result[String, NumberError]
+    fn to_exponential(digits: Int) -> Result[String, NumberError]
+    fn to_fixed(digits: Int) -> Result[String, NumberError]
+    fn to_string() -> String
+    fn is_nan() -> Bool
+    fn is_finite() -> Bool
+    fn truncate_to_int() -> Optional[Int]
 ```
 
 ## Hashable
 
-Kind: type.
+**Type**
 
-```text
-Hashable: Hashable
+```manuscript
+type Hashable
 ```
 
 ## Int
 
-Kind: type.
+**Type**
 
-```text
-Int: Int
-operation to_decimal: fn()->Decimal
-operation to_float: fn()->Float
+```manuscript
+type Int:
+    fn to_string(radix: Int) -> String
+    fn to_float() -> Float
+    fn to_decimal() -> Decimal
 ```
 
 ## Never
 
-Kind: type.
+**Type**
 
-```text
-Never: Never
-```
-
-## Shareable
-
-Kind: type.
-
-```text
-Shareable: Shareable
+```manuscript
+type Never
 ```
 
 ## String
 
-Kind: type.
+**Type**
 
-```text
-String: String
-operation byte_length: fn()->Int
-operation parse_int: fn()->Optional[Int]
-operation to_bytes: fn()->Bytes
+```manuscript
+type String:
+    fn normalize(form: String, max_bytes: Int) -> Result[String, StringError]
+    fn concat(values: String) -> String
+    fn contains(text: String) -> Bool
+    fn ends_with(suffix: String) -> Bool
+    fn lower() -> String
+    fn repeat(count: Int, max_bytes: Int) -> Result[String, StringError]
+    fn replace(old: String, new: String, max_replacements: Int) -> String
+    fn scalar_length() -> Int
+    fn scalar_values() -> List[Int]
+    fn slice_scalars(start: Int, end: Int) -> Result[String, StringError]
+    fn split(separator: String, max_parts: Int) -> List[String]
+    fn starts_with(prefix: String) -> Bool
+    fn trim() -> String
+    fn upper() -> String
+    fn at(index: Int) -> Optional[String]
+    fn scalar_at(index: Int) -> Optional[Int]
+    fn index_of(value: String) -> Optional[Int]
+    fn last_index_of(value: String) -> Optional[Int]
+    fn trim_start() -> String
+    fn trim_end() -> String
+    fn pad_start(target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+    fn pad_end(target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+    fn replace_all(old: String, new: String, max_bytes: Int) -> Result[String, StringError]
+    fn slice(start: Int, end: Int) -> String
+    fn substring(start: Int, end: Int) -> String
+    fn byte_length() -> Int
+    fn to_bytes() -> Bytes
+    fn parse_int() -> Optional[Int]
 ```
 
 ## Unit
 
-Kind: type.
+**Type**
 
-```text
-Unit: Unit
+```manuscript
+type Unit
 ```
 

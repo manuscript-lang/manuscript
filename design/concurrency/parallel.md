@@ -11,10 +11,9 @@ Use `parallel` to run a fixed set of operations at the same time. Pass functions
 
 ## Calling parallel
 
-```text
+```manuscript
 import List from "@std/collections.ms"
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
 
@@ -45,28 +44,26 @@ type LoadError:
     case UserFailure(cause: UserError)
     case OrderFailure(cause: OrderError)
 
-fn load(user_id: Int, users: Users & Shareable, orders: Orders & Shareable) -> Result[Summary, LoadError]:
+fn load(user_id: Int, users: Users, orders: Orders) -> Result[Summary, LoadError]:
     let first = fn() -> Result[User, UserError]:
         return users.get(id: user_id)
     let second = fn() -> Result[List[Order], OrderError]:
         return orders.for_user(user_id: user_id)
 
-    let [resA, resB] = try map_error(
-        result: parallel(tasks: [first, second]),
-        transform: fn(cause: ExecutionError) -> LoadError:
-            return LoadError.Execution(cause: cause)
-    )
-    let user = try map_error(
-        result: resA,
-        transform: fn(cause: UserError) -> LoadError:
-            return LoadError.UserFailure(cause: cause)
-    )
-    let user_orders = try map_error(
-        result: resB,
-        transform: fn(cause: OrderError) -> LoadError:
-            return LoadError.OrderFailure(cause: cause)
-    )
-    return ok(value: Summary(user: user, orders: user_orders))
+    match parallel(tasks: [first, second]):
+        error(cause):
+            return error(cause: LoadError.Execution(cause: cause))
+        ok(results):
+            let [user_result, orders_result] = results
+            match user_result:
+                error(cause):
+                    return error(cause: LoadError.UserFailure(cause: cause))
+                ok(user):
+                    match orders_result:
+                        error(cause):
+                            return error(cause: LoadError.OrderFailure(cause: cause))
+                        ok(user_orders):
+                            return ok(value: Summary(user: user, orders: user_orders))
 ```
 
 ## Preparation
@@ -81,7 +78,7 @@ Concurrent scheduling and external effect order are nondeterministic. Sharing a 
 
 ## Ordered, typed results
 
-A literal task pack is a fixed set of positions, each holding a zero-argument function. Positions may have different return types. The result preserves both their types and their input order. Here, resA is Result[User, UserError] and resB is Result[List[Order], OrderError], whichever operation finishes first.
+A literal task pack is a fixed set of positions, each holding a zero-argument function. Positions may have different return types. The result preserves both their types and their input order. Here, user_result is Result[User, UserError] and orders_result is Result[List[Order], OrderError], whichever operation finishes first.
 
 The brackets do not force these different types into a homogeneous `List[T]`. Fixed positional packs require type-system support for heterogeneous inputs and outputs; `parallel` itself remains an API call, with no special concurrency keyword. Ordinary list literals outside a positional-pack contract keep their homogeneous list rules.
 
@@ -97,10 +94,10 @@ Pack arity is preserved: `parallel(tasks: [first])` returns a one-position succe
 | `Result[Stock, OrderError]` | `Result[Stock, OrderError]` |
 | `Optional[String]` | `Optional[String]` |
 
-A returned domain `error(cause: ...)` is ordinary completion. It does not stop sibling operations and is not flattened into the outer Result. In the example, explicit `map_error` calls translate execution and domain errors into LoadError before each `try`; propagation still requires one exact error type. Matching each Result directly is also valid. There is no source task-result wrapper beyond the outer Result.
+A returned domain `error(cause: ...)` is ordinary completion. It does not stop sibling operations and is not flattened into the outer Result. In the example, `match` handles each Result and translates its error into LoadError. Use `try` when the enclosing function has the same error type; see [error compatibility](../core-language/errors/propagation.md#error-compatibility). There is no source task-result wrapper beyond the outer Result.
 
 No operation remains running after `parallel` exits, on any path. An operation fault or an expired `timeout` stops and joins the group; caller cancellation joins the group and then unwinds the caller. The complete rules are in [joined groups](joining.md#group-lifecycle).
 
 Results follow the [ordinary reference rules](../ownership-and-cleanup/values/references.md); returning a resource does not keep it open. Unreturned references become eligible for garbage collection; the runtime does not recursively close arbitrary results or captures. Resource cleanup comes from `with` or an acquisition-specific delivery contract. See [completion and acquisition](runtime.md#completion-and-resource-acquisition).
 
-The optional named `timeout` argument shortens the inherited deadline; it never waives joining. See [timeouts](cancellation.md#timeouts). Functions must meet the concurrent [sharing contract](../ownership-and-cleanup/values/sharing.md). The [standard API contract](../standard-library/types/prelude.md#joined-concurrency) fixes the callable/result mapping and legal uses of inferred packs; general source declaration syntax for packs is unsupported.
+The optional named `timeout` argument shortens the inherited deadline; it never waives joining. See [timeouts](cancellation.md#timeouts). Callbacks and results are ordinary values; no sharing bound or callable proof is required. Use [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) when callbacks must coordinate a complete read/modify/write update. The [standard API contract](../standard-library/types/prelude.md#joined-concurrency) fixes the callable/result mapping and legal uses of inferred packs; general source declaration syntax for packs is unsupported.

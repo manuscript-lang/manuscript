@@ -148,10 +148,10 @@ func TestAllStandardErrorsImplementError(t *testing.T) {
 				continue
 			}
 			t.Run(declaration.Name, func(t *testing.T) {
-				source := fmt.Sprintf(`import {Error, as_error} from "@std/errors.ms"
+				source := fmt.Sprintf(`import Error from "@std/errors.ms"
 import %s from %q
 fn diagnostic(cause: %s) -> String:
-    return as_error(cause: cause).message()
+    return Error(value: cause).message()
 fn view(cause: %s) -> Error:
     return Error(value: cause)
 `, declaration.Name, module.Path, declaration.Name, declaration.Name)

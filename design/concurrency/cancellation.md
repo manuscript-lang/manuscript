@@ -13,7 +13,7 @@ Cancellation asks work to stop. It does not mean the work has already stopped; c
 
 Hosts signal requests, joined groups signal their operations, and background services expose cancellation of admitted work:
 
-```text
+```manuscript
 let id = try background.start(operation: work)
 background.cancel(id: id)
 ```
@@ -37,7 +37,7 @@ Cancellation is cooperative: stopped work unwinds at its next checkpoint. These 
 
 Loop checkpoints make CPU-bound loops respond promptly without source changes; they cost one poll of the context's stop signal per iteration. `check_cancelled()` remains available for long straight-line work. It is an imported standard function, not a language intrinsic:
 
-```text
+```manuscript
 import check_cancelled from "@std/tasks.ms"
 ```
 
@@ -51,6 +51,12 @@ Completed external writes remain completed. Cancellation does not provide rollba
 
 Cleanup is shielded from the initiating cancellation and expired work deadline. It may exceed that deadline; it retains capability authority and remains subject to [host escalation](runtime.md#host-escalation). See [foreign cancellation](../modules-and-capabilities/adapters/cancellation.md) and [cleanup faults](../ownership-and-cleanup/cleanup/cleanup-faults.md).
 
+## Waiting for a synchronized value
+
+`Synchronized.lock()` waits cooperatively and observes cancellation. If cancellation wins before the guard is delivered, the runtime releases that acquisition. Use `with locked = cell.lock()` so a delivered guard is registered for cleanup before another checkpoint.
+
+Cancellation of a lock holder unwinds its `with` scope and closes the guard. It never releases the lock while the holder is still running. Updates already made through `locked.set()` remain committed; releasing the guard does not roll them back. Guard cleanup is idempotent and shielded from the initiating cancellation. See [synchronized values](../standard-library/data-and-io/synchronized-state.md#synchronized).
+
 ## Timeouts
 
 Timeouts are named library arguments, not syntax annotations. Duration values come from the standard time API; naming `Duration` requires its own import from `@std/time.ms`.
@@ -63,7 +69,7 @@ A timeout bounds ordinary work, not cleanup or joining. Foreign code that does n
 
 To share one budget across several steps, put the steps in one function and give that function the budget. Nested groups inherit the deadline:
 
-```text
+```manuscript
 let sync = fn() -> Result[Unit, SyncError]:
     try download_all(sources: sources)
     try upload_all(targets: targets)

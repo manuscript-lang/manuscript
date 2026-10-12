@@ -6,83 +6,70 @@ title = "io"
 
 Import each required symbol with `import Name from "@std/io.ms"`.
 
-## File
+## File {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-File: File
-operation close: fn()->Unit
-operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
+```manuscript
+interface File:
+    fn close() -> Unit
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 ```
 
-## Files
+## Files {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-Files: Files
-operation open: fn(path: String)->Result[File & Shareable, IoError]
+```manuscript
+interface Files:
+    fn open(path: String) -> Result[File, IoError]
 ```
 
-## IoError
+## IoError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-IoError: IoError
-implements: Error
-case Closed
-case InvalidInput
-case Unavailable
-case InvalidData
-case LimitExceeded
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type IoError:
+    case Closed
+    case InvalidInput
+    case Unavailable
+    case InvalidData
+    case LimitExceeded
+    case Failed(message: String)
 ```
 
-## ReadStream
-
-Kind: interface.
-
-```text
-ReadStream: ReadStream
-operation close: fn()->Unit
-operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
+```manuscript
+impl Error for IoError:
+    fn message() -> String
 ```
 
-## WriteStream
+## ReadStream {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-WriteStream: WriteStream
-operation close: fn()->Unit
-operation flush: fn()->Result[Unit, IoError]
-operation write: fn(data: Bytes)->Result[Unit, IoError]
+```manuscript
+interface ReadStream:
+    fn close() -> Unit
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 ```
 
-## copy
+## WriteStream {data-api-kind="Interface"}
 
-Kind: fn.
-
-```text
-copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int)->Result[Int, IoError]
+```manuscript
+interface WriteStream:
+    fn close() -> Unit
+    fn flush() -> Result[Unit, IoError]
+    fn write(data: Bytes) -> Result[Unit, IoError]
 ```
 
-## read_all
+## copy {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, IoError]
+```manuscript
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
 ```
 
-## read_line
+## read_all {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
+```
 
-```text
-read_line: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Optional[String], IoError]
+## read_line {data-api-kind="Function"}
+
+```manuscript
+fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
 ```
 

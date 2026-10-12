@@ -6,111 +6,96 @@ title = "net"
 
 Import each required symbol with `import Name from "@std/net.ms"`.
 
-## Connection
+## Connection {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-Connection: Connection
-operation close: fn()->Unit
-operation local_address: fn()->String
-operation peer_address: fn()->String
-operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
-operation read_timeout: fn(max_bytes: Int, timeout: Duration)->Result[Optional[Bytes], IoError]
-operation shutdown_write: fn()->Result[Unit, NetworkError]
-operation tls_info: fn()->Result[TlsInfo, TlsError]
-operation write: fn(data: Bytes)->Result[Unit, IoError]
-operation write_timeout: fn(data: Bytes, timeout: Duration)->Result[Unit, IoError]
+```manuscript
+interface Connection:
+    fn close() -> Unit
+    fn local_address() -> String
+    fn peer_address() -> String
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn read_timeout(max_bytes: Int, timeout: Duration) -> Result[Optional[Bytes], IoError]
+    fn shutdown_write() -> Result[Unit, NetworkError]
+    fn tls_info() -> Result[TlsInfo, TlsError]
+    fn write(data: Bytes) -> Result[Unit, IoError]
+    fn write_timeout(data: Bytes, timeout: Duration) -> Result[Unit, IoError]
 ```
 
-## Datagram
+## Datagram {data-api-kind="Record"}
 
-Kind: record.
-
-```text
-Datagram: Datagram
-field data: Bytes
-field sender: String
+```manuscript
+type Datagram:
+    data: Bytes
+    sender: String
 ```
 
-## DatagramSocket
+## DatagramSocket {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-DatagramSocket: DatagramSocket
-operation address: fn()->String
-operation close: fn()->Unit
-operation receive: fn(max_bytes: Int)->Result[Datagram, NetworkError]
-operation receive_timeout: fn(max_bytes: Int, timeout: Duration)->Result[Datagram, NetworkError]
-operation send: fn(data: Bytes, address: String)->Result[Unit, NetworkError]
-operation send_timeout: fn(data: Bytes, address: String, timeout: Duration)->Result[Unit, NetworkError]
+```manuscript
+interface DatagramSocket:
+    fn address() -> String
+    fn close() -> Unit
+    fn receive(max_bytes: Int) -> Result[Datagram, NetworkError]
+    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, NetworkError]
+    fn send(data: Bytes, address: String) -> Result[Unit, NetworkError]
+    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, NetworkError]
 ```
 
-## DnsRecord
+## DnsRecord {data-api-kind="Record"}
 
-Kind: record.
-
-```text
-DnsRecord: DnsRecord
-field kind: String
-field value: String
-field priority: Int
-field weight: Int
-field port: Int
+```manuscript
+type DnsRecord:
+    kind: String
+    value: String
+    priority: Int
+    weight: Int
+    port: Int
 ```
 
-## Listener
+## Listener {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-Listener: Listener
-operation accept: fn()->Result[Connection & Shareable, NetworkError]
-operation accept_timeout: fn(timeout: Duration)->Result[Connection & Shareable, NetworkError]
-operation address: fn()->String
-operation close: fn()->Unit
+```manuscript
+interface Listener:
+    fn accept() -> Result[Connection, NetworkError]
+    fn accept_timeout(timeout: Duration) -> Result[Connection, NetworkError]
+    fn address() -> String
+    fn close() -> Unit
 ```
 
-## NetworkError
+## NetworkError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-NetworkError: NetworkError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case PermissionDenied
-case Unsupported
-case Closed
-case Timeout
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type NetworkError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Unsupported
+    case Closed
+    case Timeout
+    case Failed(message: String)
 ```
 
-## contains_ip
-
-Kind: fn.
-
-```text
-contains_ip: fn(cidr: String, address: String)->Result[Bool, NetworkError]
+```manuscript
+impl Error for NetworkError:
+    fn message() -> String
 ```
 
-## parse_cidr
+## contains_ip {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-parse_cidr: fn(text: String)->Result[String, NetworkError]
+```manuscript
+fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]
 ```
 
-## parse_ip
+## parse_cidr {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn parse_cidr(text: String) -> Result[String, NetworkError]
+```
 
-```text
-parse_ip: fn(text: String)->Result[String, NetworkError]
+## parse_ip {data-api-kind="Function"}
+
+```manuscript
+fn parse_ip(text: String) -> Result[String, NetworkError]
 ```
 

@@ -21,9 +21,9 @@ Server shutdown stops request admission, allows a configured grace period, cance
 
 ## Bounded request API
 
-`@std/http.ms` exports `Network`, `HttpServer`, `HttpRequest`, and `HttpResponse`. The CLI host supplies `process.network: Network & Shareable`; source cannot manufacture native network authority.
+`@std/http.ms` exports `Network`, `HttpServer`, `HttpRequest`, and `HttpResponse`. The CLI host supplies `process.network: Network`; source cannot manufacture native network authority.
 
-```text
+```manuscript
 type HttpRequest:
     method: String
     path: String
@@ -39,7 +39,7 @@ type HttpResponse:
 # Network
 fn serve(address: String, handler: fn(request: HttpRequest) -> HttpResponse,
          limit: Int, max_body_bytes: Int, max_response_bytes: Int,
-         timeout: Duration, grace: Duration) -> Result[HttpServer & Shareable, IoError]
+         timeout: Duration, grace: Duration) -> Result[HttpServer, IoError]
 fn close() -> Unit
 
 # HttpServer
@@ -48,7 +48,7 @@ fn wait() -> Result[Unit, IoError]
 fn close() -> Unit
 ```
 
-These signatures specify library operations. A complete declaration places the entire function header inside delimiter continuation. `serve` requires a direct call and a proved shareable handler; its plain method signature cannot preserve that requirement as a stored value. `limit` and `timeout` are positive; byte bounds and `grace` are nonnegative. Invalid settings return `IoError.InvalidInput`; binding failure returns `Unavailable`; a closed network returns `Closed`. Port zero permits an OS-selected port reported by `address()`.
+These signatures specify library operations. A complete declaration places the entire function header inside delimiter continuation. `serve` accepts an ordinary handler, including a function parameter or field, and may be stored as a bound method. `limit` and `timeout` are positive; byte bounds and `grace` are nonnegative. Invalid settings return `IoError.InvalidInput`; binding failure returns `Unavailable`; a closed network returns `Closed`. Port zero permits an OS-selected port reported by `address()`.
 
 The host admits at most `limit` requests; excess requests receive 503 without invoking a handler. Bodies over the bound receive 413. Each handler gets a fixed timeout/disconnect context, and all work and cleanup in it join before its lifetime ends. Handler faults are isolated as 500 and recorded by the bounded diagnostic sink. Timeout/cancellation yields 504 where the connection still permits a response. Source routes by ordinary branching on method/path; raw query remains encoded. Header values are bytes to preserve non-UTF-8 HTTP input. Header keys are visited in sorted order.
 

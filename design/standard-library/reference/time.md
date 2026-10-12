@@ -6,121 +6,96 @@ title = "time"
 
 Import each required symbol with `import Name from "@std/time.ms"`.
 
-## Clock
+## Clock {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-Clock: Clock
-operation now: fn()->Instant
+```manuscript
+interface Clock:
+    fn now() -> Instant
 ```
 
-## Duration
+## Duration {data-api-kind="Native type"}
 
-Kind: native.
-
-```text
-Duration: Duration
+```manuscript
+type Duration
 ```
 
-## Instant
+## Instant {data-api-kind="Native type"}
 
-Kind: native.
-
-```text
-Instant: Instant
+```manuscript
+type Instant
 ```
 
-## TimeError
+## TimeError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-TimeError: TimeError
-implements: Error
-case InvalidData
-case OutOfRange
-operation message: fn()->String
+```manuscript
+type TimeError:
+    case InvalidData
+    case OutOfRange
 ```
 
-## Timestamp
-
-Kind: native.
-
-```text
-Timestamp: Timestamp
+```manuscript
+impl Error for TimeError:
+    fn message() -> String
 ```
 
-## WallClock
+## Timestamp {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-WallClock: WallClock
-operation now: fn()->Timestamp
+```manuscript
+type Timestamp
 ```
 
-## difference
+## WallClock {data-api-kind="Interface"}
 
-Kind: fn.
-
-```text
-difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, TimeError]
+```manuscript
+interface WallClock:
+    fn now() -> Timestamp
 ```
 
-## format_timestamp
+## difference {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-format_timestamp: fn(value: Timestamp)->String
+```manuscript
+fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
 ```
 
-## nanoseconds
+## format_timestamp {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-nanoseconds: fn(value: Timestamp)->Int
+```manuscript
+fn format_timestamp(value: Timestamp) -> String
 ```
 
-## parse_timestamp
+## nanoseconds {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-parse_timestamp: fn(text: String)->Result[Timestamp, TimeError]
+```manuscript
+fn nanoseconds(value: Timestamp) -> Int
 ```
 
-## shift
+## parse_timestamp {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, TimeError]
+```manuscript
+fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]
 ```
 
-## sleep
+## shift {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sleep: fn(duration: Duration)->Unit
+```manuscript
+fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, TimeError]
 ```
 
-## timestamp
+## sleep {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, TimeError]
+```manuscript
+fn sleep(duration: Duration) -> Unit
 ```
 
-## unix_seconds
+## timestamp {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
+```
 
-```text
-unix_seconds: fn(value: Timestamp)->Int
+## unix_seconds {data-api-kind="Function"}
+
+```manuscript
+fn unix_seconds(value: Timestamp) -> Int
 ```
 

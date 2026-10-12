@@ -16,7 +16,7 @@ import (
 
 func init() {
 	for _, m := range []LibraryMethod{
-		{"Network", "web_socket", libraryResult("WebSocket&Shareable", "WebSocketError"), []LibraryParam{{"url", "String"}, {"headers", "Map[String][String]"}, {"subprotocols", "List[String]"}, {"options", "WebSocketOptions"}}},
+		{"Network", "web_socket", libraryResult("WebSocket", "WebSocketError"), []LibraryParam{{"url", "String"}, {"headers", "Map[String][String]"}, {"subprotocols", "List[String]"}, {"options", "WebSocketOptions"}}},
 		{"WebSocket", "receive", libraryResult("Optional[WebSocketMessage]", "WebSocketError"), nil},
 		{"WebSocket", "send", libraryResult("Unit", "WebSocketError"), []LibraryParam{{"data", "Bytes"}, {"text", "Bool"}}},
 		{"WebSocket", "ping", libraryResult("Unit", "WebSocketError"), []LibraryParam{{"data", "Bytes"}}},
@@ -74,7 +74,7 @@ func (n *network) webSocketDial() Function {
 			resource.close()
 			return libraryError(r, "Closed", "")
 		}
-		return libraryOK(r, ViewOf("@std/WebSocket&Shareable", resource))
+		return libraryOK(r, ViewOf("@std/WebSocket", resource))
 	})
 }
 func (e *libraryHTTPExchange) upgrade() Function {
@@ -135,7 +135,7 @@ func (e *libraryHTTPExchange) upgrade() Function {
 			resource.close()
 			return libraryError(r, "Closed", "")
 		}
-		return libraryOK(r, ViewOf("@std/WebSocket&Shareable", resource))
+		return libraryOK(r, ViewOf("@std/WebSocket", resource))
 	})
 }
 

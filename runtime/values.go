@@ -16,7 +16,15 @@ type Function struct {
 }
 type Generic struct {
 	Variables []string
-	Build     func(map[string]string) Function
+	Build     func(map[string]string, map[string]TypeScope) Function
+}
+
+// TypeScope carries lexical implementation selection through specialization.
+// Arguments retain their own scopes so a generic implementation can forward
+// its receiver's type parameters without changing their contract evidence.
+type TypeScope struct {
+	Module string
+	Args   []TypeScope
 }
 type Argument struct {
 	Name  string
@@ -54,6 +62,7 @@ type clockDomain struct{ identity byte }
 type View struct {
 	Type     string
 	Receiver Value
+	Scope    TypeScope
 }
 type propagation struct{ Cause Value }
 type Fault struct {
@@ -124,16 +133,20 @@ func Invoke(ctx *Execution, callee Value, args []Argument) Value {
 	CheckCancelled(ctx)
 	return f.Body(ctx, ordered)
 }
-func Specialize(value Value, args []string) Value {
+func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 	g, ok := value.(Generic)
 	if !ok {
 		return value
 	}
 	sub := map[string]string{}
+	typeScopes := map[string]TypeScope{}
 	for i, v := range g.Variables {
 		sub[v] = args[i]
+		if i < len(scopes) {
+			typeScopes[v] = scopes[i]
+		}
 	}
-	return g.Build(sub)
+	return g.Build(sub, typeScopes)
 }
 func Try(value Value) Value {
 	v := value.(Alternative)
@@ -344,7 +357,7 @@ func ResolveType(pattern string, sub map[string]string) string {
 	if at := strings.IndexByte(pattern, ':'); at >= 0 && (!strings.Contains(pattern[:at], "[")) {
 		return pattern[:at+1] + ResolveType(pattern[at+1:], sub)
 	}
-	name, args, shared := splitType(pattern)
+	name, args := splitType(pattern)
 	if v := sub[name]; v != "" && len(args) == 0 {
 		return v
 	}
@@ -355,17 +368,12 @@ func ResolveType(pattern string, sub map[string]string) string {
 		out.WriteString(ResolveType(arg, sub))
 		out.WriteString("]")
 	}
-	out.WriteString(shared)
 	return out.String()
 }
-func splitType(key string) (name string, args []string, shared string) {
-	if strings.HasSuffix(key, "&Shareable") {
-		shared = "&Shareable"
-		key = strings.TrimSuffix(key, shared)
-	}
+func splitType(key string) (name string, args []string) {
 	index := strings.IndexByte(key, '[')
 	if index < 0 {
-		return key, nil, shared
+		return key, nil
 	}
 	name = key[:index]
 	for index < len(key) {
@@ -385,14 +393,14 @@ func splitType(key string) (name string, args []string, shared string) {
 	}
 	return
 }
-func typeArguments(key string) []string { _, a, _ := splitType(key); return a }
+func typeArguments(key string) []string { _, a := splitType(key); return a }
 func matchType(pattern, actual string, vars map[string]bool, sub map[string]string) bool {
 	if at := strings.IndexByte(pattern, ':'); at >= 0 && !strings.Contains(pattern[:at], "[") {
 		label := pattern[:at+1]
 		return strings.HasPrefix(actual, label) && matchType(pattern[at+1:], actual[len(label):], vars, sub)
 	}
-	pn, pa, ps := splitType(pattern)
-	an, aa, as := splitType(actual)
+	pn, pa := splitType(pattern)
+	an, aa := splitType(actual)
 	if vars[pn] && len(pa) == 0 {
 		if previous := sub[pn]; previous != "" {
 			return previous == actual
@@ -400,7 +408,7 @@ func matchType(pattern, actual string, vars map[string]bool, sub map[string]stri
 		sub[pn] = actual
 		return true
 	}
-	if pn != an || ps != as || len(pa) != len(aa) {
+	if pn != an || len(pa) != len(aa) {
 		return false
 	}
 	for i, p := range pa {
@@ -413,8 +421,10 @@ func matchType(pattern, actual string, vars map[string]bool, sub map[string]stri
 
 type Implementation struct {
 	Receiver, Contract, Name string
-	Variables                []string
-	Build                    func(Value, map[string]string) Function
+	// Scope is empty for implementations in the receiver's defining module.
+	Scope     string
+	Variables []string
+	Build     func(Value, map[string]string, map[string]TypeScope) Function
 }
 
 var implementations []Implementation
@@ -422,11 +432,16 @@ var implementations []Implementation
 func Register(implementation Implementation) {
 	implementations = append(implementations, implementation)
 }
-func ViewOf(contract string, receiver Value) Value {
+func ViewOf(contract string, receiver Value, scopes ...TypeScope) Value {
+	scope := TypeScope{}
+	if len(scopes) > 0 {
+		scope = scopes[0]
+	}
 	if v, ok := receiver.(View); ok {
 		receiver = v.Receiver
+		scope = v.Scope
 	}
-	return View{contract, receiver}
+	return View{Type: contract, Receiver: receiver, Scope: scope}
 }
 func ContractReceiver(value Value) Value {
 	if view, ok := value.(View); ok {
@@ -445,12 +460,17 @@ func ConcreteType(value Value) string {
 		return ""
 	}
 }
-func Bind(receiver Value, contract, name string) Value {
+func Bind(receiver Value, contract, name string, scopes ...TypeScope) Value {
+	scope := TypeScope{}
+	if len(scopes) > 0 {
+		scope = scopes[0]
+	}
 	if view, ok := receiver.(View); ok {
 		if contract == "" {
-			contract = strings.TrimSuffix(view.Type, "&Shareable")
+			contract = view.Type
 		}
 		receiver = view.Receiver
+		scope = view.Scope
 	}
 	if native, ok := receiver.(Native); ok {
 		return native.Operation(name)
@@ -463,7 +483,7 @@ func Bind(receiver Value, contract, name string) Value {
 		typ = v.Type
 	}
 	for _, m := range implementations {
-		if m.Name != name {
+		if m.Name != name || m.Scope != "" && m.Scope != scope.Module {
 			continue
 		}
 		vars := map[string]bool{}
@@ -471,11 +491,28 @@ func Bind(receiver Value, contract, name string) Value {
 			vars[v] = true
 		}
 		sub := map[string]string{}
-		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == strings.TrimSuffix(contract, "&Shareable")) {
-			return m.Build(receiver, sub)
+		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == contract) {
+			typeScopes := map[string]TypeScope{}
+			implementationScopes(m.Receiver, scope, vars, typeScopes)
+			return m.Build(receiver, sub, typeScopes)
 		}
 	}
 	return NativeMember(receiver, name)
+}
+
+func implementationScopes(pattern string, scope TypeScope, vars map[string]bool, result map[string]TypeScope) {
+	name, args := splitType(pattern)
+	if vars[name] && len(args) == 0 {
+		result[name] = scope
+		return
+	}
+	for i, arg := range args {
+		child := TypeScope{Module: scope.Module}
+		if i < len(scope.Args) {
+			child = scope.Args[i]
+		}
+		implementationScopes(arg, child, vars, result)
+	}
 }
 
 type Test struct {

@@ -9,13 +9,13 @@ weight = 80
 
 A capability is a passed-in object that lets a function use an external service. For example, a function that reads files receives a file service rather than silently accessing a global filesystem. Look at capability parameters to see which services the function can use.
 
-Capabilities represent external authority such as storage, network access, a clock, or a model client. They are explicit inputs. Manuscript source has no ambient application access to these services. Standard shareable capability implementations support concurrent calls; shared internal state must be synchronized. Resource methods also enforce closed state.
+Capabilities represent external authority such as storage, network access, a clock, or a model client. They are explicit inputs. Manuscript source has no ambient application access to these services. All capability implementations support concurrent calls; shared internal state must be synchronized. Resource methods also enforce closed state.
 
 The language requires explicit authority inputs. Tooling still needs a precise classification rule for distinguishing a capability interface from a pure operation contract, including wrappers and function values that retain authority. Until that rule is settled, a diagram cannot claim to enumerate all reachable authority from parameter names alone.
 
 ## Sharing an implementation
 
-A shareable network or storage implementation can receive concurrent calls. Its mutable internal state must be synchronized. References do not extend a resource's open lifetime; methods coordinate active calls with close.
+A network or storage implementation can receive concurrent calls. Its mutable internal state must be synchronized. References do not extend a resource's open lifetime; methods coordinate active calls with close.
 
 Passing a capability explicitly makes the dependency visible to reviewers and compiler-derived diagrams. It also makes it possible to substitute controlled implementations when testing.
 

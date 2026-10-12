@@ -1,17 +1,12 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import Error from "@std/errors.ms"
 import Optional from "@std/optional.ms"
-import Result from "@std/result.ms"
 
-export type Queue[T: Shareable]:
+export type Queue[T]:
+    # Optional constructor argument; omit for an unbounded queue.
     capacity: Int
-    fn close() -> Unit
-    fn receive() -> Optional[T]
-    fn send(value: T) -> Result[Unit, QueueError]
-
-export type QueueError:
-    case Closed
-
-impl Error for QueueError:
-    fn message() -> String
+    fn enqueue(value: T) -> Bool
+    fn dequeue() -> Optional[T]
+    fn peek() -> Optional[T]
+    fn length() -> Int
+    fn is_empty() -> Bool

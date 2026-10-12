@@ -53,7 +53,7 @@ func init() {
 		return n
 	})
 	for name, f := range map[string]func(string) string{"trim": strings.TrimSpace, "upper": strings.ToUpper, "lower": strings.ToLower} {
-		add("text", name, "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
+		add("string", name, "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
 	}
 	for name, f := range map[string]func(string, string) bool{"contains": strings.Contains, "starts_with": strings.HasPrefix, "ends_with": strings.HasSuffix} {
 		label := "text"
@@ -63,32 +63,36 @@ func init() {
 		if name == "ends_with" {
 			label = "suffix"
 		}
-		add("text", name, "Bool", []LibraryParam{p("value", "String"), p(label, "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string), a[1].(string)) })
+		add("string", name, "Bool", []LibraryParam{p("value", "String"), p(label, "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string), a[1].(string)) })
 	}
-	add("text", "split", "List[String]", []LibraryParam{p("text", "String"), p("separator", "String"), p("max_parts", "Int")}, func(_ *Execution, _ string, a []Value) Value {
+	add("string", "split", "List[String]", []LibraryParam{p("text", "String"), p("separator", "String"), p("max_parts", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[2].(int64)
-		if n <= 0 || a[1].(string) == "" {
-			return Panic("split requires positive max_parts and nonempty separator")
+		if n <= 0 {
+			return Panic("split requires positive max_parts")
 		}
 		if n > int64(len(a[0].(string)))+1 {
 			n = int64(len(a[0].(string))) + 1
 		}
 		return libraryStrings(strings.SplitN(a[0].(string), a[1].(string), int(n)))
 	})
-	add("text", "join", "String", []LibraryParam{p("parts", "List[String]"), p("separator", "String")}, func(_ *Execution, _ string, a []Value) Value {
+	add("string", "join", "String", []LibraryParam{p("parts", "List[String]"), p("separator", "String")}, func(_ *Execution, _ string, a []Value) Value {
 		return strings.Join(libraryStringValues(a[0]), a[1].(string))
 	})
-	add("text", "replace", "String", []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_replacements", "Int")}, func(_ *Execution, _ string, a []Value) Value {
+	add("string", "replace", "String", []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_replacements", "Int")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[3].(int64)
-		if n < 0 || a[1].(string) == "" {
+		if n < 0 {
 			return Panic("invalid replacement bounds")
 		}
-		if n > int64(len(a[0].(string))) {
-			n = int64(len(a[0].(string)))
+		bound := int64(len(a[0].(string)))
+		if a[1].(string) == "" {
+			bound = int64(utf8.RuneCountInString(a[0].(string))) + 1
+		}
+		if n > bound {
+			n = bound
 		}
 		return strings.Replace(a[0].(string), a[1].(string), a[2].(string), int(n))
 	})
-	add("text", "scalar_values", "List[Int]", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, a []Value) Value {
+	add("string", "scalar_values", "List[Int]", []LibraryParam{p("text", "String")}, func(ctx *Execution, _ string, a []Value) Value {
 		var items []Value
 		for i, r := range a[0].(string) {
 			if i%4096 == 0 {
@@ -98,7 +102,7 @@ func init() {
 		}
 		return libraryList("Int", items)
 	})
-	add("text", "from_scalars", libraryResult("String", "TextError"), []LibraryParam{p("values", "List[Int]")}, func(ctx *Execution, result string, a []Value) Value {
+	add("string", "from_scalars", libraryResult("String", "StringError"), []LibraryParam{p("values", "List[Int]")}, func(ctx *Execution, result string, a []Value) Value {
 		var b strings.Builder
 		for i, v := range a[0].(List).Items {
 			if i%4096 == 0 {
@@ -112,7 +116,7 @@ func init() {
 		}
 		return libraryOK(result, b.String())
 	})
-	add("text", "slice_scalars", libraryResult("String", "TextError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, result string, a []Value) Value {
+	add("string", "slice_scalars", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, result string, a []Value) Value {
 		r := []rune(a[0].(string))
 		s, e := a[1].(int64), a[2].(int64)
 		if s < 0 || e < s || e > int64(len(r)) {
@@ -120,7 +124,7 @@ func init() {
 		}
 		return libraryOK(result, string(r[s:e]))
 	})
-	add("text", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return int64(utf8.RuneCountInString(a[0].(string))) })
+	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return int64(utf8.RuneCountInString(a[0].(string))) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })
 	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Int")}, func(_ *Execution, result string, a []Value) Value {
 		n := a[1].(int64)
@@ -320,7 +324,7 @@ func init() {
 		return libraryOK(r, libraryStrings(matches))
 	})
 	// Sequential generic collection helpers retain the caller's actual list identity.
-	variable := []LibraryParam{p("T", "Shareable")}
+	variable := []LibraryParam{p("T", "")}
 	libraryGeneric("collections", "reverse", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(List)
 		out := append([]Value{}, v.Items...)

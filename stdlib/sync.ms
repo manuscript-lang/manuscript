@@ -1,8 +1,10 @@
 # Canonical standard-library declarations. Implementations are native.
 
-
-export type State[T: Shareable]:
+export type Synchronized[T]:
     value: T
+    fn lock() -> SynchronizedGuard[T]
+
+export type SynchronizedGuard[T]:
     fn get() -> T
     fn set(value: T) -> Unit
-    fn swap(value: T) -> T
+    fn close() -> Unit

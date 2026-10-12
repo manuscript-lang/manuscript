@@ -6,24 +6,22 @@ title = "cli"
 
 Import each required symbol with `import Name from "@std/cli.ms"`.
 
-## Process
+## Process {data-api-kind="Record"}
 
-Kind: record.
-
-```text
-Process: Process
-field arguments: List[String]
-field environment: Map[String, String]
-field stdin: ReadStream & Shareable
-field stdout: WriteStream & Shareable
-field stderr: WriteStream & Shareable
-field files: Files & Shareable
-field clock: Clock & Shareable
-field network: Network & Shareable
-field commands: Commands & Shareable
-field filesystem: FileSystem & Shareable
-field entropy: Entropy & Shareable
-field wall_clock: WallClock & Shareable
-field system: System & Shareable
+```manuscript
+type Process:
+    arguments: List[String]
+    environment: Map[String, String]
+    stdin: ReadStream
+    stdout: WriteStream
+    stderr: WriteStream
+    files: Files
+    clock: Clock
+    network: Network
+    commands: Commands
+    filesystem: FileSystem
+    entropy: Entropy
+    wall_clock: WallClock
+    system: System
 ```
 

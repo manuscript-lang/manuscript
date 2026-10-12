@@ -6,70 +6,57 @@ title = "path"
 
 Import each required symbol with `import Name from "@std/path.ms"`.
 
-## PathError
+## PathError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-PathError: PathError
-implements: Error
-case InvalidInput
-operation message: fn()->String
+```manuscript
+type PathError:
+    case InvalidInput
 ```
 
-## basename
-
-Kind: fn.
-
-```text
-basename: fn(path: String)->String
+```manuscript
+impl Error for PathError:
+    fn message() -> String
 ```
 
-## dirname
+## basename {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-dirname: fn(path: String)->String
+```manuscript
+fn basename(path: String) -> String
 ```
 
-## extension
+## dirname {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-extension: fn(path: String)->String
+```manuscript
+fn dirname(path: String) -> String
 ```
 
-## is_absolute
+## extension {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-is_absolute: fn(path: String)->Bool
+```manuscript
+fn extension(path: String) -> String
 ```
 
-## join
+## is_absolute {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-join: fn(parts: List[String])->String
+```manuscript
+fn is_absolute(path: String) -> Bool
 ```
 
-## normalize
+## join {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-normalize: fn(path: String)->String
+```manuscript
+fn join(parts: List[String]) -> String
 ```
 
-## relative
+## normalize {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn normalize(path: String) -> String
+```
 
-```text
-relative: fn(base: String, target: String)->Result[String, PathError]
+## relative {data-api-kind="Function"}
+
+```manuscript
+fn relative(base: String, target: String) -> Result[String, PathError]
 ```
 

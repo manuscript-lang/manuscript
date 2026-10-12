@@ -11,7 +11,7 @@ Use `Background` for work managed by an application or component rather than by 
 
 You can create several services and pass them as ordinary parameters. The [API reference](../types/prelude.md#background-service) defines which callables they accept.
 
-```text
+```manuscript
 with emails = Background(limit: 32):
     with indexing = Background(limit: 4):
         serve(emails: emails, indexing: indexing)
@@ -21,9 +21,8 @@ The constructing host supplies the execution parent. Construct application servi
 
 ## Starting work
 
-```text
+```manuscript
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 import Background from "@std/tasks.ms"
 import StartError from "@std/tasks.ms"
 import OperationId from "@std/tasks.ms"
@@ -34,13 +33,13 @@ type MailError:
 interface Mailer:
     fn send(to: String) -> Result[Unit, MailError]
 
-fn enqueue(emails: Background, mailer: Mailer & Shareable, address: String) -> Result[OperationId, StartError]:
+fn enqueue(emails: Background, mailer: Mailer, address: String) -> Result[OperationId, StartError]:
     let send = fn() -> Result[Unit, String]:
-        return map_error(
-            result: mailer.send(to: address),
-            transform: fn(cause: MailError) -> String:
-                return "Email delivery failed"
-        )
+        match mailer.send(to: address):
+            ok(_):
+                return ok(value: unit)
+            error(_):
+                return error(cause: "Email delivery failed")
     return emails.start(operation: send)
 ```
 
@@ -75,4 +74,4 @@ This is process-local execution, not durable delivery. Work that must survive re
 
 ## Runtime and library responsibilities
 
-The Go runtime supplies operation start, stop, join, and synchronization. Admission, reporting, and shutdown policy can be implemented over those primitives. The initial implementation may provide the service in Go behind the same imported API. These native primitives are implementation details, not source intrinsics. The compiler validates the standard binding's callable proofs; service admission, status retention, reporting, drain, cancellation, and joining remain library/runtime behavior.
+The Go runtime supplies operation start, stop, join, and synchronization. Admission, reporting, and shutdown policy can be implemented over those primitives. The initial implementation may provide the service in Go behind the same imported API. These native primitives are implementation details, not source intrinsics. The compiler validates ordinary callback signatures; service admission, status retention, reporting, drain, cancellation, and joining remain library/runtime behavior.

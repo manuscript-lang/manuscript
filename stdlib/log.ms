@@ -12,7 +12,7 @@ export type LogError:
     case LimitExceeded
     case Io(cause: IoError)
 
-export fn write(output: WriteStream & Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LogError]
+export fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LogError]
 
 impl Error for LogError:
     fn message() -> String

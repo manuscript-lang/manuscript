@@ -37,9 +37,3 @@ func StandardImplementation(name string, receiver Value) Function {
 	Panic("unavailable standard implementation " + name)
 	return Function{}
 }
-
-func init() {
-	libraryGeneric("errors", "as_error", "Error", []LibraryParam{{"E", "Error"}}, []LibraryParam{{"cause", "E"}}, func(_ *Execution, _ string, args []Value) Value {
-		return ViewOf("@std/Error", args[0])
-	})
-}

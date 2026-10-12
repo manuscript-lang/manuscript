@@ -6,57 +6,44 @@ title = "builders"
 
 Import each required symbol with `import Name from "@std/builders.ms"`.
 
-## BytesBuilder
+## BytesBuilder {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-BytesBuilder: BytesBuilder
-operation append: fn(value: Int)->Unit
-operation concat: fn(values: Bytes)->Unit
-operation freeze: fn()->Bytes
+```manuscript
+type BytesBuilder:
+    fn append(value: Int) -> Unit
+    fn concat(values: Bytes) -> Unit
+    fn freeze() -> Bytes
 ```
 
-## ListBuilder
+## ListBuilder {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-ListBuilder: ListBuilder[T]
-type parameters: T: Shareable
-operation append: fn(value: T)->Unit
-operation freeze: fn()->List[T]
+```manuscript
+type ListBuilder[T]:
+    fn append(value: T) -> Unit
+    fn freeze() -> List[T]
 ```
 
-## MapBuilder
+## MapBuilder {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-MapBuilder: MapBuilder[T, U]
-type parameters: T: Hashable, U: Shareable
-operation freeze: fn()->Map[T, U]
-operation with_entry: fn(key: T, value: U)->Unit
+```manuscript
+type MapBuilder[T: Hashable, U]:
+    fn freeze() -> Map[T, U]
+    fn with_entry(key: T, value: U) -> Unit
 ```
 
-## SetBuilder
+## SetBuilder {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-SetBuilder: SetBuilder[T]
-type parameters: T: Hashable
-operation freeze: fn()->Set[T]
-operation with_value: fn(value: T)->Unit
+```manuscript
+type SetBuilder[T: Hashable]:
+    fn freeze() -> Set[T]
+    fn with_value(value: T) -> Unit
 ```
 
-## StringBuilder
+## StringBuilder {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-StringBuilder: StringBuilder
-operation append: fn(value: String)->Unit
-operation freeze: fn()->String
+```manuscript
+type StringBuilder:
+    fn append(value: String) -> Unit
+    fn freeze() -> String
 ```
 

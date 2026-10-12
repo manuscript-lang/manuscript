@@ -11,6 +11,29 @@ import (
 )
 
 func RenderModule(module checker.APIModule) string {
+	return renderModule(module, false)
+}
+
+func declarationKind(kind string) string {
+	switch kind {
+	case "fn":
+		return "Function"
+	case "record":
+		return "Record"
+	case "alternative":
+		return "Alternative"
+	case "interface":
+		return "Interface"
+	case "type":
+		return "Type"
+	case "native":
+		return "Native type"
+	default:
+		return kind
+	}
+}
+
+func renderModule(module checker.APIModule, forSite bool) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n", module.Path)
 	if module.Path == "prelude" {
@@ -19,23 +42,29 @@ func RenderModule(module checker.APIModule) string {
 		fmt.Fprintf(&b, "Import each required symbol with `import Name from %q`.\n\n", module.Path)
 	}
 	for _, d := range module.Declarations {
-		fmt.Fprintf(&b, "## %s\n\nKind: %s.\n\n```text\n%s: %s\n", d.Name, d.Kind, d.Name, d.Type)
-		if len(d.Parameters) > 0 {
-			fmt.Fprintf(&b, "type parameters: %s\n", strings.Join(d.Parameters, ", "))
+		kind := declarationKind(d.Kind)
+		// Native types with receiver signatures share the checker's interface
+		// representation, but their source declaration remains a type.
+		if d.Kind == "interface" && strings.HasPrefix(d.Declaration, "type ") {
+			kind = "Native type"
 		}
-		if len(d.Implements) > 0 {
-			fmt.Fprintf(&b, "implements: %s\n", strings.Join(d.Implements, ", "))
+		if forSite {
+			fmt.Fprintf(&b, "## %s {data-api-kind=%q}\n\n", d.Name, kind)
+		} else {
+			fmt.Fprintf(&b, "## %s\n\n**%s**\n\n", d.Name, kind)
 		}
-		for _, f := range d.Fields {
-			fmt.Fprintf(&b, "field %s\n", f)
+		if d.Declaration == "" {
+			if forSite {
+				b.WriteString("See [special call rules](../call-rules.md).\n\n")
+			} else {
+				b.WriteString("See [special call rules](#special-call-rules).\n\n")
+			}
+			continue
 		}
-		for _, c := range d.Cases {
-			fmt.Fprintf(&b, "case %s\n", c)
+		fmt.Fprintf(&b, "```manuscript\n%s```\n\n", d.Declaration)
+		for _, implementation := range d.ImplementationDeclarations {
+			fmt.Fprintf(&b, "```manuscript\n%s```\n\n", implementation)
 		}
-		for _, op := range d.Operations {
-			fmt.Fprintf(&b, "operation %s\n", op)
-		}
-		b.WriteString("```\n\n")
 	}
 	return b.String()
 }
@@ -44,12 +73,12 @@ func SiteFiles() (map[string][]byte, error) {
 	modules := checker.StandardLibrary()
 	files := map[string][]byte{}
 	var index, full strings.Builder
-	index.WriteString("+++\ntitle = \"Module reference\"\nweight = 2\n+++\n\n# Standard library module reference\n\nGenerated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Signature blocks describe types, not executable declarations.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\nSee [special call rules](../call-rules.md) for constructors, variadic parallel work, and optional arguments.\n\n")
+	index.WriteString("+++\ntitle = \"Module reference\"\nweight = 2\n+++\n\n# Standard library module reference\n\nGenerated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Declaration excerpts omit implementation bodies.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\nSee [special call rules](../call-rules.md) for constructors, variadic parallel work, and optional arguments.\n\n")
 	full.WriteString(StandardLibraryMarkdown())
 	files["design/standard-library/call-rules.md"] = []byte(callRules)
 	for _, module := range modules {
 		name := strings.TrimSuffix(strings.TrimPrefix(module.Path, "@std/"), ".ms")
-		body := RenderModule(module)
+		body := renderModule(module, true)
 		files["design/standard-library/reference/"+name+".md"] = []byte(fmt.Sprintf("+++\ntitle = %q\n+++\n\n", name) + body)
 		fmt.Fprintf(&index, "- [%s](%s.md)\n", module.Path, name)
 	}

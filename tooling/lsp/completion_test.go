@@ -1,9 +1,63 @@
 package lsp
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestLocalExtensionCompletionAndNavigation(t *testing.T) {
+	root := t.TempDir()
+	sources := map[string]string{
+		"domain.ms": "export type Box:\n    value: Int\n",
+		"extension.ms": `import Box from "./domain.ms"
+interface Read:
+    fn get() -> Int
+impl Read for Box:
+    fn get() -> Int:
+        return self.value
+export fn read(value: Box) -> Int:
+    return value.get()
+`,
+		"main.ms": `import Box from "./domain.ms"
+import read from "./extension.ms"
+fn use(value: Box) -> Int:
+    return value.value
+`,
+	}
+	for name, source := range sources {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"extension.ms", "main.ms"} {
+		source := sources[name]
+		at := strings.LastIndex(source, "value.") + len("value.")
+		d := document{fileURI(filepath.Join(root, name)), source, 1}
+		items, err := completionAt(d, map[string]document{d.URI: d}, Position(source, at), true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if (itemNamed(items, "get") != nil) != (name == "extension.ms") {
+			t.Fatalf("extension visibility in %s: %+v", name, items)
+		}
+		if name == "extension.ms" {
+			result := analyze(d, map[string]document{d.URI: d})
+			if !result.Success() {
+				t.Fatal(result.Diagnostics)
+			}
+			definition := navigation(result, d, Position(source, at), "textDocument/definition")
+			if definition == nil {
+				t.Fatal("missing extension method definition")
+			}
+			location := definition.([]any)[0].(map[string]any)
+			if location["uri"] != d.URI || location["range"].(span).Start.Line != 4 {
+				t.Fatalf("wrong extension definition: %v", definition)
+			}
+		}
+	}
+}
 
 func completeSource(t *testing.T, source string) []completionItem {
 	t.Helper()
@@ -38,7 +92,7 @@ func TestTypedCompletionWhileEditing(t *testing.T) {
 		{"list methods", "import List from \"@std/collections.ms\"\nfn count(items: List[Int]) -> Int:\n    return items.|\n", []string{"length", "get", "append", "concat"}, []string{"byte_length", "send"}},
 		{"member prefix", "fn size(text: String) -> Int:\n    return text.byte_|\n", []string{"byte_length"}, []string{"parse_int"}},
 		{"record fields", "type Point:\n    x: Int\n    y: String\nfn read(point: Point) -> Int:\n    return point.|\n", []string{"x", "y"}, []string{"length"}},
-		{"native opaque fields", "import Queue from \"@std/queues.ms\"\nfn read(queue: Queue[Int]) -> Unit:\n    queue.|\n", []string{"send", "receive", "close"}, []string{"capacity"}},
+		{"native opaque fields", "import Queue from \"@std/queues.ms\"\nfn read(queue: Queue[Int]) -> Unit:\n    queue.|\n", []string{"enqueue", "dequeue", "peek", "length", "is_empty"}, []string{"capacity", "send", "receive", "close"}},
 		{"named arguments incomplete call", "fn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer() -> Int:\n    return sum(le|\n", []string{"left"}, []string{"right"}},
 		{"used arguments omitted", "fn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer() -> Int:\n    return sum(left: 1, |\n", []string{"right"}, []string{"left"}},
 		{"typed argument expression", "fn sum(left: Int, right: Int) -> Int:\n    return left + right\nfn answer(input: Int) -> Int:\n    return sum(left: inp|\n", []string{"input"}, nil},

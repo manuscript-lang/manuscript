@@ -1,6 +1,9 @@
 package checker
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // APIModule is a detached documentation snapshot of an importable module.
 type APIModule struct {
@@ -8,20 +11,28 @@ type APIModule struct {
 	Declarations []APIDeclaration `json:"declarations"`
 }
 type APIDeclaration struct {
-	Name       string   `json:"name"`
-	Kind       string   `json:"kind"`
-	Type       string   `json:"type"`
-	Parameters []string `json:"type_parameters,omitempty"`
-	Fields     []string `json:"fields,omitempty"`
-	Cases      []string `json:"cases,omitempty"`
-	Operations []string `json:"operations,omitempty"`
-	Implements []string `json:"implements,omitempty"`
+	// Declaration is a source-syntax excerpt for human documentation. The JSON
+	// snapshot retains its existing machine-readable type and member contracts.
+	Declaration                string   `json:"-"`
+	Name                       string   `json:"name"`
+	Kind                       string   `json:"kind"`
+	Type                       string   `json:"type"`
+	Parameters                 []string `json:"type_parameters,omitempty"`
+	Fields                     []string `json:"fields,omitempty"`
+	Cases                      []string `json:"cases,omitempty"`
+	Operations                 []string `json:"operations,omitempty"`
+	Implements                 []string `json:"implements,omitempty"`
+	ImplementationDeclarations []string `json:"-"`
 }
 
 // StandardLibrary captures the actual checker definitions, without exposing mutable
 // types. Types and operations are loaded from the bundled standard .ms sources.
 func StandardLibrary() []APIModule {
 	modules := map[string][]*Symbol{}
+	sources := map[string]string{}
+	for _, source := range standardSources {
+		sources[source.File] = source.Source
+	}
 	for path, symbols := range standardModules {
 		for _, symbol := range symbols {
 			if symbol.Export {
@@ -29,7 +40,7 @@ func StandardLibrary() []APIModule {
 			}
 		}
 	}
-	for _, name := range []string{"Bool", "Int", "Float", "String", "Unit", "Never", "Shareable", "Equal", "Hashable"} {
+	for _, name := range []string{"Bool", "Int", "Float", "String", "Unit", "Never", "Equal", "Hashable"} {
 		modules["prelude"] = append(modules["prelude"], &Symbol{Name: name, Kind: "type", Type: primitive(name)})
 	}
 	var result []APIModule
@@ -37,7 +48,7 @@ func StandardLibrary() []APIModule {
 		sort.Slice(symbols, func(i, j int) bool { return symbols[i].Name < symbols[j].Name })
 		module := APIModule{Path: path}
 		for _, symbol := range symbols {
-			d := documentSymbol(symbol)
+			d := documentSymbol(symbol, sources[symbol.Module])
 			documentImplementations(&d, symbol, standardImplementations)
 			module.Declarations = append(module.Declarations, d)
 		}
@@ -55,6 +66,7 @@ func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Metho
 			continue
 		}
 		contracts[method.Contract.String()] = true
+		d.ImplementationDeclarations = append(d.ImplementationDeclarations, "impl "+method.Contract.String()+" for "+method.Receiver.String()+":\n    "+documentDeclaration(method.Decl, "fn", method.Decl.Name))
 		operation := method.Decl.Name + ": " + method.Type.String()
 		if !operations[operation] {
 			d.Operations = append(d.Operations, operation)
@@ -68,8 +80,19 @@ func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Metho
 	sort.Strings(d.Operations)
 }
 
-func documentSymbol(symbol *Symbol) APIDeclaration {
+func documentSymbol(symbol *Symbol, source string) APIDeclaration {
 	d := APIDeclaration{Name: symbol.Name, Kind: symbol.Kind, Type: symbol.Type.String()}
+	if decl := symbol.Decl; decl != nil {
+		keyword := "type"
+		if strings.HasPrefix(source[decl.Pos.Offset:], "interface") {
+			keyword = "interface"
+		}
+		d.Declaration = documentDeclaration(decl, keyword, decl.Name)
+	} else if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
+		d.Declaration = documentDeclaration(intrinsic.Def.Symbol.Decl, "type", symbol.Name)
+	} else {
+		d.Declaration = "type " + symbol.Name + "\n"
+	}
 	for _, v := range symbol.Variables {
 		parameter := v.Name
 		for i, b := range v.Bounds {
@@ -106,7 +129,7 @@ func documentSymbol(symbol *Symbol) APIDeclaration {
 			d.Cases = append(d.Cases, value)
 		}
 		for _, op := range def.Operations {
-			operations[op.Name] = op.Type.String()
+			operations[documentOperationName(symbol.Type, op.Name)] = op.Type.String()
 		}
 	}
 	if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
@@ -133,7 +156,7 @@ func ModuleDocumentation(program *Program) []APIModule {
 			}
 			symbol := program.Symbols[source.File][decl.Name]
 			if symbol != nil && symbol.Decl == decl {
-				d := documentSymbol(symbol)
+				d := documentSymbol(symbol, source.Source)
 				documentImplementations(&d, symbol, program.Methods)
 				module.Declarations = append(module.Declarations, d)
 			}
@@ -143,4 +166,25 @@ func ModuleDocumentation(program *Program) []APIModule {
 	}
 	sort.Slice(modules, func(i, j int) bool { return modules[i].Path < modules[j].Path })
 	return modules
+}
+
+func documentOperationName(receiver *Type, name string) string {
+	variables := standardOperationVariables[receiver.ID+"/"+name]
+	if len(variables) == 0 {
+		return name
+	}
+	var params []string
+	for _, v := range variables {
+		parameter := v.Name
+		for i, b := range v.Bounds {
+			if i == 0 {
+				parameter += ": "
+			} else {
+				parameter += " & "
+			}
+			parameter += b.String()
+		}
+		params = append(params, parameter)
+	}
+	return name + "[" + strings.Join(params, ", ") + "]"
 }

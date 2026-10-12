@@ -21,13 +21,13 @@ The exception is an expression of type `Never`: it cannot produce a value, so it
 | Generic application | Exact declaration and every ordered argument; `List[Int]` and `List[Float]` are distinct |
 | Function | Exact parameter labels, declaration order, parameter types, and result type; no variance or label/order adaptation |
 
-Caller-written argument order affects evaluation without changing function identity. A generic bound grants properties, not subtyping. Shared/plain arguments remain distinct during inference; `List[Contract]` fails its element bound, while `List[Contract & Shareable]` may satisfy it.
+Caller-written argument order affects evaluation without changing function identity. A generic bound grants properties, not subtyping. Shared/plain arguments remain distinct during inference; `List[Contract]` fails its element bound, while `List[Contract]` may satisfy it.
 
 Type positions use [ordinary name resolution](../../modules-and-capabilities/modules/declarations.md#names-and-declaration-order). A value shadowing a type name causes an error, not a second lookup in a hidden namespace. Unqualified cases follow [alternative lookup](alternatives.md#construction-and-identity); expected types cannot override a lexical binding or choose an ambiguous case.
 
-`Shareable`, `Equal`, and `Hashable` are [compiler bounds](generics.md#bounds), not standalone value types. The only value-type refinement is `Contract & Shareable`; other intersections and refinements are rejected.
+`Equal` and `Hashable` are [compiler bounds](generics.md#bounds), not standalone value types. Value types have no intersection/refinement syntax; conjunction is available only for generic bounds.
 
-```text
+```manuscript
 fn identity(value: Int) -> Int:
     return value
 
@@ -46,7 +46,7 @@ That type can guide the expressions inside parentheses, list elements, construct
 
 Context does not resolve an ambiguous unqualified case name or change a type an expression already determines for itself.
 
-```text
+```manuscript
 type Input:
     names: List[Optional[String]]
 
@@ -71,7 +71,7 @@ A list is rejected if its independently typed elements disagree.
 
 Operators and try do not pass an expected result type backward into their operands. Their operands must determine their own types first. For example, knowing that the value unwrapped by try should be Int does not tell the compiler which error type an incomplete Result constructor should have.
 
-```text
+```manuscript
 fn known() -> Result[Int, String]:
     let number: Int = try Result[Int, String].ok(value: 1)
     return ok(value: number)

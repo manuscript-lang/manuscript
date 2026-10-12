@@ -126,7 +126,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 				}
 			} else if result.Program != nil {
 				if info := result.Program.Expressions[left]; info != nil && info.Type != nil {
-					for _, member := range checker.Members(result.Program, info.Type) {
+					for _, member := range checker.Members(result.Program, info.Type, left.Pos.File) {
 						kind := 5
 						insert := member.Name
 						if member.Kind == "method" {
@@ -240,7 +240,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 		}
 	}
 	if c.typeContext {
-		for _, name := range []string{"Int", "Float", "String", "Bool", "Unit", "Never", "Shareable", "Equal", "Hashable"} {
+		for _, name := range []string{"Int", "Float", "String", "Bool", "Unit", "Never", "Equal", "Hashable"} {
 			add(name, 7, nil, 3, name, nil)
 		}
 	}
@@ -378,7 +378,6 @@ func resolveEditorType(t *syntax.Type, state checker.ScopeState) *checker.Type {
 		}
 		copy.Args = append(copy.Args, resolved)
 	}
-	copy.Shared = t.Shared
 	return &copy
 }
 func queryCall(a editorAnalysis) (*syntax.Expression, *checker.Type) {

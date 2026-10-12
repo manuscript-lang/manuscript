@@ -29,13 +29,14 @@ fn background_probe() -> Unit:
     with service = Background(limit: 1, drain: 2.seconds):
         let task = fn() -> Result[Unit, String]:
             return ok(value: unit)
-        match service.start(operation: task):
+        let launch = service.start
+        match launch(operation: task):
             ok(id):
                 let completed = unit
             error(_):
                 return panic(message: "Unexpected case")
         service.close()
-        match service.start(operation: task):
+        match launch(operation: task):
             ok(_):
                 return panic(message: "Unexpected case")
             error(cause):
@@ -59,7 +60,7 @@ fn standard_task() -> Result[Unit, ExecutionError]:
         return panic(message: "check failed")
     return ok(value: unit)
 
-test "closed standard function sharing proofs":
+test "standard functions can run concurrently":
     match standard_task():
         ok(_):
             let completed = unit

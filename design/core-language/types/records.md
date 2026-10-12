@@ -9,7 +9,7 @@ weight = 12
 
 A record groups named fields into one value. Its fields cannot be changed after construction. Each record declaration creates a distinct type; this is called nominal typing. Use a record when data has a known shape, such as a customer with a name and email.
 
-```text
+```manuscript
 type Customer:
     name: String
     email: Optional[String]
@@ -23,14 +23,14 @@ A record declaration has at least one field; an empty body is not a record decla
 
 Constructors supply every field by name exactly once. Missing, duplicate, or unknown fields are compile errors. Call order may differ from declaration order; field expressions evaluate in written call order. Each expression is checked against its declared field type, including expected-type checking for `none` and empty lists.
 
-```text
+```manuscript
 let customer = Customer(name: "Ada", email: none)
 let name = customer.name
 ```
 
 The constructor states which value belongs to each field. `customer.name` reads the field. To use the optional email, handle its alternatives as described in [optional values](optionals.md).
 
-```text
+```manuscript
 # Rejected: required email is missing.
 let incomplete = Customer(name: "Ada")
 # Rejected: fields are immutable.
@@ -43,7 +43,7 @@ Generic records use explicit parameters, such as `type Box[T]:` with `value: T`.
 
 Distinct identifiers such as `CustomerId` use nominal field types.
 
-```text
+```manuscript
 type CustomerId:
     value: String
 
@@ -53,7 +53,7 @@ type OrderId:
 
 The two declarations represent distinct types even though their fields have the same shape. This keeps a customer identifier distinct from an order identifier at function boundaries.
 
-```text
+```manuscript
 let customer_id = CustomerId(value: "42")
 # Rejected: equal field shapes do not make nominal types interchangeable.
 let order_id: OrderId = customer_id
@@ -71,7 +71,7 @@ Direct or mutually recursive inline record/alternative layouts are rejected. Bui
 
 Function values and contract values also have indirect representations. Function parameter/result types and contract operation signatures are not inline storage edges and do not introduce a concrete layout cycle merely by mentioning the enclosing type. Generic recursive references still satisfy the separate finite-application rule in [generics](generics.md#finite-recursive-applications).
 
-```text
+```manuscript
 type Node:
     value: Int
     children: List[Node]
@@ -87,7 +87,7 @@ Container element/key bounds still apply. A `Set[Node]` does not become valid ju
 
 ## Resource fields
 
-A record containing a resource does not implicitly close it or extend its open lifetime. Cleanup follows explicit [resource scopes](../../ownership-and-cleanup/cleanup/scopes.md). Immutable fields do not make the referenced native service immutable; sharing eligibility depends on its implementation.
+A record containing a resource does not implicitly close it or extend its open lifetime. Cleanup follows explicit [resource scopes](../../ownership-and-cleanup/cleanup/scopes.md). Immutable fields do not make referenced native services immutable; each service synchronizes its own state and lifecycle.
 
 A `type` declaration uses fields or cases. Use [alternatives](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md) that declare required behavior.
 

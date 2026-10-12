@@ -8,6 +8,8 @@ Apply when: adding standard APIs, changing their signatures, or extending hover/
 Evidence: [source-definition request](codex://threads/01a12ce1-c9ff-70e4-bb2c-51749183e03b); [declaration ownership](../stdlib/README.md); [embedded sources](../stdlib/sources.go); [documentation generator](../cmd/docgen/main.go).
 Verify: native calling signatures agree with the declarations, editor definitions reach the declaration, and generated references pass the existing freshness check. Update the source or generator when output changes.
 
+Decision: the string utility module is `@std/string.ms`, matching the intrinsic `String` type. The user requested this spelling when expanding built-in parity. Receiver operations need no module import; standalone string functions use this canonical module. Evidence: [declarations](../stdlib/string.ms), [native bindings](../stdlib/bindings.json), and [data package guide](../design/standard-library/packages/data.md). When renaming a module, verify imports, native dispatch identities, virtual editor documents, and generated reference paths together.
+
 ### Teach a runnable path before formal reference
 
 Decision: simplify the reading path, explain one concept at a time, and give each exact rule one home. A basic destructuring example should not require the reader to understand parallel work and error propagation. The docs revamp requested simpler explanations without losing precise semantics.
@@ -28,6 +30,24 @@ Verify: exercise a copied binary outside the checkout with empty caches, no Go o
 
 Decision: for the documentation redesign, the user selected Tailwind CSS and Vercel as visual references and explicitly asked, “don't just randomly keep adding text.” Favor consistent navigation, typography, spacing, and reading layouts; preserve authored explanations rather than introducing promotional copy to fill the page.
 
+Decision: use `ms` as the documentation logo, including the header and favicon, rather than a single `m`. Check the mark at desktop and mobile sizes when changing [branding](../layouts/_partials/docs/brand.html) or the [favicon](../static/favicon.svg).
+
 Apply when: redesigning the documentation shell or overview, or extending its visual system.
 Evidence: the user's documentation redesign correction; [Tailwind docs](https://tailwindcss.com/docs/installation/using-vite); [Vercel docs](https://vercel.com/docs); [site-owned visual system](../assets/_custom.scss); [overview presentation](../layouts/_shortcodes/docs-home.html).
-Verify: compare authored Markdown with the base branch, keep semantic changes out of visual work, check desktop and mobile reading pages, and run the strict Hugo build with a repository URL prefix. Regenerate `docs/` from the current sources; never resolve generated-page conflicts by retaining stale output.
+Decision: the user requested reuse of VS Code highlighting code where possible. The docs use the extension's [TextMate grammar](../extensions/vscode/syntaxes/manuscript.tmLanguage.json) as their single source of lexical rules, through a small [browser adapter](../assets/manuscript-highlight.js). Keep language patterns in the shared grammar instead of adding a separate keyword list for the website.
+
+Decision: present API classifications as human-readable badges beside symbol headings, instead of exposing compiler labels such as `Kind: fn.` as prose. The [generator](../documentation/documentation.go) keeps portable Markdown readable and raw JSON kinds stable; the [heading renderer](../layouts/_markup/render-heading.html) adds badges without changing symbol anchors or table-of-contents labels. Check [presentation contracts](../documentation/documentation_test.go) and rendered pages when changing this metadata.
+
+Decision: show API excerpts in regular Manuscript declaration syntax, rather than checker dumps such as `DnsRecord: DnsRecord`, `field kind: String`, or `operation receive: fn(...)->...`. Generate fields, cases, methods, and generic bounds from the [source declarations](../checker/documentation_syntax.go), omitting implementation bodies. Compiler-bound calls without an ordinary declaration link to their special call rules rather than displaying `<unknown>` as a type. Verify the [declaration syntax checks](../checker/documentation_test.go), CLI output, and published pages together; keep the machine-readable JSON contract stable.
+
+Verified: styling a code container did not highlight Manuscript examples fenced as `text`. Explicit `manuscript` fences now use the shared grammar, with [tokenization checks](../tests/docs/highlighting.test.cjs). The [documentation generator](../documentation/documentation.go) emits the same language label so regenerated API pages retain highlighting.
+
+Verify: compare authored Markdown with the base branch, keep semantic changes out of visual work, check desktop and mobile reading pages, and run the strict Hugo build with a repository URL prefix. Verify actual token colors in light and dark mode, unchanged copied text, and plain terminal output. Regenerate `docs/` from the current sources; never resolve generated-page conflicts by retaining stale output.
+
+### Source freshness does not establish published freshness
+
+Verified: after the concurrency simplification, source declarations and generated Markdown were current while the checked-in website still exposed retired bounds and a removed module route. The user found this in the API reference. A source-generation check alone cannot verify the HTML, downloadable schemas, or search index that readers receive.
+
+Apply when: removing or renaming public language/API surface, or reporting a documentation update complete.
+Evidence: the user's follow-up to [the concurrency change](https://github.com/manuscript-lang/manuscript/pull/24); [publication checks](../tests/docs/publication.test.cjs); [publishing workflow](../.github/workflows/cicd.yml).
+Verify: regenerate both reference sources and the website with destination cleanup; compare shipped schema downloads against current generated sources, reject obsolete module routes, and search rendered pages and search data for retired terminology. Confirm publication separately from a successful source merge. Historical review text must not reintroduce syntax the user explicitly requested removing.

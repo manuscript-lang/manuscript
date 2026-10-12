@@ -11,7 +11,7 @@ An interface lists the operations a caller needs. This is an operation contract:
 
 The following contract refers to application-defined `Money`, `Receipt`, and `PaymentError` types:
 
-```text
+```manuscript
 interface Payments:
     fn charge(amount: Money) -> Result[Receipt, PaymentError]
 ```
@@ -24,7 +24,7 @@ Operation contracts support explicit implementations through `impl Contract for 
 
 An implementation supplies the contract's operations for the named data type. The implementation relationship is declared explicitly rather than inferred from coincidentally similar operation names.
 
-```text
+```manuscript
 interface Increment:
     fn apply(value: Int) -> Int
 
@@ -47,7 +47,7 @@ An implementation must match the contract exactly. After substituting generic ty
 
 Missing, extra, duplicate, or mismatched operations are compile errors. A method cannot add defaults or its own generic parameters. Parameter labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility).
 
-```text
+```manuscript
 # Rejected: amount does not match the contract's value label.
 impl Increment for Offset:
     fn apply(amount: Int) -> Int:
@@ -58,19 +58,46 @@ The rejected block is an alternative negative example, not a second block to add
 
 ## Coherence and visibility
 
-Declare an implementation in the module that defines its concrete type. The contract may be imported, but the concrete type must be local to that module. Each concrete type and applied contract pair has exactly one implementation; duplicates are rejected.
+An implementation declared in the concrete type's defining module is available wherever that type is used. An implementation declared for an imported source type is a **local extension**, visible only within the module declaring the implementation. The interface may be local or imported in either case. No new syntax is needed.
 
-Importing the concrete type loads that module and its implementations. Importing an unrelated module cannot add methods to the type later. This keeps behavior independent of unrelated imports.
+For example, `offset.ms` exports a record:
 
-Concrete and generic implementation blocks obey the same defining-module rule. Orphan implementations, blanket implementations for a bare type parameter, specialization, generic operations, and implementation inheritance are unsupported. Contracts can be generic but cannot have fields, cases, default bodies, associated types, or static operations. A contract declares at least one operation. An implementation does not re-export either its type or its contract.
+```text
+export type Offset:
+    delta: Int
+```
+
+Another module can add its own interface implementation:
+
+```text
+import Offset from "./offset.ms"
+
+export interface Double:
+    fn doubled() -> Int
+
+impl Double for Offset:
+    fn doubled() -> Int:
+        return self.delta * 2
+
+export fn double_view(value: Offset) -> Double:
+    return Double(value: value)
+```
+
+Inside this module, `Offset(delta: 3).doubled()` returns `6`. Importing `double_view` or `Double` elsewhere does not make `doubled` available on raw `Offset` values. Calling `double_view(Offset(delta: 3)).doubled()` works there because the returned view retains the selected implementation.
+
+Each module sees the receiver's defining-module implementations plus its own local extensions. Reject duplicate or overlapping receiver/contract pairs within that visible set, including attempts to replace a defining-module implementation. Separate modules may define the same local pair independently; neither extension becomes visible through imports, including transitive imports. Different interfaces with the same operation name still require an explicit view to disambiguate.
+
+Views, bound methods, and specialized generic functions retain the implementation selected where they are created. A generic bound uses the implementation evidence supplied at specialization, including when forwarded to another generic function. Calls on statically concrete types inside a function use that function's declaring module. Passing a raw concrete value does not carry additional conformance into another module.
+
+Concrete and generic blocks obey the same visibility rules. Receivers must be source-defined nominal records or alternatives; intrinsic and standard-library receivers, interfaces, bare type parameters, specialization, generic operations, and implementation inheritance remain unsupported. Contracts can be generic but cannot have fields, cases, default bodies, associated types, or static operations. A contract declares at least one operation. An implementation does not re-export either its type or its contract.
 
 Exported contracts expose every operation. Types in their operation signatures obey the [public surface rules](records.md#public-data-surfaces).
 
 ## Generic implementations
 
-An implementation uses generic parameters from its receiver type declaration. Its receiver must be an application of a nominal data declaration in the implementation's module. Parameter names in the receiver application come from that data declaration. Only parameters occurring in the receiver application are in scope for the interface and methods; matching the receiver determines all implementation arguments. Concrete and nested receiver applications remain supported. Interface parameter names need not match data parameter names: an application substitutes the receiver parameters positionally. An undeclared name such as `U` in `impl ReadValue[U] for Box[U]` is rejected when `Box` declares only `T`.
+An implementation uses generic parameters from its receiver type declaration. Its receiver must be an application of a local or imported source nominal data declaration. Parameter names in the receiver application come from that data declaration. Inherited bounds retain their original nominal identities; an extending module need not import the names used in those bounds. Only parameters occurring in the receiver application are in scope for the interface and methods; matching the receiver determines all implementation arguments. Concrete and nested receiver applications remain supported. Interface parameter names need not match data parameter names: an application substitutes the receiver parameters positionally. An undeclared name such as `U` in `impl ReadValue[U] for Box[U]` is rejected when `Box` declares only `T`.
 
-```text
+```manuscript
 interface ReadValue[T]:
     fn get() -> T
 
@@ -88,7 +115,7 @@ Inherited bounds must prove that every nested type application and operation in 
 
 Interface parameter bounds can restrict implementation availability without restricting the data type:
 
-```text
+```manuscript
 interface SameValue[T: Equal]:
     fn same(other: T) -> Bool
 
@@ -97,11 +124,11 @@ impl SameValue[T] for Box[T]:
         return self.value == other
 ```
 
-A `Box[T]` with no proof of `T: Equal` cannot use this implementation. Bounds do not make the receiver shareable beyond the ordinary derivation for its fields.
+A `Box[T]` with no proof of `T: Equal` cannot use this implementation. Receiver references may be passed freely; equality remains a separate property.
 
-Two blocks overlap if their receiver and contract applications can simultaneously match the same pair of types. Check this by structurally unifying both pairs, with each receiver's inherited parameters treated as distinct variables and nominal identities and invariant arguments preserved. Ignore bounds in this check: different bounds cannot select competing implementations. Reject overlap at declaration checking, even if no current call uses it. There is no most-specific selection or specialization.
+Two blocks overlap if their receiver and contract applications can simultaneously match the same pair of types. Check this by structurally unifying both pairs, with each receiver's inherited parameters treated as distinct variables and nominal identities and invariant arguments preserved. Ignore bounds in this check: different bounds cannot select competing implementations. Reject overlap between implementations visible in the same module at declaration checking, even if no current call uses it. There is no most-specific selection or specialization.
 
-```text
+```manuscript
 # Rejected alongside the generic block above: both apply to Box[Int].
 impl ReadValue[Int] for Box[Int]:
     fn get() -> Int:
@@ -114,9 +141,9 @@ Implementations of `ReadValue[Int]` and `ReadValue[String]` for the same receive
 
 Create a contract view explicitly with `Contract(value: concrete)`. For a generic contract, use `Contract[T](value: concrete)`. The concrete type must have an applicable declared implementation and satisfy its bounds; a matching method name alone is not enough.
 
-A plain view can hold a local receiver that is not shareable. The view keeps the same receiver reference. It does not copy native state, keep a resource open, or make concurrent access safe.
+A view keeps the same receiver reference without copying native state or extending its resource lifetime. The receiver retains its concurrency contract: passing a view does not add a lock to a local mutable collection.
 
-```text
+```manuscript
 fn use_increment(operation: Increment) -> Int:
     return operation.apply(value: 1)
 
@@ -127,17 +154,17 @@ let result = use_increment(operation: view)
 let wrong = use_increment(operation: offset)
 ```
 
-The plain constructor accepts an implementing concrete value or an existing plain/shared view of that exact contract application. An existing plain view is an identity conversion; a shared view loses only its static sharing guarantee. Different contracts/applications and unchecked contract-to-concrete conversions are rejected. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover a concrete record or alternative receiver after checking its exact nominal identity at runtime.
+The constructor accepts an implementing concrete value or an existing view of the exact contract application. An existing view is an identity conversion. Different contracts/applications and unchecked contract-to-concrete conversions are rejected. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover a concrete record or alternative receiver after checking its exact nominal identity at runtime.
 
-Write generic view arguments explicitly or supply an expected application of the same contract, plain or shared. Operation names do not infer arguments, and an expected shared type cannot refine a plain constructor.
+Write generic view arguments explicitly or supply an expected application of the same contract. Operation names do not infer arguments.
 
 ### Selecting an operation
 
 A concrete receiver or generic parameter may call an operation directly when exactly one implemented/bounded contract supplies its name. Otherwise select a view, such as `Increment(value: offset).apply(value: 1)`. Arguments and result types cannot resolve operation-name ambiguity. A bound method retains its receiver and has the operation's ordinary function type.
 
-A plain or shared contract type satisfies its own exact named generic bound without a source `impl`. For example, `Converter[Int]` satisfies `T: Converter[Int]`, but not `T: Converter[String]`. Generic disambiguation can therefore construct the same plain view whether `T` is concrete or already a view. A behavioral bound alone does not require sharing.
+A contract type satisfies its own exact named generic bound without a source `impl`. For example, `Converter[Int]` satisfies `T: Converter[Int]`, but not `T: Converter[String]`. All such values may be passed between operations.
 
-```text
+```manuscript
 fn invoke[T: Increment](operation: T) -> Int:
     return Increment(value: operation).apply(value: 1)
 
@@ -147,41 +174,13 @@ let from_view = invoke(operation: view)
 
 Both calls satisfy the same bound; neither inserts an implicit conversion at the call boundary.
 
-## Shared contract views
+## Concurrent use
 
-`Contract & Shareable`, including `Contract[T] & Shareable`, exposes the same contract operations with a statically safe receiver. It is the only value-type intersection. General intersections, Equal/Hashable refinements, and standalone Shareable value types are rejected.
-
-Construct a shared view explicitly with `(Contract & Shareable)(value: receiver)`:
-
-```text
-let shared = (Increment & Shareable)(value: offset)
-let same_shared = (Increment & Shareable)(value: shared)
-let local = Increment(value: shared)  # Explicitly discard the sharing guarantee.
-let operations: List[Increment & Shareable] = [shared]
-# Rejected: local has only the plain Increment type.
-let recovered = (Increment & Shareable)(value: local)
-# Rejected: plain contract values do not satisfy the collection element bound.
-let local_operations: List[Increment] = [local]
-```
-
-Shared construction requires both an implementation proof and a sharing proof:
-
-| Receiver | Shared construction |
-| --- | --- |
-| Concrete shareable type implementing the exact contract | Accepted |
-| Existing shared view of the exact contract application | Accepted as an identity view |
-| Generic parameter bounded by the exact contract and Shareable | Accepted |
-| Plain view, even with a safe hidden receiver | Rejected; the sharing proof is absent |
-
-Plain and shared views are distinct types. Assignments, arguments, returns, and expected types never add or discard sharing implicitly. Both explicit constructors retain the same receiver and implementation; neither adds synchronization, equality, hashing, cleanup, or lifetime extension.
-
-Shared views can be stored in collections and captured concurrently. Bound methods use the receiver's known sharing proof, then follow the separate [callable boundary rules](../../ownership-and-cleanup/values/sharing.md#function-values).
-
-Only the receiver is guaranteed shareable. Parameters and results follow their own types: a shared service may return a nonshareable resource. Native adapters must prove receiver sharing before exposing a shared view.
+All contract values may be passed between operations; concurrent invocation follows the receiver's contract. There is one view type, with ordinary spelling such as `ReadValue[Int]`. Explicit view construction checks the implementation relationship and preserves the receiver reference. No conversion adds synchronization, equality, hashing, cleanup, or lifetime extension. Native services synchronize their internals and lifecycle. Source implementations that need a local mutable queue across concurrent calls keep it behind Synchronized.
 
 ## Contracts and external authority
 
-A capability is passed as an explicit input when an operation needs external authority, such as storage or a payment service. [Modules and capabilities](../../modules-and-capabilities/modules/_index.md) describes effects, sharing requirements, and exported boundary contracts.
+A capability is passed as an explicit input when an operation needs external authority, such as storage or a payment service. [Modules and capabilities](../../modules-and-capabilities/modules/_index.md) describes effects, native synchronization obligations, and exported boundary contracts.
 
 Contracts can also appear as [generic bounds](generics.md), where they name the operations required from a type argument.
 

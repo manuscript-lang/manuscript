@@ -6,27 +6,15 @@ title = "queues"
 
 Import each required symbol with `import Name from "@std/queues.ms"`.
 
-## Queue
+## Queue {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-Queue: Queue[T]
-type parameters: T: Shareable
-field capacity: Int
-operation close: fn()->Unit
-operation receive: fn()->Optional[T]
-operation send: fn(value: T)->Result[Unit, QueueError]
-```
-
-## QueueError
-
-Kind: alternative.
-
-```text
-QueueError: QueueError
-implements: Error
-case Closed
-operation message: fn()->String
+```manuscript
+type Queue[T]:
+    capacity: Int
+    fn enqueue(value: T) -> Bool
+    fn dequeue() -> Optional[T]
+    fn peek() -> Optional[T]
+    fn length() -> Int
+    fn is_empty() -> Bool
 ```
 

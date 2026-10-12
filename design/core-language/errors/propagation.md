@@ -13,7 +13,7 @@ Use `try` to continue with a successful Result value or immediately return its e
 
 The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
 
-```text
+```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
     let value = try discount(price: price, percent: percent)
     return ok(value: "Discounted price: {value}")
@@ -27,11 +27,11 @@ The success types differ: the called function returns a decimal, while the enclo
 
 ## Error compatibility
 
-Error conversion uses the standard `map_error(result: outcome, transform: fn(cause: E) -> F)` adapter or an explicit match; its exact signature and single-evaluation rule are in the [standard API contract](../../standard-library/types/prelude.md). A caller with a different error contract must translate the error explicitly. `try` does not invent a conversion or combine unrelated error types into an implicit union.
+A caller with a different error contract must translate the error explicitly using [pattern matching](../control-flow/pattern-matching.md). `try` does not invent a conversion or combine unrelated error types into an implicit union.
 
 If the called operation returns `Result[T, E]`, the function using `try` must return `Result[U, E]`. The success type may change from `T` to `U`, but the error type `E` must be exactly the same. Two error types are not interchangeable just because they implement the same interface. Convert explicitly before constructing the Result that try uses.
 
-A common `Error` boundary follows the same rule: first use `map_error(result: outcome, transform: as_error[SpecificError])` to preserve the concrete cause in an Error view, then apply `try`. See [common error boundaries](results.md#a-common-error-boundary).
+A common `Error` boundary follows the same rule: first match the Result and construct `Error(value: cause)` on its error branch, then use `try` on the explicitly converted Result. See [common error boundaries](results.md#a-common-error-boundary).
 
 The expression after `try` is evaluated once. Try binds more tightly than arithmetic, so `try operation() + 1` means `(try operation()) + 1`.
 

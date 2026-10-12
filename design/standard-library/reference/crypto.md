@@ -6,104 +6,83 @@ title = "crypto"
 
 Import each required symbol with `import Name from "@std/crypto.ms"`.
 
-## CryptoError
+## CryptoError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-CryptoError: CryptoError
-implements: Error
-case InvalidInput
-case Unsupported
-case AuthenticationFailed
-operation message: fn()->String
+```manuscript
+type CryptoError:
+    case InvalidInput
+    case Unsupported
+    case AuthenticationFailed
 ```
 
-## constant_time_equal
-
-Kind: fn.
-
-```text
-constant_time_equal: fn(left: Bytes, right: Bytes)->Bool
+```manuscript
+impl Error for CryptoError:
+    fn message() -> String
 ```
 
-## derive_key
+## constant_time_equal {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Result[Bytes, CryptoError]
+```manuscript
+fn constant_time_equal(left: Bytes, right: Bytes) -> Bool
 ```
 
-## hmac
+## derive_key {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, CryptoError]
+```manuscript
+fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Result[Bytes, CryptoError]
 ```
 
-## open
+## hmac {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->Result[Bytes, CryptoError]
+```manuscript
+fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError]
 ```
 
-## public_key
+## open {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-public_key: fn(seed: Bytes)->Result[Bytes, CryptoError]
+```manuscript
+fn open(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]
 ```
 
-## seal
+## public_key {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Result[Bytes, CryptoError]
+```manuscript
+fn public_key(seed: Bytes) -> Result[Bytes, CryptoError]
 ```
 
-## sha256
+## seal {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sha256: fn(data: Bytes)->Bytes
+```manuscript
+fn seal(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]
 ```
 
-## sha384
+## sha256 {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sha384: fn(data: Bytes)->Bytes
+```manuscript
+fn sha256(data: Bytes) -> Bytes
 ```
 
-## sha512
+## sha384 {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sha512: fn(data: Bytes)->Bytes
+```manuscript
+fn sha384(data: Bytes) -> Bytes
 ```
 
-## sign
+## sha512 {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, CryptoError]
+```manuscript
+fn sha512(data: Bytes) -> Bytes
 ```
 
-## verify
+## sign {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn sign(seed: Bytes, data: Bytes) -> Result[Bytes, CryptoError]
+```
 
-```text
-verify: fn(key: Bytes, data: Bytes, signature: Bytes)->Bool
+## verify {data-api-kind="Function"}
+
+```manuscript
+fn verify(key: Bytes, data: Bytes, signature: Bytes) -> Bool
 ```
 

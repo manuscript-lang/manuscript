@@ -19,7 +19,7 @@ errors. Single-symbol `import Name from "./module.ms"` remains supported.
 
 Types, interfaces, module functions, and imported symbols share one ordinary module namespace. Duplicate names, import/declaration collisions, and function overloading are rejected. Imports and declarations may appear in any order: collect names and signatures before checking bodies, so forward references and mutually recursive functions work. Type layout cycles follow the separate [recursive data rule](../../core-language/types/records.md#recursive-data), not module-cycle rules.
 
-The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The compiler bounds `Shareable`, `Equal`, and `Hashable` also have fixed identities. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
+The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The compiler bounds `Equal` and `Hashable` also have fixed identities. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
 
 All other standard declarations are explicit imports from the compiler-supplied `@std` directory, including `Decimal`, `Bytes`, collections, `Optional`, `Result`, `Closeable`, and runtime/host APIs. The [standard imports and API typing](../../standard-library/types/prelude.md) page lists their modules. These names are ordinary exports: without an import, a module may declare its own `Result`, `List`, or `parallel`. Import/declaration collisions still fail. Compiler support follows the canonical standard declaration identity, never its spelling. Optional/Result case shorthand becomes visible when its alternative type is imported and follows ordinary lookup and ambiguity rules; qualify `Result[T, E].error` when a local spelling shadows it.
 
@@ -31,14 +31,14 @@ Import renaming, namespace imports, re-exports, and wildcard imports have no syn
 
 The file `src/domain/customers.ms` exports a nominal identifier type:
 
-```text
+```manuscript
 export type CustomerId:
     value: String
 ```
 
 The file `src/main.ms` imports the individual symbol:
 
-```text
+```manuscript
 import CustomerId from "./domain/customers.ms"
 ```
 
@@ -48,7 +48,7 @@ Exporting a type makes it part of the module boundary; an internal declaration s
 
 An exported function, data type, or contract cannot expose an internal nominal type through a parameter, result, field, case payload, generic bound, or operation signature. Check the transitive public type surface through nested applications and exposed data members. Exported types from other modules may appear in a public signature without automatically re-exporting their names. Generic parameters themselves are not private nominal declarations.
 
-```text
+```manuscript
 type PrivateToken:
     value: String
 
@@ -59,13 +59,13 @@ export fn issue() -> PrivateToken:
 
 Exporting a record exposes every field and its constructor; exporting an alternative exposes every case and payload field; exporting an `interface` exposes every operation. Opaque exports and selective member visibility are unsupported. See [public data surfaces](../../core-language/types/records.md#public-data-surfaces).
 
-An `impl` belongs to the receiver's nominal data type's defining module and becomes available when that module is loaded. Imported public contracts can be implemented there. Concrete and generic implementations do not re-export declarations. Duplicate or overlapping receiver/instantiated contract pairs are rejected, ignoring bounds when checking overlap; bounds cannot choose competing implementations. These [coherence rules](../../core-language/types/contracts.md#coherence-and-visibility) prevent behavior from depending on unrelated imports.
+An `impl` in a source type's defining module becomes available wherever that type is used. An `impl` for an imported source type is local to the declaring module and does not become visible through imports. The interface may be local or imported. Concrete and generic implementations follow the same [coherence and visibility rules](../../core-language/types/contracts.md#coherence-and-visibility), including overlap rejection within the visible set and preservation of the selected implementation in explicit contract views.
 
 ## Standard-library imports
 
-```text
-import List from "@std/collections.ms"
-import { Result, map_error } from "@std/result.ms"
+```manuscript
+import { List, Map } from "@std/collections.ms"
+import Result from "@std/result.ms"
 import parallel from "@std/tasks.ms"
 ```
 
@@ -75,11 +75,11 @@ import parallel from "@std/tasks.ms"
 
 A project-root `ms.toml` can define file and directory aliases. With `@domain` mapped to `./src/domain` and `@customers` mapped to `./src/domain/customers.ms`, either import selects the same exported type:
 
-```text
+```manuscript
 import CustomerId from "@domain/customers.ms"
 ```
 
-```text
+```manuscript
 import CustomerId from "@customers"
 ```
 

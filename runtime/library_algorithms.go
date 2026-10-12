@@ -4,8 +4,8 @@ import "sort"
 
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	vars := []LibraryParam{p("T", "Shareable")}
-	libraryGeneric("collections", "map", "List[U]", []LibraryParam{p("T", "Shareable"), p("U", "Shareable")}, []LibraryParam{p("values", "List[T]"), p("transform", "fn(value:T)->U")}, func(ctx *Execution, r string, a []Value) Value {
+	vars := []LibraryParam{p("T", "")}
+	libraryGeneric("collections", "map", "List[U]", []LibraryParam{p("T", ""), p("U", "")}, []LibraryParam{p("values", "List[T]"), p("transform", "fn(value:T)->U")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(List).Items
 		out := make([]Value, len(items))
 		for i, v := range items {
@@ -24,7 +24,7 @@ func init() {
 		}
 		return List{r, out}
 	})
-	libraryGeneric("collections", "fold", "A", []LibraryParam{p("T", "Shareable"), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
+	libraryGeneric("collections", "fold", "A", []LibraryParam{p("T", ""), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		acc := a[1]
 		for _, v := range a[0].(List).Items {
 			CheckCancelled(ctx)
@@ -40,7 +40,7 @@ func init() {
 		})
 		return List{r, out}
 	})
-	libraryGeneric("collections", "map_keys", "List[K]", []LibraryParam{p("K", "Hashable"), p("V", "Shareable")}, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, r string, a []Value) Value {
+	libraryGeneric("collections", "map_keys", "List[K]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, r string, a []Value) Value {
 		entries := a[0].(Map).Entries
 		out := make([]Value, len(entries))
 		for i, e := range entries {
@@ -48,7 +48,7 @@ func init() {
 		}
 		return List{r, out}
 	})
-	libraryGeneric("collections", "map_values", "List[V]", []LibraryParam{p("K", "Hashable"), p("V", "Shareable")}, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, r string, a []Value) Value {
+	libraryGeneric("collections", "map_values", "List[V]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, r string, a []Value) Value {
 		entries := a[0].(Map).Entries
 		out := make([]Value, len(entries))
 		for i, e := range entries {
@@ -78,7 +78,7 @@ func init() {
 			return Set{r, out}
 		})
 	}
-	libraryAdd("io", "copy", libraryResult("Int", "IoError"), []LibraryParam{p("input", "ReadStream&Shareable"), p("output", "WriteStream&Shareable"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "copy", libraryResult("Int", "IoError"), []LibraryParam{p("input", "ReadStream"), p("output", "WriteStream"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[2].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -112,7 +112,7 @@ func init() {
 			total += int64(len(data.Items))
 		}
 	})
-	libraryAdd("io", "read_all", libraryResult("Bytes", "IoError"), []LibraryParam{p("input", "ReadStream&Shareable"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "read_all", libraryResult("Bytes", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[1].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")

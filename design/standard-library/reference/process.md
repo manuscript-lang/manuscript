@@ -6,38 +6,35 @@ title = "process"
 
 Import each required symbol with `import Name from "@std/process.ms"`.
 
-## CommandError
+## CommandError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-CommandError: CommandError
-implements: Error
-case InvalidInput
-case Unavailable
-case TimedOut
-case OutputLimit
-case Failed(message: String)
-operation message: fn()->String
+```manuscript
+type CommandError:
+    case InvalidInput
+    case Unavailable
+    case TimedOut
+    case OutputLimit
+    case Failed(message: String)
 ```
 
-## CommandOutput
-
-Kind: record.
-
-```text
-CommandOutput: CommandOutput
-field exit_code: Int
-field stdout: Bytes
-field stderr: Bytes
+```manuscript
+impl Error for CommandError:
+    fn message() -> String
 ```
 
-## Commands
+## CommandOutput {data-api-kind="Record"}
 
-Kind: interface.
+```manuscript
+type CommandOutput:
+    exit_code: Int
+    stdout: Bytes
+    stderr: Bytes
+```
 
-```text
-Commands: Commands
-operation run: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration)->Result[CommandOutput, CommandError]
+## Commands {data-api-kind="Interface"}
+
+```manuscript
+interface Commands:
+    fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]
 ```
 

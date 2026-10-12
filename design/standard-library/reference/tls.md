@@ -6,74 +6,65 @@ title = "tls"
 
 Import each required symbol with `import Name from "@std/tls.ms"`.
 
-## CertificateInfo
+## CertificateInfo {data-api-kind="Record"}
 
-Kind: record.
-
-```text
-CertificateInfo: CertificateInfo
-field subject: String
-field issuer: String
-field dns_names: List[String]
-field not_before: Timestamp
-field not_after: Timestamp
-field der: Bytes
+```manuscript
+type CertificateInfo:
+    subject: String
+    issuer: String
+    dns_names: List[String]
+    not_before: Timestamp
+    not_after: Timestamp
+    der: Bytes
 ```
 
-## TlsError
+## TlsError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-TlsError: TlsError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-case AuthenticationFailed
-operation message: fn()->String
+```manuscript
+type TlsError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case AuthenticationFailed
 ```
 
-## TlsInfo
-
-Kind: record.
-
-```text
-TlsInfo: TlsInfo
-field version: Int
-field cipher_suite: Int
-field alpn: String
-field peer_certificates: List[Bytes]
-field verified: Bool
+```manuscript
+impl Error for TlsError:
+    fn message() -> String
 ```
 
-## TlsOptions
+## TlsInfo {data-api-kind="Record"}
 
-Kind: record.
-
-```text
-TlsOptions: TlsOptions
-field server_name: String
-field roots_pem: String
-field certificate_pem: String
-field private_key_pem: String
-field alpn: List[String]
-field require_client_certificate: Bool
+```manuscript
+type TlsInfo:
+    version: Int
+    cipher_suite: Int
+    alpn: String
+    peer_certificates: List[Bytes]
+    verified: Bool
 ```
 
-## parse_certificates
+## TlsOptions {data-api-kind="Record"}
 
-Kind: fn.
-
-```text
-parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[CertificateInfo], TlsError]
+```manuscript
+type TlsOptions:
+    server_name: String
+    roots_pem: String
+    certificate_pem: String
+    private_key_pem: String
+    alpn: List[String]
+    require_client_certificate: Bool
 ```
 
-## verify_certificates
+## parse_certificates {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
+```
 
-```text
-verify_certificates: fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)->Result[Unit, TlsError]
+## verify_certificates {data-api-kind="Function"}
+
+```manuscript
+fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
 ```
 

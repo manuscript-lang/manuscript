@@ -6,13 +6,11 @@ title = "decimal"
 
 Import each required symbol with `import Name from "@std/decimal.ms"`.
 
-## Decimal
+## Decimal {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-Decimal: Decimal
-operation to_float: fn()->Float
-operation truncate_to_int: fn()->Optional[Int]
+```manuscript
+type Decimal:
+    fn to_float() -> Float
+    fn truncate_to_int() -> Optional[Int]
 ```
 

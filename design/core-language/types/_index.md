@@ -16,6 +16,6 @@ Choose a type based on the data you need to represent. Use a record for named fi
 | [Optional values](optionals.md) | Represent absence explicitly with some and none. |
 | [Collections](collections.md) | Use immutable lists, maps, and sets with eligible elements. |
 | [Equality and hashing](equality-and-hashing.md) | Understand value comparison and key eligibility. |
-| [Operation contracts](contracts.md) | Implement interfaces with concrete or generic blocks and choose plain or shared views. |
+| [Operation contracts](contracts.md) | Implement interfaces with concrete or generic blocks and construct explicit contract views. |
 | [Generics and bounds](generics.md) | Apply parameterized types and express required properties. |
 | [Type compatibility and expected types](compatibility.md) | Check exact types, contextual constructors, and inference boundaries. |

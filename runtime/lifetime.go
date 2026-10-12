@@ -8,12 +8,13 @@ import (
 
 type workLifetime struct {
 	mu       sync.Mutex
+	parent   *workLifetime
 	services []Value
 }
 
 func newExecution(parent *Execution, ctx context.Context) *Execution {
 	execution := inherit(parent, ctx)
-	execution.Lifetime = &workLifetime{}
+	execution.Lifetime = &workLifetime{parent: parent.Lifetime}
 	return execution
 }
 func registerService(execution *Execution, service *Background) {

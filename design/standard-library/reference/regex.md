@@ -6,56 +6,50 @@ title = "regex"
 
 Import each required symbol with `import Name from "@std/regex.ms"`.
 
-## Regex
+## Regex {data-api-kind="Native type"}
 
-Kind: native.
-
-```text
-Regex: Regex
+```manuscript
+type Regex:
+    fn matches(text: String) -> Bool
+    fn find_all(text: String, max_matches: Int) -> Result[List[String], RegexError]
+    fn replace(text: String, replacement: String, max_bytes: Int) -> Result[String, RegexError]
 ```
 
-## RegexError
+## RegexError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-RegexError: RegexError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type RegexError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
 ```
 
-## compile
-
-Kind: fn.
-
-```text
-compile: fn(pattern: String)->Result[Regex, RegexError]
+```manuscript
+impl Error for RegexError:
+    fn message() -> String
 ```
 
-## find_all
+## compile {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String], RegexError]
+```manuscript
+fn compile(pattern: String) -> Result[Regex, RegexError]
 ```
 
-## matches
+## find_all {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-matches: fn(pattern: Regex, text: String)->Bool
+```manuscript
+fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], RegexError]
 ```
 
-## replace
+## matches {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn matches(pattern: Regex, text: String) -> Bool
+```
 
-```text
-replace: fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)->Result[String, RegexError]
+## replace {data-api-kind="Function"}
+
+```manuscript
+fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Int) -> Result[String, RegexError]
 ```
 

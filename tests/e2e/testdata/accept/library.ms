@@ -11,10 +11,10 @@ import hex_encode from "@std/encoding.ms"
 import hex_decode from "@std/encoding.ms"
 import base64_decode from "@std/encoding.ms"
 import sha256 from "@std/crypto.ms"
-import split from "@std/text.ms"
-import scalar_values from "@std/text.ms"
-import from_scalars from "@std/text.ms"
-import scalar_length from "@std/text.ms"
+import split from "@std/string.ms"
+import scalar_values from "@std/string.ms"
+import from_scalars from "@std/string.ms"
+import scalar_length from "@std/string.ms"
 import parse_query from "@std/url.ms"
 import format_query from "@std/url.ms"
 import sqrt from "@std/math.ms"
@@ -26,7 +26,7 @@ import compress from "@std/compress.ms"
 import decompress from "@std/compress.ms"
 import JsonError from "@std/json.ms"
 import EncodingError from "@std/encoding.ms"
-import TextError from "@std/text.ms"
+import StringError from "@std/string.ms"
 import UrlError from "@std/url.ms"
 import BinaryError from "@std/binary.ms"
 import CompressionError from "@std/compress.ms"
@@ -137,7 +137,7 @@ test "expanded packages run through compiler":
         return panic(message: "check failed")
     if not (scalar_values(text: "é") == [233]):
         return panic(message: "check failed")
-    let text_success: Result[String, TextError] = ok(value: "é")
+    let text_success: Result[String, StringError] = ok(value: "é")
     if not (from_scalars(values: [233]) == text_success):
         return panic(message: "check failed")
     if not (sqrt(value: 9.0) == 3.0):

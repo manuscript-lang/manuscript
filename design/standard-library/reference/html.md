@@ -6,11 +6,9 @@ title = "html"
 
 Import each required symbol with `import Name from "@std/html.ms"`.
 
-## escape
+## escape {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-escape: fn(text: String)->String
+```manuscript
+fn escape(text: String) -> String
 ```
 

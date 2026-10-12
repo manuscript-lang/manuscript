@@ -7,7 +7,6 @@ import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import HttpError from "@std/http.ms"
 import WebSocketError from "@std/websocket.ms"
-import map_error from "@std/result.ms"
 import IoError from "@std/io.ms"
 import HttpExchange from "@std/http.ms"
 import HttpServerOptions from "@std/http.ms"
@@ -32,12 +31,19 @@ fn websocket_error(cause: WebSocketError) -> HttpError:
         Failed(message):
             return HttpError.Failed(message: message)
 
-fn echo(exchange: HttpExchange & Shareable) -> Result[Unit, HttpError]:
+fn socket_result[T](result: Result[T, WebSocketError]) -> Result[T, HttpError]:
+    match result:
+        ok(value):
+            return ok(value: value)
+        error(cause):
+            return error(cause: websocket_error(cause))
+
+fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     if exchange.path() == "/ws":
-        with socket = try map_error(result: exchange.upgrade(allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024), transform: websocket_error):
-            match try map_error(result: socket.receive(), transform: websocket_error):
+        with socket = try socket_result(result: exchange.upgrade(allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024)):
+            match try socket_result(result: socket.receive()):
                 some(message):
-                    let sent = try map_error(result: socket.send(data: message.data, text: message.text), transform: websocket_error)
+                    let sent = try socket_result(result: socket.send(data: message.data, text: message.text))
                 none:
                     return ok(value: unit)
         return ok(value: unit)
@@ -69,11 +75,11 @@ fn exercise(process: Process) -> Result[Unit, HttpError]:
                     error(_):
                         return panic(message: "Unexpected case")
         let websocket_options = WebSocketOptions(max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: false)
-        with socket = try map_error(result: process.network.web_socket(url: "ws://{server.address()}/ws", headers: Map[String, String](), subprotocols: ["echo"], options: websocket_options), transform: websocket_error):
+        with socket = try socket_result(result: process.network.web_socket(url: "ws://{server.address()}/ws", headers: Map[String, String](), subprotocols: ["echo"], options: websocket_options)):
             if not (socket.subprotocol() == "echo"):
                 return panic(message: "check failed")
-            let sent = try map_error(result: socket.send(data: "echo me".to_bytes(), text: true), transform: websocket_error)
-            match try map_error(result: socket.receive(), transform: websocket_error):
+            let sent = try socket_result(result: socket.send(data: "echo me".to_bytes(), text: true))
+            match try socket_result(result: socket.receive()):
                 some(message):
                     if not (message.text):
                         return panic(message: "check failed")

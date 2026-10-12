@@ -2,7 +2,7 @@ import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
 
-type Tree[T: Shareable]:
+type Tree[T]:
     value: T
     children: List[Tree[T]]
 

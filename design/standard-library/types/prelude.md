@@ -13,7 +13,7 @@ This page is the exact reference for standard exports, their identities, and API
 
 ## Names and identity
 
-Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Shareable`, `Equal`, and `Hashable`, as specified by [module declarations](../../modules-and-capabilities/modules/declarations.md). The three bounds describe compiler-verified sharing, equality, and hashing; ordinary behavior requirements use imported operation contracts. Keep new facilities in the standard library rather than expanding this list.
+Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Equal`, and `Hashable`, as specified by [module declarations](../../modules-and-capabilities/modules/declarations.md). The two bounds describe equality and hashing; passing values requires no sharing bound. Ordinary behavior requirements use imported operation contracts.
 
 `@std` is a reserved directory supplied by the pinned compiler/runtime distribution. Each path below is a standard module, and each name is an individual export. There are no wildcard imports or automatic imports of other exports from the same module.
 
@@ -23,7 +23,7 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 | `@std/bytes.ms` | `Bytes` |
 | `@std/collections.ms` | `List`, `Map`, `Set`, `MapEntry` |
 | `@std/optional.ms` | `Optional` |
-| `@std/result.ms` | `Result`, `map_error` |
+| `@std/result.ms` | `Result` |
 | `@std/cleanup.ms` | `Closeable` |
 | `@std/tasks.ms` | `parallel`, `check_cancelled`, `ExecutionError`, `OperationId`, `Background`, `BackgroundFailure`, `WorkStatus`, `StartError` |
 | `@std/faults.ms` | `panic` |
@@ -31,9 +31,8 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 | `@std/io.ms` | `Files`, `File`, `ReadStream`, `WriteStream`, `IoError` |
 | `@std/cli.ms` | `Process` |
 
-```text
+```manuscript
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
 ```
@@ -51,19 +50,18 @@ Some library identities need compiler support while remaining explicit exports:
 - `Optional` and `Result` are standard alternatives with ordinary case lookup. `try` recognizes the canonical Result identity; a user-defined alternative named Result does not qualify.
 - `for`, collection derivation, and guarded layout recognize the standard collection identities. `MapEntry` is an exported record; map iteration can infer it without importing its name.
 - `with` recognizes the canonical Closeable implementation, or an operation contract declaring the exact close signature. A module writing `impl Closeable` or a Closeable bound imports that name; using an already-typed resource does not require an otherwise unused import.
-- Runtime API special checks attach to the resolved standard callee. A user-defined `parallel` is an ordinary function and never receives pack or callable-proof rules.
+- Runtime API special checks attach to the resolved standard callee. A user-defined `parallel` is an ordinary function and never receives pack rules.
 
 A missing or substituted List/Decimal import rejects the corresponding literal during resolution/type checking. Inferred library values may be matched, traversed, or used through their declared members without importing every type in their public signatures. Naming such a type or using its unqualified expression constructors requires its own import. Primitive receiver members in the [data API](../data-and-io/operations.md) are fixed standard bindings and can likewise produce inferred library values; they add no ambient type names. Imports supply declarations, not files, clocks, or other external authority.
 
-`OperationId` is the single opaque, shareable identity for runtime operations, whether started by a joined group or admitted by a Background service. It has no source constructor and no implicit equality or hashing, and it grants no scheduling, joining, or transfer authority. A Background service's `status` and `cancel` act only on IDs it admitted. `WorkStatus` has nullary cases `Running`, `Succeeded`, `Failed`, `Cancelled`, `Crashed`, and `Unknown`; qualify these case names when necessary. `StartError` has `Closed` and `Full`. `IoError` has `Closed`, `InvalidInput`, `Unavailable`, `InvalidData`, `LimitExceeded`, and `Failed(message: String)`. These are shareable alternatives. These errors explicitly implement the common `Error` contract from `@std/errors.ms`; see [error contracts](../packages/contracts.md#errors). Execution errors are defined in [joining](../../concurrency/joining.md).
+`OperationId` is the single opaque identity for runtime operations, whether started by a joined group or admitted by a Background service. It has no source constructor and no implicit equality or hashing, and it grants no scheduling, joining, or transfer authority. A Background service's `status` and `cancel` act only on IDs it admitted. `WorkStatus` has nullary cases `Running`, `Succeeded`, `Failed`, `Cancelled`, `Crashed`, and `Unknown`; qualify these case names when necessary. `StartError` has `Closed` and `Full`. `IoError` has `Closed`, `InvalidInput`, `Unavailable`, and `Failed(message: String)`. These are ordinary alternatives. Execution errors are defined in [joining](../../concurrency/joining.md).
 
-```text
+```manuscript
 fn panic(message: String) -> Never
 fn check_cancelled() -> Unit
-fn map_error[T, E, F](result: Result[T, E], transform: fn(cause: E) -> F) -> Result[T, F]
 ```
 
-These lines specify bindings rather than complete source modules. `check_cancelled` unwinds the current execution if it has stopped; it returns `Unit` otherwise. `map_error` returns an unchanged success payload, or invokes `transform(cause: cause)` exactly once for an error. It invokes no callback for success and does not catch faults or cancellation. It is sequential and imposes no additional sharing bound.
+These lines specify bindings rather than complete source modules. `check_cancelled` unwinds the current execution if it has stopped; it returns `Unit` otherwise.
 
 ## Joined concurrency
 
@@ -71,30 +69,25 @@ All concurrency names are explicit library exports. The call below requires the 
 
 `parallel` requires `tasks` and permits only the optional named argument `timeout: Duration`. Omission means no added limit; an inherited deadline still applies. Negative timeouts fault. Zero-timeout, stop, join, and outcome rules follow [joining outcomes](../../concurrency/joining.md#group-lifecycle).
 
-`tasks` must be a bracket literal, optionally grouped in parentheses. Each position must independently resolve to a shareable zero-parameter function `fn() -> Ri`; each `Ri` must be shareable. The binding produces `Result[Pack[R1, …, Rn], ExecutionError]`. Here `Pack` is compiler notation, with no source type-name spelling or source constructor. Existing lists are rejected.
+`tasks` must be a bracket literal, optionally grouped in parentheses. Each position must independently resolve to a zero-parameter function `fn() -> Ri`. The binding produces `Result[Pack[R1, …, Rn], ExecutionError]`. Here `Pack` is compiler notation, with no source type-name spelling or source constructor. Existing lists are rejected.
 
-Standard concurrency callbacks require the argument's [callable sharing proof](../../ownership-and-cleanup/values/sharing.md#function-values). Function types themselves do not satisfy `Shareable`; an operation cannot return another function as a shareable result. Task preparation retains callback proofs internally, while result-pack sharing follows each result type.
+Standard concurrency callbacks are ordinary function values. Parameters, fields, collections, and generic forwarding preserve their call behavior. Operations may return functions or services; resource lifetime remains governed by explicit cleanup.
 
-### Direct calls only
+### Function values
 
-`parallel`, the `Background` constructor, and `Background.start` may appear only as the resolved callee of a direct call. A plain function signature cannot retain their callback-proof requirements.
+`parallel` requires a direct call because its literal pack determines a heterogeneous result shape. The `Background` constructor also remains a direct constructor call.
 
-- `let launch = background.start` and passing that binding to a helper are rejected.
-- Other standard operations follow ordinary function-value rules. Sequential `map_error` may be specialized and stored as a value.
-
-Source contracts cannot express these callback-proof requirements. Restricted background submission views are therefore unsupported.
+`background.start` and HTTP admission methods may be saved or passed to helpers. Source contracts can expose ordinary callback-taking operations, including wrappers around background submission.
 
 ### Inferred result packs
 
-A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`.
-
-Packs derive `Shareable` position by position, but have no equality, hashing, iteration, field access, or indexing. Generic helpers such as `map_error` can therefore preserve a parallel pack without a new source syntax.
+A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`. Packs may be passed between operations, but have no equality, hashing, iteration, field access, or indexing. An ordinary generic identity function can preserve a parallel pack without a new source syntax.
 
 ## Background service
 
-`Background(limit: Int)` constructs a synchronized native service under the current execution context. `limit` must be positive. Its only optional arguments are `reporter: fn(failure: BackgroundFailure) -> Unit`, `drain: Duration`, and `history_limit: Int`. The defaults are the host diagnostic sink, zero drain, and 128 completed statuses. `drain` and `history_limit` must be nonnegative. A supplied reporter must be shareable; retained reporter captures must remain usable through service shutdown.
+`Background(limit: Int)` constructs a synchronized native service under the current execution context. `limit` must be positive. Its only optional arguments are `reporter: fn(failure: BackgroundFailure) -> Unit`, `drain: Duration`, and `history_limit: Int`. The defaults are the host diagnostic sink, zero drain, and 128 completed statuses. `drain` and `history_limit` must be nonnegative. Retained reporter resources must remain usable through service shutdown.
 
-```text
+```manuscript
 type BackgroundFailure:
     case Failed(operation: OperationId, cause: String)
     case Crashed(operation: OperationId, message: String)
@@ -106,7 +99,7 @@ fn status(id: OperationId) -> WorkStatus
 fn close() -> Unit
 ```
 
-`start` requires a shareable callable. This is one operation signature: Operations without domain errors explicitly return `ok(value: unit)`, and operations with domain error types explicitly translate them to String using `map_error` or `match`. There is no generic method, implicit formatting of arbitrary errors, or overload. `Background` explicitly implements `Closeable` in the standard binding.
+`start` accepts an ordinary callable. This is one operation signature: Operations without domain errors explicitly return `ok(value: unit)`, and operations with domain error types explicitly translate them to String using `match`. There is no generic method, implicit formatting of arbitrary errors, or overload. `Background` explicitly implements `Closeable` in the standard binding.
 
 ### Failure reporting
 
@@ -118,14 +111,14 @@ Status eviction never reuses an ID for different work. An ID the service did not
 
 ## Capabilities and data operations
 
-The host's authority roots and stream signatures are defined by [CLI hosts](../hosts/cli.md) and [streams](../data-and-io/streams.md). Standard collection, byte, text, numeric, and duration members are defined in [minimum data operations](../data-and-io/operations.md). Source code cannot add implementations or members to intrinsic or standard native types. Source types may implement standard contracts in their own defining module.
+The host's authority roots and stream signatures are defined by [CLI hosts](../hosts/cli.md) and [streams](../data-and-io/streams.md). Standard collection, byte, text, numeric, and duration members are defined in [minimum data operations](../data-and-io/operations.md). Source code cannot add implementations or members to intrinsic or standard-library types. Source types may implement standard contracts in their defining module or through [local extensions](../../core-language/types/contracts.md#coherence-and-visibility).
 
 General user type packs, optional source parameters, generic operations, and third-party dependency package imports are unsupported. HTTP host registration follows the [bounded request API](../hosts/http.md#bounded-request-api).
 
 ## Data services and additional host capabilities
 
-`@std/queues.ms` exports `Queue` and `QueueError`; `@std/state.ms` exports `State`; `@std/pools.ms` exports `Pool`, `Lease`, and `PoolError`; `@std/builders.ms` exports `ListBuilder`, `MapBuilder`, `SetBuilder`, `BytesBuilder`, and `StringBuilder`. Their exact contracts live in [queues](../data-and-io/queues.md), [state and pools](../data-and-io/synchronized-state.md), and [builders](../data-and-io/builders.md). None is ambient. Opaque constructor parameter names are not source fields.
+`@std/queues.ms` exports `Queue`; `@std/sync.ms` exports `Synchronized` and `SynchronizedGuard`; `@std/pools.ms` exports `Pool`, `Lease`, and `PoolError`; `@std/builders.ms` exports `ListBuilder`, `MapBuilder`, `SetBuilder`, `BytesBuilder`, and `StringBuilder`. Their exact contracts live in [queues](../data-and-io/queues.md), [synchronized values and pools](../data-and-io/synchronized-state.md), and [builders](../data-and-io/builders.md). None is ambient. Opaque constructor parameter names are not source fields.
 
 `@std/time.ms` also exports `sleep(duration: Duration) -> Unit`, a sequential cancellable delay. Negative duration faults; zero performs a cancellation checkpoint.
 
-`@std/http.ms` exports the bounded request host types in [HTTP](../hosts/http.md). `Network.serve` is a direct-call-only operation requiring a proved shareable handler. `@std/process.ms` exports `Commands`, `CommandOutput`, and `CommandError` in [streams](../data-and-io/streams.md). CLI `Process` additionally has `network: Network & Shareable` and `commands: Commands & Shareable`. Imports provide types, while those fields provide actual authority.
+`@std/http.ms` exports the bounded request host types in [HTTP](../hosts/http.md). `Network.serve` accepts an ordinary handler and may be stored as a bound method. `@std/process.ms` exports `Commands`, `CommandOutput`, and `CommandError` in [streams](../data-and-io/streams.md). CLI `Process` additionally has `network: Network` and `commands: Commands`. Imports provide types, while those fields provide actual authority.

@@ -11,7 +11,7 @@ Use an explicit Network service to resolve names and open sockets. Connections, 
 
 ## `@std/net.ms`
 
-```text
+```manuscript
 fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]
 fn parse_cidr(text: String) -> Result[String, NetworkError]
 fn parse_ip(text: String) -> Result[String, NetworkError]
@@ -19,14 +19,14 @@ fn parse_ip(text: String) -> Result[String, NetworkError]
 
 ## `@std/tls.ms`
 
-```text
+```manuscript
 fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
 fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
 ```
 
 ## Connection operations
 
-```text
+```manuscript
 fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 fn write(data: Bytes) -> Result[Unit, IoError]
 fn shutdown_write() -> Result[Unit, NetworkError]
@@ -40,16 +40,16 @@ fn tls_info() -> Result[TlsInfo, TlsError]
 
 ## Listener operations
 
-```text
-fn accept() -> Result[Connection&Shareable, NetworkError]
+```manuscript
+fn accept() -> Result[Connection, NetworkError]
 fn address() -> String
 fn close() -> Unit
-fn accept_timeout(timeout: Duration) -> Result[Connection&Shareable, NetworkError]
+fn accept_timeout(timeout: Duration) -> Result[Connection, NetworkError]
 ```
 
 ## DatagramSocket operations
 
-```text
+```manuscript
 fn send(data: Bytes, address: String) -> Result[Unit, NetworkError]
 fn receive(max_bytes: Int) -> Result[Datagram, NetworkError]
 fn address() -> String
@@ -60,7 +60,7 @@ fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit,
 
 ## Authority and restrictions
 
-`process.network: Network & Shareable` remains the authority root, imported from `@std/http.ms`. Acquired Connection, Listener and DatagramSocket views are individually imported from `@std/net.ms`, closed with `with`, and also owned by Network. Network.close stops admission, cancels and joins in-flight DNS/dials/HTTP acquisition, closes owned services and handles, and waits for admitted I/O. Concurrent close callers join the same shutdown. Imports never manufacture native network authority.
+`process.network: Network` remains the authority root, imported from `@std/http.ms`. Acquired Connection, Listener and DatagramSocket views are individually imported from `@std/net.ms`, closed with `with`, and also owned by Network. Network.close stops admission, cancels and joins in-flight DNS/dials/HTTP acquisition, closes owned services and handles, and waits for admitted I/O. Concurrent close callers join the same shutdown. Imports never manufacture native network authority.
 
 ### Narrowing destination access
 
@@ -74,7 +74,7 @@ Use `restrict` to create a child Network with narrower access. The child cannot 
 
 ## Records
 
-```text
+```manuscript
 type Datagram:
     data: Bytes
     sender: String
@@ -138,17 +138,17 @@ HTTP/3 is intentionally excluded at the user's request. The HTTP/1.1, HTTP/2 and
 
 ## Network operations
 
-```text
+```manuscript
 fn lookup(name: String, max_records: Int, timeout: Duration) -> Result[List[String], NetworkError]
-fn connect(address: String, timeout: Duration) -> Result[Connection&Shareable, NetworkError]
-fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection&Shareable, NetworkError]
-fn listen(address: String) -> Result[Listener&Shareable, NetworkError]
-fn bind_datagram(address: String) -> Result[DatagramSocket&Shareable, NetworkError]
-fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network&Shareable, NetworkError]
-fn with_resolver(address: String) -> Result[Network&Shareable, NetworkError]
+fn connect(address: String, timeout: Duration) -> Result[Connection, NetworkError]
+fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection, NetworkError]
+fn listen(address: String) -> Result[Listener, NetworkError]
+fn bind_datagram(address: String) -> Result[DatagramSocket, NetworkError]
+fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network, NetworkError]
+fn with_resolver(address: String) -> Result[Network, NetworkError]
 fn resolve(name: String, kind: String, max_records: Int, timeout: Duration) -> Result[List[DnsRecord], NetworkError]
-fn connect_unix(path: String, timeout: Duration) -> Result[Connection&Shareable, NetworkError]
-fn listen_unix(path: String) -> Result[Listener&Shareable, NetworkError]
-fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection&Shareable, NetworkError]
-fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener&Shareable, NetworkError]
+fn connect_unix(path: String, timeout: Duration) -> Result[Connection, NetworkError]
+fn listen_unix(path: String) -> Result[Listener, NetworkError]
+fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection, NetworkError]
+fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener, NetworkError]
 ```

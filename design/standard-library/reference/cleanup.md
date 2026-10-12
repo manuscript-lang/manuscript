@@ -6,12 +6,10 @@ title = "cleanup"
 
 Import each required symbol with `import Name from "@std/cleanup.ms"`.
 
-## Closeable
+## Closeable {data-api-kind="Interface"}
 
-Kind: interface.
-
-```text
-Closeable: Closeable
-operation close: fn()->Unit
+```manuscript
+interface Closeable:
+    fn close() -> Unit
 ```
 

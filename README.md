@@ -81,7 +81,7 @@ tree. From a source checkout, use `toolchain/go/bin/go build -mod=vendor main.go
 
 ## Language and implementation
 
-Use `type` for records and alternatives, and `interface` for operation contracts. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declared parameters, as in `impl ReadValue[T] for Box[T]:`.
+Use `type` for records and alternatives, and `interface` for operation contracts. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declared parameters, as in `impl ReadValue[T] for Box[T]:`. Implementations for imported source types are [local extensions](design/core-language/types/contracts.md#coherence-and-visibility), visible only in the module declaring them.
 
 The implementation includes cleanup, joined and background work, queues, state and pools, builders, and explicit CLI, HTTP, and subprocess capabilities. External adapters, advanced host APIs, and generalized structural editing still have design work. Check [coverage](IMPLEMENTATION.md) for exact limits.
 
@@ -152,6 +152,12 @@ controls. Keep site customizations in these files rather than editing the
 vendored theme. After a presentation change, rebuild `docs/` with `hugo --minify
 --panicOnWarning --cleanDestinationDir`.
 
+Label Manuscript code fences `manuscript`; keep terminal output labeled `text`.
+The docs reuse the VS Code extension's grammar in
+`extensions/vscode/syntaxes/manuscript.tmLanguage.json`. Change lexical rules
+there, then run `node --test tests/docs/highlighting.test.cjs` to check the
+browser adapter before rebuilding the site.
+
 ## CI/CD
 
 [The GitHub Actions pipeline](.github/workflows/cicd.yml) builds the design book on branch pushes and pull requests using Hugo Extended 0.146.7. Pushes that only change generated `docs/` files are skipped. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.
@@ -216,3 +222,5 @@ reference describes the compiler version bundled with that binary.
 `documentation/call-rules.md` is the canonical source for special call rules;
 `make docs` also regenerates its page in the design book.
 Standard library types and signatures live in [`stdlib/`](stdlib/README.md) as Manuscript source. Editor adapters can resolve their declarations through the tooling navigation APIs; `ms stdlib <directory>` exports the pinned source documents.
+
+Common JavaScript data operations have immutable, typed equivalents on List, String, Map, Set, Bytes, BigInt, and Regex. See the [JavaScript built-in coverage guide](design/standard-library/packages/javascript-builtins.md) for receiver methods, examples, and remaining gaps.

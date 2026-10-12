@@ -22,7 +22,7 @@ A parallel call waits for all the operations it started, including their cleanup
 
 `ExecutionError` is exported by `@std/tasks.ms`; import it when naming the result type. Its Crashed payload uses `OperationId`, also exported by `@std/tasks.ms`. The standard declaration is:
 
-```text
+```manuscript
 type ExecutionError:
     case TimedOut
     case Crashed(operation: OperationId, message: String)

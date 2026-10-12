@@ -11,13 +11,12 @@ These fixtures check standard imports and API identities, concurrent sharing, da
 
 ## Standard imports and declaration identity
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 
 fn amount() -> Result[Decimal, String]:
     return ok(value: 12.50d)
@@ -25,12 +24,7 @@ fn amount() -> Result[Decimal, String]:
 test "explicit standard imports":
     if not ([1, 2].length() == 2):
         return panic(message: "check failed")
-    let outcome = map_error(
-        result: amount(),
-        transform: fn(cause: String) -> Int:
-            return cause.byte_length()
-    )
-    match outcome:
+    match amount():
         ok(value):
             if not (value == 12.50d):
                 return panic(message: "check failed")
@@ -38,11 +32,11 @@ test "explicit standard imports":
             return panic(message: "Unexpected case")
 ```
 
-Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove map_error and reject its call. Importing Result alone must not expose map_error, and importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../standard-library/hosts/cli.md).
+Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove panic and reject its call. Importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../standard-library/hosts/cli.md).
 
 Accept this independent module without standard imports:
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 type List:
@@ -77,11 +71,10 @@ Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a
 
 ## Error adaptation and inferred packs
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
 
@@ -113,23 +106,31 @@ test "pack helper":
         error(_):
             return panic(message: "Unexpected case")
 
+fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
+    match outcome:
+        ok(value):
+            return ok(value: value)
+        error(cause):
+            return error(cause: "Error {cause}")
+
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(cause: 7)
-    let translate = fn(cause: Int) -> String:
-        return "Error {cause}"
-    let converted = map_error(result: failed, transform: translate)
     let expected: Result[Int, String] = error(cause: "Error 7")
-    if not (converted == expected):
+    if not (describe(outcome: failed) == expected):
+        return panic(message: "check failed")
+    let succeeded: Result[Int, Int] = ok(value: 3)
+    let unchanged: Result[Int, String] = ok(value: 3)
+    if not (describe(outcome: succeeded) == unchanged):
         return panic(message: "check failed")
 ```
 
-Accept the complete `load` module in [parallel](../../concurrency/parallel.md) too. Replace any error adapter with direct `try` under LoadError and reject the incompatible error type. Moving the probe's `try parallel` directly into the Unit test is rejected. Changing the copied pack pattern to `[number]` is rejected for arity. Passing an existing list as tasks is rejected; qualifying or annotating a source type `Pack` is an unknown-name rejection. `parallel(tasks: [])` can be matched and its success destructured as `[]`.
+Accept the complete `load` module in [parallel](../../concurrency/parallel.md) too. Replace any Result match with direct `try` under LoadError and reject the incompatible error type. Moving the probe's `try parallel` directly into the Unit test is rejected. Changing the copied pack pattern to `[number]` is rejected for arity. Passing an existing list as tasks is rejected; qualifying or annotating a source type `Pack` is an unknown-name rejection. `parallel(tasks: [])` can be matched and its success destructured as `[]`.
 
-For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn(id: Int) -> Int`. Reject start operations returning Int or plain Unit; accept only shareable `fn() -> Result[Unit, String]`. Use controlled reporter fixtures to verify String errors, crashes, status expiry, bounded overflow fallback, and reporter-fault fallback without recursive reporting.
+For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn(id: Int) -> Int`. Reject start operations returning Int or plain Unit; accept only `fn() -> Result[Unit, String]`. Use controlled reporter fixtures to verify String errors, crashes, status expiry, bounded overflow fallback, and reporter-fault fallback without recursive reporting.
 
 ## Sharing and contract cleanup
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Bytes from "@std/bytes.ms"
@@ -157,41 +158,19 @@ test "contract-valued cleanup":
                     return panic(message: "check failed")
 ```
 
-This fake represents an already-closed stream, so its close is idempotent and has no external release obligation. Also accept `(File & Shareable)(value: ClosedFile(marker: unit))` as the with initializer: cleanup works with either view. Reject `with` over a concrete type merely having a method named close without `impl Closeable`. Reject a contract with the wrong close signature. Verify native and source fake shared File values are interchangeable through Files.open's `Result[File & Shareable, IoError]` result.
+This fake represents an already-closed stream, so its close is idempotent and has no external release obligation. Reject `with` over a concrete type merely having a method named close without `impl Closeable`. Reject a contract with the wrong close signature. Verify native and source fake File values are interchangeable through Files.open's `Result[File, IoError]` result.
 
-A bare function parameter carries no sharing proof. Reject a parallel closure capturing that parameter, even if a particular caller passes a safe named function. Accept a plain view over an implementing record containing a bare function field or unsynchronized native state for sequential use, but reject its shared view construction; such storage lacks a type-level sharing guarantee.
+Accept a function parameter as a parallel callback, a function-bearing record behind a contract view, and callbacks passed through `identity[T]`, fields, returned values, lists, and branch/var merges. Snapshot captures remain unchanged; assignment to an outer captured binding remains rejected.
 
-Accept concurrent captures of shared contract views, shareable concrete receivers, and generic values bounded by both Shareable and the behavioral contract. Reject concurrent captures of plain contract views and bound methods extracted from them, even when a particular runtime receiver is safe.
+Accept stored `Background.start` and HTTP serve methods, and ordinary wrappers forwarding callbacks. A bare `parallel` reference and type constructors remain unavailable as ordinary function values because their construction/pack syntax is not a function signature.
 
-Test captured-function wrappers and branch/var merges so an unsafe alternative cannot retain a safe callable proof.
-
-Independently reject this complete module at the parallel call: generic forwarding erases the callable proof even for this safe input.
-
-```text
-import Result from "@std/result.ms"
-import ExecutionError from "@std/tasks.ms"
-import parallel from "@std/tasks.ms"
-
-fn identity[T](value: T) -> T:
-    return value
-
-fn rejected_forwarding() -> Result[Unit, ExecutionError]:
-    let safe = fn() -> Int:
-        return 1
-    let forwarded = identity(value: safe)
-    let [value] = try parallel(tasks: [forwarded])
-    return ok(value: unit)
-```
-
-Replacing forwarded with safe accepts the function. A generic function with `T: Shareable` instead rejects passing safe at bound checking. A `Box[T]` field storing a function does not restore the erased proof; `Box[T: Shareable]` rejects a function type argument. Ordinary generic data values and inferred result packs retain their type-level sharing properties; their behavior is unchanged.
-
-Independently reject extracting `let launch = background.start`, `let constructor = Background`, a bare parallel reference, and forwarding these references to identity or a function parameter. These call-only bindings have requirements a plain function type cannot retain. A source wrapper that accepts an ordinary function parameter and forwards it to Background.start is rejected for missing callable proof at that direct call.
+Run `tests/e2e/testdata/accept/synchronized.ms` for complete updates, forwarding, immutable snapshots, builders, fault cleanup, stale guards, and ancestor reentry. Runtime tests must exercise simultaneous increments, cancellation while waiting and holding, concurrent release, access racing with release/reacquisition, undelivered acquisition disposal, and builder freeze racing with mutation. Reject direct Synchronized get/set, guard construction, and equality/hashing of either synchronized type.
 
 ## Data and numeric outcomes
 
 Use the accepted modules in [minimum data operations](../../standard-library/data-and-io/operations.md). In addition:
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Decimal from "@std/decimal.ms"

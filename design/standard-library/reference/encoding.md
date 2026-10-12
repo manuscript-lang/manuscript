@@ -6,48 +6,41 @@ title = "encoding"
 
 Import each required symbol with `import Name from "@std/encoding.ms"`.
 
-## EncodingError
+## EncodingError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-EncodingError: EncodingError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type EncodingError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
 ```
 
-## base64_decode
-
-Kind: fn.
-
-```text
-base64_decode: fn(text: String, url_safe: Bool, max_bytes: Int)->Result[Bytes, EncodingError]
+```manuscript
+impl Error for EncodingError:
+    fn message() -> String
 ```
 
-## base64_encode
+## base64_decode {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-base64_encode: fn(data: Bytes, url_safe: Bool)->String
+```manuscript
+fn base64_decode(text: String, url_safe: Bool, max_bytes: Int) -> Result[Bytes, EncodingError]
 ```
 
-## hex_decode
+## base64_encode {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-hex_decode: fn(text: String, max_bytes: Int)->Result[Bytes, EncodingError]
+```manuscript
+fn base64_encode(data: Bytes, url_safe: Bool) -> String
 ```
 
-## hex_encode
+## hex_decode {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn hex_decode(text: String, max_bytes: Int) -> Result[Bytes, EncodingError]
+```
 
-```text
-hex_encode: fn(data: Bytes)->String
+## hex_encode {data-api-kind="Function"}
+
+```manuscript
+fn hex_encode(data: Bytes) -> String
 ```
 

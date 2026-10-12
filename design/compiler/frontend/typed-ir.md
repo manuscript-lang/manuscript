@@ -11,7 +11,7 @@ After checking source, the compiler stores the program in a typed intermediate r
 
 | Fact | Why it remains explicit |
 | --- | --- |
-| Types, sharing bounds, and resolved operations | Preserve plain/shared contract identity, receiver-sharing proofs, and substituted generic implementation selection; select representations and validate API contracts |
+| Types, comparison bounds, and resolved operations | Preserve nominal contract identity and substituted generic implementation selection; select representations and validate API contracts |
 | Argument names and parameters | Resolve omitted single-parameter labels and preserve checked parameter mapping and written evaluation order |
 | Lists and fixed positional packs | Retain homogeneous element types or each position's exact type |
 | Destructuring | Retain shapes, field bindings, and extraction order |

@@ -68,15 +68,7 @@ func StandardFunction(name, result string) Value {
 				return Unit{}
 			}
 		})
-	case "map_error":
-		return NewFunction([]string{"result", "transform"}, result, func(ctx *Execution, args []Value) Value {
-			outcome := args[0].(Alternative)
-			if outcome.Tag == "ok" {
-				return Alternative{result, "ok", outcome.Fields}
-			}
-			cause := Invoke(ctx, args[1], []Argument{{"cause", outcome.Fields[0]}})
-			return Alternative{result, "error", []Value{cause}}
-		})
+
 	}
 	return Panic("unavailable standard function " + name)
 }
@@ -193,6 +185,7 @@ func joined(parent *Execution, operations []func(*Execution) Value, timeout *Dur
 
 type CleanupAction struct {
 	contract  string
+	scope     TypeScope
 	execution *Execution
 	resource  Value
 	done      bool
@@ -215,7 +208,7 @@ func (action *CleanupAction) Run() {
 			defer func() { cleanup = recover() }()
 			resource := action.resource
 			action.resource = nil
-			Invoke(Shield(action.execution), CleanupOperation(resource, action.contract), nil)
+			Invoke(Shield(action.execution), CleanupOperation(resource, action.contract, action.scope), nil)
 		}()
 	}
 	if cleanup != nil {
@@ -249,9 +242,12 @@ func NewCleanupStack() *CleanupStack { return &CleanupStack{} }
 func (stack *CleanupStack) Push(ctx *Execution, resource Value) *CleanupAction {
 	return stack.PushContract(ctx, resource, "")
 }
-func (stack *CleanupStack) PushContract(ctx *Execution, resource Value, contract string) *CleanupAction {
+func (stack *CleanupStack) PushContract(ctx *Execution, resource Value, contract string, scopes ...TypeScope) *CleanupAction {
 	action := NewCleanup(ctx, resource)
 	action.contract = contract
+	if len(scopes) > 0 {
+		action.scope = scopes[0]
+	}
 	action.stack = stack
 	stack.actions = append(stack.actions, action)
 	return action
@@ -284,12 +280,12 @@ func (stack *CleanupStack) Unwind() {
 	}
 }
 
-func CleanupOperation(resource Value, contract string) Value {
+func CleanupOperation(resource Value, contract string, scopes ...TypeScope) Value {
 	if contract == "" {
 		switch resource.(type) {
 		case Record, Alternative:
 			contract = "@std/Closeable"
 		}
 	}
-	return Bind(resource, contract, "close")
+	return Bind(resource, contract, "close", scopes...)
 }

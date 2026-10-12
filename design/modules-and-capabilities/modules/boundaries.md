@@ -13,12 +13,12 @@ A module boundary tells callers which data and operations they may use. Keep tho
 
 The following uses application-defined `Item`, `Stock`, and `OrderError` types:
 
-```text
+```manuscript
 interface Inventory:
     fn check(items: List[Item]) -> Result[Stock, OrderError]
 
 fn check_stock(
-    inventory: Inventory & Shareable,
+    inventory: Inventory,
     items: List[Item],
 ) -> Result[Stock, OrderError]:
     return inventory.check(items: items)
@@ -29,9 +29,9 @@ let first = fn() -> Result[Stock, OrderError]:
 let [stock] = try parallel(tasks: [first])
 ```
 
-The closure/call fragment belongs to an enclosing function returning `Result[U, ExecutionError]`. To propagate OrderError in the same function, first translate it explicitly with `map_error`; [parallel](../../concurrency/parallel.md) gives a complete example.
+The closure/call fragment belongs to an enclosing function returning `Result[U, ExecutionError]`. To propagate OrderError in the same function, first translate it explicitly with `match`; [parallel](../../concurrency/parallel.md) gives a complete example.
 
-The operation accepts its capability explicitly and returns the unchanged domain `Result`. In this concurrent example the enclosing function's inventory input has the shared `Inventory & Shareable` type, preserving the receiver proof in the captured capability and across check_stock's parameter. A plain Inventory view would support sequential calls but could not be captured by this concurrent closure. The caller chooses concurrent execution through an ordinary API. The outer `try` handles execution failure; `stock` still contains the inventory domain outcome. The captured data must also meet the API's sharing requirements.
+The operation accepts its capability explicitly and returns the unchanged domain `Result`. The ordinary Inventory view can be captured without a sharing annotation; its implementation coordinates any shared mutable state. The caller chooses concurrent execution through an ordinary API. The outer `try` handles execution failure; `stock` still contains the inventory domain outcome.
 
 Submitting work to a `Background` service instead chooses that service's fixed lifetime. Passing a reference does not transfer cleanup or keep a scoped resource open.
 

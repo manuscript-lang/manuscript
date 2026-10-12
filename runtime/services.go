@@ -9,16 +9,19 @@ import (
 )
 
 func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
-	name, _, _ := splitType(typ)
+	name, _ := splitType(typ)
 	switch name {
 	case "@std/Queue":
+		if len(args) == 0 {
+			return &Queue{typ: typ}
+		}
 		capacity := args[0].Value.(int64)
 		if capacity <= 0 || capacity > int64(^uint(0)>>1) {
 			return Panic("Queue capacity must be positive")
 		}
-		return &Queue{typ: typ, capacity: int(capacity), changed: make(chan struct{})}
-	case "@std/State":
-		return &State{typ: typ, value: args[0].Value}
+		return &Queue{typ: typ, capacity: int(capacity)}
+	case "@std/Synchronized":
+		return &Synchronized{typ: typ, value: args[0].Value, changed: make(chan struct{})}
 	case "@std/Pool":
 		return newPool(typ, args[0].Value.(List))
 	case "@std/ListBuilder", "@std/MapBuilder", "@std/SetBuilder", "@std/BytesBuilder", "@std/StringBuilder":
@@ -27,117 +30,66 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 	return Construct(typ, args)
 }
 
+// Queue is a local mutable FIFO. Concurrent callers must protect every access
+// with the same Synchronized acquisition, including reads and saved methods.
 type Queue struct {
-	mu       sync.Mutex
 	typ      string
-	capacity int
+	capacity int // Zero means unbounded; explicitly supplied capacities must be positive.
 	items    []Value
-	closed   bool
-	changed  chan struct{}
 }
 
-func (q *Queue) notify() { close(q.changed); q.changed = make(chan struct{}) }
 func (q *Queue) Operation(name string) Function {
 	element := typeArguments(q.typ)[0]
-	if name == "close" {
-		return NewFunction(nil, "Unit", func(_ *Execution, _ []Value) Value {
-			q.mu.Lock()
-			defer q.mu.Unlock()
-			if !q.closed {
-				q.closed = true
-				q.notify()
-			}
-			return Unit{}
-		})
-	}
 	labels, result := []string{}, "@std/Optional["+element+"]"
-	if name == "send" {
-		labels = []string{"value"}
-		result = "@std/Result[Unit][@std/QueueError]"
-	}
-	return NewFunction(labels, result, func(ctx *Execution, args []Value) Value {
-		for {
-			CheckCancelled(ctx)
-			q.mu.Lock()
-			if name == "send" {
-				if q.closed {
-					q.mu.Unlock()
-					return Alternative{result, "error", []Value{Alternative{Type: "@std/QueueError", Tag: "Closed"}}}
-				}
-				if len(q.items) < q.capacity {
-					q.items = append(q.items, args[0])
-					q.notify()
-					q.mu.Unlock()
-					return Alternative{result, "ok", []Value{Unit{}}}
-				}
-			} else if name == "receive" {
-				if len(q.items) > 0 {
-					value := q.items[0]
-					q.items[0] = nil
-					q.items = q.items[1:]
-					q.notify()
-					q.mu.Unlock()
-					return optional(element, value, true)
-				}
-				if q.closed {
-					q.mu.Unlock()
-					return optional(element, nil, false)
-				}
-			} else {
-				q.mu.Unlock()
-				return Panic("unknown Queue operation")
-			}
-			changed := q.changed
-			q.mu.Unlock()
-			select {
-			case <-changed:
-			case <-ctx.Context.Done():
-				CheckCancelled(ctx)
-			}
-		}
-	})
-}
-
-type State struct {
-	mu    sync.Mutex
-	typ   string
-	value Value
-}
-
-func (s *State) Operation(name string) Function {
-	labels, result := []string{}, typeArguments(s.typ)[0]
-	if name == "set" || name == "swap" {
-		labels = []string{"value"}
-	}
-	if name == "set" {
-		result = "Unit"
+	switch name {
+	case "enqueue":
+		labels, result = []string{"value"}, "Bool"
+	case "length":
+		result = "Int"
+	case "is_empty":
+		result = "Bool"
+	case "dequeue", "peek":
+	default:
+		Panic("unknown Queue operation")
 	}
 	return NewFunction(labels, result, func(_ *Execution, args []Value) Value {
-		s.mu.Lock()
-		defer s.mu.Unlock()
 		switch name {
-		case "get":
-			return s.value
-		case "set":
-			s.value = args[0]
-			return Unit{}
-		case "swap":
-			old := s.value
-			s.value = args[0]
-			return old
+		case "enqueue":
+			if q.capacity > 0 && len(q.items) == q.capacity {
+				return false
+			}
+			q.items = append(q.items, args[0])
+			return true
+		case "length":
+			return int64(len(q.items))
+		case "is_empty":
+			return len(q.items) == 0
+		default:
+			if len(q.items) == 0 {
+				return optional(element, nil, false)
+			}
+			value := q.items[0]
+			if name == "dequeue" {
+				q.items[0] = nil
+				q.items = q.items[1:]
+				if len(q.items) == 0 {
+					q.items = nil
+				}
+			}
+			return optional(element, value, true)
 		}
-		return Panic("unknown State operation")
 	})
 }
 
 type Builder struct {
+	mu     sync.Mutex
 	typ    string
 	value  Value
 	sealed bool
 }
 
 func newBuilder(typ string) *Builder {
-	name, args, _ := splitType(typ)
+	name, args := splitType(typ)
 	b := &Builder{typ: typ}
 	switch name {
 	case "@std/ListBuilder":
@@ -165,6 +117,8 @@ func (b *Builder) Operation(name string) Function {
 		labels = []string{"values"}
 	}
 	return NewFunction(labels, "", func(ctx *Execution, args []Value) Value {
+		b.mu.Lock()
+		defer b.mu.Unlock()
 		if name == "freeze" {
 			b.sealed = true
 			return b.value
@@ -349,7 +303,7 @@ func (l *Lease) Operation(name string) Function {
 			return Alternative{result, "error", []Value{Alternative{Type: "@std/PoolError", Tag: "Closed"}}}
 		}
 		view := l.resource.(View)
-		return Alternative{result, "ok", []Value{View{view.Type, &leaseReceiver{lease: l, value: view}}}}
+		return Alternative{result, "ok", []Value{View{Type: view.Type, Receiver: &leaseReceiver{lease: l, value: view}, Scope: view.Scope}}}
 	})
 }
 func (l *Lease) close(ctx *Execution) {

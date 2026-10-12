@@ -110,6 +110,11 @@ func navigation(result compiler.Result, d document, p position, method string) a
 	if selected := occurrenceAt(result, d, p); selected != nil {
 		for _, entry := range sourceIndex(result) {
 			if entry.key == selected.key && entry.declaration {
+				// Operation keys group a contract and all implementations for
+				// rename. Definition lookup follows the checked concrete method.
+				if i.Method != nil && i.Method.ID != "" && (entry.info == nil || entry.info.Method == nil || entry.info.Method.ID != i.Method.ID) {
+					continue
+				}
 				return []any{occurrenceLocation(result, entry)}
 			}
 		}

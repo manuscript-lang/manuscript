@@ -13,7 +13,7 @@ Loops are statements, not expressions. Manuscript has no labeled loops, loop-res
 
 ## Traversing a list
 
-```text
+```manuscript
 fn sum(values: List[Int]) -> Int:
     var total = 0
     for value in values:
@@ -22,7 +22,7 @@ fn sum(values: List[Int]) -> Int:
     return total
 ```
 
-The list contains shareable integers. Each iteration binds an element and updates the accumulator. Addition uses checked `Int` arithmetic, so overflow is a [programming fault](../errors/faults.md).
+The list contains integers. Each iteration binds an element and updates the accumulator. Addition uses checked `Int` arithmetic, so overflow is a [programming fault](../errors/faults.md).
 
 ## Iterable types and binding
 
@@ -36,7 +36,7 @@ Evaluate a `for`'s iterable expression once before entering the loop. The loop i
 
 `MapEntry[K, V]` is an immutable record with fields `key: K` and `value: V`. It uses the map's key/value eligibility requirements. Its type and named constructor `MapEntry[K, V](key: key, value: value)` are imported from `@std/collections.ms`; field access is ordinary record access. Iteration infers the entry type without requiring an import of its name. It is not a positional pair. Destructure an entry inside the body when convenient.
 
-```text
+```manuscript
 fn total(values: Map[String, Int]) -> Int:
     var sum = 0
     for entry in values:
@@ -49,7 +49,7 @@ fn total(values: Map[String, Int]) -> Int:
 
 ## Repeating while a condition holds
 
-```text
+```manuscript
 fn count_down(start: Int) -> Int:
     var remaining = start
     while remaining > 0:

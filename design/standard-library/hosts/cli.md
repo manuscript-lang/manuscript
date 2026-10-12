@@ -15,32 +15,32 @@ The selected entry module must export exactly one nongeneric main with that para
 
 `Process` is a standard immutable record:
 
-```text
+```manuscript
 type Process:
     arguments: List[String]
     environment: Map[String, String]
-    stdin: ReadStream & Shareable
-    stdout: WriteStream & Shareable
-    stderr: WriteStream & Shareable
-    files: Files & Shareable
-    clock: Clock & Shareable
-    network: Network & Shareable
-    commands: Commands & Shareable
+    stdin: ReadStream
+    stdout: WriteStream
+    stderr: WriteStream
+    files: Files
+    clock: Clock
+    network: Network
+    commands: Commands
 
 interface Clock:
     fn now() -> Instant
 
 interface Files:
-    fn open(path: String) -> Result[File & Shareable, IoError]
+    fn open(path: String) -> Result[File, IoError]
 ```
 
 Arguments exclude the executable name. Environment is a snapshot; duplicate OS names are resolved by the host before entry. Invalid UTF-8 in process inputs is a startup failure on native stderr with exit 70 before main runs. Relative file paths use the fixed startup working directory. The specified file API opens read-only files; file creation remains an additional API contract. Network and command operations are specified in [HTTP](http.md) and [subprocess execution](../data-and-io/streams.md).
 
-The host creates Files, Clock, and stdio behind shared views. Those field types make Process shareable; Files.open preserves sharing in its returned File view. Applications and source fakes follow the same [view-conversion rules](../../core-language/types/contracts.md#shared-contract-views).
+The host creates Files, Clock, and stdio behind ordinary contract views. Process and the File returned by Files.open are safe for concurrent access. Applications and source fakes follow the same [view-conversion rules](../../core-language/types/contracts.md#explicit-contract-views).
 
 Importing an interface supplies no authority. Files, clock, stdio, and environment arrive only through Process. The host closes roots after main and its scoped services finish; the application registers acquired files with `with`. Early root-stream closure affects every alias.
 
-```text
+```manuscript
 import Process from "@std/cli.ms"
 
 export fn main(process: Process) -> Int:
@@ -64,8 +64,8 @@ Construct application Background services in main with `with`, inside their depe
 
 ## Additional explicit roots
 
-`Process` also exposes `network: Network & Shareable` and `commands: Commands & Shareable` for the [bounded HTTP host](http.md) and [bounded subprocess execution](../data-and-io/streams.md). These capabilities are synchronized host roots. Network services register under their construction execution and join before host roots are released. The host provides no ambient networking or process constructor.
+`Process` also exposes `network: Network` and `commands: Commands` for the [bounded HTTP host](http.md) and [bounded subprocess execution](../data-and-io/streams.md). These capabilities are synchronized host roots. Network services register under their construction execution and join before host roots are released. The host provides no ambient networking or process constructor.
 
 ## General-purpose authority roots
 
-Process additionally supplies `filesystem: FileSystem & Shareable`, `entropy: Entropy & Shareable`, `wall_clock: WallClock & Shareable`, and `system: System & Shareable`. Imports come from `@std/fs.ms`, `@std/random.ms`, `@std/time.ms`, and `@std/system.ms` respectively. These roots are host-created; the native CLI grants its OS authority, not a restricted sandbox. Canonical operations are in [general-purpose packages](../packages/_index.md). Existing Files, Network and Commands identities are preserved. Network owns its acquired TCP/UDP/TLS handles and joins them during host-root shutdown.
+Process additionally supplies `filesystem: FileSystem`, `entropy: Entropy`, `wall_clock: WallClock`, and `system: System`. Imports come from `@std/fs.ms`, `@std/random.ms`, `@std/time.ms`, and `@std/system.ms` respectively. These roots are host-created; the native CLI grants its OS authority, not a restricted sandbox. Canonical operations are in [general-purpose packages](../packages/_index.md). Existing Files, Network and Commands identities are preserved. Network owns its acquired TCP/UDP/TLS handles and joins them during host-root shutdown.

@@ -9,7 +9,7 @@ weight = 16
 
 Equality compares eligible values by their contents. Hashing is the additional property needed to use a value as a map key or set element. The compiler checks these properties from the type. Services, resources, and capabilities do not gain equality automatically.
 
-Equality is by value for eligible shareable data types; services, resources, and capabilities have no implicit equality.
+Equality is by value for eligible data types; services, resources, and capabilities have no implicit equality.
 
 ## Eligibility and value behavior
 
@@ -17,7 +17,7 @@ Equality is by value for eligible shareable data types; services, resources, and
 
 String equality compares exact UTF-8 scalar sequences without Unicode normalization. Bytes compare byte sequences. Decimal equality compares numeric value rather than spelling or trailing zeroes. Hashing must agree with equality: equal values have equal hashes, but unequal values may collide. Hash values/algorithms are not a stable serialized format or a public source operation.
 
-Records compare only with the same instantiated nominal type, field by field. Alternatives require the same instantiated type, tag, and equal payload fields. A record/alternative is `Equal` when every component is eligible for equality, and `Hashable` when every component is eligible for hashing. Optional and Result follow these alternative rules. Derivations respect current sharing eligibility and do not grant equality to service/resource references.
+Records compare only with the same instantiated nominal type, field by field. Alternatives require the same instantiated type, tag, and equal payload fields. A record/alternative is `Equal` when every component is eligible for equality, and `Hashable` when every component is eligible for hashing. Optional and Result follow these alternative rules. Sharing does not grant equality to service/resource references.
 
 | Collection | Equality | Hashing |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ Records compare only with the same instantiated nominal type, field by field. Al
 
 Collections are not `Hashable`. A record containing a collection can be `Equal` but cannot automatically become a map key or set element. Function values and contract views have no implicit equality or hashing.
 
-```text
+```manuscript
 let same = [1, 2] == [1, 2]
 let different = [1, 2] == [2, 1]  # false
 # Rejected at type checking: Float is not Hashable.
@@ -37,7 +37,7 @@ fn accepts_float_keys(values: Map[Float, Int]) -> Unit:
 
 For [guarded recursive data](records.md#recursive-data), eligibility is checked over the finite declaration graph. Every nonrecursive leaf must meet the bound; recursive references reuse the requirement already being checked. A cycle does not establish eligibility if a leaf fails it. Generated equality traverses finite immutable values structurally. Containers still block hashing derivation even when they guard recursive layout.
 
-```text
+```manuscript
 type Tree[T: Equal]:
     value: T
     children: List[Tree[T]]
@@ -51,9 +51,9 @@ This tree is `Equal` for eligible `T`; its list field prevents hashing. User-def
 
 | Use | Requirements |
 | --- | --- |
-| Value equality | Eligible shareable data type with equality |
-| `Map[K, V]` key | Shareable and hashable, including equality |
-| `Set[T]` element | Shareable and hashable, including equality |
+| Value equality | Eligible data type with equality |
+| `Map[K, V]` key | Hashable, including equality |
+| `Set[T]` element | Hashable, including equality |
 
 ## Equality and hash consistency
 
@@ -63,7 +63,7 @@ The same immutable key must retain its equality and hash behavior while stored. 
 
 With structural derivation, every declared field participates. A display label or cached value is not silently excluded. Model a lookup identity as its own record, then use that record as the key:
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Map from "@std/collections.ms"

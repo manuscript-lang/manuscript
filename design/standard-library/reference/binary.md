@@ -6,47 +6,40 @@ title = "binary"
 
 Import each required symbol with `import Name from "@std/binary.ms"`.
 
-## BinaryError
+## BinaryError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-BinaryError: BinaryError
-implements: Error
-case InvalidInput
-case OutOfRange
-operation message: fn()->String
+```manuscript
+type BinaryError:
+    case InvalidInput
+    case OutOfRange
 ```
 
-## read_float
-
-Kind: fn.
-
-```text
-read_float: fn(data: Bytes, offset: Int, little_endian: Bool)->Result[Float, BinaryError]
+```manuscript
+impl Error for BinaryError:
+    fn message() -> String
 ```
 
-## read_integer
+## read_float {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-read_integer: fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Int, BinaryError]
+```manuscript
+fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]
 ```
 
-## write_float
+## read_integer {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-write_float: fn(value: Float, little_endian: Bool)->Bytes
+```manuscript
+fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]
 ```
 
-## write_integer
+## write_float {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn write_float(value: Float, little_endian: Bool) -> Bytes
+```
 
-```text
-write_integer: fn(value: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Bytes, BinaryError]
+## write_integer {data-api-kind="Function"}
+
+```manuscript
+fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]
 ```
 

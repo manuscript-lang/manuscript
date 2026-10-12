@@ -6,96 +6,79 @@ title = "url"
 
 Import each required symbol with `import Name from "@std/url.ms"`.
 
-## QueryEntry
+## QueryEntry {data-api-kind="Record"}
 
-Kind: record.
-
-```text
-QueryEntry: QueryEntry
-field key: String
-field value: String
+```manuscript
+type QueryEntry:
+    key: String
+    value: String
 ```
 
-## Url
+## Url {data-api-kind="Record"}
 
-Kind: record.
-
-```text
-Url: Url
-field scheme: String
-field host: String
-field port: Optional[Int]
-field path: String
-field query: String
-field fragment: String
+```manuscript
+type Url:
+    scheme: String
+    host: String
+    port: Optional[Int]
+    path: String
+    query: String
+    fragment: String
 ```
 
-## UrlError
+## UrlError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-UrlError: UrlError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type UrlError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
 ```
 
-## decode_component
-
-Kind: fn.
-
-```text
-decode_component: fn(text: String)->Result[String, UrlError]
+```manuscript
+impl Error for UrlError:
+    fn message() -> String
 ```
 
-## encode_component
+## decode_component {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-encode_component: fn(text: String)->String
+```manuscript
+fn decode_component(text: String) -> Result[String, UrlError]
 ```
 
-## format
+## encode_component {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-format: fn(value: Url)->Result[String, UrlError]
+```manuscript
+fn encode_component(text: String) -> String
 ```
 
-## format_query
+## format {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-format_query: fn(entries: List[QueryEntry])->String
+```manuscript
+fn format(value: Url) -> Result[String, UrlError]
 ```
 
-## parse
+## format_query {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-parse: fn(text: String)->Result[Url, UrlError]
+```manuscript
+fn format_query(entries: List[QueryEntry]) -> String
 ```
 
-## parse_query
+## parse {data-api-kind="Function"}
 
-Kind: fn.
-
-```text
-parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], UrlError]
+```manuscript
+fn parse(text: String) -> Result[Url, UrlError]
 ```
 
-## resolve
+## parse_query {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], UrlError]
+```
 
-```text
-resolve: fn(base: Url, reference: String)->Result[Url, UrlError]
+## resolve {data-api-kind="Function"}
+
+```manuscript
+fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
 ```
 

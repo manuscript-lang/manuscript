@@ -6,57 +6,50 @@ title = "json"
 
 Import each required symbol with `import Name from "@std/json.ms"`.
 
-## JsonError
+## JsonError {data-api-kind="Alternative"}
 
-Kind: alternative.
-
-```text
-JsonError: JsonError
-implements: Error
-case InvalidInput
-case InvalidData
-case LimitExceeded
-operation message: fn()->String
+```manuscript
+type JsonError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
 ```
 
-## JsonLimits
-
-Kind: record.
-
-```text
-JsonLimits: JsonLimits
-field max_bytes: Int
-field max_depth: Int
-field max_values: Int
+```manuscript
+impl Error for JsonError:
+    fn message() -> String
 ```
 
-## JsonValue
+## JsonLimits {data-api-kind="Record"}
 
-Kind: alternative.
-
-```text
-JsonValue: JsonValue
-case Null
-case BoolValue(value: Bool)
-case NumberValue(text: String)
-case StringValue(value: String)
-case ArrayValue(values: List[JsonValue])
-case ObjectValue(values: Map[String, JsonValue])
+```manuscript
+type JsonLimits:
+    max_bytes: Int
+    max_depth: Int
+    max_values: Int
 ```
 
-## parse
+## JsonValue {data-api-kind="Alternative"}
 
-Kind: fn.
-
-```text
-parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, JsonError]
+```manuscript
+type JsonValue:
+    case Null
+    case BoolValue(value: Bool)
+    case NumberValue(text: String)
+    case StringValue(value: String)
+    case ArrayValue(values: List[JsonValue])
+    case ObjectValue(values: Map[String, JsonValue])
 ```
 
-## stringify
+## parse {data-api-kind="Function"}
 
-Kind: fn.
+```manuscript
+fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, JsonError]
+```
 
-```text
-stringify: fn(value: JsonValue, max_bytes: Int)->Result[String, JsonError]
+## stringify {data-api-kind="Function"}
+
+```manuscript
+fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, JsonError]
 ```
 

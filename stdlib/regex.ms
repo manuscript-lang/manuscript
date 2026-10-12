@@ -9,7 +9,10 @@ export type RegexError:
     case InvalidData
     case LimitExceeded
 
-export type Regex
+export type Regex:
+    fn matches(text: String) -> Bool
+    fn find_all(text: String, max_matches: Int) -> Result[List[String], RegexError]
+    fn replace(text: String, replacement: String, max_bytes: Int) -> Result[String, RegexError]
 
 export fn compile(pattern: String) -> Result[Regex, RegexError]
 

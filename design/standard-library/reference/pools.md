@@ -6,37 +6,32 @@ title = "pools"
 
 Import each required symbol with `import Name from "@std/pools.ms"`.
 
-## Lease
+## Lease {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-Lease: Lease[T]
-type parameters: T: Shareable
-operation close: fn()->Unit
-operation get: fn()->Result[T, PoolError]
+```manuscript
+type Lease[T]:
+    fn close() -> Unit
+    fn get() -> Result[T, PoolError]
 ```
 
-## Pool
+## Pool {data-api-kind="Native type"}
 
-Kind: interface.
-
-```text
-Pool: Pool[T]
-type parameters: T: Shareable
-field resources: List[T]
-operation acquire: fn()->Result[Lease[T], PoolError]
-operation close: fn()->Unit
+```manuscript
+type Pool[T]:
+    resources: List[T]
+    fn acquire() -> Result[Lease[T], PoolError]
+    fn close() -> Unit
 ```
 
-## PoolError
+## PoolError {data-api-kind="Alternative"}
 
-Kind: alternative.
+```manuscript
+type PoolError:
+    case Closed
+```
 
-```text
-PoolError: PoolError
-implements: Error
-case Closed
-operation message: fn()->String
+```manuscript
+impl Error for PoolError:
+    fn message() -> String
 ```
 
