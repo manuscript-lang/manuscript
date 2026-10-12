@@ -57,8 +57,14 @@ func goToolchain() (string, []string, error) {
 }
 
 // Toolchain queries are remembered per tool and environment, so one process
-// that pins and builds (or builds repeatedly) runs go env only once.
+// that pins and builds (or prefetches its pin) runs go env only once.
 var toolchainQueries sync.Map
+
+type toolchainQuery struct {
+	sync.Once
+	toolchain map[string]string
+	err       error
+}
 
 func queryToolchain() (map[string]string, error) {
 	command, err := goCommand("env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOFLAGS", "GOAMD64", "GOARM", "GOARM64", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM")
@@ -66,19 +72,22 @@ func queryToolchain() (map[string]string, error) {
 		return nil, err
 	}
 	key := command.Path + "\x00" + strings.Join(command.Env, "\x00")
-	if cached, ok := toolchainQueries.Load(key); ok {
-		return copyToolchain(cached.(map[string]string)), nil
+	entry, _ := toolchainQueries.LoadOrStore(key, &toolchainQuery{})
+	query := entry.(*toolchainQuery)
+	query.Do(func() {
+		data, err := command.CombinedOutput()
+		if err != nil {
+			query.err = fmt.Errorf("read Go toolchain: %w: %s", err, data)
+			return
+		}
+		query.err = json.Unmarshal(data, &query.toolchain)
+	})
+	if query.err != nil {
+		// A failed query may succeed after the environment is repaired.
+		toolchainQueries.CompareAndDelete(key, query)
+		return nil, query.err
 	}
-	data, err := command.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("read Go toolchain: %w: %s", err, data)
-	}
-	var toolchain map[string]string
-	if err := json.Unmarshal(data, &toolchain); err != nil {
-		return nil, err
-	}
-	toolchainQueries.Store(key, toolchain)
-	return copyToolchain(toolchain), nil
+	return copyToolchain(query.toolchain), nil
 }
 
 func copyToolchain(toolchain map[string]string) map[string]string {

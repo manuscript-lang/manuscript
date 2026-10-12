@@ -55,6 +55,10 @@ func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program
 	return CheckWithOptions(modules, imports, CheckOptions{})
 }
 func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
+	ensureStandard()
+	return check(modules, imports, options)
+}
+func check(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
 	modules, dependencyDiagnostics := sourceStandardDependencies(modules)
 	p := &Program{Diagnostics: dependencyDiagnostics, Flow: map[*syntax.Statement]Flow{}, TypeReferences: map[*syntax.Type]*Type{}, Scopes: map[*syntax.Expression]ScopeState{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
 	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}

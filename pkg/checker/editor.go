@@ -52,6 +52,7 @@ type Member struct {
 
 // Members includes local extensions only when their module is supplied.
 func Members(program *Program, receiver *Type, module ...string) []Member {
+	ensureStandard()
 	result := []Member{}
 	if program == nil || receiver == nil {
 		return result
@@ -116,6 +117,7 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 
 // StandardExportInventory exposes declarations for import completion without introducing ambient names.
 func StandardExportInventory() map[string][]*Symbol {
+	ensureStandard()
 	result := map[string][]*Symbol{}
 	for path, exports := range standardModules {
 		for _, symbol := range exports {

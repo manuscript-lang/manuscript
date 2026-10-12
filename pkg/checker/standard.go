@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
@@ -36,10 +37,17 @@ type standardBindings struct {
 	ReceiverRequirements map[string]map[string]string `json:"receiver_requirements"`
 }
 
-func init() {
-	if err := loadStandardSources(); err != nil {
-		panic(err)
-	}
+// Standard declarations load on first use rather than at package
+// initialization, so commands that never check source start immediately and
+// callers can overlap other startup work with loading.
+var standardLoad sync.Once
+
+func ensureStandard() {
+	standardLoad.Do(func() {
+		if err := loadStandardSources(); err != nil {
+			panic(err)
+		}
+	})
 }
 func loadStandardSources() error {
 	standardSources = nil
@@ -62,18 +70,37 @@ func loadStandardSources() error {
 	if err != nil {
 		return err
 	}
+	// Parse declarations concurrently; registration below keeps file order.
+	type parsed struct {
+		module *syntax.Module
+		err    error
+	}
+	var names []string
 	for _, file := range files {
-		if !strings.HasSuffix(file.Name(), ".ms") {
-			continue
+		if strings.HasSuffix(file.Name(), ".ms") {
+			names = append(names, file.Name())
 		}
-		data, err := stdlib.Sources.ReadFile(file.Name())
-		if err != nil {
-			return err
+	}
+	results := make([]parsed, len(names))
+	var group sync.WaitGroup
+	for i, name := range names {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			data, err := stdlib.Sources.ReadFile(name)
+			if err != nil {
+				results[i].err = err
+				return
+			}
+			results[i].module, results[i].err = parser.Parse("@std/"+name, string(data))
+		}()
+	}
+	group.Wait()
+	for _, result := range results {
+		if result.err != nil {
+			return result.err
 		}
-		module, err := parser.Parse("@std/"+file.Name(), string(data))
-		if err != nil {
-			return err
-		}
+		module := result.module
 		standardSources = append(standardSources, module)
 		sourceImplementation := false
 		for _, d := range module.Declarations {
@@ -378,7 +405,7 @@ func loadStandardSources() error {
 			sourceModules = append(sourceModules, module)
 		}
 	}
-	program := Check(sourceModules, nil)
+	program := check(sourceModules, nil, CheckOptions{})
 	if len(program.Diagnostics) > 0 {
 		return fmt.Errorf("invalid standard implementations: %v", program.Diagnostics)
 	}
@@ -429,11 +456,15 @@ func sourceStandardDependencies(modules []*syntax.Module) ([]*syntax.Module, []s
 
 // StandardModules exposes canonical declarations and their source positions to
 // tooling. Callers must not mutate the returned checked declarations.
-func StandardModules() []*syntax.Module { return append([]*syntax.Module{}, standardSources...) }
+func StandardModules() []*syntax.Module {
+	ensureStandard()
+	return append([]*syntax.Module{}, standardSources...)
+}
 
 // StandardTypeReferences exposes resolved types in canonical standard signatures.
 // Callers may change the returned map, but must not mutate the shared types.
 func StandardTypeReferences() map[*syntax.Type]*Type {
+	ensureStandard()
 	out := make(map[*syntax.Type]*Type, len(standardTypeReferences))
 	for ref, typ := range standardTypeReferences {
 		out[ref] = typ
@@ -442,6 +473,7 @@ func StandardTypeReferences() map[*syntax.Type]*Type {
 }
 
 func StandardExports(module string) map[string]*Symbol {
+	ensureStandard()
 	out := map[string]*Symbol{}
 	for name, symbol := range standardModules[module] {
 		if symbol.Export {
@@ -451,6 +483,7 @@ func StandardExports(module string) map[string]*Symbol {
 	return out
 }
 func StandardModuleNames() []string {
+	ensureStandard()
 	names := []string{}
 	for name := range standardModules {
 		names = append(names, name)

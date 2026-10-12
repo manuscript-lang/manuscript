@@ -208,6 +208,12 @@ func Run(args []string) int {
 
 	options.CPUProfile, options.HeapProfile, options.Trace = cpuProfile, heapProfile, tracePath
 
+	switch command {
+	case "build", "run", "test", "debug", "profile":
+		// Native commands need the build pin; query the toolchain and hash
+		// embedded inputs while the source is parsed and checked.
+		go compiler.CurrentPin()
+	}
 	result := compiler.CompileFile(filename, options)
 	if structured && command == "check" {
 		if result.Diagnostics == nil {
