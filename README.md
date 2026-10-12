@@ -18,7 +18,7 @@ verifies the pinned Go SDK locally on first use, then builds the self-contained
 `./ms`. Initial setup needs Make, curl, tar, and `sha256sum` or `shasum`, plus
 Internet access. Later builds reuse `toolchain/go/`.
 
-Run these commands from the extracted archive or repository root. Use `.\\ms.exe`
+Run these commands from the extracted archive or repository root. Use `.\ms.exe`
 in Windows PowerShell:
 
 ```sh

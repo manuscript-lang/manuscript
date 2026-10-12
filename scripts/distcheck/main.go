@@ -165,6 +165,17 @@ func check() error {
 			return fmt.Errorf("empty profile artifact: %s", name)
 		}
 	}
+	profileManifest, err := os.ReadFile(filepath.Join(profile, "manifest.json"))
+	if err != nil {
+		return err
+	}
+	var recorded struct{ Executable string }
+	if err := json.Unmarshal(profileManifest, &recorded); err != nil {
+		return err
+	}
+	if recorded.Executable != "program"+suffix {
+		return fmt.Errorf("profile manifest references the wrong executable: %s", profileManifest)
+	}
 	return nil
 }
 

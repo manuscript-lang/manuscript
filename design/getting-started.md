@@ -12,7 +12,7 @@ This walkthrough uses the hello project included in
 and the repository. Download and extract the archive for your OS and architecture,
 or build from a source checkout as described below. `ms` embeds its native build
 tools and needs no separate Go installation. Run the commands from the extracted
-directory or repository root. In Windows PowerShell, use `.\\ms.exe` instead of
+directory or repository root. In Windows PowerShell, use `.\ms.exe` instead of
 `./ms`. You do not need Hugo to compile Manuscript programs.
 
 ## 1. Get the command-line tool

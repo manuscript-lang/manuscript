@@ -1,6 +1,6 @@
 # Manuscript developer tools
 
-Build `ms` with Go 1.25 or newer. The compiler, formatter, linters, and language server require no third-party Go dependencies. Native debugging uses Delve 1.25.2 or newer. The VS Code extension provides its own Manuscript DAP layer over Delve.
+Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or run `make build` in a source checkout to prepare the pinned Go SDK automatically. Compilation, formatting, lint, LSP, and profiling need no separate Go installation. Native debugging uses Delve 1.25.2 or newer, available from [Delve Releases](https://github.com/go-delve/delve/releases). The VS Code extension provides its own Manuscript DAP layer over Delve.
 
 ```sh
 ms lint source.ms --json
