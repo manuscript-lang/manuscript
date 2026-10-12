@@ -52,7 +52,7 @@ fn bytes(count: Int) -> Result[Bytes, RandomError]
 
 ## Services supplied by the CLI
 
-Process provides `wall_clock: WallClock`, `system: System`, and `entropy: Entropy`.
+Import `wall_clock()` from `@std/time.ms`, `system()` from `@std/system.ms`, and `entropy()` from `@std/random.ms` to obtain those host services.
 
 Timestamp represents wall time and is opaque, immutable, and comparable for equality. Instant remains a monotonic time value; conversion between them is not implicit. Existing Clock and sleep keep their signatures and error/cancellation rules. Wall-clock changes do not affect monotonic deadlines.
 
@@ -68,7 +68,7 @@ There are no Timestamp operators or source constructor. Use the named functions;
 
 SystemInfo has `os: String`, `architecture: String`, and `cpu_count: Int`. This is a native runtime snapshot. CPU count does not reserve resources.
 
-`working_directory` returns the fixed startup directory. `environment` returns `none` if the variable is absent or its value cannot be represented as UTF-8. Process.environment remains a startup snapshot. Importing System grants no environment access; receive a service value explicitly. There is no global chdir or environment mutation API.
+`working_directory` on the native root returns the live process working directory. `environment` returns `none` if the variable is absent or its value cannot be represented as UTF-8. The CLI `environment()` accessor returns a startup snapshot. Importing System supplies its interface; calling the imported `system()` accessor obtains the service. The imported ProcessControl service provides explicit process-wide directory and environment mutation; see [host contracts](node-host.md).
 
 ## Randomness
 

@@ -35,7 +35,7 @@ fn accepts_float_keys(values: Map[Float, Int]) -> Unit:
     return
 ```
 
-For [guarded recursive data](records.md#recursive-data), eligibility is checked over the finite declaration graph. Every nonrecursive leaf must meet the bound; recursive references reuse the requirement already being checked. A cycle does not establish eligibility if a leaf fails it. Generated equality traverses finite immutable values structurally. Containers still block hashing derivation even when they guard recursive layout.
+For [guarded recursive data](records.md#recursive-data), eligibility is checked over the finite declaration graph. Every nonrecursive leaf must meet the bound; recursive references reuse the requirement already being checked. A cycle does not establish eligibility if a leaf fails it. Equality traverses current field and collection contents structurally and terminates on cyclic data graphs. Containers still block hashing derivation even when they guard recursive layout.
 
 ```manuscript
 type Tree[T: Equal]:
@@ -59,7 +59,7 @@ This tree is `Equal` for eligible `T`; its list field prevents hashing. User-def
 
 For a Hashable type, equality must be reflexive, symmetric, and transitive. Equal values must hash identically under the same hash configuration. Unequal values may have the same hash; a map or set must resolve every collision by equality rather than accepting a hash match as a key match. Hashes are internal lookup aids, not stable IDs or persistence formats.
 
-The same immutable key must retain its equality and hash behavior while stored. Neither operation depends on a resource's open state, external authority, insertion order, or current wall-clock time. Float and records containing Float remain equality-comparable with IEEE behavior, but cannot meet Hashable's equivalence requirement because NaN is not equal to itself.
+Keys and set elements must retain their equality and hash behavior while stored. Do not mutate a stored key or its nested data; remove it before changing it and reinsert afterward. `.clone()` can separate record field storage, but nested references remain shared. Neither operation depends on a resource's open state, external authority, insertion order, or current wall-clock time. Float and records containing Float remain equality-comparable with IEEE behavior, but cannot meet Hashable's equivalence requirement because NaN is not equal to itself.
 
 With structural derivation, every declared field participates. A display label or cached value is not silently excluded. Model a lookup identity as its own record, then use that record as the key:
 

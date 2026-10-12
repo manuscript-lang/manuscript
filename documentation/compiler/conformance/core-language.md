@@ -529,7 +529,7 @@ test "contract views and callbacks":
 
 All view helpers and function-bearing records in this fixture may be shared. Accept ordinary contract views in lists, optionals, fields, and concurrent callbacks; accept generic forwarding and returned functions. View construction evaluates its receiver once and neither copies nor closes native state. Reject mismatched contract applications, implicit concrete-to-contract conversions, function equality, and value-type intersection syntax.
 
-## CL-11: Recursive records require immutable-container indirection
+## CL-11: Recursive records require collection indirection
 
 Contract: [records](../../core-language/types/records.md) and [generics](../../core-language/types/generics.md).
 
@@ -542,7 +542,7 @@ type Tree[T]:
     value: T
     children: List[Tree[T]]
 
-test "recursive immutable collection":
+test "recursive collection":
     let leaf = Tree[Int](value: 1, children: [])
     let root = Tree[Int](value: 2, children: [leaf])
     if not (root.value == 2):

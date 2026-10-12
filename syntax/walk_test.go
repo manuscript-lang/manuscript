@@ -53,3 +53,25 @@ impl Read for Box:
 		t.Fatal("lost or reordered default, closure, interpolation, arm, or method calls", calls)
 	}
 }
+
+func TestVisitorIncludesAssignmentTargetBeforeValue(t *testing.T) {
+	const source = `fn update() -> Unit:
+    owner().value = replacement()
+`
+	m, err := parser.Parse("assignment.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var calls []string
+	v := syntax.Visitor{Expression: func(e *syntax.Expression) {
+		if e.Kind == "call" {
+			calls = append(calls, e.Left.Text)
+		}
+	}}
+	for _, decl := range m.Declarations {
+		v.Walk(decl)
+	}
+	if !reflect.DeepEqual(calls, []string{"owner", "replacement"}) {
+		t.Fatalf("assignment evaluation order: %v", calls)
+	}
+}

@@ -39,6 +39,7 @@ func (v Visitor) statements(body []*Statement) {
 		if v.Statement != nil {
 			v.Statement(s)
 		}
+		v.expression(s.Target)
 		v.expression(s.Value)
 		v.statements(s.Body)
 		v.statements(s.Else)

@@ -13,7 +13,7 @@ Validate these complete programs as their APIs become concrete:
 
 | Program | Required evidence |
 | --- | --- |
-| CLI argument output and bounded file reads | exact Process entry, explicit authority, specified stream signatures, cleanup, and exit behavior |
+| CLI argument output and bounded file reads | parameterless main, imported host services, specified stream signatures, cleanup, and exit behavior |
 | CLI draining subprocess stdout/stderr | concurrent streaming and deterministic resource release |
 | Bounded HTTP server with slow clients | admission, backpressure, limits, failure isolation |
 | Background worker surviving a submitting helper's completion | fixed service parent, bounded admission, error observation, and joined shutdown |

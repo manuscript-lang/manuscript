@@ -43,7 +43,7 @@ To keep an executable:
 ./ms test examples/hello/test.ms
 ```
 
-Applications export `fn main(process: Process) -> Int`. Standard names need explicit imports. See [the hello source](examples/hello/src/main.ms) and [accepted core-language fixtures](tests/e2e/testdata/accept) for complete examples.
+Applications export `fn main() -> Int`. Standard names need explicit imports. See [the hello source](examples/hello/src/main.ms) and [accepted core-language fixtures](tests/e2e/testdata/accept) for complete examples.
 
 ## Choose a command
 
@@ -66,7 +66,7 @@ use Go on `PATH`; `make build` embeds the payload.
 
 ## Features and limits
 
-The implementation includes nominal types, generics, explicit interfaces, Result errors, lexical cleanup, joined and background work, synchronized state, queues, pools, builders, and explicit CLI/network/subprocess capabilities. Standard declarations live in [stdlib/](stdlib/README.md); the [generated module reference](documentation/standard-library/reference/_index.md) comes from those declarations.
+The implementation includes nominal types, generics, explicit interfaces, Result errors, lexical cleanup, joined and background work, synchronized state, queues, pools, builders, and imported CLI/network/subprocess host services. Standard declarations live in [stdlib/](stdlib/README.md); the [generated module reference](documentation/standard-library/reference/_index.md) comes from those declarations.
 
 Read [implementation coverage](documentation/implementation.md) before relying on a feature. External adapters, incremental frontend compilation, and some host/tooling APIs remain design work. The [language tour](documentation/learn/tour.md) introduces supported syntax; the [glossary](documentation/glossary.md) explains its terms.
 

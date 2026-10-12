@@ -61,6 +61,12 @@ interface WriteStream:
 fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
 ```
 
+## files {data-api-kind="Function"}
+
+```manuscript
+fn files() -> Files
+```
+
 ## read_all {data-api-kind="Function"}
 
 ```manuscript
@@ -71,5 +77,23 @@ fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
 
 ```manuscript
 fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
+```
+
+## stderr {data-api-kind="Function"}
+
+```manuscript
+fn stderr() -> WriteStream
+```
+
+## stdin {data-api-kind="Function"}
+
+```manuscript
+fn stdin() -> ReadStream
+```
+
+## stdout {data-api-kind="Function"}
+
+```manuscript
+fn stdout() -> WriteStream
 ```
 

@@ -23,7 +23,7 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 	case "@std/Synchronized":
 		return &Synchronized{typ: typ, value: args[0].Value, changed: make(chan struct{})}
 	case "@std/Pool":
-		return newPool(typ, args[0].Value.(List))
+		return newPool(typ, args[0].Value.(*List))
 	case "@std/ListBuilder", "@std/MapBuilder", "@std/SetBuilder", "@std/BytesBuilder", "@std/StringBuilder":
 		return newBuilder(typ)
 	}
@@ -93,11 +93,11 @@ func newBuilder(typ string) *Builder {
 	b := &Builder{typ: typ}
 	switch name {
 	case "@std/ListBuilder":
-		b.value = List{"@std/List[" + args[0] + "]", nil}
+		b.value = &List{"@std/List[" + args[0] + "]", nil}
 	case "@std/MapBuilder":
-		b.value = Map{"@std/Map[" + args[0] + "][" + args[1] + "]", nil}
+		b.value = &Map{"@std/Map[" + args[0] + "][" + args[1] + "]", nil}
 	case "@std/SetBuilder":
-		b.value = Set{"@std/Set[" + args[0] + "]", nil}
+		b.value = &Set{"@std/Set[" + args[0] + "]", nil}
 	case "@std/BytesBuilder":
 		b.value = Bytes{}
 	case "@std/StringBuilder":
@@ -127,10 +127,10 @@ func (b *Builder) Operation(name string) Function {
 			return Panic("builder is sealed")
 		}
 		switch value := b.value.(type) {
-		case List:
-			value.Items = append(append([]Value{}, value.Items...), args[0])
+		case *List:
+			value.Items = append(value.Items, args[0])
 			b.value = value
-		case Map, Set:
+		case *Map, *Set:
 			named := make([]Argument, len(args))
 			for i, arg := range args {
 				named[i] = Argument{labels[i], arg}
@@ -165,7 +165,7 @@ type Pool struct {
 	fault                any
 }
 
-func newPool(typ string, resources List) *Pool {
+func newPool(typ string, resources *List) *Pool {
 	if len(resources.Items) == 0 {
 		Panic("Pool requires at least one resource")
 	}

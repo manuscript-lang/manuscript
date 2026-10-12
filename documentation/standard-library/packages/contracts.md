@@ -11,7 +11,7 @@ These rules apply across the general-purpose packages. Exact types and signature
 
 ## Imports and callbacks
 
-Import each function or type you name from its module. Standard imports are pinned with the distribution. They add no ambient types, wildcard imports, user-defined generic operations, or automatic access to external services.
+Import each function or type you name from its module. Standard imports are pinned with the distribution. They add no ambient types, wildcard imports, user-defined generic operations, or automatic imports of host accessors.
 
 Function identity includes the module, so `json/parse`, `bigint/parse`, and `url/parse` remain distinct in generated code. Source import renaming is unsupported; use a helper module if two imports have the same spelling.
 
@@ -62,8 +62,8 @@ Writing, copying, or removing data can fail after changing an external prefix. C
 
 ## Access to external services
 
-CLI Process supplies filesystem, entropy, wall_clock, and system roots, alongside network and commands. Source fakes implement the same contracts with explicit contract views.
+Imported host accessors supply filesystem, entropy, wall-clock, system, network, and command services. Source fakes implement the same contracts with explicit contract views.
 
-Pure codec, path, math, and hash functions grant no OS access. Native CLI services use the process's OS permissions. Filesystem subtree restrictions are not implemented; `Network.restrict` narrows destination access. Imports alone grant no authority. HTTP and socket operations use explicit service values and retain TLS verification.
+Pure codec, path, math, and hash functions grant no OS access. Native CLI services use the process's OS permissions. Filesystem subtree restrictions are not implemented; `Network.restrict` narrows destination access. Imported host accessors obtain services from the current execution. HTTP and socket operations retain their service interfaces and TLS verification.
 
 Networking includes DNS, Unix sockets, verified TLS, streaming HTTP, and WebSockets. HTTP/3 is outside the supported scope. Native builds bundle pinned dependency sources and licenses rather than fetching packages.

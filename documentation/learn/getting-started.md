@@ -35,20 +35,21 @@ tools and references Manuscript needs and runs independently of the checkout.
 The hello project's `src/main.ms` is a complete application:
 
 ```manuscript
-import Process from "@std/cli.ms"
+import arguments from "@std/cli.ms"
+import stdout from "@std/io.ms"
 
-export fn main(process: Process) -> Int:
-    let message = "Arguments: {process.arguments.length()}\n"
-    match process.stdout.write(data: message.to_bytes()):
+export fn main() -> Int:
+    let message = "Arguments: {arguments().length()}\n"
+    match stdout().write(data: message.to_bytes()):
         ok(_):
             return 0
         error(_):
             return 1
 ```
 
-The import names the one standard declaration this module needs. `main` receives the process capability, including arguments and output streams. `let` binds a value with an inferred local type. String interpolation inserts the argument count. `write(data: ...)` names its argument and returns a `Result`; the match handles success and failure. The returned integer becomes the exit status.
+The imports name the argument and standard-output accessors this module needs. The host calls `main()` with no arguments; the imported functions return its host data and services. `let` binds a value with an inferred local type. String interpolation inserts the argument count. `write(data: ...)` names its argument and returns a `Result`; the match handles success and failure. The returned integer becomes the exit status.
 
-Indentation defines blocks. A function with one parameter permits calls such as `process.stdout.write(message.to_bytes())` or `process.stdout.write(data: message.to_bytes())`. Functions with multiple parameters require labels on every supplied argument; zero-parameter calls use `()`. Public functions are explicitly exported, and each `.ms` file is a module.
+Indentation defines blocks. A function with one parameter permits calls such as `stdout().write(message.to_bytes())` or `stdout().write(data: message.to_bytes())`. Functions with multiple parameters require labels on every supplied argument; zero-parameter calls use `()`. Public functions are explicitly exported, and each `.ms` file is a module.
 
 ## Build and inspect
 

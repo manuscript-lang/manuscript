@@ -144,7 +144,7 @@ func TestAnalysisChecksEntryWithoutGeneratingGo(t *testing.T) {
 	if editor := compiler.CompileFile(manifest, compiler.Options{AnalyzeOnly: true}); !editor.Success() {
 		t.Fatal("editor analysis incorrectly required an application entry", editor.Diagnostics)
 	}
-	write(t, root, "main.ms", "import Process from \"@std/cli.ms\"\nexport fn main(process: Process) -> Int:\n    return 0\n")
+	write(t, root, "main.ms", "export fn main() -> Int:\n    return 0\n")
 	result = compiler.CompileFile(manifest, compiler.Options{AnalyzeOnly: true, Entry: true})
 	if !result.Success() || result.Program == nil || result.Source != "" {
 		t.Fatal("checked analysis performed lowering", result.Diagnostics)

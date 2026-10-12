@@ -33,6 +33,8 @@ export type WorkStatus:
 
 export fn check_cancelled() -> Unit
 
+export fn yield_now() -> Unit
+
 # compiler binding: parallel (heterogeneous callable/result packs)
 
 

@@ -16,6 +16,7 @@ Ordinary functions and methods with exactly one declared parameter permit omitti
 - `Synchronized[T](value: T)` stores a value behind a mutex. Its `lock()` returns a `SynchronizedGuard[T]` for `with`; guard get/set require an active acquisition, and close releases it.
 - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
 - `List`, `Lease`, `SynchronizedGuard`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Lists and durations use literals; other values come from APIs or conversions.
+- `.clone()` is built in on records, alternatives, List, Map, Set, and Bytes and returns the same concrete data type with separate outer storage. It does not clone nested handles or introduce a method on native services.
 - Records use their listed fields as named constructor arguments. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
 - Native collection methods `map[U]`, `flat_map[U]`, `group_by[K: Hashable]`, `fold[A]`, and `fold_right[A]` infer method type arguments from supplied callbacks/values. Saving a generic method as a value requires explicit specialization, such as `values.map[String]`. Application-defined interface operations remain nongeneric.
 - List equality searches require `Equal`; `to_set` requires `Hashable`; `join` is available only on `List[String]`. These receiver requirements are inherited from the shared function declarations.
@@ -343,6 +344,7 @@ Import each required symbol with `import Name from "@std/bytes.ms"`.
 ```manuscript
 type Bytes:
     values: List[Int]
+    fn clone() -> Bytes
     fn contains(value: Bytes) -> Bool
     fn slice(start: Int, end: Int) -> Bytes
     fn at(index: Int) -> Optional[Int]
@@ -464,25 +466,20 @@ interface Closeable:
 
 Import each required symbol with `import Name from "@std/cli.ms"`.
 
-## Process
+## arguments
 
-**Record**
+**Function**
 
 ```manuscript
-type Process:
-    arguments: List[String]
-    environment: Map[String, String]
-    stdin: ReadStream
-    stdout: WriteStream
-    stderr: WriteStream
-    files: Files
-    clock: Clock
-    network: Network
-    commands: Commands
-    filesystem: FileSystem
-    entropy: Entropy
-    wall_clock: WallClock
-    system: System
+fn arguments() -> List[String]
+```
+
+## environment
+
+**Function**
+
+```manuscript
+fn environment() -> Map[String, String]
 ```
 
 # @std/collections.ms
@@ -510,6 +507,7 @@ impl Error for CollectionError:
 
 ```manuscript
 type List[T]:
+    fn clone() -> List[T]
     fn at(index: Int) -> Optional[T]
     fn contains(value: T) -> Bool
     fn index_of(value: T) -> Optional[Int]
@@ -565,6 +563,7 @@ type ListEntry[T]:
 
 ```manuscript
 type Map[T: Hashable, U]:
+    fn clone() -> Map[T, U]
     fn with_default(key: T, value: U) -> Map[T, U]
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]
     fn clear() -> Map[T, U]
@@ -596,6 +595,7 @@ type MapEntry[T: Hashable, U]:
 
 ```manuscript
 type Set[T: Hashable]:
+    fn clone() -> Set[T]
     fn union(right: Set[T]) -> Set[T]
     fn intersection(right: Set[T]) -> Set[T]
     fn difference(right: Set[T]) -> Set[T]
@@ -1356,6 +1356,34 @@ fn panic(message: String) -> Never
 
 Import each required symbol with `import Name from "@std/fs.ms"`.
 
+## CopyOptions
+
+**Record**
+
+```manuscript
+type CopyOptions:
+    recursive: Bool
+    replace: Bool
+    error_on_exists: Bool
+    dereference: Bool
+    preserve_timestamps: Bool
+    verbatim_symlinks: Bool
+    clone: String
+    max_entries: Int
+    max_bytes: Int
+```
+
+## Directory
+
+**Interface**
+
+```manuscript
+interface Directory:
+    fn path() -> String
+    fn close() -> Unit
+    fn read() -> Result[Optional[DirectoryEntry], FileSystemError]
+```
+
 ## DirectoryEntry
 
 **Record**
@@ -1365,6 +1393,45 @@ type DirectoryEntry:
     name: String
     directory: Bool
     symlink: Bool
+```
+
+## FileEvent
+
+**Record**
+
+```manuscript
+type FileEvent:
+    path: String
+    kind: String
+```
+
+## FileHandle
+
+**Interface**
+
+```manuscript
+interface FileHandle:
+    fn reader() -> ReadStream
+    fn writer() -> WriteStream
+    fn close() -> Unit
+    fn read(max_bytes: Int) -> Result[Optional[Bytes], FileSystemError]
+    fn write(data: Bytes) -> Result[Int, FileSystemError]
+    fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
+    fn read_at(offset: Int, max_bytes: Int) -> Result[Bytes, FileSystemError]
+    fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
+    fn read_file(max_bytes: Int) -> Result[Bytes, FileSystemError]
+    fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
+    fn read_vectors(sizes: List[Int], offset: Int) -> Result[List[Bytes], FileSystemError]
+    fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
+    fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
+    fn stat() -> Result[FileInfo, FileSystemError]
+    fn truncate(size: Int) -> Result[Unit, FileSystemError]
+    fn sync() -> Result[Unit, FileSystemError]
+    fn data_sync() -> Result[Unit, FileSystemError]
+    fn chmod(mode: Int) -> Result[Unit, FileSystemError]
+    fn chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]
+    fn set_times(accessed: Timestamp, modified: Timestamp) -> Result[Unit, FileSystemError]
+    fn read_lines(max_bytes: Int, max_lines: Int) -> Result[List[String], FileSystemError]
 ```
 
 ## FileInfo
@@ -1378,6 +1445,25 @@ type FileInfo:
     directory: Bool
     symlink: Bool
     modified: Timestamp
+    accessed: Timestamp
+    changed: Timestamp
+    mode: Int
+    permissions: Int
+    created: Optional[Timestamp]
+    block_size: Int
+    blocks: Int
+    rdev: Int
+    fifo: Bool
+    socket: Bool
+    block_device: Bool
+    char_device: Bool
+    exact: Map[String, BigInt]
+    regular: Bool
+    device: Int
+    inode: Int
+    links: Int
+    uid: Int
+    gid: Int
 ```
 
 ## FileSystem
@@ -1386,6 +1472,10 @@ type FileInfo:
 
 ```manuscript
 interface FileSystem:
+    fn open_flags(path: String, flags: Int, mode: Int) -> Result[FileHandle, FileSystemError]
+    fn glob_entries(path: String, options: GlobOptions, exclude: Optional[fn(entry: PathEntry) -> Bool]) -> Result[List[PathEntry], FileSystemError]
+    fn copy(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String) -> Bool]) -> Result[Unit, FileSystemError]
+    fn watch_native(path: String, recursive: Bool, max_entries: Int, max_events: Int, overflow: String) -> Result[FileWatcher, FileSystemError]
     fn canonicalize(path: String) -> Result[String, FileSystemError]
     fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Int) -> Result[Unit, FileSystemError]
     fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
@@ -1398,6 +1488,21 @@ interface FileSystem:
     fn stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
     fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
     fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, FileSystemError]
+    fn access(path: String, mode: Int) -> Result[Unit, FileSystemError]
+    fn append_file(path: String, data: Bytes) -> Result[Unit, FileSystemError]
+    fn chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
+    fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) -> Result[Unit, FileSystemError]
+    fn truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
+    fn set_times(path: String, accessed: Timestamp, modified: Timestamp, follow_links: Bool) -> Result[Unit, FileSystemError]
+    fn hard_link(source: String, destination: String) -> Result[Unit, FileSystemError]
+    fn open(path: String, flags: String, mode: Int) -> Result[FileHandle, FileSystemError]
+    fn open_directory(path: String) -> Result[Directory, FileSystemError]
+    fn copy_tree(source: String, destination: String, replace: Bool, max_entries: Int, max_bytes: Int) -> Result[Unit, FileSystemError]
+    fn glob(path: String, pattern: String, max_entries: Int) -> Result[List[String], FileSystemError]
+    fn watch(path: String, recursive: Bool, interval: Duration, max_entries: Int) -> Result[FileWatcher, FileSystemError]
+    fn temporary(prefix: String) -> Result[TemporaryDirectory, FileSystemError]
+    fn stat_filesystem(path: String) -> Result[FileSystemInfo, FileSystemError]
+    fn chmod_link(path: String, mode: Int) -> Result[Unit, FileSystemError]
 ```
 
 ## FileSystemError
@@ -1413,12 +1518,87 @@ type FileSystemError:
     case AlreadyExists
     case PermissionDenied
     case Unsupported
+    case Closed
     case Failed(message: String)
 ```
 
 ```manuscript
 impl Error for FileSystemError:
     fn message() -> String
+```
+
+## FileSystemInfo
+
+**Record**
+
+```manuscript
+type FileSystemInfo:
+    type_id: Int
+    block_size: Int
+    blocks: Int
+    blocks_free: Int
+    blocks_available: Int
+    files: Int
+    files_free: Int
+```
+
+## FileWatcher
+
+**Interface**
+
+```manuscript
+interface FileWatcher:
+    fn close() -> Unit
+    fn next() -> Result[List[FileEvent], FileSystemError]
+```
+
+## GlobOptions
+
+**Record**
+
+```manuscript
+type GlobOptions:
+    patterns: List[String]
+    exclude: List[String]
+    follow_links: Bool
+    max_entries: Int
+    max_results: Int
+```
+
+## PathEntry
+
+**Record**
+
+```manuscript
+type PathEntry:
+    path: String
+    entry: DirectoryEntry
+```
+
+## TemporaryDirectory
+
+**Interface**
+
+```manuscript
+interface TemporaryDirectory:
+    fn close() -> Unit
+    fn path() -> String
+```
+
+## constants
+
+**Function**
+
+```manuscript
+fn constants() -> Map[String, Int]
+```
+
+## filesystem
+
+**Function**
+
+```manuscript
+fn filesystem() -> FileSystem
 ```
 
 # @std/html.ms
@@ -1599,6 +1779,14 @@ interface ResponseBody:
     fn status() -> Int
 ```
 
+## network
+
+**Function**
+
+```manuscript
+fn network() -> Network
+```
+
 # @std/io.ms
 
 Import each required symbol with `import Name from "@std/io.ms"`.
@@ -1670,6 +1858,14 @@ interface WriteStream:
 fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
 ```
 
+## files
+
+**Function**
+
+```manuscript
+fn files() -> Files
+```
+
 ## read_all
 
 **Function**
@@ -1684,6 +1880,30 @@ fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
 
 ```manuscript
 fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
+```
+
+## stderr
+
+**Function**
+
+```manuscript
+fn stderr() -> WriteStream
+```
+
+## stdin
+
+**Function**
+
+```manuscript
+fn stdin() -> ReadStream
+```
+
+## stdout
+
+**Function**
+
+```manuscript
+fn stdout() -> WriteStream
 ```
 
 # @std/json.ms
@@ -2243,12 +2463,64 @@ impl Error for PathError:
     fn message() -> String
 ```
 
+## PathOperations
+
+**Interface**
+
+```manuscript
+interface PathOperations:
+    fn basename(path: String) -> String
+    fn basename_without(path: String, suffix: String) -> String
+    fn dirname(path: String) -> String
+    fn extension(path: String) -> String
+    fn is_absolute(path: String) -> Bool
+    fn join(parts: List[String]) -> String
+    fn normalize(path: String) -> String
+    fn relative(base: String, target: String) -> Result[String, PathError]
+    fn resolve(base: String, parts: List[String]) -> Result[String, PathError]
+    fn parse(path: String) -> PathParts
+    fn format(parts: PathParts) -> String
+    fn separator() -> String
+    fn delimiter() -> String
+    fn to_namespaced_path(path: String) -> String
+    fn matches_glob(path: String, pattern: String) -> Result[Bool, PathError]
+```
+
+## PathParts
+
+**Record**
+
+```manuscript
+type PathParts:
+    root: String
+    directory: String
+    base: String
+    extension: String
+    name: String
+```
+
 ## basename
 
 **Function**
 
 ```manuscript
 fn basename(path: String) -> String
+```
+
+## basename_without
+
+**Function**
+
+```manuscript
+fn basename_without(path: String, suffix: String) -> String
+```
+
+## delimiter
+
+**Function**
+
+```manuscript
+fn delimiter() -> String
 ```
 
 ## dirname
@@ -2267,6 +2539,14 @@ fn dirname(path: String) -> String
 fn extension(path: String) -> String
 ```
 
+## format
+
+**Function**
+
+```manuscript
+fn format(parts: PathParts) -> String
+```
+
 ## is_absolute
 
 **Function**
@@ -2283,6 +2563,14 @@ fn is_absolute(path: String) -> Bool
 fn join(parts: List[String]) -> String
 ```
 
+## matches_glob
+
+**Function**
+
+```manuscript
+fn matches_glob(path: String, pattern: String) -> Result[Bool, PathError]
+```
+
 ## normalize
 
 **Function**
@@ -2291,12 +2579,60 @@ fn join(parts: List[String]) -> String
 fn normalize(path: String) -> String
 ```
 
+## parse
+
+**Function**
+
+```manuscript
+fn parse(path: String) -> PathParts
+```
+
+## posix
+
+**Function**
+
+```manuscript
+fn posix() -> PathOperations
+```
+
 ## relative
 
 **Function**
 
 ```manuscript
 fn relative(base: String, target: String) -> Result[String, PathError]
+```
+
+## resolve
+
+**Function**
+
+```manuscript
+fn resolve(base: String, parts: List[String]) -> Result[String, PathError]
+```
+
+## separator
+
+**Function**
+
+```manuscript
+fn separator() -> String
+```
+
+## to_namespaced_path
+
+**Function**
+
+```manuscript
+fn to_namespaced_path(path: String) -> String
+```
+
+## win32
+
+**Function**
+
+```manuscript
+fn win32() -> PathOperations
 ```
 
 # @std/pools.ms
@@ -2380,6 +2716,143 @@ interface Commands:
     fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]
 ```
 
+## CpuUsage
+
+**Record**
+
+```manuscript
+type CpuUsage:
+    user_microseconds: Int
+    system_microseconds: Int
+```
+
+## MemoryUsage
+
+**Record**
+
+```manuscript
+type MemoryUsage:
+    heap_used: Int
+    heap_total: Int
+    heap_system: Int
+    external: Int
+    resident: Int
+```
+
+## ProcessControl
+
+**Interface**
+
+```manuscript
+interface ProcessControl:
+    fn monotonic_time() -> Int
+    fn watch_signals(signals: List[Int], capacity: Int) -> Result[SignalStream, ProcessError]
+    fn constrained_memory() -> Result[Int, ProcessError]
+    fn available_memory() -> Result[Int, ProcessError]
+    fn title() -> Result[String, ProcessError]
+    fn set_title(title: String) -> Result[Unit, ProcessError]
+    fn initialize_groups(username: String, gid: Int) -> Result[Unit, ProcessError]
+    fn replace(program: String, arguments: List[String], environment: Map[String, String]) -> Result[Unit, ProcessError]
+    fn info() -> Result[ProcessInfo, ProcessError]
+    fn memory_usage() -> Result[MemoryUsage, ProcessError]
+    fn cpu_usage() -> Result[CpuUsage, ProcessError]
+    fn uptime() -> Result[Duration, ProcessError]
+    fn environment() -> Result[Map[String, String], ProcessError]
+    fn set_environment(name: String, value: Optional[String]) -> Result[Unit, ProcessError]
+    fn load_environment(path: String, max_bytes: Int) -> Result[Unit, ProcessError]
+    fn working_directory() -> Result[String, ProcessError]
+    fn change_directory(path: String) -> Result[Unit, ProcessError]
+    fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
+    fn groups() -> Result[List[Int], ProcessError]
+    fn resource_usage() -> Result[ResourceUsage, ProcessError]
+    fn umask(mask: Int) -> Result[Int, ProcessError]
+    fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
+    fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
+```
+
+## ProcessError
+
+**Alternative**
+
+```manuscript
+type ProcessError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case NotFound
+    case AlreadyExists
+    case PermissionDenied
+    case Unsupported
+    case Closed
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for ProcessError:
+    fn message() -> String
+```
+
+## ProcessInfo
+
+**Record**
+
+```manuscript
+type ProcessInfo:
+    pid: Int
+    parent_pid: Int
+    executable: String
+    arguments: List[String]
+    os: String
+    architecture: String
+    uid: Int
+    gid: Int
+    effective_uid: Int
+    effective_gid: Int
+```
+
+## ResourceUsage
+
+**Record**
+
+```manuscript
+type ResourceUsage:
+    user_microseconds: Int
+    system_microseconds: Int
+    max_resident_bytes: Int
+    minor_faults: Int
+    major_faults: Int
+    filesystem_reads: Int
+    filesystem_writes: Int
+    voluntary_switches: Int
+    involuntary_switches: Int
+```
+
+## SignalStream
+
+**Interface**
+
+```manuscript
+interface SignalStream:
+    fn close() -> Unit
+    fn next() -> Result[Int, ProcessError]
+```
+
+## commands
+
+**Function**
+
+```manuscript
+fn commands() -> Commands
+```
+
+## control
+
+**Function**
+
+```manuscript
+fn control() -> ProcessControl
+```
+
 # @std/queues.ms
 
 Import each required symbol with `import Name from "@std/queues.ms"`.
@@ -2425,6 +2898,14 @@ type RandomError:
 ```manuscript
 impl Error for RandomError:
     fn message() -> String
+```
+
+## entropy
+
+**Function**
+
+```manuscript
+fn entropy() -> Entropy
 ```
 
 ## secure_int
@@ -2786,6 +3267,36 @@ type SynchronizedGuard[T]:
 
 Import each required symbol with `import Name from "@std/system.ms"`.
 
+## CpuInfo
+
+**Record**
+
+```manuscript
+type CpuInfo:
+    model: String
+    speed_mhz: Int
+    user: Int
+    nice: Int
+    system: Int
+    idle: Int
+    irq: Int
+```
+
+## NetworkInterface
+
+**Record**
+
+```manuscript
+type NetworkInterface:
+    name: String
+    address: String
+    netmask: String
+    family: String
+    mac: String
+    internal: Bool
+    scope_id: Int
+```
+
 ## System
 
 **Interface**
@@ -2795,6 +3306,40 @@ interface System:
     fn environment(name: String) -> Optional[String]
     fn info() -> SystemInfo
     fn working_directory() -> String
+    fn hostname() -> Result[String, SystemError]
+    fn home_directory() -> Result[String, SystemError]
+    fn temporary_directory() -> Result[String, SystemError]
+    fn user_info() -> Result[UserInfo, SystemError]
+    fn network_interfaces() -> Result[List[NetworkInterface], SystemError]
+    fn cpus() -> Result[List[CpuInfo], SystemError]
+    fn metrics() -> Result[SystemMetrics, SystemError]
+    fn os_release() -> Result[String, SystemError]
+    fn os_version() -> Result[String, SystemError]
+    fn machine() -> Result[String, SystemError]
+    fn get_priority(pid: Int) -> Result[Int, SystemError]
+    fn set_priority(pid: Int, priority: Int) -> Result[Unit, SystemError]
+```
+
+## SystemError
+
+**Alternative**
+
+```manuscript
+type SystemError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case NotFound
+    case AlreadyExists
+    case PermissionDenied
+    case Unsupported
+    case Closed
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for SystemError:
+    fn message() -> String
 ```
 
 ## SystemInfo
@@ -2806,6 +3351,81 @@ type SystemInfo:
     os: String
     architecture: String
     cpu_count: Int
+```
+
+## SystemMetrics
+
+**Record**
+
+```manuscript
+type SystemMetrics:
+    total_memory: Int
+    free_memory: Int
+    available_memory: Int
+    uptime: Duration
+    load_average: List[Float]
+    available_parallelism: Int
+```
+
+## UserInfo
+
+**Record**
+
+```manuscript
+type UserInfo:
+    username: String
+    uid: Int
+    gid: Int
+    home: String
+    shell: String
+```
+
+## constants
+
+**Function**
+
+```manuscript
+fn constants() -> Map[String, Int]
+```
+
+## dev_null
+
+**Function**
+
+```manuscript
+fn dev_null() -> String
+```
+
+## end_of_line
+
+**Function**
+
+```manuscript
+fn end_of_line() -> String
+```
+
+## endianness
+
+**Function**
+
+```manuscript
+fn endianness() -> String
+```
+
+## os_type
+
+**Function**
+
+```manuscript
+fn os_type() -> String
+```
+
+## system
+
+**Function**
+
+```manuscript
+fn system() -> System
 ```
 
 # @std/tasks.ms
@@ -2900,6 +3520,14 @@ fn check_cancelled() -> Unit
 
 See [special call rules](#special-call-rules).
 
+## yield_now
+
+**Function**
+
+```manuscript
+fn yield_now() -> Unit
+```
+
 # @std/time.ms
 
 Import each required symbol with `import Name from "@std/time.ms"`.
@@ -2935,6 +3563,8 @@ type Instant
 
 ```manuscript
 type TimeError:
+    case InvalidInput
+    case Closed
     case InvalidData
     case OutOfRange
 ```
@@ -2942,6 +3572,17 @@ type TimeError:
 ```manuscript
 impl Error for TimeError:
     fn message() -> String
+```
+
+## Timer
+
+**Interface**
+
+```manuscript
+interface Timer:
+    fn close() -> Unit
+    fn restart() -> Result[Unit, TimeError]
+    fn status() -> WorkStatus
 ```
 
 ## Timestamp
@@ -2961,12 +3602,36 @@ interface WallClock:
     fn now() -> Timestamp
 ```
 
+## after
+
+**Function**
+
+```manuscript
+fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
+```
+
+## clock
+
+**Function**
+
+```manuscript
+fn clock() -> Clock
+```
+
 ## difference
 
 **Function**
 
 ```manuscript
 fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
+```
+
+## every
+
+**Function**
+
+```manuscript
+fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
 ```
 
 ## format_timestamp
@@ -3023,6 +3688,14 @@ fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
 
 ```manuscript
 fn unix_seconds(value: Timestamp) -> Int
+```
+
+## wall_clock
+
+**Function**
+
+```manuscript
+fn wall_clock() -> WallClock
 ```
 
 # @std/tls.ms

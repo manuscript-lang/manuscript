@@ -26,7 +26,7 @@ The list contains integers. Each iteration binds an element and updates the accu
 
 ## Iterable types and binding
 
-Evaluate a `for`'s iterable expression once before entering the loop. The loop introduces one immutable identifier per iteration; it does not accept a binding pattern or a type annotation. The closed set of supported iterables is:
+Evaluate a `for`'s iterable expression once before entering the loop and snapshot its membership. Mutations to the collection do not change the current traversal; referenced elements remain shared. The loop introduces one immutable identifier per iteration; it does not accept a binding pattern or a type annotation. The closed set of supported iterables is:
 
 | Iterable | Iteration binding type | Traversal order |
 | --- | --- | --- |
@@ -34,7 +34,7 @@ Evaluate a `for`'s iterable expression once before entering the loop. The loop i
 | `Set[T]` | `T` | Insertion order |
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
 
-`MapEntry[K, V]` is an immutable record with fields `key: K` and `value: V`. It uses the map's key/value eligibility requirements. Its type and named constructor `MapEntry[K, V](key: key, value: value)` are imported from `@std/collections.ms`; field access is ordinary record access. Iteration infers the entry type without requiring an import of its name. It is not a positional pair. Destructure an entry inside the body when convenient.
+`MapEntry[K, V]` is a record with fields `key: K` and `value: V`. It uses the map's key/value eligibility requirements. Its type and named constructor `MapEntry[K, V](key: key, value: value)` are imported from `@std/collections.ms`; field access is ordinary record access. Iteration infers the entry type without requiring an import of its name. It is not a positional pair. Destructure an entry inside the body when convenient.
 
 ```manuscript
 fn total(values: Map[String, Int]) -> Int:

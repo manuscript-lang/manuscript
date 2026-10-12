@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/url"
 
-	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -96,34 +95,12 @@ func init() {
 		return libraryOK(r, libraryList("@std/QueryEntry", items))
 	})
 	add("url", "format_query", "String", []LibraryParam{p("entries", "List[QueryEntry]")}, func(_ *Execution, _ string, a []Value) Value {
-		parts := make([]string, len(a[0].(List).Items))
-		for i, v := range a[0].(List).Items {
+		parts := make([]string, len(a[0].(*List).Items))
+		for i, v := range a[0].(*List).Items {
 			f := v.(Record).Fields
 			parts[i] = url.QueryEscape(f["key"].(string)) + "=" + url.QueryEscape(f["value"].(string))
 		}
 		return strings.Join(parts, "&")
-	})
-	for name, f := range map[string]func(string) string{"normalize": filepath.Clean, "basename": filepath.Base, "dirname": filepath.Dir, "extension": filepath.Ext} {
-		add("path", name, "String", []LibraryParam{p("path", "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string)) })
-	}
-	add("path", "join", "String", []LibraryParam{p("parts", "List[String]")}, func(_ *Execution, _ string, a []Value) Value {
-		parts := libraryStringValues(a[0])
-		if len(parts) == 0 {
-			return "."
-		}
-		return filepath.Join(parts...)
-	})
-	add("path", "is_absolute", "Bool", []LibraryParam{p("path", "String")}, func(_ *Execution, _ string, a []Value) Value { return filepath.IsAbs(a[0].(string)) })
-	add("path", "relative", libraryResult("String", "PathError"), []LibraryParam{p("base", "String"), p("target", "String")}, func(_ *Execution, r string, a []Value) Value {
-		base, target := a[0].(string), a[1].(string)
-		if !filepath.IsAbs(base) || !filepath.IsAbs(target) {
-			return libraryError(r, "InvalidInput", "")
-		}
-		v, err := filepath.Rel(base, target)
-		if err != nil {
-			return libraryError(r, "InvalidInput", "")
-		}
-		return libraryOK(r, v)
 	})
 	add("net", "parse_ip", libraryResult("String", "NetworkError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		ip := net.ParseIP(a[0].(string))
@@ -199,7 +176,7 @@ func libraryJSONParse(ctx *Execution, r string, a []Value) Value {
 				return alt("ArrayValue", libraryList("@std/JsonValue", items)), nil
 			}
 			if v == '{' {
-				m := Map{Type: "@std/Map[String][@std/JsonValue]"}
+				m := &Map{Type: "@std/Map[String][@std/JsonValue]"}
 				seen := map[string]bool{}
 				for decoder.More() {
 					key, err := decoder.Token()
@@ -333,7 +310,7 @@ func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
 			if err := write("["); err != nil {
 				return err
 			}
-			for i, x := range v.Fields[0].(List).Items {
+			for i, x := range v.Fields[0].(*List).Items {
 				if i > 0 {
 					if err := write(","); err != nil {
 						return err
@@ -348,7 +325,7 @@ func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
 			if err := write("{"); err != nil {
 				return err
 			}
-			for i, e := range v.Fields[0].(Map).Entries {
+			for i, e := range v.Fields[0].(*Map).Entries {
 				if i > 0 {
 					if err := write(","); err != nil {
 						return err
@@ -424,7 +401,7 @@ func libraryCSVStringify(ctx *Execution, r string, a []Value) Value {
 	writer := csv.NewWriter(w)
 	writer.Comma = delimiter
 	writer.UseCRLF = crlf
-	for _, row := range a[0].(List).Items {
+	for _, row := range a[0].(*List).Items {
 		CheckCancelled(ctx)
 		if err := writer.Write(libraryStringValues(row)); err != nil {
 			return libraryError(r, "LimitExceeded", "")

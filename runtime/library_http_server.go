@@ -275,7 +275,7 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 				return libraryError(r, "InvalidInput", "")
 			}
 			headerBytes := int64(0)
-			for _, entry := range a[1].(Map).Entries {
+			for _, entry := range a[1].(*Map).Entries {
 				key := entry.Key.(string)
 				if !libraryHeaderName(key) || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
 					return libraryError(r, "InvalidInput", "")
@@ -290,7 +290,7 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 					}
 				}
 			}
-			for _, entry := range a[1].(Map).Entries {
+			for _, entry := range a[1].(*Map).Entries {
 				for _, value := range libraryStringValues(entry.Value) {
 					e.writer.Header().Add(entry.Key.(string), value)
 				}

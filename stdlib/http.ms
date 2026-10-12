@@ -112,3 +112,5 @@ export interface ResponseBody:
 
 impl Error for HttpError:
     fn message() -> String
+
+export fn network() -> Network

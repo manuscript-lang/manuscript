@@ -27,7 +27,7 @@ Manuscript aims to make a program's public contracts, dependencies, and work lif
 
 ## Modules and authority
 
-Every source file is a module. Imports select declarations, and exported declarations form the public surface. Importing `Files` does not grant filesystem access: an application receives authority through values such as `Process.files` and passes it to the functions that need it. This keeps dependencies visible and lets tests provide explicit implementations.
+Every source file is a module. Imports select declarations, and exported declarations form the public surface. Importing `Files` provides its interface; calling the imported `files()` accessor obtains the host service. Helpers can still accept service parameters so tests can provide explicit implementations.
 
 ## Current limits
 

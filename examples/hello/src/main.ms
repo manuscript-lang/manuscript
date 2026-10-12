@@ -1,8 +1,9 @@
-import Process from "@std/cli.ms"
+import arguments from "@std/cli.ms"
+import stdout from "@std/io.ms"
 
-export fn main(process: Process) -> Int:
-    let message = "Arguments: {process.arguments.length()}\n"
-    match process.stdout.write(data: message.to_bytes()):
+export fn main() -> Int:
+    let message = "Arguments: {arguments().length()}\n"
+    match stdout().write(data: message.to_bytes()):
         ok(_):
             return 0
         error(_):

@@ -6,22 +6,15 @@ title = "cli"
 
 Import each required symbol with `import Name from "@std/cli.ms"`.
 
-## Process {data-api-kind="Record"}
+## arguments {data-api-kind="Function"}
 
 ```manuscript
-type Process:
-    arguments: List[String]
-    environment: Map[String, String]
-    stdin: ReadStream
-    stdout: WriteStream
-    stderr: WriteStream
-    files: Files
-    clock: Clock
-    network: Network
-    commands: Commands
-    filesystem: FileSystem
-    entropy: Entropy
-    wall_clock: WallClock
-    system: System
+fn arguments() -> List[String]
+```
+
+## environment {data-api-kind="Function"}
+
+```manuscript
+fn environment() -> Map[String, String]
 ```
 

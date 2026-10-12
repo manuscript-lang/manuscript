@@ -112,6 +112,7 @@ type Statement struct {
 	Mutable    bool
 	Pattern    *Pattern
 	Type       *Type
+	Target     *Expression
 	Value      *Expression
 	Body, Else []*Statement
 	Arms       []Arm

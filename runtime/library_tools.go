@@ -14,7 +14,7 @@ func init() {
 			return libraryError(r, "InvalidInput", "")
 		}
 		m := map[string]string{}
-		for _, e := range a[3].(Map).Entries {
+		for _, e := range a[3].(*Map).Entries {
 			m[e.Key.(string)] = e.Value.(string)
 		}
 		data, err := json.Marshal(struct {

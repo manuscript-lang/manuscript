@@ -39,3 +39,19 @@ Decision: keep Queue a local FIFO, unbounded when capacity is omitted and bounde
 Apply when: changing queue APIs, examples, sharing claims, or native collection implementations.
 Evidence: [queue contract](../documentation/standard-library/data-and-io/queues.md); [FIFO and synchronized-sharing tests](../runtime/queue_test.go); [source conformance](../tests/e2e/testdata/accept/queues.ms); the user's Queue simplification and capacity correction.
 Verify: construction without capacity grows as needed; explicit zero or negative capacity faults. Bounded full enqueue returns false without changing contents, empty reads return none, draining permits reuse, and shared access under one wrapper passes race checks. Do not restore implicit synchronization or blocking channel semantics.
+
+### Borrowing file descriptors must preserve pollable I/O
+
+Verified: `os.File.Fd()` can switch a pollable descriptor into blocking mode. Native metadata and sync helpers that use it can make later cancellation fail even though ordinary file tests pass. The host bridge borrows descriptors with `SyscallConn.Control` instead, preserving the runtime's deadline/cancellation behavior.
+
+Apply when: implementing native descriptor operations alongside cancellable file or stream adapters.
+Evidence: [native descriptor bridge](../internal/hostos/hostos.go), [metadata and file operations](../runtime/library_fs.go), and [pipe cancellation regression](../runtime/library_host_parity_test.go).
+Verify: `TestExpandedHandleCancellationAndStreamAdapters` and runtime race checks, including cancellation after descriptor metadata access and closure through a shared adapter.
+
+### Host parity preserves Manuscript's scheduling model
+
+Decision: when reviewing the Node host expansion, the user asked to simplify timers because they should feel native to Manuscript, not be a blind copy. Use the existing time module and ordinary execution model: sequential `sleep`, concurrent `after`/`every`, one scoped `Timer`, and task-level yielding. Do not duplicate callback/Promise timer families or introduce separate waitable and scheduled handles merely to match Node export names.
+
+Apply when: adding scheduling APIs or using another runtime's API inventory as a completeness target.
+Evidence: the user's timer simplification correction; [time declarations](../stdlib/time.ms), [native host mappings](../documentation/standard-library/packages/node-host.md#timers-and-scheduling), and [scheduling conformance](../runtime/library_host_parity_test.go).
+Verify: ordinary callbacks remain first-class values, cancellation and close join admitted work, and the inventory maps compositions without restoring duplicate public APIs.

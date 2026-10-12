@@ -34,6 +34,9 @@ func (c *checker) effectSummaries() {
 	for _, n := range nodes {
 		syntax.Visitor{
 			Statement: func(statement *syntax.Statement) {
+				if statement.Target != nil {
+					add(n, "write")
+				}
 				if statement.Kind != "with" {
 					return
 				}
@@ -47,6 +50,11 @@ func (c *checker) effectSummaries() {
 				}
 			},
 			Expression: func(expression *syntax.Expression) {
+				if expression.Kind == "member" {
+					if receiver := c.Expressions[expression.Left]; receiver != nil && receiver.Type.Kind == "record" && c.Expressions[expression].Method == nil {
+						add(n, "read")
+					}
+				}
 				if expression.Kind != "call" {
 					return
 				}
@@ -58,7 +66,8 @@ func (c *checker) effectSummaries() {
 				if info.Constructor != nil {
 					return
 				}
-				if info.Native == "toString" {
+				if info.Native == "toString" || info.Native == "clone" {
+					add(n, "read")
 					return
 				}
 				if info.Symbol != nil {
@@ -114,6 +123,16 @@ func (c *checker) effectSummaries() {
 						}
 						if name == "enqueue" || name == "dequeue" {
 							add(n, "write")
+						}
+					case "@std/List", "@std/Map", "@std/Set":
+						add(n, "read")
+						if collectionMutation(receiver, name) {
+							add(n, "write")
+						}
+						for _, param := range method.Type.Params {
+							if param.Type.Kind == "function" {
+								add(n, "unknown")
+							}
 						}
 					case "@std/Pool", "@std/Lease", "@std/Background":
 						add(n, "write", "unknown")

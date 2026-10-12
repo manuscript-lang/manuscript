@@ -37,3 +37,11 @@ export fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String
 
 impl Error for IoError:
     fn message() -> String
+
+export fn stdin() -> ReadStream
+
+export fn stdout() -> WriteStream
+
+export fn stderr() -> WriteStream
+
+export fn files() -> Files

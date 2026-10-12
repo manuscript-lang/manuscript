@@ -192,7 +192,11 @@ func (f *files) Operation(name string) Function {
 			return ioError("@std/Result[@std/File][@std/IoError]", "InvalidInput", "")
 		}
 		if !filepath.IsAbs(name) {
-			name = filepath.Join(f.directory, name)
+			var ok bool
+			name, ok = libraryHostPath(f.directory, name)
+			if !ok {
+				return ioError("@std/Result[@std/File][@std/IoError]", "Unavailable", "")
+			}
 		}
 		file, err := os.Open(name)
 		if err != nil {
@@ -220,11 +224,55 @@ type clock struct {
 func (c *clock) Operation(name string) Function {
 	return NewFunction(nil, "@std/Instant", func(_ *Execution, _ []Value) Value { return Instant{c.domain, int64(time.Since(c.start))} })
 }
-func Process(arguments []string) (Value, error) {
-	directory, err := os.Getwd()
-	if err != nil {
-		return nil, err
+
+// hostRoots are private to one CLI run or test. Derived execution contexts share
+// the same roots; importing an accessor never creates another service instance.
+type hostRoots struct {
+	once      sync.Once
+	arguments []string
+	values    map[string]Value
+	err       error
+}
+
+func (h *hostRoots) initialize() error {
+	h.once.Do(func() { h.values, h.err = newHostValues(h.arguments) })
+	return h.err
+}
+
+func hostValue(ctx *Execution, name string) Value {
+	if ctx == nil || ctx.Host == nil {
+		return Panic("host services are unavailable in this execution")
 	}
+	if err := ctx.Host.initialize(); err != nil {
+		return Panic(err.Error())
+	}
+	return ctx.Host.values[name]
+}
+
+func init() {
+	for _, root := range []struct{ module, name, result string }{
+		{"cli", "arguments", "List[String]"},
+		{"cli", "environment", "Map[String][String]"},
+		{"io", "stdin", "ReadStream"},
+		{"io", "stdout", "WriteStream"},
+		{"io", "stderr", "WriteStream"},
+		{"io", "files", "Files"},
+		{"fs", "filesystem", "FileSystem"},
+		{"http", "network", "Network"},
+		{"process", "commands", "Commands"},
+		{"process", "control", "ProcessControl"},
+		{"time", "clock", "Clock"},
+		{"time", "wall_clock", "WallClock"},
+		{"random", "entropy", "Entropy"},
+		{"system", "system", "System"},
+	} {
+		libraryAdd(root.module, root.name, root.result, nil, func(ctx *Execution, _ string, _ []Value) Value {
+			return hostValue(ctx, root.name)
+		})
+	}
+}
+
+func newHostValues(arguments []string) (map[string]Value, error) {
 	values := make([]Value, len(arguments))
 	for i, a := range arguments {
 		if !utf8.ValidString(a) {
@@ -232,7 +280,7 @@ func Process(arguments []string) (Value, error) {
 		}
 		values[i] = a
 	}
-	environment := Map{Type: "@std/Map[String][String]"}
+	environment := &Map{Type: "@std/Map[String][String]"}
 	for _, entry := range os.Environ() {
 		if !utf8.ValidString(entry) {
 			return nil, fmt.Errorf("process environment is not valid UTF-8")
@@ -252,7 +300,7 @@ func Process(arguments []string) (Value, error) {
 			}
 		}
 	}
-	return Record{"@std/Process", map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{directory}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{directory}), "arguments": List{"@std/List[String]", values}, "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: "@std/Result[Unit][@std/IoError]"}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: "@std/Result[Unit][@std/IoError]"}), "files": ViewOf("@std/Files", &files{directory}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}}, nil
+	return map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{""}), "control": ViewOf("@std/ProcessControl", libraryProcessControl{}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{""}), "arguments": &List{"@std/List[String]", values}, "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: "@std/Result[Unit][@std/IoError]"}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: "@std/Result[Unit][@std/IoError]"}), "files": ViewOf("@std/Files", &files{""}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}, nil
 }
 func RunMain(main Value, arguments []string) (exit int) {
 	exit = 70
@@ -280,7 +328,7 @@ func RunMain(main Value, arguments []string) (exit int) {
 		case <-done:
 		}
 	}()
-	execution := &Execution{Context: ctx, Lifetime: &workLifetime{}}
+	execution := &Execution{Context: ctx, Lifetime: &workLifetime{}, Host: &hostRoots{arguments: arguments}}
 	defer func() {
 		if r := recover(); r != nil {
 			if _, ok := r.(cancelled); ok {
@@ -303,18 +351,17 @@ func RunMain(main Value, arguments []string) (exit int) {
 			}
 		}
 	}()
-	process, err := Process(arguments)
-	if err != nil {
+	if err := execution.Host.initialize(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 70
 	}
 	// Host roots remain available until main and every joined operation finish.
-	defer Cleanup(execution, Field(process, "stdin"))
-	defer Cleanup(execution, Field(process, "stdout"))
-	defer Cleanup(execution, Field(process, "stderr"))
-	defer Cleanup(execution, Field(process, "network"))
+	defer Cleanup(execution, hostValue(execution, "stdin"))
+	defer Cleanup(execution, hostValue(execution, "stdout"))
+	defer Cleanup(execution, hostValue(execution, "stderr"))
+	defer Cleanup(execution, hostValue(execution, "network"))
 	defer FinishExecution(execution)
-	value := Invoke(execution, main, []Argument{{"process", process}}).(int64)
+	value := Invoke(execution, main, nil).(int64)
 	CheckCancelled(execution)
 	if value < 0 || value > 125 {
 		Panic("main exit code must be between 0 and 125")

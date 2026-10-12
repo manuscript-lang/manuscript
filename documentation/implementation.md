@@ -12,7 +12,7 @@ Start with [your first program](getting-started.md) for a walkthrough. Use the [
 ## Language and checking
 
 - UTF-8 source with original byte positions across BOM/CRLF normalization, ASCII identifiers, exact four-space suites, comments, delimiter continuation, numeric literals, escapes, universal `toString()`, and interpolation of every value.
-- Exact intrinsic types, nominal immutable records and alternatives, `type` records/alternatives, generic types/functions, `interface` operation contracts, explicit implementations with inherited generic parameters and bounds, contract views, signature and argument-label checking, module-local extensions for imported source types and overlap rejection, and universal sharing and structural equality/hashing eligibility.
+- Exact intrinsic types, nominal mutable records and alternatives, typed field assignment and shallow data cloning, `type` records/alternatives, generic types/functions, `interface` operation contracts, explicit implementations with inherited generic parameters and bounds, contract views, signature and argument-label checking, module-local extensions for imported source types and overlap rejection, and universal sharing and structural equality/hashing eligibility.
 - Calls with optional labels for single-parameter functions and mandatory labels for multi-parameter functions and constructors, per-call default argument expressions on source functions and methods, function values, suite closures, snapshot captures, and rejection of captured assignment. All function values may be shared through parameters, results, fields, collections, and generic forwarding.
 - Local inference, contextual constructors, invariant generic applications, bounds, guarded recursive layouts, and finite generic call specialization. Generic inference uses independently typed arguments; an expected result does not supply missing type arguments.
 - Bindings, name assignment, list/record destructuring, branching, loops, exhaustive alternative matching, returns, loop exits, lexical `with`, and exact-error `try` propagation. Return completeness includes `Never` and conservative loop rules.
@@ -26,15 +26,15 @@ Start with [your first program](getting-started.md) for a walkthrough. Use the [
 | Facility | Implemented behavior |
 | --- | --- |
 | Numbers | Checked signed 64-bit integers, IEEE binary64 floats, and 34-digit Decimal arithmetic with ties-to-even rounding and exact literal validation |
-| Immutable data | List, insertion-ordered Map and Set, MapEntry, Bytes, UTF-8 conversion, Optional, and Result |
-| Time | Duration construction/arithmetic, monotonic Clock/Instant domains, sleep, and operation deadlines |
+| Data values | List, insertion-ordered Map and Set, MapEntry, Bytes, UTF-8 conversion, Optional, and Result |
+| Time | Duration construction/arithmetic, monotonic Clock/Instant domains, sleep, scoped after/every timers, and operation deadlines |
 | Cleanup | Checker-selected contract dispatch, registration of delivered `with` values, reverse lexical release on every exit, shielded cleanup, primary/secondary fault preservation, and removal of completed cleanup actions |
 | Joined work | Heterogeneous literal `parallel` packs, cancellation checkpoints, deadlines, sibling cancellation on faults, and joining before completion |
 | Background | Bounded admission/history, fixed construction parent, cancellation, serialized reporting, bounded diagnostic fallback, optional drain, concurrent idempotent close, and nested-service joining |
 | Queues and synchronization | Local FIFO queues with optional capacity, immediate full/empty results and explicit synchronization for shared use; Synchronized values with cancellable lock acquisition, scoped guards, atomic get/set, stale-alias checks, and reentry detection |
 | Pools and leases | Fixed resource pools, cancellable acquisition, guarded contract views, stale-alias rejection, single capacity return, operation cancellation/joining, and reverse owned-resource release |
-| Builders | Synchronized List/Map/Set/Bytes/String builders, immutable sealed snapshots, idempotent freeze, and rejection of mutation after sealing |
-| CLI capabilities | Explicit Process arguments/environment, streams, read-only files, monotonic clock, network, commands, checked exit codes, signal cancellation, joined shutdown, and host-root cleanup |
+| Builders | Synchronized List/Map/Set/Bytes/String builders, sealed builder results, idempotent freeze, and rejection of mutation after sealing |
+| CLI capabilities | Imported host arguments/environment, streams, read-only files, monotonic clock, network, commands, checked exit codes, signal cancellation, joined shutdown, and host-root cleanup |
 | HTTP | Explicit Network authority; bounded buffered requests/responses, ordinary handlers, admission/body/output limits, timeout/disconnect cancellation, fault isolation, and grace/cancel/join shutdown |
 | Subprocesses | Explicit Commands authority, joined execution, timeout, aggregate output bounds, captured bytes, exit status, and domain errors; process-group cancellation on platforms exposing that facility |
 | General-purpose packages | Strict codecs/binary numbers, scalar text and bounded Unicode normalization, Float math/BigInt, exact JSON, CSV/URL/HTML, sequential collection algorithms, hashes/HMAC/PBKDF2/AES-GCM/Ed25519, compression and ZIP/TAR, bounded stream helpers, structured logging |
@@ -48,7 +48,7 @@ After checking source, the backend translates functions and control flow into Go
 
 ## Commands, builds, and source tools
 
-`ms check`, `build`, `emit`, `run`, `test`, `inspect`, and `diagram` accept a module or project `ms.toml`. Project configuration supports `[project]` and `[aliases]` with strict keys. Standalone modules use their containing directory as the import root. Applications export nongeneric `fn main(process: Process) -> Int`.
+`ms check`, `build`, `emit`, `run`, `test`, `inspect`, and `diagram` accept a module or project `ms.toml`. Project configuration supports `[project]` and `[aliases]` with strict keys. Standalone modules use their containing directory as the import root. Applications export nongeneric `fn main() -> Int`.
 
 ### Pins and artifact identity
 
@@ -80,7 +80,7 @@ single binary, examples, and licenses for Linux, macOS, and Windows on AMD64 and
 
 ### Test execution
 
-`ms test` executes test blocks in the reachable import graph in dependency/source order with `file::name` labels. Each test has a fresh execution lifetime; services join before the next test. Faults fail that test and remaining tests continue. Builds check test bodies but omit their execution code. Duplicate display names are allowed. Tests have no implicit Process authority. Declaration-only fixtures establish parse/check/build acceptance, not behavior of uncalled functions.
+`ms test` executes test blocks in the reachable import graph in dependency/source order with `file::name` labels. Each test has a fresh execution lifetime; services join before the next test. Faults fail that test and remaining tests continue. Builds check test bodies but omit their execution code. Duplicate display names are allowed. Tests can import host service accessors; each test has fresh roots and an empty argument list. Declaration-only fixtures establish parse/check/build acceptance, not behavior of uncalled functions.
 
 ## Remaining design work
 
@@ -88,7 +88,7 @@ The book's [outstanding decisions](compiler/conformance/scope.md#outstanding-dec
 
 - External native adapter manifests/ABI, `[adapters]` loading, custom host distributions, and adapter/dependency pins.
 - HTTP/3 is excluded by explicit user instruction. Interactive subprocess streams and uniform cross-platform descendant supervision remain separate work.
-- Grapheme segmentation, locale-sensitive text operations and legacy text codecs, seek/watch/permissions APIs, timezone calendars/tickers, archive extraction and specialized formats. NFC/NFD/NFKC/NFKD normalization is implemented with bounded output. See the [coverage map](standard-library/packages/coverage.md) and [built-in method guide](standard-library/packages/javascript-builtins.md) for runnable equivalents and remaining gaps.
+- Grapheme segmentation, locale-sensitive text operations and legacy text codecs, timezone calendars, archive extraction and specialized formats. NFC/NFD/NFKC/NFKD normalization is implemented with bounded output. See the [coverage map](standard-library/packages/coverage.md) and [built-in method guide](standard-library/packages/javascript-builtins.md) for runnable equivalents and remaining gaps.
 - Full incremental frontend/package compilation, concrete native generic layouts, precise retained-authority classification, and native adapter effect declarations.
 - Transactional structural edits, rich diagnostic spans/related locations, architecture diffs, runtime trace transport, generalized structural value transformations.
 - Test discovery globs, identity beyond display labels, authority injection, and expected-fault checks, which need the runner contract finalized.
@@ -107,3 +107,5 @@ make dist-check
 ```
 
 Native end-to-end tests compile accepted syntax and execute test bodies; rejected cases cover typing, visibility, bounds, captures, and service boundaries. Observable tests cover evaluation order, numeric faults, cleanup exits, SIGTERM child-before-parent shutdown, HTTP, subprocesses, source tooling, and unusual module filenames. Runtime tests use barriers/channels for concurrent state transitions; cache tests exercise pin mismatches, corruption, stale sources, and unchanged outputs. CI runs formatting, vet, the complete suite, race tests, and the hello project.
+
+Filesystem, OS, process, path, and timer expansion: [Node.js 24 mapping and host limitations](standard-library/packages/node-host.md). Includes positional/vector file I/O and streams, typed metadata, filtered copy/glob, native/polling watches, scoped temporary directories, OS/process metrics and controls, explicit path dialects, and sleep and scoped after/every scheduling. Native helpers and dependencies are bundled for offline standalone builds.

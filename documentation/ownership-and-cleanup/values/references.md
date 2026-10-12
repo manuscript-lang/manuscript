@@ -9,6 +9,10 @@ weight = 49
 
 Several names can refer to the same object. Passing a reference to a function, putting it in a record, or capturing it in a closure gives another way to access that object. The original reference still works.
 
+## Data copies
+
+Record and collection aliases observe updates to the same instance. `.clone()` creates separate outer data storage and retains nested references. Cloning a record containing a file or socket retains that handle; it does not duplicate, reopen, or extend the resource's lifetime. Opaque handles do not have a built-in clone operation. See [mutation and cloning](../../core-language/types/records.md#mutation-and-cloning).
+
 ## Memory and open resources
 
 Go's garbage collector reclaims memory that is no longer needed. Releasing a file handle, socket, or other external resource is a separate job. Use an explicit `close()` call or a `with` block to arrange that release.

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/manuscript-lang/manuscript/internal/hostos"
 	"io"
 
 	"math/big"
@@ -57,7 +58,14 @@ func libraryMethod(receiver, name string, body func(*Execution, string, []Value)
 				labels = append(labels, p.Name)
 			}
 			result := libraryRuntimeType(spec.Result)
-			return NewFunction(labels, result, func(ctx *Execution, a []Value) Value { return body(ctx, result, a) })
+			implementation := func(ctx *Execution, a []Value) Value { return body(ctx, result, a) }
+			if receiver == "ProcessControl" && name == "watch_signals" {
+				return NewAcquisition(labels, result, implementation, libraryDisposeResource)
+			}
+			if receiver == "FileSystem" && (name == "open" || name == "open_flags" || name == "open_directory" || name == "watch" || name == "watch_native" || name == "temporary") {
+				return NewAcquisition(labels, result, implementation, libraryDisposeResource)
+			}
+			return NewFunction(labels, result, implementation)
 		}
 	}
 	Panic("unknown library method " + receiver + "." + name)
@@ -96,12 +104,21 @@ func (libraryWallClock) Operation(name string) Function {
 type librarySystem struct{ directory string }
 
 func (s *librarySystem) Operation(name string) Function {
-	return libraryMethod("System", name, func(_ *Execution, _ string, a []Value) Value {
+	return libraryMethod("System", name, func(ctx *Execution, r string, a []Value) Value {
 		switch name {
 		case "info":
 			return Record{"@std/SystemInfo", map[string]Value{"os": goruntime.GOOS, "architecture": goruntime.GOARCH, "cpu_count": int64(goruntime.NumCPU())}}
 		case "working_directory":
-			return s.directory
+			if s.directory != "" {
+				return s.directory
+			}
+			libraryDirectoryMu.Lock()
+			defer libraryDirectoryMu.Unlock()
+			directory, err := os.Getwd()
+			if err != nil {
+				return Panic(err.Error())
+			}
+			return directory
 		case "environment":
 			v, ok := os.LookupEnv(a[0].(string))
 			if !utf8.ValidString(v) {
@@ -109,7 +126,7 @@ func (s *librarySystem) Operation(name string) Function {
 			}
 			return optional("String", v, ok)
 		}
-		return Panic("unknown system operation")
+		return s.extended(ctx, r, name, a)
 	})
 }
 
@@ -140,13 +157,7 @@ func (libraryEntropy) Operation(name string) Function {
 type libraryFileSystem struct{ directory string }
 
 func (f *libraryFileSystem) path(s string) (string, bool) {
-	if strings.ContainsRune(s, 0) {
-		return "", false
-	}
-	if !filepath.IsAbs(s) {
-		s = filepath.Join(f.directory, s)
-	}
-	return s, true
+	return libraryHostPath(f.directory, s)
 }
 func libraryOSResult(r string, value Value, err error) Value {
 	if err == nil {
@@ -154,6 +165,8 @@ func libraryOSResult(r string, value Value, err error) Value {
 	}
 	code := "Failed"
 	switch {
+	case errors.Is(err, errors.ErrUnsupported):
+		code = "Unsupported"
 	case errors.Is(err, os.ErrNotExist):
 		code = "NotFound"
 	case errors.Is(err, os.ErrExist):
@@ -165,7 +178,13 @@ func libraryOSResult(r string, value Value, err error) Value {
 }
 func (f *libraryFileSystem) Operation(name string) Function {
 	return libraryMethod("FileSystem", name, func(ctx *Execution, r string, a []Value) Value {
-		if name == "temporary_directory" {
+		if name == "glob_entries" {
+			return f.globEntries(ctx, r, a)
+		}
+		if name == "copy" {
+			return f.copy(ctx, r, a)
+		}
+		if name == "temporary_directory" || name == "temporary" {
 			prefix := a[0].(string)
 			if prefix == "" || strings.ContainsAny(prefix, "/\\\x00") {
 				return libraryError(r, "InvalidInput", "")
@@ -174,6 +193,9 @@ func (f *libraryFileSystem) Operation(name string) Function {
 			if err == nil && ctx.Context.Err() != nil {
 				os.Remove(s)
 				CheckCancelled(ctx)
+			}
+			if name == "temporary" && err == nil {
+				return libraryOK(r, ViewOf("@std/TemporaryDirectory", &libraryTemporary{path: s}))
 			}
 			return libraryOSResult(r, s, err)
 		}
@@ -238,7 +260,7 @@ func (f *libraryFileSystem) Operation(name string) Function {
 			if !utf8.ValidString(info.Name()) {
 				return libraryError(r, "Unsupported", "")
 			}
-			return libraryOK(r, Record{"@std/FileInfo", map[string]Value{"name": info.Name(), "size": info.Size(), "directory": info.IsDir(), "symlink": info.Mode()&os.ModeSymlink != 0, "modified": libraryTimestamp{info.ModTime().UTC()}}})
+			return libraryOK(r, libraryFileInfoBirth(libraryFileInfo(info), hostos.BirthPath(p, a[1].(bool))))
 		case "list":
 			n := a[1].(int64)
 			if n < 0 {
@@ -330,7 +352,7 @@ func (f *libraryFileSystem) Operation(name string) Function {
 			}
 			return libraryOSResult(r, Unit{}, os.Symlink(target, p))
 		}
-		return Panic("unknown filesystem operation")
+		return f.extended(ctx, r, name, p, a)
 	})
 }
 func libraryRemoveTree(ctx *Execution, p string) error {
@@ -413,7 +435,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 	if err != nil {
 		return libraryError(r, "InvalidInput", "")
 	}
-	for _, e := range a[2].(Map).Entries {
+	for _, e := range a[2].(*Map).Entries {
 		name, value := e.Key.(string), e.Value.(string)
 		if !libraryHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") || strings.EqualFold(name, "Content-Length") || strings.EqualFold(name, "Transfer-Encoding") || strings.EqualFold(name, "Host") {
 			return libraryError(r, "InvalidInput", "")
@@ -440,7 +462,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		}
 		return libraryError(r, code, "")
 	}
-	headers := Map{Type: "@std/Map[String][@std/List[String]]"}
+	headers := &Map{Type: "@std/Map[String][@std/List[String]]"}
 	keys := []string{}
 	for k := range response.Header {
 		keys = append(keys, k)

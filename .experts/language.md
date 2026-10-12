@@ -81,3 +81,19 @@ Verified: defaults are permissions on a known callable, not part of function-typ
 Apply when: changing callable metadata, assignment, generic inference, default arguments, or function-value tooling.
 Evidence: [canonical default rules](../documentation/core-language/functions/declarations-and-calls.md#default-arguments); [boundary rejection tests](../checker/defaults_test.go); [native default behavior](../tests/e2e/testdata/accept/default-arguments.ms).
 Verify: replace a defaulted function with a required-argument function through a mutable binding and reject omission; reject omission after generic forwarding, while an inferred immutable copy still accepts it.
+
+### Mutable data uses explicit shallow cloning
+
+Decision: ordinary record fields and collections are mutable. The user rejected immutable replacement APIs and instance freezing in favor of `.clone()`. Preserve `let`/`var` binding rules independently of object mutation. Clone data storage shallowly; do not manufacture copies of sockets, files, locks, or other native service handles. A cloned record may retain the same handle reference.
+
+Apply when: changing fields, collection updates, aliases, copies, equality, or concurrency guidance.
+Evidence: [record contract](../documentation/core-language/types/records.md#mutation-and-cloning); [collection contract](../documentation/core-language/types/collections.md#mutation-and-copies); [native conformance](../tests/e2e/testdata/accept/mutation.ms); [resource clone rejection](../compiler/mutation_test.go); [CLI rejection and shared file lifetime](../tests/e2e/mutation_test.go).
+Verify: the counter's Unit-returning method updates `self.val`; aliases observe mutation; a clone's outer storage stays separate while its nested references remain shared. Native resource clone calls are rejected. Protect concurrent mutation with existing Synchronized guards; do not restore removed sharing bounds.
+
+### Parameterless main and imported host accessors
+
+Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
+
+Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
+Evidence: [CLI host contract](../documentation/standard-library/hosts/cli.md), [entry validation](../compiler/compiler.go), and [execution-local accessors](../runtime/host.go).
+Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.

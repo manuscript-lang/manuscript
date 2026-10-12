@@ -373,6 +373,13 @@ func (c *checker) currentModule() string {
 }
 
 func nativeMethod(t *Type, name string) *Method {
+	if name == "clone" && (t.Kind == "record" || t.Kind == "alternative" || std(t, "List") || std(t, "Map") || std(t, "Set") || std(t, "Bytes")) {
+		receiver := t
+		if t.Kind == "record" || t.Kind == "alternative" {
+			receiver = standardSymbols["CloneOperations"].Type
+		}
+		return &Method{Receiver: t, Type: function(nil, t), Native: name, Decl: standardMethodDeclaration(receiver, name)}
+	}
 	if name == "toString" {
 		receiver := standardSymbols["ValueOperations"].Type
 		return &Method{Receiver: t, Type: receiver.Def.Operations[0].Type, Native: name, Decl: standardMethodDeclaration(receiver, name)}

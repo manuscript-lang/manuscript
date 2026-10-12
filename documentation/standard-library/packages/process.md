@@ -19,7 +19,7 @@ fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoEr
 
 ## Running commands
 
-[Commands.run](../data-and-io/streams.md) uses explicit `process.commands` access. Supply the program, arguments, input, aggregate output bound, and timeout. It waits for execution and returns captured `exit_code`, `stdout`, and `stderr`. A nonzero exit is returned data. Running a shell must be explicit.
+[Commands.run](../data-and-io/streams.md) uses the imported `commands()` host accessor. Supply the program, arguments, input, aggregate output bound, and timeout. It waits for execution and returns captured `exit_code`, `stdout`, and `stderr`. A nonzero exit is returned data. Running a shell must be explicit.
 
 ## Stream helpers
 

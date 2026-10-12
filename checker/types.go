@@ -72,6 +72,7 @@ type Info struct {
 	Method      *Method
 	Native      string
 	NoReturn    bool
+	Write       bool
 	Captures    []*Binding
 	TypeArgs    []*Type
 	// Arguments retains written order with omitted function labels resolved.

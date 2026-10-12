@@ -56,8 +56,8 @@ func compileModules(modules []*syntax.Module, imports map[*syntax.Import]string,
 	}
 	if options.Entry {
 		main := checked.Symbols[entry]["main"]
-		if main == nil || !main.Export || main.Kind != "fn" || len(main.Variables) != 0 || len(main.Type.Params) != 1 || main.Type.Params[0].Name != "process" || main.Type.Params[0].Type.ID != "@std/Process" || main.Type.Result.ID != "Int" {
-			result.Diagnostics = append(result.Diagnostics, syntax.Diagnostic{Position: syntax.Position{File: entry, Line: 1, Column: 1}, Phase: "type", Message: "entry must export fn main(process: Process) -> Int"})
+		if main == nil || !main.Export || main.Kind != "fn" || len(main.Variables) != 0 || len(main.Type.Params) != 0 || main.Type.Result.ID != "Int" {
+			result.Diagnostics = append(result.Diagnostics, syntax.Diagnostic{Position: syntax.Position{File: entry, Line: 1, Column: 1}, Phase: "type", Message: "entry must export fn main() -> Int"})
 			return result
 		}
 	}

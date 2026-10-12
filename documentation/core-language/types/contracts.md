@@ -36,7 +36,7 @@ impl Increment for Offset:
         return value + self.delta
 ```
 
-`self` is an implicit receiver binding inside each implementation method, with the concrete receiver type. It is not written as a parameter, is not supplied as a call argument, and cannot be redeclared. The receiver does not add a field to the contract. Methods follow the ordinary immutable-field and reference rules.
+`self` is an implicit receiver binding inside each implementation method, with the concrete receiver type. It is not written as a parameter, is not supplied as a call argument, and cannot be redeclared. The receiver does not add a field to the contract. Methods follow the ordinary mutable-field and reference rules.
 
 An implementation must match the contract exactly. After substituting generic type arguments, check:
 
@@ -180,7 +180,7 @@ All contract values may be passed between operations; concurrent invocation foll
 
 ## Contracts and external authority
 
-A capability is passed as an explicit input when an operation needs external authority, such as storage or a payment service. [Modules and capabilities](../../modules-and-capabilities/modules/_index.md) describes effects, native synchronization obligations, and exported boundary contracts.
+A capability can be passed as an explicit input when an operation needs an external service, such as storage or payments. Standard host services are also available through imported accessor functions. [Modules and capabilities](../../modules-and-capabilities/modules/_index.md) describes effects, native synchronization obligations, and exported boundary contracts.
 
 Contracts can also appear as [generic bounds](generics.md), where they name the operations required from a type argument.
 

@@ -430,11 +430,15 @@ func (p *Parser) statement() *syntax.Statement {
 	default:
 		e := p.expression(0)
 		if p.take("=") {
-			if e.Kind != "name" || e.Text == "self" {
-				p.fail(t, "assignment requires a local binding name")
+			if (e.Kind != "name" && e.Kind != "member") || e.Text == "self" {
+				p.fail(t, "assignment requires a local binding name or record field")
 			}
 			s.Kind = "assign"
-			s.Name = e.Text
+			if e.Kind == "member" {
+				s.Target = e
+			} else {
+				s.Name = e.Text
+			}
 			s.Value = p.expression(0)
 		} else {
 			if e.Kind != "call" {

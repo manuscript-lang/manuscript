@@ -38,7 +38,7 @@ These commands use source checking and embedded declarations without a Go instal
 
 `doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. Project docs include reachable local modules. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
 
-`ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, and `vendor/` tree. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](../compiler/builds/reproducibility.md).
+`ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](../compiler/builds/reproducibility.md).
 
 ## Editor features
 

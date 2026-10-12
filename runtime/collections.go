@@ -3,9 +3,31 @@ package msruntime
 import (
 	"math"
 	"math/big"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 )
+
+func spliceList(list *List, start, count int, replacement *List) {
+	items := replacement.Items
+	if list == replacement {
+		items = append([]Value{}, items...)
+	}
+	oldLength := len(list.Items)
+	newLength := oldLength - count + len(items)
+	if newLength < oldLength-count {
+		Panic("list replacement length overflow")
+	}
+	if newLength > oldLength {
+		list.Items = slices.Grow(list.Items, newLength-oldLength)[:newLength]
+	}
+	copy(list.Items[start+len(items):], list.Items[start+count:oldLength])
+	copy(list.Items[start:], items)
+	if newLength < oldLength {
+		clear(list.Items[newLength:])
+		list.Items = list.Items[:newLength]
+	}
+}
 
 func optional(typ string, value Value, present bool) Value {
 	if !present {
@@ -17,11 +39,11 @@ func constructor(typ string, args []Argument) Value {
 	name, _ := splitType(typ)
 	switch name {
 	case "@std/Map":
-		return Map{Type: typ}
+		return &Map{Type: typ}
 	case "@std/Set":
-		return Set{Type: typ}
+		return &Set{Type: typ}
 	case "@std/Bytes":
-		values := args[0].Value.(List).Items
+		values := args[0].Value.(*List).Items
 		bytes := make([]byte, len(values))
 		for i, v := range values {
 			n := v.(int64)
@@ -39,6 +61,9 @@ func NativeMember(receiver Value, name string) Value {
 	return NativeMemberResult(receiver, name, "")
 }
 func NativeMemberResult(receiver Value, name, result string) Value {
+	if name == "clone" {
+		return NewFunction(nil, result, func(_ *Execution, _ []Value) Value { return Clone(receiver) })
+	}
 	if name == "toString" {
 		return NewFunction(nil, "String", func(_ *Execution, _ []Value) Value { return Format(receiver) })
 	}
@@ -55,19 +80,19 @@ func NativeMemberResult(receiver Value, name, result string) Value {
 	switch name {
 	case "get":
 		labels = []string{"index"}
-		if _, ok := receiver.(Map); ok {
+		if _, ok := receiver.(*Map); ok {
 			labels = []string{"key"}
 		}
 	case "append", "contains", "with_value":
 		labels = []string{"value"}
-		if _, ok := receiver.(Map); ok {
+		if _, ok := receiver.(*Map); ok {
 			labels = []string{"key"}
 		}
 	case "concat":
 		labels = []string{"values"}
 	case "without":
 		labels = []string{"value"}
-		if _, ok := receiver.(Map); ok {
+		if _, ok := receiver.(*Map); ok {
 			labels = []string{"key"}
 		}
 	case "with_entry":
@@ -75,7 +100,7 @@ func NativeMemberResult(receiver Value, name, result string) Value {
 	}
 	return NewFunction(labels, "", func(ctx *Execution, args []Value) Value {
 		switch v := receiver.(type) {
-		case List:
+		case *List:
 			element := typeArguments(v.Type)[0]
 			switch name {
 			case "length":
@@ -87,12 +112,12 @@ func NativeMemberResult(receiver Value, name, result string) Value {
 				}
 				return optional(element, v.Items[i], true)
 			case "append":
-				values := append(append([]Value{}, v.Items...), args[0])
-				return List{v.Type, values}
+				v.Items = append(v.Items, args[0])
+				return v
 			case "concat":
-				return List{v.Type, append(append([]Value{}, v.Items...), args[0].(List).Items...)}
+				return &List{v.Type, append(append([]Value{}, v.Items...), args[0].(*List).Items...)}
 			}
-		case Map:
+		case *Map:
 			typ := typeArguments(v.Type)[1]
 			var key Value
 			if len(args) > 0 {
@@ -116,21 +141,25 @@ func NativeMemberResult(receiver Value, name, result string) Value {
 				}
 				return optional(typ, v.Entries[found].Value, true)
 			case "with_entry":
-				entries := append([]Entry{}, v.Entries...)
+				entries := v.Entries
 				if found >= 0 {
 					entries[found].Value = args[1]
 				} else {
 					entries = append(entries, Entry{key, args[1]})
 				}
-				return Map{v.Type, entries}
+				v.Entries = entries
+				return v
 			case "without":
-				entries := append([]Entry{}, v.Entries...)
+				entries := v.Entries
 				if found >= 0 {
-					entries = append(entries[:found], entries[found+1:]...)
+					copy(entries[found:], entries[found+1:])
+					entries[len(entries)-1] = Entry{}
+					entries = entries[:len(entries)-1]
 				}
-				return Map{v.Type, entries}
+				v.Entries = entries
+				return v
 			}
-		case Set:
+		case *Set:
 			var value Value
 			if len(args) > 0 {
 				value = args[0]
@@ -142,17 +171,21 @@ func NativeMemberResult(receiver Value, name, result string) Value {
 			case "contains":
 				return found >= 0
 			case "with_value":
-				items := append([]Value{}, v.Items...)
+				items := v.Items
 				if found < 0 {
 					items = append(items, value)
 				}
-				return Set{v.Type, items}
+				v.Items = items
+				return v
 			case "without":
-				items := append([]Value{}, v.Items...)
+				items := v.Items
 				if found >= 0 {
-					items = append(items[:found], items[found+1:]...)
+					copy(items[found:], items[found+1:])
+					items[len(items)-1] = nil
+					items = items[:len(items)-1]
 				}
-				return Set{v.Type, items}
+				v.Items = items
+				return v
 			}
 		case string:
 			switch name {

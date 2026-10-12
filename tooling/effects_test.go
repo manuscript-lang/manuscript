@@ -49,7 +49,7 @@ fn indirect(callback: fn() -> Unit) -> Unit:
 		found[entity.Name] = entity.Effects
 	}
 	for _, name := range []string{"direct", "transitive", "nested", "Closeable for Resource.close"} {
-		if !reflect.DeepEqual(found[name], []string{"write"}) {
+		if !reflect.DeepEqual(found[name], []string{"read", "write"}) {
 			t.Errorf("%s effects: %v", name, found[name])
 		}
 	}

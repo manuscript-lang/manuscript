@@ -1,6 +1,6 @@
+import network from "@std/http.ms"
 import panic from "@std/faults.ms"
 
-import Process from "@std/cli.ms"
 import List from "@std/collections.ms"
 import Map from "@std/collections.ms"
 import Optional from "@std/optional.ms"
@@ -55,12 +55,12 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         error(_):
             return error(cause: HttpError.Failed(message: "write failed"))
 
-fn exercise(process: Process) -> Result[Unit, HttpError]:
+fn exercise() -> Result[Unit, HttpError]:
     let tls = TlsOptions(server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "", alpn: [], require_client_certificate: false)
     let server_options = HttpServerOptions(max_requests: 8, max_body_bytes: 1024, max_response_bytes: 1024, max_header_bytes: 65536, timeout: 3.seconds, grace: 0.milliseconds, tls: none)
-    with server = try process.network.serve_stream(address: "127.0.0.1:0", handler: echo, options: server_options):
+    with server = try network().serve_stream(address: "127.0.0.1:0", handler: echo, options: server_options):
         let client_options = HttpClientOptions(max_redirects: 2, max_idle_connections: 4, max_header_bytes: 65536, idle_timeout: 10.seconds, decompress: true, cookies: true, tls: tls)
-        with client = try process.network.http_client(options: client_options):
+        with client = try network().http_client(options: client_options):
             with response = try client.send(method: "GET", url: "http://{server.address()}/", headers: Map[String, String](), body: "".to_bytes(), max_response_bytes: 1024, timeout: 2.seconds):
                 if not (response.status() == 200):
                     return panic(message: "check failed")
@@ -75,7 +75,7 @@ fn exercise(process: Process) -> Result[Unit, HttpError]:
                     error(_):
                         return panic(message: "Unexpected case")
         let websocket_options = WebSocketOptions(max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: false)
-        with socket = try socket_result(result: process.network.web_socket(url: "ws://{server.address()}/ws", headers: Map[String, String](), subprotocols: ["echo"], options: websocket_options)):
+        with socket = try socket_result(result: network().web_socket(url: "ws://{server.address()}/ws", headers: Map[String, String](), subprotocols: ["echo"], options: websocket_options)):
             if not (socket.subprotocol() == "echo"):
                 return panic(message: "check failed")
             let sent = try socket_result(result: socket.send(data: "echo me".to_bytes(), text: true))
@@ -89,8 +89,8 @@ fn exercise(process: Process) -> Result[Unit, HttpError]:
                     return panic(message: "Unexpected case")
     return ok(value: unit)
 
-export fn main(process: Process) -> Int:
-    match exercise(process: process):
+export fn main() -> Int:
+    match exercise():
         ok(_):
             return 0
         error(_):

@@ -9,7 +9,7 @@ weight = 39
 
 This is the reference for basic methods on standard data types. These methods belong to the canonical intrinsic or imported receiver type. They do not introduce new global names or compiler bounds.
 
-Import standard types when naming them. Ordinary bracket list literals need `List`. A type inferred from a return value does not need its own import unless you name it in source. Updates produce new immutable values and leave the original unchanged. Sizes and indexes use `Int`; allocation failure is a host failure.
+Import standard types when naming them. Ordinary bracket list literals need `List`. A type inferred from a return value does not need its own import unless you name it in source. Updates mutate records and collections in place. Use `.clone()` first to preserve their current contents. Transformations such as `map`, `filter`, `slice`, `concat`, `sorted`, and set algebra still return new collections. Sizes and indexes use `Int`; allocation failure is a host failure.
 
 A single-parameter operation may omit its argument label. Multi-parameter operations require the exact labels below.
 
@@ -46,14 +46,14 @@ fn positives(values: List[Int]) -> List[Int]:
             result = result.append(value: value)
     return result
 
-test "dynamic immutable data":
+test "dynamic mutable data and explicit copies":
     if not (positives(values: [3, -1, 2]) == [3, 2]):
         return panic(message: "check failed")
     let absent: Optional[Int] = none
     if not ([1].get(index: 5) == absent):
         return panic(message: "check failed")
     let original = Map[String, Int]().with_entry(key: "a", value: 1)
-    let updated = original.with_entry(key: "b", value: 2).with_entry(key: "a", value: 3)
+    let updated = original.clone().with_entry(key: "b", value: 2).with_entry(key: "a", value: 3)
     if not (original.get(key: "a") == some(value: 1)):
         return panic(message: "check failed")
     if not (updated.get(key: "a") == some(value: 3)):

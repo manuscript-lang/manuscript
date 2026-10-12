@@ -30,7 +30,7 @@ flowchart LR
 4. `lexer` produces layout-aware UTF-8 tokens with original source positions. `parser` produces `syntax.Module` trees. Partial parsing is restricted to editor analysis; it never grants permission to build invalid source.
 5. `checker` resolves declarations, nominal types, bounds, selected implementations, control flow, captures, cleanup, and effects. Its checked program retains the information used by lowering, documentation, and editor tools.
 6. `compiler` lowers a successful checked program to Go. Check, lint, inspection, diagrams, documentation, and lock commands stop after checking. Application entry validation can run without lowering; editor analysis can omit that requirement. Diagnostics prevent generated output. `Standalone` merges checked output and the embedded runtime without a runtime package dependency.
-7. Native builds query the selected toolchain once, use that same pin for project verification and artifact metadata, and check cache hashes. Pin and metadata comparison operates on typed values rather than serializing both sides back to JSON. Builds embed vendored dependency sources and write executable metadata. Only the lock command needs a toolchain query among the source commands.
+7. Native builds disable VCS stamping for their generated temporary module, query the selected toolchain once, use that same pin for project verification and artifact metadata, and check cache hashes. Pin and metadata comparison operates on typed values rather than serializing both sides back to JSON. Builds embed vendored dependency sources and write executable metadata. Only the lock command needs a toolchain query among the source commands.
 
 ## Know what each package owns
 
@@ -47,6 +47,7 @@ flowchart LR
 | `tooling/` | Formatter, advisory lint, navigation, inspection, and static diagrams derived from source or checked programs |
 | `tooling/lsp/` | Transport, workspace/analysis snapshots, typed editor features, completion, references, rename, and versioned edits |
 | `tooling/docgen/` | Portable Markdown/JSON rendering and site reference generation. `call-rules.md` is the embedded source for special compiler-bound calls |
+| `internal/hostos/` | Platform helpers for native filesystem, process, and OS operations, included in the embedded dependency bundle |
 | `internal/cli/` | CLI command orchestration, status codes, signal forwarding, and shipped documentation commands |
 | Root Go files | Embedded vendor/module dependencies and optional native toolchain payload. They must remain beside `go.mod`, `vendor/`, and the build payload because Go embed paths cannot traverse a parent directory |
 

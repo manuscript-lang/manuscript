@@ -11,6 +11,7 @@ Import each required symbol with `import Name from "@std/bytes.ms"`.
 ```manuscript
 type Bytes:
     values: List[Int]
+    fn clone() -> Bytes
     fn contains(value: Bytes) -> Bool
     fn slice(start: Int, end: Int) -> Bytes
     fn at(index: Int) -> Optional[Int]

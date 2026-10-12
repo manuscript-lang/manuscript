@@ -4,6 +4,7 @@ import List from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 
 export type Bytes:
+    fn clone() -> Bytes
     fn contains(value: Bytes) -> Bool
     fn slice(start: Int, end: Int) -> Bytes
     fn at(index: Int) -> Optional[Int]

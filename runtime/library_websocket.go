@@ -47,7 +47,7 @@ func (n *network) webSocketDial() Function {
 			}
 		}
 		headers := http.Header{}
-		for _, entry := range a[1].(Map).Entries {
+		for _, entry := range a[1].(*Map).Entries {
 			key, value := entry.Key.(string), entry.Value.(string)
 			if !validHeaderName(key) || strings.ContainsAny(value, "\r\n\x00") || strings.HasPrefix(strings.ToLower(key), "sec-websocket-") || strings.EqualFold(key, "Upgrade") || strings.EqualFold(key, "Connection") || strings.EqualFold(key, "Host") {
 				return libraryError(r, "InvalidInput", "")
