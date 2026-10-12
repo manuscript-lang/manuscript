@@ -11,6 +11,6 @@ Import each required symbol with `import Name from "@std/log.ms"`.
 Kind: fn.
 
 ```text
-write: fn(output: WriteStream & Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LibraryError]
+write: fn(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LibraryError]
 ```
 

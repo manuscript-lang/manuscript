@@ -9,7 +9,7 @@ weight = 16
 
 Equality describes whether values are equal; hashing supplies the property required by map keys and set elements. These are explicit eligibility requirements on types.
 
-Equality is by value for eligible shareable data types; services, resources, and capabilities have no implicit equality.
+Equality is by value for eligible data types; services, resources, and capabilities have no implicit equality.
 
 ## Eligibility and value behavior
 
@@ -17,7 +17,7 @@ Equality is by value for eligible shareable data types; services, resources, and
 
 String equality compares exact UTF-8 scalar sequences without Unicode normalization. Bytes compare byte sequences. Decimal equality compares numeric value rather than spelling or trailing zeroes. Hashing must agree with equality: equal values have equal hashes, but unequal values may collide. Hash values/algorithms are not a stable serialized format or a public source operation.
 
-Records compare only with the same instantiated nominal type, field by field. Alternatives require the same instantiated type, tag, and equal payload fields. A record/alternative is `Equal` when every component is eligible for equality, and `Hashable` when every component is eligible for hashing. Optional and Result follow these alternative rules. Derivations respect current sharing eligibility and do not grant equality to service/resource references.
+Records compare only with the same instantiated nominal type, field by field. Alternatives require the same instantiated type, tag, and equal payload fields. A record/alternative is `Equal` when every component is eligible for equality, and `Hashable` when every component is eligible for hashing. Optional and Result follow these alternative rules. Sharing does not grant equality to service/resource references.
 
 | Collection | Equality | Hashing |
 | --- | --- | --- |
@@ -51,9 +51,9 @@ This tree is `Equal` for eligible `T`; its list field prevents hashing. User-def
 
 | Use | Requirements |
 | --- | --- |
-| Value equality | Eligible shareable data type with equality |
-| `Map[K, V]` key | Shareable and hashable, including equality |
-| `Set[T]` element | Shareable and hashable, including equality |
+| Value equality | Eligible data type with equality |
+| `Map[K, V]` key | Hashable, including equality |
+| `Set[T]` element | Hashable, including equality |
 
 ## Equality and hash consistency
 

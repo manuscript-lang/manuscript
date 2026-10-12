@@ -10,7 +10,7 @@ weight = 59
 ## `@std/log.ms`
 
 ```text
-fn write(output: WriteStream&Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LibraryError]
+fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LibraryError]
 ```
 
 ## `@std/test.ms`

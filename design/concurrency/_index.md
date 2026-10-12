@@ -17,6 +17,18 @@ The fragment belongs to a function returning `Result[U, ExecutionError]`; Unit t
 
 Values are ordinary references. There are no source-level task handles, task moves, ownership transfers, or separate async function declarations. Closures snapshot local bindings; resource references remain subject to runtime closed-state checks.
 
+## Sharing values and updating state
+
+All values may be shared freely, including functions, interface views, collections, and builders. Data is immutable; local `var` bindings are snapshotted by closures. Native mutable objects synchronize their internals. For a complete shared update, import `Synchronized` from `@std/sync.ms`:
+
+```text
+let counter = Synchronized(value: 0)
+with locked = counter.lock():
+    locked.set(value: locked.get() + 1)
+```
+
+The guard holds the lock until scope exit. Read the [synchronization contract](../standard-library/data-and-io/synchronized-state.md#synchronized) for cancellation, aliases, and reentry. Sharing does not extend a resource's open lifetime.
+
 ## Importing concurrency APIs
 
 Concurrency adds no intrinsic names or compiler bounds. Import each API or type that the module names:
@@ -34,7 +46,7 @@ import Duration from "@std/time.ms"
 
 These are independent imports, not a required bundle. Importing one does not expose the others. Work status and failure reporting are also explicit standard exports; the [standard API contract](../standard-library/types/prelude.md#names-and-identity) lists their paths. Ordinary Result annotations and error-adaptation helpers use their own imports from `@std/result.ms`.
 
-Scheduling, cancellation, joining, time budgets, and service shutdown belong to these library/runtime APIs. The compiler checks callable sharing and the fixed parallel pack shape by the resolved standard binding identity. Its hidden execution context is an internal calling convention, not an ambient source capability or a new intrinsic type. A user function named parallel remains an ordinary function.
+Scheduling, cancellation, joining, time budgets, and service shutdown belong to these library/runtime APIs. The compiler checks callback signatures and the fixed parallel pack shape by the resolved standard binding identity. Its hidden execution context is an internal calling convention, not an ambient source capability or a new intrinsic type. A user function named parallel remains an ordinary function.
 
 ## Fixed lifetimes
 

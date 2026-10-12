@@ -1,9 +1,9 @@
 +++
-title = "Synchronized state, pools, and leases"
+title = "Synchronized values, pools, and leases"
 weight = 42
 +++
 
-# Synchronized state, pools, and leases
+# Synchronized values, pools, and leases
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
@@ -13,13 +13,36 @@ Pool references can be shared by requests and background work. A job acquires it
 
 Access and closure must be coordinated: close waits for or cancels outstanding operations before allowing reuse, and stale aliases report closed state rather than using a connection assigned to another caller. Supported simultaneous use is explicit in the adapter/service contract.
 
-## State
+## Synchronized
 
-Import `State` from `@std/state.ms`. `State[T: Shareable](value: T)` is an opaque synchronized reference. `get() -> T`, `set(value: T) -> Unit`, and `swap(value: T) -> T` each execute atomically. Swap returns the previous value. A read followed by a write is not an atomic update. State is shareable but has no equality, hashing, or cleanup operation. Each operation checks caller cancellation before and after its transition; committed changes are not rolled back.
+Import `Synchronized` and, when an annotation needs it, `SynchronizedGuard` from `@std/sync.ms`. `Synchronized[T](value: T)` is an opaque reference containing one value and one mutex. Aliases share both. Its only operation is `lock() -> SynchronizedGuard[T]`.
+
+```text
+import Synchronized from "@std/sync.ms"
+
+test "a complete update holds one lock":
+    let counter = Synchronized(value: 0)
+    with locked = counter.lock():
+        locked.set(value: locked.get() + 1)
+    with locked = counter.lock():
+        assert locked.get() == 1
+```
+
+`lock()` waits cancellably for exclusive admission. The guard exposes `get() -> T`, `set(value: T) -> Unit`, and `close() -> Unit`; it has no source constructor and implements `Closeable`. Use `with` to release it on normal exit, return, loop exits, propagated errors, faults, and cancellation. The synchronized container itself has no close operation. Neither type has equality or hashing.
+
+The lock remains held across ordinary calls and suspension until the guard closes. Cancellation never forcibly releases an executing critical section: the holder unwinds and performs shielded cleanup first. An acquisition that loses to cancellation before delivery releases the undelivered guard. There is no FIFO or starvation-freedom guarantee.
+
+Guard aliases and saved methods use the same active acquisition. Get/set and release coordinate atomically; after release, get/set fault through every alias, even after another task acquires the container. Close is idempotent and cannot release a later acquisition. A guard may pass through helpers or be captured by concurrent work. Calls through the same guard are individually safe, but sharing it does not serialize complete sequences between those callers; acquire separately for independent critical sections.
+
+Reacquiring a lock held by the current operation or an execution ancestor faults before waiting, including from a nested joined task and shielded cleanup. Cycles between independent operations or different locks remain a programming error; acquire multiple locks in a consistent order. Keep critical sections short and avoid waiting for work that needs a held lock.
+
+Set replaces the stored value immediately. Faults, propagated errors, and cancellation do not roll back committed writes or external effects. A returned immutable value is a snapshot of that value; service references inside it still alias those services. The lock protects the stored value, not every reachable object's internals. Put related immutable fields in one record inside one `Synchronized` to update their invariant together.
+
+`Synchronized` replaces the former `State` API. Migrate each get/set/swap sequence to a `with locked = value.lock()` scope; use guard get/set within that scope. There is no implicit transaction, retry callback, mutable-reference syntax, or sharing bound.
 
 ## Pools and leases
 
-Import `Pool`, `Lease`, and `PoolError` from `@std/pools.ms`. `Pool[T](resources: List[T])` owns a nonempty fixed collection of distinct resource receivers. `T` must be a concrete shared operation-contract view declaring `close() -> Unit`. Construct views explicitly before pooling; a type variable's implementation bound does not establish this representation at construction. The supplied resources must remain under the pool's exclusive lifecycle management.
+Import `Pool`, `Lease`, and `PoolError` from `@std/pools.ms`. `Pool[T](resources: List[T])` owns a nonempty fixed collection of distinct resource receivers. `T` must be a concrete operation-contract view declaring `close() -> Unit`. Construct views explicitly before pooling; a type variable's implementation bound does not establish this representation at construction. The supplied resources must remain under the pool's exclusive lifecycle management.
 
 ```text
 # Pool[T]

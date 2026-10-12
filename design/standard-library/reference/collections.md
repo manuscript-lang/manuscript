@@ -12,7 +12,7 @@ Kind: interface.
 
 ```text
 List: List[T]
-type parameters: T: Shareable
+type parameters: T
 operation append: fn(value: T)->List[T]
 operation concat: fn(values: List[T])->List[T]
 operation get: fn(index: Int)->Optional[T]
@@ -25,7 +25,7 @@ Kind: interface.
 
 ```text
 Map: Map[T, U]
-type parameters: T: Hashable, U: Shareable
+type parameters: T: Hashable, U
 operation contains: fn(key: T)->Bool
 operation get: fn(key: T)->Optional[U]
 operation length: fn()->Int
@@ -39,7 +39,7 @@ Kind: record.
 
 ```text
 MapEntry: MapEntry[T, U]
-type parameters: T: Hashable, U: Shareable
+type parameters: T: Hashable, U
 field key: T
 field value: U
 ```
@@ -50,7 +50,7 @@ Kind: interface.
 
 ```text
 Set: Set[T]
-type parameters: T: Shareable & Hashable
+type parameters: T: Hashable
 operation contains: fn(value: T)->Bool
 operation length: fn()->Int
 operation with_value: fn(value: T)->Set[T]
@@ -72,7 +72,7 @@ Kind: fn.
 
 ```text
 filter: fn(values: List[T], predicate: fn(value: T)->Bool)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## fold
@@ -81,7 +81,7 @@ Kind: fn.
 
 ```text
 fold: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
-type parameters: T: Shareable, A
+type parameters: T, A
 ```
 
 ## intersection
@@ -99,7 +99,7 @@ Kind: fn.
 
 ```text
 map: fn(values: List[T], transform: fn(value: T)->U)->List[U]
-type parameters: T: Shareable, U: Shareable
+type parameters: T, U
 ```
 
 ## map_keys
@@ -108,7 +108,7 @@ Kind: fn.
 
 ```text
 map_keys: fn(values: Map[K, V])->List[K]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_values
@@ -117,7 +117,7 @@ Kind: fn.
 
 ```text
 map_values: fn(values: Map[K, V])->List[V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## reverse
@@ -126,7 +126,7 @@ Kind: fn.
 
 ```text
 reverse: fn(values: List[T])->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## slice
@@ -135,7 +135,7 @@ Kind: fn.
 
 ```text
 slice: fn(values: List[T], start: Int, end: Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## sort_ints
@@ -160,7 +160,7 @@ Kind: fn.
 
 ```text
 sorted: fn(values: List[T], compare: fn(left: T, right: T)->Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## union

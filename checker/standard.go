@@ -104,7 +104,7 @@ func loadStandardSources() error {
 		c.module = module
 		c.names = map[string]*Symbol{}
 		c.scope = newScope(nil)
-		for _, name := range strings.Fields("Bool Int Float String Unit Never Shareable Equal Hashable") {
+		for _, name := range strings.Fields("Bool Int Float String Unit Never Equal Hashable") {
 			c.names[name] = &Symbol{Name: name, ID: name, Kind: "type", Type: primitive(name), Export: true}
 		}
 		for _, item := range module.Imports {

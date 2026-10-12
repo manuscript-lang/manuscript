@@ -11,7 +11,7 @@ The intermediate representation carries the checked program into lowering and su
 
 | Fact | Why it remains explicit |
 | --- | --- |
-| Types, sharing bounds, and resolved operations | Preserve plain/shared contract identity, receiver-sharing proofs, and substituted generic implementation selection; select representations and validate API contracts |
+| Types, comparison bounds, and resolved operations | Preserve nominal contract identity and substituted generic implementation selection; select representations and validate API contracts |
 | Argument names and parameters | Preserve named-call checking and written evaluation order |
 | Lists and fixed positional packs | Retain homogeneous element types or each position's exact type |
 | Destructuring | Retain shapes, field bindings, and extraction order |

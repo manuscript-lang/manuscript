@@ -1,7 +1,7 @@
 import List from "@std/collections.ms"
 import Queue from "@std/queues.ms"
 import QueueError from "@std/queues.ms"
-import State from "@std/state.ms"
+import Synchronized from "@std/sync.ms"
 import Pool from "@std/pools.ms"
 import PoolError from "@std/pools.ms"
 import File from "@std/io.ms"
@@ -16,15 +16,17 @@ import BytesBuilder from "@std/builders.ms"
 import StringBuilder from "@std/builders.ms"
 
 type MemoryFile:
-    closed: State[Bool]
+    closed: Synchronized[Bool]
 
 impl File for MemoryFile:
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]:
-        if self.closed.get():
-            return error(cause: IoError.Closed)
+        with locked = self.closed.lock():
+            if locked.get():
+                return error(cause: IoError.Closed)
         return ok(value: some(value: "data".to_bytes()))
     fn close() -> Unit:
-        self.closed.set(value: true)
+        with locked = self.closed.lock():
+            locked.set(value: true)
 
 test "bounded queues drain on close":
     with queue = Queue[Int](capacity: 2):
@@ -53,9 +55,12 @@ test "bounded queues drain on close":
                 assert cause == QueueError.Closed
 
 test "atomic state and sealed builders":
-    let state = State(value: 3)
-    assert state.swap(value: 4) == 3
-    assert state.get() == 4
+    let state = Synchronized(value: 3)
+    with locked = state.lock():
+        assert locked.get() == 3
+        locked.set(value: 4)
+    with locked = state.lock():
+        assert locked.get() == 4
     let list = ListBuilder[Int]()
     list.append(value: 1)
     list.append(value: 2)
@@ -81,8 +86,8 @@ test "atomic state and sealed builders":
     assert text.freeze() == "hello world"
 
 test "pool leases guard aliases and release resources":
-    let closed = State(value: false)
-    let original = (File & Shareable)(value: MemoryFile(closed: closed))
+    let closed = Synchronized(value: false)
+    let original = (File)(value: MemoryFile(closed: closed))
     with pool = Pool(resources: [original]):
         match pool.acquire():
             error(_):
@@ -104,5 +109,7 @@ test "pool leases guard aliases and release resources":
                         assert false
                     error(cause):
                         assert cause == PoolError.Closed
-        assert not closed.get()
-    assert closed.get()
+        with locked = closed.lock():
+            assert not locked.get()
+    with locked = closed.lock():
+        assert locked.get()

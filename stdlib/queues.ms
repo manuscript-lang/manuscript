@@ -3,7 +3,7 @@
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 
-export type Queue[T: Shareable]:
+export type Queue[T]:
     capacity: Int
     fn close() -> Unit
     fn receive() -> Optional[T]

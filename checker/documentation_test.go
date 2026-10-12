@@ -36,7 +36,7 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 		if key == "prelude#String" && len(d.Operations) != 3 {
 			t.Fatalf("missing intrinsic operation: %+v", d)
 		}
-		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T: Shareable" || len(d.Operations) != 4) {
+		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T" || len(d.Operations) != 4) {
 			t.Fatalf("lost bounds or native methods: %+v", d)
 		}
 	}

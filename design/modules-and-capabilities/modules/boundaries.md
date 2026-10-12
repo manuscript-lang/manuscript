@@ -18,7 +18,7 @@ interface Inventory:
     fn check(items: List[Item]) -> Result[Stock, OrderError]
 
 fn check_stock(
-    inventory: Inventory & Shareable,
+    inventory: Inventory,
     items: List[Item],
 ) -> Result[Stock, OrderError]:
     return inventory.check(items: items)
@@ -31,7 +31,7 @@ let [stock] = try parallel(tasks: [first])
 
 The closure/call fragment belongs to an enclosing function returning `Result[U, ExecutionError]`. To propagate OrderError in the same function, first translate it explicitly with `map_error`; [parallel](../../concurrency/parallel.md) gives a complete example.
 
-The operation accepts its capability explicitly and returns the unchanged domain `Result`. In this concurrent example the enclosing function's inventory input has the shared `Inventory & Shareable` type, preserving the receiver proof in the captured capability and across check_stock's parameter. A plain Inventory view would support sequential calls but could not be captured by this concurrent closure. The caller chooses concurrent execution through an ordinary API. The outer `try` handles execution failure; `stock` still contains the inventory domain outcome. The captured data must also meet the API's sharing requirements.
+The operation accepts its capability explicitly and returns the unchanged domain `Result`. Capturing the ordinary Inventory view is safe: every source value is shareable. The caller chooses concurrent execution through an ordinary API. The outer `try` handles execution failure; `stock` still contains the inventory domain outcome.
 
 Submitting work to a `Background` service instead chooses that service's fixed lifetime. Passing a reference does not transfer cleanup or keep a scoped resource open.
 

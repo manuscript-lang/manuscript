@@ -9,7 +9,7 @@ weight = 48
 
 These pages document executable additions to the Go compiler/runtime. Types and signatures are defined in the pinned Manuscript sources under `stdlib/`; the checker reads those declarations and verifies native runtime ABI signatures against them. Types are individually imported from their named module. Standard imports remain pinned with the distribution; there are no ambient new types, wildcard imports, user-defined generic operations, or implicit external authority.
 
-Each function identity includes its module (`json/parse`, `bigint/parse`, `url/parse`), avoiding same-name binding collisions in generated code. Source import aliases remain unsupported: use a helper module when two exports have the same spelling. Sequential callbacks may suspend and are invoked under the caller's context; sharing proofs are required only by the existing concurrent APIs, not by sequential collection helpers.
+Each function identity includes its module (`json/parse`, `bigint/parse`, `url/parse`), avoiding same-name binding collisions in generated code. Source import aliases remain unsupported: use a helper module when two exports have the same spelling. Sequential callbacks may suspend and are invoked under the caller's context; all callbacks are ordinary values and can also be passed to concurrent APIs.
 
 ## Errors
 
@@ -27,4 +27,4 @@ Native loops check cancellation between bounded chunks. Individual Go math, rege
 
 ## Authority
 
-CLI Process adds filesystem, entropy, wall_clock and system roots; existing network and commands roots are extended/reused. Source fakes implement these contracts using normal explicit shared views. Pure codecs/path/math/hash functions grant no OS authority. The native CLI roots use the process's OS permissions: filesystem subtree restrictions are not implemented; Network.restrict enforces scoped destination policy. Imports never manufacture authority. New HTTP/socket operations retain TLS verification and use explicit authority values.
+CLI Process adds filesystem, entropy, wall_clock and system roots; existing network and commands roots are extended/reused. Source fakes implement these contracts using ordinary explicit contract views. Pure codecs/path/math/hash functions grant no OS authority. The native CLI roots use the process's OS permissions: filesystem subtree restrictions are not implemented; Network.restrict enforces scoped destination policy. Imports never manufacture authority. New HTTP/socket operations retain TLS verification and use explicit authority values.

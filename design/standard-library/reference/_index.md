@@ -43,7 +43,7 @@ See [special call rules](../call-rules.md) for constructors, variadic parallel w
 - [@std/random.ms](random.md)
 - [@std/regex.ms](regex.md)
 - [@std/result.ms](result.md)
-- [@std/state.ms](state.md)
+- [@std/sync.ms](sync.md)
 - [@std/system.ms](system.md)
 - [@std/tasks.ms](tasks.md)
 - [@std/test.ms](test.md)

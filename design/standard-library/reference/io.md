@@ -22,7 +22,7 @@ Kind: interface.
 
 ```text
 Files: Files
-operation open: fn(path: String)->Result[File & Shareable, IoError]
+operation open: fn(path: String)->Result[File, IoError]
 ```
 
 ## IoError
@@ -63,7 +63,7 @@ operation write: fn(data: Bytes)->Result[Unit, IoError]
 Kind: fn.
 
 ```text
-copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int)->Result[Int, LibraryError]
+copy: fn(input: ReadStream, output: WriteStream, max_bytes: Int)->Result[Int, LibraryError]
 ```
 
 ## read_all
@@ -71,7 +71,7 @@ copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_byt
 Kind: fn.
 
 ```text
-read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, LibraryError]
+read_all: fn(input: ReadStream, max_bytes: Int)->Result[Bytes, LibraryError]
 ```
 
 ## read_line
@@ -79,6 +79,6 @@ read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, Libra
 Kind: fn.
 
 ```text
-read_line: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Optional[String], LibraryError]
+read_line: fn(input: ReadStream, max_bytes: Int)->Result[Optional[String], LibraryError]
 ```
 

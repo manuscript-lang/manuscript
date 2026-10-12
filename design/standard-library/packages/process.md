@@ -10,9 +10,9 @@ weight = 57
 ## `@std/io.ms`
 
 ```text
-fn copy(input: ReadStream&Shareable, output: WriteStream&Shareable, max_bytes: Int) -> Result[Int, LibraryError]
-fn read_all(input: ReadStream&Shareable, max_bytes: Int) -> Result[Bytes, LibraryError]
-fn read_line(input: ReadStream&Shareable, max_bytes: Int) -> Result[Optional[String], LibraryError]
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, LibraryError]
+fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], LibraryError]
 ```
 
 The existing [Commands.run contract](../data-and-io/streams.md) is retained: explicit `process.commands` authority, program/arguments/input, aggregate output bound, timeout, joined execution and captured exit_code/stdout/stderr. Nonzero exit is data. Shell execution must be explicit. This expansion does not introduce a conflicting Process/Child hierarchy.

@@ -5,7 +5,7 @@ import parallel from "@std/tasks.ms"
 
 type Resource:
     label: String
-    output: WriteStream & Shareable
+    output: WriteStream
 
 impl Closeable for Resource:
     fn close() -> Unit:

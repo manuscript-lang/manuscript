@@ -13,5 +13,5 @@ These facilities support bounded communication, scoped resources, and local cons
 
 - [Readers, writers, and streams](streams.md)
 - [Bounded queues](queues.md)
-- [Synchronized state, pools, and leases](synchronized-state.md)
-- [Local builders and immutable results](builders.md)
+- [Synchronized values, pools, and leases](synchronized-state.md)
+- [Builders and immutable results](builders.md)

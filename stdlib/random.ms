@@ -7,6 +7,6 @@ import Result from "@std/result.ms"
 export interface Entropy:
     fn bytes(count: Int) -> Result[Bytes, LibraryError]
 
-export fn secure_int(entropy: Entropy & Shareable, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]
+export fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]
 
-export fn uuid_v4(entropy: Entropy & Shareable) -> Result[String, LibraryError]
+export fn uuid_v4(entropy: Entropy) -> Result[String, LibraryError]

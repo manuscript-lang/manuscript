@@ -7,7 +7,7 @@ weight = 63
 
 [Guide index](_index.md) · [Design index](../_index.md)
 
-The runtime supplies starting, stopping, joining, and synchronization primitives. Library objects supply admission, failure reporting, and shutdown policy. These native primitives are internal implementation details. Source programs use explicit [standard concurrency imports](_index.md#importing-concurrency-apis). The compiler validates resolved API typing, callable sharing, and cleanup contracts; runtime contexts and scheduler primitives add no intrinsic source names or bounds.
+The runtime supplies starting, stopping, joining, and synchronization primitives. Library objects supply admission, failure reporting, and shutdown policy. These native primitives are internal implementation details. Source programs use explicit [standard concurrency imports](_index.md#importing-concurrency-apis). The compiler validates resolved API typing, callback signatures, and cleanup contracts; runtime contexts and scheduler primitives add no intrinsic source names or bounds.
 
 ## Atomic transitions
 

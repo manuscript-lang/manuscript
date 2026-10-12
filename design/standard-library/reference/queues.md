@@ -12,7 +12,7 @@ Kind: interface.
 
 ```text
 Queue: Queue[T]
-type parameters: T: Shareable
+type parameters: T
 field capacity: Int
 operation close: fn()->Unit
 operation receive: fn()->Optional[T]

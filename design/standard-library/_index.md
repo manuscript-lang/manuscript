@@ -30,8 +30,8 @@ Choose standard types and runtime facilities by the lifetime, cancellation, and 
 - [Minimum data operations](data-and-io/operations.md)
 - [Readers, writers, and streams](data-and-io/streams.md)
 - [Bounded queues](data-and-io/queues.md)
-- [Synchronized state, pools, and leases](data-and-io/synchronized-state.md)
-- [Local builders and immutable snapshots](data-and-io/builders.md)
+- [Synchronized values, pools, and leases](data-and-io/synchronized-state.md)
+- [Builders and immutable snapshots](data-and-io/builders.md)
 
 ### 4. [Application hosts](hosts/_index.md)
 

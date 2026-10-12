@@ -11,6 +11,6 @@ Records, alternatives, collections, and closures can retain references to resour
 
 Closing a registered resource affects all aliases, including aliases nested in aggregates. Dropping an aggregate does not recursively close its fields. A library object that deliberately manages several resources can implement `Closeable` and explicitly close them in its implementation.
 
-Collections retain their ordinary element bounds; resource references are eligible when their runtime wrappers satisfy the declared sharing contract. The bound provides concurrency safety, not a resource lifetime guarantee.
+Collections may retain any value, including resource references and functions. Sharing is universal and does not provide a resource lifetime guarantee.
 
-[Builders](../../standard-library/data-and-io/builders.md) follow the same reference rules; their API is still incomplete. [Destructuring](../../core-language/basics/destructuring.md) extracts fields and positions without changing cleanup.
+[Builders](../../standard-library/data-and-io/builders.md) follow the same reference rules; mutation and freeze are synchronized. [Destructuring](../../core-language/basics/destructuring.md) extracts fields and positions without changing cleanup.

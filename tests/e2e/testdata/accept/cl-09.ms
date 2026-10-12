@@ -1,10 +1,10 @@
-type Box[T: Shareable]:
+type Box[T]:
     value: T
 
-fn unwrap[T: Shareable](box: Box[T]) -> T:
+fn unwrap[T](box: Box[T]) -> T:
     return box.value
 
-fn same[T: Shareable & Equal](left: T, right: T) -> Bool:
+fn same[T: Equal](left: T, right: T) -> Bool:
     return left == right
 
 test "generic argument inference":

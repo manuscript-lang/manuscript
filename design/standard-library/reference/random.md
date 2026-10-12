@@ -20,7 +20,7 @@ operation bytes: fn(count: Int)->Result[Bytes, LibraryError]
 Kind: fn.
 
 ```text
-secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, LibraryError]
+secure_int: fn(entropy: Entropy, min: Int, max_exclusive: Int)->Result[Int, LibraryError]
 ```
 
 ## uuid_v4
@@ -28,6 +28,6 @@ secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Resu
 Kind: fn.
 
 ```text
-uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, LibraryError]
+uuid_v4: fn(entropy: Entropy)->Result[String, LibraryError]
 ```
 

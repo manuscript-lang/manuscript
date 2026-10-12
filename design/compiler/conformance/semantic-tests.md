@@ -11,7 +11,7 @@ A conformance test establishes a language guarantee through observable behavior.
 
 [Core-language fixtures](core-language.md) specify independent accepted modules and rejected variants for the grammar, operators, inference, contracts, and control flow. Their parse/resolution/type outcomes are authoritative for this core pass; the runtime coverage below remains a separate conformance track.
 
-Tests use `test "name":` blocks and ordinary `assert`. Control fake I/O, virtual clocks, and barriers around runtime transitions; Go goroutine scheduling remains nondeterministic. Stress and race tests exercise real transitions. Required coverage includes source-order preparation, exact heterogeneous results, domain errors, snapshot captures, sharing bounds, `with` registration and cleanup, closed-resource aliases, atomic admission/completion/close races, cleanup faults, and fixed deadline parents.
+Tests use `test "name":` blocks and ordinary `assert`. Control fake I/O, virtual clocks, and barriers around runtime transitions; Go goroutine scheduling remains nondeterministic. Stress and race tests exercise real transitions. Required coverage includes source-order preparation, exact heterogeneous results, domain errors, snapshot captures, universal sharing, synchronized critical sections, `with` registration and cleanup, closed-resource aliases, atomic admission/completion/close races, cleanup faults, and fixed deadline parents.
 
 ## Test runner
 
@@ -25,7 +25,7 @@ The [parallel API](../../concurrency/parallel.md) requires coverage for empty, o
 
 Module conformance covers relative, user-alias, and explicit standard imports, the reserved `@std` alias, standard declaration identity independent of installation path, rejection of missing imports and standard-name collisions, manifest-relative configuration, canonical file identity, project containment after symlink resolution, visibility, and cycle rejection. Check aliases at complete segment boundaries and invalidate cached analysis when relevant configuration changes. [Project configuration](../builds/project-configuration.md) defines the accepted and rejected paths; external Manuscript dependency projects are unsupported.
 
-Named list-argument conformance covers empty, one-element, and multi-element lists, passing existing lists, multiple list parameters, and calls through function values. Reject unnamed, duplicate, unknown, or missing arguments, incompatible list element types, and nonshareable list elements. Use controlled capability calls to verify left-to-right list-element evaluation and source order between named arguments, including closure creation and `with` initialization.
+Named list-argument conformance covers empty, one-element, and multi-element lists, passing existing lists, multiple list parameters, and calls through function values. Reject unnamed, duplicate, unknown, or missing arguments, incompatible list element types. Accept function and contract-view elements. Use controlled capability calls to verify left-to-right list-element evaluation and source order between named arguments, including closure creation and `with` initialization.
 
 ```text
 test "checked decrement":

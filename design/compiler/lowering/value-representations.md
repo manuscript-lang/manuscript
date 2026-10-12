@@ -32,7 +32,7 @@ Use Go generics where suitable; generated typed pack wrappers handle heterogeneo
 
 For example, emitting a raw `int64` does not supply checked arithmetic. A raw Go slice does not establish immutable source bytes. The frontend and runtime cooperate with generated wrappers and operations to preserve those contracts.
 
-Explicit [view constructors](../../core-language/types/contracts.md#explicit-contract-views) create contract wrappers. Plain and shared views may use the same runtime representation, while the frontend and IR retain distinct identities and sharing proofs. Go interface assignment or runtime receiver inspection cannot restore an erased proof.
+Explicit [view constructors](../../core-language/types/contracts.md#explicit-contract-views) create ordinary contract wrappers. There is one contract-view identity and no sharing proof in the frontend or IR. Native mutable objects must synchronize their internals.
 
 Generic implementation bodies use checked substitutions; Go method selection cannot resolve overlapping source implementations. Function wrappers retain source labels/order in frontend identity even though Go erases labels. Check [recursive storage rules](../../core-language/types/records.md#recursive-data) before emission; a generated-Go error is not a source type check.
 

@@ -39,10 +39,10 @@ fn tls_info() -> Result[TlsInfo, LibraryError]
 ## Listener operations
 
 ```text
-fn accept() -> Result[Connection&Shareable, LibraryError]
+fn accept() -> Result[Connection, LibraryError]
 fn address() -> String
 fn close() -> Unit
-fn accept_timeout(timeout: Duration) -> Result[Connection&Shareable, LibraryError]
+fn accept_timeout(timeout: Duration) -> Result[Connection, LibraryError]
 ```
 
 ## DatagramSocket operations
@@ -58,7 +58,7 @@ fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit,
 
 ## Authority and restrictions
 
-`process.network: Network & Shareable` remains the authority root, imported from `@std/http.ms`. Acquired Connection, Listener and DatagramSocket views are individually imported from `@std/net.ms`, closed with `with`, and also owned by Network. Network.close stops admission, cancels and joins in-flight DNS/dials/HTTP acquisition, closes owned services and handles, and waits for admitted I/O. Concurrent close callers join the same shutdown. Imports never manufacture native network authority.
+`process.network: Network` remains the authority root, imported from `@std/http.ms`. Acquired Connection, Listener and DatagramSocket views are individually imported from `@std/net.ms`, closed with `with`, and also owned by Network. Network.close stops admission, cancels and joins in-flight DNS/dials/HTTP acquisition, closes owned services and handles, and waits for admitted I/O. Concurrent close callers join the same shutdown. Imports never manufacture native network authority.
 
 `restrict` returns a child Network that cannot widen its parent's policy. Hosts are exact case-insensitive DNS names (with trailing dot ignored); CIDRs authorize numeric addresses. DNS-name dialing requires the name to be allowed. If CIDRs are supplied, every chosen resolved destination must also belong to those CIDRs; raw IP dialing never bypasses a host-only restriction. Empty hosts/CIDRs deny all outbound destinations. `allow_listen` permits binding explicitly allowed numeric addresses; inbound listener peers are not an additional outbound grant. Restricted roots reject Unix socket acquisitions. Redirect hops retain the same policy. Restrictions are enforced on actual resolved addresses at dial time, not by URL string prefixes.
 
@@ -124,15 +124,15 @@ HTTP/3 is intentionally excluded at the user's request. The HTTP/1.1, HTTP/2 and
 
 ```text
 fn lookup(name: String, max_records: Int, timeout: Duration) -> Result[List[String], LibraryError]
-fn connect(address: String, timeout: Duration) -> Result[Connection&Shareable, LibraryError]
-fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection&Shareable, LibraryError]
-fn listen(address: String) -> Result[Listener&Shareable, LibraryError]
-fn bind_datagram(address: String) -> Result[DatagramSocket&Shareable, LibraryError]
-fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network&Shareable, LibraryError]
-fn with_resolver(address: String) -> Result[Network&Shareable, LibraryError]
+fn connect(address: String, timeout: Duration) -> Result[Connection, LibraryError]
+fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection, LibraryError]
+fn listen(address: String) -> Result[Listener, LibraryError]
+fn bind_datagram(address: String) -> Result[DatagramSocket, LibraryError]
+fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network, LibraryError]
+fn with_resolver(address: String) -> Result[Network, LibraryError]
 fn resolve(name: String, kind: String, max_records: Int, timeout: Duration) -> Result[List[DnsRecord], LibraryError]
-fn connect_unix(path: String, timeout: Duration) -> Result[Connection&Shareable, LibraryError]
-fn listen_unix(path: String) -> Result[Listener&Shareable, LibraryError]
-fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection&Shareable, LibraryError]
-fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener&Shareable, LibraryError]
+fn connect_unix(path: String, timeout: Duration) -> Result[Connection, LibraryError]
+fn listen_unix(path: String) -> Result[Listener, LibraryError]
+fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection, LibraryError]
+fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener, LibraryError]
 ```

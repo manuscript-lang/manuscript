@@ -12,7 +12,7 @@ Kind: interface.
 
 ```text
 Lease: Lease[T]
-type parameters: T: Shareable
+type parameters: T
 operation close: fn()->Unit
 operation get: fn()->Result[T, PoolError]
 ```
@@ -23,7 +23,7 @@ Kind: interface.
 
 ```text
 Pool: Pool[T]
-type parameters: T: Shareable
+type parameters: T
 field resources: List[T]
 operation acquire: fn()->Result[Lease[T], PoolError]
 operation close: fn()->Unit

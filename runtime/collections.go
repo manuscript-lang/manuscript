@@ -14,7 +14,7 @@ func optional(typ string, value Value, present bool) Value {
 	return Alternative{Type: "@std/Optional[" + typ + "]", Tag: "some", Fields: []Value{value}}
 }
 func constructor(typ string, args []Argument) Value {
-	name, _, _ := splitType(typ)
+	name, _ := splitType(typ)
 	switch name {
 	case "@std/Map":
 		return Map{Type: typ}

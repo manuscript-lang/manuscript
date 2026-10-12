@@ -16,14 +16,14 @@ import WriteStream from "@std/io.ms"
 export type Process:
     arguments: List[String]
     environment: Map[String, String]
-    stdin: ReadStream & Shareable
-    stdout: WriteStream & Shareable
-    stderr: WriteStream & Shareable
-    files: Files & Shareable
-    clock: Clock & Shareable
-    network: Network & Shareable
-    commands: Commands & Shareable
-    filesystem: FileSystem & Shareable
-    entropy: Entropy & Shareable
-    wall_clock: WallClock & Shareable
-    system: System & Shareable
+    stdin: ReadStream
+    stdout: WriteStream
+    stderr: WriteStream
+    files: Files
+    clock: Clock
+    network: Network
+    commands: Commands
+    filesystem: FileSystem
+    entropy: Entropy
+    wall_clock: WallClock
+    system: System

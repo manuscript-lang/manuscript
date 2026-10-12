@@ -57,14 +57,6 @@ Kind: type.
 Never: Never
 ```
 
-## Shareable
-
-Kind: type.
-
-```text
-Shareable: Shareable
-```
-
 ## String
 
 Kind: type.

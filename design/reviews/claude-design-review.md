@@ -5,6 +5,8 @@ bookSearchExclude = true
 weight = 121
 +++
 
+> Historical review: sharing-proof, shared-view, and State discussions below describe the former design. The current language shares all values freely and uses [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) for explicit critical sections.
+
 # Claude Code full-design review and adopted fixes
 
 [Design index](../_index.md)

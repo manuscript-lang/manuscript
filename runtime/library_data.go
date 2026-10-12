@@ -320,7 +320,7 @@ func init() {
 		return libraryOK(r, libraryStrings(matches))
 	})
 	// Sequential generic collection helpers retain the caller's actual list identity.
-	variable := []LibraryParam{p("T", "Shareable")}
+	variable := []LibraryParam{p("T", "")}
 	libraryGeneric("collections", "reverse", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(List)
 		out := append([]Value{}, v.Items...)

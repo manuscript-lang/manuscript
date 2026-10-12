@@ -35,4 +35,4 @@ export fn check_cancelled() -> Unit
 
 # compiler binding: parallel (heterogeneous callable/result packs)
 
-export fn parallel_map[T: Shareable, U: Shareable](items: List[T], operation: fn(item: T) -> U, limit: Int) -> Result[List[U], ExecutionError]
+export fn parallel_map[T, U](items: List[T], operation: fn(item: T) -> U, limit: Int) -> Result[List[U], ExecutionError]

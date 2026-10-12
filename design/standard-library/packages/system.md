@@ -24,8 +24,8 @@ fn unix_seconds(value: Timestamp) -> Int
 ## `@std/random.ms`
 
 ```text
-fn secure_int(entropy: Entropy&Shareable, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]
-fn uuid_v4(entropy: Entropy&Shareable) -> Result[String, LibraryError]
+fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]
+fn uuid_v4(entropy: Entropy) -> Result[String, LibraryError]
 ```
 
 ## WallClock operations
@@ -48,7 +48,7 @@ fn environment(name: String) -> Optional[String]
 fn bytes(count: Int) -> Result[Bytes, LibraryError]
 ```
 
-CLI Process adds `wall_clock: WallClock & Shareable`, `system: System & Shareable`, and `entropy: Entropy & Shareable`. Timestamp is opaque immutable/shareable/equal wall time; Instant remains monotonic and cannot be converted implicitly. Clock and existing sleep retain their previous signatures and cancellation/domain behavior. Wall-clock changes never alter monotonic deadlines.
+CLI Process adds `wall_clock: WallClock`, `system: System`, and `entropy: Entropy`. Timestamp is opaque immutable/shareable/equal wall time; Instant remains monotonic and cannot be converted implicitly. Clock and existing sleep retain their previous signatures and cancellation/domain behavior. Wall-clock changes never alter monotonic deadlines.
 
 Timestamp construction requires years 1–9999 in UTC and nanoseconds 0–999999999. Parsing requires strict RFC 3339 with explicit offset, uppercase T/Z, 0–9 fractional digits and no leap seconds. Format uses UTC, omits zero fractions and trims trailing fraction zeros. Shift checks calendar range; difference returns OutOfRange if its nanosecond result cannot fit Duration. Timestamp introduces no operators or source constructor; unix_seconds/nanoseconds expose explicit components.
 

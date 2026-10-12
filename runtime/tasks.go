@@ -68,6 +68,10 @@ func StandardFunction(name, result string) Value {
 				return Unit{}
 			}
 		})
+	case "parallel_map":
+		return NewFunction([]string{"items", "operation", "limit"}, result, func(ctx *Execution, args []Value) Value {
+			return ParallelMap(ctx, result, typeArguments(result)[0], []Argument{{"items", args[0]}, {"operation", args[1]}, {"limit", args[2]}})
+		})
 	case "map_error":
 		return NewFunction([]string{"result", "transform"}, result, func(ctx *Execution, args []Value) Value {
 			outcome := args[0].(Alternative)

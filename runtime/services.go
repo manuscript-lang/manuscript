@@ -9,7 +9,7 @@ import (
 )
 
 func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
-	name, _, _ := splitType(typ)
+	name, _ := splitType(typ)
 	switch name {
 	case "@std/Queue":
 		capacity := args[0].Value.(int64)
@@ -17,8 +17,8 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 			return Panic("Queue capacity must be positive")
 		}
 		return &Queue{typ: typ, capacity: int(capacity), changed: make(chan struct{})}
-	case "@std/State":
-		return &State{typ: typ, value: args[0].Value}
+	case "@std/Synchronized":
+		return &Synchronized{typ: typ, value: args[0].Value, changed: make(chan struct{})}
 	case "@std/Pool":
 		return newPool(typ, args[0].Value.(List))
 	case "@std/ListBuilder", "@std/MapBuilder", "@std/SetBuilder", "@std/BytesBuilder", "@std/StringBuilder":
@@ -98,46 +98,15 @@ func (q *Queue) Operation(name string) Function {
 	})
 }
 
-type State struct {
-	mu    sync.Mutex
-	typ   string
-	value Value
-}
-
-func (s *State) Operation(name string) Function {
-	labels, result := []string{}, typeArguments(s.typ)[0]
-	if name == "set" || name == "swap" {
-		labels = []string{"value"}
-	}
-	if name == "set" {
-		result = "Unit"
-	}
-	return NewFunction(labels, result, func(_ *Execution, args []Value) Value {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		switch name {
-		case "get":
-			return s.value
-		case "set":
-			s.value = args[0]
-			return Unit{}
-		case "swap":
-			old := s.value
-			s.value = args[0]
-			return old
-		}
-		return Panic("unknown State operation")
-	})
-}
-
 type Builder struct {
+	mu     sync.Mutex
 	typ    string
 	value  Value
 	sealed bool
 }
 
 func newBuilder(typ string) *Builder {
-	name, args, _ := splitType(typ)
+	name, args := splitType(typ)
 	b := &Builder{typ: typ}
 	switch name {
 	case "@std/ListBuilder":
@@ -165,6 +134,8 @@ func (b *Builder) Operation(name string) Function {
 		labels = []string{"values"}
 	}
 	return NewFunction(labels, "", func(ctx *Execution, args []Value) Value {
+		b.mu.Lock()
+		defer b.mu.Unlock()
 		if name == "freeze" {
 			b.sealed = true
 			return b.value

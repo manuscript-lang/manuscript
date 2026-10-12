@@ -39,6 +39,8 @@ func (c *checker) effectSummaries() {
 					method := c.Cleanups[statement]
 					if method != nil && method.ID != "" {
 						n.edges[method.ID] = true
+					} else if method != nil && std(method.Receiver, "SynchronizedGuard") {
+						add(n, "write")
 					} else {
 						add(n, "unknown")
 					}
@@ -103,15 +105,13 @@ func (c *checker) effectSummaries() {
 					add(n, "external-call", "write")
 				case "@std/Network", "@std/HttpServer", "@std/Commands":
 					add(n, "external-call", "read", "write")
-				case "@std/State":
+				case "@std/SynchronizedGuard":
 					if name == "get" {
 						add(n, "read")
-					} else if name == "swap" {
-						add(n, "read", "write")
 					} else {
 						add(n, "write")
 					}
-				case "@std/Queue":
+				case "@std/Synchronized", "@std/Queue":
 					add(n, "write")
 					if name == "receive" {
 						add(n, "read")

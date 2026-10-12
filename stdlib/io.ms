@@ -10,7 +10,7 @@ export interface File:
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 
 export interface Files:
-    fn open(path: String) -> Result[File & Shareable, IoError]
+    fn open(path: String) -> Result[File, IoError]
 
 export type IoError:
     case Closed
@@ -27,8 +27,8 @@ export interface WriteStream:
     fn flush() -> Result[Unit, IoError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 
-export fn copy(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int) -> Result[Int, LibraryError]
+export fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, LibraryError]
 
-export fn read_all(input: ReadStream & Shareable, max_bytes: Int) -> Result[Bytes, LibraryError]
+export fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, LibraryError]
 
-export fn read_line(input: ReadStream & Shareable, max_bytes: Int) -> Result[Optional[String], LibraryError]
+export fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], LibraryError]

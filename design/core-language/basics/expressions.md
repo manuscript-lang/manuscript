@@ -48,7 +48,7 @@ The common `Comparison` production makes `a < b == c`, `a == b == c`, and `a < b
 
 A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. Its brackets cannot index a list. Collection/text lookup and updates use declared library operations; neither `values[0]` nor slicing syntax is supported. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Constructors, explicit contract views such as `Payments(value: card)`, and methods use ordinary named-call syntax.
 
-A shared view uses `(Payments & Shareable)(value: card)`. The parenthesized type must be followed immediately by its named call; it is not a function value or a binary `&` expression. [Contract views](../types/contracts.md#shared-contract-views) define the required implementation and sharing proofs, generic context, and single `value` argument.
+Contract views use `Payments(value: card)`. [Contract views](../types/contracts.md#explicit-contract-views) require an explicit implementation and exactly one `value` argument. There is no separate sharing refinement or shared constructor.
 
 ## Operand and result types
 

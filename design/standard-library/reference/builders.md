@@ -23,7 +23,7 @@ Kind: interface.
 
 ```text
 ListBuilder: ListBuilder[T]
-type parameters: T: Shareable
+type parameters: T
 operation append: fn(value: T)->Unit
 operation freeze: fn()->List[T]
 ```
@@ -34,7 +34,7 @@ Kind: interface.
 
 ```text
 MapBuilder: MapBuilder[T, U]
-type parameters: T: Hashable, U: Shareable
+type parameters: T: Hashable, U
 operation freeze: fn()->Map[T, U]
 operation with_entry: fn(key: T, value: U)->Unit
 ```

@@ -92,6 +92,6 @@ Kind: fn.
 
 ```text
 parallel_map: fn(items: List[T], operation: fn(item: T)->U, limit: Int)->Result[List[U], ExecutionError]
-type parameters: T: Shareable, U: Shareable
+type parameters: T, U
 ```
 

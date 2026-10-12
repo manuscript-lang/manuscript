@@ -7,7 +7,7 @@ weight = 83
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Adapters are trusted Go implementations of operation contracts, exposed through plain or shared views according to their declared receiver-sharing guarantee. The [standard API contract](../../standard-library/types/prelude.md) is normative for standard APIs; a manifest implements rather than invents their source semantics.
+Adapters are trusted Go implementations of operation contracts. Every exposed value must be safe for concurrent access. The [standard API contract](../../standard-library/types/prelude.md) defines source semantics; a manifest binds implementations to those semantics.
 
 ## Interface modules and package direction
 
@@ -33,7 +33,6 @@ contract = "Files"
 operation = "open"
 symbol = "Open"
 effects = ["read", "external-call"]
-shareable_receiver = true
 cancellation = "cooperative"
 acquisition = "dispose-undelivered"
 disposer = "DisposeFile"
@@ -45,12 +44,11 @@ This is a schema example; its package and checksum are placeholders. Interface p
 | --- | --- |
 | `contract`, `operation`, `symbol` | Select an exported interface/standard contract operation and an exported Go symbol; bind each operation exactly once |
 | `effects` | Explicit subset of `read`, `write`, `external-call`, and `unknown`; use `[]` for an empty summary |
-| `shareable_receiver` | Required audited boolean, consistent across the receiver's operations; true permits shared views, false permits only plain views |
 | `cancellation` | `cooperative`, `completion-only`, or `nonblocking` |
 | `acquisition` | `none` or `dispose-undelivered` |
 | `disposer` | Required exported symbol for `dispose-undelivered`; forbidden for `none` |
 
-Resource bindings include a matching close operation. A standard host boundary requiring sharing rejects a nonshareable receiver. Source code can still explicitly discard a native receiver's sharing guarantee by constructing a plain view.
+Resource bindings include a matching close operation. All native receivers, results, and retained callback environments must be immutable or synchronize mutable state and lifecycle. This is a mandatory adapter obligation; there is no opt-out via a plain view. Wrapping an unsafe receiver in Synchronized does not make escaped aliases safe.
 
 ## Generated bindings
 

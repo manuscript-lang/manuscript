@@ -14,7 +14,6 @@ type Type struct {
 	Result         *Type
 	Def            *Definition
 	Bounds         []*Type
-	Shared         bool
 }
 type Param struct {
 	Name string
@@ -40,10 +39,10 @@ type Symbol struct {
 	Decl                           *syntax.Declaration
 }
 type Binding struct {
-	Name, ID       string
-	Type           *Type
-	Mutable, Proof bool
-	Function       int
+	Name, ID string
+	Type     *Type
+	Mutable  bool
+	Function int
 }
 type Method struct {
 	ID                       string
@@ -53,16 +52,16 @@ type Method struct {
 	Native                   string
 }
 type Info struct {
-	Type            *Type
-	Symbol          *Symbol
-	Binding         *Binding
-	Constructor     *Type
-	Case            string
-	Method          *Method
-	Native          string
-	Proof, NoReturn bool
-	Captures        []*Binding
-	TypeArgs        []*Type
+	Type        *Type
+	Symbol      *Symbol
+	Binding     *Binding
+	Constructor *Type
+	Case        string
+	Method      *Method
+	Native      string
+	NoReturn    bool
+	Captures    []*Binding
+	TypeArgs    []*Type
 }
 type Program struct {
 	Cleanups         map[*syntax.Statement]*Method
@@ -101,16 +100,13 @@ func (t *Type) String() string {
 		}
 		s += "[" + strings.Join(a, ", ") + "]"
 	}
-	if t.Shared {
-		s += " & Shareable"
-	}
 	return s
 }
 func Same(a, b *Type) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	if a.ID != b.ID || a.Kind != b.Kind || a.Shared != b.Shared || len(a.Args) != len(b.Args) || len(a.Params) != len(b.Params) {
+	if a.ID != b.ID || a.Kind != b.Kind || len(a.Args) != len(b.Args) || len(a.Params) != len(b.Params) {
 		return false
 	}
 	for i := range a.Args {
@@ -207,9 +203,6 @@ func typeKey(t *Type) string {
 	for _, a := range t.Args {
 		s += "[" + typeKey(a) + "]"
 	}
-	if t.Shared {
-		s += "&Shareable"
-	}
 	return s
 }
 func TypeKey(t *Type) string { return typeKey(t) }
@@ -224,7 +217,7 @@ func unify(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bo
 		sub[pattern.ID] = actual
 		return true
 	}
-	if pattern.ID != actual.ID || pattern.Shared != actual.Shared || len(pattern.Args) != len(actual.Args) || len(pattern.Params) != len(actual.Params) {
+	if pattern.ID != actual.ID || len(pattern.Args) != len(actual.Args) || len(pattern.Params) != len(actual.Params) {
 		return false
 	}
 	for i := range pattern.Args {

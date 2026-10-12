@@ -26,7 +26,6 @@ type Type struct {
 	Args   []*Type
 	Params []Parameter
 	Result *Type
-	Shared bool
 }
 type Parameter struct {
 	Pos  Position
@@ -85,7 +84,6 @@ type Expression struct {
 	Params      []Parameter
 	Result      *Type
 	Body        []*Statement
-	Shared      bool
 }
 type Pattern struct {
 	Pos        Position

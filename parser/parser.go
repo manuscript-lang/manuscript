@@ -179,15 +179,7 @@ func (p *Parser) typ() *syntax.Type {
 		p.need(")")
 		return t
 	}
-	t := p.namedType()
-	if p.take("&") {
-		marker := p.need(lexer.Name)
-		if marker.Text != "Shareable" {
-			p.fail(marker, "only Contract & Shareable is a value refinement")
-		}
-		t.Shared = true
-	}
-	return t
+	return p.namedType()
 }
 func (p *Parser) declaration() *syntax.Declaration {
 	token := p.peek()
@@ -538,19 +530,7 @@ func (p *Parser) primary() *syntax.Expression {
 		e = p.text(t)
 	case "(":
 		e = p.expression(0)
-		if p.take("&") {
-			bound := p.need(lexer.Name)
-			if bound.Text != "Shareable" {
-				p.fail(bound, "only Shareable refines a contract")
-			}
-			e = &syntax.Expression{Kind: "shared", Pos: t.Pos, Left: e}
-			p.need(")")
-			if p.peek().Kind != "(" {
-				p.fail(p.peek(), "shared construction requires a named call")
-			}
-		} else {
-			p.need(")")
-		}
+		p.need(")")
 	case "[":
 		e.Kind = "list"
 		if !p.take("]") {

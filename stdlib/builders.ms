@@ -10,11 +10,11 @@ export type BytesBuilder:
     fn concat(values: Bytes) -> Unit
     fn freeze() -> Bytes
 
-export type ListBuilder[T: Shareable]:
+export type ListBuilder[T]:
     fn append(value: T) -> Unit
     fn freeze() -> List[T]
 
-export type MapBuilder[T: Hashable, U: Shareable]:
+export type MapBuilder[T: Hashable, U]:
     fn freeze() -> Map[T, U]
     fn with_entry(key: T, value: U) -> Unit
 

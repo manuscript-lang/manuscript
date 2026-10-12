@@ -9,7 +9,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	i := &Info{}
 	callee := e.Left
 	if typ := c.typeExpression(callee); typ != nil {
-		if typ.ID == "Shareable" || typ.ID == "Equal" || typ.ID == "Hashable" || typ.Kind == "primitive" || typ.Kind == "variable" {
+		if typ.ID == "Equal" || typ.ID == "Hashable" || typ.Kind == "primitive" || typ.Kind == "variable" {
 			c.error(e.Pos, "type", "this type has no source constructor")
 			return i
 		}
@@ -20,13 +20,8 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 				return i
 			}
 			receiver := c.expression(e.Args[0].Value, nil)
-			plain := *typ
-			plain.Shared = false
-			if !c.implements(receiver.Type, &plain) {
-				c.error(e.Pos, "type", receiver.Type.String()+" does not implement "+plain.String())
-			}
-			if typ.Shared && !c.property(receiver.Type, "Shareable", nil) {
-				c.error(e.Pos, "type", "shared view requires a Shareable receiver")
+			if !c.implements(receiver.Type, typ) {
+				c.error(e.Pos, "type", receiver.Type.String()+" does not implement "+typ.String())
 			}
 			i.Type = typ
 			i.Constructor = typ
@@ -43,7 +38,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
-		if std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "Lease") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
+		if std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "Lease") || std(typ, "SynchronizedGuard") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
 			c.error(e.Pos, "type", "standard type has no source constructor")
 			return i
 		}
@@ -56,18 +51,13 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 				}
 			}
 			i.NoReturn = c.arguments(e.Args, params)
-			for _, arg := range e.Args {
-				if arg.Name == "reporter" && !c.Expressions[arg.Value].Proof {
-					c.error(arg.Pos, "type", "Background reporter requires a shareable callable")
-				}
-			}
 			i.Type = typ
 			i.Native = "background"
 			return i
 		}
 		typ = c.instantiate(typ, fields, e.Args, expected, e.Pos)
 		if std(typ, "Pool") && len(typ.Args) == 1 && typ.Args[0].Kind != "contract" {
-			c.error(e.Pos, "type", "pool construction requires concrete shared contract views")
+			c.error(e.Pos, "type", "pool construction requires concrete contract views")
 		}
 		fields = Fields(typ)
 		if std(typ, "Bytes") {
@@ -154,27 +144,10 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		} else if explicit && len(supplied) > 0 {
 			c.error(e.Pos, "type", "nongeneric function cannot take type arguments")
 		}
-		callable = &Info{Type: signature, Symbol: s, Proof: true}
+		callable = &Info{Type: signature, Symbol: s}
 		c.Expressions[callee] = callable
 	} else {
-		if callee.Kind == "member" {
-			receiver := c.expression(callee.Left, nil)
-			if callee.Text == "serve" || callee.Text == "serve_stream" {
-				methods := c.methods(receiver.Type, callee.Text)
-				if len(methods) == 1 && std(methods[0].Contract, "Network") {
-					callable = &Info{Type: methods[0].Type, Method: methods[0], Native: "http_serve"}
-					c.Expressions[callee] = callable
-				}
-			}
-			if std(receiver.Type, "Background") && callee.Text == "start" {
-				method := nativeMethod(receiver.Type, "start")
-				callable = &Info{Type: method.Type, Method: method, Native: method.Native}
-				c.Expressions[callee] = callable
-			}
-		}
-		if callable == nil {
-			callable = c.expression(callee, nil)
-		}
+		callable = c.expression(callee, nil)
 		signature = callable.Type
 		i.Method = callable.Method
 		i.Native = callable.Native
@@ -193,28 +166,6 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	}
 	i.NoReturn = callable.NoReturn || c.arguments(e.Args, params)
 	i.Type = signature.Result
-	if i.Native == "http_serve" {
-		for _, arg := range e.Args {
-			if arg.Name == "handler" && !c.Expressions[arg.Value].Proof {
-				c.error(arg.Pos, "type", "HTTP handlers require a shareable callable")
-			}
-		}
-	}
-
-	if s != nil && s.Native == "parallel_map" {
-		for _, arg := range e.Args {
-			if arg.Name == "operation" && !c.Expressions[arg.Value].Proof {
-				c.error(arg.Pos, "type", "parallel_map requires a proved shareable callback")
-			}
-		}
-	}
-	if i.Native == "background_start" {
-		for _, arg := range e.Args {
-			if arg.Name == "operation" && !c.Expressions[arg.Value].Proof {
-				c.error(arg.Pos, "type", "Background.start requires a shareable callable")
-			}
-		}
-	}
 	if i.Type != nil && i.Type.ID == "Never" {
 		i.NoReturn = true
 	}
@@ -355,9 +306,6 @@ func (c *checker) parallel(e *syntax.Expression) *Info {
 			if v.Type.Kind != "function" || len(v.Type.Params) != 0 {
 				c.error(task.Pos, "type", "parallel task requires fn() -> T")
 				continue
-			}
-			if !v.Proof || !c.property(v.Type.Result, "Shareable", nil) {
-				c.error(task.Pos, "type", "parallel requires shareable callbacks and results")
 			}
 			pack.Args = append(pack.Args, v.Type.Result)
 		}

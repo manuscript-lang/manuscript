@@ -24,8 +24,8 @@ Kind: interface.
 ```text
 HttpClient: HttpClient
 operation close: fn()->Unit
-operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, LibraryError]
-operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream & Shareable, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, LibraryError]
+operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody, LibraryError]
+operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody, LibraryError]
 ```
 
 ## HttpClientOptions
@@ -56,7 +56,7 @@ operation path: fn()->String
 operation query: fn()->String
 operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 operation send_headers: fn(status: Int, headers: Map[String, List[String]])->Result[Unit, LibraryError]
-operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)->Result[WebSocket & Shareable, LibraryError]
+operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)->Result[WebSocket, LibraryError]
 operation write: fn(data: Bytes)->Result[Unit, IoError]
 ```
 
@@ -116,24 +116,24 @@ Kind: interface.
 
 ```text
 Network: Network
-operation bind_datagram: fn(address: String)->Result[DatagramSocket & Shareable, LibraryError]
+operation bind_datagram: fn(address: String)->Result[DatagramSocket, LibraryError]
 operation close: fn()->Unit
-operation connect: fn(address: String, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation connect_tls: fn(address: String, server_name: String, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation connect_unix: fn(path: String, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation http_client: fn(options: HttpClientOptions)->Result[HttpClient & Shareable, LibraryError]
-operation listen: fn(address: String)->Result[Listener & Shareable, LibraryError]
-operation listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)->Result[Listener & Shareable, LibraryError]
-operation listen_unix: fn(path: String)->Result[Listener & Shareable, LibraryError]
+operation connect: fn(address: String, timeout: Duration)->Result[Connection, LibraryError]
+operation connect_tls: fn(address: String, server_name: String, timeout: Duration)->Result[Connection, LibraryError]
+operation connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)->Result[Connection, LibraryError]
+operation connect_unix: fn(path: String, timeout: Duration)->Result[Connection, LibraryError]
+operation http_client: fn(options: HttpClientOptions)->Result[HttpClient, LibraryError]
+operation listen: fn(address: String)->Result[Listener, LibraryError]
+operation listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)->Result[Listener, LibraryError]
+operation listen_unix: fn(path: String)->Result[Listener, LibraryError]
 operation lookup: fn(name: String, max_records: Int, timeout: Duration)->Result[List[String], LibraryError]
 operation request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ClientResponse, LibraryError]
 operation resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)->Result[List[DnsRecord], LibraryError]
-operation restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)->Result[Network & Shareable, LibraryError]
-operation serve: fn(address: String, handler: fn(request: HttpRequest)->HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)->Result[HttpServer & Shareable, IoError]
-operation serve_stream: fn(address: String, handler: fn(exchange: HttpExchange & Shareable)->Result[Unit, LibraryError], options: HttpServerOptions)->Result[HttpServer & Shareable, LibraryError]
-operation web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)->Result[WebSocket & Shareable, LibraryError]
-operation with_resolver: fn(address: String)->Result[Network & Shareable, LibraryError]
+operation restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)->Result[Network, LibraryError]
+operation serve: fn(address: String, handler: fn(request: HttpRequest)->HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)->Result[HttpServer, IoError]
+operation serve_stream: fn(address: String, handler: fn(exchange: HttpExchange)->Result[Unit, LibraryError], options: HttpServerOptions)->Result[HttpServer, LibraryError]
+operation web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)->Result[WebSocket, LibraryError]
+operation with_resolver: fn(address: String)->Result[Network, LibraryError]
 ```
 
 ## ResponseBody

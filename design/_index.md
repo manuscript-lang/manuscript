@@ -37,7 +37,7 @@ The whole guide describes Manuscript 0.1. A working compiler, runtime, CLI, and 
 | Guide | Concerns |
 | --- | --- |
 | [Core language](core-language/_index.md) | Chaptered language guide: basics, data modeling, functions, control flow, and errors |
-| [Standard library](standard-library/_index.md) | Type catalog, parallel mapping, background services, streams, queues, state, builders, and hosts |
+| [Standard library](standard-library/_index.md) | Type catalog, parallel mapping, background services, streams, queues, synchronized values, builders, and hosts |
 | [Resource lifetimes and cleanup](ownership-and-cleanup/_index.md) | Ordinary references, runtime closed-state checks, and lexical resource release |
 | [Concurrency](concurrency/_index.md) | Parallel operations, background work, joining, cancellation, and deadlines |
 | [Modules and capabilities](modules-and-capabilities/_index.md) | Module boundaries, explicit authority, inferred effects, and Go adapter contracts |

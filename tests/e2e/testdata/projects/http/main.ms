@@ -7,7 +7,8 @@ fn handle(request: HttpRequest) -> HttpResponse:
     return HttpResponse(status: 200, headers: Map[String, String](), body: "hello {request.path}".to_bytes())
 
 export fn main(process: Process) -> Int:
-    match process.network.serve(
+    let serve = process.network.serve
+    match serve(
         address: "127.0.0.1:0",
         handler: handle,
         limit: 2,

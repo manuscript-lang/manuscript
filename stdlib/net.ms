@@ -39,8 +39,8 @@ export type DnsRecord:
     port: Int
 
 export interface Listener:
-    fn accept() -> Result[Connection & Shareable, LibraryError]
-    fn accept_timeout(timeout: Duration) -> Result[Connection & Shareable, LibraryError]
+    fn accept() -> Result[Connection, LibraryError]
+    fn accept_timeout(timeout: Duration) -> Result[Connection, LibraryError]
     fn address() -> String
     fn close() -> Unit
 

@@ -1,24 +1,24 @@
 +++
-title = "Local builders and immutable results"
+title = "Builders and immutable results"
 weight = 43
 +++
 
-# Local builders and immutable results
+# Builders and immutable results
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A builder supports mutable local construction and creates an immutable snapshot when frozen. Builder aliases are ordinary references; freezing may seal the builder so later mutation reports a runtime error.
+A builder supports mutable construction and creates an immutable snapshot when frozen. Builder aliases are ordinary references; freezing may seal the builder so later mutation reports a runtime error.
 
-Builders with unsynchronized mutable state are not eligible for concurrent sharing. There is no consuming function type or compiler-tracked ownership transfer. Frozen contents follow the ordinary collection element bounds.
+Builders synchronize mutation and freeze across all aliases. Freezing seals the object atomically; an append racing with freeze either contributes to the snapshot or faults after sealing. Concurrent appends have nondeterministic order. There is no ownership-transfer or consuming function type.
 
 ## API
 
-All builder names are exported by `@std/builders.ms`. They have zero-argument constructors and are opaque local references with no sharing, equality, or hashing eligibility. Type arguments can come from an explicit application or a complete expected constructor type.
+All builder names are exported by `@std/builders.ms`. They have zero-argument constructors and are opaque shareable references with no equality or hashing. Type arguments can come from an explicit application or a complete expected constructor type.
 
 | Type | Mutation | Freeze result |
 | --- | --- | --- |
-| `ListBuilder[T: Shareable]` | `append(value: T) -> Unit` | `List[T]` |
-| `MapBuilder[K: Hashable, V: Shareable]` | `with_entry(key: K, value: V) -> Unit` | `Map[K, V]` |
+| `ListBuilder[T]` | `append(value: T) -> Unit` | `List[T]` |
+| `MapBuilder[K: Hashable, V]` | `with_entry(key: K, value: V) -> Unit` | `Map[K, V]` |
 | `SetBuilder[T: Hashable]` | `with_value(value: T) -> Unit` | `Set[T]` |
 | `BytesBuilder` | `append(value: Int) -> Unit`, `concat(values: Bytes) -> Unit` | `Bytes` |
 | `StringBuilder` | `append(value: String) -> Unit` | `String` |

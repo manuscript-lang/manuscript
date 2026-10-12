@@ -28,7 +28,7 @@ func init() {
 		}
 		return Unit{}
 	})
-	libraryAdd("log", "write", libraryResult("Unit"), []LibraryParam{p("output", "WriteStream&Shareable"), p("level", "String"), p("message", "String"), p("fields", "Map[String][String]"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("log", "write", libraryResult("Unit"), []LibraryParam{p("output", "WriteStream"), p("level", "String"), p("message", "String"), p("fields", "Map[String][String]"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		level := a[1].(string)
 		if level != "debug" && level != "info" && level != "warn" && level != "error" || a[4].(int64) < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -55,7 +55,7 @@ func init() {
 		}
 		return libraryOK(r, Unit{})
 	})
-	libraryAdd("io", "read_line", libraryResult("Optional[String]"), []LibraryParam{p("input", "ReadStream&Shareable"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "read_line", libraryResult("Optional[String]"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[1].(int64)
 		if max <= 0 {
 			return libraryError(r, "InvalidInput", "")

@@ -87,7 +87,7 @@ Container element/key bounds still apply. A `Set[Node]` does not become valid ju
 
 ## Resource fields
 
-A record containing a resource does not implicitly close it or extend its open lifetime. Cleanup follows explicit [resource scopes](../../ownership-and-cleanup/cleanup/scopes.md). Immutable fields do not make the referenced native service immutable; sharing eligibility depends on its implementation.
+A record containing a resource does not implicitly close it or extend its open lifetime. Cleanup follows explicit [resource scopes](../../ownership-and-cleanup/cleanup/scopes.md). Immutable fields do not make referenced native services immutable; each service synchronizes its own state and lifecycle.
 
 A `type` declaration uses fields or cases. Use [alternatives](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md) that declare required behavior.
 

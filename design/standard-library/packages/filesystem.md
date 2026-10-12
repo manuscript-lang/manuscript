@@ -40,7 +40,7 @@ fn temporary_directory(prefix: String) -> Result[String, LibraryError]
 
 ## Authority and records
 
-CLI Process adds `filesystem: FileSystem & Shareable`. The existing Files capability remains read-only. FileSystem is host-created, uses a fixed startup directory for relative paths, and grants the CLI's native OS file authority; this distribution does not claim a sandboxed subtree capability. Imports and path Strings grant no authority. Source fakes implement the contract normally. NUL paths return InvalidInput; unrepresentable filename text returns Unsupported. Acquired temporary directories require explicit removal, not merely dropping a String.
+CLI Process adds `filesystem: FileSystem`. The existing Files capability remains read-only. FileSystem is host-created, uses a fixed startup directory for relative paths, and grants the CLI's native OS file authority; this distribution does not claim a sandboxed subtree capability. Imports and path Strings grant no authority. Source fakes implement the contract normally. NUL paths return InvalidInput; unrepresentable filename text returns Unsupported. Acquired temporary directories require explicit removal, not merely dropping a String.
 
 ```text
 type FileInfo:

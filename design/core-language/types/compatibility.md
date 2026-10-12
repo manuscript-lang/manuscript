@@ -19,11 +19,11 @@ The compiler uses the same compatibility rules for annotations, assignment, argu
 | Generic application | Exact declaration and every ordered argument; `List[Int]` and `List[Float]` are distinct |
 | Function | Exact parameter labels, declaration order, parameter types, and result type; no variance or label/order adaptation |
 
-Caller-written argument order affects evaluation without changing function identity. A generic bound grants properties, not subtyping. Shared/plain arguments remain distinct during inference; `List[Contract]` fails its element bound, while `List[Contract & Shareable]` may satisfy it.
+Caller-written argument order affects evaluation without changing function identity. A generic bound grants properties, not subtyping. Shared/plain arguments remain distinct during inference; `List[Contract]` fails its element bound, while `List[Contract]` may satisfy it.
 
 Type positions use [ordinary name resolution](../../modules-and-capabilities/modules/declarations.md#names-and-declaration-order). A value shadowing a type name causes an error, not a second lookup in a hidden namespace. Unqualified cases follow [alternative lookup](alternatives.md#construction-and-identity); expected types cannot override a lexical binding or choose an ambiguous case.
 
-`Shareable`, `Equal`, and `Hashable` are [compiler bounds](generics.md#bounds), not standalone value types. The only value-type refinement is `Contract & Shareable`; other intersections and refinements are rejected.
+`Equal` and `Hashable` are [compiler bounds](generics.md#bounds), not standalone value types. Value types have no intersection/refinement syntax; conjunction is available only for generic bounds.
 
 ```text
 fn identity(value: Int) -> Int:
