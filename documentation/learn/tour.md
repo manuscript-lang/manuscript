@@ -5,80 +5,219 @@ weight = 2
 
 # A language tour
 
-These small examples introduce the same concepts used in larger applications. The blocks below are complete modules with executable tests. The repository checks them directly from this page.
+Start with [a running program](getting-started.md). Read these examples in order; local statements go inside a function or test. Imports and declarations go at the top of the file. Indentation defines blocks, and `#` starts a comment.
 
-## Bind values and call functions
+## Variables and text
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/faults.ms"
 
+test "unread message count":
+    let customer = "Sam"
+    var unread = 2
+    unread = unread + 1
+    let message = "{customer}, you have {unread} unread messages."
+    let enabled: Bool = true
+    if not (enabled and message == "Sam, you have 3 unread messages."):
+        return panic(message: "Unexpected message")
+```
+
+`let` keeps the same binding; `var` allows reassignment. Local types are inferred unless you write an annotation. Use `Int` for whole numbers, `Float` for decimals, `Bool` for true or false, and `String` for text. `{expression}` inserts a value into a string.
+
+## Lists, maps, and sets
+
+```manuscript
+import {List, Map, Set} from "@std/collections.ms"
+import Optional from "@std/optional.ms"
+
+let tags = ["docs", "release"]
+tags.append("featured")
+let original = tags.clone()
+tags.append("news")
+# original still has three tags.
+
+let visits = Map[String, Int]()
+visits.with_entry(key: "/help", value: 12)
+let subscribers = Set[String]()
+subscribers.with_value("sam@example.com")
+
+match visits.get("/help"):
+    some(count):
+        let label = "{count} visits"
+    none:
+        let label = "No visits yet"
+```
+
+Lists preserve order, maps look up values by key, and sets keep distinct values. Updates mutate the collection. Assignment shares the same collection; `.clone()` makes a shallow copy. Lookup returns an `Optional`: `some(value)` or `none`.
+
+## Conditions and loops
+
+```manuscript
+import List from "@std/collections.ms"
+
+let prices = [12, 8, 25]
+var total = 0
+for price in prices:
+    total = total + price
+
+var shipping = 5
+if total >= 40:
+    shipping = 0
+let checkout_total = total + shipping
+```
+
+`if` chooses a branch. `for` visits each item; `while` repeats while a condition is true. Use `break` to stop a loop or `continue` to skip an iteration.
+
+## Functions
+
+```manuscript
 fn greeting(name: String) -> String:
     return "Hello, {name}!"
 
-test "greeting":
-    let message = greeting("Ada")
-    if not (message == "Hello, Ada!"):
-        return panic(message: "check failed")
+fn line_total(price: Int, quantity: Int) -> Int:
+    return price * quantity
+
+let welcome = greeting("Sam")
+let subtotal = line_total(price: 12, quantity: 3)
 ```
 
-`fn` declares a function. Parameter and return types are explicit; the local binding's type is inferred. A single-parameter call can omit the label, as above, or use `greeting(name: "Ada")`. Functions with multiple parameters require named arguments. Use `var` when a binding needs reassignment. See [bindings](../core-language/basics/bindings.md) and [functions](../core-language/functions/declarations-and-calls.md).
+Functions declare parameter and return types. A single parameter allows an unlabeled call. With multiple parameters, name every argument. Use `Unit` when a function has no result to return.
 
-## Model data and alternatives
+Pass functions to transform collections:
 
-<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/faults.ms"
-
-type Customer:
-    name: String
-
-type Lookup:
-    case Found(customer: Customer)
-    case Missing
-
-fn describe(result: Lookup) -> String:
-    match result:
-        Found(customer):
-            return customer.name
-        Missing:
-            return "Unknown customer"
-
-test "lookup":
-    let customer = Customer(name: "Ada")
-    if not (describe(result: Lookup.Found(customer: customer)) == "Ada"):
-        return panic(message: "check failed")
-```
-
-Records have named, mutable fields. Use `.clone()` for an explicit shallow copy. Alternatives express one of several cases and matching must be exhaustive. Types are nominal: matching field shapes do not make two declarations interchangeable. See [records](../core-language/types/records.md) and [alternatives](../core-language/types/alternatives.md).
-
-## Collections and optional values
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
-import panic from "@std/faults.ms"
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 
-test "collections":
-    let names = ["Ada", "Grace"]
-    let more = names.append(value: "Linus")
-    match more.get(index: 0):
-        some(name):
-            if not (name == "Ada"):
-                return panic(message: "check failed")
-        none:
-            return panic(message: "Unexpected case")
+let prices = [12, 8, 25]
+let discounted = prices.map(transform: fn(value: Int) -> Int:
+    return value - 2
+)
+let affordable = discounted.filter(predicate: fn(value: Int) -> Bool:
+    return value <= 10
+)
+# affordable contains [10, 6]; prices is unchanged.
 ```
 
-Collections are mutable: `append` updates the list and returns the same list. Use `.clone()` when you need separate storage. Looking up an element returns `Optional[T]`, so absence is visible in the type. Complete modules import `Optional` from `@std/optional.ms`; explicit collection type annotations also import `List` from `@std/collections.ms`. See [collections](../core-language/types/collections.md).
+## Types for application data
 
-## Expected failures
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import panic from "@std/faults.ms"
 
-I/O returns `Result[T, E]`. Match `ok(value)` and `error(cause)` when the caller needs to handle both. Within a function returning a compatible `Result`, `?` propagates an error and unwraps success. Imports provide declarations rather than ambient I/O access.
+type Todo:
+    title: String
+    completed: Bool
 
-The [hello application](getting-started.md) handles a failed write with an exit code. Read [results](../core-language/errors/results.md) and [propagation](../core-language/errors/propagation.md) for complete signatures and conversion rules.
+type Status:
+    case Draft
+    case Published(url: String)
 
-## Keep execution visible
+fn status_label(status: Status) -> String:
+    match status:
+        Draft:
+            return "Not published"
+        Published(url):
+            return "Published at {url}"
 
-Ordinary function calls execute sequentially and may suspend. Concurrent work starts through imported APIs such as `parallel`. There is no separate async function kind. Learn the lifetime and authority rules in [features and boundaries](features.md).
+test "publish a help page":
+    let todo = Todo(title: "Update the help page", completed: false)
+    todo.completed = true
+    let backup = todo.clone()
+    todo.title = "Update the contact page"
+    let label = status_label(Status.Published(url: "/help"))
+    if not (backup.title == "Update the help page" and backup.completed and label == "Published at /help"):
+        return panic(message: "Unexpected page data")
+```
+
+Records group named fields. Fields can change even when the binding uses `let`. Alternatives describe a choice of cases; `match` handles every case. A type's name identifies it, so two record declarations with the same fields remain distinct types.
+
+## Expected errors
+
+```manuscript
+import Result from "@std/result.ms"
+
+type QuantityError:
+    case MustBePositive
+
+fn quantity(value: Int) -> Result[Int, QuantityError]:
+    if value <= 0:
+        return error(cause: QuantityError.MustBePositive)
+    return ok(value: value)
+
+fn order_total(count: Int) -> Result[Int, QuantityError]:
+    let valid_count = try quantity(count)
+    return ok(value: valid_count * 12)
+```
+
+A `Result` holds `ok(value: value)` or `error(cause)`. `try` unwraps success and returns an error to the caller. The containing function must return a `Result` with the same error type. Use `match` when you want to handle both outcomes yourself.
+
+## Modules
+
+Each `.ms` file is a module. Export declarations other files need.
+
+`pricing.ms`:
+
+```manuscript
+export fn line_total(price: Int, quantity: Int) -> Int:
+    return price * quantity
+```
+
+In another file in the same directory:
+
+```manuscript
+import line_total from "./pricing.ms"
+
+export fn checkout_total() -> Int:
+    return line_total(price: 12, quantity: 3)
+```
+
+Import standard APIs from `@std/…`, and local code with a relative path. [Module rules](../modules-and-capabilities/modules/declarations.md) cover grouped imports and visibility.
+
+## Closures and shared data
+
+```manuscript
+import List from "@std/collections.ms"
+
+var subject = "Weekly update"
+let headline = fn() -> String:
+    return subject
+subject = "Launch announcement"
+# headline() returns "Weekly update".
+
+let tags = ["docs"]
+let tag_count = fn() -> Int:
+    return tags.length()
+tags.append("release")
+# tag_count() returns 2.
+```
+
+A closure remembers each binding's value when created. Reassigning a local variable does not change that value. Capturing a collection or record keeps the same object, so later mutations are visible. See [closure examples](../core-language/functions/function-values-and-closures.md#snapshot-captures).
+
+## Files and cleanup
+
+```manuscript
+import {filesystem, FileSystemError} from "@std/fs.ms"
+import Result from "@std/result.ms"
+
+fn copy_notes() -> Result[Unit, FileSystemError]:
+    with source = try filesystem().open(path: "notes.txt", flags: "r", mode: 0):
+        let contents = try source.read_file(max_bytes: 1048576)
+        let written = try filesystem().write_file(path: "backup.txt", data: contents, replace: true)
+    return ok(value: unit)
+```
+
+`with` closes the file when the block ends, including an early return. A closure that captures the file keeps a reference but does not keep it open. Read it inside the block, or open a new file inside the callback. [Resource captures](../core-language/functions/function-values-and-closures.md#resource-captures) shows a complete example.
+
+## A few compiler errors to recognize
+
+These fragments are intentionally rejected:
+
+```manuscript
+let count = 2
+count = 3                 # Use var for reassignment.
+let mixed = [1, "two"]    # List elements need a common type.
+line_total(12, 3)         # Name both arguments.
+```
+
+Keep these cases separate from runnable examples. Continue with the [language reference](../core-language/_index.md) or find an API in the [module reference](../standard-library/reference/_index.md).

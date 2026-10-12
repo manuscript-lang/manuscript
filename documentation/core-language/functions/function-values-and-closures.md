@@ -47,24 +47,54 @@ An anonymous function forms its own function boundary for `return`, `try`, `brea
 
 ## Snapshot captures
 
-A closure snapshots each referenced local binding when created, including a `var`'s current value. Later reassignment of that local does not change the snapshot. Assigning to a captured outer local is a compile error; shared mutable local cells are not implicit. Shared mutable state is accessed through synchronized services.
+A closure remembers the current value of each local binding it uses:
 
-Immutable data is retained by value/reference as appropriate for its representation. A service or resource capture retains a reference to the same object, not a deep copy of the object's state. Bound methods retain their receiver under the same rules. Retained environments survive through garbage collection; there is no move, borrowed capture, or automatic cleanup on closure invocation/discard.
+```manuscript
+fn make_headline() -> fn() -> String:
+    var subject = "Weekly update"
+    let headline = fn() -> String:
+        return subject
+    subject = "Launch announcement"
+    return headline
+# make_headline()() returns "Weekly update".
+```
+
+Reassignment changes the local binding, not the captured value. Assigning to a captured outer binding is rejected.
+
+Capturing a record or collection keeps a reference to the same object. Changes to that object remain visible:
+
+```manuscript
+import List from "@std/collections.ms"
+
+fn tag_count() -> Int:
+    let tags = ["docs"]
+    let count = fn() -> Int:
+        return tags.length()
+    tags.append("release")
+    return count()
+# tag_count() returns 2.
+```
+
+Use `.clone()` before capturing if you need independent outer storage. Nested references remain shared. Coordinate concurrent reads and writes with [Synchronized](../../standard-library/data-and-io/synchronized-state.md#synchronized). A bound method retains its receiver by the same reference rules.
 
 ## Resource captures
 
-```manuscript
-with file = try files.open(path: "data.txt"):
-    let reader = fn() -> Result[Optional[Bytes], IoError]:
-        return file.read(max_bytes: 4096)
-    callbacks.register(handler: reader)
+Open a resource inside the callback that uses it:
 
-# A later callback invocation reports IoError.Closed.
+```manuscript
+import {filesystem, FileSystemError} from "@std/fs.ms"
+import Bytes from "@std/bytes.ms"
+import Result from "@std/result.ms"
+
+fn notes_reader(path: String) -> fn() -> Result[Bytes, FileSystemError]:
+    return fn() -> Result[Bytes, FileSystemError]:
+        with file = try filesystem().open(path: path, flags: "r", mode: 0):
+            return file.read_file(max_bytes: 1048576)
 ```
 
-The acquisition fragment belongs to a function returning `Result[U, IoError]`; callbacks is an explicitly supplied registration service. The acquired File and callback are ordinary values.
+`notes_reader("notes.txt")` returns a callback. Each call opens, reads, and closes its own file.
 
-Capturing a resource does not extend its open lifetime or cancel its `with` cleanup. Resource methods detect closed state at runtime. This applies equally to resources passed through explicit parameters or retained in records.
+Capturing an already-open file keeps the same handle; it does not delay its `with` cleanup. Calling `FileHandle.read_file` after that block returns `FileSystemError.Closed`. Passing a resource through a parameter or storing it in a record has the same lifetime rule.
 
 ## Concurrent invocation
 
@@ -72,6 +102,6 @@ Concurrency APIs accept ordinary functions. Function parameters, returned functi
 
 Capture request-data snapshots and application services for background work, then acquire job resources within that operation. `parallel` joins before returning, so an enclosing `with` remains active while its operations run, unless the resource is explicitly closed elsewhere.
 
-These examples use inferred captures. An explicit capture-list syntax has not been selected and is not required by this design. See [parallel](../../concurrency/parallel.md), [background services](../../standard-library/tasks/background.md), and [reference sharing](../../ownership-and-cleanup/values/sharing.md).
+See [parallel](../../concurrency/parallel.md), [background services](../../standard-library/tasks/background.md), and [reference sharing](../../ownership-and-cleanup/values/sharing.md).
 
 [Previous: Declarations and calls](declarations-and-calls.md) · [Next: Conditionals](../control-flow/conditionals.md)

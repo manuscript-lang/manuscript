@@ -7,9 +7,35 @@ weight = 16
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Equality compares eligible values by their contents. Hashing is the additional property needed to use a value as a map key or set element. The compiler checks these properties from the type. Services, resources, and capabilities do not gain equality automatically.
+`Equal` means **values of this type can be compared with `==` and `!=`**. For example, two strings are equal when they contain the same text. Two records of the same type are equal when all their fields are equal; they do not need to be the same object.
 
-Equality is by value for eligible data types; services, resources, and capabilities have no implicit equality.
+`Hashable` means **values of this type can be map keys or set elements**. A map uses a hash, an internal lookup code calculated from a key, to find an entry quickly. It then checks equality to distinguish keys that happen to have the same hash. A set uses the same process to recognize an existing element.
+
+| Requirement | What you can do | Example |
+| --- | --- | --- |
+| `Equal` | Compare values by their contents | Check whether two shopping lists contain the same items in the same order |
+| `Hashable` | Compare values and use them for lookup or uniqueness | Look up a customer by email, or keep a set of subscribed email addresses |
+
+```manuscript
+import {Map, Set} from "@std/collections.ms"
+
+fn same[T: Equal](left: T, right: T) -> Bool:
+    return left == right
+
+fn example() -> Bool:
+    let matches = same(left: "sam@example.com", right: "sam@example.com")
+    let visits = Map[String, Int]()
+    visits.with_entry(key: "sam@example.com", value: 3)
+    let subscribers = Set[String]()
+    subscribers.with_value("sam@example.com")
+    subscribers.with_value("sam@example.com")
+    # The set contains one address, because both values are equal.
+    return matches and subscribers.length() == 1
+```
+
+In `T: Equal`, the colon means “T must support this requirement.” These names describe requirements on a type parameter, rather than types of values. You do not import them or write an `impl` for them: the compiler determines whether a type qualifies. Records qualify when all their fields qualify.
+
+Every `Hashable` type is also `Equal`. The reverse is not always true: `List[Int]` supports comparison but cannot be a map key, and `Float` supports comparison but is not `Hashable`. Keep a key's contents unchanged while it is stored in a map or set. Hashing is for internal lookup; it does not provide a stable ID or a cryptographic fingerprint.
 
 ## Eligibility and value behavior
 

@@ -19,7 +19,9 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Alternative](core-language/types/alternatives.md) | A type with a fixed set of cases. A value is one case at a time and may carry that case's data. |
 | [Contract / interface](core-language/types/contracts.md) | A declared set of operations an implementation must provide. |
 | [Generic parameter](core-language/types/generics.md) | A placeholder for a type, such as `T` in `List[T]`. |
-| [Bound](core-language/types/generics.md) | A requirement on a generic type, such as supporting equality or concurrent sharing. |
+| [Bound](core-language/types/generics.md) | A requirement on a type parameter, such as supporting comparison or supplying a particular operation. |
+| [Equal](core-language/types/equality-and-hashing.md) | A compiler-checked requirement: values can be compared by their contents with `==` and `!=`. |
+| [Hashable](core-language/types/equality-and-hashing.md) | A compiler-checked requirement: values can be map keys or set elements. Includes Equal. |
 | [Intrinsic / prelude](standard-library/types/prelude.md) | The small set of types and compiler bounds available without imports. |
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
 | [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |

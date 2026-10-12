@@ -51,7 +51,7 @@ Decision: the string utility module is `@std/string.ms`, matching the intrinsic 
 
 ### Teach a runnable path before formal reference
 
-Decision: simplify the reading path, explain one concept at a time, and give each exact rule one home. A basic destructuring example should not require the reader to understand parallel work and error propagation. The docs revamp requested simpler explanations without losing precise semantics.
+Decision: public documentation should focus on Manuscript and what readers can build, without introductions framed around other languages. Use practical, example-first progression through variables, collections, functions, types, errors, and modules; keep indexes short and link to the exact rules. Clearly separate intentional rejection examples from the usual runnable path. Simplify the reading path, explain one concept at a time, and give each exact rule one home. A basic destructuring example should not require the reader to understand parallel work and error propagation. The docs revamp requested simpler explanations without losing precise semantics.
 
 Apply when: adding tutorials, revising design chapters, or explaining new syntax.
 Evidence: [documentation simplification discussion](codex://threads/01a12bf3-438d-7c72-a846-7443cea58e3a); [clarity and duplication request](codex://threads/01a12ae0-579b-7890-89d4-c0091474a2f5); [learn index](../documentation/learn/_index.md).

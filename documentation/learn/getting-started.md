@@ -7,11 +7,7 @@ weight = 1
 
 Download and extract the archive for your operating system and architecture from
 [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases).
-The `ms` binary includes the compiler, its native build tools, and all native build
-dependencies. You do not need to install Go or download packages to build, run,
-or test Manuscript programs. You can copy `ms` (`ms.exe` on Windows) anywhere on
-`PATH` without companion files. It automatically prepares its embedded build
-payload in the user cache on first native use. CGO is disabled.
+The archive includes `ms`, its build tools, and runnable examples. Put `ms` on `PATH` to use it from any directory.
 
 Run these commands from the extracted directory. In Windows PowerShell, replace
 `./ms` with `.\ms.exe`:
@@ -24,11 +20,7 @@ Run these commands from the extracted directory. In Windows PowerShell, replace
 
 The program prints `Arguments: 2`. The lock command pins the compiler, runtime, Go toolchain, and target; rerun it after changing those inputs.
 
-If you prefer a source checkout on macOS or Linux, clone the repository and run
-`make build`. The first build downloads and verifies Go into `toolchain/go/`
-automatically; later builds reuse it. Make, curl, tar, and a SHA-256 utility are
-needed for this initial setup. The resulting `./ms` embeds only the native build
-tools and references Manuscript needs and runs independently of the checkout.
+From a source checkout, run `make build` to create `./ms`. See [development setup](../contributing/development.md) for prerequisites.
 
 ## Your first application
 
@@ -65,10 +57,7 @@ Indentation defines blocks. A function with one parameter permits calls such as 
 
 `build` produces a native executable. `emit` exposes the generated Go program. `inspect` produces structured source information; `diagram` captures static calls. To check formatting, run `./ms fmt examples/hello/src/main.ms --check`.
 
-Built executables run independently of the Manuscript installation. Native
-compilation uses the embedded build tools automatically. `MANUSCRIPT_GO`
-explicitly selects an alternative Go executable. `MANUSCRIPT_CACHE_DIR` selects
-a different writable cache directory.
+Built executables run independently of the Manuscript installation.
 
 ## Generate API documentation
 

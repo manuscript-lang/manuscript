@@ -19,8 +19,8 @@ Use this table to find a type's meaning and import path. â€œImplicit intrinsicâ€
 | `Bytes` | Immutable byte sequence | `@std/bytes.ms` |
 | `Unit` | One value, `unit` | Implicit intrinsic |
 | `Never` | No possible value | Implicit intrinsic |
-| `List[T]`, `Map[K, V]`, `Set[T]` | Immutable homogeneous collections with arbitrary value elements; keys require Hashable | `@std/collections.ms` |
-| `MapEntry[K, V]` | Immutable standard record with `key: K` and `value: V`; map iteration yields entries | `@std/collections.ms` |
+| `List[T]`, `Map[K, V]`, `Set[T]` | Mutable lists, key/value maps, and sets of distinct values; map keys and set elements must support [Hashable](../../core-language/types/equality-and-hashing.md) | `@std/collections.ms` |
+| `MapEntry[K, V]` | Standard record with `key: K` and `value: V`; map iteration yields entries | `@std/collections.ms` |
 | `Optional[T]` | `some(value: value)` or `none` | `@std/optional.ms` |
 | `Result[T, E]` | `ok(value: value)` or `error(cause: cause)` | `@std/result.ms` |
 | `ExecutionError` | Joined-group timeout or crash | `@std/tasks.ms` |

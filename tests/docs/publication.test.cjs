@@ -42,3 +42,49 @@ test('rendered API signatures match the generated module pages', () => {
     assert.deepEqual(actual, expected, `Rebuild the website: ${file} has stale API signatures`);
   }
 });
+
+test('published internal links and anchors resolve under the site prefix', () => {
+  const html = new Map();
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(file);
+      else if (entry.name.endsWith('.html')) html.set(file, fs.readFileSync(file, 'utf8'));
+    }
+  }
+  visit(book);
+  function attribute(tag, name) {
+    const match = tag.match(new RegExp(`\\b${name}=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`));
+    return match && (match[1] ?? match[2] ?? match[3]);
+  }
+  const home = html.get(path.join(book, 'index.html'));
+  const canonical = [...home.matchAll(/<link\b[^>]*>/g)]
+    .map(match => match[0]).find(tag => attribute(tag, 'rel') === 'canonical');
+  assert.ok(canonical, 'Home page needs a canonical URL');
+  const prefix = new URL(attribute(canonical, 'href')).pathname;
+  const ids = new Map([...html].map(([file, text]) => [file, new Set(
+    [...text.matchAll(/<[^>]+>/g)].map(match => attribute(match[0], 'id')).filter(Boolean),
+  )]));
+  const failures = [];
+  for (const [file, text] of html) {
+    for (const match of text.matchAll(/<a\b[^>]*>/g)) {
+      const raw = attribute(match[0], 'href');
+      if (raw === null) continue;
+      const href = raw.replaceAll('&amp;', '&');
+      if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(href)) continue;
+      const relative = path.relative(book, file).split(path.sep).join('/');
+      const url = new URL(href, `https://example.org${prefix}${relative}`);
+      if (!url.pathname.startsWith(prefix)) {
+        failures.push(`${relative}: ${href} escapes the site prefix`);
+        continue;
+      }
+      let target = path.join(book, decodeURIComponent(url.pathname.slice(prefix.length)));
+      if (fs.existsSync(target) && fs.statSync(target).isDirectory()) target = path.join(target, 'index.html');
+      if (!fs.existsSync(target)) failures.push(`${relative}: ${href} has no target`);
+      else if (url.hash && ids.has(target) && !ids.get(target).has(decodeURIComponent(url.hash.slice(1)))) {
+        failures.push(`${relative}: ${href} has no anchor`);
+      }
+    }
+  }
+  assert.deepEqual(failures, []);
+});
