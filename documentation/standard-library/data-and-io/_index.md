@@ -12,6 +12,7 @@ Choose a facility based on what you need to do: work with data values, read or w
 - [Minimum data operations](operations.md) — Look up the basic methods on collections, text, bytes, and numeric values.
 
 - [Readers, writers, and streams](streams.md) — Read and write bytes, recognize end-of-input, and close streams.
+- [Structured logging](../packages/tooling.md) — Filter JSON records and send them to stdout, files, or custom transports.
 - [Local queues](queues.md) — Use a bounded FIFO locally, or share it through Synchronized.
 - [Synchronized values](synchronized-state.md) — Coordinate shared state with scoped guards.
 - [Builders and sealed results](builders.md) — Construct a value with synchronized mutation, then seal the builder and obtain its result.

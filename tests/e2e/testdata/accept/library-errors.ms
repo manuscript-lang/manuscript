@@ -272,6 +272,7 @@ test "standard error diagnostics work directly":
     if JsonError.InvalidData.message() != "JsonError.InvalidData":
         return panic(message: "nullary standard diagnostic lost")
 
+import FileSystemError from "@std/fs.ms"
 import { LogError } from "@std/log.ms"
 import { CommandError } from "@std/process.ms"
 import { ExecutionError, StartError } from "@std/tasks.ms"
@@ -280,6 +281,9 @@ test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(cause: IoError.Failed(message: "sink diagnostic"))
     if Error(value: sink).message() != "sink diagnostic":
         return panic(message: "log error lost underlying diagnostic")
+    let file_sink = LogError.FileSystem(cause: FileSystemError.Failed(message: "file sink diagnostic"))
+    if Error(value: file_sink).message() != "file sink diagnostic":
+        return panic(message: "log file error lost underlying diagnostic")
     if Error(value: CommandError.Failed(message: "command diagnostic")).message() != "command diagnostic":
         return panic(message: "command error lost diagnostic")
     if Error(value: ExecutionError.TimedOut).message() != "ExecutionError.TimedOut":

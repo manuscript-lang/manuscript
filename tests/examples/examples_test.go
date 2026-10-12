@@ -30,7 +30,7 @@ func TestTutorialExamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files = append(files, "../../documentation/getting-started.md")
+	files = append(files, "../../documentation/getting-started.md", "../../documentation/standard-library/packages/tooling.md")
 	total := 0
 	for _, file := range files {
 		text, err := os.ReadFile(file)

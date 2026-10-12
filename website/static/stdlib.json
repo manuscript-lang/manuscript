@@ -1252,7 +1252,9 @@
             "InvalidInput",
             "InvalidData",
             "LimitExceeded",
-            "Io(cause: IoError)"
+            "Closed",
+            "Io(cause: IoError)",
+            "FileSystem(cause: FileSystemError)"
           ],
           "operations": [
             "message: fn()-\u003eString"
@@ -1262,9 +1264,67 @@
           ]
         },
         {
-          "name": "write",
+          "name": "LogLevel",
+          "kind": "alternative",
+          "type": "LogLevel",
+          "cases": [
+            "Trace",
+            "Debug",
+            "Info",
+            "Warn",
+            "Error",
+            "Fatal",
+            "Silent"
+          ]
+        },
+        {
+          "name": "Logger",
+          "kind": "interface",
+          "type": "Logger",
+          "operations": [
+            "child: fn(bindings: Map[String, JsonValue])-\u003eLogger",
+            "debug: fn(message: String, fields: Optional[Map[String, JsonValue]] = ...)-\u003eResult[Unit, LogError]",
+            "enabled: fn(level: LogLevel)-\u003eBool",
+            "error: fn(message: String, fields: Optional[Map[String, JsonValue]] = ...)-\u003eResult[Unit, LogError]",
+            "fatal: fn(message: String, fields: Optional[Map[String, JsonValue]] = ...)-\u003eResult[Unit, LogError]",
+            "flush: fn()-\u003eResult[Unit, LogError]",
+            "info: fn(message: String, fields: Optional[Map[String, JsonValue]] = ...)-\u003eResult[Unit, LogError]",
+            "level: fn()-\u003eLogLevel",
+            "log: fn(level: LogLevel, message: String, fields: Optional[Map[String, JsonValue]] = ...)-\u003eResult[Unit, LogError]",
+            "set_level: fn(level: LogLevel)-\u003eUnit",
+            "trace: fn(message: String, fields: Optional[Map[String, JsonValue]] = ...)-\u003eResult[Unit, LogError]",
+            "warn: fn(message: String, fields: Optional[Map[String, JsonValue]] = ...)-\u003eResult[Unit, LogError]"
+          ]
+        },
+        {
+          "name": "Transport",
+          "kind": "interface",
+          "type": "Transport",
+          "operations": [
+            "close: fn()-\u003eUnit",
+            "flush: fn()-\u003eResult[Unit, LogError]",
+            "write: fn(data: Bytes)-\u003eResult[Unit, LogError]"
+          ]
+        },
+        {
+          "name": "create",
           "kind": "fn",
-          "type": "fn(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Optional[Int] = ...)-\u003eResult[Unit, LogError]"
+          "type": "fn(transport: Transport, level: Optional[LogLevel] = ..., bindings: Optional[Map[String, JsonValue]] = ..., timestamp: Optional[Bool] = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Logger, LogError]"
+        },
+        {
+          "name": "file_transport",
+          "kind": "fn",
+          "type": "fn(path: String)-\u003eResult[Transport, LogError]"
+        },
+        {
+          "name": "stdout_transport",
+          "kind": "fn",
+          "type": "fn()-\u003eTransport"
+        },
+        {
+          "name": "stream_transport",
+          "kind": "fn",
+          "type": "fn(output: WriteStream)-\u003eTransport"
         }
       ]
     },
