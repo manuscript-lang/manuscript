@@ -19,14 +19,14 @@ func (c *checker) finiteApplications() {
 			if d.Kind == "fn" {
 				s := c.Symbols[module.File][d.Name]
 				if len(s.Variables) > 0 {
-					nodes[s.ID] = applicationNode{s.Variables, d.Body}
+					nodes[s.ID] = applicationNode{s.Variables, callableBody(d.Params, d.Body)}
 				}
 			}
 		}
 	}
 	for _, m := range c.Methods {
 		if len(m.Variables) > 0 {
-			nodes[m.ID] = applicationNode{m.Variables, m.Decl.Body}
+			nodes[m.ID] = applicationNode{m.Variables, callableBody(m.Decl.Params, m.Decl.Body)}
 		}
 	}
 	edges := map[string][]applicationEdge{}
@@ -100,6 +100,15 @@ func (c *checker) finiteApplications() {
 		visit(root, node.variables)
 	}
 }
+func callableBody(params []syntax.Parameter, body []*syntax.Statement) []*syntax.Statement {
+	result := make([]*syntax.Statement, 0, len(params)+len(body))
+	for _, p := range params {
+		if p.Default != nil {
+			result = append(result, &syntax.Statement{Value: p.Default})
+		}
+	}
+	return append(result, body...)
+}
 func walkStatements(body []*syntax.Statement, visit func(*syntax.Expression)) {
 	for _, s := range body {
 		walkExpression(s.Value, visit)
@@ -126,5 +135,5 @@ func walkExpression(e *syntax.Expression, visit func(*syntax.Expression)) {
 	for _, p := range e.Parts {
 		walkExpression(p.Value, visit)
 	}
-	walkStatements(e.Body, visit)
+	walkStatements(callableBody(e.Params, e.Body), visit)
 }

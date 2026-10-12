@@ -68,6 +68,9 @@ func LintProgram(program *checker.Program) []LintFinding {
 				return
 			}
 			body(e.Body)
+			for _, param := range e.Params {
+				expression(param.Default)
+			}
 			expression(e.Left)
 			expression(e.Right)
 			for _, arg := range e.Args {
@@ -95,8 +98,14 @@ func LintProgram(program *checker.Program) []LintFinding {
 			}
 		}
 		for _, decl := range module.Declarations {
+			for _, param := range decl.Params {
+				expression(param.Default)
+			}
 			body(decl.Body)
 			for _, method := range decl.Methods {
+				for _, param := range method.Params {
+					expression(param.Default)
+				}
 				body(method.Body)
 			}
 		}

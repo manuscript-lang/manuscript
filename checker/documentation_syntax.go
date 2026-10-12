@@ -3,18 +3,19 @@ package checker
 import (
 	"strings"
 
+	"github.com/manuscript-lang/manuscript/lexer"
 	"github.com/manuscript-lang/manuscript/syntax"
 )
 
 // documentDeclaration keeps source names and declaration order, omitting function
 // bodies. Native declarations use the same declaration-only syntax as stdlib/*.ms.
-func documentDeclaration(d *syntax.Declaration, keyword, name string) string {
+func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...string) string {
 	if d.Kind == "fn" {
 		// Compiler-bound calls such as parallel have no ordinary declaration.
 		if d.Result == nil {
 			return ""
 		}
-		return "fn " + name + documentTypeParameters(d.TypeParams) + documentParameters(d.Params) + " -> " + documentType(d.Result) + "\n"
+		return "fn " + name + documentTypeParameters(d.TypeParams) + documentParameters(d.Params, source...) + " -> " + documentType(d.Result) + "\n"
 	}
 	var b strings.Builder
 	b.WriteString(keyword + " " + name + documentTypeParameters(d.TypeParams))
@@ -34,7 +35,7 @@ func documentDeclaration(d *syntax.Declaration, keyword, name string) string {
 		b.WriteByte('\n')
 	}
 	for _, method := range d.Methods {
-		b.WriteString("    " + documentDeclaration(method, "fn", method.Name))
+		b.WriteString("    " + documentDeclaration(method, "fn", method.Name, source...))
 	}
 	return b.String()
 }
@@ -58,10 +59,14 @@ func documentTypeParameters(parameters []syntax.TypeParameter) string {
 	return "[" + strings.Join(values, ", ") + "]"
 }
 
-func documentParameters(parameters []syntax.Parameter) string {
+func documentParameters(parameters []syntax.Parameter, source ...string) string {
 	var values []string
 	for _, p := range parameters {
-		values = append(values, p.Name+": "+documentType(p.Type))
+		value := p.Name + ": " + documentType(p.Type)
+		if p.Default != nil {
+			value += " = " + documentDefault(p, source...)
+		}
+		values = append(values, value)
 	}
 	return "(" + strings.Join(values, ", ") + ")"
 }
@@ -79,4 +84,40 @@ func documentType(t *syntax.Type) string {
 		value += "[" + strings.Join(args, ", ") + "]"
 	}
 	return value
+}
+
+// Keep default expressions in their original source spelling, including calls,
+// strings, and suite closures. Only the containing parameter's delimiters end it.
+func documentDefault(parameter syntax.Parameter, source ...string) string {
+	if len(source) == 0 {
+		return "..."
+	}
+	tokens, err := lexer.Lex(parameter.Pos.File, source[0])
+	if err != nil {
+		return "..."
+	}
+	for i, token := range tokens {
+		if token.Pos.Offset < parameter.Pos.Offset || token.Kind != "=" {
+			continue
+		}
+		start := tokens[i+1].Pos.Offset
+		depth := 0
+		for _, next := range tokens[i+1:] {
+			switch next.Kind {
+			case "(", "[", "{":
+				depth++
+			case ")", "]", "}":
+				if depth == 0 {
+					return strings.TrimSpace(source[0][start:next.Pos.Offset])
+				}
+				depth--
+			case ",":
+				if depth == 0 {
+					return strings.TrimSpace(source[0][start:next.Pos.Offset])
+				}
+			}
+		}
+		break
+	}
+	return "..."
 }

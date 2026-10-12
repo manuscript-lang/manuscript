@@ -44,12 +44,17 @@ func callableText(name string, t *checker.Type, variables []*checker.Type, snipp
 		output.WriteByte(']')
 	}
 	output.WriteByte('(')
-	for i, p := range t.Params {
-		if i > 0 {
+	written := 0
+	for _, p := range t.Params {
+		if t.Defaults[p.Name] {
+			continue
+		}
+		if written > 0 {
 			output.WriteString(", ")
 		}
 		fmt.Fprintf(&output, "%s: ${%d:%s}", p.Name, at, p.Name)
 		at++
+		written++
 	}
 	output.WriteString(")$0")
 	return output.String()

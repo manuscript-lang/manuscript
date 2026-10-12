@@ -111,14 +111,16 @@ InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
 ContractBody  = OperationSignature, { OperationSignature } ;
 OperationSignature = "fn", Name, "(", [ Parameters ], ")", "->", Type, NEWLINE ;
 
-FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ Parameters ], ")",
+FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
                       "->", Type, Suite ;
 Implementation = "impl", NamedType, "for", NamedType, ":", NEWLINE,
                  INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ;
-MethodDeclaration = "fn", Name, "(", [ Parameters ], ")", "->", Type, Suite ;
+MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", "->", Type, Suite ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 Parameters    = Parameter, { ",", Parameter }, [ "," ] ;
 Parameter     = Name, ":", Type ;
+FunctionParameters = FunctionParameter, { ",", FunctionParameter }, [ "," ] ;
+FunctionParameter = Parameter, [ "=", Expression ] ;
 TypeParameters = "[", TypeParameter, { ",", TypeParameter }, [ "," ], "]" ;
 TypeParameter = Name, [ ":", Bounds ] ;
 Bounds        = NamedType, { "&", NamedType } ;
@@ -130,7 +132,7 @@ TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
 FunctionType  = "fn", "(", [ Parameters ], ")", "->", Type ;
 ```
 
-A `type` declares either record fields or alternative cases. An `interface` declares one or more operation signatures. Mixing these forms is rejected. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Function parameters and results always have explicit types. Source parameter declarations do not accept default arguments, variadic parameters, parameter patterns, or anonymous-function type parameters. Trusted library/API contracts may define optional named arguments without exposing source default-parameter syntax; an omitted API argument is checked against that declared contract.
+A `type` declares either record fields or alternative cases. An `interface` declares one or more operation signatures. Mixing these forms is rejected. A nullary alternative uses `case Ready`, without `()`. Parameter names and declaration names must be unique within their applicable scope. Function parameters and results always have explicit types. Function declarations and expressions with bodies accept [default arguments](../functions/declarations-and-calls.md#default-arguments). Interface signatures, function types, and data fields have no defaults. Variadic parameters, parameter patterns, and anonymous-function type parameters are not accepted. Trusted library/API contracts may define optional named arguments; an omitted API argument is checked against that declared contract.
 
 Imports and declarations may be interleaved; import visibility and declaration resolution do not depend on written order. Import paths and test names are plain text literals: escapes are permitted, interpolation is rejected. `export` applies to types, interfaces, and named module functions, not tests or implementation blocks. Implementation blocks declare no type parameters. In `impl Contract[T] for Data[T]:`, `T` comes from the receiver type declaration; applicable bounds come from the type and interface declarations.
 
@@ -182,8 +184,6 @@ The existing [with construct](../../ownership-and-cleanup/cleanup/scopes.md) sup
 
 ```manuscript
 let count = 3                       # Not a complete module item.
-fn wrong(value: Int = 3) -> Int:     # Default parameter syntax is rejected.
-    return value
 fn wrong() -> Int:
   return 1                          # A suite requires four spaces.
 fn wrong() -> Int:

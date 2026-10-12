@@ -19,12 +19,12 @@ func (c *checker) effectSummaries() {
 		for _, declaration := range module.Declarations {
 			if declaration.Kind == "fn" {
 				symbol := c.Symbols[module.File][declaration.Name]
-				nodes[symbol.ID] = &node{declaration.Body, map[string]bool{}, map[string]bool{}}
+				nodes[symbol.ID] = &node{callableBody(declaration.Params, declaration.Body), map[string]bool{}, map[string]bool{}}
 			}
 		}
 	}
 	for _, method := range c.Methods {
-		nodes[method.ID] = &node{method.Decl.Body, map[string]bool{}, map[string]bool{}}
+		nodes[method.ID] = &node{callableBody(method.Decl.Params, method.Decl.Body), map[string]bool{}, map[string]bool{}}
 	}
 	add := func(n *node, effects ...string) {
 		for _, effect := range effects {

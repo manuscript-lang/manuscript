@@ -467,3 +467,38 @@ func TestNetworkingStreamingAndWebSocket(t *testing.T) {
 		t.Fatalf("%v: %s", err, data)
 	}
 }
+
+func TestDefaultArgumentsAcrossModules(t *testing.T) {
+	root := t.TempDir()
+	library := `fn private_value() -> Int:
+    return 7
+export fn defaulted(value: Int = private_value()) -> Int:
+    return value
+`
+	main := `import defaulted from "./library.ms"
+import panic from "@std/faults.ms"
+fn private_value() -> Int:
+    return 99
+test "defaults use their declaration module":
+    let copy = defaulted
+    if defaulted() != 7 or copy() != 7 or defaulted(0) != 0:
+        return panic("incorrect default scope")
+`
+	for name, source := range map[string]string{"library.ms": library, "main.ms": main} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result := compiler.CompileFile(filepath.Join(root, "main.ms"), compiler.Options{Tests: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	binary := filepath.Join(root, "program")
+	if err := compiler.Build(result.Source, binary); err != nil {
+		t.Fatal(err)
+	}
+	data, err := exec.Command(binary).CombinedOutput()
+	if err != nil || !strings.Contains(string(data), "1 tests, 0 failed") {
+		t.Fatalf("%v: %s", err, data)
+	}
+}

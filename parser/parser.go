@@ -137,14 +137,21 @@ func (p *Parser) typeParams() []syntax.TypeParameter {
 	p.need("]")
 	return result
 }
-func (p *Parser) parameters() []syntax.Parameter {
+func (p *Parser) parameters(defaults bool) []syntax.Parameter {
 	p.need("(")
 	var params []syntax.Parameter
 	if !p.take(")") {
 		for {
 			name := p.need(lexer.Name)
 			p.need(":")
-			params = append(params, syntax.Parameter{Pos: name.Pos, Name: name.Text, Type: p.typ()})
+			param := syntax.Parameter{Pos: name.Pos, Name: name.Text, Type: p.typ()}
+			if p.take("=") {
+				if !defaults {
+					p.fail(p.previous(), "defaults require a function body")
+				}
+				param.Default = p.expression(0)
+			}
+			params = append(params, param)
 			if !p.take(",") {
 				break
 			}
@@ -184,7 +191,7 @@ func (p *Parser) typeArgs() []*syntax.Type {
 func (p *Parser) typ() *syntax.Type {
 	if p.take("fn") {
 		pos := p.previous().Pos
-		params := p.parameters()
+		params := p.parameters(false)
 		p.need("->")
 		return &syntax.Type{Pos: pos, Name: "fn", Params: params, Result: p.typ()}
 	}
@@ -202,7 +209,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 	case p.take("fn"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
-		d.Params = p.parameters()
+		d.Params = p.parameters(!p.declarationsOnly)
 		p.need("->")
 		d.Result = p.typ()
 		if p.declarationsOnly && p.peek().Kind != ":" {
@@ -234,7 +241,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			p.need("fn")
 			name := p.need(lexer.Name)
 			m := &syntax.Declaration{Pos: name.Pos, Kind: "fn", Name: name.Text}
-			m.Params = p.parameters()
+			m.Params = p.parameters(true)
 			p.need("->")
 			m.Result = p.typ()
 			m.Body = p.suite()
@@ -282,7 +289,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 				name := p.need(lexer.Name)
 				c := syntax.Case{Pos: name.Pos, Name: name.Text}
 				if p.peek().Kind == "(" {
-					c.Fields = p.parameters()
+					c.Fields = p.parameters(false)
 					if len(c.Fields) == 0 {
 						p.fail(name, "nullary cases omit parentheses")
 					}
@@ -295,7 +302,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 				if p.declarationsOnly {
 					m.TypeParams = p.typeParams()
 				}
-				m.Params = p.parameters()
+				m.Params = p.parameters(false)
 				p.need("->")
 				m.Result = p.typ()
 				p.end()
@@ -562,7 +569,7 @@ func (p *Parser) primary() *syntax.Expression {
 	case "fn":
 		e.Kind = "lambda"
 		e.Text = ""
-		e.Params = p.parameters()
+		e.Params = p.parameters(true)
 		p.need("->")
 		e.Result = p.typ()
 		e.Body = p.suite()
