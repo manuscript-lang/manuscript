@@ -6,22 +6,9 @@ API-first. Minimal syntax. Best-in-class tooling.
 
 ## Design principles
 
-- **API first, minimal syntax.** Design the operation and its contract before inventing a language construct. Concurrency, scheduling, synchronization, and host services belong in imported APIs; new behavior should reuse ordinary calls and values wherever possible.
-- **Optimize for AI writing code and humans understanding it.** Favor consistent compositions and visible dependencies. A change should be understandable from the source and the contracts it uses.
-- **Treat completion as a contract.** Starting work also defines cancellation, joining, and cleanup. Design failure and shutdown behavior alongside the successful path.
-- **Keep one source of truth for agents and tools.** Standard declarations define the APIs the compiler checks. Navigation and API references use those declarations; inspection and diagrams come from checked programs.
-- **Build tooling alongside the language.** Every language decision should work through checking, editing, inspection, debugging, and profiling. Give agents structured answers and humans source-level explanations.
-
-## What these choices bring to the table
-
-| Manuscript's choice | What it gives you |
-| --- | --- |
-| **Concurrency through ordinary functions** | One function kind can wait for work. Imported `parallel` and `Background` APIs accept ordinary function values, so the same function can participate in sequential calls, joined work, or a service. |
-| **Scheduling that follows the same model** | `sleep`, `after`, and `every` share the time API; scheduled work uses one scoped `Timer`. Callbacks follow the ordinary function and lifetime rules. |
-| **Work and cleanup that finish together** | A parallel call waits for every started operation and its cleanup, including after a timeout. Background-service shutdown cancels and joins its work. `with` closes resources in reverse scope order, making shutdown ordering part of the program. |
-| **Error identity preserved through composition** | Parallel operations retain their exact return values, including domain `Result` values. A domain error, an execution fault, and cancellation have distinct meanings; error translation uses explicit matching. |
-| **APIs that tools can read as source** | Standard-library signatures live in Manuscript files that editors can navigate. The compiler supplies checked inspection, static call diagrams, and Markdown/JSON API exports, giving agents structured information about the code they are changing. |
-| **A complete native build tool in one binary** | `ms` bundles the build tools, runtime, and pinned dependencies. After installation, agents can check, build, run, and test native programs without separately provisioning Go or downloading build dependencies. |
+- **API first.** Keep syntax small. Express concurrency, scheduling, synchronization, and host services through imported APIs that compose with ordinary functions and values.
+- **Agents write; humans understand.** Make contracts and dependencies visible in source. Favor familiar, consistent forms that make generated changes easy to review.
+- **Fewer concepts, more composition.** Add a mechanism only when existing ones cannot express the problem clearly. Reuse the same rules across APIs so each addition has less to learn and more to build on.
 
 ## Best-in-class tooling for agents and humans
 
