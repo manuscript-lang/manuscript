@@ -81,7 +81,7 @@ func (n *network) Operation(name string) Function {
 			return Unit{}
 		})
 	}
-	result := "@std/Result[@std/HttpServer&Shareable][@std/IoError]"
+	result := "@std/Result[@std/HttpServer][@std/IoError]"
 	return NewAcquisition([]string{"address", "handler", "limit", "max_body_bytes", "max_response_bytes", "timeout", "grace"}, result, func(ctx *Execution, args []Value) Value {
 		limit, bodyLimit, responseLimit := args[2].(int64), args[3].(int64), args[4].(int64)
 		timeout, grace := args[5].(Duration), args[6].(Duration)
@@ -114,7 +114,7 @@ func (n *network) Operation(name string) Function {
 		n.mu.Unlock()
 		registerResource(ctx, server)
 		go func() { server.err = server.server.Serve(listener); close(server.done) }()
-		return Alternative{result, "ok", []Value{ViewOf("@std/HttpServer&Shareable", server)}}
+		return Alternative{result, "ok", []Value{ViewOf("@std/HttpServer", server)}}
 	}, func(ctx *Execution, value Value) {
 		result := value.(Alternative)
 		if result.Tag == "ok" {

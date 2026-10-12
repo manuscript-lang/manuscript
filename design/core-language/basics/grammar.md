@@ -123,8 +123,7 @@ TypeParameters = "[", TypeParameter, { ",", TypeParameter }, [ "," ], "]" ;
 TypeParameter = Name, [ ":", Bounds ] ;
 Bounds        = NamedType, { "&", NamedType } ;
 
-Type          = SharedContractType | NamedType | FunctionType | "(", Type, ")" ;
-SharedContractType = NamedType, "&", "Shareable" ;
+Type          = NamedType | FunctionType | "(", Type, ")" ;
 NamedType     = TypePath, [ TypeArguments ] ;
 TypePath      = Name, { ".", Name } ;
 TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
@@ -137,7 +136,7 @@ Imports and declarations may be interleaved; import visibility and declaration r
 
 Every parameter used in the interface or method signatures must occur in the nominal receiver application. Contract operations and implementation methods cannot declare their own type parameters. Implementation applicability and overlap follow [contracts](../types/contracts.md#generic-implementations).
 
-`SharedContractType` requires its `NamedType` to resolve to an operation contract application. `Contract & Shareable` is a value type, including in fields, signatures, and generic arguments; it is not a general intersection facility. Reversed order, additional bounds, and refinements of noncontract types are rejected. Generic `Bounds` retain their existing conjunction syntax, where bound order does not affect the requirements. The compiler-defined name `Shareable` remains unavailable as a standalone value type.
+Value types have no intersection/refinement syntax. `&` is used only to combine generic bounds, such as `T: Read & Closeable`; bound order does not affect the requirements. `Synchronized[T]` and `SynchronizedGuard[T]` are ordinary imported types, and lock scopes use existing `with` syntax.
 
 There are no module-level executable statements or `let`/`var` bindings. Functions and tests contain executable code. A snippet showing local bindings without an enclosing function is a body fragment, not a complete `.ms` module. Type paths do not introduce wildcard/namespace imports or make a private type accessible; resolution follows [module rules](../../modules-and-capabilities/modules/declarations.md).
 

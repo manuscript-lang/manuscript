@@ -97,7 +97,7 @@ impl SameValue[T] for Box[T]:
         return self.value == other
 ```
 
-A `Box[T]` with no proof of `T: Equal` cannot use this implementation. Bounds do not make the receiver shareable beyond the ordinary derivation for its fields.
+A `Box[T]` with no proof of `T: Equal` cannot use this implementation. All receivers are safe to share; equality remains a separate property.
 
 Two blocks overlap if their receiver and contract applications can simultaneously match the same pair of types. Check this by structurally unifying both pairs, with each receiver's inherited parameters treated as distinct variables and nominal identities and invariant arguments preserved. Ignore bounds in this check: different bounds cannot select competing implementations. Reject overlap at declaration checking, even if no current call uses it. There is no most-specific selection or specialization.
 
@@ -114,7 +114,7 @@ Implementations of `ReadValue[Int]` and `ReadValue[String]` for the same receive
 
 Create a contract view explicitly with `Contract(value: concrete)`. For a generic contract, use `Contract[T](value: concrete)`. The concrete type must have an applicable declared implementation and satisfy its bounds; a matching method name alone is not enough.
 
-A plain view can hold a local receiver that is not shareable. The view keeps the same receiver reference. It does not copy native state, keep a resource open, or make concurrent access safe.
+A view keeps the same receiver reference without copying native state or extending its resource lifetime. Every receiver is safe to share, and native implementations synchronize their mutable internals.
 
 ```manuscript
 fn use_increment(operation: Increment) -> Int:
@@ -127,15 +127,15 @@ let result = use_increment(operation: view)
 let wrong = use_increment(operation: offset)
 ```
 
-The plain constructor accepts an implementing concrete value or an existing plain/shared view of that exact contract application. An existing plain view is an identity conversion; a shared view loses only its static sharing guarantee. Different contracts/applications and contract-to-concrete downcasts are rejected.
+The constructor accepts an implementing concrete value or an existing view of the exact contract application. An existing view is an identity conversion. Different contracts/applications and contract-to-concrete downcasts are rejected.
 
-Write generic view arguments explicitly or supply an expected application of the same contract, plain or shared. Operation names do not infer arguments, and an expected shared type cannot refine a plain constructor.
+Write generic view arguments explicitly or supply an expected application of the same contract. Operation names do not infer arguments.
 
 ### Selecting an operation
 
 A concrete receiver or generic parameter may call an operation directly when exactly one implemented/bounded contract supplies its name. Otherwise select a view, such as `Increment(value: offset).apply(value: 1)`. Arguments and result types cannot resolve operation-name ambiguity. A bound method retains its receiver and has the operation's ordinary function type.
 
-A plain or shared contract type satisfies its own exact named generic bound without a source `impl`. For example, `Converter[Int]` satisfies `T: Converter[Int]`, but not `T: Converter[String]`. Generic disambiguation can therefore construct the same plain view whether `T` is concrete or already a view. A behavioral bound alone does not require sharing.
+A contract type satisfies its own exact named generic bound without a source `impl`. For example, `Converter[Int]` satisfies `T: Converter[Int]`, but not `T: Converter[String]`. All such values are safe to share.
 
 ```manuscript
 fn invoke[T: Increment](operation: T) -> Int:
@@ -147,41 +147,13 @@ let from_view = invoke(operation: view)
 
 Both calls satisfy the same bound; neither inserts an implicit conversion at the call boundary.
 
-## Shared contract views
+## Concurrent use
 
-`Contract & Shareable`, including `Contract[T] & Shareable`, exposes the same contract operations with a statically safe receiver. It is the only value-type intersection. General intersections, Equal/Hashable refinements, and standalone Shareable value types are rejected.
-
-Construct a shared view explicitly with `(Contract & Shareable)(value: receiver)`:
-
-```manuscript
-let shared = (Increment & Shareable)(value: offset)
-let same_shared = (Increment & Shareable)(value: shared)
-let local = Increment(value: shared)  # Explicitly discard the sharing guarantee.
-let operations: List[Increment & Shareable] = [shared]
-# Rejected: local has only the plain Increment type.
-let recovered = (Increment & Shareable)(value: local)
-# Rejected: plain contract values do not satisfy the collection element bound.
-let local_operations: List[Increment] = [local]
-```
-
-Shared construction requires both an implementation proof and a sharing proof:
-
-| Receiver | Shared construction |
-| --- | --- |
-| Concrete shareable type implementing the exact contract | Accepted |
-| Existing shared view of the exact contract application | Accepted as an identity view |
-| Generic parameter bounded by the exact contract and Shareable | Accepted |
-| Plain view, even with a safe hidden receiver | Rejected; the sharing proof is absent |
-
-Plain and shared views are distinct types. Assignments, arguments, returns, and expected types never add or discard sharing implicitly. Both explicit constructors retain the same receiver and implementation; neither adds synchronization, equality, hashing, cleanup, or lifetime extension.
-
-Shared views can be stored in collections and captured concurrently. Bound methods use the receiver's known sharing proof, then follow the separate [callable boundary rules](../../ownership-and-cleanup/values/sharing.md#function-values).
-
-Only the receiver is guaranteed shareable. Parameters and results follow their own types: a shared service may return a nonshareable resource. Native adapters must prove receiver sharing before exposing a shared view.
+All contract values may be shared and invoked concurrently. There is one view type, with ordinary spelling such as `ReadValue[Int]`. Explicit view construction checks the implementation relationship and preserves the receiver reference. No conversion adds synchronization, equality, hashing, cleanup, or lifetime extension. Every native implementation must synchronize its own mutable internals and lifecycle; source implementations use immutable fields and synchronized services.
 
 ## Contracts and external authority
 
-A capability is passed as an explicit input when an operation needs external authority, such as storage or a payment service. [Modules and capabilities](../../modules-and-capabilities/modules/_index.md) describes effects, sharing requirements, and exported boundary contracts.
+A capability is passed as an explicit input when an operation needs external authority, such as storage or a payment service. [Modules and capabilities](../../modules-and-capabilities/modules/_index.md) describes effects, native synchronization obligations, and exported boundary contracts.
 
 Contracts can also appear as [generic bounds](generics.md), where they name the operations required from a type argument.
 

@@ -9,7 +9,7 @@ weight = 40
 
 A stream reads or writes bytes over time. Its close operation releases the underlying resource. Native hosts and source fakes can both implement the contracts below.
 
-The host supplies synchronized `ReadStream & Shareable`, `WriteStream & Shareable`, and `File & Shareable` views. A plain stream contract view does not itself promise concurrent safety.
+The host supplies synchronized `ReadStream`, `WriteStream`, and `File` views. All stream contract values are safe to share; closing a stream still closes it through every alias.
 
 ```manuscript
 interface ReadStream:
@@ -29,7 +29,7 @@ Read requires positive max_bytes or returns IoError.InvalidInput. `ok(some(bytes
 
 Native wrappers serialize simultaneous reads/writes without holding a lifecycle lock during blocking I/O. Close marks admission closed, interrupts active I/O where supported, waits for admitted I/O to end, and releases the handle once. Later calls return IoError.Closed. Concurrent close callers wait for the same release/fault. A flag check followed by unsynchronized handle use is insufficient. Uncancellable I/O can delay release and requires host escalation; expected completion errors belong to read/write, and unexpected release failures are cleanup faults.
 
-Plain and shared contract values declaring these exact close operations are eligible for `with` under [Closeable](../../ownership-and-cleanup/cleanup/closeable.md); cleanup does not require concurrent sharing. Source fakes implement the selected stream contract and explicitly construct shared views when substituting for standard host roots or acquisitions; no native File constructor or contract inheritance is needed. Adapters honor [cancellation and undelivered acquisition](../../modules-and-capabilities/adapters/cancellation.md). The bounded subprocess facility is exported by `@std/process.ms`. The CLI host supplies `process.commands: Commands & Shareable`:
+Contract values declaring these exact close operations are eligible for `with` under [Closeable](../../ownership-and-cleanup/cleanup/closeable.md); cleanup does not require concurrent sharing. Source fakes implement the selected stream contract and explicitly construct contract views when substituting for standard host roots or acquisitions; no native File constructor or contract inheritance is needed. Adapters honor [cancellation and undelivered acquisition](../../modules-and-capabilities/adapters/cancellation.md). The bounded subprocess facility is exported by `@std/process.ms`. The CLI host supplies `process.commands: Commands`:
 
 ```manuscript
 # Commands

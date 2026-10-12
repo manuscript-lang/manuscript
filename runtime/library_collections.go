@@ -12,10 +12,10 @@ func relativeIndex(length int, index int64) int64 {
 
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	shared := []LibraryParam{p("T", "Shareable")}
-	equal := []LibraryParam{p("T", "Shareable&Equal")}
+	elements := []LibraryParam{p("T", "")}
+	equal := []LibraryParam{p("T", "Equal")}
 	hash := []LibraryParam{p("T", "Hashable")}
-	mapVars := []LibraryParam{p("K", "Hashable"), p("V", "Shareable")}
+	mapVars := []LibraryParam{p("K", "Hashable"), p("V", "")}
 	listParam := []LibraryParam{p("values", "List[T]")}
 	add := func(name, result string, vars, params []LibraryParam, body func(*Execution, string, []Value) Value) {
 		libraryGeneric("collections", name, result, vars, params, body)
@@ -25,7 +25,7 @@ func init() {
 		if name == "at" {
 			params = append(params, p("index", "Int"))
 		}
-		add(name, "Optional[T]", shared, params, func(_ *Execution, r string, a []Value) Value {
+		add(name, "Optional[T]", elements, params, func(_ *Execution, r string, a []Value) Value {
 			v := a[0].(List)
 			i := int64(0)
 			if name == "last" {
@@ -40,7 +40,7 @@ func init() {
 			return Alternative{r, "some", []Value{v.Items[i]}}
 		})
 	}
-	add("is_empty", "Bool", shared, listParam, func(_ *Execution, _ string, a []Value) Value { return len(a[0].(List).Items) == 0 })
+	add("is_empty", "Bool", elements, listParam, func(_ *Execution, _ string, a []Value) Value { return len(a[0].(List).Items) == 0 })
 	for _, name := range []string{"contains", "index_of", "last_index_of"} {
 		result := "Optional[Int]"
 		if name == "contains" {
@@ -67,10 +67,10 @@ func init() {
 			return Alternative{Type: r, Tag: "none"}
 		})
 	}
-	add("prepend", "List[T]", shared, []LibraryParam{p("values", "List[T]"), p("value", "T")}, func(_ *Execution, r string, a []Value) Value {
+	add("prepend", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T")}, func(_ *Execution, r string, a []Value) Value {
 		return List{r, append([]Value{a[1]}, a[0].(List).Items...)}
 	})
-	add("with_value", "List[T]", shared, []LibraryParam{p("values", "List[T]"), p("index", "Int"), p("value", "T")}, func(_ *Execution, r string, a []Value) Value {
+	add("with_value", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int"), p("value", "T")}, func(_ *Execution, r string, a []Value) Value {
 		items := a[0].(List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
@@ -80,7 +80,7 @@ func init() {
 		out[i] = a[2]
 		return List{r, out}
 	})
-	add("without", "List[T]", shared, []LibraryParam{p("values", "List[T]"), p("index", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	add("without", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		items := a[0].(List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
@@ -98,7 +98,7 @@ func init() {
 		if name == "some" || name == "every" {
 			result = "Bool"
 		}
-		add(name, result, shared, []LibraryParam{p("values", "List[T]"), p("predicate", "fn(value:T)->Bool")}, func(ctx *Execution, r string, a []Value) Value {
+		add(name, result, elements, []LibraryParam{p("values", "List[T]"), p("predicate", "fn(value:T)->Bool")}, func(ctx *Execution, r string, a []Value) Value {
 			items := a[0].(List).Items
 			start, end, step := 0, len(items), 1
 			if name == "find_last" || name == "find_last_index" {
@@ -133,14 +133,14 @@ func init() {
 			return Alternative{Type: r, Tag: "none"}
 		})
 	}
-	add("for_each", "Unit", shared, []LibraryParam{p("values", "List[T]"), p("operation", "fn(value:T)->Unit")}, func(ctx *Execution, _ string, a []Value) Value {
+	add("for_each", "Unit", elements, []LibraryParam{p("values", "List[T]"), p("operation", "fn(value:T)->Unit")}, func(ctx *Execution, _ string, a []Value) Value {
 		for _, v := range a[0].(List).Items {
 			CheckCancelled(ctx)
 			Invoke(ctx, a[1], []Argument{{"value", v}})
 		}
 		return Unit{}
 	})
-	add("flat_map", "List[U]", []LibraryParam{p("T", "Shareable"), p("U", "Shareable")}, []LibraryParam{p("values", "List[T]"), p("transform", "fn(value:T)->List[U]")}, func(ctx *Execution, r string, a []Value) Value {
+	add("flat_map", "List[U]", []LibraryParam{p("T", ""), p("U", "")}, []LibraryParam{p("values", "List[T]"), p("transform", "fn(value:T)->List[U]")}, func(ctx *Execution, r string, a []Value) Value {
 		var out []Value
 		for _, v := range a[0].(List).Items {
 			CheckCancelled(ctx)
@@ -148,7 +148,7 @@ func init() {
 		}
 		return List{r, out}
 	})
-	add("flatten", "List[T]", shared, []LibraryParam{p("values", "List[List[T]]")}, func(ctx *Execution, r string, a []Value) Value {
+	add("flatten", "List[T]", elements, []LibraryParam{p("values", "List[List[T]]")}, func(ctx *Execution, r string, a []Value) Value {
 		var out []Value
 		for _, v := range a[0].(List).Items {
 			CheckCancelled(ctx)
@@ -156,7 +156,7 @@ func init() {
 		}
 		return List{r, out}
 	})
-	add("fold_right", "A", []LibraryParam{p("T", "Shareable"), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
+	add("fold_right", "A", []LibraryParam{p("T", ""), p("A", "")}, []LibraryParam{p("values", "List[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		acc := a[1]
 		items := a[0].(List).Items
 		for i := len(items) - 1; i >= 0; i-- {
@@ -165,7 +165,7 @@ func init() {
 		}
 		return acc
 	})
-	add("with_values", "List[T]", shared, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("delete_count", "Int"), p("replacement", "List[T]")}, func(_ *Execution, r string, a []Value) Value {
+	add("with_values", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("delete_count", "Int"), p("replacement", "List[T]")}, func(_ *Execution, r string, a []Value) Value {
 		items := a[0].(List).Items
 		start, count := a[1].(int64), a[2].(int64)
 		if start < 0 || start > int64(len(items)) || count < 0 || count > int64(len(items))-start {
@@ -176,7 +176,7 @@ func init() {
 		out = append(out, items[start+count:]...)
 		return List{r, out}
 	})
-	add("fill", "List[T]", shared, []LibraryParam{p("values", "List[T]"), p("value", "T"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("fill", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(List).Items
 		s, e := a[2].(int64), a[3].(int64)
 		librarySlice(len(items), s, e)
@@ -187,7 +187,7 @@ func init() {
 		}
 		return List{r, out}
 	})
-	add("copy_within", "List[T]", shared, []LibraryParam{p("values", "List[T]"), p("target", "Int"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	add("copy_within", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("target", "Int"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		items := a[0].(List).Items
 		t, s, e := a[1].(int64), a[2].(int64), a[3].(int64)
 		librarySlice(len(items), s, e)
@@ -198,7 +198,7 @@ func init() {
 		copy(out[t:], out[s:e])
 		return List{r, out}
 	})
-	add("list_keys", "List[Int]", shared, listParam, func(ctx *Execution, r string, a []Value) Value {
+	add("list_keys", "List[Int]", elements, listParam, func(ctx *Execution, r string, a []Value) Value {
 		out := make([]Value, len(a[0].(List).Items))
 		for i := range out {
 			CheckCancelled(ctx)
@@ -206,7 +206,7 @@ func init() {
 		}
 		return List{r, out}
 	})
-	add("list_entries", "List[ListEntry[T]]", shared, listParam, func(ctx *Execution, r string, a []Value) Value {
+	add("list_entries", "List[ListEntry[T]]", elements, listParam, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(List).Items
 		out := make([]Value, len(items))
 		typ := typeArguments(r)[0]
@@ -216,7 +216,7 @@ func init() {
 		}
 		return List{r, out}
 	})
-	add("to_set", "Set[T]", []LibraryParam{p("T", "Shareable&Hashable")}, listParam, func(ctx *Execution, r string, a []Value) Value {
+	add("to_set", "Set[T]", []LibraryParam{p("T", "Hashable")}, listParam, func(ctx *Execution, r string, a []Value) Value {
 		var out []Value
 		for _, v := range a[0].(List).Items {
 			CheckCancelled(ctx)
@@ -226,7 +226,7 @@ func init() {
 		}
 		return Set{r, out}
 	})
-	add("filled", libraryResult("List[T]"), shared, []LibraryParam{p("value", "T"), p("count", "Int"), p("max_items", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("filled", libraryResult("List[T]"), elements, []LibraryParam{p("value", "T"), p("count", "Int"), p("max_items", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		count, max := a[1].(int64), a[2].(int64)
 		if count < 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -261,7 +261,7 @@ func init() {
 		}
 		return libraryOK(r, List{typeArguments(r)[0], out})
 	})
-	add("group_by", "Map[K][List[T]]", []LibraryParam{p("T", "Shareable"), p("K", "Hashable")}, []LibraryParam{p("values", "List[T]"), p("key", "fn(value:T)->K")}, func(ctx *Execution, r string, a []Value) Value {
+	add("group_by", "Map[K][List[T]]", []LibraryParam{p("T", ""), p("K", "Hashable")}, []LibraryParam{p("values", "List[T]"), p("key", "fn(value:T)->K")}, func(ctx *Execution, r string, a []Value) Value {
 		out := Map{Type: r}
 		listType := typeArguments(r)[1]
 		for _, v := range a[0].(List).Items {

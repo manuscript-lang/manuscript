@@ -10,15 +10,16 @@ The generated reference captures declaration types, bounds, fields, cases, and o
 
 Ordinary functions and methods with exactly one declared parameter permit omitting its argument label. Functions with multiple parameters require labels on every supplied argument, including when optional API parameters are omitted. Constructors and contract views retain their labels. Function-type labels remain part of type identity.
 
-- `parallel(tasks: [fn() -> T, ...], timeout: Duration)` accepts a literal pack of zero-argument callbacks with possibly different result types. `timeout` is optional. The result is `Result[Pack, ExecutionError]`, where pack positions retain callback result types. Callbacks and results must be shareable. Its generated base signature contains `<unknown>` because this result is computed per call.
-- `parallel_map` also accepts optional `timeout: Duration`. Its operation and results must be shareable.
-- `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit, drain: Duration, history_limit: Int)` requires only `limit`. The other arguments are optional; `reporter` must be shareable. `Background.start` requires a shareable operation.
+- `parallel(tasks: [fn() -> T, ...], timeout: Duration)` accepts a literal pack of zero-argument callbacks with possibly different result types. `timeout` is optional. The result is `Result[Pack, ExecutionError]`, where pack positions retain callback result types. Callbacks and results are ordinary values, including functions and contract views. Its generated base signature contains `<unknown>` because this result is computed per call.
+- `parallel_map` also accepts optional `timeout: Duration`. Callbacks and results may be any values of the required types. Specialized function values accept the required arguments; optional timeout is available on direct calls.
+- `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit, drain: Duration, history_limit: Int)` requires only `limit`. The other arguments are optional. Reporters and start operations are ordinary callbacks; start may be stored as a bound method.
+- `Synchronized[T](value: T)` stores a value behind a mutex. Its `lock()` returns a `SynchronizedGuard[T]` for `with`; guard get/set require an active acquisition, and close releases it.
 - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
-- `List`, `Lease`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Lists and durations use literals; other values come from APIs or conversions.
+- `List`, `Lease`, `SynchronizedGuard`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Lists and durations use literals; other values come from APIs or conversions.
 - Records use their listed fields as named constructor arguments. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
-- Native collection methods `map[U: Shareable]`, `flat_map[U: Shareable]`, `group_by[K: Hashable]`, `fold[A]`, and `fold_right[A]` infer method type arguments from supplied callbacks/values. Saving a generic method as a value requires explicit specialization, such as `values.map[String]`. Application-defined interface operations remain nongeneric.
+- Native collection methods `map[U]`, `flat_map[U]`, `group_by[K: Hashable]`, `fold[A]`, and `fold_right[A]` infer method type arguments from supplied callbacks/values. Saving a generic method as a value requires explicit specialization, such as `values.map[String]`. Application-defined interface operations remain nongeneric.
 - List equality searches require `Equal`; `to_set` requires `Hashable`; `join` is available only on `List[String]`. These receiver requirements are inherited from the shared function declarations.
-- Generic bounds constrain type arguments. Pool resources require shared contract views. Shared captures and callback restrictions are checked separately from function types.
+- Generic bounds constrain type arguments. Pool resources require contract views declaring close. There is no sharing bound or separate callable proof.
 
 For lifetime, cancellation, defaults, and host behavior, read the standard library guides. A type signature alone does not establish these guarantees.
 
@@ -248,7 +249,7 @@ operation freeze: fn()->Bytes
 
 ```manuscript
 ListBuilder: ListBuilder[T]
-type parameters: T: Shareable
+type parameters: T
 operation append: fn(value: T)->Unit
 operation freeze: fn()->List[T]
 ```
@@ -259,7 +260,7 @@ operation freeze: fn()->List[T]
 
 ```manuscript
 MapBuilder: MapBuilder[T, U]
-type parameters: T: Hashable, U: Shareable
+type parameters: T: Hashable, U
 operation freeze: fn()->Map[T, U]
 operation with_entry: fn(key: T, value: U)->Unit
 ```
@@ -425,17 +426,17 @@ Import each required symbol with `import Name from "@std/cli.ms"`.
 Process: Process
 field arguments: List[String]
 field environment: Map[String, String]
-field stdin: ReadStream & Shareable
-field stdout: WriteStream & Shareable
-field stderr: WriteStream & Shareable
-field files: Files & Shareable
-field clock: Clock & Shareable
-field network: Network & Shareable
-field commands: Commands & Shareable
-field filesystem: FileSystem & Shareable
-field entropy: Entropy & Shareable
-field wall_clock: WallClock & Shareable
-field system: System & Shareable
+field stdin: ReadStream
+field stdout: WriteStream
+field stderr: WriteStream
+field files: Files
+field clock: Clock
+field network: Network
+field commands: Commands
+field filesystem: FileSystem
+field entropy: Entropy
+field wall_clock: WallClock
+field system: System
 ```
 
 # @std/collections.ms
@@ -448,7 +449,7 @@ Import each required symbol with `import Name from "@std/collections.ms"`.
 
 ```manuscript
 List: List[T]
-type parameters: T: Shareable
+type parameters: T
 operation append: fn(value: T)->List[T]
 operation at: fn(index: Int)->Optional[T]
 operation concat: fn(values: List[T])->List[T]
@@ -463,7 +464,7 @@ operation find_index: fn(predicate: fn(value: T)->Bool)->Optional[Int]
 operation find_last: fn(predicate: fn(value: T)->Bool)->Optional[T]
 operation find_last_index: fn(predicate: fn(value: T)->Bool)->Optional[Int]
 operation first: fn()->Optional[T]
-operation flat_map[U: Shareable]: fn(transform: fn(value: T)->List[U])->List[U]
+operation flat_map[U]: fn(transform: fn(value: T)->List[U])->List[U]
 operation fold[A]: fn(initial: A, step: fn(accumulator: A, value: T)->A)->A
 operation fold_right[A]: fn(initial: A, step: fn(accumulator: A, value: T)->A)->A
 operation for_each: fn(operation: fn(value: T)->Unit)->Unit
@@ -476,7 +477,7 @@ operation keys: fn()->List[Int]
 operation last: fn()->Optional[T]
 operation last_index_of: fn(value: T)->Optional[Int]
 operation length: fn()->Int
-operation map[U: Shareable]: fn(transform: fn(value: T)->U)->List[U]
+operation map[U]: fn(transform: fn(value: T)->U)->List[U]
 operation prepend: fn(value: T)->List[T]
 operation reverse: fn()->List[T]
 operation slice: fn(start: Int, end: Int)->List[T]
@@ -494,7 +495,7 @@ operation without: fn(index: Int)->List[T]
 
 ```manuscript
 ListEntry: ListEntry[T]
-type parameters: T: Shareable
+type parameters: T
 field index: Int
 field value: T
 ```
@@ -505,7 +506,7 @@ field value: T
 
 ```manuscript
 Map: Map[T, U]
-type parameters: T: Hashable, U: Shareable
+type parameters: T: Hashable, U
 operation clear: fn()->Map[T, U]
 operation contains: fn(key: T)->Bool
 operation entries: fn()->List[MapEntry[T, U]]
@@ -527,7 +528,7 @@ operation without: fn(key: T)->Map[T, U]
 
 ```manuscript
 MapEntry: MapEntry[T, U]
-type parameters: T: Hashable, U: Shareable
+type parameters: T: Hashable, U
 field key: T
 field value: U
 ```
@@ -538,7 +539,7 @@ field value: U
 
 ```manuscript
 Set: Set[T]
-type parameters: T: Shareable & Hashable
+type parameters: T: Hashable
 operation clear: fn()->Set[T]
 operation contains: fn(value: T)->Bool
 operation difference: fn(right: Set[T])->Set[T]
@@ -562,7 +563,7 @@ operation without: fn(value: T)->Set[T]
 
 ```manuscript
 at: fn(values: List[T], index: Int)->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## contains
@@ -571,7 +572,7 @@ type parameters: T: Shareable
 
 ```manuscript
 contains: fn(values: List[T], value: T)->Bool
-type parameters: T: Shareable & Equal
+type parameters: T: Equal
 ```
 
 ## copy_within
@@ -580,7 +581,7 @@ type parameters: T: Shareable & Equal
 
 ```manuscript
 copy_within: fn(values: List[T], target: Int, start: Int, end: Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## difference
@@ -598,7 +599,7 @@ type parameters: T: Hashable
 
 ```manuscript
 every: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## fill
@@ -607,7 +608,7 @@ type parameters: T: Shareable
 
 ```manuscript
 fill: fn(values: List[T], value: T, start: Int, end: Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## filled
@@ -616,7 +617,7 @@ type parameters: T: Shareable
 
 ```manuscript
 filled: fn(value: T, count: Int, max_items: Int)->Result[List[T], LibraryError]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## filter
@@ -625,7 +626,7 @@ type parameters: T: Shareable
 
 ```manuscript
 filter: fn(values: List[T], predicate: fn(value: T)->Bool)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## find
@@ -634,7 +635,7 @@ type parameters: T: Shareable
 
 ```manuscript
 find: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## find_index
@@ -643,7 +644,7 @@ type parameters: T: Shareable
 
 ```manuscript
 find_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## find_last
@@ -652,7 +653,7 @@ type parameters: T: Shareable
 
 ```manuscript
 find_last: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## find_last_index
@@ -661,7 +662,7 @@ type parameters: T: Shareable
 
 ```manuscript
 find_last_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## first
@@ -670,7 +671,7 @@ type parameters: T: Shareable
 
 ```manuscript
 first: fn(values: List[T])->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## flat_map
@@ -679,7 +680,7 @@ type parameters: T: Shareable
 
 ```manuscript
 flat_map: fn(values: List[T], transform: fn(value: T)->List[U])->List[U]
-type parameters: T: Shareable, U: Shareable
+type parameters: T, U
 ```
 
 ## flatten
@@ -688,7 +689,7 @@ type parameters: T: Shareable, U: Shareable
 
 ```manuscript
 flatten: fn(values: List[List[T]])->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## fold
@@ -697,7 +698,7 @@ type parameters: T: Shareable
 
 ```manuscript
 fold: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
-type parameters: T: Shareable, A
+type parameters: T, A
 ```
 
 ## fold_right
@@ -706,7 +707,7 @@ type parameters: T: Shareable, A
 
 ```manuscript
 fold_right: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
-type parameters: T: Shareable, A
+type parameters: T, A
 ```
 
 ## for_each
@@ -715,7 +716,7 @@ type parameters: T: Shareable, A
 
 ```manuscript
 for_each: fn(values: List[T], operation: fn(value: T)->Unit)->Unit
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## group_by
@@ -724,7 +725,7 @@ type parameters: T: Shareable
 
 ```manuscript
 group_by: fn(values: List[T], key: fn(value: T)->K)->Map[K, List[T]]
-type parameters: T: Shareable, K: Hashable
+type parameters: T, K: Hashable
 ```
 
 ## index_of
@@ -733,7 +734,7 @@ type parameters: T: Shareable, K: Hashable
 
 ```manuscript
 index_of: fn(values: List[T], value: T)->Optional[Int]
-type parameters: T: Shareable & Equal
+type parameters: T: Equal
 ```
 
 ## intersection
@@ -760,7 +761,7 @@ type parameters: T: Hashable
 
 ```manuscript
 is_empty: fn(values: List[T])->Bool
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## is_subset_of
@@ -787,7 +788,7 @@ type parameters: T: Hashable
 
 ```manuscript
 last: fn(values: List[T])->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## last_index_of
@@ -796,7 +797,7 @@ type parameters: T: Shareable
 
 ```manuscript
 last_index_of: fn(values: List[T], value: T)->Optional[Int]
-type parameters: T: Shareable & Equal
+type parameters: T: Equal
 ```
 
 ## list_entries
@@ -805,7 +806,7 @@ type parameters: T: Shareable & Equal
 
 ```manuscript
 list_entries: fn(values: List[T])->List[ListEntry[T]]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## list_keys
@@ -814,7 +815,7 @@ type parameters: T: Shareable
 
 ```manuscript
 list_keys: fn(values: List[T])->List[Int]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## map
@@ -823,7 +824,7 @@ type parameters: T: Shareable
 
 ```manuscript
 map: fn(values: List[T], transform: fn(value: T)->U)->List[U]
-type parameters: T: Shareable, U: Shareable
+type parameters: T, U
 ```
 
 ## map_clear
@@ -832,7 +833,7 @@ type parameters: T: Shareable, U: Shareable
 
 ```manuscript
 map_clear: fn(values: Map[K, V])->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_entries
@@ -841,7 +842,7 @@ type parameters: K: Hashable, V: Shareable
 
 ```manuscript
 map_entries: fn(values: Map[K, V])->List[MapEntry[K, V]]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_for_each
@@ -850,7 +851,7 @@ type parameters: K: Hashable, V: Shareable
 
 ```manuscript
 map_for_each: fn(values: Map[K, V], operation: fn(key: K, value: V)->Unit)->Unit
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_from_entries
@@ -859,7 +860,7 @@ type parameters: K: Hashable, V: Shareable
 
 ```manuscript
 map_from_entries: fn(entries: List[MapEntry[K, V]])->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_keys
@@ -868,7 +869,7 @@ type parameters: K: Hashable, V: Shareable
 
 ```manuscript
 map_keys: fn(values: Map[K, V])->List[K]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_merge
@@ -877,7 +878,7 @@ type parameters: K: Hashable, V: Shareable
 
 ```manuscript
 map_merge: fn(values: Map[K, V], other: Map[K, V])->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_values
@@ -886,7 +887,7 @@ type parameters: K: Hashable, V: Shareable
 
 ```manuscript
 map_values: fn(values: Map[K, V])->List[V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_with_default
@@ -895,7 +896,7 @@ type parameters: K: Hashable, V: Shareable
 
 ```manuscript
 map_with_default: fn(values: Map[K, V], key: K, value: V)->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_with_default_from
@@ -904,7 +905,7 @@ type parameters: K: Hashable, V: Shareable
 
 ```manuscript
 map_with_default_from: fn(values: Map[K, V], key: K, create: fn(key: K)->V)->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## prepend
@@ -913,7 +914,7 @@ type parameters: K: Hashable, V: Shareable
 
 ```manuscript
 prepend: fn(values: List[T], value: T)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## range
@@ -930,7 +931,7 @@ range: fn(start: Int, end: Int, step: Int, max_items: Int)->Result[List[Int], Li
 
 ```manuscript
 reverse: fn(values: List[T])->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## set_clear
@@ -975,7 +976,7 @@ type parameters: T: Hashable
 
 ```manuscript
 slice: fn(values: List[T], start: Int, end: Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## some
@@ -984,7 +985,7 @@ type parameters: T: Shareable
 
 ```manuscript
 some: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## sort_ints
@@ -1009,7 +1010,7 @@ sort_strings: fn(values: List[String])->List[String]
 
 ```manuscript
 sorted: fn(values: List[T], compare: fn(left: T, right: T)->Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## symmetric_difference
@@ -1027,7 +1028,7 @@ type parameters: T: Hashable
 
 ```manuscript
 to_set: fn(values: List[T])->Set[T]
-type parameters: T: Shareable & Hashable
+type parameters: T: Hashable
 ```
 
 ## union
@@ -1045,7 +1046,7 @@ type parameters: T: Hashable
 
 ```manuscript
 with_value: fn(values: List[T], index: Int, value: T)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## with_values
@@ -1054,7 +1055,7 @@ type parameters: T: Shareable
 
 ```manuscript
 with_values: fn(values: List[T], start: Int, delete_count: Int, replacement: List[T])->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## without
@@ -1063,7 +1064,7 @@ type parameters: T: Shareable
 
 ```manuscript
 without: fn(values: List[T], index: Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 # @std/compress.ms
@@ -1376,8 +1377,8 @@ field body: Bytes
 ```manuscript
 HttpClient: HttpClient
 operation close: fn()->Unit
-operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, LibraryError]
-operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream & Shareable, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, LibraryError]
+operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody, LibraryError]
+operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody, LibraryError]
 ```
 
 ## HttpClientOptions
@@ -1408,7 +1409,7 @@ operation path: fn()->String
 operation query: fn()->String
 operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 operation send_headers: fn(status: Int, headers: Map[String, List[String]])->Result[Unit, LibraryError]
-operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)->Result[WebSocket & Shareable, LibraryError]
+operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)->Result[WebSocket, LibraryError]
 operation write: fn(data: Bytes)->Result[Unit, IoError]
 ```
 
@@ -1468,24 +1469,24 @@ field tls: Optional[TlsOptions]
 
 ```manuscript
 Network: Network
-operation bind_datagram: fn(address: String)->Result[DatagramSocket & Shareable, LibraryError]
+operation bind_datagram: fn(address: String)->Result[DatagramSocket, LibraryError]
 operation close: fn()->Unit
-operation connect: fn(address: String, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation connect_tls: fn(address: String, server_name: String, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation connect_unix: fn(path: String, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation http_client: fn(options: HttpClientOptions)->Result[HttpClient & Shareable, LibraryError]
-operation listen: fn(address: String)->Result[Listener & Shareable, LibraryError]
-operation listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)->Result[Listener & Shareable, LibraryError]
-operation listen_unix: fn(path: String)->Result[Listener & Shareable, LibraryError]
+operation connect: fn(address: String, timeout: Duration)->Result[Connection, LibraryError]
+operation connect_tls: fn(address: String, server_name: String, timeout: Duration)->Result[Connection, LibraryError]
+operation connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)->Result[Connection, LibraryError]
+operation connect_unix: fn(path: String, timeout: Duration)->Result[Connection, LibraryError]
+operation http_client: fn(options: HttpClientOptions)->Result[HttpClient, LibraryError]
+operation listen: fn(address: String)->Result[Listener, LibraryError]
+operation listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)->Result[Listener, LibraryError]
+operation listen_unix: fn(path: String)->Result[Listener, LibraryError]
 operation lookup: fn(name: String, max_records: Int, timeout: Duration)->Result[List[String], LibraryError]
 operation request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ClientResponse, LibraryError]
 operation resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)->Result[List[DnsRecord], LibraryError]
-operation restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)->Result[Network & Shareable, LibraryError]
-operation serve: fn(address: String, handler: fn(request: HttpRequest)->HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)->Result[HttpServer & Shareable, IoError]
-operation serve_stream: fn(address: String, handler: fn(exchange: HttpExchange & Shareable)->Result[Unit, LibraryError], options: HttpServerOptions)->Result[HttpServer & Shareable, LibraryError]
-operation web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)->Result[WebSocket & Shareable, LibraryError]
-operation with_resolver: fn(address: String)->Result[Network & Shareable, LibraryError]
+operation restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)->Result[Network, LibraryError]
+operation serve: fn(address: String, handler: fn(request: HttpRequest)->HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)->Result[HttpServer, IoError]
+operation serve_stream: fn(address: String, handler: fn(exchange: HttpExchange)->Result[Unit, LibraryError], options: HttpServerOptions)->Result[HttpServer, LibraryError]
+operation web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)->Result[WebSocket, LibraryError]
+operation with_resolver: fn(address: String)->Result[Network, LibraryError]
 ```
 
 ## ResponseBody
@@ -1520,7 +1521,7 @@ operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 
 ```manuscript
 Files: Files
-operation open: fn(path: String)->Result[File & Shareable, IoError]
+operation open: fn(path: String)->Result[File, IoError]
 ```
 
 ## IoError
@@ -1561,7 +1562,7 @@ operation write: fn(data: Bytes)->Result[Unit, IoError]
 **Function**
 
 ```manuscript
-copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int)->Result[Int, LibraryError]
+copy: fn(input: ReadStream, output: WriteStream, max_bytes: Int)->Result[Int, LibraryError]
 ```
 
 ## read_all
@@ -1569,7 +1570,7 @@ copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_byt
 **Function**
 
 ```manuscript
-read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, LibraryError]
+read_all: fn(input: ReadStream, max_bytes: Int)->Result[Bytes, LibraryError]
 ```
 
 ## read_line
@@ -1577,7 +1578,7 @@ read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, Libra
 **Function**
 
 ```manuscript
-read_line: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Optional[String], LibraryError]
+read_line: fn(input: ReadStream, max_bytes: Int)->Result[Optional[String], LibraryError]
 ```
 
 # @std/json.ms
@@ -1634,7 +1635,7 @@ Import each required symbol with `import Name from "@std/log.ms"`.
 **Function**
 
 ```manuscript
-write: fn(output: WriteStream & Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LibraryError]
+write: fn(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LibraryError]
 ```
 
 # @std/math.ms
@@ -1945,8 +1946,8 @@ field port: Int
 
 ```manuscript
 Listener: Listener
-operation accept: fn()->Result[Connection & Shareable, LibraryError]
-operation accept_timeout: fn(timeout: Duration)->Result[Connection & Shareable, LibraryError]
+operation accept: fn()->Result[Connection, LibraryError]
+operation accept_timeout: fn(timeout: Duration)->Result[Connection, LibraryError]
 operation address: fn()->String
 operation close: fn()->Unit
 ```
@@ -2120,7 +2121,7 @@ Import each required symbol with `import Name from "@std/pools.ms"`.
 
 ```manuscript
 Lease: Lease[T]
-type parameters: T: Shareable
+type parameters: T
 operation close: fn()->Unit
 operation get: fn()->Result[T, PoolError]
 ```
@@ -2131,7 +2132,7 @@ operation get: fn()->Result[T, PoolError]
 
 ```manuscript
 Pool: Pool[T]
-type parameters: T: Shareable
+type parameters: T
 field resources: List[T]
 operation acquire: fn()->Result[Lease[T], PoolError]
 operation close: fn()->Unit
@@ -2193,7 +2194,7 @@ Import each required symbol with `import Name from "@std/queues.ms"`.
 
 ```manuscript
 Queue: Queue[T]
-type parameters: T: Shareable
+type parameters: T
 field capacity: Int
 operation close: fn()->Unit
 operation receive: fn()->Optional[T]
@@ -2227,7 +2228,7 @@ operation bytes: fn(count: Int)->Result[Bytes, LibraryError]
 **Function**
 
 ```manuscript
-secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, LibraryError]
+secure_int: fn(entropy: Entropy, min: Int, max_exclusive: Int)->Result[Int, LibraryError]
 ```
 
 ## uuid_v4
@@ -2235,7 +2236,7 @@ secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Resu
 **Function**
 
 ```manuscript
-uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, LibraryError]
+uuid_v4: fn(entropy: Entropy)->Result[String, LibraryError]
 ```
 
 # @std/regex.ms
@@ -2307,23 +2308,6 @@ case error(cause: U)
 ```manuscript
 map_error: fn(result: Result[T, E], transform: fn(cause: E)->F)->Result[T, F]
 type parameters: T, E, F
-```
-
-# @std/state.ms
-
-Import each required symbol with `import Name from "@std/state.ms"`.
-
-## State
-
-**Interface**
-
-```manuscript
-State: State[T]
-type parameters: T: Shareable
-field value: T
-operation get: fn()->T
-operation set: fn(value: T)->Unit
-operation swap: fn(value: T)->T
 ```
 
 # @std/string.ms
@@ -2546,6 +2530,33 @@ trim_start: fn(text: String)->String
 upper: fn(text: String)->String
 ```
 
+# @std/sync.ms
+
+Import each required symbol with `import Name from "@std/sync.ms"`.
+
+## Synchronized
+
+**Interface**
+
+```manuscript
+Synchronized: Synchronized[T]
+type parameters: T
+field value: T
+operation lock: fn()->SynchronizedGuard[T]
+```
+
+## SynchronizedGuard
+
+**Interface**
+
+```manuscript
+SynchronizedGuard: SynchronizedGuard[T]
+type parameters: T
+operation close: fn()->Unit
+operation get: fn()->T
+operation set: fn(value: T)->Unit
+```
+
 # @std/system.ms
 
 Import each required symbol with `import Name from "@std/system.ms"`.
@@ -2662,7 +2673,7 @@ parallel: fn()-><unknown>
 
 ```manuscript
 parallel_map: fn(items: List[T], operation: fn(item: T)->U, limit: Int)->Result[List[U], ExecutionError]
-type parameters: T: Shareable, U: Shareable
+type parameters: T, U
 ```
 
 # @std/time.ms
@@ -3019,14 +3030,6 @@ operation to_string: fn(radix: Int)->String
 
 ```manuscript
 Never: Never
-```
-
-## Shareable
-
-**Type**
-
-```manuscript
-Shareable: Shareable
 ```
 
 ## String

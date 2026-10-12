@@ -78,12 +78,8 @@ impl Read for Box:
 	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Background, operation: fn() -> Result[Unit, String]) -> Unit:
     service.start(operation)
 `, compiler.Options{})
-	found := false
-	for _, diagnostic := range result.Diagnostics {
-		found = found || strings.Contains(diagnostic.Message, "Background.start requires a shareable callable")
-	}
-	if !found {
-		t.Fatal("omitted label bypassed callback sharing check", result.Diagnostics)
+	if !result.Success() {
+		t.Fatal("ordinary callback with omitted label rejected", result.Diagnostics)
 	}
 }
 
@@ -123,7 +119,7 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"generic field", "cl-09", "Box[Int](value: 6)", "Box[String](value: 6)", "type"},
 		{"explicit specialization mismatch", "cl-09", "unwrap[Int](box: box)", "unwrap[String](box: box)", "type"},
 		{"conflicting inference", "cl-09", "same(left: 6, right: 6)", "same(left: 6, right: 6.0)", "type"},
-		{"missing equal bound", "cl-09", "Shareable & Equal", "Shareable", "type"},
+		{"missing equal bound", "cl-09", "T: Equal", "T", "type"},
 		{"unknown type parameter", "cl-09", "    value: T", "    value: U", "resolution"},
 		{"result context inference forbidden", "cl-09-2", "absent[Int]()", "absent()", "type"},
 		{"implicit contract conversion", "cl-10", "operation: same_view", "operation: offset", "type"},
@@ -134,11 +130,6 @@ func TestRejectedConformanceVariants(t *testing.T) {
 		{"implementation missing bound", "cl-10a", "interface SameValue[T: Equal]", "interface SameValue[T]", "type"},
 		{"implementation unavailable", "cl-10a", "fn compare[T: Equal]", "fn compare[T]", "resolution"},
 		{"blanket implementation", "cl-10a", "ReadValue[T] for Box[T]", "ReadValue[T] for T", "resolution"},
-		{"shared view missing proof", "cl-10b", "fn shared_view[T: ReadValue[Int] & Shareable]", "fn shared_view[T: ReadValue[Int]]", "type"},
-		{"plain view cannot recover proof", "cl-10b", "value: shared)", "value: plain)", "type"},
-		{"function field not shareable", "cl-10b", "ReadValue[Int](value: callback)", "(ReadValue[Int] & Shareable)(value: callback)", "type"},
-		{"plain contract list", "cl-10b", "List[ReadValue[Int] & Shareable]", "List[ReadValue[Int]]", "type"},
-		{"shared field exact", "cl-10b", "SharedReader(reader: identity)", "SharedReader(reader: plain)", "type"},
 		{"unguarded recursion", "cl-11", "children: List[Tree[T]]", "children: Tree[T]", "type"},
 		{"expanding recursion", "cl-11", "children: List[Tree[T]]", "children: List[Tree[List[T]]]", "type"},
 		{"map key binding type", "cl-12", "let label: String = key", "let label: Int = key", "type"},
@@ -233,14 +224,13 @@ func TestModulesAndProjectPaths(t *testing.T) {
 
 func TestGenericRecursionAndNamespaceRules(t *testing.T) {
 	for name, source := range map[string]string{
-		"expanding calls":               "import List from \"@std/collections.ms\"\nfn recurse[T: Shareable](value: T) -> Unit:\n    recurse(value: [value])\n",
-		"expanding stored function":     "import List from \"@std/collections.ms\"\nfn recurse[T: Shareable](value: T) -> Unit:\n    let next = recurse[List[T]]\n",
-		"intrinsic parameter":           "type Box[Int]:\n    value: Int\n",
-		"intrinsic declaration":         "type Int:\n    value: String\n",
-		"intrinsic bound target":        "type Data:\n    value: Int\nimpl Equal for Data:\n    fn compare() -> Unit:\n        return\n",
-		"case ambiguity":                "type First:\n    case Ready(value: Int)\ntype Second:\n    case Ready(value: Int)\nfn wrong() -> First:\n    return Ready(value: 1)\n",
-		"generic overlap":               "interface Read[T]:\n    fn get() -> T\ntype Box[T]:\n    value: T\nimpl Read[T] for Box[T]:\n    fn get() -> T:\n        return self.value\nimpl Read[Int] for Box[Int]:\n    fn get() -> Int:\n        return self.value\n",
-		"nested function field sharing": "type Box[T]:\n    value: T\ninterface Read:\n    fn get() -> Int\nimpl Read for Box[T]:\n    fn get() -> Int:\n        return 1\nfn one() -> Int:\n    return 1\ntest \"invalid sharing\":\n    let value = Box(value: Box(value: one))\n    let shared = (Read & Shareable)(value: value)\n",
+		"expanding calls":           "import List from \"@std/collections.ms\"\nfn recurse[T](value: T) -> Unit:\n    recurse(value: [value])\n",
+		"expanding stored function": "import List from \"@std/collections.ms\"\nfn recurse[T](value: T) -> Unit:\n    let next = recurse[List[T]]\n",
+		"intrinsic parameter":       "type Box[Int]:\n    value: Int\n",
+		"intrinsic declaration":     "type Int:\n    value: String\n",
+		"intrinsic bound target":    "type Data:\n    value: Int\nimpl Equal for Data:\n    fn compare() -> Unit:\n        return\n",
+		"case ambiguity":            "type First:\n    case Ready(value: Int)\ntype Second:\n    case Ready(value: Int)\nfn wrong() -> First:\n    return Ready(value: 1)\n",
+		"generic overlap":           "interface Read[T]:\n    fn get() -> T\ntype Box[T]:\n    value: T\nimpl Read[T] for Box[T]:\n    fn get() -> T:\n        return self.value\nimpl Read[Int] for Box[Int]:\n    fn get() -> Int:\n        return self.value\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource(name+".ms", source, compiler.Options{})
@@ -271,7 +261,7 @@ func TestDisjointImplementations(t *testing.T) {
 		"finite types": `import List from "@std/collections.ms"
 interface Read[T]:
     fn get() -> Int
-type Pair[A: Shareable, B]:
+type Pair[A, B]:
     left: A
     right: B
 impl Read[A] for Pair[A, A]:
@@ -386,14 +376,10 @@ func TestServiceBoundaries(t *testing.T) {
 		"pool generic representation": `import File from "@std/io.ms"
 import List from "@std/collections.ms"
 import Pool from "@std/pools.ms"
-fn make[T: File & Shareable](resources: List[T]) -> Unit:
+fn make[T: File](resources: List[T]) -> Unit:
     with pool = Pool(resources: resources):
         return
 `,
-
-		"builder not shareable":  "import ListBuilder from \"@std/builders.ms\"\nimport parallel from \"@std/tasks.ms\"\ntest \"builder\":\n    let builder = ListBuilder[Int]()\n    let operation = fn() -> Int:\n        return builder.freeze().length()\n    let result = parallel(tasks: [operation])\n",
-		"stored HTTP admission":  "import Network from \"@std/http.ms\"\nfn invalid(network: Network & Shareable) -> Unit:\n    let serve = network.serve\n",
-		"unproved HTTP callback": "import Network from \"@std/http.ms\"\nimport HttpRequest from \"@std/http.ms\"\nimport HttpResponse from \"@std/http.ms\"\nfn invalid(network: Network & Shareable, handler: fn(request: HttpRequest) -> HttpResponse) -> Unit:\n    network.serve(address: \"127.0.0.1:0\", handler: handler, limit: 1, max_body_bytes: 10, max_response_bytes: 10, timeout: 1.seconds, grace: 0.seconds)\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource(name+".ms", source, compiler.Options{})
@@ -598,5 +584,23 @@ func TestNativeProfilesAndDebugSources(t *testing.T) {
 		if err != nil || info.Size() == 0 {
 			t.Fatalf("missing profile %s: %v", path, err)
 		}
+	}
+}
+
+func TestSynchronizedBoundaries(t *testing.T) {
+	for name, source := range map[string]string{
+		"removed bound":       "fn old[T: Shareable](value: T) -> T:\n    return value\n",
+		"removed view syntax": "interface Read:\n    fn get() -> Int\nfn old(value: Read & Shareable) -> Unit:\n    return\n",
+		"guard constructor":   "import SynchronizedGuard from \"@std/sync.ms\"\nfn invalid() -> Unit:\n    let guard = SynchronizedGuard[Int]()\n",
+		"unguarded access":    "import Synchronized from \"@std/sync.ms\"\nfn invalid() -> Unit:\n    let cell = Synchronized(value: 0)\n    cell.set(value: 1)\n",
+		"cell equality":       "import Synchronized from \"@std/sync.ms\"\nfn invalid() -> Bool:\n    let cell = Synchronized(value: 0)\n    return cell == cell\n",
+		"guard equality":      "import Synchronized from \"@std/sync.ms\"\nfn invalid() -> Bool:\n    let cell = Synchronized(value: 0)\n    with locked = cell.lock():\n        return locked == locked\n",
+		"function equality":   "fn invalid(value: fn() -> Int) -> Bool:\n    return value == value\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if result := compiler.CompileSource(name+".ms", source, compiler.Options{}); result.Success() {
+				t.Fatal("accepted invalid synchronization boundary")
+			}
+		})
 	}
 }

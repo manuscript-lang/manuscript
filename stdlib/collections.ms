@@ -4,7 +4,7 @@ import LibraryError from "@std/errors.ms"
 import Result from "@std/result.ms"
 import Optional from "@std/optional.ms"
 
-export type List[T: Shareable]:
+export type List[T]:
     fn at(index: Int) -> Optional[T]
     fn contains(value: T) -> Bool
     fn index_of(value: T) -> Optional[Int]
@@ -27,8 +27,8 @@ export type List[T: Shareable]:
     fn every(predicate: fn(value: T) -> Bool) -> Bool
     fn for_each(operation: fn(value: T) -> Unit) -> Unit
     fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]
-    fn map[U: Shareable](transform: fn(value: T) -> U) -> List[U]
-    fn flat_map[U: Shareable](transform: fn(value: T) -> List[U]) -> List[U]
+    fn map[U](transform: fn(value: T) -> U) -> List[U]
+    fn flat_map[U](transform: fn(value: T) -> List[U]) -> List[U]
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A
     fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]
@@ -43,7 +43,7 @@ export type List[T: Shareable]:
     fn get(index: Int) -> Optional[T]
     fn length() -> Int
 
-export type Map[T: Hashable, U: Shareable]:
+export type Map[T: Hashable, U]:
     fn with_default(key: T, value: U) -> Map[T, U]
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]
     fn clear() -> Map[T, U]
@@ -58,11 +58,11 @@ export type Map[T: Hashable, U: Shareable]:
     fn with_entry(key: T, value: U) -> Map[T, U]
     fn without(key: T) -> Map[T, U]
 
-export type MapEntry[T: Hashable, U: Shareable]:
+export type MapEntry[T: Hashable, U]:
     key: T
     value: U
 
-export type Set[T: Shareable & Hashable]:
+export type Set[T: Hashable]:
     fn union(right: Set[T]) -> Set[T]
     fn intersection(right: Set[T]) -> Set[T]
     fn difference(right: Set[T]) -> Set[T]
@@ -81,99 +81,99 @@ export type Set[T: Shareable & Hashable]:
 
 export fn difference[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
 
-export fn filter[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> List[T]
+export fn filter[T](values: List[T], predicate: fn(value: T) -> Bool) -> List[T]
 
-export fn fold[T: Shareable, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+export fn fold[T, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
 
 export fn intersection[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
 
-export fn map[T: Shareable, U: Shareable](values: List[T], transform: fn(value: T) -> U) -> List[U]
+export fn map[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]
 
-export fn map_keys[K: Hashable, V: Shareable](values: Map[K, V]) -> List[K]
+export fn map_keys[K: Hashable, V](values: Map[K, V]) -> List[K]
 
-export fn map_values[K: Hashable, V: Shareable](values: Map[K, V]) -> List[V]
+export fn map_values[K: Hashable, V](values: Map[K, V]) -> List[V]
 
-export fn reverse[T: Shareable](values: List[T]) -> List[T]
+export fn reverse[T](values: List[T]) -> List[T]
 
-export fn slice[T: Shareable](values: List[T], start: Int, end: Int) -> List[T]
+export fn slice[T](values: List[T], start: Int, end: Int) -> List[T]
 
 export fn sort_ints(values: List[Int]) -> List[Int]
 
 export fn sort_strings(values: List[String]) -> List[String]
 
-export fn sorted[T: Shareable](values: List[T], compare: fn(left: T, right: T) -> Int) -> List[T]
+export fn sorted[T](values: List[T], compare: fn(left: T, right: T) -> Int) -> List[T]
 
 export fn union[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
 
-export type ListEntry[T: Shareable]:
+export type ListEntry[T]:
     index: Int
     value: T
 
-export fn at[T: Shareable](values: List[T], index: Int) -> Optional[T]
+export fn at[T](values: List[T], index: Int) -> Optional[T]
 
-export fn first[T: Shareable](values: List[T]) -> Optional[T]
+export fn first[T](values: List[T]) -> Optional[T]
 
-export fn last[T: Shareable](values: List[T]) -> Optional[T]
+export fn last[T](values: List[T]) -> Optional[T]
 
-export fn is_empty[T: Shareable](values: List[T]) -> Bool
+export fn is_empty[T](values: List[T]) -> Bool
 
-export fn contains[T: Shareable & Equal](values: List[T], value: T) -> Bool
+export fn contains[T: Equal](values: List[T], value: T) -> Bool
 
-export fn index_of[T: Shareable & Equal](values: List[T], value: T) -> Optional[Int]
+export fn index_of[T: Equal](values: List[T], value: T) -> Optional[Int]
 
-export fn last_index_of[T: Shareable & Equal](values: List[T], value: T) -> Optional[Int]
+export fn last_index_of[T: Equal](values: List[T], value: T) -> Optional[Int]
 
-export fn prepend[T: Shareable](values: List[T], value: T) -> List[T]
+export fn prepend[T](values: List[T], value: T) -> List[T]
 
-export fn with_value[T: Shareable](values: List[T], index: Int, value: T) -> List[T]
+export fn with_value[T](values: List[T], index: Int, value: T) -> List[T]
 
-export fn without[T: Shareable](values: List[T], index: Int) -> List[T]
+export fn without[T](values: List[T], index: Int) -> List[T]
 
-export fn find[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[T]
+export fn find[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[T]
 
-export fn find_last[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[T]
+export fn find_last[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[T]
 
-export fn find_index[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[Int]
+export fn find_index[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[Int]
 
-export fn find_last_index[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[Int]
+export fn find_last_index[T](values: List[T], predicate: fn(value: T) -> Bool) -> Optional[Int]
 
-export fn some[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> Bool
+export fn some[T](values: List[T], predicate: fn(value: T) -> Bool) -> Bool
 
-export fn every[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> Bool
+export fn every[T](values: List[T], predicate: fn(value: T) -> Bool) -> Bool
 
-export fn for_each[T: Shareable](values: List[T], operation: fn(value: T) -> Unit) -> Unit
+export fn for_each[T](values: List[T], operation: fn(value: T) -> Unit) -> Unit
 
-export fn flat_map[T: Shareable, U: Shareable](values: List[T], transform: fn(value: T) -> List[U]) -> List[U]
+export fn flat_map[T, U](values: List[T], transform: fn(value: T) -> List[U]) -> List[U]
 
-export fn flatten[T: Shareable](values: List[List[T]]) -> List[T]
+export fn flatten[T](values: List[List[T]]) -> List[T]
 
-export fn fold_right[T: Shareable, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+export fn fold_right[T, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
 
-export fn with_values[T: Shareable](values: List[T], start: Int, delete_count: Int, replacement: List[T]) -> List[T]
+export fn with_values[T](values: List[T], start: Int, delete_count: Int, replacement: List[T]) -> List[T]
 
-export fn fill[T: Shareable](values: List[T], value: T, start: Int, end: Int) -> List[T]
+export fn fill[T](values: List[T], value: T, start: Int, end: Int) -> List[T]
 
-export fn copy_within[T: Shareable](values: List[T], target: Int, start: Int, end: Int) -> List[T]
+export fn copy_within[T](values: List[T], target: Int, start: Int, end: Int) -> List[T]
 
-export fn list_keys[T: Shareable](values: List[T]) -> List[Int]
+export fn list_keys[T](values: List[T]) -> List[Int]
 
-export fn list_entries[T: Shareable](values: List[T]) -> List[ListEntry[T]]
+export fn list_entries[T](values: List[T]) -> List[ListEntry[T]]
 
-export fn to_set[T: Shareable & Hashable](values: List[T]) -> Set[T]
+export fn to_set[T: Hashable](values: List[T]) -> Set[T]
 
-export fn filled[T: Shareable](value: T, count: Int, max_items: Int) -> Result[List[T], LibraryError]
+export fn filled[T](value: T, count: Int, max_items: Int) -> Result[List[T], LibraryError]
 
 export fn range(start: Int, end: Int, step: Int, max_items: Int) -> Result[List[Int], LibraryError]
 
-export fn map_clear[K: Hashable, V: Shareable](values: Map[K, V]) -> Map[K, V]
+export fn map_clear[K: Hashable, V](values: Map[K, V]) -> Map[K, V]
 
-export fn map_entries[K: Hashable, V: Shareable](values: Map[K, V]) -> List[MapEntry[K, V]]
+export fn map_entries[K: Hashable, V](values: Map[K, V]) -> List[MapEntry[K, V]]
 
-export fn map_merge[K: Hashable, V: Shareable](values: Map[K, V], other: Map[K, V]) -> Map[K, V]
+export fn map_merge[K: Hashable, V](values: Map[K, V], other: Map[K, V]) -> Map[K, V]
 
-export fn map_for_each[K: Hashable, V: Shareable](values: Map[K, V], operation: fn(key: K, value: V) -> Unit) -> Unit
+export fn map_for_each[K: Hashable, V](values: Map[K, V], operation: fn(key: K, value: V) -> Unit) -> Unit
 
-export fn map_from_entries[K: Hashable, V: Shareable](entries: List[MapEntry[K, V]]) -> Map[K, V]
+export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) -> Map[K, V]
 
 export fn set_clear[T: Hashable](values: Set[T]) -> Set[T]
 
@@ -191,8 +191,8 @@ export fn is_superset_of[T: Hashable](left: Set[T], right: Set[T]) -> Bool
 
 export fn is_disjoint_from[T: Hashable](left: Set[T], right: Set[T]) -> Bool
 
-export fn group_by[T: Shareable, K: Hashable](values: List[T], key: fn(value: T) -> K) -> Map[K, List[T]]
+export fn group_by[T, K: Hashable](values: List[T], key: fn(value: T) -> K) -> Map[K, List[T]]
 
-export fn map_with_default[K: Hashable, V: Shareable](values: Map[K, V], key: K, value: V) -> Map[K, V]
+export fn map_with_default[K: Hashable, V](values: Map[K, V], key: K, value: V) -> Map[K, V]
 
-export fn map_with_default_from[K: Hashable, V: Shareable](values: Map[K, V], key: K, create: fn(key: K) -> V) -> Map[K, V]
+export fn map_with_default_from[K: Hashable, V](values: Map[K, V], key: K, create: fn(key: K) -> V) -> Map[K, V]

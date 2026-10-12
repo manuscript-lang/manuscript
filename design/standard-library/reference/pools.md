@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/pools.ms"`.
 
 ```manuscript
 Lease: Lease[T]
-type parameters: T: Shareable
+type parameters: T
 operation close: fn()->Unit
 operation get: fn()->Result[T, PoolError]
 ```
@@ -19,7 +19,7 @@ operation get: fn()->Result[T, PoolError]
 
 ```manuscript
 Pool: Pool[T]
-type parameters: T: Shareable
+type parameters: T
 field resources: List[T]
 operation acquire: fn()->Result[Lease[T], PoolError]
 operation close: fn()->Unit

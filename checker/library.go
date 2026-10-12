@@ -19,8 +19,6 @@ func libraryParseType(s string, vars map[string]*Type) *Type {
 		}
 		return function(ps, libraryParseType(s[end+3:], vars))
 	}
-	shared := strings.HasSuffix(s, "&Shareable")
-	s = strings.TrimSuffix(s, "&Shareable")
 	name := s
 	var args []*Type
 	if at := strings.IndexByte(s, '['); at >= 0 {
@@ -48,11 +46,6 @@ func libraryParseType(s string, vars map[string]*Type) *Type {
 		t = standard(name, args...)
 	} else {
 		t = primitive(name)
-	}
-	if shared {
-		copy := *t
-		copy.Shared = true
-		t = &copy
 	}
 	return t
 }

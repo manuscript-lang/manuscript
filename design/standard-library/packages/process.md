@@ -12,9 +12,9 @@ Use stream helpers for bounded reads and copies, and Commands for buffered subpr
 ## `@std/io.ms`
 
 ```manuscript
-fn copy(input: ReadStream&Shareable, output: WriteStream&Shareable, max_bytes: Int) -> Result[Int, LibraryError]
-fn read_all(input: ReadStream&Shareable, max_bytes: Int) -> Result[Bytes, LibraryError]
-fn read_line(input: ReadStream&Shareable, max_bytes: Int) -> Result[Optional[String], LibraryError]
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, LibraryError]
+fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], LibraryError]
 ```
 
 ## Running commands

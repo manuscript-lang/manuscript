@@ -13,7 +13,7 @@ import HttpClientOptions from "@std/http.ms"
 import TlsOptions from "@std/tls.ms"
 import WebSocketOptions from "@std/websocket.ms"
 
-fn echo(exchange: HttpExchange & Shareable) -> Result[Unit, LibraryError]:
+fn echo(exchange: HttpExchange) -> Result[Unit, LibraryError]:
     if exchange.path() == "/ws":
         with socket = try exchange.upgrade(allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024):
             match try socket.receive():

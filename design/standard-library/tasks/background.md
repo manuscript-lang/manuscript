@@ -34,7 +34,7 @@ type MailError:
 interface Mailer:
     fn send(to: String) -> Result[Unit, MailError]
 
-fn enqueue(emails: Background, mailer: Mailer & Shareable, address: String) -> Result[OperationId, StartError]:
+fn enqueue(emails: Background, mailer: Mailer, address: String) -> Result[OperationId, StartError]:
     let send = fn() -> Result[Unit, String]:
         return map_error(
             result: mailer.send(to: address),
@@ -75,4 +75,4 @@ This is process-local execution, not durable delivery. Work that must survive re
 
 ## Runtime and library responsibilities
 
-The Go runtime supplies operation start, stop, join, and synchronization. Admission, reporting, and shutdown policy can be implemented over those primitives. The initial implementation may provide the service in Go behind the same imported API. These native primitives are implementation details, not source intrinsics. The compiler validates the standard binding's callable proofs; service admission, status retention, reporting, drain, cancellation, and joining remain library/runtime behavior.
+The Go runtime supplies operation start, stop, join, and synchronization. Admission, reporting, and shutdown policy can be implemented over those primitives. The initial implementation may provide the service in Go behind the same imported API. These native primitives are implementation details, not source intrinsics. The compiler validates ordinary callback signatures; service admission, status retention, reporting, drain, cancellation, and joining remain library/runtime behavior.

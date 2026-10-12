@@ -59,32 +59,6 @@ func TestQueueWaitCancellationCloseAndOrdering(t *testing.T) {
 		t.Fatal("close did not wake receiver")
 	}
 }
-func TestStateConcurrentSwap(t *testing.T) {
-	root := RootExecution()
-	state := ConstructWithContext(root, "@std/State[Int]", []Argument{{"value", int64(0)}}).(*State)
-	var wait sync.WaitGroup
-	outputs := make(chan int64, 100)
-	for i := int64(1); i <= 100; i++ {
-		wait.Add(1)
-		go func(value int64) {
-			defer wait.Done()
-			outputs <- Invoke(root, state.Operation("swap"), []Argument{{"value", value}}).(int64)
-		}(i)
-	}
-	wait.Wait()
-	close(outputs)
-	seen := map[int64]bool{}
-	for value := range outputs {
-		if seen[value] {
-			t.Fatal("non-atomic swap")
-		}
-		seen[value] = true
-	}
-	final := Invoke(root, state.Operation("get"), nil).(int64)
-	if seen[final] || len(seen) != 100 {
-		t.Fatal("state swap lost a value")
-	}
-}
 func TestBuilderSealAndSnapshot(t *testing.T) {
 	root := RootExecution()
 	builder := newBuilder("@std/ListBuilder[Int]")
@@ -112,7 +86,7 @@ func (p *leasedProbe) Operation(name string) Function {
 func TestPoolCloseCancelsAndJoinsLeaseOperations(t *testing.T) {
 	root := RootExecution()
 	probe := &leasedProbe{make(chan struct{}), make(chan struct{})}
-	pool := newPool("@std/Pool[Test&Shareable]", List{Items: []Value{ViewOf("Test&Shareable", probe)}})
+	pool := newPool("@std/Pool[Test]", List{Items: []Value{ViewOf("Test", probe)}})
 	lease := Invoke(root, pool.Operation("acquire"), nil).(Alternative).Fields[0].(*Lease)
 	alias := Invoke(root, lease.Operation("get"), nil).(Alternative).Fields[0]
 	ended := make(chan any, 1)
@@ -139,7 +113,7 @@ func TestPoolCloseCancelsAndJoinsLeaseOperations(t *testing.T) {
 func TestPoolConcurrentReleaseReturnsOneResource(t *testing.T) {
 	root := RootExecution()
 	probe := &leasedProbe{make(chan struct{}), make(chan struct{})}
-	pool := newPool("@std/Pool[Test&Shareable]", List{Items: []Value{ViewOf("Test&Shareable", probe)}})
+	pool := newPool("@std/Pool[Test]", List{Items: []Value{ViewOf("Test", probe)}})
 	lease := Invoke(root, pool.Operation("acquire"), nil).(Alternative).Fields[0].(*Lease)
 	var wait sync.WaitGroup
 	for i := 0; i < 20; i++ {

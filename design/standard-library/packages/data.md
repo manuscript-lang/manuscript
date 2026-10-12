@@ -58,17 +58,17 @@ fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> R
 
 ```manuscript
 fn difference[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
-fn filter[T: Shareable](values: List[T], predicate: fn(value: T) -> Bool) -> List[T]
-fn fold[T: Shareable, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
+fn filter[T](values: List[T], predicate: fn(value: T) -> Bool) -> List[T]
+fn fold[T, A](values: List[T], initial: A, step: fn(accumulator: A, value: T) -> A) -> A
 fn intersection[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
-fn map[T: Shareable, U: Shareable](values: List[T], transform: fn(value: T) -> U) -> List[U]
-fn map_keys[K: Hashable, V: Shareable](values: Map[K, V]) -> List[K]
-fn map_values[K: Hashable, V: Shareable](values: Map[K, V]) -> List[V]
-fn reverse[T: Shareable](values: List[T]) -> List[T]
-fn slice[T: Shareable](values: List[T], start: Int, end: Int) -> List[T]
+fn map[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]
+fn map_keys[K: Hashable, V](values: Map[K, V]) -> List[K]
+fn map_values[K: Hashable, V](values: Map[K, V]) -> List[V]
+fn reverse[T](values: List[T]) -> List[T]
+fn slice[T](values: List[T], start: Int, end: Int) -> List[T]
 fn sort_ints(values: List[Int]) -> List[Int]
 fn sort_strings(values: List[String]) -> List[String]
-fn sorted[T: Shareable](values: List[T], compare: fn(left: T, right: T) -> Int) -> List[T]
+fn sorted[T](values: List[T], compare: fn(left: T, right: T) -> Int) -> List[T]
 fn union[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
 ```
 

@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/collections.ms"`.
 
 ```manuscript
 List: List[T]
-type parameters: T: Shareable
+type parameters: T
 operation append: fn(value: T)->List[T]
 operation at: fn(index: Int)->Optional[T]
 operation concat: fn(values: List[T])->List[T]
@@ -25,7 +25,7 @@ operation find_index: fn(predicate: fn(value: T)->Bool)->Optional[Int]
 operation find_last: fn(predicate: fn(value: T)->Bool)->Optional[T]
 operation find_last_index: fn(predicate: fn(value: T)->Bool)->Optional[Int]
 operation first: fn()->Optional[T]
-operation flat_map[U: Shareable]: fn(transform: fn(value: T)->List[U])->List[U]
+operation flat_map[U]: fn(transform: fn(value: T)->List[U])->List[U]
 operation fold[A]: fn(initial: A, step: fn(accumulator: A, value: T)->A)->A
 operation fold_right[A]: fn(initial: A, step: fn(accumulator: A, value: T)->A)->A
 operation for_each: fn(operation: fn(value: T)->Unit)->Unit
@@ -38,7 +38,7 @@ operation keys: fn()->List[Int]
 operation last: fn()->Optional[T]
 operation last_index_of: fn(value: T)->Optional[Int]
 operation length: fn()->Int
-operation map[U: Shareable]: fn(transform: fn(value: T)->U)->List[U]
+operation map[U]: fn(transform: fn(value: T)->U)->List[U]
 operation prepend: fn(value: T)->List[T]
 operation reverse: fn()->List[T]
 operation slice: fn(start: Int, end: Int)->List[T]
@@ -54,7 +54,7 @@ operation without: fn(index: Int)->List[T]
 
 ```manuscript
 ListEntry: ListEntry[T]
-type parameters: T: Shareable
+type parameters: T
 field index: Int
 field value: T
 ```
@@ -63,7 +63,7 @@ field value: T
 
 ```manuscript
 Map: Map[T, U]
-type parameters: T: Hashable, U: Shareable
+type parameters: T: Hashable, U
 operation clear: fn()->Map[T, U]
 operation contains: fn(key: T)->Bool
 operation entries: fn()->List[MapEntry[T, U]]
@@ -83,7 +83,7 @@ operation without: fn(key: T)->Map[T, U]
 
 ```manuscript
 MapEntry: MapEntry[T, U]
-type parameters: T: Hashable, U: Shareable
+type parameters: T: Hashable, U
 field key: T
 field value: U
 ```
@@ -92,7 +92,7 @@ field value: U
 
 ```manuscript
 Set: Set[T]
-type parameters: T: Shareable & Hashable
+type parameters: T: Hashable
 operation clear: fn()->Set[T]
 operation contains: fn(value: T)->Bool
 operation difference: fn(right: Set[T])->Set[T]
@@ -114,21 +114,21 @@ operation without: fn(value: T)->Set[T]
 
 ```manuscript
 at: fn(values: List[T], index: Int)->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## contains {data-api-kind="Function"}
 
 ```manuscript
 contains: fn(values: List[T], value: T)->Bool
-type parameters: T: Shareable & Equal
+type parameters: T: Equal
 ```
 
 ## copy_within {data-api-kind="Function"}
 
 ```manuscript
 copy_within: fn(values: List[T], target: Int, start: Int, end: Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## difference {data-api-kind="Function"}
@@ -142,112 +142,112 @@ type parameters: T: Hashable
 
 ```manuscript
 every: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## fill {data-api-kind="Function"}
 
 ```manuscript
 fill: fn(values: List[T], value: T, start: Int, end: Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## filled {data-api-kind="Function"}
 
 ```manuscript
 filled: fn(value: T, count: Int, max_items: Int)->Result[List[T], LibraryError]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## filter {data-api-kind="Function"}
 
 ```manuscript
 filter: fn(values: List[T], predicate: fn(value: T)->Bool)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## find {data-api-kind="Function"}
 
 ```manuscript
 find: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## find_index {data-api-kind="Function"}
 
 ```manuscript
 find_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## find_last {data-api-kind="Function"}
 
 ```manuscript
 find_last: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## find_last_index {data-api-kind="Function"}
 
 ```manuscript
 find_last_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## first {data-api-kind="Function"}
 
 ```manuscript
 first: fn(values: List[T])->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## flat_map {data-api-kind="Function"}
 
 ```manuscript
 flat_map: fn(values: List[T], transform: fn(value: T)->List[U])->List[U]
-type parameters: T: Shareable, U: Shareable
+type parameters: T, U
 ```
 
 ## flatten {data-api-kind="Function"}
 
 ```manuscript
 flatten: fn(values: List[List[T]])->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## fold {data-api-kind="Function"}
 
 ```manuscript
 fold: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
-type parameters: T: Shareable, A
+type parameters: T, A
 ```
 
 ## fold_right {data-api-kind="Function"}
 
 ```manuscript
 fold_right: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
-type parameters: T: Shareable, A
+type parameters: T, A
 ```
 
 ## for_each {data-api-kind="Function"}
 
 ```manuscript
 for_each: fn(values: List[T], operation: fn(value: T)->Unit)->Unit
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## group_by {data-api-kind="Function"}
 
 ```manuscript
 group_by: fn(values: List[T], key: fn(value: T)->K)->Map[K, List[T]]
-type parameters: T: Shareable, K: Hashable
+type parameters: T, K: Hashable
 ```
 
 ## index_of {data-api-kind="Function"}
 
 ```manuscript
 index_of: fn(values: List[T], value: T)->Optional[Int]
-type parameters: T: Shareable & Equal
+type parameters: T: Equal
 ```
 
 ## intersection {data-api-kind="Function"}
@@ -268,7 +268,7 @@ type parameters: T: Hashable
 
 ```manuscript
 is_empty: fn(values: List[T])->Bool
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## is_subset_of {data-api-kind="Function"}
@@ -289,105 +289,105 @@ type parameters: T: Hashable
 
 ```manuscript
 last: fn(values: List[T])->Optional[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## last_index_of {data-api-kind="Function"}
 
 ```manuscript
 last_index_of: fn(values: List[T], value: T)->Optional[Int]
-type parameters: T: Shareable & Equal
+type parameters: T: Equal
 ```
 
 ## list_entries {data-api-kind="Function"}
 
 ```manuscript
 list_entries: fn(values: List[T])->List[ListEntry[T]]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## list_keys {data-api-kind="Function"}
 
 ```manuscript
 list_keys: fn(values: List[T])->List[Int]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## map {data-api-kind="Function"}
 
 ```manuscript
 map: fn(values: List[T], transform: fn(value: T)->U)->List[U]
-type parameters: T: Shareable, U: Shareable
+type parameters: T, U
 ```
 
 ## map_clear {data-api-kind="Function"}
 
 ```manuscript
 map_clear: fn(values: Map[K, V])->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_entries {data-api-kind="Function"}
 
 ```manuscript
 map_entries: fn(values: Map[K, V])->List[MapEntry[K, V]]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_for_each {data-api-kind="Function"}
 
 ```manuscript
 map_for_each: fn(values: Map[K, V], operation: fn(key: K, value: V)->Unit)->Unit
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_from_entries {data-api-kind="Function"}
 
 ```manuscript
 map_from_entries: fn(entries: List[MapEntry[K, V]])->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_keys {data-api-kind="Function"}
 
 ```manuscript
 map_keys: fn(values: Map[K, V])->List[K]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_merge {data-api-kind="Function"}
 
 ```manuscript
 map_merge: fn(values: Map[K, V], other: Map[K, V])->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_values {data-api-kind="Function"}
 
 ```manuscript
 map_values: fn(values: Map[K, V])->List[V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_with_default {data-api-kind="Function"}
 
 ```manuscript
 map_with_default: fn(values: Map[K, V], key: K, value: V)->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## map_with_default_from {data-api-kind="Function"}
 
 ```manuscript
 map_with_default_from: fn(values: Map[K, V], key: K, create: fn(key: K)->V)->Map[K, V]
-type parameters: K: Hashable, V: Shareable
+type parameters: K: Hashable, V
 ```
 
 ## prepend {data-api-kind="Function"}
 
 ```manuscript
 prepend: fn(values: List[T], value: T)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## range {data-api-kind="Function"}
@@ -400,7 +400,7 @@ range: fn(start: Int, end: Int, step: Int, max_items: Int)->Result[List[Int], Li
 
 ```manuscript
 reverse: fn(values: List[T])->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## set_clear {data-api-kind="Function"}
@@ -435,14 +435,14 @@ type parameters: T: Hashable
 
 ```manuscript
 slice: fn(values: List[T], start: Int, end: Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## some {data-api-kind="Function"}
 
 ```manuscript
 some: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## sort_ints {data-api-kind="Function"}
@@ -461,7 +461,7 @@ sort_strings: fn(values: List[String])->List[String]
 
 ```manuscript
 sorted: fn(values: List[T], compare: fn(left: T, right: T)->Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## symmetric_difference {data-api-kind="Function"}
@@ -475,7 +475,7 @@ type parameters: T: Hashable
 
 ```manuscript
 to_set: fn(values: List[T])->Set[T]
-type parameters: T: Shareable & Hashable
+type parameters: T: Hashable
 ```
 
 ## union {data-api-kind="Function"}
@@ -489,20 +489,20 @@ type parameters: T: Hashable
 
 ```manuscript
 with_value: fn(values: List[T], index: Int, value: T)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## with_values {data-api-kind="Function"}
 
 ```manuscript
 with_values: fn(values: List[T], start: Int, delete_count: Int, replacement: List[T])->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 
 ## without {data-api-kind="Function"}
 
 ```manuscript
 without: fn(values: List[T], index: Int)->List[T]
-type parameters: T: Shareable
+type parameters: T
 ```
 

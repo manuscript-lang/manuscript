@@ -19,7 +19,7 @@ Import each collection type you name from `@std/collections.ms`. Ordinary bracke
 
 ## List literals
 
-Brackets construct immutable lists of shareable values:
+Brackets construct immutable lists of values:
 
 ```manuscript
 let values = [1, 2, 3]
@@ -32,11 +32,11 @@ A function taking `values: List[Int]` is called as `sum(values: [1, 2, 3])` or w
 
 ## Element requirements
 
-Collections require shareable elements; map keys and set elements additionally require hashing. A map's keys and values must therefore be shareable, and its keys must also satisfy the hashing requirement.
+Collections accept any value type, including functions, contract views, builders, and synchronized services. Map keys and set elements additionally require `Hashable`.
 
-Resource and service references may be stored when they meet the element sharing bounds. Retaining them does not keep the resource open or register cleanup. Dynamic concurrent traversal uses [parallel_map](../../standard-library/tasks/parallel-map.md).
+Resource and service references may be stored freely. Retaining them does not keep the resource open or register cleanup. Dynamic concurrent traversal uses [parallel_map](../../standard-library/tasks/parallel-map.md).
 
-Interface elements must retain a static sharing guarantee: `List[Contract & Shareable]` is permitted, while `List[Contract]` fails its element bound even when every hidden receiver happens to be shareable. Construct [shared contract views](contracts.md#shared-contract-views) before inserting them.
+`List[Contract]` stores ordinary contract views. `List[fn(value: Int) -> Int]` stores functions. Both may be used concurrently without additional bounds.
 
 Collection applications are invariant. `List[Int]` is not assignable to `List[Float]`; a list inserts neither numeric conversions nor implicit unions of unrelated element types.
 
@@ -58,7 +58,7 @@ Map and set iteration follows insertion order. A [for loop](../control-flow/loop
 
 ## Building data
 
-Use the [data API](../../standard-library/data-and-io/operations.md#collections) for construction, lookup, and immutable updates. [Builders](../../standard-library/data-and-io/builders.md) describe mutable construction, but their callable API is still incomplete.
+Use the [data API](../../standard-library/data-and-io/operations.md#collections) for construction, lookup, and immutable updates. [Builders](../../standard-library/data-and-io/builders.md) provide synchronized construction and sealed immutable snapshots.
 
 See [generics and bounds](generics.md) for type arguments and [equality and hashing](equality-and-hashing.md) for key eligibility.
 

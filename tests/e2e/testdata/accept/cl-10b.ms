@@ -9,8 +9,8 @@ interface ReadValue[T]:
 type Box[T]:
     value: T
 
-type SharedReader:
-    reader: ReadValue[Int] & Shareable
+type ReaderHolder:
+    reader: ReadValue[Int]
 
 type CallbackReader:
     read_value: fn() -> Int
@@ -26,31 +26,31 @@ impl ReadValue[Int] for CallbackReader:
 fn seven() -> Int:
     return 7
 
-fn local_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
+fn make_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
     return ReadValue[Int](value: source)
 
-fn shared_view[T: ReadValue[Int] & Shareable](source: T) -> ReadValue[Int] & Shareable:
-    return (ReadValue[Int] & Shareable)(value: source)
+fn forward_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
+    return ReadValue[Int](value: source)
 
-fn consume_shared[T: ReadValue[Int] & Shareable](source: T) -> Int:
+fn consume[T: ReadValue[Int]](source: T) -> Int:
     return source.get()
 
-test "plain and shared views":
+test "contract views and callbacks":
     let box = Box[Int](value: 7)
-    let plain = local_view(source: box)
-    let shared = shared_view(source: box)
-    let identity = (ReadValue[Int] & Shareable)(value: shared)
-    let erased = ReadValue[Int](value: identity)
-    let holder = SharedReader(reader: identity)
-    let readers: List[ReadValue[Int] & Shareable] = [holder.reader]
-    let optional: Optional[ReadValue[Int] & Shareable] = some(value: shared)
+    let first = make_view(source: box)
+    let forwarded = forward_view(source: box)
+    let identity = ReadValue[Int](value: forwarded)
+    let copied = ReadValue[Int](value: identity)
+    let holder = ReaderHolder(reader: identity)
+    let readers: List[ReadValue[Int]] = [holder.reader]
+    let optional: Optional[ReadValue[Int]] = some(value: forwarded)
     let callback = CallbackReader(read_value: seven)
-    let local_callback = ReadValue[Int](value: callback)
-    if not (plain.get() == 7):
+    let callback_view = ReadValue[Int](value: callback)
+    if not (first.get() == 7):
         return panic(message: "check failed")
-    if not (erased.get() == 7):
+    if not (copied.get() == 7):
         return panic(message: "check failed")
-    if not (local_callback.get() == 7):
+    if not (callback_view.get() == 7):
         return panic(message: "check failed")
-    if not (consume_shared(source: holder.reader) == 7):
+    if not (consume(source: holder.reader) == 7):
         return panic(message: "check failed")

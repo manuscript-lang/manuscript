@@ -8,7 +8,7 @@ import (
 
 // nativeReceiverAvailable applies the shared function's receiver requirements.
 // For example, equality search requires Equal, join requires List[String], and
-// to_set requires Hashable, without strengthening List's Shareable element bound.
+// to_set requires Hashable, without strengthening List's element requirements.
 func nativeReceiverAvailable(c *checker, receiver *Type, name string) bool {
 	spec, ok := rt.NativeLibrarySpec(receiver.Name, name)
 	if !ok {
@@ -57,7 +57,7 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 		return nil
 	}
 	m := methods[0]
-	info := &Info{Type: m.Type, Method: m, Native: m.Native, Proof: receiver.Proof || c.property(receiver.Type, "Shareable", nil), NoReturn: receiver.NoReturn}
+	info := &Info{Type: m.Type, Method: m, Native: m.Native, NoReturn: receiver.NoReturn}
 	c.Expressions[member] = info
 	return info
 }

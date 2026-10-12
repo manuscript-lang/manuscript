@@ -26,8 +26,8 @@ fn unix_seconds(value: Timestamp) -> Int
 ## `@std/random.ms`
 
 ```manuscript
-fn secure_int(entropy: Entropy&Shareable, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]
-fn uuid_v4(entropy: Entropy&Shareable) -> Result[String, LibraryError]
+fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]
+fn uuid_v4(entropy: Entropy) -> Result[String, LibraryError]
 ```
 
 ## WallClock operations
@@ -52,7 +52,7 @@ fn bytes(count: Int) -> Result[Bytes, LibraryError]
 
 ## Services supplied by the CLI
 
-Process provides `wall_clock: WallClock & Shareable`, `system: System & Shareable`, and `entropy: Entropy & Shareable`.
+Process provides `wall_clock: WallClock`, `system: System`, and `entropy: Entropy`.
 
 Timestamp represents wall time and is opaque, immutable, shareable, and comparable for equality. Instant remains a monotonic time value; conversion between them is not implicit. Existing Clock and sleep keep their signatures and error/cancellation rules. Wall-clock changes do not affect monotonic deadlines.
 

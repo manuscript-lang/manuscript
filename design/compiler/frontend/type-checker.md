@@ -21,7 +21,7 @@ Accept source according to the [normative grammar](../../core-language/basics/gr
 | Function values | Preserve parameter labels/order and exact types; require explicit specialization of generic function values and explicit anonymous signatures |
 | Return completeness | Allow Unit fallthrough/bare returns; reject reachable non-Unit fallthrough; track Never and function-local loop/return boundaries |
 | Argument labels | Resolve an omitted label for a single-parameter function; require labels for multi-parameter functions and constructors; reject unknown labels, duplicate arguments, and missing required arguments, including function-value calls |
-| List literals | Require the canonical standard List import; check homogeneous shareable element types and use annotations or the expected parameter type for empty lists |
+| List literals | Require the canonical standard List import; check homogeneous element types and use annotations or the expected parameter type for empty lists |
 | Parallel API packs | Check zero-argument functions in literal `tasks: [...]` packs and preserve each position's exact return type; see [parallel operations](../../concurrency/parallel.md) |
 | Destructuring bindings | Check positional arity, record fields, renaming, nesting, and duplicate bindings; infer each local's type independently; see [destructuring bindings](../../core-language/basics/destructuring.md) |
 | Nominal records and tagged alternatives | Preserve type identity and check declared fields and cases |
@@ -31,7 +31,7 @@ Accept source according to the [normative grammar](../../core-language/basics/gr
 | Recursive types and specialization | Reject inline storage cycles and expanding generic type/function specialization, including mutual calls and specialized function values; permit regular recursion guarded by immutable collection storage |
 | Equality and hashing | Derive only the specified properties; reject Float/collection keys and data containing ineligible components |
 | Explicit implementations | Match substituted operation names/labels/order/types exactly, check generic bodies and receiver-determined parameters, reject overlap ignoring bounds, enforce defining-module coherence, and require explicit contract views |
-| Standard bindings and sharing | Resolve the minimal intrinsic prelude and explicit standard imports by canonical declaration identity, distinguish plain and shared contract views, require receiver sharing proof only for shared views, reject implicit guarantee removal or recovery, and retain callable sharing proofs independently of function signature identity |
+| Standard bindings | Resolve the minimal intrinsic prelude and explicit standard imports by canonical identity; check ordinary function signatures and exact contract views. All values are safe to share |
 | Public signatures | Reject internal nominal types leaking through exported fields, signatures, bounds, or operation surfaces |
 | Iteration | Admit List/Set/Map only, bind immutable element/MapEntry types, evaluate iterable once, and reject loop control outside the current function's loops |
 | Result propagation | Recognize the canonical standard Result identity; require the same exact error type at a try expression in the current function; do not infer missing operand type arguments backward |

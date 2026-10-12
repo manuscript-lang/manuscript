@@ -313,13 +313,13 @@ Contract: [generics](../../core-language/types/generics.md) and [equality](../..
 ```manuscript
 import panic from "@std/faults.ms"
 
-type Box[T: Shareable]:
+type Box[T]:
     value: T
 
-fn unwrap[T: Shareable](box: Box[T]) -> T:
+fn unwrap[T](box: Box[T]) -> T:
     return box.value
 
-fn same[T: Shareable & Equal](left: T, right: T) -> Bool:
+fn same[T: Equal](left: T, right: T) -> Bool:
     return left == right
 
 test "generic argument inference":
@@ -348,7 +348,7 @@ Separate fixture:
 ```manuscript
 import Optional from "@std/optional.ms"
 
-fn absent[T: Shareable]() -> Optional[T]:
+fn absent[T]() -> Optional[T]:
     return none
 
 test "result context does not infer function arguments":
@@ -464,9 +464,9 @@ The first block needs no bound to read and return its field. The second inherits
 
 Also accept disjoint concrete implementations for different receiver applications when no generic block covers them, and two different contract applications for one receiver. For the latter, use explicit views to disambiguate equal operation names. Reject expanding recursive implementation specialization under the ordinary finite-application check. The defining-module rule applies equally to concrete and generic blocks.
 
-## CL-10b: Plain and shared contract views
+## CL-10b: Contract views and callbacks
 
-Contract: [shared contract views](../../core-language/types/contracts.md#shared-contract-views) and [sharing](../../ownership-and-cleanup/values/sharing.md).
+Contract: [contract views](../../core-language/types/contracts.md#explicit-contract-views) and [sharing](../../ownership-and-cleanup/values/sharing.md).
 
 ```manuscript
 import panic from "@std/faults.ms"
@@ -480,8 +480,8 @@ interface ReadValue[T]:
 type Box[T]:
     value: T
 
-type SharedReader:
-    reader: ReadValue[Int] & Shareable
+type ReaderHolder:
+    reader: ReadValue[Int]
 
 type CallbackReader:
     read_value: fn() -> Int
@@ -497,54 +497,37 @@ impl ReadValue[Int] for CallbackReader:
 fn seven() -> Int:
     return 7
 
-fn local_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
+fn make_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
     return ReadValue[Int](value: source)
 
-fn shared_view[T: ReadValue[Int] & Shareable](source: T) -> ReadValue[Int] & Shareable:
-    return (ReadValue[Int] & Shareable)(value: source)
+fn forward_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
+    return ReadValue[Int](value: source)
 
-fn consume_shared[T: ReadValue[Int] & Shareable](source: T) -> Int:
+fn consume[T: ReadValue[Int]](source: T) -> Int:
     return source.get()
 
-test "plain and shared views":
+test "contract views and callbacks":
     let box = Box[Int](value: 7)
-    let plain = local_view(source: box)
-    let shared = shared_view(source: box)
-    let identity = (ReadValue[Int] & Shareable)(value: shared)
-    let erased = ReadValue[Int](value: identity)
-    let holder = SharedReader(reader: identity)
-    let readers: List[ReadValue[Int] & Shareable] = [holder.reader]
-    let optional: Optional[ReadValue[Int] & Shareable] = some(value: shared)
+    let first = make_view(source: box)
+    let forwarded = forward_view(source: box)
+    let identity = ReadValue[Int](value: forwarded)
+    let copied = ReadValue[Int](value: identity)
+    let holder = ReaderHolder(reader: identity)
+    let readers: List[ReadValue[Int]] = [holder.reader]
+    let optional: Optional[ReadValue[Int]] = some(value: forwarded)
     let callback = CallbackReader(read_value: seven)
-    let local_callback = ReadValue[Int](value: callback)
-    if not (plain.get() == 7):
+    let callback_view = ReadValue[Int](value: callback)
+    if not (first.get() == 7):
         return panic(message: "check failed")
-    if not (erased.get() == 7):
+    if not (copied.get() == 7):
         return panic(message: "check failed")
-    if not (local_callback.get() == 7):
+    if not (callback_view.get() == 7):
         return panic(message: "check failed")
-    if not (consume_shared(source: holder.reader) == 7):
+    if not (consume(source: holder.reader) == 7):
         return panic(message: "check failed")
 ```
 
-`local_view` must be accepted with no sharing bound on its generic receiver. `shared_view` retains its proof through the returned type and the record field; the same implementation supplies every view. CallbackReader's bare function field carries no callable-sharing promise, so the record is nonshareable even though this particular initializer is a safe named function. Its plain view and sequential call are accepted. View conversion evaluates the receiver once and neither copies nor closes native state. The collection and optional declarations exercise refined types inside generic arguments.
-
-| Independent variant | Expected outcome |
-| --- | --- |
-| Remove `Shareable` from `shared_view`'s generic bound | Type rejection in its body: receiver sharing is not proved |
-| Construct `(ReadValue[Int] & Shareable)(value: plain)` or use `erased` instead | Type rejection: a plain view cannot recover its hidden receiver's sharing guarantee |
-| Replace the callback's plain view constructor with `(ReadValue[Int] & Shareable)(value: callback)` | Type rejection: the bare function field gives its receiver no sharing proof |
-| Pass `plain` to `consume_shared` | Type rejection at the generic application: named contract bound holds, sharing bound does not |
-| Change the list to `List[ReadValue[Int]] = [plain]` | Type rejection: plain contract type fails the collection element bound |
-| Initialize `SharedReader(reader: plain)` | Type rejection: plain and shared field types differ |
-| Replace `ReadValue[Int](value: identity)` with `identity` | Accepted: the inferred local retains the shared type rather than erasing it |
-| Annotate that replacement as `let erased: ReadValue[Int] = identity` | Type rejection: discarding sharing is not implicit |
-| Replace the shared constructor in `shared_view` with `ReadValue[Int](value: source)` | Type rejection at return: expected shared type cannot refine a plain constructor |
-| Replace `ReadValue[Int] & Shareable` in the record field with `Int & Shareable` | Type rejection: only an operation contract can have this refinement |
-| Replace the field type with `Shareable & ReadValue[Int]` | Parse rejection: reversed order is not a value-type form |
-| Replace the field type with `ReadValue[Int] & Equal` | Parse rejection: only the `Shareable` refinement is admitted |
-
-With a trusted native nonshareable receiver fixture, accept a plain view and sequential calls, reject its shared view construction, and reject concurrently used closures retaining its plain view or bound method. A shared receiver's method supplies receiver-sharing proof, subject to the existing callable-boundary rules. Verify that a shared service may return a nonshareable local result without making that result shareable. These checks must use frontend proofs rather than Go interface assignability or runtime receiver inspection.
+All view helpers and function-bearing records in this fixture are shareable. Accept ordinary contract views in lists, optionals, fields, and concurrent callbacks; accept generic forwarding and returned functions. View construction evaluates its receiver once and neither copies nor closes native state. Reject mismatched contract applications, implicit concrete-to-contract conversions, function equality, and value-type intersection syntax.
 
 ## CL-11: Recursive records require immutable-container indirection
 
@@ -555,7 +538,7 @@ import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
 
-type Tree[T: Shareable]:
+type Tree[T]:
     value: T
     children: List[Tree[T]]
 
@@ -760,7 +743,7 @@ Optional equality compares its tag and eligible payload. Decimal equality compar
 | Use `preserve_key(value: 1.0)` | Type rejection: `Float` is equal-comparable but not hashable |
 | Declare `let wrong: Optional[Float] = present` | Type rejection: invariant optional applications differ |
 
-Test generated record/alternative equality with eligible scalar leaves and reject derivations containing a noneligible leaf. Do not treat sharing eligibility, identical object references, or a user-written marker implementation as evidence of equality.
+Test generated record/alternative equality with eligible scalar leaves and reject derivations containing a noneligible leaf. Do not treat safe concurrent access, identical object references, or a user-written marker implementation as evidence of equality.
 
 ## CL-16: Expected data types supply constructor context
 

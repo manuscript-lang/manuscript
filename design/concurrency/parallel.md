@@ -45,7 +45,7 @@ type LoadError:
     case UserFailure(cause: UserError)
     case OrderFailure(cause: OrderError)
 
-fn load(user_id: Int, users: Users & Shareable, orders: Orders & Shareable) -> Result[Summary, LoadError]:
+fn load(user_id: Int, users: Users, orders: Orders) -> Result[Summary, LoadError]:
     let first = fn() -> Result[User, UserError]:
         return users.get(id: user_id)
     let second = fn() -> Result[List[Order], OrderError]:
@@ -103,4 +103,4 @@ No operation remains running after `parallel` exits, on any path. An operation f
 
 Results follow the [ordinary reference rules](../ownership-and-cleanup/values/references.md); returning a resource does not keep it open. Unreturned references become eligible for garbage collection; the runtime does not recursively close arbitrary results or captures. Resource cleanup comes from `with` or an acquisition-specific delivery contract. See [completion and acquisition](runtime.md#completion-and-resource-acquisition).
 
-The optional named `timeout` argument shortens the inherited deadline; it never waives joining. See [timeouts](cancellation.md#timeouts). Functions must meet the concurrent [sharing contract](../ownership-and-cleanup/values/sharing.md). Use [parallel_map](../standard-library/tasks/parallel-map.md) for dynamic homogeneous inputs. The [standard API contract](../standard-library/types/prelude.md#joined-concurrency) fixes the callable/result mapping and legal uses of inferred packs; general source declaration syntax for packs is unsupported.
+The optional named `timeout` argument shortens the inherited deadline; it never waives joining. See [timeouts](cancellation.md#timeouts). Callbacks and results are ordinary values; no sharing bound or callable proof is required. Use [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) when callbacks must coordinate a complete read/modify/write update. Use [parallel_map](../standard-library/tasks/parallel-map.md) for dynamic homogeneous inputs. The [standard API contract](../standard-library/types/prelude.md#joined-concurrency) fixes the callable/result mapping and legal uses of inferred packs; general source declaration syntax for packs is unsupported.

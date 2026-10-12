@@ -88,7 +88,7 @@ test('watch rewriting respects quoted text and native member names',()=>{
 
 test('nested runtime type keys render generic source types',()=>{
  assert.equal(runtimeType('@std/Result[@std/List[Int]][module/abcd#Failure]'),'Result[List[Int], Failure]');
- assert.equal(runtimeType('@std/Network&Shareable'),'Network&Shareable');
+ assert.equal(runtimeType('@std/Network'),'Network');
  const adapter=new ManuscriptAdapter(new PassThrough());
  assert.equal(adapter.render({name:'item',type:'interface {}(main.Record)',value:'interface {}(main.Record) {Type: "module/abcd#Box[Int]"}',variablesReference:1}).type,'Box[Int]');
 });

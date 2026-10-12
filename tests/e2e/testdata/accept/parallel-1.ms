@@ -31,7 +31,7 @@ type LoadError:
     case UserFailure(cause: UserError)
     case OrderFailure(cause: OrderError)
 
-fn load(user_id: Int, users: Users & Shareable, orders: Orders & Shareable) -> Result[Summary, LoadError]:
+fn load(user_id: Int, users: Users, orders: Orders) -> Result[Summary, LoadError]:
     let first = fn() -> Result[User, UserError]:
         return users.get(id: user_id)
     let second = fn() -> Result[List[Order], OrderError]:

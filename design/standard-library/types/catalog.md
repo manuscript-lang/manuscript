@@ -19,7 +19,7 @@ Use this table to find a type's meaning and import path. â€œImplicit intrinsicâ€
 | `Bytes` | Immutable byte sequence | `@std/bytes.ms` |
 | `Unit` | One value, `unit` | Implicit intrinsic |
 | `Never` | No possible value | Implicit intrinsic |
-| `List[T]`, `Map[K, V]`, `Set[T]` | Immutable homogeneous collections with their declared sharing bounds | `@std/collections.ms` |
+| `List[T]`, `Map[K, V]`, `Set[T]` | Immutable homogeneous collections with arbitrary value elements; keys require Hashable | `@std/collections.ms` |
 | `MapEntry[K, V]` | Immutable standard record with `key: K` and `value: V`; map iteration yields entries | `@std/collections.ms` |
 | `Optional[T]` | `some(value: value)` or `none` | `@std/optional.ms` |
 | `Result[T, E]` | `ok(value: value)` or `error(cause: cause)` | `@std/result.ms` |
@@ -27,8 +27,9 @@ Use this table to find a type's meaning and import path. â€œImplicit intrinsicâ€
 | `Background` | Synchronized service managing work under a fixed lifetime | `@std/tasks.ms` |
 | `WorkStatus`, `StartError`, `BackgroundFailure` | Background status, admission failure, and failure reports | `@std/tasks.ms` |
 | `OperationId` | Identity of a runtime operation, used for diagnostics and Background status/cancellation | `@std/tasks.ms` |
+| `Synchronized[T]`, `SynchronizedGuard[T]` | Shared value protected by a scoped mutex guard | `@std/sync.ms` |
 | `Closeable` | Standard `close() -> Unit` cleanup contract | `@std/cleanup.ms` |
-| `File`, `ReadStream`, `WriteStream` | Resource contracts; standard host values use shared views with synchronized lifecycle checks | `@std/io.ms` |
+| `File`, `ReadStream`, `WriteStream` | Resource contracts; all implementations synchronize lifecycle access | `@std/io.ms` |
 | `Duration`, `Instant` | Checked nanosecond duration and monotonic clock instant | `@std/time.ms` |
 | `Process` | CLI authority roots | `@std/cli.ms` |
 | `Files`, `IoError` | File capability contract and expected I/O failures | `@std/io.ms` |

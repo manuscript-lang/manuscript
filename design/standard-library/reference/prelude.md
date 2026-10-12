@@ -52,12 +52,6 @@ operation to_string: fn(radix: Int)->String
 Never: Never
 ```
 
-## Shareable {data-api-kind="Type"}
-
-```manuscript
-Shareable: Shareable
-```
-
 ## String {data-api-kind="Type"}
 
 ```manuscript

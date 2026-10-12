@@ -51,6 +51,12 @@ Completed external writes remain completed. Cancellation does not provide rollba
 
 Cleanup is shielded from the initiating cancellation and expired work deadline. It may exceed that deadline; it retains capability authority and remains subject to [host escalation](runtime.md#host-escalation). See [foreign cancellation](../modules-and-capabilities/adapters/cancellation.md) and [cleanup faults](../ownership-and-cleanup/cleanup/cleanup-faults.md).
 
+## Waiting for a synchronized value
+
+`Synchronized.lock()` waits cooperatively and observes cancellation. If cancellation wins before the guard is delivered, the runtime releases that acquisition. Use `with locked = cell.lock()` so a delivered guard is registered for cleanup before another checkpoint.
+
+Cancellation of a lock holder unwinds its `with` scope and closes the guard. It never releases the lock while the holder is still running. Updates already made through `locked.set()` remain committed; releasing the guard does not roll them back. Guard cleanup is idempotent and shielded from the initiating cancellation. See [synchronized values](../standard-library/data-and-io/synchronized-state.md#synchronized).
+
 ## Timeouts
 
 Timeouts are named library arguments, not syntax annotations. Duration values come from the standard time API; naming `Duration` requires its own import from `@std/time.ms`.

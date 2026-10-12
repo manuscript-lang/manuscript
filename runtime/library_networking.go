@@ -16,18 +16,18 @@ import (
 
 func init() {
 	for _, m := range []LibraryMethod{
-		{"Network", "restrict", libraryResult("Network&Shareable"), []LibraryParam{{"hosts", "List[String]"}, {"cidrs", "List[String]"}, {"allow_listen", "Bool"}}},
-		{"Network", "with_resolver", libraryResult("Network&Shareable"), []LibraryParam{{"address", "String"}}},
+		{"Network", "restrict", libraryResult("Network"), []LibraryParam{{"hosts", "List[String]"}, {"cidrs", "List[String]"}, {"allow_listen", "Bool"}}},
+		{"Network", "with_resolver", libraryResult("Network"), []LibraryParam{{"address", "String"}}},
 		{"Network", "resolve", libraryResult("List[DnsRecord]"), []LibraryParam{{"name", "String"}, {"kind", "String"}, {"max_records", "Int"}, {"timeout", "Duration"}}},
-		{"Network", "connect_unix", libraryResult("Connection&Shareable"), []LibraryParam{{"path", "String"}, {"timeout", "Duration"}}},
-		{"Network", "listen_unix", libraryResult("Listener&Shareable"), []LibraryParam{{"path", "String"}}},
-		{"Network", "connect_tls_config", libraryResult("Connection&Shareable"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"timeout", "Duration"}}},
-		{"Network", "listen_tls", libraryResult("Listener&Shareable"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"handshake_timeout", "Duration"}}},
+		{"Network", "connect_unix", libraryResult("Connection"), []LibraryParam{{"path", "String"}, {"timeout", "Duration"}}},
+		{"Network", "listen_unix", libraryResult("Listener"), []LibraryParam{{"path", "String"}}},
+		{"Network", "connect_tls_config", libraryResult("Connection"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"timeout", "Duration"}}},
+		{"Network", "listen_tls", libraryResult("Listener"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"handshake_timeout", "Duration"}}},
 		{"Connection", "read_timeout", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}, {"timeout", "Duration"}}},
 		{"Connection", "write_timeout", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}, {"timeout", "Duration"}}},
 		{"DatagramSocket", "receive_timeout", libraryResult("Datagram"), []LibraryParam{{"max_bytes", "Int"}, {"timeout", "Duration"}}},
 		{"DatagramSocket", "send_timeout", libraryResult("Unit"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}, {"timeout", "Duration"}}},
-		{"Listener", "accept_timeout", libraryResult("Connection&Shareable"), []LibraryParam{{"timeout", "Duration"}}},
+		{"Listener", "accept_timeout", libraryResult("Connection"), []LibraryParam{{"timeout", "Duration"}}},
 	} {
 		LibraryMethods = append(LibraryMethods, m)
 	}
@@ -280,7 +280,7 @@ func (n *network) extendedOperation(name string) (Function, bool) {
 			if !n.own(child) {
 				return libraryError(r, "Closed", "")
 			}
-			return libraryOK(r, ViewOf("@std/Network&Shareable", child))
+			return libraryOK(r, ViewOf("@std/Network", child))
 		}), true
 	case "resolve":
 		return libraryMethod("Network", name, func(ctx *Execution, r string, a []Value) Value { return n.resolve(ctx, r, a) }), true
@@ -329,7 +329,7 @@ func (n *network) extendedOperation(name string) (Function, bool) {
 					resource.close()
 					return libraryError(r, "Closed", "")
 				}
-				return libraryOK(r, ViewOf("@std/Connection&Shareable", resource))
+				return libraryOK(r, ViewOf("@std/Connection", resource))
 			}
 			kind := "tcp"
 			if name == "listen_unix" {
@@ -359,7 +359,7 @@ func (n *network) extendedOperation(name string) (Function, bool) {
 				listener.Close()
 				return libraryError(r, "Closed", "")
 			}
-			return libraryOK(r, ViewOf("@std/Listener&Shareable", resource))
+			return libraryOK(r, ViewOf("@std/Listener", resource))
 		}), true
 	}
 	return Function{}, false

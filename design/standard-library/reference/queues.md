@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/queues.ms"`.
 
 ```manuscript
 Queue: Queue[T]
-type parameters: T: Shareable
+type parameters: T
 field capacity: Int
 operation close: fn()->Unit
 operation receive: fn()->Optional[T]

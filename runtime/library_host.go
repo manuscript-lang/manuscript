@@ -73,7 +73,7 @@ func libraryRuntimeType(s string) string { // qualified runtime keys, preserving
 			}
 			name := s[start:i]
 			switch name {
-			case "Bool", "Int", "Float", "String", "Unit", "Never", "Shareable":
+			case "Bool", "Int", "Float", "String", "Unit", "Never":
 			default:
 				b.WriteString("@std/")
 			}
@@ -506,7 +506,7 @@ func libraryNetworkLookup(n *network, ctx *Execution, r string, a []Value) Value
 }
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("random", "secure_int", libraryResult("Int"), []LibraryParam{p("entropy", "Entropy&Shareable"), p("min", "Int"), p("max_exclusive", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("random", "secure_int", libraryResult("Int"), []LibraryParam{p("entropy", "Entropy"), p("min", "Int"), p("max_exclusive", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		min, max := a[1].(int64), a[2].(int64)
 		if min >= max {
 			return libraryError(r, "InvalidInput", "")
@@ -531,7 +531,7 @@ func init() {
 			}
 		}
 	})
-	libraryAdd("random", "uuid_v4", libraryResult("String"), []LibraryParam{p("entropy", "Entropy&Shareable")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("random", "uuid_v4", libraryResult("String"), []LibraryParam{p("entropy", "Entropy")}, func(ctx *Execution, r string, a []Value) Value {
 		v := Invoke(ctx, Bind(a[0], "", "bytes"), []Argument{{"count", int64(16)}}).(Alternative)
 		if v.Tag == "error" {
 			return Alternative{r, "error", v.Fields}

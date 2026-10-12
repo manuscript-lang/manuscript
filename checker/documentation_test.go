@@ -37,7 +37,7 @@ func TestStandardLibrarySnapshot(t *testing.T) {
 		if key == "prelude#String" && (!slices.Contains(d.Operations, "trim: fn()->String") || !slices.Contains(d.Operations, "byte_length: fn()->Int")) {
 			t.Fatalf("missing intrinsic operation: %+v", d)
 		}
-		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T: Shareable" || !slices.Contains(d.Operations, "map[U: Shareable]: fn(transform: fn(value: T)->U)->List[U]") || !slices.Contains(d.Operations, "get: fn(index: Int)->Optional[T]")) {
+		if key == "@std/collections.ms#List" && (len(d.Parameters) != 1 || d.Parameters[0] != "T" || !slices.Contains(d.Operations, "map[U]: fn(transform: fn(value: T)->U)->List[U]") || !slices.Contains(d.Operations, "get: fn(index: Int)->Optional[T]")) {
 			t.Fatalf("lost bounds or native methods: %+v", d)
 		}
 	}

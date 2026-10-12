@@ -281,7 +281,7 @@ func TestNetworkingStreamingServerAndWebSocket(t *testing.T) {
 	address := networkingInvoke(ctx, server, "address").(string)
 	client := librarySuccess(t, n.Operation("http_client").Body(ctx, []Value{networkingClientOptions()}))
 	input := &networkingReadStream{data: []byte("bounded streaming upload")}
-	body := librarySuccess(t, networkingInvoke(ctx, client, "send_stream", "POST", "http://"+address, Map{"@std/Map[String][String]", nil}, ViewOf("@std/ReadStream&Shareable", input), int64(1000), Duration(time.Second)))
+	body := librarySuccess(t, networkingInvoke(ctx, client, "send_stream", "POST", "http://"+address, Map{"@std/Map[String][String]", nil}, ViewOf("@std/ReadStream", input), int64(1000), Duration(time.Second)))
 	var out strings.Builder
 	for {
 		part := librarySuccess(t, networkingInvoke(ctx, body, "read", int64(4))).(Alternative)

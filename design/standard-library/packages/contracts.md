@@ -15,7 +15,7 @@ Import each function or type you name from its module. Standard imports are pinn
 
 Function identity includes the module, so `json/parse`, `bigint/parse`, and `url/parse` remain distinct in generated code. Source import renaming is unsupported; use a helper module if two imports have the same spelling.
 
-Sequential callbacks run under the caller's execution context and may wait for operations. Collection helpers that invoke them sequentially do not require the callable-sharing proof used by concurrent APIs.
+Sequential callbacks run under the caller's execution context and may wait for operations. All callbacks are ordinary values and can also be passed to concurrent APIs.
 
 ## Errors
 
@@ -72,7 +72,7 @@ Writing, copying, or removing data can fail after changing an external prefix. C
 
 ## Access to external services
 
-CLI Process supplies filesystem, entropy, wall_clock, and system roots, alongside network and commands. Source fakes implement the same contracts with explicit shared views.
+CLI Process supplies filesystem, entropy, wall_clock, and system roots, alongside network and commands. Source fakes implement the same contracts with explicit contract views.
 
 Pure codec, path, math, and hash functions grant no OS access. Native CLI services use the process's OS permissions. Filesystem subtree restrictions are not implemented; `Network.restrict` narrows destination access. Imports alone grant no authority. HTTP and socket operations use explicit service values and retain TLS verification.
 

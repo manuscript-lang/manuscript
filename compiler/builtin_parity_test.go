@@ -25,7 +25,6 @@ fn callback() -> Unit:
 		"nonhashable conversion":       "let values = [1.5].to_set()",
 		"nonhashable conversion value": "let convert = [1.5].to_set",
 		"function equality":            "let values = [callback].contains(value: callback)",
-		"nonshareable output":          "let values = [1].map(transform: fn(value: Int) -> fn() -> Unit:\n        return callback\n    )",
 		"map merge wrong type":         "let values = Map[String, Int]().merge(other: Map[Int, String]())",
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -46,16 +45,16 @@ fn callback() -> Unit:
 func TestNativeMethodRetainsGenericReceiverBounds(t *testing.T) {
 	for _, source := range []string{
 		`import List from "@std/collections.ms"
-fn search[T: Shareable & Equal](values: List[T], value: T) -> Bool:
+fn search[T: Equal](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
 `,
 		`import List from "@std/collections.ms"
 import Set from "@std/collections.ms"
-fn unique[T: Shareable & Hashable](values: List[T]) -> Set[T]:
+fn unique[T: Hashable](values: List[T]) -> Set[T]:
     return values.to_set()
 `,
 		`import List from "@std/collections.ms"
-fn convert[T: Shareable, U: Shareable](values: List[T], transform: fn(value: T) -> U) -> List[U]:
+fn convert[T, U](values: List[T], transform: fn(value: T) -> U) -> List[U]:
     return values.map(transform: transform)
 `,
 	} {
@@ -65,7 +64,7 @@ fn convert[T: Shareable, U: Shareable](values: List[T], transform: fn(value: T) 
 		}
 	}
 	source := `import List from "@std/collections.ms"
-fn search[T: Shareable](values: List[T], value: T) -> Bool:
+fn search[T](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
 `
 	if result := CompileSource("bounds.ms", source, Options{}); result.Success() {

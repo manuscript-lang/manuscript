@@ -14,8 +14,8 @@ Use HttpClient for reusable outbound requests and HttpExchange for streaming req
 ## HttpClient operations
 
 ```manuscript
-fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody&Shareable, LibraryError]
-fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream&Shareable, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody&Shareable, LibraryError]
+fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, LibraryError]
+fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, LibraryError]
 fn close() -> Unit
 ```
 
@@ -38,7 +38,7 @@ fn headers() -> Map[String, List[String]]
 fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, LibraryError]
 fn write(data: Bytes) -> Result[Unit, IoError]
-fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int) -> Result[WebSocket&Shareable, LibraryError]
+fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int) -> Result[WebSocket, LibraryError]
 fn close() -> Unit
 ```
 
@@ -90,7 +90,7 @@ Redirects honor max_redirects (zero returns the redirect response), reject TLS d
 
 ## Streaming request host
 
-Call `Network.serve_stream` directly; it cannot be stored as a function value. Its handler must be proved safe to call concurrently and have type `fn(exchange: HttpExchange & Shareable) -> Result[Unit, LibraryError]`. The server establishes a fixed request execution context, bounded admission, body/output/header limits, disconnect cancellation and timeout. The handler may read incrementally, emit headers once and write/flush bounded output, or upgrade to a WebSocket session. Route requests with ordinary branches on method and path.
+Network.serve_stream accepts an ordinary handler and may be stored as a bound method. The handler signature is `fn(exchange: HttpExchange) -> Result[Unit, LibraryError]`. The server establishes a fixed request execution context, bounded admission, body/output/header limits, disconnect cancellation and timeout. The handler may read incrementally, emit headers once and write/flush bounded output, or upgrade to a WebSocket session. Source routes by ordinary method/path branching.
 
 ### Response ordering and limits
 
@@ -104,6 +104,6 @@ HttpExchange belongs to its request: retained aliases report Closed once request
 
 ```manuscript
 fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ClientResponse, LibraryError]
-fn http_client(options: HttpClientOptions) -> Result[HttpClient&Shareable, LibraryError]
-fn serve_stream(address: String, handler: fn(exchange: HttpExchange&Shareable) -> Result[Unit, LibraryError], options: HttpServerOptions) -> Result[HttpServer&Shareable, LibraryError]
+fn http_client(options: HttpClientOptions) -> Result[HttpClient, LibraryError]
+fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, LibraryError], options: HttpServerOptions) -> Result[HttpServer, LibraryError]
 ```

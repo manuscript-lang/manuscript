@@ -19,9 +19,9 @@ import (
 
 func init() {
 	for _, m := range []LibraryMethod{
-		{"Network", "http_client", libraryResult("HttpClient&Shareable"), []LibraryParam{{"options", "HttpClientOptions"}}},
-		{"HttpClient", "send", libraryResult("ResponseBody&Shareable"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
-		{"HttpClient", "send_stream", libraryResult("ResponseBody&Shareable"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream&Shareable"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
+		{"Network", "http_client", libraryResult("HttpClient"), []LibraryParam{{"options", "HttpClientOptions"}}},
+		{"HttpClient", "send", libraryResult("ResponseBody"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
+		{"HttpClient", "send_stream", libraryResult("ResponseBody"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
 		{"HttpClient", "close", "Unit", nil},
 		{"ResponseBody", "status", "Int", nil}, {"ResponseBody", "headers", "Map[String][List[String]]", nil},
 		{"ResponseBody", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},
@@ -93,7 +93,7 @@ func (n *network) httpOperation(name string) (Function, bool) {
 				transport.CloseIdleConnections()
 				return libraryError(r, "Closed", "")
 			}
-			return libraryOK(r, ViewOf("@std/HttpClient&Shareable", resource))
+			return libraryOK(r, ViewOf("@std/HttpClient", resource))
 		}), true
 	}
 	return Function{}, false
@@ -200,7 +200,7 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 		c.owner.mu.Unlock()
 
 		delivered = true
-		return libraryOK(r, ViewOf("@std/ResponseBody&Shareable", resource))
+		return libraryOK(r, ViewOf("@std/ResponseBody", resource))
 	})
 }
 func (c *libraryHTTPClient) close() {

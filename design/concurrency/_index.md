@@ -21,7 +21,21 @@ Parallel APIs *join*: they wait for every started operation to finish its body a
 
 Start with [parallel operations](parallel.md) for a complete example. Then read [joined groups](joining.md) for error outcomes and [cancellation](cancellation.md) for stopping and time budgets. [Runtime contracts](runtime.md) contains the implementation details.
 
-Functions passed to a concurrency API must be safe to call concurrently. Closures keep snapshots of the surrounding bindings they use. Keeping a resource reference does not keep the resource open; see [sharing](../ownership-and-cleanup/values/sharing.md).
+Concurrency APIs accept ordinary function values, including functions passed through parameters or stored in collections. Closures keep snapshots of the surrounding bindings they use. Keeping a resource reference does not keep the resource open; see [sharing](../ownership-and-cleanup/values/sharing.md).
+
+## Sharing values and updating state
+
+All values may be shared freely, including functions, interface views, collections, and builders. Data is immutable; local `var` bindings are snapshotted by closures. Native mutable objects synchronize their internals. For a complete shared update, import `Synchronized` from `@std/sync.ms`:
+
+```manuscript
+import Synchronized from "@std/sync.ms"
+
+let counter = Synchronized(value: 0)
+with locked = counter.lock():
+    locked.set(value: locked.get() + 1)
+```
+
+The guard holds the lock until scope exit. Read the [synchronization contract](../standard-library/data-and-io/synchronized-state.md#synchronized) for cancellation, aliases, and reentry. Sharing does not extend a resource's open lifetime.
 
 ## Importing concurrency APIs
 
@@ -40,7 +54,7 @@ import Duration from "@std/time.ms"
 
 These are independent imports, not a required bundle. Importing one does not expose the others. Work status and failure reporting are also explicit standard exports; the [standard API contract](../standard-library/types/prelude.md#names-and-identity) lists their paths. Ordinary Result annotations and error-adaptation helpers use their own imports from `@std/result.ms`.
 
-Scheduling, cancellation, joining, time budgets, and service shutdown belong to these library/runtime APIs. The compiler checks callable sharing and the fixed parallel pack shape by the resolved standard binding identity. Its hidden execution context is an internal calling convention, not an ambient source capability or a new intrinsic type. A user function named parallel remains an ordinary function.
+Scheduling, cancellation, joining, time budgets, and service shutdown belong to these library/runtime APIs. The compiler checks callback signatures and the fixed parallel pack shape by the resolved standard binding identity. Its hidden execution context is an internal calling convention, not an ambient source capability or a new intrinsic type. A user function named parallel remains an ordinary function.
 
 ## Fixed lifetimes
 
@@ -65,6 +79,7 @@ There is no task adoption, task reparenting, source-level detached work, or dyna
 1. [Parallel operations](parallel.md): calling `parallel`, argument preparation, and typed results
 2. [Joined groups](joining.md): the normative stop, join, and outcome contract for `parallel` and `parallel_map`
 3. [Cancellation and budgets](cancellation.md): cancellation requests, checkpoints, timeouts, and deadlines
-4. [Runtime contracts](runtime.md): atomic transitions, resource acquisition, adapter contexts, and host escalation
+4. [Synchronized values](../standard-library/data-and-io/synchronized-state.md): lock scopes, complete updates, aliases, and reentry
+5. [Runtime contracts](runtime.md): atomic transitions, resource acquisition, adapter contexts, and host escalation
 
 The standard library pages cover [bounded parallel mapping](../standard-library/tasks/parallel-map.md) and [background services](../standard-library/tasks/background.md).

@@ -9,7 +9,7 @@ weight = 63
 
 This page is for runtime implementers. The runtime provides the mechanisms to start, stop, join, and synchronize work. Library objects decide whether to accept work, how to report failures, and how shutdown proceeds.
 
-Source programs use [standard concurrency APIs](_index.md#importing-concurrency-apis). The compiler checks their types, safe callable sharing, and cleanup contracts. Internal contexts and scheduler mechanisms add no source names or compiler bounds.
+Source programs use [standard concurrency APIs](_index.md#importing-concurrency-apis). The compiler checks their types, callback signatures, and cleanup contracts. Internal contexts and scheduler mechanisms add no source names or compiler bounds.
 
 ## Atomic transitions
 

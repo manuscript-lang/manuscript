@@ -344,7 +344,7 @@ func ResolveType(pattern string, sub map[string]string) string {
 	if at := strings.IndexByte(pattern, ':'); at >= 0 && (!strings.Contains(pattern[:at], "[")) {
 		return pattern[:at+1] + ResolveType(pattern[at+1:], sub)
 	}
-	name, args, shared := splitType(pattern)
+	name, args := splitType(pattern)
 	if v := sub[name]; v != "" && len(args) == 0 {
 		return v
 	}
@@ -355,17 +355,12 @@ func ResolveType(pattern string, sub map[string]string) string {
 		out.WriteString(ResolveType(arg, sub))
 		out.WriteString("]")
 	}
-	out.WriteString(shared)
 	return out.String()
 }
-func splitType(key string) (name string, args []string, shared string) {
-	if strings.HasSuffix(key, "&Shareable") {
-		shared = "&Shareable"
-		key = strings.TrimSuffix(key, shared)
-	}
+func splitType(key string) (name string, args []string) {
 	index := strings.IndexByte(key, '[')
 	if index < 0 {
-		return key, nil, shared
+		return key, nil
 	}
 	name = key[:index]
 	for index < len(key) {
@@ -385,14 +380,14 @@ func splitType(key string) (name string, args []string, shared string) {
 	}
 	return
 }
-func typeArguments(key string) []string { _, a, _ := splitType(key); return a }
+func typeArguments(key string) []string { _, a := splitType(key); return a }
 func matchType(pattern, actual string, vars map[string]bool, sub map[string]string) bool {
 	if at := strings.IndexByte(pattern, ':'); at >= 0 && !strings.Contains(pattern[:at], "[") {
 		label := pattern[:at+1]
 		return strings.HasPrefix(actual, label) && matchType(pattern[at+1:], actual[len(label):], vars, sub)
 	}
-	pn, pa, ps := splitType(pattern)
-	an, aa, as := splitType(actual)
+	pn, pa := splitType(pattern)
+	an, aa := splitType(actual)
 	if vars[pn] && len(pa) == 0 {
 		if previous := sub[pn]; previous != "" {
 			return previous == actual
@@ -400,7 +395,7 @@ func matchType(pattern, actual string, vars map[string]bool, sub map[string]stri
 		sub[pn] = actual
 		return true
 	}
-	if pn != an || ps != as || len(pa) != len(aa) {
+	if pn != an || len(pa) != len(aa) {
 		return false
 	}
 	for i, p := range pa {
@@ -431,7 +426,7 @@ func ViewOf(contract string, receiver Value) Value {
 func Bind(receiver Value, contract, name string) Value {
 	if view, ok := receiver.(View); ok {
 		if contract == "" {
-			contract = strings.TrimSuffix(view.Type, "&Shareable")
+			contract = view.Type
 		}
 		receiver = view.Receiver
 	}
@@ -454,7 +449,7 @@ func Bind(receiver Value, contract, name string) Value {
 			vars[v] = true
 		}
 		sub := map[string]string{}
-		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == strings.TrimSuffix(contract, "&Shareable")) {
+		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == contract) {
 			return m.Build(receiver, sub)
 		}
 	}

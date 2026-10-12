@@ -56,8 +56,8 @@ field port: Int
 
 ```manuscript
 Listener: Listener
-operation accept: fn()->Result[Connection & Shareable, LibraryError]
-operation accept_timeout: fn(timeout: Duration)->Result[Connection & Shareable, LibraryError]
+operation accept: fn()->Result[Connection, LibraryError]
+operation accept_timeout: fn(timeout: Duration)->Result[Connection, LibraryError]
 operation address: fn()->String
 operation close: fn()->Unit
 ```

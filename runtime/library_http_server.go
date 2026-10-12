@@ -13,12 +13,12 @@ import (
 
 func init() {
 	for _, m := range []LibraryMethod{
-		{"Network", "serve_stream", libraryResult("HttpServer&Shareable"), []LibraryParam{{"address", "String"}, {"handler", "fn(exchange:HttpExchange&Shareable)->Result[Unit][LibraryError]"}, {"options", "HttpServerOptions"}}},
+		{"Network", "serve_stream", libraryResult("HttpServer"), []LibraryParam{{"address", "String"}, {"handler", "fn(exchange:HttpExchange)->Result[Unit][LibraryError]"}, {"options", "HttpServerOptions"}}},
 		{"HttpExchange", "method", "String", nil}, {"HttpExchange", "path", "String", nil}, {"HttpExchange", "query", "String", nil}, {"HttpExchange", "headers", "Map[String][List[String]]", nil},
 		{"HttpExchange", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},
 		{"HttpExchange", "send_headers", libraryResult("Unit"), []LibraryParam{{"status", "Int"}, {"headers", "Map[String][List[String]]"}}},
 		{"HttpExchange", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}}},
-		{"HttpExchange", "upgrade", libraryResult("WebSocket&Shareable"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Int"}}},
+		{"HttpExchange", "upgrade", libraryResult("WebSocket"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Int"}}},
 		{"HttpExchange", "close", "Unit", nil},
 	} {
 		LibraryMethods = append(LibraryMethods, m)
@@ -79,7 +79,7 @@ func (n *network) serveStreaming() Function {
 			}
 			close(server.done)
 		}()
-		return libraryOK(r, ViewOf("@std/HttpServer&Shareable", server))
+		return libraryOK(r, ViewOf("@std/HttpServer", server))
 	})
 }
 
@@ -150,7 +150,7 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 	func() {
 		defer func() { failure = recover() }()
 		defer FinishExecution(child)
-		outcome = Invoke(child, s.handler, []Argument{{"exchange", ViewOf("@std/HttpExchange&Shareable", exchange)}})
+		outcome = Invoke(child, s.handler, []Argument{{"exchange", ViewOf("@std/HttpExchange", exchange)}})
 	}()
 	exchange.mu.Lock()
 	sent, upgraded := exchange.sent, exchange.upgraded

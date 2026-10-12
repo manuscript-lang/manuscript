@@ -14,7 +14,7 @@ func TestGeneratedReferenceCoverage(t *testing.T) {
 		t.Fatal(err)
 	}
 	full := string(files["static/stdlib.md"])
-	for _, signature := range []string{"# @std/http.ms", "# @std/cli.ms", "# prelude", "operation to_bytes:", "operation start:", "operation truncate_to_int:", "type parameters: T: Shareable", "history_limit", "parallel_map"} {
+	for _, signature := range []string{"# @std/http.ms", "# @std/cli.ms", "# prelude", "operation to_bytes:", "operation start:", "operation truncate_to_int:", "type parameters: T", "history_limit", "parallel_map"} {
 		if !strings.Contains(full, signature) {
 			t.Errorf("reference missing %q", signature)
 		}

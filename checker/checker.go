@@ -61,7 +61,7 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 		c.names = map[string]*Symbol{}
 		p.Symbols[module.File] = c.names
 		c.scope = newScope(nil)
-		for _, name := range strings.Fields("Bool Int Float String Unit Never Shareable Equal Hashable") {
+		for _, name := range strings.Fields("Bool Int Float String Unit Never Equal Hashable") {
 			c.names[name] = &Symbol{Name: name, ID: name, Kind: "type", Type: primitive(name), Export: true}
 		}
 		for _, item := range module.Imports {
@@ -207,7 +207,7 @@ func (c *checker) typeVariables(params []syntax.TypeParameter) []*Type {
 	for i, p := range params {
 		for _, b := range p.Bounds {
 			t := c.resolve(b, true)
-			if t.Kind != "contract" && t.ID != "Shareable" && t.ID != "Equal" && t.ID != "Hashable" {
+			if t.Kind != "contract" && t.ID != "Equal" && t.ID != "Hashable" {
 				c.error(b.Pos, "type", "a bound must be a compiler bound or operation contract")
 			}
 			vars[i].Bounds = append(vars[i].Bounds, t)
@@ -235,7 +235,7 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 		c.error(t.Pos, "resolution", "unknown type "+t.Name)
 		return primitive("<invalid>")
 	}
-	if !bound && (base.ID == "Shareable" || base.ID == "Equal" || base.ID == "Hashable") {
+	if !bound && (base.ID == "Equal" || base.ID == "Hashable") {
 		c.error(t.Pos, "type", t.Name+" is a bound, not a value type")
 	}
 	r := *base
@@ -249,12 +249,6 @@ func (c *checker) resolve(t *syntax.Type, bound bool) *Type {
 	}
 	if len(r.Args) != arity {
 		c.error(t.Pos, "type", fmt.Sprintf("%s requires %d type arguments", base.Name, arity))
-	}
-	if t.Shared {
-		if base.Kind != "contract" {
-			c.error(t.Pos, "type", "only an operation contract can be refined with Shareable")
-		}
-		r.Shared = true
 	}
 	c.TypeReferences[t] = &r
 	return &r
@@ -274,11 +268,11 @@ func (c *checker) params(params []syntax.Parameter) []Param {
 func (c *checker) signature(params []syntax.Parameter, result *syntax.Type) *Type {
 	return function(c.params(params), c.resolve(result, false))
 }
-func (c *checker) bind(name string, t *Type, mutable, proof bool, pos syntax.Position) *Binding {
+func (c *checker) bind(name string, t *Type, mutable bool, pos syntax.Position) *Binding {
 	if c.scope.bindings[name] != nil || c.scope.types[name] != nil {
 		c.error(pos, "type", "duplicate local binding "+name)
 	}
-	b := &Binding{Name: name, ID: c.unique("local") + "_" + name, Type: t, Mutable: mutable, Proof: proof, Function: c.function}
+	b := &Binding{Name: name, ID: c.unique("local") + "_" + name, Type: t, Mutable: mutable, Function: c.function}
 	c.scope.bindings[name] = b
 	return b
 }
@@ -290,14 +284,14 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 	c.serial++
 	c.loops = 0
 	if receiver != nil {
-		c.Self[d] = c.bind("self", receiver, false, c.property(receiver, "Shareable", nil), d.Pos)
+		c.Self[d] = c.bind("self", receiver, false, d.Pos)
 	}
 	for i, p := range t.Params {
 		pos := d.Pos
 		if i < len(d.Params) {
 			pos = d.Params[i].Pos
 		}
-		c.Parameters[d] = append(c.Parameters[d], c.bind(p.Name, p.Type, false, false, pos))
+		c.Parameters[d] = append(c.Parameters[d], c.bind(p.Name, p.Type, false, pos))
 	}
 	fall, _ := c.block(d.Body, false)
 	if fall && t.Result.ID != "Unit" {
@@ -334,7 +328,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			c.wellFormed(expected, s.Type.Pos, map[string]bool{})
 		}
 		info := c.expression(s.Value, expected)
-		c.pattern(s.Pattern, info.Type, s.Mutable, info.Proof, s.Value)
+		c.pattern(s.Pattern, info.Type, s.Mutable, s.Value)
 		return !info.NoReturn, false
 	case "assign":
 		b := c.scope.binding(s.Name)
@@ -351,7 +345,6 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			c.error(s.Pos, "type", "cannot assign a captured binding")
 		}
 		i := c.expression(s.Value, b.Type)
-		b.Proof = b.Proof && i.Proof
 		return !i.NoReturn, false
 	case "return":
 		if s.Value == nil {
@@ -401,7 +394,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		}
 		old := c.scope
 		c.scope = newScope(old)
-		c.LoopBindings[s] = c.bind(s.Name, element, false, false, s.Pos)
+		c.LoopBindings[s] = c.bind(s.Name, element, false, s.Pos)
 		c.loops++
 		c.block(s.Body, false)
 		c.loops--
@@ -430,7 +423,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		}
 		old := c.scope
 		c.scope = newScope(old)
-		c.LoopBindings[s] = c.bind(s.Name, i.Type, false, i.Proof, s.Pos)
+		c.LoopBindings[s] = c.bind(s.Name, i.Type, false, s.Pos)
 		fall, br := c.block(s.Body, false)
 		c.scope = old
 		return !i.NoReturn && fall, br
@@ -439,10 +432,10 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	}
 	return true, false
 }
-func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable, proof bool, source *syntax.Expression) {
+func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable bool, source *syntax.Expression) {
 	switch p.Kind {
 	case "name":
-		c.Bindings[p] = c.bind(p.Name, t, mutable, proof, p.Pos)
+		c.Bindings[p] = c.bind(p.Name, t, mutable, p.Pos)
 	case "record":
 		if t.Kind != "record" {
 			c.error(p.Pos, "type", "record binding requires a record")
@@ -458,7 +451,7 @@ func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable, proof bool, sourc
 			found := false
 			for _, field := range fields {
 				if field.Name == f.Name {
-					c.pattern(f.Pattern, field.Type, mutable, false, nil)
+					c.pattern(f.Pattern, field.Type, mutable, nil)
 					found = true
 				}
 			}
@@ -472,7 +465,7 @@ func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable, proof bool, sourc
 				c.error(p.Pos, "type", "statically known list length does not match binding")
 			}
 			for _, child := range p.Elements {
-				c.pattern(child, t.Args[0], mutable, false, nil)
+				c.pattern(child, t.Args[0], mutable, nil)
 			}
 		} else if t.Kind == "pack" {
 			if len(t.Args) != len(p.Elements) {
@@ -480,7 +473,7 @@ func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable, proof bool, sourc
 				return
 			}
 			for i, child := range p.Elements {
-				c.pattern(child, t.Args[i], mutable, false, nil)
+				c.pattern(child, t.Args[i], mutable, nil)
 			}
 		} else {
 			c.error(p.Pos, "type", "positional binding requires a list or result pack")
@@ -536,7 +529,7 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 		for i, name := range arm.Names {
 			var b *Binding
 			if name != "_" && i < len(fields) {
-				b = c.bind(name, fields[i].Type, false, false, arm.Pos)
+				b = c.bind(name, fields[i].Type, false, arm.Pos)
 			}
 			c.ArmBindings[arm] = append(c.ArmBindings[arm], b)
 		}
@@ -615,7 +608,6 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		if b := c.scope.binding(e.Text); b != nil {
 			i.Type = b.Type
 			i.Binding = b
-			i.Proof = b.Proof
 			if b.Function != c.function {
 				if c.captures[c.function] != nil {
 					c.captures[c.function][b] = true
@@ -630,11 +622,10 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			} else {
 				i.Type = s.Type
 				i.Symbol = s
-				i.Proof = true
 				if len(s.Variables) > 0 {
 					c.error(e.Pos, "type", "a generic function value requires explicit specialization")
 				}
-				if s.Native == "parallel" || s.Native == "parallel_map" {
+				if s.Native == "parallel" {
 					c.error(e.Pos, "type", "concurrency binding requires a direct call")
 				}
 			}
@@ -660,10 +651,6 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			i.Symbol = s
 			i.Type = c.specialize(s.Type, s.Variables, args, e.Pos)
 			i.TypeArgs = args
-			i.Proof = true
-			if s.Native == "parallel_map" {
-				c.error(e.Pos, "type", "concurrency binding requires a direct call")
-			}
 		} else {
 			typ := c.typeExpression(e)
 			if typ != nil {
@@ -706,16 +693,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 		i.Method = methods[0]
 		i.Type = methods[0].Type
-		i.Proof = receiver.Proof || c.property(receiver.Type, "Shareable", nil)
 		i.Native = methods[0].Native
 		if methods[0].Native != "" && methods[0].Native != "contract" && len(methods[0].Variables) > 0 {
 			c.error(e.Pos, "type", "a generic method value requires explicit specialization")
-		}
-		if (e.Text == "serve" || e.Text == "serve_stream") && std(i.Method.Contract, "Network") {
-			c.error(e.Pos, "type", "Network.serve requires a direct call")
-		}
-		if i.Native == "background_start" {
-			c.error(e.Pos, "type", "Background.start requires a direct call")
 		}
 	case "call":
 		return c.call(e, expected)
@@ -730,19 +710,15 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		c.loops = 0
 		c.captures[c.function] = map[*Binding]bool{}
 		for index, param := range t.Params {
-			c.LambdaParameters[e] = append(c.LambdaParameters[e], c.bind(param.Name, param.Type, false, false, e.Params[index].Pos))
+			c.LambdaParameters[e] = append(c.LambdaParameters[e], c.bind(param.Name, param.Type, false, e.Params[index].Pos))
 		}
 		fall, _ := c.block(e.Body, false)
 		if fall && t.Result.ID != "Unit" {
 			c.error(e.Pos, "type", "reachable fallthrough in anonymous function")
 		}
 		i.Type = t
-		i.Proof = true
 		for b := range c.captures[c.function] {
 			i.Captures = append(i.Captures, b)
-			if !b.Proof && !c.property(b.Type, "Shareable", nil) {
-				i.Proof = false
-			}
 			if oldFunction != b.Function && c.captures[oldFunction] != nil {
 				c.captures[oldFunction][b] = true
 			}
@@ -773,9 +749,6 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		for _, item := range e.Elements {
 			v := c.expression(item, element)
 			i.NoReturn = i.NoReturn || v.NoReturn
-		}
-		if !c.property(element, "Shareable", nil) {
-			c.error(e.Pos, "type", "list elements must be Shareable")
 		}
 		i.Type = standard("List", element)
 	case "unary":
@@ -887,15 +860,6 @@ func (c *checker) functionSymbol(e *syntax.Expression) *Symbol {
 }
 func (c *checker) typeExpression(e *syntax.Expression) *Type {
 	if e == nil {
-		return nil
-	}
-	if e.Kind == "shared" {
-		t := c.typeExpression(e.Left)
-		if t != nil {
-			r := *t
-			r.Shared = true
-			return &r
-		}
 		return nil
 	}
 	if e.Kind == "name" && c.scope.binding(e.Text) == nil {

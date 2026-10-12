@@ -163,7 +163,7 @@ func overlap(a, b, x, y *Type, vars []*Type) bool {
 			sub[b.ID] = a
 			return true
 		}
-		if a.ID != b.ID || a.Shared != b.Shared || len(a.Args) != len(b.Args) {
+		if a.ID != b.ID || len(a.Args) != len(b.Args) {
 			return false
 		}
 		for i := range a.Args {
@@ -190,13 +190,11 @@ func (c *checker) implements(receiver, contract *Type) bool {
 	if receiver == nil || contract == nil {
 		return false
 	}
-	if std(contract, "Closeable") && (std(receiver, "Background") || std(receiver, "Queue") || std(receiver, "Pool") || std(receiver, "Lease")) {
+	if std(contract, "Closeable") && (std(receiver, "Background") || std(receiver, "Queue") || std(receiver, "Pool") || std(receiver, "Lease") || std(receiver, "SynchronizedGuard")) {
 		return true
 	}
 	if receiver.ID == contract.ID {
-		plain := *receiver
-		plain.Shared = false
-		return Same(&plain, contract)
+		return Same(receiver, contract)
 	}
 	if receiver.Kind == "variable" {
 		for _, bound := range receiver.Bounds {
@@ -229,7 +227,7 @@ func (c *checker) boundsSatisfied(vars []*Type, sub map[string]*Type) bool {
 	return true
 }
 func (c *checker) satisfies(t, bound *Type) bool {
-	if bound.ID == "Shareable" || bound.ID == "Equal" || bound.ID == "Hashable" {
+	if bound.ID == "Equal" || bound.ID == "Hashable" {
 		return c.property(t, bound.ID, nil)
 	}
 	return c.implements(t, bound)
@@ -254,7 +252,7 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	seen[key] = true
 	if t.Kind == "variable" {
 		for _, b := range t.Bounds {
-			if b.ID == property || b.ID == "Hashable" && (property == "Equal" || property == "Shareable") || b.ID == "Equal" && property == "Shareable" {
+			if b.ID == property || b.ID == "Hashable" && property == "Equal" {
 				return true
 			}
 		}
@@ -263,19 +261,8 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	if t.Kind == "function" {
 		return false
 	}
-	if t.Kind == "contract" {
-		return property == "Shareable" && t.Shared
-	}
-	if t.Kind == "pack" {
-		if property != "Shareable" {
-			return false
-		}
-		for _, a := range t.Args {
-			if !c.property(a, property, seen) {
-				return false
-			}
-		}
-		return true
+	if t.Kind == "contract" || t.Kind == "pack" {
+		return false
 	}
 	if t.Kind == "primitive" {
 		return t.ID != "Float" || property != "Hashable"
@@ -283,8 +270,8 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	if std(t, "Decimal") || std(t, "Bytes") || std(t, "Duration") || std(t, "Instant") {
 		return true
 	}
-	if std(t, "OperationId") || std(t, "Background") || std(t, "Queue") || std(t, "State") || std(t, "Pool") || std(t, "Lease") {
-		return property == "Shareable"
+	if std(t, "OperationId") || std(t, "Background") || std(t, "Queue") || std(t, "Synchronized") || std(t, "SynchronizedGuard") || std(t, "Pool") || std(t, "Lease") {
+		return false
 	}
 	if std(t, "List") || std(t, "Map") || std(t, "Set") {
 		if property == "Hashable" {
@@ -298,7 +285,7 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 		return true
 	}
 	if std(t, "BigInt") || std(t, "Regex") || std(t, "Timestamp") {
-		return property == "Shareable" || (property == "Equal" && !std(t, "Regex"))
+		return property == "Equal" && !std(t, "Regex")
 	}
 	if t.Kind == "native" {
 		return false
@@ -366,9 +353,6 @@ func nativeMethod(t *Type, name string) *Method {
 		for _, operation := range receiver.Def.Operations {
 			if operation.Name == name {
 				native := name
-				if std(t, "Background") && name == "start" {
-					native = "background_start"
-				}
 				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Native: native, Decl: standardMethodDeclaration(receiver, name), Variables: standardOperationVariables[receiver.ID+"/"+name]}
 			}
 		}
@@ -377,7 +361,7 @@ func nativeMethod(t *Type, name string) *Method {
 }
 
 func (c *checker) closeable(t *Type) bool {
-	if std(t, "Background") || std(t, "Queue") || std(t, "Pool") || std(t, "Lease") {
+	if std(t, "Background") || std(t, "Queue") || std(t, "Pool") || std(t, "Lease") || std(t, "SynchronizedGuard") {
 		return true
 	}
 	if t.Kind == "contract" || t.Kind == "variable" {
@@ -411,8 +395,8 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[string]bool)
 	}
 	if (std(t, "Pool") || std(t, "Lease")) && len(t.Args) == 1 {
 		element := t.Args[0]
-		if (element.Kind != "contract" && element.Kind != "variable") || !c.property(element, "Shareable", nil) || !c.closeable(element) {
-			c.error(pos, "type", "pool elements must be shared operation contracts declaring close() -> Unit")
+		if (element.Kind != "contract" && element.Kind != "variable") || !c.closeable(element) {
+			c.error(pos, "type", "pool elements must be operation contracts declaring close() -> Unit")
 		}
 	}
 

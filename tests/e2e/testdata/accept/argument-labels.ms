@@ -5,7 +5,7 @@ import abs_int from "@std/math.ms"
 import reverse from "@std/collections.ms"
 import Background from "@std/tasks.ms"
 import Result from "@std/result.ms"
-import State from "@std/state.ms"
+import Synchronized from "@std/sync.ms"
 
 fn increment(value: Int) -> Int:
     return value + 1
@@ -38,17 +38,18 @@ impl Increment for Offset:
     fn apply(value: Int) -> Int:
         return value + self.delta
 
-fn next(state: State[Int]) -> Int:
-    let value = state.get()
-    state.set(value + 1)
-    return value
+fn next(state: Synchronized[Int]) -> Int:
+    with locked = state.lock():
+        let value = locked.get()
+        locked.set(value + 1)
+        return value
 
-fn prepare_receiver(state: State[Int]) -> Offset:
+fn prepare_receiver(state: Synchronized[Int]) -> Offset:
     if not (next(state) == 0):
         return panic(message: "check failed")
     return Offset(delta: 2)
 
-fn prepare_function(state: State[Int]) -> fn(value: Int) -> Int:
+fn prepare_function(state: Synchronized[Int]) -> fn(value: Int) -> Int:
     if not (next(state) == 4):
         return panic(message: "check failed")
     return increment
@@ -138,20 +139,24 @@ test "optional labels on methods and native functions":
                     return panic(message: "check failed")
 
 test "omitted labels preserve evaluation order":
-    let state = State(value: 0)
+    let state = Synchronized(value: 0)
     if not (prepare_receiver(state).apply(next(state)) == 3):
         return panic(message: "check failed")
-    if not (state.get() == 2):
-        return panic(message: "check failed")
+    with locked = state.lock():
+        if not (locked.get() == 2):
+            return panic(message: "check failed")
     if not (subtract(deduction: next(state), amount: next(state)) == 1):
         return panic(message: "check failed")
-    if not (state.get() == 4):
-        return panic(message: "check failed")
+    with locked = state.lock():
+        if not (locked.get() == 4):
+            return panic(message: "check failed")
     if not (prepare_function(state)(next(state)) == 6):
         return panic(message: "check failed")
-    if not (state.get() == 6):
-        return panic(message: "check failed")
+    with locked = state.lock():
+        if not (locked.get() == 6):
+            return panic(message: "check failed")
     if not (sum([next(state), next(state)]) == 13):
         return panic(message: "check failed")
-    if not (state.get() == 8):
-        return panic(message: "check failed")
+    with locked = state.lock():
+        if not (locked.get() == 8):
+            return panic(message: "check failed")

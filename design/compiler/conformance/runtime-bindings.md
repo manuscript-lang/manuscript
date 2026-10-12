@@ -125,7 +125,7 @@ test "explicit error conversion":
 
 Accept the complete `load` module in [parallel](../../concurrency/parallel.md) too. Replace any error adapter with direct `try` under LoadError and reject the incompatible error type. Moving the probe's `try parallel` directly into the Unit test is rejected. Changing the copied pack pattern to `[number]` is rejected for arity. Passing an existing list as tasks is rejected; qualifying or annotating a source type `Pack` is an unknown-name rejection. `parallel(tasks: [])` can be matched and its success destructured as `[]`.
 
-For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn(id: Int) -> Int`. Reject start operations returning Int or plain Unit; accept only shareable `fn() -> Result[Unit, String]`. Use controlled reporter fixtures to verify String errors, crashes, status expiry, bounded overflow fallback, and reporter-fault fallback without recursive reporting.
+For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn(id: Int) -> Int`. Reject start operations returning Int or plain Unit; accept only `fn() -> Result[Unit, String]`. Use controlled reporter fixtures to verify String errors, crashes, status expiry, bounded overflow fallback, and reporter-fault fallback without recursive reporting.
 
 ## Sharing and contract cleanup
 
@@ -157,35 +157,13 @@ test "contract-valued cleanup":
                     return panic(message: "check failed")
 ```
 
-This fake represents an already-closed stream, so its close is idempotent and has no external release obligation. Also accept `(File & Shareable)(value: ClosedFile(marker: unit))` as the with initializer: cleanup works with either view. Reject `with` over a concrete type merely having a method named close without `impl Closeable`. Reject a contract with the wrong close signature. Verify native and source fake shared File values are interchangeable through Files.open's `Result[File & Shareable, IoError]` result.
+This fake represents an already-closed stream, so its close is idempotent and has no external release obligation. Reject `with` over a concrete type merely having a method named close without `impl Closeable`. Reject a contract with the wrong close signature. Verify native and source fake File values are interchangeable through Files.open's `Result[File, IoError]` result.
 
-A bare function parameter carries no sharing proof. Reject a parallel closure capturing that parameter, even if a particular caller passes a safe named function. Accept a plain view over an implementing record containing a bare function field or unsynchronized native state for sequential use, but reject its shared view construction; such storage lacks a type-level sharing guarantee.
+Accept a function parameter as a parallel callback, a function-bearing record behind a contract view, and callbacks passed through `identity[T]`, fields, returned values, lists, and branch/var merges. Snapshot captures remain unchanged; assignment to an outer captured binding remains rejected.
 
-Accept concurrent captures of shared contract views, shareable concrete receivers, and generic values bounded by both Shareable and the behavioral contract. Reject concurrent captures of plain contract views and bound methods extracted from them, even when a particular runtime receiver is safe.
+Accept specialized `parallel_map` values, stored `Background.start` and HTTP serve methods, and ordinary wrappers forwarding callbacks. A bare `parallel` reference and type constructors remain unavailable as ordinary function values because their construction/pack syntax is not a function signature.
 
-Test captured-function wrappers and branch/var merges so an unsafe alternative cannot retain a safe callable proof.
-
-Independently reject this complete module at the parallel call: generic forwarding erases the callable proof even for this safe input.
-
-```manuscript
-import Result from "@std/result.ms"
-import ExecutionError from "@std/tasks.ms"
-import parallel from "@std/tasks.ms"
-
-fn identity[T](value: T) -> T:
-    return value
-
-fn rejected_forwarding() -> Result[Unit, ExecutionError]:
-    let safe = fn() -> Int:
-        return 1
-    let forwarded = identity(value: safe)
-    let [value] = try parallel(tasks: [forwarded])
-    return ok(value: unit)
-```
-
-Replacing forwarded with safe accepts the function. A generic function with `T: Shareable` instead rejects passing safe at bound checking. A `Box[T]` field storing a function does not restore the erased proof; `Box[T: Shareable]` rejects a function type argument. Ordinary generic data values and inferred result packs retain their type-level sharing properties; their behavior is unchanged.
-
-Independently reject extracting `let launch = background.start`, `let mapper = parallel_map[Int, Int]`, `let constructor = Background`, a bare parallel reference, and forwarding these references to identity or a function parameter. These call-only bindings have requirements a plain function type cannot retain. Accept direct explicitly specialized parallel_map calls with proven-safe callbacks. A source wrapper that accepts an ordinary function parameter and forwards it to Background.start is rejected for missing callable proof at that direct call.
+Run `tests/e2e/testdata/accept/synchronized.ms` for complete updates, forwarding, immutable snapshots, builders, fault cleanup, stale guards, and ancestor reentry. Runtime tests must exercise simultaneous increments, cancellation while waiting and holding, concurrent release, access racing with release/reacquisition, undelivered acquisition disposal, and builder freeze racing with mutation. Reject direct Synchronized get/set, guard construction, and equality/hashing of either synchronized type.
 
 ## Data and numeric outcomes
 
