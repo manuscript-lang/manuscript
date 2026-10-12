@@ -35,6 +35,7 @@ type BuildMetadata struct {
 	ConfigurationSHA256 string            `json:"configuration_sha256"`
 	ExecutableSHA256    string            `json:"executable_sha256"`
 	SourceRoot          string            `json:"source_root,omitempty"`
+	BuildType           BuildType         `json:"build_type"`
 	Debug               bool              `json:"debug"`
 }
 
@@ -79,7 +80,7 @@ func CurrentPin() (BuildPin, error) {
 		return BuildPin{}, err
 	}
 	if toolchain["GOFLAGS"] != "" {
-		return BuildPin{}, fmt.Errorf("pinned builds require empty GOFLAGS; use the explicit debug build option")
+		return BuildPin{}, fmt.Errorf("pinned builds require empty GOFLAGS; use an explicit build type")
 	}
 	return BuildPin{1, "0.1.0", implementationDigest(), toolchain}, nil
 }
@@ -161,6 +162,19 @@ func atomicWrite(filename string, data []byte, mode os.FileMode) error {
 
 // BuildChecked caches only verified native artifacts. Parsing/checking still precedes it.
 func BuildChecked(result Result, output, cacheDir string, debug bool) (BuildMetadata, error) {
+	kind := Release
+	if debug {
+		kind = Debug
+	}
+	return BuildCheckedWithType(result, output, cacheDir, kind)
+}
+
+// BuildCheckedWithType caches verified artifacts separately for each build type.
+func BuildCheckedWithType(result Result, output, cacheDir string, kind BuildType) (BuildMetadata, error) {
+	kind, err := ParseBuildType(string(kind))
+	if err != nil {
+		return BuildMetadata{}, err
+	}
 	if !result.Success() || result.Program == nil || result.Source == "" {
 		return BuildMetadata{}, fmt.Errorf("cannot build a program with diagnostics")
 	}
@@ -181,7 +195,7 @@ func BuildChecked(result Result, output, cacheDir string, debug bool) (BuildMeta
 			return BuildMetadata{}, err
 		}
 	}
-	metadata := BuildMetadata{BuildPin: pin, Sources: map[string]string{}, ConfigurationSHA256: digest([]byte(result.Configuration)), Debug: debug}
+	metadata := BuildMetadata{BuildPin: pin, Sources: map[string]string{}, ConfigurationSHA256: digest([]byte(result.Configuration)), BuildType: kind, Debug: kind == Debug}
 	if result.ProjectRoot != "" {
 		metadata.Sources["ms.toml"] = digest([]byte(result.Configuration))
 	}
@@ -189,7 +203,7 @@ func BuildChecked(result Result, output, cacheDir string, debug bool) (BuildMeta
 		metadata.Sources[module.File] = digest([]byte(module.Source))
 	}
 	source := result.Source
-	if debug {
+	if kind.sourcePaths() {
 		source = debugSource(result)
 		metadata.SourceRoot = result.SourceRoot
 	}
@@ -221,7 +235,7 @@ func BuildChecked(result Result, output, cacheDir string, debug bool) (BuildMeta
 			}
 		}
 	}
-	if err := buildNative(source, output, debug); err != nil {
+	if err := buildNative(source, output, kind); err != nil {
 		return metadata, err
 	}
 	binary, err := os.ReadFile(output)

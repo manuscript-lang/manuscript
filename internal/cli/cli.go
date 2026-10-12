@@ -69,6 +69,8 @@ func Run(args []string) int {
 	output := ""
 	cpuProfile, heapProfile, tracePath := "", "", ""
 	formatCheck, structured, debug := false, false, false
+	buildTypeName := ""
+	buildTypeSet := false
 	var arguments []string
 	for i := 2; i < len(args); i++ {
 		switch args[i] {
@@ -77,6 +79,17 @@ func Run(args []string) int {
 			i = len(args)
 		case "--debug":
 			debug = true
+		case "--build-type":
+			i++
+			if i == len(args) || args[i] == "" {
+				fmt.Fprintln(os.Stderr, "--build-type requires a build type")
+				return 2
+			}
+			if buildTypeSet {
+				fmt.Fprintln(os.Stderr, "--build-type may only be specified once")
+				return 2
+			}
+			buildTypeName, buildTypeSet = args[i], true
 		case "--check":
 			formatCheck = true
 		case "--json":
@@ -125,6 +138,24 @@ func Run(args []string) int {
 	if formatCheck && command != "fmt" || structured && command != "check" && command != "lint" || debug && command != "build" && command != "run" && command != "test" {
 		fmt.Fprintln(os.Stderr, "flag is not valid for this command")
 		return 2
+	}
+	kind, err := compiler.ParseBuildType(buildTypeName)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	if buildTypeSet && command != "build" && command != "run" && command != "test" && command != "debug" && command != "profile" {
+		fmt.Fprintln(os.Stderr, "--build-type requires build, run, test, debug, or profile")
+		return 2
+	}
+	if debug || command == "debug" {
+		if buildTypeSet && kind != compiler.Debug {
+			fmt.Fprintln(os.Stderr, "debug requires build type Debug")
+			return 2
+		}
+		kind = compiler.Debug
+	} else if command == "profile" && !buildTypeSet {
+		kind = compiler.RelWithDebInfo
 	}
 	if (cpuProfile != "" || heapProfile != "" || tracePath != "") && command != "run" {
 		fmt.Fprintln(os.Stderr, "profiling flags require run")
@@ -282,7 +313,7 @@ func Run(args []string) int {
 			if cache == "" {
 				cache = filepath.Join(filepath.Dir(absolute), ".ms-cache")
 			}
-			_, err = compiler.BuildChecked(result, absolute, cache, debug)
+			_, err = compiler.BuildCheckedWithType(result, absolute, cache, kind)
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -305,7 +336,7 @@ func Run(args []string) int {
 			executable += ".exe"
 		}
 
-		if _, err := compiler.BuildChecked(result, executable, cache, debug || command == "debug"); err != nil {
+		if _, err := compiler.BuildCheckedWithType(result, executable, cache, kind); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}

@@ -32,6 +32,10 @@ Options:
   -h, --help  Show help
   --version   Print the compiler version
 
+Native build levels:
+  --build-type <Debug|Release|RelWithDebInfo|MinSizeRel>
+  Default: Release; profile defaults to RelWithDebInfo; debug always uses Debug
+
 Start with:
   ms check ms.toml
   ms lock ms.toml
@@ -58,10 +62,10 @@ func commandHelp(command string) (string, bool) {
 		options = "  --json  Emit versioned JSON findings with stable rule codes\n"
 		examples = "ms lint ms.toml\n  ms lint main.ms --json"
 	case "build":
-		usage = "<file.ms|ms.toml> [-o output] [--debug]"
+		usage = "<file.ms|ms.toml> [-o output] [--build-type level] [--debug]"
 		description = "Build an application exporting main() -> Int as a native executable."
-		options = "  -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)\n  --debug             Disable optimization and inlining\n"
-		examples = "ms build ms.toml -o hello\n  ms build main.ms --debug"
+		options = "  -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)\n  --debug             Alias for --build-type Debug\n"
+		examples = "ms build ms.toml -o hello\n  ms build main.ms --build-type MinSizeRel"
 	case "emit":
 		usage = "<file.ms|ms.toml> [-o output]"
 		description = "Emit standalone Go source containing the runtime. No Go toolchain is needed."
@@ -70,12 +74,12 @@ func commandHelp(command string) (string, bool) {
 	case "run":
 		usage = "<file.ms|ms.toml> [options] [-- program arguments]"
 		description = "Build a temporary executable and run its exported main() -> Int.\nArguments after -- are passed unchanged to the application; its exit status is returned."
-		options = "  --debug               Disable optimization and inlining\n  --cpu-profile <path>  Write a CPU profile\n  --heap-profile <path> Write a heap profile\n  --trace <path>        Write an execution trace\n"
+		options = "  --debug               Alias for --build-type Debug\n  --cpu-profile <path>  Write a CPU profile\n  --heap-profile <path> Write a heap profile\n  --trace <path>        Write an execution trace\n"
 		examples = "ms run ms.toml -- first second\n  ms run main.ms --cpu-profile cpu.pprof"
 	case "test":
-		usage = "<file.ms|ms.toml> [--debug] [-- program arguments]"
+		usage = "<file.ms|ms.toml> [--build-type level] [--debug] [-- program arguments]"
 		description = "Build and execute test blocks in the module and its imported modules.\nArguments after -- are passed to the test executable; its exit status is returned."
-		options = "  --debug  Disable optimization and inlining\n"
+		options = "  --debug  Alias for --build-type Debug\n"
 		examples = "ms test test.ms\n  ms test ms.toml --debug"
 	case "fmt":
 		usage = "<file.ms> [--check]"
@@ -93,7 +97,7 @@ func commandHelp(command string) (string, bool) {
 		options = outputHelp
 		examples = "ms diagram main.ms\n  ms diagram ms.toml -o calls.mmd"
 	case "profile":
-		usage = "<file.ms|ms.toml> [-o directory] [-- program arguments]"
+		usage = "<file.ms|ms.toml> [-o directory] [--build-type level] [-- program arguments]"
 		description = "Build and run an application with CPU, heap, and execution trace capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, trace.out,\ninspection.json, and manifest.json. The output directory must not already exist.\nArguments after -- are passed to the application; its exit status is returned."
 		options = "  -o, --output <directory>  Bundle directory (default: ./profile)\n"
 		examples = "ms profile ms.toml\n  ms profile main.ms -o capture -- first second"
@@ -120,6 +124,15 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms help\n  ms help run\n  ms doc --stdlib --help"
 	default:
 		return "", false
+	}
+	switch command {
+	case "build", "run", "test":
+		options += buildTypeHelp + "  Default build type: Release\n"
+	case "profile":
+		options += buildTypeHelp + "  Default build type: RelWithDebInfo\n"
+	case "debug":
+		usage = "<file.ms|ms.toml> [--build-type Debug] [-- program arguments]"
+		options += "  --build-type Debug  Debug is required for Delve\n"
 	}
 	text := fmt.Sprintf("Usage: ms %s", command)
 	if usage != "" {
@@ -158,10 +171,12 @@ func requestsHelp(args []string) bool {
 			return false
 		case "-h", "--help":
 			return true
-		case "-o", "--output", "--cpu-profile", "--heap-profile", "--trace":
-			// A flag value is a path, even if it is spelled --help.
+		case "-o", "--output", "--cpu-profile", "--heap-profile", "--trace", "--build-type":
+			// A flag value is not a help request, even if it is spelled --help.
 			i++
 		}
 	}
 	return false
 }
+
+const buildTypeHelp = "  --build-type <level>  Debug, Release, RelWithDebInfo, or MinSizeRel (case-insensitive)\n"
