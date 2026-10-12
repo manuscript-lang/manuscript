@@ -21,7 +21,7 @@ Completion is not published until registered cleanup and nested joins have finis
 
 User callbacks, failure reporters, resource cleanup, and joining run outside transition locks. Shutdown is idempotent; concurrent calls to `close()` observe one shutdown sequence and all wait for it to finish.
 
-An operation must not join itself or an execution ancestor. Closing its own scheduler, including from nested parallel descendants or reporter callbacks joined by that service, faults before initiating shutdown. Check the fixed execution-parent chain, not just the current operation ID. Hosts close services from outside their admitted work. Cross-service cyclic shutdown is invalid library usage and must be avoided by host shutdown ordering.
+An operation must not join itself or an execution ancestor. Closing its own scheduler, including from nested task-group descendants or reporter callbacks joined by that service, faults before initiating shutdown. Check the fixed execution-parent chain, not just the current operation ID. Hosts close services from outside their admitted work. Cross-service cyclic shutdown is invalid library usage and must be avoided by host shutdown ordering.
 
 The conformance suite uses controlled barriers and race stress for admission versus closure, cancellation versus completion, and concurrent shutdown. See [semantic tests](../compiler/conformance/semantic-tests.md).
 
@@ -29,7 +29,7 @@ The conformance suite uses controlled barriers and race stress for admission ver
 
 Completion records an operation's outcome after its body, nested concurrency groups, and registered cleanup finish. Cancellation and completion commitment race atomically; a late stop does not overwrite a committed outcome.
 
-Parallel results are ordinary values, with references to existing objects where appropriate. If the group fails, unreturned references are released for garbage collection. The runtime does not recursively call `close()` on arbitrary result fields or closure captures: those references may alias resources still used elsewhere. Cleanup responsibility comes from explicit `with` registration or an acquisition API's delivery contract, not a result-ownership escrow.
+Task results are ordinary values, with references to existing objects where appropriate. If the group fails, unreturned references are released for garbage collection. The runtime does not recursively call `close()` on arbitrary result fields or closure captures: those references may alias resources still used elsewhere. Cleanup responsibility comes from explicit `with` registration or an acquisition API's delivery contract, not a result-ownership escrow.
 
 A native acquisition API must close a newly acquired resource if cancellation or a fault prevents it from being delivered. Successful acquisition and registration by `with` form one protected sequence: no cancellation checkpoint may occur between delivery to the binding and registration of its `close()` action.
 
@@ -48,7 +48,7 @@ Scheduler operations have no resource-valued result delivery; each operation man
 
 Generated calls carry a hidden execution context. An adapter observes the current operation's fixed parent context, cancellation signal, deadline, and cleanup mode.
 
-Parallel operations derive contexts from their caller. Scheduler operations derive contexts from their service's construction-time context. The runtime does not substitute the submitting request's context merely because `start` was invoked from that request.
+TaskGroup operations derive contexts from the group's fixed construction execution. Scheduler operations derive contexts from their service's construction-time context. The runtime does not substitute the submitting request's context merely because `start` was invoked from that request.
 
 Fixed parent relationships can use Go context derivation directly; there is no movable cancellation ancestry or separate ownership graph. Operation IDs support diagnostics and traces. [Go context documentation](https://pkg.go.dev/context)
 

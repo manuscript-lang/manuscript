@@ -2,7 +2,7 @@ import panic from "@std/faults.ms"
 
 import Result from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 
 fn identity[T](value: T) -> T:
     return value
@@ -12,20 +12,22 @@ fn probe() -> Result[Unit, ExecutionError]:
         return ok(value: 3)
     let second = fn() -> Bool:
         return true
-    let packed = try parallel(tasks: [first, second])
-    let copied = identity(value: packed)
-    let [number, flag] = copied
-    if not (flag):
-        return panic(message: "check failed")
-    match number:
-        ok(value):
-            if not (value == 3):
-                return panic(message: "check failed")
-        error(_):
-            return panic(message: "Unexpected case")
-    return ok(value: unit)
+    with group = TaskGroup():
+        let number_task = identity(group.start(first))
+        let flag_task = group.start(second)
+        let number = try number_task.join()
+        let flag = try flag_task.join()
+        if not (flag):
+            return panic(message: "check failed")
+        match number:
+            ok(value):
+                if not (value == 3):
+                    return panic(message: "check failed")
+            error(_):
+                return panic(message: "Unexpected case")
+        return ok(value: unit)
 
-test "pack helper":
+test "typed task helper":
     match probe():
         ok(_):
             let completed = unit

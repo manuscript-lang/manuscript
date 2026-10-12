@@ -36,11 +36,11 @@ remaining = remaining - 1
 Bindings use JavaScript-style positional and record patterns:
 
 ```manuscript
-let [resA, resB] = try parallel(tasks: [first, second])
+let [first_name, second_name] = names
 let {name, email: customer_email} = customer
 ```
 
-The parallel fragment needs an enclosing `Result[U, ExecutionError]` function; see the [complete example](../../concurrency/parallel.md). Use `[...]` for positions and `{field: local}` to rename a record field. Patterns also support field shorthand and nesting. Parenthesized positional bindings are not supported. See [destructuring bindings](destructuring.md) for static shape checks and list behavior.
+Use `[...]` for positions and `{field: local}` to rename a record field. Patterns also support field shorthand and nesting. Parenthesized positional bindings are not supported. See [destructuring bindings](destructuring.md) for static shape checks and list behavior.
 
 ## Scope and shadowing
 

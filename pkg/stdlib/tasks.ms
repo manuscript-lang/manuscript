@@ -24,6 +24,7 @@ export type SchedulerFailure:
 
 export type ExecutionError:
     case TimedOut
+    case Cancelled
     case Crashed(operation: OperationId, message: String)
 
 export type OperationId
@@ -45,7 +46,20 @@ export fn check_cancelled() -> Unit
 
 export fn yield_now() -> Unit
 
-# compiler binding: parallel (heterogeneous callable/result packs)
+export type TaskGroup:
+    timeout: Optional[Duration] = none
+    fn start[T](operation: fn() -> T) -> Task[T]
+    fn join() -> Result[Unit, ExecutionError]
+    fn close() -> Unit
+
+export type Task[T]:
+    fn join() -> Result[T, ExecutionError]
+
+# Private native implementations shared by the receiver operations.
+fn task_group_start[T](group: TaskGroup, operation: fn() -> T) -> Task[T]
+fn task_group_join(group: TaskGroup) -> Result[Unit, ExecutionError]
+fn task_group_close(group: TaskGroup) -> Unit
+fn task_join[T](task: Task[T]) -> Result[T, ExecutionError]
 
 
 impl Error for ExecutionError:

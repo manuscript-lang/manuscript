@@ -14,7 +14,7 @@ Verify: inspect current declarations and called behavior against the latest dire
 
 Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native services synchronize their internals. The user subsequently chose a single-threaded Queue with an optional capacity parameter; shared queue access uses Synchronized guards, including reads. Passing references is permitted without implying internal thread safety. A safe capture is not a declaration of intended authority.
 
-Apply when: changing closures, parallel work, schedulers, resource wrappers, or owned resources.
+Apply when: changing closures, task-group work, schedulers, resource wrappers, or owned resources.
 Evidence: [sharing](../documentation/ownership-and-cleanup/values/sharing.md); [joined groups](../documentation/concurrency/joining.md); [scope-exit ordering](../documentation/ownership-and-cleanup/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
 Verify: exercise use after close and shutdown with work still running. Confirm started work completes cleanup before joining returns and stale resource aliases cannot reach a reused handle.
 
@@ -38,7 +38,7 @@ Verify: native error values carry the declared Result's error identity; unrelate
 
 ### Keep concurrency collection helpers removed
 
-Decision: the dedicated concurrent collection-mapping API was removed because the user considers it redundant. Do not restore that helper under another name without a new user direction. Fixed-operation parallel work and Scheduler retain their existing contracts.
+Decision: the dedicated concurrent collection-mapping API was removed because the user considers it redundant. Do not restore that helper under another name without a new user direction. Scoped TaskGroup work and Scheduler retain separate lifecycle contracts.
 
 Apply when: adding concurrent collection utilities or revising the task API.
 Evidence: [task declarations](../pkg/stdlib/tasks.ms); [concurrency guide](../documentation/concurrency/_index.md); the user's removal request in this chat.
@@ -83,3 +83,11 @@ Verified: normalizing every runtime record recognized as an options record corru
 Apply when: changing native argument normalization or generic receiver methods.
 Evidence: [normalization boundary](../pkg/runtime/library_options.go), [runtime Optional regression](../pkg/runtime/optional_test.go), and [compiled record fallback](../tests/e2e/testdata/accept/optional-methods.ms).
 Verify: unwrap_or returns a JsonLimits record with negative and absent Optional fields unchanged and mutations retain its identity; concrete limits passed to their native operations remain validated.
+
+### Typed task handles replace heterogeneous aggregation
+
+Decision: the user chose TaskGroup and Task[T] over the compiler-only heterogeneous aggregation binding because ordinary generic declarations are simpler to reason about and expose usable source signatures to tooling. Group join returns Result[Unit, ExecutionError]; each task join preserves its own T. Remove the old binding and its pack machinery rather than adding a compatibility alias.
+
+Apply when: changing joined work, standard task declarations, result inference, or editor signatures.
+Evidence: the user's direction in this implementation chat; [task declarations](../pkg/stdlib/tasks.ms); [task group contract](../documentation/concurrency/task-groups.md); [joining](../documentation/concurrency/joining.md).
+Verify: native heterogeneous-handle and cached-result fixtures, cancellation/close races, self-join rejection, ordinary source navigation/signatures, and generated reference freshness.

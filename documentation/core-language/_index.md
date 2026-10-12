@@ -13,4 +13,4 @@ For a first introduction, take the [language tour](../learn/tour.md). Use these 
 - [Conditions, loops, and matching](control-flow/_index.md)
 - [Errors and propagation](errors/_index.md)
 
-Continue with [modules](../modules-and-capabilities/modules/declarations.md), [resource cleanup](../ownership-and-cleanup/cleanup/scopes.md), or [concurrent work](../concurrency/parallel.md).
+Continue with [modules](../modules-and-capabilities/modules/declarations.md), [resource cleanup](../ownership-and-cleanup/cleanup/scopes.md), or [concurrent work](../concurrency/task-groups.md).

@@ -505,16 +505,8 @@ func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable bool, source *synt
 			for _, child := range p.Elements {
 				c.pattern(child, t.Args[0], mutable, nil)
 			}
-		} else if t.Kind == "pack" {
-			if len(t.Args) != len(p.Elements) {
-				c.error(p.Pos, "type", "pack binding arity mismatch")
-				return
-			}
-			for i, child := range p.Elements {
-				c.pattern(child, t.Args[i], mutable, nil)
-			}
 		} else {
-			c.error(p.Pos, "type", "positional binding requires a list or result pack")
+			c.error(p.Pos, "type", "positional binding requires a list")
 		}
 	}
 }
@@ -735,9 +727,6 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				i.Symbol = s
 				if len(s.Variables) > 0 {
 					c.error(e.Pos, "type", "a generic function value requires explicit specialization")
-				}
-				if s.Native == "parallel" {
-					c.error(e.Pos, "type", "concurrency binding requires a direct call")
 				}
 			}
 			return i

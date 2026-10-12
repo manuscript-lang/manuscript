@@ -3,7 +3,7 @@ import Map from "@std/collections.ms"
 import Set from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Synchronized from "@std/sync.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
 interface Counter:
@@ -101,14 +101,18 @@ test "Synchronized protects record mutation without replacement":
             with guard = counter.lock():
                 guard.get().increment()
             remaining = remaining - 1
-    match parallel(tasks: [operation, operation, operation, operation]):
-        ok(_):
-            with guard = counter.lock():
-                if not (guard.get().val == 400):
-                    return panic(message: "synchronized mutation lost updates")
-        error(_):
-            return panic(message: "parallel mutation failed")
-
+    with group = TaskGroup():
+        group.start(operation)
+        group.start(operation)
+        group.start(operation)
+        group.start(operation)
+        match group.join():
+            ok(_):
+                with guard = counter.lock():
+                    if not (guard.get().val == 400):
+                        return panic(message: "synchronized mutation lost updates")
+            error(_):
+                return panic(message: "task mutation failed")
 test "callbacks snapshot membership while mutating their source":
     let values = [1, 2, 3]
     let result = values.map(transform: fn(value: Int) -> Int:

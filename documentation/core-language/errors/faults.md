@@ -42,6 +42,6 @@ A fault aborts the current operation after cleanup. Programming faults are disti
 
 Cleanup still runs after a fault. A cleanup fault can replace a pending return, domain error, or cancellation, while secondary faults are retained as diagnostics. The full selection and cleanup rules are in [lexical cleanup](../../ownership-and-cleanup/cleanup/_index.md).
 
-An active `parallel` caller observes an operation fault as `ExecutionError.Crashed` after siblings are cancelled and joined. Scheduler faults go to the service's failure observer. A caller's own fault still unwinds it; [try](propagation.md) only propagates `Result` errors. See [execution errors](../../concurrency/joining.md).
+A TaskGroup or failed Task join observes an operation fault as `ExecutionError.Crashed` after siblings are cancelled and joined. Scheduler faults go to the service's failure observer. A caller's own fault still unwinds it; [try](propagation.md) only propagates `Result` errors. See [execution errors](../../concurrency/joining.md).
 
 [Previous: Error propagation with try](propagation.md)

@@ -7,7 +7,7 @@ The `.ms` files here define public types, fields, cases, function signatures, an
 - The `.ms` files define the type schemas and public API.
 - `bindings.json` maps source identities to native representations and dispatch names. It does not define type schemas.
 - `intrinsics.ms` contains private operation declarations for primitive receivers and the universal `toString()` method.
-- The heterogeneous `parallel` call is marked in its source module and needs special compiler handling.
+- TaskGroup and Task[T] use ordinary generic declarations and shared native receiver bindings.
 
 These files use a trusted declaration-only parser mode. Native functions and opaque types need no Manuscript body here. Native `impl` blocks declare their method signatures without bodies, and `bindings.json` maps each receiver/contract/method identity to native dispatch. The checker verifies the ordinary implementation rules and native signatures. Application source still needs the usual bodies and type definitions.
 
@@ -21,4 +21,4 @@ For user-facing imports and API behavior, see the [standard-library guide](../..
 
 Filesystem, OS/process, path, and timer contracts are described in the [host package guide](../../documentation/standard-library/packages/node-host.md). The Node.js 24 coverage inventory includes exported APIs and returned handle operations; native signature validation, offline Node path/glob fixtures, and compiled CLI tests keep the mapping reviewable. Platform helpers in `internal/hostos/` are bundled with native dependency sources.
 
-Time values and sequential `sleep` live in `@std/time.ms`. `@std/tasks.ms` owns `Scheduler`, which manages immediate, delayed, and repeating work through one operation-ID lifecycle, plus `parallel`, cancellation checks, and scheduler yielding. Limits and deadlines use optional values; receiver operations are the single public API for existing data.
+Time values and sequential `sleep` live in `@std/time.ms`. `@std/tasks.ms` owns `Scheduler`, which manages immediate, delayed, and repeating work through one operation-ID lifecycle, plus TaskGroup, Task[T], cancellation checks, and scheduler yielding. Limits and deadlines use optional values; receiver operations are the single public API for existing data.

@@ -457,9 +457,6 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 			}
 			return "rt.ConstructWithContext(ctx," + g.key(info.Type) + "," + args + ")"
 		}
-		if info.Native == "parallel" {
-			return "rt.ParallelArguments(ctx," + g.key(info.Type) + "," + args + ")"
-		}
 		var callable string
 		if info.Symbol != nil {
 			if info.Symbol.Native != "" {
@@ -478,9 +475,6 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 		var elements []string
 		for _, item := range e.Elements {
 			elements = append(elements, g.expression(item))
-		}
-		if info.Type.Kind == "pack" {
-			return "rt.Pack{Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
 		}
 		return "&rt.List{Type:" + g.key(info.Type) + ",Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
 	case syntax.KindUnary:

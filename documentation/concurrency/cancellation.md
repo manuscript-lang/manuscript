@@ -61,24 +61,19 @@ Cancellation of a lock holder unwinds its `with` scope and closes the guard. It 
 
 Timeouts are named library arguments, not syntax annotations. Duration values come from the standard time API; naming `Duration` requires its own import from `@std/time.ms`.
 
-`parallel(tasks: [first, second], timeout: 2.seconds)` sets one budget for the group's execution, starting on API entry after argument preparation. `timeout` is the only budget argument; there is no absolute `deadline` argument.
+`TaskGroup(timeout: some(value: 2.seconds))` sets one group budget, starting with the first submission. The budget applies across its operations; `timeout` is the only budget argument.
 
-Argument validation is part of the [standard API contract](../standard-library/types/prelude.md#joined-concurrency); zero-timeout and empty-input behavior is in [joined groups](joining.md#group-lifecycle). On expiry, the group stops, joins, and reports as defined in [joined groups](joining.md#group-lifecycle). Results are never delivered while work remains outstanding.
+On expiry, unfinished tasks stop and join before a failed task or group join reports TimedOut. A timeout bounds ordinary work, not cleanup or joining. Foreign code that does not cooperate can delay joining; [host escalation](runtime.md#host-escalation) is the final fallback.
 
-A timeout bounds ordinary work, not cleanup or joining. Foreign code that does not cooperate can delay joining indefinitely; [host escalation](runtime.md#host-escalation) is the final fallback. An API must not report successful joining merely because its timer expired.
-
-To share one budget across several steps, put the steps in one function and give that function the budget. Nested groups inherit the deadline:
+To share one budget across sequential steps, submit one callback containing those steps:
 
 ```manuscript
-let sync = fn() -> Result[Unit, SyncError]:
-    try download_all(sources: sources)
-    try upload_all(targets: targets)
-    return ok(value: unit)
-
-let [outcome] = try parallel(tasks: [sync], timeout: 2.seconds)
+with tasks = TaskGroup(timeout: some(value: 2.seconds)):
+    let task = tasks.start(sync)
+    let outcome = try task.join()
 ```
 
-This fragment requires an enclosing `Result[U, ExecutionError]` function; `outcome` is the unchanged `Result[Unit, SyncError]`. Any `parallel` inside `download_all` or `upload_all` inherits the same deadline.
+This fragment requires an enclosing Result with ExecutionError. The callback's domain return value remains unchanged. Nested groups inherit cancellation from their fixed parent.
 
 ## Deadlines
 
@@ -90,4 +85,4 @@ When the caller's own deadline expires, the caller unwinds after its groups join
 
 Scheduler work inherits the service's fixed execution context, including that context's deadline. It does not inherit the submitting request's deadline. A service cannot revive cancelled work or extend its host's deadline. Its context is selected at construction, not at each call to `start`.
 
-Deadline configuration is a host operation. There are no source task handles to mutate, deadline annotations on functions, or absolute deadline arguments. See [schedulers](../standard-library/tasks/scheduler.md) for drain budgets and [adapter contexts](runtime.md#adapter-execution-contexts).
+Deadline configuration is a host operation. Task handles do not expose deadline mutation; there are no deadline annotations on functions or absolute deadline arguments. See [schedulers](../standard-library/tasks/scheduler.md) for drain budgets and [adapter contexts](runtime.md#adapter-execution-contexts).

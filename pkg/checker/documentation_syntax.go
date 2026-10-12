@@ -11,10 +11,6 @@ import (
 // bodies. Native declarations use the same declaration-only syntax as stdlib/*.ms.
 func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...string) string {
 	if d.Kind == syntax.KindFn {
-		// Compiler-bound calls such as parallel have no ordinary declaration.
-		if d.Result == nil {
-			return ""
-		}
 		return "fn " + name + documentTypeParameters(d.TypeParams) + documentParameters(d.Params, source...) + " -> " + documentType(d.Result) + "\n"
 	}
 	var b strings.Builder

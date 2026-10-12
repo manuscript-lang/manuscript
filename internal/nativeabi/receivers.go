@@ -2,6 +2,12 @@
 package nativeabi
 
 var ReceiverFunctions = map[string]map[string]string{
+	"TaskGroup": {
+		"start": "tasks/task_group_start",
+		"join":  "tasks/task_group_join",
+		"close": "tasks/task_group_close",
+	},
+	"Task": {"join": "tasks/task_join"},
 	"Optional": {
 		"is_some":        "optional/is_some",
 		"is_none":        "optional/is_none",

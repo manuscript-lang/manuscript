@@ -2205,6 +2205,7 @@
           "type": "ExecutionError",
           "cases": [
             "TimedOut",
+            "Cancelled",
             "Crashed(operation: OperationId, message: String)"
           ],
           "operations": [
@@ -2265,6 +2266,30 @@
           ]
         },
         {
+          "name": "Task",
+          "kind": "interface",
+          "type": "Task[T]",
+          "type_parameters": [
+            "T"
+          ],
+          "operations": [
+            "join: fn()-\u003eResult[T, ExecutionError]"
+          ]
+        },
+        {
+          "name": "TaskGroup",
+          "kind": "interface",
+          "type": "TaskGroup",
+          "fields": [
+            "timeout: Optional[Duration]"
+          ],
+          "operations": [
+            "close: fn()-\u003eUnit",
+            "join: fn()-\u003eResult[Unit, ExecutionError]",
+            "start[T]: fn(operation: fn()-\u003eT)-\u003eTask[T]"
+          ]
+        },
+        {
           "name": "WorkStatus",
           "kind": "alternative",
           "type": "WorkStatus",
@@ -2281,11 +2306,6 @@
           "name": "check_cancelled",
           "kind": "fn",
           "type": "fn()-\u003eUnit"
-        },
-        {
-          "name": "parallel",
-          "kind": "fn",
-          "type": "fn()-\u003e\u003cunknown\u003e"
         },
         {
           "name": "yield_now",

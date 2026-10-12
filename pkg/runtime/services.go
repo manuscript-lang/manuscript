@@ -7,6 +7,8 @@ import (
 func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 	name, _ := splitType(typ)
 	switch name {
+	case "@std/TaskGroup":
+		return NewTaskGroup(ctx, args)
 	case "@std/Scheduler":
 		return NewScheduler(ctx, args)
 	case "@std/Queue":

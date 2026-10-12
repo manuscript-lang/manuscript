@@ -49,7 +49,7 @@ Decision: remove the specialized Result error-mapping helper and keep domain tra
 Decision: the user rejected both deeply nested Result matches and the elaborate loading examples added to replace them. Keep examples small and focused on the concept being taught. Use compatible `try` calls for a flat success path; do not build contrived domain models or helper layers just to make an example work.
 
 Apply when: adding Result adapters or rewriting examples that combine execution and domain errors.
-Evidence: the user's removal request; [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [parallel example](../documentation/concurrency/parallel.md).
+Evidence: the user's removal request; [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../documentation/concurrency/task-groups.md).
 Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. The standard Result module exports only its type, and regenerated API references agree with its declarations.
 
 ### Equality and hashing are source interfaces

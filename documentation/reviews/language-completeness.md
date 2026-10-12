@@ -192,7 +192,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** CORE-10. **Priority:** type-checker blocker.
 
-**Evidence.** [core-language/functions/function-values-and-closures.md lines 7,21](../core-language/functions/function-values-and-closures.md) retains argument names in function types; [core-language/functions/declarations-and-calls.md lines 27](../core-language/functions/declarations-and-calls.md) mandates names on function-value calls. Anonymous functions are demonstrated by [concurrency/parallel.md lines 14-18](../concurrency/parallel.md). No compatibility rule exists for labels/parameter ordering, and ordinary mutable-local closure capture behavior is not described.
+**Evidence.** [core-language/functions/function-values-and-closures.md lines 7,21](../core-language/functions/function-values-and-closures.md) retains argument names in function types; [core-language/functions/declarations-and-calls.md lines 27](../core-language/functions/declarations-and-calls.md) mandates names on function-value calls. Anonymous functions are demonstrated by [concurrency/task-groups.md lines 14-18](../concurrency/task-groups.md). No compatibility rule exists for labels/parameter ordering, and ordinary mutable-local closure capture behavior is not described.
 
 **Example.** Can `fn decrement(amount: Int) -> Int` be passed to `transform: fn(value: Int) -> Int`? Are function types with the same labeled parameters in opposite order equal? Does `var n = 0; let f = fn() -> Int: return n; n = 1; f()` return 0 or 1?
 

@@ -11,6 +11,7 @@ Import each required symbol with `import Name from "@std/tasks.ms"`.
 ```manuscript
 type ExecutionError:
     case TimedOut
+    case Cancelled
     case Crashed(operation: OperationId, message: String)
 ```
 
@@ -64,6 +65,23 @@ impl Error for StartError:
     fn message() -> String
 ```
 
+## Task {data-api-kind="Native type"}
+
+```manuscript
+type Task[T]:
+    fn join() -> Result[T, ExecutionError]
+```
+
+## TaskGroup {data-api-kind="Native type"}
+
+```manuscript
+type TaskGroup:
+    timeout: Optional[Duration] = none
+    fn start[T](operation: fn() -> T) -> Task[T]
+    fn join() -> Result[Unit, ExecutionError]
+    fn close() -> Unit
+```
+
 ## WorkStatus {data-api-kind="Alternative"}
 
 ```manuscript
@@ -81,10 +99,6 @@ type WorkStatus:
 ```manuscript
 fn check_cancelled() -> Unit
 ```
-
-## parallel {data-api-kind="Function"}
-
-See [special call rules](../call-rules.md).
 
 ## yield_now {data-api-kind="Function"}
 

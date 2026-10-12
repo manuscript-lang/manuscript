@@ -84,7 +84,6 @@ Formatting never depends on locale, host display settings, or a process's decima
 | Record | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
 | Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
 | List | `[value, ...]` in element order |
-| Heterogeneous pack | `(value, ...)` in element order |
 | Map | `Map(key: value, ...)` in insertion order |
 | Set | `Set(value, ...)` in insertion order |
 | Bytes | `Bytes(byte, ...)`, with each byte in base ten; no UTF-8 decoding |

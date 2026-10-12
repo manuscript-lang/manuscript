@@ -21,7 +21,7 @@ func fixture(t *testing.T, name string) string {
 func TestCallArgumentLabelRejections(t *testing.T) {
 	const declarations = `import List from "@std/collections.ms"
 import Scheduler from "@std/tasks.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 import Result from "@std/result.ms"
 fn one(value: Int) -> Int:
     return value
@@ -59,7 +59,7 @@ impl Read for Box:
 		{"alternative field label", "let choice = Choice.Payload(1)"},
 		{"contract view label", "let view = Read(Box(value: 1))"},
 		{"optional constructor arguments", "let service = Scheduler(1)"},
-		{"optional parallel arguments", "let result = parallel([])"},
+		{"task start requires a callback", "let group = TaskGroup()\n    group.start(1)"},
 		{"function type labels", "let transform = fn(item: Int) -> Int:\n        return item\n    apply(transform)"},
 	} {
 		t.Run(variant.name, func(t *testing.T) {

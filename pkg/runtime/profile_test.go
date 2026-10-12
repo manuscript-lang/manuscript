@@ -37,10 +37,10 @@ func TestSourceProfilesPreserveExecutionAndAttributeWork(t *testing.T) {
 		if !ok || label != site || ctx.Lifetime != root.Lifetime || ctx.Context.Done() != root.Context.Done() {
 			t.Fatal("source attribution changed execution", label)
 		}
-		return profileWork(ctx, "parallel.operation", "7", func(child *Execution) Value {
+		return profileWork(ctx, "task_group.operation", "7", func(child *Execution) Value {
 			kind, _ := pprof.Label(child.Context, "ms.work")
 			id, _ := pprof.Label(child.Context, "ms.operation")
-			if kind != "parallel.operation" || id != "7" {
+			if kind != "task_group.operation" || id != "7" {
 				t.Fatal(kind, id)
 			}
 			observed = true
@@ -61,7 +61,7 @@ func TestSourceProfilesPreserveExecutionAndAttributeWork(t *testing.T) {
 		t.Fatal("source labels leaked into caller")
 	}
 	data, err := os.ReadFile(traceFile)
-	if err != nil || !bytes.Contains(data, []byte("source:"+site)) || !bytes.Contains(data, []byte("parallel.operation")) {
+	if err != nil || !bytes.Contains(data, []byte("source:"+site)) || !bytes.Contains(data, []byte("task_group.operation")) {
 		t.Fatal("trace lacks source/work regions", err)
 	}
 }

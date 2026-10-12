@@ -25,7 +25,7 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 | `@std/optional.ms` | `Optional` |
 | `@std/result.ms` | `Result` |
 | `@std/cleanup.ms` | `Closeable` |
-| `@std/tasks.ms` | `parallel`, `check_cancelled`, `ExecutionError`, `OperationId`, `Scheduler`, `SchedulerFailure`, `WorkStatus`, `StartError` |
+| `@std/tasks.ms` | `TaskGroup`, `Task`, `check_cancelled`, `ExecutionError`, `OperationId`, `Scheduler`, `SchedulerFailure`, `WorkStatus`, `StartError` |
 | `@std/faults.ms` | `panic` |
 | `@std/time.ms` | `Duration`, `Instant`, `Clock`, `clock`, `wall_clock` |
 | `@std/io.ms` | `Files`, `File`, `ReadStream`, `WriteStream`, `IoError`, `stdin`, `stdout`, `stderr`, `files` |
@@ -34,7 +34,7 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 ```manuscript
 import Result from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
-import parallel from "@std/tasks.ms"
+import TaskGroup from "@std/tasks.ms"
 ```
 
 Imports establish stable nominal identities independent of the application. Imported names follow ordinary collision and shadowing rules; unimported standard names are not reserved. A local declaration with the same spelling never acquires standard operators, cleanup recognition, callback checks, or native members.
@@ -45,12 +45,12 @@ The [general-purpose package guide](../packages/_index.md) documents additional 
 
 Some library identities need compiler support while remaining explicit exports:
 
-- Ordinary bracket literals require the canonical `List` import in the module. The `tasks` literal of the imported `parallel` binding is a positional pack and does not require `List`.
+- Bracket literals require the canonical `List` import and retain homogeneous element typing.
 - A `d`-suffixed literal requires the canonical `Decimal` import. Decimal arithmetic and interpolation keep their specified behavior.
 - `Optional` and `Result` are standard alternatives with ordinary case lookup. Optional also provides [presence checks and extraction methods](../../core-language/types/optionals.md#checking-and-extracting-values). `try` recognizes the canonical Result identity; a user-defined alternative named Result does not qualify.
 - `for`, collection derivation, and guarded layout recognize the standard collection identities. `MapEntry` is an exported record; map iteration can infer it without importing its name.
 - `with` recognizes the canonical Closeable implementation, or an operation contract declaring the exact close signature. A module writing `impl Closeable` or a Closeable bound imports that name; using an already-typed resource does not require an otherwise unused import.
-- Runtime API special checks attach to the resolved standard callee. A user-defined `parallel` is an ordinary function and never receives pack rules.
+- Native runtime behavior attaches to resolved standard identities; application declarations with the same spelling remain ordinary source declarations.
 
 A missing or substituted List/Decimal import rejects the corresponding literal during resolution/type checking. Inferred library values may be matched, traversed, or used through their declared members without importing every type in their public signatures. Naming such a type or using its unqualified expression constructors requires its own import. Primitive receiver members in the [data API](../data-and-io/operations.md) are fixed standard bindings and can likewise produce inferred library values; they add no ambient type names. Importing a type supplies its declaration; imported host accessor functions return services from the current execution.
 
@@ -65,23 +65,26 @@ These lines specify bindings rather than complete source modules. `check_cancell
 
 ## Joined concurrency
 
-All concurrency names are explicit library exports. The call below requires the `parallel` import from `@std/tasks.ms`; no concurrency operation, error type, work identity, or service expands the intrinsic type/bound list. Every concurrency name, including `check_cancelled` and `OperationId`, is exported by `@std/tasks.ms`. Timeouts and scheduling are implemented by library/runtime bindings.
+`TaskGroup` and `Task[T]` are explicit exports of `@std/tasks.ms`. Their ordinary source declarations define the complete type relationship:
 
-`parallel` requires `tasks` and permits only the optional named argument `timeout: Optional[Duration]`. Omission means no added limit; an inherited deadline still applies. Negative timeouts fault. Zero-timeout, stop, join, and outcome rules follow [joining outcomes](../../concurrency/joining.md#group-lifecycle).
+```manuscript
+type TaskGroup:
+    timeout: Optional[Duration] = none
+    fn start[T](operation: fn() -> T) -> Task[T]
+    fn join() -> Result[Unit, ExecutionError]
+    fn close() -> Unit
 
-`tasks` must be a bracket literal, optionally grouped in parentheses. Each position must independently resolve to a zero-parameter function `fn() -> Ri`. The binding produces `Result[Pack[R1, …, Rn], ExecutionError]`. Here `Pack` is compiler notation, with no source type-name spelling or source constructor. Existing lists are rejected.
+type Task[T]:
+    fn join() -> Result[T, ExecutionError]
+```
 
-Standard concurrency callbacks are ordinary function values. Parameters, fields, collections, and generic forwarding preserve their call behavior. Operations may return functions or services; resource lifetime remains governed by explicit cleanup.
+`start` infers `T` from an independently typed zero-argument callback. Task values may appear in annotations, fields, lists, generic arguments, and function signatures. Generic bound methods require explicit specialization when saved as values. TaskGroup constructors and native Task handles cannot be copied through `.clone()`; Task has no source constructor. Neither type supports equality or hashing.
 
-### Function values
+Group joining seals admission and waits for all submitted work. Individual successful joins leave admission open and return cached typed values. Close cancels and joins unfinished work, including through lexical `with`. A group implements the standard Closeable contract. References never reparent work or prolong the group lifetime.
 
-`parallel` requires a direct call because its literal pack determines a heterogeneous result shape. The `Scheduler` constructor also remains a direct constructor call.
+`timeout` is optional and measured from the first submission. Omitted or `none` adds no limit; negative values fault. An empty group joins successfully even with zero timeout. A nonempty zero-timeout group invokes no callback and reports TimedOut. Execution failures and closed unfinished handles are defined in [joining outcomes](../../concurrency/joining.md#group-lifecycle).
 
-`scheduler.start` and HTTP admission methods may be saved or passed to helpers. Source contracts can expose ordinary callback-taking operations, including wrappers around scheduled submission.
-
-### Inferred result packs
-
-A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`. Packs may be passed between operations, but have no equality, hashing, iteration, field access, or indexing. An ordinary generic identity function can preserve a parallel pack without a new source syntax.
+Callbacks preserve their return values, including domain Results, functions, services, and contract views. There is no result flattening or special heterogeneous collection typing. See [task groups](../../concurrency/task-groups.md).
 
 ## Scheduler service
 
@@ -116,7 +119,7 @@ Status eviction never reuses an ID for different work. An ID the service did not
 
 The host's authority roots and stream signatures are defined by [Command-line programs](../packages/cli.md) and [streams](../data-and-io/streams.md). Standard collection, byte, text, numeric, and duration members are defined in [minimum data operations](../data-and-io/operations.md). Source code cannot add implementations or members to intrinsic or standard-library types. Source types may implement standard contracts in their defining module or through [local extensions](../../core-language/types/contracts.md#coherence-and-visibility).
 
-General user type packs and user-defined generic interface operations are unsupported. Ordinary function defaults permit optional source parameters. HTTP server registration follows the [request API](../packages/http.md#request-api).
+User-defined generic interface operations are unsupported. Ordinary function defaults permit optional source parameters. HTTP server registration follows the [request API](../packages/http.md#request-api).
 
 ## Data services and additional host capabilities
 

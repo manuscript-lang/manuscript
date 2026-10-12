@@ -1,6 +1,6 @@
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
-import {Scheduler, StartError, WorkStatus, check_cancelled, yield_now, parallel} from "@std/tasks.ms"
+import {Scheduler, StartError, WorkStatus, check_cancelled, yield_now, TaskGroup} from "@std/tasks.ms"
 import {List, ListBuilder} from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
@@ -56,11 +56,13 @@ test "scheduler delayed cancellation capacity and closed admission":
         error(cause):
             if cause != StartError.Closed: return panic("closed scheduler error")
 
-test "parallel heterogeneous results and cancellation checkpoints":
+test "task group heterogeneous results and cancellation checkpoints":
     check_cancelled()
     yield_now()
-    match parallel(tasks: [first, second]):
-        ok(results):
-            let [number, text] = results
-            if number != 1 or text != "two": return panic("parallel result order")
-        error(_): return panic("parallel failed")
+    with tasks = TaskGroup():
+        let number_task = tasks.start(first)
+        let text_task = tasks.start(second)
+        let completed = value(tasks.join())
+        let number = value(number_task.join())
+        let text = value(text_task.join())
+        if number != 1 or text != "two": return panic("task results changed")
