@@ -46,9 +46,11 @@ Verified: when rebasing standard-library work onto current main, migrate new con
 
 Decision: remove the specialized Result error-mapping helper and keep the documentation focused on ordinary functions and explicit matching. The user's correction rejects extra API machinery for a transformation that existing control flow expresses. Keep `try`'s exact-error-type rule; do not replace the helper with implicit conversions.
 
+Decision: the user rejected both deeply nested Result matches and the elaborate loading examples added to replace them. Keep examples small and focused on the concept being taught. Use compatible `try` calls for a flat success path; do not build contrived domain models or helper layers just to make an example work.
+
 Apply when: adding Result adapters or rewriting examples that combine execution and domain errors.
 Evidence: the user's removal request; [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [parallel example](../documentation/concurrency/parallel.md).
-Verify: examples compile with explicit Result matches, the standard Result module exports only its type, and regenerated API references agree with its declarations.
+Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. The standard Result module exports only its type, and regenerated API references agree with its declarations.
 
 ### Equality and hashing are source interfaces
 

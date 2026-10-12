@@ -80,7 +80,7 @@ The remaining problems sit where the language meets the runtime. Several load-be
 **Counterexample.** Wrap `parallel.md:12-21` verbatim in `fn load(...) -> Result[Summary, LoadError]`. Whatever `LoadError` is, at least two of the three `try` sites fail. No return type accepts the canonical example.
 
 **Resolution** (keeps the exact-`E` rule)
-1. Use ordinary `match` branches to handle each Result and construct the application error explicitly, as in the complete [parallel example](../concurrency/parallel.md).
+1. Use ordinary `match` branches to handle each Result and construct the application error explicitly.
 2. Put direct `try` examples inside functions whose error type matches the operation.
 3. Use a helper that returns `Result` for concurrency tests, then match its result in the Unit test.
 

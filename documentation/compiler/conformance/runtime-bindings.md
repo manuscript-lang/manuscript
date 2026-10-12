@@ -124,7 +124,7 @@ test "explicit error conversion":
         return panic(message: "check failed")
 ```
 
-Accept the complete `load` module in [parallel](../../concurrency/parallel.md) too. Replace any Result match with direct `try` under LoadError and reject the incompatible error type. Moving the probe's `try parallel` directly into the Unit test is rejected. Changing the copied pack pattern to `[number]` is rejected for arity. Passing an existing list as tasks is rejected; qualifying or annotating a source type `Pack` is an unknown-name rejection. `parallel(tasks: [])` can be matched and its success destructured as `[]`.
+Accept the `combine` example in [parallel](../../concurrency/parallel.md) too. Change its return type to `Result[String, String]` and reject the incompatible error type at `try parallel`. Moving the probe's `try parallel` directly into the Unit test is rejected. Changing the copied pack pattern to `[number]` is rejected for arity. Passing an existing list as tasks is rejected; qualifying or annotating a source type `Pack` is an unknown-name rejection. `parallel(tasks: [])` can be matched and its success destructured as `[]`.
 
 For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn(id: Int) -> Int`. Reject start operations returning Int or plain Unit; accept only `fn() -> Result[Unit, String]`. Use controlled reporter fixtures to verify String errors, crashes, status expiry, bounded overflow fallback, and reporter-fault fallback without recursive reporting.
 
