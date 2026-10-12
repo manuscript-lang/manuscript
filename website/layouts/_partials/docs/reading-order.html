@@ -1,0 +1,21 @@
+{{ $scratch := newScratch }}
+{{ $site := . }}
+{{ range .Data.navigation.groups }}
+  {{ range .paths }}
+    {{ with $site.GetPage . }}
+      {{ template "docs-reading-order" (dict "Page" . "Scratch" $scratch) }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+{{ return $scratch.Get "pages" }}
+
+{{ define "docs-reading-order" }}
+  {{ if and .Page.Content (not .Page.Params.bookHidden) }}
+    {{ .Scratch.Add "pages" (slice .Page) }}
+  {{ end }}
+  {{ if .Page.IsSection }}
+    {{ range partial "docs/navigation-children" .Page }}
+      {{ template "docs-reading-order" (dict "Page" . "Scratch" $.Scratch) }}
+    {{ end }}
+  {{ end }}
+{{ end }}

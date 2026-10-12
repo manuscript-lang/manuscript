@@ -1,11 +1,9 @@
 +++
 title = "Diagrams and traces"
-weight = 112
+weight = 5
 +++
 
 # Diagrams and traces
-
-[Guide index](../_index.md) · [Design index](../../_index.md)
 
 Diagrams show relationships derived from checked source: which functions call each other, where work runs concurrently, and what changes across revisions. Execution traces add what actually happened during a run.
 

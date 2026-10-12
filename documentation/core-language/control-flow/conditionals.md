@@ -1,11 +1,9 @@
 +++
 title = "Conditionals"
-weight = 24
+weight = 1
 +++
 
 # Conditionals
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use `if` to run a block when a Boolean condition is true. Add `else` to run a different block when it is false. Only the selected branch runs.
 
@@ -64,5 +62,3 @@ The early `return` exits the function on the negative path. The final return run
 Every binding is initialized at declaration. To select a value for use after the conditional, initialize an outer `var` and assign to it in the branches. Branch-local names stay inside their branch. See [bindings](../basics/bindings.md).
 
 Use [pattern matching](pattern-matching.md) when the decision depends on which case of an alternative value is present.
-
-[Previous: Function values and closures](../functions/function-values-and-closures.md) · [Next: Loops](loops.md)

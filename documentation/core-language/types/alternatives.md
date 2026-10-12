@@ -1,11 +1,9 @@
 +++
 title = "Alternatives"
-weight = 13
+weight = 2
 +++
 
 # Alternatives
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use an alternative type when a value can be one of several declared cases. For example, a payment can be paid, declined, or pending. Each case may carry its own data, such as a receipt or a reason.
 
@@ -67,6 +65,4 @@ There is no general implicit union construction or nullable reference type. Decl
 
 ## Resource payloads
 
-Payloads retain ordinary values and references. Matching or extracting a resource reference does not invalidate the original value, register cleanup, or extend its open lifetime. See [aggregate references](../../ownership-and-cleanup/values/aggregates.md).
-
-[Previous: Records and nominal types](records.md) · [Next: Optional values](optionals.md)
+Payloads retain ordinary values and references. Matching or extracting a resource reference does not invalidate the original value, register cleanup, or extend its open lifetime. See [references inside other values](references.md).

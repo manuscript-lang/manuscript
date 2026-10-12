@@ -1,0 +1,28 @@
+{{ $pages := partialCached "docs/reading-order" .Site }}
+{{ $current := . }}
+{{ range $index, $page := $pages }}
+  {{ if eq $page $current }}
+  <div class="flex flex-wrap justify-between">
+    <span>
+      {{ if gt $index 0 }}
+        {{ with index $pages (sub $index 1) }}
+        <a href="{{ .RelPermalink }}" class="flex align-center" rel="prev">
+          <img src="{{ partial "docs/icon" "backward" }}" class="book-icon" alt="Previous" />
+          <span>{{ partial "docs/title" . }}</span>
+        </a>
+        {{ end }}
+      {{ end }}
+    </span>
+    <span>
+      {{ if lt $index (sub (len $pages) 1) }}
+        {{ with index $pages (add $index 1) }}
+        <a href="{{ .RelPermalink }}" class="flex align-center" rel="next">
+          <span>{{ partial "docs/title" . }}</span>
+          <img src="{{ partial "docs/icon" "forward" }}" class="book-icon" alt="Next" />
+        </a>
+        {{ end }}
+      {{ end }}
+    </span>
+  </div>
+  {{ end }}
+{{ end }}

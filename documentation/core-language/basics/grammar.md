@@ -1,11 +1,9 @@
 +++
 title = "Source grammar"
-weight = 10.5
+weight = 6
 +++
 
 # Source grammar
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 This page is the exact syntax reference. Use it to check how a declaration, expression, block, or pattern must be written. If you are learning the language, read [source structure](syntax.md) and the practical concept pages first.
 
@@ -145,7 +143,7 @@ Every parameter used in the interface or method signatures must occur in the nom
 
 Value types have no intersection/refinement syntax. `&` is used only to combine generic bounds, such as `T: Read & Closeable`; bound order does not affect the requirements. `Synchronized[T]` and `SynchronizedGuard[T]` are ordinary imported types, and lock scopes use existing `with` syntax.
 
-There are no module-level executable statements or `let`/`var` bindings. Functions and tests contain executable code. A snippet showing local bindings without an enclosing function is a body fragment, not a complete `.ms` module. Type paths do not introduce wildcard/namespace imports or make a private type accessible; resolution follows [module rules](../../modules-and-capabilities/modules/declarations.md).
+There are no module-level executable statements or `let`/`var` bindings. Functions and tests contain executable code. A snippet showing local bindings without an enclosing function is a body fragment, not a complete `.ms` module. Type paths do not introduce wildcard/namespace imports or make a private type accessible; resolution follows [module rules](../modules/declarations.md).
 
 ## Statements and patterns
 
@@ -194,7 +192,7 @@ fn positive(value: Int) -> Bool:
 
 `else if` is two words; `elif` is not syntax. Alternative match patterns use exact positional case payloads, not constructor argument labels. On a contract view, the same pattern syntax names a complete concrete record or alternative type and exactly one receiver binding; a final wildcard is required. Their exhaustiveness, wildcard position, and binding checks are in [pattern matching](../control-flow/pattern-matching.md). `if`, `match`, loops, and `with` are statements, not value-producing expressions. Local type/implementation/import/test declarations are not accepted. Nested named function declarations are rejected; bind an anonymous function to a local name instead.
 
-The existing [with construct](../../ownership-and-cleanup/cleanup/scopes.md) supplies its cleanup contract. This grammar does not define a move, borrow, consuming function kind, spawn keyword, or deferred-call construct. Runtime APIs are checked according to their own declarations and may impose more constraints on otherwise ordinary calls and list literals.
+The existing [with construct](../cleanup/scopes.md) supplies its cleanup contract. This grammar does not define a move, borrow, consuming function kind, spawn keyword, or deferred-call construct. Runtime APIs are checked according to their own declarations and may impose more constraints on otherwise ordinary calls and list literals.
 
 ## Rejected forms
 

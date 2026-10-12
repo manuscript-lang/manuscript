@@ -1,11 +1,9 @@
 +++
 title = "Type compatibility and expected types"
-weight = 19
+weight = 10
 +++
 
 # Type compatibility and expected types
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 The type you provide must match the type required at that position. This applies to variable annotations, assignments, arguments, returns, fields, and collection elements. For example, an `Int` cannot silently become a `Float`, and two records do not become interchangeable just because their fields match.
 
@@ -23,7 +21,7 @@ An expression of type `Never` cannot produce a value, so it can appear where any
 
 Caller-written argument order affects evaluation without changing function identity. A generic bound grants properties, not subtyping. Shared/plain arguments remain distinct during inference; `List[Contract]` fails its element bound, while `List[Contract]` may satisfy it.
 
-Type positions use [ordinary name resolution](../../modules-and-capabilities/modules/declarations.md#names-and-declaration-order). A value shadowing a type name causes an error, not a second lookup in a hidden namespace. Unqualified cases follow [alternative lookup](alternatives.md#construction-and-identity); expected types cannot override a lexical binding or choose an ambiguous case.
+Type positions use [ordinary name resolution](../modules/declarations.md#names-and-declaration-order). A value shadowing a type name causes an error, not a second lookup in a hidden namespace. Unqualified cases follow [alternative lookup](alternatives.md#construction-and-identity); expected types cannot override a lexical binding or choose an ambiguous case.
 
 `Equal` and `Hashable` are [standard interfaces](equality-and-hashing.md) and can be used as bounds or explicit interface views. Value types have no intersection/refinement syntax; conjunction is available only for generic bounds.
 
@@ -36,7 +34,7 @@ let exact: fn(value: Int) -> Int = identity
 let relabeled: fn(amount: Int) -> Int = identity
 ```
 
-There are no implicit numeric conversions, optional wrapping/unwrapping, result wrapping, structural record conversions, unions, or nullable references. An integer literal has type `Int` even under an expected `Float`; use the [explicit conversion API](../../standard-library/data-and-io/operations.md#numeric-and-time-conversion). The type checker does not choose an arbitrary common type for incompatible values.
+There are no implicit numeric conversions, optional wrapping/unwrapping, result wrapping, structural record conversions, unions, or nullable references. An integer literal has type `Int` even under an expected `Float`; use the [explicit conversion API](../basics/numbers-and-booleans.md#numeric-conversion). The type checker does not choose an arbitrary common type for incompatible values.
 
 ## Propagating context
 
@@ -90,8 +88,6 @@ Generic function inference uses supplied argument types only, as specified in [g
 
 ## Validation boundaries
 
-Every declaration's referenced types must resolve and every application must satisfy arity and bounds. Generic bodies are checked under declared bounds. Public signatures satisfy [public type visibility](records.md#public-data-surfaces), and recursive concrete layouts satisfy [guarded recursion](records.md#recursive-data). These checks precede lowering and do not rely on Go's structural interfaces or implicit assignments.
+Every declaration's referenced types must resolve and every application must satisfy arity and bounds. Generic bodies are checked under declared bounds. Public signatures satisfy [public type visibility](records.md#public-data-surfaces), and recursive concrete layouts satisfy [guarded recursion](records.md#recursive-data). These checks happen before native code is generated.
 
 Runtime cancellation and resource closed-state errors do not alter static assignability. Their separate contracts remain governed by the existing runtime and reference chapters.
-
-[Previous: Generics and bounds](generics.md) · [Next: Declarations and calls](../functions/declarations-and-calls.md)

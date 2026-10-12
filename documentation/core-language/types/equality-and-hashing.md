@@ -1,11 +1,9 @@
 +++
 title = "Equality and hashing"
-weight = 16
+weight = 8
 +++
 
 # Equality and hashing
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 `Equal` means **values of this type can be compared with `==` and `!=`**. For example, two strings are equal when they contain the same text. By default, two records of the same type are equal when all their fields are equal; they do not need to be the same object.
 
@@ -65,5 +63,3 @@ These implementations apply to equality operators, collection searches, and key 
 For Hashable values, equality must be reflexive, symmetric, and transitive, and equal values must produce equal hashes. Unequal values may collide; equality resolves collisions. Hashes are implementation-dependent lookup aids, not stable IDs or a serialization format.
 
 Keep a stored key's equality and hash behavior unchanged. Remove it before mutating its identity and reinsert afterward. `.clone()` copies outer storage while nested references remain shared. Equality and hash functions should be deterministic and must not depend on authority, resource open state, or wall-clock time.
-
-[Previous: Collections](collections.md) · [Next: Operation contracts](contracts.md)

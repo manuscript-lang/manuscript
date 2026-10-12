@@ -1,11 +1,9 @@
 +++
 title = "Loops"
-weight = 25
+weight = 2
 +++
 
 # Loops
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use `for` / `in` to visit the values in a collection. Use `while` to repeat work while a Boolean condition is true. Inside either loop, `break` ends the loop and `continue` moves to the next iteration.
 
@@ -66,10 +64,8 @@ A `while` reevaluates its condition before every iteration, including after `con
 
 `break` and `continue` select the nearest enclosing loop within the same function body. They have no labels or arguments and are rejected outside a loop. An anonymous function inside a loop cannot break or continue that enclosing loop. `return` exits the current function, including when it appears in a loop body. Unreachable loop-control statements still need a valid enclosing loop.
 
-`break`, `continue`, and `return` leave different control-flow paths, but each runs cleanup for the scopes it exits. Each loop iteration has its own scope. Resources registered with `with` in an iteration close when that iteration exits. A plain `let` declaration does not register cleanup. See [lexical cleanup](../../ownership-and-cleanup/cleanup/_index.md) for the cleanup order and fault rules.
+`break`, `continue`, and `return` leave different control-flow paths, but each runs cleanup for the scopes it exits. Each loop iteration has its own scope. Resources registered with `with` in an iteration close when that iteration exits. A plain `let` declaration does not register cleanup. See [lexical cleanup](../cleanup/_index.md) for the cleanup order and fault rules.
 
 ## Cancellation
 
 Each loop back-edge is a cancellation checkpoint, so CPU-bound loops respond promptly to cancellation without explicit calls. See [propagation and checkpoints](../../concurrency/cancellation.md#propagation-and-checkpoints) for all runtime checkpoints.
-
-[Previous: Conditionals](conditionals.md) · [Next: Pattern matching](pattern-matching.md)

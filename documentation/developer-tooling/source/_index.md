@@ -1,14 +1,14 @@
 +++
 title = "Source tools"
-weight = 108
+weight = 3
 +++
 
 # Source tools
 
-[Guide index](../_index.md) · [Design index](../../_index.md)
+Format source, read diagnostics, and inspect the external behavior of checked functions.
 
-Source tools help you keep code consistently formatted and understand errors. The structural-editing design also describes how tools can propose an edit against a specific source revision.
+1. [Formatting](formatting.md)
+2. [Diagnostics](diagnostics.md)
+3. [Understanding effects](effects.md)
 
-- [Canonical formatting and generated views](formatting.md)
-- [Structural edits and revision guards](structural-editing.md)
-- [Readable and structured diagnostics](diagnostics.md)
+The [source-editing design](structural-editing.md) describes planned revision guards for proposed edits.

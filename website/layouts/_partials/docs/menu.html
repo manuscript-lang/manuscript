@@ -2,7 +2,7 @@
   {{ partial "docs/search" . }}
   <a href="{{ .Site.Home.RelPermalink }}" class="nav-overview{{ if .IsHome }} active{{ end }}" {{ if .IsHome }}aria-current="page"{{ end }}><span aria-hidden="true">⌂</span> Overview</a>
   {{ $current := . }}
-  {{ range slice (dict "label" "Start here" "paths" (slice "getting-started" "learn" "glossary")) (dict "label" "Language & library" "paths" (slice "core-language" "standard-library" "ownership-and-cleanup" "concurrency" "modules-and-capabilities")) (dict "label" "Under the hood" "paths" (slice "compiler" "developer-tooling" "reviews")) }}
+  {{ range .Site.Data.navigation.groups }}
   <div class="nav-group">
     <p class="nav-label">{{ .label }}</p>
     {{ range .paths }}

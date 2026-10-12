@@ -1,11 +1,11 @@
 +++
-title = "Module reference"
+title = "API reference"
 weight = 2
 +++
 
-# Standard library module reference
+# Standard library API reference
 
-Generated from the bundled standard-library declarations. This is the implemented API; the design guides explain semantics and planned extensions. Declaration excerpts omit implementation bodies.
+Look up types, functions, and import paths in the bundled standard library. These declarations are generated from source and omit implementation bodies.
 
 [Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)
 

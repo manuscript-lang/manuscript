@@ -26,7 +26,7 @@ its suite indentation too.
 Verified: Go omits recorded linker flags from build information when `-trimpath` is enabled. Check symbol/DWARF sections and executable size to verify stripping, rather than treating a missing recorded `-ldflags` value as a build failure. Both Debug and optimized RelWithDebInfo retain local source paths, so both need source-root-sensitive cache identities.
 
 Apply when: changing native optimization, symbol settings, or build caches.
-Evidence: [build level contract](../documentation/compiler/builds/build-levels.md), [native flags](../pkg/compiler/build_type.go), [cache identity](../pkg/compiler/cache.go), and [native artifact checks](../pkg/compiler/build_type_test.go).
+Evidence: [build level contract](../documentation/developer-tooling/builds/build-levels.md), [native flags](../pkg/compiler/build_type.go), [cache identity](../pkg/compiler/cache.go), and [native artifact checks](../pkg/compiler/build_type_test.go).
 Verify: build all four levels, execute and restore each artifact, check native optimization settings and debug sections, and compare stripped sizes with RelWithDebInfo.
 
 ### Repository cleanup must remove duplicated work and layers
@@ -86,23 +86,23 @@ Evidence: [source-definition request](codex://threads/01a12ce1-c9ff-70e4-bb2c-51
 Evidence for continued navigation: [standard loader](../pkg/checker/standard.go), [virtual document analysis](../pkg/tooling/lsp/analysis.go), [navigation regression tests](../pkg/tooling/lsp/features_test.go), [read-only session test](../pkg/tooling/lsp/server_test.go), and [client restart test](../extensions/vscode/tests/extension.test.js).
 Verify: native calling signatures agree with the declarations, editor definitions reach the declaration and can follow imports and signature types from there, and generated references pass the existing freshness check. Update the source or generator when output changes.
 
-Decision: the string utility module is `@std/string.ms`, matching the intrinsic `String` type. The user requested this spelling when expanding built-in parity. Receiver operations need no module import; standalone string functions use this canonical module. Evidence: [declarations](../pkg/stdlib/string.ms), [native bindings](../pkg/stdlib/bindings.json), and [data package guide](../documentation/standard-library/packages/data.md). When renaming a module, verify imports, native dispatch identities, virtual editor documents, and generated reference paths together.
+Decision: the string utility module is `@std/string.ms`, matching the intrinsic `String` type. The user requested this spelling when expanding built-in parity. Receiver operations need no module import; standalone string functions use this canonical module. Evidence: [declarations](../pkg/stdlib/string.ms), [native bindings](../pkg/stdlib/bindings.json), and [data package guide](../documentation/standard-library/data.md). When renaming a module, verify imports, native dispatch identities, virtual editor documents, and generated reference paths together.
 
 ### Keep CLI and HTTP documentation with their packages
 
 Decision: the user explicitly removed the “Application hosts” section. CLI entry/accessor/shutdown contracts belong in the CLI package guide, and HTTP request/shutdown contracts belong in the HTTP package guide. Do not recreate a separate host category in the standard-library navigation.
 
 Apply when: organizing the standard-library guide or adding application-entry documentation.
-Evidence: [standard-library navigation](../documentation/standard-library/_index.md), [CLI guide](../documentation/standard-library/packages/cli.md), and [HTTP guide](../documentation/standard-library/packages/http.md).
+Evidence: [standard-library navigation](../documentation/standard-library/_index.md), [CLI guide](../documentation/standard-library/cli.md), and [HTTP guide](../documentation/standard-library/http.md).
 Verify: build the book with destination cleanup and confirm there is no standard-library/hosts route or sidebar section; existing entry and request links resolve to package pages.
 
 ### Teach a runnable path before formal reference
 
-Decision: public documentation should focus on Manuscript and what readers can build, without introductions framed around other languages. Use practical, example-first progression through variables, collections, functions, types, errors, and modules; keep indexes short and link to the exact rules. Clearly separate intentional rejection examples from the usual runnable path. Simplify the reading path, explain one concept at a time, and give each exact rule one home. A basic destructuring example should not require the reader to understand task-group work and error propagation. The docs revamp requested simpler explanations without losing precise semantics.
+Decision: public documentation should focus on Manuscript and what readers can build. Remove comparisons with other languages, coverage maps, implementation inventories, and review bookkeeping. Keep one getting-started guide; modules, references, and cleanup belong in the language reference, application builds in developer tools, and compiler internals in contributor documentation. Use clear topic names and keep the sidebar, overview, and reading order consistent. Teach basics, functions, types, control flow, errors, modules, and resource management before library services and concurrent work. Library topics should be directly reachable; group scheduling, sharing, synchronization, and queues with concurrent work. State availability and limits beside the affected feature. Use practical, example-first progression through variables, collections, functions, types, errors, and modules; keep indexes short and link to exact rules. Clearly separate intentional rejection examples from the usual runnable path. A basic destructuring example should not require task-group work and error propagation.
 
 Apply when: adding tutorials, revising design chapters, or explaining new syntax.
 Evidence: [documentation simplification discussion](codex://threads/01a12bf3-438d-7c72-a846-7443cea58e3a); [clarity and duplication request](codex://threads/01a12ae0-579b-7890-89d4-c0091474a2f5); [learn index](../documentation/learn/_index.md).
-Verify: run the displayed source and commands with the stated prerequisites; check that the reading path introduces dependencies before using them. Build the book with its current strict checks and link to canonical rules instead of repeating them.
+Verify: run the displayed source and commands with the stated prerequisites; check that the reading path introduces dependencies before using them. Sidebar and previous/next links use the same [navigation order](../website/data/navigation.toml); the [publication checks](../tests/docs/publication.test.cjs) compare their rendered order. Build the book with its current strict checks and link to canonical rules instead of repeating them.
 
 Verified: a `manuscript-example` annotation alone does not put a chapter into the executable example suite. The harness discovers introductory tutorials and explicitly listed guides; the logging guide needed an inventory entry before its annotated stdout example was checked or run. See [the example inventory](../tests/examples/examples_test.go) and [the logging example](../documentation/standard-library/packages/tooling.md). When adding complete examples outside the introductory chapters, confirm that their file appears in the harness and run its named subtest with `MANUSCRIPT_EXAMPLES_NATIVE=1`.
 
@@ -111,7 +111,7 @@ Verified: a `manuscript-example` annotation alone does not put a chapter into th
 Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
 
 Apply when: adding CLI tooling or making claims about installation requirements.
-Evidence: [ms doc request](codex://threads/01a12d4a-0182-7672-aa00-53f2bdfde033); [native build contract](../documentation/compiler/builds/reproducibility.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
+Evidence: [ms doc request](codex://threads/01a12d4a-0182-7672-aa00-53f2bdfde033); [native build contract](../documentation/developer-tooling/builds/reproducibility.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
 Verify: exercise a copied binary outside the checkout with empty caches, no Go on PATH, and package downloads disabled. Include ordinary/debug builds and profiling so the reduced payload covers emitted runtime references. Confirm actual external prerequisites for tools such as Delve separately; do not generalize one command's prerequisites to all tooling.
 
 ### Polish the documentation design without expanding its prose
@@ -143,7 +143,7 @@ Verify: regenerate both reference sources and the website with destination clean
 ### Standalone runtime imports share one alias namespace
 
 Verified: native builds keep the embedded runtime in its own package; merging it into the application forced Go to recompile host services after every source edit. Release `-trimpath` allows package-cache reuse across temporary build directories. Keep single-file merging confined to `emit`. A separately compiled runtime also changes Delve type names, so debugger watches use Delve's `.(data)` rather than hard-coded `main.Record` assertions.
-Evidence: [native assembly](../pkg/compiler/build.go), [cache boundaries](../documentation/compiler/builds/incremental-compilation.md), [standalone artifact invalidation](../tests/e2e/run_cache_test.go), and [native debugger checks](../extensions/vscode/tests/debug-adapter.test.js).
+Evidence: [native assembly](../pkg/compiler/build.go), [cache boundaries](../documentation/developer-tooling/builds/incremental-compilation.md), [standalone artifact invalidation](../tests/e2e/run_cache_test.go), and [native debugger checks](../extensions/vscode/tests/debug-adapter.test.js).
 Verify: run native conformance and the native DAP test; compare both unchanged runs and edited-source builds with warm Go caches. Unchanged runs exercise executable caching and do not establish runtime package reuse after edits.
 
 Verified: standalone generation merges runtime declarations and deduplicates imports by import path. Inconsistent aliases for the same Go package can pass ordinary runtime package compilation while breaking every emitted application. Platform helper packages also need inclusion in the standalone dependency bundle; embedding the main runtime sources alone does not carry imported repository packages.

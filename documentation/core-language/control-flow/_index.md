@@ -1,11 +1,9 @@
 +++
 title = "Control flow"
-weight = 23
+weight = 4
 +++
 
 # Control flow
-
-[Core language guide](../_index.md) · [Design index](../../_index.md)
 
 Use `if` for a Boolean decision, `match` for the cases of an alternative, and loops for repeated work. Leaving a block also runs any cleanup registered in that block.
 

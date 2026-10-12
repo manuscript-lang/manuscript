@@ -1,11 +1,9 @@
 +++
-title = "Canonical formatting and generated views"
-weight = 109
+title = "Formatting"
+weight = 1
 +++
 
-# Canonical formatting and generated views
-
-[Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
+# Formatting
 
 The source file defines the program. The formatter gives it a consistent layout, and tools can regenerate diagrams and explanations from it.
 
@@ -37,6 +35,4 @@ Golden-output and token-equivalence tests verify these choices. A valid rewrite 
 
 Compilation and task creation never invoke AI implicitly. Model output enters through an explicit capability call and validation. A generated explanation cannot change compilation behavior or replace a source edit.
 
-See [source layout](../../core-language/basics/syntax.md) and [capability inputs](../../modules-and-capabilities/capabilities/authority.md).
-
-[Next: Structural edits and revision guards](structural-editing.md)
+See [source layout](../../core-language/basics/syntax.md) and [capability inputs](../../standard-library/services.md).

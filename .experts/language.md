@@ -61,7 +61,7 @@ Evidence: [equality rules](../documentation/core-language/types/equality-and-has
 Verify: two keys with equal IDs and different labels compare equal and occupy one map entry; an equality override without a hash is rejected as a map key. Keep local implementation selection when forwarding generic arguments.
 
 Decision: all values may be passed freely; shared mutable state uses Synchronized, and closures have ordinary captures. This remains independent of equality, hashing, cleanup, and work lifetime.
-Evidence: [sharing rules](../documentation/ownership-and-cleanup/values/sharing.md).
+Evidence: [sharing rules](../documentation/concurrency/sharing.md).
 
 ### Syntax improvements need examples across their boundaries
 
@@ -104,7 +104,7 @@ Verify: the counter's Unit-returning method updates `self.val`; aliases observe 
 Decision: applications export `fn main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
-Evidence: [CLI contract](../documentation/standard-library/packages/cli.md), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
+Evidence: [CLI contract](../documentation/standard-library/cli.md), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.
 
 ### Keep short bodies available without a second function kind
