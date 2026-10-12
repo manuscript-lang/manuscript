@@ -10,7 +10,7 @@ func TestBuilderSealAndSnapshot(t *testing.T) {
 	root := RootExecution()
 	builder := newBuilder("@std/ListBuilder[Int]")
 	Invoke(root, builder.Operation("append"), []Argument{{"value", int64(1)}})
-	snapshot := Invoke(root, builder.Operation("freeze"), nil).(List)
+	snapshot := Invoke(root, builder.Operation("freeze"), nil).(*List)
 	failure := recovered(func() { Invoke(root, builder.Operation("append"), []Argument{{"value", int64(2)}}) })
 	if _, ok := failure.(Fault); !ok || len(snapshot.Items) != 1 {
 		t.Fatal("sealed builder mutation changed snapshot")
@@ -33,7 +33,7 @@ func (p *leasedProbe) Operation(name string) Function {
 func TestPoolCloseCancelsAndJoinsLeaseOperations(t *testing.T) {
 	root := RootExecution()
 	probe := &leasedProbe{make(chan struct{}), make(chan struct{})}
-	pool := newPool("@std/Pool[Test]", List{Items: []Value{ViewOf("Test", probe)}})
+	pool := newPool("@std/Pool[Test]", &List{Items: []Value{ViewOf("Test", probe)}})
 	lease := Invoke(root, pool.Operation("acquire"), nil).(Alternative).Fields[0].(*Lease)
 	alias := Invoke(root, lease.Operation("get"), nil).(Alternative).Fields[0]
 	ended := make(chan any, 1)
@@ -60,7 +60,7 @@ func TestPoolCloseCancelsAndJoinsLeaseOperations(t *testing.T) {
 func TestPoolConcurrentReleaseReturnsOneResource(t *testing.T) {
 	root := RootExecution()
 	probe := &leasedProbe{make(chan struct{}), make(chan struct{})}
-	pool := newPool("@std/Pool[Test]", List{Items: []Value{ViewOf("Test", probe)}})
+	pool := newPool("@std/Pool[Test]", &List{Items: []Value{ViewOf("Test", probe)}})
 	lease := Invoke(root, pool.Operation("acquire"), nil).(Alternative).Fields[0].(*Lease)
 	var wait sync.WaitGroup
 	for i := 0; i < 20; i++ {

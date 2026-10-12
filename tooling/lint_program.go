@@ -94,6 +94,7 @@ func LintProgram(program *checker.Program) []LintFinding {
 				for _, arm := range s.Arms {
 					body(arm.Body)
 				}
+				expression(s.Target)
 				expression(s.Value)
 			}
 		}

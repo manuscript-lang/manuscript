@@ -34,7 +34,20 @@ func libraryFunction(name, result string) (Value, bool) {
 	for i, p := range spec.Params {
 		labels[i] = p.Name
 	}
-	return NewFunction(labels, result, func(ctx *Execution, args []Value) Value { return spec.Body(ctx, result, args) }), true
+	return NewFunction(labels, result, func(ctx *Execution, args []Value) Value { return invokeLibrary(spec, ctx, result, args) }), true
+}
+
+// Callback traversals snapshot membership so callbacks can safely update the
+// original collection. Elements themselves retain their ordinary references.
+func invokeLibrary(spec LibrarySpec, ctx *Execution, result string, args []Value) Value {
+	if spec.Module == "collections" {
+		switch spec.Name {
+		case "map", "filter", "fold", "fold_right", "find", "find_last", "find_index", "find_last_index", "some", "every", "for_each", "flat_map", "group_by", "map_for_each", "set_for_each":
+			args = append([]Value{}, args...)
+			args[0] = Clone(args[0])
+		}
+	}
+	return spec.Body(ctx, result, args)
 }
 func libraryOK(result string, value Value) Value { return Alternative{result, "ok", []Value{value}} }
 func libraryError(result, code, message string) Value {
@@ -53,9 +66,9 @@ func libraryErrorFields(result, code string, fields []Value) Value {
 	errorType := result[start+2 : len(result)-1]
 	return Alternative{result, "error", []Value{Alternative{errorType, code, fields}}}
 }
-func libraryResult(typ, errorType string) string  { return "Result[" + typ + "][" + errorType + "]" }
-func libraryList(typ string, values []Value) List { return List{"@std/List[" + typ + "]", values} }
-func libraryStrings(values []string) List {
+func libraryResult(typ, errorType string) string   { return "Result[" + typ + "][" + errorType + "]" }
+func libraryList(typ string, values []Value) *List { return &List{"@std/List[" + typ + "]", values} }
+func libraryStrings(values []string) *List {
 	items := make([]Value, len(values))
 	for i, s := range values {
 		items[i] = s
@@ -63,7 +76,7 @@ func libraryStrings(values []string) List {
 	return libraryList("String", items)
 }
 func libraryStringValues(v Value) []string {
-	items := v.(List).Items
+	items := v.(*List).Items
 	out := make([]string, len(items))
 	for i, x := range items {
 		out[i] = x.(string)

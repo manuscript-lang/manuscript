@@ -132,10 +132,9 @@ func TestUniversalToStringNavigation(t *testing.T) {
 	if !ok || nav.Definition.File != "@std/intrinsics.ms" || !strings.Contains(nav.Hover, "fn()->String") {
 		t.Fatal("universal method must navigate to its source signature", nav, ok)
 	}
-	for _, effects := range result.Program.Effects {
-		if len(effects) != 0 {
-			t.Fatal("string conversion must not introduce resource effects", effects)
-		}
+	effects := result.Program.Effects[result.Program.Symbols["conversion.ms"]["text"].ID]
+	if len(effects) != 1 || effects[0] != "read" {
+		t.Fatal("string conversion reads mutable data without invoking resources", effects)
 	}
 }
 

@@ -24,7 +24,7 @@ Concurrency APIs accept ordinary function values, including functions passed thr
 
 ## Sharing values and updating state
 
-All values may be shared freely, including functions, interface views, collections, and builders. Records and collection snapshots are immutable; local `var` bindings are snapshotted by closures. Services and builders synchronize their internals. A local mutable `Queue` requires an explicit lock for concurrent access. For a complete shared update, import `Synchronized` from `@std/sync.ms`:
+All values may be shared freely, including functions, interface views, collections, and builders. Records and collections are mutable references; local `var` bindings are snapshotted by closures. Services and builders synchronize their internals. Shared records, collections, and local `Queue` instances require an explicit lock around conflicting access. For a complete shared update, import `Synchronized` from `@std/sync.ms`:
 
 ```manuscript
 import Synchronized from "@std/sync.ms"

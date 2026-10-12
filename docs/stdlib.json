@@ -271,6 +271,7 @@
           ],
           "operations": [
             "at: fn(index: Int)-\u003eOptional[Int]",
+            "clone: fn()-\u003eBytes",
             "concat: fn(values: Bytes)-\u003eBytes",
             "contains: fn(value: Bytes)-\u003eBool",
             "ends_with: fn(value: Bytes)-\u003eBool",
@@ -409,6 +410,7 @@
           "operations": [
             "append: fn(value: T)-\u003eList[T]",
             "at: fn(index: Int)-\u003eOptional[T]",
+            "clone: fn()-\u003eList[T]",
             "concat: fn(values: List[T])-\u003eList[T]",
             "contains: fn(value: T)-\u003eBool",
             "copy_within: fn(target: Int, start: Int, end: Int)-\u003eList[T]",
@@ -468,6 +470,7 @@
           ],
           "operations": [
             "clear: fn()-\u003eMap[T, U]",
+            "clone: fn()-\u003eMap[T, U]",
             "contains: fn(key: T)-\u003eBool",
             "entries: fn()-\u003eList[MapEntry[T, U]]",
             "for_each: fn(operation: fn(key: T, value: U)-\u003eUnit)-\u003eUnit",
@@ -504,6 +507,7 @@
           ],
           "operations": [
             "clear: fn()-\u003eSet[T]",
+            "clone: fn()-\u003eSet[T]",
             "contains: fn(value: T)-\u003eBool",
             "difference: fn(right: Set[T])-\u003eSet[T]",
             "entries: fn()-\u003eList[List[T]]",

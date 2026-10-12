@@ -7,7 +7,7 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 ## Language and checking
 
 - UTF-8 source with original byte positions across BOM/CRLF normalization, ASCII identifiers, exact four-space suites, comments, delimiter continuation, numeric literals, escapes, universal `toString()`, and interpolation of every value.
-- Exact intrinsic types, nominal immutable records and alternatives, `type` records/alternatives, generic types/functions, `interface` operation contracts, explicit implementations with inherited generic parameters and bounds, contract views, signature and argument-label checking, module-local extensions for imported source types and overlap rejection, and universal sharing and structural equality/hashing eligibility.
+- Exact intrinsic types, nominal mutable records and alternatives, typed field assignment and shallow data cloning, `type` records/alternatives, generic types/functions, `interface` operation contracts, explicit implementations with inherited generic parameters and bounds, contract views, signature and argument-label checking, module-local extensions for imported source types and overlap rejection, and universal sharing and structural equality/hashing eligibility.
 - Calls with optional labels for single-parameter functions and mandatory labels for multi-parameter functions and constructors, per-call default argument expressions on source functions and methods, function values, suite closures, snapshot captures, and rejection of captured assignment. All function values may be shared through parameters, results, fields, collections, and generic forwarding.
 - Local inference, contextual constructors, invariant generic applications, bounds, guarded recursive layouts, and finite generic call specialization. Generic inference uses independently typed arguments; an expected result does not supply missing type arguments.
 - Bindings, name assignment, list/record destructuring, branching, loops, exhaustive alternative matching, returns, loop exits, lexical `with`, and exact-error `try` propagation. Return completeness includes `Never` and conservative loop rules.
@@ -21,14 +21,14 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 | Facility | Implemented behavior |
 | --- | --- |
 | Numbers | Checked signed 64-bit integers, IEEE binary64 floats, and 34-digit Decimal arithmetic with ties-to-even rounding and exact literal validation |
-| Immutable data | List, insertion-ordered Map and Set, MapEntry, Bytes, UTF-8 conversion, Optional, and Result |
+| Data values | List, insertion-ordered Map and Set, MapEntry, Bytes, UTF-8 conversion, Optional, and Result |
 | Time | Duration construction/arithmetic, monotonic Clock/Instant domains, sleep, and operation deadlines |
 | Cleanup | Checker-selected contract dispatch, registration of delivered `with` values, reverse lexical release on every exit, shielded cleanup, primary/secondary fault preservation, and removal of completed cleanup actions |
 | Joined work | Heterogeneous literal `parallel` packs, cancellation checkpoints, deadlines, sibling cancellation on faults, and joining before completion |
 | Background | Bounded admission/history, fixed construction parent, cancellation, serialized reporting, bounded diagnostic fallback, optional drain, concurrent idempotent close, and nested-service joining |
 | Queues and synchronization | Local FIFO queues with optional capacity, immediate full/empty results and explicit synchronization for shared use; Synchronized values with cancellable lock acquisition, scoped guards, atomic get/set, stale-alias checks, and reentry detection |
 | Pools and leases | Fixed resource pools, cancellable acquisition, guarded contract views, stale-alias rejection, single capacity return, operation cancellation/joining, and reverse owned-resource release |
-| Builders | Synchronized List/Map/Set/Bytes/String builders, immutable sealed snapshots, idempotent freeze, and rejection of mutation after sealing |
+| Builders | Synchronized List/Map/Set/Bytes/String builders, sealed builder results, idempotent freeze, and rejection of mutation after sealing |
 | CLI capabilities | Explicit Process arguments/environment, streams, read-only files, monotonic clock, network, commands, checked exit codes, signal cancellation, joined shutdown, and host-root cleanup |
 | HTTP | Explicit Network authority; bounded buffered requests/responses, ordinary handlers, admission/body/output limits, timeout/disconnect cancellation, fault isolation, and grace/cancel/join shutdown |
 | Subprocesses | Explicit Commands authority, joined execution, timeout, aggregate output bounds, captured bytes, exit status, and domain errors; process-group cancellation on platforms exposing that facility |

@@ -37,7 +37,7 @@ func libraryArchivePack(ctx *Execution, r string, a []Value) Value {
 	if max < 0 {
 		return libraryError(r, "InvalidInput", "")
 	}
-	entries := a[0].(List).Items
+	entries := a[0].(*List).Items
 	seen := map[string]bool{}
 	for _, v := range entries {
 		CheckCancelled(ctx)

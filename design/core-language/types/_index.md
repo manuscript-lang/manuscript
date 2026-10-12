@@ -11,10 +11,10 @@ Choose a type based on the data you need to represent. Use a record for named fi
 
 | Concept | What you will learn |
 | --- | --- |
-| [Records and nominal types](records.md) | Declare immutable fields and distinguish domain identifiers. |
+| [Records and nominal types](records.md) | Declare mutable fields and distinguish domain identifiers. |
 | [Alternatives](alternatives.md) | Represent a fixed set of possibilities with tagged cases. |
 | [Optional values](optionals.md) | Represent absence explicitly with some and none. |
-| [Collections](collections.md) | Use immutable lists, maps, and sets with eligible elements. |
+| [Collections](collections.md) | Use mutable lists, maps, and sets with explicit shallow copies. |
 | [Equality and hashing](equality-and-hashing.md) | Understand value comparison and key eligibility. |
 | [Operation contracts](contracts.md) | Implement interfaces with concrete or generic blocks and construct explicit contract views. |
 | [Generics and bounds](generics.md) | Apply parameterized types and express required properties. |

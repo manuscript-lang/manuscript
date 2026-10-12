@@ -164,7 +164,7 @@ Accept a function parameter as a parallel callback, a function-bearing record be
 
 Accept stored `Background.start` and HTTP serve methods, and ordinary wrappers forwarding callbacks. A bare `parallel` reference and type constructors remain unavailable as ordinary function values because their construction/pack syntax is not a function signature.
 
-Run `tests/e2e/testdata/accept/synchronized.ms` for complete updates, forwarding, immutable snapshots, builders, fault cleanup, stale guards, and ancestor reentry. Runtime tests must exercise simultaneous increments, cancellation while waiting and holding, concurrent release, access racing with release/reacquisition, undelivered acquisition disposal, and builder freeze racing with mutation. Reject direct Synchronized get/set, guard construction, and equality/hashing of either synchronized type.
+Run `tests/e2e/testdata/accept/synchronized.ms` for complete updates, forwarding, explicit shallow copies, builders, fault cleanup, stale guards, and ancestor reentry. Runtime tests must exercise simultaneous increments, cancellation while waiting and holding, concurrent release, access racing with release/reacquisition, undelivered acquisition disposal, and builder freeze racing with mutation. Reject direct Synchronized get/set, guard construction, and equality/hashing of either synchronized type.
 
 ## Data and numeric outcomes
 

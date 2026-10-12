@@ -37,7 +37,7 @@ func TestRejectSyntax(t *testing.T) {
 		"default function type": "fn f(value: fn(x: Int = 1) -> Int) -> Unit:\n    return\n",
 		"default interface":     "interface F:\n    fn f(value: Int = 1) -> Int\n",
 		"default case":          "type F:\n    case Value(value: Int = 1)\n",
-		"field assignment":      "fn f() -> Unit:\n    value.field = 1\n",
+		"invalid assignment":    "fn f() -> Unit:\n    (1 + 2) = 1\n",
 		"nested named function": "fn f() -> Unit:\n    fn g() -> Unit:\n        return\n",
 		"empty type":            "type Empty:\n",
 		"mixed type":            "type Mixed:\n    value: Int\n    case Ready\n",

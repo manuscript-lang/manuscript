@@ -144,13 +144,13 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	var kind string
 	var args []string
 	switch v := receiver.(type) {
-	case List:
+	case *List:
 		kind = "List"
 		args = typeArguments(v.Type)
-	case Map:
+	case *Map:
 		kind = "Map"
 		args = typeArguments(v.Type)
-	case Set:
+	case *Set:
 		kind = "Set"
 		args = typeArguments(v.Type)
 	case libraryBigInt:
@@ -187,6 +187,6 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 		labels[i] = p.Name
 	}
 	return NewFunction(labels, result, func(ctx *Execution, a []Value) Value {
-		return spec.Body(ctx, result, append([]Value{receiver}, a...))
+		return invokeLibrary(spec, ctx, result, append([]Value{receiver}, a...))
 	}), true
 }

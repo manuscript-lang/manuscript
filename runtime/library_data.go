@@ -104,7 +104,7 @@ func init() {
 	})
 	add("string", "from_scalars", libraryResult("String", "StringError"), []LibraryParam{p("values", "List[Int]")}, func(ctx *Execution, result string, a []Value) Value {
 		var b strings.Builder
-		for i, v := range a[0].(List).Items {
+		for i, v := range a[0].(*List).Items {
 			if i%4096 == 0 {
 				CheckCancelled(ctx)
 			}
@@ -326,24 +326,24 @@ func init() {
 	// Sequential generic collection helpers retain the caller's actual list identity.
 	variable := []LibraryParam{p("T", "")}
 	libraryGeneric("collections", "reverse", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
-		v := a[0].(List)
-		out := append([]Value{}, v.Items...)
+		v := a[0].(*List)
+		out := v.Items
 		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 			out[i], out[j] = out[j], out[i]
 		}
-		return List{v.Type, out}
+		return v
 	})
 	libraryGeneric("collections", "slice", "List[T]", variable, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		v := a[0].(List)
+		v := a[0].(*List)
 		s, e := a[1].(int64), a[2].(int64)
 		librarySlice(len(v.Items), s, e)
-		return List{v.Type, append([]Value{}, v.Items[s:e]...)}
+		return &List{v.Type, append([]Value{}, v.Items[s:e]...)}
 	})
 	add("collections", "sort_ints", "List[Int]", []LibraryParam{p("values", "List[Int]")}, func(_ *Execution, _ string, a []Value) Value {
-		v := a[0].(List)
+		v := a[0].(*List)
 		out := append([]Value{}, v.Items...)
 		sort.SliceStable(out, func(i, j int) bool { return out[i].(int64) < out[j].(int64) })
-		return List{v.Type, out}
+		return &List{v.Type, out}
 	})
 	add("collections", "sort_strings", "List[String]", []LibraryParam{p("values", "List[String]")}, func(_ *Execution, _ string, a []Value) Value {
 		v := libraryStringValues(a[0])

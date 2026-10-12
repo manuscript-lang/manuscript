@@ -413,7 +413,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 	if err != nil {
 		return libraryError(r, "InvalidInput", "")
 	}
-	for _, e := range a[2].(Map).Entries {
+	for _, e := range a[2].(*Map).Entries {
 		name, value := e.Key.(string), e.Value.(string)
 		if !libraryHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") || strings.EqualFold(name, "Content-Length") || strings.EqualFold(name, "Transfer-Encoding") || strings.EqualFold(name, "Host") {
 			return libraryError(r, "InvalidInput", "")
@@ -440,7 +440,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		}
 		return libraryError(r, code, "")
 	}
-	headers := Map{Type: "@std/Map[String][@std/List[String]]"}
+	headers := &Map{Type: "@std/Map[String][@std/List[String]]"}
 	keys := []string{}
 	for k := range response.Header {
 		keys = append(keys, k)

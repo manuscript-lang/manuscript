@@ -9,6 +9,7 @@ export type CollectionError:
     case LimitExceeded
 
 export type List[T]:
+    fn clone() -> List[T]
     fn at(index: Int) -> Optional[T]
     fn contains(value: T) -> Bool
     fn index_of(value: T) -> Optional[Int]
@@ -48,6 +49,7 @@ export type List[T]:
     fn length() -> Int
 
 export type Map[T: Hashable, U]:
+    fn clone() -> Map[T, U]
     fn with_default(key: T, value: U) -> Map[T, U]
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]
     fn clear() -> Map[T, U]
@@ -67,6 +69,7 @@ export type MapEntry[T: Hashable, U]:
     value: U
 
 export type Set[T: Hashable]:
+    fn clone() -> Set[T]
     fn union(right: Set[T]) -> Set[T]
     fn intersection(right: Set[T]) -> Set[T]
     fn difference(right: Set[T]) -> Set[T]

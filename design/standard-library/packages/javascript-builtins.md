@@ -16,7 +16,7 @@ Import `List` for bracket literals. All updates return new values. Callbacks run
 | JavaScript surface | Manuscript equivalent | Contract |
 | --- | --- | --- |
 | `length`, indexed access, `at` | `length()`, `get(index:)`, `at(index:)` | `get` rejects negative indexes; `at` counts from the end; missing values are `Optional` |
-| `concat`, `push`, `unshift` | `concat(values:)`, `append(value:)`, `prepend(value:)` | Immutable updates; concat accepts a homogeneous list |
+| `concat`, `push`, `unshift` | `concat(values:)`, `append(value:)`, `prepend(value:)` | Append/prepend mutate; concat returns a new homogeneous list |
 | `pop`, `shift` | `last()` / `first()` plus `without(index:)` | Retrieval and removal are explicit operations |
 | `includes`, `indexOf`, `lastIndexOf` | `contains(value:)`, `index_of(value:)`, `last_index_of(value:)` | Element type must satisfy `Equal`; missing indexes are `none` |
 | `find`, `findLast`, `findIndex`, `findLastIndex` | `find`, `find_last`, `find_index`, `find_last_index` with `predicate:` | Short-circuit search; reverse search visits from the end |
@@ -28,9 +28,9 @@ Import `List` for bracket literals. All updates return new values. Callbacks run
 | `reverse`, `toReversed` | `reverse()` | Returns a reversed copy |
 | `sort`, `toSorted` | `sorted(compare:)` | Stable, explicit comparator returning negative / zero / positive `Int` |
 | `slice` | `slice(start:, end:)` | Strict half-open bounds; faults for invalid bounds |
-| `splice`, `toSpliced` | `with_values(start:, delete_count:, replacement:)` | Immutable replacement; start/count must describe a valid range |
+| `splice`, `toSpliced` | `with_values(start:, delete_count:, replacement:)` | In-place replacement; clone first to preserve the source; start/count must describe a valid range |
 | `with` | `with_value(index:, value:)` | Negative indexing supported; out-of-range update faults |
-| `fill`, `copyWithin` | `fill(value:, start:, end:)`, `copy_within(target:, start:, end:)` | Immutable copies; strict bounds; overlap-safe copy truncates at the destination end |
+| `fill`, `copyWithin` | `fill(value:, start:, end:)`, `copy_within(target:, start:, end:)` | In-place updates; strict bounds; overlap-safe copy truncates at the destination end |
 | `keys`, `entries`, `values`, iteration | `keys()`, `entries()`, ordinary `for` over the list | Eager lists; entries are `ListEntry(index:, value:)` records |
 | `join` | `List[String].join(separator:)` | Requires strings; formatting other types is explicit |
 | `Array.of`, `Array.from` | bracket literals; `set.values()`, `map.entries()`, `text.scalar_values()` | Construction follows the source type, without dynamic array-like coercion |
@@ -63,17 +63,17 @@ Generic operations in these pinned native declarations do not add generic operat
 
 ## Map and Set
 
-Import `Map` / `Set` when naming or constructing them. Keys and set elements satisfy `Hashable`. Enumeration returns immutable lists in insertion order. Collection equality is independent of insertion order.
+Import `Map` / `Set` when naming or constructing them. Keys and set elements satisfy `Hashable`. Enumeration returns separate lists in insertion order. Collection equality is independent of insertion order.
 
 | JavaScript surface | Manuscript equivalent | Contract |
 | --- | --- | --- |
-| `Map.size`, `get`, `has`, `set`, `delete` | `length`, `get`, `contains`, `with_entry`, `without` | Existing immutable receiver methods; missing lookup is `Optional` |
+| `Map.size`, `get`, `has`, `set`, `delete` | `length`, `get`, `contains`, `with_entry`, `without` | Updates mutate; missing lookup is `Optional` |
 | `Map.clear`, `keys`, `values`, `entries`, `forEach` | `clear`, `keys`, `values`, `entries`, `for_each` | Entries are `MapEntry(key:, value:)`; callback is `fn(key: K, value: V) -> Unit` |
 | `Map.getOrInsert` | `with_default(key:, value:)` followed by `get(key:)` | Returns the updated map; an existing value is preserved |
 | `Map.getOrInsertComputed` | `with_default_from(key:, create:)` followed by `get(key:)` | Callback receives `key:` and runs exactly once if absent |
 | `new Map(entries)`, `Object.fromEntries` | imported `map_from_entries(entries:)` | Duplicate keys keep first insertion position and use last value |
 | Map/object merging | `map.merge(other:)` | Right values replace matching entries in place; new keys append |
-| `Set.size`, `has`, `add`, `delete` | `length`, `contains`, `with_value`, `without` | Existing immutable receiver methods |
+| `Set.size`, `has`, `add`, `delete` | `length`, `contains`, `with_value`, `without` | Insert/delete mutate; length and contains read |
 | `Set.clear`, `values`, `keys`, `entries`, `forEach` | `clear`, `values`, `values`, `entries`, `for_each` | Set keys and values share one spelling; entries contain `[value, value]` |
 | `union`, `intersection`, `difference`, `symmetricDifference` | `union(right:)`, `intersection(right:)`, `difference(right:)`, `symmetric_difference(right:)` | New sets; left traversal order, then right-only values where applicable |
 | `isSubsetOf`, `isSupersetOf`, `isDisjointFrom` | `is_subset_of(right:)`, `is_superset_of(right:)`, `is_disjoint_from(right:)` | Boolean relations; arguments are typed sets |

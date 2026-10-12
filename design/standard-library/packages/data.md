@@ -97,7 +97,7 @@ Text is valid UTF-8. Scalar operations count Unicode code points, rather than by
 
 Byte and collection slices also use half-open ranges. Negative, reversed, or out-of-range bounds produce a programming fault. `values` returns each unsigned byte as an `Int`.
 
-Updates and algorithms return new immutable values. They leave the original values unchanged.
+Collection updates mutate their receiver. Algorithms such as map, filter, slice, and sorted return new values. Use `.clone()` before an update to retain a separate copy; nested references remain shared.
 
 | Operation | Ordering rule |
 | --- | --- |

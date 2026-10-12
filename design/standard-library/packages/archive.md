@@ -47,7 +47,7 @@ Encrypted archives, devices, sparse files, links, and non-UTF-8 names are unsupp
 
 ## Unpacking does not write files
 
-`unpack` returns immutable entries. It performs no filesystem writes and grants no filesystem access. Automatic extraction is future work.
+`unpack` returns separate data entries. It performs no filesystem writes and grants no filesystem access. Automatic extraction is future work.
 
 Bound compressed input reads as well as expanded output. ZIP parses central-directory metadata before checking `max_entries`. TAR uses native header validation; it makes no canonical guarantee about arbitrary trailing padding or metadata.
 

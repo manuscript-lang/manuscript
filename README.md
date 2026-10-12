@@ -237,4 +237,4 @@ reference describes the compiler version bundled with that binary.
 `make docs` also regenerates its page in the design book.
 Standard library types and signatures live in [`stdlib/`](stdlib/README.md) as Manuscript source. Editor adapters can resolve their declarations through the tooling navigation APIs; `ms stdlib <directory>` exports the pinned source documents.
 
-Common JavaScript data operations have immutable, typed equivalents on List, String, Map, Set, Bytes, BigInt, and Regex. See the [JavaScript built-in coverage guide](design/standard-library/packages/javascript-builtins.md) for receiver methods, examples, and remaining gaps.
+Common JavaScript data operations have typed equivalents with mutable collections and explicit shallow cloning on List, String, Map, Set, Bytes, BigInt, and Regex. See the [JavaScript built-in coverage guide](design/standard-library/packages/javascript-builtins.md) for receiver methods, examples, and remaining gaps.

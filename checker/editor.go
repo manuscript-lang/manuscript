@@ -61,6 +61,9 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 		c.module = &syntax.Module{File: module[0]}
 	}
 	candidates := map[string]bool{"toString": true}
+	if nativeMethod(receiver, "clone") != nil {
+		candidates["clone"] = true
+	}
 	var collect func(*Type)
 	collect = func(t *Type) {
 		if t == nil {

@@ -180,7 +180,7 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid or oversized request body", 413)
 		return
 	}
-	headers := Map{Type: "@std/Map[String][@std/Bytes]"}
+	headers := &Map{Type: "@std/Map[String][@std/Bytes]"}
 	// Header iteration is sorted for stable source-visible insertion order.
 	for _, name := range sortedHeaderNames(r.Header) {
 		headers.Entries = append(headers.Entries, Entry{name, Bytes{[]byte(strings.Join(r.Header.Values(name), "\n"))}})
@@ -215,14 +215,14 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid response", 500)
 		return
 	}
-	for _, entry := range record.Fields["headers"].(Map).Entries {
+	for _, entry := range record.Fields["headers"].(*Map).Entries {
 		key, value := entry.Key.(string), entry.Value.(string)
 		if !validHeaderName(key) || strings.ContainsAny(value, "\r\n\x00") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
 			http.Error(w, "invalid response header", 500)
 			return
 		}
 	}
-	for _, entry := range record.Fields["headers"].(Map).Entries {
+	for _, entry := range record.Fields["headers"].(*Map).Entries {
 		w.Header().Set(entry.Key.(string), entry.Value.(string))
 	}
 	w.WriteHeader(int(status))

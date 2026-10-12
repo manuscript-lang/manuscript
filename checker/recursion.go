@@ -111,6 +111,7 @@ func callableBody(params []syntax.Parameter, body []*syntax.Statement) []*syntax
 }
 func walkStatements(body []*syntax.Statement, visit func(*syntax.Expression)) {
 	for _, s := range body {
+		walkExpression(s.Target, visit)
 		walkExpression(s.Value, visit)
 		walkStatements(s.Body, visit)
 		walkStatements(s.Else, visit)

@@ -23,6 +23,7 @@ impl Error for CollectionError:
 
 ```manuscript
 type List[T]:
+    fn clone() -> List[T]
     fn at(index: Int) -> Optional[T]
     fn contains(value: T) -> Bool
     fn index_of(value: T) -> Optional[Int]
@@ -74,6 +75,7 @@ type ListEntry[T]:
 
 ```manuscript
 type Map[T: Hashable, U]:
+    fn clone() -> Map[T, U]
     fn with_default(key: T, value: U) -> Map[T, U]
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]
     fn clear() -> Map[T, U]
@@ -101,6 +103,7 @@ type MapEntry[T: Hashable, U]:
 
 ```manuscript
 type Set[T: Hashable]:
+    fn clone() -> Set[T]
     fn union(right: Set[T]) -> Set[T]
     fn intersection(right: Set[T]) -> Set[T]
     fn difference(right: Set[T]) -> Set[T]

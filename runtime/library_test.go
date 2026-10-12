@@ -171,7 +171,7 @@ func TestLibraryHTTPClient(t *testing.T) {
 	defer server.Close()
 	n := &network{}
 	ctx := RootExecution()
-	headers := Map{Type: "@std/Map[String][String]"}
+	headers := &Map{Type: "@std/Map[String][String]"}
 	call := func(path string, max int64) Value {
 		return n.Operation("request").Body(ctx, []Value{"GET", server.URL + path, headers, Bytes{}, max, Duration(time.Second)})
 	}
@@ -253,7 +253,7 @@ func TestLibraryNetworkCloseInterruptsRequest(t *testing.T) {
 	n := &network{}
 	done := make(chan Value, 1)
 	go func() {
-		done <- n.Operation("request").Body(ctx, []Value{"GET", server.URL, Map{"@std/Map[String][String]", nil}, Bytes{}, int64(100), Duration(10 * time.Second)})
+		done <- n.Operation("request").Body(ctx, []Value{"GET", server.URL, &Map{"@std/Map[String][String]", nil}, Bytes{}, int64(100), Duration(10 * time.Second)})
 	}()
 	<-started
 	n.Operation("close").Body(ctx, nil)
@@ -360,7 +360,7 @@ func TestLibraryStreamErrorsPreserveCauses(t *testing.T) {
 			if !Equal(copied.Fields[0], cause) {
 				t.Fatalf("copy lost output cause: %#v", copied)
 			}
-			result := libraryCall(t, "log/write", stream, "info", "message", Map{Type: "@std/Map[String][String]"}, int64(1000))
+			result := libraryCall(t, "log/write", stream, "info", "message", &Map{Type: "@std/Map[String][String]"}, int64(1000))
 			libraryFailure(t, result, "Io")
 			wrapped := result.Fields[0].(Alternative)
 			if wrapped.Type != "@std/LogError" || len(wrapped.Fields) != 1 || !Equal(wrapped.Fields[0], cause) {

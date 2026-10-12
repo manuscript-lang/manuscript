@@ -153,7 +153,7 @@ SimpleStatement = Binding | Assignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
 Binding       = ("let" | "var"), (Name, [ ":", Type ] | PositionalPattern | RecordPattern),
                 "=", Expression ;
-Assignment    = Name, "=", Expression ;
+Assignment    = (Name | Expression, ".", Name), "=", Expression ;
 ReturnStatement = "return", [ Expression ] ;
 CallStatement = Expression ;
 IfStatement   = "if", Expression, Suite,
@@ -174,7 +174,7 @@ RecordPattern = "{", RecordEntry, { ",", RecordEntry }, [ "," ], "}" ;
 RecordEntry   = Name, [ ":", BindingPattern ] ;
 ```
 
-`CallStatement` must resolve to a call expression; arithmetic expressions or bare names are not standalone statements. Assignment replaces an existing `var` binding, not a field or list position. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
+`CallStatement` must resolve to a call expression; arithmetic expressions or bare names are not standalone statements. Assignment replaces an existing `var` binding or updates a record field. Collection positions are updated through methods. Only a simple name binding may carry a type annotation. Destructuring patterns infer their types from the checked initializer; annotate an intermediate name first when the initializer needs context. Positional patterns can be empty, selecting an empty fixed result or list. Empty record patterns are rejected because they bind nothing. `_` is allowed in match payloads and as a match wildcard, not as an ordinary binding or destructuring elision.
 
 `else if` is two words; `elif` is not syntax. Alternative match patterns use exact positional case payloads, not constructor argument labels. On a contract view, the same pattern syntax names a complete concrete record or alternative type and exactly one receiver binding; a final wildcard is required. Their exhaustiveness, wildcard position, and binding checks are in [pattern matching](../control-flow/pattern-matching.md). `if`, `match`, loops, and `with` are statements, not value-producing expressions. Local type/implementation/import/test declarations are not accepted. Nested named function declarations are rejected; bind an anonymous function to a local name instead.
 
