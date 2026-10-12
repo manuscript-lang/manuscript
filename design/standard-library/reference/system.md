@@ -6,9 +6,7 @@ title = "system"
 
 Import each required symbol with `import Name from "@std/system.ms"`.
 
-## System
-
-Kind: interface.
+## System {data-api-kind="Interface"}
 
 ```manuscript
 System: System
@@ -17,9 +15,7 @@ operation info: fn()->SystemInfo
 operation working_directory: fn()->String
 ```
 
-## SystemInfo
-
-Kind: record.
+## SystemInfo {data-api-kind="Record"}
 
 ```manuscript
 SystemInfo: SystemInfo

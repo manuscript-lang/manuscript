@@ -6,9 +6,7 @@ title = "sync"
 
 Import each required symbol with `import Name from "@std/sync.ms"`.
 
-## Synchronized
-
-Kind: interface.
+## Synchronized {data-api-kind="Interface"}
 
 ```manuscript
 Synchronized: Synchronized[T]
@@ -17,9 +15,7 @@ field value: T
 operation lock: fn()->SynchronizedGuard[T]
 ```
 
-## SynchronizedGuard
-
-Kind: interface.
+## SynchronizedGuard {data-api-kind="Interface"}
 
 ```manuscript
 SynchronizedGuard: SynchronizedGuard[T]

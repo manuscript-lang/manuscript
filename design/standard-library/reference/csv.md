@@ -6,9 +6,7 @@ title = "csv"
 
 Import each required symbol with `import Name from "@std/csv.ms"`.
 
-## CsvOptions
-
-Kind: record.
+## CsvOptions {data-api-kind="Record"}
 
 ```manuscript
 CsvOptions: CsvOptions
@@ -16,17 +14,13 @@ field delimiter: String
 field line_ending: String
 ```
 
-## parse
-
-Kind: fn.
+## parse {data-api-kind="Function"}
 
 ```manuscript
 parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Result[List[List[String]], LibraryError]
 ```
 
-## stringify
-
-Kind: fn.
+## stringify {data-api-kind="Function"}
 
 ```manuscript
 stringify: fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)->Result[String, LibraryError]

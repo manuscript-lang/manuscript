@@ -6,9 +6,7 @@ title = "queues"
 
 Import each required symbol with `import Name from "@std/queues.ms"`.
 
-## Queue
-
-Kind: interface.
+## Queue {data-api-kind="Interface"}
 
 ```manuscript
 Queue: Queue[T]
@@ -19,9 +17,7 @@ operation receive: fn()->Optional[T]
 operation send: fn(value: T)->Result[Unit, QueueError]
 ```
 
-## QueueError
-
-Kind: alternative.
+## QueueError {data-api-kind="Alternative"}
 
 ```manuscript
 QueueError: QueueError

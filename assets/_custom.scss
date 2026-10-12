@@ -104,6 +104,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .markdown h1 { font-size: clamp(1.8rem, 3vw, 2.5rem); margin-bottom: 1.25rem; }
 .markdown h2 { font-size: 1.35rem; margin-top: 2.5rem; padding-top: 0; border: 0; }
 .markdown h3 { font-size: 1.1rem; margin-top: 2rem; }
+.api-kind { display: inline-block; vertical-align: middle; margin-left: .65rem; padding: .1rem .4rem; border: 1px solid var(--gray-200); border-radius: 4px; background: var(--gray-100); color: var(--docs-muted); font-size: .65rem; font-weight: 500; line-height: 1.6; letter-spacing: 0; }
 .markdown h1 + p { font-size: 1.06rem; line-height: 1.75; color: var(--docs-muted); }
 .markdown a { text-underline-offset: 3px; }
 .markdown a[href]:not(.start-link) { color: var(--docs-prose-link); }

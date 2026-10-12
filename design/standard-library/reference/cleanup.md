@@ -6,9 +6,7 @@ title = "cleanup"
 
 Import each required symbol with `import Name from "@std/cleanup.ms"`.
 
-## Closeable
-
-Kind: interface.
+## Closeable {data-api-kind="Interface"}
 
 ```manuscript
 Closeable: Closeable

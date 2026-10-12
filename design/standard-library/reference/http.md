@@ -6,9 +6,7 @@ title = "http"
 
 Import each required symbol with `import Name from "@std/http.ms"`.
 
-## ClientResponse
-
-Kind: record.
+## ClientResponse {data-api-kind="Record"}
 
 ```manuscript
 ClientResponse: ClientResponse
@@ -17,9 +15,7 @@ field headers: Map[String, List[String]]
 field body: Bytes
 ```
 
-## HttpClient
-
-Kind: interface.
+## HttpClient {data-api-kind="Interface"}
 
 ```manuscript
 HttpClient: HttpClient
@@ -28,9 +24,7 @@ operation send: fn(method: String, url: String, headers: Map[String, String], bo
 operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody, LibraryError]
 ```
 
-## HttpClientOptions
-
-Kind: record.
+## HttpClientOptions {data-api-kind="Record"}
 
 ```manuscript
 HttpClientOptions: HttpClientOptions
@@ -43,9 +37,7 @@ field cookies: Bool
 field tls: TlsOptions
 ```
 
-## HttpExchange
-
-Kind: interface.
+## HttpExchange {data-api-kind="Interface"}
 
 ```manuscript
 HttpExchange: HttpExchange
@@ -60,9 +52,7 @@ operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String],
 operation write: fn(data: Bytes)->Result[Unit, IoError]
 ```
 
-## HttpRequest
-
-Kind: record.
+## HttpRequest {data-api-kind="Record"}
 
 ```manuscript
 HttpRequest: HttpRequest
@@ -73,9 +63,7 @@ field headers: Map[String, Bytes]
 field body: Bytes
 ```
 
-## HttpResponse
-
-Kind: record.
+## HttpResponse {data-api-kind="Record"}
 
 ```manuscript
 HttpResponse: HttpResponse
@@ -84,9 +72,7 @@ field headers: Map[String, String]
 field body: Bytes
 ```
 
-## HttpServer
-
-Kind: interface.
+## HttpServer {data-api-kind="Interface"}
 
 ```manuscript
 HttpServer: HttpServer
@@ -95,9 +81,7 @@ operation close: fn()->Unit
 operation wait: fn()->Result[Unit, IoError]
 ```
 
-## HttpServerOptions
-
-Kind: record.
+## HttpServerOptions {data-api-kind="Record"}
 
 ```manuscript
 HttpServerOptions: HttpServerOptions
@@ -110,9 +94,7 @@ field grace: Duration
 field tls: Optional[TlsOptions]
 ```
 
-## Network
-
-Kind: interface.
+## Network {data-api-kind="Interface"}
 
 ```manuscript
 Network: Network
@@ -136,9 +118,7 @@ operation web_socket: fn(url: String, headers: Map[String, String], subprotocols
 operation with_resolver: fn(address: String)->Result[Network, LibraryError]
 ```
 
-## ResponseBody
-
-Kind: interface.
+## ResponseBody {data-api-kind="Interface"}
 
 ```manuscript
 ResponseBody: ResponseBody

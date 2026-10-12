@@ -6,9 +6,7 @@ title = "tasks"
 
 Import each required symbol with `import Name from "@std/tasks.ms"`.
 
-## Background
-
-Kind: interface.
+## Background {data-api-kind="Interface"}
 
 ```manuscript
 Background: Background
@@ -18,9 +16,7 @@ operation start: fn(operation: fn()->Result[Unit, String])->Result[OperationId, 
 operation status: fn(id: OperationId)->WorkStatus
 ```
 
-## BackgroundFailure
-
-Kind: alternative.
+## BackgroundFailure {data-api-kind="Alternative"}
 
 ```manuscript
 BackgroundFailure: BackgroundFailure
@@ -28,9 +24,7 @@ case Failed(operation: OperationId, cause: String)
 case Crashed(operation: OperationId, message: String)
 ```
 
-## ExecutionError
-
-Kind: alternative.
+## ExecutionError {data-api-kind="Alternative"}
 
 ```manuscript
 ExecutionError: ExecutionError
@@ -38,17 +32,13 @@ case TimedOut
 case Crashed(operation: OperationId, message: String)
 ```
 
-## OperationId
-
-Kind: native.
+## OperationId {data-api-kind="Native type"}
 
 ```manuscript
 OperationId: OperationId
 ```
 
-## StartError
-
-Kind: alternative.
+## StartError {data-api-kind="Alternative"}
 
 ```manuscript
 StartError: StartError
@@ -56,9 +46,7 @@ case Closed
 case Full
 ```
 
-## WorkStatus
-
-Kind: alternative.
+## WorkStatus {data-api-kind="Alternative"}
 
 ```manuscript
 WorkStatus: WorkStatus
@@ -70,25 +58,19 @@ case Crashed
 case Unknown
 ```
 
-## check_cancelled
-
-Kind: fn.
+## check_cancelled {data-api-kind="Function"}
 
 ```manuscript
 check_cancelled: fn()->Unit
 ```
 
-## parallel
-
-Kind: fn.
+## parallel {data-api-kind="Function"}
 
 ```manuscript
 parallel: fn()-><unknown>
 ```
 
-## parallel_map
-
-Kind: fn.
+## parallel_map {data-api-kind="Function"}
 
 ```manuscript
 parallel_map: fn(items: List[T], operation: fn(item: T)->U, limit: Int)->Result[List[U], ExecutionError]

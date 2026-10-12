@@ -6,9 +6,7 @@ title = "faults"
 
 Import each required symbol with `import Name from "@std/faults.ms"`.
 
-## panic
-
-Kind: fn.
+## panic {data-api-kind="Function"}
 
 ```manuscript
 panic: fn(message: String)->Never

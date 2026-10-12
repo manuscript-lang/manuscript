@@ -6,9 +6,7 @@ title = "log"
 
 Import each required symbol with `import Name from "@std/log.ms"`.
 
-## write
-
-Kind: fn.
+## write {data-api-kind="Function"}
 
 ```manuscript
 write: fn(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LibraryError]

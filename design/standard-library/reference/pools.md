@@ -6,9 +6,7 @@ title = "pools"
 
 Import each required symbol with `import Name from "@std/pools.ms"`.
 
-## Lease
-
-Kind: interface.
+## Lease {data-api-kind="Interface"}
 
 ```manuscript
 Lease: Lease[T]
@@ -17,9 +15,7 @@ operation close: fn()->Unit
 operation get: fn()->Result[T, PoolError]
 ```
 
-## Pool
-
-Kind: interface.
+## Pool {data-api-kind="Interface"}
 
 ```manuscript
 Pool: Pool[T]
@@ -29,9 +25,7 @@ operation acquire: fn()->Result[Lease[T], PoolError]
 operation close: fn()->Unit
 ```
 
-## PoolError
-
-Kind: alternative.
+## PoolError {data-api-kind="Alternative"}
 
 ```manuscript
 PoolError: PoolError
