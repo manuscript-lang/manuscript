@@ -11,11 +11,13 @@ import (
 )
 
 type occurrence struct {
-	key, name          string
-	pos                syntax.Position
-	end                int
-	declaration, write bool
-	info               *checker.Info
+	key, name                  string
+	pos                        syntax.Position
+	end                        int
+	declaration, write         bool
+	info                       *checker.Info
+	renamePrefix, renameSuffix string
+	implicitLabel              bool
 }
 
 func symbolKey(s *checker.Symbol) string {
@@ -89,7 +91,7 @@ func sourceIndex(result compiler.Result) []occurrence {
 			return
 		}
 		seen[id] = true
-		index = append(index, occurrence{key, name, pos, pos.Offset + len(name), decl, write, info})
+		index = append(index, occurrence{key: key, name: name, pos: pos, end: pos.Offset + len(name), declaration: decl, write: write, info: info})
 	}
 	header := func(pos syntax.Position, name string) syntax.Position {
 		for _, token := range tokens[pos.File] {
@@ -301,6 +303,61 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 	}
 
+	// A shorthand token names a caller binding and supplies a callee label.
+	// Renaming either side expands the token to keep the other side intact.
+	for call, info := range program.Expressions {
+		if call.Kind != syntax.KindCall || len(info.Arguments) != len(call.Args) {
+			continue
+		}
+		called := program.Expressions[call.Left]
+		if called == nil || called.Type == nil || len(called.Type.Params) <= 1 {
+			continue
+		}
+		var decl *syntax.Declaration
+		if called.Symbol != nil {
+			decl = called.Symbol.Decl
+		}
+		if called.Method != nil {
+			decl = called.Method.Decl
+		}
+		for at, arg := range call.Args {
+			label := info.Arguments[at].Name
+			if arg.Name != "" || label == "" || arg.Value.Kind != syntax.KindName {
+				continue
+			}
+			value := program.Expressions[arg.Value]
+			if value == nil {
+				continue
+			}
+			valueKey := ""
+			if value.Binding != nil {
+				valueKey = localKey(value.Binding)
+			}
+			if value.Symbol != nil {
+				valueKey = symbolKey(value.Symbol)
+			}
+			labelKey := ""
+			if decl != nil {
+				for n, param := range decl.Params {
+					if param.Name == label && n < len(program.Parameters[decl]) {
+						labelKey = localKey(program.Parameters[decl][n])
+					}
+				}
+			}
+			if valueKey == labelKey {
+				continue
+			}
+			for n := range index {
+				if index[n].key == valueKey && index[n].pos == arg.Value.Pos {
+					index[n].renamePrefix = label + ": "
+				}
+			}
+			if labelKey != "" {
+				index = append(index, occurrence{key: labelKey, name: label, pos: arg.Value.Pos, end: arg.Value.Pos.Offset + len(label), renameSuffix: ": " + arg.Value.Text, implicitLabel: true})
+			}
+		}
+	}
+
 	sort.Slice(index, func(i, j int) bool {
 		a, b := index[i], index[j]
 		if a.pos.File != b.pos.File {
@@ -308,6 +365,9 @@ func sourceIndex(result compiler.Result) []occurrence {
 		}
 		if a.pos.Offset != b.pos.Offset {
 			return a.pos.Offset < b.pos.Offset
+		}
+		if a.implicitLabel != b.implicitLabel {
+			return !a.implicitLabel
 		}
 		return a.key < b.key
 	})

@@ -83,7 +83,7 @@ type Expression struct {
 	Left, Right *Expression
 	Args        []Argument
 	Types       []*Type
-	Elements    []*Expression
+	Elements    []*Expression // Map literals store alternating key and value expressions.
 	Parts       []TextPart
 	Params      []Parameter
 	Result      *Type

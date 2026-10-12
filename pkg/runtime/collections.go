@@ -8,6 +8,20 @@ import (
 	"unicode/utf8"
 )
 
+// MapLiteral inserts evaluated entries using the same equality and ordering as with_entry.
+func MapLiteral(ctx *Execution, typ string, entries []Entry, scope TypeScope) *Map {
+	child := *ctx
+	if len(scope.Args) > 0 {
+		child.EqualityScope = scope.Args[0]
+	}
+	result := &Map{Type: typ}
+	for _, entry := range entries {
+		CheckCancelled(&child)
+		mapPut(&child, result, entry.Key, entry.Value)
+	}
+	return result
+}
+
 func spliceList(list *List, start, count int, replacement *List) {
 	items := replacement.Items
 	if list == replacement {

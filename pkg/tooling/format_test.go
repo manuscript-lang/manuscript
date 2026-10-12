@@ -192,3 +192,18 @@ func TestFormatInlineSuites(t *testing.T) {
 		t.Fatalf("format is not stable: %q, %v", again, err)
 	}
 }
+
+func TestFormatMapAndShorthand(t *testing.T) {
+	source := "fn f() -> Unit:\n    let values={\"a\":1,\"b\":{1:2},}\n    consume(values,other: {})\n"
+	formatted, err := tooling.Format("map.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := tooling.Format("map.ms", formatted)
+	if err != nil || again != formatted {
+		t.Fatalf("not idempotent: %q %v", again, err)
+	}
+	if !strings.Contains(formatted, `{"a": 1, "b": {1: 2},}`) {
+		t.Fatal(formatted)
+	}
+}

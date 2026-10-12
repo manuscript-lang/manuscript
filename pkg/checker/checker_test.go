@@ -82,3 +82,23 @@ type Growing[T]:
 		}
 	}
 }
+
+func TestMatchingLabelPreservesSourceAST(t *testing.T) {
+	source := "fn first[T](left: T, right: T) -> T: return left\nfn call(left: Int, right: Int) -> Int: return first(right, left)\n"
+	module, err := parser.Parse("shorthand.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call := module.Declarations[1].Body[0].Value
+	for range 2 {
+		program := checker.Check([]*syntax.Module{module}, nil)
+		if len(program.Diagnostics) != 0 {
+			t.Fatal(program.Diagnostics)
+		}
+		for at, label := range []string{"right", "left"} {
+			if call.Args[at].Name != "" || program.Expressions[call].Arguments[at].Name != label {
+				t.Fatal("incorrect shorthand mapping")
+			}
+		}
+	}
+}

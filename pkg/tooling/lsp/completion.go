@@ -150,7 +150,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 	if c.argument {
 		if call, signature := queryCall(analysis); call != nil && signature != nil {
 			used := map[string]bool{}
-			for _, arg := range call.Args {
+			for _, arg := range editorCallArguments(analysis, call) {
 				if arg.Name != analysis.marker {
 					used[arg.Name] = true
 				}
@@ -619,4 +619,12 @@ func nameMatches(name, query string) bool {
 		}
 	}
 	return at == len(query)
+}
+
+// Use checked label resolution without changing the source expressions used for navigation.
+func editorCallArguments(a editorAnalysis, call *syntax.Expression) []syntax.Argument {
+	if info := a.result.Program.Expressions[call]; info != nil && info.Arguments != nil {
+		return info.Arguments
+	}
+	return call.Args
 }

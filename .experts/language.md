@@ -65,11 +65,12 @@ Evidence: [sharing rules](../documentation/concurrency/sharing.md).
 
 ### Syntax improvements need examples across their boundaries
 
-Decision: support grouped symbol imports, and allow an omitted call label for a function with one parameter while requiring labels for functions with more than one parameter. The single-parameter request measures declaration arity, not the number of arguments supplied. These are user decisions; verify their availability in the branch being changed.
+Decision: support grouped symbol imports, and allow an omitted call label for a function with one parameter. The later token-cost request permits matching-name shorthand for multi-parameter functions and brace Map literals. Other multi-parameter expressions and constructors retain explicit labels. The single-parameter request measures declaration arity, not the number of arguments supplied. These are user decisions; verify their availability in the branch being changed.
 
 Apply when: changing imports, calls, grammar, or editor assistance.
+Evidence for the newer rule: [call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names), [Map literals](../documentation/core-language/types/collections.md#map-literals), and [native terse syntax fixture](../tests/e2e/testdata/accept/terse-data.ms).
 Evidence: [grouped-import request](codex://threads/01a12e1a-7d2d-7646-b5fc-2dc8fdd60038); [single-parameter request](codex://threads/01a12e4a-98e8-775e-9e6c-c101a8ac300d).
-Verify: grouped imports resolve each symbol and its editor location; one-parameter calls exercise both spellings, multi-parameter calls require labels, and missing arguments still fail. Consult current grammar and compatibility rules for methods, constructors, and function values rather than assuming identical boundaries.
+Verify: grouped imports resolve each symbol and its editor location; one-parameter calls exercise both spellings, multi-parameter calls accept matching bare names in any order and reject other unlabeled expressions, and missing arguments still fail. Consult current grammar and compatibility rules for methods, constructors, and function values rather than assuming identical boundaries.
 
 ### Recover concrete contract receivers through checked matching
 

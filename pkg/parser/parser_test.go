@@ -219,3 +219,20 @@ func TestInlineSuites(t *testing.T) {
 		}
 	}
 }
+
+func TestMapLiteralBoundaries(t *testing.T) {
+	for _, value := range []string{`{}`, `{"a": 1,}`, `{key: {1: 2}}`, `{(fn(value: Int) -> Int: return value): 1}`} {
+		source := "fn f() -> Unit:\n    let value = " + value + "\n"
+		if _, err := parser.Parse("map.ms", source); err != nil {
+			t.Fatal(err)
+		}
+		if _, diagnostics := parser.ParsePartial("map.ms", source); len(diagnostics) != 0 {
+			t.Fatal(diagnostics)
+		}
+	}
+	for _, value := range []string{`{1}`, `{1:}`, `{1: 2 3: 4}`} {
+		if _, err := parser.Parse("map.ms", "fn f() -> Unit:\n    let value = "+value+"\n"); err == nil {
+			t.Fatal("accepted", value)
+		}
+	}
+}
