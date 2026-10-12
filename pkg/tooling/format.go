@@ -2,8 +2,8 @@
 package tooling
 
 import (
+	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
-	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,8 +11,8 @@ import (
 
 // Format preserves comments and token spellings. Invalid syntax never produces output.
 func Format(filename, source string) (string, error) {
-	if _, err := parser.Parse(filename, source); err != nil {
-		return "", err
+	if _, issues := frontend.Parse(filename, source, false); len(issues) != 0 {
+		return "", issues[0]
 	}
 	normalized := strings.ReplaceAll(source, "\r\n", "\n")
 	tokens, err := lexer.Lex(filename, normalized)
@@ -68,8 +68,8 @@ func Format(filename, source string) (string, error) {
 		output = output[:len(output)-1]
 	}
 	result := strings.Join(output, "\n") + "\n"
-	if _, err := parser.Parse(filename, result); err != nil {
-		return "", err
+	if _, issues := frontend.Parse(filename, result, false); len(issues) != 0 {
+		return "", issues[0]
 	}
 	return result, nil
 }

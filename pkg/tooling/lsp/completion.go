@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
-	"github.com/manuscript-lang/manuscript/pkg/parser"
+	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/project"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"os"
@@ -212,7 +212,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 	// Preserve useful declaration suggestions even when another declaration has
 	// malformed syntax. Scope-sensitive results above only use checked snapshots.
 	if len(symbols) == 0 {
-		if parsed, e := parser.Parse(filename(d.URI), d.Text); e == nil {
+		if parsed, _ := frontend.Parse(filename(d.URI), d.Text, true); parsed != nil {
 			for _, decl := range parsed.Declarations {
 				kind := 3
 				if decl.Kind == syntax.KindType {
@@ -279,8 +279,8 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 				if file.URI == d.URI {
 					continue
 				}
-				parsed, e := parser.Parse(filename(file.URI), file.Text)
-				if e != nil {
+				parsed, issues := frontend.Parse(filename(file.URI), file.Text, false)
+				if len(issues) != 0 {
 					continue
 				}
 				matches := false

@@ -34,13 +34,14 @@
       "pkg/checker",
       "pkg/project",
       "pkg/stdlib",
-      "pkg/runtime"
+      "pkg/runtime",
+      "pkg/frontend"
     ],
     "pkg/tooling": [
       "pkg/syntax",
       "pkg/lexer",
-      "pkg/parser",
-      "pkg/checker"
+      "pkg/checker",
+      "pkg/frontend"
     ],
     "pkg/tooling/docgen": [
       "pkg/checker"
@@ -48,11 +49,11 @@
     "pkg/tooling/lsp": [
       "pkg/syntax",
       "pkg/lexer",
-      "pkg/parser",
       "pkg/checker",
       "pkg/project",
       "pkg/compiler",
-      "pkg/tooling"
+      "pkg/tooling",
+      "pkg/frontend"
     ],
     "internal/cli": [
       "pkg/compiler",
@@ -66,12 +67,18 @@
     ],
     "cmd/ms": [
       "internal/cli"
+    ],
+    "pkg/frontend": [
+      "pkg/syntax",
+      "pkg/parser",
+      "pkg/project"
     ]
   },
   "pinned": [
     "pkg/syntax",
     "pkg/lexer",
     "pkg/parser",
+    "pkg/frontend",
     "pkg/checker",
     "pkg/project",
     "pkg/compiler",

@@ -78,9 +78,10 @@ export fn main() -> Int:
 	if !result.Success() {
 		b.Fatal(result.Diagnostics)
 	}
+	optimized := optimize(result.Program)
 	b.ReportAllocs()
 	for b.Loop() {
-		if _, err := generate(result.Program, "benchmark.ms", Options{Entry: true}); err != nil {
+		if _, err := lowerGo(optimized, "benchmark.ms", Options{Entry: true}); err != nil {
 			b.Fatal(err)
 		}
 	}
