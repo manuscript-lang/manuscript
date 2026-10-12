@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/manuscript-lang/manuscript/pkg/frontend"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/scripts/internal/devtool"
 	"go/ast"
@@ -42,6 +43,9 @@ func main() {
 func check() error {
 	if len(os.Args) > 2 || len(os.Args) == 2 && os.Args[1] != "-format" {
 		return fmt.Errorf("usage: repo-check [-format]")
+	}
+	if err := checkStandardSyntax(os.DirFS("pkg/stdlib"), "pkg/stdlib"); err != nil {
+		return err
 	}
 
 	data, err := os.ReadFile("scripts/repo-check/policy.json")
@@ -224,6 +228,34 @@ func check() error {
 		return fmt.Errorf("repository invariants:\n- %s", strings.Join(issues, "\n- "))
 	}
 	fmt.Println("Package boundaries, implementation pins, native bundles, and release triggers agree.")
+	return nil
+}
+
+// Validate the working-tree files with the ordinary strict frontend before
+// loading checker/runtime packages. Report syntax errors directly, rather than
+// relying on a standard-loader initialization panic to fail another check.
+func checkStandardSyntax(sources fs.FS, directory string) error {
+	entries, err := fs.ReadDir(sources, ".")
+	if err != nil {
+		return fmt.Errorf("read standard declarations: %w", err)
+	}
+	var issues []string
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".ms" {
+			continue
+		}
+		source, err := fs.ReadFile(sources, entry.Name())
+		if err != nil {
+			return fmt.Errorf("read standard declaration %s: %w", entry.Name(), err)
+		}
+		_, diagnostics := frontend.Parse(filepath.Join(directory, entry.Name()), string(source), false)
+		for _, issue := range diagnostics {
+			issues = append(issues, issue.Error())
+		}
+	}
+	if len(issues) > 0 {
+		return fmt.Errorf("invalid standard-library syntax:\n- %s", strings.Join(issues, "\n- "))
+	}
 	return nil
 }
 func contains(values []string, value string) bool {
