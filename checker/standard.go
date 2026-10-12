@@ -110,10 +110,10 @@ func loadStandardSources() error {
 		for _, item := range module.Imports {
 			found := standardModules[item.Path][item.Name]
 			if found == nil || !found.Export {
-				c.error(item.Pos, "resolution", "standard module does not export "+item.Name)
+				c.error(item.NamePos, "resolution", "standard module does not export "+item.Name)
 				continue
 			}
-			c.addSymbol(item.Name, found, item.Pos)
+			c.addSymbol(item.Name, found, item.NamePos)
 		}
 		for _, d := range module.Declarations {
 			c.addSymbol(d.Name, standardModules[module.File][d.Name], d.Pos)

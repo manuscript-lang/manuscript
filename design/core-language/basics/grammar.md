@@ -95,7 +95,8 @@ In the EBNF below, braces mean repetition and brackets mean an optional grammar 
 
 ```ebnf
 Module        = { Import | Declaration } ;
-Import        = "import", Name, "from", PlainStringLiteral, NEWLINE ;
+Import        = "import", ( Name | "{", Name, { ",", Name }, [ "," ], "}" ),
+                "from", PlainStringLiteral, NEWLINE ;
 Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration)
               | Implementation | TestDeclaration ;
 

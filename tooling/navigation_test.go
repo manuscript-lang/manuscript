@@ -45,3 +45,20 @@ fn os_name(process: Process) -> String:
 		}
 	}
 }
+
+func TestGroupedImportNavigation(t *testing.T) {
+	source := "import {\n    List,\n    Map,\n} from \"@std/collections.ms\"\n"
+	result := compiler.CompileSource("navigation.ms", source, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for _, name := range []string{"List", "Map"} {
+		nav, ok := tooling.NavigationAt(result.Program, "navigation.ms", strings.Index(source, name))
+		if !ok || nav.Definition.File != "@std/collections.ms" || !strings.HasPrefix(nav.Hover, name+":") {
+			t.Fatalf("%s: %+v, %v", name, nav, ok)
+		}
+	}
+	if _, ok := tooling.NavigationAt(result.Program, "navigation.ms", strings.Index(source, "{")); ok {
+		t.Fatal("brace navigates to a symbol")
+	}
+}

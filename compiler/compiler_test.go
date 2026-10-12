@@ -452,3 +452,47 @@ impl Read[B] for Pair[Int, B]:
 		})
 	}
 }
+
+func TestGroupedLocalImports(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "other.ms", "export type Value:\n    value: Int\nexport fn read(value: Value) -> Int:\n    return value.value\nfn hidden() -> Int:\n    return 1\n")
+	for _, path := range []string{"./other.ms", "@other"} {
+		write(t, root, "ms.toml", "[project]\nname = \"imports\"\nsource = \".\"\nentry = \"./main.ms\"\n[aliases]\n\"@other\" = \"./other.ms\"\n")
+		write(t, root, "main.ms", "import { Value, read } from \""+path+"\"\nfn check() -> Int:\n    return read(value: Value(value: 3))\n")
+		result := compiler.CompileFile(filepath.Join(root, "ms.toml"), compiler.Options{Tests: true})
+		if !result.Success() {
+			t.Fatal(result.Diagnostics)
+		}
+		if len(result.Program.Modules) != 2 {
+			t.Fatal("module loaded more than once")
+		}
+	}
+	for _, name := range []string{"hidden", "missing"} {
+		source := "import { Value, " + name + " } from \"./other.ms\"\n"
+		write(t, root, "main.ms", source)
+		result := compiler.CompileFile(filepath.Join(root, "main.ms"), compiler.Options{})
+		if result.Success() || len(result.Diagnostics) != 1 {
+			t.Fatal(result.Diagnostics)
+		}
+		d := result.Diagnostics[0]
+		if d.Phase != "resolution" || d.Position.Offset != strings.Index(source, name) || !strings.Contains(d.Message, "module does not export "+name) {
+			t.Fatal(d)
+		}
+	}
+}
+
+func TestGroupedImportResolutionErrors(t *testing.T) {
+	for name, source := range map[string]string{
+		"duplicate in group":       "import { List, List } from \"@std/collections.ms\"\n",
+		"duplicate across imports": "import List from \"@std/collections.ms\"\nimport { Map, List } from \"@std/collections.ms\"\n",
+		"declaration collision":    "import { List, Map } from \"@std/collections.ms\"\ntype Map:\n    value: Int\n",
+		"missing export":           "import { List, missing } from \"@std/collections.ms\"\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			result := compiler.CompileSource("imports.ms", source, compiler.Options{})
+			if result.Success() || result.Diagnostics[0].Phase != "resolution" {
+				t.Fatal(result.Diagnostics)
+			}
+		})
+	}
+}
