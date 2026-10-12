@@ -26,7 +26,7 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 | Cleanup | Checker-selected contract dispatch, registration of delivered `with` values, reverse lexical release on every exit, shielded cleanup, primary/secondary fault preservation, and removal of completed cleanup actions |
 | Joined work | Heterogeneous literal `parallel` packs, bounded ordered `parallel_map`, cancellation checkpoints, deadlines, sibling cancellation on faults, and joining before completion |
 | Background | Bounded admission/history, fixed construction parent, cancellation, serialized reporting, bounded diagnostic fallback, optional drain, concurrent idempotent close, and nested-service joining |
-| Queues and synchronization | Bounded FIFO queues with cancellable waits and close/wakeup/drain semantics; Synchronized values with cancellable lock acquisition, scoped guards, atomic get/set, stale-alias checks, and reentry detection |
+| Queues and synchronization | Local bounded FIFO queues with immediate full/empty results and explicit synchronization for shared use; Synchronized values with cancellable lock acquisition, scoped guards, atomic get/set, stale-alias checks, and reentry detection |
 | Pools and leases | Fixed resource pools, cancellable acquisition, guarded contract views, stale-alias rejection, single capacity return, operation cancellation/joining, and reverse owned-resource release |
 | Builders | Synchronized List/Map/Set/Bytes/String builders, immutable sealed snapshots, idempotent freeze, and rejection of mutation after sealing |
 | CLI capabilities | Explicit Process arguments/environment, streams, read-only files, monotonic clock, network, commands, checked exit codes, signal cancellation, joined shutdown, and host-root cleanup |

@@ -31,7 +31,7 @@ let [stock] = try parallel(tasks: [first])
 
 The closure/call fragment belongs to an enclosing function returning `Result[U, ExecutionError]`. To propagate OrderError in the same function, first translate it explicitly with `map_error`; [parallel](../../concurrency/parallel.md) gives a complete example.
 
-The operation accepts its capability explicitly and returns the unchanged domain `Result`. Capturing the ordinary Inventory view is safe: every source value is safe to share. The caller chooses concurrent execution through an ordinary API. The outer `try` handles execution failure; `stock` still contains the inventory domain outcome.
+The operation accepts its capability explicitly and returns the unchanged domain `Result`. The ordinary Inventory view can be captured without a sharing annotation; its implementation coordinates any shared mutable state. The caller chooses concurrent execution through an ordinary API. The outer `try` handles execution failure; `stock` still contains the inventory domain outcome.
 
 Submitting work to a `Background` service instead chooses that service's fixed lifetime. Passing a reference does not transfer cleanup or keep a scoped resource open.
 

@@ -177,7 +177,7 @@ class ManuscriptAdapter {
       const names = { Context: 'Cancellation context', Lifetime: 'Work lifetime', Owners: 'Background services', Leases: 'Active leases', HostServices: 'HTTP services' };
       return children.filter(v => names[v.name]).map(v => ({ ...v, name: names[v.name] }));
     }
-    const serviceFields={Queue:{capacity:'Capacity',closed:'Closed',items:'Buffered values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Background:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'},Pool:{resources:'Resources',available:'Available resources',leases:'Active leases',closing:'Closing'},Lease:{resource:'Resource',closed:'Closed'}}[handle.kind];
+    const serviceFields={Queue:{capacity:'Capacity',items:'Queued values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Background:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'},Pool:{resources:'Resources',available:'Available resources',leases:'Active leases',closing:'Closing'},Lease:{resource:'Resource',closed:'Closed'}}[handle.kind];
     if(serviceFields) return children.filter(v=>serviceFields[v.name]).map(v=>this.render(v,serviceFields[v.name]));
     const fieldName = { Record: 'Fields', Alternative: 'Fields', List: 'Items', Set: 'Items', Pack: 'Items', Bytes: 'Items', Map: 'Entries', View: 'Receiver' }[handle.kind];
     if (!fieldName) return children.map(v => this.render(v));

@@ -20,7 +20,7 @@ Verified: when rebasing standard-library work onto current main, migrate new con
 
 ### Latest choices can supersede an apparently accepted alternative
 
-Decision: keep `Equal` and `Hashable` derived. The later concurrency simplification removed compiler sharing bounds: all values may be shared, and `Synchronized[T]` guards protect complete updates. The user briefly requested custom equality implementations, then explicitly reversed that choice. Explicit closure capture lists were also rejected; the subsequent universal-sharing decision supplies the current sharing design.
+Decision: keep `Equal` and `Hashable` derived. The later concurrency simplification removed compiler sharing bounds: all values may be passed freely, and `Synchronized[T]` guards protect shared mutable access and complete updates. The subsequent local Queue decision requires explicit synchronization for concurrent access. The user briefly requested custom equality implementations, then explicitly reversed that choice. Explicit closure capture lists were also rejected; the subsequent universal-sharing decision supplies the current sharing design.
 
 Apply when: changing bounds, equality, capture syntax, or callable sharing.
 Evidence: [equality reversal](codex://threads/01a12aed-fa8a-7d93-b522-38e95f93fdf5); [capture-list rejection](codex://threads/01a12bf3-438d-7c72-a846-7443cea58e3a); [canonical equality rules](../design/core-language/types/equality-and-hashing.md); [current callable sharing rules](../design/ownership-and-cleanup/values/sharing.md#function-values).

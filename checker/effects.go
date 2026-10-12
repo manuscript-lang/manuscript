@@ -111,10 +111,14 @@ func (c *checker) effectSummaries() {
 					} else {
 						add(n, "write")
 					}
-				case "@std/Synchronized", "@std/Queue":
+				case "@std/Synchronized":
 					add(n, "write")
-					if name == "receive" {
+				case "@std/Queue":
+					if name != "enqueue" {
 						add(n, "read")
+					}
+					if name == "enqueue" || name == "dequeue" {
+						add(n, "write")
 					}
 				case "@std/Pool", "@std/Lease", "@std/Background":
 					add(n, "write", "unknown")

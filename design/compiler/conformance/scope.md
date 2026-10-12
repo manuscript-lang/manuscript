@@ -29,7 +29,7 @@ These gaps still need concrete contracts.
 | Build distribution | External adapter/dependency locks and supported debugger distribution | [Reproducibility](../builds/reproducibility.md) |
 | Native adapter ABI | Generated Go declarations, receiver construction, disposer types, and compatibility validation | [Adapter manifests](../../modules-and-capabilities/adapters/manifests.md) |
 | Capability analysis | Classification of adapter interfaces, pure contracts, wrappers, and indirect authority | [Authority](../../modules-and-capabilities/capabilities/authority.md) |
-| Queue extensions | Fairness and additional channel patterns beyond the bounded FIFO contract | [Queues](../../standard-library/data-and-io/queues.md) |
+| Queue extensions | Blocking channels and wakeup policies beyond the local FIFO contract | [Queues](../../standard-library/data-and-io/queues.md) |
 | Pool extensions | Native resource factories and additional lease contracts | [Synchronized values and pools](../../standard-library/data-and-io/synchronized-state.md) |
 | Builder extensions | Additional bulk mutation operations beyond sealed snapshot construction | [Builders](../../standard-library/data-and-io/builders.md) |
 | HTTP and subprocess extensions | Additional host contracts, interactive subprocess streams, and uniform cross-platform descendant supervision; current HTTP clients, streaming hosts, and WebSockets are covered in [package coverage](../../standard-library/packages/coverage.md) | [HTTP hosts](../../standard-library/hosts/http.md), [streams](../../standard-library/data-and-io/streams.md) |

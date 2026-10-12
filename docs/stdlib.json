@@ -1821,17 +1821,11 @@
             "capacity: Int"
           ],
           "operations": [
-            "close: fn()-\u003eUnit",
-            "receive: fn()-\u003eOptional[T]",
-            "send: fn(value: T)-\u003eResult[Unit, QueueError]"
-          ]
-        },
-        {
-          "name": "QueueError",
-          "kind": "alternative",
-          "type": "QueueError",
-          "cases": [
-            "Closed"
+            "dequeue: fn()-\u003eOptional[T]",
+            "enqueue: fn(value: T)-\u003eBool",
+            "is_empty: fn()-\u003eBool",
+            "length: fn()-\u003eInt",
+            "peek: fn()-\u003eOptional[T]"
           ]
         }
       ]

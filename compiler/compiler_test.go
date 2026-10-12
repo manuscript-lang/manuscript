@@ -604,3 +604,20 @@ func TestSynchronizedBoundaries(t *testing.T) {
 		})
 	}
 }
+
+func TestLocalQueueBoundaries(t *testing.T) {
+	for name, statement := range map[string]string{
+		"capacity required":    "let queue = Queue[Int]()",
+		"no cleanup lifecycle": "with queue = Queue[Int](capacity: 2):\n        return",
+		"no close method":      "let queue = Queue[Int](capacity: 2)\n    queue.close()",
+		"no equality":          "let queue = Queue[Int](capacity: 2)\n    let same = queue == queue",
+		"no cleanup view":      "let queue = Queue[Int](capacity: 2)\n    let resource = Closeable(value: queue)",
+	} {
+		t.Run(name, func(t *testing.T) {
+			source := "import Queue from \"@std/queues.ms\"\nimport Closeable from \"@std/cleanup.ms\"\nfn invalid() -> Unit:\n    " + statement + "\n"
+			if result := compiler.CompileSource(name+".ms", source, compiler.Options{}); result.Success() {
+				t.Fatal("accepted invalid local queue use")
+			}
+		})
+	}
+}

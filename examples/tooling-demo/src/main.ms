@@ -9,7 +9,7 @@ type Package:
     title: String
     count: Int
 
-# A real entry point: records, generics, a bounded service, and a native workload.
+# A real entry point: records, generics, a local queue, and a native workload.
 export fn main(process: Process) -> Int:
     let package = Package(title: "Manuscript", count: 42)
     let values = [10, 20, 30]
@@ -21,16 +21,13 @@ export fn main(process: Process) -> Int:
         none:
             return 1
     let sum = total(first: values.length(), second: 20, third: 30)
-    with queue = Queue[Int](capacity: 4):
-        let admitted = queue.send(value: package.count)
-        match admitted:
-            error(_):
-                return 1
-            ok(_):
-                let checksum = compute(iterations: 3000000)
-                let output = "{package.title}: {sum}; checksum {checksum}\n"
-                match process.stdout.write(data: output.to_bytes()):
-                    ok(_):
-                        return 0
-                    error(_):
-                        return 1
+    let queue = Queue[Int](capacity: 4)
+    if not queue.enqueue(package.count):
+        return 1
+    let checksum = compute(iterations: 3000000)
+    let output = "{package.title}: {sum}; checksum {checksum}\n"
+    match process.stdout.write(data: output.to_bytes()):
+        ok(_):
+            return 0
+        error(_):
+            return 1

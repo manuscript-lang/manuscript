@@ -1,8 +1,6 @@
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
-import Queue from "@std/queues.ms"
-import QueueError from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import Pool from "@std/pools.ms"
 import PoolError from "@std/pools.ms"
@@ -29,35 +27,6 @@ impl File for MemoryFile:
     fn close() -> Unit:
         with locked = self.closed.lock():
             locked.set(value: true)
-
-test "bounded queues drain on close":
-    with queue = Queue[Int](capacity: 2):
-        let accepted = queue.send(value: 3)
-        let second = queue.send(value: 4)
-        queue.close()
-        match queue.receive():
-            some(value):
-                if not (value == 3):
-                    return panic(message: "check failed")
-            none:
-                return panic(message: "Unexpected case")
-        match queue.receive():
-            some(value):
-                if not (value == 4):
-                    return panic(message: "check failed")
-            none:
-                return panic(message: "Unexpected case")
-        match queue.receive():
-            some(_):
-                return panic(message: "Unexpected case")
-            none:
-                let completed = unit
-        match queue.send(value: 5):
-            ok(_):
-                return panic(message: "Unexpected case")
-            error(cause):
-                if not (cause == QueueError.Closed):
-                    return panic(message: "check failed")
 
 test "atomic state and sealed builders":
     let state = Synchronized(value: 3)

@@ -118,7 +118,7 @@ Locale collation/case mapping (`localeCompare`, locale case methods, `Intl`), gr
 | JSON | `@std/json.ms` | Existing parse/stringify with exact decimal number text and explicit limits |
 | Promise aggregation | ordinary suspending functions; `parallel`, `parallel_map`, `Background` | Joined work and lexical cleanup; no detached Promise or microtask compatibility |
 | Date / timers | `@std/time.ms`, explicit Clock / WallClock capabilities | Timestamp parse/format, shifts/differences, monotonic timers; calendar/timezone/locale formatting remains a gap |
-| ArrayBuffer / DataView | `Bytes`, `@std/binary.ms` | No shared raw memory, typed numeric views, or Atomics; use Synchronized / Queue |
+| ArrayBuffer / DataView | `Bytes`, `@std/binary.ms` | No shared raw memory, typed numeric views, or Atomics; use Synchronized for shared updates |
 | Object / Reflect / Proxy / Symbol | Records, alternatives, maps, explicit contracts | Dynamic prototypes, property traps, metaprogramming, boxed primitive methods, and VM reflection are outside the typed data API |
 
 See [Node.js and Go coverage](coverage.md) for files, networking, streams, crypto, processes, compression, and other application facilities already present. The table records functional breadth without claiming JavaScript source or runtime compatibility.

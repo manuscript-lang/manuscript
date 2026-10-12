@@ -26,7 +26,7 @@ Naming Result or ExecutionError in a signature requires their individual imports
 
 This body fragment requires an enclosing `Result[U, ExecutionError]` function for its outer `try`; translate with `map_error` when using an application error type. Unit tests must match the outer Result instead.
 
-The captured users capability is an ordinary Users view. All captures, input elements, and output elements are safe to share, including functions and contract views.
+The captured users capability is an ordinary Users view. Captures, input elements, and output elements may include functions and contract views. Concurrent calls that access a local mutable queue must protect it with Synchronized.
 
 Returning a resource reference does not register cleanup or keep it open; operations should manage temporary resources within their own `with` scopes.
 

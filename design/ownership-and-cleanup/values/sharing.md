@@ -7,7 +7,7 @@ weight = 50
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Every source value is safe to share between concurrent operations. Sharing needs no annotation, compiler bound, or callable proof. It does not keep a resource open or register cleanup.
+Every source value may be passed between concurrent operations. Passing a reference does not synchronize access to the referenced object. Sharing needs no annotation, compiler bound, or callable proof. It does not keep a resource open or register cleanup.
 
 ## Data and services
 
@@ -17,9 +17,11 @@ Native services and builders synchronize their mutable internals and resource li
 
 Wrappers coordinate the closed-state check, access to the underlying handle, and closure as one lifecycle protocol. A flag check followed by unprotected I/O is insufficient. A stale lease or lock guard must never access a resource or protected value after release.
 
+A [Queue](../../standard-library/data-and-io/queues.md) is a local mutable collection with no internal synchronization. When shared, keep it in one `Synchronized[Queue[T]]` and hold a separately acquired guard for each caller's full use, including reads. Queue aliases and bound methods must follow that same discipline; the compiler does not track or enforce lock ownership. Immutable records may contain queue references without making the referenced queue immutable.
+
 ## Contract views
 
-`Contract(value: receiver)` retains the implementing receiver. There is one contract-view type; it can be passed through fields, parameters, returns, and collections and used concurrently. Generic behavioral bounds require the named operations only. Native adapters must make every exposed receiver safe to share; an unsafe native receiver is not a supported source value.
+`Contract(value: receiver)` retains the implementing receiver. There is one contract-view type; it can be passed through fields, parameters, returns, and collections and used according to its receiver's concurrency contract. Generic behavioral bounds require the named operations only. Native service adapters synchronize their receivers and resource lifecycles. A source implementation that holds a local queue must use a synchronized wrapper before exposing concurrent operations.
 
 ## Function values
 

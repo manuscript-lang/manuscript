@@ -25,7 +25,7 @@ This table maps common Node.js and Go tasks to Manuscript facilities. It tells y
 | http/net/http | Buffered and streaming HTTP/1.1/HTTP/2, pooled clients, cookies, redirects, WebSocket sessions | Implemented; HTTP/3 excluded by user request |
 | child_process/os/exec | Existing Commands.run, bounded captured output, timeout, joined execution | Implemented functional option; interactive child handles deferred |
 | zlib/compress, archive/tar/zip | Bounded gzip/zlib/deflate, ZIP/TAR immutable encode/decode | Implemented; extraction/Brotli/Zstd deferred |
-| events/sync/channels/context/worker_threads | Queue, Synchronized/guards, Pool/Lease, joined parallel and Background contexts | Implemented; no JS worker VM or detached tasks |
+| events/sync/channels/context/worker_threads | Local Queue wrapped in Synchronized, guards, Pool/Lease, joined parallel and Background contexts | Implemented; no JS worker VM or detached tasks |
 | console/log/testing | Explicit streams/structured JSON log, conditional checks, existing runner | Implemented; interactive terminal and advanced diagnostics deferred |
 | XML/gob/ASN.1/MIME/image/database/sql | Application/adaptor implementations using Bytes/streams/capabilities | Deferred; not claimed as standard-package coverage |
 | vm/v8/module/async_hooks/inspector/repl, Go reflect/unsafe/plugin/syscall | Ordinary suspending functions, checked source tooling, trusted host adapters | Runtime-specific APIs omitted; no sandbox VM equivalent claimed |

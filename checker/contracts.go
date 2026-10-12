@@ -190,7 +190,7 @@ func (c *checker) implements(receiver, contract *Type) bool {
 	if receiver == nil || contract == nil {
 		return false
 	}
-	if std(contract, "Closeable") && (std(receiver, "Background") || std(receiver, "Queue") || std(receiver, "Pool") || std(receiver, "Lease") || std(receiver, "SynchronizedGuard")) {
+	if std(contract, "Closeable") && (std(receiver, "Background") || std(receiver, "Pool") || std(receiver, "Lease") || std(receiver, "SynchronizedGuard")) {
 		return true
 	}
 	if receiver.ID == contract.ID {
@@ -361,7 +361,7 @@ func nativeMethod(t *Type, name string) *Method {
 }
 
 func (c *checker) closeable(t *Type) bool {
-	if std(t, "Background") || std(t, "Queue") || std(t, "Pool") || std(t, "Lease") || std(t, "SynchronizedGuard") {
+	if std(t, "Background") || std(t, "Pool") || std(t, "Lease") || std(t, "SynchronizedGuard") {
 		return true
 	}
 	if t.Kind == "contract" || t.Kind == "variable" {
