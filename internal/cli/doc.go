@@ -16,8 +16,19 @@ const docHelp = `Usage: ms doc <file.ms|ms.toml> [--json] [-o output]
 
 Generate public API documentation as Markdown (default) or versioned JSON.
 Project documentation includes exports from the entry module and local imports.
---stdlib documents the standard library bundled with this binary.
 Output goes to stdout unless -o or --output is supplied. No Go toolchain is needed.
+
+Options:
+  --stdlib             Document the bundled standard library; omit the input file
+  --json               Emit versioned JSON instead of Markdown
+  -o, --output <path>  Write output to a file (default: stdout)
+  -h, --help           Show this help without generating documentation
+
+Examples:
+  ms doc main.ms
+  ms doc ms.toml -o api.md
+  ms doc --stdlib -o stdlib.md
+  ms doc --stdlib --json -o stdlib.json
 `
 
 func runDoc(args []string) int {

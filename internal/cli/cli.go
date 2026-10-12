@@ -17,28 +17,6 @@ import (
 	"syscall"
 )
 
-const help = `Usage: ms <check|lint|lsp|profile|debug|build|emit|run|test|fmt|inspect|diagram|lock|doc|stdlib> <file.ms|ms.toml> [-o output] [-- program arguments]
-
-profile Run with CPU/heap/trace capture; -o creates a bundle with executable and metadata
-debug  Build without optimization and start Delve (requires dlv)
-lsp    Serve the language server on stdin/stdout
-lint   Check source hygiene; --json emits stable rule codes
-check  Parse and type-check without executing source
-build  Build a native executable (default: ./program)
-emit   Emit Go source containing the runtime (-o writes a file)
-run    Build and run an exported main() -> Int
-test   Build and execute module test blocks, including imported modules
-fmt    Format a module; --check verifies without writing
-inspect Emit checked symbols, source hashes, call sites, and statement spans as JSON
-diagram Emit the checked static call graph as Mermaid
-doc    Generate public module docs or the bundled stdlib reference (ms doc --help)
-stdlib Materialize standard .ms declarations: ms stdlib <directory>
-lock   Explicitly pin the compiler/runtime, Go toolchain, and target in ms.lock
-
-build, run, test, and lock use the bundled toolchain; no Go installation is needed.
-Set MANUSCRIPT_GO to explicitly use a different Go executable.
-`
-
 // Run executes a command and returns its process exit status.
 func Run(args []string) int {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
@@ -48,6 +26,19 @@ func Run(args []string) int {
 	if args[0] == "--version" {
 		fmt.Println("Manuscript 0.1.0")
 		return 0
+	}
+	usage, known := commandHelp(args[0])
+	if !known {
+		fmt.Fprintln(os.Stderr, "unknown command:", args[0])
+		fmt.Fprintln(os.Stderr, "Run 'ms --help' to list commands.")
+		return 2
+	}
+	if requestsHelp(args[1:]) {
+		fmt.Print(usage)
+		return 0
+	}
+	if args[0] == "help" {
+		return runHelp(args[1:])
 	}
 	if args[0] == "doc" {
 		return runDoc(args[1:])
@@ -60,7 +51,7 @@ func Run(args []string) int {
 		return 0
 	}
 	if len(args) < 2 {
-		fmt.Fprint(os.Stderr, help)
+		fmt.Fprint(os.Stderr, usage)
 		return 2
 	}
 	if args[0] == "stdlib" {

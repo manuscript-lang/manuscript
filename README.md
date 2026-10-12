@@ -47,6 +47,10 @@ Applications export `fn main() -> Int`. Standard names need explicit imports. Se
 
 ## Choose a command
 
+Run `./ms --help` to list commands. Every command supports `-h` and `--help`,
+including `./ms lsp --help` and `./ms doc --stdlib --help`.
+Use `./ms help run` or `./ms run --help` for options, defaults, and examples.
+
 | Task | Example |
 | --- | --- |
 | Check source and report parse, name, and type errors | `./ms check examples/hello/ms.toml` |
