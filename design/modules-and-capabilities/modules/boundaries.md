@@ -7,7 +7,7 @@ weight = 78
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Review a module boundary by reading its exported types and operations, accepted capabilities, errors, sharing requirements, and resource lifetimes together. The compiler additionally derives external effects and call relationships.
+A module boundary tells callers which data and operations they may use. Keep those exported contracts explicit so a caller can see inputs, outputs, expected errors, and required access to external services.
 
 ## Example: ordinary operations
 

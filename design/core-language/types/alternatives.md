@@ -7,7 +7,7 @@ weight = 13
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-An alternative type describes a value that is exactly one of its declared cases. Each case can carry the data needed to explain that possibility.
+Use an alternative type when a value can be one of several declared cases. For example, a payment can be paid, declined, or pending. Each case may carry its own data, such as a receipt or a reason.
 
 ```text
 type Payment:

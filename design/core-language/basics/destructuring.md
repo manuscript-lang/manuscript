@@ -7,7 +7,7 @@ weight = 8
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Destructuring binds parts of a value to local names. `[...]` selects positions; `{...}` selects record fields. Each selected value keeps its static type.
+Destructuring gives names to parts of a value in one declaration. Use brackets, `[...]`, for positions and braces, `{...}`, for record fields. Each new name has the type of the part it selects.
 
 ## Positional bindings
 

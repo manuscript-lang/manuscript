@@ -7,7 +7,7 @@ weight = 114
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-This view follows [parallel operations](../../concurrency/parallel.md), showing domain results, execution failures, and caller cancellation.
+Read this diagram from the preparation step downward. The two branches run concurrently, then meet at a join. It shows how [parallel](../../concurrency/parallel.md) handles ordinary results, faults, timeouts, and caller cancellation.
 
 ```mermaid
 flowchart TD
@@ -18,7 +18,7 @@ flowchart TD
     S --> W
     W -->|Both complete normally| J[Join operations and cleanup]
     J --> V[Return ordered domain Results]
-    W -->|Fault, child stop, or API timeout| C[Cancel unfinished operations]
+    W -->|Operation fault or API timeout| C[Cancel unfinished operations]
     P[Caller cancellation or deadline] -.-> C
     C --> K[Join all operations and cleanup]
     K -->|Execution failure| E[Return ExecutionError]

@@ -7,6 +7,8 @@ weight = 50
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
+Use math for floating-point calculations, numbers for text conversion, and bigint when values exceed the Int range. Numeric conversions are explicit. Read the behavior sections before depending on rounding or overflow results.
+
 ## `@std/math.ms`
 
 ```text
@@ -69,10 +71,29 @@ fn subtract(left: BigInt, right: BigInt) -> BigInt
 fn to_int(value: BigInt) -> Optional[Int]
 ```
 
-## Behavior
+## Floating-point behavior
 
-Math functions use IEEE binary64 and Go math domain/overflow behavior: invalid Float domains yield NaN and overflow can produce infinity. Round is ties-to-even; min/max propagate NaN and preserve signed-zero conventions. Abs_int(MinInt64) faults. Pi/e are zero-argument library functions, not ambient constants. Transcendental last bits may vary by target; tests should use tolerances.
+Math functions use IEEE binary64 and Go's domain and overflow rules. An invalid Float domain yields NaN; overflow can yield infinity. The last bits of transcendental results may differ across targets, so tests should use tolerances.
 
-Integer radices are 2–36, with optional sign and ASCII digits/letters only; parse consumes all input and rejects prefixes, whitespace and separators. Invalid radix returns InvalidInput for parsing and faults for formatting. Out-of-range Int returns OutOfRange. Float parsing accepts signed decimal digits with optional fraction/exponent (at least one digit on each side of a present decimal point), plus NaN/Infinity/-Infinity. Finite syntax overflowing binary64 returns OutOfRange. Formatting uses existing round-trip Float rendering.
+`round` uses ties-to-even. `min` and `max` propagate NaN and preserve signed-zero conventions. `abs_int(MinInt64)` faults because the positive result cannot fit in an `Int`. `pi()` and `e()` are ordinary zero-argument functions.
 
-BigInt is opaque, immutable, shareable and equal, with no source constructor, literals, arithmetic operators, or hashing guarantee. Use from_int/parse and named functions. Max_digits is positive and includes digits excluding the optional sign. Division truncates toward zero; remainder follows the dividend sign. Division by zero returns InvalidInput. Compare returns -1/0/1. To_int returns none outside signed 64-bit range. Bit operations use mathematical two's-complement semantics. Arithmetic never mutates either operand. Int and BigInt never convert implicitly. Very large single native arithmetic operations may delay cancellation until they return; callers should bound input magnitudes. Decimal retains its existing 34-digit contract; extended Decimal parse/format APIs remain deferred.
+## Parsing and formatting numbers
+
+Integer radices are 2–36. Input may have a sign and ASCII digits or letters. Parsing consumes the whole input and rejects prefixes, whitespace, and separators. An invalid radix returns `InvalidInput` when parsing and faults when formatting. An integer outside the `Int` range returns `OutOfRange`.
+
+Float parsing accepts signed decimal digits with an optional fraction or exponent. A present decimal point needs at least one digit on each side. It also accepts `NaN`, `Infinity`, and `-Infinity`. Finite syntax that overflows binary64 returns `OutOfRange`. Formatting uses the existing round-trip Float representation.
+
+## Arbitrary-precision integers
+
+`BigInt` is opaque, immutable, shareable, and comparable for equality. Create it with `from_int` or `parse`; there is no source constructor, literal, arithmetic operator, or hashing guarantee. Arithmetic functions leave both operands unchanged. Conversion between `Int` and `BigInt` is explicit.
+
+| Operation | Behavior |
+| --- | --- |
+| Parse | `max_digits` is positive and counts digits excluding the optional sign. |
+| Divide | Truncates toward zero; division by zero returns `InvalidInput`. |
+| Remainder | Has the dividend's sign; a zero divisor returns `InvalidInput`. |
+| Compare | Returns -1, 0, or 1. |
+| Convert to Int | Returns `none` outside the signed 64-bit range. |
+| Bit operations | Use mathematical two's-complement semantics. |
+
+A very large native arithmetic operation can delay cancellation until it returns. Bound input magnitudes where that matters. Decimal keeps its existing 34-digit contract; extended Decimal parse and format APIs remain future work.

@@ -7,7 +7,9 @@ weight = 40
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The stream contracts have explicit cleanup operations and admit both native implementations and source fakes. The standard host exposes `ReadStream & Shareable`, `WriteStream & Shareable`, and `File & Shareable` views of its synchronized receivers. Bare stream contract types remain plain views under the ordinary interface rules.
+A stream reads or writes bytes over time. Its close operation releases the underlying resource. Native hosts and source fakes can both implement the contracts below.
+
+The host supplies synchronized `ReadStream & Shareable`, `WriteStream & Shareable`, and `File & Shareable` views. A plain stream contract view does not itself promise concurrent safety.
 
 ```text
 interface ReadStream:
@@ -40,4 +42,6 @@ type CommandOutput:
     stderr: Bytes
 ```
 
-`CommandError` has `InvalidInput`, `Unavailable`, `TimedOut`, `OutputLimit`, and `Failed(message: String)`. Empty/NUL program names, NUL arguments, negative bounds, and negative timeout return InvalidInput. The total stdout plus stderr bound is nonnegative. Nonzero ordinary exit is an `ok` output with that code. Timeout or output overflow stops and joins the process before returning its error; caller cancellation unwinds after joining. POSIX process groups include descendants in termination. On platforms without process-group support the wrapper controls the direct process, with bounded pipe completion; descendant supervision needs a platform host contract. Interactive subprocess streams remain separate future contracts; [network sockets](../packages/network.md), [streaming HTTP](../packages/http.md) and [WebSockets](../packages/websocket.md) are implemented.
+`CommandError` has `InvalidInput`, `Unavailable`, `TimedOut`, `OutputLimit`, and `Failed(message: String)`. Empty/NUL program names, NUL arguments, negative bounds, and negative timeout return InvalidInput. The total stdout plus stderr bound is nonnegative. Nonzero ordinary exit is an `ok` output with that code. Timeout or output overflow stops and joins the process before returning its error; caller cancellation unwinds after joining. POSIX process groups include descendants in termination.
+
+On platforms without process-group support the wrapper controls the direct process, with bounded pipe completion; descendant supervision needs a platform host contract. Interactive subprocess streams remain separate future contracts; [network sockets](../packages/network.md), [streaming HTTP](../packages/http.md) and [WebSockets](../packages/websocket.md) are implemented.

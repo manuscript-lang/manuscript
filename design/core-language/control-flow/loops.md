@@ -7,7 +7,7 @@ weight = 25
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Use `for` / `in` to traverse values and `while` to repeat a block while a Boolean condition holds. `break` exits a loop; `continue` proceeds to its next iteration.
+Use `for` / `in` to visit the values in a collection. Use `while` to repeat work while a Boolean condition is true. Inside either loop, `break` ends the loop and `continue` moves to the next iteration.
 
 Loops are statements, not expressions. Manuscript has no labeled loops, loop-result values, integer-range syntax, or user-defined iteration protocol.
 

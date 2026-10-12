@@ -22,7 +22,9 @@ These are type expressions: a list of text, a map from text to integers, optiona
 
 ## Bounds
 
-The complete compiler-defined bound list is `Shareable`, `Equal`, and `Hashable`; these express properties the compiler must verify rather than user-supplied operations. Other requirements use ordinary operation contracts, including contracts imported from the standard library such as Closeable; adding a library facility does not add a compiler bound. Generic declarations use `[T, U]`, with bounds `T: Bound` or intersections such as `T: Shareable & Hashable`.
+A bound states what generic code needs from a type. Write `T: Equal` if the code compares values of type `T`, or combine requirements with `&`, as in `T: Shareable & Hashable`.
+
+The compiler provides three property bounds: `Shareable`, `Equal`, and `Hashable`. Other bounds name operation contracts, such as standard `Closeable`. A new library facility does not add a new compiler bound. Generic declarations list their type parameters in brackets, such as `[T, U]`.
 
 | Bound | Required property |
 | --- | --- |

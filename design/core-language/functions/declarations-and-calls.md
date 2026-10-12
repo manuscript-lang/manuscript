@@ -7,7 +7,7 @@ weight = 21
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A function declares its inputs and output. The body performs its work in source order and returns a value through `return`.
+A function names its inputs, declares their types, and declares the type it returns. Its body runs in source order. Use `return` to send a value back to the caller.
 
 ```text
 fn decrement(value: Int) -> Int:
@@ -99,7 +99,9 @@ Return completeness uses a conservative control-flow check:
 
 A nested function's return or nested loop's break cannot exit the enclosing function or loop. The check uses no additional constant folding.
 
-Expression evaluation also has no normal successor when a necessarily evaluated subexpression cannot complete. This includes callable/receiver preparation, arguments, constructor fields, list elements, interpolation expressions, unary operands, and both operands of a non-short-circuit operator. A right-hand operand of `and` or `or` alone does not remove the possible exit, because it may be skipped; their left operand is always required. Creating a function value does not execute its body. Track evaluation separately from result typing: `1 + panic(message: "stop")` has type `Int` under the [operator rules](../basics/expressions.md#never-operands), but cannot complete normally. A failed initializer accordingly prevents the following statement from being reachable.
+Expression evaluation also has no normal successor when a necessarily evaluated subexpression cannot complete. This includes callable/receiver preparation, arguments, constructor fields, list elements, interpolation expressions, unary operands, and both operands of a non-short-circuit operator. A right-hand operand of `and` or `or` alone does not remove the possible exit, because it may be skipped; their left operand is always required. Creating a function value does not execute its body.
+
+Track evaluation separately from result typing: `1 + panic(message: "stop")` has type `Int` under the [operator rules](../basics/expressions.md#never-operands), but cannot complete normally. A failed initializer accordingly prevents the following statement from being reachable.
 
 ```text
 fn incomplete(active: Bool) -> Int:

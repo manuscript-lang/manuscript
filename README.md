@@ -1,32 +1,64 @@
 # Manuscript
 
-The [design guide](design/_index.md) describes the Manuscript language, runtime, compiler, and developer tooling.
+Manuscript is a statically typed language that compiles to Go and runs as a native executable. Its syntax makes function inputs, expected errors, resource cleanup, and concurrent work explicit.
 
-## Build and run
+Read the [book index](design/_index.md) to choose a topic, or follow [your first program](design/getting-started.md) for a walkthrough. The [glossary](design/glossary.md) explains terms used in the guide. [Implementation coverage](IMPLEMENTATION.md) lists working features and remaining limits.
 
-Install Go 1.25 or newer. The compiler and runtime use only the Go standard library.
+## Build and run the hello project
+
+Install Go 1.25 or newer and run these commands from the repository root:
 
 ```sh
 go build -o ms ./cmd/ms
 ./ms check examples/hello/ms.toml
 ./ms lock examples/hello/ms.toml
 ./ms run examples/hello/ms.toml -- first second
-# Arguments: 2
-./ms build examples/hello/ms.toml -o hello
-./ms test tests/e2e/testdata/accept/cl-01.ms
-./ms emit examples/hello/ms.toml -o main.go
-./ms inspect examples/hello/ms.toml -o inspection.json
-./ms diagram examples/hello/ms.toml -o calls.mmd
-./ms fmt examples/hello/src/main.ms --check
 ```
 
-`ms check` reports positioned parse, resolution, and type errors. `ms build` creates a native executable. `ms emit` writes a Go program containing the Manuscript runtime. Build emitted source inside the distribution with `go build -mod=vendor main.go`; copying it elsewhere also requires the pinned `go.mod`, `go.sum`, and `vendor/` tree. `ms build`, `run`, and `test` bundle those dependencies automatically and need no package downloads. `ms run` and `ms test` build temporary executables. Set `MANUSCRIPT_GO` to select a Go executable outside `PATH`.
+Expected output:
 
-Project native builds require `ms.lock` to match the compiler/runtime and Go toolchain/target. `ms lock` explicitly creates or updates those pins; run it after selecting your toolchain or updating the compiler. Builds verify cached artifacts and write executable/source metadata. `--debug` on build/run/test disables native optimization and inlining. `ms check --json` provides structured diagnostics.
+```text
+Arguments: 2
+```
 
-Applications export `fn main(process: Process) -> Int`; standard symbols use explicit imports. Start with [the hello project](examples/hello/src/main.ms), [core language fixtures](tests/e2e/testdata/accept), and [implementation coverage](IMPLEMENTATION.md). The implementation follows the current design on `main`, including cleanup, joined/background work, queues, state/pools, builders, and explicit CLI/HTTP/subprocess capabilities. External adapters, advanced host APIs, structural editing, and debugger integration remain design work; the coverage document lists the limits.
+`check` validates source without running it. `lock` creates or updates the build pins. `run` builds a temporary executable and passes it the arguments after `--`.
 
-Records and alternatives use `type`; operation contracts use `interface`. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declarations, for example `impl ReadValue[T] for Box[T]:`.
+To keep an executable:
+
+```sh
+./ms build examples/hello/ms.toml -o hello
+./hello first second
+```
+
+Applications export `fn main(process: Process) -> Int`. Standard names need explicit imports. See [the hello source](examples/hello/src/main.ms) and [accepted core-language fixtures](tests/e2e/testdata/accept) for complete examples.
+
+## Choose a command
+
+| Task | Example |
+| --- | --- |
+| Check source and report parse, name, and type errors | `./ms check examples/hello/ms.toml` |
+| Get structured diagnostics | `./ms check examples/hello/ms.toml --json` |
+| Run a module's tests | `./ms test tests/e2e/testdata/accept/cl-01.ms` |
+| Write generated Go | `./ms emit examples/hello/ms.toml -o main.go` |
+| Inspect checked source | `./ms inspect examples/hello/ms.toml -o inspection.json` |
+| Write a call diagram | `./ms diagram examples/hello/ms.toml -o calls.mmd` |
+| Check formatting without writing | `./ms fmt examples/hello/src/main.ms --check` |
+
+`--debug` on build, run, or test disables native optimization and inlining. Set `MANUSCRIPT_GO` to select a Go executable outside `PATH`.
+
+## Build pins and generated Go
+
+Project native builds require `ms.lock` to match the compiler/runtime and Go toolchain/target. Run `ms lock` after selecting a toolchain or updating the compiler. Builds verify cached artifacts and write executable/source metadata.
+
+`ms build`, `run`, and `test` bundle pinned dependencies and require no package downloads. `run` and `test` use temporary executables. The distribution pins and vendors its WebSocket and public-suffix dependencies.
+
+`ms emit` writes a Go program containing the Manuscript runtime. Build that source inside the distribution with `go build -mod=vendor main.go`. If you move it elsewhere, include the pinned `go.mod`, `go.sum`, and `vendor/` tree too.
+
+## Language and implementation
+
+Use `type` for records and alternatives, and `interface` for operation contracts. Generic parameters and bounds belong to type, interface, and named function declarations. An implementation uses those declared parameters, as in `impl ReadValue[T] for Box[T]:`.
+
+The implementation includes cleanup, joined and background work, queues, state and pools, builders, and explicit CLI, HTTP, and subprocess capabilities. External adapters, advanced host APIs, structural editing, and debugger integration still have design work. Check [coverage](IMPLEMENTATION.md) for exact limits.
 
 ## Packages
 

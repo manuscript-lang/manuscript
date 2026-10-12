@@ -7,7 +7,7 @@ weight = 85
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A blocking adapter must connect the operation’s stable execution context to the underlying operation and report when its outstanding work has actually ended.
+A blocking adapter must pass cancellation to its underlying operation and wait until outstanding work actually ends. Returning early while a foreign call keeps running would break Manuscript's join and cleanup guarantees.
 
 Each blocking adapter defines how cancellation reaches the underlying operation and when cleanup completes. An uncancellable foreign call remains outstanding until it finishes; wrapping it in a goroutine and returning early violates joining guarantees. Host escalation is the final fallback. Adapters report acquired resources even when cancellation races with acquisition, so the runtime can close newly acquired undelivered resources.
 

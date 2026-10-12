@@ -7,7 +7,7 @@ weight = 30
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A programming fault signals a broken invariant. Expected bad inputs should be validated with control flow and represented by [Result](results.md) when the caller needs a failure value.
+A programming fault means an assumption the code relies on has failed. An assertion is one way to check that assumption. For ordinary invalid user input, use conditions and return a [Result](results.md) error so the caller can respond.
 
 ## Assertions
 

@@ -7,16 +7,25 @@ weight = 81
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Effects describe behavior reachable through an operation, including behavior performed by its callees.
-
-Effects are inferred transitively. Foreign adapters supply declared effect summaries. The effect vocabulary is read, write, external-call, and unknown. An unresolved function-value or contract call contributes unknown, never an empty effect set. Known targets contribute their union. A contract reports reachable behavior; Manuscript has no source effect-bound syntax or static purity promise. Foreign code is trusted to honor its summaries. External writes are not reversible through cancellation.
+An effect describes external behavior reachable from a function. If a function calls another function that writes to storage, that write is also part of the caller's effect summary.
 
 ## Transitive analysis
 
-A function calling an operation that writes externally inherits that external effect in the derived summary. Foreign adapters must declare summaries because source analysis cannot inspect their behavior as ordinary Manuscript calls.
+The compiler follows calls and combines their known effects. The vocabulary is `read`, `write`, `external-call`, and `unknown`.
 
-Cancellation can stop unfinished work and trigger cleanup, but it cannot undo an external write that has already completed. A review of a boundary must therefore consider effects as well as returned errors.
+| Call target | How it contributes to the summary |
+| --- | --- |
+| Known source target | Include its effects, including the effects of its callees. |
+| Several known targets | Include the union of their effects. |
+| Unresolved function value or contract call | Include `unknown`; do not treat it as having no effects. |
+| Foreign adapter | Use its declared summary, which foreign code is trusted to honor. |
+
+These summaries describe reachable behavior. Manuscript has no source syntax that promises static purity or restricts a function to an effect set.
+
+## Effects and cancellation
+
+Cancellation can stop unfinished work and run cleanup. It cannot undo an external write that already completed. Review both a boundary's returned errors and its external effects when deciding how to retry or recover.
 
 See [diagram views](../../developer-tooling/diagrams/views.md) and [architecture changes](../../developer-tooling/diagrams/architecture-diffs.md).
 
-[Previous: Explicit capability authority](../capabilities/authority.md) · [Next: Adapter manifests](../adapters/manifests.md)
+[Previous: Explicit capability authority](authority.md) · [Next: Adapter manifests](../adapters/manifests.md)

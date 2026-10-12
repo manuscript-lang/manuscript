@@ -7,7 +7,7 @@ weight = 14
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Import `Optional` from `@std/optional.ms`. `Optional[T]` describes either a value of type `T` or its absence. Its alternatives are `some(value: value)` and `none`.
+Use `Optional[T]` when a value may be missing. `some(value: ...)` contains a value of type `T`; `none` means there is no value. Import Optional from `@std/optional.ms`.
 
 ```text
 let present: Optional[String] = some(value: "Ada")

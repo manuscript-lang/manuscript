@@ -7,7 +7,7 @@ weight = 60
 
 [Guide index](_index.md) · [Design index](../_index.md)
 
-`parallel` is a standard-library API for concurrent operations. Its named `tasks` argument receives functions to invoke, rather than already-running task handles. The API starts the operations and joins them before returning.
+Use `parallel` to run a fixed set of operations at the same time. Pass functions in the named `tasks` argument. The API starts them and waits for every started operation, including cleanup, before returning. Passing a function call would execute it before parallel starts.
 
 ## Calling parallel
 
@@ -71,7 +71,7 @@ fn load(user_id: Int, users: Users & Shareable, orders: Orders & Shareable) -> R
 
 ## Preparation
 
-All arguments, pack entries, receivers, and captured snapshots are evaluated in written order in the caller, before entry into the API. In the example, `first` and `second` snapshot `user_id` and the shared services when constructed; their bodies run only after preparation succeeds and `parallel` starts the operations, inside the execution context `parallel` establishes.
+Before parallel starts anything, the caller evaluates arguments, task-pack entries, receivers, and captured values in written order. In this example, creating first and second captures snapshots of user_id and the shared services. Their bodies run later, after preparation succeeds and parallel starts the operations under its group execution context.
 
 If preparation fails, no operation has started. Preparation may have external effects; the runtime does not undo them. Resources acquired during preparation require their own `with` scopes or acquisition API contracts.
 
@@ -81,7 +81,7 @@ Concurrent scheduling and external effect order are nondeterministic. Sharing a 
 
 ## Ordered, typed results
 
-A literal task pack has a fixed number of positions. Each position accepts a zero-argument function and retains its individual return type. The successful result has the same shape and order: in the example, `resA` has type `Result[User, UserError]` and `resB` has type `Result[List[Order], OrderError]`, regardless of completion order.
+A literal task pack is a fixed set of positions, each holding a zero-argument function. Positions may have different return types. The result preserves both their types and their input order. Here, resA is Result[User, UserError] and resB is Result[List[Order], OrderError], whichever operation finishes first.
 
 The brackets do not force these different types into a homogeneous `List[T]`. Fixed positional packs require type-system support for heterogeneous inputs and outputs; `parallel` itself remains an API call, with no special concurrency keyword. Ordinary list literals outside a positional-pack contract keep their homogeneous list rules.
 

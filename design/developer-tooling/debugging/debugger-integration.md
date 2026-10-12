@@ -7,7 +7,7 @@ weight = 120
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The debugger combines native Go execution control with Manuscript-aware rendering of values, tasks, and generated frames.
+The debugger design has two parts: Go tools control execution, while a Manuscript layer explains source values, concurrent operations, and generated frames. A native line number alone cannot explain a source alternative or a cleanup frame.
 
 Delve DAP provides native debugger transport; a Manuscript debugger layer renders source values and marks generated cleanup and runtime frames. Native line mapping alone does not provide that interpretation.
 

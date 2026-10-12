@@ -70,7 +70,7 @@ Keep the public surface small. An omitted feature needs an explicit exclusion; a
 
 The 32 findings below include source references, concrete design probes, proposed decisions, and acceptance checks. Some findings share a dependency: generic dispatch needs contract coherence, host invocation needs standard names, and test discovery needs a build profile. Their proposals must be reconciled before adoption.
 
-Read [core language](#core-language), [modules and application boundaries](#modules-capabilities-and-application-boundaries), or [conformance and tooling](#conformance-and-developer-tooling).
+Read [core language](language-completeness.md#core-language), [modules and application boundaries](language-completeness.md#modules-capabilities-and-application-boundaries), or [conformance and tooling](language-completeness.md#conformance-and-developer-tooling).
 
 Module priorities use P1 for decisions needed by a complete application and P2 for later API or tooling milestones. These identify design dependencies, rather than validated implementation bugs.
 

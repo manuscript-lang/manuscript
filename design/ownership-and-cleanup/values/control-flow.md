@@ -7,7 +7,7 @@ weight = 52
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-`let` prevents reassignment; `var` permits replacing a binding. Assignment changes a value or reference. It does not close the previous object or invalidate its aliases.
+Reassigning a `var` replaces its value or reference. It does not close the previous object or invalidate other references to it. A `let` prevents reassignment.
 
 A `with` binding is immutable and registers the initialized object itself. Reassigning another variable that references the object cannot change which object's `close()` will execute. Closing early is permitted because `close()` is idempotent.
 

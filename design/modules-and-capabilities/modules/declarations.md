@@ -7,9 +7,7 @@ weight = 77
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A module defines which declarations belong together and which are available to other code.
-
-Each `.ms` file is one module. Its resolved filesystem path identifies it; source files do not contain `module` declarations. Declarations are internal unless prefixed with `export`. Imports select individual exported symbols from explicit file paths; wildcard imports and cyclic module dependencies are rejected.
+Each `.ms` file is a module: a group of declarations with its own boundary. Use `export` to make a declaration available to other files and `import` to bring an individual exported declaration into the current file. Resolved file paths identify modules. There is no `module` declaration, wildcard import, or cyclic module dependency.
 
 ## Names and declaration order
 

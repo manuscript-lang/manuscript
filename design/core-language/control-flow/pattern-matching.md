@@ -7,7 +7,7 @@ weight = 26
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A `match` selects a block according to a value's alternative. Each case can bind the data carried by that alternative.
+Use `match` to handle the cases of an alternative type. Each branch can give names to the data carried by its case. For example, a payment may be paid, declined, or pending, and each outcome needs different handling.
 
 A match accepts tagged alternative types, including `Optional` and `Result`. Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is a statement; it cannot initialize a binding as an expression. The scrutinee evaluates once.
 

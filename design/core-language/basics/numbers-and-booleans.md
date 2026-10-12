@@ -7,7 +7,7 @@ weight = 9
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Numeric literals choose a specific numeric type. Manuscript keeps conversions explicit so a function's numeric contract can be read from its signature.
+A number literal has a specific type: `3` is an Int, `0.5` is a Float, and `12.50d` is a Decimal. Convert explicitly when a function needs another numeric type. Boolean values are `true` and `false`.
 
 ```text
 let count = 3

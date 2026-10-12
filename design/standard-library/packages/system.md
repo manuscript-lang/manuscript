@@ -7,6 +7,8 @@ weight = 53
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
+Use Timestamp for wall-clock time and Duration for a time interval. Access the current wall clock, environment, system information, and random bytes through explicit services supplied by the host.
+
 ## `@std/time.ms`
 
 ```text
@@ -48,10 +50,32 @@ fn environment(name: String) -> Optional[String]
 fn bytes(count: Int) -> Result[Bytes, LibraryError]
 ```
 
-CLI Process adds `wall_clock: WallClock & Shareable`, `system: System & Shareable`, and `entropy: Entropy & Shareable`. Timestamp is opaque immutable/shareable/equal wall time; Instant remains monotonic and cannot be converted implicitly. Clock and existing sleep retain their previous signatures and cancellation/domain behavior. Wall-clock changes never alter monotonic deadlines.
+## Services supplied by the CLI
 
-Timestamp construction requires years 1–9999 in UTC and nanoseconds 0–999999999. Parsing requires strict RFC 3339 with explicit offset, uppercase T/Z, 0–9 fractional digits and no leap seconds. Format uses UTC, omits zero fractions and trims trailing fraction zeros. Shift checks calendar range; difference returns OutOfRange if its nanosecond result cannot fit Duration. Timestamp introduces no operators or source constructor; unix_seconds/nanoseconds expose explicit components.
+Process provides `wall_clock: WallClock & Shareable`, `system: System & Shareable`, and `entropy: Entropy & Shareable`.
 
-SystemInfo fields are `os: String`, `architecture: String`, `cpu_count: Int`. Info is a native runtime snapshot; CPU count is not a resource reservation. Working_directory is the fixed startup directory. Environment lookup returns none for absence or a value unrepresentable as UTF-8. The original Process.environment remains a startup snapshot; imports do not grant environment access. There is no global chdir or environment mutation API.
+Timestamp represents wall time and is opaque, immutable, shareable, and comparable for equality. Instant remains a monotonic time value; conversion between them is not implicit. Existing Clock and sleep keep their signatures and error/cancellation rules. Wall-clock changes do not affect monotonic deadlines.
 
-Entropy bytes returns exactly count bytes from crypto/rand, requires count 0–16777216 per call, and never falls back to a deterministic PRNG. Secure_int uses unbiased rejection sampling over a nonempty half-open Int interval, including widths exceeding MaxInt64. UUID output is canonical lowercase RFC 9562 version 4 with the correct variant. Source entropy fakes must honor exact lengths; malformed fake output returns Failed. Timezone/calendar conversion, tickers, seeded PRNGs, and environment mutation remain future additions.
+## Timestamp rules
+
+Construction accepts UTC years 1–9999 and nanoseconds 0–999999999. Parsing uses strict RFC 3339: an explicit offset, uppercase T/Z, at most nine fractional digits, and no leap seconds.
+
+Formatting uses UTC. It omits a zero fraction and removes trailing fractional zeroes. `shift` checks the resulting calendar range. `difference` returns `OutOfRange` if its nanosecond result cannot fit in Duration.
+
+There are no Timestamp operators or source constructor. Use the named functions; `unix_seconds` and `nanoseconds` expose the components explicitly.
+
+## System information
+
+SystemInfo has `os: String`, `architecture: String`, and `cpu_count: Int`. This is a native runtime snapshot. CPU count does not reserve resources.
+
+`working_directory` returns the fixed startup directory. `environment` returns `none` if the variable is absent or its value cannot be represented as UTF-8. Process.environment remains a startup snapshot. Importing System grants no environment access; receive a service value explicitly. There is no global chdir or environment mutation API.
+
+## Randomness
+
+`Entropy.bytes` returns exactly the requested number of bytes from Go's crypto/rand. Count must be 0–16777216 per call. It never falls back to a deterministic generator.
+
+`secure_int` samples uniformly from a nonempty interval that includes `min` and excludes `max_exclusive`. Rejection sampling avoids bias, including for interval widths above MaxInt64. `uuid_v4` returns a canonical lowercase RFC 9562 version-4 UUID with the correct variant.
+
+A source fake must return the exact requested byte count. Malformed fake output returns `Failed`.
+
+Timezone and calendar conversion, tickers, seeded generators, and environment mutation remain future work.

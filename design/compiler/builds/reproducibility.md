@@ -7,7 +7,7 @@ weight = 99
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A build’s identity includes the source, relevant `ms.toml` settings, toolchain, runtime, adapters, and dependencies used to produce it. The [project manifest](project-configuration.md) establishes the entry file, source directory, and optional import aliases.
+A reproducible build records which inputs and tool versions produced it. Those inputs include source, relevant `ms.toml` settings, the compiler and runtime, the Go toolchain, adapters, and dependencies. The [project manifest](project-configuration.md) chooses the entry file, source directory, and import aliases.
 
 Pin the Go toolchain, compiler-supplied standard-library modules and their content identity, runtime, native adapters, and their dependencies. `@std` resolves only to that pinned distribution; a build does not fetch or silently substitute a newer library. Include this identity in module, analysis, and generated-code caches. Debug builds also pin the supported Delve version.
 

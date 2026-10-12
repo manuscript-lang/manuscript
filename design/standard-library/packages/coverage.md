@@ -7,7 +7,7 @@ weight = 60
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
-The implementation now offers broad equivalents for common Node.js/Go application work. It is not API compatibility or a claim that every Go package is present. This map distinguishes runnable functionality from remaining work.
+This table maps common Node.js and Go tasks to Manuscript facilities. It tells you what runs today and what remains future work. The mapping is about functionality, not compatibility with those platforms' APIs.
 
 | Node.js / Go capability | Manuscript option | Availability |
 | --- | --- | --- |

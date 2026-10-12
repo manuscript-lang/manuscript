@@ -7,7 +7,7 @@ weight = 103
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-These design fixtures cover standard API binding, sharing, data, host, and adapter rules alongside [core-language conformance](core-language.md). Check each accepted module and rejected mutation independently.
+These fixtures check standard imports and API identities, concurrent sharing, data operations, hosts, and adapter rules. Run each accepted module and each rejected change independently. Use them alongside the [core-language fixtures](core-language.md).
 
 ## Standard imports and declaration identity
 
@@ -60,7 +60,9 @@ test "standard spellings are ordinary names":
             assert value == 3
 ```
 
-Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected without the standard List import even though a local List exists. Calling this local parallel with a `tasks` pack does not activate the standard binding's special typing. Extracting the local parallel above is accepted as an ordinary function value. Preserve the imported parallel/parallel_map/Background callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, parallel_map, Background, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
+Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected without the standard List import even though a local List exists. Calling this local parallel with a `tasks` pack does not activate the standard binding's special typing. Extracting the local parallel above is accepted as an ordinary function value.
+
+Preserve the imported parallel/parallel_map/Background callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, parallel_map, Background, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
 
 Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a module path, a missing standard file/export, and paths or symlinks escaping the standard-library directory. Resolving a standard module in two installation directories with identical pinned contents preserves identity; changing its pinned distribution invalidates module/analysis/code-generation caches. Adapter interfaces may import standard declarations but cannot use that exception to import application files. Imports alone acquire no external authority.
 
@@ -140,7 +142,9 @@ test "contract-valued cleanup":
 
 This fake represents an already-closed stream, so its close is idempotent and has no external release obligation. Also accept `(File & Shareable)(value: ClosedFile(marker: unit))` as the with initializer: cleanup works with either view. Reject `with` over a concrete type merely having a method named close without `impl Closeable`. Reject a contract with the wrong close signature. Verify native and source fake shared File values are interchangeable through Files.open's `Result[File & Shareable, IoError]` result.
 
-A bare function parameter carries no sharing proof. Reject a parallel closure capturing that parameter, even if a particular caller passes a safe named function. Accept a plain view over an implementing record containing a bare function field or unsynchronized native state for sequential use, but reject its shared view construction; such storage lacks a type-level sharing guarantee. Accept concurrent captures of shared contract views, shareable concrete receivers, and generic values bounded by both Shareable and the behavioral contract. Reject concurrent captures of plain contract views and bound methods extracted from them, even when a particular runtime receiver is safe. 
+A bare function parameter carries no sharing proof. Reject a parallel closure capturing that parameter, even if a particular caller passes a safe named function. Accept a plain view over an implementing record containing a bare function field or unsynchronized native state for sequential use, but reject its shared view construction; such storage lacks a type-level sharing guarantee.
+
+Accept concurrent captures of shared contract views, shareable concrete receivers, and generic values bounded by both Shareable and the behavioral contract. Reject concurrent captures of plain contract views and bound methods extracted from them, even when a particular runtime receiver is safe.
 
 Test captured-function wrappers and branch/var merges so an unsafe alternative cannot retain a safe callable proof.
 

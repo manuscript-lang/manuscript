@@ -7,6 +7,8 @@ weight = 57
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
+Use stream helpers for bounded reads and copies, and Commands for buffered subprocess execution. The caller supplies the streams or command service. Helpers do not acquire authority or close the streams for you.
+
 ## `@std/io.ms`
 
 ```text
@@ -15,8 +17,24 @@ fn read_all(input: ReadStream&Shareable, max_bytes: Int) -> Result[Bytes, Librar
 fn read_line(input: ReadStream&Shareable, max_bytes: Int) -> Result[Optional[String], LibraryError]
 ```
 
-The existing [Commands.run contract](../data-and-io/streams.md) is retained: explicit `process.commands` authority, program/arguments/input, aggregate output bound, timeout, joined execution and captured exit_code/stdout/stderr. Nonzero exit is data. Shell execution must be explicit. This expansion does not introduce a conflicting Process/Child hierarchy.
+## Running commands
 
-Copy/read_all/read_line borrow shared stream views, never close them, cooperate with cancellation and enforce cumulative byte bounds. Copy writes a consumed prefix before an error and cannot roll it back. Read_all returns all bytes only on success. Read_line reads one byte at a time to avoid consuming the next line, strips LF and preceding CR, returns a final unterminated line, and returns none only when EOF occurs before any data. Its positive max_bytes includes terminator bytes; invalid UTF-8 returns InvalidData, overflow returns LimitExceeded. Overflow may consume a prefix and one boundary byte. Copy/read_all permit a zero bound for an empty source. Source streams must return nonempty chunks within the requested bound or helpers return Failed.
+[Commands.run](../data-and-io/streams.md) uses explicit `process.commands` access. Supply the program, arguments, input, aggregate output bound, and timeout. It waits for execution and returns captured `exit_code`, `stdout`, and `stderr`. A nonzero exit is returned data. Running a shell must be explicit.
 
-Expected underlying IoError is translated to LibraryError.Failed with a diagnostic; the helper does not flatten Result or catch cancellation/faults. Native File views can be explicitly converted to ReadStream views using existing contract conversion rules when needed. Interactive subprocess handles, terminal raw mode/secret reads, REPL/history, and richer child environment/working-directory options remain deferred; current buffered Commands provides the functional subprocess option.
+## Stream helpers
+
+These helpers use shared stream views without closing them. Keep the streams' own cleanup scopes open for the whole call. All helpers cooperate with cancellation and enforce cumulative byte limits.
+
+| Helper | Behavior |
+| --- | --- |
+| `copy` | Returns the number of bytes copied. An error may occur after a prefix was written; there is no rollback. |
+| `read_all` | Returns all bytes only on success. |
+| `read_line` | Reads one byte at a time so it does not consume the next line. It strips LF and a preceding CR, and accepts a final line without a terminator. |
+
+`read_line` returns `none` only if EOF occurs before any data. Its positive `max_bytes` includes terminator bytes. Invalid UTF-8 returns `InvalidData`; overflow returns `LimitExceeded` and may consume a prefix plus one boundary byte. Copy and read_all allow a zero limit for an empty source.
+
+Source streams must return nonempty chunks within the requested size. A malformed stream implementation causes `Failed`.
+
+Expected `IoError` failures become `LibraryError.Failed` with diagnostics. Helpers do not flatten Result or catch cancellation and faults. Convert a File view explicitly to ReadStream when required by the contract-view rules.
+
+Interactive subprocess handles, terminal raw mode and secret reads, REPL/history, and richer child environment or working-directory options remain future work. Buffered Commands is the current subprocess API; there is no new Process/Child hierarchy.

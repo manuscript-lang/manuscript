@@ -7,7 +7,9 @@ weight = 22
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Functions are ordinary values. Anonymous functions use `fn`, and function types use `fn(value: T) -> U`. A closure retains the values it uses from its surrounding scope; there is no consuming function kind.
+You can store a function in a local binding and pass it to another function. Write an anonymous function with `fn`; its type has the form `fn(value: T) -> U`.
+
+A closure is a function value that keeps values from its surrounding scope. It captures snapshots of the bindings it uses. There is no separate function kind that consumes or transfers those captures.
 
 ```text
 fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:

@@ -7,7 +7,7 @@ weight = 44
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-Hosts establish fixed execution contexts and cancellation while enforcing application limits.
+A host starts application code and sets its execution lifetime, cancellation, and limits. The CLI host invokes `main` once; an HTTP host gives each request its own execution context.
 
-- [HTTP request hosts](http.md)
+- [HTTP request hosts](http.md) — Use HTTP clients or request hosts with bounded bodies and cleanup.
 - [CLI application hosts](cli.md)

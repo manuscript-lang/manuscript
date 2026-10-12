@@ -7,7 +7,9 @@ weight = 4
 
 [Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A Manuscript source file has the `.ms` extension and is itself a module. It contains imports, types, implementations, named functions, and tests, without an explicit `module` declaration. Executable statements and `let`/`var` bindings belong inside function or test bodies; there is no module initializer. Read the following `src/greeting.ms` example from top to bottom: it defines a customer, then a function that produces a greeting.
+Each Manuscript source file ends in `.ms` and is a module. Put imports, type declarations, implementations, named functions, and tests at the top level. Put executable statements and local `let` or `var` bindings inside a function or test. There is no separate `module` declaration or top-level initializer.
+
+The following `src/greeting.ms` file defines a customer and a function that creates a greeting. Read it from top to bottom:
 
 ```text
 export type Customer:
@@ -57,4 +59,4 @@ The [normative grammar](grammar.md) defines accepted tokens, declarations, inden
 
 Continue with [bindings](bindings.md), [records](../types/records.md), and [function declarations](../functions/declarations-and-calls.md) to understand each declaration in the example.
 
-[Next: Source grammar](grammar.md)
+[Next: Expressions and operators](expressions.md) · [Exact syntax reference](grammar.md)

@@ -7,7 +7,7 @@ weight = 107
 
 [Design index](../_index.md)
 
-Use checked source facts to format and edit code, inspect architecture and execution, and debug at Manuscript source level.
+Use the tools to format source, read diagnostics, and inspect program structure. Later sections describe diagrams, traces, and planned source-level debugging. Consult implementation coverage for features that are still design work.
 
 ## Reading order
 

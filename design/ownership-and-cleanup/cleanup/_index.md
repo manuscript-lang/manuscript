@@ -7,10 +7,10 @@ weight = 53
 
 [Guide index](../_index.md) · [Design index](../../_index.md)
 
-Use `with` to register a resource's `close()` operation. Cleanup runs on every exit from that scope and remains separate from successful completion of the resource's work.
+A `with` block registers a resource to close when the block ends. Cleanup also runs after early returns, errors, faults, and cancellation. Start with with scopes, then read the exact rules for close and exit order.
 
-- [With scopes](scopes.md)
-- [The Closeable contract](closeable.md)
-- [Scope-exit ordering](exit-order.md)
-- [Shielding and cleanup faults](cleanup-faults.md)
-- [External resource release](resource-release.md)
+- [With scopes](scopes.md) — Acquire a resource and close it at the end of a block with `with`.
+- [The Closeable contract](closeable.md) — Implement the cleanup operation required by `with`.
+- [Scope-exit ordering](exit-order.md) — Follow cleanup order after a return, error, fault, or cancellation.
+- [Shielding and cleanup faults](cleanup-faults.md) — Understand cleanup after cancellation and what happens if close itself faults.
+- [External resource release](resource-release.md) — Separate closing a handle from successfully completing its work.

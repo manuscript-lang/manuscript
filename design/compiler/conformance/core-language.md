@@ -7,7 +7,7 @@ weight = 102
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-These fixtures specify acceptance, rejection, and evaluation for the core language. They supplement the [semantic conformance plan](semantic-tests.md); they do not specify a test runner, executable host, ownership, or concurrency.
+These fixtures check whether the compiler accepts or rejects core-language programs and whether executed expressions behave as specified. They complement the [semantic test plan](semantic-tests.md). Host behavior, resource lifetimes, and concurrency have separate fixtures.
 
 Each fenced accepted fixture is an independent `.ms` module, with its application types and helper functions included. Its module-level `test` body has the ordinary `Unit` return contract. A rejected variant replaces or removes exactly the indicated text in that fixture, leaving the rest unchanged. If a variant introduces a standard declaration, add its individual import unless missing-import rejection is the behavior under test. Test each variant independently: combining unrelated errors makes the expected diagnostic ambiguous.
 

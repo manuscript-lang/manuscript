@@ -7,7 +7,7 @@ weight = 119
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-Generated Go uses line directives to connect native execution to Manuscript statements. A debug build retains symbols and disables optimization and inlining.
+Generated Go includes line directives that point back to Manuscript statements. A debug build keeps symbols and disables optimization and inlining so the debugger has enough information to follow the source.
 
 [Go line directives](https://pkg.go.dev/cmd/compile#hdr-Line_Directives)
 

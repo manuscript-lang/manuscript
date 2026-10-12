@@ -7,7 +7,9 @@ weight = 46
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-The CLI host has a fixed entry contract. The selected entry module must export exactly one nongeneric `fn main(process: Process) -> Int`; other exports are permitted. Missing/internal main or any different label/type/result is a compile error. The host creates one run context, constructs Process, invokes main once, and waits for work and cleanup before reporting exit.
+A CLI application starts at an exported `fn main(process: Process) -> Int`. The host creates the run context and Process value, calls main once, then waits for work and cleanup before reporting the exit code.
+
+The selected entry module must export exactly one nongeneric main with that parameter name, type, and result. Missing or internal main, or a different signature, is a compile error. Other exports are allowed.
 
 ## Explicit authority roots
 
