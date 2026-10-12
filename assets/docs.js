@@ -1,4 +1,15 @@
 (() => {
+  const versions = document.querySelector('.docs-versions');
+  document.addEventListener('click', event => {
+    if (versions?.open && !versions.contains(event.target)) versions.open = false;
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && versions?.open) {
+      versions.open = false;
+      versions.querySelector('summary').focus();
+    }
+  });
+
   const root = document.documentElement;
   const themeButton = document.querySelector('.theme-toggle');
   const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');

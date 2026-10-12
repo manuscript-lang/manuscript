@@ -1,5 +1,5 @@
 <section class="docs-hero" aria-labelledby="home-title">
-  <div class="hero-eyebrow">Documentation <span class="version-badge">v0.1</span></div>
+  <div class="hero-eyebrow">Documentation <span class="version-badge">v{{ partialCached "docs/version" . }}</span></div>
   <h1 id="home-title">Learn Manuscript</h1>
   <p class="hero-description">{{ .Page.Description | markdownify }}</p>
   <div class="hero-actions">

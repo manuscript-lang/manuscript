@@ -11,6 +11,7 @@
   <header class="docs-topbar">
     <div class="topbar-inner">
       {{ partial "docs/brand" . }}
+      {{ partial "docs/versions" . }}
       <nav class="topbar-links" aria-label="Primary">
         <a class="current" href="{{ .Site.Home.RelPermalink }}">Docs</a>
         <a href="{{ with .Site.GetPage "standard-library/reference" }}{{ .RelPermalink }}{{ end }}">API reference</a>
