@@ -192,3 +192,32 @@ func TestRejectNamedImports(t *testing.T) {
 		}
 	}
 }
+
+func TestInlineSuites(t *testing.T) {
+	for _, source := range []string{
+		"fn double(x: Int) -> Int: return x * 2",
+		"fn f() -> Unit: return\nfn g() -> Unit: return\n",
+		"fn f(x: Int) -> Int:\n    if x > 0: return x\n    else: return 0\n",
+		"fn f(x: Int) -> Int:\n    if x > 0: return x\n    else if x == 0: return 1\n    else:\n        return 2\n",
+		"fn f() -> Unit:\n    if true:\n        return\n    else: return\n",
+		"fn f() -> Unit:\n    let g = fn(x: Int) -> Int: return x\n    use(fn(x: Int) -> Int: return x, other: 1)\n    let gs = [fn() -> Unit: return, fn() -> Int: return 2]\n",
+		"fn f() -> Unit:\n    while true: break\n    for x in values: consume(x)\n    with x = resource(): consume(x)\n",
+	} {
+		if _, err := parser.Parse("inline.ms", source); err != nil {
+			t.Errorf("%s\n%v", source, err)
+		}
+	}
+	for _, source := range []string{
+		"fn f() -> Int: 1\n",
+		"fn f(x: Int) -> Int:\n    if x > 0: return x else: return 0\n",
+		"fn f() -> Unit:\n    if true: return else: return\n",
+		"fn f() -> Unit:\n    if true: use() else if false: use()\n",
+		"fn f() -> Unit: return return\n",
+		"fn f() -> Unit: if true: return\n",
+		"fn f() -> Unit:\n    if true: return\n        return\n",
+	} {
+		if _, err := parser.Parse("inline.ms", source); err == nil {
+			t.Errorf("accepted %s", source)
+		}
+	}
+}

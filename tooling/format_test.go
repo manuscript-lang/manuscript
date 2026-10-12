@@ -118,3 +118,19 @@ func TestFormatMultilineFunctionParameters(t *testing.T) {
 		t.Fatal("formatting is not idempotent", err)
 	}
 }
+
+func TestFormatInlineSuites(t *testing.T) {
+	source := "fn double(x:Int)->Int:return x*2\nfn f(x:Int)->Int:\n    if x>0:return double(x)\n    else:return 0\n"
+	formatted, err := tooling.Format("inline.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "fn double(x: Int) -> Int: return x * 2\nfn f(x: Int) -> Int:\n    if x > 0: return double(x)\n    else: return 0\n"
+	if formatted != want {
+		t.Fatalf("got %q, want %q", formatted, want)
+	}
+	again, err := tooling.Format("inline.ms", formatted)
+	if err != nil || again != formatted {
+		t.Fatalf("format is not stable: %q, %v", again, err)
+	}
+}

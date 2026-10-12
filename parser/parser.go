@@ -12,6 +12,7 @@ type Parser struct {
 	tokens           []lexer.Token
 	at               int
 	declarationsOnly bool
+	inlineStatement  bool
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
@@ -103,6 +104,13 @@ func (p *Parser) newlines() {
 	}
 }
 func (p *Parser) end() {
+	if p.inlineStatement {
+		switch p.peek().Kind {
+		case lexer.Newline, ",", ")", "]", "}":
+			return
+		}
+		p.fail(p.peek(), "expected end of inline statement")
+	}
 	if p.take(lexer.Newline) {
 		p.newlines()
 		return
@@ -329,7 +337,26 @@ func (p *Parser) declaration() *syntax.Declaration {
 	return d
 }
 func (p *Parser) suite() []*syntax.Statement {
+	return p.statementSuite(false)
+}
+func (p *Parser) statementSuite(expression bool) []*syntax.Statement {
+	outer := p.inlineStatement
+	defer func() { p.inlineStatement = outer }()
 	p.need(":")
+	if p.peek().Kind != lexer.Newline {
+		switch p.peek().Kind {
+		case "if", "while", "for", "with", "match":
+			p.fail(p.peek(), "inline bodies require one simple statement")
+		}
+		p.inlineStatement = true
+		body := []*syntax.Statement{p.statement()}
+		p.inlineStatement = outer
+		if !expression {
+			p.end()
+		}
+		return body
+	}
+	p.inlineStatement = false
 	p.need(lexer.Newline)
 	p.need(lexer.Indent)
 	var body []*syntax.Statement
@@ -361,7 +388,7 @@ func (p *Parser) statement() *syntax.Statement {
 		s.Value = p.expression(0)
 		p.end()
 	case p.take("return"):
-		if p.peek().Kind != lexer.Newline {
+		if p.peek().Kind != lexer.Newline && !(p.inlineStatement && (p.peek().Kind == "," || p.peek().Kind == ")" || p.peek().Kind == "]" || p.peek().Kind == "}")) {
 			s.Value = p.expression(0)
 		}
 		p.end()
@@ -580,7 +607,7 @@ func (p *Parser) primary() *syntax.Expression {
 		e.Params = p.parameters(true)
 		p.need("->")
 		e.Result = p.typ()
-		e.Body = p.suite()
+		e.Body = p.statementSuite(true)
 	default:
 		p.fail(t, "expected an expression")
 	}
