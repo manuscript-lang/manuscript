@@ -1,8 +1,39 @@
 # Manuscript
 
-A statically typed language for making programs easy to follow.
+The language for the agentic era.
 
-Manuscript makes function inputs, expected failures, resource cleanup, and concurrent work visible in source. Write `.ms` files, compile them to Go, and run them as native executables.
+API-first. Minimal syntax. Best-in-class tooling.
+
+## Design principles
+
+- **API first, minimal syntax.** Design the operation and its contract before inventing a language construct. Concurrency, scheduling, synchronization, and host services belong in imported APIs; new behavior should reuse ordinary calls and values wherever possible.
+- **Optimize for AI writing code and humans understanding it.** Favor consistent compositions and visible dependencies. A change should be understandable from the source and the contracts it uses.
+- **Treat completion as a contract.** Starting work also defines cancellation, joining, and cleanup. Design failure and shutdown behavior alongside the successful path.
+- **Keep one source of truth for agents and tools.** Standard declarations define the APIs the compiler checks. Navigation and API references use those declarations; inspection and diagrams come from checked programs.
+- **Build tooling alongside the language.** Every language decision should work through checking, editing, inspection, debugging, and profiling. Give agents structured answers and humans source-level explanations.
+
+## What these choices bring to the table
+
+| Manuscript's choice | What it gives you |
+| --- | --- |
+| **Concurrency through ordinary functions** | One function kind can wait for work. Imported `parallel` and `Background` APIs accept ordinary function values, so the same function can participate in sequential calls, joined work, or a service. |
+| **Scheduling that follows the same model** | `sleep`, `after`, and `every` share the time API; scheduled work uses one scoped `Timer`. Callbacks follow the ordinary function and lifetime rules. |
+| **Work and cleanup that finish together** | A parallel call waits for every started operation and its cleanup, including after a timeout. Background-service shutdown cancels and joins its work. `with` closes resources in reverse scope order, making shutdown ordering part of the program. |
+| **Error identity preserved through composition** | Parallel operations retain their exact return values, including domain `Result` values. A domain error, an execution fault, and cancellation have distinct meanings; error translation uses explicit matching. |
+| **APIs that tools can read as source** | Standard-library signatures live in Manuscript files that editors can navigate. The compiler supplies checked inspection, static call diagrams, and Markdown/JSON API exports, giving agents structured information about the code they are changing. |
+| **A complete native build tool in one binary** | `ms` bundles the build tools, runtime, and pinned dependencies. After installation, agents can check, build, run, and test native programs without separately provisioning Go or downloading build dependencies. |
+
+## Best-in-class tooling for agents and humans
+
+Manuscript's tools share the compiler's understanding of the program:
+
+- **Agents get structured evidence.** JSON diagnostics and checked source inspection expose symbols, call sites, source hashes, and effects. Static call diagrams and Markdown/JSON API exports make the program and its dependencies inspectable.
+- **Editors understand the contracts.** Typed completion works in unfinished calls; named arguments and auto-imports follow checked scope. Project-wide rename checks the proposed edits before returning them. Standard-library definitions are navigable Manuscript source.
+- **Runtime behavior stays connected to source.** Native debugging through Delve shows `.ms` frames, values, and execution/service state. CPU and heap profiles and execution traces carry source and work attribution; profile bundles retain the executable and matching metadata.
+
+See the [tooling guide](documentation/developer-tooling/implementation.md) and [VS Code integration](extensions/vscode/README.md) for setup and current limits.
+
+Manuscript is statically typed. Write `.ms` files, compile them to Go, and run them as native executables.
 
 [Read the book](https://manuscript-lang.github.io/manuscript/) · [Take the tour](documentation/learn/tour.md) · [Download Manuscript](https://github.com/manuscript-lang/manuscript/releases)
 
@@ -24,16 +55,6 @@ export fn main() -> Int:
 ```
 
 Imports name the standard services the program uses. `let` infers the local value's type, and `match` handles both outcomes of the write. The integer returned by `main` becomes the program's exit code.
-
-## Why Manuscript?
-
-- **Readable calls.** Functions declare their input and output types. Calls with multiple parameters name each argument.
-- **Explicit data and errors.** Nominal types distinguish domain concepts; alternatives require exhaustive matching. Expected failures use typed `Result` values.
-- **Scoped cleanup.** A `with` block closes its registered resources when the scope ends, including on errors and cancellation.
-- **Visible concurrency.** Ordinary calls run sequentially. Start concurrent work explicitly, join parallel operations, and give background work a service lifetime.
-- **Native programs.** The compiler produces native executables through Go. The single `ms` binary bundles the build tools, runtime, and standard library it needs.
-
-The [language tour](documentation/learn/tour.md) introduces the syntax. [Features and boundaries](documentation/learn/features.md) explains the design in more detail.
 
 ## Try it
 
