@@ -79,8 +79,8 @@ fn exercise(path: String) -> Result[Unit, Error]:
     let windows = win32()
     if not (windows.parse("C:/work/file.txt").extension == ".txt"):
         return panic(message: "Windows path parse failed")
-    let control = try common_result(result: control().info())
-    if not (control.pid > 0):
+    let process_info = try common_result(result: control().info())
+    if not (process_info.pid > 0):
         return panic(message: "process information failed")
     let memory = try common_result(result: control().memory_usage())
     if not (memory.heap_system > 0):
