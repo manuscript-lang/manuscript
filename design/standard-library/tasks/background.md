@@ -23,7 +23,6 @@ The constructing host supplies the execution parent. Construct application servi
 
 ```manuscript
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 import Background from "@std/tasks.ms"
 import StartError from "@std/tasks.ms"
 import OperationId from "@std/tasks.ms"
@@ -36,11 +35,11 @@ interface Mailer:
 
 fn enqueue(emails: Background, mailer: Mailer, address: String) -> Result[OperationId, StartError]:
     let send = fn() -> Result[Unit, String]:
-        return map_error(
-            result: mailer.send(to: address),
-            transform: fn(cause: MailError) -> String:
-                return "Email delivery failed"
-        )
+        match mailer.send(to: address):
+            ok(_):
+                return ok(value: unit)
+            error(_):
+                return error(cause: "Email delivery failed")
     return emails.start(operation: send)
 ```
 

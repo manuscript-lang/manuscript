@@ -23,7 +23,7 @@ The [parallel API](../../concurrency/parallel.md) requires coverage for empty, o
 
 Cover each row of the [joining outcome table](../../concurrency/joining.md#group-lifecycle) with a virtual timer: caller cancellation during a group timeout unwinds the caller, a cleanup fault after a timeout reports `Crashed`, an empty pack with a zero timeout succeeds, and a nonempty pack with a zero timeout reports `TimedOut` without running any body. Verify that a `while` loop with no explicit checkpoint unwinds at its next back-edge after cancellation. Reject non-function task entries and functions requiring arguments.
 
-Verify that `let [resA, resB] = try parallel(tasks: [first, second])` preserves each result's type inside a helper returning `Result[Unit, ExecutionError]`; the Unit test matches that helper's result and checks success. Direct `try parallel(...)` in a Unit test is rejected. Mixed domain/execution errors use `map_error`, as in the complete parallel example.
+Verify that `let [resA, resB] = try parallel(tasks: [first, second])` preserves each result's type inside a helper returning `Result[Unit, ExecutionError]`; the Unit test matches that helper's result and checks success. Direct `try parallel(...)` in a Unit test is rejected. Mixed domain/execution errors use explicit `match` branches, as in the complete parallel example.
 
 [Destructuring conformance](../../core-language/basics/destructuring.md) covers array and record patterns, shorthand, renaming, nesting, `let` and `var`, and single evaluation of the initializer. Reject parenthesized positional bindings, fixed-pack arity mismatches, unknown fields, and duplicate local names. Check that dynamic list length mismatches fault rather than introducing missing values or discarding extra elements.
 

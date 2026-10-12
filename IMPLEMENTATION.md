@@ -21,7 +21,7 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 | Facility | Implemented behavior |
 | --- | --- |
 | Numbers | Checked signed 64-bit integers, IEEE binary64 floats, and 34-digit Decimal arithmetic with ties-to-even rounding and exact literal validation |
-| Immutable data | List, insertion-ordered Map and Set, MapEntry, Bytes, UTF-8 conversion, Optional, Result, and `map_error` |
+| Immutable data | List, insertion-ordered Map and Set, MapEntry, Bytes, UTF-8 conversion, Optional, and Result |
 | Time | Duration construction/arithmetic, monotonic Clock/Instant domains, sleep, and operation deadlines |
 | Cleanup | Checker-selected contract dispatch, registration of delivered `with` values, reverse lexical release on every exit, shielded cleanup, primary/secondary fault preservation, and removal of completed cleanup actions |
 | Joined work | Heterogeneous literal `parallel` packs, bounded ordered `parallel_map`, cancellation checkpoints, deadlines, sibling cancellation on faults, and joining before completion |

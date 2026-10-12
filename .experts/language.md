@@ -26,6 +26,14 @@ Verify: inventory related exported helpers and aliases before editing, regenerat
 
 Verified: when rebasing standard-library work onto current main, migrate new conformance fixtures and documentation examples to ordinary `if not (...)` checks returning `panic`; do not restore the removed testing module or its native bindings from a stash. The source-level [built-in parity fixture](../tests/e2e/testdata/accept/builtin-parity.ms) exercises this form, and [standard bindings](../stdlib/bindings.json) remain free of the removed module.
 
+### Error translation does not need a dedicated standard helper
+
+Decision: remove the specialized Result error-mapping helper and keep the documentation focused on ordinary functions and explicit matching. The user's correction rejects extra API machinery for a transformation that existing control flow expresses. Keep `try`'s exact-error-type rule; do not replace the helper with implicit conversions.
+
+Apply when: adding Result adapters or rewriting examples that combine execution and domain errors.
+Evidence: the user's removal request; [error compatibility](../design/core-language/errors/propagation.md#error-compatibility); [parallel example](../design/concurrency/parallel.md).
+Verify: examples compile with explicit Result matches, the standard Result module exports only its type, and regenerated API references agree with its declarations.
+
 ### Latest choices can supersede an apparently accepted alternative
 
 Decision: keep `Equal` and `Hashable` derived. The later concurrency simplification removed compiler sharing bounds: all values may be shared, and `Synchronized[T]` guards protect complete updates. The user briefly requested custom equality implementations, then explicitly reversed that choice. Explicit closure capture lists were also rejected; the subsequent universal-sharing decision supplies the current sharing design.
