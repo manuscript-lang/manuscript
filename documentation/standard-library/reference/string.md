@@ -10,8 +10,8 @@ Import each required symbol with `import Name from "@std/string.ms"`.
 
 ```manuscript
 type StringBuilder:
-    fn append(value: String) -> Unit
-    fn freeze() -> String
+    fn append(value: String) -> Unit:
+    fn freeze() -> String:
 ```
 
 ## StringError {data-api-kind="Alternative"}
@@ -26,12 +26,12 @@ type StringError:
 
 ```manuscript
 impl Error for StringError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## from_scalars {data-api-kind="Function"}
 
 ```manuscript
-fn from_scalars(values: List[Int]) -> Result[String, StringError]
+fn from_scalars(values: List[Int]) -> Result[String, StringError]:
 ```
 

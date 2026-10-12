@@ -19,18 +19,18 @@ type CompressionError:
 
 ```manuscript
 impl Error for CompressionError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## compress {data-api-kind="Function"}
 
 ```manuscript
-fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]
+fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ## decompress {data-api-kind="Function"}
 
 ```manuscript
-fn decompress(data: Bytes, format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]
+fn decompress(data: Bytes, format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
 ```
 

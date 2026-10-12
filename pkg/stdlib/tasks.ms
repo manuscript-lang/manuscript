@@ -10,13 +10,19 @@ export type Scheduler:
     history_limit: Optional[Int] = none
     drain: Optional[Duration] = none
     reporter: Optional[fn(failure: SchedulerFailure) -> Unit] = none
-    fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
-    fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
-    fn restart(id: OperationId) -> Result[OperationId, StartError]
-    fn cancel(id: OperationId) -> Unit
-    fn close() -> Unit
-    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
-    fn status(id: OperationId) -> WorkStatus
+    fn after(
+        duration: Duration,
+        operation: fn() -> Result[Unit, String]
+    ) -> Result[OperationId, StartError]:
+    fn every(
+        interval: Duration,
+        operation: fn() -> Result[Unit, String]
+    ) -> Result[OperationId, StartError]:
+    fn restart(id: OperationId) -> Result[OperationId, StartError]:
+    fn cancel(id: OperationId) -> Unit:
+    fn close() -> Unit:
+    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+    fn status(id: OperationId) -> WorkStatus:
 
 export type SchedulerFailure:
     case Failed(operation: OperationId, cause: String)
@@ -27,7 +33,7 @@ export type ExecutionError:
     case Cancelled
     case Crashed(operation: OperationId, message: String)
 
-export type OperationId
+export type OperationId:
 
 export type StartError:
     case Closed
@@ -42,21 +48,21 @@ export type WorkStatus:
     case Crashed
     case Unknown
 
-export fn check_cancelled() -> Unit
+export fn check_cancelled() -> Unit:
 
-export fn yield_now() -> Unit
+export fn yield_now() -> Unit:
 
 export type TaskGroup:
     timeout: Optional[Duration] = none
-    fn start[T](operation: fn() -> T) -> Task[T]
-    fn join() -> Result[Unit, ExecutionError]
-    fn close() -> Unit
+    fn start[T](operation: fn() -> T) -> Task[T]:
+    fn join() -> Result[Unit, ExecutionError]:
+    fn close() -> Unit:
 
 export type Task[T]:
-    fn join() -> Result[T, ExecutionError]
+    fn join() -> Result[T, ExecutionError]:
 
 impl Error for ExecutionError:
-    fn message() -> String
+    fn message() -> String:
 
 impl Error for StartError:
-    fn message() -> String
+    fn message() -> String:

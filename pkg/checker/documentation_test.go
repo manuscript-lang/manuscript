@@ -67,7 +67,7 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 				t.Errorf("missing declaration for %s#%s", module.Path, d.Name)
 				continue
 			}
-			parsed, err := parser.ParseLibrary(module.Path, d.Declaration)
+			parsed, err := parser.Parse(module.Path, d.Declaration)
 			if err != nil {
 				t.Fatalf("%s#%s is not Manuscript syntax: %v\n%s", module.Path, d.Name, err, d.Declaration)
 			}
@@ -79,7 +79,7 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 	for key, want := range map[string]string{
 		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]\n",
 		"@std/net.ms#DnsRecord":      "type DnsRecord:\n    kind: String\n    value: String\n    priority: Int\n    weight: Int\n    port: Int\n",
-		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n    fn is_some() -> Bool\n    fn is_none() -> Bool\n    fn unwrap() -> T\n    fn unwrap_or(fallback: T) -> T\n    fn unwrap_or_else(create: fn() -> T) -> T\n",
+		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n    fn is_some() -> Bool:\n    fn is_none() -> Bool:\n    fn unwrap() -> T:\n    fn unwrap_or(fallback: T) -> T:\n    fn unwrap_or_else(create: fn() -> T) -> T:\n",
 	} {
 		if got := exports[key].Declaration; got != want {
 			t.Errorf("%s declaration:\ngot %s\nwant %s", key, got, want)
@@ -128,5 +128,25 @@ export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2),
 	}
 	if strings.Contains(declaration, "return callback") {
 		t.Fatal("included function body", declaration)
+	}
+}
+
+func TestRecordDefaultDocumentation(t *testing.T) {
+	source := `export type Options:
+    count: Int = 3
+    total: Int = count + 1
+    label: String = "literal, )"
+`
+	module, err := parser.Parse("fields.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := Check([]*syntax.Module{module}, nil)
+	if len(program.Diagnostics) != 0 {
+		t.Fatal(program.Diagnostics)
+	}
+	docs := ModuleDocumentation(program)
+	if len(docs) != 1 || len(docs[0].Declarations) != 1 || docs[0].Declarations[0].Declaration != strings.TrimPrefix(source, "export ") {
+		t.Fatal("field default spelling changed", docs)
 	}
 }

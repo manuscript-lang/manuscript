@@ -91,9 +91,13 @@ func Inspect(program *checker.Program) Inspection {
 		local(binding, statement.Pos)
 	}
 	for declaration, bindings := range program.Parameters {
+		params := declaration.Params
+		if declaration.Kind == syntax.KindRecord {
+			params = declaration.Fields
+		}
 		for index, binding := range bindings {
-			if index < len(declaration.Params) {
-				local(binding, declaration.Params[index].Pos)
+			if index < len(params) {
+				local(binding, params[index].Pos)
 			}
 		}
 	}

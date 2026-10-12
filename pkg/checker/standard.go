@@ -66,7 +66,7 @@ func loadStandardSources() error {
 		if err != nil {
 			return err
 		}
-		module, err := parser.ParseLibrary("@std/"+file.Name(), string(data))
+		module, err := parser.Parse("@std/"+file.Name(), string(data))
 		if err != nil {
 			return err
 		}
@@ -86,6 +86,11 @@ func loadStandardSources() error {
 			}
 			if len(d.Body) > 0 {
 				return fmt.Errorf("native declarations must not have bodies: %s", d.Pos)
+			}
+			for _, method := range d.Methods {
+				if len(method.Body) > 0 {
+					return fmt.Errorf("native receiver operations must have empty bodies: %s", method.Pos)
+				}
 			}
 			kind := d.Kind
 			if kind == "interface" {

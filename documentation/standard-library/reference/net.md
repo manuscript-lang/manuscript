@@ -97,30 +97,30 @@ type NetworkError:
 
 ```manuscript
 impl Error for NetworkError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## contains_ip {data-api-kind="Function"}
 
 ```manuscript
-fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]
+fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]:
 ```
 
 ## network {data-api-kind="Function"}
 
 ```manuscript
-fn network() -> Network
+fn network() -> Network:
 ```
 
 ## parse_cidr {data-api-kind="Function"}
 
 ```manuscript
-fn parse_cidr(text: String) -> Result[String, NetworkError]
+fn parse_cidr(text: String) -> Result[String, NetworkError]:
 ```
 
 ## parse_ip {data-api-kind="Function"}
 
 ```manuscript
-fn parse_ip(text: String) -> Result[String, NetworkError]
+fn parse_ip(text: String) -> Result[String, NetworkError]:
 ```
 

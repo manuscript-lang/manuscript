@@ -8,6 +8,7 @@ import (
 
 	"github.com/manuscript-lang/manuscript/pkg/parser"
 	"github.com/manuscript-lang/manuscript/pkg/stdlib"
+	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
 func TestPinnedSources(t *testing.T) {
@@ -32,21 +33,18 @@ func TestPinnedSources(t *testing.T) {
 			t.Errorf("materialized %s differs", entry.Name())
 		}
 		if filepath.Ext(entry.Name()) == ".ms" {
-			_, diagnostics := parser.ParseLibrary("@std/"+entry.Name(), string(source))
+			_, diagnostics := parser.Parse(entry.Name(), string(source))
 			if diagnostics != nil {
 				t.Errorf("%s: %v", entry.Name(), diagnostics)
 			}
-		}
-	}
-}
-
-func TestLibraryDeclarationsRequireLibraryMode(t *testing.T) {
-	for _, source := range []string{"export fn native(value: Int) -> Int\n", "export type Opaque\n", "impl Contract for Data:\n    fn message() -> String\n"} {
-		if _, diagnostics := parser.ParseLibrary("library.ms", source); diagnostics != nil {
-			t.Fatal(diagnostics)
-		}
-		if _, diagnostics := parser.Parse("application.ms", source); diagnostics == nil {
-			t.Errorf("application accepted native declaration %q", source)
+			formatted, err := tooling.Format(entry.Name(), string(source))
+			if err != nil {
+				t.Errorf("format %s: %v", entry.Name(), err)
+				continue
+			}
+			if again, err := tooling.Format(entry.Name(), formatted); err != nil || again != formatted {
+				t.Errorf("format %s is not idempotent: %v", entry.Name(), err)
+			}
 		}
 	}
 }

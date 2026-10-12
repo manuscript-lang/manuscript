@@ -17,11 +17,11 @@ type Customer:
 
 Records have nominal identity and mutable fields. A resource field retains an ordinary reference to that object.
 
-A record declaration has at least one field; an empty body is not a record declaration. Field types are explicit. Duplicate field names and field default initializers are compile errors.
+A record declaration may have an empty schema, written as `type Marker:` followed by a newline. Field types are explicit. Duplicate field names are compile errors. A field may have a default expression checked against its declared type.
 
 ## Construction
 
-Constructors supply every field by name exactly once. Missing, duplicate, or unknown fields are compile errors. Call order may differ from declaration order; field expressions evaluate in written call order. Each expression is checked against its declared field type, including expected-type checking for `none` and empty lists.
+Constructors supply required fields by name exactly once and may omit fields with defaults. Missing required fields, duplicate fields, and unknown fields are compile errors. Call order may differ from declaration order; supplied expressions evaluate in written call order, followed by omitted defaults in field declaration order. Each expression is checked against its declared field type, including expected-type checking for `none` and empty lists.
 
 ```manuscript
 let customer = Customer(name: "Ada", email: none)
@@ -38,6 +38,16 @@ customer.name = "Grace"
 ```
 
 Generic records use explicit parameters, such as `type Box[T]:` with `value: T`. `Box[Int](value: 1)` constructs that application; see [generics](generics.md).
+
+```manuscript
+type Options:
+    count: Int = 3
+    total: Int = count + 1
+
+let options = Options(count: 5)  # total defaults to 6
+```
+
+A default can refer to earlier fields and module declarations, including functions; it cannot refer to itself or a later field. Defaults evaluate anew on each construction, so collection defaults have fresh storage. Supplying a value, including `unit`, `none`, or zero, skips that field's default. Generic arguments come from supplied fields, explicit type arguments, or the expected type, rather than from defaults.
 
 ## Mutation and cloning
 

@@ -541,3 +541,33 @@ test "defaults use their declaration module":
 		t.Fatalf("%v: %s", err, data)
 	}
 }
+
+func TestFieldDefaultsAcrossModules(t *testing.T) {
+	directory := t.TempDir()
+	sources := map[string]string{
+		"data.ms": `import List from "@std/collections.ms"
+fn copy[T](value: T) -> T: return value
+export type Box[T]:
+    value: T
+    copied: T = copy(value)
+    items: List[T] = [value]
+`,
+		"main.ms": `import Box from "./data.ms"
+import panic from "@std/faults.ms"
+test "imported constructor retains default module and generic scope":
+    let box = Box(value: "text")
+    if box.copied != "text" or box.items.at(0).unwrap() != "text":
+        return panic("imported generic defaults")
+`,
+	}
+	for name, source := range sources {
+		if err := os.WriteFile(filepath.Join(directory, name), []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result := compiler.CompileFile(filepath.Join(directory, "main.ms"), compiler.Options{Tests: true})
+	output, err := execute(t, result)
+	if err != nil || !strings.Contains(string(output), "0 failed") {
+		t.Fatalf("execution failed: %v\n%s", err, output)
+	}
+}

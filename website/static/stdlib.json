@@ -59,7 +59,7 @@
       "declarations": [
         {
           "name": "BigInt",
-          "kind": "interface",
+          "kind": "native",
           "type": "BigInt",
           "operations": [
             "add: fn(right: BigInt)-\u003eBigInt",
@@ -148,7 +148,7 @@
       "declarations": [
         {
           "name": "Bytes",
-          "kind": "interface",
+          "kind": "native",
           "type": "Bytes",
           "fields": [
             "values: List[Int]"
@@ -172,7 +172,7 @@
         },
         {
           "name": "BytesBuilder",
-          "kind": "interface",
+          "kind": "native",
           "type": "BytesBuilder",
           "operations": [
             "append: fn(value: Int)-\u003eUnit",
@@ -235,7 +235,7 @@
         },
         {
           "name": "List",
-          "kind": "interface",
+          "kind": "native",
           "type": "List[T]",
           "type_parameters": [
             "T"
@@ -282,7 +282,7 @@
         },
         {
           "name": "ListBuilder",
-          "kind": "interface",
+          "kind": "native",
           "type": "ListBuilder[T]",
           "type_parameters": [
             "T"
@@ -306,7 +306,7 @@
         },
         {
           "name": "Map",
-          "kind": "interface",
+          "kind": "native",
           "type": "Map[T, U]",
           "type_parameters": [
             "T: Hashable",
@@ -331,7 +331,7 @@
         },
         {
           "name": "MapBuilder",
-          "kind": "interface",
+          "kind": "native",
           "type": "MapBuilder[T, U]",
           "type_parameters": [
             "T: Hashable",
@@ -357,7 +357,7 @@
         },
         {
           "name": "Set",
-          "kind": "interface",
+          "kind": "native",
           "type": "Set[T]",
           "type_parameters": [
             "T: Hashable"
@@ -383,7 +383,7 @@
         },
         {
           "name": "SetBuilder",
-          "kind": "interface",
+          "kind": "native",
           "type": "SetBuilder[T]",
           "type_parameters": [
             "T: Hashable"
@@ -571,7 +571,7 @@
       "declarations": [
         {
           "name": "Decimal",
-          "kind": "interface",
+          "kind": "native",
           "type": "Decimal",
           "operations": [
             "to_float: fn()-\u003eFloat",
@@ -1904,7 +1904,7 @@
       "declarations": [
         {
           "name": "PriorityQueue",
-          "kind": "interface",
+          "kind": "native",
           "type": "PriorityQueue[T]",
           "type_parameters": [
             "T"
@@ -1923,7 +1923,7 @@
         },
         {
           "name": "Queue",
-          "kind": "interface",
+          "kind": "native",
           "type": "Queue[T]",
           "type_parameters": [
             "T"
@@ -1990,7 +1990,7 @@
       "declarations": [
         {
           "name": "Regex",
-          "kind": "interface",
+          "kind": "native",
           "type": "Regex",
           "operations": [
             "find_all: fn(text: String, max_matches: Optional[Int] = ...)-\u003eResult[List[String], RegexError]",
@@ -2044,7 +2044,7 @@
       "declarations": [
         {
           "name": "StringBuilder",
-          "kind": "interface",
+          "kind": "native",
           "type": "StringBuilder",
           "operations": [
             "append: fn(value: String)-\u003eUnit",
@@ -2080,7 +2080,7 @@
       "declarations": [
         {
           "name": "Synchronized",
-          "kind": "interface",
+          "kind": "native",
           "type": "Synchronized[T]",
           "type_parameters": [
             "T"
@@ -2094,7 +2094,7 @@
         },
         {
           "name": "SynchronizedGuard",
-          "kind": "interface",
+          "kind": "native",
           "type": "SynchronizedGuard[T]",
           "type_parameters": [
             "T"
@@ -2275,7 +2275,7 @@
         },
         {
           "name": "Scheduler",
-          "kind": "interface",
+          "kind": "native",
           "type": "Scheduler",
           "fields": [
             "limit: Optional[Int]",
@@ -2320,7 +2320,7 @@
         },
         {
           "name": "Task",
-          "kind": "interface",
+          "kind": "native",
           "type": "Task[T]",
           "type_parameters": [
             "T"
@@ -2331,7 +2331,7 @@
         },
         {
           "name": "TaskGroup",
-          "kind": "interface",
+          "kind": "native",
           "type": "TaskGroup",
           "fields": [
             "timeout: Optional[Duration]"
@@ -2380,7 +2380,7 @@
         },
         {
           "name": "Duration",
-          "kind": "interface",
+          "kind": "native",
           "type": "Duration",
           "operations": [
             "abs: fn()-\u003eDuration",
@@ -2400,7 +2400,7 @@
         },
         {
           "name": "Instant",
-          "kind": "interface",
+          "kind": "native",
           "type": "Instant",
           "operations": [
             "compare: fn(right: Instant)-\u003eInt",
@@ -2427,7 +2427,7 @@
         },
         {
           "name": "Timestamp",
-          "kind": "interface",
+          "kind": "native",
           "type": "Timestamp",
           "operations": [
             "compare: fn(right: Timestamp)-\u003eInt",

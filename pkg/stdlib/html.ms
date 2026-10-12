@@ -22,14 +22,22 @@ export type HtmlAttribute:
 
 export type HtmlNode:
     case Document(children: List[HtmlNode])
-    case Element(tag: String, namespace: String, attributes: List[HtmlAttribute], children: List[HtmlNode])
+    case Element(
+        tag: String,
+        namespace: String,
+        attributes: List[HtmlAttribute],
+        children: List[HtmlNode]
+    )
     case Text(text: String)
     case Comment(text: String)
     case Doctype(name: String, public_id: String, system_id: String)
 
-export fn escape(text: String) -> String
+export fn escape(text: String) -> String:
 
-export fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]
+export fn parse(
+    text: String,
+    limits: Optional[HtmlLimits] = none
+) -> Result[HtmlNode, HtmlError]:
 
 impl Error for HtmlError:
-    fn message() -> String
+    fn message() -> String:

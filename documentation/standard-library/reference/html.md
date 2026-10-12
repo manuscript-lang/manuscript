@@ -26,7 +26,7 @@ type HtmlError:
 
 ```manuscript
 impl Error for HtmlError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## HtmlLimits {data-api-kind="Record"}
@@ -52,12 +52,12 @@ type HtmlNode:
 ## escape {data-api-kind="Function"}
 
 ```manuscript
-fn escape(text: String) -> String
+fn escape(text: String) -> String:
 ```
 
 ## parse {data-api-kind="Function"}
 
 ```manuscript
-fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]
+fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]:
 ```
 

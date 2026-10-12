@@ -70,7 +70,7 @@ type SystemError:
 
 ```manuscript
 impl Error for SystemError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## SystemInfo {data-api-kind="Record"}
@@ -108,36 +108,36 @@ type UserInfo:
 ## constants {data-api-kind="Function"}
 
 ```manuscript
-fn constants() -> Map[String, Int]
+fn constants() -> Map[String, Int]:
 ```
 
 ## dev_null {data-api-kind="Function"}
 
 ```manuscript
-fn dev_null() -> String
+fn dev_null() -> String:
 ```
 
 ## end_of_line {data-api-kind="Function"}
 
 ```manuscript
-fn end_of_line() -> String
+fn end_of_line() -> String:
 ```
 
 ## endianness {data-api-kind="Function"}
 
 ```manuscript
-fn endianness() -> String
+fn endianness() -> String:
 ```
 
 ## os_type {data-api-kind="Function"}
 
 ```manuscript
-fn os_type() -> String
+fn os_type() -> String:
 ```
 
 ## system {data-api-kind="Function"}
 
 ```manuscript
-fn system() -> System
+fn system() -> System:
 ```
 

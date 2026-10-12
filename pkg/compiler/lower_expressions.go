@@ -122,6 +122,13 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 				}
 				return "rt.NewAlternative(" + g.key(info.Type) + "," + quote(info.Case) + "," + stringsGo(labels) + "," + args + ")"
 			}
+			if symbol := info.Constructor.Def.Symbol; symbol.Native == "" && recordDefaults(symbol.Decl) {
+				callable := symbol.ID
+				if len(symbol.Variables) > 0 {
+					callable = g.specialize(symbol, info.Constructor.Args)
+				}
+				return "rt.Invoke(ctx," + callable + "," + args + ")"
+			}
 			return "rt.ConstructWithContext(ctx," + g.key(info.Type) + "," + args + ")"
 		}
 		var callable string

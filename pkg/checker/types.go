@@ -211,6 +211,22 @@ func Fields(t *Type) []Param {
 	}
 	return result
 }
+
+// ConstructorSignature describes a record's named fields and omission permissions.
+func ConstructorSignature(t *Type) *Type {
+	signature := function(Fields(t), t)
+	if t.Def != nil && t.Def.Symbol != nil && t.Def.Symbol.Decl != nil {
+		for _, field := range t.Def.Symbol.Decl.Fields {
+			if field.Default != nil {
+				if signature.Defaults == nil {
+					signature.Defaults = map[string]bool{}
+				}
+				signature.Defaults[field.Name] = true
+			}
+		}
+	}
+	return signature
+}
 func Cases(t *Type) []Case {
 	var result []Case
 	if t.Def != nil {

@@ -19,7 +19,7 @@ type CommandError:
 
 ```manuscript
 impl Error for CommandError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## CommandOutput {data-api-kind="Record"}
@@ -103,7 +103,7 @@ type ProcessError:
 
 ```manuscript
 impl Error for ProcessError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## ProcessInfo {data-api-kind="Record"}
@@ -148,12 +148,12 @@ interface SignalStream:
 ## commands {data-api-kind="Function"}
 
 ```manuscript
-fn commands() -> Commands
+fn commands() -> Commands:
 ```
 
 ## control {data-api-kind="Function"}
 
 ```manuscript
-fn control() -> ProcessControl
+fn control() -> ProcessControl:
 ```
 
