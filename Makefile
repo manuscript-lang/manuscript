@@ -35,7 +35,7 @@ lint:
 	.tools/shellcheck -x scripts/*.sh
 
 unit:
-	"$(GO)" test ./syntax ./lexer ./parser ./project ./checker ./runtime ./tooling/...
+	"$(GO)" test ./syntax ./lexer ./parser ./project ./checker ./runtime ./tooling/... ./scripts/repo-check
 
 repo-check:
 	"$(GO)" run ./scripts/repo-check -format
