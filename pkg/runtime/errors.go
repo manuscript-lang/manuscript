@@ -28,6 +28,23 @@ var NativeImplementations = []NativeImplementationSpec{
 	}},
 }
 
+// StandardRegistration is a checked standard implementation that generated
+// programs register as data rather than as one closure each.
+type StandardRegistration struct {
+	Receiver, Contract, Name, Scope string
+	Variables                       []string
+	Native                          string
+}
+
+func RegisterStandard(entries []StandardRegistration) {
+	for _, entry := range entries {
+		native := entry.Native
+		Register(Implementation{Receiver: entry.Receiver, Contract: entry.Contract, Name: entry.Name, Scope: entry.Scope, Variables: entry.Variables, Build: func(receiver Value, _ map[string]string, _ map[string]TypeScope) Function {
+			return StandardImplementation(native, receiver)
+		}})
+	}
+}
+
 func StandardImplementation(name string, receiver Value) Function {
 	for _, spec := range NativeImplementations {
 		if spec.Name == name {
