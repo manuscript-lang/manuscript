@@ -1,4 +1,5 @@
 import panic from "@std/faults.ms"
+
 type Box[T]:
     value: T
 

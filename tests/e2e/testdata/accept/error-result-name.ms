@@ -16,10 +16,13 @@ test "an application error named Result retains its nominal identity":
     let cause = general(original)
     if cause.message() != "application diagnostic":
         return panic(message: "application Result was treated as a standard Result")
+
     match cause:
         Result(receiver):
             receiver.diagnostic = "changed diagnostic"
+
         _:
             return panic(message: "application Result lost concrete type")
+
     if original.diagnostic != "changed diagnostic":
         return panic(message: "Error boundary copied application Result")

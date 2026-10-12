@@ -2,9 +2,9 @@ package msruntime
 
 import "github.com/manuscript-lang/manuscript/internal/nativeabi"
 
-// NativeLibraryBindings maps receiver operations to the shared function implementation.
-// The first function parameter is bound to the receiver; remaining labels are unchanged.
-var NativeLibraryBindings = nativeabi.ReceiverFunctions
+// NativeLibraryBindings maps receiver declarations directly to native implementations.
+// The first native parameter is bound to the receiver; remaining labels are unchanged.
+var NativeLibraryBindings = nativeabi.ReceiverBindings
 
 func NativeLibrarySpec(receiver, name string) (LibrarySpec, bool) {
 	function, ok := NativeLibraryBindings[receiver][name]

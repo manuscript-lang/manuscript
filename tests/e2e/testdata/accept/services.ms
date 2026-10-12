@@ -15,13 +15,17 @@ import StringBuilder from "@std/string.ms"
 
 test "atomic state and sealed builders":
     let state = Synchronized(value: 3)
+
     with locked = state.lock():
         if not (locked.get() == 3):
             return panic(message: "check failed")
+
         locked.set(value: 4)
+
     with locked = state.lock():
         if not (locked.get() == 4):
             return panic(message: "check failed")
+
     let list = ListBuilder[Int]()
     list.append(value: 1)
     list.append(value: 2)
@@ -29,23 +33,27 @@ test "atomic state and sealed builders":
         return panic(message: "check failed")
     if not (list.freeze() == [1, 2]):
         return panic(message: "check failed")
+
     let map = MapBuilder[String, Int]()
     map.with_entry(key: "a", value: 1)
     map.with_entry(key: "a", value: 2)
     let expected: Optional[Int] = some(value: 2)
     if not (map.freeze().get(key: "a") == expected):
         return panic(message: "check failed")
+
     let set = SetBuilder[Int]()
     set.with_value(value: 3)
     set.with_value(value: 3)
     if not (set.freeze().length() == 1):
         return panic(message: "check failed")
+
     let bytes = BytesBuilder()
     bytes.append(value: 65)
     bytes.concat(values: "B".to_bytes())
     let expected_text: Optional[String] = some(value: "AB")
     if not (bytes.freeze().to_text() == expected_text):
         return panic(message: "check failed")
+
     let text = StringBuilder()
     text.append(value: "hello")
     text.append(value: " world")

@@ -55,13 +55,6 @@ export type TaskGroup:
 export type Task[T]:
     fn join() -> Result[T, ExecutionError]
 
-# Private native implementations shared by the receiver operations.
-fn task_group_start[T](group: TaskGroup, operation: fn() -> T) -> Task[T]
-fn task_group_join(group: TaskGroup) -> Result[Unit, ExecutionError]
-fn task_group_close(group: TaskGroup) -> Unit
-fn task_join[T](task: Task[T]) -> Result[T, ExecutionError]
-
-
 impl Error for ExecutionError:
     fn message() -> String
 

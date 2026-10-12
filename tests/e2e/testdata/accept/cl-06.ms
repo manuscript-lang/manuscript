@@ -13,4 +13,5 @@ fn discard(value: Int) -> Unit:
 test "return contracts":
     if not (positive(value: 3) == 3):
         return panic(message: "check failed")
+
     discard(value: 1)

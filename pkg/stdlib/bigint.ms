@@ -22,31 +22,9 @@ export type BigInt:
     fn to_int() -> Optional[Int]
     fn to_string(radix: Int) -> String
 
-fn add(left: BigInt, right: BigInt) -> BigInt
-
-fn bit_and(left: BigInt, right: BigInt) -> BigInt
-
-fn bit_or(left: BigInt, right: BigInt) -> BigInt
-
-fn bit_xor(left: BigInt, right: BigInt) -> BigInt
-
-fn compare(left: BigInt, right: BigInt) -> Int
-
-fn divide(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
-
-fn format(value: BigInt, radix: Int) -> String
-
 export fn from_int(value: Int) -> BigInt
 
-fn multiply(left: BigInt, right: BigInt) -> BigInt
-
 export fn parse(text: String, radix: Int, max_digits: Optional[Int] = none) -> Result[BigInt, BigIntError]
-
-fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
-
-fn subtract(left: BigInt, right: BigInt) -> BigInt
-
-fn to_int(value: BigInt) -> Optional[Int]
 
 impl Error for BigIntError:
     fn message() -> String

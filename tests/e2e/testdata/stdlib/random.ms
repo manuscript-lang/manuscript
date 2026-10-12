@@ -1,4 +1,10 @@
-import {Entropy, RandomError, secure_int, uuid_v4, entropy} from "@std/random.ms"
+import {
+    Entropy,
+    RandomError,
+    secure_int,
+    uuid_v4,
+    entropy
+} from "@std/random.ms"
 import Bytes from "@std/bytes.ms"
 import {List, filled} from "@std/collections.ms"
 import Optional from "@std/optional.ms"
@@ -12,7 +18,11 @@ type ZeroEntropy:
 impl Entropy for ZeroEntropy:
     fn bytes(count: Int) -> Result[Bytes, RandomError]:
         self.requested = count
-        return ok(value: Bytes(values: value(filled(value: 0, count: count))))
+        return ok(
+            value: Bytes(
+                values: value(filled(value: 0, count: count))
+            )
+        )
 
 type FailedEntropy:
     message: String
@@ -23,16 +33,39 @@ impl Entropy for FailedEntropy:
 
 test "random algorithms call Manuscript entropy implementations":
     let source = ZeroEntropy(requested: 0)
-    if value(secure_int(entropy: Entropy(value: source), min: -2, max_exclusive: some(value: 3))) != -2: return panic("random lower bound")
+    if (
+        value(
+            secure_int(
+                entropy: Entropy(value: source),
+                min: -2,
+                max_exclusive: some(value: 3)
+            )
+        ) != -2
+    ): return panic("random lower bound")
     if source.requested != 1: return panic("entropy byte count")
-    if value(uuid_v4(Entropy(value: source))) != "00000000-0000-4000-8000-000000000000": return panic("UUID version and variant")
+    if value(
+        uuid_v4(Entropy(value: source))
+    ) != "00000000-0000-4000-8000-000000000000": return panic(
+        "UUID version and variant"
+    )
     if source.requested != 16: return panic("UUID entropy count")
 
 test "random errors propagate and invalid ranges do not read entropy":
     let source = ZeroEntropy(requested: 0)
     let invalid: Result[Int, RandomError] = error(cause: RandomError.InvalidInput)
-    if secure_int(entropy: Entropy(value: source), min: 3, max_exclusive: some(value: 3)) != invalid: return panic("empty range")
+    if (
+        secure_int(
+            entropy: Entropy(value: source),
+            min: 3,
+            max_exclusive: some(value: 3)
+        ) != invalid
+    ): return panic("empty range")
     if source.requested != 0: return panic("invalid range consumed entropy")
-    let failed: Result[String, RandomError] = error(cause: RandomError.Failed(message: "source failed"))
-    if uuid_v4(Entropy(value: FailedEntropy(message: "source failed"))) != failed: return panic("entropy error lost")
+
+    let failed: Result[String, RandomError] = error(
+        cause: RandomError.Failed(message: "source failed")
+    )
+    if uuid_v4(
+        Entropy(value: FailedEntropy(message: "source failed"))
+    ) != failed: return panic("entropy error lost")
     if value(entropy().bytes(16)).length() != 16: return panic("host entropy")

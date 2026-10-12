@@ -19,7 +19,7 @@ Ordinary functions and methods with exactly one declared parameter permit omitti
 - Records use their listed fields as named constructor arguments. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
 - TaskGroup.start[T] infers T from its callback and returns Task[T]. Saving start as a value requires explicit specialization; Task.join and TaskGroup.join use their source declarations.
 - Native collection methods `map[U]`, `flat_map[U]`, `group_by[K: Hashable]`, `fold[A]`, and `fold_right[A]` infer method type arguments from supplied callbacks/values. Saving a generic method as a value requires explicit specialization, such as `values.map[String]`. Application-defined interface operations remain nongeneric.
-- List equality searches require `Equal`; `to_set` requires `Hashable`; `join` is available only on `List[String]`. These receiver requirements are inherited from the shared function declarations.
+- List equality searches require `Equal`; `to_set` requires `Hashable`; `join` is available only on `List[String]`. These method-specific receiver requirements are explicit in the native bindings; signatures come directly from the receiver declarations.
 - Generic bounds constrain type arguments. There is no sharing bound or separate callable proof.
 
 For lifetime, cancellation, defaults, and host behavior, read the standard library guides. A type signature alone does not establish these guarantees.

@@ -16,20 +16,31 @@ fn mark(state: SynchronizedGuard[Int], value: Int) -> Int:
     state.set(value: state.get() * 10 + value)
     return value
 
-fn ordered(state: SynchronizedGuard[Int], first: Int = mark(state: state, value: 3), second: Int = mark(state: state, value: 4), third: Int = 0) -> Int:
+fn ordered(
+    state: SynchronizedGuard[Int],
+    first: Int = mark(state: state, value: 3),
+    second: Int = mark(state: state, value: 4),
+    third: Int = 0
+) -> Int:
     state.set(value: state.get() * 10 + 5)
     return first + second + third
 
-fn unit_value(value: Unit = panic("unexpected default")) -> Unit:
+fn unit_value(
+    value: Unit = panic("unexpected default")
+) -> Unit:
     return value
 
-fn optional(value: Optional[Int] = some(value: 3)) -> Optional[Int]:
+fn optional(
+    value: Optional[Int] = some(value: 3)
+) -> Optional[Int]:
     return value
 
 fn fail() -> Result[Int, String]:
     return error(cause: "default failure")
 
-fn propagate(value: Int = try fail()) -> Result[Int, String]:
+fn propagate(
+    value: Int = try fail()
+) -> Result[Int, String]:
     return ok(value: value)
 
 interface Add:
@@ -53,28 +64,43 @@ impl Read[T] for Box[T]:
         return value
 
 test "omitted and explicit defaults":
-    if increment() != 4 or increment(7) != 8 or increment(value: 0) != 1:
+    if (
+        increment() != 4
+        or increment(7) != 8
+        or increment(value: 0) != 1
+    ):
         return panic("single parameter defaults")
     if combine(second: 5) != 14 or combine(third: 0, second: 5, first: 0) != 5:
         return panic("required arguments and dependent defaults")
     if identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4:
         return panic("generic defaults")
+
     unit_value(unit)
     if optional(value: none) != Optional[Int].none or optional() != some(value: 3):
         return panic("explicit none must override default")
-    if propagate() != Result[Int, String].error(cause: "default failure") or propagate(7) != Result[Int, String].ok(value: 7):
+    if (
+        propagate() != Result[Int, String].error(cause: "default failure")
+        or propagate(7) != Result[Int, String].ok(value: 7)
+    ):
         return panic("default propagation belongs to callee")
 
 test "default evaluation order and repeated calls":
     let counter = Synchronized[Int](value: 0)
+
     with state = counter.lock():
-        let total = ordered(state: state, third: mark(state: state, value: 1), second: mark(state: state, value: 2))
+        let total = ordered(
+            state: state,
+            third: mark(state: state, value: 1),
+            second: mark(state: state, value: 2)
+        )
         if total != 6 or state.get() != 1235:
             return panic("supplied arguments precede defaults and body")
+
         state.set(value: 0)
         let ignored = ordered(state: state)
         if state.get() != 345:
             return panic("defaults evaluate in declaration order")
+
         state.set(value: 0)
         let again = ordered(state: state)
         if state.get() != 345:
@@ -85,15 +111,18 @@ test "function values and captures":
     let copied = copy
     if copied() != 4:
         return panic("inferred immutable copies retain defaults")
+
     let typed: fn(value: Int) -> Int = increment
     if typed(2) != 3:
         return panic("explicit function type remains compatible")
+
     var offset = 5
     let callback = fn(value: Int = offset) -> Int:
         return value
     offset = 9
     if callback() != 5 or callback(0) != 0:
         return panic("default expressions capture snapshots")
+
     let nested = fn(first: Int = 6, second: Int = first + 1) -> Int:
         return second
     if nested() != 7:
@@ -102,11 +131,17 @@ test "function values and captures":
 test "implementation and bound method defaults":
     let offset = Offset(value: 4)
     let bound = offset.add
-    if offset.add() != 8 or bound() != 8 or bound(0) != 4:
+    if (
+        offset.add() != 8
+        or bound() != 8
+        or bound(0) != 4
+    ):
         return panic("receiver defaults")
+
     let view = Add(value: offset)
     if view.add(2) != 6:
         return panic("contract view call")
+
     let box = Box[String](value: "boxed")
     if box.read() != "boxed":
         return panic("generic method defaults")

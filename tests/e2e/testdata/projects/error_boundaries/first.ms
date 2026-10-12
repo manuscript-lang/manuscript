@@ -1,6 +1,6 @@
 import Error from "@std/errors.ms"
 import Result from "@std/result.ms"
-import { DomainFailure, BoxFailure } from "./domain.ms"
+import {DomainFailure, BoxFailure} from "./domain.ms"
 
 impl Error for DomainFailure:
     fn message() -> String:

@@ -18,8 +18,10 @@ export fn main() -> Int:
     let child = fn() -> Unit:
         with resource = Resource(label: "child", output: output):
             output.write(data: "ready\n".to_bytes())
+
             while true:
                 continue
+
     with resource = Resource(label: "parent", output: output):
         with group = TaskGroup():
             group.start(child)

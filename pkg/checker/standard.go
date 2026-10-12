@@ -18,12 +18,20 @@ var standardTypeReferences map[*syntax.Type]*Type
 var intrinsicOperations map[string]*Type
 var standardImplementations []*Method
 var standardOperationVariables = map[string][]*Type{}
+var standardReceiverBindings map[string]string
+var standardReceiverRequirements map[string][]receiverRequirement
+
+type receiverRequirement struct {
+	Variable, Constraint *Type
+}
 
 type standardBindings struct {
-	NativeTypes        map[string]string `json:"native_types"`
-	Functions          map[string]string `json:"functions"`
-	IntrinsicReceivers map[string]string `json:"intrinsic_receivers"`
-	Implementations    map[string]string `json:"implementations"`
+	NativeTypes          map[string]string            `json:"native_types"`
+	Functions            map[string]string            `json:"functions"`
+	IntrinsicReceivers   map[string]string            `json:"intrinsic_receivers"`
+	Implementations      map[string]string            `json:"implementations"`
+	Receivers            map[string]string            `json:"receivers"`
+	ReceiverRequirements map[string]map[string]string `json:"receiver_requirements"`
 }
 
 func init() {
@@ -36,6 +44,8 @@ func loadStandardSources() error {
 	standardModules = map[string]map[string]*Symbol{}
 	intrinsicOperations = map[string]*Type{}
 	standardImplementations = nil
+	standardReceiverBindings = map[string]string{}
+	standardReceiverRequirements = map[string][]receiverRequirement{}
 	data, err := stdlib.Sources.ReadFile("bindings.json")
 	if err != nil {
 		return err
@@ -275,6 +285,48 @@ func loadStandardSources() error {
 			return fmt.Errorf("missing intrinsic receiver declaration %s", name)
 		}
 		intrinsicOperations[receiver] = typ.Type
+	}
+	for _, module := range standardSources {
+		scopeModule(module)
+		for _, declaration := range module.Declarations {
+			if declaration.Kind == syntax.KindImpl {
+				continue
+			}
+			symbol := standardModules[module.File][declaration.Name]
+			for _, method := range declaration.Methods {
+				key := module.File + "/" + declaration.Name + "/" + method.Name
+				if native := bindings.Receivers[key]; native != "" {
+					standardReceiverBindings[symbol.ID+"/"+method.Name] = native
+					delete(bindings.Receivers, key)
+				}
+				for name, constraint := range bindings.ReceiverRequirements[key] {
+					if standardReceiverBindings[symbol.ID+"/"+method.Name] == "" {
+						return fmt.Errorf("receiver requirement needs a native binding: %s", key)
+					}
+					var variable *Type
+					for _, candidate := range symbol.Variables {
+						if candidate.Name == name {
+							variable = candidate
+						}
+					}
+					if variable == nil {
+						return fmt.Errorf("unknown receiver variable %s in %s", name, key)
+					}
+					required := c.names[constraint]
+					if required == nil || required.Kind != syntax.KindType {
+						return fmt.Errorf("unknown receiver requirement %s in %s", constraint, key)
+					}
+					standardReceiverRequirements[symbol.ID+"/"+method.Name] = append(standardReceiverRequirements[symbol.ID+"/"+method.Name], receiverRequirement{variable, required.Type})
+				}
+				delete(bindings.ReceiverRequirements, key)
+			}
+		}
+	}
+	for key := range bindings.Receivers {
+		return fmt.Errorf("unused native receiver binding: %s", key)
+	}
+	for key := range bindings.ReceiverRequirements {
+		return fmt.Errorf("unused native receiver requirement: %s", key)
 	}
 	return nil
 }
