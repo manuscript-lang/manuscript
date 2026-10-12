@@ -2972,6 +2972,11 @@
           "name": "parallel",
           "kind": "fn",
           "type": "fn()-\u003e\u003cunknown\u003e"
+        },
+        {
+          "name": "yield_now",
+          "kind": "fn",
+          "type": "fn()-\u003eUnit"
         }
       ]
     },
@@ -3001,6 +3006,8 @@
           "kind": "alternative",
           "type": "TimeError",
           "cases": [
+            "InvalidInput",
+            "Closed",
             "InvalidData",
             "OutOfRange"
           ],
@@ -3009,6 +3016,16 @@
           ],
           "implements": [
             "Error"
+          ]
+        },
+        {
+          "name": "Timer",
+          "kind": "interface",
+          "type": "Timer",
+          "operations": [
+            "close: fn()-\u003eUnit",
+            "restart: fn()-\u003eResult[Unit, TimeError]",
+            "status: fn()-\u003eWorkStatus"
           ]
         },
         {
@@ -3025,9 +3042,19 @@
           ]
         },
         {
+          "name": "after",
+          "kind": "fn",
+          "type": "fn(duration: Duration, operation: fn()-\u003eResult[Unit, String])-\u003eResult[Timer, TimeError]"
+        },
+        {
           "name": "difference",
           "kind": "fn",
           "type": "fn(left: Timestamp, right: Timestamp)-\u003eResult[Duration, TimeError]"
+        },
+        {
+          "name": "every",
+          "kind": "fn",
+          "type": "fn(interval: Duration, operation: fn()-\u003eResult[Unit, String])-\u003eResult[Timer, TimeError]"
         },
         {
           "name": "format_timestamp",
@@ -3063,89 +3090,6 @@
           "name": "unix_seconds",
           "kind": "fn",
           "type": "fn(value: Timestamp)-\u003eInt"
-        }
-      ]
-    },
-    {
-      "path": "@std/timers.ms",
-      "declarations": [
-        {
-          "name": "ScheduledTimer",
-          "kind": "interface",
-          "type": "ScheduledTimer",
-          "operations": [
-            "close: fn()-\u003eUnit",
-            "refresh: fn()-\u003eResult[Unit, TimerError]",
-            "status: fn()-\u003eWorkStatus"
-          ]
-        },
-        {
-          "name": "Timer",
-          "kind": "interface",
-          "type": "Timer",
-          "operations": [
-            "close: fn()-\u003eUnit",
-            "refresh: fn()-\u003eResult[Unit, TimerError]",
-            "wait: fn()-\u003eResult[Int, TimerError]"
-          ]
-        },
-        {
-          "name": "TimerError",
-          "kind": "alternative",
-          "type": "TimerError",
-          "cases": [
-            "InvalidInput",
-            "Closed"
-          ],
-          "operations": [
-            "message: fn()-\u003eString"
-          ],
-          "implements": [
-            "Error"
-          ]
-        },
-        {
-          "name": "delay",
-          "kind": "fn",
-          "type": "fn(duration: Duration, value: T)-\u003eT",
-          "type_parameters": [
-            "T"
-          ]
-        },
-        {
-          "name": "schedule_immediate",
-          "kind": "fn",
-          "type": "fn(operation: fn()-\u003eResult[Unit, String])-\u003eResult[ScheduledTimer, TimerError]"
-        },
-        {
-          "name": "schedule_interval",
-          "kind": "fn",
-          "type": "fn(delay: Duration, operation: fn()-\u003eResult[Unit, String])-\u003eResult[ScheduledTimer, TimerError]"
-        },
-        {
-          "name": "schedule_timeout",
-          "kind": "fn",
-          "type": "fn(delay: Duration, operation: fn()-\u003eResult[Unit, String])-\u003eResult[ScheduledTimer, TimerError]"
-        },
-        {
-          "name": "set_immediate",
-          "kind": "fn",
-          "type": "fn()-\u003eTimer"
-        },
-        {
-          "name": "set_interval",
-          "kind": "fn",
-          "type": "fn(delay: Duration)-\u003eResult[Timer, TimerError]"
-        },
-        {
-          "name": "set_timeout",
-          "kind": "fn",
-          "type": "fn(delay: Duration)-\u003eResult[Timer, TimerError]"
-        },
-        {
-          "name": "yield_now",
-          "kind": "fn",
-          "type": "fn()-\u003eUnit"
         }
       ]
     },

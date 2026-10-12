@@ -3446,6 +3446,14 @@ fn check_cancelled() -> Unit
 
 See [special call rules](#special-call-rules).
 
+## yield_now
+
+**Function**
+
+```manuscript
+fn yield_now() -> Unit
+```
+
 # @std/time.ms
 
 Import each required symbol with `import Name from "@std/time.ms"`.
@@ -3481,6 +3489,8 @@ type Instant
 
 ```manuscript
 type TimeError:
+    case InvalidInput
+    case Closed
     case InvalidData
     case OutOfRange
 ```
@@ -3488,6 +3498,17 @@ type TimeError:
 ```manuscript
 impl Error for TimeError:
     fn message() -> String
+```
+
+## Timer
+
+**Interface**
+
+```manuscript
+interface Timer:
+    fn close() -> Unit
+    fn restart() -> Result[Unit, TimeError]
+    fn status() -> WorkStatus
 ```
 
 ## Timestamp
@@ -3507,12 +3528,28 @@ interface WallClock:
     fn now() -> Timestamp
 ```
 
+## after
+
+**Function**
+
+```manuscript
+fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
+```
+
 ## difference
 
 **Function**
 
 ```manuscript
 fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
+```
+
+## every
+
+**Function**
+
+```manuscript
+fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
 ```
 
 ## format_timestamp
@@ -3569,111 +3606,6 @@ fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
 
 ```manuscript
 fn unix_seconds(value: Timestamp) -> Int
-```
-
-# @std/timers.ms
-
-Import each required symbol with `import Name from "@std/timers.ms"`.
-
-## ScheduledTimer
-
-**Interface**
-
-```manuscript
-interface ScheduledTimer:
-    fn close() -> Unit
-    fn refresh() -> Result[Unit, TimerError]
-    fn status() -> WorkStatus
-```
-
-## Timer
-
-**Interface**
-
-```manuscript
-interface Timer:
-    fn close() -> Unit
-    fn wait() -> Result[Int, TimerError]
-    fn refresh() -> Result[Unit, TimerError]
-```
-
-## TimerError
-
-**Alternative**
-
-```manuscript
-type TimerError:
-    case InvalidInput
-    case Closed
-```
-
-```manuscript
-impl Error for TimerError:
-    fn message() -> String
-```
-
-## delay
-
-**Function**
-
-```manuscript
-fn delay[T](duration: Duration, value: T) -> T
-```
-
-## schedule_immediate
-
-**Function**
-
-```manuscript
-fn schedule_immediate(operation: fn() -> Result[Unit, String]) -> Result[ScheduledTimer, TimerError]
-```
-
-## schedule_interval
-
-**Function**
-
-```manuscript
-fn schedule_interval(delay: Duration, operation: fn() -> Result[Unit, String]) -> Result[ScheduledTimer, TimerError]
-```
-
-## schedule_timeout
-
-**Function**
-
-```manuscript
-fn schedule_timeout(delay: Duration, operation: fn() -> Result[Unit, String]) -> Result[ScheduledTimer, TimerError]
-```
-
-## set_immediate
-
-**Function**
-
-```manuscript
-fn set_immediate() -> Timer
-```
-
-## set_interval
-
-**Function**
-
-```manuscript
-fn set_interval(delay: Duration) -> Result[Timer, TimerError]
-```
-
-## set_timeout
-
-**Function**
-
-```manuscript
-fn set_timeout(delay: Duration) -> Result[Timer, TimerError]
-```
-
-## yield_now
-
-**Function**
-
-```manuscript
-fn yield_now() -> Unit
 ```
 
 # @std/tls.ms

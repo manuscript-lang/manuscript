@@ -1204,99 +1204,102 @@
       "module": "timers",
       "api": "clearImmediate",
       "status": "adapted",
-      "reason": "Scoped ScheduledTimer.close cancels and joins automatic callbacks.",
+      "reason": "Scoped Timer.close cancels and joins the operation.",
       "targets": [
-        "@std/timers.ms/ScheduledTimer.close"
+        "@std/time.ms/Timer.close"
       ]
     },
     {
       "module": "timers",
       "api": "clearInterval",
       "status": "adapted",
-      "reason": "Scoped ScheduledTimer.close cancels and joins automatic callbacks.",
+      "reason": "Scoped Timer.close cancels and joins the operation.",
       "targets": [
-        "@std/timers.ms/ScheduledTimer.close"
+        "@std/time.ms/Timer.close"
       ]
     },
     {
       "module": "timers",
       "api": "clearTimeout",
       "status": "adapted",
-      "reason": "Scoped ScheduledTimer.close cancels and joins automatic callbacks.",
+      "reason": "Scoped Timer.close cancels and joins the operation.",
       "targets": [
-        "@std/timers.ms/ScheduledTimer.close"
+        "@std/time.ms/Timer.close"
       ]
     },
     {
       "module": "timers",
       "api": "promises",
       "status": "adapted",
-      "reason": "Ordinary Manuscript calls suspend under their execution context; delay returns its supplied generic value.",
+      "reason": "Ordinary sequential sleep and return replace value-carrying Promise timers.",
       "targets": [
-        "@std/timers.ms/delay"
+        "@std/time.ms/sleep"
       ]
     },
     {
       "module": "timers",
       "api": "setImmediate",
       "status": "adapted",
-      "reason": "Automatic callbacks use ordinary callables; cancellation and callback completion belong to a fixed work lifetime.",
+      "reason": "after schedules an ordinary operation after a Duration; zero duration requests immediate work.",
       "targets": [
-        "@std/timers.ms/schedule_immediate"
+        "@std/time.ms/after"
       ]
     },
     {
       "module": "timers",
       "api": "setInterval",
       "status": "adapted",
-      "reason": "Automatic callbacks use ordinary callables; cancellation and callback completion belong to a fixed work lifetime.",
+      "reason": "every runs sequential operations at a Duration interval under scoped cleanup.",
       "targets": [
-        "@std/timers.ms/schedule_interval"
+        "@std/time.ms/every"
       ]
     },
     {
       "module": "timers",
       "api": "setTimeout",
       "status": "adapted",
-      "reason": "Automatic callbacks use ordinary callables; cancellation and callback completion belong to a fixed work lifetime.",
+      "reason": "after schedules an ordinary operation after a Duration; zero duration requests immediate work.",
       "targets": [
-        "@std/timers.ms/schedule_timeout"
+        "@std/time.ms/after"
       ]
     },
     {
       "module": "timers/promises",
       "api": "scheduler",
       "status": "adapted",
-      "reason": "Cancellable sleep/delay and explicit yield_now replace Promise scheduler methods.",
+      "reason": "Explicit task yielding or sequential sleep uses the existing execution context.",
       "targets": [
-        "@std/timers.ms/yield_now"
+        "@std/tasks.ms/yield_now",
+        "@std/time.ms/sleep"
       ]
     },
     {
       "module": "timers/promises",
       "api": "setImmediate",
       "status": "adapted",
-      "reason": "yield_now or immediate Timer.wait suspends under the caller context without a JavaScript event loop phase.",
+      "reason": "Explicit task yielding or sequential sleep uses the existing execution context.",
       "targets": [
-        "@std/timers.ms/yield_now"
+        "@std/tasks.ms/yield_now",
+        "@std/time.ms/sleep"
       ]
     },
     {
       "module": "timers/promises",
       "api": "setInterval",
       "status": "adapted",
-      "reason": "Repeated cancellable Timer.wait provides interval ticks with consumer backpressure.",
+      "reason": "A sequential sleep loop supplies paced iteration; Background supplies concurrent work and cancellation.",
       "targets": [
-        "@std/timers.ms/set_interval"
+        "@std/time.ms/sleep",
+        "@std/tasks.ms/Background.start"
       ]
     },
     {
       "module": "timers/promises",
       "api": "setTimeout",
       "status": "adapted",
-      "reason": "Cancellable generic delay returns its supplied value through an ordinary call.",
+      "reason": "Ordinary sleep suspends under the caller context; the caller then returns its own value.",
       "targets": [
-        "@std/timers.ms/delay"
+        "@std/time.ms/sleep"
       ]
     },
     {
@@ -1530,7 +1533,7 @@
       "status": "equivalent",
       "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in node-host.md.",
       "targets": [
-        "@std/timers.ms/Timer.refresh"
+        "@std/time.ms/Timer.restart"
       ]
     },
     {
@@ -1539,7 +1542,7 @@
       "status": "equivalent",
       "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in node-host.md.",
       "targets": [
-        "@std/timers.ms/Timer.close"
+        "@std/time.ms/Timer.close"
       ]
     },
     {

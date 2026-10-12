@@ -35,7 +35,7 @@ func libraryFunction(name, result string) (Value, bool) {
 		labels[i] = p.Name
 	}
 	body := func(ctx *Execution, args []Value) Value { return invokeLibrary(spec, ctx, result, args) }
-	if spec.Module == "timers" && (spec.Name == "set_timeout" || spec.Name == "set_interval" || spec.Name == "set_immediate" || strings.HasPrefix(spec.Name, "schedule_")) {
+	if spec.Module == "time" && (spec.Name == "after" || spec.Name == "every") {
 		return NewAcquisition(labels, result, body, libraryDisposeResource), true
 	}
 	return NewFunction(labels, result, body), true

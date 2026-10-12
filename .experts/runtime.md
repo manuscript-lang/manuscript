@@ -47,3 +47,11 @@ Verified: `os.File.Fd()` can switch a pollable descriptor into blocking mode. Na
 Apply when: implementing native descriptor operations alongside cancellable file or stream adapters.
 Evidence: [native descriptor bridge](../internal/hostos/hostos.go), [metadata and file operations](../runtime/library_fs.go), and [pipe cancellation regression](../runtime/library_host_parity_test.go).
 Verify: `TestExpandedHandleCancellationAndStreamAdapters` and runtime race checks, including cancellation after descriptor metadata access and closure through a shared adapter.
+
+### Host parity preserves Manuscript's scheduling model
+
+Decision: when reviewing the Node host expansion, the user asked to simplify timers because they should feel native to Manuscript, not be a blind copy. Use the existing time module and ordinary execution model: sequential `sleep`, concurrent `after`/`every`, one scoped `Timer`, and task-level yielding. Do not duplicate callback/Promise timer families or introduce separate waitable and scheduled handles merely to match Node export names.
+
+Apply when: adding scheduling APIs or using another runtime's API inventory as a completeness target.
+Evidence: the user's timer simplification correction; [time declarations](../stdlib/time.ms), [native host mappings](../design/standard-library/packages/node-host.md#timers-and-scheduling), and [scheduling conformance](../runtime/library_host_parity_test.go).
+Verify: ordinary callbacks remain first-class values, cancellation and close join admitted work, and the inventory maps compositions without restoring duplicate public APIs.

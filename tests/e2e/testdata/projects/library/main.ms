@@ -8,10 +8,8 @@ import uuid_v4 from "@std/random.ms"
 import secure_int from "@std/random.ms"
 import format_timestamp from "@std/time.ms"
 import parse_timestamp from "@std/time.ms"
-import schedule_timeout from "@std/timers.ms"
+import after from "@std/time.ms"
 import sleep from "@std/time.ms"
-import delay from "@std/timers.ms"
-import set_timeout from "@std/timers.ms"
 import posix from "@std/path.ms"
 import win32 from "@std/path.ms"
 
@@ -56,25 +54,18 @@ fn exercise(process: Process, path: String) -> Result[Unit, Error]:
         let resized = try common_result(result: file.truncate(size: 3))
         if not ((try common_result(result: file.stat())).size == 3):
             return panic(message: "handle stat failed")
-    if not (delay(duration: 0.milliseconds, value: "passed") == "passed"):
-        return panic(message: "timer value failed")
     with watcher = try common_result(result: process.filesystem.watch_native(path: path, recursive: false, max_entries: 4, max_events: 16, overflow: "error")):
         let appended = try common_result(result: process.filesystem.append_file(path: path, data: "!".to_bytes()))
         let events = try common_result(result: watcher.next())
         if not (events.length() > 0):
             return panic(message: "native watch returned no event")
-    with timer = try common_result(result: set_timeout(delay: 0.milliseconds)):
-        if not (try common_result(result: timer.wait()) == 1):
-            return panic(message: "timer failed")
-        let refreshed = try common_result(result: timer.refresh())
-        let tick = try common_result(result: timer.wait())
-    with scheduled = try common_result(result: schedule_timeout(delay: 0.milliseconds, operation: timer_callback)):
+    with timer = try common_result(result: after(duration: 0.milliseconds, operation: timer_callback)):
         sleep(duration: 10.milliseconds)
-        match scheduled.status():
+        match timer.status():
             Succeeded:
-                let refreshed = try common_result(result: scheduled.refresh())
+                let restarted = try common_result(result: timer.restart())
             Running:
-                let refreshed = try common_result(result: scheduled.refresh())
+                let restarted = try common_result(result: timer.restart())
             _:
                 return panic(message: "scheduled timer failed")
     let paths = posix()

@@ -71,4 +71,4 @@ jobs:
       - name: Native host compatibility and Node.js coverage
         shell: bash
         run: |
-          go test ./runtime ./compiler ./tests/e2e -run 'TestNativeFileWatch|TestScheduledTimer|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
+          go test ./runtime ./compiler ./tests/e2e -run 'TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'

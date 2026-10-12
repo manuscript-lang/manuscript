@@ -99,27 +99,40 @@ CPU, memory, uptime, OS release/version, and resident-process memory use native 
 
 Node-only process facilities (VM configuration/version information, JavaScript module loading, V8 reports/profiling hooks, source maps, promise rejection/exception hooks, JavaScript finalization, IPC integration, EventEmitter events, and ref/unref of an event loop) have no direct equivalent. `nextTick` scheduling is replaced by explicit ordinary calls, `yield_now`, joined tasks, or `Background`. Immediate abort and VM-thread CPU accounting remain outside Manuscript execution lifetimes. Process titles use Linux kernel names (at most 15 UTF-8 bytes), macOS program names, or Windows console titles. They do not rewrite argv. Linux constrained-memory queries inspect the current cgroup v1/v2 memory controller; zero means no known limit. Available memory is the lesser of host available memory and the remaining known cgroup budget. On other hosts, constrained memory is zero (unknown), and available memory uses the native host query. `initialize_groups` resolves a user's supplementary groups and applies them under native privilege checks. Unix `replace` supplies an explicit argv and environment and replaces the executable; success never returns and bypasses scoped cleanup, just as native exec does. Use ordinary `Commands.run` when the caller must retain its execution lifetime. The inventory records these differences explicitly.
 
-## Timers
+## Timers and scheduling
 
-Import timer functions from `@std/timers.ms`. This fragment belongs in a function returning `Result[Unit, TimerError]`:
+Use the existing `@std/time.ms` module. Ordinary code sleeps sequentially; `after` and `every` start concurrent operations and return the same scoped `Timer` contract.
 
 ```manuscript
-with timer = try set_timeout(delay: 0.milliseconds):
-    let first_tick = try timer.wait()
-    let refreshed = try timer.refresh()
-    let second_tick = try timer.wait()
+import after from "@std/time.ms"
+import sleep from "@std/time.ms"
+import Result from "@std/result.ms"
+import TimeError from "@std/time.ms"
+
+fn operation() -> Result[Unit, String]:
+    return ok(value: unit)
+
+fn example() -> Result[Unit, TimeError]:
+    sleep(duration: 10.milliseconds)
+    with timer = try after(duration: 20.milliseconds, operation: operation):
+        sleep(duration: 30.milliseconds)
+        let restarted = try timer.restart()
+    return ok(value: unit)
 ```
+
+The native CLI fixture exercises these operations and cleanup. `after` accepts a nonnegative duration; `every(interval: ..., operation: ...)` requires a positive interval. Zero-duration `after` schedules work immediately. Both accept ordinary `fn() -> Result[Unit, String]` operations, matching `Background`. Synchronize mutable captures explicitly.
+
+`Timer` has three operations: `close`, `restart`, and `status`. Creation arms the deadline. Restart begins the original duration again, including after completion or an expected failure. Status uses the existing `WorkStatus`. Expected failures are reported and pause the timer until restart. Repeating callbacks run sequentially; a slow callback can consume one pending tick, and missed ticks never accumulate an unbounded queue. Close cancels and joins an active operation and is idempotent across aliases. The construction execution's fixed work lifetime also cancels and joins scheduled work at shutdown. Acquire dependencies outside the timer's `with` scope so they outlive its callbacks.
+
+A sequential delay needs no resource: call `sleep`, then return the desired value. A paced loop calls `sleep` each iteration; use `Background` when that loop should run concurrently. `yield_now` belongs to `@std/tasks.ms`, where it performs a cancellable scheduler yield. There is no JavaScript event-loop phase ordering or ref/unref lifetime.
 
 | Node.js facility | Manuscript operation |
 | --- | --- |
-| `setTimeout`, `clearTimeout` | Automatic `schedule_timeout` or waitable `set_timeout`; scoped `close` |
-| `setInterval`, `clearInterval` | Automatic `schedule_interval` or repeated `Timer.wait`; scoped `close` |
-| `setImmediate`, `clearImmediate` | Automatic `schedule_immediate` or waitable `set_immediate`; scoped `close` |
-| Timer `refresh`, disposal | `refresh`, `with` cleanup |
-| Promise timeout/immediate | `delay(duration: ..., value: ...)`, `yield_now` or immediate `wait` |
-| Promise interval | Repeated `Timer.wait` |
-| `scheduler.wait`, `scheduler.yield` | Cancellable `sleep`/`delay`, `yield_now` |
-
-Timer creation arms the deadline immediately; waiting returns the monotonically increasing tick number. Timeouts accept nonnegative delays; intervals require a positive delay. A completed timeout returns `Closed` on another wait until refreshed. Refresh starts the original delay again, including after a completed timeout. Close is idempotent, wakes waiters with `Closed`, and joins the admitted waiter. Cancellation interrupts waiting and preserves the caller's execution lifetime.
-
-Intervals rearm after each consumed tick, so they introduce backpressure rather than accumulating unbounded missed ticks. Automatic `schedule_timeout`, `schedule_interval`, and `schedule_immediate` invoke a callback without a caller waiting. Callbacks are ordinary function values of type `fn() -> Result[Unit, String]`; shared mutable captures require explicit synchronization. They register under the construction execution's fixed work lifetime, which cancels and joins them at shutdown. `ScheduledTimer.status` reports the work status. Expected callback failures are reported and park until refresh; refresh can restart a completed or failed timer. Callbacks never overlap, and close cancels and joins an active callback. There is no Node event-loop ordering or ref/unref lifetime. `delay` returns its supplied value under the caller's context; a negative duration is a programming fault, consistent with `sleep`.
+| `setTimeout` | `after(duration: ..., operation: ...)` |
+| `setInterval` | `every(interval: ..., operation: ...)` |
+| `setImmediate` | Zero-duration `after`, or `yield_now` for a sequential yield |
+| `clearTimeout`, `clearInterval`, `clearImmediate`, disposal | Scoped `Timer.close` |
+| Timer `refresh` | `Timer.restart` |
+| Promise timeout and its value | Ordinary `sleep`, then return the value |
+| Promise interval | Sequential sleep loop, optionally managed by `Background` |
+| `scheduler.wait`, `scheduler.yield` | `sleep`, `yield_now` |

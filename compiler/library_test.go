@@ -209,12 +209,12 @@ func TestBundledRuntimeImportAliasesAgree(t *testing.T) {
 	}
 }
 
-func TestScheduledTimerAcceptsOrdinaryCallbackValues(t *testing.T) {
-	source := `import schedule_timeout from "@std/timers.ms"
+func TestTimeSchedulingAcceptsOrdinaryCallbackValues(t *testing.T) {
+	source := `import after from "@std/time.ms"
 import Result from "@std/result.ms"
 fn start_timer(operation: fn() -> Result[Unit, String]) -> Unit:
-    let schedule = schedule_timeout
-    let timer = schedule(delay: 0.milliseconds, operation: operation)
+    let schedule = after
+    let timer = schedule(duration: 0.milliseconds, operation: operation)
 `
 	if result := CompileSource("timer-values.ms", source, Options{}); !result.Success() {
 		t.Fatal(result.Diagnostics)

@@ -48,7 +48,6 @@ See [special call rules](../call-rules.md) for constructors, variadic parallel w
 - [@std/system.ms](system.md)
 - [@std/tasks.ms](tasks.md)
 - [@std/time.ms](time.md)
-- [@std/timers.ms](timers.md)
 - [@std/tls.ms](tls.md)
 - [@std/url.ms](url.md)
 - [@std/websocket.ms](websocket.md)

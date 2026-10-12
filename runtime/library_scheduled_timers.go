@@ -7,20 +7,17 @@ import (
 )
 
 func init() {
-	LibraryMethods = append(LibraryMethods, LibraryMethod{"ScheduledTimer", "close", "Unit", nil}, LibraryMethod{"ScheduledTimer", "refresh", libraryResult("Unit", "TimerError"), nil}, LibraryMethod{"ScheduledTimer", "status", "WorkStatus", nil})
-	for _, name := range []string{"schedule_timeout", "schedule_interval", "schedule_immediate"} {
-		immediate, repeating := name == "schedule_immediate", name == "schedule_interval"
-		params := []LibraryParam{{"delay", "Duration"}, {"operation", "fn()->Result[Unit][String]"}}
-		if immediate {
-			params = params[1:]
+	LibraryMethods = append(LibraryMethods, LibraryMethod{"Timer", "close", "Unit", nil}, LibraryMethod{"Timer", "restart", libraryResult("Unit", "TimeError"), nil}, LibraryMethod{"Timer", "status", "WorkStatus", nil})
+	for _, name := range []string{"after", "every"} {
+		repeating := name == "every"
+		label := "duration"
+		if repeating {
+			label = "interval"
 		}
-		libraryAdd("timers", name, libraryResult("ScheduledTimer", "TimerError"), params, func(ctx *Execution, r string, a []Value) Value {
-			delay := Duration(0)
-			operation := a[0]
-			if !immediate {
-				delay = a[0].(Duration)
-				operation = a[1]
-			}
+		params := []LibraryParam{{label, "Duration"}, {"operation", "fn()->Result[Unit][String]"}}
+		libraryAdd("time", name, libraryResult("Timer", "TimeError"), params, func(ctx *Execution, r string, a []Value) Value {
+			delay := a[0].(Duration)
+			operation := a[1]
 			if delay < 0 || repeating && delay == 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
@@ -31,18 +28,18 @@ func init() {
 					background.close(Shield(ctx))
 				}
 			}()
-			scheduled := &libraryScheduledTimer{timer: newLibraryTimer(time.Duration(delay), repeating), background: background, operation: operation, repeating: repeating, status: "Running"}
+			scheduled := &libraryTimerService{timer: newLibraryTimer(time.Duration(delay), repeating), background: background, operation: operation, repeating: repeating, status: "Running"}
 			if failure := scheduled.start(ctx, r); failure != nil {
 				scheduled.timer.Operation("close").Body(Shield(ctx), nil)
 				return failure
 			}
 			delivered = true
-			return libraryOK(r, ViewOf("@std/ScheduledTimer", scheduled))
+			return libraryOK(r, ViewOf("@std/Timer", scheduled))
 		})
 	}
 }
 
-type libraryScheduledTimer struct {
+type libraryTimerService struct {
 	mu         sync.Mutex
 	timer      *libraryTimer
 	background *Background
@@ -54,8 +51,9 @@ type libraryScheduledTimer struct {
 	generation uint64
 }
 
-func (t *libraryScheduledTimer) start(ctx *Execution, r string) Value {
+func (t *libraryTimerService) start(ctx *Execution, r string) Value {
 	operation := NewFunction(nil, "@std/Result[Unit][String]", func(ctx *Execution, _ []Value) Value {
+		defer t.timer.Operation("close").Body(Shield(ctx), nil)
 		for {
 			t.timer.mu.Lock()
 			fired, changed, closed := t.timer.fired, t.timer.changed, t.timer.closed
@@ -105,8 +103,8 @@ func (t *libraryScheduledTimer) start(ctx *Execution, r string) Value {
 	t.id = result.Fields[0].(OperationId)
 	return nil
 }
-func (t *libraryScheduledTimer) Operation(name string) Function {
-	return libraryMethod("ScheduledTimer", name, func(ctx *Execution, r string, _ []Value) Value {
+func (t *libraryTimerService) Operation(name string) Function {
+	return libraryMethod("Timer", name, func(ctx *Execution, r string, _ []Value) Value {
 		if name == "close" {
 			t.mu.Lock()
 			t.closed = true
@@ -130,9 +128,9 @@ func (t *libraryScheduledTimer) Operation(name string) Function {
 		if t.closed {
 			return libraryError(r, "Closed", "")
 		}
-		refreshed := t.timer.Operation("refresh").Body(ctx, nil).(Alternative)
-		if refreshed.Tag != "ok" {
-			return refreshed
+		restarted := t.timer.Operation("restart").Body(ctx, nil).(Alternative)
+		if restarted.Tag != "ok" {
+			return restarted
 		}
 		t.generation++
 		t.status = "Running"

@@ -78,3 +78,9 @@ fn check_cancelled() -> Unit
 
 See [special call rules](../call-rules.md).
 
+## yield_now {data-api-kind="Function"}
+
+```manuscript
+fn yield_now() -> Unit
+```
+
