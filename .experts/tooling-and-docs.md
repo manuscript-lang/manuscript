@@ -108,3 +108,11 @@ Verified: receiver constraints come from checked standard functions rather than 
 Apply when: adding standard operations or moving runtime code.
 Evidence: [source receiver constraints](../checker/native_members.go), [ABI tests](../checker/library_test.go), [dependency and bundle policy](../scripts/repo-check/policy.json), and [policy checks](../scripts/repo-check/main.go).
 Verify: run `make verify` and native conformance. New bundled internal sources must enter the dependency bundle and implementation identity.
+
+### Pages deployment and Pages administration have different permissions
+
+Verified: the built-in workflow token with Pages write permission can deploy artifacts, but GitHub rejected changing the existing site's build type through the settings REST endpoint with HTTP 403. Keep deployment on the standard configure/deploy actions; switching the repository's Pages source is an administrator action.
+
+Apply when: migrating or repairing Pages publishing.
+Evidence: [failed settings request](https://github.com/manuscript-lang/manuscript/actions/runs/38275457893/job/114902462365), [artifact deployment](../.github/workflows/cicd.yml), and [publishing instructions](../documentation/contributing/development.md).
+Verify: inspect the actual deployment result, not just the book artifact or merged PR; confirm Pages source is GitHub Actions.

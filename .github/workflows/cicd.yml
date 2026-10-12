@@ -69,12 +69,6 @@ jobs:
       group: github-pages
       cancel-in-progress: false
     steps:
-      # This idempotent migration also handles existing branch-based sites.
-      - name: Select Actions publishing
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: gh api --method PUT "repos/${GH_REPO}/pages" -f build_type=workflow
       - uses: actions/configure-pages@v5
       - uses: actions/deploy-pages@v4
         id: deploy
