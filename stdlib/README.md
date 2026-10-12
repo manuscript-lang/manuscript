@@ -18,3 +18,5 @@ Editor adapters can use `tooling.StandardDeclarations` and `tooling.NavigationAt
 Run `ms stdlib <directory>` to export the exact pinned source files for an editor that needs documents on disk. These APIs provide navigation data; an editor integration must supply its own LSP server and transport.
 
 For user-facing imports and API behavior, see the [standard-library guide](../design/standard-library/_index.md).
+
+Filesystem, OS/process, path, and timer contracts are described in the [host package guide](../design/standard-library/packages/node-host.md). The Node.js 24 coverage inventory includes exported APIs and returned handle operations; native signature validation, offline Node path/glob fixtures, and compiled CLI tests keep the mapping reviewable. Platform helpers in `internal/hostos/` are bundled with native dependency sources.

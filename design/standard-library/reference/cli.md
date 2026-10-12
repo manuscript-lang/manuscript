@@ -23,5 +23,6 @@ type Process:
     entropy: Entropy
     wall_clock: WallClock
     system: System
+    control: ProcessControl
 ```
 

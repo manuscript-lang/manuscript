@@ -101,3 +101,5 @@ go test ./compiler -run '^$' -fuzz FuzzCompile -fuzztime 10s
 ```
 
 Native end-to-end tests compile accepted syntax and execute test bodies; rejected cases cover typing, visibility, bounds, captures, and service boundaries. Observable tests cover evaluation order, numeric faults, cleanup exits, SIGTERM child-before-parent shutdown, HTTP, subprocesses, source tooling, and unusual module filenames. Runtime tests use barriers/channels for concurrent state transitions; cache tests exercise pin mismatches, corruption, stale sources, and unchanged outputs. CI runs formatting, vet, the complete suite, race tests, and the hello project.
+
+Filesystem, OS, process, path, and timer expansion: [Node.js 24 mapping and host limitations](design/standard-library/packages/node-host.md). Includes positional/vector file I/O and streams, typed metadata, filtered copy/glob, native/polling watches, scoped temporary directories, OS/process metrics and controls, explicit path dialects, and waitable/automatic callback timers. Native helpers and dependencies are bundled for offline standalone builds.

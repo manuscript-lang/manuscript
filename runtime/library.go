@@ -34,7 +34,11 @@ func libraryFunction(name, result string) (Value, bool) {
 	for i, p := range spec.Params {
 		labels[i] = p.Name
 	}
-	return NewFunction(labels, result, func(ctx *Execution, args []Value) Value { return invokeLibrary(spec, ctx, result, args) }), true
+	body := func(ctx *Execution, args []Value) Value { return invokeLibrary(spec, ctx, result, args) }
+	if spec.Module == "timers" && (spec.Name == "set_timeout" || spec.Name == "set_interval" || spec.Name == "set_immediate" || strings.HasPrefix(spec.Name, "schedule_")) {
+		return NewAcquisition(labels, result, body, libraryDisposeResource), true
+	}
+	return NewFunction(labels, result, body), true
 }
 
 // Callback traversals snapshot membership so callbacks can safely update the
@@ -93,4 +97,14 @@ func librarySlice(length int, start, end int64) {
 	if start < 0 || end < start || end > int64(length) {
 		Panic("invalid half-open slice bounds")
 	}
+}
+
+func libraryDisposeResource(ctx *Execution, value Value) {
+	if result, ok := value.(Alternative); ok {
+		if result.Tag != "ok" {
+			return
+		}
+		value = result.Fields[0]
+	}
+	Invoke(Shield(ctx), Bind(value, "", "close"), nil)
 }

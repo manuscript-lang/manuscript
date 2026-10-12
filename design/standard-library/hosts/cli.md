@@ -34,7 +34,7 @@ interface Files:
     fn open(path: String) -> Result[File, IoError]
 ```
 
-Arguments exclude the executable name. Environment is a snapshot; duplicate OS names are resolved by the host before entry. Invalid UTF-8 in process inputs is a startup failure on native stderr with exit 70 before main runs. Relative file paths use the fixed startup working directory. The specified file API opens read-only files; file creation remains an additional API contract. Network and command operations are specified in [HTTP](http.md) and [subprocess execution](../data-and-io/streams.md).
+Arguments exclude the executable name. Environment is a snapshot; duplicate OS names are resolved by the host before entry. Invalid UTF-8 in process inputs is a startup failure on native stderr with exit 70 before main runs. Relative file paths on native CLI roots use the live process working directory; explicitly constructed filesystem capabilities can retain a fixed base. The specified file API opens read-only files; file creation remains an additional API contract. Network and command operations are specified in [HTTP](http.md) and [subprocess execution](../data-and-io/streams.md).
 
 The host creates Files, Clock, and stdio behind ordinary contract views. Process and the File returned by Files.open are safe for concurrent access. Applications and source fakes follow the same [view-conversion rules](../../core-language/types/contracts.md#explicit-contract-views).
 
@@ -69,3 +69,5 @@ Construct application Background services in main with `with`, inside their depe
 ## General-purpose authority roots
 
 Process additionally supplies `filesystem: FileSystem`, `entropy: Entropy`, `wall_clock: WallClock`, and `system: System`. Imports come from `@std/fs.ms`, `@std/random.ms`, `@std/time.ms`, and `@std/system.ms` respectively. These roots are host-created; the native CLI grants its OS authority, not a restricted sandbox. Canonical operations are in [general-purpose packages](../packages/_index.md). Existing Files, Network and Commands identities are preserved. Network owns its acquired TCP/UDP/TLS handles and joins them during host-root shutdown.
+
+`control: ProcessControl` supplies current-process information and explicit environment, directory, identity, signal, and umask operations. See [host package contracts](../packages/node-host.md) for their process-wide effects and native limitations.

@@ -76,8 +76,8 @@ used by Manuscript's runtime for the six supported targets. It excludes Go's
 tests, documentation, formatter, and unrelated tools.
 
 `ms emit` writes a Go program containing the Manuscript runtime. Building emitted
-source directly requires the repository's pinned `go.mod`, `go.sum`, and `vendor/`
-tree. From a source checkout, use `toolchain/go/bin/go build -mod=vendor main.go`.
+source directly requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and
+`internal/hostos/` platform helpers. From a source checkout, use `toolchain/go/bin/go build -mod=vendor main.go`.
 
 ## Language and implementation
 

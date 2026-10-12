@@ -31,3 +31,5 @@ For example, `fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, Js
 - Import the function from the module listed above its signature. Import type names separately if your own annotations use them.
 
 A heading such as “FileSystem operations” lists methods on a supplied service. Importing its interface gives you the type; obtain the service value from the host or a function parameter. Read the behavior sections for limits, cleanup, and partial effects.
+
+- [Filesystem, OS, process, paths, and timers](node-host.md) — Node.js 24 API mapping, bounded handles, explicit process authority, timer lifetimes, and platform limits.
