@@ -203,7 +203,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 				insert += "]"
 			}
 			if !c.typeContext && s.Type.Kind == syntax.KindRecord {
-				signature := &checker.Type{Kind: "function", Params: checker.Fields(s.Type), Result: s.Type}
+				signature := checker.ConstructorSignature(s.Type)
 				insert = callableText(name, signature, s.Variables, snippets)
 			}
 		}
@@ -418,7 +418,7 @@ func queryCall(a editorAnalysis) (*syntax.Expression, *checker.Type) {
 			}
 		}
 		if typ := typeExpression(e.Left, a.scope); typ != nil {
-			return e, &checker.Type{Kind: "function", Params: checker.Fields(typ), Result: typ}
+			return e, checker.ConstructorSignature(typ)
 		}
 	}
 	return nil, nil

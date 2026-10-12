@@ -91,7 +91,7 @@ func documentSymbol(symbol *Symbol, source string) APIDeclaration {
 	} else if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
 		d.Declaration = documentDeclaration(intrinsic.Def.Symbol.Decl, "type", symbol.Name)
 	} else {
-		d.Declaration = "type " + symbol.Name + "\n"
+		d.Declaration = "type " + symbol.Name + ":\n"
 	}
 	for _, v := range symbol.Variables {
 		parameter := v.Name

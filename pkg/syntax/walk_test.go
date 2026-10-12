@@ -26,10 +26,10 @@ fn collect(fallback: Int = choose(1)) -> String:
 interface Read:
     fn read(value: Int) -> Int
 type Box:
-    value: Int
+    value: Int = choose(7)
 impl Read for Box:
-    fn read(value: Int = choose(7)) -> Int:
-        return choose(8)
+    fn read(value: Int = choose(8)) -> Int:
+        return choose(9)
 `
 	m, err := parser.Parse("walk.ms", source)
 	if err != nil {
@@ -49,7 +49,7 @@ impl Read for Box:
 	for _, decl := range m.Declarations {
 		v.Walk(decl)
 	}
-	if !reflect.DeepEqual(calls, []string{"1", "2", "3", "4", "5", "6", "7", "8"}) {
+	if !reflect.DeepEqual(calls, []string{"1", "2", "3", "4", "5", "6", "7", "8", "9"}) {
 		t.Fatal("lost or reordered default, closure, interpolation, arm, or method calls", calls)
 	}
 }

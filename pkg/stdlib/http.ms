@@ -35,8 +35,22 @@ export type ClientResponse:
 
 export interface HttpClient:
     fn close() -> Unit
-    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
-    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[ResponseBody, HttpError]
+    fn send(
+        method: String,
+        url: String,
+        headers: Map[String, String],
+        body: Bytes,
+        max_response_bytes: Optional[Int] = none,
+        timeout: Optional[Duration] = none
+    ) -> Result[ResponseBody, HttpError]
+    fn send_stream(
+        method: String,
+        url: String,
+        headers: Map[String, String],
+        body: ReadStream,
+        max_response_bytes: Optional[Int] = none,
+        timeout: Optional[Duration] = none
+    ) -> Result[ResponseBody, HttpError]
 
 export type HttpClientOptions:
     max_redirects: Optional[Int] = none
@@ -54,8 +68,15 @@ export interface HttpExchange:
     fn path() -> String
     fn query() -> String
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
-    fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, HttpError]
-    fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Optional[Int] = none) -> Result[WebSocket, WebSocketError]
+    fn send_headers(
+        status: Int,
+        headers: Map[String, List[String]]
+    ) -> Result[Unit, HttpError]
+    fn upgrade(
+        allowed_origins: List[String],
+        subprotocols: List[String],
+        max_message_bytes: Optional[Int] = none
+    ) -> Result[WebSocket, WebSocketError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 
 export type HttpRequest:
@@ -91,4 +112,4 @@ export interface ResponseBody:
     fn status() -> Int
 
 impl Error for HttpError:
-    fn message() -> String
+    fn message() -> String:

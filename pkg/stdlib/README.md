@@ -9,7 +9,7 @@ The `.ms` files here define public types, fields, cases, function signatures, an
 - `intrinsics.ms` contains private operation declarations for primitive receivers and the universal `toString()` method.
 - Native receiver signatures appear once, on their type or intrinsic interface. TaskGroup and Task[T] use ordinary generic declarations; no private free-function declarations are needed for their implementations.
 
-These files use a trusted declaration-only parser mode. Native functions and opaque types need no Manuscript body here. Native `impl` blocks declare their method signatures without bodies, and `bindings.json` maps each receiver/contract/method identity to native dispatch. The checker verifies the ordinary implementation rules and native signatures. Application source still needs the usual bodies and type definitions.
+These files use ordinary Manuscript syntax. Runtime functions and receiver operations have empty function bodies, written with the usual colon, such as `export fn commands() -> Commands:`. Opaque type schemas use empty declarations such as `export type Duration:`. Interface signatures remain signatures, and `bindings.json` maps the declarations to native implementations. The checker verifies implementation rules and native signatures. There is no library-only parser mode or `native` keyword. Ordinary record fields may have default expressions.
 
 ## Editor navigation
 

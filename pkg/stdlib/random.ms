@@ -13,11 +13,15 @@ export type RandomError:
 export interface Entropy:
     fn bytes(count: Int) -> Result[Bytes, RandomError]
 
-export fn secure_int(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = none) -> Result[Int, RandomError]
+export fn secure_int(
+    entropy: Entropy,
+    min: Int,
+    max_exclusive: Optional[Int] = none
+) -> Result[Int, RandomError]:
 
-export fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]
+export fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]:
 
 impl Error for RandomError:
-    fn message() -> String
+    fn message() -> String:
 
-export fn entropy() -> Entropy
+export fn entropy() -> Entropy:

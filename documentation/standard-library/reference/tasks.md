@@ -17,13 +17,13 @@ type ExecutionError:
 
 ```manuscript
 impl Error for ExecutionError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## OperationId {data-api-kind="Native type"}
 
 ```manuscript
-type OperationId
+type OperationId:
 ```
 
 ## Scheduler {data-api-kind="Native type"}
@@ -34,13 +34,13 @@ type Scheduler:
     history_limit: Optional[Int] = none
     drain: Optional[Duration] = none
     reporter: Optional[fn(failure: SchedulerFailure) -> Unit] = none
-    fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
-    fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
-    fn restart(id: OperationId) -> Result[OperationId, StartError]
-    fn cancel(id: OperationId) -> Unit
-    fn close() -> Unit
-    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
-    fn status(id: OperationId) -> WorkStatus
+    fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+    fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+    fn restart(id: OperationId) -> Result[OperationId, StartError]:
+    fn cancel(id: OperationId) -> Unit:
+    fn close() -> Unit:
+    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]:
+    fn status(id: OperationId) -> WorkStatus:
 ```
 
 ## SchedulerFailure {data-api-kind="Alternative"}
@@ -62,14 +62,14 @@ type StartError:
 
 ```manuscript
 impl Error for StartError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## Task {data-api-kind="Native type"}
 
 ```manuscript
 type Task[T]:
-    fn join() -> Result[T, ExecutionError]
+    fn join() -> Result[T, ExecutionError]:
 ```
 
 ## TaskGroup {data-api-kind="Native type"}
@@ -77,9 +77,9 @@ type Task[T]:
 ```manuscript
 type TaskGroup:
     timeout: Optional[Duration] = none
-    fn start[T](operation: fn() -> T) -> Task[T]
-    fn join() -> Result[Unit, ExecutionError]
-    fn close() -> Unit
+    fn start[T](operation: fn() -> T) -> Task[T]:
+    fn join() -> Result[Unit, ExecutionError]:
+    fn close() -> Unit:
 ```
 
 ## WorkStatus {data-api-kind="Alternative"}
@@ -97,12 +97,12 @@ type WorkStatus:
 ## check_cancelled {data-api-kind="Function"}
 
 ```manuscript
-fn check_cancelled() -> Unit
+fn check_cancelled() -> Unit:
 ```
 
 ## yield_now {data-api-kind="Function"}
 
 ```manuscript
-fn yield_now() -> Unit
+fn yield_now() -> Unit:
 ```
 

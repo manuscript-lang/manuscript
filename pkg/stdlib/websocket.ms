@@ -34,4 +34,4 @@ export type WebSocketOptions:
     compression: Bool
 
 impl Error for WebSocketError:
-    fn message() -> String
+    fn message() -> String:

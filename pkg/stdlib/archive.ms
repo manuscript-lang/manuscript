@@ -23,9 +23,17 @@ export type ArchiveLimits:
     max_entry_bytes: Optional[Int] = none
     max_total_bytes: Optional[Int] = none
 
-export fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]
+export fn pack(
+    entries: List[ArchiveEntry],
+    format: String,
+    max_bytes: Optional[Int] = none
+) -> Result[Bytes, ArchiveError]:
 
-export fn unpack(data: Bytes, format: String, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]
+export fn unpack(
+    data: Bytes,
+    format: String,
+    limits: Optional[ArchiveLimits] = none
+) -> Result[List[ArchiveEntry], ArchiveError]:
 
 impl Error for ArchiveError:
-    fn message() -> String
+    fn message() -> String:

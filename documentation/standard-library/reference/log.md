@@ -18,12 +18,12 @@ type LogError:
 
 ```manuscript
 impl Error for LogError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## write {data-api-kind="Function"}
 
 ```manuscript
-fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Optional[Int] = none) -> Result[Unit, LogError]
+fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Optional[Int] = none) -> Result[Unit, LogError]:
 ```
 

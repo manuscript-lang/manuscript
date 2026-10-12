@@ -11,11 +11,11 @@ export type StringError:
     case LimitExceeded
     case Failed(message: String)
 
-export fn from_scalars(values: List[Int]) -> Result[String, StringError]
+export fn from_scalars(values: List[Int]) -> Result[String, StringError]:
 
 impl Error for StringError:
-    fn message() -> String
+    fn message() -> String:
 
 export type StringBuilder:
-    fn append(value: String) -> Unit
-    fn freeze() -> String
+    fn append(value: String) -> Unit:
+    fn freeze() -> String:

@@ -24,24 +24,24 @@ type RandomError:
 
 ```manuscript
 impl Error for RandomError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## entropy {data-api-kind="Function"}
 
 ```manuscript
-fn entropy() -> Entropy
+fn entropy() -> Entropy:
 ```
 
 ## secure_int {data-api-kind="Function"}
 
 ```manuscript
-fn secure_int(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = none) -> Result[Int, RandomError]
+fn secure_int(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = none) -> Result[Int, RandomError]:
 ```
 
 ## uuid_v4 {data-api-kind="Function"}
 
 ```manuscript
-fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]
+fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]:
 ```
 

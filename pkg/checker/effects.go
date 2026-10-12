@@ -17,7 +17,7 @@ func (c *checker) effectSummaries() {
 	nodes := map[string]*node{}
 	for _, module := range c.Modules {
 		for _, declaration := range module.Declarations {
-			if declaration.Kind == syntax.KindFn {
+			if declaration.Kind == syntax.KindFn || declaration.Kind == syntax.KindRecord {
 				symbol := c.Symbols[module.File][declaration.Name]
 				nodes[symbol.ID] = &node{declaration, map[string]bool{}, map[string]bool{}}
 			}
@@ -64,6 +64,12 @@ func (c *checker) effectSummaries() {
 					return
 				}
 				if info.Constructor != nil {
+					if info.Constructor.Def != nil {
+						s := info.Constructor.Def.Symbol
+						if s != nil && nodes[s.ID] != nil {
+							n.edges[s.ID] = true
+						}
+					}
 					return
 				}
 				if info.Native == "toString" || info.Native == "clone" {

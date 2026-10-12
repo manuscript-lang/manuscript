@@ -2,9 +2,9 @@
 
 export type Synchronized[T]:
     value: T
-    fn lock() -> SynchronizedGuard[T]
+    fn lock() -> SynchronizedGuard[T]:
 
 export type SynchronizedGuard[T]:
-    fn get() -> T
-    fn set(value: T) -> Unit
-    fn close() -> Unit
+    fn get() -> T:
+    fn set(value: T) -> Unit:
+    fn close() -> Unit:

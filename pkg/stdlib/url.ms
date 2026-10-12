@@ -22,19 +22,22 @@ export type Url:
     query: String
     fragment: String
 
-export fn decode_component(text: String) -> Result[String, UrlError]
+export fn decode_component(text: String) -> Result[String, UrlError]:
 
-export fn encode_component(text: String) -> String
+export fn encode_component(text: String) -> String:
 
-export fn format(value: Url) -> Result[String, UrlError]
+export fn format(value: Url) -> Result[String, UrlError]:
 
-export fn format_query(entries: List[QueryEntry]) -> String
+export fn format_query(entries: List[QueryEntry]) -> String:
 
-export fn parse(text: String) -> Result[Url, UrlError]
+export fn parse(text: String) -> Result[Url, UrlError]:
 
-export fn parse_query(text: String, max_entries: Optional[Int] = none) -> Result[List[QueryEntry], UrlError]
+export fn parse_query(
+    text: String,
+    max_entries: Optional[Int] = none
+) -> Result[List[QueryEntry], UrlError]:
 
-export fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
+export fn resolve(base: Url, reference: String) -> Result[Url, UrlError]:
 
 impl Error for UrlError:
-    fn message() -> String
+    fn message() -> String:

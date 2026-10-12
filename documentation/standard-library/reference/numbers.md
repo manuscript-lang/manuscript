@@ -17,18 +17,18 @@ type NumberError:
 
 ```manuscript
 impl Error for NumberError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## parse_float {data-api-kind="Function"}
 
 ```manuscript
-fn parse_float(text: String) -> Result[Float, NumberError]
+fn parse_float(text: String) -> Result[Float, NumberError]:
 ```
 
 ## parse_int {data-api-kind="Function"}
 
 ```manuscript
-fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]
+fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]:
 ```
 

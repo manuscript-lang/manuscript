@@ -57,6 +57,16 @@ func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program
 func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
 	p := &Program{Flow: map[*syntax.Statement]Flow{}, TypeReferences: map[*syntax.Type]*Type{}, Scopes: map[*syntax.Expression]ScopeState{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
 	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
+	for _, module := range modules {
+		for _, d := range module.Declarations {
+			if d.Kind != syntax.KindInterface && d.Kind != syntax.KindImpl && len(d.Methods) > 0 {
+				c.error(d.Pos, "type", "receiver operation declarations require standard-library bindings; use an explicit impl for source methods")
+			}
+		}
+	}
+	if len(p.Diagnostics) > 0 {
+		return p
+	}
 	p.Methods = append(p.Methods, standardImplementations...)
 	p.ContractPatterns = map[*syntax.Arm]*Type{}
 	for _, module := range modules {
@@ -163,6 +173,31 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindImpl {
 				c.implementation(d)
+			}
+		}
+		for _, d := range module.Declarations {
+			if d.Kind == syntax.KindRecord {
+				s := c.names[d.Name]
+				if s.Decl == d {
+					c.checkFieldDefaults(d, s)
+				}
+			}
+			if d.Kind == syntax.KindInterface {
+				for _, method := range d.Methods {
+					for _, param := range method.Params {
+						if param.Default == nil {
+							continue
+						}
+						old := c.scope
+						c.scope = c.variableScope(c.names[d.Name].Variables)
+						typ := c.resolve(param.Type, false)
+						c.expression(param.Default, typ)
+						if typ.ID != "@std/Optional" || param.Default.Kind != syntax.KindName || param.Default.Text != "none" {
+							c.error(param.Pos, "type", "interface defaults must be Optional.none")
+						}
+						c.scope = old
+					}
+				}
 			}
 		}
 		for _, d := range module.Declarations {
@@ -311,21 +346,43 @@ func (c *checker) checkFunction(d *syntax.Declaration, t *Type, vars []*Type, re
 	if receiver != nil {
 		c.Self[d] = c.bind("self", receiver, false, d.Pos)
 	}
-	for i, p := range t.Params {
-		pos := d.Pos
-		if i < len(d.Params) {
-			pos = d.Params[i].Pos
-		}
-		if i < len(d.Params) && d.Params[i].Default != nil {
-			c.expression(d.Params[i].Default, p.Type)
-		}
-		c.Parameters[d] = append(c.Parameters[d], c.bind(p.Name, p.Type, false, pos))
-	}
+	c.checkParameters(d, d.Params, t.Params)
 	fall, _ := c.block(d.Body, false)
 	if fall && t.Result.ID != "Unit" {
 		c.error(d.Pos, "type", "reachable fallthrough in function returning "+t.Result.String())
 	}
 	c.scope, c.result, c.function, c.loops = oldScope, oldResult, oldFunction, oldLoops
+}
+
+func (c *checker) checkFieldDefaults(d *syntax.Declaration, s *Symbol) {
+	hasDefault := false
+	for _, field := range d.Fields {
+		hasDefault = hasDefault || field.Default != nil
+	}
+	if !hasDefault {
+		return
+	}
+	oldScope, oldResult, oldFunction, oldLoops := c.scope, c.result, c.function, c.loops
+	c.scope = c.variableScope(s.Variables)
+	c.result = s.Type
+	c.serial++
+	c.function = c.serial
+	c.loops = 0
+	c.checkParameters(d, d.Fields, s.Type.Def.Fields)
+	c.scope, c.result, c.function, c.loops = oldScope, oldResult, oldFunction, oldLoops
+}
+
+func (c *checker) checkParameters(d *syntax.Declaration, params []syntax.Parameter, types []Param) {
+	for i, p := range types {
+		pos := d.Pos
+		if i < len(params) {
+			pos = params[i].Pos
+		}
+		if i < len(params) && params[i].Default != nil {
+			c.expression(params[i].Default, p.Type)
+		}
+		c.Parameters[d] = append(c.Parameters[d], c.bind(p.Name, p.Type, false, pos))
+	}
 }
 func (c *checker) block(body []*syntax.Statement, nested bool) (fall, breaks bool) {
 	old := c.scope

@@ -16,30 +16,30 @@ type BinaryError:
 
 ```manuscript
 impl Error for BinaryError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## read_float {data-api-kind="Function"}
 
 ```manuscript
-fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]
+fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]:
 ```
 
 ## read_integer {data-api-kind="Function"}
 
 ```manuscript
-fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]
+fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]:
 ```
 
 ## write_float {data-api-kind="Function"}
 
 ```manuscript
-fn write_float(value: Float, little_endian: Bool) -> Bytes
+fn write_float(value: Float, little_endian: Bool) -> Bytes:
 ```
 
 ## write_integer {data-api-kind="Function"}
 
 ```manuscript
-fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]
+fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]:
 ```
 

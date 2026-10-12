@@ -11,12 +11,12 @@ import (
 // bodies. Native declarations use the same declaration-only syntax as stdlib/*.ms.
 func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...string) string {
 	if d.Kind == syntax.KindFn {
-		return "fn " + name + documentTypeParameters(d.TypeParams) + documentParameters(d.Params, source...) + " -> " + documentType(d.Result) + "\n"
+		return "fn " + name + documentTypeParameters(d.TypeParams) + documentParameters(d.Params, source...) + " -> " + documentType(d.Result) + ":\n"
 	}
 	var b strings.Builder
 	b.WriteString(keyword + " " + name + documentTypeParameters(d.TypeParams))
 	if len(d.Fields)+len(d.Cases)+len(d.Methods) == 0 {
-		b.WriteByte('\n')
+		b.WriteString(":\n")
 		return b.String()
 	}
 	b.WriteString(":\n")
@@ -35,7 +35,11 @@ func documentDeclaration(d *syntax.Declaration, keyword, name string, source ...
 		b.WriteByte('\n')
 	}
 	for _, method := range d.Methods {
-		b.WriteString("    " + documentDeclaration(method, "fn", method.Name, source...))
+		header := documentDeclaration(method, "fn", method.Name, source...)
+		if keyword == "interface" {
+			header = strings.TrimSuffix(header, ":\n") + "\n"
+		}
+		b.WriteString("    " + header)
 	}
 	return b.String()
 }
@@ -117,7 +121,7 @@ func documentDefault(parameter syntax.Parameter, source ...string) string {
 					return strings.TrimSpace(source[0][start:next.Pos.Offset])
 				}
 				depth--
-			case ",":
+			case ",", lexer.Newline:
 				if depth == 0 {
 					return strings.TrimSpace(source[0][start:next.Pos.Offset])
 				}

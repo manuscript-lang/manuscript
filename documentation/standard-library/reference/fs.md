@@ -158,7 +158,7 @@ type FileSystemError:
 
 ```manuscript
 impl Error for FileSystemError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## FileSystemInfo {data-api-kind="Record"}
@@ -212,12 +212,12 @@ interface TemporaryDirectory:
 ## constants {data-api-kind="Function"}
 
 ```manuscript
-fn constants() -> Map[String, Int]
+fn constants() -> Map[String, Int]:
 ```
 
 ## filesystem {data-api-kind="Function"}
 
 ```manuscript
-fn filesystem() -> FileSystem
+fn filesystem() -> FileSystem:
 ```
 

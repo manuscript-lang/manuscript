@@ -36,9 +36,17 @@ export type TlsOptions:
     alpn: List[String]
     require_client_certificate: Bool
 
-export fn parse_certificates(pem: String, max_certificates: Optional[Int] = none) -> Result[List[CertificateInfo], TlsError]
+export fn parse_certificates(
+    pem: String,
+    max_certificates: Optional[Int] = none
+) -> Result[List[CertificateInfo], TlsError]:
 
-export fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
+export fn verify_certificates(
+    chain_pem: String,
+    roots_pem: String,
+    server_name: String,
+    now: Timestamp
+) -> Result[Unit, TlsError]:
 
 impl Error for TlsError:
-    fn message() -> String
+    fn message() -> String:

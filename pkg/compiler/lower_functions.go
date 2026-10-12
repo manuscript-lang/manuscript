@@ -8,7 +8,33 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
-func (g *generator) function(params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type) string {
+func recordDefaults(d *syntax.Declaration) bool {
+	if d == nil || d.Kind != syntax.KindRecord {
+		return false
+	}
+	for _, f := range d.Fields {
+		if f.Default != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *generator) declaredFunction(s *checker.Symbol) string {
+	d := s.Decl
+	if d.Kind == syntax.KindFn {
+		return g.function(d.Params, d.Result, d.Body, g.program.Parameters[d], nil, s.Type)
+	}
+	var args []string
+	for i, field := range d.Fields {
+		args = append(args, "rt.Argument{Name:"+quote(field.Name)+",Value:"+g.program.Parameters[d][i].ID+"}")
+	}
+	t := checker.ConstructorSignature(s.Type)
+	return g.function(d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.Parameters[d], nil, t,
+		"return rt.ConstructWithContext(ctx,"+g.key(s.Type)+",[]rt.Argument{"+strings.Join(args, ",")+"})\n")
+}
+
+func (g *generator) function(params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...string) string {
 	oldCleanups, oldLoops, oldLabels := g.cleanups, g.loopCleanup, g.loopLabels
 	g.cleanups = nil
 	g.loopCleanup = nil
@@ -38,6 +64,9 @@ func (g *generator) function(params []syntax.Parameter, result *syntax.Type, bod
 		}
 	}
 	out.WriteString(g.body(body))
+	for _, code := range tail {
+		out.WriteString(code)
+	}
 	out.WriteString("//line manuscript.generated.go:1\nreturn rt.Unit{}\n})")
 	return out.String()
 }
