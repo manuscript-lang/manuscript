@@ -5,6 +5,7 @@ import (
 	"github.com/manuscript-lang/manuscript/checker"
 	"github.com/manuscript-lang/manuscript/compiler"
 	"github.com/manuscript-lang/manuscript/parser"
+	"github.com/manuscript-lang/manuscript/project"
 	"github.com/manuscript-lang/manuscript/syntax"
 	"os"
 	"path/filepath"
@@ -596,17 +597,14 @@ func standardPaths() []string {
 	return paths
 }
 
-func editorProject(d document) (compiler.Project, bool) {
-	for dir := filepath.Dir(filename(d.URI)); ; dir = filepath.Dir(dir) {
-		project, err := compiler.ReadProject(filepath.Join(dir, "ms.toml"))
+func editorProject(d document) (project.Project, bool) {
+	if manifest, ok := project.FindManifest(filename(d.URI)); ok {
+		p, err := project.ReadProject(manifest)
 		if err == nil {
-			return project, true
-		}
-		if filepath.Dir(dir) == dir {
-			break
+			return p, true
 		}
 	}
-	return compiler.Project{Aliases: map[string]string{}}, false
+	return project.Project{Aliases: map[string]string{}}, false
 }
 
 // Identifier completion supports the same case-insensitive subsequence match

@@ -19,7 +19,13 @@ jobs:
       - name: Check formatting and vet
         run: make check
       - name: Unit and native end-to-end tests
-        run: make test
+        run: make coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: language-coverage
+          path: .artifacts/coverage/
+      - name: Parser and compiler fuzz smoke checks
+        run: make fuzz
       - name: Runtime and compiler race checks
         run: make race
       - name: Build CLI and check example

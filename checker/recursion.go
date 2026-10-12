@@ -9,7 +9,7 @@ type applicationEdge struct {
 }
 type applicationNode struct {
 	variables []*Type
-	body      []*syntax.Statement
+	decl      *syntax.Declaration
 }
 
 func (c *checker) finiteApplications() {
@@ -19,51 +19,46 @@ func (c *checker) finiteApplications() {
 			if d.Kind == "fn" {
 				s := c.Symbols[module.File][d.Name]
 				if len(s.Variables) > 0 {
-					nodes[s.ID] = applicationNode{s.Variables, callableBody(d.Params, d.Body)}
+					nodes[s.ID] = applicationNode{s.Variables, d}
 				}
 			}
 		}
 	}
+	methods := map[string]*Method{}
 	for _, m := range c.Methods {
+		methods[m.ID] = m
 		if len(m.Variables) > 0 {
-			nodes[m.ID] = applicationNode{m.Variables, callableBody(m.Decl.Params, m.Decl.Body)}
+			nodes[m.ID] = applicationNode{m.Variables, m.Decl}
 		}
 	}
 	edges := map[string][]applicationEdge{}
 	for id, node := range nodes {
-		walkStatements(node.body, func(e *syntax.Expression) {
+		syntax.Visitor{Expression: func(e *syntax.Expression) {
 			info := c.Expressions[e]
 			if info == nil {
 				return
 			}
-			if info.Symbol != nil && nodes[info.Symbol.ID].body != nil && len(info.TypeArgs) > 0 {
+			if info.Symbol != nil && nodes[info.Symbol.ID].decl != nil && len(info.TypeArgs) > 0 {
 				edges[id] = append(edges[id], applicationEdge{info.Symbol.ID, info.TypeArgs, e.Pos})
 			}
-			if info.Method != nil && info.Method.ID != "" && nodes[info.Method.ID].body != nil {
-				for _, m := range c.Methods {
-					if m.ID == info.Method.ID {
-						sub := map[string]*Type{}
-						if unify(m.Receiver, info.Method.Receiver, variableSet(m.Variables), sub) {
-							var args []*Type
-							for _, v := range m.Variables {
-								args = append(args, sub[v.ID])
-							}
-							edges[id] = append(edges[id], applicationEdge{m.ID, args, e.Pos})
-						}
-						break
+			if info.Method != nil && info.Method.ID != "" && nodes[info.Method.ID].decl != nil {
+				m := methods[info.Method.ID]
+				sub := map[string]*Type{}
+				if unify(m.Receiver, info.Method.Receiver, variableSet(m.Variables), sub) {
+					var args []*Type
+					for _, v := range m.Variables {
+						args = append(args, sub[v.ID])
 					}
+					edges[id] = append(edges[id], applicationEdge{m.ID, args, e.Pos})
 				}
 			}
-		})
+		}}.Walk(node.decl)
 	}
 	for root, node := range nodes {
 		active := map[string][]*Type{}
 		var visit func(string, []*Type)
 		visit = func(id string, args []*Type) {
 			if previous := active[id]; previous != nil {
-				return
-			}
-			if len(active) > len(nodes) {
 				return
 			}
 			active[id] = args
@@ -99,41 +94,4 @@ func (c *checker) finiteApplications() {
 		}
 		visit(root, node.variables)
 	}
-}
-func callableBody(params []syntax.Parameter, body []*syntax.Statement) []*syntax.Statement {
-	result := make([]*syntax.Statement, 0, len(params)+len(body))
-	for _, p := range params {
-		if p.Default != nil {
-			result = append(result, &syntax.Statement{Value: p.Default})
-		}
-	}
-	return append(result, body...)
-}
-func walkStatements(body []*syntax.Statement, visit func(*syntax.Expression)) {
-	for _, s := range body {
-		walkExpression(s.Value, visit)
-		walkStatements(s.Body, visit)
-		walkStatements(s.Else, visit)
-		for _, a := range s.Arms {
-			walkStatements(a.Body, visit)
-		}
-	}
-}
-func walkExpression(e *syntax.Expression, visit func(*syntax.Expression)) {
-	if e == nil {
-		return
-	}
-	visit(e)
-	walkExpression(e.Left, visit)
-	walkExpression(e.Right, visit)
-	for _, a := range e.Args {
-		walkExpression(a.Value, visit)
-	}
-	for _, a := range e.Elements {
-		walkExpression(a, visit)
-	}
-	for _, p := range e.Parts {
-		walkExpression(p.Value, visit)
-	}
-	walkStatements(callableBody(e.Params, e.Body), visit)
 }

@@ -1,0 +1,5 @@
+{{- $version := strings.TrimSpace (resources.Get "manuscript-version.txt").Content -}}
+{{- if not $version -}}
+  {{- errorf "The root .msversion file must contain the current Manuscript version" -}}
+{{- end -}}
+{{- return $version -}}

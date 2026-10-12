@@ -3,6 +3,7 @@ package lsp
 import (
 	"fmt"
 	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/project"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,17 +14,12 @@ import (
 func workspaceDocuments(d document, docs map[string]document, recursive ...bool) ([]document, error) {
 	path := filename(d.URI)
 	root := filepath.Dir(path)
-	project := len(recursive) > 0 && recursive[0]
-	for dir := root; ; dir = filepath.Dir(dir) {
-		if _, e := os.Stat(filepath.Join(dir, "ms.toml")); e == nil {
-			root = dir
-			project = true
-			break
-		}
-		if filepath.Dir(dir) == dir {
-			break
-		}
+	includeNested := len(recursive) > 0 && recursive[0]
+	if manifest, ok := project.FindManifest(path); ok {
+		root = filepath.Dir(manifest)
+		includeNested = true
 	}
+
 	files := map[string]document{}
 	for _, open := range docs {
 		relative, e := filepath.Rel(root, filename(open.URI))
@@ -37,7 +33,7 @@ func workspaceDocuments(d document, docs map[string]document, recursive ...bool)
 			return err
 		}
 		if entry.IsDir() {
-			if file != root && (!project || strings.HasPrefix(entry.Name(), ".") || entry.Name() == "node_modules" || entry.Name() == "vendor") {
+			if file != root && (!includeNested || strings.HasPrefix(entry.Name(), ".") || entry.Name() == "node_modules" || entry.Name() == "vendor") {
 				return filepath.SkipDir
 			}
 			return nil
@@ -70,7 +66,7 @@ func workspaceAnalysis(d document, docs map[string]document) compiler.Result {
 }
 func workspaceReferences(d document, docs map[string]document, p position, include bool) []any {
 	result := analyze(d, docs)
-	selected := occurrenceAt(result, d, p)
+	selected := occurrenceAt(result, d, p, sourceIndex(result))
 	if selected == nil {
 		return []any{}
 	}

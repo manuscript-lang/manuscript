@@ -17,4 +17,4 @@ Editor adapters can use `tooling.StandardDeclarations` and `tooling.NavigationAt
 
 Run `ms stdlib <directory>` to export the exact pinned source files for an editor that needs documents on disk. These APIs provide navigation data; an editor integration must supply its own LSP server and transport.
 
-For user-facing imports and API behavior, see the [standard-library guide](../design/standard-library/_index.md).
+For user-facing imports and API behavior, see the [standard-library guide](../documentation/standard-library/_index.md).

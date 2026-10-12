@@ -1,0 +1,55 @@
+package syntax_test
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/manuscript-lang/manuscript/parser"
+	"github.com/manuscript-lang/manuscript/syntax"
+)
+
+func TestVisitorFollowsExecutableSyntaxOnce(t *testing.T) {
+	const source = `fn choose(value: Int) -> Int:
+    return value
+fn collect(fallback: Int = choose(1)) -> String:
+    let callbacks = [
+        fn(value: Int = choose(2)) -> Int:
+            if value > 0:
+                return choose(3)
+            else:
+                return choose(4)
+    ]
+    let text = "{choose(5)}"
+    match fallback:
+        _:
+            return "{choose(6)}"
+interface Read:
+    fn read(value: Int) -> Int
+type Box:
+    value: Int
+impl Read for Box:
+    fn read(value: Int = choose(7)) -> Int:
+        return choose(8)
+`
+	m, err := parser.Parse("walk.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var calls []string
+	seen := map[*syntax.Expression]bool{}
+	v := syntax.Visitor{Expression: func(e *syntax.Expression) {
+		if seen[e] {
+			t.Fatal("visited an expression twice", e.Pos)
+		}
+		seen[e] = true
+		if e.Kind == "call" && e.Left.Text == "choose" {
+			calls = append(calls, e.Args[0].Value.Text)
+		}
+	}}
+	for _, decl := range m.Declarations {
+		v.Walk(decl)
+	}
+	if !reflect.DeepEqual(calls, []string{"1", "2", "3", "4", "5", "6", "7", "8"}) {
+		t.Fatal("lost or reordered default, closure, interpolation, arm, or method calls", calls)
+	}
+}

@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { tokenize: tokenizeWithGrammar } = require('../../assets/manuscript-highlight.js');
+const { tokenize: tokenizeWithGrammar } = require('../../website/assets/manuscript-highlight.js');
 const grammar = require('../../extensions/vscode/syntaxes/manuscript.tmLanguage.json');
 const tokenize = source => tokenizeWithGrammar(source, grammar);
 

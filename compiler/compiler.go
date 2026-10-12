@@ -51,7 +51,7 @@ func CompileSource(filename, source string, options Options) Result {
 func compileModules(modules []*syntax.Module, imports map[*syntax.Import]string, entry string, options Options) Result {
 	checked := checker.CheckWithOptions(modules, imports, checker.CheckOptions{ScopeMarker: options.ScopeMarker})
 	result := Result{Program: checked, Diagnostics: checked.Diagnostics}
-	if !result.Success() || options.AnalyzeOnly {
+	if !result.Success() {
 		return result
 	}
 	if options.Entry {
@@ -61,6 +61,10 @@ func compileModules(modules []*syntax.Module, imports map[*syntax.Import]string,
 			return result
 		}
 	}
+	if options.AnalyzeOnly {
+		return result
+	}
+
 	source, err := generate(checked, entry, options)
 	if err != nil {
 		result.Diagnostics = append(result.Diagnostics, syntax.Diagnostic{Position: syntax.Position{File: entry, Line: 1, Column: 1}, Phase: "lowering", Message: err.Error()})

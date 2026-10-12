@@ -87,52 +87,20 @@ func inlayHints(result compiler.Result, d document, requested span) []any {
 	if m == nil {
 		return hints
 	}
-	var statements func([]*syntax.Statement)
-	var expression func(*syntax.Expression)
-	expression = func(e *syntax.Expression) {
-		if e == nil {
-			return
-		}
-		statements(e.Body)
-		for _, param := range e.Params {
-			expression(param.Default)
-		}
-		expression(e.Left)
-		expression(e.Right)
-		for _, arg := range e.Args {
-			expression(arg.Value)
-		}
-	}
-	statements = func(body []*syntax.Statement) {
-		for _, s := range body {
-			if s.Kind == "bind" && s.Type == nil && s.Pattern != nil && s.Pattern.Kind == "name" {
-				if binding := result.Program.Bindings[s.Pattern]; binding != nil && binding.Type != nil && binding.Type.ID != "<invalid>" {
-					p := Position(d.Text, s.Pattern.Pos.Offset+len(s.Pattern.Name))
-					if (p.Line > requested.Start.Line || p.Line == requested.Start.Line && p.Character >= requested.Start.Character) && (p.Line < requested.End.Line || p.Line == requested.End.Line && p.Character <= requested.End.Character) {
-						hints = append(hints, map[string]any{"position": p, "label": ": " + binding.Type.String(), "kind": 1, "paddingLeft": false, "paddingRight": false})
-					}
+	visitor := syntax.Visitor{Statement: func(s *syntax.Statement) {
+		if s.Kind == "bind" && s.Type == nil && s.Pattern != nil && s.Pattern.Kind == "name" {
+			if binding := result.Program.Bindings[s.Pattern]; binding != nil && binding.Type != nil && binding.Type.ID != "<invalid>" {
+				p := Position(d.Text, s.Pattern.Pos.Offset+len(s.Pattern.Name))
+				if (p.Line > requested.Start.Line || p.Line == requested.Start.Line && p.Character >= requested.Start.Character) && (p.Line < requested.End.Line || p.Line == requested.End.Line && p.Character <= requested.End.Character) {
+					hints = append(hints, map[string]any{"position": p, "label": ": " + binding.Type.String(), "kind": 1, "paddingLeft": false, "paddingRight": false})
 				}
 			}
-			statements(s.Body)
-			statements(s.Else)
-			for _, arm := range s.Arms {
-				statements(arm.Body)
-			}
-			expression(s.Value)
 		}
-	}
+	}}
 	for _, decl := range m.Declarations {
-		for _, param := range decl.Params {
-			expression(param.Default)
-		}
-		statements(decl.Body)
-		for _, method := range decl.Methods {
-			for _, param := range method.Params {
-				expression(param.Default)
-			}
-			statements(method.Body)
-		}
+		visitor.Walk(decl)
 	}
+
 	sort.Slice(hints, func(i, j int) bool {
 		a, b := hints[i].(map[string]any)["position"].(position), hints[j].(map[string]any)["position"].(position)
 		if a.Line != b.Line {
@@ -172,7 +140,7 @@ func foldingRanges(d document) []any {
 	return result
 }
 func typeDefinition(result compiler.Result, d document, p position) any {
-	_, info := at(result, d, p)
+	_, info := at(result, d, p, sourceIndex(result))
 	if info == nil || info.Type == nil || info.Type.Def == nil || info.Type.Def.Symbol == nil {
 		return nil
 	}

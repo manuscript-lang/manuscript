@@ -144,12 +144,7 @@ func Inspect(program *checker.Program) Inspection {
 				entity.Name = declaration.Contract.Name + " for " + declaration.Receiver.Name
 			}
 			result.Entities = append(result.Entities, entity)
-			var expression func(*syntax.Expression)
-			var statements func([]*syntax.Statement)
-			expression = func(e *syntax.Expression) {
-				if e == nil {
-					return
-				}
+			visitor := syntax.Visitor{Expression: func(e *syntax.Expression) {
 				if e.Kind == "call" {
 					site := CallSite{ID: fmt.Sprintf("%s#call#%d", module.File, e.Pos.Offset), Owner: entity.ID, Target: "indirect", Kind: "function", Span: sourceSpan(module, e.Pos)}
 					info := program.Expressions[e]
@@ -178,57 +173,27 @@ func Inspect(program *checker.Program) Inspection {
 					}
 					result.Calls = append(result.Calls, site)
 				}
-				for _, param := range e.Params {
-					expression(param.Default)
-				}
-				expression(e.Left)
-				expression(e.Right)
-				for _, a := range e.Args {
-					expression(a.Value)
-				}
-				for _, item := range e.Elements {
-					expression(item)
-				}
-				for _, part := range e.Parts {
-					expression(part.Value)
-				}
-				statements(e.Body)
-			}
-			statements = func(body []*syntax.Statement) {
-				for _, s := range body {
-					result.Statements = append(result.Statements, sourceSpan(module, s.Pos))
-					if s.Kind == "with" {
-						target := "indirect.close"
-						if method := program.Cleanups[s]; method != nil {
-							target = methodIDs[method.ID]
-							if target == "" {
-								target = method.Receiver.String() + ".close"
-							}
+			}, Statement: func(s *syntax.Statement) {
+				result.Statements = append(result.Statements, sourceSpan(module, s.Pos))
+				if s.Kind == "with" {
+					target := "indirect.close"
+					if method := program.Cleanups[s]; method != nil {
+						target = methodIDs[method.ID]
+						if target == "" {
+							target = method.Receiver.String() + ".close"
 						}
-						result.Calls = append(result.Calls, CallSite{ID: fmt.Sprintf("%s#cleanup#%d", module.File, s.Pos.Offset), Owner: entity.ID, Target: target, Kind: "cleanup", Span: sourceSpan(module, s.Pos)})
 					}
-					expression(s.Value)
-					statements(s.Body)
-					statements(s.Else)
-					for _, arm := range s.Arms {
-						statements(arm.Body)
-					}
+					result.Calls = append(result.Calls, CallSite{ID: fmt.Sprintf("%s#cleanup#%d", module.File, s.Pos.Offset), Owner: entity.ID, Target: target, Kind: "cleanup", Span: sourceSpan(module, s.Pos)})
 				}
-			}
-			for _, param := range declaration.Params {
-				expression(param.Default)
-			}
-			statements(declaration.Body)
+			}}
+			visitor.Callable(declaration.Params, declaration.Body)
 			implementation := entity
 			for _, method := range declaration.Methods {
 				if len(method.Body) > 0 {
 					checked := methods[method]
 					entity = Entity{ID: methodIDs[checked.ID], GoID: checked.ID, Kind: "method", Name: implementation.Name + "." + method.Name, Type: checked.Type.String(), Span: sourceSpan(module, method.Pos), Effects: program.Effects[checked.ID]}
 					result.Entities = append(result.Entities, entity)
-					for _, param := range method.Params {
-						expression(param.Default)
-					}
-					statements(method.Body)
+					visitor.Callable(method.Params, method.Body)
 				}
 			}
 		}

@@ -283,45 +283,19 @@ func sourceIndex(result compiler.Result) []occurrence {
 			}
 		}
 	}
-	var body func([]*syntax.Statement)
-	var expression func(*syntax.Expression)
-	expression = func(e *syntax.Expression) {
-		if e == nil {
-			return
-		}
-		body(e.Body)
-		expression(e.Left)
-		expression(e.Right)
-		for _, arg := range e.Args {
-			expression(arg.Value)
-		}
-		for _, item := range e.Elements {
-			expression(item)
-		}
-	}
-	body = func(statements []*syntax.Statement) {
-		for _, s := range statements {
-			if s.Kind == "assign" {
-				if b := program.Assignments[s.Value]; b != nil {
-					add(localKey(b), s.Name, s.Pos, false, true, &checker.Info{Type: b.Type, Binding: b})
-				}
+	visitor := syntax.Visitor{Statement: func(s *syntax.Statement) {
+		if s.Kind == "assign" {
+			if b := program.Assignments[s.Value]; b != nil {
+				add(localKey(b), s.Name, s.Pos, false, true, &checker.Info{Type: b.Type, Binding: b})
 			}
-			body(s.Body)
-			body(s.Else)
-			for _, arm := range s.Arms {
-				body(arm.Body)
-			}
-			expression(s.Value)
 		}
-	}
+	}}
 	for _, m := range sourceModules(result) {
 		for _, decl := range m.Declarations {
-			body(decl.Body)
-			for _, method := range decl.Methods {
-				body(method.Body)
-			}
+			visitor.Walk(decl)
 		}
 	}
+
 	sort.Slice(index, func(i, j int) bool {
 		a, b := index[i], index[j]
 		if a.pos.File != b.pos.File {
@@ -334,13 +308,13 @@ func sourceIndex(result compiler.Result) []occurrence {
 	})
 	return index
 }
-func occurrenceAt(result compiler.Result, d document, p position) *occurrence {
+func occurrenceAt(result compiler.Result, d document, p position, index []occurrence) *occurrence {
 	offset, err := Offset(d.Text, p)
 	if err != nil {
 		return nil
 	}
 	file := moduleFile(result, d)
-	for _, entry := range sourceIndex(result) {
+	for _, entry := range index {
 		if entry.pos.File == file && offset >= entry.pos.Offset && offset < entry.end {
 			copy := entry
 			return &copy

@@ -1,4 +1,4 @@
-// Package parser implements the grammar in design/core-language/basics/grammar.md.
+// Package parser implements the grammar in documentation/core-language/basics/grammar.md.
 package parser
 
 import (
