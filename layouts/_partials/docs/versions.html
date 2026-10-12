@@ -1,0 +1,12 @@
+{{ $version := partialCached "docs/version" . }}
+<details class="docs-versions">
+  <summary aria-label="Documentation version: v{{ $version }}">v{{ $version }} <span aria-hidden="true">⌄</span></summary>
+  <nav class="version-menu" aria-label="Documentation versions">
+    <a href="{{ .RelPermalink }}" aria-current="true"><span>v{{ $version }}</span><span class="version-current">Current</span></a>
+    {{ range .Site.Data.docs_versions.archives }}
+      {{ if ne .version $version }}
+        <a href="{{ .url | relURL }}">v{{ .version }}</a>
+      {{ end }}
+    {{ end }}
+  </nav>
+</details>

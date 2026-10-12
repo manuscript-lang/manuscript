@@ -1,0 +1,5 @@
+# Published archives, newest first. The current version comes from .msversion.
+# Add an entry only after its documentation is published at the given URL:
+# [[archives]]
+# version = "0.1.0"
+# url = "versions/v0.1.0/"
