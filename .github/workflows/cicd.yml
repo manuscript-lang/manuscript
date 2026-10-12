@@ -24,6 +24,15 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.1'
+          cache: false
+
+      - name: Check generated standard library documentation
+        run: make docs-check
+
       - name: Install Hugo Extended
         uses: peaceiris/actions-hugo@v3
         with:
@@ -48,6 +57,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.1'
+          cache: false
+
+      - name: Check generated standard library documentation
+        run: make docs-check
 
       - name: Install Hugo Extended
         uses: peaceiris/actions-hugo@v3

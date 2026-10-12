@@ -1,6 +1,6 @@
 baseURL = 'http://localhost:4000/'
 languageCode = 'en-us'
-title = 'Manuscript Design'
+title = 'Manuscript'
 theme = 'hugo-book'
 contentDir = 'design'
 resourceDir = '.hugo-resources'

@@ -37,7 +37,7 @@ Applications export `fn main(process: Process) -> Int`; standard symbols use exp
 | `compiler` | Project loading, checked Go lowering, native builds, pins, caches, and build metadata |
 | `runtime` | Values, data/services, cleanup, concurrency, and explicit host capabilities |
 | `tooling` | Validated formatting, source inspection, and static diagrams |
-| `cmd/ms` | Check, build, emit, run, test, fmt, inspect, diagram, and lock commands |
+| `cmd/ms` | Check, build, emit, run, test, fmt, inspect, diagram, doc, and lock commands |
 | `tests/e2e` | Syntax fixtures compiled to native executables and observable runtime expectations |
 
 Embedders can use `parser.Parse`, `checker.Check`, `compiler.CompileSource`, `compiler.CompileFile`, `compiler.Standalone`, `compiler.BuildChecked`, `tooling.Format`, and `tooling.Inspect`. `compiler.Build` is the lower-level native build API without project pin validation. Failed checking produces diagnostics and no generated source.
@@ -55,7 +55,9 @@ go test ./compiler -run '^$' -fuzz FuzzCompile -fuzztime 10s
 
 The end-to-end suite needs the Go toolchain on `PATH` or in `MANUSCRIPT_GO`. It builds accepted modules, executes their `test` blocks, verifies rejected variants, exercises CLI commands, and checks evaluation order, cleanup, numeric faults, and signal cancellation. `make check`, `make test`, `make race`, and `make build` provide the same entry points. CI runs formatting checks, vet, the complete suite, and race tests.
 
-## Read the design book
+## Read the documentation
+
+Start with [the introduction](design/learn/_index.md), [the language tour](design/learn/tour.md), and [the complete module reference](design/standard-library/reference/_index.md).
 
 The Markdown guides are rendered directly with [Hugo](https://gohugo.io/) and the [Hugo Book theme](https://github.com/alex-shpak/hugo-book). Install Hugo Extended 0.146 or newer.
 
@@ -88,3 +90,45 @@ For branch protection, require the **Build design book** and **Language checks /
 ```sh
 hugo --minify --panicOnWarning --baseURL "https://example.org/manuscript/"
 ```
+
+## Generate the standard library reference
+
+Run `make docs` from the repository root after changing standard definitions.
+`make docs-check` verifies that checked-in outputs match; the Pages workflow runs
+this check before validation and deployment.
+
+`cmd/docgen` reads the checker’s standard registry, including service and host
+definitions, and discovers native method names from the embedded `nativeMethod` case labels, so the shipped binary needs no source checkout.
+It captures checked signatures, generic bounds, fields, cases, and operations
+without maintaining a second API catalog. The intrinsic prelude is included.
+Special contextual calls and constructors are documented in
+[call rules](documentation/call-rules.md), which require review when
+`checker/calls.go` changes.
+
+Generated module pages live in `design/standard-library/reference/`. Hugo copies
+`static/stdlib.md`, `static/stdlib.json` (schema version 1), and `static/llms.txt`
+to the Pages site root. Relative links support repository Pages prefixes and
+custom domains. `stdlib.md` contains the entire implemented API in one plain-text
+document for LLM ingestion; the JSON has stable sorted modules and declarations.
+The existing design chapters explain behavior and identify proposed extensions.
+
+## Generate documentation with ms
+
+The shipped binary includes the documentation generator; no Go installation or
+compiler source checkout is required.
+
+```sh
+ms doc src/library.ms -o api.md
+ms doc ms.toml --json -o api.json
+ms doc --stdlib -o stdlib.md
+ms doc --stdlib --json -o stdlib.json
+```
+
+Without `-o`, documentation is written to stdout. Source modules are checked first;
+only their own exported declarations are documented, including fields, cases,
+contract operations, and generic bounds. Projects include loaded local modules.
+Private declarations and re-imported standard symbols are excluded. The stdlib
+reference describes the compiler version bundled with that binary.
+
+`documentation/call-rules.md` is the canonical source for special call rules;
+`make docs` also regenerates its page in the design book.

@@ -15,7 +15,7 @@ import (
 	"syscall"
 )
 
-const help = `Usage: ms <check|build|emit|run|test|fmt|inspect|diagram|lock> <file.ms|ms.toml> [-o output] [-- program arguments]
+const help = `Usage: ms <check|build|emit|run|test|fmt|inspect|diagram|lock|doc> <file.ms|ms.toml> [-o output] [-- program arguments]
 
 check  Parse and type-check without executing source
 build  Build a native executable (default: ./program)
@@ -25,6 +25,7 @@ test   Build and execute module test blocks, including imported modules
 fmt    Format a module; --check verifies without writing
 inspect Emit checked symbols, source hashes, call sites, and statement spans as JSON
 diagram Emit the checked static call graph as Mermaid
+doc    Generate public module docs or the bundled stdlib reference (ms doc --help)
 lock   Explicitly pin the compiler/runtime, Go toolchain, and target in ms.lock
 
 The Go toolchain is required for build, run, and test.
@@ -40,6 +41,9 @@ func run(args []string) int {
 	if args[0] == "--version" {
 		fmt.Println("Manuscript 0.1.0")
 		return 0
+	}
+	if args[0] == "doc" {
+		return runDoc(args[1:])
 	}
 	if len(args) < 2 {
 		fmt.Fprint(os.Stderr, help)
