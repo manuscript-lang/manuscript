@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Rebuild edited programs faster: native builds share a content-addressed workspace, replay recorded compile/link commands without the go command, publish artifacts by hard link, and link Debug builds with uncompressed DWARF.
 - Parse HTML strings into `HtmlNode` trees with `HtmlAttribute` records, HTML5 recovery, and optional byte, depth, and node limits.
 - Replace `@std/log.ms`'s `write` function with structured `Logger` and `Transport` interfaces: six levels, typed JSON fields, child bindings, record limits, and stdout/file/custom transports. Migrate calls to `create(transport: transport)` and `logger.info(message: message, fields: some(value: fields))`; fields now use `Map[String, JsonValue]`, and transports use scoped cleanup.
 

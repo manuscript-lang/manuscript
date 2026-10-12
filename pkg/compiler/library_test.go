@@ -289,6 +289,8 @@ func TestNativeBuildInSymlinkedTemporaryDirectory(t *testing.T) {
 	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
 		t.Setenv(name, alias)
 	}
+	// The shared native workspace lives in the cache root.
+	t.Setenv("MANUSCRIPT_CACHE_DIR", alias)
 	result := CompileSource("native-path.ms", `test "native module identity":
     let value = 1
 `, Options{Tests: true})

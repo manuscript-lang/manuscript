@@ -34,7 +34,7 @@ Use `Debug` for source stepping, `Release` for distribution, and
 
 | Level | Optimization | Debugging information | Native flags |
 | --- | --- | --- | --- |
-| `Debug` | Disabled, including inlining | Retained, with local source paths | `-gcflags=all=-N -l` |
+| `Debug` | Disabled, including inlining | Retained uncompressed, with local source paths | `-gcflags=all=-N -l` `-ldflags=-compressdwarf=false` |
 | `Release` | Go's normal optimizer | Symbol tables and DWARF stripped | `-trimpath -ldflags="-s -w"` |
 | `RelWithDebInfo` | Go's normal optimizer | Retained, with local source paths | No additional flags |
 | `MinSizeRel` | Go's normal optimizer | Symbol tables and DWARF stripped | `-trimpath -ldflags="-s -w"` |
