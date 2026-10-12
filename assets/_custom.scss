@@ -56,6 +56,15 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .docs-brand { display: flex; align-items: center; gap: .75rem; flex: none; color: var(--docs-heading) !important; font-size: 1.1rem; font-weight: 700; letter-spacing: -.035em; }
 .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #171717; color: #fff; font: italic bold 22px Georgia, serif; letter-spacing: -.075em; padding: 0 2px 3px 0; }
 .brand-subtitle { display: block; font-size: .7rem; font-weight: 500; letter-spacing: .02em; color: var(--docs-muted); margin-top: 2px; }
+.docs-versions { position: relative; flex: none; margin-left: -1.5rem; font-size: .75rem; }
+.docs-versions summary { display: flex; align-items: center; gap: .6rem; padding: .4rem .6rem; border: 1px solid var(--gray-200); border-radius: 6px; color: var(--docs-muted); cursor: pointer; list-style: none; }
+.docs-versions summary::-webkit-details-marker { display: none; }
+.docs-versions summary:hover, .docs-versions[open] summary { background: var(--gray-100); color: var(--docs-heading); }
+.version-menu { position: absolute; top: calc(100% + .5rem); left: 0; min-width: 12rem; padding: .35rem; background: var(--body-background); border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, .12); }
+.version-menu a { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: .6rem; border-radius: 4px; color: var(--docs-muted); }
+.version-menu a:hover { background: var(--gray-100); }
+.version-menu a[aria-current] { color: var(--color-link); }
+.version-current { font-size: .65rem; }
 .external-icon { display: inline-block; width: .85em; height: .85em; flex: none; vertical-align: baseline; }
 .topbar-links { display: flex; align-items: center; gap: 1.75rem; margin-left: auto; height: 100%; font-size: .85rem; font-weight: 500; }
 .topbar-links a { display: flex; height: 100%; color: var(--docs-muted); border-bottom: 2px solid transparent; padding-top: 2px; }
@@ -185,7 +194,9 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 @media screen and (max-width: 40rem) {
   .topbar-inner { padding: 0 1rem; gap: .75rem; }
   .topbar-links { gap: 1rem; font-size: .75rem; }
-  .topbar-links .github-link { display: none; }
+  .topbar-links .github-link, .topbar-links a:nth-child(2) { display: none; }
+  .docs-versions { margin-left: 0; }
+  .version-menu { left: auto; right: 0; }
   .brand-subtitle { display: none; }
   .docs-brand { font-size: 1rem; gap: .5rem; }
   .brand-mark { width: 29px; height: 29px; font-size: 19px; }

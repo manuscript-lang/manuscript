@@ -143,6 +143,20 @@ hugo --minify
 
 The static site is generated in `docs/`, which is committed for GitHub Pages to serve. Edit the Markdown guides in `design/`, then rebuild; files in `docs/` are generated output. Chapter indexes use `_index.md`; each page's front matter sets its title and reading-order weight. New Markdown pages appear automatically. Site settings live in `hugo.toml`. The `static/.nojekyll` marker is copied into `docs/` so Pages serves the Hugo output directly.
 
+The root `.msversion` file contains the current documentation version (initially
+`0.1.0`, without a `v` prefix). Hugo reads it for the header's version dropdown,
+homepage badge, sidebar, and footer. Change this file and rebuild to update all
+documentation version labels.
+
+When older documentation is available, add its version and published site URL to
+`data/docs_versions.toml` as an `[[archives]]` entry. Relative URLs such as
+`versions/v0.1.0/` respect the site's configured base URL; full URLs can point to a
+separate docs host. Selecting an archive opens that version's documentation home,
+so pages added in newer versions do not produce broken links. The current version
+is always included automatically. Archive entries only link to published sites;
+they do not create or preserve snapshots. Keep snapshots outside the generated
+`docs/` directory, which production builds clean before publishing.
+
 Hugo Book v13 is vendored in `themes/hugo-book/`, including its MIT license. The exact upstream revision is recorded in `themes/hugo-book/UPSTREAM`.
 
 The documentation's visual design lives in `assets/_custom.scss`, with layout and
