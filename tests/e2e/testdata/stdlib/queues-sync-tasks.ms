@@ -23,7 +23,7 @@ fn first() -> Int: return 1
 fn second() -> String: return "two"
 
 test "FIFO capacity empty reads draining and reuse":
-    let queue = Queue[Int](capacity: some(value: 2))
+    let queue = Queue[Int](capacity: 2)
     if not queue.is_empty() or not queue.peek().is_none(): return panic("empty queue")
     if (
         not queue.enqueue(1)
@@ -41,7 +41,7 @@ test "FIFO capacity empty reads draining and reuse":
 test "priority queue orders values and honors capacity":
     let queue = PriorityQueue(
         compare: compare,
-        capacity: some(value: 3)
+        capacity: 3
     )
     queue.enqueue(3)
     queue.enqueue(1)
@@ -66,7 +66,7 @@ test "synchronized guards update and release for later acquisition":
         if guard.get() != 2: return panic("guard update or release")
 
 test "scheduler delayed cancellation capacity and closed admission":
-    let scheduler = Scheduler(limit: some(value: 1))
+    let scheduler = Scheduler(limit: 1)
     let id = value(scheduler.after(duration: 60.seconds, operation: operation))
     if scheduler.status(id) != WorkStatus.Running: return panic("scheduled status")
 

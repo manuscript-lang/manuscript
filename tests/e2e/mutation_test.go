@@ -59,7 +59,7 @@ type Holder:
 export fn main() -> Int:
     match files().open("data.txt"):
         ok(file):
-            match file.read(some(value: 1)):
+            match file.read(1):
                 ok(chunk):
                     match chunk:
                         some(data):
@@ -75,7 +75,7 @@ export fn main() -> Int:
             if original.label != "original":
                 return 1
             copy.file.close()
-            match original.file.read(some(value: 1)):
+            match original.file.read(1):
                 error(cause):
                     match cause:
                         IoError.Closed:

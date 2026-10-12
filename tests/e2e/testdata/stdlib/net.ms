@@ -7,7 +7,6 @@ import {
     Connection
 } from "@std/net.ms"
 import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import IoError from "@std/io.ms"
 import panic from "@std/faults.ms"
@@ -35,23 +34,23 @@ test "TCP loopback writes reads half close and EOF":
         with client = value(
             net.connect(
                 address: listener.address(),
-                timeout: some(value: 2.seconds)
+                timeout: 2.seconds
             )
         ):
             with server = value(
-                listener.accept(timeout: some(value: 2.seconds))
+                listener.accept(timeout: 2.seconds)
             ):
                 let sent = value(
                     client.write(
                         data: "hello".to_bytes(),
-                        timeout: some(value: 2.seconds)
+                        timeout: 2.seconds
                     )
                 )
                 if (
                     value(
                         server.read(
-                            max_bytes: some(value: 5),
-                            timeout: some(value: 2.seconds)
+                            max_bytes: 5,
+                            timeout: 2.seconds
                         )
                     ).unwrap() != "hello".to_bytes()
                 ): return panic("TCP bytes")
@@ -62,8 +61,8 @@ test "TCP loopback writes reads half close and EOF":
                 let shutdown = value(client.shutdown_write())
                 if not value(
                     server.read(
-                        max_bytes: some(value: 5),
-                        timeout: some(value: 2.seconds)
+                        max_bytes: 5,
+                        timeout: 2.seconds
                     )
                 ).is_none(): return panic("TCP EOF")
 
@@ -76,13 +75,13 @@ test "UDP loopback preserves datagram data and sender":
                 sender.send(
                     data: "packet".to_bytes(),
                     address: receiver.address(),
-                    timeout: some(value: 2.seconds)
+                    timeout: 2.seconds
                 )
             )
             let packet = value(
                 receiver.receive(
-                    max_bytes: some(value: 64),
-                    timeout: some(value: 2.seconds)
+                    max_bytes: 64,
+                    timeout: 2.seconds
                 )
             )
             if packet.data != "packet".to_bytes() or packet.sender != sender.address(): return panic(
@@ -105,7 +104,7 @@ test "network restriction denies admission and close rejects acquisitions":
 
     match restricted.connect(
         address: "127.0.0.1:1",
-        timeout: some(value: 1.seconds)
+        timeout: 1.seconds
     ):
         ok(_): return panic("closed network admitted connection")
 

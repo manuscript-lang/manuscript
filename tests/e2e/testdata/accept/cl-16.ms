@@ -40,9 +40,10 @@ fn select[T](first: T, second: T) -> T:
 
 test "nested constructor arguments receive inferred context":
     let request = Request(box: Box(value: none))
+    let provided = some(value: 3)
     let selected = select(
         first: Box(value: none),
-        second: Box(value: some(value: 3))
+        second: Box(value: provided)
     )
 
     match selected.value:

@@ -9,7 +9,6 @@ import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@st
 import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
 import {List, Map} from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import {certificate, private_key} from "./support/certificates.ms"
@@ -31,7 +30,7 @@ test "TLS certificate parsing verification hostname and expiration":
     let certificates = value(
         parse_certificates(
             pem: certificate(),
-            max_certificates: some(value: 1)
+            max_certificates: 1
         )
     )
     if (
@@ -80,7 +79,7 @@ test "TLS rejects malformed PEM and certificate budgets":
     if (
         parse_certificates(
             pem: certificate(),
-            max_certificates: some(value: 0)
+            max_certificates: 0
         ) != limited
     ): return panic("certificate budget")
 
@@ -95,9 +94,9 @@ test "HTTPS trusts only the explicitly supplied local test root":
         require_client_certificate: false
     )
     let server_options = HttpServerOptions(
-        timeout: some(value: 3.seconds),
-        grace: some(value: 0.seconds),
-        tls: some(value: server_tls)
+        timeout: 3.seconds,
+        grace: 0.seconds,
+        tls: server_tls
     )
 
     with server = value(
@@ -131,7 +130,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
                     url: "https://{server.address()}/",
                     headers: Map[String, String](),
                     body: "".to_bytes(),
-                    timeout: some(value: 2.seconds)
+                    timeout: 2.seconds
                 )
             ):
                 if (

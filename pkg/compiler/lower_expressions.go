@@ -12,7 +12,11 @@ import (
 func (g *generator) arguments(args []syntax.Argument) string {
 	var values []string
 	for _, a := range args {
-		values = append(values, "{Name:"+quote(a.Name)+",Value:"+g.expression(a.Value)+"}")
+		value := g.expression(a.Value)
+		if target := g.program.Expressions[a.Value].OptionalArgument; target != nil {
+			value = "rt.NewAlternative(" + g.key(target) + ",\"some\",[]string{\"value\"},[]rt.Argument{{Name:\"value\",Value:" + value + "}})"
+		}
+		values = append(values, "{Name:"+quote(a.Name)+",Value:"+value+"}")
 	}
 	return "[]rt.Argument{" + strings.Join(values, ",") + "}"
 }

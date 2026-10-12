@@ -177,7 +177,7 @@ test "TOML optional limits include implicit tables and zero":
         parse(
             text: "a=1",
             limits: limits(
-                bytes: some(value: 2),
+                bytes: 2,
                 depth: none,
                 values: none
             )
@@ -188,7 +188,7 @@ test "TOML optional limits include implicit tables and zero":
             text: "a.b=1",
             limits: limits(
                 bytes: none,
-                depth: some(value: 2),
+                depth: 2,
                 values: none
             )
         ) != limited
@@ -199,7 +199,7 @@ test "TOML optional limits include implicit tables and zero":
             limits: limits(
                 bytes: none,
                 depth: none,
-                values: some(value: 2)
+                values: 2
             )
         ) != limited
     ): return panic("value limit")
@@ -207,9 +207,9 @@ test "TOML optional limits include implicit tables and zero":
         parse(
             text: "",
             limits: limits(
-                bytes: some(value: 0),
-                depth: some(value: 1),
-                values: some(value: 1)
+                bytes: 0,
+                depth: 1,
+                values: 1
             )
         ) != parse(text: "", limits: none)
     ): return panic("empty exact limits")
@@ -219,7 +219,7 @@ test "TOML optional limits include implicit tables and zero":
             limits: limits(
                 bytes: none,
                 depth: none,
-                values: some(value: 0)
+                values: 0
             )
         ) != limited
     ): return panic("zero values")
@@ -228,7 +228,7 @@ test "TOML optional limits include implicit tables and zero":
             text: "",
             limits: limits(
                 bytes: none,
-                depth: some(value: -1),
+                depth: -1,
                 values: none
             )
         ) != invalid
@@ -237,9 +237,9 @@ test "TOML optional limits include implicit tables and zero":
         parse(
             text: "a=1",
             limits: limits(
-                bytes: some(value: 3),
-                depth: some(value: 2),
-                values: some(value: 2)
+                bytes: 3,
+                depth: 2,
+                values: 2
             )
         ) != parse(text: "a=1")
     ): return panic("exact limits")

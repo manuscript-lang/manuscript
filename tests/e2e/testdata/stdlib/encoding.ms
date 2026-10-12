@@ -7,7 +7,6 @@ import {
 } from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
 import List from "@std/collections.ms"
-import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
@@ -18,7 +17,7 @@ test "encoding known vectors and exact output limits":
     if value(
         hex_decode(
             text: "00FF42",
-            max_bytes: some(value: 3)
+            max_bytes: 3
         )
     ) != data: return panic("hex decoding")
     if base64_encode(data: data, url_safe: false) != "AP9C": return panic(
@@ -30,7 +29,7 @@ test "encoding known vectors and exact output limits":
     if value(
         hex_decode(
             text: "",
-            max_bytes: some(value: 0)
+            max_bytes: 0
         )
     ) != Bytes(values: []): return panic("empty zero budget")
 
@@ -47,11 +46,11 @@ test "encoding rejects malformed data and invalid budgets":
     )
     if hex_decode(
         text: "00ff",
-        max_bytes: some(value: 1)
+        max_bytes: 1
     ) != limited: return panic("hex limit")
 
     let invalid: Result[Bytes, EncodingError] = error(cause: EncodingError.InvalidInput)
     if hex_decode(
         text: "",
-        max_bytes: some(value: -1)
+        max_bytes: -1
     ) != invalid: return panic("negative limit")

@@ -30,14 +30,14 @@ test "strings honor omitted none zero and explicit output limits":
     if value(
         "ab".repeat(
             count: 0,
-            max_bytes: some(value: 0)
+            max_bytes: 0
         )
     ) != "": return panic("zero repeat")
 
     let limited: Result[String, StringError] = error(cause: StringError.LimitExceeded)
     if "é".repeat(
         count: 2,
-        max_bytes: some(value: 3)
+        max_bytes: 3
     ) != limited: return panic("byte budget")
     if value("x".pad_start(target_length: 3, padding: "ab")) != "abx": return panic(
         "pad start"
@@ -50,7 +50,7 @@ test "strings honor omitted none zero and explicit output limits":
     )
     if "a,,b".split(
         separator: ",",
-        max_parts: some(value: 2)
+        max_parts: 2
     ) != ["a", ""]: return panic("split truncation")
     if " \té \n".trim() != "é": return panic("trim")
 

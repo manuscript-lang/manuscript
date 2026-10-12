@@ -105,5 +105,5 @@ test "ordinary empty declarations and interface omission":
     no_op()
     let marker = Marker()
     let view = ReadWithDefault(value: Reader())
-    if view.get() != 5 or view.get(fallback: some(value: 7)) != 7:
+    if view.get() != 5 or view.get(fallback: 7) != 7:
         return panic("interface Optional defaults must reach source implementations")

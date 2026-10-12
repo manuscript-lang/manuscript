@@ -1,4 +1,3 @@
-import Optional from "@std/optional.ms"
 import commands from "@std/process.ms"
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
@@ -10,8 +9,8 @@ export fn main() -> Int:
         program: "/bin/printf",
         arguments: ["hello"],
         input: "".to_bytes(),
-        max_output_bytes: some(value: 64),
-        timeout: some(value: 1.seconds)
+        max_output_bytes: 64,
+        timeout: 1.seconds
     ):
         error(_):
             return 1

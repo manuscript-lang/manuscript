@@ -23,7 +23,7 @@ interface File:
     fn close() -> Unit
 ```
 
-Read requires positive max_bytes or returns IoError.InvalidInput. `ok(some(bytes))` contains 1 through max_bytes bytes; `ok(none)` is EOF. Empty chunks never represent EOF. The bound limits each read, not total file size. Write waits until all bytes are accepted or an error occurs; empty writes succeed without I/O. An error may follow a partial external write and supplies no rollback. Internal buffering is bounded with backpressure.
+Read requires positive max_bytes or returns IoError.InvalidInput. Under the declared return type, `ok(value: bytes)` wraps 1 through max_bytes bytes in a present Optional; `ok(value: none)` is EOF. Empty chunks never represent EOF. The bound limits each read, not total file size. Write waits until all bytes are accepted or an error occurs; empty writes succeed without I/O. An error may follow a partial external write and supplies no rollback. Internal buffering is bounded with backpressure.
 
 Native wrappers serialize simultaneous reads/writes without holding a lifecycle lock during blocking I/O. Close marks admission closed, interrupts active I/O where supported, waits for admitted I/O to end, and releases the handle once. Later calls return IoError.Closed. Concurrent close callers wait for the same release/fault. A flag check followed by unsynchronized handle use is insufficient. Uncancellable I/O can delay release and requires host escalation; expected completion errors belong to read/write, and unexpected release failures are cleanup faults.
 

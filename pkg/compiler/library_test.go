@@ -52,7 +52,7 @@ import EncodingError from "@std/encoding.ms"
 `,
 		"implicit propagation": `import hex_decode from "@std/encoding.ms"
 fn wrong() -> Result[Unit, JsonError]:
-    let bytes = try hex_decode(text: "ff", max_bytes: some(value: 1))
+    let bytes = try hex_decode(text: "ff", max_bytes: 1)
     return ok(value: unit)
 `,
 	} {

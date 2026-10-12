@@ -66,7 +66,7 @@ test "Optional methods retain generic payload and receiver identity":
     if snapshot != outer: return panic("optional value semantics changed")
 
 test "Optional fallbacks preserve standard option records":
-    let limits = JsonLimits(max_bytes: some(value: -1))
+    let limits = JsonLimits(max_bytes: -1)
     let missing: Optional[JsonLimits] = none
     let extracted = missing.unwrap_or(limits)
     if extracted.max_bytes.unwrap() != -1: return panic("generic record normalized")

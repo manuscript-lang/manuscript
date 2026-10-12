@@ -69,7 +69,7 @@ fn checked_expansion() -> Result[Unit, Error]:
             result: filled(
                 value: "a",
                 count: 3,
-                max_items: some(value: 3)
+                max_items: 3
             )
         ) == ["a", "a", "a"]
     ):
@@ -80,7 +80,7 @@ fn checked_expansion() -> Result[Unit, Error]:
                 start: 0,
                 end: 6,
                 step: 2,
-                max_items: some(value: 3)
+                max_items: 3
             )
         ) == [0, 2, 4]
     ):
@@ -91,7 +91,7 @@ fn checked_expansion() -> Result[Unit, Error]:
                 start: 3,
                 end: -1,
                 step: -1,
-                max_items: some(value: 4)
+                max_items: 4
             )
         ) == [3, 2, 1, 0]
     ):
@@ -101,7 +101,7 @@ fn checked_expansion() -> Result[Unit, Error]:
             result: "x".pad_start(
                 target_length: 4,
                 padding: "é🙂",
-                max_bytes: some(value: 9)
+                max_bytes: 9
             )
         ) == "é🙂éx"
     ):
@@ -111,7 +111,7 @@ fn checked_expansion() -> Result[Unit, Error]:
             result: "x".pad_end(
                 target_length: 4,
                 padding: "é🙂",
-                max_bytes: some(value: 9)
+                max_bytes: 9
             )
         ) == "xé🙂é"
     ):
@@ -121,7 +121,7 @@ fn checked_expansion() -> Result[Unit, Error]:
             result: "aba".replace_all(
                 old: "a",
                 new: "é",
-                max_bytes: some(value: 5)
+                max_bytes: 5
             )
         ) == "ébé"
     ):
@@ -131,7 +131,7 @@ fn checked_expansion() -> Result[Unit, Error]:
             result: "é🙂".replace_all(
                 old: "",
                 new: "-",
-                max_bytes: some(value: 9)
+                max_bytes: 9
             )
         ) == "-é-🙂-"
     ):
@@ -142,7 +142,7 @@ fn checked_expansion() -> Result[Unit, Error]:
         try common_result(
             result: "é".repeat(
                 count: 3,
-                max_bytes: some(value: 6)
+                max_bytes: 6
             )
         ) == "ééé"
     ):
@@ -468,7 +468,7 @@ test "string methods use Unicode scalars":
     if not (
         "a,b,c".split(
             separator: ",",
-            max_parts: some(value: 2)
+            max_parts: 2
         ) == ["a", "b"]
     ):
         return panic(message: "check failed")
@@ -476,7 +476,7 @@ test "string methods use Unicode scalars":
         "aba".replace(
             old: "a",
             new: "x",
-            max_replacements: some(value: 1)
+            max_replacements: 1
         ) == "xba"
     ):
         return panic(message: "check failed")
@@ -540,7 +540,7 @@ test "growth limits and invalid inputs return values":
         "x".pad_start(
             target_length: 4,
             padding: "é🙂",
-            max_bytes: some(value: 8)
+            max_bytes: 8
         ) == too_large
     ):
         return panic(message: "check failed")
@@ -548,7 +548,7 @@ test "growth limits and invalid inputs return values":
         "x".pad_end(
             target_length: 9223372036854775807,
             padding: "é",
-            max_bytes: some(value: 8)
+            max_bytes: 8
         ) == too_large
     ):
         return panic(message: "check failed")
@@ -556,7 +556,7 @@ test "growth limits and invalid inputs return values":
         "abc".pad_start(
             target_length: 1,
             padding: "",
-            max_bytes: some(value: 2)
+            max_bytes: 2
         ) == too_large
     ):
         return panic(message: "check failed")
@@ -564,7 +564,7 @@ test "growth limits and invalid inputs return values":
         "x".pad_start(
             target_length: -1,
             padding: " ",
-            max_bytes: some(value: 8)
+            max_bytes: 8
         ) == invalid
     ):
         return panic(message: "check failed")
@@ -574,7 +574,7 @@ test "growth limits and invalid inputs return values":
         "x".pad_end(
             target_length: 4,
             padding: "",
-            max_bytes: some(value: 1)
+            max_bytes: 1
         ) == unchanged
     ):
         return panic(message: "check failed")
@@ -582,7 +582,7 @@ test "growth limits and invalid inputs return values":
         "abc".replace_all(
             old: "",
             new: "-",
-            max_bytes: some(value: 6)
+            max_bytes: 6
         ) == too_large
     ):
         return panic(message: "check failed")
@@ -598,7 +598,7 @@ test "growth limits and invalid inputs return values":
             start: 0,
             end: 4,
             step: 1,
-            max_items: some(value: 3)
+            max_items: 3
         ) == list_limit
     ):
         return panic(message: "check failed")
@@ -607,7 +607,7 @@ test "growth limits and invalid inputs return values":
             start: 0,
             end: 4,
             step: 0,
-            max_items: some(value: 3)
+            max_items: 3
         ) == list_invalid
     ):
         return panic(message: "check failed")
@@ -615,7 +615,7 @@ test "growth limits and invalid inputs return values":
         filled(
             value: 1,
             count: 2,
-            max_items: some(value: 1)
+            max_items: 1
         ) == list_limit
     ):
         return panic(message: "check failed")
@@ -673,7 +673,7 @@ fn verify_text_and_numbers() -> Result[Unit, Error]:
         try common_result(
             result: "é".normalize(
                 form: "NFC",
-                max_bytes: some(value: 2)
+                max_bytes: 2
             )
         ) == "é"
     ):
@@ -682,7 +682,7 @@ fn verify_text_and_numbers() -> Result[Unit, Error]:
         try common_result(
             result: "é".normalize(
                 form: "NFD",
-                max_bytes: some(value: 3)
+                max_bytes: 3
             )
         ) == "é"
     ):
@@ -691,7 +691,7 @@ fn verify_text_and_numbers() -> Result[Unit, Error]:
         try common_result(
             result: "ﬁ".normalize(
                 form: "NFKC",
-                max_bytes: some(value: 2)
+                max_bytes: 2
             )
         ) == "fi"
     ):
@@ -700,7 +700,7 @@ fn verify_text_and_numbers() -> Result[Unit, Error]:
         try common_result(
             result: "ﬁ".normalize(
                 form: "NFKD",
-                max_bytes: some(value: 2)
+                max_bytes: 2
             )
         ) == "fi"
     ):
@@ -733,7 +733,7 @@ test "normalization, empty separators, and precision formatting":
     if not (
         "é🙂".split(
             separator: "",
-            max_parts: some(value: 8)
+            max_parts: 8
         ) == ["é", "🙂"]
     ):
         return panic(message: "check failed")
@@ -742,7 +742,7 @@ test "normalization, empty separators, and precision formatting":
     if not (
         "".split(
             separator: "",
-            max_parts: some(value: 8)
+            max_parts: 8
         ) == empty_texts
     ):
         return panic(message: "check failed")
@@ -750,7 +750,7 @@ test "normalization, empty separators, and precision formatting":
         "é🙂".replace(
             old: "",
             new: "-",
-            max_replacements: some(value: 1)
+            max_replacements: 1
         ) == "-é🙂"
     ):
         return panic(message: "check failed")
@@ -758,7 +758,7 @@ test "normalization, empty separators, and precision formatting":
         "".replace(
             old: "",
             new: "-",
-            max_replacements: some(value: 1)
+            max_replacements: 1
         ) == "-"
     ):
         return panic(message: "check failed")
@@ -773,14 +773,14 @@ test "normalization, empty separators, and precision formatting":
     if not (
         "é".normalize(
             form: "invalid",
-            max_bytes: some(value: 8)
+            max_bytes: 8
         ) == invalid
     ):
         return panic(message: "check failed")
     if not (
         "é".normalize(
             form: "NFD",
-            max_bytes: some(value: 2)
+            max_bytes: 2
         ) == limit
     ):
         return panic(message: "check failed")
@@ -822,7 +822,7 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
         try common_result(
             result: pattern.find_all(
                 text: "a12b3",
-                max_matches: some(value: 2)
+                max_matches: 2
             )
         ) == ["12", "3"]
     ):
@@ -832,7 +832,7 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
             result: pattern.replace(
                 text: "a12b3",
                 replacement: "x",
-                max_bytes: some(value: 4)
+                max_bytes: 4
             )
         ) == "axbx"
     ):

@@ -146,8 +146,8 @@ test "optional labels on methods and native functions":
         return panic(message: "check failed")
 
     with service = Scheduler(
-        limit: some(value: 1),
-        drain: some(value: 2.seconds)
+        limit: 1,
+        drain: 2.seconds
     ):
         let operation = fn() -> Result[Unit, String]:
             return ok(value: unit)
