@@ -131,3 +131,47 @@ func TestRejectInterfaceSyntax(t *testing.T) {
 		})
 	}
 }
+
+func TestNamedImports(t *testing.T) {
+	for _, source := range []string{
+		"import List from \"@std/collections.ms\"\n",
+		"import { List } from \"@std/collections.ms\"\n",
+		"import { List, Map } from \"@std/collections.ms\"\n",
+		"import {\n    List, # first\n    Map,\n} from \"@std/collections.ms\"\n",
+	} {
+		module, err := parser.Parse("imports.ms", source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []string{"List"}
+		if strings.Contains(source, "Map") {
+			want = append(want, "Map")
+		}
+		if len(module.Imports) != len(want) {
+			t.Fatal(module.Imports)
+		}
+		for i, name := range want {
+			imp := module.Imports[i]
+			if imp.Name != name || imp.Path != "@std/collections.ms" || imp.NamePos.Offset != strings.Index(source, name) {
+				t.Fatalf("incorrect import: %+v", imp)
+			}
+		}
+	}
+}
+
+func TestRejectNamedImports(t *testing.T) {
+	for _, source := range []string{
+		"import {} from \"./mod.ms\"\n",
+		"import { A B } from \"./mod.ms\"\n",
+		"import { A,, B } from \"./mod.ms\"\n",
+		"import { , A } from \"./mod.ms\"\n",
+		"import { A } \"./mod.ms\"\n",
+		"import { A } from \"{path}\"\n",
+		"import { A as B } from \"./mod.ms\"\n",
+		"import A, B from \"./mod.ms\"\n",
+	} {
+		if _, err := parser.Parse("imports.ms", source); err == nil {
+			t.Fatalf("accepted %q", source)
+		}
+	}
+}

@@ -68,10 +68,10 @@ func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program
 				found = p.Symbols[imports[item]][item.Name]
 			}
 			if found == nil || !found.Export {
-				c.error(item.Pos, "resolution", "module does not export "+item.Name)
+				c.error(item.NamePos, "resolution", "module does not export "+item.Name)
 				continue
 			}
-			c.addSymbol(item.Name, found, item.Pos)
+			c.addSymbol(item.Name, found, item.NamePos)
 		}
 		for _, d := range module.Declarations {
 			if d.Kind == "impl" || d.Kind == "test" {

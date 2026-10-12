@@ -11,6 +11,12 @@ Each `.ms` file is a module: a group of declarations with its own boundary. Use 
 
 ## Names and declaration order
 
+Import multiple symbols with `import { Name, OtherName } from "./module.ms"`.
+The braces contain a nonempty, comma-separated list; a trailing comma and
+multiple lines are permitted. Each name selects an export and enters the same
+module namespace as a single-symbol import. Duplicate names and collisions are
+errors. Single-symbol `import Name from "./module.ms"` remains supported.
+
 Types, interfaces, module functions, and imported symbols share one ordinary module namespace. Duplicate names, import/declaration collisions, and function overloading are rejected. Imports and declarations may appear in any order: collect names and signatures before checking bodies, so forward references and mutually recursive functions work. Type layout cycles follow the separate [recursive data rule](../../core-language/types/records.md#recursive-data), not module-cycle rules.
 
 The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The compiler bounds `Shareable`, `Equal`, and `Hashable` also have fixed identities. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
@@ -59,8 +65,7 @@ An `impl` belongs to the receiver's nominal data type's defining module and beco
 
 ```text
 import List from "@std/collections.ms"
-import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
+import { Result, map_error } from "@std/result.ms"
 import parallel from "@std/tasks.ms"
 ```
 

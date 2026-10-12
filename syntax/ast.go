@@ -44,8 +44,11 @@ type Module struct {
 	Imports      []*Import
 	Declarations []*Declaration
 }
+
+// Import represents one symbol binding; named import lists expand into bindings.
 type Import struct {
 	Pos        Position
+	NamePos    Position
 	Name, Path string
 }
 type Declaration struct {
