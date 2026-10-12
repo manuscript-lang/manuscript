@@ -1,11 +1,9 @@
 +++
 title = "Optional values"
-weight = 14
+weight = 4
 +++
 
 # Optional values
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use `Optional[T]` when a value may be missing. `some(value: ...)` contains a value of type `T`; `none` means there is no value. Import Optional from `@std/optional.ms`.
 
@@ -80,5 +78,3 @@ Use [Result](../errors/results.md) when a failure needs an explanation. An absen
 ## Data modeling
 
 A [record](records.md) can contain optional fields, such as `email: Optional[String]`. Manuscript has no nullable reference type: put absence in the declared type and handle it with Optional methods or [pattern matching](../control-flow/pattern-matching.md).
-
-[Previous: Alternatives](alternatives.md) · [Next: Collections](collections.md)

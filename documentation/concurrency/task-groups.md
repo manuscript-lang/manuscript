@@ -1,11 +1,9 @@
 +++
-title = "Task groups"
-weight = 60
+title = "Starting tasks"
+weight = 1
 +++
 
-# Task groups
-
-[Guide index](_index.md) · [Design index](../_index.md)
+# Starting tasks
 
 Use a `TaskGroup` to start independent operations and retrieve each result through a typed `Task[T]` handle. Ordinary calls remain sequential; `start` explicitly starts concurrent work.
 
@@ -51,7 +49,7 @@ Each `start` evaluates its receiver and callback argument before submitting that
 
 Passing `load_user()` executes that call during preparation. Pass a function such as `load_user` or an explicitly typed zero-argument closure instead. Function values, bound methods, and contract views retain their ordinary rules; saving generic `start` as a function value requires explicit specialization, such as `tasks.start[Int]`.
 
-Concurrent effect order is nondeterministic. Shared mutable data needs explicit synchronization; see [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized).
+Concurrent effect order is nondeterministic. Shared mutable data needs explicit synchronization; see [Synchronized](synchronization.md#synchronized).
 
 ## Errors and scope exit
 
@@ -67,4 +65,4 @@ References do not extend work or resource lifetimes. A saved task handle can rea
 
 `TaskGroup(timeout: some(value: 2.seconds))` applies one budget starting at the first submission. Omitted or `none` timeout adds no limit; inherited cancellation still applies. Negative timeouts fault. A zero timeout starts no callback and yields `TimedOut`; an empty group joins successfully. Timeout expiry cancels unfinished work and joins it before reporting failure.
 
-A group's task or descendant must not join or close that same group, or join one of its handles. These operations fault before waiting to prevent self-joining. See [joining](joining.md), [cancellation](cancellation.md), and [runtime contracts](runtime.md).
+A group's task or descendant must not join or close that same group, or join one of its handles. These operations fault before waiting to prevent self-joining. See [joining](joining.md), [cancellation](cancellation.md), and [runtime contracts](../contributing/concurrent-runtime.md).

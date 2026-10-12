@@ -6,6 +6,11 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '../..');
 const book = process.env.MANUSCRIPT_BOOK_DIR || path.join(root, '.artifacts/book');
 
+function attribute(tag, name) {
+  const match = tag.match(new RegExp(`\\b${name}=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`));
+  return match && (match[1] ?? match[2] ?? match[3]);
+}
+
 test('published API downloads match the current generated reference', () => {
   for (const file of ['stdlib.json', 'stdlib.md']) {
     assert.equal(
@@ -53,10 +58,6 @@ test('published internal links and anchors resolve under the site prefix', () =>
     }
   }
   visit(book);
-  function attribute(tag, name) {
-    const match = tag.match(new RegExp(`\\b${name}=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`));
-    return match && (match[1] ?? match[2] ?? match[3]);
-  }
   const home = html.get(path.join(book, 'index.html'));
   const canonical = [...home.matchAll(/<link\b[^>]*>/g)]
     .map(match => match[0]).find(tag => attribute(tag, 'rel') === 'canonical');
@@ -87,4 +88,28 @@ test('published internal links and anchors resolve under the site prefix', () =>
     }
   }
   assert.deepEqual(failures, []);
+});
+
+test('previous and next links follow the rendered sidebar reading order', () => {
+  const home = fs.readFileSync(path.join(book, 'index.html'), 'utf8');
+  const canonical = [...home.matchAll(/<link\b[^>]*>/g)]
+    .map(match => match[0]).find(tag => attribute(tag, 'rel') === 'canonical');
+  const prefix = new URL(attribute(canonical, 'href')).pathname;
+  const nav = home.match(/<nav\b[^>]*aria-label=(?:"Documentation"|'Documentation'|Documentation)[^>]*>[\s\S]*?<\/nav>/)[0];
+  const groups = [...nav.matchAll(/<div\b[^>]*class=(?:"nav-group"|'nav-group'|nav-group)[^>]*>([\s\S]*?)<\/div>/g)];
+  const routes = groups.flatMap(group => [...group[1].matchAll(/<a\b[^>]*>/g)]
+    .map(match => attribute(match[0], 'href')));
+  assert.ok(routes.length > 0, 'The sidebar must expose a reading path');
+  assert.equal(new Set(routes).size, routes.length, 'Each page belongs to one sidebar position');
+
+  for (const [index, route] of routes.entries()) {
+    const file = path.join(book, route.slice(prefix.length), 'index.html');
+    const html = fs.readFileSync(file, 'utf8');
+    const footer = html.match(/<footer\b[^>]*>[\s\S]*?<\/footer>/)[0];
+    const links = [...footer.matchAll(/<a\b[^>]*>/g)].map(match => match[0]);
+    for (const [rel, expected] of [['prev', routes[index - 1]], ['next', routes[index + 1]]]) {
+      const tag = links.find(link => attribute(link, 'rel') === rel);
+      assert.equal(tag && attribute(tag, 'href') || undefined, expected, `${route}: ${rel} skips the sidebar order`);
+    }
+  }
 });

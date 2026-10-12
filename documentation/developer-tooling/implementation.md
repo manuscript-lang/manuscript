@@ -1,9 +1,9 @@
 +++
-title = "Tooling commands and limits"
+title = "Commands and editor setup"
 weight = 1
 +++
 
-# Manuscript developer tools
+# Commands and editor setup
 
 Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or run `make build` in a source checkout to prepare the pinned Go SDK automatically. Compilation, formatting, lint, LSP, and profiling need no separate Go installation. Native debugging uses Delve 1.25.2 or newer, available from [Delve Releases](https://github.com/go-delve/delve/releases). The VS Code extension provides its own Manuscript DAP layer over Delve.
 
@@ -38,7 +38,7 @@ These commands use source checking and embedded declarations without a Go instal
 
 `doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. Project docs include reachable local modules. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
 
-`ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](../compiler/builds/reproducibility.md).
+`ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](builds/reproducibility.md).
 
 ## Editor features
 
@@ -105,7 +105,6 @@ String literals, their interpolation text, and comment wording are preserved.
 They can exceed the soft limit; the formatter does not split or rewrite them.
 
 ## Debugging and profiling
-
 
 `ms debug` is also available for Delve's terminal UI. Existing project pin validation remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
 

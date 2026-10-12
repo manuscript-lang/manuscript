@@ -1,11 +1,9 @@
 +++
 title = "Function values and closures"
-weight = 22
+weight = 2
 +++
 
 # Function values and closures
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 You can store a function in a local binding and pass it to another function. Write an anonymous function with `fn`; its type has the form `fn(value: T) -> U`.
 
@@ -75,7 +73,7 @@ fn tag_count() -> Int:
 # tag_count() returns 2.
 ```
 
-Use `.clone()` before capturing if you need independent outer storage. Nested references remain shared. Coordinate concurrent reads and writes with [Synchronized](../../standard-library/data-and-io/synchronized-state.md#synchronized). A bound method retains its receiver by the same reference rules.
+Use `.clone()` before capturing if you need independent outer storage. Nested references remain shared. Coordinate concurrent reads and writes with [Synchronized](../../concurrency/synchronization.md#synchronized). A bound method retains its receiver by the same reference rules.
 
 ## Resource captures
 
@@ -98,10 +96,8 @@ Capturing an already-open file keeps the same handle; it does not delay its `wit
 
 ## Concurrent invocation
 
-Concurrency APIs accept ordinary functions. Function parameters, returned functions, function fields, and generic forwarding work exactly as local function values do. See [function sharing](../../ownership-and-cleanup/values/sharing.md#function-values). A shared resource can still be closed before invocation.
+Concurrency APIs accept ordinary functions. Function parameters, returned functions, function fields, and generic forwarding work exactly as local function values do. See [function sharing](../../concurrency/sharing.md#function-values). A shared resource can still be closed before invocation.
 
 Capture request-data snapshots and application services for scheduled work, then acquire job resources within that operation. Keep a TaskGroup scope inside the resources its tasks use. The group cancels and joins at scope exit before the enclosing resources close, unless a resource is explicitly closed elsewhere.
 
-See [task groups](../../concurrency/task-groups.md), [schedulers](../../standard-library/tasks/scheduler.md), and [reference sharing](../../ownership-and-cleanup/values/sharing.md).
-
-[Previous: Declarations and calls](declarations-and-calls.md) · [Next: Conditionals](../control-flow/conditionals.md)
+See [task groups](../../concurrency/task-groups.md), [scheduling work](../../concurrency/scheduling.md), and [reference sharing](../../concurrency/sharing.md).

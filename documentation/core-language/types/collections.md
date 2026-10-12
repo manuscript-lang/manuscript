@@ -1,11 +1,9 @@
 +++
 title = "Collections"
-weight = 15
+weight = 3
 +++
 
 # Collections
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are mutable references. Assignment retains the same instance; `.clone()` copies its storage.
 
@@ -74,10 +72,53 @@ Clones have independent outer storage and retain nested references. `map`, `filt
 
 A `for` loop and collection callback traversals snapshot collection membership once; elements retain their references. Adding or removing items inside the body does not change that traversal. Protect shared mutation and concurrent reads with `Synchronized`; every alias must use the same lock.
 
+## Lookup and updates
+
+| Receiver or constructor | Signature/result |
+| --- | --- |
+| `List[T]` | `length() -> Int`; `at(index: Int) -> Optional[T]` |
+| `List[T]` | `append(value: T) -> List[T]`; `concat(values: List[T]) -> List[T]` |
+| `Map[K, V]()` | Empty `Map[K, V]` |
+| `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
+| `Map[K, V]` | `with_entry(key: K, value: V) -> Map[K, V]`; `without(key: K) -> Map[K, V]` |
+| `Set[T]()` | Empty `Set[T]` |
+| `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
+| `Set[T]` | `with_value(value: T) -> Set[T]`; `without(value: T) -> Set[T]` |
+
+All existing element and key bounds apply. An empty Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. List construction uses the existing bracket literal. List and Bytes `.at` accept relative negative indexes; out-of-range indexes return `none`. A size exceeding MaxInt64 faults.
+
+Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. Use [builders](../../standard-library/builders.md) for synchronized construction.
+
+```manuscript
+import panic from "@std/faults.ms"
+
+import List from "@std/collections.ms"
+import Map from "@std/collections.ms"
+import Optional from "@std/optional.ms"
+
+fn positives(values: List[Int]) -> List[Int]:
+    var result: List[Int] = []
+    for value in values:
+        if value > 0:
+            result = result.append(value: value)
+    return result
+
+test "dynamic mutable data and explicit copies":
+    if not (positives(values: [3, -1, 2]) == [3, 2]):
+        return panic(message: "check failed")
+    let absent: Optional[Int] = none
+    if not ([1].at(index: 5) == absent):
+        return panic(message: "check failed")
+    let original = Map[String, Int]().with_entry(key: "a", value: 1)
+    let updated = original.clone().with_entry(key: "b", value: 2).with_entry(key: "a", value: 3)
+    if not (original.get(key: "a") == some(value: 1)):
+        return panic(message: "check failed")
+    if not (updated.get(key: "a") == some(value: 3)):
+        return panic(message: "check failed")
+```
+
 ## Building data
 
-Use the [data API](../../standard-library/data-and-io/operations.md#collections) for construction, lookup, and updates in place. [Builders](../../standard-library/data-and-io/builders.md) provide synchronized construction and sealed builder results.
+The [collection reference](../../standard-library/reference/collections.md) lists all methods and constructors. [Builders](../../standard-library/builders.md) provide synchronized construction and sealed builder results.
 
 See [generics and bounds](generics.md) for type arguments and [equality and hashing](equality-and-hashing.md) for key eligibility.
-
-[Previous: Optional values](optionals.md) · [Next: Equality and hashing](equality-and-hashing.md)

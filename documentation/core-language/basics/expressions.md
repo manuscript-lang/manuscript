@@ -1,13 +1,11 @@
 +++
 title = "Expressions and operators"
-weight = 6
+weight = 5
 +++
 
 # Expressions and operators
 
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
-
-An expression produces a value, such as `count + 1`. A statement controls what runs or changes a binding. This page is the reference for operator precedence, allowed operand types, and evaluation order. Only the operators listed here are supported; Go operators are not automatically available.
+An expression produces a value, such as `count + 1`. A statement controls what runs or changes a binding. This page is the reference for operator precedence, allowed operand types, and evaluation order. Only the operators listed here are supported.
 
 ## Precedence and grammar
 
@@ -71,7 +69,7 @@ Decimal, Duration, Instant, and Result rows recognize their canonical standard d
 
 There is no mixed numeric arithmetic, numeric truthiness, text concatenation operator, or user-defined operator overload. For example, `1 + 0.5`, `"a" + "b"`, and `not 1` fail type checking. Use an explicit numeric conversion, text interpolation, or a library operation as appropriate. Equality and hashing eligibility follow [equality and hashing](../types/equality-and-hashing.md); exact compatibility and contextual inference follow [type rules](../types/compatibility.md).
 
-Numeric exceptional values and rounding follow [numbers and booleans](numbers-and-booleans.md#runtime-numeric-outcomes). Duration/Instant ranges and clock-domain checks follow [time conversion](../../standard-library/data-and-io/operations.md#numeric-and-time-conversion). `Instant + Instant`, `Duration + Instant`, and unary Duration signs are rejected.
+Numeric exceptional values and rounding follow [numbers and booleans](numbers-and-booleans.md#runtime-numeric-outcomes). Duration/Instant ranges and clock-domain checks follow [time conversion](numbers-and-booleans.md#numeric-conversion). `Instant + Instant`, `Duration + Instant`, and unary Duration signs are rejected.
 
 ### Never operands
 
@@ -115,5 +113,3 @@ fn invalid(value: Int, ratio: Float) -> Bool:
 ```
 
 Each rejected expression is independent; a parser need not type-check a function after a syntax error. Assignment `=`, compound assignment, bitwise operators, exponentiation, ranges, ternaries, tuples, and expression-valued blocks are not expression forms in this design.
-
-[Previous: Source structure and syntax](syntax.md) · [Next: Bindings and scope](bindings.md)

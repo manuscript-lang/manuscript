@@ -1,11 +1,9 @@
 +++
-title = "Source structure and syntax"
-weight = 4
+title = "Source files"
+weight = 1
 +++
 
-# Source structure and syntax
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
+# Source files
 
 Each Manuscript source file ends in `.ms` and is a module. Put imports, type declarations, implementations, named functions, and tests at the top level. Put executable statements and local `let` or `var` bindings inside a function or test. There is no separate `module` declaration or top-level initializer.
 
@@ -53,10 +51,10 @@ The resolved path of `src/greeting.ms` identifies its module. `export` makes a d
 import Customer from "./greeting.ms"
 ```
 
-Relative imports resolve from the importing file's directory. A project-root `ms.toml` configures the source directory, entry file, and optional import aliases. The rules for imports, visibility, and dependency cycles are in [modules and capabilities](../../modules-and-capabilities/modules/_index.md); see [project configuration](../../compiler/builds/project-configuration.md) for path resolution.
+Relative imports resolve from the importing file's directory. A project-root `ms.toml` configures the source directory, entry file, and optional import aliases. The rules for imports, visibility, and dependency cycles are in [modules and capabilities](../modules/_index.md); see [project configuration](../../developer-tooling/builds/project-configuration.md) for path resolution.
 
 The [normative grammar](grammar.md) defines accepted tokens, declarations, indentation, and anonymous-function suites. [Expressions and operators](expressions.md) defines precedence, operand types, and evaluation order. The local binding examples above are function-body fragments.
 
 Continue with [bindings](bindings.md), [records](../types/records.md), and [function declarations](../functions/declarations-and-calls.md) to understand each declaration in the example.
 
-[Next: Expressions and operators](expressions.md) · [Exact syntax reference](grammar.md)
+See the [grammar reference](grammar.md) for exact syntax.

@@ -1,11 +1,9 @@
 +++
 title = "Records and nominal types"
-weight = 12
+weight = 1
 +++
 
 # Records and nominal types
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 A record groups named fields into one value. Its fields can be changed after construction. Assignment and argument passing retain the same instance; use `.clone()` when you need a separate copy. Each record declaration creates a distinct type; this is called nominal typing. Use a record when data has a known shape, such as a customer with a name and email.
 
@@ -95,7 +93,7 @@ A nominal identity includes its defining module, declaration, and type arguments
 
 ## Public data surfaces
 
-Exporting a record exports its constructor and every field. Field visibility modifiers and opaque exports are unsupported. Field types must satisfy [public signature closure](../../modules-and-capabilities/modules/declarations.md#public-signature-closure), including types nested inside Optional or collections. Importing a record does not import the names of its field types.
+Exporting a record exports its constructor and every field. Field visibility modifiers and opaque exports are unsupported. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including types nested inside Optional or collections. Importing a record does not import the names of its field types.
 
 ## Recursive data
 
@@ -119,8 +117,6 @@ Container element/key bounds still apply. A `Set[Node]` does not become valid ju
 
 ## Resource fields
 
-A record containing a resource does not implicitly close it or extend its open lifetime. Cleanup follows explicit [resource scopes](../../ownership-and-cleanup/cleanup/scopes.md). Copying a record does not duplicate a referenced native service; each service synchronizes its own state and lifecycle.
+A record containing a resource does not implicitly close it or extend its open lifetime. Cleanup follows explicit [resource scopes](../cleanup/scopes.md). Copying a record does not duplicate a referenced native service; each service synchronizes its own state and lifecycle.
 
 A `type` declaration uses fields or cases. Use [alternatives](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md) that declare required behavior.
-
-[Previous: Strings and bytes](../basics/text-and-bytes.md) · [Next: Alternatives](alternatives.md)

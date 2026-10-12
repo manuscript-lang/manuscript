@@ -1,12 +1,15 @@
 +++
 title = "Contributing"
-weight = 80
+weight = 6
 +++
 
-# Contributing to Manuscript
+# Contributing
 
-Start with the [repository architecture](architecture.md), then use the [development workflow](development.md) to build, test, and publish documentation. The [implementation inventory](../implementation.md) distinguishes supported features from design work.
+Start with the [repository architecture](architecture.md), then use the [development workflow](development.md) to build, test, and publish documentation.
 
-Read the repository's [AGENTS.md](https://github.com/manuscript-lang/manuscript/blob/main/AGENTS.md) before changing language semantics or tooling. It routes to current design rules and remembered failure modes.
+- [Compiler internals](compiler/_index.md) explain parsing, checking, and lowering.
+- [Compiler conformance](compiler/conformance/_index.md) specifies acceptance and runtime cases.
+- [Standard-library tests](standard-library-tests.md) exercise library behavior through Manuscript source.
+- [Maintenance and compatibility](maintenance.md) cover pins, licenses, releases, and public contract changes.
 
-See [maintenance and compatibility](maintenance.md) for pin updates, license inventories, release notes, and public contract changes.
+Read the repository's [AGENTS.md](https://github.com/manuscript-lang/manuscript/blob/main/AGENTS.md) before changing language semantics or tooling. It routes to current rules and remembered failure modes.

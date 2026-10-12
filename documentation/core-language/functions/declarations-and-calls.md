@@ -1,11 +1,9 @@
 +++
 title = "Declarations and calls"
-weight = 21
+weight = 1
 +++
 
 # Declarations and calls
-
-[Core language guide](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
 A function names its inputs, declares their types, and declares the type it returns. Its body runs in source order. Use `return` to send a value back to the caller. A short body can stay on one line: `fn double(value: Int) -> Int: return value * 2`. See the [suite rules](../basics/grammar.md#statements-and-patterns) for inline bodies.
 
@@ -148,5 +146,3 @@ A potentially blocking library call suspends the current lightweight task. It do
 Manuscript has one function kind. Sequential code remains sequential when a library operation suspends; explicit concurrent execution is specified in [concurrency](../../concurrency/_index.md).
 
 For functions used as data and the rules for captured values, continue with [function values and closures](function-values-and-closures.md).
-
-[Previous: Type compatibility and expected types](../types/compatibility.md) · [Next: Function values and closures](function-values-and-closures.md)

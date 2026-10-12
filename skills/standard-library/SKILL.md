@@ -5,7 +5,7 @@ description: Design, implement, consolidate, or remove Manuscript standard APIs 
 
 # Standard library
 
-Use for `pkg/stdlib/*.ms`, `bindings.json`, intrinsic/native members, or API parity/design. Read [declaration ownership](../../pkg/stdlib/README.md), [contracts](../../documentation/standard-library/packages/contracts.md), [runtime lessons](../../.experts/runtime.md), and [taste](../language-design-taste/SKILL.md).
+Use for `pkg/stdlib/*.ms`, `bindings.json`, intrinsic/native members, or API parity/design. Read [declaration ownership](../../pkg/stdlib/README.md), [contracts](../../documentation/standard-library/contracts.md), [runtime lessons](../../.experts/runtime.md), and [taste](../language-design-taste/SKILL.md).
 
 - Inspect [newer stdlib direction](../../.experts/runtime.md#newer-stdlib-direction-needs-checkout-reconciliation) and current source first. Distinguish requested changes from shipped interfaces/bounds, removals, optional limits, and scheduling consolidation.
 - Give each operation one appropriate module/spelling. Requested Node.js/JavaScript parity includes units, defaults, errors, streaming, mutation, edge cases, and cancellation; use Manuscript's execution model instead of copying Promise/callback families.

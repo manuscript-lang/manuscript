@@ -1,11 +1,9 @@
 +++
-title = "Structural edits and revision guards"
-weight = 110
+title = "Source-editing design"
+weight = 4
 +++
 
-# Structural edits and revision guards
-
-[Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
+# Source-editing design
 
 Structural editing changes a program entity, such as a function or a resolved symbol. For example, a rename follows references to that symbol instead of replacing every matching word. Revision guards ensure the source has not changed since the edit was prepared.
 
@@ -23,6 +21,4 @@ For example, a cross-file rename is stale when a referenced file changes, even i
 
 The wire schema and recovery from I/O failure or process interruption still need definitions. The implementation must provide recovery before claiming transactional multi-file edits.
 
-See [typed compiler facts](../../compiler/frontend/typed-ir.md) and [structured diagnostics](diagnostics.md).
-
-[Previous: Canonical formatting and generated views](formatting.md) · [Next: Readable and structured diagnostics](diagnostics.md)
+See [typed compiler facts](../../contributing/compiler/frontend/typed-ir.md) and [structured diagnostics](diagnostics.md).

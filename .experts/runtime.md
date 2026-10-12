@@ -7,7 +7,7 @@ Decision: the stdlib request calls for Node.js/JavaScript contract parity with c
 Verified: canonical declarations, runtime dispatch, checker rules, conformance, and generated references now implement this direction. Optional also has presence and extraction methods; keep routine absence handling available without requiring a match.
 
 Apply when: changing library signatures, bounds/interfaces, queue APIs, scheduling, grouping, examples, or documentation.
-Evidence: [the user request](codex://threads/01a13126-1245-730b-9e5d-16ca2dc7501f); [current declarations](../pkg/stdlib/README.md); [stdlib contract](../documentation/standard-library/packages/stdlib-contracts.md); [runtime regressions](../pkg/runtime/stdlib_revamp_test.go); [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
+Evidence: [the user request](codex://threads/01a13126-1245-730b-9e5d-16ca2dc7501f); [current declarations](../pkg/stdlib/README.md); [stdlib contract](../documentation/standard-library/contracts.md); [runtime regressions](../pkg/runtime/stdlib_revamp_test.go); [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
 Verify: inspect current declarations and called behavior against the latest direction. Preserve omitted/none/explicit-limit behavior, custom equality/hash coherence, and joined Scheduler shutdown. Do not restore removed APIs from older documentation or another branch.
 
 ### Sharing, resource lifetime, and work lifetime are separate
@@ -15,7 +15,7 @@ Verify: inspect current declarations and called behavior against the latest dire
 Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native services synchronize their internals. The user subsequently chose a single-threaded Queue with an optional capacity parameter; shared queue access uses Synchronized guards, including reads. Passing references is permitted without implying internal thread safety. A safe capture is not a declaration of intended authority.
 
 Apply when: changing closures, task-group work, schedulers, resource wrappers, or owned resources.
-Evidence: [sharing](../documentation/ownership-and-cleanup/values/sharing.md); [joined groups](../documentation/concurrency/joining.md); [scope-exit ordering](../documentation/ownership-and-cleanup/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
+Evidence: [sharing](../documentation/concurrency/sharing.md); [joined groups](../documentation/concurrency/joining.md); [scope-exit ordering](../documentation/core-language/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.
 Verify: exercise use after close and shutdown with work still running. Confirm started work completes cleanup before joining returns and stale resource aliases cannot reach a reused handle.
 
 ### Networking completeness includes interruption and shutdown
@@ -23,17 +23,17 @@ Verify: exercise use after close and shutdown with work still running. Confirm s
 Decision: the networking request explicitly required finishing networking rather than deferring gaps, with HTTP/3 excluded for that task. Public signatures alone did not meet the requested scope; cancellation, close, bounded streaming, and shutdown were part of the behavior.
 
 Apply when: adding native network APIs or declaring a networking change complete.
-Evidence: [scope corrections in Solidify networking implementation](codex://threads/01a12ce1-c9ff-70e4-bb2c-51749183e03b); [network coverage and limits](../documentation/implementation.md#standard-library-and-runtime); [network regression cases](../pkg/runtime/networking_test.go).
+Evidence: [scope corrections in Solidify networking implementation](codex://threads/01a12ce1-c9ff-70e4-bb2c-51749183e03b); [network coverage and limits](../documentation/contributing/architecture.md#standard-library-and-runtime); [network regression cases](../pkg/runtime/networking_test.go).
 Verify: run relevant native and compiled cases for blocked I/O cancellation, concurrent close, bounded input/output, and shutdown joining. Check the actual request's protocol scope; retain implementation limits explicitly when a path remains uncooperative.
 
 ### Standard-library errors describe their domain
 
 Decision: return more specific standard-library errors instead of the shared `LibraryError`. Public error types live with their package and contain domain-relevant cases. All standard errors explicitly implement the ordinary `Error` operation contract. The newer simplification lets implementing errors pass directly into Error boundaries and propagate with `try`; the concrete receiver and fields are retained for specific handling.
 
-Decision: keep typed diagnostic information in ordinary domain error fields. The request to simplify error handling supersedes the extra details wrapper introduced earlier in this chat. Records and alternative case payloads already support fields of different types; `Result[T, E]` and `try` retain them. Add a cause field only when the domain needs it. Ordinary errors reuse their original runtime value at an Error boundary; local implementations and generic receivers retain scoped dispatch evidence. See [error details](../documentation/standard-library/packages/contracts.md#error-details), [compiled typed errors](../tests/e2e/testdata/accept/library-errors.ms), and [cross-module error dispatch](../tests/e2e/testdata/projects/error_boundaries/main.ms).
+Decision: keep typed diagnostic information in ordinary domain error fields. The request to simplify error handling supersedes the extra details wrapper introduced earlier in this chat. Records and alternative case payloads already support fields of different types; `Result[T, E]` and `try` retain them. Add a cause field only when the domain needs it. Ordinary errors reuse their original runtime value at an Error boundary; local implementations and generic receivers retain scoped dispatch evidence. See [error details](../documentation/standard-library/contracts.md#error-details), [compiled typed errors](../tests/e2e/testdata/accept/library-errors.ms), and [cross-module error dispatch](../tests/e2e/testdata/projects/error_boundaries/main.ms).
 
 Apply when: adding or changing fallible standard APIs, native adapters, or error propagation.
-Evidence: [error contracts](../documentation/standard-library/packages/contracts.md#errors); [native identity and stream-cause regressions](../pkg/runtime/library_test.go); [compiled matching and mapping](../tests/e2e/testdata/accept/library-errors.ms).
+Evidence: [error contracts](../documentation/standard-library/contracts.md#errors); [native identity and stream-cause regressions](../pkg/runtime/library_test.go); [compiled matching and mapping](../tests/e2e/testdata/accept/library-errors.ms).
 Verify: native error values carry the declared Result's error identity; unrelated domains cannot propagate implicitly; stream helpers preserve the original IoError case and payload.
 
 ### Keep concurrency collection helpers removed
@@ -49,7 +49,7 @@ Verify: inspect source declarations, native bindings, compiler handling, example
 Decision: keep Queue a local FIFO, unbounded when capacity is omitted and bounded when a positive capacity is supplied; use Synchronized when sharing it between concurrent operations. Full and empty results return immediately. Queue has no mutex, waiting, close, or cleanup lifecycle. Wrapping it does not add channel wakeups, and every alias must use the same wrapper's lock.
 
 Apply when: changing queue APIs, examples, sharing claims, or native collection implementations.
-Evidence: [queue contract](../documentation/standard-library/data-and-io/queues.md); [FIFO and synchronized-sharing tests](../pkg/runtime/queue_test.go); [source conformance](../tests/e2e/testdata/accept/queues.ms); the user's Queue simplification and capacity correction.
+Evidence: [queue contract](../documentation/concurrency/queues.md); [FIFO and synchronized-sharing tests](../pkg/runtime/queue_test.go); [source conformance](../tests/e2e/testdata/accept/queues.ms); the user's Queue simplification and capacity correction.
 Verify: construction without capacity grows as needed; explicit zero or negative capacity faults. Bounded full enqueue returns false without changing contents, empty reads return none, draining permits reuse, and shared access under one wrapper passes race checks. Do not restore implicit synchronization or blocking channel semantics.
 
 ### Borrowing file descriptors must preserve pollable I/O
@@ -65,7 +65,7 @@ Verify: `TestExpandedHandleCancellationAndStreamAdapters` and runtime race check
 Decision: the stdlib revamp merges the work service and scheduled timers into `Scheduler`, with one ID/status/cancel/restart/report/close lifecycle. Time retains sequential sleep and clock values. Admission/history caps are optional, as are native operation budgets/deadlines. Explicit zero must not be confused with omission.
 
 Apply when: changing scheduling, native adapters, optional limits, or Node/JS coverage mappings.
-Evidence: [task declarations](../pkg/stdlib/tasks.ms), [limit contract](../documentation/standard-library/packages/stdlib-contracts.md), [runtime cases](../pkg/runtime/stdlib_revamp_test.go), and [native host mappings](../documentation/standard-library/packages/node-host.md#timers-and-scheduling).
+Evidence: [task declarations](../pkg/stdlib/tasks.ms), [limit contract](../documentation/standard-library/contracts.md), [runtime cases](../pkg/runtime/stdlib_revamp_test.go), and [native host mappings](../documentation/standard-library/filesystem.md#timers-and-scheduling).
 Verify: omit a cap and admit more work; supplied caps still reject excess. Restart returns a fresh ID after joining the old operation, and parent shutdown joins callback cleanup. Check native optional arguments in legacy host adapters as well as LibraryMethods.
 
 ### Validate compression completion before publishing tools

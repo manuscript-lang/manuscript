@@ -5,7 +5,7 @@
   <summary><span>{{ .Page.LinkTitle }}</span><span class="nav-chevron" aria-hidden="true">›</span></summary>
   <ul>
     <li><a href="{{ .Page.RelPermalink }}" {{ if $active }}class="active" aria-current="page"{{ end }}>Overview</a></li>
-    {{ range where .Page.Pages "Params.bookHidden" "ne" true }}
+    {{ range partial "docs/navigation-children" .Page }}
     <li>{{ partial "docs/nav-tree" (dict "Page" . "Current" $.Current) }}</li>
     {{ end }}
   </ul>

@@ -5,7 +5,7 @@ description: Implement or review Manuscript native execution, mutable values, re
 
 # Runtime
 
-Use for `pkg/runtime/`, `internal/hostos/`, or lowering that changes execution. Read [runtime lessons](../../.experts/runtime.md), [cleanup](../../documentation/ownership-and-cleanup/_index.md), and [concurrency](../../documentation/concurrency/_index.md).
+Use for `pkg/runtime/`, `internal/hostos/`, or lowering that changes execution. Read [runtime lessons](../../.experts/runtime.md), [cleanup](../../documentation/core-language/cleanup/_index.md), and [concurrency](../../documentation/concurrency/_index.md).
 
 - State observable result/error identity, evaluation order, aliasing, cancellation, close, join, and use-after-close behavior before editing.
 - Keep sharing, resource lifetime, and work lifetime separate. Passing references needs no sharing proof and does not extend resource lifetime. Explicit synchronization protects complete shared updates; local Queue has no implicit locks/waiting/close.
