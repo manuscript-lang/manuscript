@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/url.ms"`.
 
 Kind: record.
 
-```text
+```manuscript
 QueryEntry: QueryEntry
 field key: String
 field value: String
@@ -20,7 +20,7 @@ field value: String
 
 Kind: record.
 
-```text
+```manuscript
 Url: Url
 field scheme: String
 field host: String
@@ -34,7 +34,7 @@ field fragment: String
 
 Kind: fn.
 
-```text
+```manuscript
 decode_component: fn(text: String)->Result[String, LibraryError]
 ```
 
@@ -42,7 +42,7 @@ decode_component: fn(text: String)->Result[String, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 encode_component: fn(text: String)->String
 ```
 
@@ -50,7 +50,7 @@ encode_component: fn(text: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 format: fn(value: Url)->Result[String, LibraryError]
 ```
 
@@ -58,7 +58,7 @@ format: fn(value: Url)->Result[String, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 format_query: fn(entries: List[QueryEntry])->String
 ```
 
@@ -66,7 +66,7 @@ format_query: fn(entries: List[QueryEntry])->String
 
 Kind: fn.
 
-```text
+```manuscript
 parse: fn(text: String)->Result[Url, LibraryError]
 ```
 
@@ -74,7 +74,7 @@ parse: fn(text: String)->Result[Url, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], LibraryError]
 ```
 
@@ -82,7 +82,7 @@ parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], Librar
 
 Kind: fn.
 
-```text
+```manuscript
 resolve: fn(base: Url, reference: String)->Result[Url, LibraryError]
 ```
 

@@ -11,7 +11,7 @@ A generic type describes a family of types using type arguments. The arguments m
 
 Generics use brackets.
 
-```text
+```manuscript
 List[String]
 Map[String, Int]
 Optional[String]
@@ -39,7 +39,7 @@ Bounds are checked at every application. `Hashable` implies `Equal`, and `Equal`
 
 `Shareable`, `Equal`, and `Hashable` are not standalone source value types, generic type arguments, contract-view constructors, or user implementation targets. Besides its use as a bound, `Shareable` may refine an operation contract application in a [shared view type](contracts.md#shared-contract-views), such as `List[ReadValue[Int] & Shareable]`. Their compiler-known marker identities do not make them ordinary operation contracts. Intrinsic type and bound names cannot be redefined by module declarations, imports, or type parameters; see [module name resolution](../../modules-and-capabilities/modules/declarations.md).
 
-```text
+```manuscript
 # Rejected: a compiler bound is not a parameter type.
 fn invalid_parameter(value: Shareable) -> Unit:
     return
@@ -54,7 +54,7 @@ let invalid_view = Shareable(value: 1)
 
 ## Declarations and applications
 
-```text
+```manuscript
 type Box[T]:
     value: T
 
@@ -77,7 +77,7 @@ Applications are invariant: `Box[Int]` and `Box[Float]` are distinct types. A ge
 
 A function call may omit type arguments only when independently typed supplied argument expressions uniquely determine every parameter. The compiler matches argument types against declared parameter types, including invariant nested applications, then checks bounds and arguments after substitution. Repeated occurrences must determine the same type. No common superclass, implicit union, or numeric widening is inferred.
 
-```text
+```manuscript
 fn choose[T](first: T, second: T) -> T:
     return first
 
@@ -88,7 +88,7 @@ let mixed = choose(first: 1, second: 2.0)
 
 Result annotations do not infer function type arguments. Empty lists, `none`, and other expressions requiring context cannot independently provide evidence. Once other arguments determine all parameters, substituted parameter types provide context to those expressions. This process does not reorder evaluation.
 
-```text
+```manuscript
 fn count[T: Shareable](values: List[T]) -> Int:
     return 0
 
@@ -103,7 +103,7 @@ Generic data constructors follow the same field/payload inference rule, but an e
 
 A generic body is checked once against declared bounds. An unconstrained `T` cannot be compared with `==`, used as a map key, or called through a contract operation. Bounds expose only their declared properties.
 
-```text
+```manuscript
 # Rejected at declaration: missing Equal bound.
 fn unchecked_same[T](left: T, right: T) -> Bool:
     return left == right
@@ -122,7 +122,7 @@ Recursive declarations follow [layout rules](records.md#recursive-data). Separat
 
 The same finite-application requirement covers generic function calls and specialized function values. Follow specialization dependencies through the whole module graph; on a recursive function cycle, the composed substitution must preserve the starting function's type parameters one-to-one in their original positions. Nonrecursive calls may construct different type arguments. Reject expanding recursive specialization before Go emission, even when the recursive call is unreachable at runtime. This prevents both an infinite monomorphization worklist and generic recursion that the Go backend cannot represent.
 
-```text
+```manuscript
 fn repeat[T: Shareable](value: T) -> Never:
     return repeat[T](value: value)  # Regular specialization; allowed.
 

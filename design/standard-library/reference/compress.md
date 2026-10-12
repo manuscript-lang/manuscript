@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/compress.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[Bytes, LibraryError]
 ```
 
@@ -18,7 +18,7 @@ compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[By
 
 Kind: fn.
 
-```text
+```manuscript
 decompress: fn(data: Bytes, format: String, max_bytes: Int)->Result[Bytes, LibraryError]
 ```
 

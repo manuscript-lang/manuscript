@@ -9,7 +9,7 @@ weight = 7
 
 A binding gives a name to a value. Choose `let` when the name should keep its value and `var` when you need to assign a replacement.
 
-```text
+```manuscript
 let count: Int = 3
 var remaining = count
 remaining = remaining - 1
@@ -23,7 +23,7 @@ Function parameters and return types are explicit; local annotations are optiona
 
 The following continues the `Customer` and `welcome` declarations in [source structure and syntax](syntax.md):
 
-```text
+```manuscript
 let customer = Customer(name: "Ada", active: true)
 let greeting = welcome(customer: customer)
 let count: Int = 3
@@ -35,7 +35,7 @@ remaining = remaining - 1
 
 Bindings use JavaScript-style positional and record patterns:
 
-```text
+```manuscript
 let [resA, resB] = try parallel(tasks: [first, second])
 let {name, email: customer_email} = customer
 ```
@@ -52,7 +52,7 @@ A var keeps the type chosen by its annotation or initializer. Later values must 
 
 Only an existing mutable local name can be an assignment target. You cannot reassign record fields, collection elements, destructuring patterns, parameters, or immutable bindings.
 
-```text
+```manuscript
 fn example() -> Unit:
     var remaining = 3
     remaining = 2

@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/bigint.ms"`.
 
 Kind: native.
 
-```text
+```manuscript
 BigInt: BigInt
 ```
 
@@ -18,7 +18,7 @@ BigInt: BigInt
 
 Kind: fn.
 
-```text
+```manuscript
 add: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
@@ -26,7 +26,7 @@ add: fn(left: BigInt, right: BigInt)->BigInt
 
 Kind: fn.
 
-```text
+```manuscript
 bit_and: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
@@ -34,7 +34,7 @@ bit_and: fn(left: BigInt, right: BigInt)->BigInt
 
 Kind: fn.
 
-```text
+```manuscript
 bit_or: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
@@ -42,7 +42,7 @@ bit_or: fn(left: BigInt, right: BigInt)->BigInt
 
 Kind: fn.
 
-```text
+```manuscript
 bit_xor: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
@@ -50,7 +50,7 @@ bit_xor: fn(left: BigInt, right: BigInt)->BigInt
 
 Kind: fn.
 
-```text
+```manuscript
 compare: fn(left: BigInt, right: BigInt)->Int
 ```
 
@@ -58,7 +58,7 @@ compare: fn(left: BigInt, right: BigInt)->Int
 
 Kind: fn.
 
-```text
+```manuscript
 divide: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
 ```
 
@@ -66,7 +66,7 @@ divide: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 format: fn(value: BigInt, radix: Int)->String
 ```
 
@@ -74,7 +74,7 @@ format: fn(value: BigInt, radix: Int)->String
 
 Kind: fn.
 
-```text
+```manuscript
 from_int: fn(value: Int)->BigInt
 ```
 
@@ -82,7 +82,7 @@ from_int: fn(value: Int)->BigInt
 
 Kind: fn.
 
-```text
+```manuscript
 multiply: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
@@ -90,7 +90,7 @@ multiply: fn(left: BigInt, right: BigInt)->BigInt
 
 Kind: fn.
 
-```text
+```manuscript
 parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, LibraryError]
 ```
 
@@ -98,7 +98,7 @@ parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, LibraryErro
 
 Kind: fn.
 
-```text
+```manuscript
 remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
 ```
 
@@ -106,7 +106,7 @@ remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 subtract: fn(left: BigInt, right: BigInt)->BigInt
 ```
 
@@ -114,7 +114,7 @@ subtract: fn(left: BigInt, right: BigInt)->BigInt
 
 Kind: fn.
 
-```text
+```manuscript
 to_int: fn(value: BigInt)->Optional[Int]
 ```
 

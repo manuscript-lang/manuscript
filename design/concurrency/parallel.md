@@ -11,7 +11,7 @@ Use `parallel` to run a fixed set of operations at the same time. Pass functions
 
 ## Calling parallel
 
-```text
+```manuscript
 import List from "@std/collections.ms"
 import Result from "@std/result.ms"
 import map_error from "@std/result.ms"

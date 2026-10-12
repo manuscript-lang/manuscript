@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/regex.ms"`.
 
 Kind: native.
 
-```text
+```manuscript
 Regex: Regex
 ```
 
@@ -18,7 +18,7 @@ Regex: Regex
 
 Kind: fn.
 
-```text
+```manuscript
 compile: fn(pattern: String)->Result[Regex, LibraryError]
 ```
 
@@ -26,7 +26,7 @@ compile: fn(pattern: String)->Result[Regex, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String], LibraryError]
 ```
 
@@ -34,7 +34,7 @@ find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String
 
 Kind: fn.
 
-```text
+```manuscript
 matches: fn(pattern: Regex, text: String)->Bool
 ```
 
@@ -42,7 +42,7 @@ matches: fn(pattern: Regex, text: String)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 replace: fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)->Result[String, LibraryError]
 ```
 

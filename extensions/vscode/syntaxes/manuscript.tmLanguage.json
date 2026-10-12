@@ -1,1 +1,40 @@
-{"scopeName":"source.manuscript","patterns":[{"name":"comment.line.number-sign.manuscript","match":"#.*$"},{"name":"string.quoted.double.manuscript","begin":"\"","end":"\"","patterns":[{"name":"constant.character.escape.manuscript","match":"\\\\."}]},{"name":"keyword.control.manuscript","match":"\\b(fn|type|interface|impl|import|from|export|let|var|if|else|for|in|while|match|case|return|with|try|break|continue|test|and|or|not)\\b"},{"name":"constant.language.manuscript","match":"\\b(true|false|unit)\\b"},{"name":"constant.numeric.manuscript","match":"\\b[0-9]+(\\.[0-9]+)?\\b"}]}
+{
+  "scopeName": "source.manuscript",
+  "patterns": [
+    {
+      "name": "comment.line.number-sign.manuscript",
+      "match": "#.*$"
+    },
+    {
+      "name": "string.quoted.double.manuscript",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.manuscript",
+          "match": "\\\\."
+        }
+      ]
+    },
+    {
+      "name": "keyword.control.manuscript",
+      "match": "\\b(fn|type|interface|impl|import|from|export|let|var|if|else|for|in|while|match|case|return|with|try|break|continue|test|and|or|not|self)\\b"
+    },
+    {
+      "name": "constant.language.manuscript",
+      "match": "\\b(true|false|unit)\\b"
+    },
+    {
+      "name": "constant.numeric.manuscript",
+      "match": "\\b[0-9]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?d?\\b"
+    },
+    {
+      "name": "entity.name.type.manuscript",
+      "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+    },
+    {
+      "name": "entity.name.function.manuscript",
+      "match": "\\b[a-z_][A-Za-z0-9_]*(?=\\s*(?:\\[[^\\]\\n]*\\])?\\s*\\()"
+    }
+  ]
+}

@@ -13,7 +13,7 @@ Cancellation asks work to stop. It does not mean the work has already stopped; c
 
 Hosts signal requests, joined groups signal their operations, and background services expose cancellation of admitted work:
 
-```text
+```manuscript
 let id = try background.start(operation: work)
 background.cancel(id: id)
 ```
@@ -37,7 +37,7 @@ Cancellation is cooperative: stopped work unwinds at its next checkpoint. These 
 
 Loop checkpoints make CPU-bound loops respond promptly without source changes; they cost one poll of the context's stop signal per iteration. `check_cancelled()` remains available for long straight-line work. It is an imported standard function, not a language intrinsic:
 
-```text
+```manuscript
 import check_cancelled from "@std/tasks.ms"
 ```
 
@@ -63,7 +63,7 @@ A timeout bounds ordinary work, not cleanup or joining. Foreign code that does n
 
 To share one budget across several steps, put the steps in one function and give that function the budget. Nested groups inherit the deadline:
 
-```text
+```manuscript
 let sync = fn() -> Result[Unit, SyncError]:
     try download_all(sources: sources)
     try upload_all(targets: targets)

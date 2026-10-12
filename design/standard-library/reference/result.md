@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/result.ms"`.
 
 Kind: alternative.
 
-```text
+```manuscript
 Result: Result[T, U]
 type parameters: T, U
 case ok(value: T)
@@ -21,7 +21,7 @@ case error(cause: U)
 
 Kind: fn.
 
-```text
+```manuscript
 map_error: fn(result: Result[T, E], transform: fn(cause: E)->F)->Result[T, F]
 type parameters: T, E, F
 ```

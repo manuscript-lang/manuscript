@@ -21,7 +21,7 @@ Import `State` from `@std/state.ms`. `State[T: Shareable](value: T)` is an opaqu
 
 Import `Pool`, `Lease`, and `PoolError` from `@std/pools.ms`. `Pool[T](resources: List[T])` owns a nonempty fixed collection of distinct resource receivers. `T` must be a concrete shared operation-contract view declaring `close() -> Unit`. Construct views explicitly before pooling; a type variable's implementation bound does not establish this representation at construction. The supplied resources must remain under the pool's exclusive lifecycle management.
 
-```text
+```manuscript
 # Pool[T]
 fn acquire() -> Result[Lease[T], PoolError]
 fn close() -> Unit

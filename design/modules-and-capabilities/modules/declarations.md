@@ -31,14 +31,14 @@ Import renaming, namespace imports, re-exports, and wildcard imports have no syn
 
 The file `src/domain/customers.ms` exports a nominal identifier type:
 
-```text
+```manuscript
 export type CustomerId:
     value: String
 ```
 
 The file `src/main.ms` imports the individual symbol:
 
-```text
+```manuscript
 import CustomerId from "./domain/customers.ms"
 ```
 
@@ -48,7 +48,7 @@ Exporting a type makes it part of the module boundary; an internal declaration s
 
 An exported function, data type, or contract cannot expose an internal nominal type through a parameter, result, field, case payload, generic bound, or operation signature. Check the transitive public type surface through nested applications and exposed data members. Exported types from other modules may appear in a public signature without automatically re-exporting their names. Generic parameters themselves are not private nominal declarations.
 
-```text
+```manuscript
 type PrivateToken:
     value: String
 
@@ -63,7 +63,7 @@ An `impl` belongs to the receiver's nominal data type's defining module and beco
 
 ## Standard-library imports
 
-```text
+```manuscript
 import List from "@std/collections.ms"
 import { Result, map_error } from "@std/result.ms"
 import parallel from "@std/tasks.ms"
@@ -75,11 +75,11 @@ import parallel from "@std/tasks.ms"
 
 A project-root `ms.toml` can define file and directory aliases. With `@domain` mapped to `./src/domain` and `@customers` mapped to `./src/domain/customers.ms`, either import selects the same exported type:
 
-```text
+```manuscript
 import CustomerId from "@domain/customers.ms"
 ```
 
-```text
+```manuscript
 import CustomerId from "@customers"
 ```
 

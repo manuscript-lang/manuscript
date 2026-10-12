@@ -152,6 +152,12 @@ controls. Keep site customizations in these files rather than editing the
 vendored theme. After a presentation change, rebuild `docs/` with `hugo --minify
 --panicOnWarning --cleanDestinationDir`.
 
+Label Manuscript code fences `manuscript`; keep terminal output labeled `text`.
+The docs reuse the VS Code extension's grammar in
+`extensions/vscode/syntaxes/manuscript.tmLanguage.json`. Change lexical rules
+there, then run `node --test tests/docs/highlighting.test.cjs` to check the
+browser adapter before rebuilding the site.
+
 ## CI/CD
 
 [The GitHub Actions pipeline](.github/workflows/cicd.yml) builds the design book on branch pushes and pull requests using Hugo Extended 0.146.7. Pushes that only change generated `docs/` files are skipped. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.

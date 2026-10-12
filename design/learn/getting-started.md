@@ -34,7 +34,7 @@ tools and references Manuscript needs and runs independently of the checkout.
 
 The hello project's `src/main.ms` is a complete application:
 
-```text
+```manuscript
 import Process from "@std/cli.ms"
 
 export fn main(process: Process) -> Int:

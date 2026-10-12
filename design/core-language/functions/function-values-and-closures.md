@@ -11,7 +11,7 @@ You can store a function in a local binding and pass it to another function. Wri
 
 A closure is a function value that keeps values from its surrounding scope. It captures snapshots of the bindings it uses. There is no separate function kind that consumes or transfers those captures.
 
-```text
+```manuscript
 fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
     return transform(value: value)
 
@@ -28,7 +28,7 @@ Function types retain parameter names. Calls through values may omit the label w
 
 Parameter names, declaration order, parameter types, and result type are all part of function-type identity. Compatibility is invariant: a different label, reordered signature, or different result type requires an explicit adapter function. Caller-written argument order may vary without changing the function's declared type.
 
-```text
+```manuscript
 fn subtract_one(amount: Int) -> Int:
     return amount - 1
 
@@ -53,7 +53,7 @@ Immutable data is retained by value/reference as appropriate for its representat
 
 ## Resource captures
 
-```text
+```manuscript
 with file = try files.open(path: "data.txt"):
     let reader = fn() -> Result[Optional[Bytes], IoError]:
         return file.read(max_bytes: 4096)

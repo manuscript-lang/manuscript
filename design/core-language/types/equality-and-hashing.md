@@ -27,7 +27,7 @@ Records compare only with the same instantiated nominal type, field by field. Al
 
 Collections are not `Hashable`. A record containing a collection can be `Equal` but cannot automatically become a map key or set element. Function values and contract views have no implicit equality or hashing.
 
-```text
+```manuscript
 let same = [1, 2] == [1, 2]
 let different = [1, 2] == [2, 1]  # false
 # Rejected at type checking: Float is not Hashable.
@@ -37,7 +37,7 @@ fn accepts_float_keys(values: Map[Float, Int]) -> Unit:
 
 For [guarded recursive data](records.md#recursive-data), eligibility is checked over the finite declaration graph. Every nonrecursive leaf must meet the bound; recursive references reuse the requirement already being checked. A cycle does not establish eligibility if a leaf fails it. Generated equality traverses finite immutable values structurally. Containers still block hashing derivation even when they guard recursive layout.
 
-```text
+```manuscript
 type Tree[T: Equal]:
     value: T
     children: List[Tree[T]]
@@ -63,7 +63,7 @@ The same immutable key must retain its equality and hash behavior while stored. 
 
 With structural derivation, every declared field participates. A display label or cached value is not silently excluded. Model a lookup identity as its own record, then use that record as the key:
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Map from "@std/collections.ms"

@@ -11,7 +11,7 @@ Destructuring gives names to parts of a value in one declaration. Use brackets, 
 
 ## Positional bindings
 
-```text
+```manuscript
 let [resA, resB] = try parallel(tasks: [first, second])
 let [first_name, second_name] = names
 ```
@@ -26,7 +26,7 @@ Use brackets for positional patterns. `let (resA, resB) = value` is not a bindin
 
 ## Record bindings
 
-```text
+```manuscript
 let {name, email} = customer
 let {name: customer_name, email: customer_email} = customer
 ```
@@ -35,7 +35,7 @@ Shorthand binds a field to a local with the same name. `field: local` renames th
 
 ## Nested patterns
 
-```text
+```manuscript
 let {customer: {name}, shipping: {city: destination}} = order
 let [{name: first_name}, {name: second_name}] = customers
 ```

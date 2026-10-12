@@ -11,21 +11,21 @@ Use these modules to parse and write JSON, CSV, and URLs, or escape HTML text. C
 
 ## `@std/json.ms`
 
-```text
+```manuscript
 fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, LibraryError]
 fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, LibraryError]
 ```
 
 ## `@std/csv.ms`
 
-```text
+```manuscript
 fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Result[List[List[String]], LibraryError]
 fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Int) -> Result[String, LibraryError]
 ```
 
 ## `@std/url.ms`
 
-```text
+```manuscript
 fn decode_component(text: String) -> Result[String, LibraryError]
 fn encode_component(text: String) -> String
 fn format(value: Url) -> Result[String, LibraryError]
@@ -37,13 +37,13 @@ fn resolve(base: Url, reference: String) -> Result[Url, LibraryError]
 
 ## `@std/html.ms`
 
-```text
+```manuscript
 fn escape(text: String) -> String
 ```
 
 ## Data records
 
-```text
+```manuscript
 type JsonLimits:
     max_bytes: Int
     max_depth: Int

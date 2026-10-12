@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/cleanup.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Closeable: Closeable
 operation close: fn()->Unit
 ```

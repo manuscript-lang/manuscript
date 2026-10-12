@@ -11,7 +11,7 @@ Path functions manipulate path text without accessing disk. FileSystem methods r
 
 ## `@std/path.ms`
 
-```text
+```manuscript
 fn basename(path: String) -> String
 fn dirname(path: String) -> String
 fn extension(path: String) -> String
@@ -25,7 +25,7 @@ fn relative(base: String, target: String) -> Result[String, LibraryError]
 
 ## FileSystem operations
 
-```text
+```manuscript
 fn read_file(path: String, max_bytes: Int) -> Result[Bytes, LibraryError]
 fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, LibraryError]
 fn stat(path: String, follow_links: Bool) -> Result[FileInfo, LibraryError]
@@ -46,7 +46,7 @@ Process supplies `filesystem: FileSystem & Shareable`. FileSystem uses a fixed s
 
 Importing a type or constructing a path string grants no file access. Source fakes can implement the same contract. NUL paths return `InvalidInput`; filenames that cannot be represented as text return `Unsupported`. A temporary directory must be explicitly removed; dropping its path string does not remove it.
 
-```text
+```manuscript
 type FileInfo:
     name: String
     size: Int

@@ -9,7 +9,7 @@ weight = 54
 
 Use `with` to acquire a resource and close it when an indented block ends. The name introduced by `with` cannot be reassigned.
 
-```text
+```manuscript
 with file = try files.open(path: "data.txt"):
     let chunk = try file.read(max_bytes: 4096)
 ```

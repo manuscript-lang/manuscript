@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/faults.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 panic: fn(message: String)->Never
 ```
 

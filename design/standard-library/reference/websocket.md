@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/websocket.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 WebSocket: WebSocket
 operation close: fn()->Unit
 operation ping: fn(data: Bytes)->Result[Unit, LibraryError]
@@ -23,7 +23,7 @@ operation subprotocol: fn()->String
 
 Kind: record.
 
-```text
+```manuscript
 WebSocketMessage: WebSocketMessage
 field data: Bytes
 field text: Bool
@@ -33,7 +33,7 @@ field text: Bool
 
 Kind: record.
 
-```text
+```manuscript
 WebSocketOptions: WebSocketOptions
 field max_message_bytes: Int
 field timeout: Duration

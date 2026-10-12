@@ -30,4 +30,8 @@ Decision: for the documentation redesign, the user selected Tailwind CSS and Ver
 
 Apply when: redesigning the documentation shell or overview, or extending its visual system.
 Evidence: the user's documentation redesign correction; [Tailwind docs](https://tailwindcss.com/docs/installation/using-vite); [Vercel docs](https://vercel.com/docs); [site-owned visual system](../assets/_custom.scss); [overview presentation](../layouts/_shortcodes/docs-home.html).
-Verify: compare authored Markdown with the base branch, keep semantic changes out of visual work, check desktop and mobile reading pages, and run the strict Hugo build with a repository URL prefix. Regenerate `docs/` from the current sources; never resolve generated-page conflicts by retaining stale output.
+Decision: the user requested reuse of VS Code highlighting code where possible. The docs use the extension's [TextMate grammar](../extensions/vscode/syntaxes/manuscript.tmLanguage.json) as their single source of lexical rules, through a small [browser adapter](../assets/manuscript-highlight.js). Keep language patterns in the shared grammar instead of adding a separate keyword list for the website.
+
+Verified: styling a code container did not highlight Manuscript examples fenced as `text`. Explicit `manuscript` fences now use the shared grammar, with [tokenization checks](../tests/docs/highlighting.test.cjs). The [documentation generator](../documentation/documentation.go) emits the same language label so regenerated API pages retain highlighting.
+
+Verify: compare authored Markdown with the base branch, keep semantic changes out of visual work, check desktop and mobile reading pages, and run the strict Hugo build with a repository URL prefix. Verify actual token colors in light and dark mode, unchanged copied text, and plain terminal output. Regenerate `docs/` from the current sources; never resolve generated-page conflicts by retaining stale output.

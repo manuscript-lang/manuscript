@@ -17,7 +17,7 @@ The expected stage identifies the violated contract: **parse** for invalid sourc
 
 Contract: [source syntax](../../core-language/basics/syntax.md) and [declarations and calls](../../core-language/functions/declarations-and-calls.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn subtract(amount: Int, deduction: Int) -> Int:
@@ -50,7 +50,7 @@ Add lexical rejection fixtures for tabs, inconsistent dedentation, and untermina
 
 Contract: [expressions and operators](../../core-language/basics/expressions.md) and [numeric operations](../../core-language/basics/numbers-and-booleans.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn invalid_division(zero: Int) -> Bool:
@@ -85,7 +85,7 @@ Integer overflow and division-by-zero fixtures must expect programming faults ev
 
 Contract: [records](../../core-language/types/records.md) and [destructuring](../../core-language/basics/destructuring.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 type CustomerId:
@@ -120,7 +120,7 @@ test "nominal record and nested binding":
 
 Public-surface rejection fixture:
 
-```text
+```manuscript
 import List from "@std/collections.ms"
 
 type PrivateId:
@@ -136,7 +136,7 @@ Reject at type checking: the exported field exposes the internal nominal `Privat
 
 Contract: [collections](../../core-language/types/collections.md) and [destructuring](../../core-language/basics/destructuring.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
@@ -174,7 +174,7 @@ A literal-length mismatch in the binding itself is a compile-time shape error; a
 
 Contract: [function values](../../core-language/functions/function-values-and-closures.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn increase(value: Int) -> Int:
@@ -201,7 +201,7 @@ test "function label compatibility":
 
 Contract: [declarations and calls](../../core-language/functions/declarations-and-calls.md), [conditionals](../../core-language/control-flow/conditionals.md), and [faults](../../core-language/errors/faults.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn positive(value: Int) -> Int:
@@ -236,7 +236,7 @@ Unreachable statements must still parse, resolve, and type-check; they do not re
 
 Contract: [alternatives](../../core-language/types/alternatives.md) and [pattern matching](../../core-language/control-flow/pattern-matching.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 type Outcome:
@@ -275,7 +275,7 @@ Add ambiguity fixtures with two visible alternative types declaring `Ready`: unq
 
 Contract: [loops](../../core-language/control-flow/loops.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
@@ -310,7 +310,7 @@ For nested loops, verify that `break` and `continue` select the nearest enclosin
 
 Contract: [generics](../../core-language/types/generics.md) and [equality](../../core-language/types/equality-and-hashing.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 type Box[T: Shareable]:
@@ -345,7 +345,7 @@ Inference uses independently typed supplied arguments. Explicit and inferred app
 
 Separate fixture:
 
-```text
+```manuscript
 import Optional from "@std/optional.ms"
 
 fn absent[T: Shareable]() -> Optional[T]:
@@ -359,7 +359,7 @@ Accept the explicit call. Replacing `absent[Int]()` with `absent()` is a type re
 
 Intrinsic-name rejection fixture:
 
-```text
+```manuscript
 type Box[Int]:
     value: Int
 ```
@@ -370,7 +370,7 @@ Reject at resolution: a type parameter cannot redefine the intrinsic `Int` ident
 
 Contract: [operation contracts](../../core-language/types/contracts.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 interface Increment:
@@ -412,7 +412,7 @@ Add a multi-module rejection fixture for an implementation outside the concrete 
 
 Contract: [generic implementations](../../core-language/types/contracts.md#generic-implementations).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 interface ReadValue[T]:
@@ -468,7 +468,7 @@ Also accept disjoint concrete implementations for different receiver application
 
 Contract: [shared contract views](../../core-language/types/contracts.md#shared-contract-views) and [sharing](../../ownership-and-cleanup/values/sharing.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
@@ -550,7 +550,7 @@ With a trusted native nonshareable receiver fixture, accept a plain view and seq
 
 Contract: [records](../../core-language/types/records.md) and [generics](../../core-language/types/generics.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
@@ -581,7 +581,7 @@ The declaration check must reject the offending type before constructor errors i
 
 Contract: [loops](../../core-language/control-flow/loops.md) and [collections](../../core-language/types/collections.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Map from "@std/collections.ms"
@@ -626,7 +626,7 @@ Runtime collection fixtures use the minimum constructor/update API: verify inser
 
 Contract: [source grammar](../../core-language/basics/grammar.md) and [text](../../core-language/basics/text-and-bytes.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn echo(value: String) -> String:
@@ -663,7 +663,7 @@ Equivalent LF and CRLF encodings must produce the same parsed structure after do
 
 Contract: [Result](../../core-language/errors/results.md) and [try propagation](../../core-language/errors/propagation.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Result from "@std/result.ms"
@@ -715,7 +715,7 @@ An anonymous function establishes its own propagation boundary. Test that an inn
 
 Contract: [equality and hashing](../../core-language/types/equality-and-hashing.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
@@ -766,7 +766,7 @@ Test generated record/alternative equality with eligible scalar leaves and rejec
 
 Contract: [compatibility and expected types](../../core-language/types/compatibility.md), [Optional](../../core-language/types/optionals.md), and [Result](../../core-language/errors/results.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
@@ -814,7 +814,7 @@ Contract: [Unit and Never](../../core-language/functions/declarations-and-calls.
 
 The following independent module is a type-checking fixture; its faulting functions are not invoked as passing tests.
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn failed_initializer() -> Never:
@@ -850,7 +850,7 @@ Extend the fixture with a nested loop whose own break does not exit the outer li
 
 Contract: [anonymous-function suites](../../core-language/basics/grammar.md#anonymous-function-suites-inside-delimiters) and [function values](../../core-language/functions/function-values-and-closures.md).
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:

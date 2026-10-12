@@ -11,7 +11,7 @@ Use `Background` for work managed by an application or component rather than by 
 
 You can create several services and pass them as ordinary parameters. The [API reference](../types/prelude.md#background-service) defines which callables they accept.
 
-```text
+```manuscript
 with emails = Background(limit: 32):
     with indexing = Background(limit: 4):
         serve(emails: emails, indexing: indexing)
@@ -21,7 +21,7 @@ The constructing host supplies the execution parent. Construct application servi
 
 ## Starting work
 
-```text
+```manuscript
 import Result from "@std/result.ms"
 import map_error from "@std/result.ms"
 import Background from "@std/tasks.ms"

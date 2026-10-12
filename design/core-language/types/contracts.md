@@ -11,7 +11,7 @@ An interface lists the operations a caller needs. This is an operation contract:
 
 The following contract refers to application-defined `Money`, `Receipt`, and `PaymentError` types:
 
-```text
+```manuscript
 interface Payments:
     fn charge(amount: Money) -> Result[Receipt, PaymentError]
 ```
@@ -24,7 +24,7 @@ Operation contracts support explicit implementations through `impl Contract for 
 
 An implementation supplies the contract's operations for the named data type. The implementation relationship is declared explicitly rather than inferred from coincidentally similar operation names.
 
-```text
+```manuscript
 interface Increment:
     fn apply(value: Int) -> Int
 
@@ -47,7 +47,7 @@ An implementation must match the contract exactly. After substituting generic ty
 
 Missing, extra, duplicate, or mismatched operations are compile errors. A method cannot add defaults or its own generic parameters. Parameter labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility).
 
-```text
+```manuscript
 # Rejected: amount does not match the contract's value label.
 impl Increment for Offset:
     fn apply(amount: Int) -> Int:
@@ -70,7 +70,7 @@ Exported contracts expose every operation. Types in their operation signatures o
 
 An implementation uses generic parameters from its receiver type declaration. Its receiver must be an application of a nominal data declaration in the implementation's module. Parameter names in the receiver application come from that data declaration. Only parameters occurring in the receiver application are in scope for the interface and methods; matching the receiver determines all implementation arguments. Concrete and nested receiver applications remain supported. Interface parameter names need not match data parameter names: an application substitutes the receiver parameters positionally. An undeclared name such as `U` in `impl ReadValue[U] for Box[U]` is rejected when `Box` declares only `T`.
 
-```text
+```manuscript
 interface ReadValue[T]:
     fn get() -> T
 
@@ -88,7 +88,7 @@ Inherited bounds must prove that every nested type application and operation in 
 
 Interface parameter bounds can restrict implementation availability without restricting the data type:
 
-```text
+```manuscript
 interface SameValue[T: Equal]:
     fn same(other: T) -> Bool
 
@@ -101,7 +101,7 @@ A `Box[T]` with no proof of `T: Equal` cannot use this implementation. Bounds do
 
 Two blocks overlap if their receiver and contract applications can simultaneously match the same pair of types. Check this by structurally unifying both pairs, with each receiver's inherited parameters treated as distinct variables and nominal identities and invariant arguments preserved. Ignore bounds in this check: different bounds cannot select competing implementations. Reject overlap at declaration checking, even if no current call uses it. There is no most-specific selection or specialization.
 
-```text
+```manuscript
 # Rejected alongside the generic block above: both apply to Box[Int].
 impl ReadValue[Int] for Box[Int]:
     fn get() -> Int:
@@ -116,7 +116,7 @@ Create a contract view explicitly with `Contract(value: concrete)`. For a generi
 
 A plain view can hold a local receiver that is not shareable. The view keeps the same receiver reference. It does not copy native state, keep a resource open, or make concurrent access safe.
 
-```text
+```manuscript
 fn use_increment(operation: Increment) -> Int:
     return operation.apply(value: 1)
 
@@ -137,7 +137,7 @@ A concrete receiver or generic parameter may call an operation directly when exa
 
 A plain or shared contract type satisfies its own exact named generic bound without a source `impl`. For example, `Converter[Int]` satisfies `T: Converter[Int]`, but not `T: Converter[String]`. Generic disambiguation can therefore construct the same plain view whether `T` is concrete or already a view. A behavioral bound alone does not require sharing.
 
-```text
+```manuscript
 fn invoke[T: Increment](operation: T) -> Int:
     return Increment(value: operation).apply(value: 1)
 
@@ -153,7 +153,7 @@ Both calls satisfy the same bound; neither inserts an implicit conversion at the
 
 Construct a shared view explicitly with `(Contract & Shareable)(value: receiver)`:
 
-```text
+```manuscript
 let shared = (Increment & Shareable)(value: offset)
 let same_shared = (Increment & Shareable)(value: shared)
 let local = Increment(value: shared)  # Explicitly discard the sharing guarantee.

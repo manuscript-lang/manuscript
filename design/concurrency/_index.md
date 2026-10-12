@@ -27,7 +27,7 @@ Functions passed to a concurrency API must be safe to call concurrently. Closure
 
 Concurrency adds no intrinsic names or compiler bounds. Import each API or type that the module names:
 
-```text
+```manuscript
 import parallel from "@std/tasks.ms"
 import parallel_map from "@std/tasks.ms"
 import Background from "@std/tasks.ms"

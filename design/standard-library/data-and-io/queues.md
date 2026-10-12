@@ -21,7 +21,7 @@ Sending and receiving must respond to cancellation. Explicit close is part of th
 
 `Queue[T: Shareable](capacity: Int)` creates synchronized storage with positive capacity. The queue is opaque, shareable, and neither equal nor hashable. A nonpositive capacity is a programming fault.
 
-```text
+```manuscript
 fn send(value: T) -> Result[Unit, QueueError]
 fn receive() -> Optional[T]
 fn close() -> Unit

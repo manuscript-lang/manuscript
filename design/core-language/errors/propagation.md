@@ -13,7 +13,7 @@ Use `try` to continue with a successful Result value or immediately return its e
 
 The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
 
-```text
+```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
     let value = try discount(price: price, percent: percent)
     return ok(value: "Discounted price: {value}")

@@ -9,7 +9,7 @@ weight = 24
 
 Use `if` to run a block when a Boolean condition is true. Add `else` to run a different block when it is false. Only the selected branch runs.
 
-```text
+```manuscript
 fn status(active: Bool) -> String:
     if active:
         return "Active"
@@ -23,7 +23,7 @@ Conditions require `Bool`. The condition in this example is already a Boolean; n
 
 Each branch has its own lexical scope. Names declared in a branch are not visible after the conditional; assignments to an outer `var` affect that existing binding. An `else if` chain checks conditions in order and stops after selecting a branch.
 
-```text
+```manuscript
 fn classify(value: Int) -> String:
     if value < 0:
         return "negative"
@@ -39,7 +39,7 @@ fn classify(value: Int) -> String:
 
 Validation uses the same ordinary control flow as any other decision:
 
-```text
+```manuscript
 fn nonnegative(value: Int) -> Bool:
     if value < 0:
         return false
