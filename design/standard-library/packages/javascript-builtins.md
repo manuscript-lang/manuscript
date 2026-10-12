@@ -42,7 +42,7 @@ Multi-parameter calls require argument labels; single-parameter methods and call
 
 Native methods introduce only their own output/accumulator variables. Inference uses supplied arguments rather than the surrounding expected result. Specialize a generic method when saving it as a value:
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"

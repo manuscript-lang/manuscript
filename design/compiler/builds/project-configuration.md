@@ -41,7 +41,7 @@ The compiler supplies the minimal intrinsic prelude and the standard modules und
 
 Imports name an exported symbol and a path:
 
-```text
+```manuscript
 import CustomerId from "./domain/customers.ms"
 import Order from "@domain/orders.ms"
 ```

@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/decimal.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Decimal: Decimal
 operation to_float: fn()->Float
 operation truncate_to_int: fn()->Optional[Int]

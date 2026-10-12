@@ -31,7 +31,7 @@ Module conformance covers relative, user-alias, and explicit standard imports, t
 
 List-argument conformance covers empty, one-element, and multi-element lists, passing existing lists, multiple list parameters, and calls through function values. Check both labeled and unlabeled single-parameter calls, including generic inference and contextual empty lists. Require labels for multi-parameter functions; reject unknown labels, duplicate arguments, missing arguments, incompatible list element types, and nonshareable list elements. Use controlled capability calls to verify left-to-right list-element evaluation and source order between arguments, including closure creation and `with` initialization.
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 test "checked decrement":

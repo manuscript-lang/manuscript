@@ -11,7 +11,7 @@ A stream reads or writes bytes over time. Its close operation releases the under
 
 The host supplies synchronized `ReadStream & Shareable`, `WriteStream & Shareable`, and `File & Shareable` views. A plain stream contract view does not itself promise concurrent safety.
 
-```text
+```manuscript
 interface ReadStream:
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
     fn close() -> Unit
@@ -31,7 +31,7 @@ Native wrappers serialize simultaneous reads/writes without holding a lifecycle 
 
 Plain and shared contract values declaring these exact close operations are eligible for `with` under [Closeable](../../ownership-and-cleanup/cleanup/closeable.md); cleanup does not require concurrent sharing. Source fakes implement the selected stream contract and explicitly construct shared views when substituting for standard host roots or acquisitions; no native File constructor or contract inheritance is needed. Adapters honor [cancellation and undelivered acquisition](../../modules-and-capabilities/adapters/cancellation.md). The bounded subprocess facility is exported by `@std/process.ms`. The CLI host supplies `process.commands: Commands & Shareable`:
 
-```text
+```manuscript
 # Commands
 fn run(program: String, arguments: List[String], input: Bytes,
        max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]

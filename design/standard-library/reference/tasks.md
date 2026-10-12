@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/tasks.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Background: Background
 operation cancel: fn(id: OperationId)->Unit
 operation close: fn()->Unit
@@ -22,7 +22,7 @@ operation status: fn(id: OperationId)->WorkStatus
 
 Kind: alternative.
 
-```text
+```manuscript
 BackgroundFailure: BackgroundFailure
 case Failed(operation: OperationId, cause: String)
 case Crashed(operation: OperationId, message: String)
@@ -32,7 +32,7 @@ case Crashed(operation: OperationId, message: String)
 
 Kind: alternative.
 
-```text
+```manuscript
 ExecutionError: ExecutionError
 case TimedOut
 case Crashed(operation: OperationId, message: String)
@@ -42,7 +42,7 @@ case Crashed(operation: OperationId, message: String)
 
 Kind: native.
 
-```text
+```manuscript
 OperationId: OperationId
 ```
 
@@ -50,7 +50,7 @@ OperationId: OperationId
 
 Kind: alternative.
 
-```text
+```manuscript
 StartError: StartError
 case Closed
 case Full
@@ -60,7 +60,7 @@ case Full
 
 Kind: alternative.
 
-```text
+```manuscript
 WorkStatus: WorkStatus
 case Running
 case Succeeded
@@ -74,7 +74,7 @@ case Unknown
 
 Kind: fn.
 
-```text
+```manuscript
 check_cancelled: fn()->Unit
 ```
 
@@ -82,7 +82,7 @@ check_cancelled: fn()->Unit
 
 Kind: fn.
 
-```text
+```manuscript
 parallel: fn()-><unknown>
 ```
 
@@ -90,7 +90,7 @@ parallel: fn()-><unknown>
 
 Kind: fn.
 
-```text
+```manuscript
 parallel_map: fn(items: List[T], operation: fn(item: T)->U, limit: Int)->Result[List[U], ExecutionError]
 type parameters: T: Shareable, U: Shareable
 ```

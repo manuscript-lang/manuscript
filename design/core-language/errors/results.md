@@ -13,7 +13,7 @@ Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both ar
 
 ## Returning a domain error
 
-```text
+```manuscript
 type DiscountError:
     case InvalidPrice
     case InvalidPercent
@@ -33,7 +33,7 @@ The function checks inputs before calculating. It returns an explicit error for 
 
 The following continues the declarations above:
 
-```text
+```manuscript
 fn discount_message(price: Decimal, percent: Decimal) -> String:
     let outcome = discount(price: price, percent: percent)
     match outcome:

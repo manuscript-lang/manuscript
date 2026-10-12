@@ -11,7 +11,7 @@ Use Timestamp for wall-clock time and Duration for a time interval. Access the c
 
 ## `@std/time.ms`
 
-```text
+```manuscript
 fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, LibraryError]
 fn format_timestamp(value: Timestamp) -> String
 fn nanoseconds(value: Timestamp) -> Int
@@ -25,20 +25,20 @@ fn unix_seconds(value: Timestamp) -> Int
 
 ## `@std/random.ms`
 
-```text
+```manuscript
 fn secure_int(entropy: Entropy&Shareable, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]
 fn uuid_v4(entropy: Entropy&Shareable) -> Result[String, LibraryError]
 ```
 
 ## WallClock operations
 
-```text
+```manuscript
 fn now() -> Timestamp
 ```
 
 ## System operations
 
-```text
+```manuscript
 fn info() -> SystemInfo
 fn working_directory() -> String
 fn environment(name: String) -> Optional[String]
@@ -46,7 +46,7 @@ fn environment(name: String) -> Optional[String]
 
 ## Entropy operations
 
-```text
+```manuscript
 fn bytes(count: Int) -> Result[Bytes, LibraryError]
 ```
 

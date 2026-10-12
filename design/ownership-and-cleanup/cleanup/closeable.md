@@ -9,7 +9,7 @@ weight = 55
 
 `Closeable` is the standard cleanup contract. Import it from `@std/cleanup.ms` to name or implement it. A `with` block checks the identity of that standard contract, so an unrelated interface with the same spelling does not replace it. Its declaration is:
 
-```text
+```manuscript
 interface Closeable:
     fn close() -> Unit
 ```

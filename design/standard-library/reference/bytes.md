@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/bytes.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 Bytes: Bytes
 field values: List[Int]
 operation at: fn(index: Int)->Optional[Int]
@@ -33,7 +33,7 @@ operation with_value: fn(index: Int, value: Int)->Bytes
 
 Kind: fn.
 
-```text
+```manuscript
 at: fn(data: Bytes, index: Int)->Optional[Int]
 ```
 
@@ -41,7 +41,7 @@ at: fn(data: Bytes, index: Int)->Optional[Int]
 
 Kind: fn.
 
-```text
+```manuscript
 contains: fn(data: Bytes, value: Bytes)->Bool
 ```
 
@@ -49,7 +49,7 @@ contains: fn(data: Bytes, value: Bytes)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 ends_with: fn(data: Bytes, value: Bytes)->Bool
 ```
 
@@ -57,7 +57,7 @@ ends_with: fn(data: Bytes, value: Bytes)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
 ```
 
@@ -65,7 +65,7 @@ index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
 
 Kind: fn.
 
-```text
+```manuscript
 is_empty: fn(data: Bytes)->Bool
 ```
 
@@ -73,7 +73,7 @@ is_empty: fn(data: Bytes)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 last_index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
 ```
 
@@ -81,7 +81,7 @@ last_index_of: fn(data: Bytes, value: Bytes)->Optional[Int]
 
 Kind: fn.
 
-```text
+```manuscript
 reverse: fn(data: Bytes)->Bytes
 ```
 
@@ -89,7 +89,7 @@ reverse: fn(data: Bytes)->Bytes
 
 Kind: fn.
 
-```text
+```manuscript
 slice: fn(data: Bytes, start: Int, end: Int)->Bytes
 ```
 
@@ -97,7 +97,7 @@ slice: fn(data: Bytes, start: Int, end: Int)->Bytes
 
 Kind: fn.
 
-```text
+```manuscript
 starts_with: fn(data: Bytes, value: Bytes)->Bool
 ```
 
@@ -105,7 +105,7 @@ starts_with: fn(data: Bytes, value: Bytes)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 values: fn(data: Bytes)->List[Int]
 ```
 
@@ -113,7 +113,7 @@ values: fn(data: Bytes)->List[Int]
 
 Kind: fn.
 
-```text
+```manuscript
 with_value: fn(data: Bytes, index: Int, value: Int)->Bytes
 ```
 

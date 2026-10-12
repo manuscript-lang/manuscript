@@ -9,7 +9,7 @@ weight = 14
 
 Use `Optional[T]` when a value may be missing. `some(value: ...)` contains a value of type `T`; `none` means there is no value. Import Optional from `@std/optional.ms`.
 
-```text
+```manuscript
 let present: Optional[String] = some(value: "Ada")
 let missing: Optional[String] = none
 ```
@@ -18,7 +18,7 @@ Missing values use `Optional`. An optional makes absence part of the function's 
 
 `Optional[T]` is an invariant alternative. Qualified cases are `Optional[T].some(value: ...)` and `Optional[T].none`. Unqualified forms use an expected optional type, or infer `T` from a `some` payload. `none` carries no evidence for `T` and needs context or explicit qualification.
 
-```text
+```manuscript
 let inferred = some(value: 1)  # Optional[Int]
 let explicit = Optional[String].none
 # Rejected: no type determines the absent payload.
@@ -31,7 +31,7 @@ There is no implicit unwrapping or flattening: `Optional[Optional[Int]]` differs
 
 ## Handling absence
 
-```text
+```manuscript
 fn display_name(name: Optional[String]) -> String:
     match name:
         some(value):

@@ -10,7 +10,7 @@ Intrinsic names; no import required.
 
 Kind: type.
 
-```text
+```manuscript
 Bool: Bool
 ```
 
@@ -18,7 +18,7 @@ Bool: Bool
 
 Kind: type.
 
-```text
+```manuscript
 Equal: Equal
 ```
 
@@ -26,7 +26,7 @@ Equal: Equal
 
 Kind: type.
 
-```text
+```manuscript
 Float: Float
 operation is_finite: fn()->Bool
 operation is_nan: fn()->Bool
@@ -41,7 +41,7 @@ operation truncate_to_int: fn()->Optional[Int]
 
 Kind: type.
 
-```text
+```manuscript
 Hashable: Hashable
 ```
 
@@ -49,7 +49,7 @@ Hashable: Hashable
 
 Kind: type.
 
-```text
+```manuscript
 Int: Int
 operation to_decimal: fn()->Decimal
 operation to_float: fn()->Float
@@ -60,7 +60,7 @@ operation to_string: fn(radix: Int)->String
 
 Kind: type.
 
-```text
+```manuscript
 Never: Never
 ```
 
@@ -68,7 +68,7 @@ Never: Never
 
 Kind: type.
 
-```text
+```manuscript
 Shareable: Shareable
 ```
 
@@ -76,7 +76,7 @@ Shareable: Shareable
 
 Kind: type.
 
-```text
+```manuscript
 String: String
 operation at: fn(index: Int)->Optional[String]
 operation byte_length: fn()->Int
@@ -112,7 +112,7 @@ operation upper: fn()->String
 
 Kind: type.
 
-```text
+```manuscript
 Unit: Unit
 ```
 

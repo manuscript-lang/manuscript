@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/string.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 at: fn(text: String, index: Int)->Optional[String]
 ```
 
@@ -18,7 +18,7 @@ at: fn(text: String, index: Int)->Optional[String]
 
 Kind: fn.
 
-```text
+```manuscript
 concat: fn(text: String, values: String)->String
 ```
 
@@ -26,7 +26,7 @@ concat: fn(text: String, values: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 contains: fn(value: String, text: String)->Bool
 ```
 
@@ -34,7 +34,7 @@ contains: fn(value: String, text: String)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 ends_with: fn(value: String, suffix: String)->Bool
 ```
 
@@ -42,7 +42,7 @@ ends_with: fn(value: String, suffix: String)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 from_scalars: fn(values: List[Int])->Result[String, LibraryError]
 ```
 
@@ -50,7 +50,7 @@ from_scalars: fn(values: List[Int])->Result[String, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 index_of: fn(text: String, value: String)->Optional[Int]
 ```
 
@@ -58,7 +58,7 @@ index_of: fn(text: String, value: String)->Optional[Int]
 
 Kind: fn.
 
-```text
+```manuscript
 join: fn(parts: List[String], separator: String)->String
 ```
 
@@ -66,7 +66,7 @@ join: fn(parts: List[String], separator: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 last_index_of: fn(text: String, value: String)->Optional[Int]
 ```
 
@@ -74,7 +74,7 @@ last_index_of: fn(text: String, value: String)->Optional[Int]
 
 Kind: fn.
 
-```text
+```manuscript
 lower: fn(text: String)->String
 ```
 
@@ -82,7 +82,7 @@ lower: fn(text: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 normalize: fn(text: String, form: String, max_bytes: Int)->Result[String, LibraryError]
 ```
 
@@ -90,7 +90,7 @@ normalize: fn(text: String, form: String, max_bytes: Int)->Result[String, Librar
 
 Kind: fn.
 
-```text
+```manuscript
 pad_end: fn(text: String, target_length: Int, padding: String, max_bytes: Int)->Result[String, LibraryError]
 ```
 
@@ -98,7 +98,7 @@ pad_end: fn(text: String, target_length: Int, padding: String, max_bytes: Int)->
 
 Kind: fn.
 
-```text
+```manuscript
 pad_start: fn(text: String, target_length: Int, padding: String, max_bytes: Int)->Result[String, LibraryError]
 ```
 
@@ -106,7 +106,7 @@ pad_start: fn(text: String, target_length: Int, padding: String, max_bytes: Int)
 
 Kind: fn.
 
-```text
+```manuscript
 repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, LibraryError]
 ```
 
@@ -114,7 +114,7 @@ repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, LibraryErro
 
 Kind: fn.
 
-```text
+```manuscript
 replace: fn(text: String, old: String, new: String, max_replacements: Int)->String
 ```
 
@@ -122,7 +122,7 @@ replace: fn(text: String, old: String, new: String, max_replacements: Int)->Stri
 
 Kind: fn.
 
-```text
+```manuscript
 replace_all: fn(text: String, old: String, new: String, max_bytes: Int)->Result[String, LibraryError]
 ```
 
@@ -130,7 +130,7 @@ replace_all: fn(text: String, old: String, new: String, max_bytes: Int)->Result[
 
 Kind: fn.
 
-```text
+```manuscript
 scalar_at: fn(text: String, index: Int)->Optional[Int]
 ```
 
@@ -138,7 +138,7 @@ scalar_at: fn(text: String, index: Int)->Optional[Int]
 
 Kind: fn.
 
-```text
+```manuscript
 scalar_length: fn(text: String)->Int
 ```
 
@@ -146,7 +146,7 @@ scalar_length: fn(text: String)->Int
 
 Kind: fn.
 
-```text
+```manuscript
 scalar_values: fn(text: String)->List[Int]
 ```
 
@@ -154,7 +154,7 @@ scalar_values: fn(text: String)->List[Int]
 
 Kind: fn.
 
-```text
+```manuscript
 slice: fn(text: String, start: Int, end: Int)->String
 ```
 
@@ -162,7 +162,7 @@ slice: fn(text: String, start: Int, end: Int)->String
 
 Kind: fn.
 
-```text
+```manuscript
 slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, LibraryError]
 ```
 
@@ -170,7 +170,7 @@ slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, LibraryErr
 
 Kind: fn.
 
-```text
+```manuscript
 split: fn(text: String, separator: String, max_parts: Int)->List[String]
 ```
 
@@ -178,7 +178,7 @@ split: fn(text: String, separator: String, max_parts: Int)->List[String]
 
 Kind: fn.
 
-```text
+```manuscript
 starts_with: fn(value: String, prefix: String)->Bool
 ```
 
@@ -186,7 +186,7 @@ starts_with: fn(value: String, prefix: String)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 substring: fn(text: String, start: Int, end: Int)->String
 ```
 
@@ -194,7 +194,7 @@ substring: fn(text: String, start: Int, end: Int)->String
 
 Kind: fn.
 
-```text
+```manuscript
 trim: fn(text: String)->String
 ```
 
@@ -202,7 +202,7 @@ trim: fn(text: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 trim_end: fn(text: String)->String
 ```
 
@@ -210,7 +210,7 @@ trim_end: fn(text: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 trim_start: fn(text: String)->String
 ```
 
@@ -218,7 +218,7 @@ trim_start: fn(text: String)->String
 
 Kind: fn.
 
-```text
+```manuscript
 upper: fn(text: String)->String
 ```
 

@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/html.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 escape: fn(text: String)->String
 ```
 

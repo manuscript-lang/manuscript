@@ -19,7 +19,7 @@ func RenderModule(module checker.APIModule) string {
 		fmt.Fprintf(&b, "Import each required symbol with `import Name from %q`.\n\n", module.Path)
 	}
 	for _, d := range module.Declarations {
-		fmt.Fprintf(&b, "## %s\n\nKind: %s.\n\n```text\n%s: %s\n", d.Name, d.Kind, d.Name, d.Type)
+		fmt.Fprintf(&b, "## %s\n\nKind: %s.\n\n```manuscript\n%s: %s\n", d.Name, d.Kind, d.Name, d.Type)
 		if len(d.Parameters) > 0 {
 			fmt.Fprintf(&b, "type parameters: %s\n", strings.Join(d.Parameters, ", "))
 		}

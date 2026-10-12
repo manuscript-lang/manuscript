@@ -11,7 +11,7 @@ Use an explicit Network service to resolve names and open sockets. Connections, 
 
 ## `@std/net.ms`
 
-```text
+```manuscript
 fn contains_ip(cidr: String, address: String) -> Result[Bool, LibraryError]
 fn parse_cidr(text: String) -> Result[String, LibraryError]
 fn parse_ip(text: String) -> Result[String, LibraryError]
@@ -19,14 +19,14 @@ fn parse_ip(text: String) -> Result[String, LibraryError]
 
 ## `@std/tls.ms`
 
-```text
+```manuscript
 fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], LibraryError]
 fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, LibraryError]
 ```
 
 ## Connection operations
 
-```text
+```manuscript
 fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 fn write(data: Bytes) -> Result[Unit, IoError]
 fn shutdown_write() -> Result[Unit, LibraryError]
@@ -40,7 +40,7 @@ fn tls_info() -> Result[TlsInfo, LibraryError]
 
 ## Listener operations
 
-```text
+```manuscript
 fn accept() -> Result[Connection&Shareable, LibraryError]
 fn address() -> String
 fn close() -> Unit
@@ -49,7 +49,7 @@ fn accept_timeout(timeout: Duration) -> Result[Connection&Shareable, LibraryErro
 
 ## DatagramSocket operations
 
-```text
+```manuscript
 fn send(data: Bytes, address: String) -> Result[Unit, LibraryError]
 fn receive(max_bytes: Int) -> Result[Datagram, LibraryError]
 fn address() -> String
@@ -74,7 +74,7 @@ Use `restrict` to create a child Network with narrower access. The child cannot 
 
 ## Records
 
-```text
+```manuscript
 type Datagram:
     data: Bytes
     sender: String
@@ -138,7 +138,7 @@ HTTP/3 is intentionally excluded at the user's request. The HTTP/1.1, HTTP/2 and
 
 ## Network operations
 
-```text
+```manuscript
 fn lookup(name: String, max_records: Int, timeout: Duration) -> Result[List[String], LibraryError]
 fn connect(address: String, timeout: Duration) -> Result[Connection&Shareable, LibraryError]
 fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection&Shareable, LibraryError]

@@ -11,7 +11,7 @@ Use math for floating-point calculations, numbers for text conversion, and bigin
 
 ## `@std/math.ms`
 
-```text
+```manuscript
 fn abs(value: Float) -> Float
 fn abs_int(value: Int) -> Int
 fn acos(value: Float) -> Float
@@ -46,7 +46,7 @@ fn truncate(value: Float) -> Float
 
 ## `@std/numbers.ms`
 
-```text
+```manuscript
 fn format_float(value: Float) -> String
 fn format_int(value: Int, radix: Int) -> String
 fn parse_float(text: String) -> Result[Float, LibraryError]
@@ -55,7 +55,7 @@ fn parse_int(text: String, radix: Int) -> Result[Int, LibraryError]
 
 ## `@std/bigint.ms`
 
-```text
+```manuscript
 fn add(left: BigInt, right: BigInt) -> BigInt
 fn bit_and(left: BigInt, right: BigInt) -> BigInt
 fn bit_or(left: BigInt, right: BigInt) -> BigInt

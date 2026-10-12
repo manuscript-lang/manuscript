@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/numbers.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 format_exponential: fn(value: Float, digits: Int)->Result[String, LibraryError]
 ```
 
@@ -18,7 +18,7 @@ format_exponential: fn(value: Float, digits: Int)->Result[String, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 format_fixed: fn(value: Float, digits: Int)->Result[String, LibraryError]
 ```
 
@@ -26,7 +26,7 @@ format_fixed: fn(value: Float, digits: Int)->Result[String, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 format_float: fn(value: Float)->String
 ```
 
@@ -34,7 +34,7 @@ format_float: fn(value: Float)->String
 
 Kind: fn.
 
-```text
+```manuscript
 format_int: fn(value: Int, radix: Int)->String
 ```
 
@@ -42,7 +42,7 @@ format_int: fn(value: Int, radix: Int)->String
 
 Kind: fn.
 
-```text
+```manuscript
 format_precision: fn(value: Float, precision: Int)->Result[String, LibraryError]
 ```
 
@@ -50,7 +50,7 @@ format_precision: fn(value: Float, precision: Int)->Result[String, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 parse_float: fn(text: String)->Result[Float, LibraryError]
 ```
 
@@ -58,7 +58,7 @@ parse_float: fn(text: String)->Result[Float, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 parse_int: fn(text: String, radix: Int)->Result[Int, LibraryError]
 ```
 

@@ -9,7 +9,7 @@ Manuscript HttpClient: HttpClient operation close: fn()->Unit operation send: fn
 ClientResponse# Kind: record.
 Manuscript ClientResponse: ClientResponse field status: Int field headers: Map[String, List[String]] field body: Bytes HttpClient# Kind: interface.
 Manuscript HttpClient: HttpClient operation close: fn()->Unit operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, LibraryError] operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream & Shareable, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, LibraryError] HttpClientOptions# Kind: record.'><meta itemprop=wordCount content="444"><title>http | Manuscript
-</title><link rel=icon href=/manuscript/favicon.png><link rel=manifest href=/manuscript/manifest.json><link rel=canonical href=https://manuscript-lang.github.io/manuscript/standard-library/reference/http/><link rel=stylesheet href=/manuscript/book.min.a276496db538fcb33208bc3e2ff6c7870245e94952955631e7a58204ce99422c.css integrity="sha256-onZJbbU4/LMyCLw+L/bHhwJF6UlSlVYx56WCBM6ZQiw=" crossorigin=anonymous><script defer src=/manuscript/fuse.min.js></script><script defer src=/manuscript/en.search.min.2811879f359adfdb3684aaaa60331413f6a1b03cb2bdf12f62fa60c054d4512a.js integrity="sha256-KBGHnzWa39s2hKqqYDMUE/ahsDyyvfEvYvpgwFTUUSo=" crossorigin=anonymous></script><link rel=icon type=image/svg+xml href=/manuscript/favicon.svg><script>try{const e=localStorage.getItem("manuscript-theme");(e==="light"||e==="dark")&&(document.documentElement.dataset.theme=e)}catch{}</script><script defer src=/manuscript/docs.min.6c77789c6f9a49a8292ad1a16162284f8fa2f8b6240afb2bb7a14287e3f802a8.js integrity="sha256-bHd4nG+aSagpKtGhYWIoT4+i+LYkCvsrt6FCh+P4Aqg="></script></head><body dir=ltr class="book-kind-page book-type-standard-library"><input type=checkbox class="hidden toggle" id=menu-control>
+</title><link rel=icon href=/manuscript/favicon.png><link rel=manifest href=/manuscript/manifest.json><link rel=canonical href=https://manuscript-lang.github.io/manuscript/standard-library/reference/http/><link rel=stylesheet href=/manuscript/book.min.a276496db538fcb33208bc3e2ff6c7870245e94952955631e7a58204ce99422c.css integrity="sha256-onZJbbU4/LMyCLw+L/bHhwJF6UlSlVYx56WCBM6ZQiw=" crossorigin=anonymous><script defer src=/manuscript/fuse.min.js></script><script defer src=/manuscript/en.search.min.2f74820eac999601337d6d8e28ed2b734ce696d7d7e0877ed0edd8824c712310.js integrity="sha256-L3SCDqyZlgEzfW2OKO0rc0zmltfX4Id+0O3YgkxxIxA=" crossorigin=anonymous></script><link rel=icon type=image/svg+xml href=/manuscript/favicon.svg><script>try{const e=localStorage.getItem("manuscript-theme");(e==="light"||e==="dark")&&(document.documentElement.dataset.theme=e)}catch{}</script><script defer src=/manuscript/docs.min.1e6daaa9cd5ee02603df8fb08a9fadb36021be25a21b72fe61769c4c05abaa35.js integrity="sha256-Hm2qqc1e4CYD34+wip+ts2AhviWiG3L+YXacTAWrqjU="></script></head><body dir=ltr class="book-kind-page book-type-standard-library"><input type=checkbox class="hidden toggle" id=menu-control>
 <input type=checkbox class="hidden toggle" id=toc-control>
 <a class=skip-link href=#main-content>Skip to content</a><header class=docs-topbar><div class=topbar-inner><a class=docs-brand href=/manuscript/ aria-label="Manuscript documentation home"><span class=brand-mark aria-hidden=true>m</span>
 <span>Manuscript <span class=brand-subtitle>Documentation</span></span></a><nav class=topbar-links aria-label=Primary><a class=current href=/manuscript/>Docs</a>
@@ -20,69 +20,69 @@ Manuscript HttpClient: HttpClient operation close: fn()->Unit operation send: fn
 </a><a href=/manuscript/stdlib.md>Documentation for AI<svg class="external-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentcolor" stroke-width="1.4"><path d="M5 3h8v8m0-8L3 13"/></svg></a><p>Version 0.1 <span>· In development</span></p></div></nav></div></aside><div class=book-page><header class="book-header hidden"><div class="flex align-center justify-between"><label for=menu-control><img src=/manuscript/icons/menu.svg class=book-icon alt=Menu></label><h3>http</h3><label for=toc-control><img src=/manuscript/icons/toc.svg class=book-icon alt="Table of Contents"></label></div><aside class=hidden><div class=toc-label>On this page</div><nav id=TableOfContents><ul><li><a href=#clientresponse>ClientResponse</a></li><li><a href=#httpclient>HttpClient</a></li><li><a href=#httpclientoptions>HttpClientOptions</a></li><li><a href=#httpexchange>HttpExchange</a></li><li><a href=#httprequest>HttpRequest</a></li><li><a href=#httpresponse>HttpResponse</a></li><li><a href=#httpserver>HttpServer</a></li><li><a href=#httpserveroptions>HttpServerOptions</a></li><li><a href=#network>Network</a></li><li><a href=#responsebody>ResponseBody</a></li></ul></nav><div class=toc-help><p>Help improve these docs</p><a href=https://github.com/manuscript-lang/manuscript/edit/main/design/standard-library/reference/http.md>Edit this page <svg class="external-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentcolor" stroke-width="1.4"><path d="M5 3h8v8m0-8L3 13"/></svg>
 </a><a href=https://github.com/manuscript-lang/manuscript/issues>Report an issue<svg class="external-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentcolor" stroke-width="1.4"><path d="M5 3h8v8m0-8L3 13"/></svg></a></div></aside></header><nav class=docs-breadcrumb aria-label=Breadcrumb><a href=/manuscript/>Docs</a>
 <span aria-hidden=true>/</span><a href=/manuscript/standard-library/>Standard library</a><span aria-hidden=true>/</span><a href=/manuscript/standard-library/reference/>Module reference</a>
-<span aria-hidden=true>/</span><span aria-current=page>http</span></nav><article class="markdown book-article"><h1 id=stdhttpms>@std/http.ms<a class=anchor href=#stdhttpms>#</a></h1><p>Import each required symbol with <code>import Name from "@std/http.ms"</code>.</p><h2 id=clientresponse>ClientResponse<a class=anchor href=#clientresponse>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>ClientResponse: ClientResponse
-</span></span><span class=line><span class=cl>field status: Int
-</span></span><span class=line><span class=cl>field headers: Map[String, List[String]]
-</span></span><span class=line><span class=cl>field body: Bytes</span></span></code></pre></div></div><h2 id=httpclient>HttpClient<a class=anchor href=#httpclient>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>HttpClient: HttpClient
-</span></span><span class=line><span class=cl>operation close: fn()-&gt;Unit
-</span></span><span class=line><span class=cl>operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-&gt;Result[ResponseBody &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream &amp; Shareable, max_response_bytes: Int, timeout: Duration)-&gt;Result[ResponseBody &amp; Shareable, LibraryError]</span></span></code></pre></div></div><h2 id=httpclientoptions>HttpClientOptions<a class=anchor href=#httpclientoptions>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>HttpClientOptions: HttpClientOptions
-</span></span><span class=line><span class=cl>field max_redirects: Int
-</span></span><span class=line><span class=cl>field max_idle_connections: Int
-</span></span><span class=line><span class=cl>field max_header_bytes: Int
-</span></span><span class=line><span class=cl>field idle_timeout: Duration
-</span></span><span class=line><span class=cl>field decompress: Bool
-</span></span><span class=line><span class=cl>field cookies: Bool
-</span></span><span class=line><span class=cl>field tls: TlsOptions</span></span></code></pre></div></div><h2 id=httpexchange>HttpExchange<a class=anchor href=#httpexchange>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>HttpExchange: HttpExchange
-</span></span><span class=line><span class=cl>operation close: fn()-&gt;Unit
-</span></span><span class=line><span class=cl>operation headers: fn()-&gt;Map[String, List[String]]
-</span></span><span class=line><span class=cl>operation method: fn()-&gt;String
-</span></span><span class=line><span class=cl>operation path: fn()-&gt;String
-</span></span><span class=line><span class=cl>operation query: fn()-&gt;String
-</span></span><span class=line><span class=cl>operation read: fn(max_bytes: Int)-&gt;Result[Optional[Bytes], IoError]
-</span></span><span class=line><span class=cl>operation send_headers: fn(status: Int, headers: Map[String, List[String]])-&gt;Result[Unit, LibraryError]
-</span></span><span class=line><span class=cl>operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)-&gt;Result[WebSocket &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation write: fn(data: Bytes)-&gt;Result[Unit, IoError]</span></span></code></pre></div></div><h2 id=httprequest>HttpRequest<a class=anchor href=#httprequest>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>HttpRequest: HttpRequest
-</span></span><span class=line><span class=cl>field method: String
-</span></span><span class=line><span class=cl>field path: String
-</span></span><span class=line><span class=cl>field query: String
-</span></span><span class=line><span class=cl>field headers: Map[String, Bytes]
-</span></span><span class=line><span class=cl>field body: Bytes</span></span></code></pre></div></div><h2 id=httpresponse>HttpResponse<a class=anchor href=#httpresponse>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>HttpResponse: HttpResponse
-</span></span><span class=line><span class=cl>field status: Int
-</span></span><span class=line><span class=cl>field headers: Map[String, String]
-</span></span><span class=line><span class=cl>field body: Bytes</span></span></code></pre></div></div><h2 id=httpserver>HttpServer<a class=anchor href=#httpserver>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>HttpServer: HttpServer
-</span></span><span class=line><span class=cl>operation address: fn()-&gt;String
-</span></span><span class=line><span class=cl>operation close: fn()-&gt;Unit
-</span></span><span class=line><span class=cl>operation wait: fn()-&gt;Result[Unit, IoError]</span></span></code></pre></div></div><h2 id=httpserveroptions>HttpServerOptions<a class=anchor href=#httpserveroptions>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>HttpServerOptions: HttpServerOptions
-</span></span><span class=line><span class=cl>field max_requests: Int
-</span></span><span class=line><span class=cl>field max_body_bytes: Int
-</span></span><span class=line><span class=cl>field max_response_bytes: Int
-</span></span><span class=line><span class=cl>field max_header_bytes: Int
-</span></span><span class=line><span class=cl>field timeout: Duration
-</span></span><span class=line><span class=cl>field grace: Duration
-</span></span><span class=line><span class=cl>field tls: Optional[TlsOptions]</span></span></code></pre></div></div><h2 id=network>Network<a class=anchor href=#network>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>Network: Network
-</span></span><span class=line><span class=cl>operation bind_datagram: fn(address: String)-&gt;Result[DatagramSocket &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation close: fn()-&gt;Unit
-</span></span><span class=line><span class=cl>operation connect: fn(address: String, timeout: Duration)-&gt;Result[Connection &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation connect_tls: fn(address: String, server_name: String, timeout: Duration)-&gt;Result[Connection &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)-&gt;Result[Connection &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation connect_unix: fn(path: String, timeout: Duration)-&gt;Result[Connection &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation http_client: fn(options: HttpClientOptions)-&gt;Result[HttpClient &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation listen: fn(address: String)-&gt;Result[Listener &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)-&gt;Result[Listener &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation listen_unix: fn(path: String)-&gt;Result[Listener &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation lookup: fn(name: String, max_records: Int, timeout: Duration)-&gt;Result[List[String], LibraryError]
-</span></span><span class=line><span class=cl>operation request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-&gt;Result[ClientResponse, LibraryError]
-</span></span><span class=line><span class=cl>operation resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)-&gt;Result[List[DnsRecord], LibraryError]
-</span></span><span class=line><span class=cl>operation restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)-&gt;Result[Network &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation serve: fn(address: String, handler: fn(request: HttpRequest)-&gt;HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)-&gt;Result[HttpServer &amp; Shareable, IoError]
-</span></span><span class=line><span class=cl>operation serve_stream: fn(address: String, handler: fn(exchange: HttpExchange &amp; Shareable)-&gt;Result[Unit, LibraryError], options: HttpServerOptions)-&gt;Result[HttpServer &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)-&gt;Result[WebSocket &amp; Shareable, LibraryError]
-</span></span><span class=line><span class=cl>operation with_resolver: fn(address: String)-&gt;Result[Network &amp; Shareable, LibraryError]</span></span></code></pre></div></div><h2 id=responsebody>ResponseBody<a class=anchor href=#responsebody>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=text><div class=docs-code-heading><span>Manuscript</span></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>ResponseBody: ResponseBody
-</span></span><span class=line><span class=cl>operation close: fn()-&gt;Unit
-</span></span><span class=line><span class=cl>operation headers: fn()-&gt;Map[String, List[String]]
-</span></span><span class=line><span class=cl>operation read: fn(max_bytes: Int)-&gt;Result[Optional[Bytes], IoError]
-</span></span><span class=line><span class=cl>operation status: fn()-&gt;Int</span></span></code></pre></div></div></article><footer class=book-footer><div class="flex flex-wrap justify-between"><span><a href=/manuscript/standard-library/reference/html/ class="flex align-center"><img src=/manuscript/icons/backward.svg class=book-icon alt=Backward>
+<span aria-hidden=true>/</span><span aria-current=page>http</span></nav><article class="markdown book-article"><h1 id=stdhttpms>@std/http.ms<a class=anchor href=#stdhttpms>#</a></h1><p>Import each required symbol with <code>import Name from "@std/http.ms"</code>.</p><h2 id=clientresponse>ClientResponse<a class=anchor href=#clientresponse>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>ClientResponse: ClientResponse
+field status: Int
+field headers: Map[String, List[String]]
+field body: Bytes</code></pre></div><h2 id=httpclient>HttpClient<a class=anchor href=#httpclient>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>HttpClient: HttpClient
+operation close: fn()-&gt;Unit
+operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-&gt;Result[ResponseBody &amp; Shareable, LibraryError]
+operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream &amp; Shareable, max_response_bytes: Int, timeout: Duration)-&gt;Result[ResponseBody &amp; Shareable, LibraryError]</code></pre></div><h2 id=httpclientoptions>HttpClientOptions<a class=anchor href=#httpclientoptions>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>HttpClientOptions: HttpClientOptions
+field max_redirects: Int
+field max_idle_connections: Int
+field max_header_bytes: Int
+field idle_timeout: Duration
+field decompress: Bool
+field cookies: Bool
+field tls: TlsOptions</code></pre></div><h2 id=httpexchange>HttpExchange<a class=anchor href=#httpexchange>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>HttpExchange: HttpExchange
+operation close: fn()-&gt;Unit
+operation headers: fn()-&gt;Map[String, List[String]]
+operation method: fn()-&gt;String
+operation path: fn()-&gt;String
+operation query: fn()-&gt;String
+operation read: fn(max_bytes: Int)-&gt;Result[Optional[Bytes], IoError]
+operation send_headers: fn(status: Int, headers: Map[String, List[String]])-&gt;Result[Unit, LibraryError]
+operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)-&gt;Result[WebSocket &amp; Shareable, LibraryError]
+operation write: fn(data: Bytes)-&gt;Result[Unit, IoError]</code></pre></div><h2 id=httprequest>HttpRequest<a class=anchor href=#httprequest>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>HttpRequest: HttpRequest
+field method: String
+field path: String
+field query: String
+field headers: Map[String, Bytes]
+field body: Bytes</code></pre></div><h2 id=httpresponse>HttpResponse<a class=anchor href=#httpresponse>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>HttpResponse: HttpResponse
+field status: Int
+field headers: Map[String, String]
+field body: Bytes</code></pre></div><h2 id=httpserver>HttpServer<a class=anchor href=#httpserver>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>HttpServer: HttpServer
+operation address: fn()-&gt;String
+operation close: fn()-&gt;Unit
+operation wait: fn()-&gt;Result[Unit, IoError]</code></pre></div><h2 id=httpserveroptions>HttpServerOptions<a class=anchor href=#httpserveroptions>#</a></h2><p>Kind: record.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>HttpServerOptions: HttpServerOptions
+field max_requests: Int
+field max_body_bytes: Int
+field max_response_bytes: Int
+field max_header_bytes: Int
+field timeout: Duration
+field grace: Duration
+field tls: Optional[TlsOptions]</code></pre></div><h2 id=network>Network<a class=anchor href=#network>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>Network: Network
+operation bind_datagram: fn(address: String)-&gt;Result[DatagramSocket &amp; Shareable, LibraryError]
+operation close: fn()-&gt;Unit
+operation connect: fn(address: String, timeout: Duration)-&gt;Result[Connection &amp; Shareable, LibraryError]
+operation connect_tls: fn(address: String, server_name: String, timeout: Duration)-&gt;Result[Connection &amp; Shareable, LibraryError]
+operation connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)-&gt;Result[Connection &amp; Shareable, LibraryError]
+operation connect_unix: fn(path: String, timeout: Duration)-&gt;Result[Connection &amp; Shareable, LibraryError]
+operation http_client: fn(options: HttpClientOptions)-&gt;Result[HttpClient &amp; Shareable, LibraryError]
+operation listen: fn(address: String)-&gt;Result[Listener &amp; Shareable, LibraryError]
+operation listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)-&gt;Result[Listener &amp; Shareable, LibraryError]
+operation listen_unix: fn(path: String)-&gt;Result[Listener &amp; Shareable, LibraryError]
+operation lookup: fn(name: String, max_records: Int, timeout: Duration)-&gt;Result[List[String], LibraryError]
+operation request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-&gt;Result[ClientResponse, LibraryError]
+operation resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)-&gt;Result[List[DnsRecord], LibraryError]
+operation restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)-&gt;Result[Network &amp; Shareable, LibraryError]
+operation serve: fn(address: String, handler: fn(request: HttpRequest)-&gt;HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)-&gt;Result[HttpServer &amp; Shareable, IoError]
+operation serve_stream: fn(address: String, handler: fn(exchange: HttpExchange &amp; Shareable)-&gt;Result[Unit, LibraryError], options: HttpServerOptions)-&gt;Result[HttpServer &amp; Shareable, LibraryError]
+operation web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)-&gt;Result[WebSocket &amp; Shareable, LibraryError]
+operation with_resolver: fn(address: String)-&gt;Result[Network &amp; Shareable, LibraryError]</code></pre></div><h2 id=responsebody>ResponseBody<a class=anchor href=#responsebody>#</a></h2><p>Kind: interface.</p><div class=docs-code data-language=manuscript><div class=docs-code-heading><span>Manuscript</span></div><pre tabindex=0><code class=language-manuscript data-lang=manuscript>ResponseBody: ResponseBody
+operation close: fn()-&gt;Unit
+operation headers: fn()-&gt;Map[String, List[String]]
+operation read: fn(max_bytes: Int)-&gt;Result[Optional[Bytes], IoError]
+operation status: fn()-&gt;Int</code></pre></div></article><footer class=book-footer><div class="flex flex-wrap justify-between"><span><a href=/manuscript/standard-library/reference/html/ class="flex align-center"><img src=/manuscript/icons/backward.svg class=book-icon alt=Backward>
 <span>html</span>
 </a></span><span><a href=/manuscript/standard-library/reference/io/ class="flex align-center"><span>io</span>
 <img src=/manuscript/icons/forward.svg class=book-icon alt=Forward></a></span></div><div class=docs-footer-meta><span>Manuscript documentation <span class=footer-version>· v0.1</span></span><a href=https://github.com/manuscript-lang/manuscript>GitHub<svg class="external-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentcolor" stroke-width="1.4"><path d="M5 3h8v8m0-8L3 13"/></svg></a></div><script>(function(){document.querySelectorAll("pre:has(code)").forEach(e=>{e.addEventListener("click",e.focus),e.addEventListener("copy",function(t){if(t.preventDefault(),navigator.clipboard){const t=window.getSelection().toString()||e.textContent;navigator.clipboard.writeText(t)}})})})()</script></footer><label for=menu-control class="hidden book-menu-overlay"></label></div><aside class=book-toc aria-label="Table of contents"><div class=book-toc-content><div class=toc-label>On this page</div><nav id=TableOfContents><ul><li><a href=#clientresponse>ClientResponse</a></li><li><a href=#httpclient>HttpClient</a></li><li><a href=#httpclientoptions>HttpClientOptions</a></li><li><a href=#httpexchange>HttpExchange</a></li><li><a href=#httprequest>HttpRequest</a></li><li><a href=#httpresponse>HttpResponse</a></li><li><a href=#httpserver>HttpServer</a></li><li><a href=#httpserveroptions>HttpServerOptions</a></li><li><a href=#network>Network</a></li><li><a href=#responsebody>ResponseBody</a></li></ul></nav><div class=toc-help><p>Help improve these docs</p><a href=https://github.com/manuscript-lang/manuscript/edit/main/design/standard-library/reference/http.md>Edit this page <svg class="external-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentcolor" stroke-width="1.4"><path d="M5 3h8v8m0-8L3 13"/></svg>

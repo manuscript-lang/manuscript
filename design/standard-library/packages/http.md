@@ -13,7 +13,7 @@ Use HttpClient for reusable outbound requests and HttpExchange for streaming req
 
 ## HttpClient operations
 
-```text
+```manuscript
 fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody&Shareable, LibraryError]
 fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream&Shareable, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody&Shareable, LibraryError]
 fn close() -> Unit
@@ -21,7 +21,7 @@ fn close() -> Unit
 
 ## ResponseBody operations
 
-```text
+```manuscript
 fn status() -> Int
 fn headers() -> Map[String, List[String]]
 fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
@@ -30,7 +30,7 @@ fn close() -> Unit
 
 ## HttpExchange operations
 
-```text
+```manuscript
 fn method() -> String
 fn path() -> String
 fn query() -> String
@@ -48,7 +48,7 @@ The original [bounded buffered HTTP host](../hosts/http.md) and Network.request 
 
 ## Configuration
 
-```text
+```manuscript
 type HttpClientOptions:
     max_redirects: Int
     max_idle_connections: Int
@@ -102,7 +102,7 @@ HttpExchange belongs to its request: retained aliases report Closed once request
 
 ## Network operations
 
-```text
+```manuscript
 fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ClientResponse, LibraryError]
 fn http_client(options: HttpClientOptions) -> Result[HttpClient&Shareable, LibraryError]
 fn serve_stream(address: String, handler: fn(exchange: HttpExchange&Shareable) -> Result[Unit, LibraryError], options: HttpServerOptions) -> Result[HttpServer&Shareable, LibraryError]

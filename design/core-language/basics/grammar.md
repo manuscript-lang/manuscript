@@ -17,7 +17,7 @@ Source is valid UTF-8 without a byte-order mark. LF and CRLF terminate physical 
 
 The reserved words are:
 
-```text
+```manuscript
 and break case continue else export false fn for from if
 impl import in interface let match not or return self test true try type
 unit var while with
@@ -65,7 +65,7 @@ A delimiter opened outside the function body cannot close at body indentation.
 
 Group a function expression when a following comma needs to belong to an enclosing argument list:
 
-```text
+```manuscript
 fn example() -> Int:
     return apply(
         value: 3,
@@ -78,7 +78,7 @@ fn example() -> Int:
 
 Here the function header has twelve leading spaces, its body sixteen, and the grouping close eight. The close ends the function suite before its comma separates the outer argument. The parentheses are grouping, not a tuple or another function kind. An ungrouped suite-bodied function can also be the final argument:
 
-```text
+```manuscript
 fn example() -> Int:
     return apply(
         value: 3,
@@ -181,7 +181,7 @@ The existing [with construct](../../ownership-and-cleanup/cleanup/scopes.md) sup
 
 ## Rejected forms
 
-```text
+```manuscript
 let count = 3                       # Not a complete module item.
 fn wrong(value: Int = 3) -> Int:     # Default parameter syntax is rejected.
     return value

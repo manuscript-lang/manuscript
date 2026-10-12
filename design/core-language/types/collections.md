@@ -21,7 +21,7 @@ Import each collection type you name from `@std/collections.ms`. Ordinary bracke
 
 Brackets construct immutable lists of shareable values:
 
-```text
+```manuscript
 let values = [1, 2, 3]
 let empty: List[Int] = []
 ```
@@ -40,7 +40,7 @@ Interface elements must retain a static sharing guarantee: `List[Contract & Shar
 
 Collection applications are invariant. `List[Int]` is not assignable to `List[Float]`; a list inserts neither numeric conversions nor implicit unions of unrelated element types.
 
-```text
+```manuscript
 let nested: List[List[Int]] = [[], [1, 2]]
 # Rejected: incompatible Int and Float elements.
 let mixed = [1, 2.0]

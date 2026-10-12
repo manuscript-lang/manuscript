@@ -11,7 +11,7 @@ These fixtures check standard imports and API identities, concurrent sharing, da
 
 ## Standard imports and declaration identity
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
@@ -42,7 +42,7 @@ Accept without an `[aliases]` table. Independently remove List and reject its br
 
 Accept this independent module without standard imports:
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 type List:
@@ -77,7 +77,7 @@ Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a
 
 ## Error adaptation and inferred packs
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Result from "@std/result.ms"
@@ -129,7 +129,7 @@ For mapping, accept `fn(item: Int) -> Int` and reject an otherwise identical `fn
 
 ## Sharing and contract cleanup
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Bytes from "@std/bytes.ms"
@@ -167,7 +167,7 @@ Test captured-function wrappers and branch/var merges so an unsafe alternative c
 
 Independently reject this complete module at the parallel call: generic forwarding erases the callable proof even for this safe input.
 
-```text
+```manuscript
 import Result from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
@@ -191,7 +191,7 @@ Independently reject extracting `let launch = background.start`, `let mapper = p
 
 Use the accepted modules in [minimum data operations](../../standard-library/data-and-io/operations.md). In addition:
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Decimal from "@std/decimal.ms"

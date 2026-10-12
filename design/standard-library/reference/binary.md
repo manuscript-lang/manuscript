@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/binary.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 read_float: fn(data: Bytes, offset: Int, little_endian: Bool)->Result[Float, LibraryError]
 ```
 
@@ -18,7 +18,7 @@ read_float: fn(data: Bytes, offset: Int, little_endian: Bool)->Result[Float, Lib
 
 Kind: fn.
 
-```text
+```manuscript
 read_integer: fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Int, LibraryError]
 ```
 
@@ -26,7 +26,7 @@ read_integer: fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endi
 
 Kind: fn.
 
-```text
+```manuscript
 write_float: fn(value: Float, little_endian: Bool)->Bytes
 ```
 
@@ -34,7 +34,7 @@ write_float: fn(value: Float, little_endian: Bool)->Bytes
 
 Kind: fn.
 
-```text
+```manuscript
 write_integer: fn(value: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Bytes, LibraryError]
 ```
 

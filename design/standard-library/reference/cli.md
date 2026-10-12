@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/cli.ms"`.
 
 Kind: record.
 
-```text
+```manuscript
 Process: Process
 field arguments: List[String]
 field environment: Map[String, String]

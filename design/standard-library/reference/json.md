@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/json.ms"`.
 
 Kind: record.
 
-```text
+```manuscript
 JsonLimits: JsonLimits
 field max_bytes: Int
 field max_depth: Int
@@ -21,7 +21,7 @@ field max_values: Int
 
 Kind: alternative.
 
-```text
+```manuscript
 JsonValue: JsonValue
 case Null
 case BoolValue(value: Bool)
@@ -35,7 +35,7 @@ case ObjectValue(values: Map[String, JsonValue])
 
 Kind: fn.
 
-```text
+```manuscript
 parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, LibraryError]
 ```
 
@@ -43,7 +43,7 @@ parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, LibraryError]
 
 Kind: fn.
 
-```text
+```manuscript
 stringify: fn(value: JsonValue, max_bytes: Int)->Result[String, LibraryError]
 ```
 

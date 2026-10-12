@@ -11,7 +11,7 @@ Choose a cryptographic function by its purpose: hashing, keyed authentication, k
 
 ## `@std/crypto.ms`
 
-```text
+```manuscript
 fn constant_time_equal(left: Bytes, right: Bytes) -> Bool
 fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Result[Bytes, LibraryError]
 fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, LibraryError]

@@ -32,7 +32,7 @@ All existing element and key bounds apply. An empty Map/Set constructor requires
 
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. A simple implementation may copy storage on update; builder APIs are specified separately once their signatures are settled.
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import List from "@std/collections.ms"
@@ -73,7 +73,7 @@ test "dynamic immutable data":
 
 `parse_int` accepts exactly an optional ASCII `+` or `-` followed by one or more ASCII decimal digits and an in-range mathematical value. It permits leading zeros, rejects whitespace, separators, fractions, exponents, and any unconsumed character, and returns `none` for invalid or out-of-range input. Runtime parsing is distinct from the stricter source literal grammar. Additional scalar indexing, text transformations, collection algorithms, and numeric formatting are described in [JavaScript built-in coverage](../packages/javascript-builtins.md); the canonical signatures live in the generated reference. Grapheme and locale operations remain unsupported.
 
-```text
+```manuscript
 import panic from "@std/faults.ms"
 
 import Bytes from "@std/bytes.ms"

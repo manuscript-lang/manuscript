@@ -23,7 +23,7 @@ Server shutdown stops request admission, allows a configured grace period, cance
 
 `@std/http.ms` exports `Network`, `HttpServer`, `HttpRequest`, and `HttpResponse`. The CLI host supplies `process.network: Network & Shareable`; source cannot manufacture native network authority.
 
-```text
+```manuscript
 type HttpRequest:
     method: String
     path: String

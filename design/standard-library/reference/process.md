@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/process.ms"`.
 
 Kind: alternative.
 
-```text
+```manuscript
 CommandError: CommandError
 case InvalidInput
 case Unavailable
@@ -23,7 +23,7 @@ case Failed(message: String)
 
 Kind: record.
 
-```text
+```manuscript
 CommandOutput: CommandOutput
 field exit_code: Int
 field stdout: Bytes
@@ -34,7 +34,7 @@ field stderr: Bytes
 
 Kind: interface.
 
-```text
+```manuscript
 Commands: Commands
 operation run: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration)->Result[CommandOutput, CommandError]
 ```

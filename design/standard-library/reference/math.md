@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/math.ms"`.
 
 Kind: fn.
 
-```text
+```manuscript
 abs: fn(value: Float)->Float
 ```
 
@@ -18,7 +18,7 @@ abs: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 abs_int: fn(value: Int)->Int
 ```
 
@@ -26,7 +26,7 @@ abs_int: fn(value: Int)->Int
 
 Kind: fn.
 
-```text
+```manuscript
 acos: fn(value: Float)->Float
 ```
 
@@ -34,7 +34,7 @@ acos: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 asin: fn(value: Float)->Float
 ```
 
@@ -42,7 +42,7 @@ asin: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 atan: fn(value: Float)->Float
 ```
 
@@ -50,7 +50,7 @@ atan: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 atan2: fn(y: Float, x: Float)->Float
 ```
 
@@ -58,7 +58,7 @@ atan2: fn(y: Float, x: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 ceil: fn(value: Float)->Float
 ```
 
@@ -66,7 +66,7 @@ ceil: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 cos: fn(value: Float)->Float
 ```
 
@@ -74,7 +74,7 @@ cos: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 cosh: fn(value: Float)->Float
 ```
 
@@ -82,7 +82,7 @@ cosh: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 e: fn()->Float
 ```
 
@@ -90,7 +90,7 @@ e: fn()->Float
 
 Kind: fn.
 
-```text
+```manuscript
 exp: fn(value: Float)->Float
 ```
 
@@ -98,7 +98,7 @@ exp: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 floor: fn(value: Float)->Float
 ```
 
@@ -106,7 +106,7 @@ floor: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 hypot: fn(left: Float, right: Float)->Float
 ```
 
@@ -114,7 +114,7 @@ hypot: fn(left: Float, right: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 is_finite: fn(value: Float)->Bool
 ```
 
@@ -122,7 +122,7 @@ is_finite: fn(value: Float)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 is_nan: fn(value: Float)->Bool
 ```
 
@@ -130,7 +130,7 @@ is_nan: fn(value: Float)->Bool
 
 Kind: fn.
 
-```text
+```manuscript
 log: fn(value: Float)->Float
 ```
 
@@ -138,7 +138,7 @@ log: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 log10: fn(value: Float)->Float
 ```
 
@@ -146,7 +146,7 @@ log10: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 log2: fn(value: Float)->Float
 ```
 
@@ -154,7 +154,7 @@ log2: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 max: fn(left: Float, right: Float)->Float
 ```
 
@@ -162,7 +162,7 @@ max: fn(left: Float, right: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 min: fn(left: Float, right: Float)->Float
 ```
 
@@ -170,7 +170,7 @@ min: fn(left: Float, right: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 pi: fn()->Float
 ```
 
@@ -178,7 +178,7 @@ pi: fn()->Float
 
 Kind: fn.
 
-```text
+```manuscript
 pow: fn(base: Float, exponent: Float)->Float
 ```
 
@@ -186,7 +186,7 @@ pow: fn(base: Float, exponent: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 remainder: fn(left: Float, right: Float)->Float
 ```
 
@@ -194,7 +194,7 @@ remainder: fn(left: Float, right: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 round: fn(value: Float)->Float
 ```
 
@@ -202,7 +202,7 @@ round: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 sin: fn(value: Float)->Float
 ```
 
@@ -210,7 +210,7 @@ sin: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 sinh: fn(value: Float)->Float
 ```
 
@@ -218,7 +218,7 @@ sinh: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 sqrt: fn(value: Float)->Float
 ```
 
@@ -226,7 +226,7 @@ sqrt: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 tan: fn(value: Float)->Float
 ```
 
@@ -234,7 +234,7 @@ tan: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 tanh: fn(value: Float)->Float
 ```
 
@@ -242,7 +242,7 @@ tanh: fn(value: Float)->Float
 
 Kind: fn.
 
-```text
+```manuscript
 truncate: fn(value: Float)->Float
 ```
 

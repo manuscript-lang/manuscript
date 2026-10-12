@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/collections.ms"`.
 
 Kind: interface.
 
-```text
+```manuscript
 List: List[T]
 type parameters: T: Shareable
 operation append: fn(value: T)->List[T]
@@ -56,7 +56,7 @@ operation without: fn(index: Int)->List[T]
 
 Kind: record.
 
-```text
+```manuscript
 ListEntry: ListEntry[T]
 type parameters: T: Shareable
 field index: Int
@@ -67,7 +67,7 @@ field value: T
 
 Kind: interface.
 
-```text
+```manuscript
 Map: Map[T, U]
 type parameters: T: Hashable, U: Shareable
 operation clear: fn()->Map[T, U]
@@ -89,7 +89,7 @@ operation without: fn(key: T)->Map[T, U]
 
 Kind: record.
 
-```text
+```manuscript
 MapEntry: MapEntry[T, U]
 type parameters: T: Hashable, U: Shareable
 field key: T
@@ -100,7 +100,7 @@ field value: U
 
 Kind: interface.
 
-```text
+```manuscript
 Set: Set[T]
 type parameters: T: Shareable & Hashable
 operation clear: fn()->Set[T]
@@ -124,7 +124,7 @@ operation without: fn(value: T)->Set[T]
 
 Kind: fn.
 
-```text
+```manuscript
 at: fn(values: List[T], index: Int)->Optional[T]
 type parameters: T: Shareable
 ```
@@ -133,7 +133,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 contains: fn(values: List[T], value: T)->Bool
 type parameters: T: Shareable & Equal
 ```
@@ -142,7 +142,7 @@ type parameters: T: Shareable & Equal
 
 Kind: fn.
 
-```text
+```manuscript
 copy_within: fn(values: List[T], target: Int, start: Int, end: Int)->List[T]
 type parameters: T: Shareable
 ```
@@ -151,7 +151,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 difference: fn(left: Set[T], right: Set[T])->Set[T]
 type parameters: T: Hashable
 ```
@@ -160,7 +160,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 every: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
 type parameters: T: Shareable
 ```
@@ -169,7 +169,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 fill: fn(values: List[T], value: T, start: Int, end: Int)->List[T]
 type parameters: T: Shareable
 ```
@@ -178,7 +178,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 filled: fn(value: T, count: Int, max_items: Int)->Result[List[T], LibraryError]
 type parameters: T: Shareable
 ```
@@ -187,7 +187,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 filter: fn(values: List[T], predicate: fn(value: T)->Bool)->List[T]
 type parameters: T: Shareable
 ```
@@ -196,7 +196,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 find: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
 type parameters: T: Shareable
 ```
@@ -205,7 +205,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 find_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
 type parameters: T: Shareable
 ```
@@ -214,7 +214,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 find_last: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[T]
 type parameters: T: Shareable
 ```
@@ -223,7 +223,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 find_last_index: fn(values: List[T], predicate: fn(value: T)->Bool)->Optional[Int]
 type parameters: T: Shareable
 ```
@@ -232,7 +232,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 first: fn(values: List[T])->Optional[T]
 type parameters: T: Shareable
 ```
@@ -241,7 +241,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 flat_map: fn(values: List[T], transform: fn(value: T)->List[U])->List[U]
 type parameters: T: Shareable, U: Shareable
 ```
@@ -250,7 +250,7 @@ type parameters: T: Shareable, U: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 flatten: fn(values: List[List[T]])->List[T]
 type parameters: T: Shareable
 ```
@@ -259,7 +259,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 fold: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
 type parameters: T: Shareable, A
 ```
@@ -268,7 +268,7 @@ type parameters: T: Shareable, A
 
 Kind: fn.
 
-```text
+```manuscript
 fold_right: fn(values: List[T], initial: A, step: fn(accumulator: A, value: T)->A)->A
 type parameters: T: Shareable, A
 ```
@@ -277,7 +277,7 @@ type parameters: T: Shareable, A
 
 Kind: fn.
 
-```text
+```manuscript
 for_each: fn(values: List[T], operation: fn(value: T)->Unit)->Unit
 type parameters: T: Shareable
 ```
@@ -286,7 +286,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 group_by: fn(values: List[T], key: fn(value: T)->K)->Map[K, List[T]]
 type parameters: T: Shareable, K: Hashable
 ```
@@ -295,7 +295,7 @@ type parameters: T: Shareable, K: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 index_of: fn(values: List[T], value: T)->Optional[Int]
 type parameters: T: Shareable & Equal
 ```
@@ -304,7 +304,7 @@ type parameters: T: Shareable & Equal
 
 Kind: fn.
 
-```text
+```manuscript
 intersection: fn(left: Set[T], right: Set[T])->Set[T]
 type parameters: T: Hashable
 ```
@@ -313,7 +313,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 is_disjoint_from: fn(left: Set[T], right: Set[T])->Bool
 type parameters: T: Hashable
 ```
@@ -322,7 +322,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 is_empty: fn(values: List[T])->Bool
 type parameters: T: Shareable
 ```
@@ -331,7 +331,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 is_subset_of: fn(left: Set[T], right: Set[T])->Bool
 type parameters: T: Hashable
 ```
@@ -340,7 +340,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 is_superset_of: fn(left: Set[T], right: Set[T])->Bool
 type parameters: T: Hashable
 ```
@@ -349,7 +349,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 last: fn(values: List[T])->Optional[T]
 type parameters: T: Shareable
 ```
@@ -358,7 +358,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 last_index_of: fn(values: List[T], value: T)->Optional[Int]
 type parameters: T: Shareable & Equal
 ```
@@ -367,7 +367,7 @@ type parameters: T: Shareable & Equal
 
 Kind: fn.
 
-```text
+```manuscript
 list_entries: fn(values: List[T])->List[ListEntry[T]]
 type parameters: T: Shareable
 ```
@@ -376,7 +376,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 list_keys: fn(values: List[T])->List[Int]
 type parameters: T: Shareable
 ```
@@ -385,7 +385,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map: fn(values: List[T], transform: fn(value: T)->U)->List[U]
 type parameters: T: Shareable, U: Shareable
 ```
@@ -394,7 +394,7 @@ type parameters: T: Shareable, U: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map_clear: fn(values: Map[K, V])->Map[K, V]
 type parameters: K: Hashable, V: Shareable
 ```
@@ -403,7 +403,7 @@ type parameters: K: Hashable, V: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map_entries: fn(values: Map[K, V])->List[MapEntry[K, V]]
 type parameters: K: Hashable, V: Shareable
 ```
@@ -412,7 +412,7 @@ type parameters: K: Hashable, V: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map_for_each: fn(values: Map[K, V], operation: fn(key: K, value: V)->Unit)->Unit
 type parameters: K: Hashable, V: Shareable
 ```
@@ -421,7 +421,7 @@ type parameters: K: Hashable, V: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map_from_entries: fn(entries: List[MapEntry[K, V]])->Map[K, V]
 type parameters: K: Hashable, V: Shareable
 ```
@@ -430,7 +430,7 @@ type parameters: K: Hashable, V: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map_keys: fn(values: Map[K, V])->List[K]
 type parameters: K: Hashable, V: Shareable
 ```
@@ -439,7 +439,7 @@ type parameters: K: Hashable, V: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map_merge: fn(values: Map[K, V], other: Map[K, V])->Map[K, V]
 type parameters: K: Hashable, V: Shareable
 ```
@@ -448,7 +448,7 @@ type parameters: K: Hashable, V: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map_values: fn(values: Map[K, V])->List[V]
 type parameters: K: Hashable, V: Shareable
 ```
@@ -457,7 +457,7 @@ type parameters: K: Hashable, V: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map_with_default: fn(values: Map[K, V], key: K, value: V)->Map[K, V]
 type parameters: K: Hashable, V: Shareable
 ```
@@ -466,7 +466,7 @@ type parameters: K: Hashable, V: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 map_with_default_from: fn(values: Map[K, V], key: K, create: fn(key: K)->V)->Map[K, V]
 type parameters: K: Hashable, V: Shareable
 ```
@@ -475,7 +475,7 @@ type parameters: K: Hashable, V: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 prepend: fn(values: List[T], value: T)->List[T]
 type parameters: T: Shareable
 ```
@@ -484,7 +484,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 range: fn(start: Int, end: Int, step: Int, max_items: Int)->Result[List[Int], LibraryError]
 ```
 
@@ -492,7 +492,7 @@ range: fn(start: Int, end: Int, step: Int, max_items: Int)->Result[List[Int], Li
 
 Kind: fn.
 
-```text
+```manuscript
 reverse: fn(values: List[T])->List[T]
 type parameters: T: Shareable
 ```
@@ -501,7 +501,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 set_clear: fn(values: Set[T])->Set[T]
 type parameters: T: Hashable
 ```
@@ -510,7 +510,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 set_entries: fn(values: Set[T])->List[List[T]]
 type parameters: T: Hashable
 ```
@@ -519,7 +519,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 set_for_each: fn(values: Set[T], operation: fn(value: T)->Unit)->Unit
 type parameters: T: Hashable
 ```
@@ -528,7 +528,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 set_values: fn(values: Set[T])->List[T]
 type parameters: T: Hashable
 ```
@@ -537,7 +537,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 slice: fn(values: List[T], start: Int, end: Int)->List[T]
 type parameters: T: Shareable
 ```
@@ -546,7 +546,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 some: fn(values: List[T], predicate: fn(value: T)->Bool)->Bool
 type parameters: T: Shareable
 ```
@@ -555,7 +555,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 sort_ints: fn(values: List[Int])->List[Int]
 ```
 
@@ -563,7 +563,7 @@ sort_ints: fn(values: List[Int])->List[Int]
 
 Kind: fn.
 
-```text
+```manuscript
 sort_strings: fn(values: List[String])->List[String]
 ```
 
@@ -571,7 +571,7 @@ sort_strings: fn(values: List[String])->List[String]
 
 Kind: fn.
 
-```text
+```manuscript
 sorted: fn(values: List[T], compare: fn(left: T, right: T)->Int)->List[T]
 type parameters: T: Shareable
 ```
@@ -580,7 +580,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 symmetric_difference: fn(left: Set[T], right: Set[T])->Set[T]
 type parameters: T: Hashable
 ```
@@ -589,7 +589,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 to_set: fn(values: List[T])->Set[T]
 type parameters: T: Shareable & Hashable
 ```
@@ -598,7 +598,7 @@ type parameters: T: Shareable & Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 union: fn(left: Set[T], right: Set[T])->Set[T]
 type parameters: T: Hashable
 ```
@@ -607,7 +607,7 @@ type parameters: T: Hashable
 
 Kind: fn.
 
-```text
+```manuscript
 with_value: fn(values: List[T], index: Int, value: T)->List[T]
 type parameters: T: Shareable
 ```
@@ -616,7 +616,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 with_values: fn(values: List[T], start: Int, delete_count: Int, replacement: List[T])->List[T]
 type parameters: T: Shareable
 ```
@@ -625,7 +625,7 @@ type parameters: T: Shareable
 
 Kind: fn.
 
-```text
+```manuscript
 without: fn(values: List[T], index: Int)->List[T]
 type parameters: T: Shareable
 ```

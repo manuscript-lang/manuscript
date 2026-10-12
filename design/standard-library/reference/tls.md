@@ -10,7 +10,7 @@ Import each required symbol with `import Name from "@std/tls.ms"`.
 
 Kind: record.
 
-```text
+```manuscript
 CertificateInfo: CertificateInfo
 field subject: String
 field issuer: String
@@ -24,7 +24,7 @@ field der: Bytes
 
 Kind: record.
 
-```text
+```manuscript
 TlsInfo: TlsInfo
 field version: Int
 field cipher_suite: Int
@@ -37,7 +37,7 @@ field verified: Bool
 
 Kind: record.
 
-```text
+```manuscript
 TlsOptions: TlsOptions
 field server_name: String
 field roots_pem: String
@@ -51,7 +51,7 @@ field require_client_certificate: Bool
 
 Kind: fn.
 
-```text
+```manuscript
 parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[CertificateInfo], LibraryError]
 ```
 
@@ -59,7 +59,7 @@ parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[Certific
 
 Kind: fn.
 
-```text
+```manuscript
 verify_certificates: fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)->Result[Unit, LibraryError]
 ```
 

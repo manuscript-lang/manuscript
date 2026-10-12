@@ -25,7 +25,7 @@ A text literal starts and ends with `"` and occupies one physical source line, i
 
 Scalar escapes accept uppercase or lowercase hexadecimal digits. Values above U+10FFFF and surrogates U+D800 through U+DFFF are compile errors. Unknown escapes, an unescaped closing brace, and an unterminated literal are compile errors. A brace inside a scalar escape belongs to that escape, not to interpolation. Null can be written as `\u{0}`; it remains valid String and is not a string terminator.
 
-```text
+```manuscript
 let quote = "She said \"hello\"."
 let template = "Literal braces: \{name\}"
 let lines = "first\nsecond"
@@ -38,7 +38,7 @@ These are function-body fragments. String is stored and compared without implici
 
 An unescaped `{` opens an embedded expression, and its matching `}` closes it. Interpolation uses the ordinary [expression grammar](expressions.md), including calls and nested text literals. The scanner balances expression delimiters and recognizes text escapes/nested text literals; braces inside a nested literal do not terminate the enclosing expression. Empty expressions, interpolation format suffixes, comments within the embedded expression, and physical newlines inside an interpolated literal are rejected. A function expression with a statement suite consequently cannot appear inside interpolation.
 
-```text
+```manuscript
 let name = "Ada"
 let count = 3
 let greeting = "Welcome, {name}!"

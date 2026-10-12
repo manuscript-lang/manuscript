@@ -15,7 +15,7 @@ The selected entry module must export exactly one nongeneric main with that para
 
 `Process` is a standard immutable record:
 
-```text
+```manuscript
 type Process:
     arguments: List[String]
     environment: Map[String, String]
@@ -40,7 +40,7 @@ The host creates Files, Clock, and stdio behind shared views. Those field types 
 
 Importing an interface supplies no authority. Files, clock, stdio, and environment arrive only through Process. The host closes roots after main and its scoped services finish; the application registers acquired files with `with`. Early root-stream closure affects every alias.
 
-```text
+```manuscript
 import Process from "@std/cli.ms"
 
 export fn main(process: Process) -> Int:

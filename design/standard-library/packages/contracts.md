@@ -21,7 +21,7 @@ Sequential callbacks run under the caller's execution context and may wait for o
 
 Import `LibraryError` from `@std/errors.ms`. It has these cases:
 
-```text
+```manuscript
 type LibraryError:
     case InvalidInput
     case InvalidData
