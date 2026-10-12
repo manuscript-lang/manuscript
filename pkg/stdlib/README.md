@@ -1,6 +1,6 @@
 # Standard-library declarations
 
-The `.ms` files here define public types, fields, cases, function signatures, and receiver operations. The compiler reads this pinned source directly. Go supplies the native implementations; integration tests check that their calling signatures agree with the Manuscript declarations.
+The `.ms` files here define public types, fields, cases, function signatures, and receiver operations. The compiler reads this pinned source directly. Modules with ordinary function or implementation bodies are written in Manuscript and checked and lowered with each importing program. Go supplies the native implementations for declaration-only modules; integration tests check that their calling signatures agree with the Manuscript declarations.
 
 ## Which file defines what?
 
@@ -10,6 +10,8 @@ The `.ms` files here define public types, fields, cases, function signatures, an
 - Native receiver signatures appear once, on their type or intrinsic interface. TaskGroup and Task[T] use ordinary generic declarations; no private free-function declarations are needed for their implementations.
 
 These files use ordinary Manuscript syntax. Runtime functions and receiver operations have empty function bodies, written with the usual colon, such as `export fn commands() -> Commands:`. Opaque type schemas use empty declarations such as `export type Duration:`. Interface signatures remain signatures, and `bindings.json` maps the declarations to native implementations. The checker verifies implementation rules and native signatures. There is no library-only parser mode or `native` keyword. Ordinary record fields may have default expressions.
+
+Modules with executable bodies use the ordinary checker and need no entries in `bindings.json`. Imports include their reachable source implementations once, with the same public visibility and type identities as application modules.
 
 ## Editor navigation
 

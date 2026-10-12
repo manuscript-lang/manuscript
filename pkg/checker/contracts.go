@@ -549,6 +549,12 @@ func (c *checker) layout(t *Type, pos syntax.Position, active map[string]*Type, 
 	if t == nil || t.Kind == "function" || t.Kind == "contract" || t.Kind == "variable" {
 		return
 	}
+	if std(t, "List") || std(t, "Set") || std(t, "Map") {
+		for _, a := range t.Args {
+			c.layout(a, pos, active, true)
+		}
+		return
+	}
 	if previous := active[t.ID]; previous != nil {
 		if !Same(previous, t) {
 			c.error(pos, "type", "recursive generic applications must preserve their parameters")
@@ -563,12 +569,6 @@ func (c *checker) layout(t *Type, pos syntax.Position, active map[string]*Type, 
 	}
 	active[t.ID] = t
 	defer delete(active, t.ID)
-	if std(t, "List") || std(t, "Set") || std(t, "Map") {
-		for _, a := range t.Args {
-			c.layout(a, pos, active, true)
-		}
-		return
-	}
 	for _, f := range Fields(t) {
 		c.layout(f.Type, pos, active, indirect)
 	}

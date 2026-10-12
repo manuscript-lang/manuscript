@@ -55,7 +55,8 @@ func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program
 	return CheckWithOptions(modules, imports, CheckOptions{})
 }
 func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
-	p := &Program{Flow: map[*syntax.Statement]Flow{}, TypeReferences: map[*syntax.Type]*Type{}, Scopes: map[*syntax.Expression]ScopeState{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
+	modules, dependencyDiagnostics := sourceStandardDependencies(modules)
+	p := &Program{Diagnostics: dependencyDiagnostics, Flow: map[*syntax.Statement]Flow{}, TypeReferences: map[*syntax.Type]*Type{}, Scopes: map[*syntax.Expression]ScopeState{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
 	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
 	for _, module := range modules {
 		for _, d := range module.Declarations {
@@ -93,7 +94,14 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 		for _, item := range module.Imports {
 			var found *Symbol
 			if strings.HasPrefix(item.Path, "@std/") {
-				found = standardModules[item.Path][item.Name]
+				if standardSourceModules[item.Path] != nil {
+					found = p.Symbols[item.Path][item.Name]
+					if found != nil && found.Module != item.Path {
+						found = nil
+					}
+				} else {
+					found = standardModules[item.Path][item.Name]
+				}
 			} else {
 				found = p.Symbols[imports[item]][item.Name]
 			}

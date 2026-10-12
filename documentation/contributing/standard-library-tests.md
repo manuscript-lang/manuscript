@@ -5,7 +5,7 @@ weight = 5
 
 # Standard-library tests
 
-Standard-library fixtures in `tests/e2e/testdata/stdlib/*.ms` use Manuscript test blocks to exercise codecs, numeric boundaries, Unicode, collection mutation, formats, optional budgets, files, scheduling, and loopback networking. The native harness builds and runs them through checked declarations and runtime dispatch.
+Standard-library fixtures in `tests/e2e/testdata/stdlib/*.ms` use Manuscript test blocks to exercise codecs, numeric boundaries, Unicode, collection mutation, formats including YAML and TOML, optional budgets, files, scheduling, and loopback networking. The native harness builds and runs them through checked declarations and runtime dispatch.
 
 ```sh
 make stdlib-check

@@ -14,7 +14,7 @@ Start a [command-line program](cli.md) to use those services in an application.
 - [Text and collections](data.md)
 - [Building values](builders.md)
 - [Numbers and mathematics](math.md)
-- [Data formats](formats.md): JSON, CSV, URLs, and HTML
+- [Data formats](formats.md): JSON, YAML, TOML, CSV, URLs, and HTML
 - [Compression and archives](archive.md)
 
 ## Read, write, and connect

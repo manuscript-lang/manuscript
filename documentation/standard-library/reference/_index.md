@@ -48,6 +48,8 @@ See [special call rules](../call-rules.md) for constructors, generic receiver me
 - [@std/tasks.ms](tasks.md)
 - [@std/time.ms](time.md)
 - [@std/tls.ms](tls.md)
+- [@std/toml.ms](toml.md)
 - [@std/url.ms](url.md)
 - [@std/websocket.ms](websocket.md)
+- [@std/yaml.ms](yaml.md)
 - [prelude](prelude.md)
