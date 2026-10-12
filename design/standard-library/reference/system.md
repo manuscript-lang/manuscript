@@ -9,18 +9,18 @@ Import each required symbol with `import Name from "@std/system.ms"`.
 ## System {data-api-kind="Interface"}
 
 ```manuscript
-System: System
-operation environment: fn(name: String)->Optional[String]
-operation info: fn()->SystemInfo
-operation working_directory: fn()->String
+interface System:
+    fn environment(name: String) -> Optional[String]
+    fn info() -> SystemInfo
+    fn working_directory() -> String
 ```
 
 ## SystemInfo {data-api-kind="Record"}
 
 ```manuscript
-SystemInfo: SystemInfo
-field os: String
-field architecture: String
-field cpu_count: Int
+type SystemInfo:
+    os: String
+    architecture: String
+    cpu_count: Int
 ```
 

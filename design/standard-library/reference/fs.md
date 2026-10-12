@@ -9,38 +9,38 @@ Import each required symbol with `import Name from "@std/fs.ms"`.
 ## DirectoryEntry {data-api-kind="Record"}
 
 ```manuscript
-DirectoryEntry: DirectoryEntry
-field name: String
-field directory: Bool
-field symlink: Bool
+type DirectoryEntry:
+    name: String
+    directory: Bool
+    symlink: Bool
 ```
 
 ## FileInfo {data-api-kind="Record"}
 
 ```manuscript
-FileInfo: FileInfo
-field name: String
-field size: Int
-field directory: Bool
-field symlink: Bool
-field modified: Timestamp
+type FileInfo:
+    name: String
+    size: Int
+    directory: Bool
+    symlink: Bool
+    modified: Timestamp
 ```
 
 ## FileSystem {data-api-kind="Interface"}
 
 ```manuscript
-FileSystem: FileSystem
-operation canonicalize: fn(path: String)->Result[String, LibraryError]
-operation copy_file: fn(source: String, destination: String, replace: Bool, max_bytes: Int)->Result[Unit, LibraryError]
-operation create_directory: fn(path: String, recursive: Bool)->Result[Unit, LibraryError]
-operation create_link: fn(path: String, target: String)->Result[Unit, LibraryError]
-operation list: fn(path: String, max_entries: Int)->Result[List[DirectoryEntry], LibraryError]
-operation read_file: fn(path: String, max_bytes: Int)->Result[Bytes, LibraryError]
-operation read_link: fn(path: String)->Result[String, LibraryError]
-operation remove: fn(path: String, recursive: Bool)->Result[Unit, LibraryError]
-operation rename: fn(source: String, destination: String)->Result[Unit, LibraryError]
-operation stat: fn(path: String, follow_links: Bool)->Result[FileInfo, LibraryError]
-operation temporary_directory: fn(prefix: String)->Result[String, LibraryError]
-operation write_file: fn(path: String, data: Bytes, replace: Bool)->Result[Unit, LibraryError]
+interface FileSystem:
+    fn canonicalize(path: String) -> Result[String, LibraryError]
+    fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Int) -> Result[Unit, LibraryError]
+    fn create_directory(path: String, recursive: Bool) -> Result[Unit, LibraryError]
+    fn create_link(path: String, target: String) -> Result[Unit, LibraryError]
+    fn list(path: String, max_entries: Int) -> Result[List[DirectoryEntry], LibraryError]
+    fn read_file(path: String, max_bytes: Int) -> Result[Bytes, LibraryError]
+    fn read_link(path: String) -> Result[String, LibraryError]
+    fn remove(path: String, recursive: Bool) -> Result[Unit, LibraryError]
+    fn rename(source: String, destination: String) -> Result[Unit, LibraryError]
+    fn stat(path: String, follow_links: Bool) -> Result[FileInfo, LibraryError]
+    fn temporary_directory(prefix: String) -> Result[String, LibraryError]
+    fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, LibraryError]
 ```
 
