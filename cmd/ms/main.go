@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 )
@@ -35,8 +36,8 @@ doc    Generate public module docs or the bundled stdlib reference (ms doc --hel
 stdlib Materialize standard .ms declarations: ms stdlib <directory>
 lock   Explicitly pin the compiler/runtime, Go toolchain, and target in ms.lock
 
-The Go toolchain is required for build, run, and test.
-Set MANUSCRIPT_GO to select its executable.
+build, run, test, and lock use the bundled toolchain; no Go installation is needed.
+Set MANUSCRIPT_GO to explicitly use a different Go executable.
 `
 
 func main() { os.Exit(run(os.Args[1:])) }
@@ -299,6 +300,9 @@ func run(args []string) int {
 	case "build":
 		if output == "" {
 			output = "program"
+			if runtime.GOOS == "windows" {
+				output += ".exe"
+			}
 		}
 		absolute, err := filepath.Abs(output)
 		if err == nil {
@@ -325,6 +329,9 @@ func run(args []string) int {
 		if command == "profile" {
 			executable = filepath.Join(output, "program")
 		}
+		if runtime.GOOS == "windows" {
+			executable += ".exe"
+		}
 		cache := ""
 		if result.ProjectRoot != "" {
 			cache = filepath.Join(result.ProjectRoot, ".ms-cache")
@@ -334,7 +341,7 @@ func run(args []string) int {
 			return 1
 		}
 		if command == "profile" {
-			manifest, _ := json.MarshalIndent(map[string]any{"format": 1, "source_root": result.SourceRoot, "executable": "program", "inspection": "inspection.json", "cpu_profile": "cpu.pprof", "heap_profile": "heap.pprof", "trace": "trace.out"}, "", "  ")
+			manifest, _ := json.MarshalIndent(map[string]any{"format": 1, "source_root": result.SourceRoot, "executable": filepath.Base(executable), "inspection": "inspection.json", "cpu_profile": "cpu.pprof", "heap_profile": "heap.pprof", "trace": "trace.out"}, "", "  ")
 			if err := os.WriteFile(filepath.Join(output, "manifest.json"), manifest, 0600); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				return 1

@@ -5,16 +5,30 @@ weight = 1
 
 # Get started
 
-Install Go 1.25 or newer and clone the repository. Run these commands from its root:
+Download and extract the archive for your operating system and architecture from
+[Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases).
+The `ms` binary includes the compiler, its native build tools, and all native build
+dependencies. You do not need to install Go or download packages to build, run,
+or test Manuscript programs. You can copy `ms` (`ms.exe` on Windows) anywhere on
+`PATH` without companion files. It automatically prepares its embedded build
+payload in the user cache on first native use. CGO is disabled.
+
+Run these commands from the extracted directory. In Windows PowerShell, replace
+`./ms` with `.\ms.exe`:
 
 ```sh
-go build -o ms ./cmd/ms
 ./ms check examples/hello/ms.toml
 ./ms lock examples/hello/ms.toml
 ./ms run examples/hello/ms.toml -- first second
 ```
 
 The program prints `Arguments: 2`. The lock command pins the compiler, runtime, Go toolchain, and target; rerun it after changing those inputs.
+
+If you prefer a source checkout on macOS or Linux, clone the repository and run
+`make build`. The first build downloads and verifies Go into `toolchain/go/`
+automatically; later builds reuse it. Make, curl, tar, and a SHA-256 utility are
+needed for this initial setup. The resulting `./ms` embeds only the native build
+tools and references Manuscript needs and runs independently of the checkout.
 
 ## Your first application
 
@@ -41,12 +55,18 @@ Indentation defines blocks. A function with one parameter permits calls such as 
 ```sh
 ./ms build examples/hello/ms.toml -o hello
 ./hello first second
+./ms test examples/hello/test.ms
 ./ms emit examples/hello/ms.toml -o main.go
 ./ms inspect examples/hello/ms.toml -o inspection.json
 ./ms diagram examples/hello/ms.toml -o calls.mmd
 ```
 
 `build` produces a native executable. `emit` exposes the generated Go program. `inspect` produces structured source information; `diagram` captures static calls. To check formatting, run `./ms fmt examples/hello/src/main.ms --check`.
+
+Built executables run independently of the Manuscript installation. Native
+compilation uses the embedded build tools automatically. `MANUSCRIPT_GO`
+explicitly selects an alternative Go executable. `MANUSCRIPT_CACHE_DIR` selects
+a different writable cache directory.
 
 ## Generate API documentation
 

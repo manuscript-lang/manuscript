@@ -12,7 +12,6 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -139,10 +138,6 @@ func buildNative(source, output string, debug bool) error {
 	if err := os.WriteFile(filename, []byte(standalone), 0600); err != nil {
 		return err
 	}
-	tool := os.Getenv("MANUSCRIPT_GO")
-	if tool == "" {
-		tool = "go"
-	}
 	arguments := []string{"build", "-mod=vendor"}
 	if !debug {
 		arguments = append(arguments, "-trimpath")
@@ -151,9 +146,11 @@ func buildNative(source, output string, debug bool) error {
 		arguments = append(arguments, "-gcflags=all=-N -l")
 	}
 	arguments = append(arguments, "-o", output, filename)
-	command := exec.Command(tool, arguments...)
+	command, err := goCommand(arguments...)
+	if err != nil {
+		return err
+	}
 	command.Dir = dir
-	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	data, err := command.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("Go build failed: %w\n%s", err, data)

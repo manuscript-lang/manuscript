@@ -15,7 +15,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -65,12 +64,10 @@ func implementationDigest() string {
 	return digest([]byte(data.String()))
 }
 func CurrentPin() (BuildPin, error) {
-	tool := os.Getenv("MANUSCRIPT_GO")
-	if tool == "" {
-		tool = "go"
+	command, err := goCommand("env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOFLAGS", "GOAMD64", "GOARM", "GOARM64", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM")
+	if err != nil {
+		return BuildPin{}, err
 	}
-	command := exec.Command(tool, "env", "-json", "GOVERSION", "GOOS", "GOARCH", "CGO_ENABLED", "GOEXPERIMENT", "GOFLAGS", "GOAMD64", "GOARM", "GOARM64", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOWASM")
-	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	data, err := command.CombinedOutput()
 	if err != nil {
 		return BuildPin{}, fmt.Errorf("read Go toolchain: %w: %s", err, data)

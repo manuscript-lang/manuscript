@@ -7,15 +7,28 @@ weight = 1
 
 [Book index](_index.md)
 
-This walkthrough uses the hello project included in the repository. You need a local checkout and Go 1.25 or newer. Run the commands from the repository root. You do not need Hugo to compile Manuscript programs.
+This walkthrough uses the hello project included in
+[Manuscript release archives](https://github.com/manuscript-lang/manuscript/releases)
+and the repository. Download and extract the archive for your OS and architecture,
+or build from a source checkout as described below. `ms` embeds its native build
+tools and needs no separate Go installation. Run the commands from the extracted
+directory or repository root. In Windows PowerShell, use `.\\ms.exe` instead of
+`./ms`. You do not need Hugo to compile Manuscript programs.
 
-## 1. Build the command-line tool
+## 1. Get the command-line tool
+
+Release archives already contain the self-contained `ms` binary. To build it
+from a source checkout on macOS or Linux:
 
 ```sh
-go build -o ms ./cmd/ms
+make build
 ```
 
-This creates the `ms` executable in the current directory. If Go is not found or is too old, install Go 1.25 or newer and make sure `go version` reports that version before continuing.
+This downloads and verifies the pinned Go SDK locally on first use and creates
+the self-contained `ms` executable. Initial setup needs Make, curl, tar, a SHA-256
+utility, and Internet access. You can then copy only `ms` anywhere on `PATH`.
+Its first native command unpacks the reduced embedded build payload into the user
+cache; later commands reuse it without downloads. Native compilation disables CGO.
 
 ## 2. Check the example and pin its build tools
 
@@ -86,7 +99,10 @@ Four spaces start each nested block. Functions with multiple parameters name eve
 
 You should see the same output. `ms run` builds and runs a temporary executable; `ms build` leaves an executable you can run again.
 
-Native builds bundle the pinned dependencies. If Go is installed outside `PATH`, set `MANUSCRIPT_GO` to its executable path. For other commands and development checks, see the [repository README](https://github.com/manuscript-lang/manuscript/blob/main/README.md).
+Native builds bundle their pinned dependencies. `MANUSCRIPT_CACHE_DIR` selects
+a different writable cache directory. `MANUSCRIPT_GO` explicitly selects an
+alternative Go executable. For other commands and development checks, see the
+[repository README](https://github.com/manuscript-lang/manuscript/blob/main/README.md).
 
 ## Where to go next
 
