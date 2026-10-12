@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/manuscript-lang/manuscript/lexer"
 	"github.com/manuscript-lang/manuscript/syntax"
 	"strings"
 )
@@ -16,21 +17,24 @@ func ParsePartial(file, source string) (*syntax.Module, []syntax.Diagnostic) {
 	diagnostics := []syntax.Diagnostic{}
 	starts := []int{}
 	offset := 0
-	groupedImport := false
 	for _, line := range strings.SplitAfter(source, "\n") {
 		trimmed := strings.TrimSpace(line)
-		declaration := false
-		for _, keyword := range []string{"import ", "export ", "fn ", "type ", "interface ", "impl ", "test "} {
-			declaration = declaration || strings.HasPrefix(trimmed, keyword)
-		}
-		continuation := groupedImport && !declaration
-		if declaration {
-			groupedImport = strings.HasPrefix(trimmed, "import {")
-		}
-		if strings.Contains(trimmed, "}") {
-			groupedImport = false
-		}
-		if !continuation && len(line) > 0 && line[0] != ' ' && line[0] != '\t' && trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+		if len(line) > 0 && line[0] != ' ' && line[0] != '\t' && trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+			declaration := false
+			for _, keyword := range []string{"import ", "export ", "fn ", "type ", "interface ", "impl ", "test "} {
+				declaration = declaration || strings.HasPrefix(trimmed, keyword)
+			}
+			// A fresh declaration synchronizes even after an unmatched opener.
+			// Other column-zero lines can still belong to a continued header,
+			// import, or expression. Let the lexer handle strings and comments
+			// rather than counting delimiter characters in source text.
+			if !declaration && len(starts) > 0 {
+				_, err := lexer.Lex(file, source[starts[len(starts)-1]:offset])
+				if issue, ok := err.(syntax.Diagnostic); ok && issue.Message == "unterminated delimiter" {
+					offset += len(line)
+					continue
+				}
+			}
 			starts = append(starts, offset)
 		}
 		offset += len(line)
