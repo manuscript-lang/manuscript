@@ -658,6 +658,13 @@ func RunTests(tests []Test) int {
 			}()
 			func() {
 				execution := RootExecution()
+				if err := execution.Host.initialize(); err != nil {
+					Panic(err.Error())
+				}
+				defer Cleanup(execution, hostValue(execution, "stdin"))
+				defer Cleanup(execution, hostValue(execution, "stdout"))
+				defer Cleanup(execution, hostValue(execution, "stderr"))
+				defer Cleanup(execution, hostValue(execution, "network"))
 				defer FinishExecution(execution)
 				Invoke(execution, test.Run, nil)
 			}()

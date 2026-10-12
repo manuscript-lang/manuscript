@@ -49,3 +49,7 @@ export interface Timer:
 
 export fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
 export fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
+
+export fn clock() -> Clock
+
+export fn wall_clock() -> WallClock

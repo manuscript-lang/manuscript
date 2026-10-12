@@ -196,6 +196,31 @@ func TestCompilerPublicAPIs(t *testing.T) {
 	}
 }
 
+func TestParameterlessEntrySignature(t *testing.T) {
+	for _, spec := range []struct {
+		name, source string
+		accepted     bool
+	}{
+		{"parameterless", "export fn main() -> Int:\n    return 0\n", true},
+		{"parameter", "export fn main(value: Int) -> Int:\n    return value\n", false},
+		{"default parameter", "export fn main(value: Int = 0) -> Int:\n    return value\n", false},
+		{"generic", "export fn main[T]() -> Int:\n    return 0\n", false},
+		{"internal", "fn main() -> Int:\n    return 0\n", false},
+		{"unit result", "export fn main() -> Unit:\n    return\n", false},
+		{"missing", "fn helper() -> Int:\n    return 0\n", false},
+	} {
+		t.Run(spec.name, func(t *testing.T) {
+			result := compiler.CompileSource("entry.ms", spec.source, compiler.Options{Entry: true})
+			if result.Success() != spec.accepted {
+				t.Fatalf("accepted=%v: %v", result.Success(), result.Diagnostics)
+			}
+			if !spec.accepted && (len(result.Diagnostics) != 1 || result.Diagnostics[0].Message != "entry must export fn main() -> Int") {
+				t.Fatalf("wrong entry diagnostic: %v", result.Diagnostics)
+			}
+		})
+	}
+}
+
 func write(t *testing.T, root, path, text string) {
 	t.Helper()
 	target := filepath.Join(root, path)
@@ -210,7 +235,7 @@ func TestModulesAndProjectPaths(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "ms.toml", "[project]\nname = \"example\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n[aliases]\n\"@domain\" = \"./src/domain\"\n\"@value\" = \"./src/domain/value.ms\"\n")
 	write(t, root, "src/domain/value.ms", "export type Identity:\n    value: Int\n\nexport fn read(value: Identity) -> Int:\n    return value.value\n")
-	write(t, root, "src/main.ms", "import Identity from \"@value\"\nimport read from \"@domain/value.ms\"\nimport Process from \"@std/cli.ms\"\n\nexport fn main(process: Process) -> Int:\n    return read(value: Identity(value: 0))\n")
+	write(t, root, "src/main.ms", "import Identity from \"@value\"\nimport read from \"@domain/value.ms\"\n\nexport fn main() -> Int:\n    return read(value: Identity(value: 0))\n")
 	result := compiler.CompileFile(filepath.Join(root, "ms.toml"), compiler.Options{})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
@@ -392,7 +417,7 @@ fn make[T: File](resources: List[T]) -> Unit:
 func TestPinsNativeCacheAndBuildMetadata(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "ms.toml", "[project]\nname = \"cache\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n")
-	source := "import Process from \"@std/cli.ms\"\nexport fn main(process: Process) -> Int:\n    return 0\n"
+	source := "export fn main() -> Int:\n    return 0\n"
 	write(t, root, "src/main.ms", source)
 	result := compiler.CompileFile(filepath.Join(root, "ms.toml"), compiler.Options{})
 	if !result.Success() {
@@ -558,7 +583,7 @@ func TestGroupedImportResolutionErrors(t *testing.T) {
 
 func TestNativeProfilesAndDebugSources(t *testing.T) {
 	root := t.TempDir()
-	source := "import Process from \"@std/cli.ms\"\nexport fn main(process: Process) -> Int:\n    return 0\n"
+	source := "export fn main() -> Int:\n    return 0\n"
 	write(t, root, "main.ms", source)
 	cpu := filepath.Join(root, "cpu.pprof")
 	heap := filepath.Join(root, "heap.pprof")

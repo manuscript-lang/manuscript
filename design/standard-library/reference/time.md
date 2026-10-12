@@ -68,6 +68,12 @@ interface WallClock:
 fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
 ```
 
+## clock {data-api-kind="Function"}
+
+```manuscript
+fn clock() -> Clock
+```
+
 ## difference {data-api-kind="Function"}
 
 ```manuscript
@@ -120,5 +126,11 @@ fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
 
 ```manuscript
 fn unix_seconds(value: Timestamp) -> Int
+```
+
+## wall_clock {data-api-kind="Function"}
+
+```manuscript
+fn wall_clock() -> WallClock
 ```
 

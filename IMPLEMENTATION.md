@@ -29,7 +29,7 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 | Queues and synchronization | Local FIFO queues with optional capacity, immediate full/empty results and explicit synchronization for shared use; Synchronized values with cancellable lock acquisition, scoped guards, atomic get/set, stale-alias checks, and reentry detection |
 | Pools and leases | Fixed resource pools, cancellable acquisition, guarded contract views, stale-alias rejection, single capacity return, operation cancellation/joining, and reverse owned-resource release |
 | Builders | Synchronized List/Map/Set/Bytes/String builders, sealed builder results, idempotent freeze, and rejection of mutation after sealing |
-| CLI capabilities | Explicit Process arguments/environment, streams, read-only files, monotonic clock, network, commands, checked exit codes, signal cancellation, joined shutdown, and host-root cleanup |
+| CLI capabilities | Imported host arguments/environment, streams, read-only files, monotonic clock, network, commands, checked exit codes, signal cancellation, joined shutdown, and host-root cleanup |
 | HTTP | Explicit Network authority; bounded buffered requests/responses, ordinary handlers, admission/body/output limits, timeout/disconnect cancellation, fault isolation, and grace/cancel/join shutdown |
 | Subprocesses | Explicit Commands authority, joined execution, timeout, aggregate output bounds, captured bytes, exit status, and domain errors; process-group cancellation on platforms exposing that facility |
 | General-purpose packages | Strict codecs/binary numbers, scalar text, Float math/BigInt, exact JSON, CSV/URL/HTML, sequential collection algorithms, hashes/HMAC/PBKDF2/AES-GCM/Ed25519, compression and ZIP/TAR, bounded stream helpers, structured logging |
@@ -43,7 +43,7 @@ After checking source, the backend translates functions and control flow into Go
 
 ## Commands, builds, and source tools
 
-`ms check`, `build`, `emit`, `run`, `test`, `inspect`, and `diagram` accept a module or project `ms.toml`. Project configuration supports `[project]` and `[aliases]` with strict keys. Standalone modules use their containing directory as the import root. Applications export nongeneric `fn main(process: Process) -> Int`.
+`ms check`, `build`, `emit`, `run`, `test`, `inspect`, and `diagram` accept a module or project `ms.toml`. Project configuration supports `[project]` and `[aliases]` with strict keys. Standalone modules use their containing directory as the import root. Applications export nongeneric `fn main() -> Int`.
 
 ### Pins and artifact identity
 
@@ -75,7 +75,7 @@ single binary, examples, and licenses for Linux, macOS, and Windows on AMD64 and
 
 ### Test execution
 
-`ms test` executes test blocks in the reachable import graph in dependency/source order with `file::name` labels. Each test has a fresh execution lifetime; services join before the next test. Faults fail that test and remaining tests continue. Builds check test bodies but omit their execution code. Duplicate display names are allowed. Tests have no implicit Process authority. Declaration-only fixtures establish parse/check/build acceptance, not behavior of uncalled functions.
+`ms test` executes test blocks in the reachable import graph in dependency/source order with `file::name` labels. Each test has a fresh execution lifetime; services join before the next test. Faults fail that test and remaining tests continue. Builds check test bodies but omit their execution code. Duplicate display names are allowed. Tests can import host service accessors; each test has fresh roots and an empty argument list. Declaration-only fixtures establish parse/check/build acceptance, not behavior of uncalled functions.
 
 ## Remaining design work
 

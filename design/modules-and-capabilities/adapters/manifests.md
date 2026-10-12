@@ -15,7 +15,7 @@ A local adapter ships a `.ms` interface module containing exported data and cont
 
 Each interface module generates a separate Go schema package. The native adapter imports schemas and runtime; the application imports schemas, adapters, and runtime. Schemas never import adapters or application packages. Standard schemas belong to the pinned standard-library/runtime distribution. This prevents Go import cycles. An application contract over application Money types can have source implementations or explicitly wrap an adapter interface using data conversion, but cannot directly bind a separately compiled native adapter to application types.
 
-Native receivers remain opaque. The host creates them and exposes contract views. Source fakes implement the interface contract for their own concrete type under ordinary coherence. The standard CLI host supplies only its enumerated roots; custom host construction still needs a concrete contract.
+Native receivers remain opaque. The host creates them and exposes contract views. Source fakes implement the interface contract for their own concrete type under ordinary coherence. The standard CLI host supplies its enumerated roots through imported accessors; custom host construction still needs a concrete contract.
 
 ## Manifest version 1
 

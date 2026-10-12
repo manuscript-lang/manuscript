@@ -37,4 +37,4 @@ Submitting work to a `Background` service instead chooses that service's fixed l
 
 See [parallel operations](../../concurrency/parallel.md), [fixed work lifetimes](../../concurrency/_index.md#fixed-lifetimes), and [derived effects](../capabilities/effects.md).
 
-[Previous: Modules, exports, and imports](declarations.md) · [Next: Explicit capability authority](../capabilities/authority.md)
+[Previous: Modules, exports, and imports](declarations.md) · [Next: Host services and capability values](../capabilities/authority.md)

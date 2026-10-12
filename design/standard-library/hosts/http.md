@@ -21,7 +21,7 @@ Server shutdown stops request admission, allows a configured grace period, cance
 
 ## Bounded request API
 
-`@std/http.ms` exports `Network`, `HttpServer`, `HttpRequest`, and `HttpResponse`. The CLI host supplies `process.network: Network`; source cannot manufacture native network authority.
+`@std/http.ms` exports `Network`, `HttpServer`, `HttpRequest`, and `HttpResponse`. The imported `network() -> Network` accessor returns the current execution's host network service.
 
 ```manuscript
 type HttpRequest:

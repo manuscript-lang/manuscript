@@ -162,3 +162,5 @@ export type GlobOptions:
 
 impl Error for FileSystemError:
     fn message() -> String
+
+export fn filesystem() -> FileSystem

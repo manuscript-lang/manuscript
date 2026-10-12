@@ -67,7 +67,7 @@ Adding the canonical List or Result import rejects its collision with the local 
 
 Preserve the imported parallel/Background callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, Background, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
 
-Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a module path, a missing standard file/export, and paths or symlinks escaping the standard-library directory. Resolving a standard module in two installation directories with identical pinned contents preserves identity; changing its pinned distribution invalidates module/analysis/code-generation caches. Adapter interfaces may import standard declarations but cannot use that exception to import application files. Imports alone acquire no external authority.
+Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a module path, a missing standard file/export, and paths or symlinks escaping the standard-library directory. Resolving a standard module in two installation directories with identical pinned contents preserves identity; changing its pinned distribution invalidates module/analysis/code-generation caches. Adapter interfaces may import standard declarations but cannot use that exception to import application files. Importing contract types does not obtain service values; explicitly imported host accessors return the current execution's services when called.
 
 ## Error adaptation and inferred packs
 

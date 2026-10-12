@@ -42,7 +42,7 @@ type Background struct {
 }
 
 func inherit(parent *Execution, ctx context.Context) *Execution {
-	return &Execution{Context: ctx, Owners: parent.Owners, Leases: parent.Leases, HostServices: parent.HostServices, Lifetime: parent.Lifetime}
+	return &Execution{Context: ctx, Owners: parent.Owners, Leases: parent.Leases, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
 }
 func owned(parent *Execution, ctx context.Context, owner *Background) *Execution {
 	owners := map[*Background]bool{}
@@ -50,7 +50,7 @@ func owned(parent *Execution, ctx context.Context, owner *Background) *Execution
 		owners[key] = value
 	}
 	owners[owner] = true
-	return &Execution{Context: ctx, Owners: owners, Leases: parent.Leases, HostServices: parent.HostServices, Lifetime: parent.Lifetime}
+	return &Execution{Context: ctx, Owners: owners, Leases: parent.Leases, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
 }
 func NewBackground(ctx *Execution, args []Argument) Value {
 	limit, historyLimit := int64(0), int64(128)

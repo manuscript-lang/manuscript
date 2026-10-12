@@ -69,7 +69,7 @@ import Result from "@std/result.ms"
 import parallel from "@std/tasks.ms"
 ```
 
-`@std` is always available without an `[aliases]` entry and cannot be overridden. Importing one export does not bring its signature's other type names into scope. For example, importing `parallel` permits matching its inferred result, but writing `Result` or `ExecutionError` in an annotation requires their own imports. Importing a contract supplies its interface, not an authority-bearing value.
+`@std` is always available without an `[aliases]` entry and cannot be overridden. Importing one export does not bring its signature's other type names into scope. For example, importing `parallel` permits matching its inferred result, but writing `Result` or `ExecutionError` in an annotation requires their own imports. Importing a contract supplies its interface. Separately imported host accessors return service values when called.
 
 ## Optional aliases
 

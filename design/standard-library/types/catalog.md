@@ -31,7 +31,6 @@ Use this table to find a type's meaning and import path. â€œImplicit intrinsicâ€
 | `Closeable` | Standard `close() -> Unit` cleanup contract | `@std/cleanup.ms` |
 | `File`, `ReadStream`, `WriteStream` | Resource contracts; all implementations synchronize lifecycle access | `@std/io.ms` |
 | `Duration`, `Instant` | Checked nanosecond duration and monotonic clock instant | `@std/time.ms` |
-| `Process` | CLI authority roots | `@std/cli.ms` |
 | `Files`, `IoError` | File capability contract and expected I/O failures | `@std/io.ms` |
 | `Clock` | Monotonic clock capability contract | `@std/time.ms` |
 
@@ -43,4 +42,4 @@ The [standard API contract](prelude.md) defines visibility, signatures, optional
 
 ## General-purpose types
 
-The [package guide](../packages/_index.md) adds opaque `BigInt` (`@std/bigint.ms`), `Regex` (`@std/regex.ms`) and wall-clock `Timestamp` (`@std/time.ms`); `JsonValue`/`JsonLimits` (`@std/json.ms`); structured format/filesystem/archive records; and package-specific error types (see [error contracts](../packages/contracts.md#errors)). New capability contracts are `FileSystem`, `Entropy`, `WallClock` and `System`, supplied by explicit CLI Process fields. TCP/TLS `Connection`, `Listener` and `DatagramSocket` are acquired through the existing Network authority. All names remain individually imported; no additions enter the intrinsic prelude. See [coverage](../packages/coverage.md) for implemented equivalents and remaining gaps.
+The [package guide](../packages/_index.md) adds opaque `BigInt` (`@std/bigint.ms`), `Regex` (`@std/regex.ms`) and wall-clock `Timestamp` (`@std/time.ms`); `JsonValue`/`JsonLimits` (`@std/json.ms`); structured format/filesystem/archive records; and package-specific error types (see [error contracts](../packages/contracts.md#errors)). New capability contracts are `FileSystem`, `Entropy`, `WallClock` and `System`, available through imported host accessors. TCP/TLS `Connection`, `Listener` and `DatagramSocket` are acquired through the existing Network authority. All names remain individually imported; no additions enter the intrinsic prelude. See [coverage](../packages/coverage.md) for implemented equivalents and remaining gaps.

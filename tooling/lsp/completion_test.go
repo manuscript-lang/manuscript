@@ -153,12 +153,12 @@ func TestCompletionSurvivesIndependentSyntaxErrors(t *testing.T) {
 func TestCompletionWithMultilineParameters(t *testing.T) {
 	for _, source := range []string{
 		"fn answer(\n    input: Int,\n) -> Int:\n    return inp|\nfn broken(\n",
-		"import Process from \"@std/cli.ms\"\nexport fn main(\n    process: Process\n) -> Int:\n    let arguments = process.arg|\n    match process.stdout.write(data: \"hello\".to_bytes()):\n",
+		"import List from \"@std/collections.ms\"\nimport WriteStream from \"@std/io.ms\"\nfn render(\n    arguments: List[String],\n    output: WriteStream\n) -> Int:\n    let joined = arguments.jo|\n    match output.write(data: \"hello\".to_bytes()):\n",
 	} {
 		items := completeSource(t, source)
 		want := "input"
-		if strings.Contains(source, "Process") {
-			want = "arguments"
+		if strings.Contains(source, "WriteStream") {
+			want = "join"
 		}
 		if itemNamed(items, want) == nil {
 			t.Fatalf("missing %s: %+v", want, items)
@@ -170,6 +170,13 @@ func TestShadowingCompletionUsesNearestType(t *testing.T) {
 	item := itemNamed(items, "input")
 	if item == nil || item.Detail != "String" {
 		t.Fatal(item, items)
+	}
+}
+
+func TestImportedHostAccessorCompletion(t *testing.T) {
+	items := completeSource(t, "import stdout from \"@std/io.ms\"\nexport fn main() -> Int:\n    stdout().wr|\n    return 0\n")
+	if itemNamed(items, "write") == nil {
+		t.Fatalf("host service result has no write completion: %+v", items)
 	}
 }
 func TestGenericBoundMembers(t *testing.T) {

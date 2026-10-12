@@ -20,7 +20,7 @@ Claude Code reviewed the 118 original design pages on 2026-10-11 for simplicity,
 | C1 — incompatible try errors | Explicit Result matching; complete [parallel example](../concurrency/parallel.md); exact-error requirements on body fragments and Unit-test matching |
 | C2 — unresolved/untypable APIs | Closed [prelude](../standard-library/types/prelude.md), inferred packs, exact `item` label, optional arguments, status/reporting; Background uses one `Result[Unit, String]` callable signature |
 | C3 — contract sharing | All values, including contract views and callbacks, may be shared. Native services synchronize access; local Queue access uses an explicit lock; [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) protects complete updates. |
-| C4 — executable/adapter boundary | Exact [CLI entry and Process](../standard-library/hosts/cli.md), standard stream contracts with declared cleanup, [versioned adapter binding](../modules-and-capabilities/adapters/manifests.md), acyclic schema/native/application packages |
+| C4 — executable/adapter boundary | Exact [CLI entry and host services](../standard-library/hosts/cli.md), standard stream contracts with declared cleanup, [versioned adapter binding](../modules-and-capabilities/adapters/manifests.md), acyclic schema/native/application packages |
 | C5 — missing data APIs | Normative [immutable data operations](../standard-library/data-and-io/operations.md), text/byte conversion, numeric conversion, collection lookup/update |
 | C6 — numeric semantics | Checked Int division/remainder, IEEE Float outcomes, finite Decimal coefficient/exponent grid and single rounding, literal/conversion boundaries in [numbers](../core-language/basics/numbers-and-booleans.md) |
 
@@ -156,15 +156,10 @@ The earlier receiver-proof proposals are superseded. Contract views and function
 
 **Smallest fix** (CLI only)
 - **Entry contract** (`project-configuration.md`, `cli.md`).
-  - The entry module exports exactly `fn main(process: Process) -> Int`. The return value is the exit status (0–125; anything else is a fault).
+  - The entry module exports exactly `fn main() -> Int`. The return value is the exit status (0–125; anything else is a fault).
   - A fault exits with code 70 after cleanup, with diagnostics on stderr.
   - SIGINT or SIGTERM cancels the run context, the program unwinds, and it exits with 130.
-- **Root capabilities.** `Process` is a prelude record and the only root of authority:
-  - `arguments: List[String]`
-  - `environment: Map[String, String]`
-  - `stdin: ReadStream`, `stdout: WriteStream`, `stderr: WriteStream`
-  - `files: Files`
-  - `clock: Clock`
+- **Host services.** Import zero-parameter accessors from the standard modules, as specified in [CLI hosts](../standard-library/hosts/cli.md). The parameterless entrypoint and imported accessors supersede the earlier Process-record proposal; no per-function authority enforcement is required.
 - **Adapter shape** (`manifests.md`, `incremental-compilation.md`).
   - An adapter ships an interface `.ms` module containing only contracts and data over intrinsic/prelude types and its own declarations.
   - Its manifest maps each operation to a Go symbol, with effects and sharing.

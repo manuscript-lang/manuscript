@@ -28,7 +28,7 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Alias](ownership-and-cleanup/values/references.md) | Another reference to the same object. Closing a resource affects every alias. |
 | [Resource lifetime](ownership-and-cleanup/_index.md) | How long a file, connection, or other external resource remains open and usable. |
 | [Sharing](ownership-and-cleanup/values/sharing.md) | Values may be passed between operations. Local mutable queues need explicit synchronization; sharing does not keep resources open. |
-| [Capability / authority](modules-and-capabilities/capabilities/authority.md) | A passed-in object that permits external operations, such as file or network access. |
+| [Capability / authority](modules-and-capabilities/capabilities/authority.md) | A service object that permits external operations, obtained through a host accessor or passed to a helper. |
 | [Effect](modules-and-capabilities/capabilities/effects.md) | External behavior reachable from an operation, such as reading, writing, or calling a service. |
 | [Operation / group](concurrency/joining.md#terms) | One invocation started by a concurrency API / the invocations started by one parallel call. |
 | [Join](concurrency/joining.md) | Wait until every started operation has finished, including its cleanup. |

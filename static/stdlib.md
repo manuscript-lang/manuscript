@@ -466,26 +466,20 @@ interface Closeable:
 
 Import each required symbol with `import Name from "@std/cli.ms"`.
 
-## Process
+## arguments
 
-**Record**
+**Function**
 
 ```manuscript
-type Process:
-    arguments: List[String]
-    environment: Map[String, String]
-    stdin: ReadStream
-    stdout: WriteStream
-    stderr: WriteStream
-    files: Files
-    clock: Clock
-    network: Network
-    commands: Commands
-    filesystem: FileSystem
-    entropy: Entropy
-    wall_clock: WallClock
-    system: System
-    control: ProcessControl
+fn arguments() -> List[String]
+```
+
+## environment
+
+**Function**
+
+```manuscript
+fn environment() -> Map[String, String]
 ```
 
 # @std/collections.ms
@@ -1599,6 +1593,14 @@ interface TemporaryDirectory:
 fn constants() -> Map[String, Int]
 ```
 
+## filesystem
+
+**Function**
+
+```manuscript
+fn filesystem() -> FileSystem
+```
+
 # @std/html.ms
 
 Import each required symbol with `import Name from "@std/html.ms"`.
@@ -1777,6 +1779,14 @@ interface ResponseBody:
     fn status() -> Int
 ```
 
+## network
+
+**Function**
+
+```manuscript
+fn network() -> Network
+```
+
 # @std/io.ms
 
 Import each required symbol with `import Name from "@std/io.ms"`.
@@ -1848,6 +1858,14 @@ interface WriteStream:
 fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
 ```
 
+## files
+
+**Function**
+
+```manuscript
+fn files() -> Files
+```
+
 ## read_all
 
 **Function**
@@ -1862,6 +1880,30 @@ fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
 
 ```manuscript
 fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
+```
+
+## stderr
+
+**Function**
+
+```manuscript
+fn stderr() -> WriteStream
+```
+
+## stdin
+
+**Function**
+
+```manuscript
+fn stdin() -> ReadStream
+```
+
+## stdout
+
+**Function**
+
+```manuscript
+fn stdout() -> WriteStream
 ```
 
 # @std/json.ms
@@ -2795,6 +2837,22 @@ interface SignalStream:
     fn next() -> Result[Int, ProcessError]
 ```
 
+## commands
+
+**Function**
+
+```manuscript
+fn commands() -> Commands
+```
+
+## control
+
+**Function**
+
+```manuscript
+fn control() -> ProcessControl
+```
+
 # @std/queues.ms
 
 Import each required symbol with `import Name from "@std/queues.ms"`.
@@ -2840,6 +2898,14 @@ type RandomError:
 ```manuscript
 impl Error for RandomError:
     fn message() -> String
+```
+
+## entropy
+
+**Function**
+
+```manuscript
+fn entropy() -> Entropy
 ```
 
 ## secure_int
@@ -3354,6 +3420,14 @@ fn endianness() -> String
 fn os_type() -> String
 ```
 
+## system
+
+**Function**
+
+```manuscript
+fn system() -> System
+```
+
 # @std/tasks.ms
 
 Import each required symbol with `import Name from "@std/tasks.ms"`.
@@ -3536,6 +3610,14 @@ interface WallClock:
 fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[Timer, TimeError]
 ```
 
+## clock
+
+**Function**
+
+```manuscript
+fn clock() -> Clock
+```
+
 ## difference
 
 **Function**
@@ -3606,6 +3688,14 @@ fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
 
 ```manuscript
 fn unix_seconds(value: Timestamp) -> Int
+```
+
+## wall_clock
+
+**Function**
+
+```manuscript
+fn wall_clock() -> WallClock
 ```
 
 # @std/tls.ms

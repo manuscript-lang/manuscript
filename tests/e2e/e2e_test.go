@@ -454,6 +454,75 @@ func TestExpandedLibraryCLICapabilities(t *testing.T) {
 	}
 }
 
+func TestHostAccessorsAcrossImportedHelpers(t *testing.T) {
+	root := t.TempDir()
+	helper := `import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
+import Instant from "@std/time.ms"
+
+export fn now() -> Instant:
+    return clock().now()
+
+export fn close_output() -> Unit:
+    stdout().close()
+`
+	main := `import {now, close_output} from "./helper.ms"
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
+import Background from "@std/tasks.ms"
+import sleep from "@std/time.ms"
+import Result from "@std/result.ms"
+
+export fn main() -> Int:
+    let before = now()
+    if clock().now() - before < 0.milliseconds:
+        return 1
+    with service = Background(limit: 1):
+        let task = fn() -> Result[Unit, String]:
+            close_output()
+            return ok(value: unit)
+        match service.start(task):
+            ok(id):
+                while true:
+                    match service.status(id):
+                        Running:
+                            sleep(1.milliseconds)
+                        Succeeded:
+                            break
+                        _:
+                            return 5
+            error(_):
+                return 2
+    match stdout().write("".to_bytes()):
+        ok(_):
+            return 3
+        error(cause):
+            match cause:
+                Closed:
+                    return 0
+                _:
+                    return 4
+`
+	for name, source := range map[string]string{"helper.ms": helper, "main.ms": main} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result := compiler.CompileFile(filepath.Join(root, "main.ms"), compiler.Options{Entry: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	binary := filepath.Join(root, "program")
+	if err := compiler.Build(result.Source, binary); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if data, err := exec.CommandContext(ctx, binary).CombinedOutput(); err != nil || len(data) != 0 {
+		t.Fatalf("imported host access: %v %s", err, data)
+	}
+}
+
 func TestNetworkingStreamingAndWebSocket(t *testing.T) {
 	result := compiler.CompileFile("testdata/projects/networking/main.ms", compiler.Options{Entry: true})
 	if !result.Success() {

@@ -135,3 +135,9 @@ fn endianness() -> String
 fn os_type() -> String
 ```
 
+## system {data-api-kind="Function"}
+
+```manuscript
+fn system() -> System
+```
+

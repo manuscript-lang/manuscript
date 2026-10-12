@@ -1,6 +1,6 @@
+import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 
-import Process from "@std/cli.ms"
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
 import Result from "@std/result.ms"
@@ -46,36 +46,36 @@ fn iterable(output: WriteStream) -> List[Int]:
     output.write(data: "iterable\n".to_bytes())
     return [1, 2]
 
-export fn main(process: Process) -> Int:
-    let total = select(output: process.stdout)(
-        second: report(output: process.stdout, label: "second", value: 2),
-        first: report(output: process.stdout, label: "first", value: 1),
+export fn main() -> Int:
+    let total = select(output: stdout())(
+        second: report(output: stdout(), label: "second", value: 2),
+        first: report(output: stdout(), label: "first", value: 1),
     )
     if not (total == 3):
         return panic(message: "check failed")
     let pair = Pair(
-        second: report(output: process.stdout, label: "pair second", value: 2),
-        first: report(output: process.stdout, label: "pair first", value: 1),
+        second: report(output: stdout(), label: "pair second", value: 2),
+        first: report(output: stdout(), label: "pair first", value: 1),
     )
     if not (pair.first + pair.second == 3):
         return panic(message: "check failed")
-    with resource = Resource(label: "normal", output: process.stdout):
+    with resource = Resource(label: "normal", output: stdout()):
         let completed = unit
-    process.stdout.write(data: "after normal\n".to_bytes())
+    stdout().write(data: "after normal\n".to_bytes())
     var count = 0
     while count < 2:
-        with resource = Resource(label: "iteration", output: process.stdout):
+        with resource = Resource(label: "iteration", output: stdout()):
             count = count + 1
             continue
-    for value in iterable(output: process.stdout):
-        with resource = Resource(label: "break", output: process.stdout):
+    for value in iterable(output: stdout()):
+        with resource = Resource(label: "break", output: stdout()):
             break
-    match propagate(output: process.stdout):
+    match propagate(output: stdout()):
         ok(_):
             return panic(message: "Unexpected case")
         error(_):
             let completed = unit
-    if not (early(output: process.stdout) == 5):
+    if not (early(output: stdout()) == 5):
         return panic(message: "check failed")
-    process.stdout.write(data: "finished\n".to_bytes())
+    stdout().write(data: "finished\n".to_bytes())
     return 0

@@ -976,7 +976,7 @@
       "status": "equivalent",
       "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
       "targets": [
-        "@std/cli.ms/Process.stdin"
+        "@std/io.ms/stdin"
       ]
     },
     {
@@ -1128,7 +1128,7 @@
       "status": "equivalent",
       "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
       "targets": [
-        "@std/cli.ms/Process.stderr"
+        "@std/io.ms/stderr"
       ]
     },
     {
@@ -1137,7 +1137,7 @@
       "status": "equivalent",
       "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
       "targets": [
-        "@std/cli.ms/Process.stdin"
+        "@std/io.ms/stdin"
       ]
     },
     {
@@ -1146,7 +1146,7 @@
       "status": "equivalent",
       "reason": "Capability equivalent; native errors and bounds follow the documented Manuscript contract.",
       "targets": [
-        "@std/cli.ms/Process.stdout"
+        "@std/io.ms/stdout"
       ]
     },
     {
