@@ -25,7 +25,7 @@ export fn welcome(customer: Customer) -> String:
 
 ## Blocks and layout
 
-Indentation defines blocks. Source suites require exactly four additional spaces at each nesting level, and the formatter preserves that rule. Tabs in code and semicolons are rejected. Blank and comment-only lines do not change a block. The fields belong to `Customer` because they are indented under its declaration. The first return belongs to the `if` block; the second belongs directly to the function body.
+Indentation defines blocks. Indented suites require exactly four additional spaces at each nesting level, and the formatter preserves that rule. Tabs in code and semicolons are rejected. Blank and comment-only lines do not change a block. The fields belong to `Customer` because they are indented under its declaration. The first return belongs to the `if` block; the second belongs directly to the function body.
 
 Function calls may omit the argument label when the function has exactly one parameter. Functions with more than one parameter require labels on every supplied argument. Constructors name their fields. See [declarations and calls](../functions/declarations-and-calls.md) for the call rules.
 

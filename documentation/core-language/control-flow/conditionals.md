@@ -17,9 +17,19 @@ fn status(active: Bool) -> String:
         return "Inactive"
 ```
 
+A short branch can use one simple statement on the same line:
+
+```manuscript
+fn status(active: Bool) -> String:
+    if active: return "Active"
+    else: return "Inactive"
+```
+
+See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing inline and indented bodies.
+
 Conditions require `Bool`. The condition in this example is already a Boolean; numeric and text values do not acquire truth values implicitly.
 
-`if` is a statement and does not produce a value. Evaluate its condition once; execute exactly one selected branch, or neither branch when the condition is false and no `else` is present. `else` aligns with the corresponding `if`. An additional conditional uses `else if`, not `elif`.
+`if` is a statement and does not produce a value. Evaluate its condition once; execute exactly one selected branch, or neither branch when the condition is false and no `else` is present. `else` and `else if` start on separate lines, aligned with the corresponding `if`. An additional conditional uses `else if`, not `elif`.
 
 Each branch has its own lexical scope. Names declared in a branch are not visible after the conditional; assignments to an outer `var` affect that existing binding. An `else if` chain checks conditions in order and stops after selecting a branch.
 
