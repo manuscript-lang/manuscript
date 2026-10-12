@@ -150,6 +150,29 @@ func check() error {
 	} else if data != "Arguments: 2\n" {
 		return fmt.Errorf("unexpected debug run output: %q", data)
 	}
+	for _, kind := range []string{"Debug", "Release", "RelWithDebInfo", "MinSizeRel"} {
+		if _, err := run(cli, "build", manifest, "--build-type", kind, "-o", output); err != nil {
+			return err
+		}
+		metadata, err := os.ReadFile(output + ".ms-build.json")
+		if err != nil {
+			return err
+		}
+		var recorded struct {
+			BuildType string `json:"build_type"`
+		}
+		if err := json.Unmarshal(metadata, &recorded); err != nil {
+			return err
+		}
+		if recorded.BuildType != kind {
+			return fmt.Errorf("build type was not recorded: %s", metadata)
+		}
+		if data, err := run(output, "first", "second"); err != nil {
+			return err
+		} else if data != "Arguments: 2\n" {
+			return fmt.Errorf("unexpected %s output: %q", kind, data)
+		}
+	}
 	profile := filepath.Join(directory, "profile")
 	if data, err := run(cli, "profile", manifest, "-o", profile, "--", "first", "second"); err != nil {
 		return err

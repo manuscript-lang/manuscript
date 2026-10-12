@@ -64,6 +64,16 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		{"check", "missing.ms", "--check"}, {"fmt", "missing.ms", "--json"},
 		{"check", "missing.ms", "--debug"}, {"check", "missing.ms", "--trace", "trace.out"},
 		{"stdlib", "out", "extra"},
+		{"build", "missing.ms", "--build-type"},
+		{"build", "missing.ms", "--build-type", ""},
+		{"build", "missing.ms", "--build-type", "Fast"},
+		{"build", "missing.ms", "--build-type", "--help"},
+		{"check", "missing.ms", "--build-type", "Release"},
+		{"emit", "missing.ms", "--build-type", "Debug"},
+		{"build", "missing.ms", "--debug", "--build-type", "Release"},
+		{"build", "missing.ms", "--build-type", "Release", "--debug"},
+		{"debug", "missing.ms", "--build-type", "RelWithDebInfo"},
+		{"build", "missing.ms", "--build-type", "Debug", "--build-type", "Release"},
 	} {
 		status, output, errors := invoke(t, args...)
 		if status != 2 || output != "" || errors == "" {
@@ -87,6 +97,12 @@ func TestHelpForEveryCommand(t *testing.T) {
 				!strings.Contains(output, "Options:") || !strings.Contains(output, "Examples:") {
 				t.Fatalf("%v: %d, %q, %q", args, status, output, errors)
 			}
+		}
+	}
+	for command, defaultType := range map[string]string{"build": "Release", "run": "Release", "test": "Release", "profile": "RelWithDebInfo"} {
+		status, output, errors := invoke(t, command, "--help")
+		if status != 0 || errors != "" || !strings.Contains(output, "--build-type") || !strings.Contains(output, "Default build type: "+defaultType) || !strings.Contains(output, "MinSizeRel") {
+			t.Fatalf("build types missing from %s help: %d, %q, %q", command, status, output, errors)
 		}
 	}
 	status, output, errors := invoke(t, "doc", "--stdlib", "--help")

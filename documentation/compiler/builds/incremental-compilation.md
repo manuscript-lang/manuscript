@@ -1,6 +1,6 @@
 +++
 title = "Caching and Go package boundaries"
-weight = 100
+weight = 101
 +++
 
 # Caching and Go package boundaries

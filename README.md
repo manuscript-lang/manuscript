@@ -75,6 +75,7 @@ Follow [your first program](documentation/getting-started.md) for a walkthrough 
 | Understand cleanup and concurrent work | [Resource lifetimes](documentation/ownership-and-cleanup/_index.md) and [concurrency](documentation/concurrency/_index.md) |
 | Set up your editor or use source tools | [VS Code extension](extensions/vscode/README.md) and [tooling guide](documentation/developer-tooling/implementation.md) |
 | Understand build pins and caches | [Reproducible builds](documentation/compiler/builds/reproducibility.md) |
+| Choose optimization and debugging settings | [Build levels](documentation/compiler/builds/build-levels.md) |
 
 ## Project status
 
