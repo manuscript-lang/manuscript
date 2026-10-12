@@ -1,5 +1,15 @@
 # Runtime lessons
 
+### Newer stdlib direction needs checkout reconciliation
+
+Decision: the newer stdlib request asks for Node.js/JavaScript contract parity with consolidated grouping and one way to perform an operation; optional limits/timeouts honored when supplied; removal of Pools and Lease everywhere; Equal and Hashable as interfaces; and a priority queue. This supersedes the older derived-only equality preference and any assumption that Pools/Lease must remain public.
+
+Open: the user also asked whether Timers and Background can be combined and whether Background has a better name. The request does not select a final replacement name or scheduling contract. The conversation was in progress when this entry was added; these directions do not establish completed implementation.
+
+Apply when: changing library signatures, bounds/interfaces, pools/leases, queue APIs, scheduling, grouping, examples, or documentation.
+Evidence: [the actual user request in Revamp and solidify stdlib](codex://threads/01a13126-1245-730b-9e5d-16ca2dc7501f); [current declarations](../pkg/stdlib/README.md); [current implementation inventory](../documentation/implementation.md).
+Verify: inspect current declarations, bindings, native dispatch, checker rules, conformance, and generated references against the latest direction. Identify pending gaps, preserve omitted/none/explicit-limit behavior, and do not invent a selected name or report this request as already shipped.
+
 ### Sharing, resource lifetime, and work lifetime are separate
 
 Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native services synchronize their internals. The user subsequently chose a single-threaded Queue with an optional capacity parameter; shared queue access uses Synchronized guards, including reads. Passing references is permitted without implying internal thread safety. A safe capture is not a declaration of intended authority.

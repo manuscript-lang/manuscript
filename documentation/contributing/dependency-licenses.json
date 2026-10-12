@@ -1,9 +1,5 @@
 [
   {
-    "path": "skills/LICENSE.mattpocock",
-    "sha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5"
-  },
-  {
     "path": "vendor/github.com/ebitengine/purego/LICENSE",
     "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
   },

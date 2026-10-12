@@ -1,0 +1,3 @@
+interface:
+  display_name: "Standard library"
+  short_description: "Keep declarations, native APIs, and docs aligned"

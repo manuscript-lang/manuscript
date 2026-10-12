@@ -1,0 +1,3 @@
+interface:
+  display_name: "Documentation"
+  short_description: "Write runnable guides and verify the Hugo book"

@@ -52,11 +52,13 @@ Verify: examples compile with explicit Result matches, the standard Result modul
 
 ### Latest choices can supersede an apparently accepted alternative
 
-Decision: keep `Equal` and `Hashable` derived. The later concurrency simplification removed compiler sharing bounds: all values may be passed freely, and `Synchronized[T]` guards protect shared mutable access and complete updates. The subsequent local Queue decision requires explicit synchronization for concurrent access. The user briefly requested custom equality implementations, then explicitly reversed that choice. Explicit closure capture lists were also rejected; the subsequent universal-sharing decision supplies the current sharing design.
+Decision: the concurrency simplification removed compiler sharing bounds: all values may be passed freely, and `Synchronized[T]` guards protect shared mutable access and complete updates. The subsequent local Queue decision requires explicit synchronization for concurrent access. Explicit closure capture lists were rejected; universal sharing supplies the current sharing design.
+
+Historical decision: the user previously reversed custom equality implementations and kept `Equal`/`Hashable` derived. The newer [stdlib request](codex://threads/01a13126-1245-730b-9e5d-16ca2dc7501f) explicitly asks for interfaces, superseding the derived-only preference. That request was in progress when this memory was reconciled; consult [the newer direction](runtime.md#newer-stdlib-direction-needs-checkout-reconciliation) and current source before asserting implementation or choosing dispatch rules.
 
 Apply when: changing bounds, equality, capture syntax, or callable sharing.
 Evidence: [equality reversal](codex://threads/01a12aed-fa8a-7d93-b522-38e95f93fdf5); [capture-list rejection](codex://threads/01a12bf3-438d-7c72-a846-7443cea58e3a); [canonical equality rules](../documentation/core-language/types/equality-and-hashing.md); [current callable sharing rules](../documentation/ownership-and-cleanup/values/sharing.md#function-values).
-Verify: examples follow current equality derivation and ordinary callback rules. Rejected alternatives remain rejected unless the user deliberately reopens them; an earlier “yes” does not override a later correction.
+Verify: examples follow the target checkout's equality/interface rules and ordinary callback rules. Establish any gap against the newer direction instead of restoring an older preference; an earlier “yes” does not override a later correction.
 
 ### Syntax improvements need examples across their boundaries
 
