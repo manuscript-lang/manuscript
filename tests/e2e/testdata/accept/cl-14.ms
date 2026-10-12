@@ -11,6 +11,7 @@ type OtherProblem:
 fn checked(value: Int) -> Result[Int, Problem]:
     if value < 0:
         return error(cause: Problem.Missing(reason: "negative"))
+
     return ok(value: value)
 
 fn doubled(value: Int) -> Result[Int, Problem]:
@@ -21,6 +22,7 @@ fn summarize(outcome: Result[Int, Problem]) -> Int:
     match outcome:
         ok(value):
             return value
+
         error(_):
             return -1
 

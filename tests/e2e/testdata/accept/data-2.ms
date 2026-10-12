@@ -9,6 +9,7 @@ test "explicit byte conversion":
         return panic(message: "check failed")
     if not ("é".to_bytes().to_text() == some(value: "é")):
         return panic(message: "check failed")
+
     let invalid: Optional[String] = none
     if not (Bytes(values: [255]).to_text() == invalid):
         return panic(message: "check failed")

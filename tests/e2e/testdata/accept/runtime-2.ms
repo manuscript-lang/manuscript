@@ -15,9 +15,11 @@ fn ordinary() -> Result:
 test "standard spellings are ordinary names":
     if not (List(count: 2).count == 2):
         return panic(message: "check failed")
+
     let forward = compute
     if not (forward(value: 4) == 4):
         return panic(message: "check failed")
+
     match ordinary():
         Value(value):
             if not (value == 3):

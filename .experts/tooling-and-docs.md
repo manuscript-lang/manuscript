@@ -1,5 +1,26 @@
 # Tooling and documentation lessons
 
+### Readable formatting needs paragraphs while retaining inline guards
+
+Decision: the user's formatter request keeps inline `if` bodies and introduces
+natural reading boundaries around declarations, guard sections, substantial
+control flow, and indented match arms. This also requires wrapping complex
+expressions; paragraph breaks alone leave dense calls and conditions unreadable.
+Do not expand inline bodies to create readability or guess business stages from
+adjacent call names.
+
+Apply when: changing source formatting or adding layout heuristics.
+Evidence: [formatting policy](../documentation/developer-tooling/implementation.md#linting-and-formatting),
+[syntax boundaries](../pkg/tooling/format_paragraphs.go),
+[expression layout](../pkg/tooling/format_layout.go), and
+[layout regressions](../pkg/tooling/format_layout_test.go).
+Verify: bindings and consecutive guards stay together; subsequent work starts a
+paragraph; branch families and leading comments remain attached; LF/CRLF output
+preserves literal spellings and is identical after a second format. Added grouping
+must preserve the entire parsed syntax tree, especially inline callback return
+boundaries and mixed-precedence conditions. Moving a callback argument must move
+its suite indentation too.
+
 ### Native build levels need artifact evidence
 
 Verified: Go omits recorded linker flags from build information when `-trimpath` is enabled. Check symbol/DWARF sections and executable size to verify stripping, rather than treating a missing recorded `-ldflags` value as a build failure. Both Debug and optimized RelWithDebInfo retain local source paths, so both need source-root-sensitive cache identities.

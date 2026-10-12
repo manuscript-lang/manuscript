@@ -58,6 +58,52 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 `fmt` preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
 
+The formatter adds single blank lines at structural boundaries so code reads in
+paragraphs:
+
+- Separate top-level declarations from each other and from imports. Separate
+  implementation methods; keep interface signatures, record fields, and
+  alternative cases compact.
+- Separate conditionals, loops, resource scopes, and matches from neighboring
+  statements. An `if` with no `else` and exactly one `return`, `break`, or
+  `continue` is a guard: keep it with preceding setup and consecutive guards,
+  then add a blank line before the next statement.
+- Keep each `if`/`else if`/`else` family together. Preserve inline bodies.
+- Separate neighboring match arms when either arm has an indented body; keep
+  inline arms compact.
+- Put inserted breaks before contiguous leading comments at the same indentation,
+  keeping those comments with the following code.
+
+These rules also apply inside anonymous functions. Existing paragraph breaks are
+preserved, with consecutive blank lines reduced to one. The formatter does not
+infer stages from the names of calls or bindings.
+
+Expression layout uses a soft limit of 88 columns:
+
+- Keep simple calls and small literals compact. Expand calls with four or more
+  arguments, multiple arguments containing nested calls or compound computations,
+  or a closure argument. Single-argument calls containing another nested
+  computation can also expand.
+- Expand signatures with four or more parameters or complex defaults. Include the
+  return type when deciding whether a signature fits.
+- Expand lists with five or more elements or nested lists, and grouped imports
+  with five or more names.
+- Once a group expands, put every argument, parameter, or element on its own line.
+  Use four spaces beyond the containing line and align the closing delimiter with
+  that line. Existing multiline groups remain expanded with this same layout.
+- Break conditions with three or more clauses at their lowest-precedence logical
+  operator. Keep comparison operands together. Long arithmetic and member chains
+  also gain continuation lines, preserving precedence and evaluation order.
+- Add grouping parentheses around complete statement values, argument values,
+  collection elements, and parameter defaults when continuation requires them.
+  Keep inline suites, including inline `if`, intact.
+- Comments force a group to expand. Keep opener comments on the opener, trailing
+  argument comments beside that argument, and leading comments with their item.
+  Move anonymous-function bodies with their headers when an argument moves.
+
+String literals, their interpolation text, and comment wording are preserved.
+They can exceed the soft limit; the formatter does not split or rewrite them.
+
 ## Debugging and profiling
 
 

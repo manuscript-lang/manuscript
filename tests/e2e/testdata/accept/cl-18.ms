@@ -11,6 +11,7 @@ test "function suite boundaries":
             fn(value: Int) -> Int:
                 if value > 0:
                     return value - 1
+
                 return 0
         ),
         value: 3,

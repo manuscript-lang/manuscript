@@ -17,6 +17,7 @@ test "implementation variables inside function signatures":
     let box = Box(value: render)
     if not (box.apply(value: 3) == "3"):
         return panic(message: "check failed")
+
     let operation = Apply[String](value: box)
     if not (operation.apply(value: 4) == "4"):
         return panic(message: "check failed")

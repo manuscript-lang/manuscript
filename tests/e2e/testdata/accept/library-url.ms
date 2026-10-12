@@ -12,6 +12,7 @@ fn verify_url() -> Result[Unit, UrlError]:
     let url = try parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")
     if not (try format(value: url) == "https://example.com/a%2Fb?q=x#frag"):
         return panic(message: "check failed")
+
     let next = try resolve(base: url, reference: "../next")
     if not (try format(value: next) == "https://example.com/next"):
         return panic(message: "check failed")
@@ -19,6 +20,7 @@ fn verify_url() -> Result[Unit, UrlError]:
         return panic(message: "check failed")
     if not (try decode_component(text: "%C3%A9") == "é"):
         return panic(message: "check failed")
+
     return ok(value: unit)
 
 test "URLs preserve escaped path structure":

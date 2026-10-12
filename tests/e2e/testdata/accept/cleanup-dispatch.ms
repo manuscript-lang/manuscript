@@ -37,22 +37,30 @@ fn canonical_cleanup[T: Closeable](resource: T) -> Unit:
 
 test "cleanup uses the selected contract":
     let closed = Synchronized(value: false)
+
     with resource = Resource(closed: closed):
         with locked = closed.lock():
             if not (not locked.get()):
                 return panic(message: "check failed")
+
     with locked = closed.lock():
         if not (locked.get()):
             return panic(message: "check failed")
+
     with locked = closed.lock():
         locked.set(value: false)
+
     bound_cleanup(resource: Resource(closed: closed))
+
     with locked = closed.lock():
         if not (locked.get()):
             return panic(message: "check failed")
+
     with locked = closed.lock():
         locked.set(value: false)
+
     canonical_cleanup(resource: Resource(closed: closed))
+
     with locked = closed.lock():
         if not (locked.get()):
             return panic(message: "check failed")

@@ -16,15 +16,18 @@ test "numeric boundary rules":
         return panic(message: "check failed")
     if not (remainder(value: -9223372036854775808, divisor: -1) == 0):
         return panic(message: "check failed")
+
     let infinity = 1.0 / 0.0
     let nan = 0.0 / 0.0
     if not ("{infinity}" == "Infinity"):
         return panic(message: "check failed")
     if not (nan != nan):
         return panic(message: "check failed")
+
     let third = 1d / 3d
     if not ("{third}" == "0.3333333333333333333333333333333333"):
         return panic(message: "check failed")
+
     let absent: Optional[Int] = none
     if not (1e300.truncate_to_int() == absent):
         return panic(message: "check failed")

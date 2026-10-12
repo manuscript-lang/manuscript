@@ -1,11 +1,15 @@
 package tooling_test
 
 import (
+	"encoding/json"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
+	"github.com/manuscript-lang/manuscript/pkg/parser"
+	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -22,16 +26,7 @@ func TestFormatFixturesPreservesMeaningAndIsIdempotent(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			originalTokens, _ := lexer.Lex(filename, string(input))
-			formattedTokens, _ := lexer.Lex(filename, formatted)
-			if len(originalTokens) != len(formattedTokens) {
-				t.Fatal("formatting changed tokens")
-			}
-			for i, token := range originalTokens {
-				if token.Kind != formattedTokens[i].Kind || token.Text != formattedTokens[i].Text {
-					t.Fatal("formatting changed token meaning")
-				}
-			}
+			assertFormatMeaning(t, filename, string(input), formatted)
 			twice, err := tooling.Format(filename, formatted)
 			if err != nil || formatted != twice {
 				t.Fatal("formatter is not idempotent", err)
@@ -42,6 +37,69 @@ func TestFormatFixturesPreservesMeaningAndIsIdempotent(t *testing.T) {
 				t.Fatal(original.Diagnostics, changed.Diagnostics)
 			}
 		})
+	}
+}
+
+// Grouping parentheses do not appear in the AST. Compare every other token's
+// spelling and the complete syntax tree with source positions removed, so
+// wrapping cannot change precedence, arguments, literals, or suite ownership.
+func assertFormatMeaning(t *testing.T, filename, original, formatted string) {
+	t.Helper()
+	shape := func(source string) any {
+		module, err := parser.Parse(filename, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := json.Marshal(module)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var tree any
+		if err := json.Unmarshal(data, &tree); err != nil {
+			t.Fatal(err)
+		}
+		root := tree.(map[string]any)
+		delete(root, "File")
+		delete(root, "Source")
+		var positions func(any)
+		positions = func(value any) {
+			switch node := value.(type) {
+			case map[string]any:
+				delete(node, "Pos")
+				delete(node, "NamePos")
+				for _, child := range node {
+					positions(child)
+				}
+			case []any:
+				for _, child := range node {
+					positions(child)
+				}
+			}
+		}
+		positions(tree)
+		return tree
+	}
+	if !reflect.DeepEqual(shape(original), shape(formatted)) {
+		t.Fatalf("formatting changed the syntax tree:\n%s", formatted)
+	}
+	code := func(source string) []lexer.Token {
+		tokens, err := lexer.Lex(filename, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var result []lexer.Token
+		for _, token := range tokens {
+			switch token.Kind {
+			case "(", ")", lexer.Newline, lexer.Indent, lexer.Dedent, lexer.EOF:
+				continue
+			}
+			token.Pos = syntax.Position{}
+			result = append(result, token)
+		}
+		return result
+	}
+	if !reflect.DeepEqual(code(original), code(formatted)) {
+		t.Fatal("formatting changed token spellings")
 	}
 }
 func TestFormatCommentsAndErrors(t *testing.T) {
@@ -108,7 +166,7 @@ func TestFormatGroupedImports(t *testing.T) {
 
 func TestFormatMultilineFunctionParameters(t *testing.T) {
 	input := "export fn render(\r\n    arguments:List[String], # arguments\r\n    output:WriteStream,\r\n)->Int:\r\n    let message=\"Arguments: {arguments.join(\",\")}\\n\"\r\n    match output.write(data:message.to_bytes()):\r\n        ok(_):\r\n            return 0\r\n        error(_):\r\n            return 1\r\n"
-	want := "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) -> Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n    match output.write(data: message.to_bytes()):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n"
+	want := "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) -> Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message.to_bytes()):\n        ok(_):\n            return 0\n\n        error(_):\n            return 1\n"
 	formatted, err := tooling.Format("main.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
@@ -125,7 +183,7 @@ func TestFormatInlineSuites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "fn double(x: Int) -> Int: return x * 2\nfn f(x: Int) -> Int:\n    if x > 0: return double(x)\n    else: return 0\n"
+	want := "fn double(x: Int) -> Int: return x * 2\n\nfn f(x: Int) -> Int:\n    if x > 0: return double(x)\n    else: return 0\n"
 	if formatted != want {
 		t.Fatalf("got %q, want %q", formatted, want)
 	}

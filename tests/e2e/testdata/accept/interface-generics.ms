@@ -44,9 +44,11 @@ test "parameters and bounds belong to interfaces and types":
         return panic(message: "check failed")
     if not (Comparable(value: 8).same(other: 8)):
         return panic(message: "check failed")
+
     let pair = Pair(left: 1, right: value)
     if not (pair.get() == 7):
         return panic(message: "check failed")
+
     let callback = Box(value: identity)
     if not (read(box: callback)(value: 9) == 9):
         return panic(message: "check failed")
