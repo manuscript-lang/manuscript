@@ -1,7 +1,7 @@
 # Canonical standard-library declarations. Implementations are native.
 
+import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
-import LibraryError from "@std/errors.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 
@@ -16,6 +16,8 @@ export type IoError:
     case Closed
     case InvalidInput
     case Unavailable
+    case InvalidData
+    case LimitExceeded
     case Failed(message: String)
 
 export interface ReadStream:
@@ -27,8 +29,11 @@ export interface WriteStream:
     fn flush() -> Result[Unit, IoError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 
-export fn copy(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int) -> Result[Int, LibraryError]
+export fn copy(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int) -> Result[Int, IoError]
 
-export fn read_all(input: ReadStream & Shareable, max_bytes: Int) -> Result[Bytes, LibraryError]
+export fn read_all(input: ReadStream & Shareable, max_bytes: Int) -> Result[Bytes, IoError]
 
-export fn read_line(input: ReadStream & Shareable, max_bytes: Int) -> Result[Optional[String], LibraryError]
+export fn read_line(input: ReadStream & Shareable, max_bytes: Int) -> Result[Optional[String], IoError]
+
+impl Error for IoError:
+    fn message() -> String

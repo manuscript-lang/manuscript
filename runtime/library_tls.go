@@ -9,9 +9,9 @@ import (
 )
 
 func init() {
-	LibraryMethods = append(LibraryMethods, LibraryMethod{"Connection", "tls_info", libraryResult("TlsInfo"), nil})
+	LibraryMethods = append(LibraryMethods, LibraryMethod{"Connection", "tls_info", libraryResult("TlsInfo", "TlsError"), nil})
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("tls", "verify_certificates", libraryResult("Unit"), []LibraryParam{p("chain_pem", "String"), p("roots_pem", "String"), p("server_name", "String"), p("now", "Timestamp")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("tls", "verify_certificates", libraryResult("Unit", "TlsError"), []LibraryParam{p("chain_pem", "String"), p("roots_pem", "String"), p("server_name", "String"), p("now", "Timestamp")}, func(_ *Execution, r string, a []Value) Value {
 		if a[2].(string) == "" {
 			return libraryError(r, "InvalidInput", "")
 		}

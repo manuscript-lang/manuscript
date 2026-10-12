@@ -49,8 +49,8 @@ fn truncate(value: Float) -> Float
 ```text
 fn format_float(value: Float) -> String
 fn format_int(value: Int, radix: Int) -> String
-fn parse_float(text: String) -> Result[Float, LibraryError]
-fn parse_int(text: String, radix: Int) -> Result[Int, LibraryError]
+fn parse_float(text: String) -> Result[Float, NumberError]
+fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]
 ```
 
 ## `@std/bigint.ms`
@@ -61,12 +61,12 @@ fn bit_and(left: BigInt, right: BigInt) -> BigInt
 fn bit_or(left: BigInt, right: BigInt) -> BigInt
 fn bit_xor(left: BigInt, right: BigInt) -> BigInt
 fn compare(left: BigInt, right: BigInt) -> Int
-fn divide(left: BigInt, right: BigInt) -> Result[BigInt, LibraryError]
+fn divide(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 fn format(value: BigInt, radix: Int) -> String
 fn from_int(value: Int) -> BigInt
 fn multiply(left: BigInt, right: BigInt) -> BigInt
-fn parse(text: String, radix: Int, max_digits: Int) -> Result[BigInt, LibraryError]
-fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, LibraryError]
+fn parse(text: String, radix: Int, max_digits: Int) -> Result[BigInt, BigIntError]
+fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 fn subtract(left: BigInt, right: BigInt) -> BigInt
 fn to_int(value: BigInt) -> Optional[Int]
 ```

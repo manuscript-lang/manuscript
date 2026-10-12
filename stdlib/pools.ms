@@ -1,5 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
+import Error from "@std/errors.ms"
 import List from "@std/collections.ms"
 import Result from "@std/result.ms"
 
@@ -14,3 +15,6 @@ export type Pool[T: Shareable]:
 
 export type PoolError:
     case Closed
+
+impl Error for PoolError:
+    fn message() -> String

@@ -6,6 +6,17 @@ title = "path"
 
 Import each required symbol with `import Name from "@std/path.ms"`.
 
+## PathError
+
+Kind: alternative.
+
+```text
+PathError: PathError
+implements: Error
+case InvalidInput
+operation message: fn()->String
+```
+
 ## basename
 
 Kind: fn.
@@ -59,6 +70,6 @@ normalize: fn(path: String)->String
 Kind: fn.
 
 ```text
-relative: fn(base: String, target: String)->Result[String, LibraryError]
+relative: fn(base: String, target: String)->Result[String, PathError]
 ```
 

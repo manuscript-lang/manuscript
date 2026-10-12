@@ -25,6 +25,8 @@ Kind: alternative.
 
 ```text
 QueueError: QueueError
+implements: Error
 case Closed
+operation message: fn()->String
 ```
 

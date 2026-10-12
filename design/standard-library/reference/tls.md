@@ -20,6 +20,20 @@ field not_after: Timestamp
 field der: Bytes
 ```
 
+## TlsError
+
+Kind: alternative.
+
+```text
+TlsError: TlsError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case AuthenticationFailed
+operation message: fn()->String
+```
+
 ## TlsInfo
 
 Kind: record.
@@ -52,7 +66,7 @@ field require_client_certificate: Bool
 Kind: fn.
 
 ```text
-parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[CertificateInfo], LibraryError]
+parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[CertificateInfo], TlsError]
 ```
 
 ## verify_certificates
@@ -60,6 +74,6 @@ parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[Certific
 Kind: fn.
 
 ```text
-verify_certificates: fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)->Result[Unit, LibraryError]
+verify_certificates: fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)->Result[Unit, TlsError]
 ```
 

@@ -37,6 +37,10 @@ func libraryFailure(t *testing.T, v Value, code string) {
 	if a.Tag != "error" || a.Fields[0].(Alternative).Tag != code {
 		t.Fatalf("expected %s: %#v", code, a)
 	}
+	cause := a.Fields[0].(Alternative)
+	if !strings.HasSuffix(a.Type, "]["+cause.Type+"]") {
+		t.Fatalf("error identity does not match Result: %#v", a)
+	}
 }
 func TestLibraryCodecsAndNumbers(t *testing.T) {
 	for _, s := range []string{"Zh==", "Zg=", "Zg==\n", "_w=="} {
@@ -282,5 +286,86 @@ func TestLibraryTCPRoundTrip(t *testing.T) {
 	part = librarySuccess(t, Invoke(ctx, Bind(client, "", "read"), []Argument{{"max_bytes", int64(4)}})).(Alternative)
 	if string(part.Fields[0].(Bytes).Items) != "pong" {
 		t.Fatal(part)
+	}
+}
+
+func TestLibraryErrorsKeepDomainIdentity(t *testing.T) {
+	limits := Record{"@std/JsonLimits", map[string]Value{"max_bytes": int64(100), "max_depth": int64(8), "max_values": int64(32)}}
+	for _, tt := range []struct {
+		name, errorType, code string
+		args                  []Value
+	}{
+		{"json/parse", "JsonError", "InvalidData", []Value{"[", limits}},
+		{"encoding/hex_decode", "EncodingError", "InvalidData", []Value{"zz", int64(10)}},
+		{"numbers/parse_int", "NumberError", "OutOfRange", []Value{"9223372036854775808", int64(10)}},
+		{"binary/write_integer", "BinaryError", "OutOfRange", []Value{int64(256), int64(1), false, false}},
+		{"text/from_scalars", "TextError", "InvalidInput", []Value{libraryList("Int", []Value{int64(-1)})}},
+		{"url/parse_query", "UrlError", "LimitExceeded", []Value{"a=1", int64(0)}},
+		{"regex/compile", "RegexError", "InvalidData", []Value{"["}},
+		{"time/parse_timestamp", "TimeError", "InvalidData", []Value{"yesterday"}},
+		{"tls/parse_certificates", "TlsError", "InvalidData", []Value{"invalid PEM", int64(10)}},
+		{"net/parse_ip", "NetworkError", "InvalidData", []Value{"invalid address"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			result := libraryCall(t, tt.name, tt.args...)
+			libraryFailure(t, result, tt.code)
+			if cause := result.Fields[0].(Alternative); cause.Type != "@std/"+tt.errorType {
+				t.Fatalf("wrong error identity: %#v", cause)
+			}
+		})
+	}
+	fs := &libraryFileSystem{directory: t.TempDir()}
+	result := fs.Operation("read_file").Body(RootExecution(), []Value{"missing", int64(100)}).(Alternative)
+	libraryFailure(t, result, "NotFound")
+	if cause := result.Fields[0].(Alternative); cause.Type != "@std/FileSystemError" {
+		t.Fatalf("wrong filesystem error identity: %#v", cause)
+	}
+}
+
+type failingLibraryStream struct{ cause Alternative }
+
+func (s failingLibraryStream) Operation(name string) Function {
+	result := "@std/Result[Unit][@std/IoError]"
+	labels := []string{"data"}
+	if name == "read" {
+		result = "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"
+		labels = []string{"max_bytes"}
+	}
+	return NewFunction(labels, result, func(*Execution, []Value) Value {
+		return Alternative{result, "error", []Value{s.cause}}
+	})
+}
+
+func TestLibraryStreamErrorsPreserveCauses(t *testing.T) {
+	for _, cause := range []Alternative{
+		{"@std/IoError", "Closed", nil},
+		{"@std/IoError", "Unavailable", nil},
+		{"@std/IoError", "Failed", []Value{"device diagnostic"}},
+	} {
+		t.Run(cause.Tag, func(t *testing.T) {
+			stream := failingLibraryStream{cause}
+			for _, name := range []string{"io/read_all", "io/read_line", "io/copy"} {
+				args := []Value{stream, int64(100)}
+				if name == "io/copy" {
+					args = []Value{stream, stream, int64(100)}
+				}
+				result := libraryCall(t, name, args...)
+				libraryFailure(t, result, cause.Tag)
+				if !Equal(result.Fields[0], cause) {
+					t.Fatalf("%s lost cause: %#v", name, result)
+				}
+			}
+			copied := libraryCall(t, "io/copy", &networkingReadStream{data: []byte("data")}, stream, int64(100))
+			libraryFailure(t, copied, cause.Tag)
+			if !Equal(copied.Fields[0], cause) {
+				t.Fatalf("copy lost output cause: %#v", copied)
+			}
+			result := libraryCall(t, "log/write", stream, "info", "message", Map{Type: "@std/Map[String][String]"}, int64(1000))
+			libraryFailure(t, result, "Io")
+			wrapped := result.Fields[0].(Alternative)
+			if wrapped.Type != "@std/LogError" || len(wrapped.Fields) != 1 || !Equal(wrapped.Fields[0], cause) {
+				t.Fatalf("logging lost cause: %#v", result)
+			}
+		})
 	}
 }

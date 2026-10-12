@@ -1,15 +1,23 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import LibraryError from "@std/errors.ms"
+import Error from "@std/errors.ms"
 import List from "@std/collections.ms"
 import Result from "@std/result.ms"
 
+export type RegexError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+
 export type Regex
 
-export fn compile(pattern: String) -> Result[Regex, LibraryError]
+export fn compile(pattern: String) -> Result[Regex, RegexError]
 
-export fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], LibraryError]
+export fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], RegexError]
 
 export fn matches(pattern: Regex, text: String) -> Bool
 
-export fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Int) -> Result[String, LibraryError]
+export fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Int) -> Result[String, RegexError]
+
+impl Error for RegexError:
+    fn message() -> String

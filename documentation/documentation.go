@@ -23,6 +23,9 @@ func RenderModule(module checker.APIModule) string {
 		if len(d.Parameters) > 0 {
 			fmt.Fprintf(&b, "type parameters: %s\n", strings.Join(d.Parameters, ", "))
 		}
+		if len(d.Implements) > 0 {
+			fmt.Fprintf(&b, "implements: %s\n", strings.Join(d.Implements, ", "))
+		}
 		for _, f := range d.Fields {
 			fmt.Fprintf(&b, "field %s\n", f)
 		}

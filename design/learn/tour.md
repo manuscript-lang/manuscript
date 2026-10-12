@@ -75,4 +75,4 @@ The [hello application](getting-started.md) handles a failed write with an exit 
 
 ## Keep execution visible
 
-Ordinary function calls execute sequentially and may suspend. Concurrent work starts through imported APIs such as `parallel` and `parallel_map`. There is no separate async function kind. Learn the lifetime and authority rules in [features and boundaries](features.md).
+Ordinary function calls execute sequentially and may suspend. Concurrent work starts through imported APIs such as `parallel`. There is no separate async function kind. Learn the lifetime and authority rules in [features and boundaries](features.md).

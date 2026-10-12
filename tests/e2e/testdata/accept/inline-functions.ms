@@ -1,7 +1,6 @@
 import panic from "@std/faults.ms"
 
-import List from "@std/collections.ms"
-import parallel_map from "@std/tasks.ms"
+import parallel from "@std/tasks.ms"
 
 type Transform:
     operation: fn(value: Int) -> Int
@@ -23,14 +22,12 @@ test "inline callbacks survive contextual rechecking":
     )
     if not (transform.operation(value: 3) == 5):
         return panic(message: "check failed")
-    match parallel_map(
-        items: [1, 2],
-        limit: 1,
-        operation: fn(item: Int) -> Int:
-            return item + 3
-    ):
+    match parallel(tasks: [fn() -> Int:
+        return 4
+    ]):
         ok(values):
-            if not (values == [4, 5]):
+            let [value] = values
+            if value != 4:
                 return panic(message: "check failed")
         error(_):
             return panic(message: "Unexpected case")

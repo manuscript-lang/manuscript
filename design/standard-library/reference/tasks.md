@@ -34,8 +34,10 @@ Kind: alternative.
 
 ```text
 ExecutionError: ExecutionError
+implements: Error
 case TimedOut
 case Crashed(operation: OperationId, message: String)
+operation message: fn()->String
 ```
 
 ## OperationId
@@ -52,8 +54,10 @@ Kind: alternative.
 
 ```text
 StartError: StartError
+implements: Error
 case Closed
 case Full
+operation message: fn()->String
 ```
 
 ## WorkStatus
@@ -84,14 +88,5 @@ Kind: fn.
 
 ```text
 parallel: fn()-><unknown>
-```
-
-## parallel_map
-
-Kind: fn.
-
-```text
-parallel_map: fn(items: List[T], operation: fn(item: T)->U, limit: Int)->Result[List[U], ExecutionError]
-type parameters: T: Shareable, U: Shareable
 ```
 

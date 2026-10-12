@@ -24,10 +24,10 @@ Find a package by the task you want to perform. Read [common contracts](contract
 
 ## Read a signature
 
-For example, `fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, LibraryError]` means:
+For example, `fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, JsonError]` means:
 
 - Call the function with named `text` and `limits` arguments.
-- Success returns a `JsonValue`; an expected failure returns a `LibraryError`.
+- Success returns a `JsonValue`; an expected failure returns a `JsonError`.
 - Import the function from the module listed above its signature. Import type names separately if your own annotations use them.
 
 A heading such as “FileSystem operations” lists methods on a supplied service. Importing its interface gives you the type; obtain the service value from the host or a function parameter. Read the behavior sections for limits, cleanup, and partial effects.

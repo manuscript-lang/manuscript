@@ -15,6 +15,7 @@ type APIDeclaration struct {
 	Fields     []string `json:"fields,omitempty"`
 	Cases      []string `json:"cases,omitempty"`
 	Operations []string `json:"operations,omitempty"`
+	Implements []string `json:"implements,omitempty"`
 }
 
 // StandardLibrary captures the actual checker definitions, without exposing mutable
@@ -37,12 +38,34 @@ func StandardLibrary() []APIModule {
 		module := APIModule{Path: path}
 		for _, symbol := range symbols {
 			d := documentSymbol(symbol)
+			documentImplementations(&d, symbol, standardImplementations)
 			module.Declarations = append(module.Declarations, d)
 		}
 		result = append(result, module)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Path < result[j].Path })
 	return result
+}
+
+func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Method) {
+	contracts := map[string]bool{}
+	operations := map[string]bool{}
+	for _, method := range methods {
+		if method.Receiver.ID != symbol.Type.ID {
+			continue
+		}
+		contracts[method.Contract.String()] = true
+		operation := method.Decl.Name + ": " + method.Type.String()
+		if !operations[operation] {
+			d.Operations = append(d.Operations, operation)
+			operations[operation] = true
+		}
+	}
+	for contract := range contracts {
+		d.Implements = append(d.Implements, contract)
+	}
+	sort.Strings(d.Implements)
+	sort.Strings(d.Operations)
 }
 
 func documentSymbol(symbol *Symbol) APIDeclaration {
@@ -110,7 +133,9 @@ func ModuleDocumentation(program *Program) []APIModule {
 			}
 			symbol := program.Symbols[source.File][decl.Name]
 			if symbol != nil && symbol.Decl == decl {
-				module.Declarations = append(module.Declarations, documentSymbol(symbol))
+				d := documentSymbol(symbol)
+				documentImplementations(&d, symbol, program.Methods)
+				module.Declarations = append(module.Declarations, d)
 			}
 		}
 		sort.Slice(module.Declarations, func(i, j int) bool { return module.Declarations[i].Name < module.Declarations[j].Name })

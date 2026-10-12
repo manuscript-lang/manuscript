@@ -13,12 +13,12 @@ import (
 
 func init() {
 	for _, m := range []LibraryMethod{
-		{"Network", "serve_stream", libraryResult("HttpServer&Shareable"), []LibraryParam{{"address", "String"}, {"handler", "fn(exchange:HttpExchange&Shareable)->Result[Unit][LibraryError]"}, {"options", "HttpServerOptions"}}},
+		{"Network", "serve_stream", libraryResult("HttpServer&Shareable", "HttpError"), []LibraryParam{{"address", "String"}, {"handler", "fn(exchange:HttpExchange&Shareable)->Result[Unit][HttpError]"}, {"options", "HttpServerOptions"}}},
 		{"HttpExchange", "method", "String", nil}, {"HttpExchange", "path", "String", nil}, {"HttpExchange", "query", "String", nil}, {"HttpExchange", "headers", "Map[String][List[String]]", nil},
 		{"HttpExchange", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},
-		{"HttpExchange", "send_headers", libraryResult("Unit"), []LibraryParam{{"status", "Int"}, {"headers", "Map[String][List[String]]"}}},
+		{"HttpExchange", "send_headers", libraryResult("Unit", "HttpError"), []LibraryParam{{"status", "Int"}, {"headers", "Map[String][List[String]]"}}},
 		{"HttpExchange", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}}},
-		{"HttpExchange", "upgrade", libraryResult("WebSocket&Shareable"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Int"}}},
+		{"HttpExchange", "upgrade", libraryResult("WebSocket&Shareable", "WebSocketError"), []LibraryParam{{"allowed_origins", "List[String]"}, {"subprotocols", "List[String]"}, {"max_message_bytes", "Int"}}},
 		{"HttpExchange", "close", "Unit", nil},
 	} {
 		LibraryMethods = append(LibraryMethods, m)

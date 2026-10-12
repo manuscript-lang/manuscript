@@ -19,25 +19,17 @@ Sequential callbacks run under the caller's execution context and may wait for o
 
 ## Errors
 
-Import `LibraryError` from `@std/errors.ms`. It has these cases:
+Each package returns a named error type from its own module: `JsonError` from `@std/json.ms`, `EncodingError` from `@std/encoding.ms`, `FileSystemError` from `@std/fs.ms`, and so on. Each type contains the cases relevant to that domain; its exact definition is in the [generated reference](../reference/_index.md). For example, `JsonError` has only `InvalidInput`, `InvalidData`, and `LimitExceeded`.
 
-```text
-type LibraryError:
-    case InvalidInput
-    case InvalidData
-    case OutOfRange
-    case LimitExceeded
-    case NotFound
-    case AlreadyExists
-    case PermissionDenied
-    case Unsupported
-    case Closed
-    case Timeout
-    case AuthenticationFailed
-    case Failed(message: String)
-```
+`NetworkError` covers sockets, DNS, and network policy; HTTP, WebSocket, and certificate operations return `HttpError`, `WebSocketError`, and `TlsError` respectively, including when acquired through `Network`. Stream helpers return `IoError` and preserve underlying stream failures. Logging wraps a sink failure as `LogError.Io(cause: IoError)`.
 
-This shared error type lets package operations compose through ordinary `Result` and `try`. Existing `IoError`, `CommandError`, and task errors keep their own identities. Use error cases for classification; message text is diagnostic and is not a stable code.
+All standard error types explicitly implement `Error` from `@std/errors.ms`, an ordinary operation contract with `message() -> String`. Specific API signatures retain their domain error type. A generic boundary uses `Result[T, Error]`; choose it explicitly with `Error(value: cause)` or `map_error(result: outcome, transform: as_error[SpecificError])`. The `as_error` helper is imported from `@std/errors.ms` and preserves the original receiver, case, and payload. See the [executable filesystem/random/time example](https://github.com/manuscript-lang/manuscript/blob/main/tests/e2e/testdata/projects/library/main.ms).
+
+Handle a concrete error with its ordinary case match. Handle a generic `Error` by calling `message()`, or use a [contract type match](../../core-language/control-flow/pattern-matching.md#contract-type-patterns) to recover a concrete error such as `JsonError(cause)`, then match its cases. The final wildcard handles other implementations. Custom errors participate through an ordinary `impl Error for CustomError` in their defining module. `Error` does not constrain `Result`'s error parameter or turn faults and cancellation into expected failures.
+
+`try` propagates the declared error type; it does not convert unrelated types or implicitly construct an Error view. This replaces the former shared `LibraryError` contract: update imports and return annotations, and qualify cases such as `JsonError.InvalidData` when multiple imported types define the same case name.
+
+Use specific error cases for classification. `message()` and `Failed(message: String)` diagnostics are human-readable text, not stable error codes. A native `Failed` preserves its diagnostic text; a payloadless native error reports its qualified case, such as `JsonError.InvalidData`. `LogError.Io` delegates to its underlying `IoError`. Command, queue, pool, and task errors also implement `Error` while retaining their distinct cases and identities.
 
 | Situation | Behavior |
 | --- | --- |

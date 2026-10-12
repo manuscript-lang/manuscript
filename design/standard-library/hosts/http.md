@@ -11,7 +11,7 @@ The HTTP host gives each request its own execution context and limits. It contro
 
 If the client disconnects, the host cancels the request and its nested groups. Those groups finish joining and registered cleanup runs before the request ends.
 
-Request handlers use `parallel` or `parallel_map` for joined work and `with` for request resources. Client disconnection cancels the request and its nested groups; those groups join and registered cleanup runs before request execution ends.
+Request handlers use `parallel` for joined work and `with` for request resources. Client disconnection cancels the request and its nested groups; those groups join and registered cleanup runs before request execution ends.
 
 Streaming responses remain within their request lifetime until streaming finishes. WebSocket/session hosts establish explicit session lifetimes and participate in shutdown; they are not untracked background goroutines.
 

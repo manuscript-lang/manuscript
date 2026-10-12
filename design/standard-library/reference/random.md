@@ -12,7 +12,20 @@ Kind: interface.
 
 ```text
 Entropy: Entropy
-operation bytes: fn(count: Int)->Result[Bytes, LibraryError]
+operation bytes: fn(count: Int)->Result[Bytes, RandomError]
+```
+
+## RandomError
+
+Kind: alternative.
+
+```text
+RandomError: RandomError
+implements: Error
+case InvalidInput
+case LimitExceeded
+case Failed(message: String)
+operation message: fn()->String
 ```
 
 ## secure_int
@@ -20,7 +33,7 @@ operation bytes: fn(count: Int)->Result[Bytes, LibraryError]
 Kind: fn.
 
 ```text
-secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, LibraryError]
+secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, RandomError]
 ```
 
 ## uuid_v4
@@ -28,6 +41,6 @@ secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Resu
 Kind: fn.
 
 ```text
-uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, LibraryError]
+uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, RandomError]
 ```
 

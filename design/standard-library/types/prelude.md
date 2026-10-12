@@ -25,7 +25,7 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 | `@std/optional.ms` | `Optional` |
 | `@std/result.ms` | `Result`, `map_error` |
 | `@std/cleanup.ms` | `Closeable` |
-| `@std/tasks.ms` | `parallel`, `parallel_map`, `check_cancelled`, `ExecutionError`, `OperationId`, `Background`, `BackgroundFailure`, `WorkStatus`, `StartError` |
+| `@std/tasks.ms` | `parallel`, `check_cancelled`, `ExecutionError`, `OperationId`, `Background`, `BackgroundFailure`, `WorkStatus`, `StartError` |
 | `@std/faults.ms` | `panic` |
 | `@std/time.ms` | `Duration`, `Instant`, `Clock` |
 | `@std/io.ms` | `Files`, `File`, `ReadStream`, `WriteStream`, `IoError` |
@@ -55,7 +55,7 @@ Some library identities need compiler support while remaining explicit exports:
 
 A missing or substituted List/Decimal import rejects the corresponding literal during resolution/type checking. Inferred library values may be matched, traversed, or used through their declared members without importing every type in their public signatures. Naming such a type or using its unqualified expression constructors requires its own import. Primitive receiver members in the [data API](../data-and-io/operations.md) are fixed standard bindings and can likewise produce inferred library values; they add no ambient type names. Imports supply declarations, not files, clocks, or other external authority.
 
-`OperationId` is the single opaque, shareable identity for runtime operations, whether started by a joined group or admitted by a Background service. It has no source constructor and no implicit equality or hashing, and it grants no scheduling, joining, or transfer authority. A Background service's `status` and `cancel` act only on IDs it admitted. `WorkStatus` has nullary cases `Running`, `Succeeded`, `Failed`, `Cancelled`, `Crashed`, and `Unknown`; qualify these case names when necessary. `StartError` has `Closed` and `Full`. `IoError` has `Closed`, `InvalidInput`, `Unavailable`, and `Failed(message: String)`. These are shareable alternatives. Execution errors are defined in [joining](../../concurrency/joining.md).
+`OperationId` is the single opaque, shareable identity for runtime operations, whether started by a joined group or admitted by a Background service. It has no source constructor and no implicit equality or hashing, and it grants no scheduling, joining, or transfer authority. A Background service's `status` and `cancel` act only on IDs it admitted. `WorkStatus` has nullary cases `Running`, `Succeeded`, `Failed`, `Cancelled`, `Crashed`, and `Unknown`; qualify these case names when necessary. `StartError` has `Closed` and `Full`. `IoError` has `Closed`, `InvalidInput`, `Unavailable`, `InvalidData`, `LimitExceeded`, and `Failed(message: String)`. These are shareable alternatives. These errors explicitly implement the common `Error` contract from `@std/errors.ms`; see [error contracts](../packages/contracts.md#errors). Execution errors are defined in [joining](../../concurrency/joining.md).
 
 ```text
 fn panic(message: String) -> Never
@@ -67,20 +67,19 @@ These lines specify bindings rather than complete source modules. `check_cancell
 
 ## Joined concurrency
 
-All concurrency names are explicit library exports. The calls below require the individual `parallel` or `parallel_map` import from `@std/tasks.ms`; no concurrency operation, error type, work identity, or service expands the intrinsic type/bound list. Every concurrency name, including `check_cancelled` and `OperationId`, is exported by `@std/tasks.ms`. Timeouts and scheduling are implemented by library/runtime bindings.
+All concurrency names are explicit library exports. The call below requires the `parallel` import from `@std/tasks.ms`; no concurrency operation, error type, work identity, or service expands the intrinsic type/bound list. Every concurrency name, including `check_cancelled` and `OperationId`, is exported by `@std/tasks.ms`. Timeouts and scheduling are implemented by library/runtime bindings.
 
 `parallel` requires `tasks` and permits only the optional named argument `timeout: Duration`. Omission means no added limit; an inherited deadline still applies. Negative timeouts fault. Zero-timeout, stop, join, and outcome rules follow [joining outcomes](../../concurrency/joining.md#group-lifecycle).
 
-`tasks` must be a bracket literal, optionally grouped in parentheses. Each position must independently resolve to a shareable zero-parameter function `fn() -> Ri`; each `Ri` must be shareable. The binding produces `Result[Pack[R1, …, Rn], ExecutionError]`. Here `Pack` is compiler notation, with no source type-name spelling or source constructor. Existing lists are rejected; dynamic homogeneous work uses `parallel_map`.
+`tasks` must be a bracket literal, optionally grouped in parentheses. Each position must independently resolve to a shareable zero-parameter function `fn() -> Ri`; each `Ri` must be shareable. The binding produces `Result[Pack[R1, …, Rn], ExecutionError]`. Here `Pack` is compiler notation, with no source type-name spelling or source constructor. Existing lists are rejected.
 
 Standard concurrency callbacks require the argument's [callable sharing proof](../../ownership-and-cleanup/values/sharing.md#function-values). Function types themselves do not satisfy `Shareable`; an operation cannot return another function as a shareable result. Task preparation retains callback proofs internally, while result-pack sharing follows each result type.
 
 ### Direct calls only
 
-`parallel`, `parallel_map`, the `Background` constructor, and `Background.start` may appear only as the resolved callee of a direct call. A plain function signature cannot retain their callback-proof requirements.
+`parallel`, the `Background` constructor, and `Background.start` may appear only as the resolved callee of a direct call. A plain function signature cannot retain their callback-proof requirements.
 
-- `parallel_map[Int, Int](...)` is allowed when its callback has the required proof.
-- `let mapper = parallel_map[Int, Int]`, `let launch = background.start`, and passing either binding to a helper are rejected.
+- `let launch = background.start` and passing that binding to a helper are rejected.
 - Other standard operations follow ordinary function-value rules. Sequential `map_error` may be specialized and stored as a value.
 
 Source contracts cannot express these callback-proof requirements. Restricted background submission views are therefore unsupported.
@@ -90,16 +89,6 @@ Source contracts cannot express these callback-proof requirements. Restricted ba
 A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`.
 
 Packs derive `Shareable` position by position, but have no equality, hashing, iteration, field access, or indexing. Generic helpers such as `map_error` can therefore preserve a parallel pack without a new source syntax.
-
-```text
-fn parallel_map[T: Shareable, U: Shareable](
-    items: List[T],
-    operation: fn(item: T) -> U,
-    limit: Int,
-) -> Result[List[U], ExecutionError]
-```
-
-This binding additionally permits the same optional `timeout` argument. `operation` must be shareable and must use the exact parameter label `item`. The result is in input order. A nonpositive limit faults before any operation starts. This binding has no label polymorphism or overloaded source declaration.
 
 ## Background service
 

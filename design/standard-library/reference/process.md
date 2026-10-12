@@ -12,11 +12,13 @@ Kind: alternative.
 
 ```text
 CommandError: CommandError
+implements: Error
 case InvalidInput
 case Unavailable
 case TimedOut
 case OutputLimit
 case Failed(message: String)
+operation message: fn()->String
 ```
 
 ## CommandOutput

@@ -14,6 +14,19 @@ Kind: native.
 BigInt: BigInt
 ```
 
+## BigIntError
+
+Kind: alternative.
+
+```text
+BigIntError: BigIntError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
+
 ## add
 
 Kind: fn.
@@ -59,7 +72,7 @@ compare: fn(left: BigInt, right: BigInt)->Int
 Kind: fn.
 
 ```text
-divide: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
+divide: fn(left: BigInt, right: BigInt)->Result[BigInt, BigIntError]
 ```
 
 ## format
@@ -91,7 +104,7 @@ multiply: fn(left: BigInt, right: BigInt)->BigInt
 Kind: fn.
 
 ```text
-parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, LibraryError]
+parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, BigIntError]
 ```
 
 ## remainder
@@ -99,7 +112,7 @@ parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, LibraryErro
 Kind: fn.
 
 ```text
-remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
+remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, BigIntError]
 ```
 
 ## subtract

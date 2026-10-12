@@ -6,6 +6,19 @@ title = "text"
 
 Import each required symbol with `import Name from "@std/text.ms"`.
 
+## TextError
+
+Kind: alternative.
+
+```text
+TextError: TextError
+implements: Error
+case InvalidInput
+case OutOfRange
+case LimitExceeded
+operation message: fn()->String
+```
+
 ## contains
 
 Kind: fn.
@@ -27,7 +40,7 @@ ends_with: fn(value: String, suffix: String)->Bool
 Kind: fn.
 
 ```text
-from_scalars: fn(values: List[Int])->Result[String, LibraryError]
+from_scalars: fn(values: List[Int])->Result[String, TextError]
 ```
 
 ## join
@@ -51,7 +64,7 @@ lower: fn(text: String)->String
 Kind: fn.
 
 ```text
-repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, LibraryError]
+repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, TextError]
 ```
 
 ## replace
@@ -83,7 +96,7 @@ scalar_values: fn(text: String)->List[Int]
 Kind: fn.
 
 ```text
-slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, LibraryError]
+slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, TextError]
 ```
 
 ## split

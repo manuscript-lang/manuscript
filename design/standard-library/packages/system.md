@@ -12,12 +12,12 @@ Use Timestamp for wall-clock time and Duration for a time interval. Access the c
 ## `@std/time.ms`
 
 ```text
-fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, LibraryError]
+fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
 fn format_timestamp(value: Timestamp) -> String
 fn nanoseconds(value: Timestamp) -> Int
-fn parse_timestamp(text: String) -> Result[Timestamp, LibraryError]
-fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, LibraryError]
-fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, LibraryError]
+fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]
+fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, TimeError]
+fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
 fn unix_seconds(value: Timestamp) -> Int
 ```
 
@@ -26,8 +26,8 @@ fn unix_seconds(value: Timestamp) -> Int
 ## `@std/random.ms`
 
 ```text
-fn secure_int(entropy: Entropy&Shareable, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]
-fn uuid_v4(entropy: Entropy&Shareable) -> Result[String, LibraryError]
+fn secure_int(entropy: Entropy&Shareable, min: Int, max_exclusive: Int) -> Result[Int, RandomError]
+fn uuid_v4(entropy: Entropy&Shareable) -> Result[String, RandomError]
 ```
 
 ## WallClock operations
@@ -47,7 +47,7 @@ fn environment(name: String) -> Optional[String]
 ## Entropy operations
 
 ```text
-fn bytes(count: Int) -> Result[Bytes, LibraryError]
+fn bytes(count: Int) -> Result[Bytes, RandomError]
 ```
 
 ## Services supplied by the CLI

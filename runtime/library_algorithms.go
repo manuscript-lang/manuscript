@@ -78,7 +78,7 @@ func init() {
 			return Set{r, out}
 		})
 	}
-	libraryAdd("io", "copy", libraryResult("Int"), []LibraryParam{p("input", "ReadStream&Shareable"), p("output", "WriteStream&Shareable"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "copy", libraryResult("Int", "IoError"), []LibraryParam{p("input", "ReadStream&Shareable"), p("output", "WriteStream&Shareable"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[2].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -92,7 +92,7 @@ func init() {
 			}
 			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", n}}).(Alternative)
 			if value.Tag == "error" {
-				return libraryError(r, "Failed", "input read failed")
+				return Alternative{r, "error", value.Fields}
 			}
 			part := value.Fields[0].(Alternative)
 			if part.Tag == "none" {
@@ -107,12 +107,12 @@ func init() {
 			}
 			written := Invoke(ctx, Bind(a[1], "", "write"), []Argument{{"data", data}}).(Alternative)
 			if written.Tag == "error" {
-				return libraryError(r, "Failed", "output write failed")
+				return Alternative{r, "error", written.Fields}
 			}
 			total += int64(len(data.Items))
 		}
 	})
-	libraryAdd("io", "read_all", libraryResult("Bytes"), []LibraryParam{p("input", "ReadStream&Shareable"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "read_all", libraryResult("Bytes", "IoError"), []LibraryParam{p("input", "ReadStream&Shareable"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[1].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -125,7 +125,7 @@ func init() {
 			}
 			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", n}}).(Alternative)
 			if value.Tag == "error" {
-				return libraryError(r, "Failed", "input read failed")
+				return Alternative{r, "error", value.Fields}
 			}
 			part := value.Fields[0].(Alternative)
 			if part.Tag == "none" {

@@ -11,7 +11,6 @@ The generated reference captures declaration types, bounds, fields, cases, and o
 Ordinary functions and methods with exactly one declared parameter permit omitting its argument label. Functions with multiple parameters require labels on every supplied argument, including when optional API parameters are omitted. Constructors and contract views retain their labels. Function-type labels remain part of type identity.
 
 - `parallel(tasks: [fn() -> T, ...], timeout: Duration)` accepts a literal pack of zero-argument callbacks with possibly different result types. `timeout` is optional. The result is `Result[Pack, ExecutionError]`, where pack positions retain callback result types. Callbacks and results must be shareable. Its generated base signature contains `<unknown>` because this result is computed per call.
-- `parallel_map` also accepts optional `timeout: Duration`. Its operation and results must be shareable.
 - `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit, drain: Duration, history_limit: Int)` requires only `limit`. The other arguments are optional; `reporter` must be shareable. `Background.start` requires a shareable operation.
 - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
 - `List`, `Lease`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Lists and durations use literals; other values come from APIs or conversions.
@@ -35,6 +34,21 @@ field data: Bytes
 field directory: Bool
 ```
 
+## ArchiveError
+
+Kind: alternative.
+
+```text
+ArchiveError: ArchiveError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case Unsupported
+case Failed(message: String)
+operation message: fn()->String
+```
+
 ## ArchiveLimits
 
 Kind: record.
@@ -51,7 +65,7 @@ field max_total_bytes: Int
 Kind: fn.
 
 ```text
-pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[Bytes, LibraryError]
+pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[Bytes, ArchiveError]
 ```
 
 ## unpack
@@ -59,7 +73,7 @@ pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[By
 Kind: fn.
 
 ```text
-unpack: fn(data: Bytes, format: String, limits: ArchiveLimits)->Result[List[ArchiveEntry], LibraryError]
+unpack: fn(data: Bytes, format: String, limits: ArchiveLimits)->Result[List[ArchiveEntry], ArchiveError]
 ```
 
 # @std/bigint.ms
@@ -72,6 +86,19 @@ Kind: native.
 
 ```text
 BigInt: BigInt
+```
+
+## BigIntError
+
+Kind: alternative.
+
+```text
+BigIntError: BigIntError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
 ```
 
 ## add
@@ -119,7 +146,7 @@ compare: fn(left: BigInt, right: BigInt)->Int
 Kind: fn.
 
 ```text
-divide: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
+divide: fn(left: BigInt, right: BigInt)->Result[BigInt, BigIntError]
 ```
 
 ## format
@@ -151,7 +178,7 @@ multiply: fn(left: BigInt, right: BigInt)->BigInt
 Kind: fn.
 
 ```text
-parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, LibraryError]
+parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, BigIntError]
 ```
 
 ## remainder
@@ -159,7 +186,7 @@ parse: fn(text: String, radix: Int, max_digits: Int)->Result[BigInt, LibraryErro
 Kind: fn.
 
 ```text
-remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, LibraryError]
+remainder: fn(left: BigInt, right: BigInt)->Result[BigInt, BigIntError]
 ```
 
 ## subtract
@@ -182,12 +209,24 @@ to_int: fn(value: BigInt)->Optional[Int]
 
 Import each required symbol with `import Name from "@std/binary.ms"`.
 
+## BinaryError
+
+Kind: alternative.
+
+```text
+BinaryError: BinaryError
+implements: Error
+case InvalidInput
+case OutOfRange
+operation message: fn()->String
+```
+
 ## read_float
 
 Kind: fn.
 
 ```text
-read_float: fn(data: Bytes, offset: Int, little_endian: Bool)->Result[Float, LibraryError]
+read_float: fn(data: Bytes, offset: Int, little_endian: Bool)->Result[Float, BinaryError]
 ```
 
 ## read_integer
@@ -195,7 +234,7 @@ read_float: fn(data: Bytes, offset: Int, little_endian: Bool)->Result[Float, Lib
 Kind: fn.
 
 ```text
-read_integer: fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Int, LibraryError]
+read_integer: fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Int, BinaryError]
 ```
 
 ## write_float
@@ -211,7 +250,7 @@ write_float: fn(value: Float, little_endian: Bool)->Bytes
 Kind: fn.
 
 ```text
-write_integer: fn(value: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Bytes, LibraryError]
+write_integer: fn(value: Int, width: Int, signed: Bool, little_endian: Bool)->Result[Bytes, BinaryError]
 ```
 
 # @std/builders.ms
@@ -525,12 +564,27 @@ type parameters: T: Hashable
 
 Import each required symbol with `import Name from "@std/compress.ms"`.
 
+## CompressionError
+
+Kind: alternative.
+
+```text
+CompressionError: CompressionError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case Unsupported
+case Failed(message: String)
+operation message: fn()->String
+```
+
 ## compress
 
 Kind: fn.
 
 ```text
-compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[Bytes, LibraryError]
+compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[Bytes, CompressionError]
 ```
 
 ## decompress
@@ -538,12 +592,25 @@ compress: fn(data: Bytes, format: String, level: Int, max_bytes: Int)->Result[By
 Kind: fn.
 
 ```text
-decompress: fn(data: Bytes, format: String, max_bytes: Int)->Result[Bytes, LibraryError]
+decompress: fn(data: Bytes, format: String, max_bytes: Int)->Result[Bytes, CompressionError]
 ```
 
 # @std/crypto.ms
 
 Import each required symbol with `import Name from "@std/crypto.ms"`.
+
+## CryptoError
+
+Kind: alternative.
+
+```text
+CryptoError: CryptoError
+implements: Error
+case InvalidInput
+case Unsupported
+case AuthenticationFailed
+operation message: fn()->String
+```
 
 ## constant_time_equal
 
@@ -558,7 +625,7 @@ constant_time_equal: fn(left: Bytes, right: Bytes)->Bool
 Kind: fn.
 
 ```text
-derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Result[Bytes, LibraryError]
+derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Result[Bytes, CryptoError]
 ```
 
 ## hmac
@@ -566,7 +633,7 @@ derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Resu
 Kind: fn.
 
 ```text
-hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, LibraryError]
+hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, CryptoError]
 ```
 
 ## open
@@ -574,7 +641,7 @@ hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, LibraryError
 Kind: fn.
 
 ```text
-open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->Result[Bytes, LibraryError]
+open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->Result[Bytes, CryptoError]
 ```
 
 ## public_key
@@ -582,7 +649,7 @@ open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->R
 Kind: fn.
 
 ```text
-public_key: fn(seed: Bytes)->Result[Bytes, LibraryError]
+public_key: fn(seed: Bytes)->Result[Bytes, CryptoError]
 ```
 
 ## seal
@@ -590,7 +657,7 @@ public_key: fn(seed: Bytes)->Result[Bytes, LibraryError]
 Kind: fn.
 
 ```text
-seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Result[Bytes, LibraryError]
+seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Result[Bytes, CryptoError]
 ```
 
 ## sha256
@@ -622,7 +689,7 @@ sha512: fn(data: Bytes)->Bytes
 Kind: fn.
 
 ```text
-sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, LibraryError]
+sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, CryptoError]
 ```
 
 ## verify
@@ -636,6 +703,19 @@ verify: fn(key: Bytes, data: Bytes, signature: Bytes)->Bool
 # @std/csv.ms
 
 Import each required symbol with `import Name from "@std/csv.ms"`.
+
+## CsvError
+
+Kind: alternative.
+
+```text
+CsvError: CsvError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
 
 ## CsvOptions
 
@@ -652,7 +732,7 @@ field line_ending: String
 Kind: fn.
 
 ```text
-parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Result[List[List[String]], LibraryError]
+parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Result[List[List[String]], CsvError]
 ```
 
 ## stringify
@@ -660,7 +740,7 @@ parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Res
 Kind: fn.
 
 ```text
-stringify: fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)->Result[String, LibraryError]
+stringify: fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)->Result[String, CsvError]
 ```
 
 # @std/decimal.ms
@@ -681,12 +761,25 @@ operation truncate_to_int: fn()->Optional[Int]
 
 Import each required symbol with `import Name from "@std/encoding.ms"`.
 
+## EncodingError
+
+Kind: alternative.
+
+```text
+EncodingError: EncodingError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
+
 ## base64_decode
 
 Kind: fn.
 
 ```text
-base64_decode: fn(text: String, url_safe: Bool, max_bytes: Int)->Result[Bytes, LibraryError]
+base64_decode: fn(text: String, url_safe: Bool, max_bytes: Int)->Result[Bytes, EncodingError]
 ```
 
 ## base64_encode
@@ -702,7 +795,7 @@ base64_encode: fn(data: Bytes, url_safe: Bool)->String
 Kind: fn.
 
 ```text
-hex_decode: fn(text: String, max_bytes: Int)->Result[Bytes, LibraryError]
+hex_decode: fn(text: String, max_bytes: Int)->Result[Bytes, EncodingError]
 ```
 
 ## hex_encode
@@ -717,24 +810,22 @@ hex_encode: fn(data: Bytes)->String
 
 Import each required symbol with `import Name from "@std/errors.ms"`.
 
-## LibraryError
+## Error
 
-Kind: alternative.
+Kind: interface.
 
 ```text
-LibraryError: LibraryError
-case InvalidInput
-case InvalidData
-case OutOfRange
-case LimitExceeded
-case NotFound
-case AlreadyExists
-case PermissionDenied
-case Unsupported
-case Closed
-case Timeout
-case AuthenticationFailed
-case Failed(message: String)
+Error: Error
+operation message: fn()->String
+```
+
+## as_error
+
+Kind: fn.
+
+```text
+as_error: fn(cause: E)->Error
+type parameters: E: Error
 ```
 
 # @std/faults.ms
@@ -783,18 +874,36 @@ Kind: interface.
 
 ```text
 FileSystem: FileSystem
-operation canonicalize: fn(path: String)->Result[String, LibraryError]
-operation copy_file: fn(source: String, destination: String, replace: Bool, max_bytes: Int)->Result[Unit, LibraryError]
-operation create_directory: fn(path: String, recursive: Bool)->Result[Unit, LibraryError]
-operation create_link: fn(path: String, target: String)->Result[Unit, LibraryError]
-operation list: fn(path: String, max_entries: Int)->Result[List[DirectoryEntry], LibraryError]
-operation read_file: fn(path: String, max_bytes: Int)->Result[Bytes, LibraryError]
-operation read_link: fn(path: String)->Result[String, LibraryError]
-operation remove: fn(path: String, recursive: Bool)->Result[Unit, LibraryError]
-operation rename: fn(source: String, destination: String)->Result[Unit, LibraryError]
-operation stat: fn(path: String, follow_links: Bool)->Result[FileInfo, LibraryError]
-operation temporary_directory: fn(prefix: String)->Result[String, LibraryError]
-operation write_file: fn(path: String, data: Bytes, replace: Bool)->Result[Unit, LibraryError]
+operation canonicalize: fn(path: String)->Result[String, FileSystemError]
+operation copy_file: fn(source: String, destination: String, replace: Bool, max_bytes: Int)->Result[Unit, FileSystemError]
+operation create_directory: fn(path: String, recursive: Bool)->Result[Unit, FileSystemError]
+operation create_link: fn(path: String, target: String)->Result[Unit, FileSystemError]
+operation list: fn(path: String, max_entries: Int)->Result[List[DirectoryEntry], FileSystemError]
+operation read_file: fn(path: String, max_bytes: Int)->Result[Bytes, FileSystemError]
+operation read_link: fn(path: String)->Result[String, FileSystemError]
+operation remove: fn(path: String, recursive: Bool)->Result[Unit, FileSystemError]
+operation rename: fn(source: String, destination: String)->Result[Unit, FileSystemError]
+operation stat: fn(path: String, follow_links: Bool)->Result[FileInfo, FileSystemError]
+operation temporary_directory: fn(prefix: String)->Result[String, FileSystemError]
+operation write_file: fn(path: String, data: Bytes, replace: Bool)->Result[Unit, FileSystemError]
+```
+
+## FileSystemError
+
+Kind: alternative.
+
+```text
+FileSystemError: FileSystemError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case NotFound
+case AlreadyExists
+case PermissionDenied
+case Unsupported
+case Failed(message: String)
+operation message: fn()->String
 ```
 
 # @std/html.ms
@@ -831,8 +940,8 @@ Kind: interface.
 ```text
 HttpClient: HttpClient
 operation close: fn()->Unit
-operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, LibraryError]
-operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream & Shareable, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, LibraryError]
+operation send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, HttpError]
+operation send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream & Shareable, max_response_bytes: Int, timeout: Duration)->Result[ResponseBody & Shareable, HttpError]
 ```
 
 ## HttpClientOptions
@@ -850,6 +959,23 @@ field cookies: Bool
 field tls: TlsOptions
 ```
 
+## HttpError
+
+Kind: alternative.
+
+```text
+HttpError: HttpError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case PermissionDenied
+case Closed
+case Timeout
+case Failed(message: String)
+operation message: fn()->String
+```
+
 ## HttpExchange
 
 Kind: interface.
@@ -862,8 +988,8 @@ operation method: fn()->String
 operation path: fn()->String
 operation query: fn()->String
 operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
-operation send_headers: fn(status: Int, headers: Map[String, List[String]])->Result[Unit, LibraryError]
-operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)->Result[WebSocket & Shareable, LibraryError]
+operation send_headers: fn(status: Int, headers: Map[String, List[String]])->Result[Unit, HttpError]
+operation upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)->Result[WebSocket & Shareable, WebSocketError]
 operation write: fn(data: Bytes)->Result[Unit, IoError]
 ```
 
@@ -923,24 +1049,24 @@ Kind: interface.
 
 ```text
 Network: Network
-operation bind_datagram: fn(address: String)->Result[DatagramSocket & Shareable, LibraryError]
+operation bind_datagram: fn(address: String)->Result[DatagramSocket & Shareable, NetworkError]
 operation close: fn()->Unit
-operation connect: fn(address: String, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation connect_tls: fn(address: String, server_name: String, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation connect_unix: fn(path: String, timeout: Duration)->Result[Connection & Shareable, LibraryError]
-operation http_client: fn(options: HttpClientOptions)->Result[HttpClient & Shareable, LibraryError]
-operation listen: fn(address: String)->Result[Listener & Shareable, LibraryError]
-operation listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)->Result[Listener & Shareable, LibraryError]
-operation listen_unix: fn(path: String)->Result[Listener & Shareable, LibraryError]
-operation lookup: fn(name: String, max_records: Int, timeout: Duration)->Result[List[String], LibraryError]
-operation request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ClientResponse, LibraryError]
-operation resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)->Result[List[DnsRecord], LibraryError]
-operation restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)->Result[Network & Shareable, LibraryError]
+operation connect: fn(address: String, timeout: Duration)->Result[Connection & Shareable, NetworkError]
+operation connect_tls: fn(address: String, server_name: String, timeout: Duration)->Result[Connection & Shareable, NetworkError]
+operation connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)->Result[Connection & Shareable, NetworkError]
+operation connect_unix: fn(path: String, timeout: Duration)->Result[Connection & Shareable, NetworkError]
+operation http_client: fn(options: HttpClientOptions)->Result[HttpClient & Shareable, HttpError]
+operation listen: fn(address: String)->Result[Listener & Shareable, NetworkError]
+operation listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)->Result[Listener & Shareable, NetworkError]
+operation listen_unix: fn(path: String)->Result[Listener & Shareable, NetworkError]
+operation lookup: fn(name: String, max_records: Int, timeout: Duration)->Result[List[String], NetworkError]
+operation request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)->Result[ClientResponse, HttpError]
+operation resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)->Result[List[DnsRecord], NetworkError]
+operation restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)->Result[Network & Shareable, NetworkError]
 operation serve: fn(address: String, handler: fn(request: HttpRequest)->HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)->Result[HttpServer & Shareable, IoError]
-operation serve_stream: fn(address: String, handler: fn(exchange: HttpExchange & Shareable)->Result[Unit, LibraryError], options: HttpServerOptions)->Result[HttpServer & Shareable, LibraryError]
-operation web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)->Result[WebSocket & Shareable, LibraryError]
-operation with_resolver: fn(address: String)->Result[Network & Shareable, LibraryError]
+operation serve_stream: fn(address: String, handler: fn(exchange: HttpExchange & Shareable)->Result[Unit, HttpError], options: HttpServerOptions)->Result[HttpServer & Shareable, HttpError]
+operation web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)->Result[WebSocket & Shareable, WebSocketError]
+operation with_resolver: fn(address: String)->Result[Network & Shareable, NetworkError]
 ```
 
 ## ResponseBody
@@ -984,10 +1110,14 @@ Kind: alternative.
 
 ```text
 IoError: IoError
+implements: Error
 case Closed
 case InvalidInput
 case Unavailable
+case InvalidData
+case LimitExceeded
 case Failed(message: String)
+operation message: fn()->String
 ```
 
 ## ReadStream
@@ -1016,7 +1146,7 @@ operation write: fn(data: Bytes)->Result[Unit, IoError]
 Kind: fn.
 
 ```text
-copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int)->Result[Int, LibraryError]
+copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_bytes: Int)->Result[Int, IoError]
 ```
 
 ## read_all
@@ -1024,7 +1154,7 @@ copy: fn(input: ReadStream & Shareable, output: WriteStream & Shareable, max_byt
 Kind: fn.
 
 ```text
-read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, LibraryError]
+read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, IoError]
 ```
 
 ## read_line
@@ -1032,12 +1162,25 @@ read_all: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Bytes, Libra
 Kind: fn.
 
 ```text
-read_line: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Optional[String], LibraryError]
+read_line: fn(input: ReadStream & Shareable, max_bytes: Int)->Result[Optional[String], IoError]
 ```
 
 # @std/json.ms
 
 Import each required symbol with `import Name from "@std/json.ms"`.
+
+## JsonError
+
+Kind: alternative.
+
+```text
+JsonError: JsonError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
 
 ## JsonLimits
 
@@ -1069,7 +1212,7 @@ case ObjectValue(values: Map[String, JsonValue])
 Kind: fn.
 
 ```text
-parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, LibraryError]
+parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, JsonError]
 ```
 
 ## stringify
@@ -1077,19 +1220,33 @@ parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, LibraryError]
 Kind: fn.
 
 ```text
-stringify: fn(value: JsonValue, max_bytes: Int)->Result[String, LibraryError]
+stringify: fn(value: JsonValue, max_bytes: Int)->Result[String, JsonError]
 ```
 
 # @std/log.ms
 
 Import each required symbol with `import Name from "@std/log.ms"`.
 
+## LogError
+
+Kind: alternative.
+
+```text
+LogError: LogError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case Io(cause: IoError)
+operation message: fn()->String
+```
+
 ## write
 
 Kind: fn.
 
 ```text
-write: fn(output: WriteStream & Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LibraryError]
+write: fn(output: WriteStream & Shareable, level: String, message: String, fields: Map[String, String], max_bytes: Int)->Result[Unit, LogError]
 ```
 
 # @std/math.ms
@@ -1351,8 +1508,8 @@ operation local_address: fn()->String
 operation peer_address: fn()->String
 operation read: fn(max_bytes: Int)->Result[Optional[Bytes], IoError]
 operation read_timeout: fn(max_bytes: Int, timeout: Duration)->Result[Optional[Bytes], IoError]
-operation shutdown_write: fn()->Result[Unit, LibraryError]
-operation tls_info: fn()->Result[TlsInfo, LibraryError]
+operation shutdown_write: fn()->Result[Unit, NetworkError]
+operation tls_info: fn()->Result[TlsInfo, TlsError]
 operation write: fn(data: Bytes)->Result[Unit, IoError]
 operation write_timeout: fn(data: Bytes, timeout: Duration)->Result[Unit, IoError]
 ```
@@ -1375,10 +1532,10 @@ Kind: interface.
 DatagramSocket: DatagramSocket
 operation address: fn()->String
 operation close: fn()->Unit
-operation receive: fn(max_bytes: Int)->Result[Datagram, LibraryError]
-operation receive_timeout: fn(max_bytes: Int, timeout: Duration)->Result[Datagram, LibraryError]
-operation send: fn(data: Bytes, address: String)->Result[Unit, LibraryError]
-operation send_timeout: fn(data: Bytes, address: String, timeout: Duration)->Result[Unit, LibraryError]
+operation receive: fn(max_bytes: Int)->Result[Datagram, NetworkError]
+operation receive_timeout: fn(max_bytes: Int, timeout: Duration)->Result[Datagram, NetworkError]
+operation send: fn(data: Bytes, address: String)->Result[Unit, NetworkError]
+operation send_timeout: fn(data: Bytes, address: String, timeout: Duration)->Result[Unit, NetworkError]
 ```
 
 ## DnsRecord
@@ -1400,10 +1557,28 @@ Kind: interface.
 
 ```text
 Listener: Listener
-operation accept: fn()->Result[Connection & Shareable, LibraryError]
-operation accept_timeout: fn(timeout: Duration)->Result[Connection & Shareable, LibraryError]
+operation accept: fn()->Result[Connection & Shareable, NetworkError]
+operation accept_timeout: fn(timeout: Duration)->Result[Connection & Shareable, NetworkError]
 operation address: fn()->String
 operation close: fn()->Unit
+```
+
+## NetworkError
+
+Kind: alternative.
+
+```text
+NetworkError: NetworkError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case PermissionDenied
+case Unsupported
+case Closed
+case Timeout
+case Failed(message: String)
+operation message: fn()->String
 ```
 
 ## contains_ip
@@ -1411,7 +1586,7 @@ operation close: fn()->Unit
 Kind: fn.
 
 ```text
-contains_ip: fn(cidr: String, address: String)->Result[Bool, LibraryError]
+contains_ip: fn(cidr: String, address: String)->Result[Bool, NetworkError]
 ```
 
 ## parse_cidr
@@ -1419,7 +1594,7 @@ contains_ip: fn(cidr: String, address: String)->Result[Bool, LibraryError]
 Kind: fn.
 
 ```text
-parse_cidr: fn(text: String)->Result[String, LibraryError]
+parse_cidr: fn(text: String)->Result[String, NetworkError]
 ```
 
 ## parse_ip
@@ -1427,12 +1602,25 @@ parse_cidr: fn(text: String)->Result[String, LibraryError]
 Kind: fn.
 
 ```text
-parse_ip: fn(text: String)->Result[String, LibraryError]
+parse_ip: fn(text: String)->Result[String, NetworkError]
 ```
 
 # @std/numbers.ms
 
 Import each required symbol with `import Name from "@std/numbers.ms"`.
+
+## NumberError
+
+Kind: alternative.
+
+```text
+NumberError: NumberError
+implements: Error
+case InvalidInput
+case InvalidData
+case OutOfRange
+operation message: fn()->String
+```
 
 ## format_float
 
@@ -1455,7 +1643,7 @@ format_int: fn(value: Int, radix: Int)->String
 Kind: fn.
 
 ```text
-parse_float: fn(text: String)->Result[Float, LibraryError]
+parse_float: fn(text: String)->Result[Float, NumberError]
 ```
 
 ## parse_int
@@ -1463,7 +1651,7 @@ parse_float: fn(text: String)->Result[Float, LibraryError]
 Kind: fn.
 
 ```text
-parse_int: fn(text: String, radix: Int)->Result[Int, LibraryError]
+parse_int: fn(text: String, radix: Int)->Result[Int, NumberError]
 ```
 
 # @std/optional.ms
@@ -1484,6 +1672,17 @@ case none
 # @std/path.ms
 
 Import each required symbol with `import Name from "@std/path.ms"`.
+
+## PathError
+
+Kind: alternative.
+
+```text
+PathError: PathError
+implements: Error
+case InvalidInput
+operation message: fn()->String
+```
 
 ## basename
 
@@ -1538,7 +1737,7 @@ normalize: fn(path: String)->String
 Kind: fn.
 
 ```text
-relative: fn(base: String, target: String)->Result[String, LibraryError]
+relative: fn(base: String, target: String)->Result[String, PathError]
 ```
 
 # @std/pools.ms
@@ -1574,7 +1773,9 @@ Kind: alternative.
 
 ```text
 PoolError: PoolError
+implements: Error
 case Closed
+operation message: fn()->String
 ```
 
 # @std/process.ms
@@ -1587,11 +1788,13 @@ Kind: alternative.
 
 ```text
 CommandError: CommandError
+implements: Error
 case InvalidInput
 case Unavailable
 case TimedOut
 case OutputLimit
 case Failed(message: String)
+operation message: fn()->String
 ```
 
 ## CommandOutput
@@ -1637,7 +1840,9 @@ Kind: alternative.
 
 ```text
 QueueError: QueueError
+implements: Error
 case Closed
+operation message: fn()->String
 ```
 
 # @std/random.ms
@@ -1650,7 +1855,20 @@ Kind: interface.
 
 ```text
 Entropy: Entropy
-operation bytes: fn(count: Int)->Result[Bytes, LibraryError]
+operation bytes: fn(count: Int)->Result[Bytes, RandomError]
+```
+
+## RandomError
+
+Kind: alternative.
+
+```text
+RandomError: RandomError
+implements: Error
+case InvalidInput
+case LimitExceeded
+case Failed(message: String)
+operation message: fn()->String
 ```
 
 ## secure_int
@@ -1658,7 +1876,7 @@ operation bytes: fn(count: Int)->Result[Bytes, LibraryError]
 Kind: fn.
 
 ```text
-secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, LibraryError]
+secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Result[Int, RandomError]
 ```
 
 ## uuid_v4
@@ -1666,7 +1884,7 @@ secure_int: fn(entropy: Entropy & Shareable, min: Int, max_exclusive: Int)->Resu
 Kind: fn.
 
 ```text
-uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, LibraryError]
+uuid_v4: fn(entropy: Entropy & Shareable)->Result[String, RandomError]
 ```
 
 # @std/regex.ms
@@ -1681,12 +1899,25 @@ Kind: native.
 Regex: Regex
 ```
 
+## RegexError
+
+Kind: alternative.
+
+```text
+RegexError: RegexError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
+
 ## compile
 
 Kind: fn.
 
 ```text
-compile: fn(pattern: String)->Result[Regex, LibraryError]
+compile: fn(pattern: String)->Result[Regex, RegexError]
 ```
 
 ## find_all
@@ -1694,7 +1925,7 @@ compile: fn(pattern: String)->Result[Regex, LibraryError]
 Kind: fn.
 
 ```text
-find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String], LibraryError]
+find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String], RegexError]
 ```
 
 ## matches
@@ -1710,7 +1941,7 @@ matches: fn(pattern: Regex, text: String)->Bool
 Kind: fn.
 
 ```text
-replace: fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)->Result[String, LibraryError]
+replace: fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)->Result[String, RegexError]
 ```
 
 # @std/result.ms
@@ -1812,8 +2043,10 @@ Kind: alternative.
 
 ```text
 ExecutionError: ExecutionError
+implements: Error
 case TimedOut
 case Crashed(operation: OperationId, message: String)
+operation message: fn()->String
 ```
 
 ## OperationId
@@ -1830,8 +2063,10 @@ Kind: alternative.
 
 ```text
 StartError: StartError
+implements: Error
 case Closed
 case Full
+operation message: fn()->String
 ```
 
 ## WorkStatus
@@ -1864,18 +2099,22 @@ Kind: fn.
 parallel: fn()-><unknown>
 ```
 
-## parallel_map
-
-Kind: fn.
-
-```text
-parallel_map: fn(items: List[T], operation: fn(item: T)->U, limit: Int)->Result[List[U], ExecutionError]
-type parameters: T: Shareable, U: Shareable
-```
-
 # @std/text.ms
 
 Import each required symbol with `import Name from "@std/text.ms"`.
+
+## TextError
+
+Kind: alternative.
+
+```text
+TextError: TextError
+implements: Error
+case InvalidInput
+case OutOfRange
+case LimitExceeded
+operation message: fn()->String
+```
 
 ## contains
 
@@ -1898,7 +2137,7 @@ ends_with: fn(value: String, suffix: String)->Bool
 Kind: fn.
 
 ```text
-from_scalars: fn(values: List[Int])->Result[String, LibraryError]
+from_scalars: fn(values: List[Int])->Result[String, TextError]
 ```
 
 ## join
@@ -1922,7 +2161,7 @@ lower: fn(text: String)->String
 Kind: fn.
 
 ```text
-repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, LibraryError]
+repeat: fn(text: String, count: Int, max_bytes: Int)->Result[String, TextError]
 ```
 
 ## replace
@@ -1954,7 +2193,7 @@ scalar_values: fn(text: String)->List[Int]
 Kind: fn.
 
 ```text
-slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, LibraryError]
+slice_scalars: fn(text: String, start: Int, end: Int)->Result[String, TextError]
 ```
 
 ## split
@@ -2018,6 +2257,18 @@ Kind: native.
 Instant: Instant
 ```
 
+## TimeError
+
+Kind: alternative.
+
+```text
+TimeError: TimeError
+implements: Error
+case InvalidData
+case OutOfRange
+operation message: fn()->String
+```
+
 ## Timestamp
 
 Kind: native.
@@ -2040,7 +2291,7 @@ operation now: fn()->Timestamp
 Kind: fn.
 
 ```text
-difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, LibraryError]
+difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, TimeError]
 ```
 
 ## format_timestamp
@@ -2064,7 +2315,7 @@ nanoseconds: fn(value: Timestamp)->Int
 Kind: fn.
 
 ```text
-parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
+parse_timestamp: fn(text: String)->Result[Timestamp, TimeError]
 ```
 
 ## shift
@@ -2072,7 +2323,7 @@ parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
 Kind: fn.
 
 ```text
-shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, LibraryError]
+shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, TimeError]
 ```
 
 ## sleep
@@ -2088,7 +2339,7 @@ sleep: fn(duration: Duration)->Unit
 Kind: fn.
 
 ```text
-timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, LibraryError]
+timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, TimeError]
 ```
 
 ## unix_seconds
@@ -2115,6 +2366,20 @@ field dns_names: List[String]
 field not_before: Timestamp
 field not_after: Timestamp
 field der: Bytes
+```
+
+## TlsError
+
+Kind: alternative.
+
+```text
+TlsError: TlsError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case AuthenticationFailed
+operation message: fn()->String
 ```
 
 ## TlsInfo
@@ -2149,7 +2414,7 @@ field require_client_certificate: Bool
 Kind: fn.
 
 ```text
-parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[CertificateInfo], LibraryError]
+parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[CertificateInfo], TlsError]
 ```
 
 ## verify_certificates
@@ -2157,7 +2422,7 @@ parse_certificates: fn(pem: String, max_certificates: Int)->Result[List[Certific
 Kind: fn.
 
 ```text
-verify_certificates: fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)->Result[Unit, LibraryError]
+verify_certificates: fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)->Result[Unit, TlsError]
 ```
 
 # @std/url.ms
@@ -2188,12 +2453,25 @@ field query: String
 field fragment: String
 ```
 
+## UrlError
+
+Kind: alternative.
+
+```text
+UrlError: UrlError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
+
 ## decode_component
 
 Kind: fn.
 
 ```text
-decode_component: fn(text: String)->Result[String, LibraryError]
+decode_component: fn(text: String)->Result[String, UrlError]
 ```
 
 ## encode_component
@@ -2209,7 +2487,7 @@ encode_component: fn(text: String)->String
 Kind: fn.
 
 ```text
-format: fn(value: Url)->Result[String, LibraryError]
+format: fn(value: Url)->Result[String, UrlError]
 ```
 
 ## format_query
@@ -2225,7 +2503,7 @@ format_query: fn(entries: List[QueryEntry])->String
 Kind: fn.
 
 ```text
-parse: fn(text: String)->Result[Url, LibraryError]
+parse: fn(text: String)->Result[Url, UrlError]
 ```
 
 ## parse_query
@@ -2233,7 +2511,7 @@ parse: fn(text: String)->Result[Url, LibraryError]
 Kind: fn.
 
 ```text
-parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], LibraryError]
+parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], UrlError]
 ```
 
 ## resolve
@@ -2241,7 +2519,7 @@ parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], Librar
 Kind: fn.
 
 ```text
-resolve: fn(base: Url, reference: String)->Result[Url, LibraryError]
+resolve: fn(base: Url, reference: String)->Result[Url, UrlError]
 ```
 
 # @std/websocket.ms
@@ -2255,10 +2533,27 @@ Kind: interface.
 ```text
 WebSocket: WebSocket
 operation close: fn()->Unit
-operation ping: fn(data: Bytes)->Result[Unit, LibraryError]
-operation receive: fn()->Result[Optional[WebSocketMessage], LibraryError]
-operation send: fn(data: Bytes, text: Bool)->Result[Unit, LibraryError]
+operation ping: fn(data: Bytes)->Result[Unit, WebSocketError]
+operation receive: fn()->Result[Optional[WebSocketMessage], WebSocketError]
+operation send: fn(data: Bytes, text: Bool)->Result[Unit, WebSocketError]
 operation subprotocol: fn()->String
+```
+
+## WebSocketError
+
+Kind: alternative.
+
+```text
+WebSocketError: WebSocketError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case PermissionDenied
+case Closed
+case Timeout
+case Failed(message: String)
+operation message: fn()->String
 ```
 
 ## WebSocketMessage

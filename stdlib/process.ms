@@ -1,5 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
+import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import List from "@std/collections.ms"
@@ -19,3 +20,6 @@ export type CommandOutput:
 
 export interface Commands:
     fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]
+
+impl Error for CommandError:
+    fn message() -> String

@@ -127,7 +127,7 @@ let result = use_increment(operation: view)
 let wrong = use_increment(operation: offset)
 ```
 
-The plain constructor accepts an implementing concrete value or an existing plain/shared view of that exact contract application. An existing plain view is an identity conversion; a shared view loses only its static sharing guarantee. Different contracts/applications and contract-to-concrete downcasts are rejected.
+The plain constructor accepts an implementing concrete value or an existing plain/shared view of that exact contract application. An existing plain view is an identity conversion; a shared view loses only its static sharing guarantee. Different contracts/applications and unchecked contract-to-concrete conversions are rejected. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover a concrete record or alternative receiver after checking its exact nominal identity at runtime.
 
 Write generic view arguments explicitly or supply an expected application of the same contract, plain or shared. Operation names do not infer arguments, and an expected shared type cannot refine a plain constructor.
 

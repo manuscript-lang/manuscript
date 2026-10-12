@@ -1,11 +1,9 @@
 import panic from "@std/faults.ms"
 
 import check_cancelled from "@std/tasks.ms"
-import List from "@std/collections.ms"
 import Result from "@std/result.ms"
 import Optional from "@std/optional.ms"
 import parallel from "@std/tasks.ms"
-import parallel_map from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
 import Background from "@std/tasks.ms"
 import StartError from "@std/tasks.ms"
@@ -23,11 +21,6 @@ fn run() -> Result[Unit, ExecutionError]:
     if not (number == 3):
         return panic(message: "check failed")
     if not (flag):
-        return panic(message: "check failed")
-    let operation = fn(item: Int) -> Int:
-        return item * 2
-    let values = try parallel_map(items: [3, 1, 2], operation: operation, limit: 2)
-    if not (values == [6, 2, 4]):
         return panic(message: "check failed")
     let [] = try parallel(tasks: [], timeout: 0.seconds)
     return ok(value: unit)

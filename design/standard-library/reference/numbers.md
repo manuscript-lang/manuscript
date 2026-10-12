@@ -6,6 +6,19 @@ title = "numbers"
 
 Import each required symbol with `import Name from "@std/numbers.ms"`.
 
+## NumberError
+
+Kind: alternative.
+
+```text
+NumberError: NumberError
+implements: Error
+case InvalidInput
+case InvalidData
+case OutOfRange
+operation message: fn()->String
+```
+
 ## format_float
 
 Kind: fn.
@@ -27,7 +40,7 @@ format_int: fn(value: Int, radix: Int)->String
 Kind: fn.
 
 ```text
-parse_float: fn(text: String)->Result[Float, LibraryError]
+parse_float: fn(text: String)->Result[Float, NumberError]
 ```
 
 ## parse_int
@@ -35,6 +48,6 @@ parse_float: fn(text: String)->Result[Float, LibraryError]
 Kind: fn.
 
 ```text
-parse_int: fn(text: String, radix: Int)->Result[Int, LibraryError]
+parse_int: fn(text: String, radix: Int)->Result[Int, NumberError]
 ```
 

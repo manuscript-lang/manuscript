@@ -9,7 +9,7 @@ weight = 26
 
 Use `match` to handle the cases of an alternative type. Each branch can give names to the data carried by its case. For example, a payment may be paid, declined, or pending, and each outcome needs different handling.
 
-A match accepts tagged alternative types, including `Optional` and `Result`. Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is a statement; it cannot initialize a binding as an expression. The scrutinee evaluates once.
+A match accepts tagged alternative types, including `Optional` and `Result`, and operation contract views. Matching numeric or Boolean literals, guards, ranges, nested case patterns, and combined patterns is rejected. `match` is a statement; it cannot initialize a binding as an expression. The scrutinee evaluates once.
 
 The following function handles the `Payment` type declared in [alternatives](../types/alternatives.md):
 
@@ -67,6 +67,34 @@ Adding a case to an alternative invalidates exhaustive matches that lack a wildc
 ## Optional and result values
 
 [Optional](../types/optionals.md) and [Result](../errors/results.md) are also alternative types. Matching an optional distinguishes a present value from absence. Matching a result distinguishes success from an expected failure and lets the caller decide what to do with each.
+
+## Contract type patterns
+
+A contract view keeps its concrete receiver. Match that view with `ConcreteType(receiver)` to handle a particular implementation, followed by `_:` for generic handling. This is a checked recovery of an existing receiver, not a constructor call.
+
+```text
+import Error from "@std/errors.ms"
+import JsonError from "@std/json.ms"
+
+fn describe(cause: Error) -> String:
+    match cause:
+        JsonError(json):
+            match json:
+                InvalidInput:
+                    return "Invalid JSON limits"
+                InvalidData:
+                    return "Malformed JSON"
+                LimitExceeded:
+                    return "JSON limit exceeded"
+        _:
+            return cause.message()
+```
+
+The type must be an imported or local nominal record or alternative with an applicable explicit implementation of the scrutinee's exact contract. Supply exactly one receiver name or `_`, including for a payloadless alternative. The binding has the concrete type, so its fields, cases, and implemented operations are available inside the arm. Native opaque receivers can be handled by the wildcard, but cannot be named in a concrete type pattern.
+
+Generic patterns name the complete application, such as `MyError[Int](cause)`; `MyError[String]` is a different pattern. An in-scope generic parameter may supply an argument, as in `MyError[T](cause)`. Matching uses exact runtime nominal identities and type arguments, with the first matching arm selected. Duplicate statically identical type patterns are rejected. A pattern cannot name a different contract, a bare type parameter, or an individual alternative case.
+
+A final wildcard is required even when every currently known implementation is listed: contracts are open to other implementations. It binds nothing; use the original contract value for generic handling. The same rules apply to plain and shared views. The scrutinee evaluates once; matching retains the same receiver reference and does not copy it, add cleanup, or catch faults and cancellation. See [contract views](../types/contracts.md#explicit-contract-views).
 
 ## Matching resource references
 

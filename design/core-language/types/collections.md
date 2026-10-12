@@ -34,7 +34,7 @@ A function taking `values: List[Int]` is called as `sum(values: [1, 2, 3])` or w
 
 Collections require shareable elements; map keys and set elements additionally require hashing. A map's keys and values must therefore be shareable, and its keys must also satisfy the hashing requirement.
 
-Resource and service references may be stored when they meet the element sharing bounds. Retaining them does not keep the resource open or register cleanup. Dynamic concurrent traversal uses [parallel_map](../../standard-library/tasks/parallel-map.md).
+Resource and service references may be stored when they meet the element sharing bounds. Retaining them does not keep the resource open or register cleanup.
 
 Interface elements must retain a static sharing guarantee: `List[Contract & Shareable]` is permitted, while `List[Contract]` fails its element bound even when every hidden receiver happens to be shareable. Construct [shared contract views](contracts.md#shared-contract-views) before inserting them.
 

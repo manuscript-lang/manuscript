@@ -18,7 +18,7 @@ The compiler checks which names a closure captures and which cleanup actions eac
 | Reassignment and branch scope | Require initializers, enforce `let`/`var`, and keep branch-local names inside their scope |
 | Concurrency eligibility | Retain type-level sharing through generic data/shared-contract boundaries; check callable value proofs separately at standard API entry |
 | Callable proof erasure | Retain safe local capture proofs for direct standard callable arguments; erase them through generic forwarding, fields, and source function parameter/result boundaries; function types never satisfy Shareable |
-| Call-only standard bindings | For resolved standard declaration identities only, reject extracting parallel, parallel_map, Background constructors, or Background.start as function/bound-method values; validate every direct call's required callable proofs. Same-spelled application functions follow ordinary function-value rules |
+| Call-only standard bindings | For resolved standard declaration identities only, reject extracting parallel, Background constructors, or Background.start as function/bound-method values; validate every direct call's required callable proofs. Same-spelled application functions follow ordinary function-value rules |
 
 Capturing a scoped resource is not a compile error merely because it may outlive its scope. Methods report closed state at runtime. Storing or returning a reference does not transfer a cleanup action. There are no moved-binding states, borrow lifetimes, partial-move restrictions, or source task-ownership checks.
 

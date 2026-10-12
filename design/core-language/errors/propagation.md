@@ -31,6 +31,8 @@ Error conversion uses the standard `map_error(result: outcome, transform: fn(cau
 
 If the called operation returns `Result[T, E]`, the function using `try` must return `Result[U, E]`. The success type may change from `T` to `U`, but the error type `E` must be exactly the same. Two error types are not interchangeable just because they implement the same interface. Convert explicitly before constructing the Result that try uses.
 
+A common `Error` boundary follows the same rule: first use `map_error(result: outcome, transform: as_error[SpecificError])` to preserve the concrete cause in an Error view, then apply `try`. See [common error boundaries](results.md#a-common-error-boundary).
+
 The expression after `try` is evaluated once. Try binds more tightly than arithmetic, so `try operation() + 1` means `(try operation()) + 1`.
 
 The compiler rejects try when:

@@ -245,7 +245,11 @@ func (p *Parser) declaration() *syntax.Declaration {
 			m.Params = p.parameters()
 			p.need("->")
 			m.Result = p.typ()
-			m.Body = p.suite()
+			if p.declarationsOnly && p.peek().Kind != ":" {
+				p.end()
+			} else {
+				m.Body = p.suite()
+			}
 			d.Methods = append(d.Methods, m)
 		}
 		p.need(lexer.Dedent)

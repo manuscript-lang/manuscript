@@ -24,7 +24,7 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 | Immutable data | List, insertion-ordered Map and Set, MapEntry, Bytes, UTF-8 conversion, Optional, Result, and `map_error` |
 | Time | Duration construction/arithmetic, monotonic Clock/Instant domains, sleep, and operation deadlines |
 | Cleanup | Checker-selected contract dispatch, registration of delivered `with` values, reverse lexical release on every exit, shielded cleanup, primary/secondary fault preservation, and removal of completed cleanup actions |
-| Joined work | Heterogeneous literal `parallel` packs, bounded ordered `parallel_map`, cancellation checkpoints, deadlines, sibling cancellation on faults, and joining before completion |
+| Joined work | Heterogeneous literal `parallel` packs, cancellation checkpoints, deadlines, sibling cancellation on faults, and joining before completion |
 | Background | Bounded admission/history, fixed construction parent, cancellation, serialized reporting, bounded diagnostic fallback, optional drain, concurrent idempotent close, and nested-service joining |
 | Queues and state | Bounded FIFO queues with cancellable waits, close/wakeup/drain semantics, and synchronized shareable State with atomic get/set/swap |
 | Pools and leases | Fixed resource pools, cancellable acquisition, guarded contract views, stale-alias rejection, single capacity return, operation cancellation/joining, and reverse owned-resource release |

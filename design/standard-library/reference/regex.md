@@ -14,12 +14,25 @@ Kind: native.
 Regex: Regex
 ```
 
+## RegexError
+
+Kind: alternative.
+
+```text
+RegexError: RegexError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
+
 ## compile
 
 Kind: fn.
 
 ```text
-compile: fn(pattern: String)->Result[Regex, LibraryError]
+compile: fn(pattern: String)->Result[Regex, RegexError]
 ```
 
 ## find_all
@@ -27,7 +40,7 @@ compile: fn(pattern: String)->Result[Regex, LibraryError]
 Kind: fn.
 
 ```text
-find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String], LibraryError]
+find_all: fn(pattern: Regex, text: String, max_matches: Int)->Result[List[String], RegexError]
 ```
 
 ## matches
@@ -43,6 +56,6 @@ matches: fn(pattern: Regex, text: String)->Bool
 Kind: fn.
 
 ```text
-replace: fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)->Result[String, LibraryError]
+replace: fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)->Result[String, RegexError]
 ```
 

@@ -56,6 +56,8 @@ func Check(modules []*syntax.Module, imports map[*syntax.Import]string) *Program
 func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]string, options CheckOptions) *Program {
 	p := &Program{Flow: map[*syntax.Statement]Flow{}, TypeReferences: map[*syntax.Type]*Type{}, Scopes: map[*syntax.Expression]ScopeState{}, Cleanups: map[*syntax.Statement]*Method{}, Modules: modules, Symbols: map[string]map[string]*Symbol{}, Expressions: map[*syntax.Expression]*Info{}, Bindings: map[*syntax.Pattern]*Binding{}, LoopBindings: map[*syntax.Statement]*Binding{}, ArmBindings: map[*syntax.Arm][]*Binding{}, Parameters: map[*syntax.Declaration][]*Binding{}, LambdaParameters: map[*syntax.Expression][]*Binding{}, Assignments: map[*syntax.Expression]*Binding{}, Self: map[*syntax.Declaration]*Binding{}}
 	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
+	p.Methods = append(p.Methods, standardImplementations...)
+	p.ContractPatterns = map[*syntax.Arm]*Type{}
 	for _, module := range modules {
 		c.module = module
 		c.names = map[string]*Symbol{}
@@ -489,8 +491,11 @@ func (c *checker) pattern(p *syntax.Pattern, t *Type, mutable, proof bool, sourc
 }
 func (c *checker) match(s *syntax.Statement) (bool, bool) {
 	info := c.expression(s.Value, nil)
+	if info.Type.Kind == "contract" {
+		return c.matchContract(s, info)
+	}
 	if info.Type.Kind != "alternative" {
-		c.error(s.Pos, "type", "match requires an alternative")
+		c.error(s.Pos, "type", "match requires an alternative or contract view")
 		return true, false
 	}
 	cases := Cases(info.Type)
@@ -547,6 +552,67 @@ func (c *checker) match(s *syntax.Statement) (bool, bool) {
 	}
 	if !wildcard && len(seen) != len(cases) {
 		c.error(s.Pos, "type", "non-exhaustive match")
+	}
+	return !info.NoReturn && fall, breaks
+}
+
+func (c *checker) matchContract(s *syntax.Statement, info *Info) (bool, bool) {
+	contract := *info.Type
+	contract.Shared = false
+	seen := map[string]bool{}
+	wildcard, fall, breaks := false, false, false
+	for index := range s.Arms {
+		arm := &s.Arms[index]
+		var target *Type
+		if arm.Path.Text == "_" {
+			if wildcard || index != len(s.Arms)-1 {
+				c.error(arm.Pos, "type", "wildcard must appear once and be last")
+			}
+			wildcard = true
+		} else {
+			target = c.typeExpression(arm.Path)
+			if target == nil || (target.Kind != "record" && target.Kind != "alternative") {
+				c.error(arm.Pos, "type", "contract pattern requires a concrete record or alternative type")
+				target = nil
+			} else {
+				if len(target.Def.Variables) > 0 && arm.Path.Kind != "apply" {
+					c.error(arm.Pos, "type", "concrete type pattern requires explicit type arguments")
+				}
+				c.wellFormed(target, arm.Pos, map[string]bool{})
+				if !c.implements(target, &contract) {
+					c.error(arm.Pos, "type", target.String()+" does not implement "+contract.String())
+				}
+				key := TypeKey(target)
+				if seen[key] || wildcard {
+					c.error(arm.Pos, "type", "duplicate or unreachable concrete type pattern")
+				}
+				seen[key] = true
+				c.ContractPatterns[arm] = target
+				name := arm.Path
+				if name.Kind == "apply" {
+					name = name.Left
+				}
+				c.Expressions[name] = &Info{Type: target, Symbol: target.Def.Symbol}
+			}
+			if len(arm.Names) != 1 {
+				c.error(arm.Pos, "type", "concrete type pattern requires exactly one receiver binding")
+			}
+		}
+		old := c.scope
+		c.scope = newScope(old)
+		for _, name := range arm.Names {
+			var binding *Binding
+			if name != "_" && target != nil {
+				binding = c.bind(name, target, false, false, arm.Pos)
+			}
+			c.ArmBindings[arm] = append(c.ArmBindings[arm], binding)
+		}
+		a, br := c.block(arm.Body, false)
+		fall, breaks = fall || a, breaks || br
+		c.scope = old
+	}
+	if !wildcard {
+		c.error(s.Pos, "type", "contract match requires a final wildcard for other implementations")
 	}
 	return !info.NoReturn && fall, breaks
 }
@@ -634,7 +700,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				if len(s.Variables) > 0 {
 					c.error(e.Pos, "type", "a generic function value requires explicit specialization")
 				}
-				if s.Native == "parallel" || s.Native == "parallel_map" {
+				if s.Native == "parallel" {
 					c.error(e.Pos, "type", "concurrency binding requires a direct call")
 				}
 			}
@@ -655,9 +721,6 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			i.Type = c.specialize(s.Type, s.Variables, args, e.Pos)
 			i.TypeArgs = args
 			i.Proof = true
-			if s.Native == "parallel_map" {
-				c.error(e.Pos, "type", "concurrency binding requires a direct call")
-			}
 		} else {
 			typ := c.typeExpression(e)
 			if typ != nil {

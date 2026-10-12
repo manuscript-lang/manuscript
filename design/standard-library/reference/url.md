@@ -30,12 +30,25 @@ field query: String
 field fragment: String
 ```
 
+## UrlError
+
+Kind: alternative.
+
+```text
+UrlError: UrlError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
+
 ## decode_component
 
 Kind: fn.
 
 ```text
-decode_component: fn(text: String)->Result[String, LibraryError]
+decode_component: fn(text: String)->Result[String, UrlError]
 ```
 
 ## encode_component
@@ -51,7 +64,7 @@ encode_component: fn(text: String)->String
 Kind: fn.
 
 ```text
-format: fn(value: Url)->Result[String, LibraryError]
+format: fn(value: Url)->Result[String, UrlError]
 ```
 
 ## format_query
@@ -67,7 +80,7 @@ format_query: fn(entries: List[QueryEntry])->String
 Kind: fn.
 
 ```text
-parse: fn(text: String)->Result[Url, LibraryError]
+parse: fn(text: String)->Result[Url, UrlError]
 ```
 
 ## parse_query
@@ -75,7 +88,7 @@ parse: fn(text: String)->Result[Url, LibraryError]
 Kind: fn.
 
 ```text
-parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], LibraryError]
+parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], UrlError]
 ```
 
 ## resolve
@@ -83,6 +96,6 @@ parse_query: fn(text: String, max_entries: Int)->Result[List[QueryEntry], Librar
 Kind: fn.
 
 ```text
-resolve: fn(base: Url, reference: String)->Result[Url, LibraryError]
+resolve: fn(base: Url, reference: String)->Result[Url, UrlError]
 ```
 

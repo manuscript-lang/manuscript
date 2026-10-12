@@ -1,5 +1,7 @@
 package msruntime
 
+import "strings"
+
 // LibrarySpec is the shared source of truth for checker and native bindings.
 // Function identities include their module to avoid collisions such as parse/join.
 type LibraryParam struct{ Name, Type string }
@@ -36,15 +38,22 @@ func libraryFunction(name, result string) (Value, bool) {
 }
 func libraryOK(result string, value Value) Value { return Alternative{result, "ok", []Value{value}} }
 func libraryError(result, code, message string) Value {
-	// Messages are diagnostics, codes are stable and intentionally shared across packages.
-	return Alternative{result, "error", []Value{Alternative{"@std/LibraryError", code, func() []Value {
-		if code == "Failed" {
-			return []Value{message}
-		}
-		return nil
-	}()}}}
+	var fields []Value
+	if code == "Failed" {
+		fields = []Value{message}
+	}
+	return libraryErrorFields(result, code, fields)
 }
-func libraryResult(typ string) string             { return "Result[" + typ + "][LibraryError]" }
+func libraryErrorFields(result, code string, fields []Value) Value {
+	// The error identity comes from the declared Result, including nested success types.
+	start := strings.LastIndex(result, "][")
+	if start < 0 || !strings.HasSuffix(result, "]") {
+		return Panic("invalid native library Result type")
+	}
+	errorType := result[start+2 : len(result)-1]
+	return Alternative{result, "error", []Value{Alternative{errorType, code, fields}}}
+}
+func libraryResult(typ, errorType string) string  { return "Result[" + typ + "][" + errorType + "]" }
 func libraryList(typ string, values []Value) List { return List{"@std/List[" + typ + "]", values} }
 func libraryStrings(values []string) List {
 	items := make([]Value, len(values))

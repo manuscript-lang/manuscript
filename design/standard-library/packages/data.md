@@ -14,14 +14,14 @@ Use these modules for text transformations, raw bytes, encodings, collection alg
 ```text
 fn contains(value: String, text: String) -> Bool
 fn ends_with(value: String, suffix: String) -> Bool
-fn from_scalars(values: List[Int]) -> Result[String, LibraryError]
+fn from_scalars(values: List[Int]) -> Result[String, TextError]
 fn join(parts: List[String], separator: String) -> String
 fn lower(text: String) -> String
-fn repeat(text: String, count: Int, max_bytes: Int) -> Result[String, LibraryError]
+fn repeat(text: String, count: Int, max_bytes: Int) -> Result[String, TextError]
 fn replace(text: String, old: String, new: String, max_replacements: Int) -> String
 fn scalar_length(text: String) -> Int
 fn scalar_values(text: String) -> List[Int]
-fn slice_scalars(text: String, start: Int, end: Int) -> Result[String, LibraryError]
+fn slice_scalars(text: String, start: Int, end: Int) -> Result[String, TextError]
 fn split(text: String, separator: String, max_parts: Int) -> List[String]
 fn starts_with(value: String, prefix: String) -> Bool
 fn trim(text: String) -> String
@@ -39,19 +39,19 @@ fn values(data: Bytes) -> List[Int]
 ## `@std/encoding.ms`
 
 ```text
-fn base64_decode(text: String, url_safe: Bool, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn base64_decode(text: String, url_safe: Bool, max_bytes: Int) -> Result[Bytes, EncodingError]
 fn base64_encode(data: Bytes, url_safe: Bool) -> String
-fn hex_decode(text: String, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn hex_decode(text: String, max_bytes: Int) -> Result[Bytes, EncodingError]
 fn hex_encode(data: Bytes) -> String
 ```
 
 ## `@std/binary.ms`
 
 ```text
-fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, LibraryError]
-fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, LibraryError]
+fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]
+fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]
 fn write_float(value: Float, little_endian: Bool) -> Bytes
-fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, LibraryError]
+fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]
 ```
 
 ## `@std/collections.ms`
@@ -75,10 +75,10 @@ fn union[T: Hashable](left: Set[T], right: Set[T]) -> Set[T]
 ## `@std/regex.ms`
 
 ```text
-fn compile(pattern: String) -> Result[Regex, LibraryError]
-fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], LibraryError]
+fn compile(pattern: String) -> Result[Regex, RegexError]
+fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], RegexError]
 fn matches(pattern: Regex, text: String) -> Bool
-fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Int) -> Result[String, LibraryError]
+fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Int) -> Result[String, RegexError]
 ```
 
 ## Text behavior

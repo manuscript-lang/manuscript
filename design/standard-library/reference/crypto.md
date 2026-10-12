@@ -6,6 +6,19 @@ title = "crypto"
 
 Import each required symbol with `import Name from "@std/crypto.ms"`.
 
+## CryptoError
+
+Kind: alternative.
+
+```text
+CryptoError: CryptoError
+implements: Error
+case InvalidInput
+case Unsupported
+case AuthenticationFailed
+operation message: fn()->String
+```
+
 ## constant_time_equal
 
 Kind: fn.
@@ -19,7 +32,7 @@ constant_time_equal: fn(left: Bytes, right: Bytes)->Bool
 Kind: fn.
 
 ```text
-derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Result[Bytes, LibraryError]
+derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Result[Bytes, CryptoError]
 ```
 
 ## hmac
@@ -27,7 +40,7 @@ derive_key: fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)->Resu
 Kind: fn.
 
 ```text
-hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, LibraryError]
+hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, CryptoError]
 ```
 
 ## open
@@ -35,7 +48,7 @@ hmac: fn(key: Bytes, data: Bytes, algorithm: String)->Result[Bytes, LibraryError
 Kind: fn.
 
 ```text
-open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->Result[Bytes, LibraryError]
+open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->Result[Bytes, CryptoError]
 ```
 
 ## public_key
@@ -43,7 +56,7 @@ open: fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)->R
 Kind: fn.
 
 ```text
-public_key: fn(seed: Bytes)->Result[Bytes, LibraryError]
+public_key: fn(seed: Bytes)->Result[Bytes, CryptoError]
 ```
 
 ## seal
@@ -51,7 +64,7 @@ public_key: fn(seed: Bytes)->Result[Bytes, LibraryError]
 Kind: fn.
 
 ```text
-seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Result[Bytes, LibraryError]
+seal: fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)->Result[Bytes, CryptoError]
 ```
 
 ## sha256
@@ -83,7 +96,7 @@ sha512: fn(data: Bytes)->Bytes
 Kind: fn.
 
 ```text
-sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, LibraryError]
+sign: fn(seed: Bytes, data: Bytes)->Result[Bytes, CryptoError]
 ```
 
 ## verify

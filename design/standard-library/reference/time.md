@@ -31,6 +31,18 @@ Kind: native.
 Instant: Instant
 ```
 
+## TimeError
+
+Kind: alternative.
+
+```text
+TimeError: TimeError
+implements: Error
+case InvalidData
+case OutOfRange
+operation message: fn()->String
+```
+
 ## Timestamp
 
 Kind: native.
@@ -53,7 +65,7 @@ operation now: fn()->Timestamp
 Kind: fn.
 
 ```text
-difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, LibraryError]
+difference: fn(left: Timestamp, right: Timestamp)->Result[Duration, TimeError]
 ```
 
 ## format_timestamp
@@ -77,7 +89,7 @@ nanoseconds: fn(value: Timestamp)->Int
 Kind: fn.
 
 ```text
-parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
+parse_timestamp: fn(text: String)->Result[Timestamp, TimeError]
 ```
 
 ## shift
@@ -85,7 +97,7 @@ parse_timestamp: fn(text: String)->Result[Timestamp, LibraryError]
 Kind: fn.
 
 ```text
-shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, LibraryError]
+shift: fn(value: Timestamp, duration: Duration)->Result[Timestamp, TimeError]
 ```
 
 ## sleep
@@ -101,7 +113,7 @@ sleep: fn(duration: Duration)->Unit
 Kind: fn.
 
 ```text
-timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, LibraryError]
+timestamp: fn(seconds: Int, nanoseconds: Int)->Result[Timestamp, TimeError]
 ```
 
 ## unix_seconds

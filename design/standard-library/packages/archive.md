@@ -12,15 +12,15 @@ Use compress for a byte stream and archive for named file or directory entries. 
 ## `@std/compress.ms`
 
 ```text
-fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, LibraryError]
-fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, CompressionError]
+fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, CompressionError]
 ```
 
 ## `@std/archive.ms`
 
 ```text
-fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, LibraryError]
-fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], LibraryError]
+fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, ArchiveError]
+fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], ArchiveError]
 ```
 
 ## Compression behavior

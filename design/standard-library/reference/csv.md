@@ -6,6 +6,19 @@ title = "csv"
 
 Import each required symbol with `import Name from "@std/csv.ms"`.
 
+## CsvError
+
+Kind: alternative.
+
+```text
+CsvError: CsvError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
+
 ## CsvOptions
 
 Kind: record.
@@ -21,7 +34,7 @@ field line_ending: String
 Kind: fn.
 
 ```text
-parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Result[List[List[String]], LibraryError]
+parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Result[List[List[String]], CsvError]
 ```
 
 ## stringify
@@ -29,6 +42,6 @@ parse: fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)->Res
 Kind: fn.
 
 ```text
-stringify: fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)->Result[String, LibraryError]
+stringify: fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)->Result[String, CsvError]
 ```
 

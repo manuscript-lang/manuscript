@@ -184,15 +184,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		return i
 	}
 	i.Arguments = functionArguments(e.Args, signature.Params)
-	params := signature.Params
-	if s != nil && s.Native == "parallel_map" {
-		for _, arg := range e.Args {
-			if arg.Name == "timeout" {
-				params = append(append([]Param{}, params...), Param{"timeout", standard("Duration")})
-			}
-		}
-	}
-	i.NoReturn = callable.NoReturn || c.arguments(i.Arguments, params)
+	i.NoReturn = callable.NoReturn || c.arguments(i.Arguments, signature.Params)
 	i.Type = signature.Result
 	if i.Native == "http_serve" {
 		for _, arg := range e.Args {
@@ -202,13 +194,6 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		}
 	}
 
-	if s != nil && s.Native == "parallel_map" {
-		for _, arg := range e.Args {
-			if arg.Name == "operation" && !c.Expressions[arg.Value].Proof {
-				c.error(arg.Pos, "type", "parallel_map requires a proved shareable callback")
-			}
-		}
-	}
 	if i.Native == "background_start" {
 		for _, arg := range i.Arguments {
 			if arg.Name == "operation" && !c.Expressions[arg.Value].Proof {

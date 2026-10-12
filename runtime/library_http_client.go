@@ -19,9 +19,9 @@ import (
 
 func init() {
 	for _, m := range []LibraryMethod{
-		{"Network", "http_client", libraryResult("HttpClient&Shareable"), []LibraryParam{{"options", "HttpClientOptions"}}},
-		{"HttpClient", "send", libraryResult("ResponseBody&Shareable"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
-		{"HttpClient", "send_stream", libraryResult("ResponseBody&Shareable"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream&Shareable"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
+		{"Network", "http_client", libraryResult("HttpClient&Shareable", "HttpError"), []LibraryParam{{"options", "HttpClientOptions"}}},
+		{"HttpClient", "send", libraryResult("ResponseBody&Shareable", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
+		{"HttpClient", "send_stream", libraryResult("ResponseBody&Shareable", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "ReadStream&Shareable"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
 		{"HttpClient", "close", "Unit", nil},
 		{"ResponseBody", "status", "Int", nil}, {"ResponseBody", "headers", "Map[String][List[String]]", nil},
 		{"ResponseBody", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},

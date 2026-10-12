@@ -6,6 +6,19 @@ title = "json"
 
 Import each required symbol with `import Name from "@std/json.ms"`.
 
+## JsonError
+
+Kind: alternative.
+
+```text
+JsonError: JsonError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+operation message: fn()->String
+```
+
 ## JsonLimits
 
 Kind: record.
@@ -36,7 +49,7 @@ case ObjectValue(values: Map[String, JsonValue])
 Kind: fn.
 
 ```text
-parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, LibraryError]
+parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, JsonError]
 ```
 
 ## stringify
@@ -44,6 +57,6 @@ parse: fn(text: String, limits: JsonLimits)->Result[JsonValue, LibraryError]
 Kind: fn.
 
 ```text
-stringify: fn(value: JsonValue, max_bytes: Int)->Result[String, LibraryError]
+stringify: fn(value: JsonValue, max_bytes: Int)->Result[String, JsonError]
 ```
 

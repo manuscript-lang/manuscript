@@ -71,7 +71,7 @@ test "standard spellings are ordinary names":
 
 Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected without the standard List import even though a local List exists. Calling this local parallel with a `tasks` pack does not activate the standard binding's special typing. Extracting the local parallel above is accepted as an ordinary function value.
 
-Preserve the imported parallel/parallel_map/Background callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, parallel_map, Background, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
+Preserve the imported parallel/Background callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, Background, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
 
 Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a module path, a missing standard file/export, and paths or symlinks escaping the standard-library directory. Resolving a standard module in two installation directories with identical pinned contents preserves identity; changing its pinned distribution invalidates module/analysis/code-generation caches. Adapter interfaces may import standard declarations but cannot use that exception to import application files. Imports alone acquire no external authority.
 
@@ -185,7 +185,7 @@ fn rejected_forwarding() -> Result[Unit, ExecutionError]:
 
 Replacing forwarded with safe accepts the function. A generic function with `T: Shareable` instead rejects passing safe at bound checking. A `Box[T]` field storing a function does not restore the erased proof; `Box[T: Shareable]` rejects a function type argument. Ordinary generic data values and inferred result packs retain their type-level sharing properties; their behavior is unchanged.
 
-Independently reject extracting `let launch = background.start`, `let mapper = parallel_map[Int, Int]`, `let constructor = Background`, a bare parallel reference, and forwarding these references to identity or a function parameter. These call-only bindings have requirements a plain function type cannot retain. Accept direct explicitly specialized parallel_map calls with proven-safe callbacks. A source wrapper that accepts an ordinary function parameter and forwards it to Background.start is rejected for missing callable proof at that direct call.
+Independently reject extracting `let launch = background.start`, `let constructor = Background`, a bare parallel reference, and forwarding these references to identity or a function parameter. These call-only bindings have requirements a plain function type cannot retain. A source wrapper that accepts an ordinary function parameter and forwards it to Background.start is rejected for missing callable proof at that direct call.
 
 ## Data and numeric outcomes
 

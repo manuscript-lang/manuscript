@@ -12,16 +12,16 @@ Use an explicit Network service to resolve names and open sockets. Connections, 
 ## `@std/net.ms`
 
 ```text
-fn contains_ip(cidr: String, address: String) -> Result[Bool, LibraryError]
-fn parse_cidr(text: String) -> Result[String, LibraryError]
-fn parse_ip(text: String) -> Result[String, LibraryError]
+fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]
+fn parse_cidr(text: String) -> Result[String, NetworkError]
+fn parse_ip(text: String) -> Result[String, NetworkError]
 ```
 
 ## `@std/tls.ms`
 
 ```text
-fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], LibraryError]
-fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, LibraryError]
+fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
+fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
 ```
 
 ## Connection operations
@@ -29,33 +29,33 @@ fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String
 ```text
 fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
 fn write(data: Bytes) -> Result[Unit, IoError]
-fn shutdown_write() -> Result[Unit, LibraryError]
+fn shutdown_write() -> Result[Unit, NetworkError]
 fn local_address() -> String
 fn peer_address() -> String
 fn close() -> Unit
 fn read_timeout(max_bytes: Int, timeout: Duration) -> Result[Optional[Bytes], IoError]
 fn write_timeout(data: Bytes, timeout: Duration) -> Result[Unit, IoError]
-fn tls_info() -> Result[TlsInfo, LibraryError]
+fn tls_info() -> Result[TlsInfo, TlsError]
 ```
 
 ## Listener operations
 
 ```text
-fn accept() -> Result[Connection&Shareable, LibraryError]
+fn accept() -> Result[Connection&Shareable, NetworkError]
 fn address() -> String
 fn close() -> Unit
-fn accept_timeout(timeout: Duration) -> Result[Connection&Shareable, LibraryError]
+fn accept_timeout(timeout: Duration) -> Result[Connection&Shareable, NetworkError]
 ```
 
 ## DatagramSocket operations
 
 ```text
-fn send(data: Bytes, address: String) -> Result[Unit, LibraryError]
-fn receive(max_bytes: Int) -> Result[Datagram, LibraryError]
+fn send(data: Bytes, address: String) -> Result[Unit, NetworkError]
+fn receive(max_bytes: Int) -> Result[Datagram, NetworkError]
 fn address() -> String
 fn close() -> Unit
-fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, LibraryError]
-fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, LibraryError]
+fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, NetworkError]
+fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, NetworkError]
 ```
 
 ## Authority and restrictions
@@ -124,7 +124,7 @@ Listener accept cancellation uses an interruptible deadline and restores it befo
 
 ### Datagrams and operation timeouts
 
-UDP preserves message boundaries, including empty messages. Receive accepts max_bytes 1–65535 and returns LimitExceeded on an oversized consumed packet, never a truncated success. UDP name resolution responds to caller cancellation and Network/socket closure. Timeout variants take nonnegative durations: zero is an immediate deadline. Expected local timeouts return LibraryError.Timeout; Connection timeout variants retain IoError and use Failed with a timeout diagnostic. Parent cancellation always unwinds. Operation deadlines are cleared under the direction gate before the next operation starts.
+UDP preserves message boundaries, including empty messages. Receive accepts max_bytes 1–65535 and returns LimitExceeded on an oversized consumed packet, never a truncated success. UDP name resolution responds to caller cancellation and Network/socket closure. Timeout variants take nonnegative durations: zero is an immediate deadline. Expected local timeouts return NetworkError.Timeout; Connection timeout variants retain IoError and use Failed with a timeout diagnostic. Parent cancellation always unwinds. Operation deadlines are cleared under the direction gate before the next operation starts.
 
 ## TLS and certificates
 
@@ -139,16 +139,16 @@ HTTP/3 is intentionally excluded at the user's request. The HTTP/1.1, HTTP/2 and
 ## Network operations
 
 ```text
-fn lookup(name: String, max_records: Int, timeout: Duration) -> Result[List[String], LibraryError]
-fn connect(address: String, timeout: Duration) -> Result[Connection&Shareable, LibraryError]
-fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection&Shareable, LibraryError]
-fn listen(address: String) -> Result[Listener&Shareable, LibraryError]
-fn bind_datagram(address: String) -> Result[DatagramSocket&Shareable, LibraryError]
-fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network&Shareable, LibraryError]
-fn with_resolver(address: String) -> Result[Network&Shareable, LibraryError]
-fn resolve(name: String, kind: String, max_records: Int, timeout: Duration) -> Result[List[DnsRecord], LibraryError]
-fn connect_unix(path: String, timeout: Duration) -> Result[Connection&Shareable, LibraryError]
-fn listen_unix(path: String) -> Result[Listener&Shareable, LibraryError]
-fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection&Shareable, LibraryError]
-fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener&Shareable, LibraryError]
+fn lookup(name: String, max_records: Int, timeout: Duration) -> Result[List[String], NetworkError]
+fn connect(address: String, timeout: Duration) -> Result[Connection&Shareable, NetworkError]
+fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection&Shareable, NetworkError]
+fn listen(address: String) -> Result[Listener&Shareable, NetworkError]
+fn bind_datagram(address: String) -> Result[DatagramSocket&Shareable, NetworkError]
+fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network&Shareable, NetworkError]
+fn with_resolver(address: String) -> Result[Network&Shareable, NetworkError]
+fn resolve(name: String, kind: String, max_records: Int, timeout: Duration) -> Result[List[DnsRecord], NetworkError]
+fn connect_unix(path: String, timeout: Duration) -> Result[Connection&Shareable, NetworkError]
+fn listen_unix(path: String) -> Result[Listener&Shareable, NetworkError]
+fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection&Shareable, NetworkError]
+fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener&Shareable, NetworkError]
 ```

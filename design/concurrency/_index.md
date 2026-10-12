@@ -14,7 +14,6 @@ An ordinary function call finishes before the caller moves on. Use a concurrency
 | Need | Use | When it finishes |
 | --- | --- | --- |
 | Run a fixed set of functions together | `parallel` | Before the call returns, including on failure. |
-| Run one function over a list, with limited concurrency | `parallel_map` | Before the call returns, including on failure. |
 | Start work under a longer-lived service | `Background` | The service tracks it and waits for unfinished work during shutdown. |
 
 Parallel APIs *join*: they wait for every started operation to finish its body and cleanup. A timeout requests a stop; it does not let the call return with work still running.
@@ -29,7 +28,6 @@ Concurrency adds no intrinsic names or compiler bounds. Import each API or type 
 
 ```text
 import parallel from "@std/tasks.ms"
-import parallel_map from "@std/tasks.ms"
 import Background from "@std/tasks.ms"
 import ExecutionError from "@std/tasks.ms"
 import OperationId from "@std/tasks.ms"
@@ -49,7 +47,7 @@ Every operation starts under a fixed execution lifetime. That relationship is ch
 | API | Execution lifetime |
 | --- | --- |
 | Ordinary call | Current execution context |
-| `parallel` or `parallel_map` | Joined group nested under the caller |
+| `parallel` | Joined group nested under the caller |
 | `Background.start` | The chosen background service's fixed host/component lifetime |
 
 A helper may call `parallel` and return its completed result. It cannot return running work for another scope to adopt. Background work is started directly through the chosen service.
@@ -63,8 +61,8 @@ There is no task adoption, task reparenting, source-level detached work, or dyna
 ## Reading order
 
 1. [Parallel operations](parallel.md): calling `parallel`, argument preparation, and typed results
-2. [Joined groups](joining.md): the normative stop, join, and outcome contract for `parallel` and `parallel_map`
+2. [Joined groups](joining.md): the normative stop, join, and outcome contract for `parallel`
 3. [Cancellation and budgets](cancellation.md): cancellation requests, checkpoints, timeouts, and deadlines
 4. [Runtime contracts](runtime.md): atomic transitions, resource acquisition, adapter contexts, and host escalation
 
-The standard library pages cover [bounded parallel mapping](../standard-library/tasks/parallel-map.md) and [background services](../standard-library/tasks/background.md).
+The standard library describes [background services](../standard-library/tasks/background.md).

@@ -25,7 +25,7 @@ func init() {
 			return Bytes{h.Sum(nil)}
 		})
 	}
-	libraryAdd("crypto", "hmac", libraryResult("Bytes"), []LibraryParam{p("key", "Bytes"), p("data", "Bytes"), p("algorithm", "String")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("crypto", "hmac", libraryResult("Bytes", "CryptoError"), []LibraryParam{p("key", "Bytes"), p("data", "Bytes"), p("algorithm", "String")}, func(ctx *Execution, r string, a []Value) Value {
 		algorithm := a[2].(string)
 		if libraryHash(algorithm) == nil {
 			return libraryError(r, "Unsupported", "")
@@ -37,8 +37,8 @@ func init() {
 	libraryAdd("crypto", "constant_time_equal", "Bool", []LibraryParam{p("left", "Bytes"), p("right", "Bytes")}, func(_ *Execution, _ string, a []Value) Value {
 		return subtle.ConstantTimeCompare(a[0].(Bytes).Items, a[1].(Bytes).Items) == 1
 	})
-	libraryAdd("crypto", "derive_key", libraryResult("Bytes"), []LibraryParam{p("password", "Bytes"), p("salt", "Bytes"), p("iterations", "Int"), p("length", "Int")}, libraryPBKDF2)
-	libraryAdd("crypto", "seal", libraryResult("Bytes"), []LibraryParam{p("key", "Bytes"), p("nonce", "Bytes"), p("plaintext", "Bytes"), p("associated_data", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("crypto", "derive_key", libraryResult("Bytes", "CryptoError"), []LibraryParam{p("password", "Bytes"), p("salt", "Bytes"), p("iterations", "Int"), p("length", "Int")}, libraryPBKDF2)
+	libraryAdd("crypto", "seal", libraryResult("Bytes", "CryptoError"), []LibraryParam{p("key", "Bytes"), p("nonce", "Bytes"), p("plaintext", "Bytes"), p("associated_data", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
 		g, err := libraryAEAD(a[0].(Bytes).Items)
 		nonce := a[1].(Bytes).Items
 		data := a[2].(Bytes).Items
@@ -47,7 +47,7 @@ func init() {
 		}
 		return libraryOK(r, Bytes{g.Seal(nil, nonce, data, a[3].(Bytes).Items)})
 	})
-	libraryAdd("crypto", "open", libraryResult("Bytes"), []LibraryParam{p("key", "Bytes"), p("nonce", "Bytes"), p("ciphertext", "Bytes"), p("associated_data", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("crypto", "open", libraryResult("Bytes", "CryptoError"), []LibraryParam{p("key", "Bytes"), p("nonce", "Bytes"), p("ciphertext", "Bytes"), p("associated_data", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
 		g, err := libraryAEAD(a[0].(Bytes).Items)
 		nonce := a[1].(Bytes).Items
 		if err != nil || len(nonce) != 12 {
@@ -59,14 +59,14 @@ func init() {
 		}
 		return libraryOK(r, Bytes{b})
 	})
-	libraryAdd("crypto", "sign", libraryResult("Bytes"), []LibraryParam{p("seed", "Bytes"), p("data", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("crypto", "sign", libraryResult("Bytes", "CryptoError"), []LibraryParam{p("seed", "Bytes"), p("data", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
 		seed := a[0].(Bytes).Items
 		if len(seed) != ed25519.SeedSize {
 			return libraryError(r, "InvalidInput", "")
 		}
 		return libraryOK(r, Bytes{ed25519.Sign(ed25519.NewKeyFromSeed(seed), a[1].(Bytes).Items)})
 	})
-	libraryAdd("crypto", "public_key", libraryResult("Bytes"), []LibraryParam{p("seed", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("crypto", "public_key", libraryResult("Bytes", "CryptoError"), []LibraryParam{p("seed", "Bytes")}, func(_ *Execution, r string, a []Value) Value {
 		seed := a[0].(Bytes).Items
 		if len(seed) != ed25519.SeedSize {
 			return libraryError(r, "InvalidInput", "")
@@ -81,8 +81,8 @@ func init() {
 		}
 		return ed25519.Verify(key, a[1].(Bytes).Items, a[2].(Bytes).Items)
 	})
-	libraryAdd("compress", "compress", libraryResult("Bytes"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("level", "Int"), p("max_bytes", "Int")}, libraryCompress)
-	libraryAdd("compress", "decompress", libraryResult("Bytes"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("max_bytes", "Int")}, libraryDecompress)
+	libraryAdd("compress", "compress", libraryResult("Bytes", "CompressionError"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("level", "Int"), p("max_bytes", "Int")}, libraryCompress)
+	libraryAdd("compress", "decompress", libraryResult("Bytes", "CompressionError"), []LibraryParam{p("data", "Bytes"), p("format", "String"), p("max_bytes", "Int")}, libraryDecompress)
 }
 func libraryHash(algorithm string) hash.Hash {
 	switch algorithm {

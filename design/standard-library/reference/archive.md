@@ -17,6 +17,21 @@ field data: Bytes
 field directory: Bool
 ```
 
+## ArchiveError
+
+Kind: alternative.
+
+```text
+ArchiveError: ArchiveError
+implements: Error
+case InvalidInput
+case InvalidData
+case LimitExceeded
+case Unsupported
+case Failed(message: String)
+operation message: fn()->String
+```
+
 ## ArchiveLimits
 
 Kind: record.
@@ -33,7 +48,7 @@ field max_total_bytes: Int
 Kind: fn.
 
 ```text
-pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[Bytes, LibraryError]
+pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[Bytes, ArchiveError]
 ```
 
 ## unpack
@@ -41,6 +56,6 @@ pack: fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)->Result[By
 Kind: fn.
 
 ```text
-unpack: fn(data: Bytes, format: String, limits: ArchiveLimits)->Result[List[ArchiveEntry], LibraryError]
+unpack: fn(data: Bytes, format: String, limits: ArchiveLimits)->Result[List[ArchiveEntry], ArchiveError]
 ```
 

@@ -15,17 +15,17 @@ import (
 
 func init() {
 	for _, m := range []LibraryMethod{
-		{"Network", "connect", libraryResult("Connection&Shareable"), []LibraryParam{{"address", "String"}, {"timeout", "Duration"}}},
-		{"Network", "connect_tls", libraryResult("Connection&Shareable"), []LibraryParam{{"address", "String"}, {"server_name", "String"}, {"timeout", "Duration"}}},
-		{"Network", "listen", libraryResult("Listener&Shareable"), []LibraryParam{{"address", "String"}}},
-		{"Network", "bind_datagram", libraryResult("DatagramSocket&Shareable"), []LibraryParam{{"address", "String"}}},
+		{"Network", "connect", libraryResult("Connection&Shareable", "NetworkError"), []LibraryParam{{"address", "String"}, {"timeout", "Duration"}}},
+		{"Network", "connect_tls", libraryResult("Connection&Shareable", "NetworkError"), []LibraryParam{{"address", "String"}, {"server_name", "String"}, {"timeout", "Duration"}}},
+		{"Network", "listen", libraryResult("Listener&Shareable", "NetworkError"), []LibraryParam{{"address", "String"}}},
+		{"Network", "bind_datagram", libraryResult("DatagramSocket&Shareable", "NetworkError"), []LibraryParam{{"address", "String"}}},
 		{"Connection", "read", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}}},
 		{"Connection", "write", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}}},
-		{"Connection", "shutdown_write", libraryResult("Unit"), nil},
+		{"Connection", "shutdown_write", libraryResult("Unit", "NetworkError"), nil},
 		{"Connection", "local_address", "String", nil}, {"Connection", "peer_address", "String", nil}, {"Connection", "close", "Unit", nil},
-		{"Listener", "accept", libraryResult("Connection&Shareable"), nil}, {"Listener", "address", "String", nil}, {"Listener", "close", "Unit", nil},
-		{"DatagramSocket", "send", libraryResult("Unit"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}}},
-		{"DatagramSocket", "receive", libraryResult("Datagram"), []LibraryParam{{"max_bytes", "Int"}}},
+		{"Listener", "accept", libraryResult("Connection&Shareable", "NetworkError"), nil}, {"Listener", "address", "String", nil}, {"Listener", "close", "Unit", nil},
+		{"DatagramSocket", "send", libraryResult("Unit", "NetworkError"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}}},
+		{"DatagramSocket", "receive", libraryResult("Datagram", "NetworkError"), []LibraryParam{{"max_bytes", "Int"}}},
 		{"DatagramSocket", "address", "String", nil}, {"DatagramSocket", "close", "Unit", nil},
 	} {
 		LibraryMethods = append(LibraryMethods, m)
@@ -243,16 +243,24 @@ func (c *libraryConnection) Operation(name string) Function {
 		c.mu.Unlock()
 		defer c.active.Done()
 		if name == "shutdown_write" {
+			var err error
 			switch conn := c.conn.(type) {
 			case *net.UnixConn:
-				return libraryOSResult(r, Unit{}, conn.CloseWrite())
+				err = conn.CloseWrite()
 			case *net.TCPConn:
-				return libraryOSResult(r, Unit{}, conn.CloseWrite())
+				err = conn.CloseWrite()
 			case *tls.Conn:
-				return libraryOSResult(r, Unit{}, conn.CloseWrite())
+				err = conn.CloseWrite()
 			default:
 				return libraryError(r, "Unsupported", "")
 			}
+			if errors.Is(err, os.ErrPermission) {
+				return libraryError(r, "PermissionDenied", "")
+			}
+			if err != nil {
+				return libraryError(r, "Failed", err.Error())
+			}
+			return libraryOK(r, Unit{})
 		}
 		if name == "read" {
 			n := a[0].(int64)

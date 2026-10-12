@@ -28,25 +28,25 @@ type LibraryMethod struct {
 }
 
 var LibraryMethods = []LibraryMethod{
-	{"FileSystem", "read_file", libraryResult("Bytes"), []LibraryParam{{"path", "String"}, {"max_bytes", "Int"}}},
-	{"FileSystem", "write_file", libraryResult("Unit"), []LibraryParam{{"path", "String"}, {"data", "Bytes"}, {"replace", "Bool"}}},
-	{"FileSystem", "stat", libraryResult("FileInfo"), []LibraryParam{{"path", "String"}, {"follow_links", "Bool"}}},
-	{"FileSystem", "list", libraryResult("List[DirectoryEntry]"), []LibraryParam{{"path", "String"}, {"max_entries", "Int"}}},
-	{"FileSystem", "create_directory", libraryResult("Unit"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}}},
-	{"FileSystem", "remove", libraryResult("Unit"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}}},
-	{"FileSystem", "rename", libraryResult("Unit"), []LibraryParam{{"source", "String"}, {"destination", "String"}}},
-	{"FileSystem", "copy_file", libraryResult("Unit"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_bytes", "Int"}}},
-	{"FileSystem", "canonicalize", libraryResult("String"), []LibraryParam{{"path", "String"}}},
-	{"FileSystem", "read_link", libraryResult("String"), []LibraryParam{{"path", "String"}}},
-	{"FileSystem", "create_link", libraryResult("Unit"), []LibraryParam{{"path", "String"}, {"target", "String"}}},
-	{"FileSystem", "temporary_directory", libraryResult("String"), []LibraryParam{{"prefix", "String"}}},
-	{"Entropy", "bytes", libraryResult("Bytes"), []LibraryParam{{"count", "Int"}}},
+	{"FileSystem", "read_file", libraryResult("Bytes", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_bytes", "Int"}}},
+	{"FileSystem", "write_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"data", "Bytes"}, {"replace", "Bool"}}},
+	{"FileSystem", "stat", libraryResult("FileInfo", "FileSystemError"), []LibraryParam{{"path", "String"}, {"follow_links", "Bool"}}},
+	{"FileSystem", "list", libraryResult("List[DirectoryEntry]", "FileSystemError"), []LibraryParam{{"path", "String"}, {"max_entries", "Int"}}},
+	{"FileSystem", "create_directory", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}}},
+	{"FileSystem", "remove", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"recursive", "Bool"}}},
+	{"FileSystem", "rename", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}}},
+	{"FileSystem", "copy_file", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"source", "String"}, {"destination", "String"}, {"replace", "Bool"}, {"max_bytes", "Int"}}},
+	{"FileSystem", "canonicalize", libraryResult("String", "FileSystemError"), []LibraryParam{{"path", "String"}}},
+	{"FileSystem", "read_link", libraryResult("String", "FileSystemError"), []LibraryParam{{"path", "String"}}},
+	{"FileSystem", "create_link", libraryResult("Unit", "FileSystemError"), []LibraryParam{{"path", "String"}, {"target", "String"}}},
+	{"FileSystem", "temporary_directory", libraryResult("String", "FileSystemError"), []LibraryParam{{"prefix", "String"}}},
+	{"Entropy", "bytes", libraryResult("Bytes", "RandomError"), []LibraryParam{{"count", "Int"}}},
 	{"WallClock", "now", "Timestamp", nil},
 	{"System", "info", "SystemInfo", nil},
 	{"System", "working_directory", "String", nil},
 	{"System", "environment", "Optional[String]", []LibraryParam{{"name", "String"}}},
-	{"Network", "request", libraryResult("ClientResponse"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
-	{"Network", "lookup", libraryResult("List[String]"), []LibraryParam{{"name", "String"}, {"max_records", "Int"}, {"timeout", "Duration"}}},
+	{"Network", "request", libraryResult("ClientResponse", "HttpError"), []LibraryParam{{"method", "String"}, {"url", "String"}, {"headers", "Map[String][String]"}, {"body", "Bytes"}, {"max_response_bytes", "Int"}, {"timeout", "Duration"}}},
+	{"Network", "lookup", libraryResult("List[String]", "NetworkError"), []LibraryParam{{"name", "String"}, {"max_records", "Int"}, {"timeout", "Duration"}}},
 }
 
 func libraryMethod(receiver, name string, body func(*Execution, string, []Value) Value) Function {
@@ -506,7 +506,7 @@ func libraryNetworkLookup(n *network, ctx *Execution, r string, a []Value) Value
 }
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("random", "secure_int", libraryResult("Int"), []LibraryParam{p("entropy", "Entropy&Shareable"), p("min", "Int"), p("max_exclusive", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("random", "secure_int", libraryResult("Int", "RandomError"), []LibraryParam{p("entropy", "Entropy&Shareable"), p("min", "Int"), p("max_exclusive", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		min, max := a[1].(int64), a[2].(int64)
 		if min >= max {
 			return libraryError(r, "InvalidInput", "")
@@ -531,7 +531,7 @@ func init() {
 			}
 		}
 	})
-	libraryAdd("random", "uuid_v4", libraryResult("String"), []LibraryParam{p("entropy", "Entropy&Shareable")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("random", "uuid_v4", libraryResult("String", "RandomError"), []LibraryParam{p("entropy", "Entropy&Shareable")}, func(ctx *Execution, r string, a []Value) Value {
 		v := Invoke(ctx, Bind(a[0], "", "bytes"), []Argument{{"count", int64(16)}}).(Alternative)
 		if v.Tag == "error" {
 			return Alternative{r, "error", v.Fields}
@@ -544,14 +544,14 @@ func init() {
 		data[8] = data[8]&63 | 128
 		return libraryOK(r, fmt.Sprintf("%x-%x-%x-%x-%x", data[:4], data[4:6], data[6:8], data[8:10], data[10:]))
 	})
-	libraryAdd("time", "timestamp", libraryResult("Timestamp"), []LibraryParam{p("seconds", "Int"), p("nanoseconds", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("time", "timestamp", libraryResult("Timestamp", "TimeError"), []LibraryParam{p("seconds", "Int"), p("nanoseconds", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		seconds, ns := a[0].(int64), a[1].(int64)
 		if ns < 0 || ns >= 1e9 || seconds < -62135596800 || seconds > 253402300799 {
 			return libraryError(r, "OutOfRange", "")
 		}
 		return libraryOK(r, libraryTimestamp{time.Unix(seconds, ns).UTC()})
 	})
-	libraryAdd("time", "parse_timestamp", libraryResult("Timestamp"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("time", "parse_timestamp", libraryResult("Timestamp", "TimeError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		value := a[0].(string)
 		if !libraryTimestampPattern.MatchString(value) {
 			return libraryError(r, "InvalidData", "")
@@ -576,14 +576,14 @@ func init() {
 	})
 	libraryAdd("time", "unix_seconds", "Int", []LibraryParam{p("value", "Timestamp")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(libraryTimestamp).t.Unix() })
 	libraryAdd("time", "nanoseconds", "Int", []LibraryParam{p("value", "Timestamp")}, func(_ *Execution, _ string, a []Value) Value { return int64(a[0].(libraryTimestamp).t.Nanosecond()) })
-	libraryAdd("time", "shift", libraryResult("Timestamp"), []LibraryParam{p("value", "Timestamp"), p("duration", "Duration")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("time", "shift", libraryResult("Timestamp", "TimeError"), []LibraryParam{p("value", "Timestamp"), p("duration", "Duration")}, func(_ *Execution, r string, a []Value) Value {
 		t := a[0].(libraryTimestamp).t.Add(time.Duration(a[1].(Duration)))
 		if t.UTC().Year() < 1 || t.UTC().Year() > 9999 {
 			return libraryError(r, "OutOfRange", "")
 		}
 		return libraryOK(r, libraryTimestamp{t})
 	})
-	libraryAdd("time", "difference", libraryResult("Duration"), []LibraryParam{p("left", "Timestamp"), p("right", "Timestamp")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("time", "difference", libraryResult("Duration", "TimeError"), []LibraryParam{p("left", "Timestamp"), p("right", "Timestamp")}, func(_ *Execution, r string, a []Value) Value {
 		x, y := a[0].(libraryTimestamp).t, a[1].(libraryTimestamp).t
 		d := x.Sub(y)
 		if !y.Add(d).Equal(x) {

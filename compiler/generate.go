@@ -78,7 +78,11 @@ func generate(program *checker.Program, entry string, options Options) (string, 
 			vars = append(vars, v.ID)
 		}
 		out.WriteString("rt.Register(rt.Implementation{Receiver:" + quote(checker.TypeKey(m.Receiver)) + ",Contract:" + quote(checker.TypeKey(m.Contract)) + ",Name:" + quote(m.Decl.Name) + ",Variables:" + stringsGo(vars) + ",Build:func(receiver rt.Value,typeArgs map[string]string) rt.Function{_ = typeArgs;return ")
-		out.WriteString(g.function(m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type))
+		if m.Native != "" {
+			out.WriteString("rt.StandardImplementation(" + quote(m.Native) + ",receiver)")
+		} else {
+			out.WriteString(g.function(m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type))
+		}
 		out.WriteString("}})\n")
 	}
 	out.WriteString("}\nfunc main(){initialize();\n")
@@ -234,17 +238,29 @@ func (g *generator) statement(s *syntax.Statement) string {
 		return "{\n" + b.ID + " := " + g.expression(s.Value) + "; _ = " + b.ID + "\n" + cleanup + " := cleanupStack.PushContract(ctx," + b.ID + "," + contract + ")\n" + body + cleanup + ".Run()\n}\n"
 	case "match":
 		tmp := g.temp()
-		out := tmp + " := " + g.expression(s.Value) + "\nswitch rt.Tag(" + tmp + "){\n"
+		contractMatch := g.program.Expressions[s.Value].Type.Kind == "contract"
+		out := tmp + " := " + g.expression(s.Value) + "\n"
+		if contractMatch {
+			out += tmp + " = rt.ContractReceiver(" + tmp + ")\nswitch rt.ConcreteType(" + tmp + "){\n"
+		} else {
+			out += "switch rt.Tag(" + tmp + "){\n"
+		}
 		for index := range s.Arms {
 			a := &s.Arms[index]
 			if a.Path.Text == "_" {
 				out += "default:\n"
+			} else if contractMatch {
+				out += "case " + g.key(g.program.ContractPatterns[a]) + ":\n"
 			} else {
 				out += "case " + quote(a.Path.Text) + ":\n"
 			}
 			for i, b := range g.program.ArmBindings[a] {
 				if b != nil {
-					out += b.ID + " := rt.Payload(" + tmp + "," + strconv.Itoa(i) + "); _ = " + b.ID + "\n"
+					value := "rt.Payload(" + tmp + "," + strconv.Itoa(i) + ")"
+					if contractMatch {
+						value = tmp
+					}
+					out += b.ID + " := " + value + "; _ = " + b.ID + "\n"
 				}
 			}
 			out += g.body(a.Body)
@@ -350,9 +366,6 @@ func (g *generator) expression(e *syntax.Expression) string {
 		}
 		if info.Native == "parallel" {
 			return "rt.ParallelArguments(ctx," + g.key(info.Type) + "," + args + ")"
-		}
-		if info.Native == "parallel_map" {
-			return "rt.ParallelMap(ctx," + g.key(info.Type) + "," + g.key(info.Type.Args[0]) + "," + args + ")"
 		}
 		var callable string
 		if info.Symbol != nil {
