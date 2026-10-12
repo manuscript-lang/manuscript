@@ -1,0 +1,3 @@
+interface:
+  display_name: "Manuscript changes"
+  short_description: "Trace changes through their full observable contract"
