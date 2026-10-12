@@ -1,12 +1,11 @@
 +++
 title = "Manuscript"
 weight = 1
+bookToC = false
+description = "Manuscript is a statically typed programming language. You write `.ms` files, and the compiler turns them into Go programs that run as native executables. The language makes function inputs, errors, resource cleanup, and concurrent work explicit so people can follow what a program does."
 +++
 
-# Learn Manuscript
-
-
-Manuscript is a statically typed programming language. You write `.ms` files, and the compiler turns them into Go programs that run as native executables. The language makes function inputs, errors, resource cleanup, and concurrent work explicit so people can follow what a program does.
+{{< docs-home >}}
 
 ## Start here
 

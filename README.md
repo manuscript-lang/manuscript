@@ -115,6 +115,13 @@ The static site is generated in `docs/`, which is committed for GitHub Pages to 
 
 Hugo Book v13 is vendored in `themes/hugo-book/`, including its MIT license. The exact upstream revision is recorded in `themes/hugo-book/UPSTREAM`.
 
+The documentation's visual design lives in `assets/_custom.scss`, with layout and
+navigation overrides in `layouts/`. The overview uses the `docs-home` shortcode;
+`assets/docs.js` provides theme preferences, copy buttons, and mobile keyboard
+controls. Keep site customizations in these files rather than editing the
+vendored theme. After a presentation change, rebuild `docs/` with `hugo --minify
+--panicOnWarning --cleanDestinationDir`.
+
 ## CI/CD
 
 [The GitHub Actions pipeline](.github/workflows/cicd.yml) builds the design book on branch pushes and pull requests using Hugo Extended 0.146.7. Pushes that only change generated `docs/` files are skipped. Warnings and broken Markdown page links fail the build. The theme is vendored, so no submodule setup is needed.
