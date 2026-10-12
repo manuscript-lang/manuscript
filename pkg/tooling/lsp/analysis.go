@@ -12,18 +12,18 @@ func analyze(d document, docs map[string]document) compiler.Result {
 	return analyzeOptions(d, docs, compiler.Options{AnalyzeOnly: true, Recover: true})
 }
 func analyzeOptions(d document, docs map[string]document, options compiler.Options) compiler.Result {
-	if isStandardLibraryURI(d.URI) {
-		if _, err := standardLibraryModule(d.URI); err != nil {
-			return compiler.Result{}
-		}
+	if standardLibraryDocument(d) != nil {
 		// Standard signatures are already checked by the compiler at startup.
 		// They are library declarations, not standalone executable modules.
 		return compiler.Result{Program: &checker.Program{}}
 	}
+	if isStandardLibraryURI(d.URI) {
+		return compiler.Result{}
+	}
 	path := filename(d.URI)
 	overlay := map[string]string{}
 	for _, open := range docs {
-		if isStandardLibraryURI(open.URI) {
+		if isStandardLibraryURI(open.URI) || standardLibraryDocument(open) != nil {
 			continue
 		}
 		p := filename(open.URI)
@@ -64,8 +64,7 @@ func module(result compiler.Result, d document) *syntax.Module {
 	if result.Program == nil {
 		return nil
 	}
-	if isStandardLibraryURI(d.URI) {
-		m, _ := standardLibraryModule(d.URI)
+	if m := standardLibraryDocument(d); m != nil {
 		return m
 	}
 	path := filename(d.URI)

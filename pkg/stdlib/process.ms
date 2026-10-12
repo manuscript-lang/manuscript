@@ -21,24 +21,43 @@ export type CommandOutput:
     stderr: Bytes
 
 export interface Commands:
-    fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
+    fn run(
+        program: String,
+        arguments: List[String],
+        input: Bytes,
+        max_output_bytes: Optional[Int] = none,
+        timeout: Optional[Duration] = none
+    ) -> Result[CommandOutput, CommandError]
 
 export interface ProcessControl:
     fn monotonic_time() -> Int
-    fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -> Result[SignalStream, ProcessError]
+    fn watch_signals(
+        signals: List[Int],
+        capacity: Optional[Int] = none
+    ) -> Result[SignalStream, ProcessError]
     fn constrained_memory() -> Result[Int, ProcessError]
     fn available_memory() -> Result[Int, ProcessError]
     fn title() -> Result[String, ProcessError]
     fn set_title(title: String) -> Result[Unit, ProcessError]
     fn initialize_groups(username: String, gid: Int) -> Result[Unit, ProcessError]
-    fn replace(program: String, arguments: List[String], environment: Map[String, String]) -> Result[Unit, ProcessError]
+    fn replace(
+        program: String,
+        arguments: List[String],
+        environment: Map[String, String]
+    ) -> Result[Unit, ProcessError]
     fn info() -> Result[ProcessInfo, ProcessError]
     fn memory_usage() -> Result[MemoryUsage, ProcessError]
     fn cpu_usage() -> Result[CpuUsage, ProcessError]
     fn uptime() -> Result[Duration, ProcessError]
     fn environment() -> Result[Map[String, String], ProcessError]
-    fn set_environment(name: String, value: Optional[String]) -> Result[Unit, ProcessError]
-    fn load_environment(path: String, max_bytes: Optional[Int] = none) -> Result[Unit, ProcessError]
+    fn set_environment(
+        name: String,
+        value: Optional[String]
+    ) -> Result[Unit, ProcessError]
+    fn load_environment(
+        path: String,
+        max_bytes: Optional[Int] = none
+    ) -> Result[Unit, ProcessError]
     fn working_directory() -> Result[String, ProcessError]
     fn change_directory(path: String) -> Result[Unit, ProcessError]
     fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
@@ -98,11 +117,11 @@ export type ProcessError:
     case Failed(message: String)
 
 impl Error for ProcessError:
-    fn message() -> String
+    fn message() -> String:
 
 impl Error for CommandError:
-    fn message() -> String
+    fn message() -> String:
 
-export fn commands() -> Commands
+export fn commands() -> Commands:
 
-export fn control() -> ProcessControl
+export fn control() -> ProcessControl:

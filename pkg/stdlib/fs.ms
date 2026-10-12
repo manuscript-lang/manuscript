@@ -55,34 +55,106 @@ export type FileInfo:
     gid: Int
 
 export interface FileSystem:
-    fn open_flags(path: String, flags: Int, mode: Int) -> Result[FileHandle, FileSystemError]
-    fn glob_entries(path: String, options: GlobOptions, exclude: Optional[fn(entry: PathEntry) -> Bool]) -> Result[List[PathEntry], FileSystemError]
-    fn copy(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String) -> Bool]) -> Result[Unit, FileSystemError]
-    fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -> Result[FileWatcher, FileSystemError]
+    fn open_flags(
+        path: String,
+        flags: Int,
+        mode: Int
+    ) -> Result[FileHandle, FileSystemError]
+    fn glob_entries(
+        path: String,
+        options: GlobOptions,
+        exclude: Optional[
+            fn(
+                entry: PathEntry
+            ) -> Bool
+        ]
+    ) -> Result[List[PathEntry], FileSystemError]
+    fn copy(
+        source: String,
+        destination: String,
+        options: CopyOptions,
+        filter: Optional[
+            fn(
+                source: String,
+                destination: String
+            ) -> Bool
+        ]
+    ) -> Result[Unit, FileSystemError]
+    fn watch_native(
+        path: String,
+        recursive: Bool,
+        max_entries: Optional[Int] = none,
+        max_events: Optional[Int] = none,
+        overflow: String
+    ) -> Result[FileWatcher, FileSystemError]
     fn canonicalize(path: String) -> Result[String, FileSystemError]
-    fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+    fn copy_file(
+        source: String,
+        destination: String,
+        replace: Bool,
+        max_bytes: Optional[Int] = none
+    ) -> Result[Unit, FileSystemError]
     fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
     fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
-    fn list(path: String, max_entries: Optional[Int] = none) -> Result[List[DirectoryEntry], FileSystemError]
-    fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+    fn list(
+        path: String,
+        max_entries: Optional[Int] = none
+    ) -> Result[List[DirectoryEntry], FileSystemError]
+    fn read_file(
+        path: String,
+        max_bytes: Optional[Int] = none
+    ) -> Result[Bytes, FileSystemError]
     fn read_link(path: String) -> Result[String, FileSystemError]
     fn remove(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
     fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
     fn stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
     fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
-    fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, FileSystemError]
+    fn write_file(
+        path: String,
+        data: Bytes,
+        replace: Bool
+    ) -> Result[Unit, FileSystemError]
     fn access(path: String, mode: Int) -> Result[Unit, FileSystemError]
     fn append_file(path: String, data: Bytes) -> Result[Unit, FileSystemError]
     fn chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
-    fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) -> Result[Unit, FileSystemError]
+    fn chown(
+        path: String,
+        uid: Int,
+        gid: Int,
+        follow_links: Bool
+    ) -> Result[Unit, FileSystemError]
     fn truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
-    fn set_times(path: String, accessed: Timestamp, modified: Timestamp, follow_links: Bool) -> Result[Unit, FileSystemError]
+    fn set_times(
+        path: String,
+        accessed: Timestamp,
+        modified: Timestamp,
+        follow_links: Bool
+    ) -> Result[Unit, FileSystemError]
     fn hard_link(source: String, destination: String) -> Result[Unit, FileSystemError]
-    fn open(path: String, flags: String, mode: Int) -> Result[FileHandle, FileSystemError]
+    fn open(
+        path: String,
+        flags: String,
+        mode: Int
+    ) -> Result[FileHandle, FileSystemError]
     fn open_directory(path: String) -> Result[Directory, FileSystemError]
-    fn copy_tree(source: String, destination: String, replace: Bool, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
-    fn glob(path: String, pattern: String, max_entries: Optional[Int] = none) -> Result[List[String], FileSystemError]
-    fn watch(path: String, recursive: Bool, interval: Duration, max_entries: Optional[Int] = none) -> Result[FileWatcher, FileSystemError]
+    fn copy_tree(
+        source: String,
+        destination: String,
+        replace: Bool,
+        max_entries: Optional[Int] = none,
+        max_bytes: Optional[Int] = none
+    ) -> Result[Unit, FileSystemError]
+    fn glob(
+        path: String,
+        pattern: String,
+        max_entries: Optional[Int] = none
+    ) -> Result[List[String], FileSystemError]
+    fn watch(
+        path: String,
+        recursive: Bool,
+        interval: Duration,
+        max_entries: Optional[Int] = none
+    ) -> Result[FileWatcher, FileSystemError]
     fn temporary(prefix: String) -> Result[TemporaryDirectory, FileSystemError]
     fn stat_filesystem(path: String) -> Result[FileSystemInfo, FileSystemError]
     fn chmod_link(path: String, mode: Int) -> Result[Unit, FileSystemError]
@@ -94,11 +166,17 @@ export interface FileHandle:
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
     fn write(data: Bytes) -> Result[Int, FileSystemError]
     fn append_file(data: Bytes) -> Result[Unit, FileSystemError]
-    fn read_at(offset: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+    fn read_at(
+        offset: Int,
+        max_bytes: Optional[Int] = none
+    ) -> Result[Bytes, FileSystemError]
     fn write_at(offset: Int, data: Bytes) -> Result[Int, FileSystemError]
     fn read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
     fn write_file(data: Bytes) -> Result[Unit, FileSystemError]
-    fn read_vectors(sizes: List[Int], offset: Int) -> Result[List[Bytes], FileSystemError]
+    fn read_vectors(
+        sizes: List[Int],
+        offset: Int
+    ) -> Result[List[Bytes], FileSystemError]
     fn write_vectors(buffers: List[Bytes], offset: Int) -> Result[Int, FileSystemError]
     fn seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
     fn stat() -> Result[FileInfo, FileSystemError]
@@ -107,8 +185,14 @@ export interface FileHandle:
     fn data_sync() -> Result[Unit, FileSystemError]
     fn chmod(mode: Int) -> Result[Unit, FileSystemError]
     fn chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]
-    fn set_times(accessed: Timestamp, modified: Timestamp) -> Result[Unit, FileSystemError]
-    fn read_lines(max_bytes: Optional[Int] = none, max_lines: Optional[Int] = none) -> Result[List[String], FileSystemError]
+    fn set_times(
+        accessed: Timestamp,
+        modified: Timestamp
+    ) -> Result[Unit, FileSystemError]
+    fn read_lines(
+        max_bytes: Optional[Int] = none,
+        max_lines: Optional[Int] = none
+    ) -> Result[List[String], FileSystemError]
 
 export interface Directory:
     fn path() -> String
@@ -136,7 +220,7 @@ export type FileSystemInfo:
     files: Int
     files_free: Int
 
-export fn constants() -> Map[String, Int]
+export fn constants() -> Map[String, Int]:
 
 export type CopyOptions:
     recursive: Bool
@@ -161,6 +245,6 @@ export type GlobOptions:
     max_results: Optional[Int] = none
 
 impl Error for FileSystemError:
-    fn message() -> String
+    fn message() -> String:
 
-export fn filesystem() -> FileSystem
+export fn filesystem() -> FileSystem:

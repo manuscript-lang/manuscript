@@ -19,7 +19,7 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 	var functions []*checker.Symbol
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {
-			if d.Kind == syntax.KindFn {
+			if d.Kind == syntax.KindFn || recordDefaults(d) {
 				s := program.Symbols[module.File][d.Name]
 				functions = append(functions, s)
 				out.WriteString("var " + s.ID + " rt.Value\n")
@@ -36,11 +36,11 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 				vars = append(vars, v.ID)
 			}
 			out.WriteString("rt.Generic{Variables:" + stringsGo(vars) + ", Build:func(typeArgs map[string]string,typeScopes map[string]rt.TypeScope) rt.Function {return ")
-			out.WriteString(g.function(s.Decl.Params, s.Decl.Result, s.Decl.Body, program.Parameters[s.Decl], nil, s.Type))
+			out.WriteString(g.declaredFunction(s))
 			out.WriteString("}}\n")
 		} else {
 			out.WriteString("func()rt.Function{typeArgs:=map[string]string{};_ = typeArgs;return ")
-			out.WriteString(g.function(s.Decl.Params, s.Decl.Result, s.Decl.Body, program.Parameters[s.Decl], nil, s.Type))
+			out.WriteString(g.declaredFunction(s))
 			out.WriteString("}()\n")
 		}
 	}

@@ -50,15 +50,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
-		defaults := map[string]bool{}
-		if typ.Def != nil && typ.Def.Symbol.Native != "" && typ.Def.Symbol.Decl != nil {
-			for _, field := range typ.Def.Symbol.Decl.Fields {
-				if field.Default != nil {
-					defaults[field.Name] = true
-				}
-			}
-		}
-		i.NoReturn = c.arguments(e.Args, fields, defaults)
+		i.NoReturn = c.arguments(e.Args, fields, ConstructorSignature(typ).Defaults)
 		i.Type = typ
 		i.Constructor = typ
 		return i

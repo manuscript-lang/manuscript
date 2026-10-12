@@ -3,6 +3,7 @@ package lsp
 import (
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
@@ -33,6 +34,25 @@ func standardLibrarySource(uri string) (string, error) {
 }
 func isStandardLibraryURI(uri string) bool {
 	return strings.HasPrefix(uri, "manuscript-stdlib:")
+}
+
+// Native sources on disk still need the pinned binding context after parsing.
+// A matching name alone cannot authorize a workspace native declaration.
+func standardLibraryDocument(d document) *syntax.Module {
+	if isStandardLibraryURI(d.URI) {
+		m, _ := standardLibraryModule(d.URI)
+		return m
+	}
+	u, err := url.Parse(d.URI)
+	if err != nil || u.Scheme != "file" || u.RawQuery != "" || u.Fragment != "" {
+		return nil
+	}
+	for _, m := range checker.StandardModules() {
+		if filepath.Base(filename(d.URI)) == strings.TrimPrefix(m.File, "@std/") && d.Text == m.Source {
+			return m
+		}
+	}
+	return nil
 }
 func standardLibraryModule(uri string) (*syntax.Module, error) {
 	u, err := url.Parse(uri)

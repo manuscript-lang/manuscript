@@ -59,6 +59,11 @@ func sourceIndex(result compiler.Result) []occurrence {
 				continue
 			}
 			bindingKeys[b] = fmt.Sprintf("parameter:%s:%d:%d", decl.Pos.File, decl.Pos.Offset, index)
+			if decl.Kind == syntax.KindRecord {
+				if symbol := program.Symbols[decl.Pos.File][decl.Name]; symbol != nil {
+					bindingKeys[b] = "field:" + symbolKey(symbol) + ":" + b.Name
+				}
+			}
 		}
 	}
 	localKey := func(b *checker.Binding) string {

@@ -62,12 +62,15 @@ export type SystemMetrics:
     load_average: List[Float]
     available_parallelism: Int
 
-export fn endianness() -> String
-export fn end_of_line() -> String
-export fn dev_null() -> String
+export fn endianness() -> String:
 
-export fn os_type() -> String
-export fn constants() -> Map[String, Int]
+export fn end_of_line() -> String:
+
+export fn dev_null() -> String:
+
+export fn os_type() -> String:
+
+export fn constants() -> Map[String, Int]:
 
 export type SystemError:
     case InvalidInput
@@ -81,6 +84,6 @@ export type SystemError:
     case Failed(message: String)
 
 impl Error for SystemError:
-    fn message() -> String
+    fn message() -> String:
 
-export fn system() -> System
+export fn system() -> System:

@@ -112,14 +112,23 @@ func Lex(file, source string) (tokens []Token, err error) {
 		if leading%4 != 0 {
 			s.fail("indentation must be a multiple of four spaces")
 		}
+		startedSuite := false
 		if pending {
-			if leading != headerIndent+4 {
+			if leading == headerIndent+4 {
+				s.levels = append(s.levels, layout{leading, pendingDepth})
+				s.emit(Indent, "", s.pos())
+				startedSuite = true
+			} else if leading <= headerIndent {
+				// An empty declaration suite has the same layout boundaries as
+				// a populated one. The parser decides which suites may be empty.
+				s.emit(Indent, "", s.pos())
+				s.emit(Dedent, "", s.pos())
+			} else {
 				s.fail("a suite must begin exactly four spaces after its header")
 			}
-			s.levels = append(s.levels, layout{leading, pendingDepth})
-			s.emit(Indent, "", s.pos())
 			pending = false
-		} else {
+		}
+		if !startedSuite {
 			for len(s.levels) > 1 && leading < s.levels[len(s.levels)-1].indent {
 				s.levels = s.levels[:len(s.levels)-1]
 				s.emit(Dedent, "", s.pos())
@@ -239,7 +248,8 @@ func Lex(file, source string) (tokens []Token, err error) {
 		}
 	}
 	if pending {
-		s.fail("missing nonempty suite")
+		s.emit(Indent, "", s.pos())
+		s.emit(Dedent, "", s.pos())
 	}
 	if len(s.delimiters) > 0 {
 		s.fail("unterminated delimiter")

@@ -4,7 +4,34 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
+
+func TestStandardSyntaxGate(t *testing.T) {
+	valid := fstest.MapFS{
+		"process.ms":    {Data: []byte("export fn commands() -> Commands:\n")},
+		"data.ms":       {Data: []byte("type Data:\n    count: Int = 3\n    fn read() -> Int:\n")},
+		"bindings.json": {Data: []byte("not Manuscript source")},
+	}
+	if err := checkStandardSyntax(valid, "pkg/stdlib"); err != nil {
+		t.Fatal("rejected valid declarations", err)
+	}
+	for name, source := range map[string]string{
+		"function": "export fn commands() -> Commands\n",
+		"receiver": "type Data:\n    fn read() -> Int\n",
+		"schema":   "type Data:\n    count Int\n",
+		"default":  "type Data:\n    count: Int =\n",
+		"trailing": "fn valid() -> Unit:\nlet invalid = 3\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			files := fstest.MapFS{"broken.ms": {Data: []byte(source)}}
+			err := checkStandardSyntax(files, "pkg/stdlib")
+			if err == nil || !strings.Contains(err.Error(), "invalid standard-library syntax") || !strings.Contains(err.Error(), "broken.ms:") || !strings.Contains(err.Error(), "parse:") {
+				t.Fatalf("missing positioned syntax error: %v", err)
+			}
+		})
+	}
+}
 
 func TestBoundaryRejectsHostRuntimeInFrontend(t *testing.T) {
 	rules := policy{Dependencies: map[string][]string{"pkg/checker": {"pkg/syntax"}, "pkg/syntax": {}}}

@@ -15,6 +15,7 @@ func (v Visitor) Walk(d *Declaration) {
 		return
 	}
 	v.Callable(d.Params, d.Body)
+	v.Callable(d.Fields, nil)
 	for _, method := range d.Methods {
 		v.Walk(method)
 	}

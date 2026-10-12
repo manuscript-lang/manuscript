@@ -29,19 +29,29 @@ export interface WriteStream:
     fn flush() -> Result[Unit, IoError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 
-export fn copy(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = none) -> Result[Int, IoError]
+export fn copy(
+    input: ReadStream,
+    output: WriteStream,
+    max_bytes: Optional[Int] = none
+) -> Result[Int, IoError]:
 
-export fn read_all(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Bytes, IoError]
+export fn read_all(
+    input: ReadStream,
+    max_bytes: Optional[Int] = none
+) -> Result[Bytes, IoError]:
 
-export fn read_line(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Optional[String], IoError]
+export fn read_line(
+    input: ReadStream,
+    max_bytes: Optional[Int] = none
+) -> Result[Optional[String], IoError]:
 
 impl Error for IoError:
-    fn message() -> String
+    fn message() -> String:
 
-export fn stdin() -> ReadStream
+export fn stdin() -> ReadStream:
 
-export fn stdout() -> WriteStream
+export fn stdout() -> WriteStream:
 
-export fn stderr() -> WriteStream
+export fn stderr() -> WriteStream:
 
-export fn files() -> Files
+export fn files() -> Files:

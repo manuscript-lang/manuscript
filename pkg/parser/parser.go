@@ -9,19 +9,19 @@ import (
 )
 
 type Parser struct {
-	tokens           []lexer.Token
-	at               int
-	declarationsOnly bool
-	inlineStatement  bool
+	tokens          []lexer.Token
+	at              int
+	inlineStatement bool
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
-	return parse(file, source, false)
+	return parse(file, source)
 }
 
-// ParseLibrary accepts declaration-only standard modules. Application parsing remains strict.
-func ParseLibrary(file, source string) (*syntax.Module, error) { return parse(file, source, true) }
-func parse(file, source string, declarationsOnly bool) (module *syntax.Module, err error) {
+// ParseLibrary is retained for callers; library and application syntax are identical.
+// Deprecated: use Parse.
+func ParseLibrary(file, source string) (*syntax.Module, error) { return Parse(file, source) }
+func parse(file, source string) (module *syntax.Module, err error) {
 	tokens, err := lexer.Lex(file, source)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func parse(file, source string, declarationsOnly bool) (module *syntax.Module, e
 			}
 		}
 	}()
-	p := &Parser{tokens: tokens, declarationsOnly: declarationsOnly}
+	p := &Parser{tokens: tokens}
 	module = &syntax.Module{File: file, Source: source}
 	for p.peek().Kind != lexer.EOF {
 		p.newlines()
@@ -154,8 +154,8 @@ func (p *Parser) parameters(defaults bool) []syntax.Parameter {
 			p.need(":")
 			param := syntax.Parameter{Pos: name.Pos, Name: name.Text, Type: p.typ()}
 			if p.take("=") {
-				if !defaults && !p.declarationsOnly {
-					p.fail(p.previous(), "defaults require a function body")
+				if !defaults {
+					p.fail(p.previous(), "function types and case payloads cannot have defaults")
 				}
 				param.Default = p.expression(0)
 			}
@@ -217,14 +217,10 @@ func (p *Parser) declaration() *syntax.Declaration {
 	case p.take("fn"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
-		d.Params = p.parameters(!p.declarationsOnly)
+		d.Params = p.parameters(true)
 		p.need("->")
 		d.Result = p.typ()
-		if p.declarationsOnly && p.peek().Kind != ":" {
-			p.end()
-		} else {
-			d.Body = p.suite()
-		}
+		d.Body = p.statementSuite(false, true)
 	case p.take("test"):
 		name := p.need(lexer.String)
 		text := p.text(name)
@@ -252,11 +248,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 			m.Params = p.parameters(true)
 			p.need("->")
 			m.Result = p.typ()
-			if p.declarationsOnly && p.peek().Kind != ":" {
-				p.end()
-			} else {
-				m.Body = p.suite()
-			}
+			m.Body = p.statementSuite(false, true)
 			d.Methods = append(d.Methods, m)
 		}
 		p.need(lexer.Dedent)
@@ -266,11 +258,6 @@ func (p *Parser) declaration() *syntax.Declaration {
 	case p.take("type") || p.take("interface"):
 		d.Name = p.need(lexer.Name).Text
 		d.TypeParams = p.typeParams()
-		if p.declarationsOnly && p.peek().Kind != ":" {
-			p.end()
-			d.Kind = syntax.KindNative
-			return d
-		}
 		p.need(":")
 		p.need(lexer.Newline)
 		p.need(lexer.Indent)
@@ -290,13 +277,15 @@ func (p *Parser) declaration() *syntax.Declaration {
 			if p.peek().Kind == syntax.KindFn {
 				next = "interface"
 			}
-			if token.Kind == syntax.KindType && next == "interface" && !p.declarationsOnly {
-				p.fail(p.peek(), "operation signatures require an interface declaration")
-			}
-			if form != "" && next != form && !p.declarationsOnly {
+			if token.Kind == syntax.KindInterface && next != "interface" {
 				p.fail(p.peek(), "a type has only fields or cases; an interface has only operation signatures")
 			}
-			form = next
+			if next != "interface" {
+				if form != "" && form != next {
+					p.fail(p.peek(), "a type cannot mix fields and cases")
+				}
+				form = next
+			}
 			if p.take("case") {
 				name := p.need(lexer.Name)
 				c := syntax.Case{Pos: name.Pos, Name: name.Text}
@@ -311,22 +300,23 @@ func (p *Parser) declaration() *syntax.Declaration {
 			} else if p.take("fn") {
 				name := p.need(lexer.Name)
 				m := &syntax.Declaration{Pos: name.Pos, Name: name.Text, Kind: syntax.KindFn}
-				if p.declarationsOnly {
+				if token.Kind == "type" {
 					m.TypeParams = p.typeParams()
 				}
-				m.Params = p.parameters(false)
+				m.Params = p.parameters(true)
 				p.need("->")
 				m.Result = p.typ()
-				p.end()
+				if token.Kind == "interface" {
+					p.end()
+				} else {
+					m.Body = p.statementSuite(false, true)
+				}
 				d.Methods = append(d.Methods, m)
 			} else {
 				name := p.need(lexer.Name)
 				p.need(":")
 				field := syntax.Parameter{Pos: name.Pos, Name: name.Text, Type: p.typ()}
 				if p.take("=") {
-					if !p.declarationsOnly {
-						p.fail(p.previous(), "field defaults require a native declaration")
-					}
 					field.Default = p.expression(0)
 				}
 				d.Fields = append(d.Fields, field)
@@ -334,11 +324,11 @@ func (p *Parser) declaration() *syntax.Declaration {
 			}
 		}
 		p.need(lexer.Dedent)
-		if form == "" || (form == "interface" && len(d.Methods) == 0) {
+		if token.Kind == "interface" && len(d.Methods) == 0 {
 			p.fail(token, "declaration body cannot be empty")
 		}
-		if p.declarationsOnly && len(d.Cases) > 0 {
-			form = "alternative"
+		if form == "" {
+			form = syntax.KindRecord
 		}
 		d.Kind = form
 	default:
@@ -349,7 +339,7 @@ func (p *Parser) declaration() *syntax.Declaration {
 func (p *Parser) suite() []*syntax.Statement {
 	return p.statementSuite(false)
 }
-func (p *Parser) statementSuite(expression bool) []*syntax.Statement {
+func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statement {
 	outer := p.inlineStatement
 	defer func() { p.inlineStatement = outer }()
 	p.need(":")
@@ -378,7 +368,7 @@ func (p *Parser) statementSuite(expression bool) []*syntax.Statement {
 		body = append(body, p.statement())
 	}
 	p.need(lexer.Dedent)
-	if len(body) == 0 {
+	if len(body) == 0 && (len(empty) == 0 || !empty[0]) {
 		p.fail(p.previous(), "suite cannot be empty")
 	}
 	return body

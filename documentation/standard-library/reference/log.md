@@ -20,7 +20,7 @@ type LogError:
 
 ```manuscript
 impl Error for LogError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## LogLevel {data-api-kind="Alternative"}
@@ -66,24 +66,24 @@ interface Transport:
 ## create {data-api-kind="Function"}
 
 ```manuscript
-fn create(transport: Transport, level: Optional[LogLevel] = none, bindings: Optional[Map[String, JsonValue]] = none, timestamp: Optional[Bool] = none, max_bytes: Optional[Int] = none) -> Result[Logger, LogError]
+fn create(transport: Transport, level: Optional[LogLevel] = none, bindings: Optional[Map[String, JsonValue]] = none, timestamp: Optional[Bool] = none, max_bytes: Optional[Int] = none) -> Result[Logger, LogError]:
 ```
 
 ## file_transport {data-api-kind="Function"}
 
 ```manuscript
-fn file_transport(path: String) -> Result[Transport, LogError]
+fn file_transport(path: String) -> Result[Transport, LogError]:
 ```
 
 ## stdout_transport {data-api-kind="Function"}
 
 ```manuscript
-fn stdout_transport() -> Transport
+fn stdout_transport() -> Transport:
 ```
 
 ## stream_transport {data-api-kind="Function"}
 
 ```manuscript
-fn stream_transport(output: WriteStream) -> Transport
+fn stream_transport(output: WriteStream) -> Transport:
 ```
 

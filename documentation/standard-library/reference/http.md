@@ -52,7 +52,7 @@ type HttpError:
 
 ```manuscript
 impl Error for HttpError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## HttpExchange {data-api-kind="Interface"}

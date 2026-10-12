@@ -35,7 +35,7 @@ type IoError:
 
 ```manuscript
 impl Error for IoError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## ReadStream {data-api-kind="Interface"}
@@ -58,42 +58,42 @@ interface WriteStream:
 ## copy {data-api-kind="Function"}
 
 ```manuscript
-fn copy(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = none) -> Result[Int, IoError]
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = none) -> Result[Int, IoError]:
 ```
 
 ## files {data-api-kind="Function"}
 
 ```manuscript
-fn files() -> Files
+fn files() -> Files:
 ```
 
 ## read_all {data-api-kind="Function"}
 
 ```manuscript
-fn read_all(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Bytes, IoError]
+fn read_all(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Bytes, IoError]:
 ```
 
 ## read_line {data-api-kind="Function"}
 
 ```manuscript
-fn read_line(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Optional[String], IoError]
+fn read_line(input: ReadStream, max_bytes: Optional[Int] = none) -> Result[Optional[String], IoError]:
 ```
 
 ## stderr {data-api-kind="Function"}
 
 ```manuscript
-fn stderr() -> WriteStream
+fn stderr() -> WriteStream:
 ```
 
 ## stdin {data-api-kind="Function"}
 
 ```manuscript
-fn stdin() -> ReadStream
+fn stdin() -> ReadStream:
 ```
 
 ## stdout {data-api-kind="Function"}
 
 ```manuscript
-fn stdout() -> WriteStream
+fn stdout() -> WriteStream:
 ```
 

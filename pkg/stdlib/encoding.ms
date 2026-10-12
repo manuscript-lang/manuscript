@@ -10,13 +10,20 @@ export type EncodingError:
     case InvalidData
     case LimitExceeded
 
-export fn base64_decode(text: String, url_safe: Bool, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]
+export fn base64_decode(
+    text: String,
+    url_safe: Bool,
+    max_bytes: Optional[Int] = none
+) -> Result[Bytes, EncodingError]:
 
-export fn base64_encode(data: Bytes, url_safe: Bool) -> String
+export fn base64_encode(data: Bytes, url_safe: Bool) -> String:
 
-export fn hex_decode(text: String, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]
+export fn hex_decode(
+    text: String,
+    max_bytes: Optional[Int] = none
+) -> Result[Bytes, EncodingError]:
 
-export fn hex_encode(data: Bytes) -> String
+export fn hex_encode(data: Bytes) -> String:
 
 impl Error for EncodingError:
-    fn message() -> String
+    fn message() -> String:

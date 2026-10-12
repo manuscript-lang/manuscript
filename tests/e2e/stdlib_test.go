@@ -43,7 +43,7 @@ func TestStandardLibrarySources(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		module, err := parser.ParseLibrary(entry.Name(), string(source))
+		module, err := parser.Parse(entry.Name(), string(source))
 		if err != nil {
 			t.Fatal(err)
 		}

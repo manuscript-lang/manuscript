@@ -32,7 +32,7 @@ type WebSocketError:
 
 ```manuscript
 impl Error for WebSocketError:
-    fn message() -> String
+    fn message() -> String:
 ```
 
 ## WebSocketMessage {data-api-kind="Record"}

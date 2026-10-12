@@ -69,3 +69,30 @@ fn indirect(callback: fn() -> Unit) -> Unit:
 		t.Fatal("missing implicit cleanup sites", cleanupCalls)
 	}
 }
+
+func TestEffectsIncludeRecordDefaults(t *testing.T) {
+	source := `type State:
+    count: Int
+fn increment(state: State) -> Int:
+    state.count = state.count + 1
+    return state.count
+type Options:
+    state: State
+    count: Int = increment(state)
+fn construct(state: State) -> Options:
+    return Options(state: state)
+`
+	result := compiler.CompileSource("field-effects.ms", source, compiler.Options{AnalyzeOnly: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	found := map[string][]string{}
+	for _, entity := range tooling.Inspect(result.Program).Entities {
+		found[entity.Name] = entity.Effects
+	}
+	for _, name := range []string{"Options", "construct"} {
+		if !reflect.DeepEqual(found[name], []string{"read", "write"}) {
+			t.Fatalf("%s lost constructor-default effects: %v", name, found[name])
+		}
+	}
+}

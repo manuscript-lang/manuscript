@@ -24,9 +24,15 @@ export type JsonValue:
     case ArrayValue(values: List[JsonValue])
     case ObjectValue(values: Map[String, JsonValue])
 
-export fn parse(text: String, limits: Optional[JsonLimits] = none) -> Result[JsonValue, JsonError]
+export fn parse(
+    text: String,
+    limits: Optional[JsonLimits] = none
+) -> Result[JsonValue, JsonError]:
 
-export fn stringify(value: JsonValue, max_bytes: Optional[Int] = none) -> Result[String, JsonError]
+export fn stringify(
+    value: JsonValue,
+    max_bytes: Optional[Int] = none
+) -> Result[String, JsonError]:
 
 impl Error for JsonError:
-    fn message() -> String
+    fn message() -> String:

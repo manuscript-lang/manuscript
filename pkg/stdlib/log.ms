@@ -33,26 +33,54 @@ export interface Transport:
     fn close() -> Unit
 
 export interface Logger:
-    fn log(level: LogLevel, message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
-    fn trace(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
-    fn debug(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
-    fn info(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
-    fn warn(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
-    fn error(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
-    fn fatal(message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
+    fn log(
+        level: LogLevel,
+        message: String,
+        fields: Optional[Map[String, JsonValue]] = none
+    ) -> Result[Unit, LogError]
+    fn trace(
+        message: String,
+        fields: Optional[Map[String, JsonValue]] = none
+    ) -> Result[Unit, LogError]
+    fn debug(
+        message: String,
+        fields: Optional[Map[String, JsonValue]] = none
+    ) -> Result[Unit, LogError]
+    fn info(
+        message: String,
+        fields: Optional[Map[String, JsonValue]] = none
+    ) -> Result[Unit, LogError]
+    fn warn(
+        message: String,
+        fields: Optional[Map[String, JsonValue]] = none
+    ) -> Result[Unit, LogError]
+    fn error(
+        message: String,
+        fields: Optional[Map[String, JsonValue]] = none
+    ) -> Result[Unit, LogError]
+    fn fatal(
+        message: String,
+        fields: Optional[Map[String, JsonValue]] = none
+    ) -> Result[Unit, LogError]
     fn enabled(level: LogLevel) -> Bool
     fn level() -> LogLevel
     fn set_level(level: LogLevel) -> Unit
     fn child(bindings: Map[String, JsonValue]) -> Logger
     fn flush() -> Result[Unit, LogError]
 
-export fn create(transport: Transport, level: Optional[LogLevel] = none, bindings: Optional[Map[String, JsonValue]] = none, timestamp: Optional[Bool] = none, max_bytes: Optional[Int] = none) -> Result[Logger, LogError]
+export fn create(
+    transport: Transport,
+    level: Optional[LogLevel] = none,
+    bindings: Optional[Map[String, JsonValue]] = none,
+    timestamp: Optional[Bool] = none,
+    max_bytes: Optional[Int] = none
+) -> Result[Logger, LogError]:
 
-export fn stream_transport(output: WriteStream) -> Transport
+export fn stream_transport(output: WriteStream) -> Transport:
 
-export fn stdout_transport() -> Transport
+export fn stdout_transport() -> Transport:
 
-export fn file_transport(path: String) -> Result[Transport, LogError]
+export fn file_transport(path: String) -> Result[Transport, LogError]:
 
 impl Error for LogError:
-    fn message() -> String
+    fn message() -> String:
