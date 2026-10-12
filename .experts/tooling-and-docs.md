@@ -38,7 +38,7 @@ Verified: native Optional defaults are written as `= none` in the standard funct
 
 Apply when: adding native defaults, changing source/native signatures, or implementing stream compositions.
 Evidence: [standard source checks](../pkg/checker/standard.go), [constructor/ABI regressions](../pkg/checker/stdlib_revamp_test.go), [native emission](../pkg/compiler/generate.go), and [compiled stream boundary](../tests/e2e/testdata/accept/stdlib-revamp.ms).
-Verify: inspect the generated declaration for `= none`; omit a limit through an application-defined ReadStream and match `none`; run read_line over that implementation and match its supplied `some(1)`.
+Verify: inspect the generated declaration for `= none`; omit a limit through an application-defined ReadStream and match `none`; run read_line over that implementation and match its supplied `some(1)`. Migrate embedded source fixtures in native debugger tests too: an invalid constructor argument can leave a DAP launch waiting for initialization instead of surfacing its build diagnostic.
 
 ### Editor recovery must preserve delimiter continuations
 
