@@ -50,3 +50,35 @@ func TestOmittedLabelPreservesSourceAST(t *testing.T) {
 		}
 	}
 }
+
+// Different collection applications can occur along a guarded recursive path.
+// The finite-application rule constrains nominal user types, not Map/List storage.
+func TestNestedCollectionsGuardRecursiveLayouts(t *testing.T) {
+	for _, test := range []struct {
+		source   string
+		accepted bool
+	}{
+		{`import {List, Map} from "@std/collections.ms"
+type Value:
+    children: Map[String, Value]
+type Wrapper:
+    entries: Map[String, Node]
+type Node:
+    case Leaf(value: Value)
+    case Children(values: List[Wrapper])
+`, true},
+		{`import List from "@std/collections.ms"
+type Growing[T]:
+    children: List[Growing[List[T]]]
+`, false},
+	} {
+		module, err := parser.Parse("layout.ms", test.source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		program := checker.Check([]*syntax.Module{module}, nil)
+		if (len(program.Diagnostics) == 0) != test.accepted {
+			t.Fatal(test.accepted, program.Diagnostics)
+		}
+	}
+}

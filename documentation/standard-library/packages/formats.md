@@ -7,13 +7,25 @@ weight = 51
 
 [Standard library guide](../_index.md) · [Coverage](coverage.md) · [Common contracts](contracts.md)
 
-Use these modules to parse and write JSON, CSV, and URLs, or parse HTML into a tree and escape HTML text. Choose explicit limits for input size and nesting. Each format has its own validation rules, described after the signatures.
+Use these modules to parse and write JSON, YAML, TOML, CSV, and URLs, or parse HTML into a tree and escape HTML text. Choose explicit limits for input size and nesting. Each format has its own validation rules, described after the signatures.
 
 ## `@std/json.ms`
 
 ```manuscript
 fn parse(text: String, limits: Optional[JsonLimits]) -> Result[JsonValue, JsonError]
 fn stringify(value: JsonValue, max_bytes: Optional[Int]) -> Result[String, JsonError]
+```
+
+## `@std/yaml.ms`
+
+```manuscript
+fn parse(text: String, limits: Optional[YamlLimits] = none) -> Result[YamlValue, YamlError]
+```
+
+## `@std/toml.ms`
+
+```manuscript
+fn parse(text: String, limits: Optional[TomlLimits] = none) -> Result[TomlValue, TomlError]
 ```
 
 ## `@std/csv.ms`
@@ -92,6 +104,51 @@ Parsing accepts one document. It rejects trailing values, duplicate decoded obje
 Omitted budgets impose no added byte, item, or nesting cap. Stringify rejects cyclic values. Malformed data returns `InvalidData`; exceeded limits return `LimitExceeded`.
 
 Stringify produces compact JSON and uses Go's escaping for HTML-sensitive characters. It is not a canonical format for signing.
+
+## YAML behavior
+
+The parser is written in Manuscript. It reads one YAML 1.2 configuration document with textual mapping keys, block and flow collections, compact sequences and mappings, comments, quoted strings and Unicode escapes, continued scalars, and literal/folded block scalars with indentation and chomping indicators. It accepts a BOM, normalized line endings, document markers, and the `%YAML 1.2` directive.
+
+`YamlValue` represents null, booleans, exact number text, strings, lists, and insertion-ordered maps. Core-schema booleans include `true` and `false` with YAML capitalization; `yes`, `no`, and dates remain strings. Plain mapping keys retain their text; quoted keys are decoded before duplicate checking.
+
+Anchors and previously defined aliases retain the same value references. Forward and recursive aliases fail. Merge keys accept a mapping or a list of mappings; earlier mappings win and explicit entries override merged values. Duplicate explicit keys fail.
+
+This configuration parser does not implement the complete YAML specification: explicit tags, complex/explicit mapping keys, custom directives, multiple documents, and flow sequence mapping shorthand are unsupported. Multiline scalars cover ordinary continuation and folding; specialized empty-line folding and flow indentation rules are not fully implemented. `UnsupportedFeature` identifies explicit tags, complex keys, and unsupported directives; other malformed or unsupported forms return `InvalidData` with a one-based line, column, and reason. Positions identify where parsing detected the problem, and indentation errors point to the line's first column.
+
+## TOML behavior
+
+The parser is written in Manuscript and targets TOML 1.0. The result is a `TableValue`, including for an empty document. Values include strings, signed 64-bit integers, binary64 floats, booleans, date/time token text, lists, and insertion-ordered tables.
+
+It supports bare/quoted/dotted keys, explicit and implicit tables, arrays of tables, heterogeneous arrays, closed inline tables, comments, literal/basic strings, multiline strings, Unicode escapes, and escaped newline folding. Integers support decimal, hexadecimal, octal, and binary forms with valid underscore separators; floats include exponents, infinities, and NaN. Date/time values preserve their spelling and fractional precision after checking calendar/time fields. No host timezone conversion occurs.
+
+Duplicate keys, table redefinitions, scalar/table conflicts, extensions to closed inline tables, malformed strings/numbers/dates, out-of-range integers, trailing text, and bare carriage returns fail with `InvalidData(line, column, reason)`. CRLF becomes LF. Dates allow leap-second spelling (`60`) without checking a historical leap-second registry. Binary64 conversion rejects overflowing finite float tokens. TOML 1.1 extensions are outside this parser's contract.
+
+## YAML and TOML limits
+
+`YamlLimits` and `TomlLimits` each contain `max_bytes`, `max_depth`, and `max_values`, all `Optional[Int]`. Their ordinary record constructors require all three fields; use `none` for each omitted budget. Omitting `limits` or passing `none` adds no cap.
+
+- `max_bytes` counts UTF-8 input bytes before normalization.
+- `max_depth` counts every value level, with the root at one, including scalar leaves and implicit TOML tables.
+- `max_values` counts containers and leaves, excluding keys. YAML checks both parsed values and the returned tree with aliases counted at each occurrence; merge-source values also consume the parsing budget.
+
+Negative limits return `InvalidInput`; zero is a real budget and exhaustion returns `LimitExceeded`. Empty YAML still returns one null value; empty TOML returns one table. Limits are checked during parsing and against the completed result. Input text and the parser's character/line lists are already allocated; these budgets do not provide a general memory or CPU sandbox. With no budgets, YAML aliases are returned without traversing their expanded tree.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import {parse, TomlValue, TomlLimits} from "@std/toml.ms"
+import Optional from "@std/optional.ms"
+import panic from "@std/faults.ms"
+
+test "parse bounded TOML configuration":
+    let limits = TomlLimits(max_bytes: some(value: 1024), max_depth: some(value: 8), max_values: some(value: 64))
+    match parse(text: "[server]\nport = 8080\n", limits: some(value: limits)):
+        error(cause): return panic(cause.message())
+        ok(value):
+            match value:
+                TableValue(entries):
+                    if not entries.contains("server"): return panic("missing server table")
+                _: return panic("expected table")
+```
 
 ## CSV behavior
 

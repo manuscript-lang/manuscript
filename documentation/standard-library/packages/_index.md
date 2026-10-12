@@ -11,7 +11,7 @@ Find a package by the task you want to perform. Read [common contracts](contract
 
 - [Text, bytes, and collections](data.md) — Work with text, bytes, encodings, collections, and regular expressions.
 - [Numbers and mathematics](math.md) — Use floating-point functions and arbitrary-precision integers.
-- [Serialization and formats](formats.md) — Parse and write JSON, CSV, and URLs; parse HTML trees and escape text.
+- [Serialization and formats](formats.md) — Parse and write JSON, YAML, TOML, CSV, and URLs; parse HTML trees and escape text.
 - [Paths and filesystem](filesystem.md) — Manipulate paths and use an explicit filesystem service.
 - [Time and system information](system.md) — Work with timestamps and query supplied clock or system services.
 - [Cryptography and randomness](crypto.md) — Hash, authenticate, encrypt, sign, and request random bytes.
