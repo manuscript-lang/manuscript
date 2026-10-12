@@ -46,6 +46,45 @@ func TestOverlayImportsAndNavigation(t *testing.T) {
 	}
 }
 
+func TestSelfDefinitionUsesItsMethodDeclaration(t *testing.T) {
+	source := "interface Read:\n    fn get() -> Int\ntype Box:\n    value: Int\nimpl Read for Box:\n    fn get() -> Int:\n        return self.value\n"
+	d := document{"file:///tmp/self.ms", source, 1}
+	result := analyze(d, map[string]document{d.URI: d})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	target := navigation(result, d, Position(source, strings.Index(source, "self.value")), "textDocument/definition")
+	if target == nil {
+		t.Fatal("implicit receiver lost its definition")
+	}
+	r := target.([]any)[0].(map[string]any)["range"].(span)
+	if r.Start != Position(source, strings.LastIndex(source, "fn get")+len("fn ")) {
+		t.Fatal("implicit receiver points outside its method", target)
+	}
+}
+
+func TestInvalidNestedManifestDoesNotInheritParentAliases(t *testing.T) {
+	root := t.TempDir()
+	for name, source := range map[string]string{
+		"ms.toml":        "[project]\nname = \"parent\"\nsource = \".\"\nentry = \"main.ms\"\n[aliases]\n\"@parent\" = \".\"\n",
+		"main.ms":        "",
+		"nested/ms.toml": "invalid configuration",
+		"nested/main.ms": "",
+	} {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	d := document{URI: fileURI(filepath.Join(root, "nested/main.ms"))}
+	if p, ok := editorProject(d); ok || len(p.Aliases) != 0 {
+		t.Fatal("completion silently selected an invalid project's parent", p)
+	}
+}
+
 func TestDependencyChangesRefreshOpenDocuments(t *testing.T) {
 	dir := t.TempDir()
 	main := filepath.Join(dir, "main.ms")

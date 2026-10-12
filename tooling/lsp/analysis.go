@@ -3,9 +3,8 @@ package lsp
 import (
 	"github.com/manuscript-lang/manuscript/checker"
 	"github.com/manuscript-lang/manuscript/compiler"
+	"github.com/manuscript-lang/manuscript/project"
 	"github.com/manuscript-lang/manuscript/syntax"
-	"github.com/manuscript-lang/manuscript/tooling"
-	"os"
 	"path/filepath"
 )
 
@@ -28,24 +27,15 @@ func analyzeOptions(d document, docs map[string]document, options compiler.Optio
 			continue
 		}
 		p := filename(open.URI)
-		if real, e := filepath.EvalSymlinks(p); e == nil {
-			p = real
-		}
 		overlay[p] = open.Text
 	}
 	overlay[path] = d.Text
 	options.Overlay = overlay
-	target := path
-	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
-		manifest := filepath.Join(dir, "ms.toml")
-		if _, e := os.Stat(manifest); e == nil {
-			target = manifest
-			break
-		}
-		if filepath.Dir(dir) == dir {
-			break
-		}
+	target, found := project.FindManifest(path)
+	if !found {
+		target = path
 	}
+
 	if options.ScopeMarker != "" && target != path {
 		options.Module = path
 	}
@@ -89,8 +79,8 @@ func module(result compiler.Result, d document) *syntax.Module {
 	}
 	return nil
 }
-func at(result compiler.Result, d document, p position) (*syntax.Expression, *checker.Info) {
-	if entry := occurrenceAt(result, d, p); entry != nil {
+func at(result compiler.Result, d document, p position, index []occurrence) (*syntax.Expression, *checker.Info) {
+	if entry := occurrenceAt(result, d, p, index); entry != nil {
 		return &syntax.Expression{Pos: entry.pos, Text: entry.name, Kind: "name"}, entry.info
 	}
 	m := module(result, d)
@@ -115,15 +105,16 @@ func at(result compiler.Result, d document, p position) (*syntax.Expression, *ch
 	return selected, info
 }
 func navigation(result compiler.Result, d document, p position, method string) any {
-	e, i := at(result, d, p)
+	index := sourceIndex(result)
+	e, i := at(result, d, p, index)
 	if e == nil || i == nil {
 		return nil
 	}
 	if method == "textDocument/hover" {
 		return map[string]any{"contents": map[string]any{"kind": "plaintext", "value": e.Text + ": " + i.Type.String()}, "range": span{Position(d.Text, e.Pos.Offset), Position(d.Text, e.Pos.Offset+len(e.Text))}}
 	}
-	if selected := occurrenceAt(result, d, p); selected != nil {
-		for _, entry := range sourceIndex(result) {
+	if selected := occurrenceAt(result, d, p, index); selected != nil {
+		for _, entry := range index {
 			if entry.key == selected.key && entry.declaration {
 				// Operation keys group a contract and all implementations for
 				// rename. Definition lookup follows the checked concrete method.
@@ -155,9 +146,11 @@ func declaration(result compiler.Result, i *checker.Info) syntax.Position {
 		return i.Method.Decl.Pos
 	}
 	if i.Binding != nil {
-		for _, local := range tooling.Inspect(result.Program).Locals {
-			if local.GoID == i.Binding.ID {
-				return syntax.Position{File: local.Span.File, Offset: local.Span.Start}
+		// Ordinary locals already resolve through the source index above.
+		// The implicit self binding is anchored at its method declaration.
+		for decl, binding := range result.Program.Self {
+			if binding == i.Binding {
+				return decl.Pos
 			}
 		}
 	}

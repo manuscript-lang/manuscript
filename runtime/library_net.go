@@ -423,8 +423,6 @@ func (l *libraryListener) Operation(name string) Function {
 	})
 }
 
-func errorsIsNetClosed(err error) bool { return errors.Is(err, net.ErrClosed) }
-
 type libraryDatagram struct {
 	lifetime    context.Context
 	cancel      context.CancelFunc

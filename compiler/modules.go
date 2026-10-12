@@ -1,177 +1,59 @@
 package compiler
 
 import (
-	"bufio"
 	"fmt"
-	"github.com/manuscript-lang/manuscript/parser"
-	"github.com/manuscript-lang/manuscript/syntax"
-	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
+
+	"github.com/manuscript-lang/manuscript/parser"
+	"github.com/manuscript-lang/manuscript/project"
+	"github.com/manuscript-lang/manuscript/syntax"
 )
 
-type Project struct {
-	Root, Name, Source, Entry string
-	Configuration             string
-	Aliases                   map[string]string
-}
+// Project is retained for callers of compiler.ReadProject.
+type Project = project.Project
 
-func ReadProject(filename string) (Project, error) {
-	absolute, err := filepath.Abs(filename)
-	if err != nil {
-		return Project{}, err
-	}
-	root, err := filepath.EvalSymlinks(filepath.Dir(absolute))
-	if err != nil {
-		return Project{}, err
-	}
-	p := Project{Root: root, Aliases: map[string]string{}}
-	file, err := os.Open(absolute)
-	if err != nil {
-		return p, err
-	}
-	defer file.Close()
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return p, err
-	}
-	p.Configuration = string(data)
-	scan := bufio.NewScanner(strings.NewReader(p.Configuration))
-	section := ""
-	tables := map[string]bool{}
-	seen := map[string]bool{}
-	for scan.Scan() {
-		line := strings.TrimSpace(manifestLine(scan.Text()))
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.HasPrefix(line, "[") {
-			if line != "[project]" && line != "[aliases]" {
-				return p, fmt.Errorf("unsupported manifest table %s", line)
-			}
-			if tables[line] {
-				return p, fmt.Errorf("duplicate manifest table %s", line)
-			}
-			tables[line] = true
-			section = strings.Trim(line, "[]")
-			continue
-		}
-		key, value, ok := strings.Cut(line, "=")
-		if !ok || section == "" {
-			return p, fmt.Errorf("invalid manifest assignment")
-		}
-		key = strings.TrimSpace(key)
-		if strings.HasPrefix(key, "\"") {
-			key, err = strconv.Unquote(key)
-			if err != nil {
-				return p, err
-			}
-		}
-		value = strings.TrimSpace(value)
-		value, err = strconv.Unquote(value)
-		if err != nil {
-			return p, fmt.Errorf("manifest values must be quoted strings: %w", err)
-		}
-		id := section + "." + key
-		if seen[id] {
-			return p, fmt.Errorf("duplicate manifest key %s", id)
-		}
-		seen[id] = true
-		if section == "project" {
-			switch key {
-			case "name":
-				p.Name = value
-			case "source":
-				p.Source = value
-			case "entry":
-				p.Entry = value
-			default:
-				return p, fmt.Errorf("unknown project key %s", key)
-			}
-		} else {
-			if !validAlias(key) || key == "@std" || strings.HasPrefix(value, "@") {
-				return p, fmt.Errorf("invalid or reserved alias %s", key)
-			}
-			p.Aliases[key] = value
-		}
-	}
-	if err := scan.Err(); err != nil {
-		return p, err
-	}
-	if p.Name == "" || p.Source == "" || p.Entry == "" {
-		return p, fmt.Errorf("project requires name, source, and entry")
-	}
-	p.Source, err = inside(root, p.Source)
-	if err != nil {
-		return p, err
-	}
-	info, err := os.Stat(p.Source)
-	if err != nil || !info.IsDir() {
-		return p, fmt.Errorf("project source must be an existing directory")
-	}
-	p.Entry, err = inside(root, p.Entry)
-	if err != nil {
-		return p, err
-	}
-	if filepath.Ext(p.Entry) != ".ms" {
-		return p, fmt.Errorf("entry requires .ms extension")
-	}
-	for key, value := range p.Aliases {
-		target, err := inside(root, value)
-		if err != nil {
-			return p, err
-		}
-		p.Aliases[key] = target
-	}
-	return p, nil
-}
-func validAlias(key string) bool {
-	if len(key) < 2 || key[0] != '@' {
-		return false
-	}
-	for i, r := range key[1:] {
-		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r == '_' || i > 0 && r >= '0' && r <= '9') {
-			return false
-		}
-	}
-	return true
-}
-func inside(root, path string) (string, error) {
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(root, path)
-	}
-	canonical, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return "", err
-	}
-	rel, err := filepath.Rel(root, canonical)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("path escapes project root: %s", path)
-	}
-	return canonical, nil
-}
+// ReadProject reads a manifest without parsing or generating code.
+func ReadProject(filename string) (Project, error) { return project.ReadProject(filename) }
+
 func CompileFile(filename string, options Options) Result {
 	absolute, err := filepath.Abs(filename)
 	if err != nil {
 		return loadError(filename, err)
 	}
-	project := Project{Root: filepath.Dir(absolute), Entry: absolute, Aliases: map[string]string{}}
+	config := project.Project{Root: filepath.Dir(absolute), Entry: absolute, Aliases: map[string]string{}}
 	if filepath.Base(absolute) == "ms.toml" {
-		project, err = ReadProject(absolute)
+		config, err = project.ReadProject(absolute)
 		if err != nil {
 			return loadError(filename, err)
 		}
-		options.Entry = !options.Tests && !options.AnalyzeOnly
+		options.Entry = !options.Tests && (!options.AnalyzeOnly || options.Entry)
 	} else {
-		project.Root, err = filepath.EvalSymlinks(project.Root)
+		config.Root, err = filepath.EvalSymlinks(config.Root)
 		if err != nil {
 			return loadError(filename, err)
 		}
 	}
 	if options.Module != "" {
-		project.Entry = options.Module
+		config.Entry = options.Module
+	}
+	// Editors may address the same file through a symlinked workspace directory.
+	// Reads and graph identity use canonical filenames, so overlays must too.
+	if options.Overlay != nil {
+		normalized := make(map[string]string, len(options.Overlay))
+		for overlayFile, source := range options.Overlay {
+			canonical, err := project.SourcePath(config.Root, overlayFile, options.Overlay)
+			if err != nil {
+				// Open documents outside this project do not enter its module graph.
+				continue
+			}
+			if previous, ok := normalized[canonical]; ok && previous != source {
+				return loadError(config.Entry, fmt.Errorf("conflicting editor overlays for %s", canonical))
+			}
+			normalized[canonical] = source
+		}
+		options.Overlay = normalized
 	}
 	var parseIssues []syntax.Diagnostic
 	var modules []*syntax.Module
@@ -179,12 +61,9 @@ func CompileFile(filename string, options Options) Result {
 	active := map[string]bool{}
 	loaded := map[string]*syntax.Module{}
 	var visit func(string) (string, error)
-	visit = func(filename string) (string, error) {
-		canonical, err := overlayInside(project.Root, filename, options.Overlay)
-		if err != nil {
-			return "", err
-		}
-		logical, _ := filepath.Rel(project.Root, canonical)
+	// Entry and imports cross the resolver once; the graph uses canonical keys.
+	visit = func(canonical string) (string, error) {
+		logical, _ := filepath.Rel(config.Root, canonical)
 		logical = filepath.ToSlash(logical)
 		if active[canonical] {
 			return "", fmt.Errorf("cyclic module dependency at %s", logical)
@@ -195,6 +74,7 @@ func CompileFile(filename string, options Options) Result {
 		active[canonical] = true
 		defer delete(active, canonical)
 		var source []byte
+		var err error
 		if text, ok := options.Overlay[canonical]; ok {
 			source = []byte(text)
 		} else {
@@ -219,15 +99,13 @@ func CompileFile(filename string, options Options) Result {
 			if strings.HasPrefix(item.Path, "@std/") {
 				continue
 			}
-			target, err := resolveImport(project, canonical, item.Path, options.Overlay)
+			target, err := project.ResolveImport(config, canonical, item.Path, options.Overlay)
+			var key string
 			if err != nil {
-				if options.Recover && options.AnalyzeOnly {
-					parseIssues = append(parseIssues, syntax.Diagnostic{Position: item.Pos, Phase: "resolution", Message: err.Error()})
-					continue
-				}
-				return "", syntax.Diagnostic{Position: item.Pos, Phase: "resolution", Message: err.Error()}
+				err = syntax.Diagnostic{Position: item.Pos, Phase: "resolution", Message: err.Error()}
+			} else {
+				key, err = visit(target)
 			}
-			key, err := visit(target)
 			if err != nil {
 				if options.Recover && options.AnalyzeOnly {
 					parseIssues = append(parseIssues, syntax.Diagnostic{Position: item.Pos, Phase: "resolution", Message: err.Error()})
@@ -240,105 +118,27 @@ func CompileFile(filename string, options Options) Result {
 		modules = append(modules, module)
 		return logical, nil
 	}
-	entry, err := visit(project.Entry)
+	entry, err := project.SourcePath(config.Root, config.Entry, options.Overlay)
+	if err == nil {
+		entry, err = visit(entry)
+	}
 	if err != nil {
 		result := loadError(filename, err)
-		result.SourceRoot = project.Root
+		result.SourceRoot = config.Root
 		return result
 	}
 	result := compileModules(modules, imports, entry, options)
-	result.SourceRoot = project.Root
+	result.SourceRoot = config.Root
 	result.Diagnostics = append(parseIssues, result.Diagnostics...)
 	if filepath.Base(absolute) == "ms.toml" {
-		result.ProjectRoot = project.Root
-		result.Configuration = project.Configuration
+		result.ProjectRoot = config.Root
+		result.Configuration = config.Configuration
 	}
 	return result
-}
-func resolveImport(project Project, importer, path string, overlay map[string]string) (string, error) {
-	if strings.Contains(path, "\\") {
-		return "", fmt.Errorf("import paths use / separators")
-	}
-	var target string
-	if strings.HasPrefix(path, "./") || strings.HasPrefix(path, "../") {
-		if filepath.Ext(path) != ".ms" {
-			return "", fmt.Errorf("import path requires .ms extension")
-		}
-		target = filepath.Join(filepath.Dir(importer), path)
-	} else if strings.HasPrefix(path, "@") {
-		alias, remainder, _ := strings.Cut(path, "/")
-		base := project.Aliases[alias]
-		if base == "" {
-			return "", fmt.Errorf("unknown import alias %s", alias)
-		}
-		info, err := os.Stat(base)
-		if err != nil {
-			return "", err
-		}
-		if info.IsDir() {
-			if remainder == "" || filepath.Ext(remainder) != ".ms" {
-				return "", fmt.Errorf("directory alias requires a .ms path")
-			}
-			target = filepath.Join(base, remainder)
-		} else {
-			if remainder != "" || filepath.Ext(base) != ".ms" {
-				return "", fmt.Errorf("file alias does not accept a suffix")
-			}
-			target = base
-		}
-	} else {
-		return "", fmt.Errorf("imports require a relative path or alias")
-	}
-	return overlayInside(project.Root, target, overlay)
 }
 func loadError(file string, err error) Result {
 	if d, ok := err.(syntax.Diagnostic); ok {
 		return Result{Diagnostics: []syntax.Diagnostic{d}}
 	}
 	return Result{Diagnostics: []syntax.Diagnostic{{Position: syntax.Position{File: file, Line: 1, Column: 1}, Phase: "resolution", Message: err.Error()}}}
-}
-
-func manifestLine(line string) string {
-	quoted, escaped := false, false
-	for i, c := range line {
-		if escaped {
-			escaped = false
-			continue
-		}
-		if quoted && c == '\\' {
-			escaped = true
-			continue
-		}
-		if c == '"' {
-			quoted = !quoted
-		}
-		if c == '#' && !quoted {
-			return line[:i]
-		}
-	}
-	return line
-}
-
-// Overlay-only modules still resolve existing parent symlinks and obey project confinement.
-func overlayInside(root, path string, overlay map[string]string) (string, error) {
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(root, path)
-	}
-	canonical, err := inside(root, path)
-	if err == nil {
-		return canonical, nil
-	}
-	if _, ok := overlay[filepath.Clean(path)]; !ok || !os.IsNotExist(err) {
-		return "", err
-	}
-	parent, err := filepath.EvalSymlinks(filepath.Dir(path))
-	if err != nil {
-		return "", err
-	}
-	canonical = filepath.Join(parent, filepath.Base(path))
-	rel, err := filepath.Rel(root, canonical)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("path escapes project root: %s", path)
-	}
-	return canonical, nil
 }

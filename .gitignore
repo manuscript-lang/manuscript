@@ -2,9 +2,11 @@
 /public/
 /.hugo-cache/
 /hugo_cache/
-/.hugo-resources/
+/website/.hugo-resources/
 /resources/_gen/
 /.hugo_build.lock
+/website/.hugo_build.lock
+/.artifacts/
 
 # Browser verification artifacts
 /.playwright-mcp/

@@ -2,7 +2,6 @@ package tooling
 
 import (
 	"github.com/manuscript-lang/manuscript/checker"
-	"github.com/manuscript-lang/manuscript/lexer"
 	"github.com/manuscript-lang/manuscript/syntax"
 	"sort"
 	"strings"
@@ -26,61 +25,38 @@ func LintProgram(program *checker.Program) []LintFinding {
 			findings = append(findings, LintFinding{"MSL101", "Local binding " + binding.Name + " is never read", pattern.Pos})
 		}
 	}
+	// Use the checker's resolved identities, not a second lexical approximation.
+	uses := map[string]map[*checker.Symbol]bool{}
+	mark := func(file string, symbol *checker.Symbol) {
+		if symbol == nil {
+			return
+		}
+		if uses[file] == nil {
+			uses[file] = map[*checker.Symbol]bool{}
+		}
+		uses[file][symbol] = true
+	}
+	for expression, info := range program.Expressions {
+		if info != nil {
+			mark(expression.Pos.File, info.Symbol)
+		}
+		// List literals require the canonical import even without a written type.
+		if expression.Kind == "list" {
+			mark(expression.Pos.File, program.Symbols[expression.Pos.File]["List"])
+		}
+	}
+	for ref, typ := range program.TypeReferences {
+		if typ != nil && typ.Def != nil {
+			mark(ref.Pos.File, typ.Def.Symbol)
+		}
+	}
 	for _, module := range program.Modules {
-		tokens, err := lexer.Lex(module.File, module.Source)
-		if err != nil {
-			continue
-		}
-		importLines := map[int]bool{}
 		for _, imp := range module.Imports {
-			endLine := imp.NamePos.Line
-			for _, token := range tokens {
-				if token.Pos.Offset >= imp.Pos.Offset && token.Kind == lexer.String {
-					endLine = token.Pos.Line
-					break
-				}
-			}
-			for line := imp.Pos.Line; line <= endLine; line++ {
-				importLines[line] = true
-			}
-		}
-		uses := map[string]bool{}
-		for _, token := range tokens {
-			if token.Kind == lexer.Name && !importLines[token.Pos.Line] {
-				uses[token.Text] = true
-			}
-		}
-		// List literals depend on the canonical import even without a written type name.
-		for expression := range program.Expressions {
-			if expression != nil && expression.Pos.File == module.File && expression.Kind == "list" {
-				uses["List"] = true
-			}
-		}
-		for _, imp := range module.Imports {
-			if !uses[imp.Name] {
+			if !uses[module.File][program.Symbols[module.File][imp.Name]] {
 				findings = append(findings, LintFinding{"MSL102", "Import " + imp.Name + " is never used", imp.NamePos})
 			}
 		}
-		var body func([]*syntax.Statement)
-		var expression func(*syntax.Expression)
-		expression = func(e *syntax.Expression) {
-			if e == nil {
-				return
-			}
-			body(e.Body)
-			for _, param := range e.Params {
-				expression(param.Default)
-			}
-			expression(e.Left)
-			expression(e.Right)
-			for _, arg := range e.Args {
-				expression(arg.Value)
-			}
-			for _, item := range e.Elements {
-				expression(item)
-			}
-		}
-		body = func(statements []*syntax.Statement) {
+		visitor := syntax.Visitor{Block: func(statements []*syntax.Statement) {
 			reachable := true
 			for _, s := range statements {
 				if !reachable {
@@ -89,27 +65,12 @@ func LintProgram(program *checker.Program) []LintFinding {
 				if flow, ok := program.Flow[s]; ok && !flow.FallsThrough {
 					reachable = false
 				}
-				body(s.Body)
-				body(s.Else)
-				for _, arm := range s.Arms {
-					body(arm.Body)
-				}
-				expression(s.Target)
-				expression(s.Value)
 			}
-		}
+		}}
 		for _, decl := range module.Declarations {
-			for _, param := range decl.Params {
-				expression(param.Default)
-			}
-			body(decl.Body)
-			for _, method := range decl.Methods {
-				for _, param := range method.Params {
-					expression(param.Default)
-				}
-				body(method.Body)
-			}
+			visitor.Walk(decl)
 		}
+
 	}
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i].Position, findings[j].Position

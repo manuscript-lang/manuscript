@@ -1,9 +1,9 @@
 {
   "format": 1,
   "compiler": "0.1.0",
-  "implementation_sha256": "5ffe2d4097a0f752a1ceb896c78ded7e59297b4928527fe5c3f961cb4f4fa57a",
+  "implementation_sha256": "58440d8742b6e4fc124e92f4589efccaf6711b5b23088ef1732ce40cf7f54c39",
   "toolchain": {
-    "CGO_ENABLED": "1",
+    "CGO_ENABLED": "0",
     "GOAMD64": "v1",
     "GOARCH": "amd64",
     "GOARM": "",

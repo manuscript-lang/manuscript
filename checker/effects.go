@@ -10,7 +10,7 @@ import (
 // An indirect or unclassified operation contributes unknown rather than claiming purity.
 func (c *checker) effectSummaries() {
 	type node struct {
-		body    []*syntax.Statement
+		decl    *syntax.Declaration
 		effects map[string]bool
 		edges   map[string]bool
 	}
@@ -19,12 +19,12 @@ func (c *checker) effectSummaries() {
 		for _, declaration := range module.Declarations {
 			if declaration.Kind == "fn" {
 				symbol := c.Symbols[module.File][declaration.Name]
-				nodes[symbol.ID] = &node{callableBody(declaration.Params, declaration.Body), map[string]bool{}, map[string]bool{}}
+				nodes[symbol.ID] = &node{declaration, map[string]bool{}, map[string]bool{}}
 			}
 		}
 	}
 	for _, method := range c.Methods {
-		nodes[method.ID] = &node{callableBody(method.Decl.Params, method.Decl.Body), map[string]bool{}, map[string]bool{}}
+		nodes[method.ID] = &node{method.Decl, map[string]bool{}, map[string]bool{}}
 	}
 	add := func(n *node, effects ...string) {
 		for _, effect := range effects {
@@ -32,131 +32,122 @@ func (c *checker) effectSummaries() {
 		}
 	}
 	for _, n := range nodes {
-		var cleanup func([]*syntax.Statement)
-		cleanup = func(body []*syntax.Statement) {
-			for _, statement := range body {
+		syntax.Visitor{
+			Statement: func(statement *syntax.Statement) {
 				if statement.Target != nil {
 					add(n, "write")
 				}
-				if statement.Kind == "with" {
-					method := c.Cleanups[statement]
-					if method != nil && method.ID != "" {
-						n.edges[method.ID] = true
-					} else if method != nil && std(method.Receiver, "SynchronizedGuard") {
-						add(n, "write")
-					} else {
-						add(n, "unknown")
+				if statement.Kind != "with" {
+					return
+				}
+				method := c.Cleanups[statement]
+				if method != nil && method.ID != "" {
+					n.edges[method.ID] = true
+				} else if method != nil && std(method.Receiver, "SynchronizedGuard") {
+					add(n, "write")
+				} else {
+					add(n, "unknown")
+				}
+			},
+			Expression: func(expression *syntax.Expression) {
+				if expression.Kind == "member" {
+					if receiver := c.Expressions[expression.Left]; receiver != nil && receiver.Type.Kind == "record" && c.Expressions[expression].Method == nil {
+						add(n, "read")
 					}
 				}
-				cleanup(statement.Body)
-				cleanup(statement.Else)
-				for _, arm := range statement.Arms {
-					cleanup(arm.Body)
-				}
-			}
-		}
-		cleanup(n.body)
-		walkStatements(n.body, func(expression *syntax.Expression) {
-			cleanup(expression.Body)
-			if expression.Kind == "member" {
-				if receiver := c.Expressions[expression.Left]; receiver != nil && receiver.Type.Kind == "record" && c.Expressions[expression].Method == nil {
-					add(n, "read")
-				}
-			}
-			if expression.Kind != "call" {
-				return
-			}
-			info := c.Expressions[expression]
-			if info == nil {
-				add(n, "unknown")
-				return
-			}
-			if info.Constructor != nil {
-				return
-			}
-			if info.Native == "toString" || info.Native == "clone" {
-				add(n, "read")
-				return
-			}
-			if info.Symbol != nil {
-				if info.Symbol.Native == "" {
-					n.edges[info.Symbol.ID] = true
+				if expression.Kind != "call" {
 					return
 				}
-				switch info.Symbol.Native {
-				case "panic", "check_cancelled":
-					return
-				case "sleep":
-					add(n, "read")
-					return
-				default:
+				info := c.Expressions[expression]
+				if info == nil {
 					add(n, "unknown")
 					return
 				}
-			}
-			if info.Method != nil {
-				method := info.Method
-				if method.ID != "" {
-					n.edges[method.ID] = true
+				if info.Constructor != nil {
 					return
 				}
-				receiver := method.Receiver
-				if method.Contract != nil && method.Contract.ID != "" {
-					receiver = method.Contract
+				if info.Native == "toString" || info.Native == "clone" {
+					add(n, "read")
+					return
 				}
-				name := expression.Left.Text
-				switch receiver.ID {
-				case "@std/Clock":
-					add(n, "read")
-				case "@std/Files", "@std/File", "@std/ReadStream":
-					add(n, "external-call", "read")
-					if name == "close" {
-						add(n, "write")
+				if info.Symbol != nil {
+					if info.Symbol.Native == "" {
+						n.edges[info.Symbol.ID] = true
+						return
 					}
-				case "@std/WriteStream":
-					add(n, "external-call", "write")
-				case "@std/Network", "@std/HttpServer", "@std/Commands":
-					add(n, "external-call", "read", "write")
-				case "@std/SynchronizedGuard":
-					if name == "get" {
+					switch info.Symbol.Native {
+					case "panic", "check_cancelled":
+						return
+					case "sleep":
 						add(n, "read")
-					} else {
-						add(n, "write")
+						return
+					default:
+						add(n, "unknown")
+						return
 					}
-				case "@std/Synchronized":
-					add(n, "write")
-				case "@std/Queue":
-					if name != "enqueue" {
+				}
+				if info.Method != nil {
+					method := info.Method
+					if method.ID != "" {
+						n.edges[method.ID] = true
+						return
+					}
+					receiver := method.Receiver
+					if method.Contract != nil && method.Contract.ID != "" {
+						receiver = method.Contract
+					}
+					name := expression.Left.Text
+					switch receiver.ID {
+					case "@std/Clock":
 						add(n, "read")
-					}
-					if name == "enqueue" || name == "dequeue" {
+					case "@std/Files", "@std/File", "@std/ReadStream":
+						add(n, "external-call", "read")
+						if name == "close" {
+							add(n, "write")
+						}
+					case "@std/WriteStream":
+						add(n, "external-call", "write")
+					case "@std/Network", "@std/HttpServer", "@std/Commands":
+						add(n, "external-call", "read", "write")
+					case "@std/SynchronizedGuard":
+						if name == "get" {
+							add(n, "read")
+						} else {
+							add(n, "write")
+						}
+					case "@std/Synchronized":
 						add(n, "write")
-					}
-				case "@std/List", "@std/Map", "@std/Set":
-					add(n, "read")
-					if collectionMutation(receiver, name) {
-						add(n, "write")
-					}
-					if len(method.Type.Params) > 0 {
+					case "@std/Queue":
+						if name != "enqueue" {
+							add(n, "read")
+						}
+						if name == "enqueue" || name == "dequeue" {
+							add(n, "write")
+						}
+					case "@std/List", "@std/Map", "@std/Set":
+						add(n, "read")
+						if collectionMutation(receiver, name) {
+							add(n, "write")
+						}
 						for _, param := range method.Type.Params {
 							if param.Type.Kind == "function" {
 								add(n, "unknown")
 							}
 						}
+					case "@std/Pool", "@std/Lease", "@std/Background":
+						add(n, "write", "unknown")
+					default:
+						if strings.HasSuffix(receiver.Name, "Builder") {
+							add(n, "write")
+						} else if receiver.Kind == "contract" || receiver.Kind == "variable" {
+							add(n, "unknown")
+						}
 					}
-				case "@std/Pool", "@std/Lease", "@std/Background":
-					add(n, "write", "unknown")
-				default:
-					if strings.HasSuffix(receiver.Name, "Builder") {
-						add(n, "write")
-					} else if receiver.Kind == "contract" || receiver.Kind == "variable" {
-						add(n, "unknown")
-					}
+					return
 				}
-				return
-			}
-			add(n, "unknown")
-		})
+				add(n, "unknown")
+			},
+		}.Walk(n.decl)
 	}
 	changed := true
 	for changed {

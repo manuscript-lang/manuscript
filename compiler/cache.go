@@ -9,6 +9,7 @@ import (
 	"github.com/manuscript-lang/manuscript/checker"
 	"github.com/manuscript-lang/manuscript/lexer"
 	"github.com/manuscript-lang/manuscript/parser"
+	"github.com/manuscript-lang/manuscript/project"
 	msruntime "github.com/manuscript-lang/manuscript/runtime"
 	"github.com/manuscript-lang/manuscript/stdlib"
 	"github.com/manuscript-lang/manuscript/syntax"
@@ -16,6 +17,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -41,7 +43,7 @@ func implementationDigest() string {
 	bundles := []struct {
 		name  string
 		files fs.FS
-	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"compiler", ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}, {"stdlib", stdlib.Sources}}
+	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"project", project.ImplementationSources}, {"compiler", ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}, {"stdlib", stdlib.Sources}}
 	var data strings.Builder
 	for _, bundle := range bundles {
 
@@ -92,31 +94,42 @@ func WritePin(root string) error {
 	}
 	return atomicWrite(filepath.Join(root, "ms.lock"), append(data, '\n'), 0644)
 }
-func CheckPin(root string) error {
+func readPin(root string) (BuildPin, error) {
 	data, err := os.ReadFile(filepath.Join(root, "ms.lock"))
 	if err != nil {
-		return fmt.Errorf("project build requires ms.lock; run ms lock %s: %w", filepath.Join(root, "ms.toml"), err)
+		return BuildPin{}, fmt.Errorf("project build requires ms.lock; run ms lock %s: %w", filepath.Join(root, "ms.toml"), err)
 	}
-	var expected BuildPin
+	var pin BuildPin
 	decoder := json.NewDecoder(strings.NewReader(string(data)))
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&expected); err != nil {
-		return fmt.Errorf("invalid ms.lock: %w", err)
+	if err := decoder.Decode(&pin); err != nil {
+		return BuildPin{}, fmt.Errorf("invalid ms.lock: %w", err)
 	}
 	if err := decoder.Decode(new(any)); err != io.EOF {
-		return fmt.Errorf("ms.lock must contain exactly one JSON object")
+		return BuildPin{}, fmt.Errorf("ms.lock must contain exactly one JSON object")
+	}
+	return pin, nil
+}
+
+func CheckPin(root string) error {
+	expected, err := readPin(root)
+	if err != nil {
+		return err
 	}
 	actual, err := CurrentPin()
 	if err != nil {
 		return err
 	}
-	left, _ := json.Marshal(expected)
-	right, _ := json.Marshal(actual)
-	if string(left) != string(right) {
+	return comparePin(root, expected, actual)
+}
+
+func comparePin(root string, expected, actual BuildPin) error {
+	if !reflect.DeepEqual(expected, actual) {
 		return fmt.Errorf("ms.lock does not match compiler/runtime, Go toolchain, or target; run ms lock %s to explicitly update", filepath.Join(root, "ms.toml"))
 	}
 	return nil
 }
+
 func atomicWrite(filename string, data []byte, mode os.FileMode) error {
 	existing, err := os.ReadFile(filename)
 	if err == nil && digest(existing) == digest(data) {
@@ -151,14 +164,22 @@ func BuildChecked(result Result, output, cacheDir string, debug bool) (BuildMeta
 	if !result.Success() || result.Program == nil || result.Source == "" {
 		return BuildMetadata{}, fmt.Errorf("cannot build a program with diagnostics")
 	}
+	var expected BuildPin
 	if result.ProjectRoot != "" {
-		if err := CheckPin(result.ProjectRoot); err != nil {
+		var err error
+		expected, err = readPin(result.ProjectRoot)
+		if err != nil {
 			return BuildMetadata{}, err
 		}
 	}
 	pin, err := CurrentPin()
 	if err != nil {
 		return BuildMetadata{}, err
+	}
+	if result.ProjectRoot != "" {
+		if err := comparePin(result.ProjectRoot, expected, pin); err != nil {
+			return BuildMetadata{}, err
+		}
 	}
 	metadata := BuildMetadata{BuildPin: pin, Sources: map[string]string{}, ConfigurationSHA256: digest([]byte(result.Configuration)), Debug: debug}
 	if result.ProjectRoot != "" {
@@ -191,9 +212,7 @@ func BuildChecked(result Result, output, cacheDir string, debug bool) (BuildMeta
 			if json.Unmarshal(info, &cached) == nil && cached.BuildID == metadata.BuildID && binaryErr == nil && digest(binary) == cached.ExecutableSHA256 {
 				expected := metadata
 				expected.ExecutableSHA256 = cached.ExecutableSHA256
-				left, _ := json.Marshal(expected)
-				right, _ := json.Marshal(cached)
-				if string(left) == string(right) {
+				if reflect.DeepEqual(expected, cached) {
 					if err := atomicWrite(output, binary, 0755); err != nil {
 						return metadata, err
 					}

@@ -6,6 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/manuscript-lang/manuscript/compiler"
+	// The suite builds cmd/ms in subprocesses. Track its implementation so Go's
+	// test cache is invalidated when CLI code changes, even if the harness does not.
+	_ "github.com/manuscript-lang/manuscript/internal/cli"
 	"io"
 	"net/http"
 	"os"

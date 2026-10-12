@@ -138,7 +138,7 @@ func buildNative(source, output string, debug bool) error {
 	if err := os.WriteFile(filename, []byte(standalone), 0600); err != nil {
 		return err
 	}
-	arguments := []string{"build", "-mod=vendor"}
+	arguments := []string{"build", "-mod=vendor", "-buildvcs=false"}
 	if !debug {
 		arguments = append(arguments, "-trimpath")
 	}

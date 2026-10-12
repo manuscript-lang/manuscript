@@ -1,0 +1,47 @@
+baseURL = 'https://manuscript-lang.github.io/manuscript/'
+languageCode = 'en-us'
+title = 'Manuscript'
+theme = 'hugo-book'
+contentDir = '../documentation'
+publishDir = '../docs'
+resourceDir = '.hugo-resources'
+disableKinds = ['taxonomy', 'term', 'RSS']
+
+[params]
+  description = 'Learn Manuscript: readable native programs, explicit contracts, and predictable work lifetimes.'
+  BookSection = '/'
+  BookToC = true
+  BookSearch = true
+  BookComments = false
+  BookPortableLinks = 'error'
+  BookTheme = 'auto'
+
+[markup.goldmark.renderer]
+  unsafe = true
+
+[markup.tableOfContents]
+  startLevel = 2
+  endLevel = 2
+
+[markup.highlight]
+  style = 'github'
+  noClasses = false
+
+[markup.goldmark.parser.attribute]
+  block = true
+
+[[menus.before]]
+  name = 'Overview'
+  pageRef = '/'
+  weight = 1
+
+# Share repository-owned version and lexical grammar without copying them.
+[[module.mounts]]
+  source = 'assets'
+  target = 'assets'
+[[module.mounts]]
+  source = '../.msversion'
+  target = 'assets/manuscript-version.txt'
+[[module.mounts]]
+  source = '../extensions/vscode/syntaxes/manuscript.tmLanguage.json'
+  target = 'assets/manuscript-grammar.json'

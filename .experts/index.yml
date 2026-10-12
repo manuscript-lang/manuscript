@@ -9,8 +9,9 @@ experts:
       - "parser/**"
       - "checker/**"
       - "compiler/**"
-      - "design/core-language/**"
-      - "design/modules-and-capabilities/**"
+      - "project/**"
+      - "documentation/core-language/**"
+      - "documentation/modules-and-capabilities/**"
       - "tests/e2e/**"
   - id: runtime
     file: runtime.md
@@ -18,9 +19,9 @@ experts:
     paths:
       - "runtime/**"
       - "stdlib/**"
-      - "design/concurrency/**"
-      - "design/ownership-and-cleanup/**"
-      - "design/standard-library/**"
+      - "documentation/concurrency/**"
+      - "documentation/ownership-and-cleanup/**"
+      - "documentation/standard-library/**"
       - "tests/e2e/testdata/projects/**"
   - id: tooling-and-docs
     file: tooling-and-docs.md
@@ -29,10 +30,13 @@ experts:
       - "tooling/**"
       - "extensions/**"
       - "documentation/**"
+      - "website/**"
+      - "internal/cli/**"
+      - "project/**"
       - "stdlib/**"
       - "cmd/**"
       - "compiler/**"
-      - "design/**"
+      - "scripts/**"
       - ".github/workflows/**"
       - "README.md"
-      - "IMPLEMENTATION.md"
+      - "documentation/implementation.md"

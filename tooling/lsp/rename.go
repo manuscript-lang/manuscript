@@ -9,7 +9,8 @@ import (
 )
 
 func rename(result compiler.Result, d document, p position, name string, open ...map[string]document) (any, error) {
-	selected := occurrenceAt(result, d, p)
+	index := sourceIndex(result)
+	selected := occurrenceAt(result, d, p, index)
 	if selected == nil {
 		return nil, fmt.Errorf("select a resolved source declaration or use")
 	}
@@ -38,13 +39,15 @@ func rename(result compiler.Result, d document, p position, name string, open ..
 	hasDeclaration := false
 	for _, target := range targets {
 		checked := result
+		entries := index
 		if target.URI != d.URI {
 			checked = workspaceAnalysis(target, docs)
+			entries = sourceIndex(checked)
 		}
 		if checked.Program == nil {
 			continue
 		}
-		for _, entry := range sourceIndex(checked) {
+		for _, entry := range entries {
 			if entry.key != selected.key {
 				continue
 			}

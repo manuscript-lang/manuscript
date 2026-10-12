@@ -47,7 +47,7 @@ jobs:
       - name: Build and validate design book
         # Exercise project-site URL prefixes as well as Markdown link resolution.
         run: |
-          hugo --minify --panicOnWarning --cleanDestinationDir --destination "${RUNNER_TEMP}/book-validation" --baseURL "https://example.org/manuscript/"
+          hugo --source website --minify --panicOnWarning --cleanDestinationDir --destination "${RUNNER_TEMP}/book-validation" --baseURL "https://example.org/manuscript/"
           MANUSCRIPT_BOOK_DIR="${RUNNER_TEMP}/book-validation" node --test tests/docs/publication.test.cjs
 
   pages:
@@ -104,7 +104,7 @@ jobs:
         env:
           HUGO_BASE_URL: ${{ steps.pages.outputs.base_url }}
         run: |
-          hugo --minify --panicOnWarning --cleanDestinationDir --baseURL "${HUGO_BASE_URL}/"
+          hugo --source website --minify --panicOnWarning --cleanDestinationDir --baseURL "${HUGO_BASE_URL}/"
           node --test tests/docs/publication.test.cjs
 
       - name: Commit generated website to the default branch
