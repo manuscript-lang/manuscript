@@ -7,12 +7,12 @@ export MANUSCRIPT_GO ?= $(GO)
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: toolchain setup tools doctor verify verify-full lint unit repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check book book-check vendor-refresh
+.PHONY: toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
 
-build test e2e race fmt coverage fuzz: | toolchain
+build test e2e stdlib-test race fmt coverage fuzz: | toolchain
 
 setup: toolchain tools
 
@@ -23,7 +23,7 @@ doctor:
 	HUGO="$(HUGO)" sh scripts/doctor.sh
 
 # Routine feedback excludes native compilation. The merge gate adds native checks.
-verify: check lint repo-check unit docs-check examples-check licenses-check
+verify: check lint repo-check unit stdlib-check docs-check examples-check licenses-check
 
 verify-full: verify coverage race fuzz book-check dist-check
 
@@ -42,6 +42,12 @@ repo-check:
 
 unit:
 	"$(GO)" test ./pkg/syntax ./pkg/lexer ./pkg/parser ./pkg/project ./pkg/checker ./pkg/runtime ./pkg/tooling/... ./scripts/repo-check
+
+stdlib-check:
+	"$(GO)" test ./tests/e2e -run '^TestStandardLibrarySources$$'
+
+stdlib-test:
+	"$(GO)" test $(E2EFLAGS) ./tests/e2e -run '^TestStandardLibrary(Sources|Conformance|Faults)$$'
 
 examples-check:
 	"$(GO)" test ./tests/examples

@@ -31,6 +31,8 @@ Tests that open HTTP/socket listeners need local loopback access. With a read-on
 
 The end-to-end suite builds one CLI with a bounded setup, reuses it, and retains per-case temporary projects and processes. Accepted fixtures execute their test blocks; rejected cases verify diagnostics; transcript cases check evaluation order, cleanup, signals, host operations, and module boundaries. The harness imports the CLI implementation so source changes invalidate Go's test cache. For an explicit fresh native run, use `make e2e E2EFLAGS=-count=1`. Native build pins require empty GOFLAGS; pass test flags through E2EFLAGS instead.
 
+`make stdlib-check` checks the dedicated Manuscript stdlib fixtures and requires a fixture for every public standard module; `make verify` includes it. `make stdlib-test E2EFLAGS=-count=1` builds and executes those test blocks plus expected-fault transcripts. See [stdlib conformance](../standard-library/packages/conformance.md) for behaviors and coverage limits.
+
 Complete tutorial code fences carry a `manuscript-example` JSON comment specifying `test` or `run`, arguments, and expected stdout. `make examples-check` checks them without lowering; coverage executes them. Fragments remain clearly introduced as fragments. Do not maintain another copy of complete examples in test fixtures.
 
 `make fuzz` exercises strict parsing, editor recovery, and compilation for ten seconds each. Set `FUZZTIME=1m` for longer runs. Preserve reproducible failures and add an observable regression before declaring a failure resolved.
