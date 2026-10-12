@@ -16,7 +16,15 @@ type Function struct {
 }
 type Generic struct {
 	Variables []string
-	Build     func(map[string]string) Function
+	Build     func(map[string]string, map[string]TypeScope) Function
+}
+
+// TypeScope carries lexical implementation selection through specialization.
+// Arguments retain their own scopes so a generic implementation can forward
+// its receiver's type parameters without changing their contract evidence.
+type TypeScope struct {
+	Module string
+	Args   []TypeScope
 }
 type Argument struct {
 	Name  string
@@ -54,6 +62,7 @@ type clockDomain struct{ identity byte }
 type View struct {
 	Type     string
 	Receiver Value
+	Scope    TypeScope
 }
 type propagation struct{ Cause Value }
 type Fault struct {
@@ -124,16 +133,20 @@ func Invoke(ctx *Execution, callee Value, args []Argument) Value {
 	CheckCancelled(ctx)
 	return f.Body(ctx, ordered)
 }
-func Specialize(value Value, args []string) Value {
+func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 	g, ok := value.(Generic)
 	if !ok {
 		return value
 	}
 	sub := map[string]string{}
+	typeScopes := map[string]TypeScope{}
 	for i, v := range g.Variables {
 		sub[v] = args[i]
+		if i < len(scopes) {
+			typeScopes[v] = scopes[i]
+		}
 	}
-	return g.Build(sub)
+	return g.Build(sub, typeScopes)
 }
 func Try(value Value) Value {
 	v := value.(Alternative)
@@ -408,8 +421,10 @@ func matchType(pattern, actual string, vars map[string]bool, sub map[string]stri
 
 type Implementation struct {
 	Receiver, Contract, Name string
-	Variables                []string
-	Build                    func(Value, map[string]string) Function
+	// Scope is empty for implementations in the receiver's defining module.
+	Scope     string
+	Variables []string
+	Build     func(Value, map[string]string, map[string]TypeScope) Function
 }
 
 var implementations []Implementation
@@ -417,18 +432,28 @@ var implementations []Implementation
 func Register(implementation Implementation) {
 	implementations = append(implementations, implementation)
 }
-func ViewOf(contract string, receiver Value) Value {
+func ViewOf(contract string, receiver Value, scopes ...TypeScope) Value {
+	scope := TypeScope{}
+	if len(scopes) > 0 {
+		scope = scopes[0]
+	}
 	if v, ok := receiver.(View); ok {
 		receiver = v.Receiver
+		scope = v.Scope
 	}
-	return View{contract, receiver}
+	return View{Type: contract, Receiver: receiver, Scope: scope}
 }
-func Bind(receiver Value, contract, name string) Value {
+func Bind(receiver Value, contract, name string, scopes ...TypeScope) Value {
+	scope := TypeScope{}
+	if len(scopes) > 0 {
+		scope = scopes[0]
+	}
 	if view, ok := receiver.(View); ok {
 		if contract == "" {
 			contract = view.Type
 		}
 		receiver = view.Receiver
+		scope = view.Scope
 	}
 	if native, ok := receiver.(Native); ok {
 		return native.Operation(name)
@@ -441,7 +466,7 @@ func Bind(receiver Value, contract, name string) Value {
 		typ = v.Type
 	}
 	for _, m := range implementations {
-		if m.Name != name {
+		if m.Name != name || m.Scope != "" && m.Scope != scope.Module {
 			continue
 		}
 		vars := map[string]bool{}
@@ -450,10 +475,27 @@ func Bind(receiver Value, contract, name string) Value {
 		}
 		sub := map[string]string{}
 		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == contract) {
-			return m.Build(receiver, sub)
+			typeScopes := map[string]TypeScope{}
+			implementationScopes(m.Receiver, scope, vars, typeScopes)
+			return m.Build(receiver, sub, typeScopes)
 		}
 	}
 	return NativeMember(receiver, name)
+}
+
+func implementationScopes(pattern string, scope TypeScope, vars map[string]bool, result map[string]TypeScope) {
+	name, args := splitType(pattern)
+	if vars[name] && len(args) == 0 {
+		result[name] = scope
+		return
+	}
+	for i, arg := range args {
+		child := TypeScope{Module: scope.Module}
+		if i < len(scope.Args) {
+			child = scope.Args[i]
+		}
+		implementationScopes(arg, child, vars, result)
+	}
 }
 
 type Test struct {

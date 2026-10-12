@@ -161,7 +161,7 @@ func CheckWithOptions(modules []*syntax.Module, imports map[*syntax.Import]strin
 			}
 		}
 		for _, m := range c.Methods {
-			if m.Decl != nil && m.Receiver.Def != nil && m.Receiver.Def.Symbol.Module == module.File {
+			if m.Decl != nil && m.Module == module.File {
 				c.checkFunction(m.Decl, m.Type, m.Variables, m.Receiver)
 			}
 		}

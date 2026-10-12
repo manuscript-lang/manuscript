@@ -406,7 +406,7 @@ test "explicit contract conversion":
 | Repeat the same `impl Increment for Offset` declaration | Type rejection: duplicate implementation |
 | Replace `Increment(value: offset)` with `Increment()` | Type rejection: conversion requires the concrete `value` argument |
 
-Add a multi-module rejection fixture for an implementation outside the concrete type's defining module; path/import mechanics follow [module conformance](semantic-tests.md). Contract method ambiguity on a concrete value is resolved by explicit conversion to the selected contract.
+Accept local extensions for imported source records and alternatives. Exercise two modules implementing the same imported type/interface pair differently: local calls, returned contract views, bound methods, generic specialization and forwarding, and cleanup must preserve each selection. Reject method calls, view construction, generic bounds, and cleanup that rely on another module's extension, even when that module is imported. Reject overlap with a defining-module implementation or another extension in the same module. Path/import mechanics follow [module conformance](semantic-tests.md). Contract method ambiguity on a concrete value is resolved by explicit conversion to the selected contract.
 
 ## CL-10a: Generic implementations and nonoverlap
 
@@ -462,7 +462,7 @@ The first block needs no bound to read and return its field. The second inherits
 | Replace the first block's receiver `Box[T]` with bare `T` | Type rejection at declaration: receiver must have a defining nominal data declaration |
 | Add `[U]` to an implementation method | Parse rejection: methods cannot introduce their own parameters |
 
-Also accept disjoint concrete implementations for different receiver applications when no generic block covers them, and two different contract applications for one receiver. For the latter, use explicit views to disambiguate equal operation names. Reject expanding recursive implementation specialization under the ordinary finite-application check. The defining-module rule applies equally to concrete and generic blocks.
+Also accept disjoint concrete implementations for different receiver applications when no generic block covers them, and two different contract applications for one receiver. For the latter, use explicit views to disambiguate equal operation names. Reject expanding recursive implementation specialization under the ordinary finite-application check. The implementation visibility rules apply equally to concrete and generic blocks. Test inherited receiver bounds whose interface names are absent or shadowed in the extending module, and nested generic receivers whose arguments rely on local implementations.
 
 ## CL-10b: Contract views and callbacks
 

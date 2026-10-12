@@ -16,6 +16,7 @@ type loopLabel struct {
 }
 type generator struct {
 	program     *checker.Program
+	module      string
 	serial      int
 	cleanups    []string
 	loopCleanup []int
@@ -34,6 +35,26 @@ func stringsGo(values []string) string {
 func (g *generator) temp() string { g.serial++; return fmt.Sprintf("temporary%d", g.serial) }
 func (g *generator) key(t *checker.Type) string {
 	return "rt.ResolveType(" + quote(checker.TypeKey(t)) + ", typeArgs)"
+}
+
+func (g *generator) typeScope(t *checker.Type) string {
+	if t.Kind == "variable" {
+		return "typeScopes[" + quote(t.ID) + "]"
+	}
+	var args []string
+	for _, arg := range t.Args {
+		args = append(args, g.typeScope(arg))
+	}
+	return "rt.TypeScope{Module:" + quote(g.module) + ",Args:[]rt.TypeScope{" + strings.Join(args, ",") + "}}"
+}
+
+func (g *generator) specialize(symbol *checker.Symbol, args []*checker.Type) string {
+	var types, scopes []string
+	for _, arg := range args {
+		types = append(types, g.key(arg))
+		scopes = append(scopes, g.typeScope(arg))
+	}
+	return "rt.Specialize(" + symbol.ID + ",[]string{" + strings.Join(types, ",") + "},[]rt.TypeScope{" + strings.Join(scopes, ",") + "}...)"
 }
 func (g *generator) binding(b *checker.Binding) string {
 	if name := g.captures[b]; name != "" {
@@ -57,13 +78,14 @@ func generate(program *checker.Program, entry string, options Options) (string, 
 	}
 	out.WriteString("func initialize(){\n")
 	for _, s := range functions {
+		g.module = s.Module
 		out.WriteString(s.ID + " = ")
 		if len(s.Variables) > 0 {
 			var vars []string
 			for _, v := range s.Variables {
 				vars = append(vars, v.ID)
 			}
-			out.WriteString("rt.Generic{Variables:" + stringsGo(vars) + ", Build:func(typeArgs map[string]string) rt.Function {return ")
+			out.WriteString("rt.Generic{Variables:" + stringsGo(vars) + ", Build:func(typeArgs map[string]string,typeScopes map[string]rt.TypeScope) rt.Function {return ")
 			out.WriteString(g.function(s.Decl.Params, s.Decl.Result, s.Decl.Body, program.Parameters[s.Decl], nil, s.Type))
 			out.WriteString("}}\n")
 		} else {
@@ -73,11 +95,16 @@ func generate(program *checker.Program, entry string, options Options) (string, 
 		}
 	}
 	for _, m := range program.Methods {
+		g.module = m.Module
 		var vars []string
 		for _, v := range m.Variables {
 			vars = append(vars, v.ID)
 		}
-		out.WriteString("rt.Register(rt.Implementation{Receiver:" + quote(checker.TypeKey(m.Receiver)) + ",Contract:" + quote(checker.TypeKey(m.Contract)) + ",Name:" + quote(m.Decl.Name) + ",Variables:" + stringsGo(vars) + ",Build:func(receiver rt.Value,typeArgs map[string]string) rt.Function{_ = typeArgs;return ")
+		scope := ""
+		if m.Local {
+			scope = m.Module
+		}
+		out.WriteString("rt.Register(rt.Implementation{Receiver:" + quote(checker.TypeKey(m.Receiver)) + ",Contract:" + quote(checker.TypeKey(m.Contract)) + ",Name:" + quote(m.Decl.Name) + ",Scope:" + quote(scope) + ",Variables:" + stringsGo(vars) + ",Build:func(receiver rt.Value,typeArgs map[string]string,typeScopes map[string]rt.TypeScope) rt.Function{_ = typeArgs;return ")
 		out.WriteString(g.function(m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type))
 		out.WriteString("}})\n")
 	}
@@ -85,6 +112,7 @@ func generate(program *checker.Program, entry string, options Options) (string, 
 	if options.Tests {
 		out.WriteString("tests:=[]rt.Test{\n")
 		for _, module := range program.Modules {
+			g.module = module.File
 			for _, d := range module.Declarations {
 				if d.Kind != "test" {
 					continue
@@ -231,7 +259,7 @@ func (g *generator) statement(s *syntax.Statement) string {
 		} else {
 			contract = quote("")
 		}
-		return "{\n" + b.ID + " := " + g.expression(s.Value) + "; _ = " + b.ID + "\n" + cleanup + " := cleanupStack.PushContract(ctx," + b.ID + "," + contract + ")\n" + body + cleanup + ".Run()\n}\n"
+		return "{\n" + b.ID + " := " + g.expression(s.Value) + "; _ = " + b.ID + "\n" + cleanup + " := cleanupStack.PushContract(ctx," + b.ID + "," + contract + "," + g.typeScope(b.Type) + ")\n" + body + cleanup + ".Run()\n}\n"
 	case "match":
 		tmp := g.temp()
 		out := tmp + " := " + g.expression(s.Value) + "\nswitch rt.Tag(" + tmp + "){\n"
@@ -304,11 +332,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 				return "rt.StandardFunction(" + quote(symbol.Native) + "," + g.key(info.Type.Result) + ")"
 			}
 			if len(symbol.Variables) > 0 {
-				var args []string
-				for _, a := range info.TypeArgs {
-					args = append(args, g.key(a))
-				}
-				return "rt.Specialize(" + symbol.ID + ",[]string{" + strings.Join(args, ",") + "})"
+				return g.specialize(symbol, info.TypeArgs)
 			}
 			return symbol.ID
 		}
@@ -323,7 +347,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 			return "rt.NativeMemberResult(" + g.expression(e.Left) + "," + quote(e.Text) + "," + g.key(info.Type.Result) + ")"
 		}
 		if info.Method != nil {
-			return "rt.Bind(" + g.expression(e.Left) + "," + g.key(info.Method.Contract) + "," + quote(e.Text) + ")"
+			return "rt.Bind(" + g.expression(e.Left) + "," + g.key(info.Method.Contract) + "," + quote(e.Text) + "," + g.typeScope(g.program.Expressions[e.Left].Type) + ")"
 		}
 		if info.Native != "" {
 			return "rt.NativeMember(" + g.expression(e.Left) + "," + quote(e.Text) + ")"
@@ -337,7 +361,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 		args := g.arguments(arguments)
 		if info.Constructor != nil {
 			if info.Native == "view" {
-				return "rt.ViewOf(" + g.key(info.Type) + "," + g.expression(e.Args[0].Value) + ")"
+				return "rt.ViewOf(" + g.key(info.Type) + "," + g.expression(e.Args[0].Value) + "," + g.typeScope(g.program.Expressions[e.Args[0].Value].Type) + ")"
 			}
 			if info.Case != "" {
 				labels := []string{}
@@ -368,11 +392,7 @@ func (g *generator) expression(e *syntax.Expression) string {
 			} else {
 				callable = info.Symbol.ID
 				if len(info.Symbol.Variables) > 0 {
-					var types []string
-					for _, a := range info.TypeArgs {
-						types = append(types, g.key(a))
-					}
-					callable = "rt.Specialize(" + callable + ",[]string{" + strings.Join(types, ",") + "})"
+					callable = g.specialize(info.Symbol, info.TypeArgs)
 				}
 			}
 		} else {

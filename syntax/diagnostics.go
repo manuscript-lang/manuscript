@@ -25,7 +25,7 @@ func (d Diagnostic) Code() string {
 	case "type":
 		for _, rule := range []struct{ needle, code string }{
 			{"duplicate argument", "MS3002"}, {"missing argument", "MS3003"}, {"unknown argument", "MS3004"},
-			{"overlapping implementation", "MS3010"}, {"signature does not match", "MS3011"}, {"defined in this module", "MS3012"},
+			{"overlapping implementation", "MS3010"}, {"signature does not match", "MS3011"}, {"nominal source data", "MS3012"},
 			{"Hashable", "MS3021"}, {"captured", "MS3030"},
 			{"recursive", "MS3040"}, {"exhaustive", "MS3050"}, {"immutable", "MS3060"}, {"literal", "MS3070"},
 			{"infer", "MS3080"}, {"generic arity", "MS3080"}, {"expected ", "MS3001"}, {"same independently known type", "MS3001"},
