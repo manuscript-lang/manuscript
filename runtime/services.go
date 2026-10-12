@@ -12,6 +12,9 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 	name, _ := splitType(typ)
 	switch name {
 	case "@std/Queue":
+		if len(args) == 0 {
+			return &Queue{typ: typ}
+		}
 		capacity := args[0].Value.(int64)
 		if capacity <= 0 || capacity > int64(^uint(0)>>1) {
 			return Panic("Queue capacity must be positive")
@@ -31,7 +34,7 @@ func ConstructWithContext(ctx *Execution, typ string, args []Argument) Value {
 // with the same Synchronized acquisition, including reads and saved methods.
 type Queue struct {
 	typ      string
-	capacity int
+	capacity int // Zero means unbounded; explicitly supplied capacities must be positive.
 	items    []Value
 }
 
@@ -52,7 +55,7 @@ func (q *Queue) Operation(name string) Function {
 	return NewFunction(labels, result, func(_ *Execution, args []Value) Value {
 		switch name {
 		case "enqueue":
-			if len(q.items) == q.capacity {
+			if q.capacity > 0 && len(q.items) == q.capacity {
 				return false
 			}
 			q.items = append(q.items, args[0])

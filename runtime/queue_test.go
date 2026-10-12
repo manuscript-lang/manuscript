@@ -5,6 +5,30 @@ import (
 	"testing"
 )
 
+func TestQueueWithoutCapacityGrowsAndReuses(t *testing.T) {
+	ctx := RootExecution()
+	q := ConstructWithContext(ctx, "@std/Queue[Int]", nil).(*Queue)
+	for range 2 {
+		for i := range 4096 {
+			if Invoke(ctx, q.Operation("enqueue"), []Argument{{"value", int64(i)}}) != true {
+				t.Fatal("unbounded queue rejected an item", i)
+			}
+		}
+		if Invoke(ctx, q.Operation("length"), nil) != int64(4096) {
+			t.Fatal("unbounded queue lost items")
+		}
+		for i := range 4096 {
+			value := Invoke(ctx, q.Operation("dequeue"), nil).(Alternative)
+			if value.Tag != "some" || value.Fields[0] != int64(i) {
+				t.Fatal("unbounded queue lost FIFO order", i, value)
+			}
+		}
+		if Invoke(ctx, q.Operation("dequeue"), nil).(Alternative).Tag != "none" {
+			t.Fatal("unbounded queue did not drain")
+		}
+	}
+}
+
 func TestQueueFIFOEmptyAndReuse(t *testing.T) {
 	ctx := RootExecution()
 	q := ConstructWithContext(ctx, "@std/Queue[Int]", []Argument{{"capacity", int64(100)}}).(*Queue)

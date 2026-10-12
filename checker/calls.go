@@ -60,6 +60,9 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			c.error(e.Pos, "type", "pool construction requires concrete contract views")
 		}
 		fields = Fields(typ)
+		if std(typ, "Queue") && len(e.Args) == 0 {
+			fields = nil
+		}
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}

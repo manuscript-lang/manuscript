@@ -604,7 +604,9 @@ func TestSynchronizedBoundaries(t *testing.T) {
 
 func TestLocalQueueBoundaries(t *testing.T) {
 	for name, statement := range map[string]string{
-		"capacity required":    "let queue = Queue[Int]()",
+		"capacity must be Int": "let queue = Queue[Int](capacity: \"2\")",
+		"unknown argument":     "let queue = Queue[Int](limit: 2)",
+		"duplicate capacity":   "let queue = Queue[Int](capacity: 2, capacity: 3)",
 		"no cleanup lifecycle": "with queue = Queue[Int](capacity: 2):\n        return",
 		"no close method":      "let queue = Queue[Int](capacity: 2)\n    queue.close()",
 		"no equality":          "let queue = Queue[Int](capacity: 2)\n    let same = queue == queue",
