@@ -154,16 +154,22 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	return i
 }
 
-// Only a callable with one declared parameter permits an omitted label.
+// Single-parameter calls omit any label; multi-parameter calls allow name shorthand.
 // Keep the source AST intact for tools and repeated checking.
 func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument {
-	if len(params) != 1 {
-		return args
-	}
 	resolved := append([]syntax.Argument(nil), args...)
 	for index := range resolved {
 		if resolved[index].Name == "" {
-			resolved[index].Name = params[0].Name
+			if len(params) == 1 {
+				resolved[index].Name = params[0].Name
+			} else if value := resolved[index].Value; value.Kind == syntax.KindName && value.Pos == resolved[index].Pos {
+				for _, param := range params {
+					if param.Name == value.Text {
+						resolved[index].Name = value.Text
+						break
+					}
+				}
+			}
 		}
 	}
 	return resolved
@@ -303,7 +309,7 @@ func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info
 		info.OptionalArgument = expected
 		return info
 	}
-	if len(c.Diagnostics) == checkpoint || (info.Constructor == nil && e.Kind != syntax.KindList) {
+	if len(c.Diagnostics) == checkpoint || (info.Constructor == nil && e.Kind != syntax.KindList && e.Kind != syntax.KindMap) {
 		return c.checkExpression(e, info, expected)
 	}
 	diagnostics := append([]syntax.Diagnostic(nil), c.Diagnostics[checkpoint:]...)

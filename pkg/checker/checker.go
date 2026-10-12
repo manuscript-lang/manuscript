@@ -926,6 +926,37 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			i.NoReturn = i.NoReturn || v.NoReturn
 		}
 		i.Type = standard("List", element)
+	case syntax.KindMap:
+		if s := c.names["Map"]; s == nil || s != standardSymbols["Map"] {
+			c.error(e.Pos, "resolution", "map literal requires the canonical Map import")
+		}
+		var types [2]*Type
+		if std(expected, "Map") && len(expected.Args) == 2 {
+			copy(types[:], expected.Args)
+		}
+		for index := range types {
+			if types[index] == nil {
+				for at := index; at < len(e.Elements); at += 2 {
+					item := e.Elements[at]
+					if !c.contextual(item) {
+						v := c.expression(item, nil)
+						if types[index] == nil && v.Type.ID != "Never" {
+							types[index] = v.Type
+						}
+					}
+				}
+			}
+			if types[index] == nil {
+				c.error(e.Pos, "type", "cannot infer map key or value type")
+				types[index] = primitive("<invalid>")
+			}
+		}
+		for at, item := range e.Elements {
+			v := c.expression(item, types[at%2])
+			i.NoReturn = i.NoReturn || v.NoReturn
+		}
+		i.Type = standard("Map", types[0], types[1])
+		c.wellFormed(i.Type, e.Pos, map[string]bool{})
 	case syntax.KindUnary:
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			i.Type = primitive("Int")
@@ -1091,7 +1122,7 @@ func (c *checker) findCase(name string, pos syntax.Position) (*Type, Case) {
 	return found, cs
 }
 func (c *checker) contextual(e *syntax.Expression) bool {
-	if e.Kind == syntax.KindList {
+	if e.Kind == syntax.KindList || e.Kind == syntax.KindMap {
 		if len(e.Elements) == 0 {
 			return true
 		}

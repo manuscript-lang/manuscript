@@ -40,9 +40,12 @@ func LintProgram(program *checker.Program) []LintFinding {
 		if info != nil {
 			mark(expression.Pos.File, info.Symbol)
 		}
-		// List literals require the canonical import even without a written type.
+		// Collection literals require canonical imports even without written types.
 		if expression.Kind == syntax.KindList {
 			mark(expression.Pos.File, program.Symbols[expression.Pos.File]["List"])
+		}
+		if expression.Kind == syntax.KindMap {
+			mark(expression.Pos.File, program.Symbols[expression.Pos.File]["Map"])
 		}
 	}
 	for ref, typ := range program.TypeReferences {

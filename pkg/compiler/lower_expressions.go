@@ -155,6 +155,12 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 			elements = append(elements, g.expression(item))
 		}
 		return "&rt.List{Type:" + g.key(info.Type) + ",Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
+	case syntax.KindMap:
+		var entries []string
+		for at := 0; at < len(e.Elements); at += 2 {
+			entries = append(entries, "{Key:"+g.expression(e.Elements[at])+",Value:"+g.expression(e.Elements[at+1])+"}")
+		}
+		return "rt.MapLiteral(ctx," + g.key(info.Type) + ",[]rt.Entry{" + strings.Join(entries, ",") + "}," + g.typeScope(info.Type) + ")"
 	case syntax.KindUnary:
 		if e.Text == "try" {
 			scope := ""

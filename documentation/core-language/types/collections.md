@@ -7,7 +7,7 @@ weight = 3
 
 Use `List[T]` for an ordered sequence, `Map[K, V]` for key/value entries, and `Set[T]` for distinct values. The type arguments state the element, key, and value types. All three collections are mutable references. Assignment retains the same instance; `.clone()` copies its storage.
 
-Import each collection type you name from `@std/collections.ms`. Ordinary bracket list literals also require the canonical `List` import.
+Import each collection type you name from `@std/collections.ms`. Bracket list literals require the canonical `List` import; brace map literals require the canonical `Map` import.
 
 | Type | Contents |
 | --- | --- |
@@ -27,6 +27,21 @@ let empty: List[Int] = []
 The first literal infers `List[Int]`. An empty literal gets its element type from an annotation or the expected parameter type. Every element must match the list's element type; numeric conversions are explicit. Elements evaluate from left to right, and nested lists remain nested.
 
 A function taking `values: List[Int]` is called as `sum(values: [1, 2, 3])` or with an existing list. See [collections as arguments](../functions/declarations-and-calls.md#collections-as-arguments).
+
+## Map literals
+
+Braces construct mutable maps:
+
+```manuscript
+let scores = {"Ada": 3, "Lin": 5}
+let empty: Map[String, Int] = {}
+```
+
+Write each entry as `key: value`, with optional trailing commas. Keys are expressions: `{name: score}` uses the value of `name`, while `{"name": score}` uses a String key. Bare names do not become String keys. Map literals construct Maps, not record instances.
+
+A nonempty literal infers key and value types independently from its entries. Expected Map types propagate to both keys and values, including nested empty literals. An empty map needs an annotation or expected parameter/return type. Every key and value must match its inferred or expected type; keys must satisfy `Hashable`.
+
+Entries evaluate in written order, key before value, once each. Equal duplicate keys retain their first insertion position and use the last value, just like `with_entry`. Stored values retain references to nested data. Physical newlines inside braces follow ordinary delimiter continuation rules.
 
 ## Element requirements
 

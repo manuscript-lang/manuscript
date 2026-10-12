@@ -36,15 +36,17 @@ CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
 Argument      = [ Name, ":" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
               | "true" | "false" | "unit" | "self" | Name
-              | "(", Expression, ")" | SharedViewConstruction | ListLiteral | FunctionExpression ;
+              | "(", Expression, ")" | SharedViewConstruction | ListLiteral | MapLiteral | FunctionExpression ;
 SharedViewConstruction = "(", SharedContractType, ")", CallArguments ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
+MapLiteral    = "{", [ MapEntry, { ",", MapEntry }, [ "," ] ], "}" ;
+MapEntry      = Expression, ":", Expression ;
 FunctionExpression = "fn", "(", [ FunctionParameters ], ")", "->", Type, Suite ;
 ```
 
 The common `Comparison` production makes `a < b == c`, `a == b == c`, and `a < b < c` syntax errors. Comparisons with explicit grouping, such as `(a < b) == flag`, are ordinary Bool equality. `not a == b` means `not (a == b)`. `try read() + 1` means `(try read()) + 1`; use `try (expression)` to propagate the result of a larger expression.
 
-A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. Its brackets cannot index a list. Collection/text lookup and updates use declared library operations; neither `values[0]` nor slicing syntax is supported. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Argument labels are optional only for functions and methods with exactly one declared parameter; the checker enforces [call rules](../functions/declarations-and-calls.md#argument-names). Constructors and explicit contract views such as `Payments(value: card)` require labels.
+A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. Its brackets cannot index a list. Collection/text lookup and updates use declared library operations; neither `values[0]` nor slicing syntax is supported. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Calls may omit labels for single-parameter functions or use matching-name shorthand for multi-parameter functions; the checker enforces [call rules](../functions/declarations-and-calls.md#argument-names). Constructors and explicit contract views such as `Payments(value: card)` require labels.
 
 Contract views use `Payments(value: card)`. [Contract views](../types/contracts.md#explicit-contract-views) require an explicit implementation and exactly one `value` argument. There is no separate sharing refinement or shared constructor.
 
@@ -88,7 +90,7 @@ Ordinary [expected-type compatibility](../types/compatibility.md) still admits N
 
 Subexpressions evaluate from left to right. A binary operator evaluates its left operand once, then its right operand once, then applies the operator. The right side of `false and expression` and `true or expression` is not evaluated. Both branches must nevertheless type-check.
 
-A call evaluates its callable or method receiver first and its supplied argument expressions once each in written order. Parameter declaration order does not reorder evaluation. Field access evaluates its receiver once. Explicit type arguments have no runtime evaluation. List elements evaluate in written order; [list literals](../types/collections.md) remain homogeneous.
+A call evaluates its callable or method receiver first and its supplied argument expressions once each in written order. Parameter declaration order does not reorder evaluation. Field access evaluates its receiver once. Explicit type arguments have no runtime evaluation. List elements and map entries evaluate in written order; map keys precede their values. [Collection literals](../types/collections.md) retain homogeneous element, key, and value types.
 
 A function expression creates a function value; its statement body runs on invocation, not creation. Its capture behavior is specified by [function values and closures](../functions/function-values-and-closures.md). String interpolation evaluates each embedded expression once in written order and then formats it, as specified by [text and bytes](text-and-bytes.md).
 

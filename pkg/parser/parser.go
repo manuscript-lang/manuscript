@@ -601,6 +601,19 @@ func (p *Parser) primary() *syntax.Expression {
 			}
 			p.need("]")
 		}
+	case "{":
+		e.Kind = syntax.KindMap
+		if !p.take("}") {
+			for {
+				e.Elements = append(e.Elements, p.expression(0))
+				p.need(":")
+				e.Elements = append(e.Elements, p.expression(0))
+				if !p.take(",") || p.peek().Kind == "}" {
+					break
+				}
+			}
+			p.need("}")
+		}
 	case "fn":
 		e.Kind = syntax.KindLambda
 		e.Text = ""

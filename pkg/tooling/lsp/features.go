@@ -37,7 +37,7 @@ func signatureHelp(d document, docs map[string]document, p position) (any, error
 	active := 0
 	used := map[string]bool{}
 	current := ""
-	for _, arg := range call.Args {
+	for _, arg := range editorCallArguments(a, call) {
 		if arg.Name == a.marker {
 			continue
 		}
