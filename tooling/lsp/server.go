@@ -75,6 +75,12 @@ func Serve(input io.Reader, output io.Writer) error {
 		sort.Strings(uris)
 		for _, uri := range uris {
 			d := docs[uri]
+			if isStandardLibraryURI(uri) {
+				if e := send(map[string]any{"jsonrpc": "2.0", "method": "textDocument/publishDiagnostics", "params": map[string]any{"uri": uri, "version": d.Version, "diagnostics": []any{}}}); e != nil {
+					return e
+				}
+				continue
+			}
 			checked := checkedDocument(d)
 			diagnostics := []any{}
 			for _, issue := range checked.Diagnostics {
@@ -232,6 +238,16 @@ func Serve(input io.Reader, output io.Writer) error {
 			}
 		case "textDocument/didOpen", "textDocument/didChange":
 			d := p.TextDocument
+			if isStandardLibraryURI(d.URI) {
+				if msg.Method == "textDocument/didChange" {
+					continue
+				}
+				source, err := standardLibrarySource(d.URI)
+				if err != nil {
+					continue
+				}
+				d.Text = source
+			}
 			if msg.Method == "textDocument/didChange" {
 				old, ok := docs[d.URI]
 				if !ok || d.Version <= old.Version {
@@ -277,12 +293,20 @@ func Serve(input io.Reader, output io.Writer) error {
 			if msg.Method == "textDocument/semanticTokens/full" {
 				result = semantic(d, checkedDocument(d))
 			} else {
+				if isStandardLibraryURI(d.URI) {
+					result = []any{}
+					break
+				}
 				result = editorActions(d, checkedDocument(d), p.Range, p.Context.Only)
 			}
 		case "textDocument/formatting":
 			d, ok := docs[p.TextDocument.URI]
 			if !ok {
 				rpcError = map[string]any{"code": -32602, "message": "document is not open"}
+				break
+			}
+			if isStandardLibraryURI(d.URI) {
+				result = []any{}
 				break
 			}
 			formatted, e := tooling.Format(filename(d.URI), d.Text)

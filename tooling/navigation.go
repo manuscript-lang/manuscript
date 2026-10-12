@@ -1,6 +1,8 @@
 package tooling
 
 import (
+	"strings"
+
 	"github.com/manuscript-lang/manuscript/checker"
 	"github.com/manuscript-lang/manuscript/syntax"
 )
@@ -33,7 +35,7 @@ func NavigationAt(program *checker.Program, file string, offset int) (Navigation
 	matchName := func(pos syntax.Position, name string) bool {
 		return pos.File == file && offset >= pos.Offset && offset < pos.Offset+len(name)
 	}
-	for _, module := range program.Modules {
+	for _, module := range modules {
 		if module.File != file {
 			continue
 		}
@@ -41,15 +43,20 @@ func NavigationAt(program *checker.Program, file string, offset int) (Navigation
 			start := imp.NamePos.Offset
 			if offset >= start && offset < start+len(imp.Name) {
 				symbol := program.Symbols[file][imp.Name]
+				if strings.HasPrefix(file, "@std/") {
+					symbol = checker.StandardExports(imp.Path)[imp.Name]
+				}
 				if symbol != nil && symbol.Decl != nil {
 					return result(symbol.Name+": "+symbol.Type.String(), symbol.Decl.Pos)
 				}
 			}
 		}
 	}
-	for ref, typ := range program.TypeReferences {
-		if matchName(ref.Pos, ref.Name) && typ.Def != nil && typ.Def.Symbol != nil && typ.Def.Symbol.Decl != nil {
-			return result(typ.String(), typ.Def.Symbol.Decl.Pos)
+	for _, refs := range []map[*syntax.Type]*checker.Type{program.TypeReferences, checker.StandardTypeReferences()} {
+		for ref, typ := range refs {
+			if matchName(ref.Pos, ref.Name) && typ.Def != nil && typ.Def.Symbol != nil && typ.Def.Symbol.Decl != nil {
+				return result(typ.String(), typ.Def.Symbol.Decl.Pos)
+			}
 		}
 	}
 	for expression, info := range program.Expressions {

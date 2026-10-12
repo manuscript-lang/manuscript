@@ -3,6 +3,10 @@ const { LanguageClient } = require('vscode-languageclient/node');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 let client;
+const documentSelector = [
+  { scheme: 'file', language: 'manuscript' },
+  { scheme: 'manuscript-stdlib', language: 'manuscript' },
+];
 
 async function targetFor(file) {
   for (let dir = path.dirname(file); ; dir = path.dirname(dir)) {
@@ -19,7 +23,7 @@ async function activate(context) {
   context.subscriptions.push(output, watcher);
   let command = vscode.workspace.getConfiguration('manuscript').get('serverPath', 'ms');
   client = new LanguageClient('manuscript', 'Manuscript', { command, args: ['lsp'] }, {
-    documentSelector: [{ scheme: 'file', language: 'manuscript' }],
+    documentSelector,
     synchronize: { fileEvents: watcher }, outputChannel: output,
   });
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('manuscript-stdlib', {
@@ -69,7 +73,7 @@ async function activate(context) {
     try { await client.stop(); command = vscode.workspace.getConfiguration('manuscript').get('serverPath', 'ms');
       delve = vscode.workspace.getConfiguration('manuscript').get('delvePath', 'dlv');
       client = new LanguageClient('manuscript', 'Manuscript', { command, args: ['lsp'] }, {
-        documentSelector: [{ scheme: 'file', language: 'manuscript' }], synchronize: { fileEvents: watcher }, outputChannel: output,
+        documentSelector, synchronize: { fileEvents: watcher }, outputChannel: output,
       }); await client.start();
     } catch (error) { output.appendLine(error.message); output.show(); }
   }));

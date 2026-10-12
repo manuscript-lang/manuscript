@@ -14,6 +14,7 @@ import (
 var standardSymbols map[string]*Symbol
 var standardModules map[string]map[string]*Symbol
 var standardSources []*syntax.Module
+var standardTypeReferences map[*syntax.Type]*Type
 var intrinsicOperations map[string]*Type
 var standardImplementations []*Method
 var standardOperationVariables = map[string][]*Type{}
@@ -237,6 +238,7 @@ func loadStandardSources() error {
 	if len(c.Diagnostics) > 0 {
 		return fmt.Errorf("invalid standard declarations: %v", c.Diagnostics)
 	}
+	standardTypeReferences = c.TypeReferences
 	for path, native := range bindings.SpecialFunctions {
 		at := strings.LastIndexByte(path, '/')
 		module, name := path[:at], path[at+1:]
@@ -272,6 +274,17 @@ func loadStandardSources() error {
 // StandardModules exposes canonical declarations and their source positions to
 // tooling. Callers must not mutate the returned checked declarations.
 func StandardModules() []*syntax.Module { return append([]*syntax.Module{}, standardSources...) }
+
+// StandardTypeReferences exposes resolved types in canonical standard signatures.
+// Callers may change the returned map, but must not mutate the shared types.
+func StandardTypeReferences() map[*syntax.Type]*Type {
+	out := make(map[*syntax.Type]*Type, len(standardTypeReferences))
+	for ref, typ := range standardTypeReferences {
+		out[ref] = typ
+	}
+	return out
+}
+
 func StandardExports(module string) map[string]*Symbol {
 	out := map[string]*Symbol{}
 	for name, symbol := range standardModules[module] {

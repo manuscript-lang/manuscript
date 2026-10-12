@@ -139,11 +139,12 @@ func sourceIndex(result compiler.Result) []occurrence {
 				}
 			}
 		}
-		if strings.HasPrefix(m.File, "@std/") {
-			continue
-		}
 		for _, imp := range m.Imports {
-			if symbol := sourceSymbols(result, m.File)[imp.Name]; symbol != nil {
+			symbols := sourceSymbols(result, m.File)
+			if strings.HasPrefix(m.File, "@std/") {
+				symbols = checker.StandardExports(imp.Path)
+			}
+			if symbol := symbols[imp.Name]; symbol != nil {
 				add(symbolKey(symbol), imp.Name, imp.NamePos, false, false, &checker.Info{Type: symbol.Type, Symbol: symbol})
 			}
 		}
@@ -193,10 +194,12 @@ func sourceIndex(result compiler.Result) []occurrence {
 			add(methodKey(method), method.Decl.Name, header(method.Decl.Pos, method.Decl.Name), true, false, &checker.Info{Type: method.Type, Method: method})
 		}
 	}
-	for typ, resolved := range program.TypeReferences {
-		if resolved != nil && resolved.Def != nil && resolved.Def.Symbol != nil {
-			symbol := resolved.Def.Symbol
-			add(symbolKey(symbol), typ.Name, typ.Pos, false, false, &checker.Info{Type: resolved, Symbol: symbol})
+	for _, refs := range []map[*syntax.Type]*checker.Type{program.TypeReferences, checker.StandardTypeReferences()} {
+		for typ, resolved := range refs {
+			if resolved != nil && resolved.Def != nil && resolved.Def.Symbol != nil {
+				symbol := resolved.Def.Symbol
+				add(symbolKey(symbol), typ.Name, typ.Pos, false, false, &checker.Info{Type: resolved, Symbol: symbol})
+			}
 		}
 	}
 	for e, info := range program.Expressions {

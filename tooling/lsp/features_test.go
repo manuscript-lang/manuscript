@@ -203,6 +203,12 @@ func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
 	source := "import List from \"@std/collections.ms\"\nfn count(values: List[String]) -> Int:\n    return values.length()\n"
 	d := document{"file:///tmp/standard-navigation.ms", source, 1}
 	docs := map[string]document{d.URI: d}
+	standardURI := "manuscript-stdlib:///collections.ms"
+	standardSource, err := standardLibrarySource(standardURI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	docs[standardURI] = document{standardURI, standardSource, 1}
 	checked := analyze(d, docs)
 	if !checked.Success() {
 		t.Fatal(checked.Diagnostics)
@@ -229,6 +235,63 @@ func TestStandardLibraryNavigationUsesCompilerSources(t *testing.T) {
 		if _, err := standardLibrarySource(uri); err == nil {
 			t.Fatalf("accepted %s", uri)
 		}
+	}
+}
+
+func TestNavigationWithinStandardLibrary(t *testing.T) {
+	for _, item := range []struct{ file, needle, target, name string }{
+		{"collections.ms", "Optional from", "optional.ms", "Optional"},
+		{"collections.ms", "Optional[T]", "optional.ms", "Optional"},
+		{"collections.ms", "List[T]) ->", "collections.ms", "List"},
+		{"cli.ms", "System from", "system.ms", "System"},
+		{"cli.ms", "System\n", "system.ms", "System"},
+	} {
+		t.Run(item.file+"/"+item.needle, func(t *testing.T) {
+			uri := "manuscript-stdlib:///" + item.file
+			source, err := standardLibrarySource(uri)
+			if err != nil {
+				t.Fatal(err)
+			}
+			d := document{uri, source, 1}
+			docs := map[string]document{uri: d}
+			checked := analyze(d, docs)
+			if !checked.Success() || module(checked, d) == nil {
+				t.Fatal("standard document was not resolved", checked.Diagnostics)
+			}
+			offset := strings.LastIndex(source, item.needle)
+			if offset < 0 {
+				t.Fatal("missing source reference")
+			}
+			pos := Position(source, offset)
+			for _, method := range []string{"textDocument/definition", "textDocument/typeDefinition"} {
+				locations := navigation(checked, d, pos, method)
+				if method == "textDocument/typeDefinition" {
+					locations = typeDefinition(checked, d, pos)
+				}
+				if locations == nil {
+					t.Fatalf("missing %s", method)
+				}
+				location := locations.([]any)[0].(map[string]any)
+				if location["uri"] != "manuscript-stdlib:///"+item.target {
+					t.Fatal(location)
+				}
+				target, err := standardLibrarySource(location["uri"].(string))
+				if err != nil {
+					t.Fatal(err)
+				}
+				line := location["range"].(span).Start.Line
+				header := strings.Split(target, "\n")[line]
+				if !strings.Contains(header, "type "+item.name) && !strings.Contains(header, "interface "+item.name) {
+					t.Fatalf("wrong definition: %v", location)
+				}
+			}
+			if hover := navigation(checked, d, pos, "textDocument/hover"); hover == nil {
+				t.Fatal("missing hover in standard document")
+			}
+			if _, err := rename(checked, d, pos, "Changed", docs); err == nil {
+				t.Fatal("allowed standard-library rename")
+			}
+		})
 	}
 }
 

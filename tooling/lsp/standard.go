@@ -25,16 +25,26 @@ func sourceURI(result compiler.Result, file string) string {
 	return fileURI(modulePath(result, file))
 }
 func standardLibrarySource(uri string) (string, error) {
+	m, err := standardLibraryModule(uri)
+	if err != nil {
+		return "", err
+	}
+	return m.Source, nil
+}
+func isStandardLibraryURI(uri string) bool {
+	return strings.HasPrefix(uri, "manuscript-stdlib:")
+}
+func standardLibraryModule(uri string) (*syntax.Module, error) {
 	u, err := url.Parse(uri)
 	if err != nil || u.Scheme != "manuscript-stdlib" || u.Host != "" || u.RawQuery != "" || u.Fragment != "" {
-		return "", fmt.Errorf("invalid standard-library URI")
+		return nil, fmt.Errorf("invalid standard-library URI")
 	}
 	for _, m := range checker.StandardModules() {
 		if u.Path == "/"+strings.TrimPrefix(m.File, "@std/") {
-			return m.Source, nil
+			return m, nil
 		}
 	}
-	return "", fmt.Errorf("unknown standard-library module")
+	return nil, fmt.Errorf("unknown standard-library module")
 }
 func sourceSymbols(result compiler.Result, file string) map[string]*checker.Symbol {
 	if strings.HasPrefix(file, "@std/") {
