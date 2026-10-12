@@ -129,7 +129,9 @@ Verified: native compilation must build the temporary module (`go build .`) rath
 
 ### Frontend independence retains runtime contract checks
 
-Verified: receiver constraints come from checked standard functions rather than runtime registrations. Shared decimal literal rules and receiver identities live in lightweight internal packages; the checker cannot import runtime/host dependencies under the repository policy. Native signature comparisons are integration tests, including a deliberate mismatch regression.
+Decision: native receiver signatures belong directly on the standard type or intrinsic interface. Do not duplicate them as private free functions. Native bindings identify implementations and any method-specific receiver requirements; the checker resolves requirements against checked standard types without importing the host runtime.
+
+Verified: shared decimal literal rules and runtime receiver identities live in lightweight internal packages; the checker cannot import runtime/host dependencies under the repository policy. Native signature comparisons validate receiver types, parameters, results, generic variables, bounds, and binding coverage directly against receiver declarations, including deliberate mismatch regressions.
 
 Apply when: adding standard operations or moving runtime code.
 Evidence: [source receiver constraints](../pkg/checker/native_members.go), [ABI tests](../pkg/checker/library_test.go), [dependency and bundle policy](../scripts/repo-check/policy.json), and [policy checks](../scripts/repo-check/main.go).

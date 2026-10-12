@@ -57,18 +57,10 @@ func TestOptionalStandardRecordDefaults(t *testing.T) {
 	}
 }
 func TestReceiverUtilitiesHaveOnePublicSpelling(t *testing.T) {
-	for _, module := range []string{"collections", "string", "bytes", "regex", "bigint"} {
-		exports := StandardExports("@std/" + module + ".ms")
-		for _, spec := range rt.Library {
-			if spec.Module != module {
-				continue
-			}
-			for receiver, operations := range rt.NativeLibraryBindings {
-				for operation, identity := range operations {
-					if identity == module+"/"+spec.Name && exports[spec.Name] != nil {
-						t.Fatalf("%s.%s also exported as %s/%s", receiver, operation, module, spec.Name)
-					}
-				}
+	for _, module := range standardSources {
+		for _, declaration := range module.Declarations {
+			if declaration.Kind == syntax.KindFn && !declaration.Export {
+				t.Fatalf("private native function duplicates a receiver declaration: %s", declaration.Pos)
 			}
 		}
 	}

@@ -436,6 +436,9 @@ func nativeMethod(t *Type, name string) *Method {
 		for _, operation := range receiver.Def.Operations {
 			if operation.Name == name {
 				native := name
+				if identity := standardReceiverBindings[receiver.ID+"/"+name]; identity != "" {
+					native = identity
+				}
 				return &Method{Receiver: t, Type: Sub(operation.Type, substitution(t)), Native: native, Decl: standardMethodDeclaration(receiver, name), Variables: standardOperationVariables[receiver.ID+"/"+name]}
 			}
 		}

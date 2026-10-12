@@ -20,27 +20,7 @@ export type Bytes:
     fn length() -> Int
     fn to_text() -> Optional[String]
 
-fn contains(data: Bytes, value: Bytes) -> Bool
-
-fn slice(data: Bytes, start: Int, end: Int) -> Bytes
-
 export fn values(data: Bytes) -> List[Int]
-
-fn at(data: Bytes, index: Int) -> Optional[Int]
-
-fn index_of(data: Bytes, value: Bytes) -> Optional[Int]
-
-fn last_index_of(data: Bytes, value: Bytes) -> Optional[Int]
-
-fn starts_with(data: Bytes, value: Bytes) -> Bool
-
-fn ends_with(data: Bytes, value: Bytes) -> Bool
-
-fn reverse(data: Bytes) -> Bytes
-
-fn with_value(data: Bytes, index: Int, value: Int) -> Bytes
-
-fn is_empty(data: Bytes) -> Bool
 
 export type BytesBuilder:
     fn append(value: Int) -> Unit
