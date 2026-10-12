@@ -237,6 +237,14 @@ func (t *libraryLogTransport) Operation(name string) Function {
 			CheckCancelled(ctx)
 		}
 		defer func() { <-t.gate }()
+		// A ready gate can win the select even when close has cancelled the
+		// lifetime. Recheck admission before touching the borrowed stream.
+		t.mu.Lock()
+		closed := t.closed
+		t.mu.Unlock()
+		if closed {
+			return libraryError(r, "Closed", "")
+		}
 		arguments := []Argument{}
 		if name == "write" {
 			arguments = append(arguments, Argument{"data", a[0]})
