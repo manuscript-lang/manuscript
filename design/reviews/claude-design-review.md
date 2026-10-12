@@ -17,7 +17,7 @@ Claude Code reviewed the 118 original design pages on 2026-10-11 for simplicity,
 
 | Finding | Adopted fix and authoritative contract |
 | --- | --- |
-| C1 — incompatible try errors | Explicit `map_error`; complete [parallel example](../concurrency/parallel.md); exact-error requirements on body fragments and Unit-test matching |
+| C1 — incompatible try errors | Explicit Result matching; complete [parallel example](../concurrency/parallel.md); exact-error requirements on body fragments and Unit-test matching |
 | C2 — unresolved/untypable APIs | Closed [prelude](../standard-library/types/prelude.md), inferred packs, exact `item` label, optional arguments, status/reporting; Background uses one `Result[Unit, String]` callable signature |
 | C3 — contract sharing | All values, including contract views and callbacks, may be shared. Native services synchronize access; local Queue access uses an explicit lock; [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) protects complete updates. |
 | C4 — executable/adapter boundary | Exact [CLI entry and Process](../standard-library/hosts/cli.md), standard stream contracts with declared cleanup, [versioned adapter binding](../modules-and-capabilities/adapters/manifests.md), acyclic schema/native/application packages |
@@ -80,24 +80,15 @@ The remaining problems sit where the language meets the runtime. Several load-be
 
 **Counterexample.** Wrap `parallel.md:12-21` verbatim in `fn load(...) -> Result[Summary, LoadError]`. Whatever `LoadError` is, at least two of the three `try` sites fail. No return type accepts the canonical example.
 
-**Smallest fix** (keeps the exact-`E` rule)
-1. Add a prelude function `map_error[T, E, F](result: Result[T, E], transform: fn(cause: E) -> F) -> Result[T, F]` and cite it from `propagation.md:25` as the explicit adapter. Inference already works under `generics.md:71`, because `transform` is an explicitly typed anonymous function.
-2. Rewrite `parallel.md:12-21` as a complete function with an application error alternative:
-   ```manuscript
-   let [resA, resB] = try map_error(
-       result: parallel(tasks: [first, second]),
-       transform: fn(cause: ExecutionError) -> LoadError:
-           return LoadError.Execution(cause: cause)
-   )
-   ```
-   Fix the other nine sites the same way, or put them inside functions whose error type actually matches.
-3. Replace `semantic-tests.md:13` with a helper that returns `Result`, plus a test that `match`es on it. This depends on C2's pack rule (`T` = pack type).
+**Resolution** (keeps the exact-`E` rule)
+1. Use ordinary `match` branches to handle each Result and construct the application error explicitly, as in the complete [parallel example](../concurrency/parallel.md).
+2. Put direct `try` examples inside functions whose error type matches the operation.
+3. Use a helper that returns `Result` for concurrency tests, then match its result in the Unit test.
 
 **Acceptance cases**
-- The rewritten example type-checks, and `resA` has type `Result[User, UserError]`.
-- The same body without `map_error` is rejected at the outer `try` (`ExecutionError` vs `LoadError`).
+- The complete example type-checks and preserves each operation's result type.
+- Direct `try parallel(...)` under `LoadError` is rejected (`ExecutionError` vs `LoadError`).
 - `try parallel(...)` directly inside a `test` is rejected; the helper-plus-`match` form is accepted.
-- A `transform` written with label `error:` is rejected (labels are part of function identity).
 
 ### C2 — Runtime/stdlib APIs have no resolution path and no expressible typing
 **Priority:** CRITICAL (resolver and type-checker blocker)

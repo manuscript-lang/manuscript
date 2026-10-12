@@ -23,7 +23,7 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 | `@std/bytes.ms` | `Bytes` |
 | `@std/collections.ms` | `List`, `Map`, `Set`, `MapEntry` |
 | `@std/optional.ms` | `Optional` |
-| `@std/result.ms` | `Result`, `map_error` |
+| `@std/result.ms` | `Result` |
 | `@std/cleanup.ms` | `Closeable` |
 | `@std/tasks.ms` | `parallel`, `parallel_map`, `check_cancelled`, `ExecutionError`, `OperationId`, `Background`, `BackgroundFailure`, `WorkStatus`, `StartError` |
 | `@std/faults.ms` | `panic` |
@@ -33,7 +33,6 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 
 ```manuscript
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
 ```
@@ -60,10 +59,9 @@ A missing or substituted List/Decimal import rejects the corresponding literal d
 ```manuscript
 fn panic(message: String) -> Never
 fn check_cancelled() -> Unit
-fn map_error[T, E, F](result: Result[T, E], transform: fn(cause: E) -> F) -> Result[T, F]
 ```
 
-These lines specify bindings rather than complete source modules. `check_cancelled` unwinds the current execution if it has stopped; it returns `Unit` otherwise. `map_error` returns an unchanged success payload, or invokes `transform(cause: cause)` exactly once for an error. It invokes no callback for success and does not catch faults or cancellation. It is sequential.
+These lines specify bindings rather than complete source modules. `check_cancelled` unwinds the current execution if it has stopped; it returns `Unit` otherwise.
 
 ## Joined concurrency
 
@@ -83,7 +81,7 @@ Standard concurrency callbacks are ordinary function values. Parameters, fields,
 
 ### Inferred result packs
 
-A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`. Packs may be passed between operations, but have no equality, hashing, iteration, field access, or indexing. Generic helpers such as `map_error` can therefore preserve a parallel pack without a new source syntax.
+A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`. Packs may be passed between operations, but have no equality, hashing, iteration, field access, or indexing. An ordinary generic identity function can preserve a parallel pack without a new source syntax.
 
 ```manuscript
 fn parallel_map[T, U](
@@ -111,7 +109,7 @@ fn status(id: OperationId) -> WorkStatus
 fn close() -> Unit
 ```
 
-`start` accepts an ordinary callable. This is one operation signature: Operations without domain errors explicitly return `ok(value: unit)`, and operations with domain error types explicitly translate them to String using `map_error` or `match`. There is no generic method, implicit formatting of arbitrary errors, or overload. `Background` explicitly implements `Closeable` in the standard binding.
+`start` accepts an ordinary callable. This is one operation signature: Operations without domain errors explicitly return `ok(value: unit)`, and operations with domain error types explicitly translate them to String using `match`. There is no generic method, implicit formatting of arbitrary errors, or overload. `Background` explicitly implements `Closeable` in the standard binding.
 
 ### Failure reporting
 

@@ -1,7 +1,6 @@
 import panic from "@std/faults.ms"
 
 import Result from "@std/result.ms"
-import map_error from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
 
@@ -33,11 +32,19 @@ test "pack helper":
         error(_):
             return panic(message: "Unexpected case")
 
+fn describe(outcome: Result[Int, Int]) -> Result[Int, String]:
+    match outcome:
+        ok(value):
+            return ok(value: value)
+        error(cause):
+            return error(cause: "Error {cause}")
+
 test "explicit error conversion":
     let failed: Result[Int, Int] = error(cause: 7)
-    let translate = fn(cause: Int) -> String:
-        return "Error {cause}"
-    let converted = map_error(result: failed, transform: translate)
     let expected: Result[Int, String] = error(cause: "Error 7")
-    if not (converted == expected):
+    if not (describe(outcome: failed) == expected):
+        return panic(message: "check failed")
+    let succeeded: Result[Int, Int] = ok(value: 3)
+    let unchanged: Result[Int, String] = ok(value: 3)
+    if not (describe(outcome: succeeded) == unchanged):
         return panic(message: "check failed")

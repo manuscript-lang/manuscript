@@ -64,8 +64,8 @@ An `impl` in a source type's defining module becomes available wherever that typ
 ## Standard-library imports
 
 ```manuscript
-import List from "@std/collections.ms"
-import { Result, map_error } from "@std/result.ms"
+import { List, Map } from "@std/collections.ms"
+import Result from "@std/result.ms"
 import parallel from "@std/tasks.ms"
 ```
 
