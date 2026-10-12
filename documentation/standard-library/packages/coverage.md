@@ -15,7 +15,7 @@ This table maps common Node.js and Go tasks to Manuscript facilities. It tells y
 | strings, Unicode scalar operations, regexp | Text functions and opaque RE2-style Regex | Implemented; normalization implemented; graphemes/locale/legacy encodings deferred |
 | Array/Map/Set, slices/maps/sort | Immutable receiver methods, searches, map/filter/flat_map/fold/stable sort, grouping, set relations, builders | Implemented |
 | Math, strconv, math/big | Float math, strict number conversion, BigInt, existing Decimal | Implemented; complex/advanced distributions deferred |
-| JSON, encoding/json/csv, net/url, html | Exact-number JsonValue, bounded CSV, ordered query codecs, URL records, escaping | Implemented |
+| JSON, encoding/json/csv, net/url, html | Exact-number JsonValue, bounded CSV, ordered query codecs, URL records, HTML5 trees and escaping | Implemented |
 | path/filepath, fs/io/fs | Native and explicit POSIX/Windows paths; bounded file handles, seek, directory cursors, filtered copy trees, typed glob, native/polling watch, permissions and timestamps | Implemented functional equivalents; [host limits](node-host.md) |
 | stream, io, bufio/readline | Existing ReadStream/WriteStream plus bounded copy/read_all/read_line | Implemented functional option; no Node stream events |
 | time/timers/os/process info | Monotonic Clock/sleep, wall Timestamp, sleep and scoped after/every scheduling, OS queries and process control | Implemented functional equivalents; [host limits](node-host.md); timezone/calendar deferred |

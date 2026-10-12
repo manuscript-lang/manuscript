@@ -1011,12 +1011,71 @@ fn filesystem() -> FileSystem
 
 Import each required symbol with `import Name from "@std/html.ms"`.
 
+## HtmlAttribute
+
+**Record**
+
+```manuscript
+type HtmlAttribute:
+    name: String
+    namespace: String
+    value: String
+```
+
+## HtmlError
+
+**Alternative**
+
+```manuscript
+type HtmlError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for HtmlError:
+    fn message() -> String
+```
+
+## HtmlLimits
+
+**Record**
+
+```manuscript
+type HtmlLimits:
+    max_bytes: Optional[Int] = none
+    max_depth: Optional[Int] = none
+    max_nodes: Optional[Int] = none
+```
+
+## HtmlNode
+
+**Alternative**
+
+```manuscript
+type HtmlNode:
+    case Document(children: List[HtmlNode])
+    case Element(tag: String, namespace: String, attributes: List[HtmlAttribute], children: List[HtmlNode])
+    case Text(text: String)
+    case Comment(text: String)
+    case Doctype(name: String, public_id: String, system_id: String)
+```
+
 ## escape
 
 **Function**
 
 ```manuscript
 fn escape(text: String) -> String
+```
+
+## parse
+
+**Function**
+
+```manuscript
+fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]
 ```
 
 # @std/http.ms

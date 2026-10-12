@@ -51,7 +51,7 @@ func nativeDefault(name, typ, operation string) Value {
 		return nativeUnlimited
 	case "Duration":
 		return nativeNoTimeout
-	case "JsonLimits", "ArchiveLimits":
+	case "JsonLimits", "ArchiveLimits", "HtmlLimits":
 		return Record{Type: "@std/" + typ, Fields: map[string]Value{}}
 	}
 	return nil
@@ -64,7 +64,7 @@ func nativeOptions(operation string, params []LibraryParam, args []Value) ([]Val
 	}
 	for i, p := range params {
 		typ := p.Type
-		if typ == "Optional[Int]" || typ == "Optional[Duration]" || typ == "Optional[JsonLimits]" || typ == "Optional[ArchiveLimits]" {
+		if typ == "Optional[Int]" || typ == "Optional[Duration]" || typ == "Optional[JsonLimits]" || typ == "Optional[ArchiveLimits]" || typ == "Optional[HtmlLimits]" {
 			typ = strings.TrimSuffix(strings.TrimPrefix(typ, "Optional["), "]")
 			var ok bool
 			out[i], ok = nativeOption(out[i], typ, nativeDefault(p.Name, typ, operation))

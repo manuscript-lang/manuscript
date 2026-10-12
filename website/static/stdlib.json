@@ -901,9 +901,62 @@
       "path": "@std/html.ms",
       "declarations": [
         {
+          "name": "HtmlAttribute",
+          "kind": "record",
+          "type": "HtmlAttribute",
+          "fields": [
+            "name: String",
+            "namespace: String",
+            "value: String"
+          ]
+        },
+        {
+          "name": "HtmlError",
+          "kind": "alternative",
+          "type": "HtmlError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
+          "name": "HtmlLimits",
+          "kind": "record",
+          "type": "HtmlLimits",
+          "fields": [
+            "max_bytes: Optional[Int]",
+            "max_depth: Optional[Int]",
+            "max_nodes: Optional[Int]"
+          ]
+        },
+        {
+          "name": "HtmlNode",
+          "kind": "alternative",
+          "type": "HtmlNode",
+          "cases": [
+            "Document(children: List[HtmlNode])",
+            "Element(tag: String, namespace: String, attributes: List[HtmlAttribute], children: List[HtmlNode])",
+            "Text(text: String)",
+            "Comment(text: String)",
+            "Doctype(name: String, public_id: String, system_id: String)"
+          ]
+        },
+        {
           "name": "escape",
           "kind": "fn",
           "type": "fn(text: String)-\u003eString"
+        },
+        {
+          "name": "parse",
+          "kind": "fn",
+          "type": "fn(text: String, limits: Optional[HtmlLimits] = ...)-\u003eResult[HtmlNode, HtmlError]"
         }
       ]
     },
