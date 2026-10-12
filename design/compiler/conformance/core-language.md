@@ -11,13 +11,15 @@ These fixtures check whether the compiler accepts or rejects core-language progr
 
 Each fenced accepted fixture is an independent `.ms` module, with its application types and helper functions included. Its module-level `test` body has the ordinary `Unit` return contract. A rejected variant replaces or removes exactly the indicated text in that fixture, leaving the rest unchanged. If a variant introduces a standard declaration, add its individual import unless missing-import rejection is the behavior under test. Test each variant independently: combining unrelated errors makes the expected diagnostic ambiguous.
 
-The expected stage identifies the violated contract: **parse** for invalid source structure; **resolution** for an unknown or ambiguous symbol; **type** for incompatible types, shapes, labels, bounds, or control flow after parsing and resolution. A checker may combine its resolution and type passes, but must identify the specified cause at the offending source span. Diagnostic wording and internal pass layout are implementation choices. Accepted fixtures must evaluate to the stated assertions, rather than merely generate Go that compiles.
+The expected stage identifies the violated contract: **parse** for invalid source structure; **resolution** for an unknown or ambiguous symbol; **type** for incompatible types, shapes, labels, bounds, or control flow after parsing and resolution. A checker may combine its resolution and type passes, but must identify the specified cause at the offending source span. Diagnostic wording and internal pass layout are implementation choices. Accepted fixtures must satisfy the stated checks, rather than merely generate Go that compiles.
 
 ## CL-01: Layout and named-call syntax
 
 Contract: [source syntax](../../core-language/basics/syntax.md) and [declarations and calls](../../core-language/functions/declarations-and-calls.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 fn subtract(amount: Int, deduction: Int) -> Int:
     return amount - deduction
 
@@ -26,7 +28,8 @@ test "named multiline call":
         deduction: 2,
         amount: 9,
     )
-    assert remaining == 7
+    if not (remaining == 7):
+        return panic(message: "check failed")
 ```
 
 This accepts trailing commas and multiline calls while mapping labels to declared parameters. Reordering the written labels does not change the parameter mapping.
@@ -48,18 +51,25 @@ Add lexical rejection fixtures for tabs, inconsistent dedentation, and untermina
 Contract: [expressions and operators](../../core-language/basics/expressions.md) and [numeric operations](../../core-language/basics/numbers-and-booleans.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 fn invalid_division(zero: Int) -> Bool:
     return 1 / zero == 0
 
 test "grouping and short circuit":
-    assert 2 + 3 * 4 == 14
-    assert (2 + 3) * 4 == 20
-    assert 10 - 3 - 2 == 5
-    assert true or invalid_division(zero: 0)
-    assert not (false and invalid_division(zero: 0))
+    if not (2 + 3 * 4 == 14):
+        return panic(message: "check failed")
+    if not ((2 + 3) * 4 == 20):
+        return panic(message: "check failed")
+    if not (10 - 3 - 2 == 5):
+        return panic(message: "check failed")
+    if not (true or invalid_division(zero: 0)):
+        return panic(message: "check failed")
+    if not (not (false and invalid_division(zero: 0))):
+        return panic(message: "check failed")
 ```
 
-Both short-circuit assertions must complete without invoking the invalid division. This observes control flow, not only operator result types.
+Both short-circuit checks must complete without invoking the invalid division. This observes control flow, not only operator result types.
 
 | Independent variant | Expected outcome |
 | --- | --- |
@@ -76,6 +86,8 @@ Integer overflow and division-by-zero fixtures must expect programming faults ev
 Contract: [records](../../core-language/types/records.md) and [destructuring](../../core-language/basics/destructuring.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 type CustomerId:
     value: String
 
@@ -92,7 +104,8 @@ fn customer_name(customer: Customer) -> String:
 
 test "nominal record and nested binding":
     let customer = Customer(id: CustomerId(value: "c1"), name: "Ada")
-    assert customer_name(customer: customer) == "c1: Ada"
+    if not (customer_name(customer: customer) == "c1: Ada"):
+        return panic(message: "check failed")
 ```
 
 | Independent variant | Expected outcome |
@@ -124,6 +137,8 @@ Reject at type checking: the exported field exposes the internal nominal `Privat
 Contract: [collections](../../core-language/types/collections.md) and [destructuring](../../core-language/basics/destructuring.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 
 fn difference(values: List[Int]) -> Int:
@@ -131,10 +146,12 @@ fn difference(values: List[Int]) -> Int:
     return first - second
 
 test "list binding":
-    assert difference(values: [9, 4]) == 5
+    if not (difference(values: [9, 4]) == 5):
+        return panic(message: "check failed")
     let empty: List[Int] = []
     let {value: label} = Label(value: "ready")
-    assert label == "ready"
+    if not (label == "ready"):
+        return panic(message: "check failed")
 
 type Label:
     value: String
@@ -158,6 +175,8 @@ A literal-length mismatch in the binding itself is a compile-time shape error; a
 Contract: [function values](../../core-language/functions/function-values-and-closures.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 fn increase(value: Int) -> Int:
     return value + 1
 
@@ -166,7 +185,8 @@ fn apply(value: Int, transform: fn(value: Int) -> Int) -> Int:
 
 test "function label compatibility":
     let transform: fn(value: Int) -> Int = increase
-    assert apply(value: 4, transform: transform) == 5
+    if not (apply(value: 4, transform: transform) == 5):
+        return panic(message: "check failed")
 ```
 
 | Independent variant | Expected outcome |
@@ -191,10 +211,12 @@ fn positive(value: Int) -> Int:
         panic(message: "positive value required")
 
 fn discard(value: Int) -> Unit:
-    assert value > 0
+    if not (value > 0):
+        return panic(message: "check failed")
 
 test "return contracts":
-    assert positive(value: 3) == 3
+    if not (positive(value: 3) == 3):
+        return panic(message: "check failed")
     discard(value: 1)
 ```
 
@@ -215,6 +237,8 @@ Unreachable statements must still parse, resolve, and type-check; they do not re
 Contract: [alternatives](../../core-language/types/alternatives.md) and [pattern matching](../../core-language/control-flow/pattern-matching.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 type Outcome:
     case Ready(value: Int)
     case Failed(reason: String)
@@ -227,8 +251,10 @@ fn score(outcome: Outcome) -> Int:
             return 0
 
 test "alternative result":
-    assert score(outcome: Outcome.Ready(value: 8)) == 8
-    assert score(outcome: Outcome.Failed(reason: "unavailable")) == 0
+    if not (score(outcome: Outcome.Ready(value: 8)) == 8):
+        return panic(message: "check failed")
+    if not (score(outcome: Outcome.Failed(reason: "unavailable")) == 0):
+        return panic(message: "check failed")
 ```
 
 Constructors name payload fields; payload patterns bind positions in declaration order. Matching has no fallthrough.
@@ -250,6 +276,8 @@ Add ambiguity fixtures with two visible alternative types declaring `Ready`: unq
 Contract: [loops](../../core-language/control-flow/loops.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 
 fn selected_sum(values: List[Int]) -> Int:
@@ -263,8 +291,10 @@ fn selected_sum(values: List[Int]) -> Int:
     return total
 
 test "iteration control":
-    assert selected_sum(values: [2, 0, 3, -1, 9]) == 5
-    assert selected_sum(values: []) == 0
+    if not (selected_sum(values: [2, 0, 3, -1, 9]) == 5):
+        return panic(message: "check failed")
+    if not (selected_sum(values: []) == 0):
+        return panic(message: "check failed")
 ```
 
 | Independent variant | Expected outcome |
@@ -281,6 +311,8 @@ For nested loops, verify that `break` and `continue` select the nearest enclosin
 Contract: [generics](../../core-language/types/generics.md) and [equality](../../core-language/types/equality-and-hashing.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 type Box[T: Shareable]:
     value: T
 
@@ -292,9 +324,12 @@ fn same[T: Shareable & Equal](left: T, right: T) -> Bool:
 
 test "generic argument inference":
     let box = Box[Int](value: 6)
-    assert unwrap(box: box) == 6
-    assert unwrap[Int](box: box) == 6
-    assert same(left: 6, right: 6)
+    if not (unwrap(box: box) == 6):
+        return panic(message: "check failed")
+    if not (unwrap[Int](box: box) == 6):
+        return panic(message: "check failed")
+    if not (same(left: 6, right: 6)):
+        return panic(message: "check failed")
 ```
 
 Inference uses independently typed supplied arguments. Explicit and inferred applications must select the same substitution. Generic bodies are checked against declared bounds, not only the concrete types used by these tests.
@@ -336,6 +371,8 @@ Reject at resolution: a type parameter cannot redefine the intrinsic `Int` ident
 Contract: [operation contracts](../../core-language/types/contracts.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 interface Increment:
     fn apply(value: Int) -> Int
 
@@ -353,7 +390,8 @@ test "explicit contract conversion":
     let offset = Offset(delta: 1)
     let operation = Increment(value: offset)
     let same_view = Increment(value: operation)
-    assert use_increment(operation: same_view) == 5
+    if not (use_increment(operation: same_view) == 5):
+        return panic(message: "check failed")
 ```
 
 `self` is implicit in the implementation body, never a source call argument. Conversion retains the concrete value; applying the same view constructor to an existing exact contract value is an identity conversion. The contract cannot be constructed without a value providing its declared implementation or already having that exact contract type.
@@ -375,6 +413,8 @@ Add a multi-module rejection fixture for an implementation outside the concrete 
 Contract: [generic implementations](../../core-language/types/contracts.md#generic-implementations).
 
 ```text
+import panic from "@std/faults.ms"
+
 interface ReadValue[T]:
     fn get() -> T
 
@@ -400,10 +440,14 @@ test "generic implementations":
     let text = Box[String](value: "hello")
     let number_view = ReadValue[Int](value: number)
     let text_view = ReadValue[String](value: text)
-    assert number_view.get() == 7
-    assert text_view.get() == "hello"
-    assert compare(box: number, other: 7)
-    assert not compare(box: number, other: 8)
+    if not (number_view.get() == 7):
+        return panic(message: "check failed")
+    if not (text_view.get() == "hello"):
+        return panic(message: "check failed")
+    if not (compare(box: number, other: 7)):
+        return panic(message: "check failed")
+    if not (not compare(box: number, other: 8)):
+        return panic(message: "check failed")
 ```
 
 The first block needs no bound to read and return its field. The second inherits `Equal` from the `SameValue` interface to compare it. `compare` proves that implementation's availability while checking its generic body, without waiting for a concrete instantiation.
@@ -425,6 +469,8 @@ Also accept disjoint concrete implementations for different receiver application
 Contract: [shared contract views](../../core-language/types/contracts.md#shared-contract-views) and [sharing](../../ownership-and-cleanup/values/sharing.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 
@@ -471,10 +517,14 @@ test "plain and shared views":
     let optional: Optional[ReadValue[Int] & Shareable] = some(value: shared)
     let callback = CallbackReader(read_value: seven)
     let local_callback = ReadValue[Int](value: callback)
-    assert plain.get() == 7
-    assert erased.get() == 7
-    assert local_callback.get() == 7
-    assert consume_shared(source: holder.reader) == 7
+    if not (plain.get() == 7):
+        return panic(message: "check failed")
+    if not (erased.get() == 7):
+        return panic(message: "check failed")
+    if not (local_callback.get() == 7):
+        return panic(message: "check failed")
+    if not (consume_shared(source: holder.reader) == 7):
+        return panic(message: "check failed")
 ```
 
 `local_view` must be accepted with no sharing bound on its generic receiver. `shared_view` retains its proof through the returned type and the record field; the same implementation supplies every view. CallbackReader's bare function field carries no callable-sharing promise, so the record is nonshareable even though this particular initializer is a safe named function. Its plain view and sequential call are accepted. View conversion evaluates the receiver once and neither copies nor closes native state. The collection and optional declarations exercise refined types inside generic arguments.
@@ -501,6 +551,8 @@ With a trusted native nonshareable receiver fixture, accept a plain view and seq
 Contract: [records](../../core-language/types/records.md) and [generics](../../core-language/types/generics.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 
 type Tree[T: Shareable]:
@@ -510,7 +562,8 @@ type Tree[T: Shareable]:
 test "recursive immutable collection":
     let leaf = Tree[Int](value: 1, children: [])
     let root = Tree[Int](value: 2, children: [leaf])
-    assert root.value == 2
+    if not (root.value == 2):
+        return panic(message: "check failed")
 ```
 
 Accept: removing the `List` storage edge leaves no inline record/alternative cycle, and recursive applications preserve `T` unchanged.
@@ -529,6 +582,8 @@ The declaration check must reject the offending type before constructor errors i
 Contract: [loops](../../core-language/control-flow/loops.md) and [collections](../../core-language/types/collections.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 import Map from "@std/collections.ms"
 import MapEntry from "@std/collections.ms"
 import Set from "@std/collections.ms"
@@ -549,8 +604,10 @@ fn set_total(values: Set[Int]) -> Int:
 
 test "map entry type":
     let entry = MapEntry[String, Int](key: "a", value: 3)
-    assert entry.key == "a"
-    assert entry.value == 3
+    if not (entry.key == "a"):
+        return panic(message: "check failed")
+    if not (entry.value == 3):
+        return panic(message: "check failed")
 ```
 
 Accept these functions with the [minimum collection API](../../standard-library/data-and-io/operations.md). The map loop element is `MapEntry[String, Int]`, whose record fields are `key: String` and `value: Int`; the set loop element is `Int`.
@@ -570,13 +627,18 @@ Runtime collection fixtures use the minimum constructor/update API: verify inser
 Contract: [source grammar](../../core-language/basics/grammar.md) and [text](../../core-language/basics/text-and-bytes.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 fn echo(value: String) -> String:
     return value
 
 test "text source forms":
-    assert echo(value: "\{literal\}") == "\{literal\}"
-    assert "\u{1F600}" == "😀"
-    assert "value: {3}" == "value: 3"
+    if not (echo(value: "\{literal\}") == "\{literal\}"):
+        return panic(message: "check failed")
+    if not ("\u{1F600}" == "😀"):
+        return panic(message: "check failed")
+    if not ("value: {3}" == "value: 3"):
+        return panic(message: "check failed")
     let no_value: Unit = unit
 ```
 
@@ -602,6 +664,8 @@ Equivalent LF and CRLF encodings must produce the same parsed structure after do
 Contract: [Result](../../core-language/errors/results.md) and [try propagation](../../core-language/errors/propagation.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 import Result from "@std/result.ms"
 
 type Problem:
@@ -627,8 +691,10 @@ fn summarize(outcome: Result[Int, Problem]) -> Int:
             return -1
 
 test "unchanged propagated error":
-    assert summarize(outcome: doubled(value: 3)) == 6
-    assert summarize(outcome: doubled(value: -1)) == -1
+    if not (summarize(outcome: doubled(value: 3)) == 6):
+        return panic(message: "check failed")
+    if not (summarize(outcome: doubled(value: -1)) == -1):
+        return panic(message: "check failed")
 ```
 
 Successful construction obtains the complete `Result[Int, Problem]` type from the declared return contract. Propagation leaves the remaining body unexecuted on an expected error; it does not introduce an implicit error union or conversion.
@@ -650,6 +716,8 @@ An anonymous function establishes its own propagation boundary. Test that an inn
 Contract: [equality and hashing](../../core-language/types/equality-and-hashing.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 import Decimal from "@std/decimal.ms"
 import Optional from "@std/optional.ms"
@@ -667,12 +735,18 @@ test "derived value equality":
     let present: Optional[Int] = some(value: 1)
     let same: Optional[Int] = some(value: 1)
     let missing: Optional[Int] = none
-    assert present == same
-    assert present != missing
-    assert 1.00d == 1d
-    assert [1, 2] == [1, 2]
-    assert [1, 2] != [2, 1]
-    assert preserve_key(value: "key") == "key"
+    if not (present == same):
+        return panic(message: "check failed")
+    if not (present != missing):
+        return panic(message: "check failed")
+    if not (1.00d == 1d):
+        return panic(message: "check failed")
+    if not ([1, 2] == [1, 2]):
+        return panic(message: "check failed")
+    if not ([1, 2] != [2, 1]):
+        return panic(message: "check failed")
+    if not (preserve_key(value: "key") == "key"):
+        return panic(message: "check failed")
     let callback = Callback(handler: increment)
 ```
 
@@ -680,8 +754,8 @@ Optional equality compares its tag and eligible payload. Decimal equality compar
 
 | Independent variant | Expected outcome |
 | --- | --- |
-| Add `assert callback == callback` | Type rejection: a function field makes `Callback` ineligible for equality |
-| Add `assert increment == increment` | Type rejection: function values have no equality |
+| Add `if callback == callback:` with a `return` body | Type rejection: a function field makes `Callback` ineligible for equality |
+| Add `if increment == increment:` with a `return` body | Type rejection: function values have no equality |
 | Use `preserve_key(value: [1, 2])` | Type rejection: equal lists are not hashable |
 | Use `preserve_key(value: 1.0)` | Type rejection: `Float` is equal-comparable but not hashable |
 | Declare `let wrong: Optional[Float] = present` | Type rejection: invariant optional applications differ |
@@ -693,6 +767,8 @@ Test generated record/alternative equality with eligible scalar leaves and rejec
 Contract: [compatibility and expected types](../../core-language/types/compatibility.md), [Optional](../../core-language/types/optionals.md), and [Result](../../core-language/errors/results.md).
 
 ```text
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
@@ -713,8 +789,10 @@ test "data constructor context":
     let failure: Result[Int, String] = error(cause: "unavailable")
     let absent: Optional[Int] = none
     let nested: List[List[Int]] = [[], [1]]
-    assert outcome_value(outcome: success) == 3
-    assert outcome_value(outcome: failure) == -1
+    if not (outcome_value(outcome: success) == 3):
+        return panic(message: "check failed")
+    if not (outcome_value(outcome: failure) == -1):
+        return panic(message: "check failed")
 ```
 
 The field, binding annotation, or substituted parameter determines missing data arguments; it does not convert an independently known incompatible type. Forward declarations and contextual list elements do not require module-level execution.
@@ -747,7 +825,7 @@ fn returned_failure() -> Int:
 
 fn endless() -> Int:
     while true:
-        assert true
+        continue
 ```
 
 Accept: the initializer and return expression cannot produce values; the literal-true loop has no reachable break and therefore no normal exit. An expected annotation does not make a `Never` expression return an `Int` at runtime.
@@ -795,8 +873,10 @@ test "function suite boundaries":
         transform: fn(value: Int) -> Int:
             return value - 1
     )
-    assert grouped == 2
-    assert final_argument == 2
+    if not (grouped == 2):
+        return panic(message: "check failed")
+    if not (final_argument == 2):
+        return panic(message: "check failed")
 ```
 
 The unused closure's body must not run. Its dedent terminates both the function expression and the surrounding binding statement, so the next binding does not require an extra blank line. The grouped closure ends before the outer argument comma; the final ungrouped closure resumes the still-open call's continuation when its body dedents. The nested `if` dedents within the active function suite rather than ending the enclosing call.

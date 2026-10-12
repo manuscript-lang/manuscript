@@ -46,7 +46,6 @@ See [special call rules](../call-rules.md) for constructors, variadic parallel w
 - [@std/state.ms](state.md)
 - [@std/system.ms](system.md)
 - [@std/tasks.ms](tasks.md)
-- [@std/test.ms](test.md)
 - [@std/text.ms](text.md)
 - [@std/time.ms](time.md)
 - [@std/tls.ms](tls.md)

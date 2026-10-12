@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import Result from "@std/result.ms"
 
 type Problem:
@@ -23,5 +25,7 @@ fn summarize(outcome: Result[Int, Problem]) -> Int:
             return -1
 
 test "unchanged propagated error":
-    assert summarize(outcome: doubled(value: 3)) == 6
-    assert summarize(outcome: doubled(value: -1)) == -1
+    if not (summarize(outcome: doubled(value: 3)) == 6):
+        return panic(message: "check failed")
+    if not (summarize(outcome: doubled(value: -1)) == -1):
+        return panic(message: "check failed")

@@ -49,6 +49,6 @@ This caller chooses a response for either outcome. Another caller could inspect 
 
 Returning `error(cause: cause)` is normal function completion. In `parallel`, the domain `Result` remains the operation's return value and does not cancel siblings. The outer API result separately reports `ExecutionError`; see [parallel operations](../../concurrency/parallel.md). A [Background](../../standard-library/tasks/background.md) service reports completion-only domain errors through its configured failure observer.
 
-Use [Optional](../types/optionals.md) for absence without an error explanation and [assertions](faults.md) for programming invariants.
+Use [Optional](../types/optionals.md) for absence without an error explanation and [explicit faults](faults.md) for broken programming invariants.
 
 [Previous: Pattern matching](../control-flow/pattern-matching.md) · [Next: Error propagation with try](propagation.md)

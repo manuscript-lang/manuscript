@@ -44,7 +44,7 @@ func TestCoreConformance(t *testing.T) {
 				t.Fatalf("execution failed: %v\n%s", err, data)
 			}
 			if !strings.Contains(string(data), "0 failed") {
-				t.Fatalf("test runner did not verify assertions: %s", data)
+				t.Fatalf("test runner did not verify checks: %s", data)
 			}
 		})
 	}
@@ -59,7 +59,7 @@ func TestRejectedFixture(t *testing.T) {
 	}
 }
 func TestStandaloneHasNoRuntimeDependency(t *testing.T) {
-	result := compiler.CompileSource("standalone.ms", "test \"arithmetic\":\n    assert 2 + 3 == 5\n", compiler.Options{Tests: true})
+	result := compiler.CompileSource("standalone.ms", "import panic from \"@std/faults.ms\"\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5):\n        return panic(message: \"check failed\")\n", compiler.Options{Tests: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
@@ -91,6 +91,7 @@ func TestCLIEntryAndNativeBuild(t *testing.T) {
 }
 func TestRuntimeFaults(t *testing.T) {
 	for name, source := range map[string]string{
+		"failed check":  "import panic from \"@std/faults.ms\"\ntest \"fault\":\n    if 2 + 3 != 6:\n        return panic(message: \"arithmetic check failed\")\n",
 		"overflow":      "fn sum(value: Int) -> Int:\n    return value + 1\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n",
 		"division":      "fn divide(value: Int, divisor: Int) -> Int:\n    return value / divisor\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n",
 		"destructuring": "import List from \"@std/collections.ms\"\nfn difference(values: List[Int]) -> Int:\n    let [first, second] = values\n    return first - second\ntest \"fault\":\n    let impossible = difference(values: [1])\n",
@@ -188,7 +189,7 @@ func TestSignalCancelsJoinsAndCleansUp(t *testing.T) {
 	if err := compiler.Build(result.Source, binary); err != nil {
 		t.Fatal(err)
 	}
-	t.Run("native", func(t *testing.T) { assertSignalShutdown(t, binary) })
+	t.Run("native", func(t *testing.T) { checkSignalShutdown(t, binary) })
 	t.Run("launcher", func(t *testing.T) {
 		tool := os.Getenv("MANUSCRIPT_GO")
 		if tool == "" {
@@ -198,11 +199,11 @@ func TestSignalCancelsJoinsAndCleansUp(t *testing.T) {
 		if data, err := exec.Command(tool, "build", "-o", launcher, "../../cmd/ms").CombinedOutput(); err != nil {
 			t.Fatalf("build launcher: %v %s", err, data)
 		}
-		assertSignalShutdown(t, launcher, "run", "testdata/projects/signal/main.ms")
+		checkSignalShutdown(t, launcher, "run", "testdata/projects/signal/main.ms")
 	})
 }
 
-func assertSignalShutdown(t *testing.T, binary string, args ...string) {
+func checkSignalShutdown(t *testing.T, binary string, args ...string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -388,7 +389,9 @@ func TestCLISourceTools(t *testing.T) {
 }
 
 func TestNominalIdentityEscapesPathDelimiters(t *testing.T) {
-	result := compiler.CompileSource("data[0]:&.ms", `interface Read:
+	result := compiler.CompileSource("data[0]:&.ms", `import panic from "@std/faults.ms"
+
+interface Read:
     fn get() -> Int
 type Box[T]:
     value: T
@@ -398,7 +401,8 @@ impl Read for Box[T]:
 test "encoded nominal identity":
     let box = Box(value: 1)
     let view = Read(value: box)
-    assert view.get() == 3
+    if not (view.get() == 3):
+        return panic(message: "check failed")
 `, compiler.Options{Tests: true})
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)

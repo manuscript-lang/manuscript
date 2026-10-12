@@ -26,7 +26,7 @@ This table maps common Node.js and Go tasks to Manuscript facilities. It tells y
 | child_process/os/exec | Existing Commands.run, bounded captured output, timeout, joined execution | Implemented functional option; interactive child handles deferred |
 | zlib/compress, archive/tar/zip | Bounded gzip/zlib/deflate, ZIP/TAR immutable encode/decode | Implemented; extraction/Brotli/Zstd deferred |
 | events/sync/channels/context/worker_threads | Queue, State, Pool/Lease, joined parallel and Background contexts | Implemented; no JS worker VM or detached tasks |
-| console/log/assert/testing | Explicit streams/structured JSON log, equality/tolerance assertions, existing runner | Implemented; interactive terminal and advanced diagnostics deferred |
+| console/log/testing | Explicit streams/structured JSON log, conditional checks, existing runner | Implemented; interactive terminal and advanced diagnostics deferred |
 | XML/gob/ASN.1/MIME/image/database/sql | Application/adaptor implementations using Bytes/streams/capabilities | Deferred; not claimed as standard-package coverage |
 | vm/v8/module/async_hooks/inspector/repl, Go reflect/unsafe/plugin/syscall | Ordinary suspending functions, checked source tooling, trusted host adapters | Runtime-specific APIs omitted; no sandbox VM equivalent claimed |
 

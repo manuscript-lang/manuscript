@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import Process from "@std/cli.ms"
 import Result from "@std/result.ms"
 import LibraryError from "@std/errors.ms"
@@ -8,19 +10,27 @@ import parse_timestamp from "@std/time.ms"
 
 fn exercise(process: Process, path: String) -> Result[Unit, LibraryError]:
     let written = try process.filesystem.write_file(path: path, data: "hello".to_bytes(), replace: false)
-    assert try process.filesystem.read_file(path: path, max_bytes: 5) == "hello".to_bytes()
+    if not (try process.filesystem.read_file(path: path, max_bytes: 5) == "hello".to_bytes()):
+        return panic(message: "check failed")
     let info = try process.filesystem.stat(path: path, follow_links: true)
-    assert info.size == 5
-    assert not info.directory
+    if not (info.size == 5):
+        return panic(message: "check failed")
+    if not (not info.directory):
+        return panic(message: "check failed")
     let bytes = try process.entropy.bytes(count: 16)
-    assert bytes.length() == 16
+    if not (bytes.length() == 16):
+        return panic(message: "check failed")
     let identifier = try uuid_v4(entropy: process.entropy)
-    assert identifier.byte_length() == 36
+    if not (identifier.byte_length() == 36):
+        return panic(message: "check failed")
     let random = try secure_int(entropy: process.entropy, min: -2, max_exclusive: 3)
-    assert random >= -2 and random < 3
+    if not (random >= -2 and random < 3):
+        return panic(message: "check failed")
     let now = process.wall_clock.now()
-    assert try parse_timestamp(text: format_timestamp(value: now)) == now
-    assert process.system.info().cpu_count > 0
+    if not (try parse_timestamp(text: format_timestamp(value: now)) == now):
+        return panic(message: "check failed")
+    if not (process.system.info().cpu_count > 0):
+        return panic(message: "check failed")
     let removed = try process.filesystem.remove(path: path, recursive: false)
     return ok(value: unit)
 

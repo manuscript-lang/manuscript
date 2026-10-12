@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import Process from "@std/cli.ms"
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/cleanup.ms"
@@ -17,7 +19,7 @@ export fn main(process: Process) -> Int:
         with resource = Resource(label: "child", output: output):
             output.write(data: "ready\n".to_bytes())
             while true:
-                assert true
+                continue
     with resource = Resource(label: "parent", output: output):
         let outcome = parallel(tasks: [child])
         return 0

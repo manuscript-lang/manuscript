@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import List from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 
@@ -44,7 +46,11 @@ test "plain and shared views":
     let optional: Optional[ReadValue[Int] & Shareable] = some(value: shared)
     let callback = CallbackReader(read_value: seven)
     let local_callback = ReadValue[Int](value: callback)
-    assert plain.get() == 7
-    assert erased.get() == 7
-    assert local_callback.get() == 7
-    assert consume_shared(source: holder.reader) == 7
+    if not (plain.get() == 7):
+        return panic(message: "check failed")
+    if not (erased.get() == 7):
+        return panic(message: "check failed")
+    if not (local_callback.get() == 7):
+        return panic(message: "check failed")
+    if not (consume_shared(source: holder.reader) == 7):
+        return panic(message: "check failed")

@@ -43,7 +43,7 @@ This shared error type lets package operations compose through ordinary `Result`
 | --- | --- |
 | Malformed data or unavailable OS service | Return an expected Result error. |
 | Missing value | Use Optional. |
-| Illegal collection slice bounds, broken programming assumptions, or failed assertion | Produce a programming fault. |
+| Illegal collection slice bounds, broken programming assumptions, or explicit invariant violation | Produce a programming fault. |
 | Parent cancellation | Unwind; do not turn cancellation into EOF or a domain error. |
 | Local network deadline expires | Return Timeout, subject to the operation's documented error type. |
 

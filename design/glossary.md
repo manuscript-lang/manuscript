@@ -23,7 +23,7 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Intrinsic / prelude](standard-library/types/prelude.md) | The small set of types and compiler bounds available without imports. |
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
 | [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |
-| [Fault](core-language/errors/faults.md) | A programming failure, such as a false assertion. It ends the current operation after cleanup. |
+| [Fault](core-language/errors/faults.md) | A programming failure, such as a violated invariant. It ends the current operation after cleanup. |
 | [Closure / capture](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. Captured bindings are snapshots. |
 | [Alias](ownership-and-cleanup/values/references.md) | Another reference to the same object. Closing a resource affects every alias. |
 | [Resource lifetime](ownership-and-cleanup/_index.md) | How long a file, connection, or other external resource remains open and usable. |

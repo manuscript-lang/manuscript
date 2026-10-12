@@ -359,9 +359,6 @@ func (p *Parser) statement() *syntax.Statement {
 			s.Value = p.expression(0)
 		}
 		p.end()
-	case p.take("assert"):
-		s.Value = p.expression(0)
-		p.end()
 	case p.take("break") || p.take("continue"):
 		p.end()
 	case p.take("if"):

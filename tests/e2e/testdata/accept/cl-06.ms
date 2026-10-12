@@ -7,8 +7,10 @@ fn positive(value: Int) -> Int:
         panic(message: "positive value required")
 
 fn discard(value: Int) -> Unit:
-    assert value > 0
+    if not (value > 0):
+        return panic(message: "check failed")
 
 test "return contracts":
-    assert positive(value: 3) == 3
+    if not (positive(value: 3) == 3):
+        return panic(message: "check failed")
     discard(value: 1)

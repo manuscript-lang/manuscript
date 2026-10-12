@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import parse from "@std/url.ms"
 import format from "@std/url.ms"
 import encode_component from "@std/url.ms"
@@ -8,13 +10,18 @@ import LibraryError from "@std/errors.ms"
 
 fn verify_url() -> Result[Unit, LibraryError]:
     let url = try parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")
-    assert try format(value: url) == "https://example.com/a%2Fb?q=x#frag"
+    if not (try format(value: url) == "https://example.com/a%2Fb?q=x#frag"):
+        return panic(message: "check failed")
     let next = try resolve(base: url, reference: "../next")
-    assert try format(value: next) == "https://example.com/next"
-    assert encode_component(text: "a+b/@") == "a%2Bb%2F%40"
-    assert try decode_component(text: "%C3%A9") == "é"
+    if not (try format(value: next) == "https://example.com/next"):
+        return panic(message: "check failed")
+    if not (encode_component(text: "a+b/@") == "a%2Bb%2F%40"):
+        return panic(message: "check failed")
+    if not (try decode_component(text: "%C3%A9") == "é"):
+        return panic(message: "check failed")
     return ok(value: unit)
 
 test "URLs preserve escaped path structure":
     let expected: Result[Unit, LibraryError] = ok(value: unit)
-    assert verify_url() == expected
+    if not (verify_url() == expected):
+        return panic(message: "check failed")

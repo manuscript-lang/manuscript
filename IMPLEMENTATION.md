@@ -10,7 +10,7 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 - Exact intrinsic types, nominal immutable records and alternatives, `type` records/alternatives, generic types/functions, `interface` operation contracts, explicit implementations with inherited generic parameters and bounds, plain/shared views, signature and argument-label checking, orphan and overlap rejection, and structural sharing/equality/hashing eligibility.
 - Named calls, function values, suite closures, snapshot captures, and rejection of captured assignment. Sharing proofs are retained on eligible source/native functions and closures and erased at plain function parameters, results, fields, and generic forwarding.
 - Local inference, contextual constructors, invariant generic applications, bounds, guarded recursive layouts, and finite generic call specialization. Generic inference uses independently typed arguments; an expected result does not supply missing type arguments.
-- Bindings, name assignment, list/record destructuring, branching, loops, exhaustive alternative matching, returns, assertions, loop exits, lexical `with`, and exact-error `try` propagation. Return completeness includes `Never` and conservative loop rules.
+- Bindings, name assignment, list/record destructuring, branching, loops, exhaustive alternative matching, returns, loop exits, lexical `with`, and exact-error `try` propagation. Return completeness includes `Never` and conservative loop rules.
 - Explicit standard imports, exported-symbol visibility, relative imports and aliases, canonical module identity, root containment after symlink resolution, cycle rejection, and public type visibility.
 - Conservative transitive effects (`read`, `write`, `external-call`, `unknown`), including implicit cleanup and nested closure bodies. Indirect calls remain unknown. These summaries do not claim to enumerate every capability retained by a value.
 
@@ -32,7 +32,7 @@ Start with [your first program](design/getting-started.md) for a walkthrough. Us
 | CLI capabilities | Explicit Process arguments/environment, streams, read-only files, monotonic clock, network, commands, checked exit codes, signal cancellation, joined shutdown, and host-root cleanup |
 | HTTP | Explicit Network authority; bounded buffered requests/responses, shared handler proofs, admission/body/output limits, timeout/disconnect cancellation, fault isolation, and grace/cancel/join shutdown |
 | Subprocesses | Explicit Commands authority, joined execution, timeout, aggregate output bounds, captured bytes, exit status, and domain errors; process-group cancellation on platforms exposing that facility |
-| General-purpose packages | Strict codecs/binary numbers, scalar text, Float math/BigInt, exact JSON, CSV/URL/HTML, sequential collection algorithms, hashes/HMAC/PBKDF2/AES-GCM/Ed25519, compression and ZIP/TAR, bounded stream helpers, structured log/test assertions |
+| General-purpose packages | Strict codecs/binary numbers, scalar text, Float math/BigInt, exact JSON, CSV/URL/HTML, sequential collection algorithms, hashes/HMAC/PBKDF2/AES-GCM/Ed25519, compression and ZIP/TAR, bounded stream helpers, structured logging |
 | Additional CLI roots | FileSystem read/write/copy/stat/list/directories/links, WallClock/Timestamp, System info/environment and cryptographic Entropy |
 | Network clients and sockets | Buffered/streaming HTTP/1.1/HTTP/2 clients and servers, pooled transports/cookies/redirects, WebSocket sessions, TCP/Unix/TLS sockets and mutual TLS, bounded DNS record lookup, scoped resolver/policy and cancellation/close joining |
 | Native acquisition | Undelivered files, pool leases, and HTTP servers are disposed if cancellation wins before delivery |
@@ -70,7 +70,7 @@ The book's [outstanding decisions](design/compiler/conformance/scope.md#outstand
 - Unicode normalization/graphemes/legacy text codecs, seek/watch/permissions APIs, timezone calendars/tickers, archive extraction and specialized formats. See the [coverage map](design/standard-library/packages/coverage.md) for runnable equivalents and remaining gaps.
 - Full incremental frontend/package compilation, concrete native generic layouts, precise retained-authority classification, and native adapter effect declarations.
 - Transactional structural edits, rich diagnostic spans/related locations, architecture diffs, runtime trace transport, complete local-value metadata, and Delve integration.
-- Test discovery globs, identity beyond display labels, authority injection, and expected-fault assertions, which need the runner contract finalized.
+- Test discovery globs, identity beyond display labels, authority injection, and expected-fault checks, which need the runner contract finalized.
 
 The language core, supplied standard APIs, compiler commands, and native conformance tests are usable now. The coverage above is not a claim that every future facility in the design book is complete.
 

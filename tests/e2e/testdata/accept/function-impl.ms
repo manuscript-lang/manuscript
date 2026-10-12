@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 interface Apply[T]:
     fn apply(value: Int) -> T
 
@@ -13,6 +15,8 @@ fn render(value: Int) -> String:
 
 test "implementation variables inside function signatures":
     let box = Box(value: render)
-    assert box.apply(value: 3) == "3"
+    if not (box.apply(value: 3) == "3"):
+        return panic(message: "check failed")
     let operation = Apply[String](value: box)
-    assert operation.apply(value: 4) == "4"
+    if not (operation.apply(value: 4) == "4"):
+        return panic(message: "check failed")

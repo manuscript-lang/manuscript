@@ -78,8 +78,11 @@ This also matters for [concurrency APIs](../../concurrency/parallel.md#preparati
 `unit` is the single value of `Unit`. A `Unit` function may use `return`, `return unit`, or fall through the end of its body. Other functions must return a compatible value on every reachable normal exit; bare `return` and reachable fallthrough are compile errors. There is no implicit return of a block's final expression.
 
 ```text
+import panic from "@std/faults.ms"
+
 fn check_positive(value: Int) -> Unit:
-    assert value > 0
+    if not (value > 0):
+        return panic(message: "check failed")
 
 fn missing_value() -> Int:
     return panic(message: "Required value is missing")

@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 import Bytes from "@std/bytes.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
@@ -17,6 +19,7 @@ test "contract-valued cleanup":
     with file = File(value: ClosedFile(marker: unit)):
         match file.read(max_bytes: 1):
             ok(_):
-                assert false
+                return panic(message: "Unexpected case")
             error(cause):
-                assert cause == IoError.Closed
+                if not (cause == IoError.Closed):
+                    return panic(message: "check failed")

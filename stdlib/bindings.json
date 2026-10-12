@@ -115,8 +115,6 @@
     "@std/result.ms/map_error": "map_error",
     "@std/tasks.ms/check_cancelled": "check_cancelled",
     "@std/tasks.ms/parallel_map": "parallel_map",
-    "@std/test.ms/assert_equal": "test/assert_equal",
-    "@std/test.ms/assert_near": "test/assert_near",
     "@std/text.ms/contains": "text/contains",
     "@std/text.ms/ends_with": "text/ends_with",
     "@std/text.ms/from_scalars": "text/from_scalars",

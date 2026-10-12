@@ -1,3 +1,5 @@
+import panic from "@std/faults.ms"
+
 type List:
     count: Int
 
@@ -11,9 +13,12 @@ fn ordinary() -> Result:
     return Result.Value(value: parallel(value: 3))
 
 test "standard spellings are ordinary names":
-    assert List(count: 2).count == 2
+    if not (List(count: 2).count == 2):
+        return panic(message: "check failed")
     let forward = parallel
-    assert forward(value: 4) == 4
+    if not (forward(value: 4) == 4):
+        return panic(message: "check failed")
     match ordinary():
         Value(value):
-            assert value == 3
+            if not (value == 3):
+                return panic(message: "check failed")
