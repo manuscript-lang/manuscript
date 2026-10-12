@@ -68,10 +68,7 @@ func StandardFunction(name, result string) Value {
 				return Unit{}
 			}
 		})
-	case "parallel_map":
-		return NewFunction([]string{"items", "operation", "limit"}, result, func(ctx *Execution, args []Value) Value {
-			return ParallelMap(ctx, result, typeArguments(result)[0], []Argument{{"items", args[0]}, {"operation", args[1]}, {"limit", args[2]}})
-		})
+
 	}
 	return Panic("unavailable standard function " + name)
 }
@@ -81,48 +78,13 @@ func Parallel(ctx *Execution, result string, tasks []Value, timeout *Duration) V
 		f := task
 		operations[i] = func(child *Execution) Value { return Invoke(child, f, nil) }
 	}
-	values, failure := joined(ctx, operations, len(tasks), timeout)
+	values, failure := joined(ctx, operations, timeout)
 	if failure != nil {
 		return Alternative{result, "error", []Value{failure}}
 	}
 	return Alternative{result, "ok", []Value{Pack{values}}}
 }
-func ParallelMap(ctx *Execution, result, listType string, args []Argument) Value {
-	var items List
-	var operation Value
-	limit := int64(0)
-	var timeout *Duration
-	for _, a := range args {
-		switch a.Name {
-		case "items":
-			items = a.Value.(List)
-		case "operation":
-			operation = a.Value
-		case "limit":
-			limit = a.Value.(int64)
-		case "timeout":
-			v := a.Value.(Duration)
-			timeout = &v
-		}
-	}
-	if limit <= 0 {
-		return Panic("parallel_map limit must be positive")
-	}
-	operations := make([]func(*Execution) Value, len(items.Items))
-	for i, item := range items.Items {
-		value := item
-		operations[i] = func(child *Execution) Value { return Invoke(child, operation, []Argument{{"item", value}}) }
-	}
-	if limit > int64(len(operations)) {
-		limit = int64(len(operations))
-	}
-	values, failure := joined(ctx, operations, int(limit), timeout)
-	if failure != nil {
-		return Alternative{result, "error", []Value{failure}}
-	}
-	return Alternative{result, "ok", []Value{List{listType, values}}}
-}
-func joined(parent *Execution, operations []func(*Execution) Value, limit int, timeout *Duration) ([]Value, Value) {
+func joined(parent *Execution, operations []func(*Execution) Value, timeout *Duration) ([]Value, Value) {
 	defer profileRegion(parent, "parallel.join")()
 	CheckCancelled(parent)
 	if timeout != nil && *timeout < 0 {
@@ -169,7 +131,7 @@ func joined(parent *Execution, operations []func(*Execution) Value, limit int, t
 	}
 	next := 0
 	var workers sync.WaitGroup
-	for worker := 0; worker < limit; worker++ {
+	for worker := 0; worker < len(operations); worker++ {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()

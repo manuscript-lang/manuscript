@@ -102,7 +102,7 @@ func init() {
 		}
 		return libraryList("Int", items)
 	})
-	add("string", "from_scalars", libraryResult("String"), []LibraryParam{p("values", "List[Int]")}, func(ctx *Execution, result string, a []Value) Value {
+	add("string", "from_scalars", libraryResult("String", "StringError"), []LibraryParam{p("values", "List[Int]")}, func(ctx *Execution, result string, a []Value) Value {
 		var b strings.Builder
 		for i, v := range a[0].(List).Items {
 			if i%4096 == 0 {
@@ -116,7 +116,7 @@ func init() {
 		}
 		return libraryOK(result, b.String())
 	})
-	add("string", "slice_scalars", libraryResult("String"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, result string, a []Value) Value {
+	add("string", "slice_scalars", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, result string, a []Value) Value {
 		r := []rune(a[0].(string))
 		s, e := a[1].(int64), a[2].(int64)
 		if s < 0 || e < s || e > int64(len(r)) {
@@ -126,7 +126,7 @@ func init() {
 	})
 	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return int64(utf8.RuneCountInString(a[0].(string))) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })
-	add("encoding", "hex_decode", libraryResult("Bytes"), []LibraryParam{p("text", "String"), p("max_bytes", "Int")}, func(_ *Execution, result string, a []Value) Value {
+	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Int")}, func(_ *Execution, result string, a []Value) Value {
 		n := a[1].(int64)
 		if v := libraryBound(result, n); v != nil {
 			return v
@@ -148,7 +148,7 @@ func init() {
 		}
 		return enc.EncodeToString(a[0].(Bytes).Items)
 	})
-	add("encoding", "base64_decode", libraryResult("Bytes"), []LibraryParam{p("text", "String"), p("url_safe", "Bool"), p("max_bytes", "Int")}, func(_ *Execution, result string, a []Value) Value {
+	add("encoding", "base64_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("url_safe", "Bool"), p("max_bytes", "Int")}, func(_ *Execution, result string, a []Value) Value {
 		text := a[0].(string)
 		n := a[2].(int64)
 		if v := libraryBound(result, n); v != nil {
@@ -194,7 +194,7 @@ func init() {
 	add("bytes", "contains", "Bool", []LibraryParam{p("data", "Bytes"), p("value", "Bytes")}, func(_ *Execution, _ string, a []Value) Value {
 		return bytes.Contains(a[0].(Bytes).Items, a[1].(Bytes).Items)
 	})
-	add("numbers", "parse_int", libraryResult("Int"), []LibraryParam{p("text", "String"), p("radix", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	add("numbers", "parse_int", libraryResult("Int", "NumberError"), []LibraryParam{p("text", "String"), p("radix", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		radix := a[1].(int64)
 		if radix < 2 || radix > 36 {
 			return libraryError(r, "InvalidInput", "")
@@ -216,7 +216,7 @@ func init() {
 		}
 		return strconv.FormatInt(a[0].(int64), int(r))
 	})
-	add("numbers", "parse_float", libraryResult("Float"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
+	add("numbers", "parse_float", libraryResult("Float", "NumberError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
 		if !libraryFloatSyntax.MatchString(text) && text != "NaN" && text != "Infinity" && text != "-Infinity" {
 			return libraryError(r, "InvalidData", "")
@@ -229,7 +229,7 @@ func init() {
 	})
 	add("numbers", "format_float", "String", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return formatFloat(a[0].(float64)) })
 	add("bigint", "from_int", "BigInt", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value { return libraryBigInt{big.NewInt(a[0].(int64))} })
-	add("bigint", "parse", libraryResult("BigInt"), []LibraryParam{p("text", "String"), p("radix", "Int"), p("max_digits", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	add("bigint", "parse", libraryResult("BigInt", "BigIntError"), []LibraryParam{p("text", "String"), p("radix", "Int"), p("max_digits", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
 		radix, n := a[1].(int64), a[2].(int64)
 		if radix < 2 || radix > 36 || n <= 0 {
@@ -254,7 +254,7 @@ func init() {
 		})
 	}
 	for _, name := range []string{"divide", "remainder"} {
-		add("bigint", name, libraryResult("BigInt"), []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, r string, a []Value) Value {
+		add("bigint", name, libraryResult("BigInt", "BigIntError"), []LibraryParam{p("left", "BigInt"), p("right", "BigInt")}, func(_ *Execution, r string, a []Value) Value {
 			x, y := a[0].(libraryBigInt).n, a[1].(libraryBigInt).n
 			if y.Sign() == 0 {
 				return libraryError(r, "InvalidInput", "")
@@ -282,9 +282,9 @@ func init() {
 		n := a[0].(libraryBigInt).n
 		return optional("Int", n.Int64(), n.IsInt64())
 	})
-	add("binary", "read_integer", libraryResult("Int"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("width", "Int"), p("signed", "Bool"), p("little_endian", "Bool")}, libraryReadInteger)
-	add("binary", "write_integer", libraryResult("Bytes"), []LibraryParam{p("value", "Int"), p("width", "Int"), p("signed", "Bool"), p("little_endian", "Bool")}, libraryWriteInteger)
-	add("binary", "read_float", libraryResult("Float"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("little_endian", "Bool")}, func(_ *Execution, r string, a []Value) Value {
+	add("binary", "read_integer", libraryResult("Int", "BinaryError"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("width", "Int"), p("signed", "Bool"), p("little_endian", "Bool")}, libraryReadInteger)
+	add("binary", "write_integer", libraryResult("Bytes", "BinaryError"), []LibraryParam{p("value", "Int"), p("width", "Int"), p("signed", "Bool"), p("little_endian", "Bool")}, libraryWriteInteger)
+	add("binary", "read_float", libraryResult("Float", "BinaryError"), []LibraryParam{p("data", "Bytes"), p("offset", "Int"), p("little_endian", "Bool")}, func(_ *Execution, r string, a []Value) Value {
 		b := a[0].(Bytes).Items
 		offset := a[1].(int64)
 		if offset < 0 || offset > int64(len(b))-8 {
@@ -297,7 +297,7 @@ func init() {
 		libraryOrder(a[1]).PutUint64(b, math.Float64bits(a[0].(float64)))
 		return Bytes{b}
 	})
-	add("regex", "compile", libraryResult("Regex"), []LibraryParam{p("pattern", "String")}, func(_ *Execution, r string, a []Value) Value {
+	add("regex", "compile", libraryResult("Regex", "RegexError"), []LibraryParam{p("pattern", "String")}, func(_ *Execution, r string, a []Value) Value {
 		re, err := regexp.Compile(a[0].(string))
 		if err != nil {
 			return libraryError(r, "InvalidData", "")
@@ -307,7 +307,7 @@ func init() {
 	add("regex", "matches", "Bool", []LibraryParam{p("pattern", "Regex"), p("text", "String")}, func(_ *Execution, _ string, a []Value) Value {
 		return a[0].(libraryRegex).pattern.MatchString(a[1].(string))
 	})
-	add("regex", "find_all", libraryResult("List[String]"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("max_matches", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("regex", "find_all", libraryResult("List[String]", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("max_matches", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		n := a[2].(int64)
 		if n < 0 {
 			return libraryError(r, "InvalidInput", "")

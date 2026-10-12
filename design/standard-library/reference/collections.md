@@ -6,6 +6,19 @@ title = "collections"
 
 Import each required symbol with `import Name from "@std/collections.ms"`.
 
+## CollectionError {data-api-kind="Alternative"}
+
+```manuscript
+type CollectionError:
+    case InvalidInput
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for CollectionError:
+    fn message() -> String
+```
+
 ## List {data-api-kind="Native type"}
 
 ```manuscript
@@ -144,7 +157,7 @@ fn fill[T](values: List[T], value: T, start: Int, end: Int) -> List[T]
 ## filled {data-api-kind="Function"}
 
 ```manuscript
-fn filled[T](value: T, count: Int, max_items: Int) -> Result[List[T], LibraryError]
+fn filled[T](value: T, count: Int, max_items: Int) -> Result[List[T], CollectionError]
 ```
 
 ## filter {data-api-kind="Function"}
@@ -348,7 +361,7 @@ fn prepend[T](values: List[T], value: T) -> List[T]
 ## range {data-api-kind="Function"}
 
 ```manuscript
-fn range(start: Int, end: Int, step: Int, max_items: Int) -> Result[List[Int], LibraryError]
+fn range(start: Int, end: Int, step: Int, max_items: Int) -> Result[List[Int], CollectionError]
 ```
 
 ## reverse {data-api-kind="Function"}

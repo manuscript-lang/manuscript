@@ -1,8 +1,12 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import LibraryError from "@std/errors.ms"
+import Error from "@std/errors.ms"
 import Result from "@std/result.ms"
 import Optional from "@std/optional.ms"
+
+export type CollectionError:
+    case InvalidInput
+    case LimitExceeded
 
 export type List[T]:
     fn at(index: Int) -> Optional[T]
@@ -161,9 +165,9 @@ export fn list_entries[T](values: List[T]) -> List[ListEntry[T]]
 
 export fn to_set[T: Hashable](values: List[T]) -> Set[T]
 
-export fn filled[T](value: T, count: Int, max_items: Int) -> Result[List[T], LibraryError]
+export fn filled[T](value: T, count: Int, max_items: Int) -> Result[List[T], CollectionError]
 
-export fn range(start: Int, end: Int, step: Int, max_items: Int) -> Result[List[Int], LibraryError]
+export fn range(start: Int, end: Int, step: Int, max_items: Int) -> Result[List[Int], CollectionError]
 
 export fn map_clear[K: Hashable, V](values: Map[K, V]) -> Map[K, V]
 
@@ -196,3 +200,6 @@ export fn group_by[T, K: Hashable](values: List[T], key: fn(value: T) -> K) -> M
 export fn map_with_default[K: Hashable, V](values: Map[K, V], key: K, value: V) -> Map[K, V]
 
 export fn map_with_default_from[K: Hashable, V](values: Map[K, V], key: K, create: fn(key: K) -> V) -> Map[K, V]
+
+impl Error for CollectionError:
+    fn message() -> String

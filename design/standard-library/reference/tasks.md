@@ -32,6 +32,11 @@ type ExecutionError:
     case Crashed(operation: OperationId, message: String)
 ```
 
+```manuscript
+impl Error for ExecutionError:
+    fn message() -> String
+```
+
 ## OperationId {data-api-kind="Native type"}
 
 ```manuscript
@@ -44,6 +49,11 @@ type OperationId
 type StartError:
     case Closed
     case Full
+```
+
+```manuscript
+impl Error for StartError:
+    fn message() -> String
 ```
 
 ## WorkStatus {data-api-kind="Alternative"}
@@ -67,10 +77,4 @@ fn check_cancelled() -> Unit
 ## parallel {data-api-kind="Function"}
 
 See [special call rules](../call-rules.md).
-
-## parallel_map {data-api-kind="Function"}
-
-```manuscript
-fn parallel_map[T, U](items: List[T], operation: fn(item: T) -> U, limit: Int) -> Result[List[U], ExecutionError]
-```
 

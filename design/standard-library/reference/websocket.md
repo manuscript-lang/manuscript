@@ -11,10 +11,28 @@ Import each required symbol with `import Name from "@std/websocket.ms"`.
 ```manuscript
 interface WebSocket:
     fn close() -> Unit
-    fn ping(data: Bytes) -> Result[Unit, LibraryError]
-    fn receive() -> Result[Optional[WebSocketMessage], LibraryError]
-    fn send(data: Bytes, text: Bool) -> Result[Unit, LibraryError]
+    fn ping(data: Bytes) -> Result[Unit, WebSocketError]
+    fn receive() -> Result[Optional[WebSocketMessage], WebSocketError]
+    fn send(data: Bytes, text: Bool) -> Result[Unit, WebSocketError]
     fn subprotocol() -> String
+```
+
+## WebSocketError {data-api-kind="Alternative"}
+
+```manuscript
+type WebSocketError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Closed
+    case Timeout
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for WebSocketError:
+    fn message() -> String
 ```
 
 ## WebSocketMessage {data-api-kind="Record"}

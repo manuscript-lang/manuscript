@@ -61,7 +61,7 @@ Cancellation of a lock holder unwinds its `with` scope and closes the guard. It 
 
 Timeouts are named library arguments, not syntax annotations. Duration values come from the standard time API; naming `Duration` requires its own import from `@std/time.ms`.
 
-`parallel(tasks: [first, second], timeout: 2.seconds)` sets one budget for the group's execution, starting on API entry after argument preparation. `parallel_map` supports the same option. `timeout` is the only budget argument; there is no absolute `deadline` argument.
+`parallel(tasks: [first, second], timeout: 2.seconds)` sets one budget for the group's execution, starting on API entry after argument preparation. `timeout` is the only budget argument; there is no absolute `deadline` argument.
 
 Argument validation is part of the [standard API contract](../standard-library/types/prelude.md#joined-concurrency); zero-timeout and empty-input behavior is in [joined groups](joining.md#group-lifecycle). On expiry, the group stops, joins, and reports as defined in [joined groups](joining.md#group-lifecycle). Results are never delivered while work remains outstanding.
 
@@ -78,7 +78,7 @@ let sync = fn() -> Result[Unit, SyncError]:
 let [outcome] = try parallel(tasks: [sync], timeout: 2.seconds)
 ```
 
-This fragment requires an enclosing `Result[U, ExecutionError]` function; `outcome` is the unchanged `Result[Unit, SyncError]`. Any `parallel` or `parallel_map` inside `download_all` or `upload_all` inherits the same deadline.
+This fragment requires an enclosing `Result[U, ExecutionError]` function; `outcome` is the unchanged `Result[Unit, SyncError]`. Any `parallel` inside `download_all` or `upload_all` inherits the same deadline.
 
 ## Deadlines
 

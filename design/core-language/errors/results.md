@@ -45,6 +45,28 @@ fn discount_message(price: Decimal, percent: Decimal) -> String:
 
 This caller chooses a response for either outcome. Another caller could inspect `cause` with a further match or [propagate it with try](propagation.md).
 
+## A common error boundary
+
+Import `Error` from `@std/errors.ms` when a boundary should accept multiple error domains. It is an ordinary interface declaring `message() -> String`. Standard errors implement it; user errors can declare an ordinary `impl Error` in their defining module.
+
+```text
+import Bytes from "@std/bytes.ms"
+import Error from "@std/errors.ms"
+import hex_decode from "@std/encoding.ms"
+import Result from "@std/result.ms"
+
+fn decode(text: String) -> Result[Bytes, Error]:
+    match hex_decode(text: text, max_bytes: 1024):
+        ok(value):
+            return ok(value: value)
+        error(cause):
+            return error(cause: Error(value: cause))
+```
+
+The conversion preserves the original `EncodingError` case and payload. A caller may handle any error with `cause.message()`, or select a specific implementation using a [contract type pattern](../control-flow/pattern-matching.md#contract-type-patterns). A caller that needs only encoding errors can keep `Result[Bytes, EncodingError]` and match its cases directly.
+
+`Error` is explicitly imported and has no special inheritance or exception machinery. Other error values remain legal in `Result[T, E]`. Conversion at a generic boundary is explicit, and `try` still requires the [same error type](propagation.md#error-compatibility).
+
 ## Results and concurrent execution
 
 Returning `error(cause: cause)` is normal function completion. In `parallel`, the domain `Result` remains the operation's return value and does not cancel siblings. The outer API result separately reports `ExecutionError`; see [parallel operations](../../concurrency/parallel.md). A [Background](../../standard-library/tasks/background.md) service reports completion-only domain errors through its configured failure observer.

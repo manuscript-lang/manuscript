@@ -90,6 +90,7 @@ type Program struct {
 	Bindings         map[*syntax.Pattern]*Binding
 	LoopBindings     map[*syntax.Statement]*Binding
 	ArmBindings      map[*syntax.Arm][]*Binding
+	ContractPatterns map[*syntax.Arm]*Type
 	Parameters       map[*syntax.Declaration][]*Binding
 	LambdaParameters map[*syntax.Expression][]*Binding
 	Self             map[*syntax.Declaration]*Binding

@@ -154,7 +154,7 @@ let result = use_increment(operation: view)
 let wrong = use_increment(operation: offset)
 ```
 
-The constructor accepts an implementing concrete value or an existing view of the exact contract application. An existing view is an identity conversion. Different contracts/applications and contract-to-concrete downcasts are rejected.
+The constructor accepts an implementing concrete value or an existing view of the exact contract application. An existing view is an identity conversion. Different contracts/applications and unchecked contract-to-concrete conversions are rejected. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover a concrete record or alternative receiver after checking its exact nominal identity at runtime.
 
 Write generic view arguments explicitly or supply an expected application of the same contract. Operation names do not infer arguments.
 

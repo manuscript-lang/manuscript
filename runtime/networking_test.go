@@ -256,7 +256,7 @@ func TestNetworkingStreamingServerAndWebSocket(t *testing.T) {
 	ctx := RootExecution()
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
-	handler := NewFunction([]string{"exchange"}, "@std/Result[Unit][@std/LibraryError]", func(child *Execution, a []Value) Value {
+	handler := NewFunction([]string{"exchange"}, "@std/Result[Unit][@std/HttpError]", func(child *Execution, a []Value) Value {
 		exchange := a[0]
 		if networkingInvoke(child, exchange, "path") == "/ws" {
 			socket := librarySuccess(t, networkingInvoke(child, exchange, "upgrade", libraryStrings(nil), libraryStrings([]string{"echo"}), int64(32)))
@@ -265,7 +265,7 @@ func TestNetworkingStreamingServerAndWebSocket(t *testing.T) {
 				fields := message.Fields[0].(Record).Fields
 				librarySuccess(t, networkingInvoke(child, socket, "send", fields["data"], fields["text"]))
 			}
-			return libraryOK("@std/Result[Unit][@std/LibraryError]", Unit{})
+			return libraryOK("@std/Result[Unit][@std/HttpError]", Unit{})
 		}
 		librarySuccess(t, networkingInvoke(child, exchange, "send_headers", int64(200), Map{"@std/Map[String][@std/List[String]]", nil}))
 		for {
@@ -275,7 +275,7 @@ func TestNetworkingStreamingServerAndWebSocket(t *testing.T) {
 			}
 			librarySuccess(t, networkingInvoke(child, exchange, "write", part.Fields[0]))
 		}
-		return libraryOK("@std/Result[Unit][@std/LibraryError]", Unit{})
+		return libraryOK("@std/Result[Unit][@std/HttpError]", Unit{})
 	})
 	server := librarySuccess(t, n.Operation("serve_stream").Body(ctx, []Value{"127.0.0.1:0", handler, networkingServerOptions()}))
 	address := networkingInvoke(ctx, server, "address").(string)
@@ -335,11 +335,11 @@ func TestNetworkingServerShutdownJoinsWebSocket(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
 	started := make(chan struct{})
-	handler := NewFunction([]string{"exchange"}, "@std/Result[Unit][@std/LibraryError]", func(child *Execution, a []Value) Value {
+	handler := NewFunction([]string{"exchange"}, "@std/Result[Unit][@std/HttpError]", func(child *Execution, a []Value) Value {
 		socket := librarySuccess(t, networkingInvoke(child, a[0], "upgrade", libraryStrings(nil), libraryStrings(nil), int64(32)))
 		close(started)
 		networkingInvoke(child, socket, "receive")
-		return libraryOK("@std/Result[Unit][@std/LibraryError]", Unit{})
+		return libraryOK("@std/Result[Unit][@std/HttpError]", Unit{})
 	})
 	server := librarySuccess(t, n.Operation("serve_stream").Body(ctx, []Value{"127.0.0.1:0", handler, networkingServerOptions()}))
 	address := networkingInvoke(ctx, server, "address").(string)

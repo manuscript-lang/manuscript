@@ -6,7 +6,6 @@ import ListBuilder from "@std/builders.ms"
 import Result from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
-import parallel_map from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
 fn identity[T](value: T) -> T:
@@ -44,11 +43,11 @@ impl Read for Reader:
 
 test "shared counter protects complete updates":
     let counter = Synchronized(value: 0)
-    let operation = fn(item: Int) -> Unit:
+    let operation = fn() -> Unit:
         for unused in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             with locked = counter.lock():
                 increment(locked: locked)
-    match parallel_map(items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], operation: operation, limit: 10):
+    match parallel(tasks: [operation, operation, operation, operation, operation, operation, operation, operation, operation, operation]):
         ok(_):
             with locked = counter.lock():
                 if not (locked.get() == 100):
@@ -101,8 +100,15 @@ test "builders can be captured and stored callbacks can map":
     let builder = ListBuilder[Int]()
     let append_item = fn(item: Int) -> Unit:
         builder.append(value: item)
-    let map_items = parallel_map[Int, Unit]
-    match map_items(items: [1, 2, 3, 4], operation: append_item, limit: 4):
+    let task1 = fn() -> Unit:
+        append_item(item: 1)
+    let task2 = fn() -> Unit:
+        append_item(item: 2)
+    let task3 = fn() -> Unit:
+        append_item(item: 3)
+    let task4 = fn() -> Unit:
+        append_item(item: 4)
+    match parallel(tasks: [task1, task2, task3, task4]):
         ok(_):
             if not (builder.freeze().length() == 4):
                 return panic(message: "check failed")
@@ -174,11 +180,22 @@ test "native collection methods preserve ordinary function values":
         return fn() -> Int:
             return value
     )
-    match parallel_map(items: callbacks, limit: 2, operation: fn(item: fn() -> Int) -> Int:
-        return item()
-    ):
+    let first = fn() -> Int:
+        match callbacks.get(index: 0):
+            some(callback):
+                return callback()
+            none:
+                return panic(message: "missing callback")
+    let second = fn() -> Int:
+        match callbacks.get(index: 1):
+            some(callback):
+                return callback()
+            none:
+                return panic(message: "missing callback")
+    match parallel(tasks: [first, second]):
         ok(outcomes):
-            if not (outcomes == [1, 2]):
+            let [first_value, second_value] = outcomes
+            if first_value != 1 or second_value != 2:
                 return panic(message: "check failed")
         error(_):
-            return panic(message: "parallel map failed")
+            return panic(message: "parallel callbacks failed")

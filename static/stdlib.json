@@ -15,6 +15,24 @@
           ]
         },
         {
+          "name": "ArchiveError",
+          "kind": "alternative",
+          "type": "ArchiveError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "Unsupported",
+            "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "ArchiveLimits",
           "kind": "record",
           "type": "ArchiveLimits",
@@ -27,12 +45,12 @@
         {
           "name": "pack",
           "kind": "fn",
-          "type": "fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(entries: List[ArchiveEntry], format: String, max_bytes: Int)-\u003eResult[Bytes, ArchiveError]"
         },
         {
           "name": "unpack",
           "kind": "fn",
-          "type": "fn(data: Bytes, format: String, limits: ArchiveLimits)-\u003eResult[List[ArchiveEntry], LibraryError]"
+          "type": "fn(data: Bytes, format: String, limits: ArchiveLimits)-\u003eResult[List[ArchiveEntry], ArchiveError]"
         }
       ]
     },
@@ -49,12 +67,28 @@
             "bit_or: fn(right: BigInt)-\u003eBigInt",
             "bit_xor: fn(right: BigInt)-\u003eBigInt",
             "compare: fn(right: BigInt)-\u003eInt",
-            "divide: fn(right: BigInt)-\u003eResult[BigInt, LibraryError]",
+            "divide: fn(right: BigInt)-\u003eResult[BigInt, BigIntError]",
             "multiply: fn(right: BigInt)-\u003eBigInt",
-            "remainder: fn(right: BigInt)-\u003eResult[BigInt, LibraryError]",
+            "remainder: fn(right: BigInt)-\u003eResult[BigInt, BigIntError]",
             "subtract: fn(right: BigInt)-\u003eBigInt",
             "to_int: fn()-\u003eOptional[Int]",
             "to_string: fn(radix: Int)-\u003eString"
+          ]
+        },
+        {
+          "name": "BigIntError",
+          "kind": "alternative",
+          "type": "BigIntError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         },
         {
@@ -85,7 +119,7 @@
         {
           "name": "divide",
           "kind": "fn",
-          "type": "fn(left: BigInt, right: BigInt)-\u003eResult[BigInt, LibraryError]"
+          "type": "fn(left: BigInt, right: BigInt)-\u003eResult[BigInt, BigIntError]"
         },
         {
           "name": "format",
@@ -105,12 +139,12 @@
         {
           "name": "parse",
           "kind": "fn",
-          "type": "fn(text: String, radix: Int, max_digits: Int)-\u003eResult[BigInt, LibraryError]"
+          "type": "fn(text: String, radix: Int, max_digits: Int)-\u003eResult[BigInt, BigIntError]"
         },
         {
           "name": "remainder",
           "kind": "fn",
-          "type": "fn(left: BigInt, right: BigInt)-\u003eResult[BigInt, LibraryError]"
+          "type": "fn(left: BigInt, right: BigInt)-\u003eResult[BigInt, BigIntError]"
         },
         {
           "name": "subtract",
@@ -128,14 +162,29 @@
       "path": "@std/binary.ms",
       "declarations": [
         {
+          "name": "BinaryError",
+          "kind": "alternative",
+          "type": "BinaryError",
+          "cases": [
+            "InvalidInput",
+            "OutOfRange"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "read_float",
           "kind": "fn",
-          "type": "fn(data: Bytes, offset: Int, little_endian: Bool)-\u003eResult[Float, LibraryError]"
+          "type": "fn(data: Bytes, offset: Int, little_endian: Bool)-\u003eResult[Float, BinaryError]"
         },
         {
           "name": "read_integer",
           "kind": "fn",
-          "type": "fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Int, LibraryError]"
+          "type": "fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Int, BinaryError]"
         },
         {
           "name": "write_float",
@@ -145,7 +194,7 @@
         {
           "name": "write_integer",
           "kind": "fn",
-          "type": "fn(value: Int, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(value: Int, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Bytes, BinaryError]"
         }
       ]
     },
@@ -336,6 +385,21 @@
       "path": "@std/collections.ms",
       "declarations": [
         {
+          "name": "CollectionError",
+          "kind": "alternative",
+          "type": "CollectionError",
+          "cases": [
+            "InvalidInput",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "List",
           "kind": "interface",
           "type": "List[T]",
@@ -507,7 +571,7 @@
         {
           "name": "filled",
           "kind": "fn",
-          "type": "fn(value: T, count: Int, max_items: Int)-\u003eResult[List[T], LibraryError]",
+          "type": "fn(value: T, count: Int, max_items: Int)-\u003eResult[List[T], CollectionError]",
           "type_parameters": [
             "T"
           ]
@@ -793,7 +857,7 @@
         {
           "name": "range",
           "kind": "fn",
-          "type": "fn(start: Int, end: Int, step: Int, max_items: Int)-\u003eResult[List[Int], LibraryError]"
+          "type": "fn(start: Int, end: Int, step: Int, max_items: Int)-\u003eResult[List[Int], CollectionError]"
         },
         {
           "name": "reverse",
@@ -923,20 +987,54 @@
       "path": "@std/compress.ms",
       "declarations": [
         {
+          "name": "CompressionError",
+          "kind": "alternative",
+          "type": "CompressionError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "Unsupported",
+            "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "compress",
           "kind": "fn",
-          "type": "fn(data: Bytes, format: String, level: Int, max_bytes: Int)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(data: Bytes, format: String, level: Int, max_bytes: Int)-\u003eResult[Bytes, CompressionError]"
         },
         {
           "name": "decompress",
           "kind": "fn",
-          "type": "fn(data: Bytes, format: String, max_bytes: Int)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(data: Bytes, format: String, max_bytes: Int)-\u003eResult[Bytes, CompressionError]"
         }
       ]
     },
     {
       "path": "@std/crypto.ms",
       "declarations": [
+        {
+          "name": "CryptoError",
+          "kind": "alternative",
+          "type": "CryptoError",
+          "cases": [
+            "InvalidInput",
+            "Unsupported",
+            "AuthenticationFailed"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
         {
           "name": "constant_time_equal",
           "kind": "fn",
@@ -945,27 +1043,27 @@
         {
           "name": "derive_key",
           "kind": "fn",
-          "type": "fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "hmac",
           "kind": "fn",
-          "type": "fn(key: Bytes, data: Bytes, algorithm: String)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(key: Bytes, data: Bytes, algorithm: String)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "open",
           "kind": "fn",
-          "type": "fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "public_key",
           "kind": "fn",
-          "type": "fn(seed: Bytes)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(seed: Bytes)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "seal",
           "kind": "fn",
-          "type": "fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "sha256",
@@ -985,7 +1083,7 @@
         {
           "name": "sign",
           "kind": "fn",
-          "type": "fn(seed: Bytes, data: Bytes)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(seed: Bytes, data: Bytes)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "verify",
@@ -998,6 +1096,22 @@
       "path": "@std/csv.ms",
       "declarations": [
         {
+          "name": "CsvError",
+          "kind": "alternative",
+          "type": "CsvError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "CsvOptions",
           "kind": "record",
           "type": "CsvOptions",
@@ -1009,12 +1123,12 @@
         {
           "name": "parse",
           "kind": "fn",
-          "type": "fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)-\u003eResult[List[List[String]], LibraryError]"
+          "type": "fn(text: String, options: CsvOptions, max_rows: Int, max_cells: Int)-\u003eResult[List[List[String]], CsvError]"
         },
         {
           "name": "stringify",
           "kind": "fn",
-          "type": "fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(rows: List[List[String]], options: CsvOptions, max_bytes: Int)-\u003eResult[String, CsvError]"
         }
       ]
     },
@@ -1036,9 +1150,25 @@
       "path": "@std/encoding.ms",
       "declarations": [
         {
+          "name": "EncodingError",
+          "kind": "alternative",
+          "type": "EncodingError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "base64_decode",
           "kind": "fn",
-          "type": "fn(text: String, url_safe: Bool, max_bytes: Int)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(text: String, url_safe: Bool, max_bytes: Int)-\u003eResult[Bytes, EncodingError]"
         },
         {
           "name": "base64_encode",
@@ -1048,7 +1178,7 @@
         {
           "name": "hex_decode",
           "kind": "fn",
-          "type": "fn(text: String, max_bytes: Int)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(text: String, max_bytes: Int)-\u003eResult[Bytes, EncodingError]"
         },
         {
           "name": "hex_encode",
@@ -1061,22 +1191,11 @@
       "path": "@std/errors.ms",
       "declarations": [
         {
-          "name": "LibraryError",
-          "kind": "alternative",
-          "type": "LibraryError",
-          "cases": [
-            "InvalidInput",
-            "InvalidData",
-            "OutOfRange",
-            "LimitExceeded",
-            "NotFound",
-            "AlreadyExists",
-            "PermissionDenied",
-            "Unsupported",
-            "Closed",
-            "Timeout",
-            "AuthenticationFailed",
-            "Failed(message: String)"
+          "name": "Error",
+          "kind": "interface",
+          "type": "Error",
+          "operations": [
+            "message: fn()-\u003eString"
           ]
         }
       ]
@@ -1121,18 +1240,39 @@
           "kind": "interface",
           "type": "FileSystem",
           "operations": [
-            "canonicalize: fn(path: String)-\u003eResult[String, LibraryError]",
-            "copy_file: fn(source: String, destination: String, replace: Bool, max_bytes: Int)-\u003eResult[Unit, LibraryError]",
-            "create_directory: fn(path: String, recursive: Bool)-\u003eResult[Unit, LibraryError]",
-            "create_link: fn(path: String, target: String)-\u003eResult[Unit, LibraryError]",
-            "list: fn(path: String, max_entries: Int)-\u003eResult[List[DirectoryEntry], LibraryError]",
-            "read_file: fn(path: String, max_bytes: Int)-\u003eResult[Bytes, LibraryError]",
-            "read_link: fn(path: String)-\u003eResult[String, LibraryError]",
-            "remove: fn(path: String, recursive: Bool)-\u003eResult[Unit, LibraryError]",
-            "rename: fn(source: String, destination: String)-\u003eResult[Unit, LibraryError]",
-            "stat: fn(path: String, follow_links: Bool)-\u003eResult[FileInfo, LibraryError]",
-            "temporary_directory: fn(prefix: String)-\u003eResult[String, LibraryError]",
-            "write_file: fn(path: String, data: Bytes, replace: Bool)-\u003eResult[Unit, LibraryError]"
+            "canonicalize: fn(path: String)-\u003eResult[String, FileSystemError]",
+            "copy_file: fn(source: String, destination: String, replace: Bool, max_bytes: Int)-\u003eResult[Unit, FileSystemError]",
+            "create_directory: fn(path: String, recursive: Bool)-\u003eResult[Unit, FileSystemError]",
+            "create_link: fn(path: String, target: String)-\u003eResult[Unit, FileSystemError]",
+            "list: fn(path: String, max_entries: Int)-\u003eResult[List[DirectoryEntry], FileSystemError]",
+            "read_file: fn(path: String, max_bytes: Int)-\u003eResult[Bytes, FileSystemError]",
+            "read_link: fn(path: String)-\u003eResult[String, FileSystemError]",
+            "remove: fn(path: String, recursive: Bool)-\u003eResult[Unit, FileSystemError]",
+            "rename: fn(source: String, destination: String)-\u003eResult[Unit, FileSystemError]",
+            "stat: fn(path: String, follow_links: Bool)-\u003eResult[FileInfo, FileSystemError]",
+            "temporary_directory: fn(prefix: String)-\u003eResult[String, FileSystemError]",
+            "write_file: fn(path: String, data: Bytes, replace: Bool)-\u003eResult[Unit, FileSystemError]"
+          ]
+        },
+        {
+          "name": "FileSystemError",
+          "kind": "alternative",
+          "type": "FileSystemError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "NotFound",
+            "AlreadyExists",
+            "PermissionDenied",
+            "Unsupported",
+            "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         }
       ]
@@ -1166,8 +1306,8 @@
           "type": "HttpClient",
           "operations": [
             "close: fn()-\u003eUnit",
-            "send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-\u003eResult[ResponseBody, LibraryError]",
-            "send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration)-\u003eResult[ResponseBody, LibraryError]"
+            "send: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-\u003eResult[ResponseBody, HttpError]",
+            "send_stream: fn(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration)-\u003eResult[ResponseBody, HttpError]"
           ]
         },
         {
@@ -1185,6 +1325,26 @@
           ]
         },
         {
+          "name": "HttpError",
+          "kind": "alternative",
+          "type": "HttpError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "PermissionDenied",
+            "Closed",
+            "Timeout",
+            "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "HttpExchange",
           "kind": "interface",
           "type": "HttpExchange",
@@ -1195,8 +1355,8 @@
             "path: fn()-\u003eString",
             "query: fn()-\u003eString",
             "read: fn(max_bytes: Int)-\u003eResult[Optional[Bytes], IoError]",
-            "send_headers: fn(status: Int, headers: Map[String, List[String]])-\u003eResult[Unit, LibraryError]",
-            "upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)-\u003eResult[WebSocket, LibraryError]",
+            "send_headers: fn(status: Int, headers: Map[String, List[String]])-\u003eResult[Unit, HttpError]",
+            "upgrade: fn(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int)-\u003eResult[WebSocket, WebSocketError]",
             "write: fn(data: Bytes)-\u003eResult[Unit, IoError]"
           ]
         },
@@ -1251,24 +1411,24 @@
           "kind": "interface",
           "type": "Network",
           "operations": [
-            "bind_datagram: fn(address: String)-\u003eResult[DatagramSocket, LibraryError]",
+            "bind_datagram: fn(address: String)-\u003eResult[DatagramSocket, NetworkError]",
             "close: fn()-\u003eUnit",
-            "connect: fn(address: String, timeout: Duration)-\u003eResult[Connection, LibraryError]",
-            "connect_tls: fn(address: String, server_name: String, timeout: Duration)-\u003eResult[Connection, LibraryError]",
-            "connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)-\u003eResult[Connection, LibraryError]",
-            "connect_unix: fn(path: String, timeout: Duration)-\u003eResult[Connection, LibraryError]",
-            "http_client: fn(options: HttpClientOptions)-\u003eResult[HttpClient, LibraryError]",
-            "listen: fn(address: String)-\u003eResult[Listener, LibraryError]",
-            "listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)-\u003eResult[Listener, LibraryError]",
-            "listen_unix: fn(path: String)-\u003eResult[Listener, LibraryError]",
-            "lookup: fn(name: String, max_records: Int, timeout: Duration)-\u003eResult[List[String], LibraryError]",
-            "request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-\u003eResult[ClientResponse, LibraryError]",
-            "resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)-\u003eResult[List[DnsRecord], LibraryError]",
-            "restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)-\u003eResult[Network, LibraryError]",
+            "connect: fn(address: String, timeout: Duration)-\u003eResult[Connection, NetworkError]",
+            "connect_tls: fn(address: String, server_name: String, timeout: Duration)-\u003eResult[Connection, NetworkError]",
+            "connect_tls_config: fn(address: String, options: TlsOptions, timeout: Duration)-\u003eResult[Connection, NetworkError]",
+            "connect_unix: fn(path: String, timeout: Duration)-\u003eResult[Connection, NetworkError]",
+            "http_client: fn(options: HttpClientOptions)-\u003eResult[HttpClient, HttpError]",
+            "listen: fn(address: String)-\u003eResult[Listener, NetworkError]",
+            "listen_tls: fn(address: String, options: TlsOptions, handshake_timeout: Duration)-\u003eResult[Listener, NetworkError]",
+            "listen_unix: fn(path: String)-\u003eResult[Listener, NetworkError]",
+            "lookup: fn(name: String, max_records: Int, timeout: Duration)-\u003eResult[List[String], NetworkError]",
+            "request: fn(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration)-\u003eResult[ClientResponse, HttpError]",
+            "resolve: fn(name: String, kind: String, max_records: Int, timeout: Duration)-\u003eResult[List[DnsRecord], NetworkError]",
+            "restrict: fn(hosts: List[String], cidrs: List[String], allow_listen: Bool)-\u003eResult[Network, NetworkError]",
             "serve: fn(address: String, handler: fn(request: HttpRequest)-\u003eHttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration)-\u003eResult[HttpServer, IoError]",
-            "serve_stream: fn(address: String, handler: fn(exchange: HttpExchange)-\u003eResult[Unit, LibraryError], options: HttpServerOptions)-\u003eResult[HttpServer, LibraryError]",
-            "web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)-\u003eResult[WebSocket, LibraryError]",
-            "with_resolver: fn(address: String)-\u003eResult[Network, LibraryError]"
+            "serve_stream: fn(address: String, handler: fn(exchange: HttpExchange)-\u003eResult[Unit, HttpError], options: HttpServerOptions)-\u003eResult[HttpServer, HttpError]",
+            "web_socket: fn(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions)-\u003eResult[WebSocket, WebSocketError]",
+            "with_resolver: fn(address: String)-\u003eResult[Network, NetworkError]"
           ]
         },
         {
@@ -1312,7 +1472,15 @@
             "Closed",
             "InvalidInput",
             "Unavailable",
+            "InvalidData",
+            "LimitExceeded",
             "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         },
         {
@@ -1337,23 +1505,39 @@
         {
           "name": "copy",
           "kind": "fn",
-          "type": "fn(input: ReadStream, output: WriteStream, max_bytes: Int)-\u003eResult[Int, LibraryError]"
+          "type": "fn(input: ReadStream, output: WriteStream, max_bytes: Int)-\u003eResult[Int, IoError]"
         },
         {
           "name": "read_all",
           "kind": "fn",
-          "type": "fn(input: ReadStream, max_bytes: Int)-\u003eResult[Bytes, LibraryError]"
+          "type": "fn(input: ReadStream, max_bytes: Int)-\u003eResult[Bytes, IoError]"
         },
         {
           "name": "read_line",
           "kind": "fn",
-          "type": "fn(input: ReadStream, max_bytes: Int)-\u003eResult[Optional[String], LibraryError]"
+          "type": "fn(input: ReadStream, max_bytes: Int)-\u003eResult[Optional[String], IoError]"
         }
       ]
     },
     {
       "path": "@std/json.ms",
       "declarations": [
+        {
+          "name": "JsonError",
+          "kind": "alternative",
+          "type": "JsonError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
         {
           "name": "JsonLimits",
           "kind": "record",
@@ -1380,12 +1564,12 @@
         {
           "name": "parse",
           "kind": "fn",
-          "type": "fn(text: String, limits: JsonLimits)-\u003eResult[JsonValue, LibraryError]"
+          "type": "fn(text: String, limits: JsonLimits)-\u003eResult[JsonValue, JsonError]"
         },
         {
           "name": "stringify",
           "kind": "fn",
-          "type": "fn(value: JsonValue, max_bytes: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(value: JsonValue, max_bytes: Int)-\u003eResult[String, JsonError]"
         }
       ]
     },
@@ -1393,9 +1577,26 @@
       "path": "@std/log.ms",
       "declarations": [
         {
+          "name": "LogError",
+          "kind": "alternative",
+          "type": "LogError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "Io(cause: IoError)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "write",
           "kind": "fn",
-          "type": "fn(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int)-\u003eResult[Unit, LibraryError]"
+          "type": "fn(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int)-\u003eResult[Unit, LogError]"
         }
       ]
     },
@@ -1567,8 +1768,8 @@
             "peer_address: fn()-\u003eString",
             "read: fn(max_bytes: Int)-\u003eResult[Optional[Bytes], IoError]",
             "read_timeout: fn(max_bytes: Int, timeout: Duration)-\u003eResult[Optional[Bytes], IoError]",
-            "shutdown_write: fn()-\u003eResult[Unit, LibraryError]",
-            "tls_info: fn()-\u003eResult[TlsInfo, LibraryError]",
+            "shutdown_write: fn()-\u003eResult[Unit, NetworkError]",
+            "tls_info: fn()-\u003eResult[TlsInfo, TlsError]",
             "write: fn(data: Bytes)-\u003eResult[Unit, IoError]",
             "write_timeout: fn(data: Bytes, timeout: Duration)-\u003eResult[Unit, IoError]"
           ]
@@ -1589,10 +1790,10 @@
           "operations": [
             "address: fn()-\u003eString",
             "close: fn()-\u003eUnit",
-            "receive: fn(max_bytes: Int)-\u003eResult[Datagram, LibraryError]",
-            "receive_timeout: fn(max_bytes: Int, timeout: Duration)-\u003eResult[Datagram, LibraryError]",
-            "send: fn(data: Bytes, address: String)-\u003eResult[Unit, LibraryError]",
-            "send_timeout: fn(data: Bytes, address: String, timeout: Duration)-\u003eResult[Unit, LibraryError]"
+            "receive: fn(max_bytes: Int)-\u003eResult[Datagram, NetworkError]",
+            "receive_timeout: fn(max_bytes: Int, timeout: Duration)-\u003eResult[Datagram, NetworkError]",
+            "send: fn(data: Bytes, address: String)-\u003eResult[Unit, NetworkError]",
+            "send_timeout: fn(data: Bytes, address: String, timeout: Duration)-\u003eResult[Unit, NetworkError]"
           ]
         },
         {
@@ -1612,26 +1813,47 @@
           "kind": "interface",
           "type": "Listener",
           "operations": [
-            "accept: fn()-\u003eResult[Connection, LibraryError]",
-            "accept_timeout: fn(timeout: Duration)-\u003eResult[Connection, LibraryError]",
+            "accept: fn()-\u003eResult[Connection, NetworkError]",
+            "accept_timeout: fn(timeout: Duration)-\u003eResult[Connection, NetworkError]",
             "address: fn()-\u003eString",
             "close: fn()-\u003eUnit"
           ]
         },
         {
+          "name": "NetworkError",
+          "kind": "alternative",
+          "type": "NetworkError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "PermissionDenied",
+            "Unsupported",
+            "Closed",
+            "Timeout",
+            "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "contains_ip",
           "kind": "fn",
-          "type": "fn(cidr: String, address: String)-\u003eResult[Bool, LibraryError]"
+          "type": "fn(cidr: String, address: String)-\u003eResult[Bool, NetworkError]"
         },
         {
           "name": "parse_cidr",
           "kind": "fn",
-          "type": "fn(text: String)-\u003eResult[String, LibraryError]"
+          "type": "fn(text: String)-\u003eResult[String, NetworkError]"
         },
         {
           "name": "parse_ip",
           "kind": "fn",
-          "type": "fn(text: String)-\u003eResult[String, LibraryError]"
+          "type": "fn(text: String)-\u003eResult[String, NetworkError]"
         }
       ]
     },
@@ -1639,14 +1861,30 @@
       "path": "@std/numbers.ms",
       "declarations": [
         {
+          "name": "NumberError",
+          "kind": "alternative",
+          "type": "NumberError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "OutOfRange"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "format_exponential",
           "kind": "fn",
-          "type": "fn(value: Float, digits: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(value: Float, digits: Int)-\u003eResult[String, NumberError]"
         },
         {
           "name": "format_fixed",
           "kind": "fn",
-          "type": "fn(value: Float, digits: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(value: Float, digits: Int)-\u003eResult[String, NumberError]"
         },
         {
           "name": "format_float",
@@ -1661,17 +1899,17 @@
         {
           "name": "format_precision",
           "kind": "fn",
-          "type": "fn(value: Float, precision: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(value: Float, precision: Int)-\u003eResult[String, NumberError]"
         },
         {
           "name": "parse_float",
           "kind": "fn",
-          "type": "fn(text: String)-\u003eResult[Float, LibraryError]"
+          "type": "fn(text: String)-\u003eResult[Float, NumberError]"
         },
         {
           "name": "parse_int",
           "kind": "fn",
-          "type": "fn(text: String, radix: Int)-\u003eResult[Int, LibraryError]"
+          "type": "fn(text: String, radix: Int)-\u003eResult[Int, NumberError]"
         }
       ]
     },
@@ -1695,6 +1933,20 @@
     {
       "path": "@std/path.ms",
       "declarations": [
+        {
+          "name": "PathError",
+          "kind": "alternative",
+          "type": "PathError",
+          "cases": [
+            "InvalidInput"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
         {
           "name": "basename",
           "kind": "fn",
@@ -1728,7 +1980,7 @@
         {
           "name": "relative",
           "kind": "fn",
-          "type": "fn(base: String, target: String)-\u003eResult[String, LibraryError]"
+          "type": "fn(base: String, target: String)-\u003eResult[String, PathError]"
         }
       ]
     },
@@ -1768,6 +2020,12 @@
           "type": "PoolError",
           "cases": [
             "Closed"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         }
       ]
@@ -1785,6 +2043,12 @@
             "TimedOut",
             "OutputLimit",
             "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         },
         {
@@ -1838,18 +2102,34 @@
           "kind": "interface",
           "type": "Entropy",
           "operations": [
-            "bytes: fn(count: Int)-\u003eResult[Bytes, LibraryError]"
+            "bytes: fn(count: Int)-\u003eResult[Bytes, RandomError]"
+          ]
+        },
+        {
+          "name": "RandomError",
+          "kind": "alternative",
+          "type": "RandomError",
+          "cases": [
+            "InvalidInput",
+            "LimitExceeded",
+            "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         },
         {
           "name": "secure_int",
           "kind": "fn",
-          "type": "fn(entropy: Entropy, min: Int, max_exclusive: Int)-\u003eResult[Int, LibraryError]"
+          "type": "fn(entropy: Entropy, min: Int, max_exclusive: Int)-\u003eResult[Int, RandomError]"
         },
         {
           "name": "uuid_v4",
           "kind": "fn",
-          "type": "fn(entropy: Entropy)-\u003eResult[String, LibraryError]"
+          "type": "fn(entropy: Entropy)-\u003eResult[String, RandomError]"
         }
       ]
     },
@@ -1861,20 +2141,36 @@
           "kind": "interface",
           "type": "Regex",
           "operations": [
-            "find_all: fn(text: String, max_matches: Int)-\u003eResult[List[String], LibraryError]",
+            "find_all: fn(text: String, max_matches: Int)-\u003eResult[List[String], RegexError]",
             "matches: fn(text: String)-\u003eBool",
-            "replace: fn(text: String, replacement: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+            "replace: fn(text: String, replacement: String, max_bytes: Int)-\u003eResult[String, RegexError]"
+          ]
+        },
+        {
+          "name": "RegexError",
+          "kind": "alternative",
+          "type": "RegexError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         },
         {
           "name": "compile",
           "kind": "fn",
-          "type": "fn(pattern: String)-\u003eResult[Regex, LibraryError]"
+          "type": "fn(pattern: String)-\u003eResult[Regex, RegexError]"
         },
         {
           "name": "find_all",
           "kind": "fn",
-          "type": "fn(pattern: Regex, text: String, max_matches: Int)-\u003eResult[List[String], LibraryError]"
+          "type": "fn(pattern: Regex, text: String, max_matches: Int)-\u003eResult[List[String], RegexError]"
         },
         {
           "name": "matches",
@@ -1884,7 +2180,7 @@
         {
           "name": "replace",
           "kind": "fn",
-          "type": "fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(pattern: Regex, text: String, replacement: String, max_bytes: Int)-\u003eResult[String, RegexError]"
         }
       ]
     },
@@ -1910,6 +2206,23 @@
       "path": "@std/string.ms",
       "declarations": [
         {
+          "name": "StringError",
+          "kind": "alternative",
+          "type": "StringError",
+          "cases": [
+            "InvalidInput",
+            "OutOfRange",
+            "LimitExceeded",
+            "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "at",
           "kind": "fn",
           "type": "fn(text: String, index: Int)-\u003eOptional[String]"
@@ -1932,7 +2245,7 @@
         {
           "name": "from_scalars",
           "kind": "fn",
-          "type": "fn(values: List[Int])-\u003eResult[String, LibraryError]"
+          "type": "fn(values: List[Int])-\u003eResult[String, StringError]"
         },
         {
           "name": "index_of",
@@ -1957,22 +2270,22 @@
         {
           "name": "normalize",
           "kind": "fn",
-          "type": "fn(text: String, form: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(text: String, form: String, max_bytes: Int)-\u003eResult[String, StringError]"
         },
         {
           "name": "pad_end",
           "kind": "fn",
-          "type": "fn(text: String, target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(text: String, target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, StringError]"
         },
         {
           "name": "pad_start",
           "kind": "fn",
-          "type": "fn(text: String, target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(text: String, target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, StringError]"
         },
         {
           "name": "repeat",
           "kind": "fn",
-          "type": "fn(text: String, count: Int, max_bytes: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(text: String, count: Int, max_bytes: Int)-\u003eResult[String, StringError]"
         },
         {
           "name": "replace",
@@ -1982,7 +2295,7 @@
         {
           "name": "replace_all",
           "kind": "fn",
-          "type": "fn(text: String, old: String, new: String, max_bytes: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(text: String, old: String, new: String, max_bytes: Int)-\u003eResult[String, StringError]"
         },
         {
           "name": "scalar_at",
@@ -2007,7 +2320,7 @@
         {
           "name": "slice_scalars",
           "kind": "fn",
-          "type": "fn(text: String, start: Int, end: Int)-\u003eResult[String, LibraryError]"
+          "type": "fn(text: String, start: Int, end: Int)-\u003eResult[String, StringError]"
         },
         {
           "name": "split",
@@ -2133,6 +2446,12 @@
           "cases": [
             "TimedOut",
             "Crashed(operation: OperationId, message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         },
         {
@@ -2147,6 +2466,12 @@
           "cases": [
             "Closed",
             "Full"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         },
         {
@@ -2171,15 +2496,6 @@
           "name": "parallel",
           "kind": "fn",
           "type": "fn()-\u003e\u003cunknown\u003e"
-        },
-        {
-          "name": "parallel_map",
-          "kind": "fn",
-          "type": "fn(items: List[T], operation: fn(item: T)-\u003eU, limit: Int)-\u003eResult[List[U], ExecutionError]",
-          "type_parameters": [
-            "T",
-            "U"
-          ]
         }
       ]
     },
@@ -2205,6 +2521,21 @@
           "type": "Instant"
         },
         {
+          "name": "TimeError",
+          "kind": "alternative",
+          "type": "TimeError",
+          "cases": [
+            "InvalidData",
+            "OutOfRange"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "Timestamp",
           "kind": "native",
           "type": "Timestamp"
@@ -2220,7 +2551,7 @@
         {
           "name": "difference",
           "kind": "fn",
-          "type": "fn(left: Timestamp, right: Timestamp)-\u003eResult[Duration, LibraryError]"
+          "type": "fn(left: Timestamp, right: Timestamp)-\u003eResult[Duration, TimeError]"
         },
         {
           "name": "format_timestamp",
@@ -2235,12 +2566,12 @@
         {
           "name": "parse_timestamp",
           "kind": "fn",
-          "type": "fn(text: String)-\u003eResult[Timestamp, LibraryError]"
+          "type": "fn(text: String)-\u003eResult[Timestamp, TimeError]"
         },
         {
           "name": "shift",
           "kind": "fn",
-          "type": "fn(value: Timestamp, duration: Duration)-\u003eResult[Timestamp, LibraryError]"
+          "type": "fn(value: Timestamp, duration: Duration)-\u003eResult[Timestamp, TimeError]"
         },
         {
           "name": "sleep",
@@ -2250,7 +2581,7 @@
         {
           "name": "timestamp",
           "kind": "fn",
-          "type": "fn(seconds: Int, nanoseconds: Int)-\u003eResult[Timestamp, LibraryError]"
+          "type": "fn(seconds: Int, nanoseconds: Int)-\u003eResult[Timestamp, TimeError]"
         },
         {
           "name": "unix_seconds",
@@ -2273,6 +2604,23 @@
             "not_before: Timestamp",
             "not_after: Timestamp",
             "der: Bytes"
+          ]
+        },
+        {
+          "name": "TlsError",
+          "kind": "alternative",
+          "type": "TlsError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "AuthenticationFailed"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         },
         {
@@ -2303,12 +2651,12 @@
         {
           "name": "parse_certificates",
           "kind": "fn",
-          "type": "fn(pem: String, max_certificates: Int)-\u003eResult[List[CertificateInfo], LibraryError]"
+          "type": "fn(pem: String, max_certificates: Int)-\u003eResult[List[CertificateInfo], TlsError]"
         },
         {
           "name": "verify_certificates",
           "kind": "fn",
-          "type": "fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)-\u003eResult[Unit, LibraryError]"
+          "type": "fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)-\u003eResult[Unit, TlsError]"
         }
       ]
     },
@@ -2338,9 +2686,25 @@
           ]
         },
         {
+          "name": "UrlError",
+          "kind": "alternative",
+          "type": "UrlError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
           "name": "decode_component",
           "kind": "fn",
-          "type": "fn(text: String)-\u003eResult[String, LibraryError]"
+          "type": "fn(text: String)-\u003eResult[String, UrlError]"
         },
         {
           "name": "encode_component",
@@ -2350,7 +2714,7 @@
         {
           "name": "format",
           "kind": "fn",
-          "type": "fn(value: Url)-\u003eResult[String, LibraryError]"
+          "type": "fn(value: Url)-\u003eResult[String, UrlError]"
         },
         {
           "name": "format_query",
@@ -2360,17 +2724,17 @@
         {
           "name": "parse",
           "kind": "fn",
-          "type": "fn(text: String)-\u003eResult[Url, LibraryError]"
+          "type": "fn(text: String)-\u003eResult[Url, UrlError]"
         },
         {
           "name": "parse_query",
           "kind": "fn",
-          "type": "fn(text: String, max_entries: Int)-\u003eResult[List[QueryEntry], LibraryError]"
+          "type": "fn(text: String, max_entries: Int)-\u003eResult[List[QueryEntry], UrlError]"
         },
         {
           "name": "resolve",
           "kind": "fn",
-          "type": "fn(base: Url, reference: String)-\u003eResult[Url, LibraryError]"
+          "type": "fn(base: Url, reference: String)-\u003eResult[Url, UrlError]"
         }
       ]
     },
@@ -2383,10 +2747,30 @@
           "type": "WebSocket",
           "operations": [
             "close: fn()-\u003eUnit",
-            "ping: fn(data: Bytes)-\u003eResult[Unit, LibraryError]",
-            "receive: fn()-\u003eResult[Optional[WebSocketMessage], LibraryError]",
-            "send: fn(data: Bytes, text: Bool)-\u003eResult[Unit, LibraryError]",
+            "ping: fn(data: Bytes)-\u003eResult[Unit, WebSocketError]",
+            "receive: fn()-\u003eResult[Optional[WebSocketMessage], WebSocketError]",
+            "send: fn(data: Bytes, text: Bool)-\u003eResult[Unit, WebSocketError]",
             "subprotocol: fn()-\u003eString"
+          ]
+        },
+        {
+          "name": "WebSocketError",
+          "kind": "alternative",
+          "type": "WebSocketError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "PermissionDenied",
+            "Closed",
+            "Timeout",
+            "Failed(message: String)"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
           ]
         },
         {
@@ -2431,9 +2815,9 @@
           "operations": [
             "is_finite: fn()-\u003eBool",
             "is_nan: fn()-\u003eBool",
-            "to_exponential: fn(digits: Int)-\u003eResult[String, LibraryError]",
-            "to_fixed: fn(digits: Int)-\u003eResult[String, LibraryError]",
-            "to_precision: fn(precision: Int)-\u003eResult[String, LibraryError]",
+            "to_exponential: fn(digits: Int)-\u003eResult[String, NumberError]",
+            "to_fixed: fn(digits: Int)-\u003eResult[String, NumberError]",
+            "to_precision: fn(precision: Int)-\u003eResult[String, NumberError]",
             "to_string: fn()-\u003eString",
             "truncate_to_int: fn()-\u003eOptional[Int]"
           ]
@@ -2471,18 +2855,18 @@
             "index_of: fn(value: String)-\u003eOptional[Int]",
             "last_index_of: fn(value: String)-\u003eOptional[Int]",
             "lower: fn()-\u003eString",
-            "normalize: fn(form: String, max_bytes: Int)-\u003eResult[String, LibraryError]",
-            "pad_end: fn(target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, LibraryError]",
-            "pad_start: fn(target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, LibraryError]",
+            "normalize: fn(form: String, max_bytes: Int)-\u003eResult[String, StringError]",
+            "pad_end: fn(target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, StringError]",
+            "pad_start: fn(target_length: Int, padding: String, max_bytes: Int)-\u003eResult[String, StringError]",
             "parse_int: fn()-\u003eOptional[Int]",
-            "repeat: fn(count: Int, max_bytes: Int)-\u003eResult[String, LibraryError]",
+            "repeat: fn(count: Int, max_bytes: Int)-\u003eResult[String, StringError]",
             "replace: fn(old: String, new: String, max_replacements: Int)-\u003eString",
-            "replace_all: fn(old: String, new: String, max_bytes: Int)-\u003eResult[String, LibraryError]",
+            "replace_all: fn(old: String, new: String, max_bytes: Int)-\u003eResult[String, StringError]",
             "scalar_at: fn(index: Int)-\u003eOptional[Int]",
             "scalar_length: fn()-\u003eInt",
             "scalar_values: fn()-\u003eList[Int]",
             "slice: fn(start: Int, end: Int)-\u003eString",
-            "slice_scalars: fn(start: Int, end: Int)-\u003eResult[String, LibraryError]",
+            "slice_scalars: fn(start: Int, end: Int)-\u003eResult[String, StringError]",
             "split: fn(separator: String, max_parts: Int)-\u003eList[String]",
             "starts_with: fn(prefix: String)-\u003eBool",
             "substring: fn(start: Int, end: Int)-\u003eString",

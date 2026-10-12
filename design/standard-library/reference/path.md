@@ -6,6 +6,18 @@ title = "path"
 
 Import each required symbol with `import Name from "@std/path.ms"`.
 
+## PathError {data-api-kind="Alternative"}
+
+```manuscript
+type PathError:
+    case InvalidInput
+```
+
+```manuscript
+impl Error for PathError:
+    fn message() -> String
+```
+
 ## basename {data-api-kind="Function"}
 
 ```manuscript
@@ -45,6 +57,6 @@ fn normalize(path: String) -> String
 ## relative {data-api-kind="Function"}
 
 ```manuscript
-fn relative(base: String, target: String) -> Result[String, LibraryError]
+fn relative(base: String, target: String) -> Result[String, PathError]
 ```
 

@@ -13,8 +13,8 @@ A parallel call waits for all the operations it started, including their cleanup
 
 | Term | Meaning |
 | --- | --- |
-| Operation | One invocation of a function passed to a concurrency API: a `tasks` position, one `parallel_map` item, or one `Background.start` submission |
-| Group | The operations started by one `parallel` or `parallel_map` call |
+| Operation | One invocation of a function passed to a concurrency API: a `tasks` position or one `Background.start` submission |
+| Group | The operations started by one `parallel` call |
 | Caller | The execution that called the API; its context is the group's fixed parent |
 | Joined | Every started operation has finished its body and scope cleanup |
 
@@ -33,7 +33,7 @@ type ExecutionError:
 ## Group lifecycle
 
 1. **Prepare.** The caller evaluates arguments in written order. If preparation fails, no operation starts. See [preparation](parallel.md#preparation).
-2. **Start.** An empty pack or list returns `ok` immediately and starts no work, whatever the timeout. A zero timeout on nonempty input stops the group before any operation starts. Otherwise `parallel` starts every position and `parallel_map` keeps at most `limit` operations active.
+2. **Start.** An empty pack returns `ok` immediately and starts no work, whatever the timeout. A zero timeout on nonempty input stops the group before any operation starts. Otherwise `parallel` starts every position.
 3. **Stop.** The first of these triggers stops the group: an operation faults, the group's `timeout` expires, or the caller's context is cancelled or reaches its inherited deadline. Stopping prevents further starts and requests cancellation of unfinished operations. Returning a domain `error(cause: ...)` is ordinary completion and never stops the group.
 4. **Join.** The API waits for every started operation, including its cleanup. Joining is not bounded by the timeout; uncooperative work falls to [host escalation](runtime.md#host-escalation).
 5. **Report.** After joining, the caller observes the first matching row:

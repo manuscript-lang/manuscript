@@ -1,16 +1,4 @@
-# Canonical standard-library declarations. Implementations are native.
+# Expected failures share this explicitly implemented diagnostic contract.
 
-
-export type LibraryError:
-    case InvalidInput
-    case InvalidData
-    case OutOfRange
-    case LimitExceeded
-    case NotFound
-    case AlreadyExists
-    case PermissionDenied
-    case Unsupported
-    case Closed
-    case Timeout
-    case AuthenticationFailed
-    case Failed(message: String)
+export interface Error:
+    fn message() -> String

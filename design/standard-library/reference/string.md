@@ -6,6 +6,21 @@ title = "string"
 
 Import each required symbol with `import Name from "@std/string.ms"`.
 
+## StringError {data-api-kind="Alternative"}
+
+```manuscript
+type StringError:
+    case InvalidInput
+    case OutOfRange
+    case LimitExceeded
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for StringError:
+    fn message() -> String
+```
+
 ## at {data-api-kind="Function"}
 
 ```manuscript
@@ -33,7 +48,7 @@ fn ends_with(value: String, suffix: String) -> Bool
 ## from_scalars {data-api-kind="Function"}
 
 ```manuscript
-fn from_scalars(values: List[Int]) -> Result[String, LibraryError]
+fn from_scalars(values: List[Int]) -> Result[String, StringError]
 ```
 
 ## index_of {data-api-kind="Function"}
@@ -63,25 +78,25 @@ fn lower(text: String) -> String
 ## normalize {data-api-kind="Function"}
 
 ```manuscript
-fn normalize(text: String, form: String, max_bytes: Int) -> Result[String, LibraryError]
+fn normalize(text: String, form: String, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## pad_end {data-api-kind="Function"}
 
 ```manuscript
-fn pad_end(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
+fn pad_end(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## pad_start {data-api-kind="Function"}
 
 ```manuscript
-fn pad_start(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
+fn pad_start(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## repeat {data-api-kind="Function"}
 
 ```manuscript
-fn repeat(text: String, count: Int, max_bytes: Int) -> Result[String, LibraryError]
+fn repeat(text: String, count: Int, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## replace {data-api-kind="Function"}
@@ -93,7 +108,7 @@ fn replace(text: String, old: String, new: String, max_replacements: Int) -> Str
 ## replace_all {data-api-kind="Function"}
 
 ```manuscript
-fn replace_all(text: String, old: String, new: String, max_bytes: Int) -> Result[String, LibraryError]
+fn replace_all(text: String, old: String, new: String, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## scalar_at {data-api-kind="Function"}
@@ -123,7 +138,7 @@ fn slice(text: String, start: Int, end: Int) -> String
 ## slice_scalars {data-api-kind="Function"}
 
 ```manuscript
-fn slice_scalars(text: String, start: Int, end: Int) -> Result[String, LibraryError]
+fn slice_scalars(text: String, start: Int, end: Int) -> Result[String, StringError]
 ```
 
 ## split {data-api-kind="Function"}

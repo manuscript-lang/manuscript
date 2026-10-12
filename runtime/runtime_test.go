@@ -173,35 +173,6 @@ func TestParallelEmptyZeroTimeoutAndParentCancellation(t *testing.T) {
 		t.Fatal("parent cancellation became a Result")
 	}
 }
-func TestParallelMapBoundAndOrder(t *testing.T) {
-	var active, maximum atomic.Int64
-	release := make(chan struct{})
-	entered := make(chan struct{}, 3)
-	operation := NewFunction([]string{"item"}, "Int", func(_ *Execution, args []Value) Value {
-		n := active.Add(1)
-		for {
-			previous := maximum.Load()
-			if n <= previous || maximum.CompareAndSwap(previous, n) {
-				break
-			}
-		}
-		entered <- struct{}{}
-		<-release
-		active.Add(-1)
-		return Binary("*", args[0], int64(2))
-	})
-	done := make(chan Alternative, 1)
-	go func() {
-		done <- ParallelMap(RootExecution(), "result", "@std/List[Int]", []Argument{{"items", List{"@std/List[Int]", []Value{int64(3), int64(1), int64(2)}}}, {"operation", operation}, {"limit", int64(2)}}).(Alternative)
-	}()
-	<-entered
-	<-entered
-	close(release)
-	result := <-done
-	if maximum.Load() > 2 || !equalItems(result.Fields[0].(List).Items, []Value{int64(6), int64(2), int64(4)}) {
-		t.Fatal("mapping reordered results or exceeded limit")
-	}
-}
 func startJob(ctx *Execution, b *Background, f Function) Alternative {
 	return Invoke(ctx, b.Operation("start"), []Argument{{"operation", f}}).(Alternative)
 }

@@ -11,7 +11,6 @@ The generated reference captures declaration types, bounds, fields, cases, and o
 Ordinary functions and methods with exactly one declared parameter permit omitting its argument label. Functions with multiple parameters require labels on every supplied argument, including when optional API parameters are omitted. Constructors and contract views retain their labels. Function-type labels remain part of type identity. Source functions with bodies may declare default argument expressions; their evaluation and function-value boundaries are specified in [default arguments](https://manuscript-lang.github.io/manuscript/core-language/functions/declarations-and-calls/#default-arguments).
 
 - `parallel(tasks: [fn() -> T, ...], timeout: Duration)` accepts a literal pack of zero-argument callbacks with possibly different result types. `timeout` is optional. The result is `Result[Pack, ExecutionError]`, where pack positions retain callback result types. Callbacks and results are ordinary values, including functions and contract views. Its result type is computed per call.
-- `parallel_map` also accepts optional `timeout: Duration`. Callbacks and results may be any values of the required types. Specialized function values accept the required arguments; optional timeout is available on direct calls.
 - `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit, drain: Duration, history_limit: Int)` requires only `limit`. The other arguments are optional. Reporters and start operations are ordinary callbacks; start may be stored as a bound method.
 - `Queue[T]()` creates an unbounded local FIFO. Its optional `capacity: Int` constructor argument sets a fixed positive bound; a nonpositive explicit capacity is a programming fault. Shared access requires `Synchronized[Queue[T]]`.
 - `Synchronized[T](value: T)` stores a value behind a mutex. Its `lock()` returns a `SynchronizedGuard[T]` for `with`; guard get/set require an active acquisition, and close releases it.
@@ -39,6 +38,24 @@ type ArchiveEntry:
     directory: Bool
 ```
 
+## ArchiveError
+
+**Alternative**
+
+```manuscript
+type ArchiveError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case Unsupported
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for ArchiveError:
+    fn message() -> String
+```
+
 ## ArchiveLimits
 
 **Record**
@@ -55,7 +72,7 @@ type ArchiveLimits:
 **Function**
 
 ```manuscript
-fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, ArchiveError]
 ```
 
 ## unpack
@@ -63,7 +80,7 @@ fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[B
 **Function**
 
 ```manuscript
-fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], LibraryError]
+fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], ArchiveError]
 ```
 
 # @std/bigint.ms
@@ -79,14 +96,30 @@ type BigInt:
     fn add(right: BigInt) -> BigInt
     fn subtract(right: BigInt) -> BigInt
     fn multiply(right: BigInt) -> BigInt
-    fn divide(right: BigInt) -> Result[BigInt, LibraryError]
-    fn remainder(right: BigInt) -> Result[BigInt, LibraryError]
+    fn divide(right: BigInt) -> Result[BigInt, BigIntError]
+    fn remainder(right: BigInt) -> Result[BigInt, BigIntError]
     fn compare(right: BigInt) -> Int
     fn bit_and(right: BigInt) -> BigInt
     fn bit_or(right: BigInt) -> BigInt
     fn bit_xor(right: BigInt) -> BigInt
     fn to_int() -> Optional[Int]
     fn to_string(radix: Int) -> String
+```
+
+## BigIntError
+
+**Alternative**
+
+```manuscript
+type BigIntError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for BigIntError:
+    fn message() -> String
 ```
 
 ## add
@@ -134,7 +167,7 @@ fn compare(left: BigInt, right: BigInt) -> Int
 **Function**
 
 ```manuscript
-fn divide(left: BigInt, right: BigInt) -> Result[BigInt, LibraryError]
+fn divide(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 ```
 
 ## format
@@ -166,7 +199,7 @@ fn multiply(left: BigInt, right: BigInt) -> BigInt
 **Function**
 
 ```manuscript
-fn parse(text: String, radix: Int, max_digits: Int) -> Result[BigInt, LibraryError]
+fn parse(text: String, radix: Int, max_digits: Int) -> Result[BigInt, BigIntError]
 ```
 
 ## remainder
@@ -174,7 +207,7 @@ fn parse(text: String, radix: Int, max_digits: Int) -> Result[BigInt, LibraryErr
 **Function**
 
 ```manuscript
-fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, LibraryError]
+fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 ```
 
 ## subtract
@@ -197,12 +230,27 @@ fn to_int(value: BigInt) -> Optional[Int]
 
 Import each required symbol with `import Name from "@std/binary.ms"`.
 
+## BinaryError
+
+**Alternative**
+
+```manuscript
+type BinaryError:
+    case InvalidInput
+    case OutOfRange
+```
+
+```manuscript
+impl Error for BinaryError:
+    fn message() -> String
+```
+
 ## read_float
 
 **Function**
 
 ```manuscript
-fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, LibraryError]
+fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, BinaryError]
 ```
 
 ## read_integer
@@ -210,7 +258,7 @@ fn read_float(data: Bytes, offset: Int, little_endian: Bool) -> Result[Float, Li
 **Function**
 
 ```manuscript
-fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, LibraryError]
+fn read_integer(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Int, BinaryError]
 ```
 
 ## write_float
@@ -226,7 +274,7 @@ fn write_float(value: Float, little_endian: Bool) -> Bytes
 **Function**
 
 ```manuscript
-fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, LibraryError]
+fn write_integer(value: Int, width: Int, signed: Bool, little_endian: Bool) -> Result[Bytes, BinaryError]
 ```
 
 # @std/builders.ms
@@ -441,6 +489,21 @@ type Process:
 
 Import each required symbol with `import Name from "@std/collections.ms"`.
 
+## CollectionError
+
+**Alternative**
+
+```manuscript
+type CollectionError:
+    case InvalidInput
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for CollectionError:
+    fn message() -> String
+```
+
 ## List
 
 **Native type**
@@ -603,7 +666,7 @@ fn fill[T](values: List[T], value: T, start: Int, end: Int) -> List[T]
 **Function**
 
 ```manuscript
-fn filled[T](value: T, count: Int, max_items: Int) -> Result[List[T], LibraryError]
+fn filled[T](value: T, count: Int, max_items: Int) -> Result[List[T], CollectionError]
 ```
 
 ## filter
@@ -875,7 +938,7 @@ fn prepend[T](values: List[T], value: T) -> List[T]
 **Function**
 
 ```manuscript
-fn range(start: Int, end: Int, step: Int, max_items: Int) -> Result[List[Int], LibraryError]
+fn range(start: Int, end: Int, step: Int, max_items: Int) -> Result[List[Int], CollectionError]
 ```
 
 ## reverse
@@ -1010,12 +1073,30 @@ fn without[T](values: List[T], index: Int) -> List[T]
 
 Import each required symbol with `import Name from "@std/compress.ms"`.
 
+## CompressionError
+
+**Alternative**
+
+```manuscript
+type CompressionError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case Unsupported
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for CompressionError:
+    fn message() -> String
+```
+
 ## compress
 
 **Function**
 
 ```manuscript
-fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, CompressionError]
 ```
 
 ## decompress
@@ -1023,12 +1104,28 @@ fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[B
 **Function**
 
 ```manuscript
-fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, CompressionError]
 ```
 
 # @std/crypto.ms
 
 Import each required symbol with `import Name from "@std/crypto.ms"`.
+
+## CryptoError
+
+**Alternative**
+
+```manuscript
+type CryptoError:
+    case InvalidInput
+    case Unsupported
+    case AuthenticationFailed
+```
+
+```manuscript
+impl Error for CryptoError:
+    fn message() -> String
+```
 
 ## constant_time_equal
 
@@ -1043,7 +1140,7 @@ fn constant_time_equal(left: Bytes, right: Bytes) -> Bool
 **Function**
 
 ```manuscript
-fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Result[Bytes, LibraryError]
+fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Result[Bytes, CryptoError]
 ```
 
 ## hmac
@@ -1051,7 +1148,7 @@ fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Res
 **Function**
 
 ```manuscript
-fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, LibraryError]
+fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError]
 ```
 
 ## open
@@ -1059,7 +1156,7 @@ fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, LibraryErro
 **Function**
 
 ```manuscript
-fn open(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes) -> Result[Bytes, LibraryError]
+fn open(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]
 ```
 
 ## public_key
@@ -1067,7 +1164,7 @@ fn open(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes) -> 
 **Function**
 
 ```manuscript
-fn public_key(seed: Bytes) -> Result[Bytes, LibraryError]
+fn public_key(seed: Bytes) -> Result[Bytes, CryptoError]
 ```
 
 ## seal
@@ -1075,7 +1172,7 @@ fn public_key(seed: Bytes) -> Result[Bytes, LibraryError]
 **Function**
 
 ```manuscript
-fn seal(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes) -> Result[Bytes, LibraryError]
+fn seal(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]
 ```
 
 ## sha256
@@ -1107,7 +1204,7 @@ fn sha512(data: Bytes) -> Bytes
 **Function**
 
 ```manuscript
-fn sign(seed: Bytes, data: Bytes) -> Result[Bytes, LibraryError]
+fn sign(seed: Bytes, data: Bytes) -> Result[Bytes, CryptoError]
 ```
 
 ## verify
@@ -1121,6 +1218,22 @@ fn verify(key: Bytes, data: Bytes, signature: Bytes) -> Bool
 # @std/csv.ms
 
 Import each required symbol with `import Name from "@std/csv.ms"`.
+
+## CsvError
+
+**Alternative**
+
+```manuscript
+type CsvError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for CsvError:
+    fn message() -> String
+```
 
 ## CsvOptions
 
@@ -1137,7 +1250,7 @@ type CsvOptions:
 **Function**
 
 ```manuscript
-fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Result[List[List[String]], LibraryError]
+fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Result[List[List[String]], CsvError]
 ```
 
 ## stringify
@@ -1145,7 +1258,7 @@ fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Re
 **Function**
 
 ```manuscript
-fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Int) -> Result[String, LibraryError]
+fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Int) -> Result[String, CsvError]
 ```
 
 # @std/decimal.ms
@@ -1166,12 +1279,28 @@ type Decimal:
 
 Import each required symbol with `import Name from "@std/encoding.ms"`.
 
+## EncodingError
+
+**Alternative**
+
+```manuscript
+type EncodingError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for EncodingError:
+    fn message() -> String
+```
+
 ## base64_decode
 
 **Function**
 
 ```manuscript
-fn base64_decode(text: String, url_safe: Bool, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn base64_decode(text: String, url_safe: Bool, max_bytes: Int) -> Result[Bytes, EncodingError]
 ```
 
 ## base64_encode
@@ -1187,7 +1316,7 @@ fn base64_encode(data: Bytes, url_safe: Bool) -> String
 **Function**
 
 ```manuscript
-fn hex_decode(text: String, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn hex_decode(text: String, max_bytes: Int) -> Result[Bytes, EncodingError]
 ```
 
 ## hex_encode
@@ -1202,24 +1331,13 @@ fn hex_encode(data: Bytes) -> String
 
 Import each required symbol with `import Name from "@std/errors.ms"`.
 
-## LibraryError
+## Error
 
-**Alternative**
+**Interface**
 
 ```manuscript
-type LibraryError:
-    case InvalidInput
-    case InvalidData
-    case OutOfRange
-    case LimitExceeded
-    case NotFound
-    case AlreadyExists
-    case PermissionDenied
-    case Unsupported
-    case Closed
-    case Timeout
-    case AuthenticationFailed
-    case Failed(message: String)
+interface Error:
+    fn message() -> String
 ```
 
 # @std/faults.ms
@@ -1268,18 +1386,39 @@ type FileInfo:
 
 ```manuscript
 interface FileSystem:
-    fn canonicalize(path: String) -> Result[String, LibraryError]
-    fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Int) -> Result[Unit, LibraryError]
-    fn create_directory(path: String, recursive: Bool) -> Result[Unit, LibraryError]
-    fn create_link(path: String, target: String) -> Result[Unit, LibraryError]
-    fn list(path: String, max_entries: Int) -> Result[List[DirectoryEntry], LibraryError]
-    fn read_file(path: String, max_bytes: Int) -> Result[Bytes, LibraryError]
-    fn read_link(path: String) -> Result[String, LibraryError]
-    fn remove(path: String, recursive: Bool) -> Result[Unit, LibraryError]
-    fn rename(source: String, destination: String) -> Result[Unit, LibraryError]
-    fn stat(path: String, follow_links: Bool) -> Result[FileInfo, LibraryError]
-    fn temporary_directory(prefix: String) -> Result[String, LibraryError]
-    fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, LibraryError]
+    fn canonicalize(path: String) -> Result[String, FileSystemError]
+    fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Int) -> Result[Unit, FileSystemError]
+    fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+    fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
+    fn list(path: String, max_entries: Int) -> Result[List[DirectoryEntry], FileSystemError]
+    fn read_file(path: String, max_bytes: Int) -> Result[Bytes, FileSystemError]
+    fn read_link(path: String) -> Result[String, FileSystemError]
+    fn remove(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+    fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
+    fn stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
+    fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
+    fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, FileSystemError]
+```
+
+## FileSystemError
+
+**Alternative**
+
+```manuscript
+type FileSystemError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case NotFound
+    case AlreadyExists
+    case PermissionDenied
+    case Unsupported
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for FileSystemError:
+    fn message() -> String
 ```
 
 # @std/html.ms
@@ -1316,8 +1455,8 @@ type ClientResponse:
 ```manuscript
 interface HttpClient:
     fn close() -> Unit
-    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, LibraryError]
-    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, LibraryError]
+    fn send(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, HttpError]
+    fn send_stream(method: String, url: String, headers: Map[String, String], body: ReadStream, max_response_bytes: Int, timeout: Duration) -> Result[ResponseBody, HttpError]
 ```
 
 ## HttpClientOptions
@@ -1335,6 +1474,26 @@ type HttpClientOptions:
     tls: TlsOptions
 ```
 
+## HttpError
+
+**Alternative**
+
+```manuscript
+type HttpError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Closed
+    case Timeout
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for HttpError:
+    fn message() -> String
+```
+
 ## HttpExchange
 
 **Interface**
@@ -1347,8 +1506,8 @@ interface HttpExchange:
     fn path() -> String
     fn query() -> String
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
-    fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, LibraryError]
-    fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int) -> Result[WebSocket, LibraryError]
+    fn send_headers(status: Int, headers: Map[String, List[String]]) -> Result[Unit, HttpError]
+    fn upgrade(allowed_origins: List[String], subprotocols: List[String], max_message_bytes: Int) -> Result[WebSocket, WebSocketError]
     fn write(data: Bytes) -> Result[Unit, IoError]
 ```
 
@@ -1408,24 +1567,24 @@ type HttpServerOptions:
 
 ```manuscript
 interface Network:
-    fn bind_datagram(address: String) -> Result[DatagramSocket, LibraryError]
+    fn bind_datagram(address: String) -> Result[DatagramSocket, NetworkError]
     fn close() -> Unit
-    fn connect(address: String, timeout: Duration) -> Result[Connection, LibraryError]
-    fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection, LibraryError]
-    fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection, LibraryError]
-    fn connect_unix(path: String, timeout: Duration) -> Result[Connection, LibraryError]
-    fn http_client(options: HttpClientOptions) -> Result[HttpClient, LibraryError]
-    fn listen(address: String) -> Result[Listener, LibraryError]
-    fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener, LibraryError]
-    fn listen_unix(path: String) -> Result[Listener, LibraryError]
-    fn lookup(name: String, max_records: Int, timeout: Duration) -> Result[List[String], LibraryError]
-    fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ClientResponse, LibraryError]
-    fn resolve(name: String, kind: String, max_records: Int, timeout: Duration) -> Result[List[DnsRecord], LibraryError]
-    fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network, LibraryError]
+    fn connect(address: String, timeout: Duration) -> Result[Connection, NetworkError]
+    fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection, NetworkError]
+    fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection, NetworkError]
+    fn connect_unix(path: String, timeout: Duration) -> Result[Connection, NetworkError]
+    fn http_client(options: HttpClientOptions) -> Result[HttpClient, HttpError]
+    fn listen(address: String) -> Result[Listener, NetworkError]
+    fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener, NetworkError]
+    fn listen_unix(path: String) -> Result[Listener, NetworkError]
+    fn lookup(name: String, max_records: Int, timeout: Duration) -> Result[List[String], NetworkError]
+    fn request(method: String, url: String, headers: Map[String, String], body: Bytes, max_response_bytes: Int, timeout: Duration) -> Result[ClientResponse, HttpError]
+    fn resolve(name: String, kind: String, max_records: Int, timeout: Duration) -> Result[List[DnsRecord], NetworkError]
+    fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network, NetworkError]
     fn serve(address: String, handler: fn(request: HttpRequest) -> HttpResponse, limit: Int, max_body_bytes: Int, max_response_bytes: Int, timeout: Duration, grace: Duration) -> Result[HttpServer, IoError]
-    fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, LibraryError], options: HttpServerOptions) -> Result[HttpServer, LibraryError]
-    fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, LibraryError]
-    fn with_resolver(address: String) -> Result[Network, LibraryError]
+    fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, HttpError], options: HttpServerOptions) -> Result[HttpServer, HttpError]
+    fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, WebSocketError]
+    fn with_resolver(address: String) -> Result[Network, NetworkError]
 ```
 
 ## ResponseBody
@@ -1472,7 +1631,14 @@ type IoError:
     case Closed
     case InvalidInput
     case Unavailable
+    case InvalidData
+    case LimitExceeded
     case Failed(message: String)
+```
+
+```manuscript
+impl Error for IoError:
+    fn message() -> String
 ```
 
 ## ReadStream
@@ -1501,7 +1667,7 @@ interface WriteStream:
 **Function**
 
 ```manuscript
-fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, LibraryError]
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
 ```
 
 ## read_all
@@ -1509,7 +1675,7 @@ fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, L
 **Function**
 
 ```manuscript
-fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
 ```
 
 ## read_line
@@ -1517,12 +1683,28 @@ fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, LibraryError]
 **Function**
 
 ```manuscript
-fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], LibraryError]
+fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
 ```
 
 # @std/json.ms
 
 Import each required symbol with `import Name from "@std/json.ms"`.
+
+## JsonError
+
+**Alternative**
+
+```manuscript
+type JsonError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for JsonError:
+    fn message() -> String
+```
 
 ## JsonLimits
 
@@ -1554,7 +1736,7 @@ type JsonValue:
 **Function**
 
 ```manuscript
-fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, LibraryError]
+fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, JsonError]
 ```
 
 ## stringify
@@ -1562,19 +1744,36 @@ fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, LibraryError]
 **Function**
 
 ```manuscript
-fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, LibraryError]
+fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, JsonError]
 ```
 
 # @std/log.ms
 
 Import each required symbol with `import Name from "@std/log.ms"`.
 
+## LogError
+
+**Alternative**
+
+```manuscript
+type LogError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case Io(cause: IoError)
+```
+
+```manuscript
+impl Error for LogError:
+    fn message() -> String
+```
+
 ## write
 
 **Function**
 
 ```manuscript
-fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LibraryError]
+fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LogError]
 ```
 
 # @std/math.ms
@@ -1836,8 +2035,8 @@ interface Connection:
     fn peer_address() -> String
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
     fn read_timeout(max_bytes: Int, timeout: Duration) -> Result[Optional[Bytes], IoError]
-    fn shutdown_write() -> Result[Unit, LibraryError]
-    fn tls_info() -> Result[TlsInfo, LibraryError]
+    fn shutdown_write() -> Result[Unit, NetworkError]
+    fn tls_info() -> Result[TlsInfo, TlsError]
     fn write(data: Bytes) -> Result[Unit, IoError]
     fn write_timeout(data: Bytes, timeout: Duration) -> Result[Unit, IoError]
 ```
@@ -1860,10 +2059,10 @@ type Datagram:
 interface DatagramSocket:
     fn address() -> String
     fn close() -> Unit
-    fn receive(max_bytes: Int) -> Result[Datagram, LibraryError]
-    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, LibraryError]
-    fn send(data: Bytes, address: String) -> Result[Unit, LibraryError]
-    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, LibraryError]
+    fn receive(max_bytes: Int) -> Result[Datagram, NetworkError]
+    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, NetworkError]
+    fn send(data: Bytes, address: String) -> Result[Unit, NetworkError]
+    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, NetworkError]
 ```
 
 ## DnsRecord
@@ -1885,10 +2084,31 @@ type DnsRecord:
 
 ```manuscript
 interface Listener:
-    fn accept() -> Result[Connection, LibraryError]
-    fn accept_timeout(timeout: Duration) -> Result[Connection, LibraryError]
+    fn accept() -> Result[Connection, NetworkError]
+    fn accept_timeout(timeout: Duration) -> Result[Connection, NetworkError]
     fn address() -> String
     fn close() -> Unit
+```
+
+## NetworkError
+
+**Alternative**
+
+```manuscript
+type NetworkError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Unsupported
+    case Closed
+    case Timeout
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for NetworkError:
+    fn message() -> String
 ```
 
 ## contains_ip
@@ -1896,7 +2116,7 @@ interface Listener:
 **Function**
 
 ```manuscript
-fn contains_ip(cidr: String, address: String) -> Result[Bool, LibraryError]
+fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]
 ```
 
 ## parse_cidr
@@ -1904,7 +2124,7 @@ fn contains_ip(cidr: String, address: String) -> Result[Bool, LibraryError]
 **Function**
 
 ```manuscript
-fn parse_cidr(text: String) -> Result[String, LibraryError]
+fn parse_cidr(text: String) -> Result[String, NetworkError]
 ```
 
 ## parse_ip
@@ -1912,19 +2132,35 @@ fn parse_cidr(text: String) -> Result[String, LibraryError]
 **Function**
 
 ```manuscript
-fn parse_ip(text: String) -> Result[String, LibraryError]
+fn parse_ip(text: String) -> Result[String, NetworkError]
 ```
 
 # @std/numbers.ms
 
 Import each required symbol with `import Name from "@std/numbers.ms"`.
 
+## NumberError
+
+**Alternative**
+
+```manuscript
+type NumberError:
+    case InvalidInput
+    case InvalidData
+    case OutOfRange
+```
+
+```manuscript
+impl Error for NumberError:
+    fn message() -> String
+```
+
 ## format_exponential
 
 **Function**
 
 ```manuscript
-fn format_exponential(value: Float, digits: Int) -> Result[String, LibraryError]
+fn format_exponential(value: Float, digits: Int) -> Result[String, NumberError]
 ```
 
 ## format_fixed
@@ -1932,7 +2168,7 @@ fn format_exponential(value: Float, digits: Int) -> Result[String, LibraryError]
 **Function**
 
 ```manuscript
-fn format_fixed(value: Float, digits: Int) -> Result[String, LibraryError]
+fn format_fixed(value: Float, digits: Int) -> Result[String, NumberError]
 ```
 
 ## format_float
@@ -1956,7 +2192,7 @@ fn format_int(value: Int, radix: Int) -> String
 **Function**
 
 ```manuscript
-fn format_precision(value: Float, precision: Int) -> Result[String, LibraryError]
+fn format_precision(value: Float, precision: Int) -> Result[String, NumberError]
 ```
 
 ## parse_float
@@ -1964,7 +2200,7 @@ fn format_precision(value: Float, precision: Int) -> Result[String, LibraryError
 **Function**
 
 ```manuscript
-fn parse_float(text: String) -> Result[Float, LibraryError]
+fn parse_float(text: String) -> Result[Float, NumberError]
 ```
 
 ## parse_int
@@ -1972,7 +2208,7 @@ fn parse_float(text: String) -> Result[Float, LibraryError]
 **Function**
 
 ```manuscript
-fn parse_int(text: String, radix: Int) -> Result[Int, LibraryError]
+fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]
 ```
 
 # @std/optional.ms
@@ -1992,6 +2228,20 @@ type Optional[T]:
 # @std/path.ms
 
 Import each required symbol with `import Name from "@std/path.ms"`.
+
+## PathError
+
+**Alternative**
+
+```manuscript
+type PathError:
+    case InvalidInput
+```
+
+```manuscript
+impl Error for PathError:
+    fn message() -> String
+```
 
 ## basename
 
@@ -2046,7 +2296,7 @@ fn normalize(path: String) -> String
 **Function**
 
 ```manuscript
-fn relative(base: String, target: String) -> Result[String, LibraryError]
+fn relative(base: String, target: String) -> Result[String, PathError]
 ```
 
 # @std/pools.ms
@@ -2083,6 +2333,11 @@ type PoolError:
     case Closed
 ```
 
+```manuscript
+impl Error for PoolError:
+    fn message() -> String
+```
+
 # @std/process.ms
 
 Import each required symbol with `import Name from "@std/process.ms"`.
@@ -2098,6 +2353,11 @@ type CommandError:
     case TimedOut
     case OutputLimit
     case Failed(message: String)
+```
+
+```manuscript
+impl Error for CommandError:
+    fn message() -> String
 ```
 
 ## CommandOutput
@@ -2148,7 +2408,23 @@ Import each required symbol with `import Name from "@std/random.ms"`.
 
 ```manuscript
 interface Entropy:
-    fn bytes(count: Int) -> Result[Bytes, LibraryError]
+    fn bytes(count: Int) -> Result[Bytes, RandomError]
+```
+
+## RandomError
+
+**Alternative**
+
+```manuscript
+type RandomError:
+    case InvalidInput
+    case LimitExceeded
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for RandomError:
+    fn message() -> String
 ```
 
 ## secure_int
@@ -2156,7 +2432,7 @@ interface Entropy:
 **Function**
 
 ```manuscript
-fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, LibraryError]
+fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, RandomError]
 ```
 
 ## uuid_v4
@@ -2164,7 +2440,7 @@ fn secure_int(entropy: Entropy, min: Int, max_exclusive: Int) -> Result[Int, Lib
 **Function**
 
 ```manuscript
-fn uuid_v4(entropy: Entropy) -> Result[String, LibraryError]
+fn uuid_v4(entropy: Entropy) -> Result[String, RandomError]
 ```
 
 # @std/regex.ms
@@ -2178,8 +2454,24 @@ Import each required symbol with `import Name from "@std/regex.ms"`.
 ```manuscript
 type Regex:
     fn matches(text: String) -> Bool
-    fn find_all(text: String, max_matches: Int) -> Result[List[String], LibraryError]
-    fn replace(text: String, replacement: String, max_bytes: Int) -> Result[String, LibraryError]
+    fn find_all(text: String, max_matches: Int) -> Result[List[String], RegexError]
+    fn replace(text: String, replacement: String, max_bytes: Int) -> Result[String, RegexError]
+```
+
+## RegexError
+
+**Alternative**
+
+```manuscript
+type RegexError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for RegexError:
+    fn message() -> String
 ```
 
 ## compile
@@ -2187,7 +2479,7 @@ type Regex:
 **Function**
 
 ```manuscript
-fn compile(pattern: String) -> Result[Regex, LibraryError]
+fn compile(pattern: String) -> Result[Regex, RegexError]
 ```
 
 ## find_all
@@ -2195,7 +2487,7 @@ fn compile(pattern: String) -> Result[Regex, LibraryError]
 **Function**
 
 ```manuscript
-fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], LibraryError]
+fn find_all(pattern: Regex, text: String, max_matches: Int) -> Result[List[String], RegexError]
 ```
 
 ## matches
@@ -2211,7 +2503,7 @@ fn matches(pattern: Regex, text: String) -> Bool
 **Function**
 
 ```manuscript
-fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Int) -> Result[String, LibraryError]
+fn replace(pattern: Regex, text: String, replacement: String, max_bytes: Int) -> Result[String, RegexError]
 ```
 
 # @std/result.ms
@@ -2231,6 +2523,23 @@ type Result[T, U]:
 # @std/string.ms
 
 Import each required symbol with `import Name from "@std/string.ms"`.
+
+## StringError
+
+**Alternative**
+
+```manuscript
+type StringError:
+    case InvalidInput
+    case OutOfRange
+    case LimitExceeded
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for StringError:
+    fn message() -> String
+```
 
 ## at
 
@@ -2269,7 +2578,7 @@ fn ends_with(value: String, suffix: String) -> Bool
 **Function**
 
 ```manuscript
-fn from_scalars(values: List[Int]) -> Result[String, LibraryError]
+fn from_scalars(values: List[Int]) -> Result[String, StringError]
 ```
 
 ## index_of
@@ -2309,7 +2618,7 @@ fn lower(text: String) -> String
 **Function**
 
 ```manuscript
-fn normalize(text: String, form: String, max_bytes: Int) -> Result[String, LibraryError]
+fn normalize(text: String, form: String, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## pad_end
@@ -2317,7 +2626,7 @@ fn normalize(text: String, form: String, max_bytes: Int) -> Result[String, Libra
 **Function**
 
 ```manuscript
-fn pad_end(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
+fn pad_end(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## pad_start
@@ -2325,7 +2634,7 @@ fn pad_end(text: String, target_length: Int, padding: String, max_bytes: Int) ->
 **Function**
 
 ```manuscript
-fn pad_start(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
+fn pad_start(text: String, target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## repeat
@@ -2333,7 +2642,7 @@ fn pad_start(text: String, target_length: Int, padding: String, max_bytes: Int) 
 **Function**
 
 ```manuscript
-fn repeat(text: String, count: Int, max_bytes: Int) -> Result[String, LibraryError]
+fn repeat(text: String, count: Int, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## replace
@@ -2349,7 +2658,7 @@ fn replace(text: String, old: String, new: String, max_replacements: Int) -> Str
 **Function**
 
 ```manuscript
-fn replace_all(text: String, old: String, new: String, max_bytes: Int) -> Result[String, LibraryError]
+fn replace_all(text: String, old: String, new: String, max_bytes: Int) -> Result[String, StringError]
 ```
 
 ## scalar_at
@@ -2389,7 +2698,7 @@ fn slice(text: String, start: Int, end: Int) -> String
 **Function**
 
 ```manuscript
-fn slice_scalars(text: String, start: Int, end: Int) -> Result[String, LibraryError]
+fn slice_scalars(text: String, start: Int, end: Int) -> Result[String, StringError]
 ```
 
 ## split
@@ -2535,6 +2844,11 @@ type ExecutionError:
     case Crashed(operation: OperationId, message: String)
 ```
 
+```manuscript
+impl Error for ExecutionError:
+    fn message() -> String
+```
+
 ## OperationId
 
 **Native type**
@@ -2551,6 +2865,11 @@ type OperationId
 type StartError:
     case Closed
     case Full
+```
+
+```manuscript
+impl Error for StartError:
+    fn message() -> String
 ```
 
 ## WorkStatus
@@ -2581,14 +2900,6 @@ fn check_cancelled() -> Unit
 
 See [special call rules](#special-call-rules).
 
-## parallel_map
-
-**Function**
-
-```manuscript
-fn parallel_map[T, U](items: List[T], operation: fn(item: T) -> U, limit: Int) -> Result[List[U], ExecutionError]
-```
-
 # @std/time.ms
 
 Import each required symbol with `import Name from "@std/time.ms"`.
@@ -2618,6 +2929,21 @@ type Duration
 type Instant
 ```
 
+## TimeError
+
+**Alternative**
+
+```manuscript
+type TimeError:
+    case InvalidData
+    case OutOfRange
+```
+
+```manuscript
+impl Error for TimeError:
+    fn message() -> String
+```
+
 ## Timestamp
 
 **Native type**
@@ -2640,7 +2966,7 @@ interface WallClock:
 **Function**
 
 ```manuscript
-fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, LibraryError]
+fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
 ```
 
 ## format_timestamp
@@ -2664,7 +2990,7 @@ fn nanoseconds(value: Timestamp) -> Int
 **Function**
 
 ```manuscript
-fn parse_timestamp(text: String) -> Result[Timestamp, LibraryError]
+fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]
 ```
 
 ## shift
@@ -2672,7 +2998,7 @@ fn parse_timestamp(text: String) -> Result[Timestamp, LibraryError]
 **Function**
 
 ```manuscript
-fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, LibraryError]
+fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, TimeError]
 ```
 
 ## sleep
@@ -2688,7 +3014,7 @@ fn sleep(duration: Duration) -> Unit
 **Function**
 
 ```manuscript
-fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, LibraryError]
+fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
 ```
 
 ## unix_seconds
@@ -2715,6 +3041,23 @@ type CertificateInfo:
     not_before: Timestamp
     not_after: Timestamp
     der: Bytes
+```
+
+## TlsError
+
+**Alternative**
+
+```manuscript
+type TlsError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case AuthenticationFailed
+```
+
+```manuscript
+impl Error for TlsError:
+    fn message() -> String
 ```
 
 ## TlsInfo
@@ -2749,7 +3092,7 @@ type TlsOptions:
 **Function**
 
 ```manuscript
-fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], LibraryError]
+fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
 ```
 
 ## verify_certificates
@@ -2757,7 +3100,7 @@ fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[Certifi
 **Function**
 
 ```manuscript
-fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, LibraryError]
+fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
 ```
 
 # @std/url.ms
@@ -2788,12 +3131,28 @@ type Url:
     fragment: String
 ```
 
+## UrlError
+
+**Alternative**
+
+```manuscript
+type UrlError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for UrlError:
+    fn message() -> String
+```
+
 ## decode_component
 
 **Function**
 
 ```manuscript
-fn decode_component(text: String) -> Result[String, LibraryError]
+fn decode_component(text: String) -> Result[String, UrlError]
 ```
 
 ## encode_component
@@ -2809,7 +3168,7 @@ fn encode_component(text: String) -> String
 **Function**
 
 ```manuscript
-fn format(value: Url) -> Result[String, LibraryError]
+fn format(value: Url) -> Result[String, UrlError]
 ```
 
 ## format_query
@@ -2825,7 +3184,7 @@ fn format_query(entries: List[QueryEntry]) -> String
 **Function**
 
 ```manuscript
-fn parse(text: String) -> Result[Url, LibraryError]
+fn parse(text: String) -> Result[Url, UrlError]
 ```
 
 ## parse_query
@@ -2833,7 +3192,7 @@ fn parse(text: String) -> Result[Url, LibraryError]
 **Function**
 
 ```manuscript
-fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], LibraryError]
+fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], UrlError]
 ```
 
 ## resolve
@@ -2841,7 +3200,7 @@ fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], Libra
 **Function**
 
 ```manuscript
-fn resolve(base: Url, reference: String) -> Result[Url, LibraryError]
+fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
 ```
 
 # @std/websocket.ms
@@ -2855,10 +3214,30 @@ Import each required symbol with `import Name from "@std/websocket.ms"`.
 ```manuscript
 interface WebSocket:
     fn close() -> Unit
-    fn ping(data: Bytes) -> Result[Unit, LibraryError]
-    fn receive() -> Result[Optional[WebSocketMessage], LibraryError]
-    fn send(data: Bytes, text: Bool) -> Result[Unit, LibraryError]
+    fn ping(data: Bytes) -> Result[Unit, WebSocketError]
+    fn receive() -> Result[Optional[WebSocketMessage], WebSocketError]
+    fn send(data: Bytes, text: Bool) -> Result[Unit, WebSocketError]
     fn subprotocol() -> String
+```
+
+## WebSocketError
+
+**Alternative**
+
+```manuscript
+type WebSocketError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Closed
+    case Timeout
+    case Failed(message: String)
+```
+
+```manuscript
+impl Error for WebSocketError:
+    fn message() -> String
 ```
 
 ## WebSocketMessage
@@ -2909,9 +3288,9 @@ type Equal
 
 ```manuscript
 type Float:
-    fn to_precision(precision: Int) -> Result[String, LibraryError]
-    fn to_exponential(digits: Int) -> Result[String, LibraryError]
-    fn to_fixed(digits: Int) -> Result[String, LibraryError]
+    fn to_precision(precision: Int) -> Result[String, NumberError]
+    fn to_exponential(digits: Int) -> Result[String, NumberError]
+    fn to_fixed(digits: Int) -> Result[String, NumberError]
     fn to_string() -> String
     fn is_nan() -> Bool
     fn is_finite() -> Bool
@@ -2951,16 +3330,16 @@ type Never
 
 ```manuscript
 type String:
-    fn normalize(form: String, max_bytes: Int) -> Result[String, LibraryError]
+    fn normalize(form: String, max_bytes: Int) -> Result[String, StringError]
     fn concat(values: String) -> String
     fn contains(text: String) -> Bool
     fn ends_with(suffix: String) -> Bool
     fn lower() -> String
-    fn repeat(count: Int, max_bytes: Int) -> Result[String, LibraryError]
+    fn repeat(count: Int, max_bytes: Int) -> Result[String, StringError]
     fn replace(old: String, new: String, max_replacements: Int) -> String
     fn scalar_length() -> Int
     fn scalar_values() -> List[Int]
-    fn slice_scalars(start: Int, end: Int) -> Result[String, LibraryError]
+    fn slice_scalars(start: Int, end: Int) -> Result[String, StringError]
     fn split(separator: String, max_parts: Int) -> List[String]
     fn starts_with(prefix: String) -> Bool
     fn trim() -> String
@@ -2971,9 +3350,9 @@ type String:
     fn last_index_of(value: String) -> Optional[Int]
     fn trim_start() -> String
     fn trim_end() -> String
-    fn pad_start(target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
-    fn pad_end(target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
-    fn replace_all(old: String, new: String, max_bytes: Int) -> Result[String, LibraryError]
+    fn pad_start(target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+    fn pad_end(target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+    fn replace_all(old: String, new: String, max_bytes: Int) -> Result[String, StringError]
     fn slice(start: Int, end: Int) -> String
     fn substring(start: Int, end: Int) -> String
     fn byte_length() -> Int

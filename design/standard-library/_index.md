@@ -22,7 +22,6 @@ Use this chapter to find standard types and operations. Most names need an expli
 
 ### 2. [Concurrent APIs and host lifetimes](tasks/_index.md)
 
-- [Bounded parallel mapping](tasks/parallel-map.md) — Run one function over a list with a limit on simultaneous calls.
 - [Background services](tasks/background.md) — Start work under a service that tracks it and waits during shutdown.
 
 ### 3. [Data, state, and I/O](data-and-io/_index.md)

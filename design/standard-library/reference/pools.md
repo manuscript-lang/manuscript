@@ -30,3 +30,8 @@ type PoolError:
     case Closed
 ```
 
+```manuscript
+impl Error for PoolError:
+    fn message() -> String
+```
+

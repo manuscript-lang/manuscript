@@ -50,6 +50,14 @@ Apply when: changing imports, calls, grammar, or editor assistance.
 Evidence: [grouped-import request](codex://threads/01a12e1a-7d2d-7646-b5fc-2dc8fdd60038); [single-parameter request](codex://threads/01a12e4a-98e8-775e-9e6c-c101a8ac300d).
 Verify: grouped imports resolve each symbol and its editor location; one-parameter calls exercise both spellings, multi-parameter calls require labels, and missing arguments still fail. Consult current grammar and compatibility rules for methods, constructors, and function values rather than assuming identical boundaries.
 
+### Recover concrete contract receivers through checked matching
+
+Decision: a common Error contract must allow both generic diagnostics and specific handling without discarding the concrete cause. Apply the ordinary operation-contract rules: explicit implementations and views, invariant Result types, and explicit error mapping. Contract matches use concrete record/alternative type patterns with exactly one receiver binding and a final wildcard for other implementations.
+
+Apply when: changing Error boundaries, contract views, matching, or native standard implementations.
+Evidence: [contract type patterns](../design/core-language/control-flow/pattern-matching.md#contract-type-patterns); [common error boundary](../design/core-language/errors/results.md#a-common-error-boundary); [compiled errors and generic patterns](../tests/e2e/testdata/accept/library-errors.ms); [invalid contract patterns](../compiler/library_test.go).
+Verify: exact nominal identities and generic arguments determine a match; the receiver and payload survive conversion and propagation; missing implementations, incomplete generic patterns, and missing fallbacks are rejected.
+
 ### Default arguments must not leak across callable replacement
 
 Verified: defaults are permissions on a known callable, not part of function-type identity. Retaining that permission on a mutable binding or inferred generic type could let a required-argument function replace a defaulted function, then be called with a missing argument. Explicit function types, mutable bindings, and generic inference erase defaults; inferred immutable copies retain them.

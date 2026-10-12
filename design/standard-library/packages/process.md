@@ -12,9 +12,9 @@ Use stream helpers for bounded reads and copies, and Commands for buffered subpr
 ## `@std/io.ms`
 
 ```manuscript
-fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, LibraryError]
-fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, LibraryError]
-fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], LibraryError]
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
+fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
+fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
 ```
 
 ## Running commands
@@ -35,6 +35,6 @@ These helpers use shared stream views without closing them. Keep the streams' ow
 
 Source streams must return nonempty chunks within the requested size. A malformed stream implementation causes `Failed`.
 
-Expected `IoError` failures become `LibraryError.Failed` with diagnostics. Helpers do not flatten Result or catch cancellation and faults. Convert a File view explicitly to ReadStream when required by the contract-view rules.
+Expected stream failures preserve their original `IoError` case and payload. Invalid UTF-8 returns `IoError.InvalidData`; an exceeded byte bound returns `IoError.LimitExceeded`. Helpers do not flatten Result or catch cancellation and faults. Convert a File view explicitly to ReadStream when required by the contract-view rules.
 
 Interactive subprocess handles, terminal raw mode and secret reads, REPL/history, and richer child environment or working-directory options remain future work. Buffered Commands is the current subprocess API; there is no new Process/Child hierarchy.

@@ -79,7 +79,7 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 		}
 	}
 	for key, want := range map[string]string{
-		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Int) -> Result[Datagram, LibraryError]\n    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, LibraryError]\n    fn send(data: Bytes, address: String) -> Result[Unit, LibraryError]\n    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, LibraryError]\n",
+		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Int) -> Result[Datagram, NetworkError]\n    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String) -> Result[Unit, NetworkError]\n    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, NetworkError]\n",
 		"@std/net.ms#DnsRecord":      "type DnsRecord:\n    kind: String\n    value: String\n    priority: Int\n    weight: Int\n    port: Int\n",
 		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n",
 		"@std/time.ms#Duration":      "type Duration\n",

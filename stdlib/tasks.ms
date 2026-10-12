@@ -1,6 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import List from "@std/collections.ms"
+import Error from "@std/errors.ms"
 import Result from "@std/result.ms"
 
 export type Background:
@@ -35,4 +35,9 @@ export fn check_cancelled() -> Unit
 
 # compiler binding: parallel (heterogeneous callable/result packs)
 
-export fn parallel_map[T, U](items: List[T], operation: fn(item: T) -> U, limit: Int) -> Result[List[U], ExecutionError]
+
+impl Error for ExecutionError:
+    fn message() -> String
+
+impl Error for StartError:
+    fn message() -> String

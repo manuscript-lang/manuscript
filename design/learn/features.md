@@ -23,7 +23,7 @@ Manuscript aims to make a program's public contracts, dependencies, and work lif
 
 `with` registers resources implementing `Closeable` for lexical cleanup. The language uses garbage-collected references; cleanup concerns resource release. Retaining an alias does not extend a closed resource's usability. The [cleanup guide](../ownership-and-cleanup/_index.md) specifies exit order and cleanup faults.
 
-`parallel` joins a literal set of operations, while `parallel_map` bounds concurrent work over a collection. `Background` owns longer-lived work and shutdown. All values may be shared freely. Use [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) for a complete read–modify–write critical section; `with` releases its guard.
+`parallel` joins a literal set of operations. `Background` owns longer-lived work and shutdown. All values may be shared freely. Use [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) for a complete read–modify–write critical section; `with` releases its guard.
 
 ## Modules and authority
 

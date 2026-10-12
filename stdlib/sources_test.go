@@ -41,7 +41,7 @@ func TestPinnedSources(t *testing.T) {
 }
 
 func TestLibraryDeclarationsRequireLibraryMode(t *testing.T) {
-	for _, source := range []string{"export fn native(value: Int) -> Int\n", "export type Opaque\n"} {
+	for _, source := range []string{"export fn native(value: Int) -> Int\n", "export type Opaque\n", "impl Contract for Data:\n    fn message() -> String\n"} {
 		if _, diagnostics := parser.ParseLibrary("library.ms", source); diagnostics != nil {
 			t.Fatal(diagnostics)
 		}

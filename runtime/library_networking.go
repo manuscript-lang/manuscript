@@ -16,23 +16,23 @@ import (
 
 func init() {
 	for _, m := range []LibraryMethod{
-		{"Network", "restrict", libraryResult("Network"), []LibraryParam{{"hosts", "List[String]"}, {"cidrs", "List[String]"}, {"allow_listen", "Bool"}}},
-		{"Network", "with_resolver", libraryResult("Network"), []LibraryParam{{"address", "String"}}},
-		{"Network", "resolve", libraryResult("List[DnsRecord]"), []LibraryParam{{"name", "String"}, {"kind", "String"}, {"max_records", "Int"}, {"timeout", "Duration"}}},
-		{"Network", "connect_unix", libraryResult("Connection"), []LibraryParam{{"path", "String"}, {"timeout", "Duration"}}},
-		{"Network", "listen_unix", libraryResult("Listener"), []LibraryParam{{"path", "String"}}},
-		{"Network", "connect_tls_config", libraryResult("Connection"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"timeout", "Duration"}}},
-		{"Network", "listen_tls", libraryResult("Listener"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"handshake_timeout", "Duration"}}},
+		{"Network", "restrict", libraryResult("Network", "NetworkError"), []LibraryParam{{"hosts", "List[String]"}, {"cidrs", "List[String]"}, {"allow_listen", "Bool"}}},
+		{"Network", "with_resolver", libraryResult("Network", "NetworkError"), []LibraryParam{{"address", "String"}}},
+		{"Network", "resolve", libraryResult("List[DnsRecord]", "NetworkError"), []LibraryParam{{"name", "String"}, {"kind", "String"}, {"max_records", "Int"}, {"timeout", "Duration"}}},
+		{"Network", "connect_unix", libraryResult("Connection", "NetworkError"), []LibraryParam{{"path", "String"}, {"timeout", "Duration"}}},
+		{"Network", "listen_unix", libraryResult("Listener", "NetworkError"), []LibraryParam{{"path", "String"}}},
+		{"Network", "connect_tls_config", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"timeout", "Duration"}}},
+		{"Network", "listen_tls", libraryResult("Listener", "NetworkError"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"handshake_timeout", "Duration"}}},
 		{"Connection", "read_timeout", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}, {"timeout", "Duration"}}},
 		{"Connection", "write_timeout", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}, {"timeout", "Duration"}}},
-		{"DatagramSocket", "receive_timeout", libraryResult("Datagram"), []LibraryParam{{"max_bytes", "Int"}, {"timeout", "Duration"}}},
-		{"DatagramSocket", "send_timeout", libraryResult("Unit"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}, {"timeout", "Duration"}}},
-		{"Listener", "accept_timeout", libraryResult("Connection"), []LibraryParam{{"timeout", "Duration"}}},
+		{"DatagramSocket", "receive_timeout", libraryResult("Datagram", "NetworkError"), []LibraryParam{{"max_bytes", "Int"}, {"timeout", "Duration"}}},
+		{"DatagramSocket", "send_timeout", libraryResult("Unit", "NetworkError"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}, {"timeout", "Duration"}}},
+		{"Listener", "accept_timeout", libraryResult("Connection", "NetworkError"), []LibraryParam{{"timeout", "Duration"}}},
 	} {
 		LibraryMethods = append(LibraryMethods, m)
 	}
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("tls", "parse_certificates", libraryResult("List[CertificateInfo]"), []LibraryParam{p("pem", "String"), p("max_certificates", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("tls", "parse_certificates", libraryResult("List[CertificateInfo]", "TlsError"), []LibraryParam{p("pem", "String"), p("max_certificates", "Int")}, func(_ *Execution, r string, a []Value) Value {
 		data := []byte(a[0].(string))
 		max := a[1].(int64)
 		if max < 0 {
@@ -59,14 +59,14 @@ func init() {
 		}
 		return libraryOK(r, libraryList("@std/CertificateInfo", out))
 	})
-	libraryAdd("net", "parse_cidr", libraryResult("String"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("net", "parse_cidr", libraryResult("String", "NetworkError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		prefix, err := netip.ParsePrefix(a[0].(string))
 		if err != nil {
 			return libraryError(r, "InvalidData", "")
 		}
 		return libraryOK(r, prefix.Masked().String())
 	})
-	libraryAdd("net", "contains_ip", libraryResult("Bool"), []LibraryParam{p("cidr", "String"), p("address", "String")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("net", "contains_ip", libraryResult("Bool", "NetworkError"), []LibraryParam{p("cidr", "String"), p("address", "String")}, func(_ *Execution, r string, a []Value) Value {
 		prefix, e1 := netip.ParsePrefix(a[0].(string))
 		ip, e2 := netip.ParseAddr(a[1].(string))
 		if e1 != nil || e2 != nil {

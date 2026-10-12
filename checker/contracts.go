@@ -26,7 +26,7 @@ func (c *checker) implementation(d *syntax.Declaration) {
 		}
 	}
 	receiver := c.resolve(d.Receiver, false)
-	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" || (receiver.Kind != "record" && receiver.Kind != "alternative") {
+	if receiver.Def == nil || receiver.Def.Symbol == nil || receiver.Def.Symbol.Native != "" && !c.standardDeclarations || (receiver.Kind != "record" && receiver.Kind != "alternative") {
 		c.error(d.Pos, "type", "implementation receiver must be nominal source data")
 	}
 	occurs := map[string]bool{}

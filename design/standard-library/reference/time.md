@@ -25,6 +25,19 @@ type Duration
 type Instant
 ```
 
+## TimeError {data-api-kind="Alternative"}
+
+```manuscript
+type TimeError:
+    case InvalidData
+    case OutOfRange
+```
+
+```manuscript
+impl Error for TimeError:
+    fn message() -> String
+```
+
 ## Timestamp {data-api-kind="Native type"}
 
 ```manuscript
@@ -41,7 +54,7 @@ interface WallClock:
 ## difference {data-api-kind="Function"}
 
 ```manuscript
-fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, LibraryError]
+fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
 ```
 
 ## format_timestamp {data-api-kind="Function"}
@@ -59,13 +72,13 @@ fn nanoseconds(value: Timestamp) -> Int
 ## parse_timestamp {data-api-kind="Function"}
 
 ```manuscript
-fn parse_timestamp(text: String) -> Result[Timestamp, LibraryError]
+fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]
 ```
 
 ## shift {data-api-kind="Function"}
 
 ```manuscript
-fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, LibraryError]
+fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, TimeError]
 ```
 
 ## sleep {data-api-kind="Function"}
@@ -77,7 +90,7 @@ fn sleep(duration: Duration) -> Unit
 ## timestamp {data-api-kind="Function"}
 
 ```manuscript
-fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, LibraryError]
+fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
 ```
 
 ## unix_seconds {data-api-kind="Function"}

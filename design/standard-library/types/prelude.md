@@ -25,7 +25,7 @@ Every module implicitly sees only `Bool`, `Int`, `Float`, `String`, `Unit`, `Nev
 | `@std/optional.ms` | `Optional` |
 | `@std/result.ms` | `Result` |
 | `@std/cleanup.ms` | `Closeable` |
-| `@std/tasks.ms` | `parallel`, `parallel_map`, `check_cancelled`, `ExecutionError`, `OperationId`, `Background`, `BackgroundFailure`, `WorkStatus`, `StartError` |
+| `@std/tasks.ms` | `parallel`, `check_cancelled`, `ExecutionError`, `OperationId`, `Background`, `BackgroundFailure`, `WorkStatus`, `StartError` |
 | `@std/faults.ms` | `panic` |
 | `@std/time.ms` | `Duration`, `Instant`, `Clock` |
 | `@std/io.ms` | `Files`, `File`, `ReadStream`, `WriteStream`, `IoError` |
@@ -65,11 +65,11 @@ These lines specify bindings rather than complete source modules. `check_cancell
 
 ## Joined concurrency
 
-All concurrency names are explicit library exports. The calls below require the individual `parallel` or `parallel_map` import from `@std/tasks.ms`; no concurrency operation, error type, work identity, or service expands the intrinsic type/bound list. Every concurrency name, including `check_cancelled` and `OperationId`, is exported by `@std/tasks.ms`. Timeouts and scheduling are implemented by library/runtime bindings.
+All concurrency names are explicit library exports. The call below requires the `parallel` import from `@std/tasks.ms`; no concurrency operation, error type, work identity, or service expands the intrinsic type/bound list. Every concurrency name, including `check_cancelled` and `OperationId`, is exported by `@std/tasks.ms`. Timeouts and scheduling are implemented by library/runtime bindings.
 
 `parallel` requires `tasks` and permits only the optional named argument `timeout: Duration`. Omission means no added limit; an inherited deadline still applies. Negative timeouts fault. Zero-timeout, stop, join, and outcome rules follow [joining outcomes](../../concurrency/joining.md#group-lifecycle).
 
-`tasks` must be a bracket literal, optionally grouped in parentheses. Each position must independently resolve to a zero-parameter function `fn() -> Ri`. The binding produces `Result[Pack[R1, …, Rn], ExecutionError]`. Here `Pack` is compiler notation, with no source type-name spelling or source constructor. Existing lists are rejected; dynamic homogeneous work uses `parallel_map`.
+`tasks` must be a bracket literal, optionally grouped in parentheses. Each position must independently resolve to a zero-parameter function `fn() -> Ri`. The binding produces `Result[Pack[R1, …, Rn], ExecutionError]`. Here `Pack` is compiler notation, with no source type-name spelling or source constructor. Existing lists are rejected.
 
 Standard concurrency callbacks are ordinary function values. Parameters, fields, collections, and generic forwarding preserve their call behavior. Operations may return functions or services; resource lifetime remains governed by explicit cleanup.
 
@@ -77,21 +77,11 @@ Standard concurrency callbacks are ordinary function values. Parameters, fields,
 
 `parallel` requires a direct call because its literal pack determines a heterogeneous result shape. The `Background` constructor also remains a direct constructor call.
 
-`parallel_map[Int, Int]` may be specialized and stored as an ordinary function value. Stored values accept its required arguments; the optional `timeout` argument is available on direct calls. `background.start` and HTTP admission methods may be saved or passed to helpers. Source contracts can expose ordinary callback-taking operations, including wrappers around background submission.
+`background.start` and HTTP admission methods may be saved or passed to helpers. Source contracts can expose ordinary callback-taking operations, including wrappers around background submission.
 
 ### Inferred result packs
 
 A pack can be inferred into a local, carried through an inferred generic type argument, bound in a Result match, returned through a generic `T`, and destructured with exact positional arity. It cannot be written in an annotation, explicit type argument, field, or named function signature. Nested inferred packs retain their exact shape. Pack identity is the ordered sequence of position types; the empty pack is distinct from `Unit` and `List`. Packs may be passed between operations, but have no equality, hashing, iteration, field access, or indexing. An ordinary generic identity function can preserve a parallel pack without a new source syntax.
-
-```manuscript
-fn parallel_map[T, U](
-    items: List[T],
-    operation: fn(item: T) -> U,
-    limit: Int,
-) -> Result[List[U], ExecutionError]
-```
-
-This binding additionally permits the same optional `timeout` argument. `operation` must use the exact parameter label `item`. The result is in input order. A nonpositive limit faults before any operation starts. This binding has no label polymorphism or overloaded source declaration.
 
 ## Background service
 

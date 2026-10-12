@@ -13,15 +13,15 @@ Choose a cryptographic function by its purpose: hashing, keyed authentication, k
 
 ```manuscript
 fn constant_time_equal(left: Bytes, right: Bytes) -> Bool
-fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Result[Bytes, LibraryError]
-fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, LibraryError]
-fn open(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes) -> Result[Bytes, LibraryError]
-fn public_key(seed: Bytes) -> Result[Bytes, LibraryError]
-fn seal(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes) -> Result[Bytes, LibraryError]
+fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Result[Bytes, CryptoError]
+fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError]
+fn open(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]
+fn public_key(seed: Bytes) -> Result[Bytes, CryptoError]
+fn seal(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes) -> Result[Bytes, CryptoError]
 fn sha256(data: Bytes) -> Bytes
 fn sha384(data: Bytes) -> Bytes
 fn sha512(data: Bytes) -> Bytes
-fn sign(seed: Bytes, data: Bytes) -> Result[Bytes, LibraryError]
+fn sign(seed: Bytes, data: Bytes) -> Result[Bytes, CryptoError]
 fn verify(key: Bytes, data: Bytes, signature: Bytes) -> Bool
 ```
 

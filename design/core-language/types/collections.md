@@ -34,7 +34,7 @@ A function taking `values: List[Int]` is called as `sum(values: [1, 2, 3])` or w
 
 Collections accept any value type, including functions, contract views, builders, and synchronized services. Map keys and set elements additionally require `Hashable`.
 
-Resource and service references may be stored freely. Retaining them does not keep the resource open or register cleanup. Dynamic concurrent traversal uses [parallel_map](../../standard-library/tasks/parallel-map.md).
+Resource and service references may be stored freely. Retaining them does not keep the resource open or register cleanup.
 
 `List[Contract]` stores ordinary contract views. `List[fn(value: Int) -> Int]` stores functions. Both may be used concurrently without additional bounds.
 

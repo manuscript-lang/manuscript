@@ -1,10 +1,16 @@
 # Canonical standard-library declarations. Implementations are native.
 
+import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
-import LibraryError from "@std/errors.ms"
 import List from "@std/collections.ms"
 import Result from "@std/result.ms"
 import Timestamp from "@std/time.ms"
+
+export type TlsError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case AuthenticationFailed
 
 export type CertificateInfo:
     subject: String
@@ -29,6 +35,9 @@ export type TlsOptions:
     alpn: List[String]
     require_client_certificate: Bool
 
-export fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], LibraryError]
+export fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
 
-export fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, LibraryError]
+export fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
+
+impl Error for TlsError:
+    fn message() -> String

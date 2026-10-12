@@ -11,7 +11,7 @@ The inventory follows MDN's [JavaScript reference](https://developer.mozilla.org
 
 ## List / Array
 
-Import `List` for bracket literals. All updates return new values. Callbacks run sequentially and may suspend; use the separate `parallel_map` API for joined concurrency.
+Import `List` for bracket literals. All updates return new values. Callbacks run sequentially and may suspend.
 
 | JavaScript surface | Manuscript equivalent | Contract |
 | --- | --- | --- |
@@ -116,7 +116,7 @@ Locale collation/case mapping (`localeCompare`, locale case methods, `Intl`), gr
 | Typed byte array / Buffer | `Bytes` with `at`, `get`, `contains`, `index_of`, `last_index_of`, prefix/suffix tests, `slice`, `reverse`, `with_value`, `concat` | Immutable byte storage; imported binary functions provide signed/unsigned integer and Float reads/writes |
 | Math | `@std/math.ms` | Existing elementary math, trigonometry, rounding, constants; random authority is explicit |
 | JSON | `@std/json.ms` | Existing parse/stringify with exact decimal number text and explicit limits |
-| Promise aggregation | ordinary suspending functions; `parallel`, `parallel_map`, `Background` | Joined work and lexical cleanup; no detached Promise or microtask compatibility |
+| Promise aggregation | ordinary suspending functions; `parallel`, `Background` | Joined work and lexical cleanup; no detached Promise or microtask compatibility |
 | Date / timers | `@std/time.ms`, explicit Clock / WallClock capabilities | Timestamp parse/format, shifts/differences, monotonic timers; calendar/timezone/locale formatting remains a gap |
 | ArrayBuffer / DataView | `Bytes`, `@std/binary.ms` | No shared raw memory, typed numeric views, or Atomics; use Synchronized for shared updates |
 | Object / Reflect / Proxy / Symbol | Records, alternatives, maps, explicit contracts | Dynamic prototypes, property traps, metaprogramming, boxed primitive methods, and VM reflection are outside the typed data API |

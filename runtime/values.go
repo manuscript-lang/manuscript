@@ -443,6 +443,23 @@ func ViewOf(contract string, receiver Value, scopes ...TypeScope) Value {
 	}
 	return View{Type: contract, Receiver: receiver, Scope: scope}
 }
+func ContractReceiver(value Value) Value {
+	if view, ok := value.(View); ok {
+		return view.Receiver
+	}
+	return Panic("runtime invariant: expected contract view")
+}
+func ConcreteType(value Value) string {
+	switch value := value.(type) {
+	case Record:
+		return value.Type
+	case Alternative:
+		return value.Type
+	default:
+		// Native receivers remain available to the generic wildcard handler.
+		return ""
+	}
+}
 func Bind(receiver Value, contract, name string, scopes ...TypeScope) Value {
 	scope := TypeScope{}
 	if len(scopes) > 0 {

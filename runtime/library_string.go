@@ -34,7 +34,7 @@ func init() {
 	}{
 		{"format_fixed", "digits", 'f', 0}, {"format_exponential", "digits", 'e', 0}, {"format_precision", "precision", 'g', 1},
 	} {
-		add("numbers", spec.name, libraryResult("String"), []LibraryParam{p("value", "Float"), p(spec.label, "Int")}, func(_ *Execution, r string, a []Value) Value {
+		add("numbers", spec.name, libraryResult("String", "NumberError"), []LibraryParam{p("value", "Float"), p(spec.label, "Int")}, func(_ *Execution, r string, a []Value) Value {
 			precision := a[1].(int64)
 			if precision < spec.minimum || precision > 100 {
 				return libraryError(r, "InvalidInput", "")
@@ -44,7 +44,7 @@ func init() {
 	}
 
 	add("string", "concat", "String", []LibraryParam{p("text", "String"), p("values", "String")}, func(_ *Execution, _ string, a []Value) Value { return a[0].(string) + a[1].(string) })
-	add("string", "normalize", libraryResult("String"), []LibraryParam{p("text", "String"), p("form", "String"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("string", "normalize", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("form", "String"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[2].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -137,7 +137,7 @@ func init() {
 		})
 	}
 	for _, name := range []string{"pad_start", "pad_end"} {
-		add("string", name, libraryResult("String"), []LibraryParam{p("text", "String"), p("target_length", "Int"), p("padding", "String"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+		add("string", name, libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("target_length", "Int"), p("padding", "String"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 			text, padding := a[0].(string), a[2].(string)
 			target, max := a[1].(int64), a[3].(int64)
 			if target < 0 || max < 0 {
@@ -187,7 +187,7 @@ func init() {
 			return libraryOK(r, b.String())
 		})
 	}
-	add("string", "replace_all", libraryResult("String"), []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("string", "replace_all", libraryResult("String", "StringError"), []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		text, old, replacement, max := a[0].(string), a[1].(string), a[2].(string), a[3].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")

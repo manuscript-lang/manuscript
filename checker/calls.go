@@ -165,15 +165,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		return i
 	}
 	i.Arguments = functionArguments(e.Args, signature.Params)
-	params := signature.Params
-	if s != nil && s.Native == "parallel_map" {
-		for _, arg := range e.Args {
-			if arg.Name == "timeout" {
-				params = append(append([]Param{}, params...), Param{"timeout", standard("Duration")})
-			}
-		}
-	}
-	i.NoReturn = callable.NoReturn || c.arguments(i.Arguments, params, signature.Defaults)
+	i.NoReturn = callable.NoReturn || c.arguments(i.Arguments, signature.Params, signature.Defaults)
 	i.Type = signature.Result
 	if i.Type != nil && i.Type.ID == "Never" {
 		i.NoReturn = true

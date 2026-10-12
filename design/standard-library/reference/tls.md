@@ -18,6 +18,21 @@ type CertificateInfo:
     der: Bytes
 ```
 
+## TlsError {data-api-kind="Alternative"}
+
+```manuscript
+type TlsError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case AuthenticationFailed
+```
+
+```manuscript
+impl Error for TlsError:
+    fn message() -> String
+```
+
 ## TlsInfo {data-api-kind="Record"}
 
 ```manuscript
@@ -44,12 +59,12 @@ type TlsOptions:
 ## parse_certificates {data-api-kind="Function"}
 
 ```manuscript
-fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], LibraryError]
+fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
 ```
 
 ## verify_certificates {data-api-kind="Function"}
 
 ```manuscript
-fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, LibraryError]
+fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
 ```
 

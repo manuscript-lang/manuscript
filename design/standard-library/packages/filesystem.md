@@ -18,7 +18,7 @@ fn extension(path: String) -> String
 fn is_absolute(path: String) -> Bool
 fn join(parts: List[String]) -> String
 fn normalize(path: String) -> String
-fn relative(base: String, target: String) -> Result[String, LibraryError]
+fn relative(base: String, target: String) -> Result[String, PathError]
 ```
 
 ## `@std/fs.ms`
@@ -26,18 +26,18 @@ fn relative(base: String, target: String) -> Result[String, LibraryError]
 ## FileSystem operations
 
 ```manuscript
-fn read_file(path: String, max_bytes: Int) -> Result[Bytes, LibraryError]
-fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, LibraryError]
-fn stat(path: String, follow_links: Bool) -> Result[FileInfo, LibraryError]
-fn list(path: String, max_entries: Int) -> Result[List[DirectoryEntry], LibraryError]
-fn create_directory(path: String, recursive: Bool) -> Result[Unit, LibraryError]
-fn remove(path: String, recursive: Bool) -> Result[Unit, LibraryError]
-fn rename(source: String, destination: String) -> Result[Unit, LibraryError]
-fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Int) -> Result[Unit, LibraryError]
-fn canonicalize(path: String) -> Result[String, LibraryError]
-fn read_link(path: String) -> Result[String, LibraryError]
-fn create_link(path: String, target: String) -> Result[Unit, LibraryError]
-fn temporary_directory(prefix: String) -> Result[String, LibraryError]
+fn read_file(path: String, max_bytes: Int) -> Result[Bytes, FileSystemError]
+fn write_file(path: String, data: Bytes, replace: Bool) -> Result[Unit, FileSystemError]
+fn stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
+fn list(path: String, max_entries: Int) -> Result[List[DirectoryEntry], FileSystemError]
+fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+fn remove(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+fn rename(source: String, destination: String) -> Result[Unit, FileSystemError]
+fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Int) -> Result[Unit, FileSystemError]
+fn canonicalize(path: String) -> Result[String, FileSystemError]
+fn read_link(path: String) -> Result[String, FileSystemError]
+fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
+fn temporary_directory(prefix: String) -> Result[String, FileSystemError]
 ```
 
 ## Authority and records

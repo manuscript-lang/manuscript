@@ -28,7 +28,14 @@ type IoError:
     case Closed
     case InvalidInput
     case Unavailable
+    case InvalidData
+    case LimitExceeded
     case Failed(message: String)
+```
+
+```manuscript
+impl Error for IoError:
+    fn message() -> String
 ```
 
 ## ReadStream {data-api-kind="Interface"}
@@ -51,18 +58,18 @@ interface WriteStream:
 ## copy {data-api-kind="Function"}
 
 ```manuscript
-fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, LibraryError]
+fn copy(input: ReadStream, output: WriteStream, max_bytes: Int) -> Result[Int, IoError]
 ```
 
 ## read_all {data-api-kind="Function"}
 
 ```manuscript
-fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, LibraryError]
+fn read_all(input: ReadStream, max_bytes: Int) -> Result[Bytes, IoError]
 ```
 
 ## read_line {data-api-kind="Function"}
 
 ```manuscript
-fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], LibraryError]
+fn read_line(input: ReadStream, max_bytes: Int) -> Result[Optional[String], IoError]
 ```
 

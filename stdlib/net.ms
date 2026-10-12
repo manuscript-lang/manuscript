@@ -1,12 +1,23 @@
 # Canonical standard-library declarations. Implementations are native.
 
+import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import IoError from "@std/io.ms"
-import LibraryError from "@std/errors.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
+import TlsError from "@std/tls.ms"
 import TlsInfo from "@std/tls.ms"
+
+export type NetworkError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+    case PermissionDenied
+    case Unsupported
+    case Closed
+    case Timeout
+    case Failed(message: String)
 
 export interface Connection:
     fn close() -> Unit
@@ -14,8 +25,8 @@ export interface Connection:
     fn peer_address() -> String
     fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
     fn read_timeout(max_bytes: Int, timeout: Duration) -> Result[Optional[Bytes], IoError]
-    fn shutdown_write() -> Result[Unit, LibraryError]
-    fn tls_info() -> Result[TlsInfo, LibraryError]
+    fn shutdown_write() -> Result[Unit, NetworkError]
+    fn tls_info() -> Result[TlsInfo, TlsError]
     fn write(data: Bytes) -> Result[Unit, IoError]
     fn write_timeout(data: Bytes, timeout: Duration) -> Result[Unit, IoError]
 
@@ -26,10 +37,10 @@ export type Datagram:
 export interface DatagramSocket:
     fn address() -> String
     fn close() -> Unit
-    fn receive(max_bytes: Int) -> Result[Datagram, LibraryError]
-    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, LibraryError]
-    fn send(data: Bytes, address: String) -> Result[Unit, LibraryError]
-    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, LibraryError]
+    fn receive(max_bytes: Int) -> Result[Datagram, NetworkError]
+    fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, NetworkError]
+    fn send(data: Bytes, address: String) -> Result[Unit, NetworkError]
+    fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, NetworkError]
 
 export type DnsRecord:
     kind: String
@@ -39,13 +50,16 @@ export type DnsRecord:
     port: Int
 
 export interface Listener:
-    fn accept() -> Result[Connection, LibraryError]
-    fn accept_timeout(timeout: Duration) -> Result[Connection, LibraryError]
+    fn accept() -> Result[Connection, NetworkError]
+    fn accept_timeout(timeout: Duration) -> Result[Connection, NetworkError]
     fn address() -> String
     fn close() -> Unit
 
-export fn contains_ip(cidr: String, address: String) -> Result[Bool, LibraryError]
+export fn contains_ip(cidr: String, address: String) -> Result[Bool, NetworkError]
 
-export fn parse_cidr(text: String) -> Result[String, LibraryError]
+export fn parse_cidr(text: String) -> Result[String, NetworkError]
 
-export fn parse_ip(text: String) -> Result[String, LibraryError]
+export fn parse_ip(text: String) -> Result[String, NetworkError]
+
+impl Error for NetworkError:
+    fn message() -> String

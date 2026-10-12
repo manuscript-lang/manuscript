@@ -62,6 +62,9 @@ func renderModule(module checker.APIModule, forSite bool) string {
 			continue
 		}
 		fmt.Fprintf(&b, "```manuscript\n%s```\n\n", d.Declaration)
+		for _, implementation := range d.ImplementationDeclarations {
+			fmt.Fprintf(&b, "```manuscript\n%s```\n\n", implementation)
+		}
 	}
 	return b.String()
 }

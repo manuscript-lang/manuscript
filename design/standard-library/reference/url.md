@@ -26,10 +26,24 @@ type Url:
     fragment: String
 ```
 
+## UrlError {data-api-kind="Alternative"}
+
+```manuscript
+type UrlError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for UrlError:
+    fn message() -> String
+```
+
 ## decode_component {data-api-kind="Function"}
 
 ```manuscript
-fn decode_component(text: String) -> Result[String, LibraryError]
+fn decode_component(text: String) -> Result[String, UrlError]
 ```
 
 ## encode_component {data-api-kind="Function"}
@@ -41,7 +55,7 @@ fn encode_component(text: String) -> String
 ## format {data-api-kind="Function"}
 
 ```manuscript
-fn format(value: Url) -> Result[String, LibraryError]
+fn format(value: Url) -> Result[String, UrlError]
 ```
 
 ## format_query {data-api-kind="Function"}
@@ -53,18 +67,18 @@ fn format_query(entries: List[QueryEntry]) -> String
 ## parse {data-api-kind="Function"}
 
 ```manuscript
-fn parse(text: String) -> Result[Url, LibraryError]
+fn parse(text: String) -> Result[Url, UrlError]
 ```
 
 ## parse_query {data-api-kind="Function"}
 
 ```manuscript
-fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], LibraryError]
+fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], UrlError]
 ```
 
 ## resolve {data-api-kind="Function"}
 
 ```manuscript
-fn resolve(base: Url, reference: String) -> Result[Url, LibraryError]
+fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
 ```
 

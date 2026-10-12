@@ -18,10 +18,10 @@ import (
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	add := libraryAdd
-	add("json", "parse", libraryResult("JsonValue"), []LibraryParam{p("text", "String"), p("limits", "JsonLimits")}, libraryJSONParse)
-	add("json", "stringify", libraryResult("String"), []LibraryParam{p("value", "JsonValue"), p("max_bytes", "Int")}, libraryJSONStringify)
-	add("csv", "parse", libraryResult("List[List[String]]"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Int"), p("max_cells", "Int")}, libraryCSVParse)
-	add("csv", "stringify", libraryResult("String"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Int")}, libraryCSVStringify)
+	add("json", "parse", libraryResult("JsonValue", "JsonError"), []LibraryParam{p("text", "String"), p("limits", "JsonLimits")}, libraryJSONParse)
+	add("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("value", "JsonValue"), p("max_bytes", "Int")}, libraryJSONStringify)
+	add("csv", "parse", libraryResult("List[List[String]]", "CsvError"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Int"), p("max_cells", "Int")}, libraryCSVParse)
+	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Int")}, libraryCSVStringify)
 	add("html", "escape", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return html.EscapeString(a[0].(string)) })
 	add("url", "encode_component", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value {
 		text := a[0].(string)
@@ -39,21 +39,21 @@ func init() {
 		}
 		return b.String()
 	})
-	add("url", "decode_component", libraryResult("String"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
+	add("url", "decode_component", libraryResult("String", "UrlError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		s, err := url.PathUnescape(a[0].(string))
 		if err != nil || !utf8.ValidString(s) {
 			return libraryError(r, "InvalidData", "")
 		}
 		return libraryOK(r, s)
 	})
-	add("url", "parse", libraryResult("Url"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
+	add("url", "parse", libraryResult("Url", "UrlError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		u, err := url.Parse(a[0].(string))
 		if err != nil || u.Scheme == "" || u.User != nil {
 			return libraryError(r, "InvalidData", "")
 		}
 		return libraryURLValue(r, u)
 	})
-	add("url", "resolve", libraryResult("Url"), []LibraryParam{p("base", "Url"), p("reference", "String")}, func(_ *Execution, r string, a []Value) Value {
+	add("url", "resolve", libraryResult("Url", "UrlError"), []LibraryParam{p("base", "Url"), p("reference", "String")}, func(_ *Execution, r string, a []Value) Value {
 		base, err := libraryURL(a[0])
 		if err != nil {
 			return libraryError(r, "InvalidInput", "")
@@ -64,14 +64,14 @@ func init() {
 		}
 		return libraryURLValue(r, base.ResolveReference(u))
 	})
-	add("url", "format", libraryResult("String"), []LibraryParam{p("value", "Url")}, func(_ *Execution, r string, a []Value) Value {
+	add("url", "format", libraryResult("String", "UrlError"), []LibraryParam{p("value", "Url")}, func(_ *Execution, r string, a []Value) Value {
 		u, err := libraryURL(a[0])
 		if err != nil {
 			return libraryError(r, "InvalidInput", "")
 		}
 		return libraryOK(r, u.String())
 	})
-	add("url", "parse_query", libraryResult("List[QueryEntry]"), []LibraryParam{p("text", "String"), p("max_entries", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("url", "parse_query", libraryResult("List[QueryEntry]", "UrlError"), []LibraryParam{p("text", "String"), p("max_entries", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		n := a[1].(int64)
 		if n < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -114,7 +114,7 @@ func init() {
 		return filepath.Join(parts...)
 	})
 	add("path", "is_absolute", "Bool", []LibraryParam{p("path", "String")}, func(_ *Execution, _ string, a []Value) Value { return filepath.IsAbs(a[0].(string)) })
-	add("path", "relative", libraryResult("String"), []LibraryParam{p("base", "String"), p("target", "String")}, func(_ *Execution, r string, a []Value) Value {
+	add("path", "relative", libraryResult("String", "PathError"), []LibraryParam{p("base", "String"), p("target", "String")}, func(_ *Execution, r string, a []Value) Value {
 		base, target := a[0].(string), a[1].(string)
 		if !filepath.IsAbs(base) || !filepath.IsAbs(target) {
 			return libraryError(r, "InvalidInput", "")
@@ -125,7 +125,7 @@ func init() {
 		}
 		return libraryOK(r, v)
 	})
-	add("net", "parse_ip", libraryResult("String"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
+	add("net", "parse_ip", libraryResult("String", "NetworkError"), []LibraryParam{p("text", "String")}, func(_ *Execution, r string, a []Value) Value {
 		ip := net.ParseIP(a[0].(string))
 		if ip == nil {
 			return libraryError(r, "InvalidData", "")

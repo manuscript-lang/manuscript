@@ -15,6 +15,7 @@ var standardSymbols map[string]*Symbol
 var standardModules map[string]map[string]*Symbol
 var standardSources []*syntax.Module
 var intrinsicOperations map[string]*Type
+var standardImplementations []*Method
 var standardOperationVariables = map[string][]*Type{}
 
 type standardBindings struct {
@@ -22,6 +23,7 @@ type standardBindings struct {
 	Functions          map[string]string `json:"functions"`
 	SpecialFunctions   map[string]string `json:"special_functions"`
 	IntrinsicReceivers map[string]string `json:"intrinsic_receivers"`
+	Implementations    map[string]string `json:"implementations"`
 }
 
 func init() {
@@ -33,6 +35,7 @@ func loadStandardSources() error {
 	standardSymbols = map[string]*Symbol{}
 	standardModules = map[string]map[string]*Symbol{}
 	intrinsicOperations = map[string]*Type{}
+	standardImplementations = nil
 	data, err := stdlib.Sources.ReadFile("bindings.json")
 	if err != nil {
 		return err
@@ -60,7 +63,15 @@ func loadStandardSources() error {
 		standardSources = append(standardSources, module)
 		standardModules[module.File] = map[string]*Symbol{}
 		for _, d := range module.Declarations {
-			if d.Kind == "test" || d.Kind == "impl" {
+			if d.Kind == "impl" {
+				for _, method := range d.Methods {
+					if len(method.Body) > 0 {
+						return fmt.Errorf("native implementations must not have bodies: %s", method.Pos)
+					}
+				}
+				continue
+			}
+			if d.Kind == "test" {
 				return fmt.Errorf("standard declarations cannot contain implementation bodies: %s", d.Pos)
 			}
 			if len(d.Body) > 0 {
@@ -100,7 +111,7 @@ func loadStandardSources() error {
 			standardModules[module.File][d.Name] = s
 		}
 	}
-	c := &checker{Program: &Program{TypeReferences: map[*syntax.Type]*Type{}}, captures: map[int]map[*Binding]bool{}}
+	c := &checker{standardDeclarations: true, Program: &Program{TypeReferences: map[*syntax.Type]*Type{}}, captures: map[int]map[*Binding]bool{}}
 	scopeModule := func(module *syntax.Module) {
 		c.module = module
 		c.names = map[string]*Symbol{}
@@ -117,6 +128,9 @@ func loadStandardSources() error {
 			c.addSymbol(item.Name, found, item.NamePos)
 		}
 		for _, d := range module.Declarations {
+			if d.Kind == "impl" {
+				continue
+			}
 			c.addSymbol(d.Name, standardModules[module.File][d.Name], d.Pos)
 		}
 	}
@@ -125,6 +139,9 @@ func loadStandardSources() error {
 	for _, module := range standardSources {
 		scopeModule(module)
 		for _, d := range module.Declarations {
+			if d.Kind == "impl" {
+				continue
+			}
 			s := standardModules[module.File][d.Name]
 			c.scope = newScope(nil)
 			for _, p := range d.TypeParams {
@@ -141,6 +158,9 @@ func loadStandardSources() error {
 	for _, module := range standardSources {
 		scopeModule(module)
 		for _, d := range module.Declarations {
+			if d.Kind == "impl" {
+				continue
+			}
 			s := standardModules[module.File][d.Name]
 			c.scope = c.variableScope(s.Variables)
 			for i, p := range d.TypeParams {
@@ -188,6 +208,32 @@ func loadStandardSources() error {
 			}
 		}
 	}
+	used := map[string]bool{}
+	for _, module := range standardSources {
+		scopeModule(module)
+		for _, d := range module.Declarations {
+			if d.Kind != "impl" {
+				continue
+			}
+			start := len(c.Methods)
+			c.implementation(d)
+			for _, method := range c.Methods[start:] {
+				key := module.File + "/" + d.Receiver.Name + "/" + d.Contract.Name + "/" + method.Decl.Name
+				method.ID = key
+				method.Native = bindings.Implementations[key]
+				if method.Native == "" {
+					return fmt.Errorf("missing native implementation binding: %s", method.Decl.Pos)
+				}
+				used[key] = true
+			}
+		}
+	}
+	for key := range bindings.Implementations {
+		if !used[key] {
+			return fmt.Errorf("unused native implementation binding: %s", key)
+		}
+	}
+	standardImplementations = append([]*Method{}, c.Methods...)
 	if len(c.Diagnostics) > 0 {
 		return fmt.Errorf("invalid standard declarations: %v", c.Diagnostics)
 	}

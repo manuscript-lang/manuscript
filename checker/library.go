@@ -69,6 +69,25 @@ func validateStandardNativeBindings() error {
 			return fmt.Errorf("native signature does not match source: %s", s.Decl.Pos)
 		}
 	}
+	for _, method := range standardImplementations {
+		found := false
+		for _, spec := range rt.NativeImplementations {
+			if spec.Name != method.Native {
+				continue
+			}
+			found = true
+			params := []Param{}
+			for _, p := range spec.Params {
+				params = append(params, Param{p.Name, libraryParseType(p.Type, nil)})
+			}
+			if !Same(method.Type, function(params, libraryParseType(spec.Result, nil))) {
+				return fmt.Errorf("native implementation does not match source: %s", method.Decl.Pos)
+			}
+		}
+		if !found {
+			return fmt.Errorf("unavailable native implementation: %s", method.Decl.Pos)
+		}
+	}
 	for receiver, operations := range rt.NativeLibraryBindings {
 		typ := standardSymbols[receiver]
 		if intrinsic := intrinsicOperations[receiver]; intrinsic != nil {

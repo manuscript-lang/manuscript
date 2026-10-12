@@ -9,7 +9,7 @@ The `.ms` files here define public types, fields, cases, function signatures, an
 - `intrinsics.ms` contains private operation declarations for primitive receivers.
 - The heterogeneous `parallel` call is marked in its source module and needs special compiler handling.
 
-These files use a trusted declaration-only parser mode. Native functions and opaque types need no Manuscript body here. Application source still needs the usual bodies and type definitions.
+These files use a trusted declaration-only parser mode. Native functions and opaque types need no Manuscript body here. Native `impl` blocks declare their method signatures without bodies, and `bindings.json` maps each receiver/contract/method identity to native dispatch. The checker verifies the ordinary implementation rules and native signatures. Application source still needs the usual bodies and type definitions.
 
 ## Editor navigation
 

@@ -2,7 +2,7 @@ import Queue from "@std/queues.ms"
 import Synchronized from "@std/sync.ms"
 import Optional from "@std/optional.ms"
 import List from "@std/collections.ms"
-import parallel_map from "@std/tasks.ms"
+import parallel from "@std/tasks.ms"
 import panic from "@std/faults.ms"
 
 test "omitted capacity creates an unbounded queue":
@@ -65,7 +65,7 @@ test "queue elements include ordinary functions":
 
 test "shared queue uses explicit lock scopes":
     let shared = Synchronized(value: Queue[Int]())
-    match parallel_map(items: [1, 2, 3, 4], limit: 4, operation: fn(item: Int) -> Unit:
+    let operation = fn(item: Int) -> Unit:
         for unused in [1, 2, 3, 4, 5]:
             with locked = shared.lock():
                 let queue = locked.get()
@@ -74,7 +74,15 @@ test "shared queue uses explicit lock scopes":
                 let expected: Optional[Int] = some(value: item)
                 if not (queue.dequeue() == expected):
                     return panic("critical section interleaved")
-    ):
+    let task1 = fn() -> Unit:
+        operation(item: 1)
+    let task2 = fn() -> Unit:
+        operation(item: 2)
+    let task3 = fn() -> Unit:
+        operation(item: 3)
+    let task4 = fn() -> Unit:
+        operation(item: 4)
+    match parallel(tasks: [task1, task2, task3, task4]):
         ok(_):
             with locked = shared.lock():
                 if not locked.get().is_empty():

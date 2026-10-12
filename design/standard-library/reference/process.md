@@ -17,6 +17,11 @@ type CommandError:
     case Failed(message: String)
 ```
 
+```manuscript
+impl Error for CommandError:
+    fn message() -> String
+```
+
 ## CommandOutput {data-api-kind="Record"}
 
 ```manuscript

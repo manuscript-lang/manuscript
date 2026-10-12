@@ -47,7 +47,7 @@ The remaining problems sit where the language meets the runtime. Several load-be
 | ID | Objection |
 | --- | --- |
 | **C1** | `try` requires the exact same error type, so every documented `parallel`/`Background` call site is ill-typed. That includes the flagship example. |
-| **C2** | The runtime and standard-library APIs (`panic`, `parallel`, `parallel_map`, `Background`, …) can't be resolved by name, and several can't be typed under the stated type system. |
+| **C2** | The runtime and standard-library APIs (`panic`, `parallel`, `Background`, …) can't be resolved by name, and several can't be typed under the stated type system. |
 | **C3** | Concurrent safety of contract receivers was unspecified in the reviewed draft. The current universal-sharing contract resolves this. |
 | **C4** | Nothing connects a host to running code: no entry contract and no way to create a capability. The planned Go package layout also has an import cycle, and `with` can't accept a contract-typed resource. |
 | **C5** | There is no data API. A list whose length depends on input can't be built, Map/Set values can't be created, and numbers and text can't be converted. |
@@ -73,7 +73,6 @@ The remaining problems sit where the language meets the runtime. Several load-be
   - `concurrency/tasks/operations.md:12`
   - `concurrency/cancellation/deadlines.md:8`
   - `modules-and-capabilities/modules/boundaries.md:24`
-  - `standard-library/tasks/parallel-map.md:11`
   - `standard-library/tasks/background.md:22` (`StartError`)
   - `concurrency/cancellation/requests.md:8`
 - `design/compiler/conformance/semantic-tests.md:13` asks tests to verify `let [resA, resB] = try parallel(...)`. Tests are Unit bodies, where `try` is rejected.
@@ -95,12 +94,11 @@ The remaining problems sit where the language meets the runtime. Several load-be
 
 **Evidence — names**
 - `design/modules-and-capabilities/modules/declarations.md:13` lists only the intrinsic types and bounds.
-- `panic`, `parallel`, `parallel_map`, `check_cancelled`, `Background`, `ExecutionError`, `Closeable`, `Duration`, `Instant`, `File`, `WorkId`, `StartError` and `OperationId` are neither intrinsic nor importable. `compiler/builds/project-configuration.md:43` forbids bare logical module names, and `:51` leaves package imports unspecified.
+- `panic`, `parallel`, `check_cancelled`, `Background`, `ExecutionError`, `Closeable`, `Duration`, `Instant`, `File`, `WorkId`, `StartError` and `OperationId` are neither intrinsic nor importable. `compiler/builds/project-configuration.md:43` forbids bare logical module names, and `:51` leaves package imports unspecified.
 - Fixtures still call `panic` without an import (`compiler/conformance/core-language.md:180,584`), while CL-01 makes unknown names resolution errors (`core-language.md:36`).
 
 **Evidence — typing**
 - **Heterogeneous packs.** Pack typing is deferred to "trusted API manifests" (`concurrency/parallel.md:30,42`; `compiler/lowering/function-and-task-calls.md:11`). The manifest format is explicitly unspecified (`modules-and-capabilities/adapters/manifests.md:13`). Only literal `tasks:` packs are covered (`type-checker.md:20`), and nothing says what a pack value can do (`standard-library/types/catalog.md:27`, `destructuring.md:14`).
-- **`parallel_map` labels.** `parallel-map.md:18` says the callable "retains its declared input name" (example `fn(id: UserId)` at `:8`). That needs label polymorphism, which contradicts `core-language/types/compatibility.md:17` and `function-values-and-closures.md:22`.
 - **`Background.start`.** It accepts `fn() -> Unit` *or* `fn() -> Result[Unit, E]` for any `E` (`background.md:27`). That is an overload plus a generic operation, both excluded (`declarations.md:11`; `contracts.md:51`; `generics.md:65`).
 - **Background reporter.** The reporter is "configured" (`background.md:27`, `errors/results.md:45`, `errors/faults.md:39`), but the only constructor shown is `Background(limit: 32)` (`background.md:8`). Records and alternatives can't be formatted either (`text-and-bytes.md:45`), so there is no way to report an arbitrary `E`.
 - **Optional arguments.** Trusted APIs may have optional named arguments (`grammar.md:116`, `declarations-and-calls.md:41`), but no page lists which ones.
@@ -108,7 +106,6 @@ The remaining problems sit where the language meets the runtime. Several load-be
 **Counterexamples**
 - `fn f() -> Int: return panic(message: "x")` is a resolution error under `declarations.md:13`, yet CL-17 expects it to be accepted.
 - `let p = try parallel(tasks: [a, b])` followed by `helper(p: p)`: there is no type to write for `p`.
-- `parallel_map(items: ids, operation: fn(user: UserId) -> R)`: the declared label is unknown.
 - `emails.start(operation: fn() -> Result[Unit, MailError])`: no source signature accepts both this and `fn() -> Unit`, and nothing says where `MailError` goes.
 
 **Smallest fix.** Add one normative page, `standard-library/types/prelude.md`, and extend `declarations.md:13`.
@@ -117,7 +114,6 @@ The remaining problems sit where the language meets the runtime. Several load-be
   - `tasks` must be a bracket literal, and each `fi` must be a `fn() -> Ri`.
   - `Pack` has no source spelling. It can be inferred into locals and generic parameters, bound as a match payload, and destructured with exact arity.
   - It can't appear in annotations, parameters or fields, and it has no `Equal`.
-- **`parallel_map`.** `parallel_map[T, U](items: List[T], operation: fn(item: T) -> U, limit: Int, timeout?, deadline?) -> Result[List[U], ExecutionError]`. Change the example's label to `item`.
 - **`Background`.**
   - Constructor: `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit)`.
   - `start` is the single sanctioned intrinsic overload: either `fn() -> Unit` or `fn() -> Result[Unit, E]`.
@@ -126,8 +122,7 @@ The remaining problems sit where the language meets the runtime. Several load-be
 
 **Acceptance cases**
 - `panic` resolves without an import. A module-level `fn parallel` or `type Closeable` is a resolution rejection.
-- `parallel(tasks: some_list_variable)` is rejected (use `parallel_map`). Binding `let p = …` and then `let [x, y] = p` is accepted; `let [x] = p` is an arity rejection.
-- `parallel_map` with `fn(id: …)` is rejected; with `fn(item: …)` it is accepted.
+- `parallel(tasks: some_list_variable)` is rejected. Binding `let p = …` and then `let [x, y] = p` is accepted; `let [x] = p` is an arity rejection.
 - `start(operation: fn() -> Int)` is rejected. A `MailError.Bounced` result reaches the reporter as `Failed(error: "MailError.Bounced")`.
 
 ### C3 — Concurrent safety of contract receivers
@@ -306,7 +301,7 @@ The earlier sharing-bound proposal is superseded. `Hashable` implies `Equal`; eq
 
 **I-07 — `ExecutionError.Cancelled` has no source in parallel groups**
 - **Evidence.** `cancellation/propagation.md:7`, `joining.md:18` and `timeouts.md:11` assume an "independent child cancellation", but no source construct can cancel a single child.
-- **Fix.** Name the only source of that cancellation, or declare `Cancelled` unreachable for `parallel`/`parallel_map` in v0.1.
+- **Fix.** Name the only source of that cancellation, or declare `Cancelled` unreachable for `parallel` in v0.1.
 - **Accept.** A fixture shows that caller cancellation unwinds the caller rather than returning `Cancelled`.
 
 **I-08 — Test discovery and runner contract** (historical TOOL-01 remainder)
@@ -330,7 +325,7 @@ The earlier sharing-bound proposal is superseded. `Hashable` implies `Equal`; eq
 
   Meanwhile `README.md:31` claims the guides together specify v0.1.
 - **Fix.**
-  - The v0.1 gate covers the C4 CLI with file and stdio streams (with read/write signatures), `parallel`, `parallel_map`, `Background`, the cleanup-fault program and the acquisition-race program.
+  - The v0.1 gate covers the C4 CLI with file and stdio streams (with read/write signatures), `parallel`, `Background`, the cleanup-fault program and the acquisition-race program.
   - Move HTTP, subprocess draining, queues, pools and the debugger session to a labeled next milestone.
   - Add normative/deferred status labels to each guide index.
 - **Accept.** Every v0.1 program fixture is complete source plus a manifest plus an expected transcript, using only specified APIs.
@@ -432,7 +427,7 @@ All 118 Markdown pages were read in full, plus 3 site files. No files were edite
   - runtime: `README`, `atomic-transitions`, `completion`, `adapter-contexts`
 - **standard-library/** (14): `README`
   - types: `README`, `catalog`
-  - tasks: `README`, `background`, `parallel-map`
+  - tasks: `README`, `background`
   - data-and-io: `README`, `streams`, `queues`, `synchronized-state`, `builders`
   - hosts: `README`, `cli`, `http`
 - **modules-and-capabilities/** (11): `README`

@@ -1,7 +1,11 @@
 # Canonical standard-library declarations. Implementations are native.
 
-import LibraryError from "@std/errors.ms"
+import Error from "@std/errors.ms"
 import Result from "@std/result.ms"
+
+export type TimeError:
+    case InvalidData
+    case OutOfRange
 
 export interface Clock:
     fn now() -> Instant
@@ -15,18 +19,21 @@ export type Timestamp
 export interface WallClock:
     fn now() -> Timestamp
 
-export fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, LibraryError]
+export fn difference(left: Timestamp, right: Timestamp) -> Result[Duration, TimeError]
 
 export fn format_timestamp(value: Timestamp) -> String
 
 export fn nanoseconds(value: Timestamp) -> Int
 
-export fn parse_timestamp(text: String) -> Result[Timestamp, LibraryError]
+export fn parse_timestamp(text: String) -> Result[Timestamp, TimeError]
 
-export fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, LibraryError]
+export fn shift(value: Timestamp, duration: Duration) -> Result[Timestamp, TimeError]
 
 export fn sleep(duration: Duration) -> Unit
 
-export fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, LibraryError]
+export fn timestamp(seconds: Int, nanoseconds: Int) -> Result[Timestamp, TimeError]
 
 export fn unix_seconds(value: Timestamp) -> Int
+
+impl Error for TimeError:
+    fn message() -> String

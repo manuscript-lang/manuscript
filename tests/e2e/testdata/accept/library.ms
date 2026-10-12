@@ -24,7 +24,13 @@ import read_integer from "@std/binary.ms"
 import write_integer from "@std/binary.ms"
 import compress from "@std/compress.ms"
 import decompress from "@std/compress.ms"
-import LibraryError from "@std/errors.ms"
+import JsonError from "@std/json.ms"
+import EncodingError from "@std/encoding.ms"
+import StringError from "@std/string.ms"
+import UrlError from "@std/url.ms"
+import BinaryError from "@std/binary.ms"
+import CompressionError from "@std/compress.ms"
+import ArchiveError from "@std/archive.ms"
 import Result from "@std/result.ms"
 import map from "@std/collections.ms"
 import filter from "@std/collections.ms"
@@ -52,27 +58,42 @@ fn compare(left: Int, right: Int) -> Int:
         return 1
     return 0
 
-fn verify_formats() -> Result[Unit, LibraryError]:
+fn verify_json() -> Result[Unit, JsonError]:
     let limits = JsonLimits(max_bytes: 1024, max_depth: 8, max_values: 32)
     let value = try parse(text: "\{\"large\":9007199254740993,\"ok\":true\}", limits: limits)
     if not (try stringify(value: value, max_bytes: 1024) == "\{\"large\":9007199254740993,\"ok\":true\}"):
         return panic(message: "check failed")
+    return ok(value: unit)
+
+fn verify_encoding() -> Result[Unit, EncodingError]:
     let bytes = try hex_decode(text: "00ff42", max_bytes: 3)
     if not (hex_encode(data: bytes) == "00ff42"):
         return panic(message: "check failed")
     if not (hex_encode(data: sha256(data: "abc".to_bytes())) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"):
         return panic(message: "check failed")
+    return ok(value: unit)
+
+fn verify_url() -> Result[Unit, UrlError]:
     let query = try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
     if not (query.length() == 3):
         return panic(message: "check failed")
     if not (format_query(entries: query) == "a=1&a=2&space=hello+world"):
         return panic(message: "check failed")
+    return ok(value: unit)
+
+fn verify_binary() -> Result[Unit, BinaryError]:
     let binary = try write_integer(value: -32768, width: 2, signed: true, little_endian: false)
     if not (try read_integer(data: binary, offset: 0, width: 2, signed: true, little_endian: false) == -32768):
         return panic(message: "check failed")
+    return ok(value: unit)
+
+fn verify_compression() -> Result[Unit, CompressionError]:
     let compressed = try compress(data: "hello hello hello".to_bytes(), format: "gzip", level: 6, max_bytes: 256)
     if not (try decompress(data: compressed, format: "gzip", max_bytes: 17) == "hello hello hello".to_bytes()):
         return panic(message: "check failed")
+    return ok(value: unit)
+
+fn verify_archive() -> Result[Unit, ArchiveError]:
     let entries = [ArchiveEntry(path: "hello.txt", data: "hello".to_bytes(), directory: false)]
     let archive = try pack(entries: entries, format: "zip", max_bytes: 1024)
     if not (try unpack(data: archive, format: "zip", limits: ArchiveLimits(max_entries: 1, max_entry_bytes: 5, max_total_bytes: 5)) == entries):
@@ -80,16 +101,43 @@ fn verify_formats() -> Result[Unit, LibraryError]:
     return ok(value: unit)
 
 test "expanded packages run through compiler":
-    let success: Result[Unit, LibraryError] = ok(value: unit)
-    if not (verify_formats() == success):
-        return panic(message: "check failed")
+    match verify_json():
+        ok(_):
+            let verified = unit
+        error(_):
+            return panic(message: "json failed")
+    match verify_encoding():
+        ok(_):
+            let verified = unit
+        error(_):
+            return panic(message: "encoding failed")
+    match verify_url():
+        ok(_):
+            let verified = unit
+        error(_):
+            return panic(message: "url failed")
+    match verify_binary():
+        ok(_):
+            let verified = unit
+        error(_):
+            return panic(message: "binary failed")
+    match verify_compression():
+        ok(_):
+            let verified = unit
+        error(_):
+            return panic(message: "compression failed")
+    match verify_archive():
+        ok(_):
+            let verified = unit
+        error(_):
+            return panic(message: "archive failed")
     if not (split(text: "a,,b", separator: ",", max_parts: 2) == ["a", ",b"]):
         return panic(message: "check failed")
     if not (scalar_length(text: "é🙂") == 2):
         return panic(message: "check failed")
     if not (scalar_values(text: "é") == [233]):
         return panic(message: "check failed")
-    let text_success: Result[String, LibraryError] = ok(value: "é")
+    let text_success: Result[String, StringError] = ok(value: "é")
     if not (from_scalars(values: [233]) == text_success):
         return panic(message: "check failed")
     if not (sqrt(value: 9.0) == 3.0):
@@ -109,19 +157,19 @@ test "expanded packages run through compiler":
         return panic(message: "check failed")
 
 test "malformed and bounded inputs return errors":
-    let failure1: Result[Bytes, LibraryError] = error(cause: InvalidData)
+    let failure1: Result[Bytes, EncodingError] = error(cause: EncodingError.InvalidData)
     if not (base64_decode(text: "Zh==", url_safe: false, max_bytes: 10) == failure1):
         return panic(message: "check failed")
-    let failure2: Result[Bytes, LibraryError] = error(cause: LimitExceeded)
+    let failure2: Result[Bytes, EncodingError] = error(cause: EncodingError.LimitExceeded)
     if not (hex_decode(text: "abcd", max_bytes: 1) == failure2):
         return panic(message: "check failed")
     let limits = JsonLimits(max_bytes: 100, max_depth: 2, max_values: 10)
-    let failure3: Result[JsonValue, LibraryError] = error(cause: InvalidData)
+    let failure3: Result[JsonValue, JsonError] = error(cause: JsonError.InvalidData)
     if not (parse(text: "\{\"a\":1,\"a\":2\}", limits: limits) == failure3):
         return panic(message: "check failed")
-    let failure4: Result[JsonValue, LibraryError] = error(cause: LimitExceeded)
+    let failure4: Result[JsonValue, JsonError] = error(cause: JsonError.LimitExceeded)
     if not (parse(text: "[[[]]]", limits: limits) == failure4):
         return panic(message: "check failed")
-    let failure5: Result[Bytes, LibraryError] = error(cause: OutOfRange)
+    let failure5: Result[Bytes, BinaryError] = error(cause: BinaryError.OutOfRange)
     if not (write_integer(value: 256, width: 1, signed: false, little_endian: true) == failure5):
         return panic(message: "check failed")

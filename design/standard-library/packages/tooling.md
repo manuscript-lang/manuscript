@@ -12,7 +12,7 @@ Write structured logs to an explicit output stream. Logging returns expected err
 ## `@std/log.ms`
 
 ```manuscript
-fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LibraryError]
+fn write(output: WriteStream, level: String, message: String, fields: Map[String, String], max_bytes: Int) -> Result[Unit, LogError]
 ```
 
 `write` emits one compact UTF-8 JSON line to the supplied shared WriteStream. It contains `level`, `message`, and `fields`. Allowed levels are `debug`, `info`, `warn`, and `error`. Fields are a `Map[String, String]`, sorted by the native JSON serializer.

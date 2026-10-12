@@ -22,9 +22,9 @@ type Equal
 
 ```manuscript
 type Float:
-    fn to_precision(precision: Int) -> Result[String, LibraryError]
-    fn to_exponential(digits: Int) -> Result[String, LibraryError]
-    fn to_fixed(digits: Int) -> Result[String, LibraryError]
+    fn to_precision(precision: Int) -> Result[String, NumberError]
+    fn to_exponential(digits: Int) -> Result[String, NumberError]
+    fn to_fixed(digits: Int) -> Result[String, NumberError]
     fn to_string() -> String
     fn is_nan() -> Bool
     fn is_finite() -> Bool
@@ -56,16 +56,16 @@ type Never
 
 ```manuscript
 type String:
-    fn normalize(form: String, max_bytes: Int) -> Result[String, LibraryError]
+    fn normalize(form: String, max_bytes: Int) -> Result[String, StringError]
     fn concat(values: String) -> String
     fn contains(text: String) -> Bool
     fn ends_with(suffix: String) -> Bool
     fn lower() -> String
-    fn repeat(count: Int, max_bytes: Int) -> Result[String, LibraryError]
+    fn repeat(count: Int, max_bytes: Int) -> Result[String, StringError]
     fn replace(old: String, new: String, max_replacements: Int) -> String
     fn scalar_length() -> Int
     fn scalar_values() -> List[Int]
-    fn slice_scalars(start: Int, end: Int) -> Result[String, LibraryError]
+    fn slice_scalars(start: Int, end: Int) -> Result[String, StringError]
     fn split(separator: String, max_parts: Int) -> List[String]
     fn starts_with(prefix: String) -> Bool
     fn trim() -> String
@@ -76,9 +76,9 @@ type String:
     fn last_index_of(value: String) -> Optional[Int]
     fn trim_start() -> String
     fn trim_end() -> String
-    fn pad_start(target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
-    fn pad_end(target_length: Int, padding: String, max_bytes: Int) -> Result[String, LibraryError]
-    fn replace_all(old: String, new: String, max_bytes: Int) -> Result[String, LibraryError]
+    fn pad_start(target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+    fn pad_end(target_length: Int, padding: String, max_bytes: Int) -> Result[String, StringError]
+    fn replace_all(old: String, new: String, max_bytes: Int) -> Result[String, StringError]
     fn slice(start: Int, end: Int) -> String
     fn substring(start: Int, end: Int) -> String
     fn byte_length() -> Int

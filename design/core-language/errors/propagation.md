@@ -31,6 +31,8 @@ A caller with a different error contract must translate the error explicitly usi
 
 If the called operation returns `Result[T, E]`, the function using `try` must return `Result[U, E]`. The success type may change from `T` to `U`, but the error type `E` must be exactly the same. Two error types are not interchangeable just because they implement the same interface. Convert explicitly before constructing the Result that try uses.
 
+A common `Error` boundary follows the same rule: first match the Result and construct `Error(value: cause)` on its error branch, then use `try` on the explicitly converted Result. See [common error boundaries](results.md#a-common-error-boundary).
+
 The expression after `try` is evaluated once. Try binds more tightly than arithmetic, so `try operation() + 1` means `(try operation()) + 1`.
 
 The compiler rejects try when:

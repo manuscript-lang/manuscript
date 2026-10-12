@@ -6,9 +6,9 @@ import encode_component from "@std/url.ms"
 import decode_component from "@std/url.ms"
 import resolve from "@std/url.ms"
 import Result from "@std/result.ms"
-import LibraryError from "@std/errors.ms"
+import UrlError from "@std/url.ms"
 
-fn verify_url() -> Result[Unit, LibraryError]:
+fn verify_url() -> Result[Unit, UrlError]:
     let url = try parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")
     if not (try format(value: url) == "https://example.com/a%2Fb?q=x#frag"):
         return panic(message: "check failed")
@@ -22,6 +22,6 @@ fn verify_url() -> Result[Unit, LibraryError]:
     return ok(value: unit)
 
 test "URLs preserve escaped path structure":
-    let expected: Result[Unit, LibraryError] = ok(value: unit)
+    let expected: Result[Unit, UrlError] = ok(value: unit)
     if not (verify_url() == expected):
         return panic(message: "check failed")

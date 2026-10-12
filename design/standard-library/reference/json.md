@@ -6,6 +6,20 @@ title = "json"
 
 Import each required symbol with `import Name from "@std/json.ms"`.
 
+## JsonError {data-api-kind="Alternative"}
+
+```manuscript
+type JsonError:
+    case InvalidInput
+    case InvalidData
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for JsonError:
+    fn message() -> String
+```
+
 ## JsonLimits {data-api-kind="Record"}
 
 ```manuscript
@@ -30,12 +44,12 @@ type JsonValue:
 ## parse {data-api-kind="Function"}
 
 ```manuscript
-fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, LibraryError]
+fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, JsonError]
 ```
 
 ## stringify {data-api-kind="Function"}
 
 ```manuscript
-fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, LibraryError]
+fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, JsonError]
 ```
 

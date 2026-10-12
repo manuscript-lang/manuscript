@@ -87,3 +87,37 @@ test "methods":
 		}
 	}
 }
+
+func TestCommonErrorNavigation(t *testing.T) {
+	source := `import Error from "@std/errors.ms"
+import JsonError from "@std/json.ms"
+fn describe(cause: Error) -> String:
+    match cause:
+        JsonError(json):
+            return json.message()
+        _:
+            return cause.message()
+`
+	result := compiler.CompileSource("common-errors.ms", source, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for _, item := range []struct{ needle, file string }{
+		{"import Error from", "@std/errors.ms"},
+		{"JsonError(json)", "@std/json.ms"},
+		{"json.message()", "@std/json.ms"},
+		{"cause.message()", "@std/errors.ms"},
+	} {
+		offset := strings.LastIndex(source, item.needle)
+		if strings.HasPrefix(item.needle, "import ") {
+			offset += len("import ")
+		}
+		if strings.Contains(item.needle, ".message") {
+			offset += strings.Index(item.needle, "message")
+		}
+		nav, ok := tooling.NavigationAt(result.Program, "common-errors.ms", offset)
+		if !ok || nav.Definition.File != item.file {
+			t.Fatalf("%s: %+v, %v", item.needle, nav, ok)
+		}
+	}
+}

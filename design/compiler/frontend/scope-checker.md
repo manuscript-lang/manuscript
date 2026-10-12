@@ -21,4 +21,4 @@ Capturing a scoped resource is not a compile error merely because it may outlive
 
 See [with scopes](../../ownership-and-cleanup/cleanup/scopes.md), [closures](../../core-language/functions/function-values-and-closures.md), and [typed IR](typed-ir.md).
 
-All values may be captured and shared. `parallel` retains its direct-call literal-pack typing; specialized `parallel_map`, `Background.start`, and HTTP serve methods are ordinary callable values. Constructors remain type constructors, not function values.
+All values may be captured and shared. `parallel` retains its direct-call literal-pack typing; `Background.start`, and HTTP serve methods are ordinary callable values. Constructors remain type constructors, not function values.

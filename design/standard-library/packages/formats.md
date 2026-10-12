@@ -12,27 +12,27 @@ Use these modules to parse and write JSON, CSV, and URLs, or escape HTML text. C
 ## `@std/json.ms`
 
 ```manuscript
-fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, LibraryError]
-fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, LibraryError]
+fn parse(text: String, limits: JsonLimits) -> Result[JsonValue, JsonError]
+fn stringify(value: JsonValue, max_bytes: Int) -> Result[String, JsonError]
 ```
 
 ## `@std/csv.ms`
 
 ```manuscript
-fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Result[List[List[String]], LibraryError]
-fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Int) -> Result[String, LibraryError]
+fn parse(text: String, options: CsvOptions, max_rows: Int, max_cells: Int) -> Result[List[List[String]], CsvError]
+fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Int) -> Result[String, CsvError]
 ```
 
 ## `@std/url.ms`
 
 ```manuscript
-fn decode_component(text: String) -> Result[String, LibraryError]
+fn decode_component(text: String) -> Result[String, UrlError]
 fn encode_component(text: String) -> String
-fn format(value: Url) -> Result[String, LibraryError]
+fn format(value: Url) -> Result[String, UrlError]
 fn format_query(entries: List[QueryEntry]) -> String
-fn parse(text: String) -> Result[Url, LibraryError]
-fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], LibraryError]
-fn resolve(base: Url, reference: String) -> Result[Url, LibraryError]
+fn parse(text: String) -> Result[Url, UrlError]
+fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], UrlError]
+fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
 ```
 
 ## `@std/html.ms`

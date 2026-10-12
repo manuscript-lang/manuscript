@@ -12,6 +12,15 @@ func StandardDeclarations() Inspection {
 		out.Sources = append(out.Sources, Source{module.File, hash(module.Source)})
 		exports := checker.StandardExports(module.File)
 		for _, d := range module.Declarations {
+			if d.Kind == "impl" {
+				if receiver := exports[d.Receiver.Name]; receiver != nil {
+					for _, method := range d.Methods {
+						id := module.File + "#impl#" + d.Receiver.Name + "#" + d.Contract.Name + "#" + method.Name
+						out.Entities = append(out.Entities, Entity{ID: id, Kind: "operation", Name: d.Receiver.Name + "." + method.Name, Span: sourceSpan(module, method.Pos), Exported: true})
+					}
+				}
+				continue
+			}
 			symbol := exports[d.Name]
 			if symbol == nil {
 				continue

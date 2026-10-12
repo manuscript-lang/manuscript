@@ -65,7 +65,7 @@ test "standard spellings are ordinary names":
 
 Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected without the standard List import even though a local List exists. Calling this local parallel with a `tasks` pack does not activate the standard binding's special typing. Extracting the local parallel above is accepted as an ordinary function value.
 
-Preserve the imported parallel/parallel_map/Background callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, parallel_map, Background, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
+Preserve the imported parallel/Background callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, Background, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
 
 Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a module path, a missing standard file/export, and paths or symlinks escaping the standard-library directory. Resolving a standard module in two installation directories with identical pinned contents preserves identity; changing its pinned distribution invalidates module/analysis/code-generation caches. Adapter interfaces may import standard declarations but cannot use that exception to import application files. Imports alone acquire no external authority.
 
@@ -162,7 +162,7 @@ This fake represents an already-closed stream, so its close is idempotent and ha
 
 Accept a function parameter as a parallel callback, a function-bearing record behind a contract view, and callbacks passed through `identity[T]`, fields, returned values, lists, and branch/var merges. Snapshot captures remain unchanged; assignment to an outer captured binding remains rejected.
 
-Accept specialized `parallel_map` values, stored `Background.start` and HTTP serve methods, and ordinary wrappers forwarding callbacks. A bare `parallel` reference and type constructors remain unavailable as ordinary function values because their construction/pack syntax is not a function signature.
+Accept stored `Background.start` and HTTP serve methods, and ordinary wrappers forwarding callbacks. A bare `parallel` reference and type constructors remain unavailable as ordinary function values because their construction/pack syntax is not a function signature.
 
 Run `tests/e2e/testdata/accept/synchronized.ms` for complete updates, forwarding, immutable snapshots, builders, fault cleanup, stale guards, and ancestor reentry. Runtime tests must exercise simultaneous increments, cancellation while waiting and holding, concurrent release, access racing with release/reacquisition, undelivered acquisition disposal, and builder freeze racing with mutation. Reject direct Synchronized get/set, guard construction, and equality/hashing of either synchronized type.
 

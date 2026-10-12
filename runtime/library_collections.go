@@ -226,7 +226,7 @@ func init() {
 		}
 		return Set{r, out}
 	})
-	add("filled", libraryResult("List[T]"), elements, []LibraryParam{p("value", "T"), p("count", "Int"), p("max_items", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("filled", libraryResult("List[T]", "CollectionError"), elements, []LibraryParam{p("value", "T"), p("count", "Int"), p("max_items", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		count, max := a[1].(int64), a[2].(int64)
 		if count < 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -241,7 +241,7 @@ func init() {
 		}
 		return libraryOK(r, List{typeArguments(r)[0], out})
 	})
-	add("range", libraryResult("List[Int]"), nil, []LibraryParam{p("start", "Int"), p("end", "Int"), p("step", "Int"), p("max_items", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("range", libraryResult("List[Int]", "CollectionError"), nil, []LibraryParam{p("start", "Int"), p("end", "Int"), p("step", "Int"), p("max_items", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		start, end, step, max := a[0].(int64), a[1].(int64), a[2].(int64), a[3].(int64)
 		if step == 0 || max < 0 {
 			return libraryError(r, "InvalidInput", "")
