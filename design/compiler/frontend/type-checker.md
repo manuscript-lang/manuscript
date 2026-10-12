@@ -35,7 +35,7 @@ Accept source according to the [normative grammar](../../core-language/basics/gr
 | Public signatures | Reject internal nominal types leaking through exported fields, signatures, bounds, or operation surfaces |
 | Iteration | Admit List/Set/Map only, bind immutable element/MapEntry types, evaluate iterable once, and reject loop control outside the current function's loops |
 | Result propagation | Recognize the canonical standard Result identity; require the same exact error type at a try expression in the current function; do not infer missing operand type arguments backward |
-| String literals | Validate escape/scalar syntax, check interpolated scalar eligibility, and preserve left-to-right evaluation |
+| String literals | Validate escape/scalar syntax, support universal value conversion, and preserve left-to-right evaluation |
 
 These requirements derive from the [core language guide](../../core-language/_index.md), with accepted and rejected modules in [core conformance](../conformance/core-language.md). The rules specify observable inference and compatibility; checker data structures and internal pass organization remain implementation choices. A module-level `test` body is a zero-parameter Unit function for static checking: ordinary local scopes, bare-return/fallthrough rules, and Result propagation restrictions apply. Test discovery and runner execution remain separate tooling contracts.
 

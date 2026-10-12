@@ -66,6 +66,9 @@ func (c *checker) effectSummaries() {
 			if info.Constructor != nil {
 				return
 			}
+			if info.Native == "toString" {
+				return
+			}
 			if info.Symbol != nil {
 				if info.Symbol.Native == "" {
 					n.edges[info.Symbol.ID] = true

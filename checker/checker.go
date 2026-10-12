@@ -683,9 +683,6 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			if part.Value != nil {
 				p := c.expression(part.Value, nil)
 				i.NoReturn = i.NoReturn || p.NoReturn
-				if !strings.Contains("|String|Bool|Unit|Int|Float|", "|"+p.Type.ID+"|") && !std(p.Type, "Decimal") && p.Type.ID != "Never" {
-					c.error(part.Value.Pos, "type", "interpolation requires a formattable scalar")
-				}
 			}
 		}
 	case "name":
@@ -760,7 +757,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		receiver := c.expression(e.Left, nil)
 		i.NoReturn = receiver.NoReturn
 		for _, f := range Fields(receiver.Type) {
-			if receiver.Type.Kind == "record" && f.Name == e.Text {
+			if receiver.Type.Kind == "record" && f.Name == e.Text && e.Text != "toString" {
 				i.Type = f.Type
 				return i
 			}

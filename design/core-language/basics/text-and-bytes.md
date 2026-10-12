@@ -47,7 +47,27 @@ let calculated = "Next: {count + 1}"
 
 Embedded expressions evaluate once each from left to right. Each result is formatted before evaluating the next embedded expression. Plain surrounding text is concatenated with those formatted results. Result propagation or a fault stops evaluation of the remainder. Interpolation formats values; it does not permit implicit conversions at call, assignment, or return boundaries.
 
-Only String, Bool, Unit, Int, Float, and Decimal are directly formattable. An interpolation of a record, alternative, collection, function, Bytes, or runtime authority/resource type is a type error. Generic code needs a concrete supported scalar type; Equal, Hashable, or a matching operation name alone does not grant formatting eligibility. Custom data must call an explicit operation returning String, and then interpolate that String. No custom formatting protocol or user-defined operator is implied.
+Every value is directly formattable, including records, alternatives, collections, functions, Bytes, interface views, runtime resources, and unconstrained type parameters. Interpolation uses the same conversion as `toString()`.
+
+## Converting values to String
+
+Every value has a built-in `toString()` method with signature `fn() -> String`. It needs no import or generic bound. A bound method retains its receiver and can be called later:
+
+```manuscript
+fn text[T](value: T) -> String:
+    return value.toString()
+
+test "string conversion":
+    let count = 3
+    let convert: fn() -> String = count.toString
+    let direct = count.toString()
+    let bound = convert()
+    let embedded = "{count}"
+```
+
+Each conversion above produces `"3"`. This follows JavaScript's convenience of converting any value to text; the exact representations below are Manuscript's own. Assignment, arguments, and return values still require compatible types: passing an Int to a String parameter requires an explicit `.toString()`.
+
+The built-in method takes precedence over a field or interface operation named `toString`. It cannot be overridden. Application-specific display functions can return String explicitly. Conversion never invokes user-defined formatting operations or native resource operations; even a closed resource remains printable.
 
 ## Deterministic formatting
 
@@ -61,6 +81,24 @@ Formatting never depends on locale, host display settings, or a process's decima
 | Int | Base-ten digits, optional leading minus, no separators or leading zeros |
 | Float | Shortest round-trip decimal under the rule below; signed zero retains its sign |
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |
+| Record | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
+| Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
+| List | `[value, ...]` in element order |
+| Heterogeneous pack | `(value, ...)` in element order |
+| Map | `Map(key: value, ...)` in insertion order |
+| Set | `Set(value, ...)` in insertion order |
+| Bytes | `Bytes(byte, ...)`, with each byte in base ten; no UTF-8 decoding |
+| Interface view | Conversion of its underlying receiver |
+| Function | `[function]`, including bound methods; the function is not called |
+| Duration | Signed nanoseconds followed by `ns`, such as `2000000ns` |
+| Instant | `Instant(tick)`, with its nanosecond tick in base ten |
+| OperationId | `OperationId(number)`, with its number in base ten |
+| BigInt | Base-ten integer digits |
+| Timestamp | UTC RFC 3339 text with fractional seconds as needed |
+| Regex | Pattern text |
+| Other opaque native values, authorities, and resources | `[object]`; internal state and addresses are not inspected |
+
+Type names in records and alternatives omit module identities and type arguments. Nested Strings retain their contents without quoting. Empty values use the same delimiters with no items, such as `[]`, `Map()`, and `Type()`. These text forms are for display; they are not a serialization or identity format. At nesting depth 64, conversion emits `...` for that value, so deeply nested or cyclic adapter values terminate. The outer value starts at depth zero; entering a field, payload, collection item, map key/value, or interface receiver adds one.
 
 For a finite nonzero Float, choose the decimal significand with the fewest significant digits whose numerical conversion to binary64 under round-to-nearest, ties-to-even yields the original value. If several candidates have that digit count, choose the one numerically closest to the exact binary value; if equally close, choose the candidate with an even final significand digit. Remove trailing significand zeros and place the decimal point under the rendering rule below. A zero formats as `0`; negative zero formats as `-0`.
 

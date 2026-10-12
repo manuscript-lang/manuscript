@@ -162,6 +162,23 @@ func TestGenericBoundMembers(t *testing.T) {
 		t.Fatal(items)
 	}
 }
+
+func TestUniversalToStringCompletion(t *testing.T) {
+	for _, source := range []string{
+		"fn text(value: Bool) -> String:\n    return value.|\n",
+		"fn text[T](value: T) -> String:\n    return value.|\n",
+		"interface Named:\n    fn name() -> String\nfn text(value: Named) -> String:\n    return value.|\n",
+		"type Item:\n    value: Int\nfn text(value: Item) -> String:\n    return value.|\n",
+		"fn text(value: fn() -> Int) -> String:\n    return value.|\n",
+		"import Queue from \"@std/queues.ms\"\nfn text(value: Queue[Int]) -> String:\n    return value.|\n",
+	} {
+		items := completeSource(t, source)
+		item := itemNamed(items, "toString")
+		if item == nil || item.Detail != "fn()->String" || item.TextEdit.(map[string]any)["newText"] != "toString()$0" {
+			t.Fatalf("missing universal method for %s: %+v", source, items)
+		}
+	}
+}
 func BenchmarkMemberCompletion(b *testing.B) {
 	source := "import List from \"@std/collections.ms\"\nfn answer(items: List[String]) -> Int:\n    return items.\n"
 	d := document{"file:///tmp/benchmark-completion.ms", source, 1}

@@ -642,6 +642,16 @@ Escaped braces are literal text; unescaped braces select interpolation. Source U
 
 Equivalent LF and CRLF encodings must produce the same parsed structure after documented newline normalization. Invalid UTF-8 input must be rejected rather than silently replaced. Blank/comment-only lines do not introduce suites, and comment markers within text remain text.
 
+### Universal string conversion
+
+Every value supports `toString()` and direct interpolation, including unconstrained generic parameters. The [executable conversion fixture](https://github.com/manuscript-lang/manuscript/blob/main/tests/e2e/testdata/accept/to-string.ms) exercises scalar formatting, nested records and collections, alternatives, interface views, bound methods, functions, and closed native resources. It checks that receivers evaluate once and interpolation evaluates left to right. Exact representations are defined in [Strings and bytes](../../core-language/basics/text-and-bytes.md#deterministic-formatting).
+
+| Independent variant | Expected outcome |
+| --- | --- |
+| Call `true.toString(value: 1)` | Type rejection: `toString` takes no arguments |
+| Bind `value.toString` to `fn() -> Int` | Type rejection: the method returns String |
+| Pass a record to a String parameter without calling `.toString()` | Type rejection: conversion remains explicit at call boundaries |
+
 ## CL-14: Result propagation preserves the declared error type
 
 Contract: [Result](../../core-language/errors/results.md) and [try propagation](../../core-language/errors/propagation.md).

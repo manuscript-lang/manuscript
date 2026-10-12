@@ -373,6 +373,10 @@ func (c *checker) currentModule() string {
 }
 
 func nativeMethod(t *Type, name string) *Method {
+	if name == "toString" {
+		receiver := standardSymbols["ValueOperations"].Type
+		return &Method{Receiver: t, Type: receiver.Def.Operations[0].Type, Native: name, Decl: standardMethodDeclaration(receiver, name)}
+	}
 	receiver := t
 	if intrinsic := intrinsicOperations[t.ID]; intrinsic != nil {
 		receiver = intrinsic

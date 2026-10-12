@@ -60,7 +60,7 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 	if len(module) > 0 {
 		c.module = &syntax.Module{File: module[0]}
 	}
-	candidates := map[string]bool{}
+	candidates := map[string]bool{"toString": true}
 	var collect func(*Type)
 	collect = func(t *Type) {
 		if t == nil {
@@ -85,6 +85,9 @@ func Members(program *Program, receiver *Type, module ...string) []Member {
 	fields := map[string]bool{}
 	if receiver.Kind == "record" {
 		for _, field := range Fields(receiver) {
+			if field.Name == "toString" {
+				continue
+			}
 			result = append(result, Member{field.Name, "field", field.Type, nil})
 			fields[field.Name] = true
 		}
