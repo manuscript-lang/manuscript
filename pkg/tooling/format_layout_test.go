@@ -361,7 +361,11 @@ fn work(
 }
 
 func TestFormatTestCorpusIsCanonical(t *testing.T) {
-	files := []string{"../../examples/hello/test.ms", "../../examples/tooling-demo/src/math.ms"}
+	files := []string{
+		"../../examples/hello/src/main.ms",
+		"../../examples/hello/test.ms",
+		"../../examples/tooling-demo/src/math.ms",
+	}
 	err := filepath.WalkDir("../../tests/e2e/testdata", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
