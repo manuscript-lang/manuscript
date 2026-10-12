@@ -85,7 +85,7 @@ Float parsing accepts signed decimal digits with an optional fraction or exponen
 
 ## Arbitrary-precision integers
 
-`BigInt` is opaque, immutable, shareable, and comparable for equality. Create it with `from_int` or `parse`; there is no source constructor, literal, arithmetic operator, or hashing guarantee. Arithmetic functions leave both operands unchanged. Conversion between `Int` and `BigInt` is explicit.
+`BigInt` is opaque, immutable, and comparable for equality. Create it with `from_int` or `parse`; there is no source constructor, literal, arithmetic operator, or hashing guarantee. Arithmetic functions leave both operands unchanged. Conversion between `Int` and `BigInt` is explicit.
 
 | Operation | Behavior |
 | --- | --- |

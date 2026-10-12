@@ -2,7 +2,7 @@
 
 ### Sharing, resource lifetime, and work lifetime are separate
 
-Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. Callable sharing proofs have their own boundary rules; a safe capture is not a declaration of intended authority.
+Decision: the canonical design separates safe concurrent access from keeping a resource open and from joining work. A captured reference does not extend a `with` lifetime. All values may be shared without callable proofs. Native mutable objects synchronize their internals, while Synchronized guards protect complete source-level updates. A safe capture is not a declaration of intended authority.
 
 Apply when: changing closures, parallel work, background services, resource wrappers, or pools.
 Evidence: [sharing](../design/ownership-and-cleanup/values/sharing.md); [joined groups](../design/concurrency/joining.md); [scope-exit ordering](../design/ownership-and-cleanup/cleanup/exit-order.md). These establish the design contract, not a claim that every runtime path has been tested.

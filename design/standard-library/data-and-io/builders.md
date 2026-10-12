@@ -13,7 +13,7 @@ Builders synchronize mutation and freeze across all aliases. Freezing seals the 
 
 ## API
 
-All builder names are exported by `@std/builders.ms`. They have zero-argument constructors and are opaque shareable references with no equality or hashing. Type arguments can come from an explicit application or a complete expected constructor type.
+All builder names are exported by `@std/builders.ms`. They have zero-argument constructors and are opaque references with no equality or hashing. Type arguments can come from an explicit application or a complete expected constructor type.
 
 | Type | Mutation | Freeze result |
 | --- | --- | --- |

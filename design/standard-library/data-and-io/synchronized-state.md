@@ -56,7 +56,7 @@ fn get() -> Result[T, PoolError]
 fn close() -> Unit
 ```
 
-Acquire waits cancellably for capacity. Closed admission returns `PoolError.Closed`. Delivery that loses to cancellation releases its lease before unwind. Pool and lease objects are shareable, opaque, and eligible for `with`; they have no equality or hashing.
+Acquire waits cancellably for capacity. Closed admission returns `PoolError.Closed`. Delivery that loses to cancellation releases its lease before unwind. Pool and lease objects are opaque, and eligible for `with`; they have no equality or hashing.
 
 Get returns a guarded contract view. Calls through that view admit under the lease's lifetime, including method values saved before release. Closing the view releases the lease. Lease close stops admission, cancels and joins admitted operations, and returns capacity exactly once; concurrent closers join the same release. A later get returns `Closed`. Stale I/O views return `IoError.Closed`; stale operations without an I/O error result fault. Release during an admitted operation interrupts it; I/O reports `Closed`, and other contracts report a programming fault unless caller cancellation already applies.
 

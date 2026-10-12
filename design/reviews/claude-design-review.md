@@ -11,7 +11,7 @@ weight = 121
 
 [Design index](../_index.md)
 
-Claude Code reviewed the 118 original design pages on 2026-10-11 for simplicity, consistency, implementability, and major omissions. The original independent report is retained below; its line references describe the draft it reviewed. Current concept pages govern the adopted behavior.
+Claude Code reviewed the 118 original design pages on 2026-10-11 for simplicity, consistency, implementability, and major omissions. An excerpt of the independent report is retained below, with superseded sharing proposals removed; its line references describe the draft it reviewed. Current concept pages govern the adopted behavior.
 
 ## Critical objection resolution
 
@@ -19,18 +19,18 @@ Claude Code reviewed the 118 original design pages on 2026-10-11 for simplicity,
 | --- | --- |
 | C1 — incompatible try errors | Explicit `map_error`; complete [parallel example](../concurrency/parallel.md); exact-error requirements on body fragments and Unit-test matching |
 | C2 — unresolved/untypable APIs | Closed [prelude](../standard-library/types/prelude.md), inferred packs, exact `item` label, optional arguments, status/reporting; Background uses one `Result[Unit, String]` callable signature |
-| C3 — contract sharing | Plain views remain sequential; explicit [shared views](../core-language/types/contracts.md#shared-contract-views), `Contract & Shareable`, require static receiver sharing proof and preserve it across boundaries; generic behavioral bounds alone do not imply sharing |
+| C3 — contract sharing | All values, including contract views and callbacks, may be shared. Native mutable objects synchronize access; [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) protects complete updates. |
 | C4 — executable/adapter boundary | Exact [CLI entry and Process](../standard-library/hosts/cli.md), standard stream contracts with declared cleanup, [versioned adapter binding](../modules-and-capabilities/adapters/manifests.md), acyclic schema/native/application packages |
 | C5 — missing data APIs | Normative [immutable data operations](../standard-library/data-and-io/operations.md), text/byte conversion, numeric conversion, collection lookup/update |
 | C6 — numeric semantics | Checked Int division/remainder, IEEE Float outcomes, finite Decimal coefficient/exponent grid and single rounding, literal/conversion boundaries in [numbers](../core-language/basics/numbers-and-booleans.md) |
 
 All six critical objections are addressed in the design. Observable accepted/rejected cases are in [runtime binding conformance](../compiler/conformance/runtime-bindings.md). These are design fixtures, not compiler test results: the compiler/runtime are not implemented.
 
-The adopted fixes preserve named calls, exact error types, explicit contract views, ordinary references, lexical cleanup, and one function kind. We chose a single Background submission signature instead of Claude's proposed intrinsic overload, explicit shared contract views instead of making every contract shareable, and a finite coefficient/exponent Decimal definition instead of relying on an external package's defaults. Concurrent interface work added bounded generic implementations and overlap rejection; the current examples and host contracts retain those decisions.
+The adopted fixes preserve named calls, exact error types, explicit contract views, ordinary references, lexical cleanup, and one function kind. We chose a single Background submission signature instead of Claude's proposed intrinsic overload, ordinary contract views with universal sharing, and a finite coefficient/exponent Decimal definition instead of relying on an external package's defaults. Concurrent interface work added bounded generic implementations and overlap rejection; the current examples and host contracts retain those decisions.
 
-Additional fixes close generic function specialization growth, descendant/reporter self-joining shutdown, Equal→Shareable entailment, time operators, known-length destructuring, foreign validation failure handling, panic unwind mechanics, and conservative unknown effects. The whole guide targets 0.1. [Scope](../compiler/conformance/scope.md#outstanding-decisions) tracks unfinished runner, build, adapter, library, and tooling details; the historical priority labels below do not imply that those contracts are complete. Built-in case shorthand continues ordinary lexical lookup; its potential shadowing is intentional and qualified cases remain available.
+Additional fixes close generic function specialization growth, descendant/reporter self-joining shutdown, time operators, known-length destructuring, foreign validation failure handling, panic unwind mechanics, and conservative unknown effects. The whole guide targets 0.1. [Scope](../compiler/conformance/scope.md#outstanding-decisions) tracks unfinished runner, build, adapter, library, and tooling details; the historical priority labels below do not imply that those contracts are complete. Built-in case shorthand continues ordinary lexical lookup; its potential shadowing is intentional and qualified cases remain available.
 
-Claude's full re-review confirmed C1/C2/C4/C5/C6 and identified two additional C3 issues after the concurrent interface changes: plain capability captures in the complete examples, and generic callable-proof laundering. The examples now explicitly require shared contract parameters. Function types cannot satisfy the type-level Shareable bound; generic forwarding and fields erase the separate callable proof, while safe local captures and direct prelude callable arguments preserve it. A dedicated rejection fixture covers the laundering case. Claude's final targeted check confirmed those rules and found one remaining indirect-call bypass: extracting Background.start or parallel_map erased the prelude callback requirement. These four proof-requiring standard bindings are now call-only, with matching rejection cases; restricted submission contracts are explicitly deferred. Claude stated that adding this call-only rule closes the callable-sharing loophole. Its targeted pass also confirmed the updated examples and numerical/host/data contracts.
+The earlier C3 follow-ups introduced receiver proofs and direct-call restrictions. Those proposals have been superseded: callbacks are ordinary values, and generic forwarding, fields, and collections preserve their call behavior. See [sharing](../ownership-and-cleanup/values/sharing.md) for the current contract.
 
 ## Original independent review
 
@@ -48,7 +48,7 @@ The remaining problems sit where the language meets the runtime. Several load-be
 | --- | --- |
 | **C1** | `try` requires the exact same error type, so every documented `parallel`/`Background` call site is ill-typed. That includes the flagship example. |
 | **C2** | The runtime and standard-library APIs (`panic`, `parallel`, `parallel_map`, `Background`, …) can't be resolved by name, and several can't be typed under the stated type system. |
-| **C3** | Nothing says whether contract-typed values are `Shareable`. Either capability-capturing closures are rejected, or the sharing check is unsound. |
+| **C3** | Concurrent safety of contract receivers was unspecified in the reviewed draft. The current universal-sharing contract resolves this. |
 | **C4** | Nothing connects a host to running code: no entry contract and no way to create a capability. The planned Go package layout also has an import cycle, and `with` can't accept a contract-typed resource. |
 | **C5** | There is no data API. A list whose length depends on input can't be built, Map/Set values can't be created, and numbers and text can't be converted. |
 | **C6** | Numeric operator semantics are undefined (Int `/` and `%`, Decimal range) or contradictory (Float faults vs IEEE NaN rules). |
@@ -123,13 +123,13 @@ The remaining problems sit where the language meets the runtime. Several load-be
 **Smallest fix.** Add one normative page, `standard-library/types/prelude.md`, and extend `declarations.md:13`.
 - **Prelude names.** An implicit, non-redefinable set of names. No import form is needed in v0.1. State that for the standard library, "trusted manifest" means this page.
 - **`parallel`.** `parallel(tasks: [f1..fn], timeout?: Duration, deadline?: Instant) -> Result[Pack[R1..Rn], ExecutionError]`.
-  - `tasks` must be a bracket literal, and each `fi` must be a `Shareable` `fn() -> Ri`.
+  - `tasks` must be a bracket literal, and each `fi` must be a `fn() -> Ri`.
   - `Pack` has no source spelling. It can be inferred into locals and generic parameters, bound as a match payload, and destructured with exact arity.
   - It can't appear in annotations, parameters or fields, and it has no `Equal`.
 - **`parallel_map`.** `parallel_map[T, U](items: List[T], operation: fn(item: T) -> U, limit: Int, timeout?, deadline?) -> Result[List[U], ExecutionError]`. Change the example's label to `item`.
 - **`Background`.**
   - Constructor: `Background(limit: Int, reporter: fn(failure: BackgroundFailure) -> Unit)`.
-  - `start` is the single sanctioned intrinsic overload: either `fn() -> Unit` or `fn() -> Result[Unit, E]` with `E: Shareable`.
+  - `start` is the single sanctioned intrinsic overload: either `fn() -> Unit` or `fn() -> Result[Unit, E]`.
   - `BackgroundFailure` is `Failed(work: WorkId, error: String)` or `Crashed(work: WorkId, message: String)`. The `error` text is the deterministic `Type.Case` name, so no formatting protocol is needed.
 - **Other signatures.** Add `check_cancelled() -> Unit` and `panic(message: String) -> Never`.
 
@@ -139,31 +139,9 @@ The remaining problems sit where the language meets the runtime. Several load-be
 - `parallel_map` with `fn(id: …)` is rejected; with `fn(item: …)` it is accepted.
 - `start(operation: fn() -> Int)` is rejected. A `MailError.Bounced` result reaches the reporter as `Failed(error: "MailError.Bounced")`.
 
-### C3 — Contract values have no defined `Shareable` status
-**Priority:** CRITICAL (soundness, or the flagship examples are rejected)
+### C3 — Concurrent safety of contract receivers
 
-**Evidence**
-- `generics.md:116` and `ownership-and-cleanup/values/sharing.md:11` derive `Shareable` for immutable data and closure captures, and let manifests declare it for native values. Contract types aren't mentioned.
-- A contract view wraps the same receiver reference (`contracts.md:57`).
-- `parallel` tasks must be shareable (`parallel.md:42`; `scope-checker.md:14`).
-- The examples capture contract-typed capabilities: `parallel.md:12-16`, `boundaries.md:21-22`, `background.md:19-20`.
-- Non-shareable builders exist (`builders.md:7`), and record fields carry no sharing requirement (`records.md:13-15`).
-
-**Counterexample.** `impl Sink for Collector`, where `Collector` holds a builder (or any manifest-declared non-shareable native). Then `let sink = Sink(value: collector)`, and two `parallel` tasks both call `sink.add(...)`.
-- If contract types are `Shareable`, this is a data race on unsynchronized Go state.
-- If they aren't, `parallel.md:12-18` and `boundaries.md:21-24` are rejected, because `users`, `orders` and `inventory` are contract-typed captures.
-
-**Smallest fix** (`generics.md:116`, `contracts.md` "Explicit contract views", `sharing.md:11`, `type-checker.md` table)
-- Every contract type is `Shareable`.
-- `Contract(value: x)` requires `x`'s concrete type to be `Shareable` (derived or manifest-declared).
-- Manifests may only bind contracts to shareable natives.
-- A contract bound `T: C` does not imply `Shareable`.
-
-**Acceptance cases**
-- `Increment(value: Offset(delta: 1))` is accepted.
-- A view over a record containing a builder is rejected at the view.
-- A `parallel` closure capturing `inventory: Inventory` is accepted; one capturing a builder is rejected.
-- `fn f[T: Increment](x: T)` capturing `x` in a task is rejected unless the bound is `Shareable & Increment`.
+The earlier receiver-proof proposals are superseded. All contract views and function values may be used concurrently. Native implementations synchronize mutable internals, including builders; source programs use [Synchronized](../standard-library/data-and-io/synchronized-state.md#synchronized) to protect complete updates. Sharing does not keep resources open or register cleanup.
 
 ### C4 — No path from host to running code with real authority
 **Priority:** CRITICAL (no executable semantics; adapter build blocker)
@@ -296,10 +274,9 @@ The remaining problems sit where the language meets the runtime. Several load-be
 
 ## Important nonblocking findings
 
-**I-01 — Does `Equal` imply `Shareable`?**
-- **Evidence.** `generics.md:31` says "equality requires sharing eligibility" but isn't explicit about bounds. `equality-and-hashing.md:36-39` declares `Tree[T: Equal]` with a `List[Tree[T]]` field. That only checks under `generics.md:108` if `Equal` implies `Shareable`. Meanwhile `core-language.md:271,277` writes the redundant `Shareable & Equal` and `Box[T: Shareable]`.
-- **Fix.** Make the chain explicit in the bounds table: `Hashable` ⇒ `Equal` ⇒ `Shareable`, for both satisfaction and body assumptions. Fields alone impose no bound.
-- **Accept.** `Tree[T: Equal]` and `fn f[T: Equal](x: T) -> List[T]` are accepted; `fn g[T](x: T) -> List[T]` is rejected.
+**I-01 — Equality and concurrent access**
+
+The earlier sharing-bound proposal is superseded. `Hashable` implies `Equal`; equality and hashing are derived independently of concurrent access. All values may be shared, including values that have no equality or hashing.
 
 **I-02 — Duration/Instant arithmetic contradicts the closed operator table** (fix together with C2)
 - **Evidence.** `deadlines.md:10` writes `clock.now() + 2.seconds`, but `expressions.md:5,49-52,66` is closed and numeric-only. `numbers-and-booleans.md:58` and `grammar.md:36` don't list the units or say whether `n.seconds` works on a non-literal.

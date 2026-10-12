@@ -125,7 +125,7 @@ Invalid widths return `InvalidInput`. Bad offsets, truncated input, and values t
 
 ## Regular expressions
 
-`Regex` is an opaque, immutable, shareable compiled Go RE2-style pattern. Backreferences and lookaround are invalid; compile failures return `InvalidData`.
+`Regex` is an opaque, immutable compiled Go RE2-style pattern. Backreferences and lookaround are invalid; compile failures return `InvalidData`.
 
 `find_all` returns whole matches. `max_matches` must be nonnegative, and exceeding it returns `LimitExceeded` instead of a truncated success. Go regexp rules govern zero-width and adjacent matches.
 

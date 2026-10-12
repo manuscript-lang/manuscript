@@ -54,7 +54,7 @@ fn bytes(count: Int) -> Result[Bytes, LibraryError]
 
 Process provides `wall_clock: WallClock`, `system: System`, and `entropy: Entropy`.
 
-Timestamp represents wall time and is opaque, immutable, shareable, and comparable for equality. Instant remains a monotonic time value; conversion between them is not implicit. Existing Clock and sleep keep their signatures and error/cancellation rules. Wall-clock changes do not affect monotonic deadlines.
+Timestamp represents wall time and is opaque, immutable, and comparable for equality. Instant remains a monotonic time value; conversion between them is not implicit. Existing Clock and sleep keep their signatures and error/cancellation rules. Wall-clock changes do not affect monotonic deadlines.
 
 ## Timestamp rules
 

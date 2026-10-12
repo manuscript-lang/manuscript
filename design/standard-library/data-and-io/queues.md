@@ -19,7 +19,7 @@ Sending and receiving must respond to cancellation. Explicit close is part of th
 
 ## API
 
-`Queue[T](capacity: Int)` creates synchronized storage with positive capacity. The queue is opaque, shareable, and neither equal nor hashable. A nonpositive capacity is a programming fault.
+`Queue[T](capacity: Int)` creates synchronized storage with positive capacity. The queue is opaque and neither equal nor hashable. A nonpositive capacity is a programming fault.
 
 ```manuscript
 fn send(value: T) -> Result[Unit, QueueError]
