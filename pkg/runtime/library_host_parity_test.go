@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	goruntime "runtime"
-	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -224,15 +223,6 @@ func TestExpandedWatcherCloseAndChanges(t *testing.T) {
 		t.Fatal("watch close did not join")
 	}
 }
-func TestTimeSchedulingValidation(t *testing.T) {
-	operation := NewFunction(nil, "@std/Result[Unit][String]", func(_ *Execution, _ []Value) Value {
-		return libraryOK("@std/Result[Unit][String]", Unit{})
-	})
-	libraryFailure(t, libraryCall(t, "time/every", Duration(0), operation), "InvalidInput")
-	libraryFailure(t, libraryCall(t, "time/after", Duration(-1), operation), "InvalidInput")
-	libraryFailure(t, libraryCall(t, "time/every", Duration(-1), operation), "InvalidInput")
-}
-
 func TestExpandedSystemAndProcess(t *testing.T) {
 	ctx := RootExecution()
 	system := &librarySystem{}
@@ -319,35 +309,24 @@ func TestExpandedHandleCancellationAndStreamAdapters(t *testing.T) {
 	Bind(reader, "", "close").(Function).Body(ctx, nil)
 	libraryFailure(t, Bind(writer, "", "write").(Function).Body(ctx, []Value{Bytes{[]byte("closed")}}), "Closed")
 }
-func TestExpandedTimerAndWatcherCancellation(t *testing.T) {
-	for _, kind := range []string{"timer", "watch"} {
-		t.Run(kind, func(t *testing.T) {
-			ctx := RootExecution()
-			var resource Value
-			name := "wait"
-			if kind == "timer" {
-				resource = newLibraryTimer(time.Hour, false)
-			} else {
-				fs := &libraryFileSystem{t.TempDir()}
-				resource = librarySuccess(t, fs.Operation("watch").Body(ctx, []Value{".", false, Duration(time.Hour), int64(10)}))
-				name = "next"
-			}
-			defer Invoke(ctx, Bind(resource, "", "close"), nil)
-			lifetime, cancel := context.WithTimeout(ctx.Context, 20*time.Millisecond)
-			defer cancel()
-			limited := *ctx
-			limited.Context = lifetime
-			done := make(chan any, 1)
-			go func() { defer func() { done <- recover() }(); Invoke(&limited, Bind(resource, "", name), nil) }()
-			select {
-			case value := <-done:
-				if _, ok := value.(cancelled); !ok {
-					t.Fatalf("expected cancellation, got %T %v", value, value)
-				}
-			case <-time.After(time.Second):
-				t.Fatal("wait was not cancelled")
-			}
-		})
+func TestExpandedWatcherCancellation(t *testing.T) {
+	ctx := RootExecution()
+	fs := &libraryFileSystem{t.TempDir()}
+	resource := librarySuccess(t, fs.Operation("watch").Body(ctx, []Value{".", false, Duration(time.Hour), int64(10)}))
+	defer Invoke(ctx, Bind(resource, "", "close"), nil)
+	lifetime, cancel := context.WithTimeout(ctx.Context, 20*time.Millisecond)
+	defer cancel()
+	limited := *ctx
+	limited.Context = lifetime
+	done := make(chan any, 1)
+	go func() { defer func() { done <- recover() }(); Invoke(&limited, Bind(resource, "", "next"), nil) }()
+	select {
+	case value := <-done:
+		if _, ok := value.(cancelled); !ok {
+			t.Fatalf("expected cancellation, got %T %v", value, value)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("wait was not cancelled")
 	}
 }
 func TestExpandedMetadataAndCopySymlinks(t *testing.T) {
@@ -512,155 +491,6 @@ func TestNativeFileWatchOverflowAndCancellation(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("native watcher wait did not cancel")
-	}
-}
-
-func TestTimeSchedulingRestartAndShutdown(t *testing.T) {
-	ctx := RootExecution()
-	defer FinishExecution(ctx)
-	calls := make(chan struct{}, 8)
-	operation := NewFunction(nil, "@std/Result[Unit][String]", func(_ *Execution, _ []Value) Value {
-		calls <- struct{}{}
-		return libraryOK("@std/Result[Unit][String]", Unit{})
-	})
-	call := func(name string, a ...Value) Value {
-		return StandardFunction(name, libraryRuntimeType(libraryFunctions[name].Result)).(Function).Body(ctx, a)
-	}
-	timer := librarySuccess(t, call("time/after", Duration(0), operation))
-	defer Bind(timer, "", "close").(Function).Body(Shield(ctx), nil)
-	select {
-	case <-calls:
-	case <-time.After(time.Second):
-		t.Fatal("timeout callback was not scheduled")
-	}
-	librarySuccess(t, Bind(timer, "", "restart").(Function).Body(ctx, nil))
-	select {
-	case <-calls:
-	case <-time.After(time.Second):
-		t.Fatal("restart lost the callback")
-	}
-	Bind(timer, "", "close").(Function).Body(ctx, nil)
-	libraryFailure(t, Bind(timer, "", "restart").(Function).Body(ctx, nil), "Closed")
-	// Closing an interval cancels an admitted suspending callback and joins it.
-	entered := make(chan struct{})
-	joined := make(chan struct{})
-	blocking := NewFunction(nil, "@std/Result[Unit][String]", func(ctx *Execution, _ []Value) Value {
-		close(entered)
-		defer close(joined)
-		<-ctx.Context.Done()
-		CheckCancelled(ctx)
-		return nil
-	})
-	timer = librarySuccess(t, call("time/every", Duration(time.Millisecond), blocking))
-	select {
-	case <-entered:
-	case <-time.After(time.Second):
-		t.Fatal("interval callback not admitted")
-	}
-	Bind(timer, "", "close").(Function).Body(ctx, nil)
-	select {
-	case <-joined:
-	default:
-		t.Fatal("callback not joined at close")
-	}
-}
-
-func TestTimeSchedulingParentShutdownJoins(t *testing.T) {
-	ctx := RootExecution()
-	entered, joined := make(chan struct{}), make(chan struct{})
-	operation := NewFunction(nil, "@std/Result[Unit][String]", func(ctx *Execution, _ []Value) Value {
-		close(entered)
-		defer close(joined)
-		<-ctx.Context.Done()
-		CheckCancelled(ctx)
-		return nil
-	})
-	fn := StandardFunction("time/after", libraryRuntimeType(libraryFunctions["time/after"].Result)).(Function)
-	timer := librarySuccess(t, fn.Body(ctx, []Value{Duration(0), operation}))
-	defer Bind(timer, "", "close").(Function).Body(Shield(ctx), nil)
-	select {
-	case <-entered:
-	case <-time.After(time.Second):
-		t.Fatal("operation did not start")
-	}
-	FinishExecution(ctx)
-	select {
-	case <-joined:
-	default:
-		t.Fatal("parent shutdown did not join callback")
-	}
-	if status := Bind(timer, "", "status").(Function).Body(Shield(ctx), nil).(Alternative).Tag; status != "Cancelled" {
-		t.Fatal(status)
-	}
-	native := timer.(View).Receiver.(*libraryTimerService)
-	native.timer.mu.Lock()
-	closed := native.timer.closed
-	native.timer.mu.Unlock()
-	if !closed {
-		t.Fatal("parent shutdown retained the native deadline")
-	}
-}
-
-func TestTimeSchedulingRepeatAndFailureRestart(t *testing.T) {
-	ctx := RootExecution()
-	defer FinishExecution(ctx)
-	start := func(name string, duration Duration, operation Value) Value {
-		fn := StandardFunction(name, libraryRuntimeType(libraryFunctions[name].Result)).(Function)
-		return librarySuccess(t, fn.Body(ctx, []Value{duration, operation}))
-	}
-	var active, count atomic.Int64
-	var overlap atomic.Bool
-	events := make(chan struct{}, 8)
-	operation := NewFunction(nil, "@std/Result[Unit][String]", func(_ *Execution, _ []Value) Value {
-		if active.Add(1) != 1 {
-			overlap.Store(true)
-		}
-		defer active.Add(-1)
-		time.Sleep(3 * time.Millisecond)
-		count.Add(1)
-		events <- struct{}{}
-		return libraryOK("@std/Result[Unit][String]", Unit{})
-	})
-	timer := start("time/every", Duration(time.Millisecond), operation)
-	defer Bind(timer, "", "close").(Function).Body(Shield(ctx), nil)
-	for i := 0; i < 3; i++ {
-		select {
-		case <-events:
-		case <-time.After(time.Second):
-			t.Fatal("repeating work stalled")
-		}
-	}
-	Bind(timer, "", "close").(Function).Body(ctx, nil)
-	if overlap.Load() || active.Load() != 0 || count.Load() < 3 {
-		t.Fatal("repeating work overlapped or was not joined")
-	}
-	var attempts atomic.Int64
-	failing := NewFunction(nil, "@std/Result[Unit][String]", func(_ *Execution, _ []Value) Value {
-		if attempts.Add(1) == 1 {
-			return Alternative{"@std/Result[Unit][String]", "error", []Value{"expected timer failure"}}
-		}
-		return libraryOK("@std/Result[Unit][String]", Unit{})
-	})
-	timer = start("time/after", Duration(0), failing)
-	defer Bind(timer, "", "close").(Function).Body(Shield(ctx), nil)
-	waitStatus := func(expected string) {
-		deadline := time.After(time.Second)
-		for {
-			if status := Bind(timer, "", "status").(Function).Body(ctx, nil).(Alternative).Tag; status == expected {
-				return
-			}
-			select {
-			case <-deadline:
-				t.Fatal("timer never reached", expected)
-			case <-time.After(time.Millisecond):
-			}
-		}
-	}
-	waitStatus("Failed")
-	librarySuccess(t, Bind(timer, "", "restart").(Function).Body(ctx, nil))
-	waitStatus("Succeeded")
-	if attempts.Load() != 2 {
-		t.Fatal("failed operation was retried automatically", attempts.Load())
 	}
 }
 

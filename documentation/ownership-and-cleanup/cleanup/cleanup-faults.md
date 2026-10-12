@@ -18,7 +18,7 @@ Every registered close action is attempted once during scope exit. A fault in on
 | A programming fault is already pending | Keep the original fault as primary; record cleanup faults as secondary diagnostics. | Keep the original fault. |
 | A normal return, expected error, or cancellation is pending | The first cleanup fault becomes primary; record later faults as secondary diagnostics. | Keep the pending outcome. |
 
-A concurrency API reports an operation fault as `ExecutionError.Crashed`. A background service reports it through its failure observer. Root hosts isolate and report request failures.
+A concurrency API reports an operation fault as `ExecutionError.Crashed`. A scheduler reports it through its failure observer. Root hosts isolate and report request failures.
 
 ## Cleanup can outlast a timeout
 

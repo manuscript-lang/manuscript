@@ -17,6 +17,6 @@ A converted string must be valid UTF-8. An alternative must carry a valid tag. A
 
 An invalid foreign value is a programming fault with the operation, expected type, and value path in its diagnostic. It is not an expected input error: untrusted data should remain `Bytes` until explicitly decoded. The [manifest binding](manifests.md) defines wrapper validation and release obligations.
 
-See [Go representations](../../compiler/lowering/value-representations.md) and [text and byte values](../../core-language/basics/text-and-bytes.md).
+See [Go representations](../../pkg/compiler/lowering/value-representations.md) and [text and byte values](../../core-language/basics/text-and-bytes.md).
 
 [Previous: Adapter manifests](manifests.md) · [Next: Foreign cancellation and resource acquisition](cancellation.md)

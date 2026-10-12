@@ -32,6 +32,14 @@ Verified: reusable Go packages live in `pkg/`. Moving runtime code requires upda
 Evidence: [generated runtime import](../pkg/compiler/generate.go), [SDK dependency discovery](../scripts/mktoolchain/main.go), [compiler fixtures](../pkg/compiler/compiler_test.go), and [layout and Go import migration](../documentation/contributing/architecture.md).
 Verify: run native conformance and `make dist-check` after a package move, alongside the repository dependency/pin checks.
 
+### Native omissions are declared and preserved across interface dispatch
+
+Verified: native Optional defaults are written as `= none` in the standard function, method, or constructor-field declaration. Constructor omission follows that source metadata. Application implementations inherit standard interface default permissions and receive a concrete `none`, while native compositions pass `some(n)` through source-defined streams. Inferring default permission merely from a field's name would create a second schema; passing raw integers through an Optional interface would break source implementations.
+
+Apply when: adding native defaults, changing source/native signatures, or implementing stream compositions.
+Evidence: [standard source checks](../pkg/checker/standard.go), [constructor/ABI regressions](../pkg/checker/stdlib_revamp_test.go), [native emission](../pkg/compiler/generate.go), and [compiled stream boundary](../tests/e2e/testdata/accept/stdlib-revamp.ms).
+Verify: inspect the generated declaration for `= none`; omit a limit through an application-defined ReadStream and match `none`; run read_line over that implementation and match its supplied `some(1)`.
+
 ### Editor recovery must preserve delimiter continuations
 
 Verified: strict parsing accepts multiline parameters, but declaration recovery previously split their column-zero closing delimiters into separate chunks whenever any declaration was malformed. This discarded valid functions and their parameter scopes in the LSP. Recovery now consults the lexer for continuation boundaries while fresh declarations still synchronize after an unmatched opener. Completion snapshots also need a match arm, rather than an ordinary statement, to repair an unfinished `match` suite.
@@ -52,6 +60,14 @@ Evidence for continued navigation: [standard loader](../pkg/checker/standard.go)
 Verify: native calling signatures agree with the declarations, editor definitions reach the declaration and can follow imports and signature types from there, and generated references pass the existing freshness check. Update the source or generator when output changes.
 
 Decision: the string utility module is `@std/string.ms`, matching the intrinsic `String` type. The user requested this spelling when expanding built-in parity. Receiver operations need no module import; standalone string functions use this canonical module. Evidence: [declarations](../pkg/stdlib/string.ms), [native bindings](../pkg/stdlib/bindings.json), and [data package guide](../documentation/standard-library/packages/data.md). When renaming a module, verify imports, native dispatch identities, virtual editor documents, and generated reference paths together.
+
+### Keep CLI and HTTP documentation with their packages
+
+Decision: the user explicitly removed the “Application hosts” section. CLI entry/accessor/shutdown contracts belong in the CLI package guide, and HTTP request/shutdown contracts belong in the HTTP package guide. Do not recreate a separate host category in the standard-library navigation.
+
+Apply when: organizing the standard-library guide or adding application-entry documentation.
+Evidence: [standard-library navigation](../documentation/standard-library/_index.md), [CLI guide](../documentation/standard-library/packages/cli.md), and [HTTP guide](../documentation/standard-library/packages/http.md).
+Verify: build the book with destination cleanup and confirm there is no standard-library/hosts route or sidebar section; existing entry and request links resolve to package pages.
 
 ### Teach a runnable path before formal reference
 

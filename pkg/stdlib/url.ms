@@ -32,7 +32,7 @@ export fn format_query(entries: List[QueryEntry]) -> String
 
 export fn parse(text: String) -> Result[Url, UrlError]
 
-export fn parse_query(text: String, max_entries: Int) -> Result[List[QueryEntry], UrlError]
+export fn parse_query(text: String, max_entries: Optional[Int] = none) -> Result[List[QueryEntry], UrlError]
 
 export fn resolve(base: Url, reference: String) -> Result[Url, UrlError]
 

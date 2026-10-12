@@ -20,21 +20,21 @@ fn parse_ip(text: String) -> Result[String, NetworkError]
 ## `@std/tls.ms`
 
 ```manuscript
-fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
+fn parse_certificates(pem: String, max_certificates: Optional[Int]) -> Result[List[CertificateInfo], TlsError]
 fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
 ```
 
 ## Connection operations
 
 ```manuscript
-fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]
 fn write(data: Bytes) -> Result[Unit, IoError]
 fn shutdown_write() -> Result[Unit, NetworkError]
 fn local_address() -> String
 fn peer_address() -> String
 fn close() -> Unit
-fn read_timeout(max_bytes: Int, timeout: Duration) -> Result[Optional[Bytes], IoError]
-fn write_timeout(data: Bytes, timeout: Duration) -> Result[Unit, IoError]
+fn read(max_bytes: Optional[Int], timeout: Optional[Duration]) -> Result[Optional[Bytes], IoError]
+fn write(data: Bytes, timeout: Optional[Duration]) -> Result[Unit, IoError]
 fn tls_info() -> Result[TlsInfo, TlsError]
 ```
 
@@ -44,23 +44,23 @@ fn tls_info() -> Result[TlsInfo, TlsError]
 fn accept() -> Result[Connection, NetworkError]
 fn address() -> String
 fn close() -> Unit
-fn accept_timeout(timeout: Duration) -> Result[Connection, NetworkError]
+fn accept(timeout: Optional[Duration]) -> Result[Connection, NetworkError]
 ```
 
 ## DatagramSocket operations
 
 ```manuscript
 fn send(data: Bytes, address: String) -> Result[Unit, NetworkError]
-fn receive(max_bytes: Int) -> Result[Datagram, NetworkError]
+fn receive(max_bytes: Optional[Int]) -> Result[Datagram, NetworkError]
 fn address() -> String
 fn close() -> Unit
-fn receive_timeout(max_bytes: Int, timeout: Duration) -> Result[Datagram, NetworkError]
-fn send_timeout(data: Bytes, address: String, timeout: Duration) -> Result[Unit, NetworkError]
+fn receive(max_bytes: Optional[Int], timeout: Optional[Duration]) -> Result[Datagram, NetworkError]
+fn send(data: Bytes, address: String, timeout: Optional[Duration]) -> Result[Unit, NetworkError]
 ```
 
 ## Authority and restrictions
 
-Import `network() -> Network` from `@std/http.ms` to obtain the current execution's network service. Acquired Connection, Listener and DatagramSocket views are individually imported from `@std/net.ms`, closed with `with`, and also owned by Network. Network.close stops admission, cancels and joins in-flight DNS/dials/HTTP acquisition, closes owned services and handles, and waits for admitted I/O. Concurrent close callers join the same shutdown. Repeated accessor calls return the same host root.
+Import `network() -> Network` from `@std/net.ms` to obtain the current execution's network service. Acquired Connection, Listener and DatagramSocket views are individually imported from `@std/net.ms`, closed with `with`, and also owned by Network. Network.close stops admission, cancels and joins in-flight DNS/dials/HTTP acquisition, closes owned services and handles, and waits for admitted I/O. Concurrent close callers join the same shutdown. Repeated accessor calls return the same host root.
 
 ### Narrowing destination access
 
@@ -120,11 +120,11 @@ Connect/listen addresses use native host:port notation, with port zero selecting
 
 ### Accept and handshake cancellation
 
-Listener accept cancellation uses an interruptible deadline and restores it before releasing the accept gate. Cancellation and accept_timeout do not destroy the listener: it can admit another accept afterwards. A TLS listener additionally bounds each handshake; shutdown cancels admitted handshakes. Accepted handles retain Network ownership. Unix socket availability follows the target OS, not a separate deferred API.
+Listener accept cancellation uses an interruptible deadline and restores it before releasing the accept gate. Cancellation and accept do not destroy the listener: it can admit another accept afterwards. A TLS listener applies its optional handshake deadline; shutdown cancels admitted handshakes. Accepted handles retain Network ownership. Unix socket availability follows the target OS, not a separate deferred API.
 
 ### Datagrams and operation timeouts
 
-UDP preserves message boundaries, including empty messages. Receive accepts max_bytes 1–65535 and returns LimitExceeded on an oversized consumed packet, never a truncated success. UDP name resolution responds to caller cancellation and Network/socket closure. Timeout variants take nonnegative durations: zero is an immediate deadline. Expected local timeouts return NetworkError.Timeout; Connection timeout variants retain IoError and use Failed with a timeout diagnostic. Parent cancellation always unwinds. Operation deadlines are cleared under the direction gate before the next operation starts.
+UDP preserves message boundaries, including empty messages. Receive accepts max_bytes 1–65535 and returns LimitExceeded on an oversized consumed packet, never a truncated success. UDP name resolution responds to caller cancellation and Network/socket closure. The ordinary operations accept optional nonnegative timeouts: zero is an immediate deadline, and omission adds no deadline. Expected local timeouts return NetworkError.Timeout; Connection operations retain IoError and use Failed with a timeout diagnostic. Parent cancellation always unwinds. Operation deadlines are cleared under the direction gate before the next operation starts.
 
 ## TLS and certificates
 
@@ -139,16 +139,16 @@ HTTP/3 is intentionally excluded at the user's request. The HTTP/1.1, HTTP/2 and
 ## Network operations
 
 ```manuscript
-fn lookup(name: String, max_records: Int, timeout: Duration) -> Result[List[String], NetworkError]
-fn connect(address: String, timeout: Duration) -> Result[Connection, NetworkError]
-fn connect_tls(address: String, server_name: String, timeout: Duration) -> Result[Connection, NetworkError]
+fn lookup(name: String, max_records: Optional[Int], timeout: Optional[Duration]) -> Result[List[String], NetworkError]
+fn connect(address: String, timeout: Optional[Duration]) -> Result[Connection, NetworkError]
+fn connect_tls(address: String, server_name: String, timeout: Optional[Duration]) -> Result[Connection, NetworkError]
 fn listen(address: String) -> Result[Listener, NetworkError]
 fn bind_datagram(address: String) -> Result[DatagramSocket, NetworkError]
 fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) -> Result[Network, NetworkError]
 fn with_resolver(address: String) -> Result[Network, NetworkError]
-fn resolve(name: String, kind: String, max_records: Int, timeout: Duration) -> Result[List[DnsRecord], NetworkError]
-fn connect_unix(path: String, timeout: Duration) -> Result[Connection, NetworkError]
+fn resolve(name: String, kind: String, max_records: Optional[Int], timeout: Optional[Duration]) -> Result[List[DnsRecord], NetworkError]
+fn connect_unix(path: String, timeout: Optional[Duration]) -> Result[Connection, NetworkError]
 fn listen_unix(path: String) -> Result[Listener, NetworkError]
-fn connect_tls_config(address: String, options: TlsOptions, timeout: Duration) -> Result[Connection, NetworkError]
-fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Duration) -> Result[Listener, NetworkError]
+fn connect_tls_config(address: String, options: TlsOptions, timeout: Optional[Duration]) -> Result[Connection, NetworkError]
+fn listen_tls(address: String, options: TlsOptions, handshake_timeout: Optional[Duration]) -> Result[Listener, NetworkError]
 ```

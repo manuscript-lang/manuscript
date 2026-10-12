@@ -11,7 +11,7 @@ weight = 122
 
 [Design index](../_index.md)
 
-The initial review identified missing grammar, type, boundary, and tooling contracts. The follow-up grammar and type pass has adopted concrete v0.1 rules in the concept guides. The [full-design Claude Code review](claude-design-review.md) subsequently closed the critical scalar-runtime, minimum library API, CLI entry, sharing, and adapter-binding gaps. Current outstanding decisions are collected in [scope](../compiler/conformance/scope.md#outstanding-decisions); historical proposals below do not establish current behavior.
+The initial review identified missing grammar, type, boundary, and tooling contracts. The follow-up grammar and type pass has adopted concrete v0.1 rules in the concept guides. The [full-design Claude Code review](claude-design-review.md) subsequently closed the critical scalar-runtime, minimum library API, CLI entry, sharing, and adapter-binding gaps. Current outstanding decisions are collected in [scope](../pkg/compiler/conformance/scope.md#outstanding-decisions); historical proposals below do not establish current behavior.
 
 This review covers core language semantics, modules and capabilities, data APIs, compiler conformance, and developer tooling. Ownership and concurrency are being developed separately and are excluded from the decisions here. References to those areas identify dependencies only.
 
@@ -30,7 +30,7 @@ This review covers core language semantics, modules and capabilities, data APIs,
 | CORE-10 function compatibility, CORE-11 | [Function values](../core-language/functions/function-values-and-closures.md#function-type-compatibility) and [returns](../core-language/functions/declarations-and-calls.md#unit-and-never): exact labels/order/types, Unit value/fallthrough, Never evaluation, and complete non-Unit returns |
 | CORE-12, CORE-13 | [Matching](../core-language/control-flow/pattern-matching.md) and [loops](../core-language/control-flow/loops.md): positional payloads, explicit final wildcard, closed iteration domains, MapEntry, and function-local loop control |
 | M01, M02 names and visibility | [Modules](../modules-and-capabilities/modules/declarations.md): declaration/name collection, collisions, public type closure, and explicit exclusions for renaming/re-exports |
-| TOOL-02 core coverage | [Conformance fixtures](../compiler/conformance/core-language.md) and [checker requirements](../compiler/frontend/type-checker.md): accepted modules, isolated rejection variants, and observable rule checks |
+| TOOL-02 core coverage | [Conformance fixtures](../pkg/compiler/conformance/core-language.md) and [checker requirements](../pkg/compiler/frontend/type-checker.md): accepted modules, isolated rejection variants, and observable rule checks |
 
 The user selected container-guarded recursive data and explicit concrete-to-contract conversion. The current interface design admits generic implementation blocks and ordinary contract views. Every value may be shared; equality and hashing remain separate derived properties. Existing resource, capture, and concurrent execution policies remain in their separate guides. CORE-03 is now closed as a core design rule: [numeric outcomes](../core-language/basics/numbers-and-booleans.md#runtime-numeric-outcomes) and [conversion APIs](../standard-library/data-and-io/operations.md) define the remaining behavior. Source test bodies have a static Unit contract; test discovery and execution remain tooling work.
 
@@ -82,7 +82,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** CORE-01. **Priority:** implementation blocker.
 
-**Evidence.** [core-language/basics/syntax.md lines 5,21-34](../core-language/basics/syntax.md) states `.ms` modules, indentation, four-space formatting, no semicolons, parenthesized continuation, comments, and named calls. [compiler/frontend/pipeline.md lines 13](../compiler/frontend/pipeline.md) deliberately leaves the parser library/AST open; that implementation freedom is fine, but no grammar exists elsewhere in the repository to specify accepted source.
+**Evidence.** [core-language/basics/syntax.md lines 5,21-34](../core-language/basics/syntax.md) states `.ms` modules, indentation, four-space formatting, no semicolons, parenthesized continuation, comments, and named calls. [compiler/frontend/pipeline.md lines 13](../pkg/compiler/frontend/pipeline.md) deliberately leaves the parser library/AST open; that implementation freedom is fine, but no grammar exists elsewhere in the repository to specify accepted source.
 
 **Example.** Are tabs legal? Is a two-space indentation block legal before formatting? Can a list span lines without parentheses? Does `let café = 1` name a valid identifier? Is `type Empty:` followed by a blank line legal? Can a source module execute `let x = fetch()` at top level?
 
@@ -96,7 +96,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** CORE-02. **Priority:** implementation blocker.
 
-**Evidence.** Arithmetic and comparison appear in [core-language/basics/numbers-and-booleans.md lines 30-32](../core-language/basics/numbers-and-booleans.md), [core-language/control-flow/conditionals.md lines 23](../core-language/control-flow/conditionals.md), and [core-language/errors/results.md lines 19](../core-language/errors/results.md); lowering must preserve short circuit ([compiler/lowering/evaluation-order.md lines 7](../compiler/lowering/evaluation-order.md)). There is no operator inventory, precedence/associativity table, operand typing table, or rule for statement versus expression forms.
+**Evidence.** Arithmetic and comparison appear in [core-language/basics/numbers-and-booleans.md lines 30-32](../core-language/basics/numbers-and-booleans.md), [core-language/control-flow/conditionals.md lines 23](../core-language/control-flow/conditionals.md), and [core-language/errors/results.md lines 19](../core-language/errors/results.md); lowering must preserve short circuit ([compiler/lowering/evaluation-order.md lines 7](../pkg/compiler/lowering/evaluation-order.md)). There is no operator inventory, precedence/associativity table, operand typing table, or rule for statement versus expression forms.
 
 **Example.** `not a and b or c`, `1 + 2 * 3`, `try read() + 1`, `a < b < c`, and `let x = if active: ...` cannot be resolved uniformly from the draft. Short circuit is already required, but the words/operators to which it applies are not enumerated.
 
@@ -108,7 +108,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** CORE-03. **Priority:** semantic portability blocker.
 
-**Evidence.** [core-language/basics/numbers-and-booleans.md lines 14-25](../core-language/basics/numbers-and-booleans.md) fixes representations, decimal precision/rounding, explicit conversions, and faults for overflow/invalid operations. [compiler/lowering/value-representations.md lines 11-12,27](../compiler/lowering/value-representations.md) promises checked Int and a specified decimal implementation. Conversion functions, operator results, exponent limits, and exceptional Float values are not specified.
+**Evidence.** [core-language/basics/numbers-and-booleans.md lines 14-25](../core-language/basics/numbers-and-booleans.md) fixes representations, decimal precision/rounding, explicit conversions, and faults for overflow/invalid operations. [compiler/lowering/value-representations.md lines 11-12,27](../pkg/compiler/lowering/value-representations.md) promises checked Int and a specified decimal implementation. Conversion functions, operator results, exponent limits, and exceptional Float values are not specified.
 
 **Example.** What is `-7 / 3`? What is `-7 % 3`? Is `-9223372036854775808` a legal Int literal despite its positive magnitude being unrepresentable? Does `1.0 / 0.0` fault or yield infinity? Is `0.0 / 0.0` NaN? Does `1e400` exist? What happens when converting `2.9` to Int?
 
@@ -156,7 +156,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** CORE-07. **Priority:** implementation blocker.
 
-**Evidence.** [core-language/types/generics.md lines 7-20](../core-language/types/generics.md) gives applied types and `T: Bound` in parameter lists but no user-defined generic declaration/function example. The frontend must check bounds ([compiler/frontend/type-checker.md lines 19](../compiler/frontend/type-checker.md)).
+**Evidence.** [core-language/types/generics.md lines 7-20](../core-language/types/generics.md) gives applied types and `T: Bound` in parameter lists but no user-defined generic declaration/function example. The frontend must check bounds ([compiler/frontend/type-checker.md lines 19](../pkg/compiler/frontend/type-checker.md)).
 
 **Example.** Is `type Box[T]: value: T` legal? Is `fn identity[T](value: T) -> T` legal? How do callers explicitly instantiate it? How do two bounds combine? Can a generic call infer T only from the expected return type? Is `List[Customer]` substitutable for `List[Payments]`?
 
@@ -168,7 +168,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** CORE-08. **Priority:** implementation blocker.
 
-**Evidence.** Nominal immutable record/alternative types are specified in [core-language/types/records.md lines 5-13](../core-language/types/records.md) and [core-language/types/alternatives.md lines 5-14](../core-language/types/alternatives.md); representation lowering promises generated tags/payloads ([compiler/lowering/value-representations.md lines 16](../compiler/lowering/value-representations.md)). Only intermodule dependency cycles are rejected ([modules-and-capabilities/modules/declarations.md lines 7,40](../modules-and-capabilities/modules/declarations.md)). That says nothing about recursive types/functions within a module.
+**Evidence.** Nominal immutable record/alternative types are specified in [core-language/types/records.md lines 5-13](../core-language/types/records.md) and [core-language/types/alternatives.md lines 5-14](../core-language/types/alternatives.md); representation lowering promises generated tags/payloads ([compiler/lowering/value-representations.md lines 16](../pkg/compiler/lowering/value-representations.md)). Only intermodule dependency cycles are rejected ([modules-and-capabilities/modules/declarations.md lines 7,40](../modules-and-capabilities/modules/declarations.md)). That says nothing about recursive types/functions within a module.
 
 **Example.** `type Node: next: Optional[Node]` or `type Tree: case Leaf(value: Int); case Branch(children: List[Tree])` cannot lower as unconstrained direct Go-by-value recursion. A forward reference to a type or mutually recursive functions also needs name resolution rules.
 
@@ -180,7 +180,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** CORE-09. **Priority:** implementation blocker.
 
-**Evidence.** [core-language/types/contracts.md lines 10-20](../core-language/types/contracts.md) establishes explicit `impl Contract for DataType`, implicit `self`, and no inheritance/default implementations. [compiler/lowering/value-representations.md lines 18](../compiler/lowering/value-representations.md) promises Go interfaces/wrappers. There is no full impl example, receiver signature, method resolution rule, or concrete-to-contract conversion rule. Contract-typed parameters already appear in [modules-and-capabilities/modules/boundaries.md lines 14-21](../modules-and-capabilities/modules/boundaries.md).
+**Evidence.** [core-language/types/contracts.md lines 10-20](../core-language/types/contracts.md) establishes explicit `impl Contract for DataType`, implicit `self`, and no inheritance/default implementations. [compiler/lowering/value-representations.md lines 18](../pkg/compiler/lowering/value-representations.md) promises Go interfaces/wrappers. There is no full impl example, receiver signature, method resolution rule, or concrete-to-contract conversion rule. Contract-typed parameters already appear in [modules-and-capabilities/modules/boundaries.md lines 14-21](../modules-and-capabilities/modules/boundaries.md).
 
 **Example.** Is the body `fn charge(amount: Money) ...` or `fn charge(self: Card, amount: Money) ...`? Can the caller pass Card directly to `payments: Payments`? If Card implements two contracts declaring `charge`, what does `card.charge(...)` mean? What happens with duplicate impls?
 
@@ -254,7 +254,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** M02. **Priority:** P1.
 
-**Evidence:** [modules-and-capabilities/modules/declarations.md lines 7](../modules-and-capabilities/modules/declarations.md) and `:21` describe one imported symbol. [core-language/types/contracts.md lines 18](../core-language/types/contracts.md) establishes explicit `impl Contract for DataType`, but not its visibility or discovery. [compiler/frontend/pipeline.md lines 11](../compiler/frontend/pipeline.md) says imports discover the module graph. There is no import renaming/qualification form or re-export syntax, no import/local-name collision rule, and no rule connecting implementation availability to imports.
+**Evidence:** [modules-and-capabilities/modules/declarations.md lines 7](../modules-and-capabilities/modules/declarations.md) and `:21` describe one imported symbol. [core-language/types/contracts.md lines 18](../core-language/types/contracts.md) establishes explicit `impl Contract for DataType`, but not its visibility or discovery. [compiler/frontend/pipeline.md lines 11](../pkg/compiler/frontend/pipeline.md) says imports discover the module graph. There is no import renaming/qualification form or re-export syntax, no import/local-name collision rule, and no rule connecting implementation availability to imports.
 
 **Minimal cases:** A imports `CustomerId` from two domain modules; an imported `CustomerId` collides with a locally declared type; C defines an implementation for A's contract and B's type, but the application imports A and B without C. Is the implementation usable? Can two separately reachable modules provide the same implementation? Does importing the type bring its implementation automatically?
 
@@ -266,7 +266,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** M03. **Priority:** P1.
 
-**Evidence:** [compiler/builds/project-configuration.md lines 20](../compiler/builds/project-configuration.md) defines a source directory; `:37` admits `../`; `:41` gives aliases manifest-relative targets; `:49` canonicalizes symlinks and promises project-relative metadata; `:51` says aliases belong to the project whose source contains the import, and dependencies use their own manifests. No containment rule, owning-project selection algorithm, overlapping-source-root rule, or hard-link/case-sensitivity policy exists.
+**Evidence:** [compiler/builds/project-configuration.md lines 20](../pkg/compiler/builds/project-configuration.md) defines a source directory; `:37` admits `../`; `:41` gives aliases manifest-relative targets; `:49` canonicalizes symlinks and promises project-relative metadata; `:51` says aliases belong to the project whose source contains the import, and dependencies use their own manifests. No containment rule, owning-project selection algorithm, overlapping-source-root rule, or hard-link/case-sensitivity policy exists.
 
 **Minimal cases:** `src/main.ms` imports `../../shared/util.ms` outside the project; an alias points at a sibling project; a symlink in `src` points into a dependency whose source imports `@domain`; two manifests both claim the same canonical file. Which project's aliases resolve the next import? If a file has no owning project, what relative path identifies it in stable metadata?
 
@@ -278,7 +278,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** M04. **Priority:** P1.
 
-**Evidence:** [standard-library/types/README.md lines 5](../standard-library/types/_index.md) says the catalog includes built-in and library values. [standard-library/types/catalog.md lines 9-24](../standard-library/types/catalog.md) presents them without distinguishing categories. [compiler/builds/project-configuration.md lines 43](../compiler/builds/project-configuration.md) rejects bare logical module names and absolute imports; `:51` leaves dependency/package imports unspecified. Library operations are referenced throughout the design without an import/prelude policy. [core-language/basics/text-and-bytes.md lines 18](../core-language/basics/text-and-bytes.md) promises byte/scalar/grapheme library operations, but gives no names or import path.
+**Evidence:** [standard-library/types/README.md lines 5](../standard-library/types/_index.md) says the catalog includes built-in and library values. [standard-library/types/catalog.md lines 9-24](../standard-library/types/catalog.md) presents them without distinguishing categories. [compiler/builds/project-configuration.md lines 43](../pkg/compiler/builds/project-configuration.md) rejects bare logical module names and absolute imports; `:51` leaves dependency/package imports unspecified. Library operations are referenced throughout the design without an import/prelude policy. [core-language/basics/text-and-bytes.md lines 18](../core-language/basics/text-and-bytes.md) promises byte/scalar/grapheme library operations, but gives no names or import path.
 
 **Minimal cases:** can a module name `File`, `Duration`, or `List` without an import? Where is a text-grapheme operation imported from? Is a runtime library identified by a compiler-injected alias, a package import, or a source file bundled into the project? What happens when a local type has the same name as a built-in?
 
@@ -314,7 +314,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** M07. **Priority:** P1 binding; P2 serialization.
 
-**Evidence:** [modules-and-capabilities/adapters/manifests.md lines 7,11](../modules-and-capabilities/adapters/manifests.md) lists required information and compiler validation; `:13` explicitly leaves serialization unspecified. [compiler/lowering/value-representations.md lines 18](../compiler/lowering/value-representations.md) lowers contracts to Go interfaces/wrappers. [compiler/lowering/function-and-task-calls.md lines 7](../compiler/lowering/function-and-task-calls.md) specifies a hidden context parameter for every generated contract method. [compiler/builds/reproducibility.md lines 7](../compiler/builds/reproducibility.md) requires adapters to be pinned.
+**Evidence:** [modules-and-capabilities/adapters/manifests.md lines 7,11](../modules-and-capabilities/adapters/manifests.md) lists required information and compiler validation; `:13` explicitly leaves serialization unspecified. [compiler/lowering/value-representations.md lines 18](../pkg/compiler/lowering/value-representations.md) lowers contracts to Go interfaces/wrappers. [compiler/lowering/function-and-task-calls.md lines 7](../pkg/compiler/lowering/function-and-task-calls.md) specifies a hidden context parameter for every generated contract method. [compiler/builds/reproducibility.md lines 7](../pkg/compiler/builds/reproducibility.md) requires adapters to be pinned.
 
 **Minimal cases:** an adapter claims to implement `Payments.charge`; how does it identify the source contract (name alone collides across modules), locate its Go package/symbol, identify the schema/runtime ABI version, or express exact named parameter labels? Can a separately compiled adapter implement a type containing an application-defined `Receipt` if the generated application package also imports the adapter? A direct dependency on application-generated types can create a Go package import cycle.
 
@@ -326,7 +326,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** M08. **Priority:** P1.
 
-**Evidence:** [modules-and-capabilities/adapters/value-conversion.md lines 7,11](../modules-and-capabilities/adapters/value-conversion.md) requires UTF-8/tag validation and immutable storage. [compiler/lowering/value-representations.md lines 11-18](../compiler/lowering/value-representations.md) supplies broad representation promises. [core-language/basics/numbers-and-booleans.md lines 25](../core-language/basics/numbers-and-booleans.md) makes invalid numeric operations programming faults. [compiler/lowering/cleanup-and-faults.md lines 7](../compiler/lowering/cleanup-and-faults.md) already defines recoverable adapter panics as `Crashed`; that is established, not a gap. No rule says whether failed return conversion is a domain result, programming fault, rejected adapter build, replacement value, or host failure.
+**Evidence:** [modules-and-capabilities/adapters/value-conversion.md lines 7,11](../modules-and-capabilities/adapters/value-conversion.md) requires UTF-8/tag validation and immutable storage. [compiler/lowering/value-representations.md lines 11-18](../pkg/compiler/lowering/value-representations.md) supplies broad representation promises. [core-language/basics/numbers-and-booleans.md lines 25](../core-language/basics/numbers-and-booleans.md) makes invalid numeric operations programming faults. [compiler/lowering/cleanup-and-faults.md lines 7](../pkg/compiler/lowering/cleanup-and-faults.md) already defines recoverable adapter panics as `Crashed`; that is established, not a gap. No rule says whether failed return conversion is a domain result, programming fault, rejected adapter build, replacement value, or host failure.
 
 **Minimal cases:** a Go adapter returns malformed UTF-8, nil where a nonoptional record/contract is required, an unknown alternative tag, a `uint64` outside `Int`, or a map with invalid keys/unstable iteration order. The language forbids implicit numeric conversions but Go wrappers still need a conversion rule. A malformed returned `Result` must not be silently translated into some unrelated application error.
 
@@ -338,7 +338,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** M09. **Priority:** P1.
 
-**Evidence:** [compiler/builds/project-configuration.md lines 20,24](../compiler/builds/project-configuration.md) selects an entry file and follows imports. [standard-library/hosts/cli.md lines 9,13](../standard-library/hosts/cli.md) promises arguments/environment/stdio/signals/status, but `:15` leaves registration/process signatures unspecified. [standard-library/hosts/http.md lines 9,13](../standard-library/hosts/http.md) promises limits/isolation but `:15` leaves registration/configuration unspecified. [core-language/basics/syntax.md lines 5](../core-language/basics/syntax.md) says files contain imports and declarations; examples elsewhere show top-level `let` without an initialization-order contract.
+**Evidence:** [compiler/builds/project-configuration.md lines 20,24](../pkg/compiler/builds/project-configuration.md) selects an entry file and follows imports. [standard-library/packages/cli.md lines 9,13](../standard-library/packages/cli.md) promises arguments/environment/stdio/signals/status, but `:15` leaves registration/process signatures unspecified. [standard-library/packages/http.md lines 9,13](../standard-library/packages/http.md) promises limits/isolation but `:15` leaves registration/configuration unspecified. [core-language/basics/syntax.md lines 5](../core-language/basics/syntax.md) says files contain imports and declarations; examples elsewhere show top-level `let` without an initialization-order contract.
 
 **Minimal cases:** a valid entry file has two exported functions and no `main`; a `main` returns `Result[Int, AppError]`; a module contains a top-level call that needs a clock; a handler needs storage. Which function is called, who constructs its arguments, and what maps its return value to an exit code or HTTP response? How are adapter instances injected without ambient authority?
 
@@ -350,7 +350,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** M10. **Priority:** P2 build polish; P1 test discovery.
 
-**Evidence:** [compiler/builds/project-configuration.md lines 22](../compiler/builds/project-configuration.md) leaves manifest-selection CLI unspecified and `:24,51` leaves build/dependency schemas and acquisition unspecified. [compiler/builds/reproducibility.md lines 5,7,9](../compiler/builds/reproducibility.md) defines build identity, required pins, and stable output. [compiler/builds/incremental-compilation.md lines 7,15](../compiler/builds/incremental-compilation.md) defines broad cache keys. [compiler/conformance/semantic-tests.md lines 7,19-25](../compiler/conformance/semantic-tests.md) introduces source tests, but entry-import traversal is the only module discovery rule. [developer-tooling/debugging/metadata.md lines 7](../developer-tooling/debugging/metadata.md) requires identity/source hashes that match the executable.
+**Evidence:** [compiler/builds/project-configuration.md lines 22](../pkg/compiler/builds/project-configuration.md) leaves manifest-selection CLI unspecified and `:24,51` leaves build/dependency schemas and acquisition unspecified. [compiler/builds/reproducibility.md lines 5,7,9](../pkg/compiler/builds/reproducibility.md) defines build identity, required pins, and stable output. [compiler/builds/incremental-compilation.md lines 7,15](../pkg/compiler/builds/incremental-compilation.md) defines broad cache keys. [compiler/conformance/semantic-tests.md lines 7,19-25](../pkg/compiler/conformance/semantic-tests.md) introduces source tests, but entry-import traversal is the only module discovery rule. [developer-tooling/debugging/metadata.md lines 7](../developer-tooling/debugging/metadata.md) requires identity/source hashes that match the executable.
 
 **Minimal cases:** `src/math.ms` has tests but is unreachable from application entry; a lock pins adapter A but A's Go transitive dependency differs; the same source is built with a different Manuscript compiler version or `GOOS`, `GOARCH`, build tag, Unicode data version, or decimal implementation. Must generated text, executable bytes, metadata, and analysis-cache keys all match? Is the lock authoritative or automatically updated?
 
@@ -374,7 +374,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** TOOL-01. **Priority:** blocking.
 
-**Evidence:** [compiler/conformance/semantic-tests.md lines 7](../compiler/conformance/semantic-tests.md) introduces `test "name":` and ordinary conditional returns for failed checks. Explicit programming faults are described at [core-language/errors/faults.md lines 9](../core-language/errors/faults.md). No other design page defines test discovery, placement, result type, isolation, or authority inputs. [core-language/errors/propagation.md lines 7](../core-language/errors/propagation.md) defines `try` using an enclosing function, leaving its meaning inside test blocks open.
+**Evidence:** [compiler/conformance/semantic-tests.md lines 7](../pkg/compiler/conformance/semantic-tests.md) introduces `test "name":` and ordinary conditional returns for failed checks. Explicit programming faults are described at [core-language/errors/faults.md lines 9](../core-language/errors/faults.md). No other design page defines test discovery, placement, result type, isolation, or authority inputs. [core-language/errors/propagation.md lines 7](../core-language/errors/propagation.md) defines `try` using an enclosing function, leaving its meaning inside test blocks open.
 
 **Missing decisions:** Are tests top-level declarations in any module, or test-only grammar? Can tests nest? Are duplicate names legal? Do tests in imported modules run? Are bodies implicitly `Unit`, and can they `return` or use `try`? How does conformance verify an expected programming fault when source `try` cannot catch faults? How are fake capability values provided without adding ambient authority?
 
@@ -388,7 +388,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** TOOL-02. **Priority:** high.
 
-**Evidence:** [compiler/conformance/semantic-tests.md lines 7](../compiler/conformance/semantic-tests.md) emphasizes runtime/task coverage; `:11-17` details recent parallel, destructuring, modules, and named-list revisions. The checker requires nominal records, alternatives, exhaustive matches, bounds, implementations, and Result propagation ([compiler/frontend/type-checker.md lines 17-21](../compiler/frontend/type-checker.md)). Representations promise checked Int, Decimal, UTF-8, immutability, ordered collections, alternatives, and generated equality/hashing ([compiler/lowering/value-representations.md lines 11-18](../compiler/lowering/value-representations.md)). Those lack detailed corresponding conformance requirements. The scalar example `3 - 1 > 0` at [compiler/conformance/semantic-tests.md lines 20-22](../compiler/conformance/semantic-tests.md) does not establish checked arithmetic.
+**Evidence:** [compiler/conformance/semantic-tests.md lines 7](../pkg/compiler/conformance/semantic-tests.md) emphasizes runtime/task coverage; `:11-17` details recent parallel, destructuring, modules, and named-list revisions. The checker requires nominal records, alternatives, exhaustive matches, bounds, implementations, and Result propagation ([compiler/frontend/type-checker.md lines 17-21](../pkg/compiler/frontend/type-checker.md)). Representations promise checked Int, Decimal, UTF-8, immutability, ordered collections, alternatives, and generated equality/hashing ([compiler/lowering/value-representations.md lines 11-18](../pkg/compiler/lowering/value-representations.md)). Those lack detailed corresponding conformance requirements. The scalar example `3 - 1 > 0` at [compiler/conformance/semantic-tests.md lines 20-22](../pkg/compiler/conformance/semantic-tests.md) does not establish checked arithmetic.
 
 **Consequence:** An implementation could pass the enumerated scenarios while accepting mismatched nominal types, implicit numeric conversions, or unchecked overflow. This is missing verification, not missing existing rules: checked arithmetic, 34-digit Decimal/half-even rounding, and explicit conversion already exist at [core-language/basics/numbers-and-booleans.md lines 18-25](../core-language/basics/numbers-and-booleans.md).
 
@@ -400,7 +400,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** TOOL-03. **Priority:** high.
 
-**Evidence:** [compiler/conformance/programs.md lines 9-16](../compiler/conformance/programs.md) names CLI, HTTP, background-worker, resource, cleanup, and debugger programs with broad outcomes. No source programs, harness inputs, or expected transcripts exist. CLI signatures are explicitly unspecified at [standard-library/hosts/cli.md lines 15](../standard-library/hosts/cli.md); HTTP registration/configuration is unspecified at [standard-library/hosts/http.md lines 15](../standard-library/hosts/http.md).
+**Evidence:** [compiler/conformance/programs.md lines 9-16](../pkg/compiler/conformance/programs.md) names CLI, HTTP, background-worker, resource, cleanup, and debugger programs with broad outcomes. No source programs, harness inputs, or expected transcripts exist. CLI signatures are explicitly unspecified at [standard-library/packages/cli.md lines 15](../standard-library/packages/cli.md); HTTP registration/configuration is unspecified at [standard-library/packages/http.md lines 15](../standard-library/packages/http.md).
 
 **Proposal:** For each required program provide complete source, manifest, supplied fake/real capability profile, run procedure, and observable checks. Separate deterministic harness checks from real integration checks. A bounded server fixture must name measurable limits and expected responses rather than merely “slow clients.” Compiler completeness requires an executable-entry/host contract; that decision and the manifest/build shape belong to the modules/build review. Pending runtime scenarios should be labeled dependencies on the in-progress runtime design, without re-deciding them here.
 
@@ -434,7 +434,7 @@ Module priorities use P1 for decisions needed by a complete application and P2 f
 
 **Reference:** TOOL-06. **Priority:** medium.
 
-**Evidence:** [developer-tooling/debugging/source-mapping.md lines 7,13](../developer-tooling/debugging/source-mapping.md) requires Go line directives and unoptimized symbol-rich debug builds. [developer-tooling/debugging/debugger-integration.md lines 7](../developer-tooling/debugging/debugger-integration.md) chooses Delve DAP plus interpretation; `:13` requires stepping, value rendering, and task inspection. [compiler/conformance/programs.md lines 16](../compiler/conformance/programs.md) repeats those labels without expected stops or renderings.
+**Evidence:** [developer-tooling/debugging/source-mapping.md lines 7,13](../developer-tooling/debugging/source-mapping.md) requires Go line directives and unoptimized symbol-rich debug builds. [developer-tooling/debugging/debugger-integration.md lines 7](../developer-tooling/debugging/debugger-integration.md) chooses Delve DAP plus interpretation; `:13` requires stepping, value rendering, and task inspection. [compiler/conformance/programs.md lines 16](../pkg/compiler/conformance/programs.md) repeats those labels without expected stops or renderings.
 
 **Scenario:** A source statement lowers to several temporary operations. Native stepping might repeatedly stop in temporaries, enter hidden context machinery, or display inactive alternative payloads. Line mapping alone does not decide source behavior.
 
@@ -458,7 +458,7 @@ Give machine diagnostics a versioned envelope with stable rule code, severity, p
 
 **Reference:** TOOL-08. **Priority:** high coordination priority.
 
-**Evidence:** [README.md lines 31](../_index.md) says the guides together specify v0.1; compiler/tooling guides repeat that contract claim at `:7`. Chapters mix settled requirements, illustrative snippets, open API shapes, and implementation preferences. [compiler/conformance/scope.md lines 7](../compiler/conformance/scope.md) names deferrals but does not distinguish mandatory compiler/tooling profiles and future aspirations.
+**Evidence:** [README.md lines 31](../_index.md) says the guides together specify v0.1; compiler/tooling guides repeat that contract claim at `:7`. Chapters mix settled requirements, illustrative snippets, open API shapes, and implementation preferences. [compiler/conformance/scope.md lines 7](../pkg/compiler/conformance/scope.md) names deferrals but does not distinguish mandatory compiler/tooling profiles and future aspirations.
 
 **Proposal:** Add accepted/proposed/superseded/deferred status, target version, canonical dependencies, and outstanding decisions to normative chapters. Maintain stable rule IDs, decision register, and conformance matrix. A settled rule needs exact behavior and meaningful accepted/rejected or edge examples with test oracles. Label fragments and publish a smaller complete-program collection. Keep normative behavior in one canonical chapter; other guides link to it. Compiler/tooling references dependent on ongoing ownership/concurrency revisions should be marked pending migration, without deciding those rules here.
 

@@ -42,6 +42,6 @@ See [Closeable](closeable.md) for the exact checks.
 
 A resource acquired inside a loop closes at the end of that iteration. Returning it or capturing it in a closure does not remove its registered cleanup. An ordinary `let` binding does not register cleanup.
 
-The file, transaction, or background service supplies its own close behavior. `with` adds no custom enter hook or error-suppression hook.
+The file, transaction, or scheduler supplies its own close behavior. `with` adds no custom enter hook or error-suppression hook.
 
-For compiler contributors: Go's function-level `defer` lasts until the function returns, so it cannot by itself implement Manuscript's nested block lifetimes. The compiler generates explicit cleanup for those scopes. See [exit order](exit-order.md), [cleanup lowering](../../compiler/lowering/cleanup-and-faults.md), and the [Go defer specification](https://go.dev/ref/spec#Defer_statements).
+For compiler contributors: Go's function-level `defer` lasts until the function returns, so it cannot by itself implement Manuscript's nested block lifetimes. The compiler generates explicit cleanup for those scopes. See [exit order](exit-order.md), [cleanup lowering](../../pkg/compiler/lowering/cleanup-and-faults.md), and the [Go defer specification](https://go.dev/ref/spec#Defer_statements).

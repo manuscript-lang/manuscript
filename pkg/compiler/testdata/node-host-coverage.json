@@ -1204,27 +1204,27 @@
       "module": "timers",
       "api": "clearImmediate",
       "status": "adapted",
-      "reason": "Scoped Timer.close cancels and joins the operation.",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
       "targets": [
-        "@std/time.ms/Timer.close"
+        "@std/tasks.ms/Scheduler.cancel"
       ]
     },
     {
       "module": "timers",
       "api": "clearInterval",
       "status": "adapted",
-      "reason": "Scoped Timer.close cancels and joins the operation.",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
       "targets": [
-        "@std/time.ms/Timer.close"
+        "@std/tasks.ms/Scheduler.cancel"
       ]
     },
     {
       "module": "timers",
       "api": "clearTimeout",
       "status": "adapted",
-      "reason": "Scoped Timer.close cancels and joins the operation.",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
       "targets": [
-        "@std/time.ms/Timer.close"
+        "@std/tasks.ms/Scheduler.cancel"
       ]
     },
     {
@@ -1240,27 +1240,27 @@
       "module": "timers",
       "api": "setImmediate",
       "status": "adapted",
-      "reason": "after schedules an ordinary operation after a Duration; zero duration requests immediate work.",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
       "targets": [
-        "@std/time.ms/after"
+        "@std/tasks.ms/Scheduler.after"
       ]
     },
     {
       "module": "timers",
       "api": "setInterval",
       "status": "adapted",
-      "reason": "every runs sequential operations at a Duration interval under scoped cleanup.",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
       "targets": [
-        "@std/time.ms/every"
+        "@std/tasks.ms/Scheduler.every"
       ]
     },
     {
       "module": "timers",
       "api": "setTimeout",
       "status": "adapted",
-      "reason": "after schedules an ordinary operation after a Duration; zero duration requests immediate work.",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
       "targets": [
-        "@std/time.ms/after"
+        "@std/tasks.ms/Scheduler.after"
       ]
     },
     {
@@ -1287,10 +1287,10 @@
       "module": "timers/promises",
       "api": "setInterval",
       "status": "adapted",
-      "reason": "A sequential sleep loop supplies paced iteration; Background supplies concurrent work and cancellation.",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
       "targets": [
         "@std/time.ms/sleep",
-        "@std/tasks.ms/Background.start"
+        "@std/tasks.ms/Scheduler.start"
       ]
     },
     {
@@ -1530,19 +1530,19 @@
     {
       "module": "timers:Timeout",
       "api": "refresh",
-      "status": "equivalent",
-      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in node-host.md.",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
       "targets": [
-        "@std/time.ms/Timer.restart"
+        "@std/tasks.ms/Scheduler.restart"
       ]
     },
     {
       "module": "timers:Timeout",
       "api": "close",
-      "status": "equivalent",
-      "reason": "Returned-handle counterpart; chunk bounds and structured cleanup are documented in node-host.md.",
+      "status": "adapted",
+      "reason": "Scheduler owns the work lifetime; cancellation requests stop, scope close joins, and restart returns a fresh operation ID.",
       "targets": [
-        "@std/time.ms/Timer.close"
+        "@std/tasks.ms/Scheduler.cancel"
       ]
     },
     {

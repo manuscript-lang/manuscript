@@ -20,7 +20,7 @@ func fixture(t *testing.T, name string) string {
 
 func TestCallArgumentLabelRejections(t *testing.T) {
 	const declarations = `import List from "@std/collections.ms"
-import Background from "@std/tasks.ms"
+import Scheduler from "@std/tasks.ms"
 import parallel from "@std/tasks.ms"
 import Result from "@std/result.ms"
 fn one(value: Int) -> Int:
@@ -58,7 +58,7 @@ impl Read for Box:
 		{"record field label", "let box = Box(1)"},
 		{"alternative field label", "let choice = Choice.Payload(1)"},
 		{"contract view label", "let view = Read(Box(value: 1))"},
-		{"optional constructor arguments", "let service = Background(1)"},
+		{"optional constructor arguments", "let service = Scheduler(1)"},
 		{"optional parallel arguments", "let result = parallel([])"},
 		{"function type labels", "let transform = fn(item: Int) -> Int:\n        return item\n    apply(transform)"},
 	} {
@@ -75,7 +75,7 @@ impl Read for Box:
 			}
 		})
 	}
-	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Background, operation: fn() -> Result[Unit, String]) -> Unit:
+	result := compiler.CompileSource("sharing.ms", declarations+`fn start(service: Scheduler, operation: fn() -> Result[Unit, String]) -> Unit:
     service.start(operation)
 `, compiler.Options{})
 	if !result.Success() {
@@ -396,15 +396,7 @@ func TestRejectedModuleBoundaries(t *testing.T) {
 
 func TestServiceBoundaries(t *testing.T) {
 	for name, source := range map[string]string{
-		"opaque constructor fields": "import Queue from \"@std/queues.ms\"\ntest \"opaque\":\n    let queue = Queue[Int](capacity: 1)\n    let capacity = queue.capacity\n",
-		"pool record forbidden":     "import Pool from \"@std/pools.ms\"\ntest \"pool\":\n    let pool = Pool(resources: [1])\n",
-		"pool generic representation": `import File from "@std/io.ms"
-import List from "@std/collections.ms"
-import Pool from "@std/pools.ms"
-fn make[T: File](resources: List[T]) -> Unit:
-    with pool = Pool(resources: resources):
-        return
-`,
+		"opaque constructor fields": "import Queue from \"@std/queues.ms\"\ntest \"opaque\":\n    let queue = Queue[Int](capacity: some(value: 1))\n    let capacity = queue.capacity\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			result := compiler.CompileSource(name+".ms", source, compiler.Options{})

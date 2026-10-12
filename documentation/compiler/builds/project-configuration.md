@@ -31,7 +31,7 @@ entry = "./src/main.ms"
 | `ms check <ms.toml>` | Check the program and its entry signature |
 | `ms build <ms.toml>` | Check, generate Go, and build the executable |
 
-A relative manifest argument resolves from the invocation directory. Its containing directory then becomes the project root for configuration paths. The entry follows the [CLI main contract](../../standard-library/hosts/cli.md).
+A relative manifest argument resolves from the invocation directory. Its containing directory then becomes the project root for configuration paths. The entry follows the [CLI main contract](../../standard-library/packages/cli.md).
 
 The compiler discovers application modules by following imports from entry. The manifest does not enumerate them. Only `[project]` and `[aliases]` are implemented; unknown tables, unknown project keys, duplicate tables, and duplicate keys are rejected. Values must be double-quoted strings. Comments begin with `#` outside a quoted string.
 

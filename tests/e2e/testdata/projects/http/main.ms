@@ -1,4 +1,5 @@
-import network from "@std/http.ms"
+import Optional from "@std/optional.ms"
+import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 import Map from "@std/collections.ms"
 import HttpRequest from "@std/http.ms"
@@ -12,11 +13,11 @@ export fn main() -> Int:
     match serve(
         address: "127.0.0.1:0",
         handler: handle,
-        limit: 2,
-        max_body_bytes: 1024,
-        max_response_bytes: 1024,
-        timeout: 2.seconds,
-        grace: 0.seconds,
+        limit: some(value: 2),
+        max_body_bytes: some(value: 1024),
+        max_response_bytes: some(value: 1024),
+        timeout: some(value: 2.seconds),
+        grace: some(value: 0.seconds),
     ):
         error(_):
             return 1

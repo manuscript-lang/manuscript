@@ -1,11 +1,11 @@
 +++
-title = "CLI application hosts"
-weight = 46
+title = "Command-line programs"
+weight = 57
 +++
 
-# CLI application hosts
+# Command-line programs
 
-[Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
+[Guide index](../_index.md) · [Package index](_index.md) · [Design index](../../_index.md)
 
 A CLI application starts at an exported `fn main() -> Int`. The host creates the execution context and host services, calls main once with no arguments, then waits for work and cleanup before reporting the exit code.
 
@@ -20,13 +20,13 @@ Import the accessor for each service an application uses. Accessors are ordinary
 | `@std/cli.ms` | `arguments() -> List[String]`, `environment() -> Map[String, String]` |
 | `@std/io.ms` | `stdin() -> ReadStream`, `stdout() -> WriteStream`, `stderr() -> WriteStream`, `files() -> Files` |
 | `@std/fs.ms` | `filesystem() -> FileSystem` |
-| `@std/http.ms` | `network() -> Network` |
+| `@std/net.ms` | `network() -> Network` |
 | `@std/process.ms` | `commands() -> Commands`, `control() -> ProcessControl` |
 | `@std/time.ms` | `clock() -> Clock`, `wall_clock() -> WallClock` |
 | `@std/random.ms` | `entropy() -> Entropy` |
 | `@std/system.ms` | `system() -> System` |
 
-Type names and functions still require explicit imports when named in source. Importing an accessor does not add other declarations to scope. Calling it returns the existing service; repeated calls do not construct new roots. Helpers, callbacks, parallel work, and imported modules use the services of their invocation execution. Background services retain their construction execution's services.
+Type names and functions still require explicit imports when named in source. Importing an accessor does not add other declarations to scope. Calling it returns the existing service; repeated calls do not construct new roots. Helpers, callbacks, parallel work, and imported modules use the services of their invocation execution. Scheduler services retain their construction execution's services.
 
 ```manuscript
 import arguments from "@std/cli.ms"
@@ -59,8 +59,8 @@ Normal main results must be 0–125; other results fault. An unhandled root or c
 
 The `ms run` launcher forwards SIGINT/SIGTERM to the native host and waits for its joined shutdown before reporting that exit status.
 
-Construct application Background services in main with `with`, inside their dependencies' scopes. Shutdown stops admission, joins services, then releases roots. Uncooperative work/reporters can require [host escalation](../../concurrency/runtime.md#host-escalation); the host exposes its watchdog policy. Escalated exit is incomplete cleanup, not conformance success.
+Construct application Scheduler services in main with `with`, inside their dependencies' scopes. Shutdown stops admission, joins services, then releases roots. Uncooperative work/reporters can require [host escalation](../../concurrency/runtime.md#host-escalation); the host exposes its watchdog policy. Escalated exit is incomplete cleanup, not conformance success.
 
-Network services register under their construction execution and join before host roots are released. Network owns acquired TCP/UDP/TLS handles and joins them during host-root shutdown. The bounded HTTP and subprocess contracts are in [HTTP](http.md) and [streams](../data-and-io/streams.md). The filesystem, entropy, wall-clock, and system contracts are in [general-purpose packages](../packages/_index.md).
+Network services register under their construction execution and join before host roots are released. Network owns acquired TCP/UDP/TLS handles and joins them during host-root shutdown. The bounded HTTP and subprocess contracts are in [HTTP](http.md#request-api) and [streams](../data-and-io/streams.md). The filesystem, entropy, wall-clock, and system contracts are in [general-purpose packages](_index.md).
 
-The imported `control()` accessor returns ProcessControl for current-process information and explicit environment, directory, identity, signal, and umask operations. See [host package contracts](../packages/node-host.md) for their process-wide effects and native limitations.
+The imported `control()` accessor returns ProcessControl for current-process information and explicit environment, directory, identity, signal, and umask operations. See [process contracts](node-host.md) for their process-wide effects and native limitations.

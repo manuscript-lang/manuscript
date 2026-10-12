@@ -20,9 +20,9 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Contract / interface](core-language/types/contracts.md) | A declared set of operations an implementation must provide. |
 | [Generic parameter](core-language/types/generics.md) | A placeholder for a type, such as `T` in `List[T]`. |
 | [Bound](core-language/types/generics.md) | A requirement on a type parameter, such as supporting comparison or supplying a particular operation. |
-| [Equal](core-language/types/equality-and-hashing.md) | A compiler-checked requirement: values can be compared by their contents with `==` and `!=`. |
-| [Hashable](core-language/types/equality-and-hashing.md) | A compiler-checked requirement: values can be map keys or set elements. Includes Equal. |
-| [Intrinsic / prelude](standard-library/types/prelude.md) | The small set of types and compiler bounds available without imports. |
+| [Equal](core-language/types/equality-and-hashing.md) | A standard interface for comparing values with `==`, `!=`, or `equals`. Built-in data compares by contents; explicit implementations can select domain identity. |
+| [Hashable](core-language/types/equality-and-hashing.md) | A standard interface for computing lookup hashes. Map keys and set elements must also implement Equal. |
+| [Intrinsic / prelude](standard-library/types/prelude.md) | The small set of types and standard equality interfaces available without imports. |
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
 | [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |
 | [Fault](core-language/errors/faults.md) | A programming failure, such as a violated invariant. It ends the current operation after cleanup. |
@@ -38,7 +38,7 @@ Use this page when the guide uses an unfamiliar term. Follow a link for the exac
 | [Cancellation checkpoint](concurrency/cancellation.md#propagation-and-checkpoints) | A point where work checks whether it should stop and unwind. |
 | [Unwind](ownership-and-cleanup/cleanup/exit-order.md) | Leave active scopes and run their registered cleanup. |
 | [Shielded cleanup](ownership-and-cleanup/cleanup/cleanup-faults.md) | Cleanup that can run despite the cancellation or deadline that ended ordinary work. |
-| [Host](standard-library/hosts/_index.md) | The runtime entry point that runs a CLI application or handles HTTP requests. |
+| [Host](concurrency/runtime.md) | The runtime entry point that runs a CLI application or handles HTTP requests. |
 | [Adapter](modules-and-capabilities/adapters/_index.md) | A declared bridge between Manuscript and foreign code, such as Go. |
 | [Typed IR](compiler/frontend/typed-ir.md) | The compiler's internal program representation after names and types have been checked. |
 | [Lowering](compiler/lowering/_index.md) | Translating checked Manuscript operations into generated Go while preserving their behavior. |

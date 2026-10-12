@@ -9,7 +9,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	i := &Info{}
 	callee := e.Left
 	if typ := c.typeExpression(callee); typ != nil {
-		if typ.ID == "Equal" || typ.ID == "Hashable" || typ.Kind == "primitive" || typ.Kind == "variable" {
+		if typ.Kind == "primitive" || typ.Kind == "variable" {
 			c.error(e.Pos, "type", "this type has no source constructor")
 			return i
 		}
@@ -38,27 +38,11 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
-		if std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "Lease") || std(typ, "SynchronizedGuard") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
+		if std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "List") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
 			c.error(e.Pos, "type", "standard type has no source constructor")
 			return i
 		}
-		if std(typ, "Background") {
-			params := []Param{{"limit", primitive("Int")}}
-			optional := map[string]*Type{"reporter": function([]Param{{"failure", standard("BackgroundFailure")}}, primitive("Unit")), "drain": standard("Duration"), "history_limit": primitive("Int")}
-			for _, arg := range e.Args {
-				if t := optional[arg.Name]; t != nil {
-					params = append(params, Param{arg.Name, t})
-				}
-			}
-			i.NoReturn = c.arguments(e.Args, params)
-			i.Type = typ
-			i.Native = "background"
-			return i
-		}
 		typ = c.instantiate(typ, fields, e.Args, expected, e.Pos)
-		if std(typ, "Pool") && len(typ.Args) == 1 && typ.Args[0].Kind != "contract" {
-			c.error(e.Pos, "type", "pool construction requires concrete contract views")
-		}
 		fields = Fields(typ)
 		if std(typ, "Queue") && len(e.Args) == 0 {
 			fields = nil
@@ -66,7 +50,15 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 		if std(typ, "Bytes") {
 			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
-		i.NoReturn = c.arguments(e.Args, fields)
+		defaults := map[string]bool{}
+		if typ.Def != nil && typ.Def.Symbol.Native != "" && typ.Def.Symbol.Decl != nil {
+			for _, field := range typ.Def.Symbol.Decl.Fields {
+				if field.Default != nil {
+					defaults[field.Name] = true
+				}
+			}
+		}
+		i.NoReturn = c.arguments(e.Args, fields, defaults)
 		i.Type = typ
 		i.Constructor = typ
 		return i
@@ -313,7 +305,7 @@ func (c *checker) parallel(e *syntax.Expression) *Info {
 		case "tasks":
 			tasks = a.Value
 		case "timeout":
-			v := c.expression(a.Value, standard("Duration"))
+			v := c.expression(a.Value, standard("Optional", standard("Duration")))
 			i.NoReturn = i.NoReturn || v.NoReturn
 		default:
 			c.error(a.Pos, "type", "unknown parallel argument "+a.Name)

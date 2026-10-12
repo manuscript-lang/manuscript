@@ -22,7 +22,7 @@ These are type expressions: a list of text, a map from text to integers, optiona
 
 ## Bounds
 
-`T: Equal` means that values of `T` can be compared with `==` and `!=`. `T: Hashable` means that values of `T` can also be map keys or set elements. The compiler checks these requirements; you do not implement them yourself. See [equality and hashing](equality-and-hashing.md) for examples. Other requirements use named operation contracts. Generic declarations use `[T, U]`, with bounds such as `T: Equal` or `T: Read & Closeable`.
+`T: Equal` means values of `T` can be compared with `==` and `!=`; `T: Hashable` supplies hashing for map keys and set elements, which also require Equal. These are standard interfaces with built-in value implementations and explicit domain implementations. See [equality and hashing](equality-and-hashing.md) for examples. Generic declarations use `[T, U]`, with bounds such as `T: Equal` or `T: Read & Closeable`.
 
 | Bound | Required property |
 | --- | --- |
@@ -129,6 +129,6 @@ Apply the check to mutual recursion and references such as `grow[List[T]]` store
 
 ## Built-in requirements
 
-`List[T]`, `Queue[T]`, `Synchronized[T]`, and collection values accept arbitrary value types, including functions and contract views. Map keys and set elements require `Hashable`. Equality is independently derived as described in [equality and hashing](equality-and-hashing.md). Sharing does not register cleanup or extend a resource's open lifetime.
+`List[T]`, `Queue[T]`, `Synchronized[T]`, and collection values accept arbitrary value types, including functions and contract views. Map keys and set elements require `Hashable`. Equality uses the interfaces described in [equality and hashing](equality-and-hashing.md). Sharing does not register cleanup or extend a resource's open lifetime.
 
 [Previous: Operation contracts](contracts.md) · [Next: Type compatibility and expected types](compatibility.md)

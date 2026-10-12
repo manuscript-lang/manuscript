@@ -16,10 +16,10 @@ Validate these complete programs as their APIs become concrete:
 | CLI argument output and bounded file reads | parameterless main, imported host services, specified stream signatures, cleanup, and exit behavior |
 | CLI draining subprocess stdout/stderr | concurrent streaming and deterministic resource release |
 | Bounded HTTP server with slow clients | admission, backpressure, limits, failure isolation |
-| Background worker surviving a submitting helper's completion | fixed service parent, bounded admission, error observation, and joined shutdown |
+| Scheduler worker surviving a submitting helper's completion | fixed service parent, bounded admission, error observation, and joined shutdown |
 | Cancellation during resource acquisition | atomic completion and disposal of undelivered resources |
 | Nested cleanup with a fault | every remaining cleanup runs exactly once; secondary diagnostics retained |
-| Debug session through parallel, Background, and with | source stepping, value rendering, and task inspection |
+| Debug session through parallel, Scheduler, and with | source stepping, value rendering, and task inspection |
 
 ## Fixture contents
 

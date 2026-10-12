@@ -23,74 +23,22 @@ type Bytes:
     fn with_value(index: Int, value: Int) -> Bytes
     fn is_empty() -> Bool
     fn concat(values: Bytes) -> Bytes
-    fn get(index: Int) -> Optional[Int]
     fn length() -> Int
     fn to_text() -> Optional[String]
 ```
 
-## at {data-api-kind="Function"}
+## BytesBuilder {data-api-kind="Native type"}
 
 ```manuscript
-fn at(data: Bytes, index: Int) -> Optional[Int]
-```
-
-## contains {data-api-kind="Function"}
-
-```manuscript
-fn contains(data: Bytes, value: Bytes) -> Bool
-```
-
-## ends_with {data-api-kind="Function"}
-
-```manuscript
-fn ends_with(data: Bytes, value: Bytes) -> Bool
-```
-
-## index_of {data-api-kind="Function"}
-
-```manuscript
-fn index_of(data: Bytes, value: Bytes) -> Optional[Int]
-```
-
-## is_empty {data-api-kind="Function"}
-
-```manuscript
-fn is_empty(data: Bytes) -> Bool
-```
-
-## last_index_of {data-api-kind="Function"}
-
-```manuscript
-fn last_index_of(data: Bytes, value: Bytes) -> Optional[Int]
-```
-
-## reverse {data-api-kind="Function"}
-
-```manuscript
-fn reverse(data: Bytes) -> Bytes
-```
-
-## slice {data-api-kind="Function"}
-
-```manuscript
-fn slice(data: Bytes, start: Int, end: Int) -> Bytes
-```
-
-## starts_with {data-api-kind="Function"}
-
-```manuscript
-fn starts_with(data: Bytes, value: Bytes) -> Bool
+type BytesBuilder:
+    fn append(value: Int) -> Unit
+    fn concat(values: Bytes) -> Unit
+    fn freeze() -> Bytes
 ```
 
 ## values {data-api-kind="Function"}
 
 ```manuscript
 fn values(data: Bytes) -> List[Int]
-```
-
-## with_value {data-api-kind="Function"}
-
-```manuscript
-fn with_value(data: Bytes, index: Int, value: Int) -> Bytes
 ```
 

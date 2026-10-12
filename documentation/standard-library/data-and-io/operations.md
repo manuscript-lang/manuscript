@@ -15,11 +15,15 @@ A single-parameter operation may omit its argument label. Multi-parameter operat
 
 [JavaScript built-in coverage](../packages/javascript-builtins.md) describes the expanded receiver surface and exact differences.
 
+## Optional values
+
+`Optional[T]` provides `is_some() -> Bool`, `is_none() -> Bool`, `unwrap() -> T`, `unwrap_or(fallback: T) -> T`, and `unwrap_or_else(create: fn() -> T) -> T`. These are receiver methods on the imported standard type. See [optional values](../../core-language/types/optionals.md#checking-and-extracting-values) for extraction, eager and lazy fallbacks, and faults on absent values.
+
 ## Collections
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `List[T]` | `length() -> Int`; `get(index: Int) -> Optional[T]` |
+| `List[T]` | `length() -> Int`; `at(index: Int) -> Optional[T]` |
 | `List[T]` | `append(value: T) -> List[T]`; `concat(values: List[T]) -> List[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
 | `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
@@ -28,7 +32,7 @@ A single-parameter operation may omit its argument label. Multi-parameter operat
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
 | `Set[T]` | `with_value(value: T) -> Set[T]`; `without(value: T) -> Set[T]` |
 
-All existing element and key bounds apply. An empty Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. List construction uses the existing bracket literal. Negative or out-of-range list indexes return `none`. A size exceeding MaxInt64 faults.
+All existing element and key bounds apply. An empty Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. List construction uses the existing bracket literal. List and Bytes `.at` accept relative negative indexes; out-of-range indexes return `none`. A size exceeding MaxInt64 faults.
 
 Maps and sets traverse in insertion order. Replacing an equal map key retains its original key value and first insertion position; adding an existing set element retains its original value and position. Removing an absent key/element is a value-preserving operation. Removing and then adding places the new entry at the end. Equality remains independent of insertion order. A simple implementation may copy storage on update; builder APIs are specified separately once their signatures are settled.
 
@@ -50,7 +54,7 @@ test "dynamic mutable data and explicit copies":
     if not (positives(values: [3, -1, 2]) == [3, 2]):
         return panic(message: "check failed")
     let absent: Optional[Int] = none
-    if not ([1].get(index: 5) == absent):
+    if not ([1].at(index: 5) == absent):
         return panic(message: "check failed")
     let original = Map[String, Int]().with_entry(key: "a", value: 1)
     let updated = original.clone().with_entry(key: "b", value: 2).with_entry(key: "a", value: 3)
@@ -66,7 +70,7 @@ test "dynamic mutable data and explicit copies":
 | --- | --- |
 | `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
-| `Bytes` | `length() -> Int`; `get(index: Int) -> Optional[Int]`; `concat(values: Bytes) -> Bytes` |
+| `Bytes` | `length() -> Int`; `at(index: Int) -> Optional[Int]`; `concat(values: Bytes) -> Bytes` |
 | `Bytes` | `to_text() -> Optional[String]` |
 
 `String.to_bytes` uses UTF-8. `Bytes.to_text` succeeds exactly for valid UTF-8, preserving contents without normalization; invalid bytes produce `none`. Byte `get` follows list index behavior and returns the unsigned byte as Int. An empty `Bytes(values: [])` is valid.

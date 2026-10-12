@@ -19,6 +19,12 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 	var kind string
 	var args []string
 	switch v := receiver.(type) {
+	case Alternative:
+		native, types := splitType(v.Type)
+		if native != "@std/Optional" {
+			return nil, false
+		}
+		kind, args = "Optional", types
 	case *List:
 		kind = "List"
 		args = typeArguments(v.Type)

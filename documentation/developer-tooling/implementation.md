@@ -38,7 +38,7 @@ These commands use source checking and embedded declarations without a Go instal
 
 `doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. Project docs include reachable local modules. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
 
-`ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](../compiler/builds/reproducibility.md).
+`ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](../pkg/compiler/builds/reproducibility.md).
 
 ## Editor features
 
@@ -60,7 +60,6 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 ## Debugging and profiling
 
-The [VS Code extension](https://github.com/manuscript-lang/manuscript/blob/main/extensions/vscode/README.md) uses the `manuscript` debug type. F5 or **Manuscript: Debug current file** builds the containing project or standalone module without optimization/inlining, verifies executable/source/configuration hashes, and starts native DAP control through a loopback-only Delve listener. Breakpoints and stepping use absolute `.ms` source paths; source frames and locals use Manuscript names. Records, lists, sets, maps, bytes, variants, and interface views expand through lazy source views. Execution, cancellation, work lifetime, background services, leases, and HTTP services appear in a separate inspection scope. Service inspection reads stopped-process data and never invokes application operations. Simple local, record-field, and list-index watch expressions are mapped to their generated storage. Complex watch expressions use Delve's native evaluator.
 
 `ms debug` is also available for Delve's terminal UI. Existing project pin validation remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
 

@@ -124,7 +124,7 @@ func (s *stream) Operation(name string) Function {
 		}()
 		switch name {
 		case "read":
-			n := args[0].(int64)
+			n := nativeStreamReadSize(args[0])
 			if n <= 0 {
 				return ioError(s.resultType, "InvalidInput", "")
 			}
@@ -258,7 +258,7 @@ func init() {
 		{"io", "stderr", "WriteStream"},
 		{"io", "files", "Files"},
 		{"fs", "filesystem", "FileSystem"},
-		{"http", "network", "Network"},
+		{"net", "network", "Network"},
 		{"process", "commands", "Commands"},
 		{"process", "control", "ProcessControl"},
 		{"time", "clock", "Clock"},

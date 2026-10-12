@@ -1,9 +1,9 @@
-import {arguments, environment} from "@std/cli.ms"
-import {stdin, stdout, stderr} from "@std/io.ms"
-import {clock, wall_clock, unix_seconds} from "@std/time.ms"
+import { arguments, environment } from "@std/cli.ms"
+import { stdin, stdout, stderr } from "@std/io.ms"
+import { clock, wall_clock, unix_seconds } from "@std/time.ms"
 import entropy from "@std/random.ms"
 import system from "@std/system.ms"
-import network from "@std/http.ms"
+import network from "@std/net.ms"
 import panic from "@std/faults.ms"
 import parallel from "@std/tasks.ms"
 

@@ -12,15 +12,15 @@ Use compress for a byte stream and archive for named file or directory entries. 
 ## `@std/compress.ms`
 
 ```manuscript
-fn compress(data: Bytes, format: String, level: Int, max_bytes: Int) -> Result[Bytes, CompressionError]
-fn decompress(data: Bytes, format: String, max_bytes: Int) -> Result[Bytes, CompressionError]
+fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int]) -> Result[Bytes, CompressionError]
+fn decompress(data: Bytes, format: String, max_bytes: Optional[Int]) -> Result[Bytes, CompressionError]
 ```
 
 ## `@std/archive.ms`
 
 ```manuscript
-fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, ArchiveError]
-fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], ArchiveError]
+fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int]) -> Result[Bytes, ArchiveError]
+fn unpack(data: Bytes, format: String, limits: Optional[ArchiveLimits]) -> Result[List[ArchiveEntry], ArchiveError]
 ```
 
 ## Compression behavior
@@ -33,7 +33,7 @@ Gzip output has a zero timestamp and no platform or name metadata.
 
 ## Archive records and limits
 
-`ArchiveEntry` contains `path: String`, `data: Bytes`, and `directory: Bool`. `ArchiveLimits` contains `max_entries: Int`, `max_entry_bytes: Int`, and `max_total_bytes: Int`. All limits are nonnegative and count expanded content.
+`ArchiveEntry` contains `path: String`, `data: Bytes`, and `directory: Bool`. `ArchiveLimits` contains `max_entries: Optional[Int]`, `max_entry_bytes: Optional[Int]`, and `max_total_bytes: Optional[Int]`. All limits are nonnegative and count expanded content.
 
 Pack and unpack support `zip` and `tar`, with regular files and directories. Names must be UTF-8 portable relative paths. They reject absolute roots, backslashes, colons, NUL, and empty, dot, or dot-dot components. Duplicate normalized paths are rejected. Directory data must be empty.
 

@@ -28,7 +28,7 @@ func (n *network) webSocketDial() Function {
 		u, err := url.Parse(a[0].(string))
 		f := a[3].(Record).Fields
 		max, timeout := f["max_message_bytes"].(int64), f["timeout"].(Duration)
-		if err != nil || u.Host == "" || u.User != nil || u.Scheme != "ws" && u.Scheme != "wss" || max <= 0 || timeout <= 0 {
+		if err != nil || u.Host == "" || u.User != nil || u.Scheme != "ws" && u.Scheme != "wss" || max <= 0 || timeout < nativeNoTimeout {
 			return libraryError(r, "InvalidInput", "")
 		}
 		if !n.policy.host(u.Hostname()) {
@@ -59,7 +59,7 @@ func (n *network) webSocketDial() Function {
 			return libraryError(r, "Closed", "")
 		}
 		defer finish()
-		dialer := websocket.Dialer{NetDialContext: n.dial, TLSClientConfig: config, HandshakeTimeout: time.Duration(timeout), Subprotocols: protocols, EnableCompression: f["compression"].(bool), ReadBufferSize: 4096, WriteBufferSize: 4096}
+		dialer := websocket.Dialer{NetDialContext: n.dial, TLSClientConfig: config, HandshakeTimeout: nativeTransportTimeout(timeout), Subprotocols: protocols, EnableCompression: f["compression"].(bool), ReadBufferSize: 4096, WriteBufferSize: 4096}
 		conn, response, err := dialer.DialContext(call, u.String(), headers)
 		if response != nil && response.Body != nil {
 			response.Body.Close()

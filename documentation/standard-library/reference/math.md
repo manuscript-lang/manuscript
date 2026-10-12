@@ -84,18 +84,6 @@ fn floor(value: Float) -> Float
 fn hypot(left: Float, right: Float) -> Float
 ```
 
-## is_finite {data-api-kind="Function"}
-
-```manuscript
-fn is_finite(value: Float) -> Bool
-```
-
-## is_nan {data-api-kind="Function"}
-
-```manuscript
-fn is_nan(value: Float) -> Bool
-```
-
 ## log {data-api-kind="Function"}
 
 ```manuscript

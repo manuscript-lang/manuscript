@@ -6,24 +6,6 @@ title = "tasks"
 
 Import each required symbol with `import Name from "@std/tasks.ms"`.
 
-## Background {data-api-kind="Native type"}
-
-```manuscript
-type Background:
-    fn cancel(id: OperationId) -> Unit
-    fn close() -> Unit
-    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
-    fn status(id: OperationId) -> WorkStatus
-```
-
-## BackgroundFailure {data-api-kind="Alternative"}
-
-```manuscript
-type BackgroundFailure:
-    case Failed(operation: OperationId, cause: String)
-    case Crashed(operation: OperationId, message: String)
-```
-
 ## ExecutionError {data-api-kind="Alternative"}
 
 ```manuscript
@@ -43,12 +25,38 @@ impl Error for ExecutionError:
 type OperationId
 ```
 
+## Scheduler {data-api-kind="Native type"}
+
+```manuscript
+type Scheduler:
+    limit: Optional[Int] = none
+    history_limit: Optional[Int] = none
+    drain: Optional[Duration] = none
+    reporter: Optional[fn(failure: SchedulerFailure) -> Unit] = none
+    fn after(duration: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
+    fn every(interval: Duration, operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
+    fn restart(id: OperationId) -> Result[OperationId, StartError]
+    fn cancel(id: OperationId) -> Unit
+    fn close() -> Unit
+    fn start(operation: fn() -> Result[Unit, String]) -> Result[OperationId, StartError]
+    fn status(id: OperationId) -> WorkStatus
+```
+
+## SchedulerFailure {data-api-kind="Alternative"}
+
+```manuscript
+type SchedulerFailure:
+    case Failed(operation: OperationId, cause: String)
+    case Crashed(operation: OperationId, message: String)
+```
+
 ## StartError {data-api-kind="Alternative"}
 
 ```manuscript
 type StartError:
     case Closed
     case Full
+    case InvalidInput
 ```
 
 ```manuscript

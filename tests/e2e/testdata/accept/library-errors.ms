@@ -1,7 +1,8 @@
+import Optional from "@std/optional.ms"
 import panic from "@std/faults.ms"
 import Result from "@std/result.ms"
-import {parse, JsonError, JsonLimits} from "@std/json.ms"
-import {EncodingError, hex_decode} from "@std/encoding.ms"
+import { parse, JsonError, JsonLimits } from "@std/json.ms"
+import { EncodingError, hex_decode } from "@std/encoding.ms"
 
 type ApplicationError:
     case Json(cause: JsonError)
@@ -11,7 +12,7 @@ fn encoding_error(cause: EncodingError) -> ApplicationError:
     return Encoding(cause: cause)
 
 fn decode_bad_input() -> Result[Unit, ApplicationError]:
-    match hex_decode(text: "zz", max_bytes: 10):
+    match hex_decode(text: "zz", max_bytes: some(value: 10)):
         ok(_):
             return ok(value: unit)
         error(cause):
@@ -27,8 +28,8 @@ fn json_error_code(cause: JsonError) -> Int:
             return 3
 
 test "JSON errors need only JSON cases":
-    let limits = JsonLimits(max_bytes: 100, max_depth: 8, max_values: 32)
-    match parse(text: "[", limits: limits):
+    let limits = JsonLimits(max_bytes: some(value: 100), max_depth: some(value: 8), max_values: some(value: 32))
+    match parse(text: "[", limits: some(value: limits)):
         ok(_):
             return panic(message: "malformed JSON succeeded")
         error(cause):
@@ -60,7 +61,7 @@ impl Error for TaggedError[T]:
         return "tagged failure"
 
 fn decode_generically() -> Result[Unit, Error]:
-    match hex_decode(text: "zz", max_bytes: 10):
+    match hex_decode(text: "zz", max_bytes: some(value: 10)):
         ok(_):
             return ok(value: unit)
         error(cause):
@@ -142,7 +143,7 @@ test "type patterns compare exact generic applications":
 test "Error views can be stored and matched":
     let shared = Error(value: CustomError(detail: "shared diagnostic"))
     let errors: List[Error] = [shared]
-    match errors.get(index: 0):
+    match errors.at(index: 0):
         some(cause):
             match cause:
                 CustomError(custom):
@@ -153,10 +154,9 @@ test "Error views can be stored and matched":
         none:
             return panic(message: "shared errors collection was empty")
 
-import {LogError} from "@std/log.ms"
-import {CommandError} from "@std/process.ms"
-import {ExecutionError, StartError} from "@std/tasks.ms"
-import {PoolError} from "@std/pools.ms"
+import { LogError } from "@std/log.ms"
+import { CommandError } from "@std/process.ms"
+import { ExecutionError, StartError } from "@std/tasks.ms"
 
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(cause: IoError.Failed(message: "sink diagnostic"))
@@ -168,8 +168,6 @@ test "standard diagnostics preserve messages and wrapped causes":
         return panic(message: "execution error has no diagnostic")
     if Error(value: StartError.Full).message() != "StartError.Full":
         return panic(message: "start error has no diagnostic")
-    if Error(value: PoolError.Closed).message() != "PoolError.Closed":
-        return panic(message: "pool error has no diagnostic")
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:

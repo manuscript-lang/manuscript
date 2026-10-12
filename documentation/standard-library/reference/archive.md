@@ -35,20 +35,20 @@ impl Error for ArchiveError:
 
 ```manuscript
 type ArchiveLimits:
-    max_entries: Int
-    max_entry_bytes: Int
-    max_total_bytes: Int
+    max_entries: Optional[Int] = none
+    max_entry_bytes: Optional[Int] = none
+    max_total_bytes: Optional[Int] = none
 ```
 
 ## pack {data-api-kind="Function"}
 
 ```manuscript
-fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int) -> Result[Bytes, ArchiveError]
+fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]
 ```
 
 ## unpack {data-api-kind="Function"}
 
 ```manuscript
-fn unpack(data: Bytes, format: String, limits: ArchiveLimits) -> Result[List[ArchiveEntry], ArchiveError]
+fn unpack(data: Bytes, format: String, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]
 ```
 

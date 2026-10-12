@@ -17,6 +17,14 @@ var Library []LibrarySpec
 var libraryFunctions = map[string]LibrarySpec{}
 
 func libraryAdd(module, name, result string, params []LibraryParam, body func(*Execution, string, []Value) Value) {
+	original := body
+	body = func(ctx *Execution, result string, args []Value) Value {
+		normalized, ok := nativeOptions(name, params, args)
+		if !ok {
+			return nativeOptionFailure(result)
+		}
+		return original(ctx, result, normalized)
+	}
 	spec := LibrarySpec{Module: module, Name: name, Result: result, Params: params, Body: body}
 	Library = append(Library, spec)
 	libraryFunctions[module+"/"+name] = spec
@@ -36,9 +44,6 @@ func libraryFunction(name, result string) (Value, bool) {
 		labels[i] = p.Name
 	}
 	body := func(ctx *Execution, args []Value) Value { return invokeLibrary(spec, ctx, result, args) }
-	if spec.Module == "time" && (spec.Name == "after" || spec.Name == "every") {
-		return NewAcquisition(labels, result, body, libraryDisposeResource), true
-	}
 	return NewFunction(labels, result, body), true
 }
 

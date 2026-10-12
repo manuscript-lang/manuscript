@@ -17,10 +17,10 @@ import (
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	add := libraryAdd
-	add("json", "parse", libraryResult("JsonValue", "JsonError"), []LibraryParam{p("text", "String"), p("limits", "JsonLimits")}, libraryJSONParse)
-	add("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("value", "JsonValue"), p("max_bytes", "Int")}, libraryJSONStringify)
-	add("csv", "parse", libraryResult("List[List[String]]", "CsvError"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Int"), p("max_cells", "Int")}, libraryCSVParse)
-	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Int")}, libraryCSVStringify)
+	add("json", "parse", libraryResult("JsonValue", "JsonError"), []LibraryParam{p("text", "String"), p("limits", "Optional[JsonLimits]")}, libraryJSONParse)
+	add("json", "stringify", libraryResult("String", "JsonError"), []LibraryParam{p("value", "JsonValue"), p("max_bytes", "Optional[Int]")}, libraryJSONStringify)
+	add("csv", "parse", libraryResult("List[List[String]]", "CsvError"), []LibraryParam{p("text", "String"), p("options", "CsvOptions"), p("max_rows", "Optional[Int]"), p("max_cells", "Optional[Int]")}, libraryCSVParse)
+	add("csv", "stringify", libraryResult("String", "CsvError"), []LibraryParam{p("rows", "List[List[String]]"), p("options", "CsvOptions"), p("max_bytes", "Optional[Int]")}, libraryCSVStringify)
 	add("html", "escape", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return html.EscapeString(a[0].(string)) })
 	add("url", "encode_component", "String", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value {
 		text := a[0].(string)
@@ -70,7 +70,7 @@ func init() {
 		}
 		return libraryOK(r, u.String())
 	})
-	add("url", "parse_query", libraryResult("List[QueryEntry]", "UrlError"), []LibraryParam{p("text", "String"), p("max_entries", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("url", "parse_query", libraryResult("List[QueryEntry]", "UrlError"), []LibraryParam{p("text", "String"), p("max_entries", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		n := a[1].(int64)
 		if n < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -121,9 +121,6 @@ func libraryJSONParse(ctx *Execution, r string, a []Value) Value {
 	}
 	if int64(len(text)) > maxBytes {
 		return libraryError(r, "LimitExceeded", "")
-	}
-	if maxDepth > 512 {
-		maxDepth = 512
 	}
 	// Go's decoder replaces unpaired surrogate escapes; reject them before decoding.
 	if !libraryJSONUnicode(ctx, text) {
@@ -277,15 +274,20 @@ func libraryJSONStringify(ctx *Execution, r string, a []Value) Value {
 	}
 	w := &libraryLimitedWriter{max: max}
 	code := "InvalidData"
+	active := map[equalityIdentity]bool{}
 	var emit func(Value, int) error
 	write := func(s string) error { _, err := w.Write([]byte(s)); return err }
 	emit = func(value Value, depth int) error {
 		CheckCancelled(ctx)
-		if depth > 512 {
-			code = "LimitExceeded"
-			return io.ErrShortBuffer
-		}
 		v := value.(Alternative)
+		if v.Tag == "ArrayValue" || v.Tag == "ObjectValue" {
+			identity, _ := equalityID(v.Fields[0])
+			if active[identity] {
+				return io.ErrUnexpectedEOF
+			}
+			active[identity] = true
+			defer delete(active, identity)
+		}
 		switch v.Tag {
 		case "Null":
 			return write("null")

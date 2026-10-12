@@ -29,6 +29,6 @@ The API prepares all arguments before starting work. Successful positions follow
 
 Every exit joins all operations, even if joining exceeds the initiating timeout. Caller cancellation unwinds the caller after joining. Resource cleanup follows explicit `with` registrations; no result or capture is recursively closed merely because it is unreturned.
 
-Background submission has a different lifetime edge: an accepted operation runs under its service's fixed parent, survives a submitting request, and is joined during service shutdown. See [Background](../../standard-library/tasks/background.md), [cancellation propagation](../../concurrency/cancellation.md#propagation-and-checkpoints), and [cleanup ordering](../../ownership-and-cleanup/cleanup/exit-order.md).
+Scheduler submission has a different lifetime edge: an accepted operation runs under its service's fixed parent, survives a submitting request, and is joined during service shutdown. See [Scheduler](../../standard-library/tasks/scheduler.md), [cancellation propagation](../../concurrency/cancellation.md#propagation-and-checkpoints), and [cleanup ordering](../../ownership-and-cleanup/cleanup/exit-order.md).
 
 [Previous: System, flow, and detail views](views.md) · [Next: Architecture diffs](architecture-diffs.md)

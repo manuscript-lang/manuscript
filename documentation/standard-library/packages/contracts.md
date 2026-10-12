@@ -27,7 +27,6 @@ Handle a concrete error with its ordinary case match. Handle a generic `Error` b
 
 `try` propagates the declared error type; it does not convert unrelated types or implicitly construct an Error view. This replaces the former shared `LibraryError` contract: update imports and return annotations, and qualify cases such as `JsonError.InvalidData` when multiple imported types define the same case name.
 
-Use specific error cases for classification. `message()` and `Failed(message: String)` diagnostics are human-readable text, not stable error codes. A native `Failed` preserves its diagnostic text; a payloadless native error reports its qualified case, such as `JsonError.InvalidData`. `LogError.Io` delegates to its underlying `IoError`. Command, pool, and task errors also implement `Error` while retaining their distinct cases and identities.
 
 | Situation | Behavior |
 | --- | --- |
@@ -41,14 +40,14 @@ If cancellation wins before a newly acquired resource is delivered, native acqui
 
 ## Bounds and native limits
 
-Byte, item, and depth limits are nonnegative unless a package requires a positive value. Exceeding a bound returns an error, not a truncated success.
+Byte, item, and depth limits are optional; omission adds no operation cap. Supplied limits are nonnegative unless a package requires a positive value. Budget exhaustion returns an error; split limits intentionally truncate the returned parts.
 
 A limit on a function's output does not bound input already allocated by the caller. Some native operations also allocate before they can check a limit: CSV may parse one record, ZIP may read the central directory, and logging may construct a full record. Bound source reads and consult each package's behavior section.
 
 | Facility | Native limit |
 | --- | --- |
-| JSON | Depth ceiling of 512. |
-| HTTP | Response headers limited to 64 KiB. |
+| JSON | Supplied depth budgets are respected; cycles cannot be serialized. |
+| HTTP | Header limits are optional; the native reader remains constrained by integer representability. |
 | Entropy | 16 MiB per call. |
 | UDP receive | At most 65535 bytes. |
 

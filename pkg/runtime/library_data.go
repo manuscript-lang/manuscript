@@ -9,7 +9,6 @@ import (
 	"math"
 	"math/big"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -21,7 +20,7 @@ type libraryRegex struct{ pattern *regexp.Regexp }
 func init() {
 	p := func(name, typ string) LibraryParam { return LibraryParam{name, typ} }
 	add := libraryAdd
-	for name, f := range map[string]func(float64) float64{"abs": math.Abs, "floor": math.Floor, "ceil": math.Ceil, "round": math.RoundToEven, "sqrt": math.Sqrt, "exp": math.Exp, "log": math.Log, "log2": math.Log2, "log10": math.Log10, "sin": math.Sin, "cos": math.Cos, "tan": math.Tan, "asin": math.Asin, "acos": math.Acos, "atan": math.Atan, "sinh": math.Sinh, "cosh": math.Cosh, "tanh": math.Tanh, "truncate": math.Trunc} {
+	for name, f := range map[string]func(float64) float64{"abs": math.Abs, "floor": math.Floor, "ceil": math.Ceil, "round": javascriptRound, "sqrt": math.Sqrt, "exp": math.Exp, "log": math.Log, "log2": math.Log2, "log10": math.Log10, "sin": math.Sin, "cos": math.Cos, "tan": math.Tan, "asin": math.Asin, "acos": math.Acos, "atan": math.Atan, "sinh": math.Sinh, "cosh": math.Cosh, "tanh": math.Tanh, "truncate": math.Trunc} {
 		add("math", name, "Float", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(float64)) })
 	}
 	for name, f := range map[string]func(float64, float64) float64{"pow": math.Pow, "min": math.Min, "max": math.Max, "hypot": math.Hypot, "atan2": math.Atan2, "remainder": math.Mod} {
@@ -65,20 +64,27 @@ func init() {
 		}
 		add("string", name, "Bool", []LibraryParam{p("value", "String"), p(label, "String")}, func(_ *Execution, _ string, a []Value) Value { return f(a[0].(string), a[1].(string)) })
 	}
-	add("string", "split", "List[String]", []LibraryParam{p("text", "String"), p("separator", "String"), p("max_parts", "Int")}, func(_ *Execution, _ string, a []Value) Value {
+	add("string", "split", "List[String]", []LibraryParam{p("text", "String"), p("separator", "String"), p("max_parts", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[2].(int64)
-		if n <= 0 {
-			return Panic("split requires positive max_parts")
+		if n < 0 {
+			return Panic("split requires nonnegative max_parts")
+		}
+		if n == 0 {
+			return libraryStrings(nil)
 		}
 		if n > int64(len(a[0].(string)))+1 {
 			n = int64(len(a[0].(string))) + 1
 		}
-		return libraryStrings(strings.SplitN(a[0].(string), a[1].(string), int(n)))
+		parts := strings.Split(a[0].(string), a[1].(string))
+		if int64(len(parts)) > n {
+			parts = parts[:n]
+		}
+		return libraryStrings(parts)
 	})
 	add("string", "join", "String", []LibraryParam{p("parts", "List[String]"), p("separator", "String")}, func(_ *Execution, _ string, a []Value) Value {
 		return strings.Join(libraryStringValues(a[0]), a[1].(string))
 	})
-	add("string", "replace", "String", []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_replacements", "Int")}, func(_ *Execution, _ string, a []Value) Value {
+	add("string", "replace", "String", []LibraryParam{p("text", "String"), p("old", "String"), p("new", "String"), p("max_replacements", "Optional[Int]")}, func(_ *Execution, _ string, a []Value) Value {
 		n := a[3].(int64)
 		if n < 0 {
 			return Panic("invalid replacement bounds")
@@ -126,7 +132,7 @@ func init() {
 	})
 	add("string", "scalar_length", "Int", []LibraryParam{p("text", "String")}, func(_ *Execution, _ string, a []Value) Value { return int64(utf8.RuneCountInString(a[0].(string))) })
 	add("encoding", "hex_encode", "String", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value { return hex.EncodeToString(a[0].(Bytes).Items) })
-	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Int")}, func(_ *Execution, result string, a []Value) Value {
+	add("encoding", "hex_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, result string, a []Value) Value {
 		n := a[1].(int64)
 		if v := libraryBound(result, n); v != nil {
 			return v
@@ -148,7 +154,7 @@ func init() {
 		}
 		return enc.EncodeToString(a[0].(Bytes).Items)
 	})
-	add("encoding", "base64_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("url_safe", "Bool"), p("max_bytes", "Int")}, func(_ *Execution, result string, a []Value) Value {
+	add("encoding", "base64_decode", libraryResult("Bytes", "EncodingError"), []LibraryParam{p("text", "String"), p("url_safe", "Bool"), p("max_bytes", "Optional[Int]")}, func(_ *Execution, result string, a []Value) Value {
 		text := a[0].(string)
 		n := a[2].(int64)
 		if v := libraryBound(result, n); v != nil {
@@ -229,7 +235,7 @@ func init() {
 	})
 	add("numbers", "format_float", "String", []LibraryParam{p("value", "Float")}, func(_ *Execution, _ string, a []Value) Value { return formatFloat(a[0].(float64)) })
 	add("bigint", "from_int", "BigInt", []LibraryParam{p("value", "Int")}, func(_ *Execution, _ string, a []Value) Value { return libraryBigInt{big.NewInt(a[0].(int64))} })
-	add("bigint", "parse", libraryResult("BigInt", "BigIntError"), []LibraryParam{p("text", "String"), p("radix", "Int"), p("max_digits", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	add("bigint", "parse", libraryResult("BigInt", "BigIntError"), []LibraryParam{p("text", "String"), p("radix", "Int"), p("max_digits", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
 		text := a[0].(string)
 		radix, n := a[1].(int64), a[2].(int64)
 		if radix < 2 || radix > 36 || n <= 0 {
@@ -307,7 +313,7 @@ func init() {
 	add("regex", "matches", "Bool", []LibraryParam{p("pattern", "Regex"), p("text", "String")}, func(_ *Execution, _ string, a []Value) Value {
 		return a[0].(libraryRegex).pattern.MatchString(a[1].(string))
 	})
-	add("regex", "find_all", libraryResult("List[String]", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("max_matches", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	add("regex", "find_all", libraryResult("List[String]", "RegexError"), []LibraryParam{p("pattern", "Regex"), p("text", "String"), p("max_matches", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		n := a[2].(int64)
 		if n < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -338,17 +344,6 @@ func init() {
 		s, e := a[1].(int64), a[2].(int64)
 		librarySlice(len(v.Items), s, e)
 		return &List{v.Type, append([]Value{}, v.Items[s:e]...)}
-	})
-	add("collections", "sort_ints", "List[Int]", []LibraryParam{p("values", "List[Int]")}, func(_ *Execution, _ string, a []Value) Value {
-		v := a[0].(*List)
-		out := append([]Value{}, v.Items...)
-		sort.SliceStable(out, func(i, j int) bool { return out[i].(int64) < out[j].(int64) })
-		return &List{v.Type, out}
-	})
-	add("collections", "sort_strings", "List[String]", []LibraryParam{p("values", "List[String]")}, func(_ *Execution, _ string, a []Value) Value {
-		v := libraryStringValues(a[0])
-		sort.Strings(v)
-		return libraryStrings(v)
 	})
 }
 
@@ -433,4 +428,18 @@ func libraryWriteInteger(_ *Execution, r string, a []Value) Value {
 		v >>= 8
 	}
 	return libraryOK(r, Bytes{b})
+}
+
+func javascriptRound(value float64) float64 {
+	if math.IsNaN(value) || math.IsInf(value, 0) || value == 0 {
+		return value
+	}
+	lower := math.Floor(value)
+	if value-lower >= 0.5 {
+		lower++
+	}
+	if lower == 0 {
+		return math.Copysign(0, value)
+	}
+	return lower
 }

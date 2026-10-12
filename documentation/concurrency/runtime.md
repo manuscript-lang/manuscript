@@ -15,15 +15,15 @@ Source programs use [standard concurrency APIs](_index.md#importing-concurrency-
 
 Each runtime operation has a stable `OperationId`, a fixed execution parent, a stop signal, an effective deadline, and one completion outcome. Cancellation acceptance and completion commitment have atomic linearization points. There is no reparenting or task-transfer transaction.
 
-Background admission, closing admission, and reserving capacity must be coordinated atomically. If admission wins, the service tracks the accepted operation even if the submitting request stops before receiving its ID. If closure or cancellation wins before admission, the operation never starts. Capacity reservations are released exactly once: on rejection, or when the operation's completion commits. Pending failure reports have their own bound and do not hold admission capacity.
+Scheduler admission, closing admission, and reserving capacity must be coordinated atomically. If admission wins, the service tracks the accepted operation even if the submitting request stops before receiving its ID. If closure or cancellation wins before admission, the operation never starts. Capacity reservations are released exactly once: on rejection, or when the operation's completion commits. Pending failure reports have their own bound and do not hold admission capacity.
 
 Completion is not published until registered cleanup and nested joins have finished. A pending cancellation accepted before commitment prevents an ordinary successful outcome from being delivered. Already committed outcomes are stable.
 
 User callbacks, failure reporters, resource cleanup, and joining run outside transition locks. Shutdown is idempotent; concurrent calls to `close()` observe one shutdown sequence and all wait for it to finish.
 
-An operation must not join itself or an execution ancestor. Closing its own background service, including from nested parallel descendants or reporter callbacks joined by that service, faults before initiating shutdown. Check the fixed execution-parent chain, not just the current operation ID. Hosts close services from outside their admitted work. Cross-service cyclic shutdown is invalid library usage and must be avoided by host shutdown ordering.
+An operation must not join itself or an execution ancestor. Closing its own scheduler, including from nested parallel descendants or reporter callbacks joined by that service, faults before initiating shutdown. Check the fixed execution-parent chain, not just the current operation ID. Hosts close services from outside their admitted work. Cross-service cyclic shutdown is invalid library usage and must be avoided by host shutdown ordering.
 
-The conformance suite uses controlled barriers and race stress for admission versus closure, cancellation versus completion, and concurrent shutdown. See [semantic tests](../compiler/conformance/semantic-tests.md).
+The conformance suite uses controlled barriers and race stress for admission versus closure, cancellation versus completion, and concurrent shutdown. See [semantic tests](../pkg/compiler/conformance/semantic-tests.md).
 
 ## Completion and resource acquisition
 
@@ -42,25 +42,25 @@ A native acquisition API must close a newly acquired resource if cancellation or
 
 A source helper returning an open resource must handle resources it acquires but fails to return. Its resource factory/delivery contract is explicit. Merely returning a resource reference cannot cancel a `with` registration or keep the resource open.
 
-Background operations have no resource-valued result delivery; each operation manages acquisitions through its own scopes. See [adapter acquisition](../modules-and-capabilities/adapters/cancellation.md) and [resource release](../ownership-and-cleanup/cleanup/resource-release.md).
+Scheduler operations have no resource-valued result delivery; each operation manages acquisitions through its own scopes. See [adapter acquisition](../modules-and-capabilities/adapters/cancellation.md) and [resource release](../ownership-and-cleanup/cleanup/resource-release.md).
 
 ## Adapter execution contexts
 
 Generated calls carry a hidden execution context. An adapter observes the current operation's fixed parent context, cancellation signal, deadline, and cleanup mode.
 
-Parallel operations derive contexts from their caller. Background operations derive contexts from their service's construction-time context. The runtime does not substitute the submitting request's context merely because `start` was invoked from that request.
+Parallel operations derive contexts from their caller. Scheduler operations derive contexts from their service's construction-time context. The runtime does not substitute the submitting request's context merely because `start` was invoked from that request.
 
 Fixed parent relationships can use Go context derivation directly; there is no movable cancellation ancestry or separate ownership graph. Operation IDs support diagnostics and traces. [Go context documentation](https://pkg.go.dev/context)
 
 Cleanup receives a shielded context that ignores the initiating cancellation and expired ordinary-work deadline. It preserves authority; a host cleanup/escalation policy is separate from the request budget. Adapters must support safe resource closure and must not return from a cancelled operation while its foreign work is still outstanding.
 
-See [blocking adapters](../modules-and-capabilities/adapters/cancellation.md), [deadlines](cancellation.md#deadlines), and [runtime/library layering](../compiler/lowering/function-and-task-calls.md).
+See [blocking adapters](../modules-and-capabilities/adapters/cancellation.md), [deadlines](cancellation.md#deadlines), and [runtime/library layering](../pkg/compiler/lowering/function-and-task-calls.md).
 
 ## Host escalation
 
 Joining and cleanup wait for work to actually end. The runtime cannot safely terminate an arbitrary goroutine, so work that ignores cancellation can delay a join forever. Escalation is the host's last resort for that case. It ends the process; it never reports the stuck work as joined.
 
-Each host runs one watchdog. It starts when the host begins shutdown or receives a stop request, such as SIGINT, SIGTERM, or server shutdown. Ordinary timeouts and request deadlines do not start it. Once started, it covers every waiting boundary: group joins, `Background.close()`, `with` cleanup, and resource close.
+Each host runs one watchdog. It starts when the host begins shutdown or receives a stop request, such as SIGINT, SIGTERM, or server shutdown. Ordinary timeouts and request deadlines do not start it. Once started, it covers every waiting boundary: group joins, `Scheduler.close()`, `with` cleanup, and resource close.
 
 | Setting | Default |
 | --- | --- |
@@ -75,4 +75,4 @@ On escalation the host:
 2. writes any retained primary and secondary fault diagnostics;
 3. terminates the process without running further cleanup.
 
-The CLI host exits 70 and labels the exit as incomplete cleanup. Conformance treats an escalated exit as a failure of the program, not as successful shutdown. See [CLI exit and shutdown](../standard-library/hosts/cli.md#exit-and-shutdown), [HTTP shutdown](../standard-library/hosts/http.md), and [cleanup faults](../ownership-and-cleanup/cleanup/cleanup-faults.md).
+The CLI host exits 70 and labels the exit as incomplete cleanup. Conformance treats an escalated exit as a failure of the program, not as successful shutdown. See [CLI exit and shutdown](../standard-library/packages/cli.md#exit-and-shutdown), [HTTP shutdown](../standard-library/packages/http.md), and [cleanup faults](../ownership-and-cleanup/cleanup/cleanup-faults.md).

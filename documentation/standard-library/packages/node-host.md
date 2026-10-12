@@ -7,7 +7,7 @@ weight = 62
 
 [Coverage](coverage.md) · [Common contracts](contracts.md) · [Conformance](conformance.md)
 
-These capabilities cover the native application tasks in Node.js 24's `fs/promises`, `os`, `path`, `process`, and `timers` packages. They use Manuscript names, explicit capabilities, owned results, bounded reads, and lexical cleanup. Filesystem, path, process, system, and timer errors use their package-specific `Error` implementations; combine different error domains through explicit matching and an `Error` view. They are not drop-in JavaScript APIs. The tables below distinguish functional equivalents, native OS limitations, and facilities specific to Node's VM and event loop. The baseline is Node.js 24.19.0: 181 module exports and returned-resource methods, including `timers/promises`. An `adapted` mapping supplies the native operation through Manuscript's bounds, types, authority, or execution lifetimes; `runtime_specific` records Node facilities outside that execution model. The checked inventory in `pkg/compiler/testdata/node-host-coverage.json` records every public export in the baseline; it does not claim that recording an API establishes identical behavior.
+These capabilities cover the native application tasks in Node.js 24's `fs/promises`, `os`, `path`, `process`, and `timers` packages. They use Manuscript names, explicit capabilities, owned results, optional read budgets, and lexical cleanup. Filesystem, path, process, system, and timer errors use their package-specific `Error` implementations; combine different error domains through explicit matching and an `Error` view. They are not drop-in JavaScript APIs. The tables below distinguish functional equivalents, native OS limitations, and facilities specific to Node's VM and event loop. The baseline is Node.js 24.19.0: 181 module exports and returned-resource methods, including `timers/promises`. An `adapted` mapping supplies the native operation through Manuscript's bounds, types, authority, or execution lifetimes; `runtime_specific` records Node facilities outside that execution model. The checked inventory in `pkg/compiler/testdata/node-host-coverage.json` records every public export in the baseline; it does not claim that recording an API establishes identical behavior.
 
 ## Files and directories
 
@@ -97,42 +97,20 @@ CPU, memory, uptime, OS release/version, and resident-process memory use native 
 
 `watch_signals` returns a scoped `SignalStream` with a bounded delivery buffer. OS/Go signal delivery can coalesce or drop repeated signals; SIGKILL and SIGSTOP cannot be observed. The CLI still treats SIGINT/SIGTERM as cancellation, and an observer does not override joined shutdown. Unix `send_signal` accepts signed PIDs for process groups and signal zero for existence checks. Windows supports existence checks and forced termination for its INT/KILL/TERM mapping; other signals return `Unsupported`.
 
-Node-only process facilities (VM configuration/version information, JavaScript module loading, V8 reports/profiling hooks, source maps, promise rejection/exception hooks, JavaScript finalization, IPC integration, EventEmitter events, and ref/unref of an event loop) have no direct equivalent. `nextTick` scheduling is replaced by explicit ordinary calls, `yield_now`, joined tasks, or `Background`. Immediate abort and VM-thread CPU accounting remain outside Manuscript execution lifetimes. Process titles use Linux kernel names (at most 15 UTF-8 bytes), macOS program names, or Windows console titles. They do not rewrite argv. Linux constrained-memory queries inspect the current cgroup v1/v2 memory controller; zero means no known limit. Available memory is the lesser of host available memory and the remaining known cgroup budget. On other hosts, constrained memory is zero (unknown), and available memory uses the native host query. `initialize_groups` resolves a user's supplementary groups and applies them under native privilege checks. Unix `replace` supplies an explicit argv and environment and replaces the executable; success never returns and bypasses scoped cleanup, just as native exec does. Use ordinary `Commands.run` when the caller must retain its execution lifetime. The inventory records these differences explicitly.
+Node-only process facilities (VM configuration/version information, JavaScript module loading, V8 reports/profiling hooks, source maps, promise rejection/exception hooks, JavaScript finalization, IPC integration, EventEmitter events, and ref/unref of an event loop) have no direct equivalent. `nextTick` scheduling is replaced by explicit ordinary calls, `yield_now`, joined tasks, or `Scheduler`. Immediate abort and VM-thread CPU accounting remain outside Manuscript execution lifetimes. Process titles use Linux kernel names (at most 15 UTF-8 bytes), macOS program names, or Windows console titles. They do not rewrite argv. Linux constrained-memory queries inspect the current cgroup v1/v2 memory controller; zero means no known limit. Available memory is the lesser of host available memory and the remaining known cgroup budget. On other hosts, constrained memory is zero (unknown), and available memory uses the native host query. `initialize_groups` resolves a user's supplementary groups and applies them under native privilege checks. Unix `replace` supplies an explicit argv and environment and replaces the executable; success never returns and bypasses scoped cleanup, just as native exec does. Use ordinary `Commands.run` when the caller must retain its execution lifetime. The inventory records these differences explicitly.
 
 ## Timers and scheduling
 
-Use the existing `@std/time.ms` module. Ordinary code sleeps sequentially; `after` and `every` start concurrent operations and return the same scoped `Timer` contract.
+Use [Scheduler](../tasks/scheduler.md) from `@std/tasks.ms` for concurrent immediate, delayed, and repeating work. Sequential delays use `sleep` from `@std/time.ms`. All scheduled work uses operation IDs, cancellation, status, failure reporting, and the scheduler's joined lifetime.
 
-```manuscript
-import after from "@std/time.ms"
-import sleep from "@std/time.ms"
-import Result from "@std/result.ms"
-import TimeError from "@std/time.ms"
-
-fn operation() -> Result[Unit, String]:
-    return ok(value: unit)
-
-fn example() -> Result[Unit, TimeError]:
-    sleep(duration: 10.milliseconds)
-    with timer = try after(duration: 20.milliseconds, operation: operation):
-        sleep(duration: 30.milliseconds)
-        let restarted = try timer.restart()
-    return ok(value: unit)
-```
-
-The native CLI fixture exercises these operations and cleanup. `after` accepts a nonnegative duration; `every(interval: ..., operation: ...)` requires a positive interval. Zero-duration `after` schedules work immediately. Both accept ordinary `fn() -> Result[Unit, String]` operations, matching `Background`. Synchronize mutable captures explicitly.
-
-`Timer` has three operations: `close`, `restart`, and `status`. Creation arms the deadline. Restart begins the original duration again, including after completion or an expected failure. Status uses the existing `WorkStatus`. Expected failures are reported and pause the timer until restart. Repeating callbacks run sequentially; a slow callback can consume one pending tick, and missed ticks never accumulate an unbounded queue. Close cancels and joins an active operation and is idempotent across aliases. The construction execution's fixed work lifetime also cancels and joins scheduled work at shutdown. Acquire dependencies outside the timer's `with` scope so they outlive its callbacks.
-
-A sequential delay needs no resource: call `sleep`, then return the desired value. A paced loop calls `sleep` each iteration; use `Background` when that loop should run concurrently. `yield_now` belongs to `@std/tasks.ms`, where it performs a cancellable scheduler yield. There is no JavaScript event-loop phase ordering or ref/unref lifetime.
-
-| Node.js facility | Manuscript operation |
+| Node.js operation | Manuscript operation |
 | --- | --- |
-| `setTimeout` | `after(duration: ..., operation: ...)` |
-| `setInterval` | `every(interval: ..., operation: ...)` |
-| `setImmediate` | Zero-duration `after`, or `yield_now` for a sequential yield |
-| `clearTimeout`, `clearInterval`, `clearImmediate`, disposal | Scoped `Timer.close` |
-| Timer `refresh` | `Timer.restart` |
-| Promise timeout and its value | Ordinary `sleep`, then return the value |
-| Promise interval | Sequential sleep loop, optionally managed by `Background` |
-| `scheduler.wait`, `scheduler.yield` | `sleep`, `yield_now` |
+| `setTimeout` | `scheduler.after(duration: ..., operation: ...)` |
+| `setInterval` | `scheduler.every(interval: ..., operation: ...)` |
+| `setImmediate` | `scheduler.after` with zero delay |
+| Clear/disposal | `scheduler.cancel(id)`; scheduler close joins work |
+| Timeout `refresh` | `scheduler.restart(id)` returns a fresh operation ID |
+| Promise timeout/interval | Ordinary sleep or a sequential sleep loop |
+| Promise scheduler wait/yield | `sleep` and `yield_now` |
+
+Repeating callbacks never overlap, and the next delay begins after completion. This preserves bounded callback backlog rather than Node event-loop tick timing. Scheduling has no JS event-loop phase ordering or ref/unref lifetime. The offline Node host inventory (`pkg/compiler/testdata/node-host-coverage.json`) and native CLI fixtures track these adaptations.

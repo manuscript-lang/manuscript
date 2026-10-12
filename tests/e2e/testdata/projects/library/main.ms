@@ -1,3 +1,4 @@
+import Optional from "@std/optional.ms"
 import control from "@std/process.ms"
 import arguments from "@std/cli.ms"
 import entropy from "@std/random.ms"
@@ -13,7 +14,7 @@ import uuid_v4 from "@std/random.ms"
 import secure_int from "@std/random.ms"
 import format_timestamp from "@std/time.ms"
 import parse_timestamp from "@std/time.ms"
-import after from "@std/time.ms"
+import Scheduler from "@std/tasks.ms"
 import sleep from "@std/time.ms"
 import posix from "@std/path.ms"
 import win32 from "@std/path.ms"
@@ -30,7 +31,7 @@ fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
 
 fn exercise(path: String) -> Result[Unit, Error]:
     let written = try common_result(result: filesystem().write_file(path: path, data: "hello".to_bytes(), replace: false))
-    if not (try common_result(result: filesystem().read_file(path: path, max_bytes: 5)) == "hello".to_bytes()):
+    if not (try common_result(result: filesystem().read_file(path: path, max_bytes: some(value: 5))) == "hello".to_bytes()):
         return panic(message: "check failed")
     let info = try common_result(result: filesystem().stat(path: path, follow_links: true))
     if not (info.size == 5):
@@ -43,7 +44,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
     let identifier = try common_result(result: uuid_v4(entropy: entropy()))
     if not (identifier.byte_length() == 36):
         return panic(message: "check failed")
-    let random = try common_result(result: secure_int(entropy: entropy(), min: -2, max_exclusive: 3))
+    let random = try common_result(result: secure_int(entropy: entropy(), min: -2, max_exclusive: some(value: 3)))
     if not (random >= -2 and random < 3):
         return panic(message: "check failed")
     let now = wall_clock().now()
@@ -53,26 +54,27 @@ fn exercise(path: String) -> Result[Unit, Error]:
         return panic(message: "check failed")
     with file = try common_result(result: filesystem().open(path: path, flags: "r+", mode: 384)):
         let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO".to_bytes()))
-        if not (try common_result(result: file.read_at(offset: 0, max_bytes: 5)) == "HELLO".to_bytes()):
+        if not (try common_result(result: file.read_at(offset: 0, max_bytes: some(value: 5))) == "HELLO".to_bytes()):
             return panic(message: "positional I/O failed")
         let synced = try common_result(result: file.sync())
         let resized = try common_result(result: file.truncate(size: 3))
         if not ((try common_result(result: file.stat())).size == 3):
             return panic(message: "handle stat failed")
-    with watcher = try common_result(result: filesystem().watch_native(path: path, recursive: false, max_entries: 4, max_events: 16, overflow: "error")):
+    with watcher = try common_result(result: filesystem().watch_native(path: path, recursive: false, max_entries: some(value: 4), max_events: some(value: 16), overflow: "error")):
         let appended = try common_result(result: filesystem().append_file(path: path, data: "!".to_bytes()))
         let events = try common_result(result: watcher.next())
         if not (events.length() > 0):
             return panic(message: "native watch returned no event")
-    with timer = try common_result(result: after(duration: 0.milliseconds, operation: timer_callback)):
+    with scheduler = Scheduler():
+        let id = try common_result(result: scheduler.after(duration: 0.milliseconds, operation: timer_callback))
         sleep(duration: 10.milliseconds)
-        match timer.status():
+        match scheduler.status(id):
             Succeeded:
-                let restarted = try common_result(result: timer.restart())
+                let restarted = try common_result(result: scheduler.restart(id))
             Running:
-                let restarted = try common_result(result: timer.restart())
+                let restarted = try common_result(result: scheduler.restart(id))
             _:
-                return panic(message: "scheduled timer failed")
+                return panic(message: "scheduled work failed")
     let paths = posix()
     if not (try common_result(result: paths.resolve(base: "/work", parts: ["a", "../b"])) == "/work/b"):
         return panic(message: "path resolution failed")
@@ -89,7 +91,7 @@ fn exercise(path: String) -> Result[Unit, Error]:
     return ok(value: unit)
 
 export fn main() -> Int:
-    match arguments().get(index: 0):
+    match arguments().at(index: 0):
         some(path):
             match exercise(path: path):
                 ok(_):

@@ -32,7 +32,7 @@ test "explicit standard imports":
             return panic(message: "Unexpected case")
 ```
 
-Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove panic and reject its call. Importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../standard-library/hosts/cli.md).
+Accept without an `[aliases]` table. Independently remove List and reject its bracket literal; remove Decimal and reject its annotation/literal; remove Result and reject its annotation and expression constructor lookup; remove panic and reject its call. Importing a function must not expose the type names in its signature. Match cases remain available from an inferred scrutinee even when its type name is not imported, as in the [CLI entry fixture](../../standard-library/packages/cli.md).
 
 Accept this independent module without standard imports:
 
@@ -65,7 +65,7 @@ test "standard spellings are ordinary names":
 
 Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected without the standard List import even though a local List exists. Calling this local parallel with a `tasks` pack does not activate the standard binding's special typing. Extracting the local parallel above is accepted as an ordinary function value.
 
-Preserve the imported parallel/Background callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, Background, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
+Preserve the imported parallel/Scheduler callable restrictions in all existing sharing fixtures. Independently reject unimported parallel, Scheduler, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
 
 Module-resolution cases reject an `[aliases]` entry for `@std`, `@std` without a module path, a missing standard file/export, and paths or symlinks escaping the standard-library directory. Resolving a standard module in two installation directories with identical pinned contents preserves identity; changing its pinned distribution invalidates module/analysis/code-generation caches. Adapter interfaces may import standard declarations but cannot use that exception to import application files. Importing contract types does not obtain service values; explicitly imported host accessors return the current execution's services when called.
 
@@ -143,14 +143,14 @@ type ClosedFile:
     marker: Unit
 
 impl File for ClosedFile:
-    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
         return error(cause: IoError.Closed)
     fn close() -> Unit:
         return
 
 test "contract-valued cleanup":
     with file = File(value: ClosedFile(marker: unit)):
-        match file.read(max_bytes: 1):
+        match file.read(max_bytes: some(value: 1)):
             ok(_):
                 return panic(message: "Unexpected case")
             error(cause):
@@ -162,7 +162,7 @@ This fake represents an already-closed stream, so its close is idempotent and ha
 
 Accept a function parameter as a parallel callback, a function-bearing record behind a contract view, and callbacks passed through `identity[T]`, fields, returned values, lists, and branch/var merges. Snapshot captures remain unchanged; assignment to an outer captured binding remains rejected.
 
-Accept stored `Background.start` and HTTP serve methods, and ordinary wrappers forwarding callbacks. A bare `parallel` reference and type constructors remain unavailable as ordinary function values because their construction/pack syntax is not a function signature.
+Accept stored `Scheduler.start` and HTTP serve methods, and ordinary wrappers forwarding callbacks. A bare `parallel` reference and type constructors remain unavailable as ordinary function values because their construction/pack syntax is not a function signature.
 
 Run `tests/e2e/testdata/accept/synchronized.ms` for complete updates, forwarding, explicit shallow copies, builders, fault cleanup, stale guards, and ancestor reentry. Runtime tests must exercise simultaneous increments, cancellation while waiting and holding, concurrent release, access racing with release/reacquisition, undelivered acquisition disposal, and builder freeze racing with mutation. Reject direct Synchronized get/set, guard construction, and equality/hashing of either synchronized type.
 
@@ -209,7 +209,7 @@ Runner-level fault probes use parameters for division by zero, minimum Int/-1, u
 
 ## Entry, adapter, and lifetime integration
 
-Build the complete [CLI main module](../../standard-library/hosts/cli.md) with an ms.toml selecting it, pass two arguments, and expect `Arguments: 2` plus LF and exit 0. Missing/internal/generic/wrong-signature main must fail checking. Inject SIGINT and SIGTERM during joined work and verify joins/cleanup before exits 130/143. A cleanup fault exits 70. Host escalation is separately classified as incomplete cleanup.
+Build the complete [CLI main module](../../standard-library/packages/cli.md) with an ms.toml selecting it, pass two arguments, and expect `Arguments: 2` plus LF and exit 0. Missing/internal/generic/wrong-signature main must fail checking. Inject SIGINT and SIGTERM during joined work and verify joins/cleanup before exits 130/143. A cleanup fault exits 70. Host escalation is separately classified as incomplete cleanup.
 
 Generate a separate schema package for a minimal interface, a native adapter package importing it, and an application importing both; the pinned Go toolchain must build this without an import cycle. Reject interface imports of an application module, invalid/duplicate bindings, absent acquisition disposers, wrong native symbol signatures, and mutable/invalid foreign result values.
 

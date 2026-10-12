@@ -19,7 +19,7 @@ errors. Single-symbol `import Name from "./module.ms"` remains supported.
 
 Types, interfaces, module functions, and imported symbols share one ordinary module namespace. Duplicate names, import/declaration collisions, and function overloading are rejected. Imports and declarations may appear in any order: collect names and signatures before checking bodies, so forward references and mutually recursive functions work. Type layout cycles follow the separate [recursive data rule](../../core-language/types/records.md#recursive-data), not module-cycle rules.
 
-The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The compiler bounds `Equal` and `Hashable` also have fixed identities. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
+The intrinsic core type names are only `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. They cover primitive literals, ordinary arithmetic, and function/control-flow typing. The source-backed standard interfaces `Equal` and `Hashable` also have fixed identities; importing them explicitly is permitted. A module declaration, import, or type parameter cannot redefine these names. They are resolved names rather than lexical keywords. Ordinary local bindings may shadow outer names, but a shadowed value name cannot be used as a type.
 
 All other standard declarations are explicit imports from the compiler-supplied `@std` directory, including `Decimal`, `Bytes`, collections, `Optional`, `Result`, `Closeable`, and runtime/host APIs. The [standard imports and API typing](../../standard-library/types/prelude.md) page lists their modules. These names are ordinary exports: without an import, a module may declare its own `Result`, `List`, or `parallel`. Import/declaration collisions still fail. Compiler support follows the canonical standard declaration identity, never its spelling. Optional/Result case shorthand becomes visible when its alternative type is imported and follows ordinary lookup and ambiguity rules; qualify `Result[T, E].error` when a local spelling shadows it.
 
@@ -85,7 +85,7 @@ import CustomerId from "@customers"
 
 Each example is an alternative import spelling for the same `CustomerId`. Aliases change how a path is written; module identity and visibility still follow the resolved file. Relative imports and aliases that resolve to the same file refer to the same module.
 
-Missing files, unknown aliases, missing exports, and cyclic module dependencies are compile errors. The [project configuration](../../compiler/builds/project-configuration.md) defines alias resolution and filesystem identity.
+Missing files, unknown aliases, missing exports, and cyclic module dependencies are compile errors. The [project configuration](../../pkg/compiler/builds/project-configuration.md) defines alias resolution and filesystem identity.
 
 See [source structure](../../core-language/basics/syntax.md) and [boundary contracts](boundaries.md).
 

@@ -40,7 +40,7 @@ func init() {
 		})
 		return &List{r, out}
 	})
-	libraryGeneric("collections", "map_keys", "List[K]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, r string, a []Value) Value {
+	libraryGeneric("collections", "map_keys", "List[K]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, r string, a []Value) Value {
 		entries := a[0].(*Map).Entries
 		out := make([]Value, len(entries))
 		for i, e := range entries {
@@ -48,7 +48,7 @@ func init() {
 		}
 		return &List{r, out}
 	})
-	libraryGeneric("collections", "map_values", "List[V]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, r string, a []Value) Value {
+	libraryGeneric("collections", "map_values", "List[V]", []LibraryParam{p("K", "Hashable"), p("V", "")}, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, r string, a []Value) Value {
 		entries := a[0].(*Map).Entries
 		out := make([]Value, len(entries))
 		for i, e := range entries {
@@ -62,7 +62,7 @@ func init() {
 			var out []Value
 			for _, v := range left.Items {
 				CheckCancelled(ctx)
-				contains := indexOf(right.Items, v) >= 0
+				contains := indexOfIn(ctx, right.Items, v) >= 0
 				if name == "union" || name == "intersection" && contains || name == "difference" && !contains {
 					out = append(out, v)
 				}
@@ -70,7 +70,7 @@ func init() {
 			if name == "union" {
 				for _, v := range right.Items {
 					CheckCancelled(ctx)
-					if indexOf(left.Items, v) < 0 {
+					if indexOfIn(ctx, left.Items, v) < 0 {
 						out = append(out, v)
 					}
 				}
@@ -78,7 +78,7 @@ func init() {
 			return &Set{r, out}
 		})
 	}
-	libraryAdd("io", "copy", libraryResult("Int", "IoError"), []LibraryParam{p("input", "ReadStream"), p("output", "WriteStream"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "copy", libraryResult("Int", "IoError"), []LibraryParam{p("input", "ReadStream"), p("output", "WriteStream"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[2].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -90,7 +90,7 @@ func init() {
 			if max-total < n {
 				n = max - total + 1
 			}
-			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", n}}).(Alternative)
+			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int", n, true)}}).(Alternative)
 			if value.Tag == "error" {
 				return Alternative{r, "error", value.Fields}
 			}
@@ -112,7 +112,7 @@ func init() {
 			total += int64(len(data.Items))
 		}
 	})
-	libraryAdd("io", "read_all", libraryResult("Bytes", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Int")}, func(ctx *Execution, r string, a []Value) Value {
+	libraryAdd("io", "read_all", libraryResult("Bytes", "IoError"), []LibraryParam{p("input", "ReadStream"), p("max_bytes", "Optional[Int]")}, func(ctx *Execution, r string, a []Value) Value {
 		max := a[1].(int64)
 		if max < 0 {
 			return libraryError(r, "InvalidInput", "")
@@ -123,7 +123,7 @@ func init() {
 			if max-int64(len(out)) < n {
 				n = max - int64(len(out)) + 1
 			}
-			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", n}}).(Alternative)
+			value := Invoke(ctx, Bind(a[0], "", "read"), []Argument{{"max_bytes", optional("Int", n, true)}}).(Alternative)
 			if value.Tag == "error" {
 				return Alternative{r, "error", value.Fields}
 			}

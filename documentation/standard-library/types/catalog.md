@@ -24,9 +24,9 @@ Use this table to find a type's meaning and import path. â€œImplicit intrinsicâ€
 | `Optional[T]` | `some(value: value)` or `none` | `@std/optional.ms` |
 | `Result[T, E]` | `ok(value: value)` or `error(cause: cause)` | `@std/result.ms` |
 | `ExecutionError` | Joined-group timeout or crash | `@std/tasks.ms` |
-| `Background` | Synchronized service managing work under a fixed lifetime | `@std/tasks.ms` |
-| `WorkStatus`, `StartError`, `BackgroundFailure` | Background status, admission failure, and failure reports | `@std/tasks.ms` |
-| `OperationId` | Identity of a runtime operation, used for diagnostics and Background status/cancellation | `@std/tasks.ms` |
+| `Scheduler` | Synchronized service managing work under a fixed lifetime | `@std/tasks.ms` |
+| `WorkStatus`, `StartError`, `SchedulerFailure` | Scheduler status, admission failure, and failure reports | `@std/tasks.ms` |
+| `OperationId` | Identity of a runtime operation, used for diagnostics and Scheduler status/cancellation | `@std/tasks.ms` |
 | `Synchronized[T]`, `SynchronizedGuard[T]` | Shared value protected by a scoped mutex guard | `@std/sync.ms` |
 | `Closeable` | Standard `close() -> Unit` cleanup contract | `@std/cleanup.ms` |
 | `File`, `ReadStream`, `WriteStream` | Resource contracts; all implementations synchronize lifecycle access | `@std/io.ms` |
@@ -36,7 +36,7 @@ Use this table to find a type's meaning and import path. â€œImplicit intrinsicâ€
 
 Functions and closures are ordinary values; runtime tasks are not exposed as source ownership types. Fixed parallel result packs preserve positional types and use bracket destructuring; they are not homogeneous lists.
 
-References do not extend an object's open lifetime. Use `with` for deterministic release and `Result` for expected operation failures. See [parallel](../../concurrency/parallel.md), [background services](../tasks/background.md), and [Closeable](../../ownership-and-cleanup/cleanup/closeable.md).
+References do not extend an object's open lifetime. Use `with` for deterministic release and `Result` for expected operation failures. See [parallel](../../concurrency/parallel.md), [schedulers](../tasks/scheduler.md), and [Closeable](../../ownership-and-cleanup/cleanup/closeable.md).
 
 The [standard API contract](prelude.md) defines visibility, signatures, optional arguments, and pack typing.
 

@@ -27,9 +27,9 @@ export fn floor(value: Float) -> Float
 
 export fn hypot(left: Float, right: Float) -> Float
 
-export fn is_finite(value: Float) -> Bool
+fn is_finite(value: Float) -> Bool
 
-export fn is_nan(value: Float) -> Bool
+fn is_nan(value: Float) -> Bool
 
 export fn log(value: Float) -> Float
 

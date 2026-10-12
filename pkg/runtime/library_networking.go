@@ -18,19 +18,14 @@ func init() {
 	LibraryMethods = append(LibraryMethods, []LibraryMethod{
 		{"Network", "restrict", libraryResult("Network", "NetworkError"), []LibraryParam{{"hosts", "List[String]"}, {"cidrs", "List[String]"}, {"allow_listen", "Bool"}}},
 		{"Network", "with_resolver", libraryResult("Network", "NetworkError"), []LibraryParam{{"address", "String"}}},
-		{"Network", "resolve", libraryResult("List[DnsRecord]", "NetworkError"), []LibraryParam{{"name", "String"}, {"kind", "String"}, {"max_records", "Int"}, {"timeout", "Duration"}}},
-		{"Network", "connect_unix", libraryResult("Connection", "NetworkError"), []LibraryParam{{"path", "String"}, {"timeout", "Duration"}}},
+		{"Network", "resolve", libraryResult("List[DnsRecord]", "NetworkError"), []LibraryParam{{"name", "String"}, {"kind", "String"}, {"max_records", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}},
+		{"Network", "connect_unix", libraryResult("Connection", "NetworkError"), []LibraryParam{{"path", "String"}, {"timeout", "Optional[Duration]"}}},
 		{"Network", "listen_unix", libraryResult("Listener", "NetworkError"), []LibraryParam{{"path", "String"}}},
-		{"Network", "connect_tls_config", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"timeout", "Duration"}}},
-		{"Network", "listen_tls", libraryResult("Listener", "NetworkError"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"handshake_timeout", "Duration"}}},
-		{"Connection", "read_timeout", "Result[Optional[Bytes]][IoError]", []LibraryParam{{"max_bytes", "Int"}, {"timeout", "Duration"}}},
-		{"Connection", "write_timeout", "Result[Unit][IoError]", []LibraryParam{{"data", "Bytes"}, {"timeout", "Duration"}}},
-		{"DatagramSocket", "receive_timeout", libraryResult("Datagram", "NetworkError"), []LibraryParam{{"max_bytes", "Int"}, {"timeout", "Duration"}}},
-		{"DatagramSocket", "send_timeout", libraryResult("Unit", "NetworkError"), []LibraryParam{{"data", "Bytes"}, {"address", "String"}, {"timeout", "Duration"}}},
-		{"Listener", "accept_timeout", libraryResult("Connection", "NetworkError"), []LibraryParam{{"timeout", "Duration"}}},
+		{"Network", "connect_tls_config", libraryResult("Connection", "NetworkError"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"timeout", "Optional[Duration]"}}},
+		{"Network", "listen_tls", libraryResult("Listener", "NetworkError"), []LibraryParam{{"address", "String"}, {"options", "TlsOptions"}, {"handshake_timeout", "Optional[Duration]"}}},
 	}...)
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
-	libraryAdd("tls", "parse_certificates", libraryResult("List[CertificateInfo]", "TlsError"), []LibraryParam{p("pem", "String"), p("max_certificates", "Int")}, func(_ *Execution, r string, a []Value) Value {
+	libraryAdd("tls", "parse_certificates", libraryResult("List[CertificateInfo]", "TlsError"), []LibraryParam{p("pem", "String"), p("max_certificates", "Optional[Int]")}, func(_ *Execution, r string, a []Value) Value {
 		data := []byte(a[0].(string))
 		max := a[1].(int64)
 		if max < 0 {
@@ -288,7 +283,7 @@ func (n *network) extendedOperation(name string) (Function, bool) {
 			timeout := Duration(30 * time.Second)
 			if name == "connect_unix" || name == "connect_tls_config" || name == "listen_tls" {
 				timeout = a[len(a)-1].(Duration)
-				if timeout < 0 {
+				if timeout < nativeNoTimeout {
 					return libraryError(r, "InvalidInput", "")
 				}
 			}
@@ -365,7 +360,7 @@ func (n *network) extendedOperation(name string) (Function, bool) {
 func (n *network) resolve(ctx *Execution, r string, a []Value) Value {
 	name, kind := a[0].(string), strings.ToUpper(a[1].(string))
 	max, timeout := a[2].(int64), a[3].(Duration)
-	if max < 0 || timeout < 0 {
+	if max < 0 || timeout < nativeNoTimeout {
 		return libraryError(r, "InvalidInput", "")
 	}
 	if !n.policy.host(name) {

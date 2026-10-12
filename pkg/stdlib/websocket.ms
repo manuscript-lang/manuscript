@@ -28,8 +28,8 @@ export type WebSocketMessage:
     text: Bool
 
 export type WebSocketOptions:
-    max_message_bytes: Int
-    timeout: Duration
+    max_message_bytes: Optional[Int] = none
+    timeout: Optional[Duration] = none
     tls: TlsOptions
     compression: Bool
 

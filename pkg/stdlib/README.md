@@ -21,4 +21,4 @@ For user-facing imports and API behavior, see the [standard-library guide](../..
 
 Filesystem, OS/process, path, and timer contracts are described in the [host package guide](../../documentation/standard-library/packages/node-host.md). The Node.js 24 coverage inventory includes exported APIs and returned handle operations; native signature validation, offline Node path/glob fixtures, and compiled CLI tests keep the mapping reviewable. Platform helpers in `internal/hostos/` are bundled with native dependency sources.
 
-Time and scheduling share `@std/time.ms`: ordinary `sleep`, concurrent `after`/`every`, and one scoped `Timer`. Scheduler yielding is in `@std/tasks.ms`; JavaScript Promise and event-loop forms are documented as compositions rather than duplicated API families.
+Time values and sequential `sleep` live in `@std/time.ms`. `@std/tasks.ms` owns `Scheduler`, which manages immediate, delayed, and repeating work through one operation-ID lifecycle, plus `parallel`, cancellation checks, and scheduler yielding. Limits and deadlines use optional values; receiver operations are the single public API for existing data.

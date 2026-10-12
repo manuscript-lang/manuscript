@@ -22,7 +22,7 @@ Before enabling debugging or trace overlays, match the manifest to the executabl
 
 Storage schemas, event ordering/timestamps, and whether source bytes are embedded or loaded by hash still need concrete definitions.
 
-See [build identity](../../compiler/builds/reproducibility.md) and [source value interpretation](debugger-integration.md).
+See [build identity](../../pkg/compiler/builds/reproducibility.md) and [source value interpretation](debugger-integration.md).
 
 [Previous: Execution traces and overlays](../diagrams/traces.md) · [Next: Generated Go source mapping](source-mapping.md)
 

@@ -21,7 +21,7 @@ export fn main() -> Int:
         none:
             return 1
     let sum = total(first: values.length(), second: 20, third: 30)
-    let queue = Queue[Int](capacity: 4)
+    let queue = Queue[Int](capacity: some(value: 4))
     if not queue.enqueue(package.count):
         return 1
     let checksum = compute(iterations: 3000000)

@@ -13,7 +13,7 @@ The host supplies synchronized `ReadStream`, `WriteStream`, and `File` views. Al
 
 ```manuscript
 interface ReadStream:
-    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]
     fn close() -> Unit
 
 interface WriteStream:
@@ -21,7 +21,7 @@ interface WriteStream:
     fn close() -> Unit
 
 interface File:
-    fn read(max_bytes: Int) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]
     fn close() -> Unit
 ```
 
@@ -34,7 +34,7 @@ Contract values declaring these exact close operations are eligible for `with` u
 ```manuscript
 # Commands
 fn run(program: String, arguments: List[String], input: Bytes,
-       max_output_bytes: Int, timeout: Duration) -> Result[CommandOutput, CommandError]
+       max_output_bytes: Optional[Int], timeout: Optional[Duration]) -> Result[CommandOutput, CommandError]
 
 type CommandOutput:
     exit_code: Int

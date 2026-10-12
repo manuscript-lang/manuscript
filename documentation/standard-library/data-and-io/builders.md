@@ -7,13 +7,13 @@ weight = 43
 
 [Guide index](../_index.md) · [Chapter index](_index.md) · [Design index](../../_index.md)
 
-A builder supports mutable construction and returns its result when sealed. Builder aliases are ordinary references; freezing may seal the builder so later mutation reports a runtime error.
+Ordinary collections already support mutation. Use a builder when construction needs synchronized access and an atomic sealed result. A builder returns its result when sealed. Builder aliases are ordinary references; freezing may seal the builder so later mutation reports a runtime error.
 
 Builders synchronize mutation and freeze across all aliases. Freezing seals the object atomically; an append racing with freeze either contributes to the snapshot or faults after sealing. Concurrent appends have nondeterministic order. There is no ownership-transfer or consuming function type.
 
 ## API
 
-All builder names are exported by `@std/builders.ms`. They have zero-argument constructors and are opaque references with no equality or hashing. Type arguments can come from an explicit application or a complete expected constructor type.
+Collection builders are exported by `@std/collections.ms`; BytesBuilder by `@std/bytes.ms`; StringBuilder by `@std/string.ms`. They have zero-argument constructors and are opaque references with no equality or hashing. Type arguments can come from an explicit application or a complete expected constructor type.
 
 | Type | Mutation | Freeze result |
 | --- | --- | --- |

@@ -25,8 +25,6 @@ fn e() -> Float
 fn exp(value: Float) -> Float
 fn floor(value: Float) -> Float
 fn hypot(left: Float, right: Float) -> Float
-fn is_finite(value: Float) -> Bool
-fn is_nan(value: Float) -> Bool
 fn log(value: Float) -> Float
 fn log10(value: Float) -> Float
 fn log2(value: Float) -> Float
@@ -65,7 +63,7 @@ fn divide(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 fn format(value: BigInt, radix: Int) -> String
 fn from_int(value: Int) -> BigInt
 fn multiply(left: BigInt, right: BigInt) -> BigInt
-fn parse(text: String, radix: Int, max_digits: Int) -> Result[BigInt, BigIntError]
+fn parse(text: String, radix: Int, max_digits: Optional[Int]) -> Result[BigInt, BigIntError]
 fn remainder(left: BigInt, right: BigInt) -> Result[BigInt, BigIntError]
 fn subtract(left: BigInt, right: BigInt) -> BigInt
 fn to_int(value: BigInt) -> Optional[Int]

@@ -173,12 +173,12 @@ func TestParallelEmptyZeroTimeoutAndParentCancellation(t *testing.T) {
 		t.Fatal("parent cancellation became a Result")
 	}
 }
-func startJob(ctx *Execution, b *Background, f Function) Alternative {
+func startJob(ctx *Execution, b *Scheduler, f Function) Alternative {
 	return Invoke(ctx, b.Operation("start"), []Argument{{"operation", f}}).(Alternative)
 }
-func TestBackgroundAdmissionCancellationAndClose(t *testing.T) {
+func TestSchedulerAdmissionCancellationAndClose(t *testing.T) {
 	ctx := RootExecution()
-	b := NewBackground(ctx, []Argument{{"limit", int64(1)}}).(*Background)
+	b := NewScheduler(ctx, []Argument{{"limit", int64(1)}}).(*Scheduler)
 	started := make(chan struct{})
 	cleaned := make(chan struct{})
 	f := NewFunction(nil, "@std/Result[Unit][String]", func(child *Execution, _ []Value) Value {
@@ -210,13 +210,13 @@ func TestBackgroundAdmissionCancellationAndClose(t *testing.T) {
 	}
 	b.close(ctx)
 }
-func TestBackgroundReporterHistoryAndOwnLifetime(t *testing.T) {
+func TestSchedulerReporterHistoryAndOwnLifetime(t *testing.T) {
 	parent, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	ctx := &Execution{Context: parent}
 	reports := make(chan Value, 2)
 	reporter := NewFunction([]string{"failure"}, "Unit", func(_ *Execution, args []Value) Value { reports <- args[0]; return Unit{} })
-	b := NewBackground(ctx, []Argument{{"limit", int64(2)}, {"reporter", reporter}, {"history_limit", int64(1)}, {"drain", Duration(time.Second)}}).(*Background)
+	b := NewScheduler(ctx, []Argument{{"limit", int64(2)}, {"reporter", reporter}, {"history_limit", int64(1)}, {"drain", Duration(time.Second)}}).(*Scheduler)
 	failure := NewFunction(nil, "@std/Result[Unit][String]", func(_ *Execution, _ []Value) Value {
 		return Alternative{"@std/Result[Unit][String]", "error", []Value{"expected failure"}}
 	})
@@ -233,11 +233,11 @@ func TestBackgroundReporterHistoryAndOwnLifetime(t *testing.T) {
 	}
 	b.close(ctx)
 }
-func TestBackgroundCannotJoinItselfOrNestedDescendant(t *testing.T) {
+func TestSchedulerCannotJoinItselfOrNestedDescendant(t *testing.T) {
 	ctx := RootExecution()
 	reports := make(chan Value, 1)
 	reporter := NewFunction([]string{"failure"}, "Unit", func(_ *Execution, args []Value) Value { reports <- args[0]; return Unit{} })
-	b := NewBackground(ctx, []Argument{{"limit", int64(1)}, {"reporter", reporter}, {"drain", Duration(time.Second)}}).(*Background)
+	b := NewScheduler(ctx, []Argument{{"limit", int64(1)}, {"reporter", reporter}, {"drain", Duration(time.Second)}}).(*Scheduler)
 	operation := NewFunction(nil, "@std/Result[Unit][String]", func(child *Execution, _ []Value) Value {
 		nested := NewFunction(nil, "Unit", func(grandchild *Execution, _ []Value) Value { b.close(grandchild); return Unit{} })
 		result := Parallel(child, "result", []Value{nested}, nil).(Alternative)
@@ -255,9 +255,9 @@ func TestBackgroundCannotJoinItselfOrNestedDescendant(t *testing.T) {
 		t.Fatal("nested close did not finish with report")
 	}
 }
-func TestBackgroundSubmittingContextDoesNotReparent(t *testing.T) {
+func TestSchedulerSubmittingContextDoesNotReparent(t *testing.T) {
 	parent := RootExecution()
-	b := NewBackground(parent, []Argument{{"limit", int64(1)}, {"drain", Duration(time.Second)}}).(*Background)
+	b := NewScheduler(parent, []Argument{{"limit", int64(1)}, {"drain", Duration(time.Second)}}).(*Scheduler)
 	submit, cancel := context.WithCancel(context.Background())
 	started := make(chan struct{})
 	release := make(chan struct{})
@@ -277,9 +277,9 @@ func TestBackgroundSubmittingContextDoesNotReparent(t *testing.T) {
 	}
 	b.close(parent)
 }
-func TestBackgroundConcurrentClose(t *testing.T) {
+func TestSchedulerConcurrentClose(t *testing.T) {
 	ctx := RootExecution()
-	b := NewBackground(ctx, []Argument{{"limit", int64(1)}}).(*Background)
+	b := NewScheduler(ctx, []Argument{{"limit", int64(1)}}).(*Scheduler)
 	var callers sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		callers.Add(1)
@@ -291,11 +291,11 @@ func TestBackgroundConcurrentClose(t *testing.T) {
 	}
 }
 
-func TestJoinedOperationCannotDetachNestedBackground(t *testing.T) {
+func TestJoinedOperationCannotDetachNestedScheduler(t *testing.T) {
 	started := make(chan struct{})
 	finished := make(chan struct{})
 	task := NewFunction(nil, "Int", func(ctx *Execution, _ []Value) Value {
-		b := NewBackground(ctx, []Argument{{"limit", int64(1)}}).(*Background)
+		b := NewScheduler(ctx, []Argument{{"limit", int64(1)}}).(*Scheduler)
 		job := NewFunction(nil, "@std/Result[Unit][String]", func(child *Execution, _ []Value) Value {
 			defer close(finished)
 			close(started)
@@ -317,7 +317,7 @@ func TestJoinedOperationCannotDetachNestedBackground(t *testing.T) {
 		t.Fatal("nested service work escaped its joined lifetime")
 	}
 }
-func TestBackgroundReporterFailureAndOverflow(t *testing.T) {
+func TestSchedulerReporterFailureAndOverflow(t *testing.T) {
 	ctx := RootExecution()
 	blocked := make(chan struct{})
 	release := make(chan struct{})
@@ -328,7 +328,7 @@ func TestBackgroundReporterFailureAndOverflow(t *testing.T) {
 		<-release
 		return Panic("reporter failed")
 	})
-	b := NewBackground(ctx, []Argument{{"limit", int64(1)}, {"reporter", reporter}}).(*Background)
+	b := NewScheduler(ctx, []Argument{{"limit", int64(1)}, {"reporter", reporter}}).(*Scheduler)
 	operation := NewFunction(nil, "@std/Result[Unit][String]", func(_ *Execution, _ []Value) Value {
 		return Alternative{"@std/Result[Unit][String]", "error", []Value{"domain error"}}
 	})

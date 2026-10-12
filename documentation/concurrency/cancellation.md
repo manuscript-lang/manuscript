@@ -7,24 +7,24 @@ weight = 62
 
 [Guide index](_index.md) · [Design index](../_index.md)
 
-Cancellation asks work to stop. It does not mean the work has already stopped; code must reach a checkpoint, leave its scopes, and finish cleanup. Request work follows the request's execution lifetime. Accepted background work follows its background service's lifetime.
+Cancellation asks work to stop. It does not mean the work has already stopped; code must reach a checkpoint, leave its scopes, and finish cleanup. Request work follows the request's execution lifetime. Accepted scheduled work follows its scheduler's lifetime.
 
 ## Requests
 
-Hosts signal requests, joined groups signal their operations, and background services expose cancellation of admitted work:
+Hosts signal requests, joined groups signal their operations, and schedulers expose cancellation of admitted work:
 
 ```manuscript
 let id = try background.start(operation: work)
 background.cancel(id: id)
 ```
 
-The submission fragment belongs to a function returning `Result[U, StartError]`; work must have the [standard API contract](../standard-library/types/prelude.md#background-service) callable type. Other application error types need explicit adaptation.
+The submission fragment belongs to a function returning `Result[U, StartError]`; work must have the [standard API contract](../standard-library/types/prelude.md#scheduler-service) callable type. Other application error types need explicit adaptation.
 
-Successful `Background.start` admission yields an `OperationId` through `Result[OperationId, StartError]`. `cancel(id: id)` returns `Unit`, is idempotent for an admitted ID, and requests cancellation without joining. Dropping an ID has no effect. The service retains responsibility for work until it finishes or service shutdown joins it. IDs the service did not admit, including IDs from other services or from joined groups, and IDs whose status has been evicted are harmless no-ops; an ID never identifies unrelated work.
+Successful `Scheduler.start` admission yields an `OperationId` through `Result[OperationId, StartError]`. `cancel(id: id)` returns `Unit`, is idempotent for an admitted ID, and requests cancellation without joining. Dropping an ID has no effect. The service retains responsibility for work until it finishes or service shutdown joins it. IDs the service did not admit, including IDs from other services or from joined groups, and IDs whose status has been evicted are harmless no-ops; an ID never identifies unrelated work.
 
-`cancel`, `status`, and `close` are receiver operations of the imported Background service; there are no ambient cancellation or join functions. Using an already-typed service does not require importing its otherwise unused type name. `background.close()` is the waiting boundary: it stops admission and performs the configured drain, cancellation, and joining sequence. A closed service stays closed through all aliases.
+`cancel`, `status`, and `close` are receiver operations of the imported Scheduler service; there are no ambient cancellation or join functions. Using an already-typed service does not require importing its otherwise unused type name. `background.close()` is the waiting boundary: it stops admission and performs the configured drain, cancellation, and joining sequence. A closed service stays closed through all aliases.
 
-Late cancellation cannot overwrite an already committed completion. For background work, the first accepted stop reason determines `WorkStatus`, except that a programming fault during cleanup takes precedence and reports `Crashed`. Joined groups have no per-operation cancellation; their caller-visible outcomes are defined in [joined groups](joining.md#group-lifecycle).
+Late cancellation cannot overwrite an already committed completion. For scheduled work, the first accepted stop reason determines `WorkStatus`, except that a programming fault during cleanup takes precedence and reports `Crashed`. Joined groups have no per-operation cancellation; their caller-visible outcomes are defined in [joined groups](joining.md#group-lifecycle).
 
 ## Propagation and checkpoints
 
@@ -45,7 +45,7 @@ Importing it supplies the operation declaration; the runtime supplies the curren
 
 Cancelling a request or current operation cancels its nested groups. Each group joins its operations, each operation runs its registered `with` cleanup, and the caller unwinds.
 
-Background service cancellation reaches the work admitted under that service. Cancellation of a submitting request does not cancel accepted work, because the background lifetime was selected at admission. Cancellation before admission must not start work. Admission and acknowledgement can race with request cancellation; callers must use application idempotency keys if a retried submission must not duplicate work.
+Scheduler service cancellation reaches the work admitted under that service. Cancellation of a submitting request does not cancel accepted work, because the background lifetime was selected at admission. Cancellation before admission must not start work. Admission and acknowledgement can race with request cancellation; callers must use application idempotency keys if a retried submission must not duplicate work.
 
 Completed external writes remain completed. Cancellation does not provide rollback; a transaction's explicit resource contract does.
 
@@ -88,6 +88,6 @@ Budgets use the runtime's monotonic timer, not a `Clock` capability or calendar 
 
 When the caller's own deadline expires, the caller unwinds after its groups join; it does not receive `TimedOut`. Only a group's own timeout produces `TimedOut`.
 
-Background work inherits the service's fixed execution context, including that context's deadline. It does not inherit the submitting request's deadline. A service cannot revive cancelled work or extend its host's deadline. Its context is selected at construction, not at each call to `start`.
+Scheduler work inherits the service's fixed execution context, including that context's deadline. It does not inherit the submitting request's deadline. A service cannot revive cancelled work or extend its host's deadline. Its context is selected at construction, not at each call to `start`.
 
-Deadline configuration is a host operation. There are no source task handles to mutate, deadline annotations on functions, or absolute deadline arguments. See [background services](../standard-library/tasks/background.md) for drain budgets and [adapter contexts](runtime.md#adapter-execution-contexts).
+Deadline configuration is a host operation. There are no source task handles to mutate, deadline annotations on functions, or absolute deadline arguments. See [schedulers](../standard-library/tasks/scheduler.md) for drain budgets and [adapter contexts](runtime.md#adapter-execution-contexts).

@@ -62,10 +62,15 @@ func (c *commands) Operation(name string) Function {
 		return Alternative{result, "error", []Value{Alternative{"@std/CommandError", tag, fields}}}
 	}
 	return NewFunction([]string{"program", "arguments", "input", "max_output_bytes", "timeout"}, result, func(ctx *Execution, args []Value) Value {
+		normalized, valid := nativeOptions("run", []LibraryParam{{"program", "String"}, {"arguments", "List[String]"}, {"input", "Bytes"}, {"max_output_bytes", "Optional[Int]"}, {"timeout", "Optional[Duration]"}}, args)
+		if !valid {
+			return failure("InvalidInput", "")
+		}
+		args = normalized
 		program := args[0].(string)
 		limit := args[3].(int64)
 		timeout := args[4].(Duration)
-		if program == "" || strings.ContainsRune(program, 0) || limit < 0 || timeout < 0 {
+		if program == "" || strings.ContainsRune(program, 0) || limit < 0 || timeout < nativeNoTimeout {
 			return failure("InvalidInput", "")
 		}
 		arguments := make([]string, len(args[1].(*List).Items))
@@ -75,7 +80,7 @@ func (c *commands) Operation(name string) Function {
 				return failure("InvalidInput", "")
 			}
 		}
-		lifetime, stop := context.WithTimeout(ctx.Context, time.Duration(timeout))
+		lifetime, stop := nativeContextTimeout(ctx.Context, time.Duration(timeout))
 		defer stop()
 		execution, cancel := context.WithCancel(lifetime)
 		defer cancel()

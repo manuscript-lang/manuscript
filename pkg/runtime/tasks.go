@@ -3,17 +3,18 @@ package msruntime
 import (
 	"context"
 	"fmt"
+	goruntime "runtime"
 	"sync"
 	"time"
 )
 
 type Execution struct {
-	Context      context.Context
-	Owners       map[*Background]bool
-	Leases       map[*Lease]bool
-	HostServices map[*httpService]bool
-	Lifetime     *workLifetime
-	Host         *hostRoots
+	EqualityScope TypeScope
+	Context       context.Context
+	Owners        map[*Scheduler]bool
+	HostServices  map[*httpService]bool
+	Lifetime      *workLifetime
+	Host          *hostRoots
 }
 type cancelled struct{}
 
@@ -230,8 +231,14 @@ func ParallelArguments(ctx *Execution, result string, args []Argument) Value {
 		if a.Name == "tasks" {
 			tasks = a.Value.(Pack).Items
 		} else if a.Name == "timeout" {
-			value := a.Value.(Duration)
-			timeout = &value
+			normalized, valid := nativeOption(a.Value, "Duration", nil)
+			if !valid {
+				return Panic("timeout must be nonnegative")
+			}
+			if normalized != nil {
+				value := normalized.(Duration)
+				timeout = &value
+			}
 		}
 	}
 	return Parallel(ctx, result, tasks, timeout)
@@ -289,4 +296,13 @@ func CleanupOperation(resource Value, contract string, scopes ...TypeScope) Valu
 		}
 	}
 	return Bind(resource, contract, "close", scopes...)
+}
+
+func init() {
+	libraryAdd("tasks", "yield_now", "Unit", nil, func(ctx *Execution, _ string, _ []Value) Value {
+		CheckCancelled(ctx)
+		goruntime.Gosched()
+		CheckCancelled(ctx)
+		return Unit{}
+	})
 }

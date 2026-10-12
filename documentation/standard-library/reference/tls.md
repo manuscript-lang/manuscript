@@ -59,7 +59,7 @@ type TlsOptions:
 ## parse_certificates {data-api-kind="Function"}
 
 ```manuscript
-fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
+fn parse_certificates(pem: String, max_certificates: Optional[Int] = none) -> Result[List[CertificateInfo], TlsError]
 ```
 
 ## verify_certificates {data-api-kind="Function"}

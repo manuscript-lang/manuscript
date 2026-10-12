@@ -17,7 +17,7 @@ func newExecution(parent *Execution, ctx context.Context) *Execution {
 	execution.Lifetime = &workLifetime{parent: parent.Lifetime}
 	return execution
 }
-func registerService(execution *Execution, service *Background) {
+func registerService(execution *Execution, service *Scheduler) {
 	registerResource(execution, service)
 }
 func registerResource(execution *Execution, service Value) {
@@ -28,7 +28,7 @@ func registerResource(execution *Execution, service Value) {
 	execution.Lifetime.services = append(execution.Lifetime.services, service)
 	execution.Lifetime.mu.Unlock()
 }
-func unregisterService(execution *Execution, service *Background) {
+func unregisterService(execution *Execution, service *Scheduler) {
 	unregisterResource(execution, service)
 }
 func unregisterResource(execution *Execution, service Value) {

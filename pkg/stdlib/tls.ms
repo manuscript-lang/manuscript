@@ -1,5 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
+import Optional from "@std/optional.ms"
 import Error from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 import List from "@std/collections.ms"
@@ -35,7 +36,7 @@ export type TlsOptions:
     alpn: List[String]
     require_client_certificate: Bool
 
-export fn parse_certificates(pem: String, max_certificates: Int) -> Result[List[CertificateInfo], TlsError]
+export fn parse_certificates(pem: String, max_certificates: Optional[Int] = none) -> Result[List[CertificateInfo], TlsError]
 
 export fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]
 

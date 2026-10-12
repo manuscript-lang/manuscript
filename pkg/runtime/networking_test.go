@@ -37,16 +37,16 @@ func TestNetworkingListenerReuseAfterCancellation(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
 	listener := librarySuccess(t, n.Operation("listen").Body(ctx, []Value{"127.0.0.1:0"}))
-	libraryFailure(t, networkingInvoke(ctx, listener, "accept_timeout", Duration(time.Millisecond)), "Timeout")
+	libraryFailure(t, networkingInvoke(ctx, listener, "accept", Duration(time.Millisecond)), "Timeout")
 	address := networkingInvoke(ctx, listener, "address").(string)
 	client := librarySuccess(t, n.Operation("connect").Body(ctx, []Value{address, Duration(time.Second)}))
-	accepted := librarySuccess(t, networkingInvoke(ctx, listener, "accept_timeout", Duration(time.Second)))
+	accepted := librarySuccess(t, networkingInvoke(ctx, listener, "accept", Duration(time.Second)))
 	librarySuccess(t, networkingInvoke(ctx, client, "write", Bytes{[]byte("x")}))
-	value := librarySuccess(t, networkingInvoke(ctx, accepted, "read_timeout", int64(1), Duration(time.Second))).(Alternative)
+	value := librarySuccess(t, networkingInvoke(ctx, accepted, "read", int64(1), Duration(time.Second))).(Alternative)
 	if value.Tag != "some" {
 		t.Fatal(value)
 	}
-	libraryFailureIO(t, networkingInvoke(ctx, accepted, "read_timeout", int64(1), Duration(time.Millisecond)), "Failed")
+	libraryFailureIO(t, networkingInvoke(ctx, accepted, "read", int64(1), Duration(time.Millisecond)), "Failed")
 }
 func TestNetworkingPolicyAndUnix(t *testing.T) {
 	ctx := RootExecution()
@@ -321,7 +321,7 @@ func (s *networkingReadStream) Operation(name string) Function {
 		if len(s.data) == 0 {
 			return libraryOK("@std/Result[@std/Optional[@std/Bytes]][@std/IoError]", optional("@std/Bytes", nil, false))
 		}
-		max := int(a[0].(int64))
+		max := int(nativeStreamReadSize(a[0]))
 		if max > len(s.data) {
 			max = len(s.data)
 		}
@@ -401,7 +401,7 @@ func TestNetworkingMutualTLSListener(t *testing.T) {
 	listener := librarySuccess(t, n.Operation("listen_tls").Body(ctx, []Value{"127.0.0.1:0", serverOptions, Duration(time.Second)}))
 	address := networkingInvoke(ctx, listener, "address").(string)
 	accepted := make(chan Value, 1)
-	go func() { accepted <- networkingInvoke(ctx, listener, "accept_timeout", Duration(time.Second)) }()
+	go func() { accepted <- networkingInvoke(ctx, listener, "accept", Duration(time.Second)) }()
 	clientOptions := networkingTLSOptions()
 	clientOptions.Fields["server_name"] = "service.test"
 	clientOptions.Fields["roots_pem"] = roots
@@ -410,7 +410,7 @@ func TestNetworkingMutualTLSListener(t *testing.T) {
 	client := librarySuccess(t, n.Operation("connect_tls_config").Body(ctx, []Value{address, clientOptions, Duration(time.Second)}))
 	server := librarySuccess(t, <-accepted)
 	librarySuccess(t, networkingInvoke(ctx, client, "write", Bytes{[]byte("verified")}))
-	message := librarySuccess(t, networkingInvoke(ctx, server, "read_timeout", int64(20), Duration(time.Second))).(Alternative)
+	message := librarySuccess(t, networkingInvoke(ctx, server, "read", int64(20), Duration(time.Second))).(Alternative)
 	if string(message.Fields[0].(Bytes).Items) != "verified" {
 		t.Fatal(message)
 	}
