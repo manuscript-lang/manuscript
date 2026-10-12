@@ -26,20 +26,7 @@ Import the accessor for each service an application uses. Accessors are ordinary
 
 Type names and functions still require explicit imports when named in source. Importing an accessor does not add other declarations to scope. Calling it returns the existing service; repeated calls do not construct new roots. Helpers, callbacks, task-group work, and imported modules use the services of their invocation execution. Scheduler services retain their construction execution's services.
 
-```manuscript
-import arguments from "@std/cli.ms"
-import stdout from "@std/io.ms"
-
-export fn main() -> Int:
-    let message = "Arguments: {arguments().length()}\n"
-    match stdout().write(data: message.to_bytes()):
-        ok(_):
-            return 0
-        error(_):
-            return 1
-```
-
-On success this program prints `Arguments: N` followed by LF and exits 0. Stream signatures are defined in [streams](streams.md).
+See [your first program](../learn/getting-started.md#read-the-program) for a complete example using arguments and stdout. Stream signatures are defined in [byte streams](streams.md).
 
 Arguments exclude the executable name. Environment is a startup snapshot; duplicate OS names are resolved by the host before entry. Invalid UTF-8 in process inputs is a startup failure on native stderr with exit 70 before main runs. Relative file paths on native CLI roots use the live process working directory; explicitly constructed filesystem services can retain a fixed base.
 
