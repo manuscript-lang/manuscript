@@ -2609,6 +2609,56 @@
       ]
     },
     {
+      "path": "@std/toml.ms",
+      "declarations": [
+        {
+          "name": "TomlError",
+          "kind": "alternative",
+          "type": "TomlError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData(line: Int, column: Int, reason: String)",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
+          "name": "TomlLimits",
+          "kind": "record",
+          "type": "TomlLimits",
+          "fields": [
+            "max_bytes: Optional[Int]",
+            "max_depth: Optional[Int]",
+            "max_values: Optional[Int]"
+          ]
+        },
+        {
+          "name": "TomlValue",
+          "kind": "alternative",
+          "type": "TomlValue",
+          "cases": [
+            "StringValue(value: String)",
+            "IntValue(value: Int)",
+            "FloatValue(value: Float)",
+            "BoolValue(value: Bool)",
+            "DateTimeValue(text: String)",
+            "ArrayValue(values: List[TomlValue])",
+            "TableValue(values: Map[String, TomlValue])"
+          ]
+        },
+        {
+          "name": "parse",
+          "kind": "fn",
+          "type": "fn(text: String, limits: Optional[TomlLimits] = ...)-\u003eResult[TomlValue, TomlError]"
+        }
+      ]
+    },
+    {
       "path": "@std/url.ms",
       "declarations": [
         {
@@ -2740,6 +2790,56 @@
             "tls: TlsOptions",
             "compression: Bool"
           ]
+        }
+      ]
+    },
+    {
+      "path": "@std/yaml.ms",
+      "declarations": [
+        {
+          "name": "YamlError",
+          "kind": "alternative",
+          "type": "YamlError",
+          "cases": [
+            "InvalidInput",
+            "InvalidData(line: Int, column: Int, reason: String)",
+            "UnsupportedFeature(line: Int, reason: String)",
+            "LimitExceeded"
+          ],
+          "operations": [
+            "message: fn()-\u003eString"
+          ],
+          "implements": [
+            "Error"
+          ]
+        },
+        {
+          "name": "YamlLimits",
+          "kind": "record",
+          "type": "YamlLimits",
+          "fields": [
+            "max_bytes: Optional[Int]",
+            "max_depth: Optional[Int]",
+            "max_values: Optional[Int]"
+          ]
+        },
+        {
+          "name": "YamlValue",
+          "kind": "alternative",
+          "type": "YamlValue",
+          "cases": [
+            "Null",
+            "BoolValue(value: Bool)",
+            "NumberValue(text: String)",
+            "StringValue(value: String)",
+            "ArrayValue(values: List[YamlValue])",
+            "ObjectValue(values: Map[String, YamlValue])"
+          ]
+        },
+        {
+          "name": "parse",
+          "kind": "fn",
+          "type": "fn(text: String, limits: Optional[YamlLimits] = ...)-\u003eResult[YamlValue, YamlError]"
         }
       ]
     },

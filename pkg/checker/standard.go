@@ -17,6 +17,8 @@ var standardSources []*syntax.Module
 var standardTypeReferences map[*syntax.Type]*Type
 var intrinsicOperations map[string]*Type
 var standardImplementations []*Method
+var standardSourceModules = map[string]*syntax.Module{}
+var standardSourceMethods []*Method
 var standardOperationVariables = map[string][]*Type{}
 var standardReceiverBindings map[string]string
 var standardReceiverRequirements map[string][]receiverRequirement
@@ -40,6 +42,8 @@ func init() {
 	}
 }
 func loadStandardSources() error {
+	standardSources = nil
+	standardSourceModules = map[string]*syntax.Module{}
 	standardSymbols = map[string]*Symbol{}
 	standardModules = map[string]map[string]*Symbol{}
 	intrinsicOperations = map[string]*Type{}
@@ -71,6 +75,23 @@ func loadStandardSources() error {
 			return err
 		}
 		standardSources = append(standardSources, module)
+		sourceImplementation := false
+		for _, d := range module.Declarations {
+			if len(d.Body) > 0 {
+				sourceImplementation = true
+			}
+			for _, method := range d.Methods {
+				if len(method.Body) > 0 {
+					sourceImplementation = true
+				}
+			}
+		}
+		if sourceImplementation {
+			// Source modules use the ordinary parser and checker, including body,
+			// import visibility, default argument, and implementation rules.
+			standardSourceModules[module.File] = module
+			continue
+		}
 		standardModules[module.File] = map[string]*Symbol{}
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindImpl {
@@ -165,6 +186,9 @@ func loadStandardSources() error {
 	// All nominal identities are declared first, so standard contracts may refer to
 	// one another without bootstrapping a second, hidden Go type schema.
 	for _, module := range standardSources {
+		if standardSourceModules[module.File] != nil {
+			continue
+		}
 		scopeModule(module)
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindImpl {
@@ -184,6 +208,9 @@ func loadStandardSources() error {
 		}
 	}
 	for _, module := range standardSources {
+		if standardSourceModules[module.File] != nil {
+			continue
+		}
 		scopeModule(module)
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindImpl {
@@ -239,6 +266,9 @@ func loadStandardSources() error {
 	// Native adapters implement one omission value: Optional.none. Keep this
 	// source contract explicit instead of inferring defaults from field names.
 	for _, module := range standardSources {
+		if standardSourceModules[module.File] != nil {
+			continue
+		}
 		for _, declaration := range module.Declarations {
 			parameters := append(append([]syntax.Parameter{}, declaration.Params...), declaration.Fields...)
 			for _, method := range declaration.Methods {
@@ -256,6 +286,9 @@ func loadStandardSources() error {
 	}
 	used := map[string]bool{}
 	for _, module := range standardSources {
+		if standardSourceModules[module.File] != nil {
+			continue
+		}
 		scopeModule(module)
 		for _, d := range module.Declarations {
 			if d.Kind != syntax.KindImpl {
@@ -292,6 +325,9 @@ func loadStandardSources() error {
 		intrinsicOperations[receiver] = typ.Type
 	}
 	for _, module := range standardSources {
+		if standardSourceModules[module.File] != nil {
+			continue
+		}
 		scopeModule(module)
 		for _, declaration := range module.Declarations {
 			if declaration.Kind == syntax.KindImpl {
@@ -333,7 +369,62 @@ func loadStandardSources() error {
 	for key := range bindings.ReceiverRequirements {
 		return fmt.Errorf("unused native receiver requirement: %s", key)
 	}
+	// Check all bundled source implementations once to publish documentation and
+	// editor symbols. Each application checks its reachable modules afresh so
+	// generated identities and mutable analysis maps remain program-local.
+	var sourceModules []*syntax.Module
+	for _, module := range standardSources {
+		if standardSourceModules[module.File] != nil {
+			sourceModules = append(sourceModules, module)
+		}
+	}
+	program := Check(sourceModules, nil)
+	if len(program.Diagnostics) > 0 {
+		return fmt.Errorf("invalid standard implementations: %v", program.Diagnostics)
+	}
+	for _, module := range program.Modules {
+		standardModules[module.File] = map[string]*Symbol{}
+		for name, symbol := range program.Symbols[module.File] {
+			if symbol.Module == module.File {
+				standardModules[module.File][name] = symbol
+			}
+		}
+	}
+	for ref, typ := range program.TypeReferences {
+		standardTypeReferences[ref] = typ
+	}
+	standardSourceMethods = program.Methods[len(standardImplementations):]
 	return nil
+}
+
+// sourceStandardDependencies adds reachable bundled implementations in dependency
+// order. Native declarations stay in the immutable standard registry.
+func sourceStandardDependencies(modules []*syntax.Module) ([]*syntax.Module, []syntax.Diagnostic) {
+	var ordered []*syntax.Module
+	var diagnostics []syntax.Diagnostic
+	state := map[string]int{}
+	var visit func(*syntax.Module)
+	visit = func(module *syntax.Module) {
+		if state[module.File] == 2 {
+			return
+		}
+		if state[module.File] == 1 {
+			diagnostics = append(diagnostics, syntax.Diagnostic{Position: syntax.Position{File: module.File, Line: 1, Column: 1}, Phase: "resolution", Message: "cyclic standard source dependency"})
+			return
+		}
+		state[module.File] = 1
+		for _, item := range module.Imports {
+			if dependency := standardSourceModules[item.Path]; dependency != nil {
+				visit(dependency)
+			}
+		}
+		state[module.File] = 2
+		ordered = append(ordered, module)
+	}
+	for _, module := range modules {
+		visit(module)
+	}
+	return ordered, diagnostics
 }
 
 // StandardModules exposes canonical declarations and their source positions to

@@ -2998,6 +2998,60 @@ fn parse_certificates(pem: String, max_certificates: Optional[Int] = none) -> Re
 fn verify_certificates(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp) -> Result[Unit, TlsError]:
 ```
 
+# @std/toml.ms
+
+Import each required symbol with `import Name from "@std/toml.ms"`.
+
+## TomlError
+
+**Alternative**
+
+```manuscript
+type TomlError:
+    case InvalidInput
+    case InvalidData(line: Int, column: Int, reason: String)
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for TomlError:
+    fn message() -> String:
+```
+
+## TomlLimits
+
+**Record**
+
+```manuscript
+type TomlLimits:
+    max_bytes: Optional[Int]
+    max_depth: Optional[Int]
+    max_values: Optional[Int]
+```
+
+## TomlValue
+
+**Alternative**
+
+```manuscript
+type TomlValue:
+    case StringValue(value: String)
+    case IntValue(value: Int)
+    case FloatValue(value: Float)
+    case BoolValue(value: Bool)
+    case DateTimeValue(text: String)
+    case ArrayValue(values: List[TomlValue])
+    case TableValue(values: Map[String, TomlValue])
+```
+
+## parse
+
+**Function**
+
+```manuscript
+fn parse(text: String, limits: Optional[TomlLimits] = none) -> Result[TomlValue, TomlError]:
+```
+
 # @std/url.ms
 
 Import each required symbol with `import Name from "@std/url.ms"`.
@@ -3155,6 +3209,60 @@ type WebSocketOptions:
     timeout: Optional[Duration] = none
     tls: TlsOptions
     compression: Bool
+```
+
+# @std/yaml.ms
+
+Import each required symbol with `import Name from "@std/yaml.ms"`.
+
+## YamlError
+
+**Alternative**
+
+```manuscript
+type YamlError:
+    case InvalidInput
+    case InvalidData(line: Int, column: Int, reason: String)
+    case UnsupportedFeature(line: Int, reason: String)
+    case LimitExceeded
+```
+
+```manuscript
+impl Error for YamlError:
+    fn message() -> String:
+```
+
+## YamlLimits
+
+**Record**
+
+```manuscript
+type YamlLimits:
+    max_bytes: Optional[Int]
+    max_depth: Optional[Int]
+    max_values: Optional[Int]
+```
+
+## YamlValue
+
+**Alternative**
+
+```manuscript
+type YamlValue:
+    case Null
+    case BoolValue(value: Bool)
+    case NumberValue(text: String)
+    case StringValue(value: String)
+    case ArrayValue(values: List[YamlValue])
+    case ObjectValue(values: Map[String, YamlValue])
+```
+
+## parse
+
+**Function**
+
+```manuscript
+fn parse(text: String, limits: Optional[YamlLimits] = none) -> Result[YamlValue, YamlError]:
 ```
 
 # prelude

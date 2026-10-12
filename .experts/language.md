@@ -122,3 +122,12 @@ Decision: the user explicitly rejected relying on `match` for routine Optional h
 Apply when: changing Optional declarations, alternative method lookup, fallback evaluation, or introductory examples.
 Evidence: [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [canonical declaration](../pkg/stdlib/optional.ms), and [compiled method fixture](../tests/e2e/testdata/accept/optional-methods.ms).
 Verify: false and zero are present; eager defaults evaluate normally; lazy defaults run exactly once only for none; unwrap on none faults clearly. Extraction retains nested type arguments and payload identity, stored receiver methods still work, and local alternatives with the same spelling receive no native methods.
+
+
+### Collection storage can guard different recursive element types
+
+Verified: tracking List/Map/Set nominal identities as active generic applications rejected valid recursive trees when a path crossed two collections with different element types. Collection storage is indirect; recurse into its arguments without treating that collection's identity as a user-defined generic cycle. Continue checking active user type identities so genuinely growing generic recursion is rejected.
+
+Apply when: changing recursive layout checking or adding recursive data types.
+Evidence: [layout checker](../pkg/checker/contracts.go), [accepted and rejected layout regressions](../pkg/checker/checker_test.go), and [compiled TOML node trees](../tests/e2e/testdata/stdlib/toml.ms).
+Verify: `TestNestedCollectionsGuardRecursiveLayouts` accepts the two Map element types and still rejects `Growing[List[T]]` recursion.
