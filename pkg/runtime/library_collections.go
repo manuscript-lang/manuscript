@@ -27,6 +27,27 @@ func ListAt(ctx *Execution, receiver Value, index Value, result string) Value {
 	return value
 }
 
+// ListAtParts is ListAt without the Optional: the element and whether it exists.
+func ListAtParts(ctx *Execution, receiver Value, index Value) (Value, bool) {
+	CheckCancelled(ctx)
+	list := receiver.(*List)
+	i := relativeIndex(len(list.Items), index.(int64))
+	if i >= 0 && i < int64(len(list.Items)) {
+		CheckCancelled(ctx)
+		return list.Items[i], true
+	}
+	CheckCancelled(ctx)
+	return nil, false
+}
+
+// OptionalTag is the case tag of an Optional whose presence is present.
+func OptionalTag(present bool) string {
+	if present {
+		return "some"
+	}
+	return "none"
+}
+
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	elements := []LibraryParam{p("T", "")}

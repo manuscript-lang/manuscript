@@ -218,6 +218,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return call(ident("int64"), signedInteger("-9223372036854775808"))
 		}
+		if e.Text == "not" {
+			return &ast.UnaryExpr{Op: token.NOT, X: paren(g.condition(e.Right))}
+		}
 		return g.locatedOperation(e, runtimeName("Unary"), textLiteral(e.Text), g.expression(e.Right))
 	case syntax.KindBinary:
 		if e.Text == "and" || e.Text == "or" {

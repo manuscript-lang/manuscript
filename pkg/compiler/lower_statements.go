@@ -180,6 +180,11 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	contractMatch := g.program.Expressions[value].Type.Kind == "contract"
 	out := []ast.Stmt{define(tmp, g.expression(value))}
 	tag := "Tag"
+	var present string
+	if !contractMatch && g.listAtMatch(value) {
+		present = g.temp()
+		out = []ast.Stmt{&ast.AssignStmt{Lhs: []ast.Expr{ident(tmp), ident(present)}, Tok: token.DEFINE, Rhs: []ast.Expr{g.listAtParts(value)}}}
+	}
 	if contractMatch {
 		out = append(out, assign(ident(tmp), token.ASSIGN, runtimeCall("ContractReceiver", ident(tmp))))
 		tag = "ConcreteType"
@@ -198,6 +203,9 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 		for i, b := range g.program.ArmBindings[a] {
 			if b != nil {
 				var value ast.Expr = runtimeCall("Payload", ident(tmp), intLiteral(i))
+				if present != "" {
+					value = ident(tmp)
+				}
 				if contractMatch {
 					value = ident(tmp)
 				}
@@ -206,6 +214,9 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 		}
 		clause.Body = append(clause.Body, body(a)...)
 		cases = append(cases, clause)
+	}
+	if present != "" {
+		return append(out, &ast.SwitchStmt{Tag: runtimeCall("OptionalTag", ident(present)), Body: block(cases...)})
 	}
 	return append(out, &ast.SwitchStmt{Tag: runtimeCall(tag, ident(tmp)), Body: block(cases...)})
 }

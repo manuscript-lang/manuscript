@@ -29,11 +29,8 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 	switch callee.Method.Native {
 	case "collections/at":
 		if len(arguments) == 1 {
-			// Force even a plain local receiver to be read before the index:
-			// a match expression in the index can reassign that local. Go does
-			// not otherwise order a variable read before a later function call.
-			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-			return g.locatedOperation(e, runtimeName("ListAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Expressions[e].Type))
+			receiver, index := g.listAtOperands(e, arguments)
+			return g.locatedOperation(e, runtimeName("ListAt"), ident("ctx"), receiver, index, g.key(g.program.Expressions[e].Type))
 		}
 	case "length":
 		// Collection length reads the receiver's size; it never calls back or fails.
@@ -114,4 +111,37 @@ func (g *generator) directKeyedCall(e *syntax.Expression, native string, argumen
 		args = append(args, g.key(g.program.Expressions[e].Type))
 	}
 	return g.locatedOperation(e, runtimeName(name), args...)
+}
+
+// listAtOperands lowers the receiver and index of a List.at call.
+func (g *generator) listAtOperands(e *syntax.Expression, arguments []syntax.Argument) (ast.Expr, ast.Expr) {
+	// Force even a plain local receiver to be read before the index:
+	// a match expression in the index can reassign that local. Go does
+	// not otherwise order a variable read before a later function call.
+	return sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left)), g.argumentValue(arguments[0])
+}
+
+// listAtMatch reports whether value is a direct List.at call, whose Optional
+// result a match can consume as an element and a presence flag.
+func (g *generator) listAtMatch(value *syntax.Expression) bool {
+	if value.Kind != syntax.KindCall {
+		return false
+	}
+	info := g.program.Expressions[value]
+	arguments := value.Args
+	if info.Arguments != nil {
+		arguments = info.Arguments
+	}
+	callee := g.program.Expressions[value.Left]
+	return value.Left.Kind == syntax.KindMember && callee != nil && callee.Method != nil && callee.Method.Contract == nil && callee.Method.Native == "collections/at" && len(arguments) == 1
+}
+
+// listAtParts lowers a List.at call to the element and its presence.
+func (g *generator) listAtParts(value *syntax.Expression) ast.Expr {
+	arguments := value.Args
+	if info := g.program.Expressions[value]; info.Arguments != nil {
+		arguments = info.Arguments
+	}
+	receiver, index := g.listAtOperands(value, arguments)
+	return g.locatedOperation(value, runtimeName("ListAtParts"), ident("ctx"), receiver, index)
 }

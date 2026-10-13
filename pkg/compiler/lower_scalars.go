@@ -87,6 +87,9 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 			return direct.result
 		}
 	case syntax.KindUnary:
+		if e.Text == "not" {
+			return "bool"
+		}
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return "int64"
 		}
