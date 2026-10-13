@@ -3,6 +3,7 @@ package main
 import (
  "reflect"
  "sort"
+ "strconv"
  "testing"
  rt "github.com/manuscript-lang/manuscript/pkg/runtime"
 )
@@ -48,6 +49,14 @@ func benchmarkPrototype(b *testing.B,ctx *rt.Execution,n int64) {
  b.Run("IterateRuntimeBoxedTypedLocals64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for _,x:=range rt.Iterate(boxed){rt.CheckCancelled(ctx);total=rt.IntAdd(total,x.(int64))};listResult=total}})
  compare:=@@compare@@
  b.Run("SortPrototypeBoxedCallback64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){out:=xs.clone();sort.SliceStable(out.storage.ints,func(i,j int)bool{rt.CheckCancelled(ctx);return rt.Invoke(ctx,compare,[]rt.Argument{{Name:"left",Value:out.storage.ints[i]},{Name:"right",Value:out.storage.ints[j]}}).(int64)<0});listResult=out}})
+ // Synthetic backing-copy control for #147 coordination. These tables are
+ // built outside timing on the heap; this is not #238's static-table lowering.
+ for _,count:=range []int64{16000,100000} {
+  typedTable:=prototypeBuild(ctx,count)
+  boxedTable:=runtimeBoxedBuild(ctx,count)
+  b.Run("LiteralCopyTyped"+strconv.Itoa(int(count)),func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=typedTable.clone()}})
+  b.Run("LiteralCopyBoxed"+strconv.Itoa(int(count)),func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=rt.Clone(boxedTable)}})
+ }
 }
 func TestListPrototypeAliases(t *testing.T) {
  ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)

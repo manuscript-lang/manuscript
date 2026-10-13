@@ -14,6 +14,12 @@ loops, but unboxing a source-call result and reboxing it for the next call can
 increase allocations. Classify uses and ABI boundaries before choosing a local
 representation; Go's optimizer does not reliably remove those allocations.
 
+Verified: primitive List storage also needs a use/ABI classification. The
+[numeric List experiment](../scripts/bench-lists/README.md) separates boxed
+storage from scalar-local boxing; its typed storage adds payload allocations
+when fed through the unchanged Optional/comparator ABI. Preserve one authoritative
+mutable handle across typed and generic aliases rather than keeping a boxed mirror.
+
 Apply when: optimizing Go lowering, representations, calls, or collection access.
 Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
 [lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),

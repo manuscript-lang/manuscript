@@ -337,7 +337,9 @@ func init() {
 	variable := []LibraryParam{p("T", "")}
 	libraryGeneric("collections", "reverse", "List[T]", variable, []LibraryParam{p("values", "List[T]")}, func(_ *Execution, _ string, a []Value) Value {
 		v := a[0].(*List)
-		v.ownItems()
+		if len(v.Items) > 1 {
+			v.ownItems()
+		}
 		out := v.Items
 		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 			out[i], out[j] = out[j], out[i]

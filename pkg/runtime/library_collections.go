@@ -268,6 +268,9 @@ func init() {
 		list := a[0].(*List)
 		s, e := a[2].(int64), a[3].(int64)
 		librarySlice("List.fill", len(list.Items), s, e)
+		if s == e {
+			return list
+		}
 		list.ownItems()
 		out := list.Items
 		for i := s; i < e; i++ {
@@ -282,6 +285,9 @@ func init() {
 		librarySlice("List.copy_within", len(list.Items), s, e)
 		if t < 0 || t > int64(len(list.Items)) {
 			return libraryRangeFault("List.copy_within", "target", t, 0, int64(len(list.Items)))
+		}
+		if s == e || t == int64(len(list.Items)) {
+			return list
 		}
 		list.ownItems()
 		items := list.Items

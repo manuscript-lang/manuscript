@@ -1,5 +1,21 @@
 # Runtime lessons
 
+### Collection snapshots require every in-place writer to detach
+
+Verified: List callback traversals can retain a capacity-limited header and use
+the existing loop COW flag instead of eagerly copying all membership. Appends
+lie beyond the captured length, but fill, overlapping copy, reverse and other
+prefix writes must detach first. Nested element references remain shared; the
+private membership header must not become a second source-visible alias.
+
+Apply when: changing collection storage, mutators, callback traversal or iteration.
+Evidence: [mutation differential tests](../pkg/runtime/list_snapshot_test.go),
+[called native alias/interop cases](../tests/e2e/testdata/accept/list-snapshots.ms),
+[native fault/cancellation cases](../pkg/compiler/list_snapshot_native_test.go),
+and [measured allocation costs and conservative COW tradeoff](../scripts/bench-lists/README.md).
+Verify: read-only traversal allocates only a header; all existing-element writes
+leave captured membership unchanged, including reentry and saved method calls.
+
 ### Empty cleanup omission needs callable ownership evidence
 
 Verified: lexical cleanup lists return to empty after lowering a `with` scope;

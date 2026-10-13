@@ -107,6 +107,26 @@ func TestListCallbackSnapshotReentryAndExits(t *testing.T) {
 	}
 }
 
+func TestListSnapshotNoopWritesDoNotCopy(t *testing.T) {
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	for _, test := range []struct {
+		name string
+		args []Argument
+	}{
+		{"fill", []Argument{{"value", int64(9)}, {"start", int64(0)}, {"end", int64(0)}}},
+		{"copy_within", []Argument{{"target", int64(0)}, {"start", int64(0)}, {"end", int64(0)}}},
+		{"copy_within", []Argument{{"target", int64(1)}, {"start", int64(0)}, {"end", int64(1)}}},
+		{"reverse", nil},
+	} {
+		list := &List{Type: "@std/List[Int]", Items: []Value{int64(1)}}
+		snapshot := list.snapshot()
+		if Invoke(ctx, NativeMember(list, test.name), test.args) != list || &list.Items[0] != &snapshot.Items[0] {
+			t.Fatalf("%s needlessly copied snapshot storage", test.name)
+		}
+	}
+}
+
 func TestListCallbackTraversalsMatchIndependentClone(t *testing.T) {
 	for _, name := range []string{"map", "filter", "fold", "fold_right", "find", "find_last", "find_index", "find_last_index", "some", "every", "for_each", "flat_map", "group_by"} {
 		t.Run(name, func(t *testing.T) {

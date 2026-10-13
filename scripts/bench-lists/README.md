@@ -32,6 +32,7 @@ runner retains each `.ms`, emitted Go, native executable, artifact metadata and
 raw samples. The allocation worker records binary SHA-256, revision, dirty
 status, CPU/affinity, Go version, GC environment, capacity, raw samples and
 medians. Preserve these files with published measurements.
+The recorded samples and source/binary hashes are in [results](results/).
 
 ## Measurement findings
 
@@ -40,6 +41,22 @@ merged #218/#223/#224/#232, bundled Go 1.25.1, Linux amd64, Intel Xeon Platinum
 8573C. Old issue figures are not this baseline. Wall times varied substantially
 with host/compilation contention; allocation counts and retained heap are the
 strongest evidence here. No wall-time speedup is promised by these experiments.
+The bounded slice was rebased onto main `93fcb4fe`; repeated generated-operation
+benchmarks retain the same allocation counts. The two baselines' raw runs are
+retained separately rather than relabeling the earlier samples.
+
+Separate fresh Release programs on unmodified `93fcb4fe` (three samples, CPU 1,
+default GC) measured:
+
+| Program | median wall seconds | median peak RSS (MiB) |
+| --- | ---: | ---: |
+| Append 1M Ints | 0.198 | 75.6 |
+| Append 4M Ints | 0.998 | 272.6 |
+| Build and stable-sort 200K Ints | 1.166 | 32.0 |
+
+These timings include process startup/shutdown and differ from the Go benchmark
+loop and allocation workers. See raw samples for variation; the earlier issue's
+machine and code are different, so these numbers are not a paired speedup claim.
 
 For 65,536 elements, fresh generated-Go baseline medians:
 
@@ -83,6 +100,10 @@ boxing. Conversely, current boxed storage traversed with concrete accumulation
 locals needs only one result allocation, just like typed traversal. Storage,
 scalar-local lowering, Optional elimination and callback ABI specialization
 are separate optimizations and must be measured separately.
+With matched concrete accumulation/index locals, boxed storage indexing uses
+131,073 allocations / about 5.24 MB per 65,536 reads, while the typed experiment
+through the same Optional ABI uses 196,444 / about 5.77 MB. This is an allocation
+regression of about 50% despite the much smaller retained backing storage.
 
 ## Bounded production change
 
@@ -117,6 +138,8 @@ even when passed through `Value`, a generic function, a record, Optional,
 Result, a closure, a contract view or a saved method. A typed projection must
 reference the backing object, never copy its slice header into an independent
 mutable owner. No lazy boxed mirror is permitted.
+COW replaces the array field inside that same backing object; replacing the
+backing object itself would strand previously captured typed projections.
 
 The Int-only prototype uses `*prototypeStorage` to make that invariant explicit.
 Typed and boxed aliases plus a bound append function see growth and updates
@@ -180,9 +203,40 @@ Migrate in reviewable stages:
   Optional conversion follow-up owns argument conversion; #166 owns additive
   core APIs. This slice does not edit those surfaces.
 
+The parent's later review holds #238's scalar-copy implementation. Its
+[runtime review at `7f0a5e78`](https://github.com/manuscript-lang/manuscript/blob/7f0a5e78a3a26f180b466fb90ba7316a8bddeacf/scripts/bench-flat-literals/runtime-review.md)
+confirms 1.51x slower repeated 16K construction and 1.62x slower 100K construction
+under normal GC, despite roughly 12.3s -> 1.34s build time and 1.87 GiB ->
+171 MiB compiler RSS. The cited CPU profiles implicate pointer-copy barrier
+work; they do not establish a complete cause or a typed-storage fix. Do not
+cherry-pick that held change as a dependency of this slice.
+
+The prototype also measures copying fresh typed versus boxed backing at 16K and
+100K. These are synthetic **heap-table** copy controls, not the actual source
+literal/static-table implementation. Typed primitive arrays halve Int backing
+bytes and omit element pointers using ordinary Go storage, making them a useful
+candidate for the next literal experiment. A combined implementation must run
+#147's actual source-wrapper paired construction benchmark under its GC settings,
+as well as build wall time/RSS/binary size, before promotion. Preserve fresh
+mutable handles/storage, alias updates and ordered effects. Faster synthetic
+typed copies are insufficient evidence to accept a literal-lowering replacement.
+
 Acceptance for the broader representation requires fresh before/after native
 and allocation/RSS measurements at 1M/4M elements, indexing, iteration, callback
 traversal and sorting; semantic parity through the boundaries above; and review
 of the measured costs of boxed generic paths and small/empty lists. #142 and
 #87 remain open. Broad representation changes must remain unmerged until the
 parent reviews the evidence and migration plan.
+
+## Verification
+
+The bounded slice passes runtime unit/differential tests, called native cases,
+native fault/source-frame/cancellation checks, standalone emission/execution,
+the full runtime race suite, the complete compiler suite, and routine formatting, vet,
+lint, repository invariants, unit, standard-source, examples and license gates.
+`make verify` additionally checks generated documentation. Four Decimal/reference
+artifacts are stale on both this branch and the unmodified `93fcb4fe` worktree:
+`documentation/standard-library/reference/{decimal,numbers}.md` and
+`website/static/stdlib.{md,json}`. This slice does not change standard declarations
+or generated API references. That existing gate failure remains separate from
+the numeric-storage work.

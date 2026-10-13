@@ -4,6 +4,23 @@ import panic from "@std/faults.ms"
 fn update[T](values: List[T], value: T) -> Unit:
     values.with_value(index: 0, value: value)
 
+test "callback snapshots retain callable values":
+    let seen: List[Int] = []
+    let original = fn() -> Int:
+        seen.append(1)
+        return 7
+    let replacement = fn() -> Int:
+        seen.append(2)
+        return 9
+    let functions = [original, original]
+    functions.for_each(
+        fn(value):
+            seen.append(value())
+            functions.fill(value: replacement, start: 0, end: 2)
+    )
+    if not (seen == [1, 7, 1, 7] and functions.first().unwrap()() == 9):
+        return panic("snapshot lost function values")
+
 test "fill copy and reverse detach loop snapshots":
     let filled = [1, 2, 3]
     let copied = [1, 2, 3]
