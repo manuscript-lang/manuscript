@@ -72,10 +72,10 @@ func TestStandardLibraryFaults(t *testing.T) {
 		"panic unwinds Closeable":         "intentional stdlib panic",
 		"absent Optional unwrap faults":   "called Optional.unwrap() on none",
 		"sealed builder mutation faults":  "builder is sealed",
-		"zero queue capacity faults":      "Queue capacity must be positive",
-		"negative queue capacity faults":  "Queue capacity must be positive",
+		"zero queue capacity faults":      "Queue: capacity must be between 1 and 9223372036854775807",
+		"negative queue capacity faults":  "Queue: capacity must be between 1 and 9223372036854775807",
 		"stale synchronized guard faults": "Synchronized guard is closed",
-		"invalid list slice faults":       "invalid half-open slice bounds",
+		"invalid list slice faults":       "List.slice: start/end must satisfy",
 		"negative split limit faults":     "split: max_parts must be nonnegative, found -1",
 		"negative replace limit faults":   "replace: max_replacements must be nonnegative, found -1",
 	}

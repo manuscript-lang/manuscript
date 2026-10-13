@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
+
 - Fix standard-library data bugs: `String.upper()`/`lower()` use full Unicode case mapping (`ß` to `SS`, final sigma, `İ`); negative `split`/`replace` limits fault with the operation and parameter; `bigint.parse(max_digits: 0)` is a real zero budget; TOML and YAML parse errors report the offending line and column.
 - Update the VS Code language client and packaging dependencies; the extension now requires VS Code 1.91 or newer.
 

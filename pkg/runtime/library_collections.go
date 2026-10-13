@@ -1,7 +1,6 @@
 package msruntime
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -135,7 +134,7 @@ func init() {
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
-			return Panic(fmt.Sprintf("list update index out of range; the list has %d elements, so use an index from %d to %d (negative indexes count from the end)", len(items), -len(items), len(items)-1))
+			return libraryIndexFault("List.with_value", len(items), a[1].(int64))
 		}
 		items[i] = a[2]
 		return a[0]
@@ -145,7 +144,7 @@ func init() {
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
-			return Panic(fmt.Sprintf("list removal index out of range; the list has %d elements, so use an index from %d to %d (negative indexes count from the end)", len(items), -len(items), len(items)-1))
+			return libraryIndexFault("List.without", len(items), a[1].(int64))
 		}
 		copy(items[i:], items[i+1:])
 		items[len(items)-1] = nil
@@ -222,8 +221,11 @@ func init() {
 	add("with_values", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("delete_count", "Int"), p("replacement", "List[T]")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		start, count := a[1].(int64), a[2].(int64)
-		if start < 0 || start > int64(len(items)) || count < 0 || count > int64(len(items))-start {
-			return Panic("invalid list replacement bounds")
+		if start < 0 || start > int64(len(items)) {
+			return libraryRangeFault("List.with_values", "start", start, 0, int64(len(items)))
+		}
+		if count < 0 || count > int64(len(items))-start {
+			return libraryRangeFault("List.with_values", "delete_count", count, 0, int64(len(items))-start)
 		}
 		spliceList(a[0].(*List), int(start), int(count), a[3].(*List))
 		return a[0]
@@ -231,7 +233,7 @@ func init() {
 	add("fill", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		s, e := a[2].(int64), a[3].(int64)
-		librarySlice(len(items), s, e)
+		librarySlice("List.fill", len(items), s, e)
 		out := items
 		for i := s; i < e; i++ {
 			CheckCancelled(ctx)
@@ -242,9 +244,9 @@ func init() {
 	add("copy_within", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("target", "Int"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		t, s, e := a[1].(int64), a[2].(int64), a[3].(int64)
-		librarySlice(len(items), s, e)
+		librarySlice("List.copy_within", len(items), s, e)
 		if t < 0 || t > int64(len(items)) {
-			return Panic("invalid copy target")
+			return libraryRangeFault("List.copy_within", "target", t, 0, int64(len(items)))
 		}
 		copy(items[t:], items[s:e])
 		return a[0]
