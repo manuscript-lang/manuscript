@@ -96,13 +96,30 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 		"@std/time.ms#Timestamp":   "    fn shift(duration: Duration) -> Result[Timestamp, TimeError]",
 		"@std/collections.ms#Map":  "type Map[T: Hashable, U]:",
 		"@std/collections.ms#List": "    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]",
-		"@std/bytes.ms#Bytes":      "    values: List[Int]",
+		"@std/bytes.ms#Bytes":      "    fn values() -> List[Int]",
 		"prelude#String":           "    fn to_bytes() -> Bytes",
 	} {
 		if !strings.Contains(exports[key].Declaration, want) {
 			t.Errorf("%s lost source syntax %q: %s", key, want, exports[key].Declaration)
 		}
 	}
+}
+
+func TestBytesValuesDocumentationIsAnOperation(t *testing.T) {
+	for _, module := range StandardLibrary() {
+		if module.Path != "@std/bytes.ms" {
+			continue
+		}
+		for _, d := range module.Declarations {
+			if d.Name == "Bytes" {
+				if len(d.Fields) != 0 || !slices.Contains(d.Operations, "values: fn()->List[Int]") {
+					t.Fatalf("Bytes values must be callable, not a data field: %+v", d)
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("missing Bytes documentation")
 }
 
 func TestModuleDocumentationRetainsDefaults(t *testing.T) {

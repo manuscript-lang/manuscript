@@ -5,6 +5,28 @@ import (
 	"testing"
 )
 
+func TestNativeDispatchBoundBytesValues(t *testing.T) {
+	ctx := RootExecution()
+	data := Bytes{[]byte{0, 1, 255}}
+	bound := NativeMemberResult(data, "values", "").(Function)
+	if len(bound.Labels) != 0 || bound.Result != "@std/List[Int]" {
+		t.Fatalf("unexpected callable: %#v", bound)
+	}
+	first := Invoke(ctx, bound, nil).(*List)
+	if !Equal(first, &List{Type: "@std/List[Int]", Items: []Value{int64(0), int64(1), int64(255)}}) {
+		t.Fatalf("unexpected byte extraction: %#v", first)
+	}
+	first.Items[0] = int64(99)
+	if got := Invoke(ctx, bound, nil).(*List); got.Items[0] != int64(0) || data.Items[0] != 0 {
+		t.Fatal("byte extraction aliases storage")
+	}
+	cancelledContext, cancel := context.WithCancel(ctx.Context)
+	cancel()
+	if _, ok := recovered(func() { Invoke(&Execution{Context: cancelledContext}, bound, nil) }).(cancelled); !ok {
+		t.Fatal("native byte extraction ignored cancellation")
+	}
+}
+
 func TestNativeDispatchBoundList(t *testing.T) {
 	ctx := RootExecution()
 	list := &List{Type: "@std/List[@std/Optional[Int]]", Items: []Value{optional("Int", int64(1), true)}}

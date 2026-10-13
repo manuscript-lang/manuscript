@@ -88,6 +88,25 @@ test "methods":
 	}
 }
 
+func TestBytesValuesNavigation(t *testing.T) {
+	source := `import Bytes from "@std/bytes.ms"
+import List from "@std/collections.ms"
+fn extract(data: Bytes) -> List[Int]:
+    let bound: fn() -> List[Int] = data.values
+    return data.values()
+`
+	result := compiler.CompileSource("bytes-values.ms", source, compiler.Options{AnalyzeOnly: true})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for _, offset := range []int{strings.Index(source, "values\n"), strings.Index(source, "values()")} {
+		nav, ok := tooling.NavigationAt(result.Program, "bytes-values.ms", offset)
+		if !ok || nav.Definition.File != "@std/bytes.ms" || !strings.Contains(nav.Hover, "fn()->List[Int]") {
+			t.Fatalf("Bytes.values navigation lost callable signature: %#v", nav)
+		}
+	}
+}
+
 func TestCommonErrorNavigation(t *testing.T) {
 	source := `import Error from "@std/errors.ms"
 import JsonError from "@std/json.ms"
