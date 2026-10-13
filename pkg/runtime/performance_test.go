@@ -75,7 +75,7 @@ func TestStringIndexingMatchesScalars(t *testing.T) {
 		runes := []rune(input)
 		for s := 0; s <= len(runes); s++ {
 			for e := s; e <= len(runes); e++ {
-				if got := libraryPlain(t, "string/slice", input, int64(s), int64(e)); got != Value(string(runes[s:e])) {
+				if got := librarySuccess(t, libraryPlain(t, "string/slice", input, int64(s), int64(e))); got != Value(string(runes[s:e])) {
 					t.Fatalf("slice %q %d:%d = %#v", input, s, e, got)
 				}
 			}
@@ -85,7 +85,7 @@ func TestStringIndexingMatchesScalars(t *testing.T) {
 
 func TestBytesSliceSharesWithoutAliasingAppends(t *testing.T) {
 	data := Bytes{[]byte("abcdef")}
-	head := libraryPlain(t, "bytes/slice", data, int64(0), int64(3)).(Bytes)
+	head := librarySuccess(t, libraryPlain(t, "bytes/slice", data, int64(0), int64(3))).(Bytes)
 	builder := newBuilder("@std/BytesBuilder")
 	builder.Operation("concat").Body(RootExecution(), []Value{head})
 	builder.Operation("append").Body(RootExecution(), []Value{int64('z')})

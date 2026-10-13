@@ -201,7 +201,7 @@ test "list methods mutate explicit clones and remain typed":
         return panic(message: "check failed")
     if not (original.clone().without(index: 1) == [3, 2, 1]):
         return panic(message: "check failed")
-    if not (original.slice(start: 1, end: 3) == [1, 2]):
+    if not (original.slice(start: 1, end: 3).unwrap() == [1, 2]):
         return panic(message: "check failed")
     if not (original.clone().reverse() == [1, 2, 1, 3]):
         return panic(message: "check failed")
@@ -437,13 +437,11 @@ test "string methods use Unicode scalars":
         return panic(message: "check failed")
     if not ("é🙂é".last_index_of(value: "z") == absent):
         return panic(message: "check failed")
-    if not ("é🙂é".slice(start: -2, end: 99) == "🙂é"):
+    if not ("é🙂é".slice(start: -2, end: 3).unwrap() == "🙂é"):
         return panic(message: "check failed")
-    if not ("é🙂é".slice(start: 2, end: 1) == ""):
+    if not ("é🙂é".slice(start: 2, end: 1).is_error()):
         return panic(message: "check failed")
-    if not ("é🙂é".substring(start: 2, end: 1) == "🙂"):
-        return panic(message: "check failed")
-    if not ("é🙂é".substring(start: -99, end: 1) == "é"):
+    if not ("é🙂é".slice(start: -99, end: 1).is_error()):
         return panic(message: "check failed")
     if not ("é🙂".scalar_length() == 2):
         return panic(message: "check failed")
@@ -512,7 +510,7 @@ test "bytes have analogous immutable operations":
         return panic(message: "check failed")
     if not (data.ends_with(value: Bytes([3, 2]))):
         return panic(message: "check failed")
-    if not (data.slice(start: 1, end: 3) == Bytes([2, 3])):
+    if not (data.slice(start: 1, end: 3).unwrap() == Bytes([2, 3])):
         return panic(message: "check failed")
     if not (data.reverse() == Bytes([2, 3, 2, 1])):
         return panic(message: "check failed")

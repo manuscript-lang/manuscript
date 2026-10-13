@@ -4,6 +4,8 @@
 export type CollectionError:
     case InvalidInput
     case LimitExceeded
+    # A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
+    case OutOfRange
 
 # An ordered collection of values with indexing, iteration, and transformation operations.
 export type List[T]:
@@ -32,8 +34,8 @@ export type List[T]:
     # Compatibility spelling for remove; mutates and returns this list.
     fn without(index: Int) -> List[T]:
     # Returns a new shallow List containing [start, end); outer storage is independent.
-    # Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
-    fn slice(start: Int, end: Int) -> List[T]:
+    # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
+    fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     # Copies the first min(count, length) elements into fresh shallow List storage.
     # Leaves the receiver unchanged; negative count is a programming fault.
     fn take(count: Int) -> List[T]:

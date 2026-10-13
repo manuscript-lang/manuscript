@@ -360,7 +360,6 @@
     "@std/intrinsics.ms/StringOperations/slice_scalars": "string/slice_scalars",
     "@std/intrinsics.ms/StringOperations/split": "string/split",
     "@std/intrinsics.ms/StringOperations/starts_with": "string/starts_with",
-    "@std/intrinsics.ms/StringOperations/substring": "string/substring",
     "@std/intrinsics.ms/StringOperations/trim": "string/trim",
     "@std/intrinsics.ms/StringOperations/trim_end": "string/trim_end",
     "@std/intrinsics.ms/StringOperations/trim_start": "string/trim_start",

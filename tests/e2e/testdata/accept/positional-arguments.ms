@@ -165,7 +165,7 @@ test "methods native APIs function values and contextual labels":
     if memo.get(1).unwrap() != 7 or memo.get(2).unwrap() != 8: return panic(
         "native multi parameter methods"
     )
-    if "abcd".slice(1, 3) != "bc": return panic("native string arguments")
+    if "abcd".slice(1, 3).unwrap() != "bc": return panic("native string arguments")
 
 test "written order before omitted defaults and body":
     let counter = Counter()
