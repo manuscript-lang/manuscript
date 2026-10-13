@@ -46,7 +46,7 @@ interface Commands:
 
 ## CpuUsage {data-api-kind="Record"}
 
-CPU time consumed by the current process.
+Cumulative CPU time consumed by the current process, in integer microseconds.
 
 ```manuscript
 type CpuUsage:
@@ -56,7 +56,7 @@ type CpuUsage:
 
 ## MemoryUsage {data-api-kind="Record"}
 
-Memory statistics for the current process.
+Memory statistics for the current process; every field is bytes.
 
 ```manuscript
 type MemoryUsage:
@@ -145,7 +145,10 @@ type ProcessInfo:
 
 ## ResourceUsage {data-api-kind="Record"}
 
-Kernel resource counters for the current process.
+Kernel resource counters for the current process. CPU times are integer microseconds;
+max_resident_bytes is bytes; other fields are counts, not durations or byte totals.
+Filesystem reads/writes count native block I/O on Unix and I/O operations on Windows.
+Unavailable Windows fault/context-switch counters are zero.
 
 ```manuscript
 type ResourceUsage:

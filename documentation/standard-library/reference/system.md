@@ -8,7 +8,8 @@ Import each required symbol with `import Name from "@std/system.ms"`.
 
 ## CpuInfo {data-api-kind="Record"}
 
-Model, speed, and cumulative time counters for one logical CPU.
+Model, integer MHz speed (fractional MHz truncated), and cumulative integer millisecond
+counters for one logical CPU. irq includes hardware and software interrupt time.
 
 ```manuscript
 type CpuInfo:
@@ -94,7 +95,8 @@ type SystemInfo:
 
 ## SystemMetrics {data-api-kind="Record"}
 
-Host memory, uptime, load, and available parallelism measurements.
+Host measurements: memory fields are bytes; load_average is 1/5/15-minute load
+(three zeros on Windows); available_parallelism is a usable logical-processor count.
 
 ```manuscript
 type SystemMetrics:
@@ -121,7 +123,8 @@ type UserInfo:
 
 ## constants {data-api-kind="Function"}
 
-Returns operating-system constants by name.
+Returns native signal/error/loader/priority constants by name.
+Names and values vary by host; missing entries do not imply a portable numeric default.
 
 ```manuscript
 fn constants() -> Map[String, Int]:
@@ -145,7 +148,7 @@ fn end_of_line() -> String:
 
 ## endianness {data-api-kind="Function"}
 
-Returns `little` or `big` for the host's native byte order.
+Returns exactly `LE` or `BE` for the host's native byte order.
 
 ```manuscript
 fn endianness() -> String:
@@ -153,7 +156,7 @@ fn endianness() -> String:
 
 ## os_type {data-api-kind="Function"}
 
-Returns the host operating-system family.
+Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their Go OS name.
 
 ```manuscript
 fn os_type() -> String:

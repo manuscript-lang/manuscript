@@ -1,5 +1,13 @@
 # Runtime lessons
 
+### HTTP field folding must not erase map entries
+
+Verified: source Map keys use exact equality, while HTTP field names fold ASCII case. Passing case-equivalent outgoing entries through `Header.Set` silently replaces earlier values, including separate `Set-Cookie` fields. Append in source insertion order after validating all fields. `Header.Values(key)` also canonicalizes lookup: when converting an existing host map, index its exact key to avoid substituting another spelling's values.
+
+Apply when: changing HTTP adapters, repeated fields, or header representation bridges.
+Evidence: [header regressions](../pkg/runtime/library_http_header_transport_test.go), [called source checks](../tests/e2e/testdata/stdlib/http-headers.ms), and [header contracts](../documentation/standard-library/http.md#header-lookup-and-repeated-values).
+Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered byte input, streaming text input, exact Map lookup, and existing domain errors distinct. Public representation unification needs a separate migration decision.
+
 ### Empty cleanup omission needs callable ownership evidence
 
 Verified: lexical cleanup lists return to empty after lowering a `with` scope;
@@ -72,6 +80,14 @@ Decision: keep typed diagnostic information in ordinary domain error fields. The
 Apply when: adding or changing fallible standard APIs, native adapters, or error propagation.
 Evidence: [error contracts](../documentation/standard-library/contracts.md#errors); [native identity and stream-cause regressions](../pkg/runtime/library_test.go); [compiled matching and mapping](../tests/e2e/testdata/accept/library-errors.ms).
 Verify: native error values carry the declared Result's error identity; unrelated domains cannot propagate implicitly; stream helpers preserve the original IoError case and payload.
+
+### Host API names do not establish units or write guarantees
+
+Verified: ProcessControl.monotonic_time returns time.Since(runtime initialization) as nanoseconds and shares the process uptime origin; host uptime and Clock instants have different origins/domains. FileHandle count-returning writes loop to complete the input, just like Unit-returning native stream writes. A count result does not imply partial success, and failures do not retain a prefix count. The file stream adapter preserves Closed/InvalidInput but translates other filesystem cases to IoError.Failed.
+
+Apply when: documenting host contracts or proposing typed time, flag, stream, or error adapters. Trace validator/conversion/result code before inferring semantics from names or result shapes; retain explicit migration decisions for public replacements.
+Evidence: [host contracts](../documentation/standard-library/contracts.md#native-io-success-and-eof), [process accounting](../documentation/standard-library/process.md#process-time-and-accounting), [nanosecond bracketing](../pkg/runtime/library_host_contract_test.go), and [called host contracts](../tests/e2e/testdata/stdlib/host-contracts.ms).
+Verify: bracket raw monotonic readings against elapsed nanoseconds; check multi-chunk byte counts, sequential/positional EOF, shared adapter close and concrete domain errors in compiled tests.
 
 ### Native constructor arguments need not be readable fields
 

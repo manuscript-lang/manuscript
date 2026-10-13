@@ -26,7 +26,8 @@ impl Error for CompressionError:
 
 ## compress {data-api-kind="Function"}
 
-Compresses bytes using `gzip`, `zlib`, or `deflate` at the requested level.
+Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
+Other formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.
 `max_bytes` bounds the encoded output when supplied.
 
 ```manuscript
@@ -35,7 +36,8 @@ fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = 
 
 ## decompress {data-api-kind="Function"}
 
-Decompresses supported data and stops when the supplied output limit is reached.
+Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
+Stops when the supplied output limit is reached.
 
 ```manuscript
 fn decompress(data: Bytes, format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:

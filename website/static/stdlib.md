@@ -79,7 +79,7 @@ type ArchiveLimits:
 
 **Function**
 
-Encodes entries as `zip` or `tar` bytes. `max_bytes` bounds output when supplied.
+Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
 
 ```manuscript
 fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
@@ -89,7 +89,8 @@ fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = 
 
 **Function**
 
-Decodes `zip` or `tar` bytes and applies each supplied entry and total-size limit.
+Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
+Applies each supplied entry and total-size limit.
 
 ```manuscript
 fn unpack(data: Bytes, format: String, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
@@ -294,7 +295,8 @@ Import each required symbol with `import Name from "@std/cli.ms"`.
 
 **Function**
 
-Returns process arguments, excluding the executable path.
+Returns the host-supplied startup arguments, excluding the executable path.
+Repeated calls share the same mutable list; mutations do not rewrite native argv.
 
 ```manuscript
 fn arguments() -> List[String]:
@@ -304,7 +306,8 @@ fn arguments() -> List[String]:
 
 **Function**
 
-Returns the process environment as a map of variable names to values.
+Returns the startup environment snapshot, not the live process environment.
+Repeated calls share the same mutable map; mutations do not call set_environment.
 
 ```manuscript
 fn environment() -> Map[String, String]:
@@ -560,7 +563,8 @@ impl Error for CompressionError:
 
 **Function**
 
-Compresses bytes using `gzip`, `zlib`, or `deflate` at the requested level.
+Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
+Other formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.
 `max_bytes` bounds the encoded output when supplied.
 
 ```manuscript
@@ -571,7 +575,8 @@ fn compress(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = 
 
 **Function**
 
-Decompresses supported data and stops when the supplied output limit is reached.
+Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
+Stops when the supplied output limit is reached.
 
 ```manuscript
 fn decompress(data: Bytes, format: String, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
@@ -623,7 +628,8 @@ fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) -> Res
 
 **Function**
 
-Computes an HMAC using `sha256`, `sha384`, or `sha512`.
+Computes an HMAC using exactly `sha256`, `sha384`, or `sha512` (case-sensitive).
+Other algorithms return CryptoError.Unsupported.
 
 ```manuscript
 fn hmac(key: Bytes, data: Bytes, algorithm: String) -> Result[Bytes, CryptoError]:
@@ -1113,7 +1119,8 @@ impl Error for FileSystemError:
 
 **Record**
 
-Capacity and free-space statistics for the filesystem containing a path.
+Capacity/free-space statistics: block_size is bytes, blocks/free/available are counts
+in those blocks, and files/files_free are native file-node counts (zero if unavailable).
 
 ```manuscript
 type FileSystemInfo:
@@ -1181,7 +1188,8 @@ interface TemporaryDirectory:
 
 **Function**
 
-Returns host filesystem flag, mode, and permission constants by name.
+Returns this host's filesystem flag, mode, and permission constants by name.
+Names and values vary by host; absent entries are not supported constants or portable enum cases.
 
 ```manuscript
 fn constants() -> Map[String, Int]:
@@ -1288,7 +1296,8 @@ Import each required symbol with `import Name from "@std/http.ms"`.
 
 **Record**
 
-Buffered HTTP response metadata and body.
+Buffered HTTP response metadata and body. Header names have canonical spelling;
+Map lookup is case-sensitive. Lists preserve separate values in received order.
 
 ```manuscript
 type ClientResponse:
@@ -1302,6 +1311,7 @@ type ClientResponse:
 **Interface**
 
 Reusable HTTP client with connection pooling and explicit response limits.
+Outbound case-equivalent header keys append values in Map insertion order.
 
 ```manuscript
 interface HttpClient:
@@ -1354,6 +1364,8 @@ impl Error for HttpError:
 **Interface**
 
 One streaming server exchange. Read or write incrementally and close when done.
+Received header names have canonical spelling; Map lookup is case-sensitive.
+Sending case-equivalent names appends each list in Map insertion order.
 
 ```manuscript
 interface HttpExchange:
@@ -1389,6 +1401,8 @@ type HttpRequest:
 **Record**
 
 Buffered response returned by the simple HTTP server handler.
+Case-equivalent header keys emit separate values in Map insertion order.
+Use HttpExchange.send_headers for repeated values under one exact Map key.
 
 ```manuscript
 type HttpResponse:
@@ -1431,7 +1445,8 @@ type HttpServerOptions:
 
 **Interface**
 
-Streaming response body returned by HTTP client operations.
+Streaming response body returned by HTTP client operations. Header names have
+canonical spelling; Map lookup is case-sensitive. Lists keep received order.
 
 ```manuscript
 interface ResponseBody:
@@ -1461,7 +1476,8 @@ interface File:
 
 **Interface**
 
-Opens file resources using the current host's default filesystem.
+Opens read-only file resources using the current host's default filesystem.
+Native open failures (including missing paths and permission denial) become IoError.Unavailable.
 
 ```manuscript
 interface Files:
@@ -1505,7 +1521,9 @@ interface ReadStream:
 
 **Interface**
 
-A writable byte stream. Flush before relying on buffered data being delivered.
+A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
+Buffering/flush depends on the implementation: native stdout/stderr are unbuffered (flush is a no-op),
+while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
 
 ```manuscript
 interface WriteStream:
@@ -2574,7 +2592,7 @@ interface Commands:
 
 **Record**
 
-CPU time consumed by the current process.
+Cumulative CPU time consumed by the current process, in integer microseconds.
 
 ```manuscript
 type CpuUsage:
@@ -2586,7 +2604,7 @@ type CpuUsage:
 
 **Record**
 
-Memory statistics for the current process.
+Memory statistics for the current process; every field is bytes.
 
 ```manuscript
 type MemoryUsage:
@@ -2681,7 +2699,10 @@ type ProcessInfo:
 
 **Record**
 
-Kernel resource counters for the current process.
+Kernel resource counters for the current process. CPU times are integer microseconds;
+max_resident_bytes is bytes; other fields are counts, not durations or byte totals.
+Filesystem reads/writes count native block I/O on Unix and I/O operations on Windows.
+Unavailable Windows fault/context-switch counters are zero.
 
 ```manuscript
 type ResourceUsage:
@@ -2985,7 +3006,8 @@ Import each required symbol with `import Name from "@std/system.ms"`.
 
 **Record**
 
-Model, speed, and cumulative time counters for one logical CPU.
+Model, integer MHz speed (fractional MHz truncated), and cumulative integer millisecond
+counters for one logical CPU. irq includes hardware and software interrupt time.
 
 ```manuscript
 type CpuInfo:
@@ -3081,7 +3103,8 @@ type SystemInfo:
 
 **Record**
 
-Host memory, uptime, load, and available parallelism measurements.
+Host measurements: memory fields are bytes; load_average is 1/5/15-minute load
+(three zeros on Windows); available_parallelism is a usable logical-processor count.
 
 ```manuscript
 type SystemMetrics:
@@ -3112,7 +3135,8 @@ type UserInfo:
 
 **Function**
 
-Returns operating-system constants by name.
+Returns native signal/error/loader/priority constants by name.
+Names and values vary by host; missing entries do not imply a portable numeric default.
 
 ```manuscript
 fn constants() -> Map[String, Int]:
@@ -3142,7 +3166,7 @@ fn end_of_line() -> String:
 
 **Function**
 
-Returns `little` or `big` for the host's native byte order.
+Returns exactly `LE` or `BE` for the host's native byte order.
 
 ```manuscript
 fn endianness() -> String:
@@ -3152,7 +3176,7 @@ fn endianness() -> String:
 
 **Function**
 
-Returns the host operating-system family.
+Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their Go OS name.
 
 ```manuscript
 fn os_type() -> String:
