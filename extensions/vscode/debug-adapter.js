@@ -63,7 +63,7 @@ function mapName(name) {
 }
 // Resolve source identifiers and simple record/list access without rewriting
 // quoted text or member names. Complex expressions keep Delve's native semantics.
-function rewriteExpression(expression, variables, metadata, listFields = new Map()) {
+function rewriteExpression(expression, variables, metadata) {
   const visible=new Map();for(const variable of variables) {const local=metadata.get(variable.name);if(local) visible.set(local.name,variable);}
   const simple=/^([A-Za-z_][A-Za-z0-9_]*)(?:\.([A-Za-z_][A-Za-z0-9_]*)|\[(\d+)\])?$/.exec(expression.trim());
   if(simple && visible.has(simple[1])) {
@@ -71,7 +71,7 @@ function rewriteExpression(expression, variables, metadata, listFields = new Map
     // Delve's .(data) exposes the concrete interface value without depending
     // on runtime package names, and retains pointers for collection access.
     if(simple[2] && kind==='Record') return `${variable.name}.(data).Fields[${JSON.stringify(simple[2])}]`;
-    if(simple[3] && ['List','Set','Bytes'].includes(kind)) return `${variable.name}.(data).${kind === 'List' ? listFields.get(variable.name) || 'Items' : 'Items'}[${simple[3]}]`;
+    if(simple[3] && ['List','Set','Bytes'].includes(kind)) return `${variable.name}.(data).${kind==='List'?(variable.listField||'Items'):'Items'}[${simple[3]}]`;
     if(!simple[2] && !simple[3]) return variable.name;
   }
   let result='',at=0;
@@ -83,12 +83,11 @@ function rewriteExpression(expression, variables, metadata, listFields = new Map
   }
   return result;
 }
-// The active List header owns one backing representation. Legacy boxed Lists
-// have no kind field; use their Items. Empty typed Lists expose no source entries.
-function listBackingField(children) {
-  const kind = children.find(field => field.name === 'kind')?.value || '0';
-  const numeric = /^(?:[^0-9]*\()?([0-4])(?:\)?(?:\s.*)?)$/.exec(kind);
-  return ['Items', 'ints', 'floats', 'bools', 'strings'][numeric ? Number(numeric[1]) : 0];
+function listStorageField(children) {
+  const kind=children.find(v=>v.name==='kind');
+  const fields=['Items','ints','floats','bools','strings'];
+  const tag=kind?Number.parseInt(kind.value,10):0;
+  return fields[tag] || 'Items';
 }
 class ManuscriptAdapter {
   constructor(output, options = {}) {
@@ -157,7 +156,9 @@ class ManuscriptAdapter {
     if (kind === 'Unit') { result.value = 'unit'; result.type = 'Unit'; result.variablesReference = 0; }
     else if (kind === 'OperationId') {const number=/number: (\d+)/.exec(result.value);result.value=number?`Operation ${number[1]}`:'OperationId';result.variablesReference=0;}
     else if (kind) {
-      const length = /len: (\d+)/.exec(result.value);
+      // A typed List header contains several nil slices. The first native len
+      // belongs to the boxed fallback, not necessarily the active backing.
+      const length = kind==='List' ? undefined : /len: (\d+)/.exec(result.value);
       if (kind === 'Alternative') {
         const tag = /Tag: "([^"]+)"/.exec(result.value); result.value = tag ? tag[1] : result.type;
       } else result.value = `${result.type || kind}${length ? ` (${length[1]} items)` : ''}`;
@@ -167,7 +168,7 @@ class ManuscriptAdapter {
     return result;
   }
   async children(ref, args = {}) { return (await this.native('variables', { ...args, variablesReference: ref })).variables || []; }
-  async aggregateFields(ref) {
+  async valueFields(ref) {
     let children = await this.children(ref);
     for (let depth = 0; depth < 4 && children.length === 1 && ['data', '', '*'].includes(children[0].name) && children[0].variablesReference; depth++) {
       children = await this.children(children[0].variablesReference);
@@ -175,17 +176,18 @@ class ManuscriptAdapter {
     return children;
   }
   async valueChildren(handle, args) {
-    const children = await this.aggregateFields(handle.ref);
+    const children=await this.valueFields(handle.ref);
     if (handle.kind === 'Execution') {
       const names = { Context: 'Cancellation context', Lifetime: 'Work lifetime', Owners: 'Scheduler services', TaskGroups: 'Task groups', HostServices: 'HTTP services' };
       return children.filter(v => names[v.name]).map(v => ({ ...v, name: names[v.name] }));
     }
     const serviceFields={TaskGroup:{active:'Active tasks',sealed:'Joined',closing:'Closing',closed:'Closed',failure:'Execution failure'},Task:{id:'Operation',value:'Result',committed:'Completed',group:'Task group'},PriorityQueue:{capacity:'Capacity',items:'Queued priorities',compare:'Comparator'},Queue:{capacity:'Capacity',items:'Queued values'},Synchronized:{value:'Value',holder:'Active guard'},SynchronizedGuard:{cell:'Synchronized value'},Scheduler:{limit:'Admission limit',active:'Active operations',history:'Recent outcomes',closing:'Closing',closed:'Closed'}}[handle.kind];
     if(serviceFields) return children.filter(v=>serviceFields[v.name]).map(v=>this.render(v,serviceFields[v.name]));
-    const fieldName = handle.kind === 'List' ? listBackingField(children) : { Record: 'Fields', Alternative: 'Fields', Set: 'Items', Bytes: 'Items', Map: 'Entries', View: 'Receiver' }[handle.kind];
+    const fieldName = { Record: 'Fields', Alternative: 'Fields', List: listStorageField(children), Set: 'Items', Bytes: 'Items', Map: 'Entries', View: 'Receiver' }[handle.kind];
     if (!fieldName) return children.map(v => this.render(v));
     const field = children.find(v => v.name === fieldName);
-    if (!field || !field.variablesReference) return handle.kind === 'List' ? [] : children.map(v => this.render(v));
+    if (handle.kind === 'List' && field && !field.variablesReference) return [];
+    if (!field || !field.variablesReference) return children.map(v => this.render(v));
     if (handle.kind === 'View') {
       const receiver = this.render(field, 'Receiver', handle.sourceType);
       const nested = this.handles.get(receiver.variablesReference);
@@ -261,15 +263,13 @@ class ManuscriptAdapter {
           const localScope = scopes.scopes?.find(s => s.name === 'Locals');
           if (localScope) {
             const locals = await this.children(localScope.variablesReference);
-            const listFields = new Map();
-            const indexed = /^([A-Za-z_][A-Za-z0-9_]*)\[\d+\]$/.exec(args.expression.trim());
-            if (indexed) {
-              const variable = locals.find(value => this.locals.get(value.name)?.name === indexed[1]);
-              if (variable && runtimeKind(variable) === 'List' && variable.variablesReference) {
-                listFields.set(variable.name, listBackingField(await this.aggregateFields(variable.variablesReference)));
+            const indexed=/^([A-Za-z_][A-Za-z0-9_]*)\[\d+\]$/.exec(args.expression.trim());
+            if(indexed) for(const variable of locals) {
+              if(this.locals.get(variable.name)?.name===indexed[1] && runtimeKind(variable)==='List' && variable.variablesReference) {
+                variable.listField=listStorageField(await this.valueFields(variable.variablesReference));
               }
             }
-            args.expression = rewriteExpression(args.expression, locals, this.locals, listFields);
+            args.expression = rewriteExpression(args.expression, locals, this.locals);
 
           }
         }

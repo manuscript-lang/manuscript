@@ -1,6 +1,9 @@
 package msruntime
 
-import "iter"
+import (
+	"iter"
+	"slices"
+)
 
 // ListRange captures a backing header and its initial length without copying
 // elements. It deliberately retains the old array across receiver reallocation.
@@ -668,4 +671,47 @@ func InitListString(list *List, index int, value string) {
 	} else {
 		list.Set(index, value)
 	}
+}
+
+// EqualAt compares primitive captured cells without crossing a boxed boundary.
+// Composite elements retain their selected lexical equality implementation.
+func (r ListRange) EqualAt(ctx *Execution, index int, value Value, scope TypeScope) bool {
+	if view, ok := value.(View); ok {
+		value = view.Receiver
+	}
+	switch r.list.kind {
+	case listInt:
+		v, ok := value.(int64)
+		return ok && r.list.ints[index] == v
+	case listFloat:
+		v, ok := value.(float64)
+		return ok && r.list.floats[index] == v
+	case listBool:
+		v, ok := value.(bool)
+		return ok && r.list.bools[index] == v
+	case listString:
+		v, ok := value.(string)
+		return ok && r.list.strings[index] == v
+	}
+	return EqualSelected(ctx, r.Get(index), value, scope)
+}
+
+// Primitive equality precedes custom implementation dispatch in equal. When
+// both captured headers have matching primitive backing, compare directly
+// instead of allocating a Value payload box for every corresponding cell.
+func equalPrimitiveListRanges(left, right ListRange) (bool, bool) {
+	if left.list.kind != right.list.kind {
+		return false, false
+	}
+	switch left.list.kind {
+	case listInt:
+		return slices.Equal(left.list.ints, right.list.ints), true
+	case listFloat:
+		return slices.Equal(left.list.floats, right.list.floats), true
+	case listBool:
+		return slices.Equal(left.list.bools, right.list.bools), true
+	case listString:
+		return slices.Equal(left.list.strings, right.list.strings), true
+	}
+	return false, false
 }

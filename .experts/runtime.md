@@ -241,6 +241,16 @@ Body-versus-dispatch comparisons share the bug, so use independent expected valu
 and Go operation oracles. Evidence: [search regression](../pkg/runtime/list_find_mutation_test.go)
 and [called search/view/alias consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms).
 
+Verified: List equality must capture both outer headers before checking lengths
+and invoking element Equal. Reloading live length/cells let user Equal skip a
+mismatch after left shrink, panic after right shrink, extend membership on append,
+or switch arrays after reallocation. Capture retains visible backing writes and
+shallow payload references; eager cloning would also change the contract.
+Evidence: [independent equality mutation oracle](../pkg/runtime/list_equality_mutation_test.go)
+and [native/standalone user Equal consumers](../tests/e2e/testdata/accept/list-equality-mutation.ms).
+Verify both operands under shrink, append with spare capacity, forced growth and
+replacement of later cells, including callback counts and differing tail values.
+
 Verified: primitive storage keeps the mutable slice header on the authoritative
 `*List`, with two allocations for fresh nonempty backing. A captured `ListRange`
 is a traversal header, not another mutable owner. `Items` is only legacy boxed

@@ -185,7 +185,7 @@ func init() {
 			}
 			for i := start; i != end; i += step {
 				CheckCancelled(ctx)
-				if EqualIn(ctx, items.Get(i), a[1]) {
+				if items.EqualAt(ctx, i, a[1], ctx.EqualityScope) {
 					if name == "contains" {
 						return true
 					}

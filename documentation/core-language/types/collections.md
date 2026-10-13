@@ -94,23 +94,6 @@ List removal and shrinking replacement shift elements and shorten the receiver's
 
 Map and Set loops and callbacks retain their membership snapshot contract: additions, removals and replacements do not change that traversal. Protect shared mutation and concurrent reads with `Synchronized`; every alias must use the same lock.
 
-## Primitive storage and memory
-
-Primitive List backing stores each reserved `Int` or `Float` element in 8 bytes,
-each `Bool` in 1 byte, and each `String` reference in 16 bytes on a 64-bit host.
-String text storage is additional and may be shared. A List also has a small
-constant header. Append reserves spare capacity and growth can temporarily keep
-old arrays alive, so retained heap and peak process RSS exceed the element budget.
-Int and Float remain signed 64-bit and binary64; storage does not narrow values.
-
-Passing a List through a generic function, record, Optional, Result, closure, or
-stored operation preserves its mutable identity and backing kind. Generic access
-boxes a primitive only when it crosses the ordinary value boundary. Explicit
-copies preserve shallow references and receive independent backing.
-
-See the [runtime ABI migration](../../contributing/list-storage.md) for Go callers
-and the measured constructor/access/comparator paths.
-
 ### Naming and migration
 
 Use verbs for mutable updates and explicit `.clone()` when a separate mutable result is wanted. `concat`, `filter`, `sorted`, `reversed` and other existing transforms keep their copying contracts; a verb alone does not promise mutation on immutable String or Bytes values. Bytes `with_value` copies byte storage, while Bytes `slice` and `split` may retain immutable views.
@@ -130,6 +113,23 @@ Legacy spellings remain supported compatibility APIs with their original signatu
 Map `add_default` evaluates its value argument normally and inserts only when absent. `add_default_from` calls `create(key:)` once only when absent. Neither replaces an existing value or its insertion position. For a copy, write `map.clone().add_default(...)` explicitly.
 
 All [builder mutations](../../standard-library/builders.md) return Unit; `freeze` returns the sealed result. This convention applies to List, Map, Set, Bytes and String builders and preserves their existing function types. MSL108 recommends equivalent preferred names using checked standard identities, including stored references; user methods and callable fields keep their own contracts. Standard implementations and teaching examples use the preferred names. Compatibility tests intentionally exercise old spellings.
+
+## Primitive storage and memory
+
+Primitive List backing stores each reserved `Int` or `Float` element in 8 bytes,
+each `Bool` in 1 byte, and each `String` reference in 16 bytes on a 64-bit host.
+String text storage is additional and may be shared. A List also has a small
+constant header. Append reserves spare capacity and growth can temporarily keep
+old arrays alive, so retained heap and peak process RSS exceed the element budget.
+Int and Float remain signed 64-bit and binary64; storage does not narrow values.
+
+Passing a List through a generic function, record, Optional, Result, closure, or
+stored operation preserves its mutable identity and backing kind. Generic access
+boxes a primitive only when it crosses the ordinary value boundary. Explicit
+copies preserve shallow references and receive independent backing.
+
+See the [runtime ABI migration](../../contributing/list-storage.md) for Go callers
+and the measured constructor/access/comparator paths.
 
 ## Lookup and updates
 
