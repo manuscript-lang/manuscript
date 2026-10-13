@@ -2,8 +2,7 @@ package compiler
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
+	"go/ast"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -28,23 +27,16 @@ type generator struct {
 	loopCleanup     []int
 	loopLabels      []*loopLabel
 	captures        map[*checker.Binding]string
+	sourceLines     map[string]syntax.Position
 }
 
-func quote(s string) string { return strconv.Quote(s) }
-func stringsGo(values []string) string {
-	var entries []string
-	for _, v := range values {
-		entries = append(entries, quote(v))
-	}
-	return "[]string{" + strings.Join(entries, ",") + "}"
-}
 func (g *generator) temp() string { g.serial++; return fmt.Sprintf("temporary%d", g.serial) }
-func (g *generator) key(t *checker.Type) string {
-	key := quote(checker.TypeKey(t))
+func (g *generator) key(t *checker.Type) ast.Expr {
+	key := textLiteral(checker.TypeKey(t))
 	if !hasTypeVariable(t) {
 		return key
 	}
-	return "rt.ResolveType(" + key + ", typeArgs)"
+	return runtimeCall("ResolveType", key, ident("typeArgs"))
 }
 
 // Only the structure encoded by TypeKey needs substitution. Definitions and
@@ -72,28 +64,29 @@ func hasTypeVariable(t *checker.Type) bool {
 	return false
 }
 
-func (g *generator) typeScope(t *checker.Type) string {
+func (g *generator) typeScope(t *checker.Type) ast.Expr {
 	if t.Kind == "variable" {
-		return "typeScopes[" + quote(t.ID) + "]"
+		return index(ident("typeScopes"), textLiteral(t.ID))
 	}
-	var args []string
+	var args []ast.Expr
 	for _, arg := range t.Args {
 		args = append(args, g.typeScope(arg))
 	}
-	return "rt.TypeScope{Module:" + quote(g.module) + ",Args:[]rt.TypeScope{" + strings.Join(args, ",") + "}}"
+	return composite(runtimeName("TypeScope"), keyed("Module", textLiteral(g.module)), keyed("Args", sliceLiteral(runtimeName("TypeScope"), args...)))
 }
-
-func (g *generator) specialize(symbol *checker.Symbol, args []*checker.Type) string {
-	var types, scopes []string
+func (g *generator) specialize(symbol *checker.Symbol, args []*checker.Type) ast.Expr {
+	var types, scopes []ast.Expr
 	for _, arg := range args {
 		types = append(types, g.key(arg))
 		scopes = append(scopes, g.typeScope(arg))
 	}
-	return "rt.Specialize(" + symbol.ID + ",[]string{" + strings.Join(types, ",") + "},[]rt.TypeScope{" + strings.Join(scopes, ",") + "}...)"
+	result := runtimeCall("Specialize", ident(symbol.ID), sliceLiteral(ident("string"), types...), sliceLiteral(runtimeName("TypeScope"), scopes...))
+	result.Ellipsis = 1
+	return result
 }
-func (g *generator) binding(b *checker.Binding) string {
+func (g *generator) binding(b *checker.Binding) ast.Expr {
 	if name := g.captures[b]; name != "" {
-		return name
+		return ident(name)
 	}
-	return b.ID
+	return ident(b.ID)
 }

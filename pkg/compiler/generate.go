@@ -1,9 +1,8 @@
 package compiler
 
 import (
-	"fmt"
-	"go/format"
-	"strings"
+	"go/ast"
+	"go/token"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
@@ -12,39 +11,49 @@ import (
 // lowerGo consumes checked identities and optimization facts. It never parses
 // source or resolves a type or binding by its spelling.
 func lowerGo(optimized optimizedProgram, entry string, options Options) (string, error) {
-	program := optimized.program
-	g := &generator{program: program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}}
-	var out strings.Builder
-	out.WriteString("package main\nimport (rt \"github.com/manuscript-lang/manuscript/pkg/runtime\";\"os\")\n")
+	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}}
+	return g.printGo(g.file(entry, options))
+}
+
+// file assembles the Go tree; executable source is serialized only by printGo.
+func (g *generator) file(entry string, options Options) *ast.File {
+	program := g.program
+	file := &ast.File{Name: ident("main"), Decls: []ast.Decl{&ast.GenDecl{Tok: token.IMPORT, Specs: []ast.Spec{
+		&ast.ImportSpec{Name: ident("rt"), Path: &ast.BasicLit{Kind: token.STRING, Value: `"github.com/manuscript-lang/manuscript/pkg/runtime"`}},
+		&ast.ImportSpec{Path: &ast.BasicLit{Kind: token.STRING, Value: `"os"`}},
+	}}}}
 	var functions []*checker.Symbol
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindFn || recordDefaults(d) {
 				s := program.Symbols[module.File][d.Name]
 				functions = append(functions, s)
-				out.WriteString("var " + s.ID + " rt.Value\n")
+				file.Decls = append(file.Decls, variable(s.ID, runtimeName("Value"), nil))
 			}
 		}
 	}
-	out.WriteString("func initialize(){\n")
+	var initialize []ast.Stmt
 	for _, s := range functions {
 		g.module = s.Module
-		out.WriteString(s.ID + " = ")
+		var value ast.Expr
 		if len(s.Variables) > 0 {
 			var vars []string
 			for _, v := range s.Variables {
 				vars = append(vars, v.ID)
 			}
-			out.WriteString("rt.Generic{Variables:" + stringsGo(vars) + ", Build:func(typeArgs map[string]string,typeScopes map[string]rt.TypeScope) rt.Function {return ")
-			out.WriteString(g.declaredFunction(s))
-			out.WriteString("}}\n")
+			value = composite(runtimeName("Generic"), keyed("Variables", stringSlice(vars)), keyed("Build", closure(buildParameters(false), runtimeName("Function"), returned(g.declaredFunction(s)))))
 		} else {
-			out.WriteString("func()rt.Function{typeArgs:=map[string]string{};_ = typeArgs;return ")
-			out.WriteString(g.declaredFunction(s))
-			out.WriteString("}()\n")
+			value = concreteFunction(g.declaredFunction(s))
+		}
+		initialize = append(initialize, assign(ident(s.ID), token.ASSIGN, value))
+	}
+	var natives []ast.Expr
+	flushNatives := func() {
+		if len(natives) > 0 {
+			initialize = append(initialize, evaluated(runtimeCall("RegisterStandard", sliceLiteral(runtimeName("StandardRegistration"), natives...))))
+			natives = nil
 		}
 	}
-	natives := false
 	for _, m := range program.Methods {
 		g.module = m.Module
 		var vars []string
@@ -55,55 +64,44 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 		if m.Local {
 			scope = m.Module
 		}
+		fields := []ast.Expr{keyed("Receiver", textLiteral(checker.TypeKey(m.Receiver))), keyed("Contract", textLiteral(checker.TypeKey(m.Contract))), keyed("Name", textLiteral(m.Decl.Name)), keyed("Scope", textLiteral(scope)), keyed("Variables", stringSlice(vars))}
 		// Consecutive standard implementations register as one data table,
 		// which compiles much faster than a closure for each.
 		if m.Native != "" {
-			if !natives {
-				out.WriteString("rt.RegisterStandard([]rt.StandardRegistration{\n")
-				natives = true
-			}
-			out.WriteString("{Receiver:" + quote(checker.TypeKey(m.Receiver)) + ",Contract:" + quote(checker.TypeKey(m.Contract)) + ",Name:" + quote(m.Decl.Name) + ",Scope:" + quote(scope) + ",Variables:" + stringsGo(vars) + ",Native:" + quote(m.Native) + "},\n")
+			fields = append(fields, keyed("Native", textLiteral(m.Native)))
+			natives = append(natives, composite(nil, fields...))
 			continue
 		}
-		if natives {
-			out.WriteString("})\n")
-			natives = false
-		}
-		out.WriteString("rt.Register(rt.Implementation{Receiver:" + quote(checker.TypeKey(m.Receiver)) + ",Contract:" + quote(checker.TypeKey(m.Contract)) + ",Name:" + quote(m.Decl.Name) + ",Scope:" + quote(scope) + ",Variables:" + stringsGo(vars) + ",Build:func(receiver rt.Value,typeArgs map[string]string,typeScopes map[string]rt.TypeScope) rt.Function{_ = typeArgs;return ")
-		out.WriteString(g.function(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type))
-		out.WriteString("}})\n")
+		flushNatives()
+		fn := g.function(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type)
+		fields = append(fields, keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(fn))))
+		initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))
 	}
-	if natives {
-		out.WriteString("})\n")
-	}
-	out.WriteString("}\nfunc main(){initialize();\n")
+	flushNatives()
+	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("initialize"), Type: functionType(nil, nil), Body: block(initialize...)})
+	main := []ast.Stmt{evaluated(call(ident("initialize")))}
 	if options.Tests {
-		out.WriteString("tests:=[]rt.Test{\n")
+		var tests []ast.Expr
 		for _, module := range program.Modules {
 			g.module = module.File
 			for _, d := range module.Declarations {
 				if d.Kind != syntax.KindTest {
 					continue
 				}
-				out.WriteString("{Name:" + quote(module.File+"::"+d.Name) + ",Run:func()rt.Function{typeArgs:=map[string]string{};_ = typeArgs;return ")
-				out.WriteString(g.function("test "+d.Name, nil, d.Result, d.Body, nil, nil, &checker.Type{Kind: "function", Result: &checker.Type{ID: "Unit"}}))
-				out.WriteString("}()},\n")
+				fn := g.function("test "+d.Name, nil, d.Result, d.Body, nil, nil, &checker.Type{Kind: "function", Result: &checker.Type{ID: "Unit"}})
+				tests = append(tests, composite(nil, keyed("Name", textLiteral(module.File+"::"+d.Name)), keyed("Run", concreteFunction(fn))))
 			}
 		}
-		out.WriteString("};if rt.RunTestsArgs(tests,os.Args[1:])>0{os.Exit(1)}\n")
+		main = append(main, define("tests", sliceLiteral(runtimeName("Test"), tests...)), &ast.IfStmt{Cond: &ast.BinaryExpr{X: runtimeCall("RunTestsArgs", ident("tests"), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}), Op: token.GTR, Y: intLiteral(0)}, Body: block(evaluated(call(selector(ident("os"), "Exit"), intLiteral(1))))})
 	} else if options.Entry {
-		if options.CPUProfile == "" && options.HeapProfile == "" && options.Trace == "" {
-			out.WriteString("os.Exit(rt.RunMain(" + program.Symbols[entry]["main"].ID + ",os.Args[1:]))\n")
-		} else {
-			out.WriteString("os.Exit(rt.Profile(" + quote(options.CPUProfile) + "," + quote(options.HeapProfile) + "," + quote(options.Trace) + ",func()int{return rt.RunMain(" + program.Symbols[entry]["main"].ID + ",os.Args[1:])}))\n")
+		run := runtimeCall("RunMain", ident(program.Symbols[entry]["main"].ID), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)})
+		if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
+			run = runtimeCall("Profile", textLiteral(options.CPUProfile), textLiteral(options.HeapProfile), textLiteral(options.Trace), closure(nil, ident("int"), returned(run)))
 		}
+		main = append(main, evaluated(call(selector(ident("os"), "Exit"), run)))
 	} else {
-		out.WriteString("_ = os.Args\n")
+		main = append(main, discard(selector(ident("os"), "Args")))
 	}
-	out.WriteString("}\n")
-	formatted, err := format.Source([]byte(out.String()))
-	if err != nil {
-		return "", fmt.Errorf("generated invalid Go: %w; this is a Manuscript compiler bug, so report it with the .ms source that triggers it", err)
-	}
-	return string(formatted), nil
+	file.Decls = append(file.Decls, &ast.FuncDecl{Name: ident("main"), Type: functionType(nil, nil), Body: block(main...)})
+	return file
 }
