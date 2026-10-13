@@ -25,6 +25,8 @@ type stream struct {
 	closing, released   chan struct{}
 	active              sync.WaitGroup
 	releaseFault        error
+	// pending holds bytes read ahead by read_line; read returns them first.
+	pending []byte
 }
 
 func (s *stream) initialize() {
@@ -131,6 +133,15 @@ func (s *stream) Operation(name string) Function {
 			if n > 64*1024 {
 				n = 64 * 1024
 			}
+			s.mu.Lock()
+			if len(s.pending) > 0 {
+				take := min(int(n), len(s.pending))
+				data := s.pending[:take:take]
+				s.pending = s.pending[take:]
+				s.mu.Unlock()
+				return Alternative{s.resultType, "ok", []Value{optional("@std/Bytes", Bytes{data}, true)}}
+			}
+			s.mu.Unlock()
 			data := make([]byte, int(n))
 			read, err := s.file.Read(data)
 			CheckCancelled(ctx)
