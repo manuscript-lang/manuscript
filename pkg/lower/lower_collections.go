@@ -29,7 +29,7 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 	switch callee.Method.Native {
 	case "collections/at":
 		if value := g.typedListAt(e); value != nil {
-			return call(selector(value, "Box"), g.key(g.program.Expressions[e].Type))
+			return call(selector(value, "Box"), g.key(g.program.Info(e).Type))
 		}
 		if len(arguments) == 1 {
 			// Force even a plain local receiver to be read before the index:
@@ -49,8 +49,8 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 	case "append":
 		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-			if suffix := primitiveListSuffix(g.program.Expressions[e.Left.Left].Type); suffix != "" {
-				return g.locatedOperation(e, runtimeName("ListAppend"+suffix), ident("ctx"), receiver, g.scalarValueAs(arguments[0].Value, g.program.Expressions[e.Left.Left].Type.Args[0]))
+			if suffix := primitiveListSuffix(g.program.Info(e.Left.Left).Type); suffix != "" {
+				return g.locatedOperation(e, runtimeName("ListAppend"+suffix), ident("ctx"), receiver, g.scalarValueAs(arguments[0].Value, g.program.Info(e.Left.Left).Type.Args[0]))
 			}
 			return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}

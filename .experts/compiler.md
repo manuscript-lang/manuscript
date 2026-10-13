@@ -59,6 +59,24 @@ Evidence: [view lowering](../pkg/lower/lower_expressions.go),
 [native evaluation/capture tests](../tests/e2e/testdata/accept/interface-view-callables.ms),
 and [native DAP regression](../extensions/vscode/tests/interface-view-debug.test.js).
 
+Verified: Go constant negation of `float64(0)` produces positive zero. Native
+Float unary lowering must perform variable arithmetic (`FloatNegate`) so source
+`-0.0`, IEEE sign bits and `toString()` retain negative zero. A direct source call
+also needs the expected parameter type when its argument is `Never`: faulting
+arguments are accepted source and must still produce compilable typed Go.
+Evidence: [native scalar lowering](../pkg/lower/lower_scalars.go),
+[numeric source conformance](../tests/e2e/testdata/accept/numeric-lowering.ms),
+[conversion conformance](../tests/e2e/testdata/accept/to-string.ms), and
+[actual typed boundary tests](../pkg/build/typed_list_calls_test.go).
+
+Verified: selected methods are copied when the checker substitutes a receiver.
+Pointer equality with the declaration does not identify that selection. Native
+method lowering indexes the canonical checked method ID and retains dynamic
+contract/default preparation when no concrete entry is available.
+Evidence: [method selection](../pkg/checker/contracts.go),
+[native method entries](../pkg/lower/lower_native_methods.go), and
+[direct-method acceptance](../tests/e2e/testdata/accept/direct-methods.ms).
+
 ### Native build levels need artifact evidence
 
 Verified: Go omits recorded linker flags from build information when `-trimpath` is enabled. Check symbol/DWARF sections and executable size to verify stripping, rather than treating a missing recorded `-ldflags` value as a build failure. Both Debug and optimized RelWithDebInfo retain local source paths, so both need source-root-sensitive cache identities.

@@ -26,6 +26,10 @@ use this entry. Supplied arguments are captured in written order. Presence flags
 let the callee evaluate omitted defaults after admission, in declaration order,
 with earlier parameters available. Explicit arguments skip their defaults.
 
+Concrete source methods use the same entry protocol, selected by the checked
+method ID after receiver substitution. Contract views and omitted inherited
+interface defaults keep their existing dispatch and preparation.
+
 The ordinary first-class `Function.Body` remains available. It shares the typed
 body only when unboxing its inputs does not introduce replacement boxes for
 identity returns, forwarding, captures or storage. Other adapters lower the same
@@ -84,6 +88,14 @@ raw samples. Shared-host timings are observations; allocation counts and result
 parity are separate acceptance evidence. A loop microbenchmark does not settle
 collection access, typed sorting or Game of Life acceptance.
 
+Typed primitive Lists use the authoritative runtime header and typed Optional
+accessors. Immediate `at(...).unwrap()` and match-at consumers avoid building an
+escaping alternative; generic or stored Optionals cross the normal value
+boundary. Primitive `for` loops capture a header once and use its native reader
+when all uses remain native. Named and captured comparators use the runtime's
+raw-body constructor; typed and boxed entries select the common guard once.
+The debugger inspects the active backing for both typed and legacy boxed Lists.
+
 The independent pre-AST executable oracle remains hash protected in
 `pkg/build/testdata/go-ast`. Its source bodies retain complete target transitions;
 a native body can specialize fully supplied defaults, while its boxed adapter
@@ -97,9 +109,10 @@ and debugger contracts beyond emitted AST shape.
 Manuscript source signatures and numeric defaults are unchanged. Rebuild native
 artifacts and exported generated Go with the matching compiler/runtime pair;
 implementation pins invalidate cached artifacts. Generated code now uses
-additional runtime entry points. Go consumers constructing `Implementation`
-should use keyed fields because the additive `DirectGuarded` field changes
-unkeyed composite literals. Hand-authored source callbacks can keep using
+additional runtime entry points. Go consumers constructing `Implementation` or `Function` should use keyed
+fields: the additive `DirectGuarded`, `IntCompare` and `FloatCompare` fields
+change unkeyed composite literals. See the [List ABI migration](../../list-storage.md)
+for constructors and authoritative backing access. Hand-authored source callbacks can keep using
 `NewSourceFunction`, and ordinary native callbacks keep using `NewFunction`.
 
 The signal and diagnostic-output goroutines do not execute source code or touch
