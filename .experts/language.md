@@ -57,7 +57,7 @@ Decision: the user rejected both deeply nested Result matches and the elaborate 
 
 Apply when: adding Result adapters or rewriting examples that combine execution and domain errors.
 Evidence: the user's removal request; [error compatibility](../documentation/core-language/errors/propagation.md#error-compatibility); [task group example](../documentation/concurrency/task-groups.md).
-Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. The standard Result module exports only its type, and regenerated API references agree with its declarations.
+Verify: examples compile with compatible `try` calls and introduce only the concepts they teach. Result's success-only `map` and same-error `and_then` retain the original error payload; they do not add an error-translation helper. The standard Result module exports only its type, and regenerated API references agree with its declarations. [Called composition tests](../tests/e2e/testdata/stdlib/core-parity.ms) distinguish success transformation from error translation.
 
 ### Equality and hashing are source interfaces
 

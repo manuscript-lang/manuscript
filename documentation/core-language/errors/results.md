@@ -43,6 +43,29 @@ fn discount_message(price: Decimal, percent: Decimal) -> String:
 
 This caller chooses a response for either outcome. Another caller could inspect `cause` with a further match or [propagate it with try](propagation.md).
 
+## Checking, extracting, and composing
+
+| Method | Behavior |
+| --- | --- |
+| `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Unit values |
+| `unwrap() -> T` | Return the successful payload; [fault](faults.md) on an error |
+| `unwrap_error() -> E` | Return the error payload; fault on success |
+| `unwrap_or(fallback: T) -> T` | Return success or the eagerly evaluated fallback |
+| `unwrap_or_else(create: fn(cause: E) -> T) -> T` | Call `create` once with the original error only on failure |
+| `map[U](transform: fn(value: T) -> U) -> Result[U, E]` | Transform success once; preserve an error unchanged |
+| `and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]` | On success, return the callback's Result; preserve an existing error |
+
+`E` can be any value type; it does not need to implement Error. Extraction and composition retain payload references. `map` wraps the callback's value in `ok`, even when that value is another Result or Optional. `and_then` requires the same error type `E`. Translate unrelated errors with ordinary functions and matching.
+
+This fragment uses `discount` above:
+
+```manuscript
+let price = discount(price: 20d, percent: 10d).unwrap_or(0d)
+let text = discount(price: 20d, percent: 10d).map(fn(value): value.toString())
+```
+
+Callbacks run sequentially in the caller's execution context. Their faults and cancellation propagate normally. `unwrap` reports `called Result.unwrap() on error`; use it only when success is established or failure is a programming error. Routine expected failures use a fallback, matching, or `try`.
+
 ## Discarding a result
 
 A standalone call such as `discount(price: 20d, percent: 10d)` evaluates the
