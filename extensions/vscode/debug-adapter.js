@@ -38,10 +38,12 @@ function runtimeKind(variable) {
   return match ? match[1] : '';
 }
 function sourceType(native) {
-  const primitives = { int64: 'Int', float64: 'Float', bool: 'Bool', string: 'String' };
+  const primitives = { int64: 'Int', float64: 'Float', 'msruntime.Int64': 'Int64', 'msruntime.Float64': 'Float64', bool: 'Bool', string: 'String' };
   native = (native || '').replace(/^.+: (interface \{\}.*)$/, '$1');
   const match = /^interface \{\}\(([^)]+)\)$/.exec(native);
-  return primitives[match ? match[1] : native] || native;
+  const concrete = match ? match[1] : native;
+  const wide = /^(?:main|msruntime|runtime)\.(Int64|Float64)$/.exec(concrete);
+  return wide ? wide[1] : (primitives[concrete] || native);
 }
 function runtimeType(key) {
   let at=0;
@@ -134,11 +136,11 @@ class ManuscriptAdapter {
   }
   handle(value) { const id = this.nextHandle++; this.handles.set(id, value); return id; }
   render(variable, name, declaredType) {
-    const nativeType=sourceType(variable.type);const primitive=['Int','Float','Bool','String'].includes(nativeType);
+    const nativeType=sourceType(variable.type);const primitive=['Int','Int64','Float','Float64','Bool','String'].includes(nativeType);
     const embedded=/Type: \"([^\"]+)\"/.exec(variable.value || '');
     const result = { ...variable, name: name || mapName(variable.name), type: primitive ? nativeType : (embedded ? runtimeType(embedded[1]) : declaredType || nativeType) };
     result.value = (result.value || '').replace(/^interface \{\}\([^)]+\) /, '');
-    if (['Int','Float','Bool','String'].includes(result.type)) result.variablesReference=0;
+    if (['Int','Int64','Float','Float64','Bool','String'].includes(result.type)) result.variablesReference=0;
     const kind = runtimeKind(variable);
     // Native stack slots can cease to contain a dead source local after GC.
     // Do not present a recycled primitive or corrupt runtime type as a container.

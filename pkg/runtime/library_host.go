@@ -80,12 +80,12 @@ func libraryRuntimeType(s string) string { // qualified runtime keys, preserving
 	for i := 0; i < len(s); {
 		if s[i] >= 'A' && s[i] <= 'Z' {
 			start := i
-			for i < len(s) && (s[i] >= 'A' && s[i] <= 'Z' || s[i] >= 'a' && s[i] <= 'z') {
+			for i < len(s) && (s[i] >= 'A' && s[i] <= 'Z' || s[i] >= 'a' && s[i] <= 'z' || s[i] >= '0' && s[i] <= '9') {
 				i++
 			}
 			name := s[start:i]
 			switch name {
-			case "Bool", "Int", "Float", "String", "Unit", "Never":
+			case "Bool", "Int", "Int64", "Float", "Float64", "String", "Unit", "Never":
 			default:
 				b.WriteString("@std/")
 			}

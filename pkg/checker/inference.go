@@ -15,6 +15,7 @@ type callInferenceContext struct {
 func (c *checker) inferArguments(args []syntax.Argument, params []Param, variables []*Type, sub map[string]*Type, context *callInferenceContext) {
 	vars := variableSet(variables)
 	pending := []syntax.Argument{}
+	numeric := []syntax.Argument{}
 	parameter := func(name string) *Type {
 		for _, param := range params {
 			if param.Name == name {
@@ -50,11 +51,36 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 	for _, arg := range args {
 		if arg.Value.Kind == syntax.KindLambda {
 			pending = append(pending, arg)
+		} else if numericLiteralExpression(arg.Value) {
+			numeric = append(numeric, arg)
 		} else if !c.contextual(arg.Value) {
 			if actual := c.independentArgument(arg.Value); actual != nil {
 				contribute(arg, actual)
 			}
 		}
+	}
+	if context != nil && context.expected != nil &&
+		(context.expected.ID == "Int64" || context.expected.ID == "Float64" ||
+			context.result.ID == context.expected.ID && containsWideNumeric(context.expected)) {
+		c.inferExpectedResult(variables, sub, context)
+	}
+	// Numeric tokens supply fallback default evidence only after a concrete
+	// parameter/other argument/explicit result can select a wider literal type.
+	for _, arg := range numeric {
+		target := Sub(parameter(arg.Name), sub)
+		if std(target, "Optional") && len(target.Args) == 1 {
+			target = target.Args[0]
+		}
+		checkpoint := len(c.Diagnostics)
+		actual := c.expression(arg.Value, numericLiteralContext(arg.Value, target))
+		if len(c.Diagnostics) != checkpoint {
+			c.Diagnostics = c.Diagnostics[:checkpoint]
+			continue
+		}
+		if c.checkedArguments != nil {
+			c.checkedArguments[arg.Value] = checkedArgument{info: actual}
+		}
+		contribute(arg, actual)
 	}
 	if context != nil {
 		c.inferExpectedResult(variables, sub, context)

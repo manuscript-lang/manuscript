@@ -3667,6 +3667,16 @@ Parses a decimal floating-point number using Manuscript's numeric syntax.
 fn parse_float(text: String) -> Result[Float, NumberError]:
 ```
 
+## parse_float64
+
+**Function**
+
+Parses an IEEE binary64 value without first rounding to the default Float.
+
+```manuscript
+fn parse_float64(text: String) -> Result[Float64, NumberError]:
+```
+
 ## parse_int
 
 **Function**
@@ -3675,6 +3685,16 @@ Parses an integer in a radix from 2 through 36.
 
 ```manuscript
 fn parse_int(text: String, radix: Int) -> Result[Int, NumberError]:
+```
+
+## parse_int64
+
+**Function**
+
+Parses a signed 64-bit integer without first passing through the default Int.
+
+```manuscript
+fn parse_int64(text: String, radix: Int) -> Result[Int64, NumberError]:
 ```
 
 # @std/optional.ms
@@ -5884,6 +5904,8 @@ fn message() -> String
 
 ```manuscript
 type Float:
+    fn to_float64() -> Float64:
+    fn truncate_to_int64() -> Optional[Int64]:
     fn to_precision(precision: Int) -> Result[String, NumberError]:
     fn to_exponential(digits: Int) -> Result[String, NumberError]:
     fn to_fixed(digits: Int) -> Result[String, NumberError]:
@@ -5950,6 +5972,23 @@ Truncates toward zero, or returns none for nonfinite values or Int overflow.
 fn truncate_to_int() -> Optional[Int]
 ```
 
+## Float64
+
+**Type**
+
+```manuscript
+type Float64:
+    fn to_float() -> Float:
+    fn truncate_to_int() -> Optional[Int]:
+    fn truncate_to_int64() -> Optional[Int64]:
+    fn to_string() -> String:
+    fn to_precision(precision: Int) -> Result[String, NumberError]:
+    fn to_exponential(digits: Int) -> Result[String, NumberError]:
+    fn to_fixed(digits: Int) -> Result[String, NumberError]:
+    fn is_nan() -> Bool:
+    fn is_finite() -> Bool:
+```
+
 ## Hashable
 
 **Interface**
@@ -5975,9 +6014,24 @@ fn hash() -> Int
 
 ```manuscript
 type Int:
+    fn to_int64() -> Int64:
+    fn to_float64() -> Float64:
     fn to_string(radix: Int) -> String:
     fn to_float() -> Float:
     fn to_decimal() -> Decimal:
+```
+
+## Int64
+
+**Type**
+
+```manuscript
+type Int64:
+    fn to_int() -> Optional[Int]:
+    fn to_float() -> Float:
+    fn to_float64() -> Float64:
+    fn to_decimal() -> Decimal:
+    fn to_string(radix: Int) -> String:
 ```
 
 ## List

@@ -20,6 +20,8 @@ Decimal literals require `import Decimal from "@std/decimal.ms"`; Decimal is an 
 | --- | --- |
 | `Int` | Signed 64-bit integer with checked arithmetic |
 | `Float` | IEEE 754 binary64 |
+| `Int64` | Explicit signed 64-bit integer with checked arithmetic |
+| `Float64` | Explicit IEEE 754 binary64 |
 | `Decimal` | Base-10, 34 significant digits, round half to even |
 | `Bool` | `true` or `false` |
 
@@ -29,7 +31,7 @@ Numeric conversions are explicit. Int overflow and invalid Int/Decimal operation
 
 Arithmetic operands must have the same exact numeric type, and the result has that type. Unary signs retain their operand type. `%` accepts only `Int` operands. Ordering comparisons accept matching numeric types and return `Bool`; equality additionally follows the [Equal rules](../types/equality-and-hashing.md). The [expression table](expressions.md#operand-and-result-types) is authoritative for operator typing.
 
-Integer literals are checked against the signed 64-bit range at compile time. The magnitude `9223372036854775808` is accepted only as a directly negated integer literal, giving `-9223372036854775808`; parentheses immediately around that literal do not change the check. The positive literal and magnitudes outside either signed boundary are rejected. A Float literal rounds to binary64 using nearest, ties to even; one whose rounded magnitude would be infinite is rejected. Expected numeric types do not change literal types.
+Integer literals are checked against the signed 64-bit range at compile time. The magnitude `9223372036854775808` is accepted only as a directly negated integer literal, giving `-9223372036854775808`; parentheses immediately around that literal do not change the check. The positive literal and magnitudes outside either signed boundary are rejected. A Float literal rounds to binary64 using nearest, ties to even; one whose rounded magnitude would be infinite is rejected. An explicit `Int64` or `Float64` context selects that literal type before checking its range or rounding its value. The ordinary Int/Float categories remain distinct: an integer-shaped token does not become Float64 from context. Typed values still require explicit conversion.
 
 ```manuscript
 fn literals() -> Unit:
@@ -40,17 +42,37 @@ fn literals() -> Unit:
     let mismatch: Float = 1
 ```
 
+## Explicit wider values
+
+Use `Int64` for integer contracts that require a wide range, and `Float64` when a contract requires binary64 precision. These are distinct types even while this checkout's default types still use 64-bit representations. The [default-width migration](https://github.com/manuscript-lang/manuscript/issues/271) changes the defaults in a separate coordinated stage; adding explicit types alone does not reduce existing storage.
+
+An annotation, parameter, field, default, return, collection element, callback result or match result can provide a concrete wider context for a literal. Literal-only arithmetic can use that result context. A known wide operand also provides context to a numeric literal on the other side. The checker selects the width before parsing or rounding; it never rounds a literal to the default Float and then widens it.
+
+```manuscript
+let counter: Int64 = 3000000000
+let precise: Float64 = 0.10000000000000001
+let advanced = counter + 1
+```
+
+An unconstrained literal keeps its default category. Already typed names, fields, call results and generic payloads keep their type. Thus `let small = 1; let wide: Int64 = 1` does not permit `small + wide`: use `small.to_int64() + wide`. Generic numeric arguments use a concrete parameter or explicit result context when available, and otherwise contribute their default type. Ordinary Optional assignment/return rules do not change; a plain literal supplied to an `Optional[Int64]` parameter uses the payload context and the existing argument wrapper.
+
+There is no new literal suffix or built-in constructor. `parse_int64(text, radix)` and `parse_float64(text)` in `@std/numbers.ms` parse directly into the wider types, without a default-width intermediate. The integer parser distinguishes invalid radix/text and out-of-range values; the float parser retains NaN, signed infinities and signed zero under the existing numeric text grammar.
+
 ## Numeric conversion
 
 | Receiver | Signature/result |
 | --- | --- |
-| `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
-| `Float` | `truncate_to_int() -> Optional[Int]` |
+| `Int` | `to_int64() -> Int64`; `to_float() -> Float`; `to_float64() -> Float64`; `to_decimal() -> Decimal` |
+| `Float` | `to_float64() -> Float64`; `truncate_to_int() -> Optional[Int]`; `truncate_to_int64() -> Optional[Int64]` |
 | `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
+| `Int64` | `to_int() -> Optional[Int]`; `to_float() -> Float`; `to_float64() -> Float64`; `to_decimal() -> Decimal` |
+| `Float64` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]`; `truncate_to_int64() -> Optional[Int64]` |
 
 Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. Decimal→Float may produce signed infinity or signed zero under the Float rules. Truncation discards the fractional part toward zero, then checks the mathematical integer against the exact signed 64-bit limits before conversion. NaN, infinities, or an out-of-range integer yield `none`.
 
 For example, `1e300.truncate_to_int()` is `none`. Float +2^63 cannot convert to Int, while Float -2^63 can.
+
+Int64→Int checks the complete mathematical value against Int's range and returns `none` if it does not fit. Float64 truncation checks the destination range before the host cast, including the exactly representable +2^63 boundary. Integer-to-Float64 rounds directly to binary64; integer-to-Decimal is exact. Float64 formatting/classification supports the same `to_string`, `to_precision`, `to_exponential`, `to_fixed`, `is_nan` and `is_finite` operations as Float. Float64 remains non-Hashable, while Int64 equality and hashing retain exact integer value semantics at generic/collection boundaries.
 
 ## Runtime numeric outcomes
 

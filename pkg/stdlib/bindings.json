@@ -87,7 +87,9 @@
     "@std/net.ms/parse_cidr": "net/parse_cidr",
     "@std/net.ms/parse_ip": "net/parse_ip",
     "@std/numbers.ms/parse_float": "numbers/parse_float",
+    "@std/numbers.ms/parse_float64": "numbers/parse_float64",
     "@std/numbers.ms/parse_int": "numbers/parse_int",
+    "@std/numbers.ms/parse_int64": "numbers/parse_int64",
     "@std/path.ms/basename": "path/basename",
     "@std/path.ms/basename_without": "path/basename_without",
     "@std/path.ms/delimiter": "path/delimiter",
@@ -169,7 +171,9 @@
   },
   "intrinsic_receivers": {
     "Float": "FloatOperations",
+    "Float64": "Float64Operations",
     "Int": "IntOperations",
+    "Int64": "Int64Operations",
     "String": "StringOperations"
   },
   "native_types": {

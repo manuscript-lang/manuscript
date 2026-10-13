@@ -379,6 +379,10 @@ func formatValue(value Value, depth int) string {
 	switch v := value.(type) {
 	case string:
 		return v
+	case Int64:
+		return strconv.FormatInt(int64(v), 10)
+	case Float64:
+		return formatFloat(float64(v))
 	case int64:
 		return strconv.FormatInt(v, 10)
 	case float64:
@@ -483,6 +487,14 @@ func equalityID(value Value) (equalityIdentity, bool) {
 // bookkeeping, or state allocation.
 func primitiveEqual(a, b Value) (result, ok bool) {
 	switch x := a.(type) {
+	case Int64:
+		if y, same := b.(Int64); same {
+			return x == y, true
+		}
+	case Float64:
+		if y, same := b.(Float64); same {
+			return x == y, true
+		}
 	case int64:
 		if y, same := b.(int64); same {
 			return x == y, true

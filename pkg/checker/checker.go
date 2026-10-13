@@ -129,7 +129,7 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		c.names = map[string]*Symbol{}
 		p.Symbols[module.File] = c.names
 		c.scope = newScope(nil)
-		for _, name := range strings.Fields("Bool Int Float String Unit Never") {
+		for _, name := range strings.Fields("Bool Int Int64 Float Float64 String Unit Never") {
 			c.names[name] = &Symbol{Name: name, ID: name, Kind: syntax.KindType, Type: primitive(name), Export: true}
 		}
 		c.addStandardPrelude()
@@ -913,14 +913,20 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			}
 		} else if strings.ContainsAny(e.Text, ".eE") {
 			name = "Float"
+			if expected != nil && expected.ID == "Float64" {
+				name = "Float64"
+			}
 			n, err := strconv.ParseFloat(e.Text, 64)
 			if err != nil || math.IsInf(n, 0) {
-				c.error(e.Pos, "type", "Float literal is outside finite binary64 range; use a smaller magnitude (about 1.8e308 at most)")
+				c.error(e.Pos, "type", name+" literal is outside finite binary64 range; use a smaller magnitude (about 1.8e308 at most)")
 			}
 			i.Type = primitive(name)
 		} else {
+			if expected != nil && expected.ID == "Int64" {
+				name = "Int64"
+			}
 			if _, err := strconv.ParseInt(e.Text, 10, 64); err != nil {
-				c.error(e.Pos, "type", "Int literal is outside signed 64-bit range; use a value between -9223372036854775808 and 9223372036854775807, or BigInt")
+				c.error(e.Pos, "type", name+" literal is outside signed 64-bit range; use a value between -9223372036854775808 and 9223372036854775807, or BigInt")
 			}
 			i.Type = primitive(name)
 		}
@@ -1115,11 +1121,19 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		c.wellFormed(i.Type, e.Pos, map[string]bool{})
 	case syntax.KindUnary:
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
-			i.Type = primitive("Int")
+			name := "Int"
+			if expected != nil && expected.ID == "Int64" {
+				name = "Int64"
+			}
+			i.Type = primitive(name)
 			c.Expressions[e.Right] = &Info{Type: i.Type}
 			return i
 		}
-		v := c.expression(e.Right, nil)
+		operandContext := (*Type)(nil)
+		if e.Text == "+" || e.Text == "-" {
+			operandContext = numericLiteralContext(e.Right, expected)
+		}
+		v := c.expression(e.Right, operandContext)
 		i.NoReturn = v.NoReturn
 		if e.Text == "not" {
 			if !compatible(v.Type, primitive("Bool")) {
@@ -1156,8 +1170,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			i.Type = v.Type
 		}
 	case syntax.KindBinary:
-		a := c.expression(e.Left, nil)
-		b := c.expression(e.Right, nil)
+		a, b := c.numericOperands(e, expected)
 		i.NoReturn = a.NoReturn || (e.Text != "and" && e.Text != "or" && b.NoReturn)
 		if e.Text == "and" || e.Text == "or" {
 			i.Type = primitive("Bool")
@@ -1208,7 +1221,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			if !numeric(common) && !(common.ID == "String" && e.Text == "+") && !(std(common, "Duration") && (e.Text == "+" || e.Text == "-")) {
 				c.error(e.Pos, "type", "arithmetic requires numeric operands")
 			}
-			if e.Text == "%" && common.ID != "Int" {
+			if e.Text == "%" && common.ID != "Int" && common.ID != "Int64" {
 				c.error(e.Pos, "type", "remainder requires Int operands, found "+common.String()+"; convert to Int or use math functions")
 			}
 		}
@@ -1221,7 +1234,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 	return i
 }
 func numeric(t *Type) bool {
-	return t != nil && (t.ID == "Int" || t.ID == "Float" || std(t, "Decimal"))
+	return t != nil && (t.ID == "Int" || t.ID == "Int64" || t.ID == "Float" || t.ID == "Float64" || std(t, "Decimal"))
 }
 func (c *checker) resolveArguments(args []*syntax.Type) []*Type {
 	var result []*Type

@@ -74,6 +74,13 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		body = append(body, returned(runtimeCall("Panic", textLiteral("runtime invariant: exhaustive match"))))
 		return call(closure(nil, runtimeName("Value"), body...))
 	case syntax.KindNumber:
+		if info.Type.ID == "Int64" {
+			return call(runtimeName("Int64"), signedInteger(e.Text))
+		}
+		if info.Type.ID == "Float64" {
+			value, _ := strconv.ParseFloat(e.Text, 64)
+			return call(runtimeName("Float64"), &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(value, 'g', -1, 64)})
+		}
 		if strings.HasSuffix(e.Text, "d") {
 			return runtimeCall("DecimalLiteral", textLiteral(e.Text))
 		}
@@ -222,6 +229,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 				args = append(args, g.typeScope(info.PropagatedError))
 			}
 			return runtimeCall("Try", args...)
+		}
+		if e.Text == "-" && info.Type.ID == "Int64" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
+			return call(runtimeName("Int64"), signedInteger("-9223372036854775808"))
 		}
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return call(ident("int64"), signedInteger("-9223372036854775808"))

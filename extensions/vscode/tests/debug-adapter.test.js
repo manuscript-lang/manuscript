@@ -26,6 +26,20 @@ test('Manuscript values use source names and lazy structured handles', async () 
   assert.equal(fields[0].name, 'count'); assert.equal(fields[0].value, '42'); assert.equal(fields[0].type, 'Int');
 });
 
+test('explicit wide scalars render at native and standalone boundaries', () => {
+  const adapter = new ManuscriptAdapter(new PassThrough());
+  for (const prefix of ['main', 'msruntime', 'runtime']) {
+    for (const kind of ['Int64', 'Float64']) {
+      assert.equal(sourceType(`interface {}(${prefix}.${kind})`), kind);
+      assert.equal(sourceType(`${prefix}.${kind}`), kind);
+      const value = adapter.render({ name: 'local7_wide', type: `interface {}(${prefix}.${kind})`, value: `interface {}(${prefix}.${kind}) 3`, variablesReference: 1 });
+      assert.equal(value.type, kind);
+      assert.equal(value.value, '3');
+      assert.equal(value.variablesReference, 0);
+    }
+  }
+});
+
 test('native DAP source stepping and Manuscript record/list/variant rendering', { skip: !process.env.MANUSCRIPT_DAP_TEST, timeout: 60000 }, async () => {
   const directory = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript dap test ')));
   const program = path.join(directory, 'main.ms');

@@ -370,6 +370,13 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info {
 	checked := c.checkedArguments[e]
 	info := checked.info
+	context := expected
+	if std(expected, "Optional") && len(expected.Args) == 1 {
+		context = expected.Args[0]
+	}
+	if numericLiteralContext(e, context) != nil && (info == nil || !Same(info.Type, context)) {
+		info = nil // Concrete numeric context replaces only literal inference.
+	}
 	if e.Kind == syntax.KindLambda && info != nil && !Same(info.Type, callbackContext(expected)) {
 		info = nil // Later inference changed the callback's required signature.
 	}
@@ -384,7 +391,12 @@ func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info
 	}
 	checkpoint := len(c.Diagnostics)
 	if info == nil {
-		info = c.infer(e, expected)
+		literalContext := numericLiteralContext(e, expected.Args[0])
+		if literalContext != nil {
+			info = c.infer(e, literalContext)
+		} else {
+			info = c.infer(e, expected)
+		}
 	}
 	payload := expected.Args[0]
 	if compatible(info.Type, expected) {

@@ -54,6 +54,13 @@ func Unary(op string, value Value) Value {
 		return value
 	case "-":
 		switch v := value.(type) {
+		case Int64:
+			if v == math.MinInt64 {
+				return wideOverflow("negation")
+			}
+			return -v
+		case Float64:
+			return -v
 		case int64:
 			if v == math.MinInt64 {
 				return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
@@ -75,6 +82,10 @@ func Binary(op string, a, b Value) Value {
 		return !Equal(a, b)
 	}
 	switch x := a.(type) {
+	case Int64:
+		return integer64Binary(op, x, b.(Int64))
+	case Float64:
+		return float64Binary(op, x, b.(Float64))
 	case string:
 		y := b.(string)
 		switch op {

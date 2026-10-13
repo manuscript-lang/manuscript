@@ -11,6 +11,8 @@ The frontend enforces semantics that Go representations do not provide:
 
 | Source guarantee | Go lowering |
 | --- | --- |
+| Checked `Int64` | Distinct runtime Int64 scalar identity with checked signed64 operations; contextual literals select this type before parsing |
+| Explicit `Float64` | Distinct runtime Float64 scalar identity with rounding at each binary64 operation |
 | Checked `Int` | `int64` with checked operations and conversions |
 | `Decimal` | Versioned finite decimal implementation honoring the coefficient/exponent grid, exact literals, and per-operator rounding in the numeric contract |
 | Valid UTF-8 `String` | Validated construction and conversion; no raw string escape |

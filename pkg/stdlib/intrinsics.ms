@@ -127,12 +127,16 @@ interface StringOperations:
 
 # Conversion operations for machine-sized integers.
 interface IntOperations:
+    fn to_int64() -> Int64
+    fn to_float64() -> Float64
     fn to_string(radix: Int) -> String
     fn to_float() -> Float
     fn to_decimal() -> Decimal
 
 # Formatting and classification operations for floating-point values.
 interface FloatOperations:
+    fn to_float64() -> Float64
+    fn truncate_to_int64() -> Optional[Int64]
     # Formats 1..100 significant digits, preserving trailing zeros; an invalid precision returns NumberError.InvalidInput.
     fn to_precision(precision: Int) -> Result[String, NumberError]
     # Formats scientific notation with 0..100 fractional digits; an invalid count returns NumberError.InvalidInput.
@@ -148,3 +152,23 @@ interface FloatOperations:
     fn is_finite() -> Bool
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     fn truncate_to_int() -> Optional[Int]
+
+# Explicit signed 64-bit arithmetic for counters, offsets, and other wide contracts.
+interface Int64Operations:
+    fn to_int() -> Optional[Int]
+    fn to_float() -> Float
+    fn to_float64() -> Float64
+    fn to_decimal() -> Decimal
+    fn to_string(radix: Int) -> String
+
+# Explicit IEEE binary64 values; conversions never change arithmetic operand types.
+interface Float64Operations:
+    fn to_float() -> Float
+    fn truncate_to_int() -> Optional[Int]
+    fn truncate_to_int64() -> Optional[Int64]
+    fn to_string() -> String
+    fn to_precision(precision: Int) -> Result[String, NumberError]
+    fn to_exponential(digits: Int) -> Result[String, NumberError]
+    fn to_fixed(digits: Int) -> Result[String, NumberError]
+    fn is_nan() -> Bool
+    fn is_finite() -> Bool

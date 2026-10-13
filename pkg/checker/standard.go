@@ -180,7 +180,7 @@ func loadStandardSources() error {
 		c.module = module
 		c.names = map[string]*Symbol{}
 		c.scope = newScope(nil)
-		for _, name := range strings.Fields("Bool Int Float String Unit Never") {
+		for _, name := range strings.Fields("Bool Int Int64 Float Float64 String Unit Never") {
 			c.names[name] = &Symbol{Name: name, ID: name, Kind: syntax.KindType, Type: primitive(name), Export: true}
 		}
 		c.addStandardPrelude()

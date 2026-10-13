@@ -51,6 +51,8 @@ fn message() -> String
 
 ```manuscript
 type Float:
+    fn to_float64() -> Float64:
+    fn truncate_to_int64() -> Optional[Int64]:
     fn to_precision(precision: Int) -> Result[String, NumberError]:
     fn to_exponential(digits: Int) -> Result[String, NumberError]:
     fn to_fixed(digits: Int) -> Result[String, NumberError]:
@@ -117,6 +119,21 @@ Truncates toward zero, or returns none for nonfinite values or Int overflow.
 fn truncate_to_int() -> Optional[Int]
 ```
 
+## Float64 {data-api-kind="Type"}
+
+```manuscript
+type Float64:
+    fn to_float() -> Float:
+    fn truncate_to_int() -> Optional[Int]:
+    fn truncate_to_int64() -> Optional[Int64]:
+    fn to_string() -> String:
+    fn to_precision(precision: Int) -> Result[String, NumberError]:
+    fn to_exponential(digits: Int) -> Result[String, NumberError]:
+    fn to_fixed(digits: Int) -> Result[String, NumberError]:
+    fn is_nan() -> Bool:
+    fn is_finite() -> Bool:
+```
+
 ## Hashable {data-api-kind="Interface"}
 
 A type with a stable hash consistent with its `Equal` implementation.
@@ -138,9 +155,22 @@ fn hash() -> Int
 
 ```manuscript
 type Int:
+    fn to_int64() -> Int64:
+    fn to_float64() -> Float64:
     fn to_string(radix: Int) -> String:
     fn to_float() -> Float:
     fn to_decimal() -> Decimal:
+```
+
+## Int64 {data-api-kind="Type"}
+
+```manuscript
+type Int64:
+    fn to_int() -> Optional[Int]:
+    fn to_float() -> Float:
+    fn to_float64() -> Float64:
+    fn to_decimal() -> Decimal:
+    fn to_string(radix: Int) -> String:
 ```
 
 ## List {data-api-kind="Native type"}

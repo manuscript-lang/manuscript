@@ -333,7 +333,7 @@ func (c *checker) property(t *Type, property string, state *propertyState) (resu
 		return false
 	}
 	if t.Kind == "primitive" {
-		return t.ID != "Float" || property != "Hashable"
+		return (t.ID != "Float" && t.ID != "Float64") || property != "Hashable"
 	}
 	if std(t, "Decimal") || std(t, "Bytes") || std(t, "Duration") || std(t, "Instant") {
 		return true

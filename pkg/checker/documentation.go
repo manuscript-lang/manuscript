@@ -53,7 +53,7 @@ func StandardLibrary() []APIModule {
 			}
 		}
 	}
-	for _, name := range []string{"Bool", "Int", "Float", "String", "Unit", "Never"} {
+	for _, name := range []string{"Bool", "Int", "Int64", "Float", "Float64", "String", "Unit", "Never"} {
 		modules["prelude"] = append(modules["prelude"], &Symbol{Name: name, Kind: "type", Type: primitive(name)})
 	}
 	for _, name := range standardPreludeNames {

@@ -249,6 +249,9 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 	if name == "toString" {
 		return NewFunction(nil, "String", func(_ *Execution, _ []Value) Value { return Format(receiver) })
 	}
+	if function, ok := wideNumericMember(receiver, name, result); ok {
+		return function
+	}
 	if function, ok := nativeLibraryMember(receiver, name, result); ok {
 		return function
 	}

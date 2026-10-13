@@ -40,6 +40,8 @@ func mixHash(x uint64) uint64 {
 // keyHash hashes a key consistently with equality.
 func keyHash(ctx *Execution, v Value) uint64 {
 	switch x := v.(type) {
+	case Int64:
+		return mixHash(uint64(x))
 	case int64:
 		return mixHash(uint64(x))
 	case string:

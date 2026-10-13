@@ -182,3 +182,11 @@ Verified: Go orders function calls left to right but does not guarantee that a p
 Apply when: removing bound-call wrappers or lowering expressions directly to Go operations.
 Evidence: [direct collection lowering](../pkg/compiler/lower_collections.go), [receiver reassignment regression](../tests/e2e/testdata/accept/collection-call-order.ms), and [evaluation-order contract](../documentation/contributing/compiler/lowering/evaluation-order.md).
 Verify: a list receiver initially containing 7 still returns 7 when its index expression reassigns the local to a list containing 9; receiver and argument expressions each execute once in written order.
+
+### Default numeric widths require an explicit wide escape
+
+Decision: the user explicitly changed the direction to signed32 Int and IEEE binary32 Float on 2026-10-13. Preserve explicit Int64/Float64 contracts for time, offsets, sizes, cumulative counters, OS metadata and formats requiring wider precision. This supersedes default64 documentation before every checkout implements the migration; verify the actual checker and runtime. The parent review prefers contextual wide literals over new width suffix syntax: an explicit annotation/parameter selects the width before range checking or rounding, while typed variables never auto-promote.
+
+Apply when: changing numeric representations, generic literal inference, native ABI, host declarations or numeric benchmarks.
+Evidence: [accepted migration and design revision](https://github.com/manuscript-lang/manuscript/issues/271), [literal rules](../documentation/core-language/basics/numbers-and-booleans.md#explicit-wider-values), and [width controls](../scripts/bench-numeric-width/README.md).
+Verify: an explicitly Float64 literal bypasses binary32 rounding, mixed-width variables are rejected, signed32 overflow is checked when the default switch lands, and wide time/file/counter contracts preserve values above 2^31. Measure boxed/interface/object overhead independently of typed storage; 4-byte scalars do not imply 50% total heap/RSS savings.

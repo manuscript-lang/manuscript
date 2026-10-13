@@ -5299,10 +5299,22 @@
           "type": "fn(text: String)-\u003eResult[Float, NumberError]"
         },
         {
+          "name": "parse_float64",
+          "doc": "Parses an IEEE binary64 value without first rounding to the default Float.",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eResult[Float64, NumberError]"
+        },
+        {
           "name": "parse_int",
           "doc": "Parses an integer in a radix from 2 through 36.",
           "kind": "fn",
           "type": "fn(text: String, radix: Int)-\u003eResult[Int, NumberError]"
+        },
+        {
+          "name": "parse_int64",
+          "doc": "Parses a signed 64-bit integer without first passing through the default Int.",
+          "kind": "fn",
+          "type": "fn(text: String, radix: Int)-\u003eResult[Int64, NumberError]"
         }
       ]
     },
@@ -9188,8 +9200,10 @@
             "is_nan: fn()-\u003eBool",
             "to_exponential: fn(digits: Int)-\u003eResult[String, NumberError]",
             "to_fixed: fn(digits: Int)-\u003eResult[String, NumberError]",
+            "to_float64: fn()-\u003eFloat64",
             "to_precision: fn(precision: Int)-\u003eResult[String, NumberError]",
             "to_string: fn()-\u003eString",
+            "truncate_to_int64: fn()-\u003eOptional[Int64]",
             "truncate_to_int: fn()-\u003eOptional[Int]"
           ],
           "members": [
@@ -9218,6 +9232,12 @@
               "doc": "Formats 0..100 fractional digits; magnitude \u003e= 1e21 uses ordinary round-trip notation.\nInvalid digits return NumberError.InvalidInput; rounding uses binary64 ties to even."
             },
             {
+              "name": "to_float64",
+              "kind": "operation",
+              "signature": "fn to_float64() -\u003e Float64",
+              "doc": ""
+            },
+            {
               "name": "to_precision",
               "kind": "operation",
               "signature": "fn to_precision(precision: Int) -\u003e Result[String, NumberError]",
@@ -9234,6 +9254,84 @@
               "kind": "operation",
               "signature": "fn truncate_to_int() -\u003e Optional[Int]",
               "doc": "Truncates toward zero, or returns none for nonfinite values or Int overflow."
+            },
+            {
+              "name": "truncate_to_int64",
+              "kind": "operation",
+              "signature": "fn truncate_to_int64() -\u003e Optional[Int64]",
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "name": "Float64",
+          "kind": "type",
+          "type": "Float64",
+          "operations": [
+            "is_finite: fn()-\u003eBool",
+            "is_nan: fn()-\u003eBool",
+            "to_exponential: fn(digits: Int)-\u003eResult[String, NumberError]",
+            "to_fixed: fn(digits: Int)-\u003eResult[String, NumberError]",
+            "to_float: fn()-\u003eFloat",
+            "to_precision: fn(precision: Int)-\u003eResult[String, NumberError]",
+            "to_string: fn()-\u003eString",
+            "truncate_to_int64: fn()-\u003eOptional[Int64]",
+            "truncate_to_int: fn()-\u003eOptional[Int]"
+          ],
+          "members": [
+            {
+              "name": "is_finite",
+              "kind": "operation",
+              "signature": "fn is_finite() -\u003e Bool",
+              "doc": ""
+            },
+            {
+              "name": "is_nan",
+              "kind": "operation",
+              "signature": "fn is_nan() -\u003e Bool",
+              "doc": ""
+            },
+            {
+              "name": "to_exponential",
+              "kind": "operation",
+              "signature": "fn to_exponential(digits: Int) -\u003e Result[String, NumberError]",
+              "doc": ""
+            },
+            {
+              "name": "to_fixed",
+              "kind": "operation",
+              "signature": "fn to_fixed(digits: Int) -\u003e Result[String, NumberError]",
+              "doc": ""
+            },
+            {
+              "name": "to_float",
+              "kind": "operation",
+              "signature": "fn to_float() -\u003e Float",
+              "doc": ""
+            },
+            {
+              "name": "to_precision",
+              "kind": "operation",
+              "signature": "fn to_precision(precision: Int) -\u003e Result[String, NumberError]",
+              "doc": ""
+            },
+            {
+              "name": "to_string",
+              "kind": "operation",
+              "signature": "fn to_string() -\u003e String",
+              "doc": ""
+            },
+            {
+              "name": "truncate_to_int",
+              "kind": "operation",
+              "signature": "fn truncate_to_int() -\u003e Optional[Int]",
+              "doc": ""
+            },
+            {
+              "name": "truncate_to_int64",
+              "kind": "operation",
+              "signature": "fn truncate_to_int64() -\u003e Optional[Int64]",
+              "doc": ""
             }
           ]
         },
@@ -9260,7 +9358,9 @@
           "type": "Int",
           "operations": [
             "to_decimal: fn()-\u003eDecimal",
+            "to_float64: fn()-\u003eFloat64",
             "to_float: fn()-\u003eFloat",
+            "to_int64: fn()-\u003eInt64",
             "to_string: fn(radix: Int)-\u003eString"
           ],
           "members": [
@@ -9274,6 +9374,62 @@
               "name": "to_float",
               "kind": "operation",
               "signature": "fn to_float() -\u003e Float",
+              "doc": ""
+            },
+            {
+              "name": "to_float64",
+              "kind": "operation",
+              "signature": "fn to_float64() -\u003e Float64",
+              "doc": ""
+            },
+            {
+              "name": "to_int64",
+              "kind": "operation",
+              "signature": "fn to_int64() -\u003e Int64",
+              "doc": ""
+            },
+            {
+              "name": "to_string",
+              "kind": "operation",
+              "signature": "fn to_string(radix: Int) -\u003e String",
+              "doc": ""
+            }
+          ]
+        },
+        {
+          "name": "Int64",
+          "kind": "type",
+          "type": "Int64",
+          "operations": [
+            "to_decimal: fn()-\u003eDecimal",
+            "to_float64: fn()-\u003eFloat64",
+            "to_float: fn()-\u003eFloat",
+            "to_int: fn()-\u003eOptional[Int]",
+            "to_string: fn(radix: Int)-\u003eString"
+          ],
+          "members": [
+            {
+              "name": "to_decimal",
+              "kind": "operation",
+              "signature": "fn to_decimal() -\u003e Decimal",
+              "doc": ""
+            },
+            {
+              "name": "to_float",
+              "kind": "operation",
+              "signature": "fn to_float() -\u003e Float",
+              "doc": ""
+            },
+            {
+              "name": "to_float64",
+              "kind": "operation",
+              "signature": "fn to_float64() -\u003e Float64",
+              "doc": ""
+            },
+            {
+              "name": "to_int",
+              "kind": "operation",
+              "signature": "fn to_int() -\u003e Optional[Int]",
               "doc": ""
             },
             {
