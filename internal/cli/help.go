@@ -46,6 +46,8 @@ Start with:
   ms lock ms.toml
   ms run ms.toml -- first second
 
+Bare ms prints this help and exits successfully.
+Long options that take values also accept --flag=value.
 Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
 The Go toolchain is embedded and cannot be replaced by external tools.
 MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains
@@ -189,7 +191,7 @@ func requestsHelp(args []string) bool {
 			return false
 		case "-h", "--help":
 			return true
-		case "-o", "--output", "--cpu-profile", "--heap-profile", "--trace", "--build-type":
+		case "-o", "--output", "--cpu-profile", "--heap-profile", "--trace", "--build-type", "--timeout", "--filter":
 			// A flag value is not a help request, even if it is spelled --help.
 			i++
 		}
