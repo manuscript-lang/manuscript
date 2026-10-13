@@ -52,6 +52,7 @@ type checker struct {
 	checkedArguments        map[*syntax.Expression]checkedArgument
 	function, serial, loops int
 	unknownType             bool
+	labelMismatch           bool
 	reportedImports         map[string]bool
 	callName                string
 	callPos                 syntax.Position
@@ -640,7 +641,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 	cases := Cases(info.Type)
 	seen := map[string]bool{}
 	fall, breaks := false, false
-	wildcard := false
+	wildcard, unknownCase := false, false
 	for index := range arms {
 		arm := &arms[index]
 		c.ArmBindings[arm] = nil
@@ -666,7 +667,12 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 				}
 			}
 			if !found {
-				c.error(arm.Pos, "resolution", "unknown case "+name+" of "+info.Type.Name+"; cases: "+list(caseNames(info.Type), 12))
+				unknownCase = true
+				if len(arm.Names) == 0 && name != "" && !(name[0] >= 'A' && name[0] <= 'Z') {
+					c.error(arm.Pos, "resolution", "'"+name+"' is not a case of "+info.Type.Name+"; use '_' for a catch-all arm (it cannot bind a name); cases: "+list(caseNames(info.Type), 12))
+				} else {
+					c.error(arm.Pos, "resolution", "unknown case "+name+" of "+info.Type.Name+"; cases: "+list(caseNames(info.Type), 12))
+				}
 			}
 			if seen[name] || wildcard {
 				c.error(arm.Pos, "type", "duplicate or unreachable case "+name+"; each case may be matched once and before any '_' arm")
@@ -690,7 +696,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 		breaks = breaks || br
 		c.scope = old
 	}
-	if !wildcard && len(seen) != len(cases) {
+	if !wildcard && !unknownCase && len(seen) != len(cases) {
 		c.error(pos, "type", "non-exhaustive match; missing cases: "+list(missingCases(cases, seen), 12)+", or add a final '_' arm")
 	}
 	return !info.NoReturn && fall, info.Breaks || breaks
@@ -1261,6 +1267,7 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
 		info           *Info
 	}
 	var states []*armState
+	var resultAt syntax.Position
 	c.match(e.Pos, e.Left, e.Arms, func(arm *syntax.Arm) (bool, bool) {
 		normal, breaks := c.block(arm.Body, false)
 		states = append(states, &armState{arm: arm, scope: c.scope, normal: normal, breaks: breaks})
@@ -1295,6 +1302,7 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
 			state.info = armValue(state.arm.Value)
 			if result == nil && state.info.Type.ID != "Never" && inferenceTypeKnown(state.info.Type, c.inferenceVariables) {
 				result = requiredType(state.info.Type)
+				resultAt = state.arm.Value.Pos
 			}
 		}
 	}
@@ -1312,7 +1320,7 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
 				normal = !state.info.NoReturn
 			}
 		} else if normal && result != nil && !compatible(primitive("Unit"), result) {
-			c.error(state.arm.Pos, "type", "match arm requires a final value of type "+result.String())
+			c.error(state.arm.Pos, "type", fmt.Sprintf("match arm requires a final value of type %s, because the arm at line %d ends in an expression and makes this match a value; end every arm with a value, or bind the unused result with 'let ignored = ...' so the match stays a statement", result, resultAt.Line))
 		}
 		fall = fall || normal
 	}

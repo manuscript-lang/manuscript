@@ -385,11 +385,14 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, n
 			a = args[index]
 		}
 		if a == nil {
-			c.error(pos, "type", missingTypeArgumentHint(name, v.Name, vars, args))
+			if !c.labelMismatch {
+				c.error(pos, "type", missingTypeArgumentHint(name, v.Name, vars, args))
+			}
 			a = primitive("<invalid>")
 		}
 		sub[v.ID] = a
 	}
+	c.labelMismatch = false
 	for _, v := range vars {
 		for _, bound := range v.Bounds {
 			if !invalidType(sub[v.ID]) && !c.satisfies(sub[v.ID], Sub(bound, sub)) {
