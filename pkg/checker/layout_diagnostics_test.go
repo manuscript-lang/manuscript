@@ -95,3 +95,21 @@ func TestFiniteTypeApplicationsShareRepeatedDependencies(t *testing.T) {
 		t.Fatal(result.Diagnostics)
 	}
 }
+
+func TestStructuralPropertiesShareRepeatedDependencies(t *testing.T) {
+	var source strings.Builder
+	source.WriteString("type Layer0:\n    value: Int\n")
+	for i := 1; i <= 32; i++ {
+		fmt.Fprintf(&source, "type Layer%d:\n    left: Layer%d\n    right: Layer%d\n", i, i-1, i-1)
+	}
+	source.WriteString("fn hash(value: Layer32) -> Int: return value.hash()\n")
+	source.WriteString("fn equal(left: Layer32, right: Layer32) -> Bool: return left == right\n")
+	module, err := parser.Parse("properties.ms", source.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := checker.Check([]*syntax.Module{module}, nil)
+	if len(result.Diagnostics) != 0 {
+		t.Fatal(result.Diagnostics)
+	}
+}

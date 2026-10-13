@@ -260,26 +260,38 @@ func (c *checker) satisfies(t, bound *Type) bool {
 	}
 	return c.implements(t, bound)
 }
-func (c *checker) property(t *Type, property string, seen map[string]bool) bool {
+
+type propertyState struct {
+	active    map[string]bool
+	completed map[string]bool
+}
+
+func (c *checker) property(t *Type, property string, state *propertyState) (result bool) {
 	if t == nil {
 		return false
 	}
 	if t.ID == "<invalid>" {
 		return true
 	}
-	if seen == nil {
-		seen = map[string]bool{}
+	if state == nil {
+		state = &propertyState{active: map[string]bool{}, completed: map[string]bool{}}
 	}
 	key := typeKey(t) + property
-	if seen[key] {
+	if result, ok := state.completed[key]; ok {
+		return result
+	}
+	if state.active[key] {
 		// Equality handles cycles; structural hashing requires an acyclic shape.
 		return property != "Hashable"
 	}
-	if len(seen) > 200 {
+	if len(state.active) > 200 {
 		return false
 	}
-	seen[key] = true
-	defer delete(seen, key)
+	state.active[key] = true
+	defer func() {
+		delete(state.active, key)
+		state.completed[key] = result
+	}()
 	if t.Kind == "variable" {
 		for _, b := range t.Bounds {
 			if std(b, property) || std(b, "Hashable") && property == "Equal" {
@@ -329,7 +341,7 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 			return false
 		}
 		for _, a := range t.Args {
-			if !c.property(a, property, seen) {
+			if !c.property(a, property, state) {
 				return false
 			}
 		}
@@ -343,13 +355,13 @@ func (c *checker) property(t *Type, property string, seen map[string]bool) bool 
 	}
 	if t.Def != nil {
 		for _, f := range Fields(t) {
-			if !c.property(f.Type, property, seen) {
+			if !c.property(f.Type, property, state) {
 				return false
 			}
 		}
 		for _, cs := range Cases(t) {
 			for _, f := range cs.Fields {
-				if !c.property(f.Type, property, seen) {
+				if !c.property(f.Type, property, state) {
 					return false
 				}
 			}
