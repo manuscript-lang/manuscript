@@ -19,6 +19,10 @@ Sequential callbacks run under the caller's execution context and may wait for o
 
 An error is an ordinary value returned in `Result[T, E]`. Standard packages define errors for their own domain, such as `JsonError` and `IoError`; their cases and fields appear in the [generated reference](reference/_index.md). Match the result to handle an error, or use `try` to return it unchanged to a compatible error boundary.
 
+Standard `message()` implementations return human-readable domain diagnostics, such as `filesystem: file or directory not found`. Match error cases for programmatic handling rather than parsing message text. Existing `Failed(message)` and task crash diagnostics are returned unchanged, and logging errors preserve their underlying cause's message. Structured TOML/YAML errors include line and column positions when available, without echoing parser input or reason text.
+
+Nullary errors retain their existing constructors and do not carry the failing path or operation. Add that context at the application boundary when useful, taking care to redact credentials and sensitive paths or contents before displaying it. Explicit message payloads may contain sensitive information and are not automatically redacted.
+
 ### Error details
 
 Put typed information directly in an error record or alternative case. Each field has its own type. A domain error does not need an `Error` implementation to be returned or propagated.
