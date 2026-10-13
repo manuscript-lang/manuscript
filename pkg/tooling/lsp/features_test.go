@@ -400,6 +400,8 @@ func TestShorthandRenamePreservesBothNames(t *testing.T) {
 func TestPreferredNativeNamesHoverAndNavigation(t *testing.T) {
 	for _, tc := range []struct{ name, receiver, contract, module string }{
 		{"set", "List[Int]", "Replaces an element in place", "collections.ms"},
+		{"splice", "List[Int]", "mutating and returning this List", "collections.ms"},
+		{"remove", "Map[Int, Int]", "remaining entries retain insertion order", "collections.ms"},
 		{"reverse_in_place", "List[Int]", "Reverses this list in place", "collections.ms"},
 		{"reversed", "List[Int]", "independent outer storage", "collections.ms"},
 		{"reversed", "Bytes", "reversed copy", "bytes.ms"},

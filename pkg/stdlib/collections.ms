@@ -62,6 +62,11 @@ export type List[T]:
     # Reduces values from right to left, starting with `initial`.
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     # Replaces `delete_count` values at `start` with the replacement list.
+    # Replaces delete_count elements starting at start, mutating and returning this List.
+    # Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault without clamping.
+    # Replacement references stay shallow; using this same List as replacement stages its prior values.
+    fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+    # Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior.
     fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
@@ -121,6 +126,10 @@ export type Map[T: Hashable, U]:
     fn add(key: T, value: U) -> Map[T, U]:
     # Compatible spelling of add, with the same mutation and receiver return.
     fn with_entry(key: T, value: U) -> Map[T, U]:
+    # Removes an equal key and returns this same Map; remaining entries retain insertion order.
+    # An absent key leaves values and ordering unchanged; lookup uses the selected Equal/Hashable scope.
+    fn remove(key: T) -> Map[T, U]:
+    # Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return.
     fn without(key: T) -> Map[T, U]:
 
 # One key-value pair returned by `Map.entries`.

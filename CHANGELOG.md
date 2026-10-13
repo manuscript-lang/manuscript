@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add receiver-returning `Map.remove` and `List.splice` aliases, preserving legacy lookup, insertion order, strict splice bounds and faults; extend native dispatch, mutation analysis and preferred-name advisories.
 - Add MSL108 advisories for equivalent preferred collection mutation, byte-copy reversal and regex replacement names, including stored methods; preserve user methods, callable fields and existing execution.
 - Add preferred `List.set`/`remove`/`reverse_in_place`, copying `List.reversed`/`Bytes.reversed`, `Set.add`/`remove`, `String.replace_first`, and `Regex.replace_all` spellings. Existing names remain compatible, including receiver returns, replacement caps, limits, and errors.
 - Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.

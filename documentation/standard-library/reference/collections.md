@@ -60,6 +60,7 @@ type List[T]:
     fn flat_map[U](transform: fn(value: T) -> List[U]) -> List[U]:
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
     fn fill(value: T, start: Int, end: Int) -> List[T]:
     fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
@@ -219,6 +220,17 @@ Returns a new list sorted by negative/zero/positive comparator results.
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
 ```
 
+### List.splice
+
+Replaces `delete_count` values at `start` with the replacement list.
+Replaces delete_count elements starting at start, mutating and returning this List.
+Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault without clamping.
+Replacement references stay shallow; using this same List as replacement stages its prior values.
+
+```manuscript
+fn splice(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+```
+
 ### List.with_value
 
 Compatibility spelling for set; mutates and returns this list.
@@ -229,7 +241,7 @@ fn with_value(index: Int, value: T) -> List[T]:
 
 ### List.with_values
 
-Replaces `delete_count` values at `start` with the replacement list.
+Compatibility spelling for splice, preserving the same mutator, bounds and fault behavior.
 
 ```manuscript
 fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
@@ -294,6 +306,7 @@ type Map[T: Hashable, U]:
     fn length() -> Int:
     fn add(key: T, value: U) -> Map[T, U]:
     fn with_entry(key: T, value: U) -> Map[T, U]:
+    fn remove(key: T) -> Map[T, U]:
     fn without(key: T) -> Map[T, U]:
 ```
 
@@ -405,6 +418,15 @@ Equal outputs keep the first key/position and the last input value.
 fn map_keys[W: Hashable](transform: fn(key: T, value: U) -> W) -> Map[W, U]:
 ```
 
+### Map.remove
+
+Removes an equal key and returns this same Map; remaining entries retain insertion order.
+An absent key leaves values and ordering unchanged; lookup uses the selected Equal/Hashable scope.
+
+```manuscript
+fn remove(key: T) -> Map[T, U]:
+```
+
 ### Map.some
 
 Stops at the first matching entry; empty maps return false.
@@ -435,6 +457,14 @@ Compatible spelling of add, with the same mutation and receiver return.
 
 ```manuscript
 fn with_entry(key: T, value: U) -> Map[T, U]:
+```
+
+### Map.without
+
+Compatibility spelling for remove, with the same mutation, scoped lookup and receiver return.
+
+```manuscript
+fn without(key: T) -> Map[T, U]:
 ```
 
 ## MapBuilder {data-api-kind="Native type"}

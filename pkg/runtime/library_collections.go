@@ -113,6 +113,9 @@ func init() {
 	add("map_add", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K"), p("value", "V")}, func(ctx *Execution, _ string, a []Value) Value {
 		return MapWithEntry(ctx, a[0], a[1], a[2], ctx.EqualityScope)
 	})
+	add("map_remove", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K")}, func(ctx *Execution, _ string, a []Value) Value {
+		return mapRemove(ctx, a[0].(*Map), a[1])
+	})
 	add("map_get_or", "V", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K"), p("fallback", "V")}, func(ctx *Execution, _ string, a []Value) Value {
 		values := a[0].(*Map)
 		if index := values.find(ctx, a[1]); index >= 0 {
@@ -312,6 +315,7 @@ func init() {
 		spliceList(a[0].(*List), int(start), int(count), a[3].(*List))
 		return a[0]
 	})
+	libraryAlias("collections", "splice", "with_values")
 	add("fill", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		list := a[0].(*List)
 		s, e := a[2].(int64), a[3].(int64)
