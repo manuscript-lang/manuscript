@@ -11,6 +11,7 @@ Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/m
 ms lint source.ms --json
 ms lint ms.toml --json
 ms fmt source.ms --check
+ms fmt ms.toml --check
 ms lsp
 ms debug source.ms -- arg1
 ms run source.ms --cpu-profile cpu.pprof --heap-profile heap.pprof --trace trace.out -- arg1
@@ -69,7 +70,7 @@ MSL104 warns when an expression statement discards a standard `Result`. Handle i
 
 MSL105 identifies direct mutations of captured data in known concurrent callbacks. It is advisory and does not prove race freedom; use one `Synchronized` wrapper for shared mutable access. See [sharing and lint limits](../concurrency/sharing.md#captured-mutable-data).
 
-`fmt` preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
+`fmt` accepts files, directories, and manifests, with project discovery shared with checking. `--check` reports every unformatted file and fails if any target needs formatting or cannot be processed. See [formatting](source/formatting.md) for selection and exclusion rules. It preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
 
 The formatter adds single blank lines at structural boundaries so code reads in
 paragraphs:
@@ -82,8 +83,7 @@ paragraphs:
   `continue` is a guard: keep it with preceding setup and consecutive guards,
   then add a blank line before the next statement.
 - Keep each `if`/`else if`/`else` family together. Preserve inline bodies.
-- Separate neighboring match arms when either arm has an indented body; keep
-  inline arms compact.
+- Preserve authored spacing between match arms, including compact indented arms.
 - Put inserted breaks before contiguous leading comments at the same indentation,
   keeping those comments with the following code.
 
@@ -98,9 +98,11 @@ Expression layout uses a soft limit of 88 columns:
   or a closure argument. Single-argument calls containing another nested
   computation can also expand.
 - Expand signatures with four or more parameters or complex defaults. Include the
-  return type when deciding whether a signature fits.
-- Expand lists with five or more elements or nested lists, and grouped imports
-  with five or more names.
+  return type when deciding whether a signature fits, excluding callback bodies
+  and enclosing arguments.
+- Keep lists compact when they fit, including nested lists. Expand grouped
+  imports with five or more names. Later call arguments do not count toward
+  the width of a preceding list or call in a chain.
 - Once a group expands, put every argument, parameter, or element on its own line.
   Use four spaces beyond the containing line and align the closing delimiter with
   that line. Existing multiline groups remain expanded with this same layout.

@@ -74,13 +74,6 @@ func formatExpressionLayout(filename, source string) (string, error) {
 					g.force = g.force || complexArgument(arg.Value)
 				}
 			}
-		case syntax.KindList:
-			if g := layout.byOpen[e.Pos.Offset]; g != nil {
-				g.force = g.force || len(e.Elements) >= 5
-				for _, element := range e.Elements {
-					g.force = g.force || element.Kind == syntax.KindList
-				}
-			}
 		case syntax.KindMap:
 			if g := layout.byOpen[e.Pos.Offset]; g != nil {
 				g.force = g.force || len(e.Elements) >= 10
@@ -353,7 +346,8 @@ func (l *expressionLayout) group(g *layoutGroup, indent, column, following int) 
 		if at := strings.IndexByte(tail, ':'); at >= 0 {
 			tail = tail[:at]
 		}
-		suffix = max(suffix, utf8.RuneCountInString(tail))
+		// A callback body and enclosing arguments do not belong to its signature.
+		suffix = utf8.RuneCountInString(tail)
 	}
 	force := g.force || column+utf8.RuneCountInString(flat)+suffix > formatWidth
 	operator, count := layoutOperators(g.nodes)
@@ -473,6 +467,14 @@ func (l *expressionLayout) sequence(nodes []layoutNode, indent, column int, pref
 			var tail []layoutNode
 			for _, next := range nodes[index+1:] {
 				if next.token.Kind == lexer.Newline || next.token.Kind == formatComment {
+					break
+				}
+				if next.group != nil && len(next.group.nodes) > 0 {
+					// The next group has its own continuation boundary. Its
+					// contents must not force this group (such as a list before
+					// a map callback) to expand as well.
+					next.group = nil
+					tail = append(tail, next)
 					break
 				}
 				tail = append(tail, next)

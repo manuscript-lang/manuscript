@@ -17,7 +17,7 @@ Commands:
   emit     Emit standalone Go source with the runtime
   run      Build and run an application
   test     Execute test blocks, including imported modules
-  fmt      Format a source file
+  fmt      Format source files or a project
   inspect  Emit checked source metadata as JSON
   diagram  Emit a static call graph as Mermaid
   profile  Run with CPU, heap, and trace capture
@@ -83,10 +83,10 @@ func commandHelp(command string) (string, bool) {
 		options = "  --debug  Alias for --build-type Debug\n  --watch  Rebuild and rerun after each saved source change\n"
 		examples = "ms test test.ms\n  ms test ms.toml --debug"
 	case "fmt":
-		usage = "<file.ms> [--check]"
-		description = "Format one source file in place, preserving its file permissions."
-		options = "  --check  Leave the file unchanged; exit 1 if formatting is needed\n"
-		examples = "ms fmt main.ms\n  ms fmt main.ms --check"
+		usage = "<file.ms|directory|ms.toml>... [--check]"
+		description = "Format selected source files in place, preserving their file permissions.\nDirectories are recursive; projects include all source modules and test files.\nDiscovery skips hidden, vendor, and node_modules directories."
+		options = "  --check  Leave files unchanged; report every unformatted file and exit 1\n"
+		examples = "ms fmt main.ms\n  ms fmt ms.toml --check\n  ms fmt src test.ms\n  ms fmt src/*.ms --check"
 	case "inspect":
 		usage = "<file.ms|ms.toml> [-o output]"
 		description = "Emit checked symbols, source hashes, call sites, and statement spans as JSON."
