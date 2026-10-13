@@ -5,6 +5,7 @@ import List from "@std/collections.ms"
 fn parse(n: Int) -> Result[Int, String]:
     if n < 0:
         return error("neg")
+
     return ok(n)
 
 fn bound(n: Int) -> Result[Int, String]:
@@ -19,6 +20,7 @@ fn reassigned(n: Int) -> Result[Int, String]:
 fn check(n: Int) -> Result[Unit, String]:
     if n < 0:
         return error("neg")
+
     return ok(unit)
 
 fn discarded(n: Int) -> Result[Int, String]:
@@ -40,8 +42,10 @@ fn chained(n: Int) -> Result[Int, String]:
 
 fn in_loop(values: List[Int]) -> Result[Int, String]:
     var sum = 0
+
     for v in values:
         sum = sum + (try parse(n: v))
+
     return ok(sum)
 
 fn in_lambda(n: Int) -> Result[Int, String]:
@@ -76,9 +80,17 @@ test "try nested in expressions and chains still propagates":
         return panic(message: "chained error")
 
 test "try in loops and lambdas":
-    if not (code(r: in_loop(values: [1, 2, 3])) == 6):
+    if not (
+        code(
+            r: in_loop(values: [1, 2, 3])
+        ) == 6
+    ):
         return panic(message: "loop ok")
-    if not (code(r: in_loop(values: [1, -2, 3])) == -1):
+    if not (
+        code(
+            r: in_loop(values: [1, -2, 3])
+        ) == -1
+    ):
         return panic(message: "loop error")
     if not (code(r: in_lambda(n: 2)) == 21):
         return panic(message: "lambda ok")
