@@ -92,10 +92,10 @@ interface StringOperations:
         new: String,
         max_bytes: Optional[Int] = none
     ) -> Result[String, StringError]
-    # Selects [start, end) in scalars: negative bounds are relative to the end, then each bound clamps to 0..length.
+    # Selects [start, end) in scalars: negative bounds are relative to the end, then clamp to 0..scalar_length().
     # An inverted adjusted range yields empty text; the receiver is unchanged.
     fn slice(start: Int, end: Int) -> String
-    # Selects a scalar range after clamping each bound to 0..length (negative becomes zero).
+    # Selects a scalar range after clamping each bound to 0..scalar_length() (negative becomes zero).
     # Swaps inverted adjusted bounds; the receiver is unchanged.
     fn substring(start: Int, end: Int) -> String
     # Returns the UTF-8 encoded byte length.

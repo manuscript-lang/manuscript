@@ -59,6 +59,8 @@ String indexing and search count Unicode scalars. The [text rules](../core-langu
 
 An empty `old` in `replace` or `replace_all` matches before the first scalar and after each scalar, including the end. Replacement does not scan newly inserted text. `repeat`, `normalize`, `pad_start`, and `pad_end` also accept optional UTF-8 output budgets: omitted or `none` budgets impose no cap, zero permits only empty output, negatives return `StringError.InvalidInput`, and exceeding a supplied budget returns `StringError.LimitExceeded`. Even unchanged padding results must fit the supplied budget. Normalization is explicit (`NFC`, `NFD`, `NFKC`, or `NFKD`).
 
+Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
+
 ## Byte operations
 
 | Bytes operations | Behavior |
@@ -72,5 +74,3 @@ An empty `old` in `replace` or `replace_all` matches before the first scalar and
 | `to_text` | Decode valid UTF-8 or return `none`. |
 
 Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
-
-Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
