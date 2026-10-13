@@ -62,6 +62,18 @@ String indexing and search count Unicode scalars. The [text rules](../core-langu
 
 An empty `old` in `replace_first` (or `replace`) and `replace_all` matches before the first scalar and after each scalar, including the end. Replacement does not scan newly inserted text. `repeat`, `normalize`, `pad_start`, and `pad_end` also accept optional UTF-8 output budgets: omitted or `none` budgets impose no cap, zero permits only empty output, negatives return `StringError.InvalidInput`, and exceeding a supplied budget returns `StringError.LimitExceeded`. Even unchanged padding results must fit the supplied budget. Normalization accepts exactly the case-sensitive strings `NFC`, `NFD`, `NFKC`, or `NFKD`; other forms return `StringError.InvalidInput`.
 
+Use `NormalizationForm.Nfc`, `Nfd`, `Nfkc`, or `Nfkd` from `@std/string.ms` to select a form with a checked alternative. Its `normalize(text, max_bytes = none)` operation shares the existing String implementation, UTF-8 byte budgets, errors, and cancellation. Canonical forms compose/decompose canonically equivalent text; compatibility forms also normalize compatibility characters such as ligatures.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import NormalizationForm from "@std/string.ms"
+import panic from "@std/faults.ms"
+
+test "typed Unicode normalization":
+    let text = NormalizationForm.Nfkc.normalize("ﬁ", max_bytes: 2).unwrap()
+    if text != "fi": return panic("compatibility normalization")
+```
+
 Negative `max_parts` and `max_replacements` fault with a message naming the operation and parameter, because these operations return plain values. Full case mapping includes `"ß".upper()` as `"SS"`, `"ﬁ".upper()` as `"FI"`, final sigma `ς` at the end of `"ΑΣ".lower()`, and `"İ".lower()` as `i` followed by U+0307.
 
 Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.
