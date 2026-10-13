@@ -8,33 +8,9 @@ permissions:
   contents: read
 
 # Each unit of work runs exactly once per run. Jobs are grouped by shared inputs,
-# not by topic: static checks share the pinned linters, the Go suite is sharded,
-# and the editor tests reuse the CLI built for the hello run.
+# not by topic: static checks and the editor tests share one setup, the Go suite
+# is sharded, and the editor tests reuse the CLI built for the hello run.
 jobs:
-  # Format, vet, lint, repo rules, and license freshness. Generated docs and the
-  # book are checked once, by "Build design book" in cicd.yml.
-  static:
-    name: Static checks
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: .go-version
-          cache: true
-      - uses: actions/cache@v6
-        with:
-          path: |
-            toolchain/
-            .tools/
-          key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256', 'scripts/devtools.env', 'scripts/devtools.sha256') }}
-      - name: Prepare verified SDK and pinned linters
-        run: make setup
-      - name: Format, vet, lint, repo rules, licenses
-        run: make check lint repo-check licenses-check
-
   # Every Go test runs once: in-process packages under the race detector, the
   # rest (unit, stdlib, examples, native end-to-end) with coverage.
   go:
@@ -68,9 +44,11 @@ jobs:
           name: language-coverage-${{ matrix.shard }}
           path: .artifacts/coverage/
 
-  # The bundled CLI, built once and reused by the editor tests.
+  # Static checks, then the bundled CLI built once and reused by the editor
+  # tests, sharing one checkout and one SDK/linter setup. Generated docs and the
+  # book are checked once, by "Build design book" in cicd.yml.
   dist:
-    name: CLI, fuzz, and editor
+    name: Static, CLI, fuzz, and editor
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -87,8 +65,14 @@ jobs:
           cache-dependency-path: extensions/vscode/package-lock.json
       - uses: actions/cache@v6
         with:
-          path: toolchain/
-          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
+          path: |
+            toolchain/
+            .tools/
+          key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256', 'scripts/devtools.env', 'scripts/devtools.sha256') }}
+      - name: Prepare verified SDK and pinned linters
+        run: make setup
+      - name: Format, vet, lint, repo rules, licenses
+        run: make check lint repo-check licenses-check
       - name: Build bundled CLI and run hello
         run: |
           make build
@@ -140,7 +124,7 @@ jobs:
 
   # Keep one stable required check; every job must pass before merging.
   test:
-    needs: [static, go, dist, host-stdlib]
+    needs: [go, dist, host-stdlib]
     if: always()
     runs-on: ubuntu-latest
     steps:
