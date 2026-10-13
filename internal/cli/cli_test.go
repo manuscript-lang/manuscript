@@ -131,11 +131,20 @@ func TestHelpPreservesProgramArgumentsAndOutputPaths(t *testing.T) {
 		{"run", "missing.ms", "--", "-h"},
 		{"emit", "missing.ms", "-o", "--help"},
 		{"run", "missing.ms", "--cpu-profile", "-h"},
+		{"run", "missing.ms", "--trace", "--help"},
+		{"profile", "missing.ms", "--trace", "--", "--help"},
 	} {
 		status, output, errors := invoke(t, args...)
 		if status != 1 || output != "" || errors == "" {
 			t.Fatalf("help consumed a path or application argument %v: %d, %q, %q", args, status, output, errors)
 		}
+	}
+}
+
+func TestProfileTraceHelp(t *testing.T) {
+	status, output, errors := invoke(t, "profile", "missing.ms", "--trace", "--help")
+	if status != 0 || errors != "" || !strings.Contains(output, "Add --trace") || !strings.Contains(output, "overhead") {
+		t.Fatalf("trace flag consumed profile help: %d, %q, %q", status, output, errors)
 	}
 }
 

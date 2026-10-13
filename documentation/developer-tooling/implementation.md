@@ -191,8 +191,19 @@ They can exceed the soft limit; the formatter does not split or rewrite them.
 
 `ms debug` is also available for Delve's terminal UI. Existing project pin validation remains in effect; use `ms lock ms.toml` explicitly after a toolchain/compiler change.
 
-Profiling is explicit and local: CPU/heap use pprof and execution traces use Go tracing. New files are created exclusively with mode 0600; existing files are never overwritten. Profiles flush before process exit, including handled faults and signal cancellation. Source functions contribute `ms.source` CPU labels and `source:<position>` trace regions. Task-group/scheduled operations contribute work labels and trace tasks; joining and lexical cleanup have named trace regions. Profiling preserves authority, cancellation, and work lifetime. Without profiling, source calls take a single atomic branch. A setup or heap-write error returns exit code 70. Use optimized builds for representative samples and retain matching native metadata.
+Profiling is explicit and local: CPU/heap use pprof and execution traces use Go tracing. New files are created exclusively with mode 0600; existing files are never overwritten. Profiles flush before process exit, including handled faults and signal cancellation. A setup or heap-write error returns exit code 70. Only one capture can run at a time in a process. Use optimized builds for representative samples and retain matching native metadata.
+
+Source entry boundaries contribute `ms.source` CPU labels and, when tracing, `source:<position>` regions. Nested calls inherit the entry label and remain visible in sampled CPU stacks through native source mappings; they do not create a label/context/trace region per call. Each task-group or scheduled operation starts a fresh source boundary, with work labels and trace tasks. Joining and lexical cleanup have named trace regions. This coarser attribution reduces instrumentation cost but does not provide a complete per-call timeline. Heap-only capture adds no source instrumentation. Profiling preserves cancellation and work lifetime; ordinary source calls take a single atomic branch.
+
+Profiling still changes execution time and allocation behavior. CPU capture also waits for samples to flush at shutdown, and heap capture forces a garbage collection. Tracing can add substantial time and disk usage, especially with many work operations or allocations. Measure an unprofiled executable separately when comparing performance; neither capture wall time nor instrumented CPU samples establish normal program speed.
 
 The checker analyzes each affected module rather than incrementally reusing individual syntax/type nodes. Public rename is conservative about identifier collisions. The debugger retains native runtime frames as subdued entries, and complex watch expressions retain native Go syntax. These behaviors are explicit rather than hidden by unsupported capabilities.
 
-`ms profile module-or-project -o new-directory` captures all three profiles and retains the optimized executable, build/source metadata, static inspection, and a bundle manifest for reproducible symbolization. Existing directories are rejected.
+`ms profile module-or-project -o new-directory` captures `cpu.pprof` and `heap.pprof` and retains the optimized executable, build/source metadata, static inspection, and a bundle manifest for reproducible symbolization. Add `--trace` to also capture `trace.out`. Trace capture is now opt-in: the default bundle omits the trace file and its manifest entry. Existing directories are rejected. For individual output paths, use the existing `ms run … --cpu-profile path --heap-profile path --trace path` options; every requested output is captured.
+
+```sh
+ms profile main.ms -o samples
+ms profile main.ms -o traced-samples --trace
+ms pprof -top samples/cpu.pprof
+ms trace -http=127.0.0.1:8080 traced-samples/trace.out
+```

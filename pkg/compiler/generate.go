@@ -12,7 +12,11 @@ import (
 // lowerGo consumes checked identities and optimization facts. It never parses
 // source or resolves a type or binding by its spelling.
 func lowerGo(optimized optimizedProgram, entry string, options Options) (string, error) {
-	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}}
+	return lowerGoForBuild(optimized, entry, options, Release)
+}
+
+func lowerGoForBuild(optimized optimizedProgram, entry string, options Options, kind BuildType) (string, error) {
+	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, debugLiterals: kind == Debug}
 	file := g.file(entry, options)
 	if g.loweringError != nil {
 		return "", g.loweringError
@@ -127,6 +131,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	for _, name := range g.sites {
 		file.Decls = append(file.Decls, variable(name, runtimeName("MethodSite"), nil))
 	}
+	file.Decls = append(file.Decls, g.literalData...)
 	return file
 }
 
