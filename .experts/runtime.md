@@ -37,6 +37,8 @@ Verified: cancellation removes a join edge only if the API actually stops waitin
 
 Verified: another operation can close a guard alias while the admitting operation is blocked joining. A cycle through that lifetime can therefore be broken by independent release. The accepted scoped policy still faults these potential cycles, as the former guard did; it does not prove a permanent deadlock. Independent-lock/cross-service cycles remain invalid application usage.
 
+Verified: eager wait-graph edges cannot be omitted merely because there is no current lock waiter; a later join-before-lock cycle still depends on them. One counted destination can live inline with map spill for branching, noncancellable removal tokens can be values owned by one defer, and paired admissions can share a graph-lock hold. Cancellation-aware tokens retain shared active state for idempotent pruning/removal. This removes unconditional lifecycle map/closure allocations without promising zero runtime cost; measure empty, branching, contended and representative tasks plus independent throughput under the actual CPU quota. [Recorded benchmark samples and profiles](../scripts/benchmarks/wait-graph/README.md) distinguish that bookkeeping cost from application claims.
+
 Verified: acquisition delivery must use one cancellation observation for both disposal and unwinding. Two final checks can see active then cancelled, discard the result without disposing it, and strand a Synchronized lock. A cancellation arriving after the successful delivery checkpoint belongs to caller cleanup.
 
 Apply when: changing ancestor lock admission, wait-cycle prevention, task/service joins, or acquisition delivery.

@@ -1,0 +1,3039 @@
+{
+  "go": "go version go1.25.1 linux/amd64",
+  "runs": 5,
+  "benchtime": "500ms",
+  "gomaxprocs": [
+    1,
+    4,
+    16
+  ],
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "cpu_quota": "400000 100000",
+  "variants": {
+    "baseline": {
+      "path": "/tmp/manuscript-148-main-perf",
+      "runtime_source_sha256": {
+        "builtin_parity_test.go": "3dcb515304ae31b26827d7447d100100c6ce9a3d3b12ee02d2ba39ac0fde9ac6",
+        "bundle.go": "4a0e4f87637ba5d83c29d0959167360085744e2ea7242722ecdaf2749e231359",
+        "clone.go": "e7bae346c56f7a3645147701d400b141e1bcb6db8e4faea8898ac04201f1654b",
+        "collections.go": "958f88e2dc727ba9f2e27b2fda177bd62a3381c6c50b285773450cc35b8b6ef3",
+        "collections_bench_test.go": "668c53e9d746f60569b41c0ec758f19ca3ae9b54449026e8a9fb523671ebb971",
+        "core_parity_test.go": "694123b9f53e2f54a4c266ab94f008bf0ebcc5d6a40825bcf2072ae7ba89675b",
+        "errors.go": "b7d3554a232ace04db5dfcb47dd912f5b9d7b39aa4c82bb3d0732095697c68ef",
+        "errors_test.go": "4794d2df3c01ac970f17f590c7c2c3306735b15df4e3ef69a9a3aac77697ee4d",
+        "format_test.go": "38d643b1cc5fe282b0da478b6b8ccf826e5f6e73e6e3ef96568c466076a15fe7",
+        "hashing.go": "fd4e7fd5884ba55dba4b937ec656550d1ef13e67393c76b5d395db4c4c52a354",
+        "host.go": "961af78df4556a9118ac18fcc5f41dae35f5c6a425e5b9a7288c1a72b81073bc",
+        "host_accessors_test.go": "67026dd438b2e5231397a7edceaffc52a7fce99fc88e496dfb39d47d901f8dea",
+        "hosts_test.go": "7038a44cd1c9bbdf9ae03b60065f9da3b5d301553b8a1832503516a204906550",
+        "http.go": "f579208ffb2eef3d16e9f0be1b78871b22f2841cee6be7cd71ce3da1083b0e08",
+        "keyindex.go": "7d3af9353228c47e9d0b674b8fb3631c76bbd7071cbab1883bee3df447a41e6a",
+        "keyindex_test.go": "d29b43a9da296c443881483481b56682e8e7c328b2a7710509487b13a66f6eab",
+        "lean.go": "538d68974bfff6b3dae3673d628f7350c9884fe4385b5be8a8ef804665bae06e",
+        "library.go": "e956503d42c031c0e88b62d457ba16428dfa2863fb53378613c13f027e2e94f1",
+        "library_algorithms.go": "81f6567bcb5bb27a9eb945c2d78b369293c1b156dd4723941c8b5bb907c439ba",
+        "library_archive.go": "8cee19fd3d2117f3219690cddd81d3c0a3811f4b7060886a6ab26a4fd1b770b5",
+        "library_collections.go": "4115025770d63681c7b63e29964d8fe969abd117539b2d361752863d1d56347d",
+        "library_crypto.go": "508af640a097a76dfa75da930602b6ebc9adde52ab2e6e7f0afd491620cc9a26",
+        "library_data.go": "f9549ae6dd364aaedbedf61e4db4690f466bbcd5d926973510d8a2bb1e696bc2",
+        "library_decimal.go": "6127bb582013bb9b8061255044943c1b014812f9cc929272289b64632f6065c2",
+        "library_decimal_test.go": "f4f117ef5a3412a474def47890da9290985dbb902bb6b8cb4474d46016bb07d8",
+        "library_formats.go": "b2292afb17c5d33c36d6888d6df3f100d8cf452fcd4ed3d15d72643549c234da",
+        "library_fs.go": "a1651117c492278e5a66d5a0ec13c3a346f5b87be6799bf723e71fbd879d4c44",
+        "library_fs_copy.go": "117bb793418146b4210d6bfb27118863df62780c00367e914c26221d0b0586f9",
+        "library_fs_glob.go": "2ea3f6241f571481b3669f92e5537a447ae47ba5f613cf4cef8d8dbb5b546189",
+        "library_fs_host.go": "a0f07cc8fa958b5b49d257058bfb930412e25505d2ec1d43f70159215d096ddd",
+        "library_fs_remove_test.go": "b62f60442f3e9b95ce114380495e62ac91f8acd6c8819a0b866ea81b9be5461c",
+        "library_glob.go": "80af143aa52e5645d0ace070b2b7bfcda01fc70c0baf5a475ec2699452b136a6",
+        "library_host.go": "033612b421a26d92ecb6ff34e4672f4deea6963488d6e7ab85515dda14536ce3",
+        "library_host_contract_test.go": "41aeab2afac0bb83c0a5ddba0bd4f85fb43e7d75a4a3dab3229fcf1b9d17fa89",
+        "library_host_parity_test.go": "352d61bd903fa52874ca97206a5f360ea3199dc2a104bd1107a37cd150a72891",
+        "library_html.go": "fa51a5b3cd8cb32af947380549d22878df75daa7f3290725c87826e83628e535",
+        "library_html_test.go": "5a637cbd937ab524e0577107bbe111c52012085a2156e1895d65c50e3aaa5eeb",
+        "library_http_client.go": "aad233ad3ca134a2daa10ca98c0d9f6df19b6f550f64b5efce9d1d3c0bc198ef",
+        "library_http_header_transport_test.go": "054a208179e1c7da7a3f0102d0bb746e12f05b29ab026f2bdb7e38a4201c2735",
+        "library_http_headers.go": "b1ea44b8e3e02894fe797f3263a5f2e7dce919dcd3434daaaf81ded933d2f81b",
+        "library_http_headers_test.go": "9a14281102bfe33c66c29f8b2d58ce7bf4bee5b3622891d01701ab6a1123f58f",
+        "library_http_server.go": "bb28ed0022c41a9402c986e8c298f203ef9d313f85908c97160513387e7d08d6",
+        "library_log.go": "f63f3f50f2518c9fa1ce1b9cb65f35f4fec82ce13ec0f5190f992860815881a2",
+        "library_log_test.go": "0b905d9d284859570cea5ca66260053411f752425c6a8491bd475fcb58663b08",
+        "library_net.go": "917c6570a0433b33dc29b77192cb6576ead916052f95e89f3eeb1e5033acdef3",
+        "library_network_host.go": "55a2cc0cdc4578102e430f0a60edb24c16ea4309b835cbaf5fca3d89aa5b6c10",
+        "library_networking.go": "057c16dda6add293ef944ee2e70d3ea1a3452a15c4a322875d97220f129e4dbb",
+        "library_optional.go": "e97ca34459719f8e11413f5f1fbe678d7b47d14d9d9182e6879c6f8155f7525c",
+        "library_options.go": "9359ba90a2251c5aefdde86b664be50543c0360c92abf1de6dd6be482bfab139",
+        "library_options_schema.go": "f66744b8b7a113aa7b848eb02725c4aa3ece8c63385fdc876566e1d392397317",
+        "library_path.go": "6fd82c140a71a3cfbbb87fd638e72c619bbd7d7dd3d6bec5dc914fdc881b11ad",
+        "library_result.go": "c9f180d609acd2e92dc32e753dec3ecc00dc8e9bfd5eb49bff5adb37d592c31b",
+        "library_signals.go": "8b57ce5027293aef8bb6f1b19b86bd3559dea0dfc81f8ac0bfedb38300f8e64e",
+        "library_string.go": "01d87c4f4c6b498e4d7547498ec2a463c83b727e45c652390bec64c85f3e19e0",
+        "library_system.go": "e0e5a515782387ab4aaee478fd6a5f70f1a5dcb054b44e7251677a23d7883c85",
+        "library_test.go": "2a9722aa3a3fd23d591fa0858fba669598728f6b14f3df03b0035423365128db",
+        "library_time.go": "272c368b729f548d39e0f89a678ddbc466a05792729cabb4ee6cd27e7de1c8e3",
+        "library_tls.go": "861e248c7ef5b9963fb726391d7051890e00737e0eb035c751d5c32bb5ea629c",
+        "library_tools.go": "c0710ec8243607d57b4b25c47a87d2c1b535313c272dda43059e7679d6a9dea0",
+        "library_watch.go": "15d7f61f6cad5af4edce8c3840a99888086d4d66dab561ca1f5d7e8d28c53ee9",
+        "library_websocket.go": "07f138663391b0cf2b46c3426e66d34ab8010f44bfd82894bd419119adc9a205",
+        "lifetime.go": "8053a8a0268be42bcdb9836fbf484fa69fa739f407880f4355585a059a2a443f",
+        "list_snapshot_test.go": "c06b0c573f8c2c7e6f4c61f5818775e8fc7d6c50b398534b7d53d593c09b55a2",
+        "mutation_test.go": "3c611c98a5b68c52a9f322084def4694fb67410de166f3c4659dd4ec21cfaf1a",
+        "native_dispatch_benchmark_test.go": "8a2b54033ce46da01bc3c82bc2b66d6af42810459317e1a5164aa771e6e9a9ed",
+        "native_dispatch_test.go": "804744bddedc32779dd8a880086e5e19d936189421aae4cf050ef3b9692bac47",
+        "native_library_members.go": "2220a30bb8f184e91ec9a114607840a1e310c35a1b0fc279a81429cb6b9eef59",
+        "networking_test.go": "484b6284b23ad3bad457454cfbf091e271af1b474b3813e4f4dc9078b788c84d",
+        "numeric.go": "9cb693d9f8e3a3d68bdef14c126fa7e50910c9e31ad5f59cae4e6d520ab777d9",
+        "numeric_typed.go": "7872d8aa288952b4dd10292b9e63a31dcddc77a8ae8ac59991557d634b0d514d",
+        "optional_test.go": "fc700e6423b67170a6256d477d7d8be14005a5cda9a368952e98a3e26d12d787",
+        "performance_test.go": "53744b9d80d2c21bde686026dfa747e3c99e2753c01d5e16101f3df9b7e6c1da",
+        "precondition_diagnostics_test.go": "caa0b7a4093880514cc200763c9a3de48b6e5c725f2102ea107b51b97c6aed56",
+        "priority_queue.go": "b10a3011053f5eacac38336acf24e6e5b102a5971134b91933495b01d9e23d91",
+        "process.go": "96c330858a7453e23dc196ed8711a505325e6990412d928742774c05f61a242b",
+        "profile.go": "cedba741bde8f6decc7dce67b8280f83ac416e358f2410584df7f48c29a3427a",
+        "profile_test.go": "04a68c6553571676d9e5f424138ef8144512c9fa3a97c631de2511465e58152b",
+        "queue_test.go": "eb987dc879be53b949e9fc95ffce7f55b6db91edfc2c1aa7b741041c488ff267",
+        "runtime_test.go": "18c0bb276966030fef669b32ea230e45eb46e7f7adae8ba7557baf970b808fde",
+        "scheduler.go": "b8f9334b08a929e49b7c66a72abb2fa754ab46121f1fa51981b8b32536e6631d",
+        "scheduler_timers.go": "e64d085312359589c17f3920a49d10f7bbe4df36137c71d04166a461a2525739",
+        "services.go": "5e40670d39427363a963d0477bcd0f26b84df23407d258b53ba19f700aa2b900",
+        "services_test.go": "1f62d2315444581615505c1925614452e7f2e22a46912dbadf804afeb773d7c2",
+        "shutdown_test.go": "1f137255ed66fc0f013f7eb0291cb39f92464b4e360fde3d02122f186403ec48",
+        "source_dispatch_benchmark_test.go": "1561b9fc6765d0123d8d2f4e2092c335d5e1aaccc7c110536500fe388b8afd28",
+        "stdlib_revamp_test.go": "14ef22d6e373f6493b0a957e389e228b576a060cec86f922eda03cab5722bcc5",
+        "synchronized.go": "e79c127193a7bbad63ace2cb29153fe8f9f310f8c1c9a29ef4a44b62960fa570",
+        "synchronized_ancestor_test.go": "fbe2316d33c39e6ed305aa4f4b089fe219c28b7f45185ce364a528b6c68cc51d",
+        "synchronized_test.go": "c2183610ff888230cc4728b44dd2b4ceeaacaadddc1f00bf82940fc7f0ceacb0",
+        "task_group.go": "5200328fdc8e7104de39f91a766e97b88229ecde71e81a7e1ff7d2997b2a7665",
+        "task_group_test.go": "0fcbac7a8b65b22000f42afa1c43c4a22c141412d42ebb5cf5119c53735ea86a",
+        "tasks.go": "ea185575b308c38e3beec4e221f5c24c62382134b9633f016cde4c6d23f5655d",
+        "test_events.go": "286d13247c2e66266c698ead416da2f4964e23d74006071c0a59310d29a6e169",
+        "test_events_test.go": "5f48e38fdd14747f24b29a60de9eafaa1ce122a2d8e76886ab04c315b2a5785b",
+        "test_runner_test.go": "5d3fb391fbc819119117e014e40761fc632cc273839a56ee6f06b50bc44f2fd0",
+        "time_test.go": "c62653a26ba752843f336c3157964fc780d0bad7cb51d3bc9388d40c2153b1ca",
+        "values.go": "3c0ff5085dd756b01b86b651806f46f3412da0d388db59709594edb31712d9f0",
+        "work_wait_benchmark_test.go": "4fb4d74c03e71f0da685b1019b30c1e9a72b018334d9d1f45ea21223e89c72ac"
+      }
+    },
+    "unoptimized": {
+      "path": "/tmp/manuscript-148-unoptimized-perf",
+      "runtime_source_sha256": {
+        "builtin_parity_test.go": "3dcb515304ae31b26827d7447d100100c6ce9a3d3b12ee02d2ba39ac0fde9ac6",
+        "bundle.go": "98adabbd19b355651364458fcac3a853d6c5941c3dc911365a8655ba276aaa48",
+        "clone.go": "e7bae346c56f7a3645147701d400b141e1bcb6db8e4faea8898ac04201f1654b",
+        "collections.go": "958f88e2dc727ba9f2e27b2fda177bd62a3381c6c50b285773450cc35b8b6ef3",
+        "collections_bench_test.go": "668c53e9d746f60569b41c0ec758f19ca3ae9b54449026e8a9fb523671ebb971",
+        "core_parity_test.go": "694123b9f53e2f54a4c266ab94f008bf0ebcc5d6a40825bcf2072ae7ba89675b",
+        "errors.go": "b7d3554a232ace04db5dfcb47dd912f5b9d7b39aa4c82bb3d0732095697c68ef",
+        "errors_test.go": "4794d2df3c01ac970f17f590c7c2c3306735b15df4e3ef69a9a3aac77697ee4d",
+        "format_test.go": "38d643b1cc5fe282b0da478b6b8ccf826e5f6e73e6e3ef96568c466076a15fe7",
+        "hashing.go": "fd4e7fd5884ba55dba4b937ec656550d1ef13e67393c76b5d395db4c4c52a354",
+        "host.go": "961af78df4556a9118ac18fcc5f41dae35f5c6a425e5b9a7288c1a72b81073bc",
+        "host_accessors_test.go": "67026dd438b2e5231397a7edceaffc52a7fce99fc88e496dfb39d47d901f8dea",
+        "hosts_test.go": "7038a44cd1c9bbdf9ae03b60065f9da3b5d301553b8a1832503516a204906550",
+        "http.go": "b1b5737aabaa0f27ad7545ceb489caadbad8b8062464a5416cbbfe93498f36dc",
+        "keyindex.go": "7d3af9353228c47e9d0b674b8fb3631c76bbd7071cbab1883bee3df447a41e6a",
+        "keyindex_test.go": "d29b43a9da296c443881483481b56682e8e7c328b2a7710509487b13a66f6eab",
+        "lean.go": "538d68974bfff6b3dae3673d628f7350c9884fe4385b5be8a8ef804665bae06e",
+        "library.go": "e956503d42c031c0e88b62d457ba16428dfa2863fb53378613c13f027e2e94f1",
+        "library_algorithms.go": "81f6567bcb5bb27a9eb945c2d78b369293c1b156dd4723941c8b5bb907c439ba",
+        "library_archive.go": "8cee19fd3d2117f3219690cddd81d3c0a3811f4b7060886a6ab26a4fd1b770b5",
+        "library_collections.go": "4115025770d63681c7b63e29964d8fe969abd117539b2d361752863d1d56347d",
+        "library_crypto.go": "508af640a097a76dfa75da930602b6ebc9adde52ab2e6e7f0afd491620cc9a26",
+        "library_data.go": "f9549ae6dd364aaedbedf61e4db4690f466bbcd5d926973510d8a2bb1e696bc2",
+        "library_decimal.go": "6127bb582013bb9b8061255044943c1b014812f9cc929272289b64632f6065c2",
+        "library_decimal_test.go": "f4f117ef5a3412a474def47890da9290985dbb902bb6b8cb4474d46016bb07d8",
+        "library_formats.go": "b2292afb17c5d33c36d6888d6df3f100d8cf452fcd4ed3d15d72643549c234da",
+        "library_fs.go": "a1651117c492278e5a66d5a0ec13c3a346f5b87be6799bf723e71fbd879d4c44",
+        "library_fs_copy.go": "117bb793418146b4210d6bfb27118863df62780c00367e914c26221d0b0586f9",
+        "library_fs_glob.go": "2ea3f6241f571481b3669f92e5537a447ae47ba5f613cf4cef8d8dbb5b546189",
+        "library_fs_host.go": "a0f07cc8fa958b5b49d257058bfb930412e25505d2ec1d43f70159215d096ddd",
+        "library_fs_remove_test.go": "b62f60442f3e9b95ce114380495e62ac91f8acd6c8819a0b866ea81b9be5461c",
+        "library_glob.go": "80af143aa52e5645d0ace070b2b7bfcda01fc70c0baf5a475ec2699452b136a6",
+        "library_host.go": "033612b421a26d92ecb6ff34e4672f4deea6963488d6e7ab85515dda14536ce3",
+        "library_host_contract_test.go": "41aeab2afac0bb83c0a5ddba0bd4f85fb43e7d75a4a3dab3229fcf1b9d17fa89",
+        "library_host_parity_test.go": "352d61bd903fa52874ca97206a5f360ea3199dc2a104bd1107a37cd150a72891",
+        "library_html.go": "fa51a5b3cd8cb32af947380549d22878df75daa7f3290725c87826e83628e535",
+        "library_html_test.go": "5a637cbd937ab524e0577107bbe111c52012085a2156e1895d65c50e3aaa5eeb",
+        "library_http_client.go": "aad233ad3ca134a2daa10ca98c0d9f6df19b6f550f64b5efce9d1d3c0bc198ef",
+        "library_http_header_transport_test.go": "054a208179e1c7da7a3f0102d0bb746e12f05b29ab026f2bdb7e38a4201c2735",
+        "library_http_headers.go": "b1ea44b8e3e02894fe797f3263a5f2e7dce919dcd3434daaaf81ded933d2f81b",
+        "library_http_headers_test.go": "9a14281102bfe33c66c29f8b2d58ce7bf4bee5b3622891d01701ab6a1123f58f",
+        "library_http_server.go": "5c34e6d349c5991a0edc34a7d854f35f2ee9c5ad44e7ab351ebf68fa305d489e",
+        "library_log.go": "f63f3f50f2518c9fa1ce1b9cb65f35f4fec82ce13ec0f5190f992860815881a2",
+        "library_log_test.go": "0b905d9d284859570cea5ca66260053411f752425c6a8491bd475fcb58663b08",
+        "library_net.go": "917c6570a0433b33dc29b77192cb6576ead916052f95e89f3eeb1e5033acdef3",
+        "library_network_host.go": "55a2cc0cdc4578102e430f0a60edb24c16ea4309b835cbaf5fca3d89aa5b6c10",
+        "library_networking.go": "057c16dda6add293ef944ee2e70d3ea1a3452a15c4a322875d97220f129e4dbb",
+        "library_optional.go": "e97ca34459719f8e11413f5f1fbe678d7b47d14d9d9182e6879c6f8155f7525c",
+        "library_options.go": "9359ba90a2251c5aefdde86b664be50543c0360c92abf1de6dd6be482bfab139",
+        "library_options_schema.go": "f66744b8b7a113aa7b848eb02725c4aa3ece8c63385fdc876566e1d392397317",
+        "library_path.go": "6fd82c140a71a3cfbbb87fd638e72c619bbd7d7dd3d6bec5dc914fdc881b11ad",
+        "library_result.go": "c9f180d609acd2e92dc32e753dec3ecc00dc8e9bfd5eb49bff5adb37d592c31b",
+        "library_signals.go": "8b57ce5027293aef8bb6f1b19b86bd3559dea0dfc81f8ac0bfedb38300f8e64e",
+        "library_string.go": "01d87c4f4c6b498e4d7547498ec2a463c83b727e45c652390bec64c85f3e19e0",
+        "library_system.go": "e0e5a515782387ab4aaee478fd6a5f70f1a5dcb054b44e7251677a23d7883c85",
+        "library_test.go": "2a9722aa3a3fd23d591fa0858fba669598728f6b14f3df03b0035423365128db",
+        "library_time.go": "272c368b729f548d39e0f89a678ddbc466a05792729cabb4ee6cd27e7de1c8e3",
+        "library_tls.go": "861e248c7ef5b9963fb726391d7051890e00737e0eb035c751d5c32bb5ea629c",
+        "library_tools.go": "c0710ec8243607d57b4b25c47a87d2c1b535313c272dda43059e7679d6a9dea0",
+        "library_watch.go": "15d7f61f6cad5af4edce8c3840a99888086d4d66dab561ca1f5d7e8d28c53ee9",
+        "library_websocket.go": "07f138663391b0cf2b46c3426e66d34ab8010f44bfd82894bd419119adc9a205",
+        "lifetime.go": "98b5ceea92fc1ab369ebee185c1c4e9b46240359403bb2ec7711376b73657b51",
+        "list_snapshot_test.go": "c06b0c573f8c2c7e6f4c61f5818775e8fc7d6c50b398534b7d53d593c09b55a2",
+        "mutation_test.go": "3c611c98a5b68c52a9f322084def4694fb67410de166f3c4659dd4ec21cfaf1a",
+        "native_dispatch_benchmark_test.go": "8a2b54033ce46da01bc3c82bc2b66d6af42810459317e1a5164aa771e6e9a9ed",
+        "native_dispatch_test.go": "804744bddedc32779dd8a880086e5e19d936189421aae4cf050ef3b9692bac47",
+        "native_library_members.go": "2220a30bb8f184e91ec9a114607840a1e310c35a1b0fc279a81429cb6b9eef59",
+        "networking_test.go": "484b6284b23ad3bad457454cfbf091e271af1b474b3813e4f4dc9078b788c84d",
+        "numeric.go": "9cb693d9f8e3a3d68bdef14c126fa7e50910c9e31ad5f59cae4e6d520ab777d9",
+        "numeric_typed.go": "7872d8aa288952b4dd10292b9e63a31dcddc77a8ae8ac59991557d634b0d514d",
+        "optional_test.go": "fc700e6423b67170a6256d477d7d8be14005a5cda9a368952e98a3e26d12d787",
+        "performance_test.go": "53744b9d80d2c21bde686026dfa747e3c99e2753c01d5e16101f3df9b7e6c1da",
+        "precondition_diagnostics_test.go": "caa0b7a4093880514cc200763c9a3de48b6e5c725f2102ea107b51b97c6aed56",
+        "priority_queue.go": "b10a3011053f5eacac38336acf24e6e5b102a5971134b91933495b01d9e23d91",
+        "process.go": "96c330858a7453e23dc196ed8711a505325e6990412d928742774c05f61a242b",
+        "profile.go": "cedba741bde8f6decc7dce67b8280f83ac416e358f2410584df7f48c29a3427a",
+        "profile_test.go": "04a68c6553571676d9e5f424138ef8144512c9fa3a97c631de2511465e58152b",
+        "queue_test.go": "eb987dc879be53b949e9fc95ffce7f55b6db91edfc2c1aa7b741041c488ff267",
+        "runtime_test.go": "18c0bb276966030fef669b32ea230e45eb46e7f7adae8ba7557baf970b808fde",
+        "scheduler.go": "7ff40fb00f2b4f233253b9f3aaaf8c16192948c173888a74d0be63f4924bd7bc",
+        "scheduler_timers.go": "d57d75a87004fc200eeb3aa26795476ef713f9136d33b173ce8dae8c8ce2abbc",
+        "services.go": "5e40670d39427363a963d0477bcd0f26b84df23407d258b53ba19f700aa2b900",
+        "services_test.go": "1f62d2315444581615505c1925614452e7f2e22a46912dbadf804afeb773d7c2",
+        "shutdown_test.go": "1f137255ed66fc0f013f7eb0291cb39f92464b4e360fde3d02122f186403ec48",
+        "source_dispatch_benchmark_test.go": "1561b9fc6765d0123d8d2f4e2092c335d5e1aaccc7c110536500fe388b8afd28",
+        "stdlib_revamp_test.go": "14ef22d6e373f6493b0a957e389e228b576a060cec86f922eda03cab5722bcc5",
+        "synchronized.go": "44cda6a3216284985f2887e40bf125f30becd35cbdd9d2c91c2baab9e4628b16",
+        "synchronized_ancestor_test.go": "abca5d2b079cce24e41356c011044c02c96396faf8ebe7b771c6a7f4067692c6",
+        "synchronized_test.go": "15916a993d2f5c0cdcc11a41b8299119a43dc982bbeb577f66f1ff0fffd9dbcb",
+        "task_group.go": "2a7c68f8dca3f119e0921dcac6e15bf12b86c371188b11e90a003bb045b5022d",
+        "task_group_test.go": "0fcbac7a8b65b22000f42afa1c43c4a22c141412d42ebb5cf5119c53735ea86a",
+        "tasks.go": "ea185575b308c38e3beec4e221f5c24c62382134b9633f016cde4c6d23f5655d",
+        "test_events.go": "286d13247c2e66266c698ead416da2f4964e23d74006071c0a59310d29a6e169",
+        "test_events_test.go": "5f48e38fdd14747f24b29a60de9eafaa1ce122a2d8e76886ab04c315b2a5785b",
+        "test_runner_test.go": "5d3fb391fbc819119117e014e40761fc632cc273839a56ee6f06b50bc44f2fd0",
+        "time_test.go": "c62653a26ba752843f336c3157964fc780d0bad7cb51d3bc9388d40c2153b1ca",
+        "values.go": "3c0ff5085dd756b01b86b651806f46f3412da0d388db59709594edb31712d9f0",
+        "work_wait.go": "e637ff287fe438914a4139b1f398078183f9320a2fbb7fc6b4cc94c21367645d",
+        "work_wait_benchmark_test.go": "4fb4d74c03e71f0da685b1019b30c1e9a72b018334d9d1f45ea21223e89c72ac",
+        "work_wait_contended_benchmark_test.go": "c1038846ccd09e6998abd13a4013bb56b20d428f2b254462571d1eb6a9fd9831",
+        "work_wait_http_test.go": "783170e9aad490ae88d9f98ab603c37dd4fe0eef904717dab429fd042721ede9",
+        "work_wait_test.go": "b8024df5eb75e7a1ff2a2eeb0c87f456047da0734dd01e5ee1d9f4bc98ef65d7"
+      }
+    },
+    "candidate": {
+      "path": "/workspace/manuscript",
+      "runtime_source_sha256": {
+        "builtin_parity_test.go": "3dcb515304ae31b26827d7447d100100c6ce9a3d3b12ee02d2ba39ac0fde9ac6",
+        "bundle.go": "98adabbd19b355651364458fcac3a853d6c5941c3dc911365a8655ba276aaa48",
+        "clone.go": "e7bae346c56f7a3645147701d400b141e1bcb6db8e4faea8898ac04201f1654b",
+        "collections.go": "958f88e2dc727ba9f2e27b2fda177bd62a3381c6c50b285773450cc35b8b6ef3",
+        "collections_bench_test.go": "668c53e9d746f60569b41c0ec758f19ca3ae9b54449026e8a9fb523671ebb971",
+        "core_parity_test.go": "694123b9f53e2f54a4c266ab94f008bf0ebcc5d6a40825bcf2072ae7ba89675b",
+        "errors.go": "b7d3554a232ace04db5dfcb47dd912f5b9d7b39aa4c82bb3d0732095697c68ef",
+        "errors_test.go": "4794d2df3c01ac970f17f590c7c2c3306735b15df4e3ef69a9a3aac77697ee4d",
+        "format_test.go": "38d643b1cc5fe282b0da478b6b8ccf826e5f6e73e6e3ef96568c466076a15fe7",
+        "hashing.go": "fd4e7fd5884ba55dba4b937ec656550d1ef13e67393c76b5d395db4c4c52a354",
+        "host.go": "961af78df4556a9118ac18fcc5f41dae35f5c6a425e5b9a7288c1a72b81073bc",
+        "host_accessors_test.go": "67026dd438b2e5231397a7edceaffc52a7fce99fc88e496dfb39d47d901f8dea",
+        "hosts_test.go": "7038a44cd1c9bbdf9ae03b60065f9da3b5d301553b8a1832503516a204906550",
+        "http.go": "6bd1a1b56f2eb72b0cf550604af1a1019515ef7cd746f08ece517a8da0ab36aa",
+        "keyindex.go": "7d3af9353228c47e9d0b674b8fb3631c76bbd7071cbab1883bee3df447a41e6a",
+        "keyindex_test.go": "d29b43a9da296c443881483481b56682e8e7c328b2a7710509487b13a66f6eab",
+        "lean.go": "538d68974bfff6b3dae3673d628f7350c9884fe4385b5be8a8ef804665bae06e",
+        "library.go": "e956503d42c031c0e88b62d457ba16428dfa2863fb53378613c13f027e2e94f1",
+        "library_algorithms.go": "81f6567bcb5bb27a9eb945c2d78b369293c1b156dd4723941c8b5bb907c439ba",
+        "library_archive.go": "8cee19fd3d2117f3219690cddd81d3c0a3811f4b7060886a6ab26a4fd1b770b5",
+        "library_collections.go": "4115025770d63681c7b63e29964d8fe969abd117539b2d361752863d1d56347d",
+        "library_crypto.go": "508af640a097a76dfa75da930602b6ebc9adde52ab2e6e7f0afd491620cc9a26",
+        "library_data.go": "f9549ae6dd364aaedbedf61e4db4690f466bbcd5d926973510d8a2bb1e696bc2",
+        "library_decimal.go": "6127bb582013bb9b8061255044943c1b014812f9cc929272289b64632f6065c2",
+        "library_decimal_test.go": "f4f117ef5a3412a474def47890da9290985dbb902bb6b8cb4474d46016bb07d8",
+        "library_formats.go": "b2292afb17c5d33c36d6888d6df3f100d8cf452fcd4ed3d15d72643549c234da",
+        "library_fs.go": "a1651117c492278e5a66d5a0ec13c3a346f5b87be6799bf723e71fbd879d4c44",
+        "library_fs_copy.go": "117bb793418146b4210d6bfb27118863df62780c00367e914c26221d0b0586f9",
+        "library_fs_glob.go": "2ea3f6241f571481b3669f92e5537a447ae47ba5f613cf4cef8d8dbb5b546189",
+        "library_fs_host.go": "a0f07cc8fa958b5b49d257058bfb930412e25505d2ec1d43f70159215d096ddd",
+        "library_fs_remove_test.go": "b62f60442f3e9b95ce114380495e62ac91f8acd6c8819a0b866ea81b9be5461c",
+        "library_glob.go": "80af143aa52e5645d0ace070b2b7bfcda01fc70c0baf5a475ec2699452b136a6",
+        "library_host.go": "033612b421a26d92ecb6ff34e4672f4deea6963488d6e7ab85515dda14536ce3",
+        "library_host_contract_test.go": "41aeab2afac0bb83c0a5ddba0bd4f85fb43e7d75a4a3dab3229fcf1b9d17fa89",
+        "library_host_parity_test.go": "352d61bd903fa52874ca97206a5f360ea3199dc2a104bd1107a37cd150a72891",
+        "library_html.go": "fa51a5b3cd8cb32af947380549d22878df75daa7f3290725c87826e83628e535",
+        "library_html_test.go": "5a637cbd937ab524e0577107bbe111c52012085a2156e1895d65c50e3aaa5eeb",
+        "library_http_client.go": "aad233ad3ca134a2daa10ca98c0d9f6df19b6f550f64b5efce9d1d3c0bc198ef",
+        "library_http_header_transport_test.go": "054a208179e1c7da7a3f0102d0bb746e12f05b29ab026f2bdb7e38a4201c2735",
+        "library_http_headers.go": "b1ea44b8e3e02894fe797f3263a5f2e7dce919dcd3434daaaf81ded933d2f81b",
+        "library_http_headers_test.go": "9a14281102bfe33c66c29f8b2d58ce7bf4bee5b3622891d01701ab6a1123f58f",
+        "library_http_server.go": "d1690f2b23f8199876e74bb4555a1bb98811847c450ed79a000bc8a9287f23cb",
+        "library_log.go": "f63f3f50f2518c9fa1ce1b9cb65f35f4fec82ce13ec0f5190f992860815881a2",
+        "library_log_test.go": "0b905d9d284859570cea5ca66260053411f752425c6a8491bd475fcb58663b08",
+        "library_net.go": "917c6570a0433b33dc29b77192cb6576ead916052f95e89f3eeb1e5033acdef3",
+        "library_network_host.go": "55a2cc0cdc4578102e430f0a60edb24c16ea4309b835cbaf5fca3d89aa5b6c10",
+        "library_networking.go": "057c16dda6add293ef944ee2e70d3ea1a3452a15c4a322875d97220f129e4dbb",
+        "library_optional.go": "e97ca34459719f8e11413f5f1fbe678d7b47d14d9d9182e6879c6f8155f7525c",
+        "library_options.go": "9359ba90a2251c5aefdde86b664be50543c0360c92abf1de6dd6be482bfab139",
+        "library_options_schema.go": "f66744b8b7a113aa7b848eb02725c4aa3ece8c63385fdc876566e1d392397317",
+        "library_path.go": "6fd82c140a71a3cfbbb87fd638e72c619bbd7d7dd3d6bec5dc914fdc881b11ad",
+        "library_result.go": "c9f180d609acd2e92dc32e753dec3ecc00dc8e9bfd5eb49bff5adb37d592c31b",
+        "library_signals.go": "8b57ce5027293aef8bb6f1b19b86bd3559dea0dfc81f8ac0bfedb38300f8e64e",
+        "library_string.go": "01d87c4f4c6b498e4d7547498ec2a463c83b727e45c652390bec64c85f3e19e0",
+        "library_system.go": "e0e5a515782387ab4aaee478fd6a5f70f1a5dcb054b44e7251677a23d7883c85",
+        "library_test.go": "2a9722aa3a3fd23d591fa0858fba669598728f6b14f3df03b0035423365128db",
+        "library_time.go": "272c368b729f548d39e0f89a678ddbc466a05792729cabb4ee6cd27e7de1c8e3",
+        "library_tls.go": "861e248c7ef5b9963fb726391d7051890e00737e0eb035c751d5c32bb5ea629c",
+        "library_tools.go": "c0710ec8243607d57b4b25c47a87d2c1b535313c272dda43059e7679d6a9dea0",
+        "library_watch.go": "15d7f61f6cad5af4edce8c3840a99888086d4d66dab561ca1f5d7e8d28c53ee9",
+        "library_websocket.go": "07f138663391b0cf2b46c3426e66d34ab8010f44bfd82894bd419119adc9a205",
+        "lifetime.go": "98b5ceea92fc1ab369ebee185c1c4e9b46240359403bb2ec7711376b73657b51",
+        "list_snapshot_test.go": "c06b0c573f8c2c7e6f4c61f5818775e8fc7d6c50b398534b7d53d593c09b55a2",
+        "mutation_test.go": "3c611c98a5b68c52a9f322084def4694fb67410de166f3c4659dd4ec21cfaf1a",
+        "native_dispatch_benchmark_test.go": "8a2b54033ce46da01bc3c82bc2b66d6af42810459317e1a5164aa771e6e9a9ed",
+        "native_dispatch_test.go": "804744bddedc32779dd8a880086e5e19d936189421aae4cf050ef3b9692bac47",
+        "native_library_members.go": "2220a30bb8f184e91ec9a114607840a1e310c35a1b0fc279a81429cb6b9eef59",
+        "networking_test.go": "484b6284b23ad3bad457454cfbf091e271af1b474b3813e4f4dc9078b788c84d",
+        "numeric.go": "9cb693d9f8e3a3d68bdef14c126fa7e50910c9e31ad5f59cae4e6d520ab777d9",
+        "numeric_typed.go": "7872d8aa288952b4dd10292b9e63a31dcddc77a8ae8ac59991557d634b0d514d",
+        "optional_test.go": "fc700e6423b67170a6256d477d7d8be14005a5cda9a368952e98a3e26d12d787",
+        "performance_test.go": "53744b9d80d2c21bde686026dfa747e3c99e2753c01d5e16101f3df9b7e6c1da",
+        "precondition_diagnostics_test.go": "caa0b7a4093880514cc200763c9a3de48b6e5c725f2102ea107b51b97c6aed56",
+        "priority_queue.go": "b10a3011053f5eacac38336acf24e6e5b102a5971134b91933495b01d9e23d91",
+        "process.go": "96c330858a7453e23dc196ed8711a505325e6990412d928742774c05f61a242b",
+        "profile.go": "cedba741bde8f6decc7dce67b8280f83ac416e358f2410584df7f48c29a3427a",
+        "profile_test.go": "04a68c6553571676d9e5f424138ef8144512c9fa3a97c631de2511465e58152b",
+        "queue_test.go": "eb987dc879be53b949e9fc95ffce7f55b6db91edfc2c1aa7b741041c488ff267",
+        "runtime_test.go": "18c0bb276966030fef669b32ea230e45eb46e7f7adae8ba7557baf970b808fde",
+        "scheduler.go": "ee72f312a1294f7d6d3adfacc0f74722a63d4b43a020841cdf5bc23a8bb65272",
+        "scheduler_timers.go": "d57d75a87004fc200eeb3aa26795476ef713f9136d33b173ce8dae8c8ce2abbc",
+        "services.go": "5e40670d39427363a963d0477bcd0f26b84df23407d258b53ba19f700aa2b900",
+        "services_test.go": "1f62d2315444581615505c1925614452e7f2e22a46912dbadf804afeb773d7c2",
+        "shutdown_test.go": "1f137255ed66fc0f013f7eb0291cb39f92464b4e360fde3d02122f186403ec48",
+        "source_dispatch_benchmark_test.go": "1561b9fc6765d0123d8d2f4e2092c335d5e1aaccc7c110536500fe388b8afd28",
+        "stdlib_revamp_test.go": "14ef22d6e373f6493b0a957e389e228b576a060cec86f922eda03cab5722bcc5",
+        "synchronized.go": "44cda6a3216284985f2887e40bf125f30becd35cbdd9d2c91c2baab9e4628b16",
+        "synchronized_ancestor_test.go": "abca5d2b079cce24e41356c011044c02c96396faf8ebe7b771c6a7f4067692c6",
+        "synchronized_test.go": "15916a993d2f5c0cdcc11a41b8299119a43dc982bbeb577f66f1ff0fffd9dbcb",
+        "task_group.go": "75ae316a4b0f540a64fc40037cdfb7a8b44e2e8944cbd9676100084de9c63950",
+        "task_group_test.go": "0fcbac7a8b65b22000f42afa1c43c4a22c141412d42ebb5cf5119c53735ea86a",
+        "tasks.go": "ea185575b308c38e3beec4e221f5c24c62382134b9633f016cde4c6d23f5655d",
+        "test_events.go": "286d13247c2e66266c698ead416da2f4964e23d74006071c0a59310d29a6e169",
+        "test_events_test.go": "5f48e38fdd14747f24b29a60de9eafaa1ce122a2d8e76886ab04c315b2a5785b",
+        "test_runner_test.go": "5d3fb391fbc819119117e014e40761fc632cc273839a56ee6f06b50bc44f2fd0",
+        "time_test.go": "c62653a26ba752843f336c3157964fc780d0bad7cb51d3bc9388d40c2153b1ca",
+        "values.go": "3c0ff5085dd756b01b86b651806f46f3412da0d388db59709594edb31712d9f0",
+        "work_wait.go": "3e2fb37cb4c8f5ec39578213a9d16c1d1f8ab5c97e24575c56fe7030a29b512c",
+        "work_wait_benchmark_test.go": "4fb4d74c03e71f0da685b1019b30c1e9a72b018334d9d1f45ea21223e89c72ac",
+        "work_wait_contended_benchmark_test.go": "c1038846ccd09e6998abd13a4013bb56b20d428f2b254462571d1eb6a9fd9831",
+        "work_wait_http_test.go": "783170e9aad490ae88d9f98ab603c37dd4fe0eef904717dab429fd042721ede9",
+        "work_wait_test.go": "742ba24ca9c7f9b0d6a73c498abfa933dd0cb0e69e1710fa0db2dfb1fcfb913a"
+      }
+    }
+  },
+  "samples": [
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 170.3,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3213.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 12930.0,
+      "bytes": 8528,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 2985.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4561.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 33471.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 190.2,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 4234.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 18494.0,
+      "bytes": 11344,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3883.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 5404.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 35393.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 173.4,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3323.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 14449.0,
+      "bytes": 9392,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3304.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4760.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 33889.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 175.8,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3272.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 14781.0,
+      "bytes": 9392,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3624.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4986.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 33590.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 191.9,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3938.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 15168.0,
+      "bytes": 11344,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3807.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 5224.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 35268.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 169.6,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 2980.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 12931.0,
+      "bytes": 8528,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3004.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4546.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 34401.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 169.4,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3008.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 13181.0,
+      "bytes": 8528,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3344.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4609.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 33632.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 173.1,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3694.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 15077.0,
+      "bytes": 11344,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3686.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 5194.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 33950.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 170.1,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3387.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 14598.0,
+      "bytes": 9392,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3361.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4873.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 34141.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 173.4,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3233.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 14367.0,
+      "bytes": 9392,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3243.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4738.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 33469.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 177.6,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3671.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 15024.0,
+      "bytes": 11344,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3639.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 5169.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 34482.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 167.6,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3039.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 12986.0,
+      "bytes": 8528,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 2994.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4585.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 33962.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 170.3,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3063.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 12895.0,
+      "bytes": 8528,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 2989.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4549.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 33920.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 172.3,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3865.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 15181.0,
+      "bytes": 11344,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3705.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 5173.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 34073.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148Uncontended",
+      "ns": 172.1,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroup",
+      "ns": 3390.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout",
+      "ns": 15157.0,
+      "bytes": 9392,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput",
+      "ns": 3274.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000",
+      "ns": 4940.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB",
+      "ns": 34264.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 169.1,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4405.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 18267.0,
+      "bytes": 8530,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 1872.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2540.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 9436.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 182.7,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 5035.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 26080.0,
+      "bytes": 11347,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 3683.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 3818.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 10009.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 174.6,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 3989.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 19728.0,
+      "bytes": 9394,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 1763.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2342.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 9386.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 168.7,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4479.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 19609.0,
+      "bytes": 9394,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 2232.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2625.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 9606.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 175.1,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4178.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 23534.0,
+      "bytes": 11347,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 3031.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 3041.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 9676.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 182.1,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4280.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 15161.0,
+      "bytes": 8530,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 1538.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 1921.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 9176.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 163.0,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4727.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 17223.0,
+      "bytes": 8530,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 1828.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2213.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 9141.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 166.6,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4426.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 19155.0,
+      "bytes": 11347,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 2224.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 3692.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 10216.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 159.8,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4075.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 19365.0,
+      "bytes": 9395,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 1707.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2126.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 9462.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 172.0,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4616.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 19545.0,
+      "bytes": 9394,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 1833.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2241.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 10390.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 179.5,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4779.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 22509.0,
+      "bytes": 11347,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 2702.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2982.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 10021.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 166.2,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4453.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 16678.0,
+      "bytes": 8530,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 1879.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2309.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 8979.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 186.6,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4439.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 18936.0,
+      "bytes": 8530,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 2100.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2555.0,
+      "bytes": 2112,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 9337.0,
+      "bytes": 2104,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 181.0,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 5201.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 25088.0,
+      "bytes": 11346,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 4155.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 3863.0,
+      "bytes": 3024,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 11083.0,
+      "bytes": 3016,
+      "allocations": 54
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148Uncontended-4",
+      "ns": 183.7,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroup-4",
+      "ns": 4430.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-4",
+      "ns": 21437.0,
+      "bytes": 9394,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-4",
+      "ns": 2634.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-4",
+      "ns": 2617.0,
+      "bytes": 2224,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 4,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-4",
+      "ns": 9746.0,
+      "bytes": 2216,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 209.1,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 3971.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 15718.0,
+      "bytes": 8538,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 1878.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 2443.0,
+      "bytes": 2114,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 10734.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 219.1,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 5420.0,
+      "bytes": 3019,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 21965.0,
+      "bytes": 11358,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 4213.0,
+      "bytes": 3021,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 5022.0,
+      "bytes": 3030,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 11508.0,
+      "bytes": 3020,
+      "allocations": 54
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 216.0,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4381.0,
+      "bytes": 2218,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 18288.0,
+      "bytes": 9404,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 2438.0,
+      "bytes": 2219,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 3013.0,
+      "bytes": 2227,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 10683.0,
+      "bytes": 2218,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 206.5,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4313.0,
+      "bytes": 2218,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 16872.0,
+      "bytes": 9403,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 2054.0,
+      "bytes": 2219,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 3293.0,
+      "bytes": 2227,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 10108.0,
+      "bytes": 2218,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 225.8,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4892.0,
+      "bytes": 3019,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 20112.0,
+      "bytes": 11358,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 4354.0,
+      "bytes": 3022,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 4461.0,
+      "bytes": 3029,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 13135.0,
+      "bytes": 3021,
+      "allocations": 54
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 239.2,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4376.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 19581.0,
+      "bytes": 8538,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 2489.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 2858.0,
+      "bytes": 2114,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 10218.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 217.9,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4196.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 16562.0,
+      "bytes": 8538,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 2534.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 3193.0,
+      "bytes": 2114,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 10734.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 212.9,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4914.0,
+      "bytes": 3019,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 21927.0,
+      "bytes": 11358,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 4575.0,
+      "bytes": 3022,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 5154.0,
+      "bytes": 3029,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 12435.0,
+      "bytes": 3020,
+      "allocations": 54
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 229.3,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4713.0,
+      "bytes": 2218,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 20941.0,
+      "bytes": 9403,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 3055.0,
+      "bytes": 2219,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 3241.0,
+      "bytes": 2227,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 9915.0,
+      "bytes": 2218,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 217.4,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4360.0,
+      "bytes": 2218,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 17536.0,
+      "bytes": 9404,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 2652.0,
+      "bytes": 2219,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 3382.0,
+      "bytes": 2227,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 11170.0,
+      "bytes": 2218,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 213.8,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 5089.0,
+      "bytes": 3019,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 19596.0,
+      "bytes": 11358,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 3739.0,
+      "bytes": 3021,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 5092.0,
+      "bytes": 3029,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 11505.0,
+      "bytes": 3020,
+      "allocations": 54
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 202.3,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4129.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 16425.0,
+      "bytes": 8538,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 2198.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 2918.0,
+      "bytes": 2114,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 9998.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 219.8,
+      "bytes": 248,
+      "allocations": 6
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4456.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 16637.0,
+      "bytes": 8538,
+      "allocations": 155
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 2464.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 3032.0,
+      "bytes": 2114,
+      "allocations": 43
+    },
+    {
+      "variant": "baseline",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 11035.0,
+      "bytes": 2106,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 220.8,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4730.0,
+      "bytes": 3019,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 18891.0,
+      "bytes": 11358,
+      "allocations": 195
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 3601.0,
+      "bytes": 3021,
+      "allocations": 54
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 4357.0,
+      "bytes": 3029,
+      "allocations": 55
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 11707.0,
+      "bytes": 3020,
+      "allocations": 54
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148Uncontended-16",
+      "ns": 222.7,
+      "bytes": 256,
+      "allocations": 6
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroup-16",
+      "ns": 4481.0,
+      "bytes": 2218,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskGroupFanout-16",
+      "ns": 16779.0,
+      "bytes": 9404,
+      "allocations": 157
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148IndependentTaskThroughput-16",
+      "ns": 2772.0,
+      "bytes": 2219,
+      "allocations": 42
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskArithmetic1000-16",
+      "ns": 3222.0,
+      "bytes": 2227,
+      "allocations": 43
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 16,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148TaskSHA25664KiB-16",
+      "ns": 11236.0,
+      "bytes": 2219,
+      "allocations": 42
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 3266.0,
+      "bytes": 1576,
+      "allocations": 26
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 5848.0,
+      "bytes": 4576,
+      "allocations": 79
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100530573.0,
+      "bytes": 4553,
+      "allocations": 80
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 2852.0,
+      "bytes": 1384,
+      "allocations": 24
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 5235.0,
+      "bytes": 3584,
+      "allocations": 65
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 1,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100442722.0,
+      "bytes": 3561,
+      "allocations": 66
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 2848.0,
+      "bytes": 1384,
+      "allocations": 24
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 5238.0,
+      "bytes": 3584,
+      "allocations": 65
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100502341.0,
+      "bytes": 3561,
+      "allocations": 66
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 3136.0,
+      "bytes": 1576,
+      "allocations": 26
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 5891.0,
+      "bytes": 4576,
+      "allocations": 79
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 2,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100515466.0,
+      "bytes": 4553,
+      "allocations": 80
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 2960.0,
+      "bytes": 1576,
+      "allocations": 26
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 5753.0,
+      "bytes": 4576,
+      "allocations": 79
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100567990.0,
+      "bytes": 4553,
+      "allocations": 80
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 2963.0,
+      "bytes": 1384,
+      "allocations": 24
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 5204.0,
+      "bytes": 3584,
+      "allocations": 65
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 3,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100505479.0,
+      "bytes": 3561,
+      "allocations": 66
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 3018.0,
+      "bytes": 1384,
+      "allocations": 24
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 5635.0,
+      "bytes": 3584,
+      "allocations": 65
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100512023.0,
+      "bytes": 3561,
+      "allocations": 66
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 3008.0,
+      "bytes": 1576,
+      "allocations": 26
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 6409.0,
+      "bytes": 4576,
+      "allocations": 79
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 4,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100515416.0,
+      "bytes": 4553,
+      "allocations": 80
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 3068.0,
+      "bytes": 1576,
+      "allocations": 26
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 5845.0,
+      "bytes": 4576,
+      "allocations": 79
+    },
+    {
+      "variant": "unoptimized",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100444936.0,
+      "bytes": 4553,
+      "allocations": 80
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148ContendedLock",
+      "ns": 2894.0,
+      "bytes": 1384,
+      "allocations": 24
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148ContendedTask",
+      "ns": 5263.0,
+      "bytes": 3584,
+      "allocations": 65
+    },
+    {
+      "variant": "candidate",
+      "gomaxprocs": 1,
+      "round": 5,
+      "benchmark": "BenchmarkIssue148OriginalContention",
+      "ns": 100608998.0,
+      "bytes": 3580,
+      "allocations": 67
+    }
+  ]
+}

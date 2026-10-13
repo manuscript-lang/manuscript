@@ -1,0 +1,38 @@
+File: runtime.test
+Build ID: b2b41a6dd339d038a42a23a51766355c93ec7b0a
+Type: delay
+Time: 2026-10-13 16:45:37 UTC
+Showing nodes accounting for 3.13s, 100% of 3.13s total
+Dropped 149 nodes (cum <= 0.02s)
+Showing top 30 nodes out of 76
+      flat  flat%   sum%        cum   cum%
+     2.44s 78.04% 78.04%      2.44s 78.06%  sync.(*Mutex).Unlock (partial-inline)
+     0.61s 19.54% 97.59%      0.61s 19.54%  runtime.unlock (partial-inline)
+     0.08s  2.41%   100%      0.08s  2.41%  runtime._LostContendedRuntimeLock
+         0     0%   100%      0.03s  0.84%  fmt.Sprint
+         0     0%   100%      0.03s  0.81%  fmt.newPrinter
+         0     0%   100%      0.03s  0.81%  github.com/manuscript-lang/manuscript/pkg/runtime.(*Task).Operation
+         0     0%   100%      0.42s 13.39%  github.com/manuscript-lang/manuscript/pkg/runtime.(*Task).join
+         0     0%   100%      0.10s  3.14%  github.com/manuscript-lang/manuscript/pkg/runtime.(*Task).join.deferwrap1
+         0     0%   100%      1.05s 33.44%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).close
+         0     0%   100%      0.07s  2.22%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).close.deferwrap2
+         0     0%   100%      0.03s  0.83%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).sealLocked.func1
+         0     0%   100%      0.36s 11.44%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start
+         0     0%   100%      0.69s 21.88%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start.func2
+         0     0%   100%      0.04s  1.13%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start.func2.1
+         0     0%   100%      0.36s 11.39%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start.func2.deferwrap2
+         0     0%   100%      1.89s 60.26%  github.com/manuscript-lang/manuscript/pkg/runtime.BenchmarkIssue148IndependentTaskThroughput.func2
+         0     0%   100%      0.78s 24.91%  github.com/manuscript-lang/manuscript/pkg/runtime.Invoke
+         0     0%   100%      0.02s  0.65%  github.com/manuscript-lang/manuscript/pkg/runtime.NewTaskGroup
+         0     0%   100%      0.32s 10.10%  github.com/manuscript-lang/manuscript/pkg/runtime.addWorkAdmission
+         0     0%   100%      0.48s 15.32%  github.com/manuscript-lang/manuscript/pkg/runtime.addWorkDependency
+         0     0%   100%      0.37s 11.96%  github.com/manuscript-lang/manuscript/pkg/runtime.groupTask
+         0     0%   100%      0.36s 11.44%  github.com/manuscript-lang/manuscript/pkg/runtime.init.33.func1
+         0     0%   100%      0.42s 13.39%  github.com/manuscript-lang/manuscript/pkg/runtime.init.33.func4
+         0     0%   100%      0.78s 24.83%  github.com/manuscript-lang/manuscript/pkg/runtime.invokeLibrary
+         0     0%   100%      0.78s 24.83%  github.com/manuscript-lang/manuscript/pkg/runtime.libraryAdd.func1
+         0     0%   100%      0.04s  1.18%  github.com/manuscript-lang/manuscript/pkg/runtime.nativeLibraryMember
+         0     0%   100%      0.78s 24.89%  github.com/manuscript-lang/manuscript/pkg/runtime.nativeLibraryMember.NewFunction.newFunction.func2
+         0     0%   100%      0.78s 24.89%  github.com/manuscript-lang/manuscript/pkg/runtime.nativeLibraryMember.func1
+         0     0%   100%      0.45s 14.21%  github.com/manuscript-lang/manuscript/pkg/runtime.taskResult
+         0     0%   100%      0.36s 11.39%  github.com/manuscript-lang/manuscript/pkg/runtime.workAdmission.remove

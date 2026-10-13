@@ -1,0 +1,755 @@
+VARIANT baseline GOMAXPROCS 1 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3518356	       170.3 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  173383	      3213 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   46572	     12930 ns/op	    8528 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  197382	      2985 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  129804	      4561 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   18013	     33471 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.306s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3042316	       190.2 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  141745	      4234 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   28932	     18494 ns/op	   11344 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  150465	      3883 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  107750	      5404 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17563	     35393 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.852s
+VARIANT candidate GOMAXPROCS 1 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3360492	       173.4 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  178161	      3323 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   40981	     14449 ns/op	    9392 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  176156	      3304 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  120960	      4760 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17794	     33889 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.332s
+VARIANT candidate GOMAXPROCS 1 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3447112	       175.8 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  177553	      3272 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   41734	     14781 ns/op	    9392 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  175747	      3624 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  109784	      4986 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17023	     33590 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.860s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3217560	       191.9 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  147537	      3938 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   34752	     15168 ns/op	   11344 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  159268	      3807 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  114186	      5224 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17528	     35268 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.399s
+VARIANT baseline GOMAXPROCS 1 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3022572	       169.6 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  191286	      2980 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   46718	     12931 ns/op	    8528 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  192712	      3004 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  129301	      4546 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17950	     34401 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.266s
+VARIANT baseline GOMAXPROCS 1 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3523765	       169.4 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  192793	      3008 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   44400	     13181 ns/op	    8528 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  190653	      3344 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  126199	      4609 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17746	     33632 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.352s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3375727	       173.1 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  159782	      3694 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   38658	     15077 ns/op	   11344 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  161358	      3686 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  113166	      5194 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17598	     33950 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.359s
+VARIANT candidate GOMAXPROCS 1 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3544047	       170.1 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  168345	      3387 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   40299	     14598 ns/op	    9392 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  173179	      3361 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  123156	      4873 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17877	     34141 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.345s
+VARIANT candidate GOMAXPROCS 1 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3505578	       173.4 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  180758	      3233 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   42187	     14367 ns/op	    9392 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  178362	      3243 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  125155	      4738 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17682	     33469 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.348s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3317919	       177.6 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  149743	      3671 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   40065	     15024 ns/op	   11344 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  162450	      3639 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  115046	      5169 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17276	     34482 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.349s
+VARIANT baseline GOMAXPROCS 1 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3446311	       167.6 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  194392	      3039 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   46878	     12986 ns/op	    8528 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  196567	      2994 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  126991	      4585 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17943	     33962 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.322s
+VARIANT baseline GOMAXPROCS 1 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3491792	       170.3 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  192787	      3063 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   46783	     12895 ns/op	    8528 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  197294	      2989 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  132512	      4549 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17750	     33920 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.347s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3383030	       172.3 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  159790	      3865 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   39553	     15181 ns/op	   11344 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  158139	      3705 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  115264	      5173 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17751	     34073 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.402s
+VARIANT candidate GOMAXPROCS 1 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended               	 3462207	       172.1 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup                 	  176690	      3390 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout           	   39531	     15157 ns/op	    9392 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput 	  177171	      3274 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000        	  121611	      4940 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB           	   17672	     34264 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.382s
+VARIANT baseline GOMAXPROCS 4 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3758734	       169.1 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  132860	      4405 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   29952	     18267 ns/op	    8530 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  298908	      1872 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  300810	      2540 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   67549	      9436 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.298s
+VARIANT unoptimized GOMAXPROCS 4 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3252770	       182.7 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  114369	      5035 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   22449	     26080 ns/op	   11347 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  175056	      3683 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  164418	      3818 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   58857	     10009 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.876s
+VARIANT candidate GOMAXPROCS 4 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3368289	       174.6 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  135387	      3989 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   31357	     19728 ns/op	    9394 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  371002	      1763 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  248684	      2342 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   66536	      9386 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.643s
+VARIANT candidate GOMAXPROCS 4 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3376413	       168.7 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  128746	      4479 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   32018	     19609 ns/op	    9394 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  373335	      2232 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  236614	      2625 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   64876	      9606 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.442s
+VARIANT unoptimized GOMAXPROCS 4 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3370778	       175.1 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  126418	      4178 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   30020	     23534 ns/op	   11347 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  191235	      3031 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  216074	      3041 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   60921	      9676 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.268s
+VARIANT baseline GOMAXPROCS 4 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3489322	       182.1 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  148464	      4280 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   38878	     15161 ns/op	    8530 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  448862	      1538 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  326385	      1921 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   68318	      9176 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.336s
+VARIANT baseline GOMAXPROCS 4 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3595764	       163.0 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  136233	      4727 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   39752	     17223 ns/op	    8530 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  343302	      1828 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  264952	      2213 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   68918	      9141 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.284s
+VARIANT unoptimized GOMAXPROCS 4 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3519213	       166.6 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  119518	      4426 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   31221	     19155 ns/op	   11347 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  295855	      2224 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  194604	      3692 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   61376	     10216 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.313s
+VARIANT candidate GOMAXPROCS 4 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3597093	       159.8 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  141949	      4075 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   34620	     19365 ns/op	    9395 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  302253	      1707 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  259142	      2126 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   64798	      9462 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.059s
+VARIANT candidate GOMAXPROCS 4 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3076774	       172.0 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  116608	      4616 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   30322	     19545 ns/op	    9394 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  346836	      1833 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  233023	      2241 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   60220	     10390 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.064s
+VARIANT unoptimized GOMAXPROCS 4 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3133791	       179.5 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  137703	      4779 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   26236	     22509 ns/op	   11347 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  197812	      2702 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  208260	      2982 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   57940	     10021 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.637s
+VARIANT baseline GOMAXPROCS 4 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3389635	       166.2 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  134067	      4453 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   32086	     16678 ns/op	    8530 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  317502	      1879 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  300274	      2309 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   64783	      8979 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.146s
+VARIANT baseline GOMAXPROCS 4 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 2959452	       186.6 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  128978	      4439 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   27561	     18936 ns/op	    8530 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  287468	      2100 ns/op	    2104 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  232729	      2555 ns/op	    2112 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   67387	      9337 ns/op	    2104 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.117s
+VARIANT unoptimized GOMAXPROCS 4 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 2880243	       181.0 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  108554	      5201 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   22587	     25088 ns/op	   11346 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  156525	      4155 ns/op	    3016 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  143895	      3863 ns/op	    3024 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   57890	     11083 ns/op	    3016 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.252s
+VARIANT candidate GOMAXPROCS 4 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-4                 	 3224020	       183.7 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-4                   	  136075	      4430 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-4             	   26155	     21437 ns/op	    9394 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-4   	  327525	      2634 ns/op	    2216 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-4          	  227822	      2617 ns/op	    2224 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-4             	   64522	      9746 ns/op	    2216 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.977s
+VARIANT baseline GOMAXPROCS 16 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2886477	       209.1 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  128787	      3971 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   34207	     15718 ns/op	    8538 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  297168	      1878 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  262906	      2443 ns/op	    2114 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   63705	     10734 ns/op	    2106 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.153s
+VARIANT unoptimized GOMAXPROCS 16 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2710401	       219.1 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  108752	      5420 ns/op	    3019 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   26948	     21965 ns/op	   11358 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  175572	      4213 ns/op	    3021 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  119908	      5022 ns/op	    3030 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   54408	     11508 ns/op	    3020 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.481s
+VARIANT candidate GOMAXPROCS 16 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2555666	       216.0 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  148266	      4381 ns/op	    2218 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   35090	     18288 ns/op	    9404 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  250947	      2438 ns/op	    2219 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  187275	      3013 ns/op	    2227 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   61183	     10683 ns/op	    2218 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.327s
+VARIANT candidate GOMAXPROCS 16 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2645154	       206.5 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  129921	      4313 ns/op	    2218 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   33992	     16872 ns/op	    9403 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  312025	      2054 ns/op	    2219 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  209689	      3293 ns/op	    2227 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   60549	     10108 ns/op	    2218 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.265s
+VARIANT unoptimized GOMAXPROCS 16 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2739544	       225.8 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  134150	      4892 ns/op	    3019 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   28357	     20112 ns/op	   11358 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  123324	      4354 ns/op	    3022 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  128684	      4461 ns/op	    3029 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   47002	     13135 ns/op	    3021 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.819s
+VARIANT baseline GOMAXPROCS 16 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2610932	       239.2 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  153024	      4376 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   31600	     19581 ns/op	    8538 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  240468	      2489 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  175778	      2858 ns/op	    2114 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   52678	     10218 ns/op	    2106 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.698s
+VARIANT baseline GOMAXPROCS 16 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2770842	       217.9 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  123979	      4196 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   38306	     16562 ns/op	    8538 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  199884	      2534 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  210674	      3193 ns/op	    2114 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   49899	     10734 ns/op	    2106 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.128s
+VARIANT unoptimized GOMAXPROCS 16 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2821683	       212.9 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  124672	      4914 ns/op	    3019 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   28153	     21927 ns/op	   11358 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  124695	      4575 ns/op	    3022 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  130242	      5154 ns/op	    3029 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   49065	     12435 ns/op	    3020 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.431s
+VARIANT candidate GOMAXPROCS 16 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2503100	       229.3 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  109880	      4713 ns/op	    2218 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   31058	     20941 ns/op	    9403 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  202843	      3055 ns/op	    2219 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  155492	      3241 ns/op	    2227 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   57313	      9915 ns/op	    2218 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.625s
+VARIANT candidate GOMAXPROCS 16 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2713496	       217.4 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  140080	      4360 ns/op	    2218 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   34453	     17536 ns/op	    9404 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  268588	      2652 ns/op	    2219 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  170750	      3382 ns/op	    2227 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   63960	     11170 ns/op	    2218 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.456s
+VARIANT unoptimized GOMAXPROCS 16 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2694207	       213.8 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  120865	      5089 ns/op	    3019 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   28094	     19596 ns/op	   11358 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  168165	      3739 ns/op	    3021 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  133293	      5092 ns/op	    3029 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   54933	     11505 ns/op	    3020 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.392s
+VARIANT baseline GOMAXPROCS 16 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2861283	       202.3 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  146656	      4129 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   37250	     16425 ns/op	    8538 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  267176	      2198 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  225567	      2918 ns/op	    2114 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   57170	      9998 ns/op	    2106 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.226s
+VARIANT baseline GOMAXPROCS 16 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2675000	       219.8 ns/op	     248 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  144997	      4456 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   36860	     16637 ns/op	    8538 B/op	     155 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  256119	      2464 ns/op	    2106 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  250909	      3032 ns/op	    2114 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   60723	     11035 ns/op	    2106 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.536s
+VARIANT unoptimized GOMAXPROCS 16 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2297014	       220.8 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  134085	      4730 ns/op	    3019 B/op	      54 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   31585	     18891 ns/op	   11358 B/op	     195 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  188848	      3601 ns/op	    3021 B/op	      54 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  140086	      4357 ns/op	    3029 B/op	      55 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   54918	     11707 ns/op	    3020 B/op	      54 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.887s
+VARIANT candidate GOMAXPROCS 16 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148Uncontended-16                  	 2901949	       222.7 ns/op	     256 B/op	       6 allocs/op
+BenchmarkIssue148TaskGroup-16                    	  132027	      4481 ns/op	    2218 B/op	      42 allocs/op
+BenchmarkIssue148TaskGroupFanout-16              	   35910	     16779 ns/op	    9404 B/op	     157 allocs/op
+BenchmarkIssue148IndependentTaskThroughput-16    	  272678	      2772 ns/op	    2219 B/op	      42 allocs/op
+BenchmarkIssue148TaskArithmetic1000-16           	  168655	      3222 ns/op	    2227 B/op	      43 allocs/op
+BenchmarkIssue148TaskSHA25664KiB-16              	   60859	     11236 ns/op	    2219 B/op	      42 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	4.441s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  181112	      3266 ns/op	    1576 B/op	      26 allocs/op
+BenchmarkIssue148ContendedTask 	  101728	      5848 ns/op	    4576 B/op	      79 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.286s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100530573 ns/op	    4553 B/op	      80 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.608s
+VARIANT candidate GOMAXPROCS 1 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  200574	      2852 ns/op	    1384 B/op	      24 allocs/op
+BenchmarkIssue148ContendedTask 	  114348	      5235 ns/op	    3584 B/op	      65 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.261s
+VARIANT candidate GOMAXPROCS 1 ROUND 1
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100442722 ns/op	    3561 B/op	      66 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.607s
+VARIANT candidate GOMAXPROCS 1 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  203337	      2848 ns/op	    1384 B/op	      24 allocs/op
+BenchmarkIssue148ContendedTask 	  114902	      5238 ns/op	    3584 B/op	      65 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.270s
+VARIANT candidate GOMAXPROCS 1 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100502341 ns/op	    3561 B/op	      66 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.607s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  199173	      3136 ns/op	    1576 B/op	      26 allocs/op
+BenchmarkIssue148ContendedTask 	  103844	      5891 ns/op	    4576 B/op	      79 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.331s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 2
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100515466 ns/op	    4553 B/op	      80 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.608s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  197551	      2960 ns/op	    1576 B/op	      26 allocs/op
+BenchmarkIssue148ContendedTask 	  103814	      5753 ns/op	    4576 B/op	      79 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.726s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100567990 ns/op	    4553 B/op	      80 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.608s
+VARIANT candidate GOMAXPROCS 1 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  196845	      2963 ns/op	    1384 B/op	      24 allocs/op
+BenchmarkIssue148ContendedTask 	  114585	      5204 ns/op	    3584 B/op	      65 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.270s
+VARIANT candidate GOMAXPROCS 1 ROUND 3
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100505479 ns/op	    3561 B/op	      66 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.608s
+VARIANT candidate GOMAXPROCS 1 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  204772	      3018 ns/op	    1384 B/op	      24 allocs/op
+BenchmarkIssue148ContendedTask 	  109239	      5635 ns/op	    3584 B/op	      65 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.325s
+VARIANT candidate GOMAXPROCS 1 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100512023 ns/op	    3561 B/op	      66 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.608s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  171582	      3008 ns/op	    1576 B/op	      26 allocs/op
+BenchmarkIssue148ContendedTask 	  102127	      6409 ns/op	    4576 B/op	      79 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.273s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 4
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100515416 ns/op	    4553 B/op	      80 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.608s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  182655	      3068 ns/op	    1576 B/op	      26 allocs/op
+BenchmarkIssue148ContendedTask 	  101692	      5845 ns/op	    4576 B/op	      79 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.255s
+VARIANT unoptimized GOMAXPROCS 1 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100444936 ns/op	    4553 B/op	      80 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.607s
+VARIANT candidate GOMAXPROCS 1 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148ContendedLock 	  205902	      2894 ns/op	    1384 B/op	      24 allocs/op
+BenchmarkIssue148ContendedTask 	  112826	      5263 ns/op	    3584 B/op	      65 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	1.628s
+VARIANT candidate GOMAXPROCS 1 ROUND 5
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/pkg/runtime
+cpu: AMD EPYC 9V45 96-Core Processor                
+BenchmarkIssue148OriginalContention 	       5	 100608998 ns/op	    3580 B/op	      67 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/pkg/runtime	0.610s

@@ -1,0 +1,39 @@
+File: runtime.test
+Build ID: b2b41a6dd339d038a42a23a51766355c93ec7b0a
+Type: cpu
+Time: 2026-10-13 16:45:04 UTC
+Duration: 16s, Total samples = 15.85s (99.05%)
+Showing nodes accounting for 8.11s, 51.17% of 15.85s total
+Dropped 160 nodes (cum <= 0.08s)
+Showing top 30 nodes out of 192
+      flat  flat%   sum%        cum   cum%
+     0.78s  4.92%  4.92%      1.50s  9.46%  runtime.pcvalue
+     0.64s  4.04%  8.96%      0.64s  4.04%  runtime.nextFreeFast (inline)
+     0.55s  3.47% 12.43%      0.55s  3.47%  runtime.nanotime
+     0.42s  2.65% 15.08%      2.10s 13.25%  runtime.mallocgcSmallScanNoHeader
+     0.41s  2.59% 17.67%      0.55s  3.47%  runtime.step
+     0.35s  2.21% 19.87%      0.35s  2.21%  internal/sync.(*Mutex).Unlock
+     0.35s  2.21% 22.08%      0.35s  2.21%  runtime.(*mspan).writeHeapBitsSmall
+     0.33s  2.08% 24.16%      0.33s  2.08%  internal/runtime/atomic.(*Uint32).CompareAndSwap (inline)
+     0.33s  2.08% 26.25%      0.33s  2.08%  internal/sync.(*Mutex).Lock
+     0.29s  1.83% 28.08%      0.29s  1.83%  runtime.memclrNoHeapPointers
+     0.25s  1.58% 29.65%      3.12s 19.68%  runtime.mallocgc
+     0.24s  1.51% 31.17%      0.24s  1.51%  runtime.unlock2
+     0.23s  1.45% 32.62%      0.23s  1.45%  runtime.(*moduledata).textAddr
+     0.23s  1.45% 34.07%      0.29s  1.83%  runtime.findfunc
+     0.22s  1.39% 35.46%      0.22s  1.39%  runtime.lock2
+     0.21s  1.32% 36.78%      1.08s  6.81%  runtime.(*stkframe).getStackMap
+     0.19s  1.20% 37.98%      0.22s  1.39%  runtime.spanOf (inline)
+     0.18s  1.14% 39.12%      0.96s  6.06%  runtime.(*unwinder).resolveInternal
+     0.18s  1.14% 40.25%      0.19s  1.20%  runtime.adjustpointers
+     0.17s  1.07% 41.32%      0.17s  1.07%  runtime.(*mspan).base (inline)
+     0.17s  1.07% 42.40%      1.48s  9.34%  runtime.adjustframe
+     0.17s  1.07% 43.47%      0.47s  2.97%  runtime.findObject
+     0.17s  1.07% 44.54%      0.79s  4.98%  runtime.scanobject
+     0.16s  1.01% 45.55%      0.16s  1.01%  indexbytebody
+     0.16s  1.01% 46.56%      0.16s  1.01%  runtime.(*guintptr).cas
+     0.15s  0.95% 47.51%      0.58s  3.66%  github.com/manuscript-lang/manuscript/pkg/runtime.splitType
+     0.15s  0.95% 48.45%      0.44s  2.78%  runtime.selectgo
+     0.15s  0.95% 49.40%      0.21s  1.32%  runtime.typePointers.next
+     0.14s  0.88% 50.28%      0.14s  0.88%  aeshashbody
+     0.14s  0.88% 51.17%      0.14s  0.88%  runtime.memmove

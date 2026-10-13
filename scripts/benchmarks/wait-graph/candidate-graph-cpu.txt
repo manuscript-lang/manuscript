@@ -1,0 +1,40 @@
+File: runtime.test
+Build ID: b2b41a6dd339d038a42a23a51766355c93ec7b0a
+Type: cpu
+Time: 2026-10-13 16:45:04 UTC
+Duration: 16s, Total samples = 15.85s (99.05%)
+Active filters:
+   focus=addWork|workDependency|workAdmission|detectAncestor|removeWork
+Showing nodes accounting for 0.65s, 4.10% of 15.85s total
+Showing top 30 nodes out of 37
+      flat  flat%   sum%        cum   cum%
+     0.18s  1.14%  1.14%      0.18s  1.14%  internal/sync.(*Mutex).Unlock (inline)
+     0.14s  0.88%  2.02%      0.14s  0.88%  internal/sync.(*Mutex).Lock (inline)
+     0.07s  0.44%  2.46%      0.30s  1.89%  github.com/manuscript-lang/manuscript/pkg/runtime.detectAncestorLockCyclesLocked
+     0.07s  0.44%  2.90%      0.08s   0.5%  internal/runtime/maps.(*Iter).Next
+     0.05s  0.32%  3.22%      0.07s  0.44%  internal/runtime/maps.(*Iter).Init
+     0.04s  0.25%  3.47%      0.04s  0.25%  runtime.duffzero
+     0.04s  0.25%  3.72%      0.19s  1.20%  runtime.mapIterStart
+     0.01s 0.063%  3.79%      0.04s  0.25%  gcWriteBarrier
+     0.01s 0.063%  3.85%      0.18s  1.14%  github.com/manuscript-lang/manuscript/pkg/runtime.addWorkAdmission
+     0.01s 0.063%  3.91%      0.02s  0.13%  github.com/manuscript-lang/manuscript/pkg/runtime.addWorkDependencyLocked (inline)
+     0.01s 0.063%  3.97%      0.02s  0.13%  runtime.findObject
+     0.01s 0.063%  4.04%      0.01s 0.063%  runtime.spanOf (inline)
+     0.01s 0.063%  4.10%      0.03s  0.19%  runtime.wbBufFlush1
+         0     0%  4.10%      0.25s  1.58%  github.com/manuscript-lang/manuscript/pkg/runtime.(*Task).join
+         0     0%  4.10%      0.19s  1.20%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).close
+         0     0%  4.10%      0.18s  1.14%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start
+         0     0%  4.10%      0.03s  0.19%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start.func2
+         0     0%  4.10%      0.62s  3.91%  github.com/manuscript-lang/manuscript/pkg/runtime.BenchmarkIssue148TaskGroup
+         0     0%  4.10%      0.43s  2.71%  github.com/manuscript-lang/manuscript/pkg/runtime.Invoke
+         0     0%  4.10%      0.28s  1.77%  github.com/manuscript-lang/manuscript/pkg/runtime.addWorkDependency
+         0     0%  4.10%      0.18s  1.14%  github.com/manuscript-lang/manuscript/pkg/runtime.groupTask
+         0     0%  4.10%      0.18s  1.14%  github.com/manuscript-lang/manuscript/pkg/runtime.init.33.func1
+         0     0%  4.10%      0.25s  1.58%  github.com/manuscript-lang/manuscript/pkg/runtime.init.33.func4
+         0     0%  4.10%      0.43s  2.71%  github.com/manuscript-lang/manuscript/pkg/runtime.invokeLibrary
+         0     0%  4.10%      0.43s  2.71%  github.com/manuscript-lang/manuscript/pkg/runtime.libraryAdd.func1
+         0     0%  4.10%      0.43s  2.71%  github.com/manuscript-lang/manuscript/pkg/runtime.nativeLibraryMember.NewFunction.newFunction.func2
+         0     0%  4.10%      0.43s  2.71%  github.com/manuscript-lang/manuscript/pkg/runtime.nativeLibraryMember.func1
+         0     0%  4.10%      0.25s  1.58%  github.com/manuscript-lang/manuscript/pkg/runtime.taskResult
+         0     0%  4.10%      0.03s  0.19%  github.com/manuscript-lang/manuscript/pkg/runtime.workAdmission.remove
+         0     0%  4.10%      0.16s  1.01%  github.com/manuscript-lang/manuscript/pkg/runtime.workDependency.remove

@@ -1,0 +1,32 @@
+File: runtime.test
+Build ID: b2b41a6dd339d038a42a23a51766355c93ec7b0a
+Type: delay
+Time: 2026-10-13 16:45:37 UTC
+Active filters:
+   focus=addWork|workDependency|workAdmission
+Showing nodes accounting for 1320.22ms, 42.15% of 3131.86ms total
+Dropped 16 nodes (cum <= 15.66ms)
+      flat  flat%   sum%        cum   cum%
+ 1320.22ms 42.15% 42.15%  1320.61ms 42.17%  sync.(*Mutex).Unlock (inline)
+         0     0% 42.15%   411.65ms 13.14%  github.com/manuscript-lang/manuscript/pkg/runtime.(*Task).join
+         0     0% 42.15%    98.30ms  3.14%  github.com/manuscript-lang/manuscript/pkg/runtime.(*Task).join.deferwrap1
+         0     0% 42.15%   236.02ms  7.54%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).close
+         0     0% 42.15%    69.45ms  2.22%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).close.deferwrap2
+         0     0% 42.15%   316.28ms 10.10%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start
+         0     0% 42.15%   356.82ms 11.39%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start.func2
+         0     0% 42.15%   356.80ms 11.39%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start.func2.deferwrap2
+         0     0% 42.15%   963.95ms 30.78%  github.com/manuscript-lang/manuscript/pkg/runtime.BenchmarkIssue148IndependentTaskThroughput.func2
+         0     0% 42.15%   727.93ms 23.24%  github.com/manuscript-lang/manuscript/pkg/runtime.Invoke
+         0     0% 42.15%   316.28ms 10.10%  github.com/manuscript-lang/manuscript/pkg/runtime.addWorkAdmission
+         0     0% 42.15%   479.86ms 15.32%  github.com/manuscript-lang/manuscript/pkg/runtime.addWorkDependency
+         0     0% 42.15%   316.28ms 10.10%  github.com/manuscript-lang/manuscript/pkg/runtime.groupTask
+         0     0% 42.15%   316.28ms 10.10%  github.com/manuscript-lang/manuscript/pkg/runtime.init.33.func1
+         0     0% 42.15%   411.65ms 13.14%  github.com/manuscript-lang/manuscript/pkg/runtime.init.33.func4
+         0     0% 42.15%   727.93ms 23.24%  github.com/manuscript-lang/manuscript/pkg/runtime.invokeLibrary
+         0     0% 42.15%   727.93ms 23.24%  github.com/manuscript-lang/manuscript/pkg/runtime.libraryAdd.func1
+         0     0% 42.15%   727.93ms 23.24%  github.com/manuscript-lang/manuscript/pkg/runtime.nativeLibraryMember.NewFunction.newFunction.func2
+         0     0% 42.15%   727.93ms 23.24%  github.com/manuscript-lang/manuscript/pkg/runtime.nativeLibraryMember.func1
+         0     0% 42.15%   411.65ms 13.14%  github.com/manuscript-lang/manuscript/pkg/runtime.taskResult
+         0     0% 42.15%   356.82ms 11.39%  github.com/manuscript-lang/manuscript/pkg/runtime.workAdmission.remove
+         0     0% 42.15%   167.80ms  5.36%  github.com/manuscript-lang/manuscript/pkg/runtime.workDependency.remove
+         0     0% 42.15%   963.95ms 30.78%  testing.(*B).RunParallel.func1

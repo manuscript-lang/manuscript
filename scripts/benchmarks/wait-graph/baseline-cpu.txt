@@ -1,0 +1,39 @@
+File: runtime.test
+Build ID: 6855681d5dc430fd9e785c1f746d58f277d52f97
+Type: cpu
+Time: 2026-10-13 16:44:27 UTC
+Duration: 36.06s, Total samples = 31.79s (88.15%)
+Showing nodes accounting for 15.94s, 50.14% of 31.79s total
+Dropped 227 nodes (cum <= 0.16s)
+Showing top 30 nodes out of 183
+      flat  flat%   sum%        cum   cum%
+     1.38s  4.34%  4.34%      2.25s  7.08%  runtime.pcvalue
+     1.08s  3.40%  7.74%      1.08s  3.40%  runtime.nextFreeFast (inline)
+        1s  3.15% 10.88%         1s  3.15%  runtime.nanotime (inline)
+     0.72s  2.26% 13.15%      4.39s 13.81%  runtime.mallocgcSmallScanNoHeader
+     0.71s  2.23% 15.38%      0.87s  2.74%  runtime.step
+     0.67s  2.11% 17.49%      7.12s 22.40%  runtime.mallocgc
+     0.66s  2.08% 19.57%      0.66s  2.08%  internal/runtime/atomic.(*Uint32).CompareAndSwap (inline)
+     0.62s  1.95% 21.52%      0.69s  2.17%  runtime.findfunc
+     0.60s  1.89% 23.40%      0.66s  2.08%  runtime.(*mspan).writeHeapBitsSmall
+     0.58s  1.82% 25.23%      1.97s  6.20%  runtime.(*stkframe).getStackMap
+     0.58s  1.82% 27.05%      0.58s  1.82%  runtime.memclrNoHeapPointers
+     0.57s  1.79% 28.85%      0.57s  1.79%  runtime.lock2
+     0.53s  1.67% 30.51%      1.69s  5.32%  runtime.(*unwinder).resolveInternal
+     0.53s  1.67% 32.18%      0.54s  1.70%  runtime.unlock2
+     0.52s  1.64% 33.82%      0.52s  1.64%  internal/sync.(*Mutex).Lock (inline)
+     0.45s  1.42% 35.23%      0.94s  2.96%  runtime.selectgo
+     0.38s  1.20% 36.43%      2.82s  8.87%  runtime.adjustframe
+     0.38s  1.20% 37.62%      1.30s  4.09%  runtime.mallocgcSmallNoscan
+     0.37s  1.16% 38.79%      0.37s  1.16%  runtime.(*mspan).base (inline)
+     0.36s  1.13% 39.92%      1.05s  3.30%  github.com/manuscript-lang/manuscript/pkg/runtime.splitType
+     0.36s  1.13% 41.05%      2.01s  6.32%  runtime.growslice
+     0.36s  1.13% 42.18%      0.36s  1.13%  runtime.memmove
+     0.35s  1.10% 43.28%      1.25s  3.93%  runtime.scanobject
+     0.34s  1.07% 44.35%      0.34s  1.07%  aeshashbody
+     0.34s  1.07% 45.42%      0.34s  1.07%  runtime.adjustpointers
+     0.32s  1.01% 46.43%      0.33s  1.04%  internal/sync.(*Mutex).Unlock (inline)
+     0.32s  1.01% 47.44%      0.45s  1.42%  runtime.scanblock
+     0.29s  0.91% 48.35%      0.29s  0.91%  runtime.(*guintptr).cas
+     0.29s  0.91% 49.26%      0.32s  1.01%  runtime.spanOf (inline)
+     0.28s  0.88% 50.14%      5.10s 16.04%  github.com/manuscript-lang/manuscript/pkg/runtime.Invoke

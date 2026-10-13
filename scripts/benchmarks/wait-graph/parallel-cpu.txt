@@ -1,0 +1,39 @@
+File: runtime.test
+Build ID: b2b41a6dd339d038a42a23a51766355c93ec7b0a
+Type: cpu
+Time: 2026-10-13 16:45:21 UTC
+Duration: 16.54s, Total samples = 42.38s (256.26%)
+Showing nodes accounting for 24.41s, 57.60% of 42.38s total
+Dropped 318 nodes (cum <= 0.21s)
+Showing top 30 nodes out of 221
+      flat  flat%   sum%        cum   cum%
+     4.38s 10.34% 10.34%      4.38s 10.34%  runtime.madvise
+     2.62s  6.18% 16.52%      2.62s  6.18%  runtime.procyield
+     1.33s  3.14% 19.66%      2.62s  6.18%  internal/sync.(*Mutex).Lock (inline)
+     1.20s  2.83% 22.49%      2.44s  5.76%  runtime.pcvalue
+     1.09s  2.57% 25.06%      1.09s  2.57%  runtime.futex
+     0.97s  2.29% 27.35%      0.97s  2.29%  runtime.(*mspan).base (inline)
+     0.95s  2.24% 29.59%      1.58s  3.73%  runtime.unlock2
+     0.93s  2.19% 31.78%      8.96s 21.14%  runtime.mallocgc
+     0.89s  2.10% 33.88%      1.07s  2.52%  runtime.step
+     0.82s  1.93% 35.82%      1.57s  3.70%  runtime.lock2
+     0.77s  1.82% 37.64%      0.77s  1.82%  runtime.nanotime (inline)
+     0.76s  1.79% 39.43%      0.76s  1.79%  runtime.nextFreeFast (inline)
+     0.64s  1.51% 40.94%      0.64s  1.51%  runtime.memclrNoHeapPointers
+     0.56s  1.32% 42.26%      1.09s  2.57%  runtime.findObject
+     0.55s  1.30% 43.56%      0.55s  1.30%  internal/runtime/atomic.(*Uint32).CompareAndSwap
+     0.55s  1.30% 44.86%      1.93s  4.55%  runtime.scanobject
+     0.50s  1.18% 46.04%      4.24s 10.00%  runtime.mallocgcSmallScanNoHeader
+     0.47s  1.11% 47.14%      0.47s  1.11%  runtime.tgkill
+     0.46s  1.09% 48.23%      1.51s  3.56%  runtime.wakep
+     0.45s  1.06% 49.29%      0.60s  1.42%  internal/sync.(*Mutex).Unlock (inline)
+     0.39s  0.92% 50.21%      0.39s  0.92%  sync/atomic.(*Uint64).Add (inline)
+     0.38s   0.9% 51.11%      4.56s 10.76%  github.com/manuscript-lang/manuscript/pkg/runtime.(*TaskGroup).start
+     0.38s   0.9% 52.01%      0.38s   0.9%  runtime.(*moduledata).textAddr
+     0.35s  0.83% 52.83%      1.67s  3.94%  runtime.(*stkframe).getStackMap
+     0.35s  0.83% 53.66%      0.35s  0.83%  runtime.memmove
+     0.34s   0.8% 54.46%      2.30s  5.43%  runtime.adjustframe
+     0.34s   0.8% 55.26%      0.34s   0.8%  runtime.asyncPreempt
+     0.33s  0.78% 56.04%      1.12s  2.64%  gcWriteBarrier
+     0.33s  0.78% 56.82%      2.01s  4.74%  runtime.findRunnable
+     0.33s  0.78% 57.60%      0.38s   0.9%  runtime.findfunc

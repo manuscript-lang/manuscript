@@ -1,0 +1,74 @@
+{
+  "source": "/workspace/manuscript/tests/e2e/testdata/accept/synchronized.ms",
+  "source_sha256": "dc6c4abd0d9b5b26f1e03bd1042b35faa893855520e5fc9b788ec02778dbc4b1",
+  "clis": {
+    "unoptimized": {
+      "path": "/tmp/manuscript-148-unoptimized-perf-ms",
+      "sha256": "3230eee7ecb41f96eb1af09effa4e2677c82fed7708aacee87e488a00b243f33"
+    },
+    "candidate": {
+      "path": "/tmp/manuscript-148-candidate-perf-ms",
+      "sha256": "4d154e518496e26065c100c0c9b603e0ca97da73398c83593280ee37c29cb9eb"
+    }
+  },
+  "seconds": {
+    "unoptimized": [
+      0.2249772959985421,
+      0.2677156070003548,
+      0.2328865819999919,
+      0.2725276870005473,
+      0.23198483800115355,
+      0.2348391769992304,
+      0.2615687870002148,
+      0.25376540000070236,
+      0.23709676500038768
+    ],
+    "candidate": [
+      0.23107427899958566,
+      0.21860700500110397,
+      0.2111357300000236,
+      0.22241012800077442,
+      0.24143809999986843,
+      0.31910735000019486,
+      0.2548434489999636,
+      0.21575961199960147,
+      0.22420315700037463
+    ]
+  },
+  "median_seconds": {
+    "unoptimized": 0.23709676500038768,
+    "candidate": 0.22420315700037463
+  },
+  "outputs": {
+    "unoptimized": [
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n"
+    ],
+    "candidate": [
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n",
+      "RUN synchronized.ms::parent holds lock while a running child waits for it\nPASS synchronized.ms::parent holds lock while a running child waits for it\n1 tests, 0 failed\n"
+    ]
+  },
+  "includes": "CLI startup, cached native lookup and original 20 ms/100 ms program",
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ]
+}
