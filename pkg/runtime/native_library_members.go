@@ -40,10 +40,15 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 		kind = "Timestamp"
 	case Alternative:
 		native, _, _ := strings.Cut(v.Type, "[")
-		if native != "@std/Optional" {
+		switch native {
+		case "@std/Optional":
+			kind = "Optional"
+		case "@std/Result":
+			kind = "Result"
+		default:
 			return nil, false
 		}
-		kind, receiverType = "Optional", v.Type
+		receiverType = v.Type
 	case *List:
 		kind = "List"
 		receiverType = v.Type
@@ -65,6 +70,8 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 		kind = "Int"
 	case float64:
 		kind = "Float"
+	case Decimal:
+		kind = "Decimal"
 	default:
 		return nil, false
 	}

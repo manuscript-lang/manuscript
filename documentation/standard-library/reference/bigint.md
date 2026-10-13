@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/bigint.ms"`.
 
 ## BigInt {data-api-kind="Native type"}
 
+An arbitrary-precision signed integer with explicit arithmetic operations.
+
 ```manuscript
 type BigInt:
     fn add(right: BigInt) -> BigInt:
@@ -25,6 +27,8 @@ type BigInt:
 
 ## BigIntError {data-api-kind="Alternative"}
 
+Errors returned while parsing or converting arbitrary-precision integers.
+
 ```manuscript
 type BigIntError:
     case InvalidInput
@@ -39,11 +43,15 @@ impl Error for BigIntError:
 
 ## from_int {data-api-kind="Function"}
 
+Converts a machine-sized integer without loss.
+
 ```manuscript
 fn from_int(value: Int) -> BigInt:
 ```
 
 ## parse {data-api-kind="Function"}
+
+Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
 
 ```manuscript
 fn parse(text: String, radix: Int, max_digits: Optional[Int] = none) -> Result[BigInt, BigIntError]:

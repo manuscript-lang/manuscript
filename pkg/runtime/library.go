@@ -30,7 +30,7 @@ func libraryAdd(module, name, result string, params []LibraryParam, body func(*E
 		}
 		normalized, ok := nativeOptions(name, params, args)
 		if !ok {
-			return nativeOptionFailure(result)
+			return nativeOptionFailure(result, name, params, args)
 		}
 		return original(ctx, result, normalized)
 	}
@@ -64,7 +64,7 @@ func libraryFunction(name, result string) (Value, bool) {
 func invokeLibrary(spec LibrarySpec, ctx *Execution, result string, args []Value) Value {
 	if spec.Module == "collections" {
 		switch spec.Name {
-		case "map", "filter", "fold", "fold_right", "find", "find_last", "find_index", "find_last_index", "some", "every", "for_each", "flat_map", "group_by", "map_for_each", "set_for_each":
+		case "map", "filter", "fold", "fold_right", "find", "find_last", "find_index", "find_last_index", "some", "every", "for_each", "flat_map", "group_by", "map_for_each", "set_for_each", "map_filter", "set_filter", "set_map":
 			args = append([]Value{}, args...)
 			args[0] = Clone(args[0])
 		}
@@ -88,8 +88,10 @@ func libraryErrorFields(result, code string, fields []Value) Value {
 	errorType := result[start+2 : len(result)-1]
 	return Alternative{result, "error", []Value{Alternative{errorType, code, fields}}}
 }
-func libraryResult(typ, errorType string) string   { return "Result[" + typ + "][" + errorType + "]" }
-func libraryList(typ string, values []Value) *List { return &List{"@std/List[" + typ + "]", values} }
+func libraryResult(typ, errorType string) string { return "Result[" + typ + "][" + errorType + "]" }
+func libraryList(typ string, values []Value) *List {
+	return &List{Type: "@std/List[" + typ + "]", Items: values}
+}
 func libraryStrings(values []string) *List {
 	items := make([]Value, len(values))
 	for i, s := range values {
@@ -126,3 +128,11 @@ func libraryDisposeResource(ctx *Execution, value Value) {
 	}
 	Invoke(Shield(ctx), Bind(value, "", "close"), nil)
 }
+
+// Native allocation ceilings apply even when a caller supplies no limit or a
+// larger one, so a huge count returns LimitExceeded instead of exhausting
+// memory or reaching a Go allocation panic.
+const (
+	nativeMaxItems = 1 << 28
+	nativeMaxBytes = 1 << 30
+)

@@ -254,7 +254,7 @@ func TestLibraryNetworkCloseInterruptsRequest(t *testing.T) {
 	n := &network{}
 	done := make(chan Value, 1)
 	go func() {
-		done <- n.Operation("request").Body(ctx, []Value{"GET", server.URL, &Map{"@std/Map[String][String]", nil}, Bytes{}, int64(100), Duration(10 * time.Second)})
+		done <- n.Operation("request").Body(ctx, []Value{"GET", server.URL, &Map{Type: "@std/Map[String][String]"}, Bytes{}, int64(100), Duration(10 * time.Second)})
 	}()
 	<-started
 	n.Operation("close").Body(ctx, nil)

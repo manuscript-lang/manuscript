@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/yaml.ms"`.
 
 ## YamlError {data-api-kind="Alternative"}
 
+Errors returned for malformed YAML, unsupported features, or exceeded resource limits.
+
 ```manuscript
 type YamlError:
     case InvalidInput
@@ -23,6 +25,8 @@ impl Error for YamlError:
 
 ## YamlLimits {data-api-kind="Record"}
 
+Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
+
 ```manuscript
 type YamlLimits:
     max_bytes: Optional[Int]
@@ -31,6 +35,8 @@ type YamlLimits:
 ```
 
 ## YamlValue {data-api-kind="Alternative"}
+
+A YAML value represented as null, boolean, number text, string, array, or object.
 
 ```manuscript
 type YamlValue:
@@ -43,6 +49,8 @@ type YamlValue:
 ```
 
 ## parse {data-api-kind="Function"}
+
+Parses a YAML document. Unsupported YAML features and invalid input include source locations.
 
 ```manuscript
 fn parse(text: String, limits: Optional[YamlLimits] = none) -> Result[YamlValue, YamlError]:

@@ -1,5 +1,28 @@
 # Tooling and documentation lessons
 
+### Generated Go serves performance; lowering code serves maintainability
+
+Decision: the user wants highly optimized generated Go and explicitly permits
+mechanical, non-idiomatic output. Erase high-level abstractions using checked
+facts where semantics allow; readability of emitted Go is not a constraint.
+Maintainable compiler code, precise source/debugger mapping, and supported
+platform behavior remain requirements. Unsafe or runtime-internal techniques
+need documented invariants and tests.
+
+Verified: concrete scalar locals can eliminate repeated boxing in arithmetic
+loops, but unboxing a source-call result and reboxing it for the next call can
+increase allocations. Classify uses and ABI boundaries before choosing a local
+representation; Go's optimizer does not reliably remove those allocations.
+
+Apply when: optimizing Go lowering, representations, calls, or collection access.
+Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
+[lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
+and [generated/handwritten comparison](../scripts/bench-lowering/harness.go.txt).
+Verify: run `go run ./scripts/bench-lowering` with the pinned SDK, inspect the
+retained generated Go and escape analysis, and compare allocation counts as well
+as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
+when promoting a benchmark candidate into production lowering.
+
 ### Readable formatting needs paragraphs while retaining inline guards
 
 Decision: the user's formatter request keeps inline `if` bodies and introduces
@@ -111,6 +134,8 @@ Verify: run the displayed source and commands with the stated prerequisites; che
 
 Verified: a `manuscript-example` annotation alone does not put a chapter into the executable example suite. The harness discovers introductory tutorials and explicitly listed guides; the logging guide needed an inventory entry before its annotated stdout example was checked or run. See [the example inventory](../tests/examples/examples_test.go) and [the logging example](../documentation/standard-library/packages/tooling.md). When adding complete examples outside the introductory chapters, confirm that their file appears in the harness and run its named subtest with `MANUSCRIPT_EXAMPLES_NATIVE=1`.
 
+Task recipes must also preserve I/O failure: matching a failed stdout write and returning success hides an undelivered result. [Common tasks](../documentation/learn/common-tasks.md) forwards write/flush errors to a nonzero entry status. The same [example harness](../tests/examples/examples_test.go) supplies isolated files, stdin, and loopback HTTP plus additional expected-failure cases; type checking alone cannot establish the displayed output, EOF handling, or failure status. See [annotation fields and native execution](../documentation/contributing/development.md#conformance-and-coverage).
+
 ### User tooling must work in the shipped binary
 
 Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. The later requirement makes the bundled toolchain mandatory: no external override, PATH fallback, or ambient Go configuration may select another tool. OS-specific prerequisites such as Apple debugserver remain permitted. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
@@ -210,3 +235,20 @@ Verified: a function's return-type position identifies its declaration, not a fa
 Apply when: adding or specializing lowered runtime operations, source fault traces, or native call fast paths.
 Evidence: [located lowering](../pkg/compiler/lower_expressions.go), [source frames](../pkg/runtime/values.go), and [native location regressions](../tests/e2e/fault_locations_test.go).
 Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve exact frame order, columns, and names. Keep statement line directives on the operation rather than an inserted bookkeeping line.
+
+Verified: Go orders calls in an expression, but that does not establish when an
+earlier plain local read occurs relative to a later call. A right-hand match can
+mutate the left local. Direct primitive equality therefore captures its operands
+with ordered statements before comparing them. Keep prerequisites inside their
+short-circuit, match and loop regions; hoisting them changes source behavior.
+Evidence: [primitive lowering](../pkg/compiler/lower_equality.go),
+[mutation/order conformance](../tests/e2e/testdata/accept/scalar-lowering.ms), and
+[native IEEE/fault checks](../pkg/compiler/lower_scalar_native_test.go).
+
+### Omitted library entries must stay empty through graph loading
+
+Verified: executable manifests previously required an explicit entry and had no default. Libraries now omit that key; an explicitly empty or invalid entry remains an error. Resolving an empty entry with `SourcePath` would turn it into the project directory, so graph loading skips that resolution and discovers source/test roots instead. Native application commands report the missing entry at the manifest's project table; source analysis and test lowering use the same graph without requiring `main`.
+
+Apply when: changing manifest modes, project discovery, editor overlays, or entry validation.
+Evidence: [manifest validation](../pkg/project/manifest.go), [graph loading](../pkg/frontend/modules.go), [library contracts](../documentation/developer-tooling/builds/project-configuration.md#library-projects-and-copied-dependencies), and [native regressions](../tests/e2e/library_project_test.go).
+Verify: an omitted entry checks unimported modules and executes their tests; an explicit bad entry still fails. Check unsaved unimported library files, canonical symlink entry identities, confined alias targets, and test cache invalidation after an unimported source edit. `ms.lock` pins build inputs and never claims to pin copied package content.

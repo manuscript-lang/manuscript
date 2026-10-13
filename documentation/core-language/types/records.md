@@ -26,7 +26,7 @@ let customer = Customer(name: "Ada", email: none)
 let name = customer.name
 ```
 
-The constructor states which value belongs to each field. For exactly one declared field, its label may be omitted: `Box(3)` and `Box(value: 3)` are equivalent. Multi-field records require labels even when defaults leave only one supplied argument. `customer.name` reads the field. To use the optional email, handle its alternatives as described in [optional values](optionals.md).
+Constructor arguments follow field declaration order and accept optional labels under the ordinary [call rules](../functions/declarations-and-calls.md#argument-names). `Box(3)` and `Box(value: 3)` are equivalent; multi-field records also accept positional and mixed arguments. `customer.name` reads the field. To use the optional email, handle its alternatives as described in [optional values](optionals.md).
 
 ```manuscript
 # Rejected: required email is missing.
@@ -49,7 +49,7 @@ A default can refer to earlier fields and module declarations, including functio
 
 ## Mutation and cloning
 
-A method can update its receiver's fields without replacing the record:
+A method declared through an [interface implementation](contracts.md#explicit-implementations) can update its receiver's fields without replacing the record. User-defined methods require `impl Interface for Type:`; `impl Type:` and method declarations inside a source record are unsupported:
 
 ```manuscript
 interface Counter:

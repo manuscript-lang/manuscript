@@ -7,6 +7,26 @@ weight = 2
 
 Start with [a running program](getting-started.md). Read these examples in order; local statements go inside a function or test. Imports and declarations go at the top of the file. Indentation defines blocks, and `#` starts a comment.
 
+## Print your first line
+
+Save this complete program as `hello.ms` and run `ms run hello.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
+```manuscript
+import stdout from "@std/io.ms"
+
+fn say(text: String) -> Result[Unit, Error]:
+    try stdout().write("{text}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match say("Hello, Manuscript!"):
+        ok(_): return 0
+        error(_): return 1
+```
+
+`main` returns the exit status: 0 for success, 1 for a failed write or flush. `try` forwards an error to the caller; the [expected errors](#expected-errors) section explains that pattern. There is no built-in `print` function. See [common tasks](common-tasks.md) for files, input, arguments, and HTTP, and [testing](testing.md) for the `panic` checks used below.
+
 ## Variables and text
 
 <!-- manuscript-example: {"mode":"test"} -->
@@ -68,6 +88,24 @@ let checkout_total = total + shipping
 
 `if` chooses a branch. `for` visits each item; `while` repeats while a condition is true. Use `break` to stop a loop or `continue` to skip an iteration.
 
+To repeat a task five times without building a collection, count with `while`:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import panic from "@std/faults.ms"
+
+test "count five iterations":
+    var index = 0
+    var total = 0
+    while index < 5:
+        total = total + index
+        index = index + 1
+    if total != 10:
+        return panic("Expected 10, got {total}")
+```
+
+The index visits 0 through 4. Update the counter on every path that continues the loop. To build a list of integers, handle `range(start: 0, end: 5, step: 1)`'s `Result` before iterating; see [counting loops](../core-language/control-flow/loops.md#counting-loops).
+
 ## Functions
 
 ```manuscript
@@ -78,10 +116,10 @@ fn line_total(price: Int, quantity: Int) -> Int:
     return price * quantity
 
 let welcome = greeting("Sam")
-let subtotal = line_total(price: 12, quantity: 3)
+let subtotal = line_total(12, 3)
 ```
 
-Functions declare parameter and return types. A single parameter allows an unlabeled call. With multiple parameters, name every argument. Use `Unit` when a function has no result to return.
+Functions declare parameter and return types. Call with positional arguments or add labels for clarity. Use `Unit` when a function has no result to return.
 
 Pass functions to transform collections:
 
@@ -130,6 +168,39 @@ test "publish a help page":
 ```
 
 Records group named fields. Fields can change even when the binding uses `let`. Alternatives describe a choice of cases; `match` handles every case. A type's name identifies it, so two record declarations with the same fields remain distinct types.
+
+## Behavior on types
+
+Declare an interface for user-defined methods, then implement it with `impl Interface for Type:`. The method's `self` is its receiver:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import panic from "@std/faults.ms"
+
+interface Increment:
+    fn increment() -> Unit
+
+type Counter:
+    value: Int
+
+impl Increment for Counter:
+    fn increment() -> Unit:
+        self.value = self.value + 1
+
+fn reset(counter: Counter) -> Unit:
+    counter.value = 0
+
+test "counter behavior":
+    let counter = Counter(0)
+    counter.increment()
+    if counter.value != 1:
+        return panic("Expected 1, got {counter.value}")
+    reset(counter)
+    if counter.value != 0:
+        return panic("Expected 0, got {counter.value}")
+```
+
+Manuscript has no user-defined inherent methods: `impl Counter:` is unsupported. A free function is called as `reset(counter)`, not `counter.reset()`. Interface operations can be called on a concrete receiver when exactly one visible interface implementation supplies that name. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations) for signatures, visibility, and selecting an interface view when names are ambiguous.
 
 ## Expected errors
 
@@ -213,7 +284,7 @@ These fragments are intentionally rejected:
 let count = 2
 count = 3                 # Use var for reassignment.
 let mixed = [1, "two"]    # List elements need a common type.
-line_total(12, 3)         # Name both arguments.
+line_total(12)            # Supply the required quantity.
 ```
 
 Keep these cases separate from runnable examples. Continue with the [language guide](../core-language/_index.md) or find an API in the [API reference](../standard-library/reference/_index.md).

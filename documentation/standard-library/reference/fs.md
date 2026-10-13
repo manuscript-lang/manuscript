@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/fs.ms"`.
 
 ## CopyOptions {data-api-kind="Record"}
 
+Policies for recursive copies, including replacement, symlinks, and optional limits.
+
 ```manuscript
 type CopyOptions:
     recursive: Bool
@@ -23,6 +25,8 @@ type CopyOptions:
 
 ## Directory {data-api-kind="Interface"}
 
+An open directory that yields one child per read and must be closed.
+
 ```manuscript
 interface Directory:
     fn path() -> String
@@ -31,6 +35,8 @@ interface Directory:
 ```
 
 ## DirectoryEntry {data-api-kind="Record"}
+
+The name and kind flags for one child returned by a directory listing.
 
 ```manuscript
 type DirectoryEntry:
@@ -41,6 +47,8 @@ type DirectoryEntry:
 
 ## FileEvent {data-api-kind="Record"}
 
+One filesystem change and the affected path.
+
 ```manuscript
 type FileEvent:
     path: String
@@ -48,6 +56,8 @@ type FileEvent:
 ```
 
 ## FileHandle {data-api-kind="Interface"}
+
+An open file supporting sequential and positional I/O.
 
 ```manuscript
 interface FileHandle:
@@ -75,6 +85,8 @@ interface FileHandle:
 ```
 
 ## FileInfo {data-api-kind="Record"}
+
+File metadata, including portable fields and exact platform-specific numeric values.
 
 ```manuscript
 type FileInfo:
@@ -105,6 +117,8 @@ type FileInfo:
 ```
 
 ## FileSystem {data-api-kind="Interface"}
+
+Filesystem operations and resource factories for the current host.
 
 ```manuscript
 interface FileSystem:
@@ -143,6 +157,8 @@ interface FileSystem:
 
 ## FileSystemError {data-api-kind="Alternative"}
 
+Errors returned by filesystem operations. `Failed` retains the host error text.
+
 ```manuscript
 type FileSystemError:
     case InvalidInput
@@ -164,6 +180,8 @@ impl Error for FileSystemError:
 
 ## FileSystemInfo {data-api-kind="Record"}
 
+Capacity and free-space statistics for the filesystem containing a path.
+
 ```manuscript
 type FileSystemInfo:
     type_id: Int
@@ -177,6 +195,8 @@ type FileSystemInfo:
 
 ## FileWatcher {data-api-kind="Interface"}
 
+A change stream returned by a filesystem watch operation.
+
 ```manuscript
 interface FileWatcher:
     fn close() -> Unit
@@ -184,6 +204,8 @@ interface FileWatcher:
 ```
 
 ## GlobOptions {data-api-kind="Record"}
+
+Include and exclude patterns and limits used by filesystem glob operations.
 
 ```manuscript
 type GlobOptions:
@@ -196,6 +218,8 @@ type GlobOptions:
 
 ## PathEntry {data-api-kind="Record"}
 
+A matched path together with its filesystem entry metadata.
+
 ```manuscript
 type PathEntry:
     path: String
@@ -203,6 +227,8 @@ type PathEntry:
 ```
 
 ## TemporaryDirectory {data-api-kind="Interface"}
+
+A temporary directory whose contents are removed when it is closed.
 
 ```manuscript
 interface TemporaryDirectory:
@@ -212,11 +238,15 @@ interface TemporaryDirectory:
 
 ## constants {data-api-kind="Function"}
 
+Returns host filesystem flag, mode, and permission constants by name.
+
 ```manuscript
 fn constants() -> Map[String, Int]:
 ```
 
 ## filesystem {data-api-kind="Function"}
+
+Returns filesystem operations for the current host.
 
 ```manuscript
 fn filesystem() -> FileSystem:

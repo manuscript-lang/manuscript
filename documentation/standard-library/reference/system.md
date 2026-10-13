@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/system.ms"`.
 
 ## CpuInfo {data-api-kind="Record"}
 
+Model, speed, and cumulative time counters for one logical CPU.
+
 ```manuscript
 type CpuInfo:
     model: String
@@ -21,6 +23,8 @@ type CpuInfo:
 
 ## NetworkInterface {data-api-kind="Record"}
 
+Address and link metadata for one host network interface.
+
 ```manuscript
 type NetworkInterface:
     name: String
@@ -33,6 +37,8 @@ type NetworkInterface:
 ```
 
 ## System {data-api-kind="Interface"}
+
+Read-only host details and selected controls for the current operating system.
 
 ```manuscript
 interface System:
@@ -55,6 +61,8 @@ interface System:
 
 ## SystemError {data-api-kind="Alternative"}
 
+Errors returned when a requested host operation is unavailable or denied.
+
 ```manuscript
 type SystemError:
     case InvalidInput
@@ -75,6 +83,8 @@ impl Error for SystemError:
 
 ## SystemInfo {data-api-kind="Record"}
 
+Operating system and processor architecture for the current host.
+
 ```manuscript
 type SystemInfo:
     os: String
@@ -83,6 +93,8 @@ type SystemInfo:
 ```
 
 ## SystemMetrics {data-api-kind="Record"}
+
+Host memory, uptime, load, and available parallelism measurements.
 
 ```manuscript
 type SystemMetrics:
@@ -96,6 +108,8 @@ type SystemMetrics:
 
 ## UserInfo {data-api-kind="Record"}
 
+User name, numeric identity, home directory, and login shell.
+
 ```manuscript
 type UserInfo:
     username: String
@@ -107,11 +121,15 @@ type UserInfo:
 
 ## constants {data-api-kind="Function"}
 
+Returns operating-system constants by name.
+
 ```manuscript
 fn constants() -> Map[String, Int]:
 ```
 
 ## dev_null {data-api-kind="Function"}
+
+Returns the conventional null-device path for the host.
 
 ```manuscript
 fn dev_null() -> String:
@@ -119,11 +137,15 @@ fn dev_null() -> String:
 
 ## end_of_line {data-api-kind="Function"}
 
+Returns the host's line-ending sequence.
+
 ```manuscript
 fn end_of_line() -> String:
 ```
 
 ## endianness {data-api-kind="Function"}
+
+Returns `little` or `big` for the host's native byte order.
 
 ```manuscript
 fn endianness() -> String:
@@ -131,11 +153,15 @@ fn endianness() -> String:
 
 ## os_type {data-api-kind="Function"}
 
+Returns the host operating-system family.
+
 ```manuscript
 fn os_type() -> String:
 ```
 
 ## system {data-api-kind="Function"}
+
+Returns system information and controls for the current host.
 
 ```manuscript
 fn system() -> System:

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/parser"
+	"github.com/manuscript-lang/manuscript/pkg/project"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -30,9 +31,12 @@ type Options struct {
 // Modules are in dependency order. Diagnostics may accompany recovered ASTs;
 // callers must retain them when checking and must never lower invalid source.
 type Graph struct {
-	Modules                    []*syntax.Module
-	Imports                    map[*syntax.Import]string
-	Entry                      string
+	Modules []*syntax.Module
+	Imports map[*syntax.Import]string
+	Entry   string
+	// Library distinguishes an omitted manifest entry from an editor selection.
+	Library                    bool
+	ManifestPosition           syntax.Position
 	SourceRoot                 string
 	ProjectRoot, Configuration string
 	Diagnostics                []syntax.Diagnostic
@@ -74,7 +78,15 @@ func diagnostic(filename, phase string, err error) syntax.Diagnostic {
 	if issue, ok := err.(syntax.Diagnostic); ok {
 		return issue
 	}
+	var manifestError *project.ManifestError
+	if errors.As(err, &manifestError) {
+		return syntax.Diagnostic{Position: manifestPosition(manifestError.Location), Phase: phase, Message: explainPathError(manifestError.Cause, "")}
+	}
 	return syntax.Diagnostic{Position: syntax.Position{File: filename, Line: 1, Column: 1}, Phase: phase, Message: explainPathError(err, "")}
+}
+
+func manifestPosition(location project.Location) syntax.Position {
+	return syntax.Position{File: location.File, Line: location.Line, Column: location.Column, Offset: location.Offset}
 }
 
 // explainPathError turns raw filesystem failures into a cause and a fix.

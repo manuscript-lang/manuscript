@@ -8,9 +8,10 @@ Import each required symbol with `import Name from "@std/bytes.ms"`.
 
 ## Bytes {data-api-kind="Native type"}
 
+An immutable sequence of bytes. Indices and slice bounds are zero-based.
+
 ```manuscript
 type Bytes:
-    values: List[Int]
     fn clone() -> Bytes:
     fn contains(value: Bytes) -> Bool:
     fn slice(start: Int, end: Int) -> Bytes:
@@ -22,12 +23,15 @@ type Bytes:
     fn reverse() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
+    fn values() -> List[Int]:
     fn concat(values: Bytes) -> Bytes:
     fn length() -> Int:
     fn to_text() -> Optional[String]:
 ```
 
 ## BytesBuilder {data-api-kind="Native type"}
+
+Builds a byte sequence efficiently before freezing it into an immutable value.
 
 ```manuscript
 type BytesBuilder:
@@ -37,6 +41,8 @@ type BytesBuilder:
 ```
 
 ## values {data-api-kind="Function"}
+
+Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().
 
 ```manuscript
 fn values(data: Bytes) -> List[Int]:

@@ -49,9 +49,11 @@ type checker struct {
 	result                  *Type
 	returnInference         *callbackReturns
 	inferenceVariables      map[string]bool
-	independentArguments    map[*syntax.Expression]*Info
+	checkedArguments        map[*syntax.Expression]checkedArgument
 	function, serial, loops int
 	unknownType             bool
+	labelMismatch           bool
+	reportedImports         map[string]bool
 	callName                string
 	callPos                 syntax.Position
 	captures                map[int]map[*Binding]bool
@@ -237,6 +239,22 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 func (c *checker) unique(prefix string) string {
 	c.serial++
 	return fmt.Sprintf("%s%d", prefix, c.serial)
+}
+
+// importReported records that an import hint for name was given, returning
+// whether it had already been given in this check.
+func (c *checker) importReported(name string) bool {
+	if c.module != nil {
+		name = c.module.File + "\x00" + name
+	}
+	if c.reportedImports[name] {
+		return true
+	}
+	if c.reportedImports == nil {
+		c.reportedImports = map[string]bool{}
+	}
+	c.reportedImports[name] = true
+	return false
 }
 func (c *checker) error(pos syntax.Position, phase, message string) {
 	// An unresolved type is already reported where it is written; later
@@ -435,8 +453,14 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			expected = c.resolve(s.Type, false)
 			c.wellFormed(expected, s.Type.Pos, map[string]bool{})
 		}
+		before := len(c.Diagnostics)
 		info := c.expression(s.Value, expected)
-		c.pattern(s.Pattern, info.Type, s.Mutable, s.Value)
+		bound := info.Type
+		if expected != nil && len(c.Diagnostics) > before && s.Pattern != nil && s.Pattern.Kind == syntax.KindName {
+			// A failed initializer must not retype the annotated binding.
+			bound = expected
+		}
+		c.pattern(s.Pattern, bound, s.Mutable, s.Value)
 		return !info.NoReturn, info.Breaks
 	case syntax.KindAssign:
 		if s.Target != nil {
@@ -535,7 +559,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 	case syntax.KindWith:
 		i := c.expression(s.Value, nil)
 		if !c.closeable(i.Type) {
-			c.error(s.Pos, "type", "with requires an explicit Closeable implementation or a contract declaring close() -> Unit; "+i.Type.String()+" has none, so add 'impl Closeable for "+i.Type.String()+":' with fn close() -> Unit")
+			c.error(s.Pos, "type", c.withNotCloseableMessage(i.Type))
 		}
 		methods := c.methods(i.Type, "close")
 		var candidates []*Method
@@ -617,7 +641,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 	cases := Cases(info.Type)
 	seen := map[string]bool{}
 	fall, breaks := false, false
-	wildcard := false
+	wildcard, unknownCase := false, false
 	for index := range arms {
 		arm := &arms[index]
 		c.ArmBindings[arm] = nil
@@ -643,7 +667,12 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 				}
 			}
 			if !found {
-				c.error(arm.Pos, "resolution", "unknown case "+name+" of "+info.Type.Name+"; cases: "+list(caseNames(info.Type), 12))
+				unknownCase = true
+				if len(arm.Names) == 0 && name != "" && !(name[0] >= 'A' && name[0] <= 'Z') {
+					c.error(arm.Pos, "resolution", "'"+name+"' is not a case of "+info.Type.Name+"; use '_' for a catch-all arm (it cannot bind a name); cases: "+list(caseNames(info.Type), 12))
+				} else {
+					c.error(arm.Pos, "resolution", "unknown case "+name+" of "+info.Type.Name+"; cases: "+list(caseNames(info.Type), 12))
+				}
 			}
 			if seen[name] || wildcard {
 				c.error(arm.Pos, "type", "duplicate or unreachable case "+name+"; each case may be matched once and before any '_' arm")
@@ -667,7 +696,7 @@ func (c *checker) match(pos syntax.Position, value *syntax.Expression, arms []sy
 		breaks = breaks || br
 		c.scope = old
 	}
-	if !wildcard && len(seen) != len(cases) {
+	if !wildcard && !unknownCase && len(seen) != len(cases) {
 		c.error(pos, "type", "non-exhaustive match; missing cases: "+list(missingCases(cases, seen), 12)+", or add a final '_' arm")
 	}
 	return !info.NoReturn && fall, info.Breaks || breaks
@@ -886,6 +915,11 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 				if e.Right != nil {
 					return c.index(e)
 				}
+				if e.Left.Kind == syntax.KindName && c.scope.binding(e.Left.Text) == nil && c.names[e.Left.Text] == nil {
+					c.error(e.Left.Pos, "resolution", c.unknownName(e.Left.Text))
+					i.Type = primitive("<invalid>")
+					return i
+				}
 				c.error(e.Pos, "resolution", "brackets require type arguments on a generic declaration or one Int index on a List")
 			}
 		}
@@ -938,7 +972,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 	case syntax.KindLambda:
 		return c.callback(e, expected)
 	case syntax.KindList:
-		if s := c.names["List"]; s == nil || s != standardSymbols["List"] {
+		if s := c.names["List"]; (s == nil || s != standardSymbols["List"]) && !c.importReported("List") {
 			c.error(e.Pos, "resolution", "list literal requires the canonical List import; add: import List from \"@std/collections.ms\"")
 		}
 		var element *Type
@@ -956,7 +990,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			}
 		}
 		if element == nil {
-			c.error(e.Pos, "type", "cannot infer list element type; add an annotation, e.g. let xs: List[Int] = []")
+			if !c.unknownType {
+				c.error(e.Pos, "type", "cannot infer list element type; add an annotation, e.g. let xs: List[Int] = []")
+			}
 			element = primitive("<invalid>")
 		}
 		for _, item := range e.Elements {
@@ -965,7 +1001,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 		i.Type = standard("List", element)
 	case syntax.KindMap:
-		if s := c.names["Map"]; s == nil || s != standardSymbols["Map"] {
+		if s := c.names["Map"]; (s == nil || s != standardSymbols["Map"]) && !c.importReported("Map") {
 			c.error(e.Pos, "resolution", "map literal requires the canonical Map import; add: import Map from \"@std/collections.ms\"")
 		}
 		var types [2]*Type
@@ -1012,6 +1048,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			if !std(v.Type, "Result") || len(v.Type.Args) != 2 {
 				c.error(e.Pos, "type", "try requires Result, found "+v.Type.String()+"; apply try only to a call returning Result[T, E]")
 			} else {
+				if c.returnInference != nil {
+					c.returnInference.contextDependent = true
+				}
 				if !std(c.result, "Result") || len(c.result.Args) != 2 {
 					c.error(e.Pos, "type", "try requires an enclosing Result; declare this function to return Result[T, E] or handle the error with match")
 				} else if !Same(c.result.Args[1], v.Type.Args[1]) {
@@ -1203,8 +1242,15 @@ func (c *checker) contextual(e *syntax.Expression) bool {
 
 func (c *checker) index(e *syntax.Expression) *Info {
 	receiver := c.expression(e.Left, nil)
+	if receiver.Type.ID == "<invalid>" && e.Right.Kind == syntax.KindName {
+		// An unresolved receiver was reported; its bracket argument is probably a type argument.
+		return &Info{Type: primitive("<invalid>"), Native: "index", NoReturn: receiver.NoReturn}
+	}
 	index := c.expression(e.Right, primitive("Int"))
 	info := &Info{Type: primitive("<invalid>"), Native: "index", NoReturn: receiver.NoReturn || index.NoReturn}
+	if receiver.Type.ID == "<invalid>" {
+		return info
+	}
 	if !std(receiver.Type, "List") || len(receiver.Type.Args) != 1 {
 		c.error(e.Pos, "type", "indexing requires List[T]; use the receiver's lookup method for other types")
 	} else {
@@ -1221,6 +1267,7 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
 		info           *Info
 	}
 	var states []*armState
+	var resultAt syntax.Position
 	c.match(e.Pos, e.Left, e.Arms, func(arm *syntax.Arm) (bool, bool) {
 		normal, breaks := c.block(arm.Body, false)
 		states = append(states, &armState{arm: arm, scope: c.scope, normal: normal, breaks: breaks})
@@ -1255,6 +1302,7 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
 			state.info = armValue(state.arm.Value)
 			if result == nil && state.info.Type.ID != "Never" && inferenceTypeKnown(state.info.Type, c.inferenceVariables) {
 				result = requiredType(state.info.Type)
+				resultAt = state.arm.Value.Pos
 			}
 		}
 	}
@@ -1272,13 +1320,15 @@ func (c *checker) matchExpression(e *syntax.Expression, expected *Type) *Info {
 				normal = !state.info.NoReturn
 			}
 		} else if normal && result != nil && !compatible(primitive("Unit"), result) {
-			c.error(state.arm.Pos, "type", "match arm requires a final value of type "+result.String())
+			c.error(state.arm.Pos, "type", fmt.Sprintf("match arm requires a final value of type %s, because the arm at line %d ends in an expression and makes this match a value; end every arm with a value, or bind the unused result with 'let ignored = ...' so the match stays a statement", result, resultAt.Line))
 		}
 		fall = fall || normal
 	}
 	if result == nil {
 		if fall {
-			c.error(e.Pos, "type", "cannot infer match result type; annotate the binding or give an arm an independently known type")
+			if !c.unknownType {
+				c.error(e.Pos, "type", "cannot infer match result type; annotate the binding or give an arm an independently known type")
+			}
 			result = primitive("<invalid>")
 		} else {
 			result = primitive("Never")

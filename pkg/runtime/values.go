@@ -2,11 +2,17 @@
 package msruntime
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"reflect"
+	goruntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type Value = any
@@ -43,15 +49,32 @@ type Alternative struct {
 type List struct {
 	Type  string
 	Items []Value
+	// shared marks Items as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
+
+// ownItems gives the list a private backing array before an in-place write.
+func (l *List) ownItems() {
+	if l.shared {
+		l.Items = append([]Value(nil), l.Items...)
+		l.shared = false
+	}
+}
+
 type Map struct {
 	Type    string
 	Entries []Entry
+	keys    keyIndex
+	// shared marks Entries as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
 type Entry struct{ Key, Value Value }
 type Set struct {
 	Type  string
 	Items []Value
+	keys  keyIndex
+	// shared marks Items as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
 type Bytes struct{ Items []byte }
 type Duration int64
@@ -68,10 +91,17 @@ type View struct {
 	Scope    TypeScope
 }
 type propagation struct{ Cause Value }
+
+// controlPanics counts in-flight propagation, source-return and loop-exit
+// panics. Layers that only consume those skip recover when none exist, since
+// a recover-and-repanic at every frame makes unwinding a deep stack quadratic.
+var controlPanics atomic.Int64
+
 type Fault struct {
 	Message   string
 	Secondary []string
 	Frames    []string
+	Truncated bool
 }
 
 func (f Fault) Error() string {
@@ -81,6 +111,9 @@ func (f Fault) Error() string {
 	}
 	if len(f.Frames) > 0 {
 		message += "\n  at " + strings.Join(f.Frames, "\n  at ")
+	}
+	if f.Truncated {
+		message += "\n  ... outer frames omitted"
 	}
 	return message
 }
@@ -102,8 +135,12 @@ func NewAcquisition(labels []string, result string, body func(*Execution, []Valu
 func newFunction(labels []string, result string, body func(*Execution, []Value) Value, dispose func(*Execution, Value)) Function {
 	return Function{labels, result, func(ctx *Execution, args []Value) (value Value) {
 		defer func() {
+			if controlPanics.Load() == 0 {
+				return
+			}
 			if r := recover(); r != nil {
 				if p, ok := r.(propagation); ok {
+					controlPanics.Add(-1)
 					CheckCancelled(ctx)
 					value = Alternative{Type: result, Tag: "error", Fields: []Value{p.Cause}}
 				} else {
@@ -113,10 +150,14 @@ func newFunction(labels []string, result string, body func(*Execution, []Value) 
 		}()
 		CheckCancelled(ctx)
 		value = body(ctx, args)
-		if ctx != nil && ctx.Context.Err() != nil && dispose != nil {
-			dispose(ctx, value)
+		// One delivery checkpoint decides both disposal and unwinding. A
+		// second cancellation check could discard an undisposed acquisition.
+		if ctx != nil && ctx.Context.Err() != nil {
+			if dispose != nil {
+				dispose(ctx, value)
+			}
+			panic(cancelled{})
 		}
-		CheckCancelled(ctx)
 		return value
 	}}
 }
@@ -136,10 +177,40 @@ func Invoke(ctx *Execution, callee Value, args []Argument) Value {
 	CheckCancelled(ctx)
 	return f.Body(ctx, ordered)
 }
+
+// Lazy holds a value built on first use; generated code keeps one per call site
+// whose type arguments are known statically, so repeated calls skip Specialize.
+type Lazy struct {
+	once  sync.Once
+	value Value
+}
+
+func (l *Lazy) Get(build func() Value) Value {
+	l.once.Do(func() { l.value = build() })
+	return l.value
+}
+
 func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 	g, ok := value.(Generic)
 	if !ok {
 		return value
+	}
+	var key string
+	cache := genericCache(g)
+	if cache != nil {
+		var b strings.Builder
+		for i, arg := range args {
+			b.WriteString(arg)
+			b.WriteByte(0)
+			if i < len(scopes) {
+				writeScopeKey(&b, scopes[i])
+			}
+			b.WriteByte(1)
+		}
+		key = b.String()
+		if cached, ok := cache.Load(key); ok {
+			return cached.(Function)
+		}
 	}
 	sub := map[string]string{}
 	typeScopes := map[string]TypeScope{}
@@ -149,7 +220,37 @@ func Specialize(value Value, args []string, scopes ...TypeScope) Value {
 			typeScopes[v] = scopes[i]
 		}
 	}
-	return g.Build(sub, typeScopes)
+	built := g.Build(sub, typeScopes)
+	if cache != nil {
+		cache.Store(key, built)
+	}
+	return built
+}
+
+// genericCaches holds one instantiation cache per Generic, keyed by the address
+// of its Variables backing array, which every copy of the value shares.
+var genericCaches sync.Map
+
+func genericCache(g Generic) *sync.Map {
+	if len(g.Variables) == 0 {
+		return nil
+	}
+	key := &g.Variables[0]
+	if cache, ok := genericCaches.Load(key); ok {
+		return cache.(*sync.Map)
+	}
+	cache, _ := genericCaches.LoadOrStore(key, new(sync.Map))
+	return cache.(*sync.Map)
+}
+
+func writeScopeKey(b *strings.Builder, scope TypeScope) {
+	b.WriteString(scope.Module)
+	b.WriteByte('(')
+	for _, arg := range scope.Args {
+		writeScopeKey(b, arg)
+		b.WriteByte(',')
+	}
+	b.WriteByte(')')
 }
 func Try(value Value, scopes ...TypeScope) Value {
 	v := value.(Alternative)
@@ -158,6 +259,7 @@ func Try(value Value, scopes ...TypeScope) Value {
 		if len(scopes) > 0 {
 			cause = ViewOf("@std/Error", cause, scopes[0])
 		}
+		controlPanics.Add(1)
 		panic(propagation{cause})
 	}
 	return v.Fields[0]
@@ -191,8 +293,8 @@ func NewAlternative(typ, tag string, labels []string, args []Argument) Value {
 	}
 	return Alternative{typ, tag, values}
 }
-func Field(value Value, name string) Value           { return value.(Record).Fields[name] }
-func SetField(value Value, name string, field Value) { value.(Record).Fields[name] = field }
+func Field(value Value, name string) Value           { return readField(value.(Record).Fields, name) }
+func SetField(value Value, name string, field Value) { writeField(value.(Record).Fields, name, field) }
 func Tag(value Value) string                         { return value.(Alternative).Tag }
 func Payload(value Value, index int) Value           { return value.(Alternative).Fields[index] }
 func Positions(value Value, length int) []Value {
@@ -211,14 +313,19 @@ func Positions(value Value, length int) []Value {
 func Iterate(value Value) []Value {
 	switch v := value.(type) {
 	case *List:
-		return append([]Value{}, v.Items...)
+		// Loops see the elements as of loop start. Appends land beyond the captured
+		// length; in-place writes call ownItems and leave this slice untouched.
+		v.shared = true
+		return v.Items[:len(v.Items):len(v.Items)]
 	case *Set:
-		return append([]Value{}, v.Items...)
+		v.shared = true
+		return v.Items[:len(v.Items):len(v.Items)]
 	case *Map:
 		values := make([]Value, len(v.Entries))
 		args := typeArguments(v.Type)
+		entryType := "@std/MapEntry[" + args[0] + "][" + args[1] + "]"
 		for i, e := range v.Entries {
-			values[i] = Record{"@std/MapEntry[" + args[0] + "][" + args[1] + "]", map[string]Value{"key": e.Key, "value": e.Value}}
+			values[i] = Record{entryType, map[string]Value{"key": e.Key, "value": e.Value}}
 		}
 		return values
 	}
@@ -263,14 +370,15 @@ func formatValue(value Value, depth int) string {
 	case Decimal:
 		return v.String()
 	case Record:
-		names := make([]string, 0, len(v.Fields))
-		for name := range v.Fields {
+		fields := fieldsSnapshot(v.Fields)
+		names := make([]string, 0, len(fields))
+		for name := range fields {
 			names = append(names, name)
 		}
 		sort.Strings(names)
 		parts := make([]string, len(names))
 		for i, name := range names {
-			parts[i] = name + ": " + formatValue(v.Fields[name], depth+1)
+			parts[i] = name + ": " + formatValue(fields[name], depth+1)
 		}
 		return displayType(v.Type) + "(" + strings.Join(parts, ", ") + ")"
 	case Alternative:
@@ -350,9 +458,37 @@ func equalityID(value Value) (equalityIdentity, bool) {
 	return equalityIdentity{}, false
 }
 
+// primitiveEqual compares Int, Float, String, and Bool operands directly. These
+// types cannot carry a user Equal implementation, so it needs no scope, cycle
+// bookkeeping, or state allocation.
+func primitiveEqual(a, b Value) (result, ok bool) {
+	switch x := a.(type) {
+	case int64:
+		if y, same := b.(int64); same {
+			return x == y, true
+		}
+	case string:
+		if y, same := b.(string); same {
+			return x == y, true
+		}
+	case bool:
+		if y, same := b.(bool); same {
+			return x == y, true
+		}
+	case float64:
+		if y, same := b.(float64); same {
+			return x == y, true
+		}
+	}
+	return false, false
+}
+
 func Equal(a, b Value) bool                   { return equal(a, b, &equalityState{}) }
 func EqualIn(ctx *Execution, a, b Value) bool { return EqualSelected(ctx, a, b, ctx.EqualityScope) }
 func EqualSelected(ctx *Execution, a, b Value, scope TypeScope) bool {
+	if result, ok := primitiveEqual(a, b); ok {
+		return result
+	}
 	return equal(a, b, &equalityState{ctx: ctx, scope: scope})
 }
 func Equality(ctx *Execution, operator string, a, b Value, scope TypeScope) Value {
@@ -363,6 +499,9 @@ func Equality(ctx *Execution, operator string, a, b Value, scope TypeScope) Valu
 	return result
 }
 func equal(a, b Value, state *equalityState) bool {
+	if result, ok := primitiveEqual(a, b); ok {
+		return result
+	}
 	if view, ok := a.(View); ok {
 		a = view.Receiver
 		stateCopy := *state
@@ -438,11 +577,15 @@ func equal(a, b Value, state *equalityState) bool {
 		return true
 	case Record:
 		y, ok := b.(Record)
-		if !ok || x.Type != y.Type || len(x.Fields) != len(y.Fields) {
+		if !ok || x.Type != y.Type {
 			return false
 		}
-		for k, v := range x.Fields {
-			if !equal(v, y.Fields[k], state) {
+		xf, yf := fieldsSnapshot(x.Fields), fieldsSnapshot(y.Fields)
+		if len(xf) != len(yf) {
+			return false
+		}
+		for k, v := range xf {
+			if !equal(v, yf[k], state) {
 				return false
 			}
 		}
@@ -584,7 +727,13 @@ type Implementation struct {
 
 var implementations []Implementation
 
+// implementationsByName indexes implementations by method name so a lookup
+// visits only candidates instead of the whole registry.
+var implementationsByName = map[string][]int{}
+
 func Register(implementation Implementation) {
+	implementationCache.Clear()
+	implementationsByName[implementation.Name] = append(implementationsByName[implementation.Name], len(implementations))
 	implementations = append(implementations, implementation)
 }
 func ViewOf(contract string, receiver Value, scopes ...TypeScope) Value {
@@ -663,30 +812,77 @@ type Test struct {
 	Run  Function
 }
 
-func RunTests(tests []Test) int {
+// DefaultTestTimeout bounds each test run by the generated test executable
+// so one deadlocked test cannot hang the whole run silently.
+const DefaultTestTimeout = 60 * time.Second
+
+// testCancelGrace is how long a timed-out test gets to unwind after
+// cancellation before the runner abandons it and moves on.
+const testCancelGrace = 2 * time.Second
+
+// TestOptions selects and bounds the tests a run executes. A zero Timeout
+// disables the per-test limit; a non-empty Filter keeps tests whose full
+// name (module::name) contains it.
+type TestOptions struct {
+	Timeout time.Duration
+	Filter  string
+}
+
+// ParseTestArgs reads --timeout=<duration> and --filter=<text> from the test
+// executable's arguments; other arguments are ignored.
+func ParseTestArgs(args []string) (TestOptions, error) {
+	options := TestOptions{Timeout: DefaultTestTimeout}
+	for _, arg := range args {
+		switch {
+		case strings.HasPrefix(arg, "--timeout="):
+			timeout, err := time.ParseDuration(strings.TrimPrefix(arg, "--timeout="))
+			if err != nil || timeout < 0 {
+				return options, fmt.Errorf("invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable", strings.TrimPrefix(arg, "--timeout="))
+			}
+			options.Timeout = timeout
+		case strings.HasPrefix(arg, "--filter="):
+			options.Filter = strings.TrimPrefix(arg, "--filter=")
+		}
+	}
+	return options, nil
+}
+
+// RunTestsArgs runs tests with the options encoded in the executable's arguments.
+func RunTestsArgs(tests []Test, args []string) int {
+	options, err := ParseTestArgs(args)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	return RunTestsWith(tests, options)
+}
+
+func RunTests(tests []Test) int { return RunTestsWith(tests, TestOptions{}) }
+
+func RunTestsWith(tests []Test, options TestOptions) int {
+	total := len(tests)
+	if options.Filter != "" {
+		var selected []Test
+		for _, test := range tests {
+			if strings.Contains(test.Name, options.Filter) {
+				selected = append(selected, test)
+			}
+		}
+		tests = selected
+		if len(tests) == 0 {
+			fmt.Printf("no tests match filter %q (%d tests available); the filter matches any part of a test's module::name\n", options.Filter, total)
+			return 1
+		}
+	}
 	failed := 0
 	for _, test := range tests {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					failed++
-					fmt.Printf("FAIL %s: %v\n", test.Name, r)
-				}
-			}()
-			func() {
-				execution := RootExecution()
-				if err := execution.Host.initialize(); err != nil {
-					Panic(err.Error())
-				}
-				defer Cleanup(execution, hostValue(execution, "stdin"))
-				defer Cleanup(execution, hostValue(execution, "stdout"))
-				defer Cleanup(execution, hostValue(execution, "stderr"))
-				defer Cleanup(execution, hostValue(execution, "network"))
-				defer FinishExecution(execution)
-				Invoke(execution, test.Run, nil)
-			}()
-			fmt.Printf("PASS %s\n", test.Name)
-		}()
+		fmt.Printf("RUN %s\n", test.Name)
+		if failure := runTest(test, options.Timeout); failure != nil {
+			failed++
+			fmt.Printf("FAIL %s: %v\n", test.Name, failure)
+			continue
+		}
+		fmt.Printf("PASS %s\n", test.Name)
 	}
 	if len(tests) == 0 {
 		fmt.Println("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file")
@@ -695,15 +891,90 @@ func RunTests(tests []Test) int {
 	return failed
 }
 
+// runTest executes one test on its own root execution and returns its failure.
+// When the timeout elapses the execution is cancelled; a test that still does
+// not stop is abandoned after a goroutine dump so later tests can run.
+func runTest(test Test, timeout time.Duration) any {
+	execution := RootExecution()
+	cancelled, cancel := context.WithCancel(execution.Context)
+	defer cancel()
+	execution.Context = cancelled
+	done := make(chan any, 1)
+	go func() {
+		var failure any
+		defer func() { done <- failure }()
+		defer func() {
+			if r := recover(); r != nil {
+				failure = r
+			}
+		}()
+		if err := execution.Host.initialize(); err != nil {
+			Panic(err.Error())
+		}
+		defer Cleanup(execution, hostValue(execution, "stdin"))
+		defer Cleanup(execution, hostValue(execution, "stdout"))
+		defer Cleanup(execution, hostValue(execution, "stderr"))
+		defer Cleanup(execution, hostValue(execution, "network"))
+		defer FinishExecution(execution)
+		Invoke(execution, test.Run, nil)
+	}()
+	if timeout <= 0 {
+		return <-done
+	}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case failure := <-done:
+		return failure
+	case <-timer.C:
+	}
+	cancel()
+	select {
+	case <-done:
+		return fmt.Sprintf("timed out after %s; the test was cancelled (use --timeout to change the limit, 0 disables it)", timeout)
+	case <-time.After(testCancelGrace):
+	}
+	stacks := make([]byte, 1<<20)
+	stacks = stacks[:goruntime.Stack(stacks, true)]
+	fmt.Fprintf(os.Stderr, "goroutines after timeout in %s:\n%s\n", test.Name, stacks)
+	return fmt.Sprintf("timed out after %s and did not stop when cancelled; goroutine dump is on stderr", timeout)
+}
+
 type sourceReturn struct{ value Value }
 
-func Return(value Value) Value { panic(sourceReturn{value}) }
+func Return(value Value) Value {
+	controlPanics.Add(1)
+	panic(sourceReturn{value})
+}
+
+// MaxCallDepth bounds nested source calls per execution so runaway recursion
+// is a fault instead of Go's unrecoverable stack overflow.
+const MaxCallDepth = 200000
+
+// maxFaultFrames bounds the trace kept on a fault; deeper frames are counted.
+const maxFaultFrames = 32
 
 func NewSourceFunction(labels []string, result, position string, body func(*Execution, []Value) Value) Function {
 	return NewFunction(labels, result, func(ctx *Execution, args []Value) (value Value) {
+		if ctx != nil && ctx.calls != nil {
+			calls := ctx.calls
+			if calls.depth.Add(1) > MaxCallDepth {
+				calls.depth.Add(-1)
+				Panic(fmt.Sprintf("call depth limit exceeded (%d nested calls)", MaxCallDepth))
+			}
+			defer func() {
+				if calls.depth.Add(-1) == 0 {
+					calls.traceFull.Store(false)
+				}
+			}()
+		}
 		defer func() {
+			if controlPanics.Load() == 0 {
+				return
+			}
 			if failure := recover(); failure != nil {
 				if returned, ok := failure.(sourceReturn); ok {
+					controlPanics.Add(-1)
 					value = returned.value
 					return
 				}
@@ -717,10 +988,46 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 	})
 }
 
+type implementationKey struct {
+	typ, contract, name, module, args string
+}
+
+// resolvedImplementation is the receiver-independent outcome of a lookup.
+type resolvedImplementation struct {
+	impl       *Implementation
+	sub        map[string]string
+	typeScopes map[string]TypeScope
+}
+
+// implementationCache memoizes lookups; Register discards it.
+var implementationCache sync.Map
+
 func implementationFunction(receiver Value, contract, name string, scope TypeScope) (Function, bool) {
-	typ := ConcreteType(receiver)
-	for _, m := range implementations {
-		if m.Name != name || m.Scope != "" && m.Scope != scope.Module {
+	key := implementationKey{typ: ConcreteType(receiver), contract: contract, name: name, module: scope.Module}
+	if len(scope.Args) > 0 {
+		var b strings.Builder
+		writeScopeKey(&b, scope)
+		key.args = b.String()
+	}
+	if cached, ok := implementationCache.Load(key); ok {
+		resolved := cached.(*resolvedImplementation)
+		if resolved == nil {
+			return Function{}, false
+		}
+		return resolved.impl.Build(receiver, resolved.sub, resolved.typeScopes), true
+	}
+	resolved := resolveImplementation(key.typ, contract, name, scope)
+	implementationCache.Store(key, resolved)
+	if resolved == nil {
+		return Function{}, false
+	}
+	return resolved.impl.Build(receiver, resolved.sub, resolved.typeScopes), true
+}
+
+func resolveImplementation(typ, contract, name string, scope TypeScope) *resolvedImplementation {
+	for _, at := range implementationsByName[name] {
+		m := &implementations[at]
+		if m.Scope != "" && m.Scope != scope.Module {
 			continue
 		}
 		vars := map[string]bool{}
@@ -731,10 +1038,10 @@ func implementationFunction(receiver Value, contract, name string, scope TypeSco
 		if matchType(m.Receiver, typ, vars, sub) && (contract == "" || ResolveType(m.Contract, sub) == contract) {
 			typeScopes := map[string]TypeScope{}
 			implementationScopes(m.Receiver, scope, vars, typeScopes)
-			return m.Build(receiver, sub, typeScopes), true
+			return &resolvedImplementation{m, sub, typeScopes}
 		}
 	}
-	return Function{}, false
+	return nil
 }
 
 func indexOfIn(ctx *Execution, items []Value, value Value) int {
@@ -758,11 +1065,18 @@ func equalityChild(state *equalityState, index int) *equalityState {
 // loopExit crosses generated expression closures, never a source callable.
 type loopExit struct{ stop bool }
 
-func ExitLoop(stop bool) { panic(loopExit{stop}) }
+func ExitLoop(stop bool) {
+	controlPanics.Add(1)
+	panic(loopExit{stop})
+}
 func LoopBody(body func() Value) (exit int) {
 	defer func() {
+		if controlPanics.Load() == 0 {
+			return
+		}
 		if failure := recover(); failure != nil {
 			if loop, ok := failure.(loopExit); ok {
+				controlPanics.Add(-1)
 				if loop.stop {
 					exit = 1
 				} else {
@@ -784,10 +1098,19 @@ func SourceAt[T any](position *string, site string, value T) T {
 }
 
 // TraceSource runs once per source function, after its cleanup has completed.
-func TraceSource(position *string, name string) {
+func TraceSource(ctx *Execution, position *string, name string) {
+	if ctx != nil && ctx.calls != nil && ctx.calls.traceFull.Load() {
+		return
+	}
 	if failure := recover(); failure != nil {
 		if fault, ok := failure.(Fault); ok {
 			fault.Frames = append(append([]string{}, fault.Frames...), *position+" in "+name)
+			if len(fault.Frames) >= maxFaultFrames && ctx != nil && ctx.calls != nil {
+				// Re-raising at every frame makes unwinding a deep stack
+				// quadratic, so outer frames are no longer recorded.
+				fault.Truncated = true
+				ctx.calls.traceFull.Store(true)
+			}
 			panic(fault)
 		}
 		panic(failure)

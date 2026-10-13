@@ -20,7 +20,7 @@ with file = try filesystem().open(path: path, flags: "r+", mode: 384):
     let synced = try file.sync()
 ```
 
-`384` is decimal for Unix permission bits `0600`. Opening accepts `r`, `r+`, `w`, `wx`, `w+`, `wx+`, `a`, `ax`, `a+`, and `ax+`. `x` makes creation exclusive. Permission arguments accept `0..4095` (`07777`), including setuid, setgid, and sticky bits where the native OS supports them. `open_flags` accepts numeric native flags from `fs.constants()`; these numbers are host-specific. Paths use the native filesystem dialect, reject empty strings and NUL with `FileSystemError.InvalidInput`, and use host OS permissions. Relative paths on CLI roots use the live working directory; embedded capabilities constructed with a directory retain that base. Importing the FileSystem type alone does not obtain a service.
+`384` is decimal for Unix permission bits `0600`. Opening accepts `r`, `r+`, `w`, `wx`, `w+`, `wx+`, `a`, `ax`, `a+`, and `ax+`. `x` makes creation exclusive. Permission arguments accept `0..4095` (`07777`), including setuid, setgid, and sticky bits where the native OS supports them. `open_flags` accepts numeric native flags from `fs.constants()`; these numbers are host-specific. Paths use the native filesystem dialect, reject empty strings and NUL with `FileSystemError.InvalidInput`, and use host OS permissions. Relative paths on CLI roots use the live working directory (`ms test` sets it to the project directory, or the test file's directory, so fixtures are found regardless of the caller's directory); embedded capabilities constructed with a directory retain that base. Importing the FileSystem type alone does not obtain a service.
 
 ## File reads and writes
 

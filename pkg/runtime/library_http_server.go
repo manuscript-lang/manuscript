@@ -71,6 +71,7 @@ func (n *network) serveStreaming() Function {
 		n.servers = append(n.servers, server)
 		n.mu.Unlock()
 		registerResource(ctx, server)
+		markConcurrent()
 		go func() {
 			if secure {
 				server.err = server.server.ServeTLS(listener, "", "")

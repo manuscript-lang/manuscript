@@ -56,6 +56,7 @@ func libraryNewNativeWatch(ctx *Execution, r, path string, recursive bool, max, 
 		return libraryOSResult(r, nil, err)
 	}
 	CheckCancelled(ctx)
+	markConcurrent()
 	go w.pump()
 	delivered = true
 	return libraryOK(r, ViewOf("@std/FileWatcher", w))

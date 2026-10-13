@@ -6,12 +6,17 @@ import (
 	"strings"
 )
 
+type checkedArgument struct {
+	info        *Info
+	diagnostics []syntax.Diagnostic
+}
+
 func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
-	// Successful independent checks belong to this call only. Nested calls
-	// own their own evidence; callbacks and failed probes still need context.
-	previous := c.independentArguments
-	c.independentArguments = map[*syntax.Expression]*Info{}
-	defer func() { c.independentArguments = previous }()
+	// Argument checks belong to this call only. Nested calls own
+	// their own evidence; callback reuse also requires the same final context.
+	previous := c.checkedArguments
+	c.checkedArguments = map[*syntax.Expression]checkedArgument{}
+	defer func() { c.checkedArguments = previous }()
 	i := &Info{}
 	callee := e.Left
 	if typ := c.typeExpression(callee); typ != nil {
@@ -23,7 +28,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			typ = c.instantiate(typ, nil, nil, expected, e.Pos)
 			i.Arguments = constructorArguments(e.Args, []Param{{Name: "value"}})
 			if len(i.Arguments) != 1 || i.Arguments[0].Name != "value" {
-				c.error(e.Pos, "type", "contract view requires exactly value: receiver; write "+typ.String()+"(value: x) with one argument labeled value")
+				c.error(e.Pos, "type", "contract view requires exactly one receiver; write "+typ.String()+"(x) or "+typ.String()+"(value: x)")
 				return i
 			}
 			receiver := c.expression(e.Args[0].Value, nil)
@@ -40,23 +45,16 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			c.error(e.Pos, "type", "construct an alternative case rather than its type; call one of "+typ.Name+"'s cases: "+list(caseNames(typ), 8))
 			return i
 		}
-		var fields []Param
-		fields = Fields(typ)
-		if std(typ, "Bytes") {
-			fields = []Param{{"values", standard("List", primitive("Int"))}}
-		}
+		fields := ConstructorSignature(typ).Params
 		if std(typ, "Task") || std(typ, "BigInt") || std(typ, "Regex") || std(typ, "Timestamp") || std(typ, "SynchronizedGuard") || std(typ, "Instant") || std(typ, "Duration") || std(typ, "Decimal") || std(typ, "OperationId") {
 			c.error(e.Pos, "type", "standard type has no source constructor: "+typ.String()+"; create it with a literal or the standard function documented for it (ms doc)")
 			return i
 		}
 		i.Arguments = constructorArguments(e.Args, fields)
 		typ = c.instantiate(typ, fields, i.Arguments, expected, e.Pos)
-		fields = Fields(typ)
+		fields = ConstructorSignature(typ).Params
 		if std(typ, "Queue") && len(e.Args) == 0 {
 			fields = nil
-		}
-		if std(typ, "Bytes") {
-			fields = []Param{{"values", standard("List", primitive("Int"))}}
 		}
 		i.NoReturn = c.argumentsFor(typ.Name, e.Pos, i.Arguments, fields, ConstructorSignature(typ).Defaults)
 		i.Type = typ
@@ -166,23 +164,33 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	return i
 }
 
-// Single-parameter calls omit any label; multi-parameter calls allow name shorthand.
-// Keep the source AST intact for tools and repeated checking.
+// Resolve labels without changing source syntax or written evaluation order.
+// Explicit labels and existing matching-name shorthand select their parameter.
+// Other values fill the first parameter not supplied by an earlier argument.
 func functionArguments(args []syntax.Argument, params []Param) []syntax.Argument {
 	resolved := append([]syntax.Argument(nil), args...)
+	seen := make(map[string]bool, len(params))
 	for index := range resolved {
-		if resolved[index].Name == "" {
-			if len(params) == 1 {
-				resolved[index].Name = params[0].Name
-			} else if value := resolved[index].Value; value.Kind == syntax.KindName && value.Pos == resolved[index].Pos {
+		arg := &resolved[index]
+		if arg.Name == "" {
+			if value := arg.Value; len(params) > 1 && value.Kind == syntax.KindName && value.Pos == arg.Pos {
 				for _, param := range params {
 					if param.Name == value.Text {
-						resolved[index].Name = value.Text
+						arg.Name = value.Text
+						break
+					}
+				}
+			}
+			if arg.Name == "" {
+				for _, param := range params {
+					if !seen[param.Name] {
+						arg.Name = param.Name
 						break
 					}
 				}
 			}
 		}
+		seen[arg.Name] = true
 	}
 	return resolved
 }
@@ -244,14 +252,9 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 	c.callName, c.callPos = "", syntax.Position{}
 	seen := map[string]bool{}
 	noReturn := false
-	for index, arg := range args {
+	for _, arg := range args {
 		if arg.Name == "" {
-			message := "argument labels are required for this call"
-			if index < len(params) {
-				message += "; write " + params[index].Name + ": ..."
-				seen[params[index].Name] = true
-			}
-			c.error(arg.Pos, "type", message)
+			c.error(arg.Pos, "type", "too many positional arguments; every parameter is already supplied, so remove this argument")
 			v := c.expression(arg.Value, nil)
 			noReturn = noReturn || v.NoReturn
 			continue
@@ -301,11 +304,14 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, n
 			a = args[index]
 		}
 		if a == nil {
-			c.error(pos, "type", missingTypeArgumentHint(name, v.Name, vars, args))
+			if !c.labelMismatch {
+				c.error(pos, "type", missingTypeArgumentHint(name, v.Name, vars, args))
+			}
 			a = primitive("<invalid>")
 		}
 		sub[v.ID] = a
 	}
+	c.labelMismatch = false
 	for _, v := range vars {
 		for _, bound := range v.Bounds {
 			if !invalidType(sub[v.ID]) && !c.satisfies(sub[v.ID], Sub(bound, sub)) {
@@ -357,7 +363,14 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 // context (including empty lists and incomplete data constructors), then wrap
 // only the supplied argument. Ordinary expression compatibility stays exact.
 func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info {
-	info := c.independentArguments[e]
+	checked := c.checkedArguments[e]
+	info := checked.info
+	if e.Kind == syntax.KindLambda && info != nil && !Same(info.Type, callbackContext(expected)) {
+		info = nil // Later inference changed the callback's required signature.
+	}
+	if info != nil {
+		c.Diagnostics = append(c.Diagnostics, checked.diagnostics...)
+	}
 	if !std(expected, "Optional") || len(expected.Args) != 1 {
 		if info != nil {
 			return c.checkExpression(e, info, expected)
@@ -392,10 +405,12 @@ func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info
 	return info
 }
 
-// Inference matches the complete optional first, then its payload. Failed
-// attempts must not leave substitutions that constrain the second attempt.
+// Match exactly before trying the existing Result error widening or a single
+// Optional argument wrapper. Result successes and nested applications remain
+// invariant. Each attempt commits substitutions only after its whole boundary
+// is valid; final argument checking retains the selected Error evidence.
 func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bool {
-	attempt := func(target *Type) bool {
+	fresh := func() map[string]*Type {
 		trial := map[string]*Type{}
 		for key, value := range sub {
 			// A prior failed argument supplies no constraint on later evidence.
@@ -403,8 +418,18 @@ func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub
 				trial[key] = value
 			}
 		}
+		return trial
+	}
+	attempt := func(target *Type) bool {
+		trial := fresh()
 		if !unify(target, actual, vars, trial) {
-			return false
+			if !std(target, "Result") || !std(actual, "Result") || len(target.Args) != 2 || len(actual.Args) != 2 {
+				return false
+			}
+			trial = fresh()
+			if !unify(target.Args[0], actual.Args[0], vars, trial) || !c.errorAssignable(actual, Sub(target, trial)) {
+				return false
+			}
 		}
 		for key, value := range trial {
 			sub[key] = value
@@ -427,8 +452,8 @@ func (c *checker) independentArgument(e *syntax.Expression) *Info {
 		c.Diagnostics = c.Diagnostics[:checkpoint]
 		return nil
 	}
-	if c.independentArguments != nil {
-		c.independentArguments[e] = info
+	if c.checkedArguments != nil {
+		c.checkedArguments[e] = checkedArgument{info: info}
 	}
 	return info
 }
@@ -456,10 +481,7 @@ func missingArgumentHint(param Param, callee string) string {
 	return ": " + param.Type.String() + in + "; add '" + param.Name + ": <" + param.Type.String() + ">'"
 }
 
-// Constructor shorthand is limited to exactly one declared payload.
+// Constructors use the same binding rule as functions.
 func constructorArguments(args []syntax.Argument, params []Param) []syntax.Argument {
-	if len(params) == 1 {
-		return functionArguments(args, params)
-	}
-	return args
+	return functionArguments(args, params)
 }

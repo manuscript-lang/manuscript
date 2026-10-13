@@ -36,9 +36,9 @@ These helpers use shared stream views without closing them. Keep the streams' ow
 | --- | --- |
 | `copy` | Returns the number of bytes copied. An error may occur after a prefix was written; there is no rollback. |
 | `read_all` | Returns all bytes only on success. |
-| `read_line` | Reads one byte at a time so it does not consume the next line. It strips LF and a preceding CR, and accepts a final line without a terminator. |
+| `read_line` | Reads through LF, strips it and a preceding CR, and accepts a final line without a terminator. Native streams buffer read-ahead and retain the remainder for subsequent line or chunk reads after a successful line; source-defined streams read one byte at a time. |
 
-`read_line` returns `none` only if EOF occurs before any data. Its positive `max_bytes` includes terminator bytes. Invalid UTF-8 returns `InvalidData`; overflow returns `LimitExceeded` and may consume a prefix plus one boundary byte. Copy and read_all allow a zero limit for an empty source.
+`read_line` returns `none` only if EOF occurs before any data. Its positive `max_bytes` includes terminator bytes. Invalid UTF-8 returns `InvalidData`; overflow returns `LimitExceeded` and may consume data already fetched, including a native read-ahead chunk. A line budget does not reduce the native chunk size or guarantee that overflow preserves the next line. Copy and read_all allow a zero limit for an empty source.
 
 Source streams must return nonempty chunks within the requested size. A malformed stream implementation causes `Failed`.
 

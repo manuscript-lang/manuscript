@@ -84,7 +84,7 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 	for key, want := range map[string]string{
 		"@std/net.ms#DatagramSocket": "interface DatagramSocket:\n    fn address() -> String\n    fn close() -> Unit\n    fn receive(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Datagram, NetworkError]\n    fn send(data: Bytes, address: String, timeout: Optional[Duration] = none) -> Result[Unit, NetworkError]\n",
 		"@std/net.ms#DnsRecord":      "type DnsRecord:\n    kind: String\n    value: String\n    priority: Int\n    weight: Int\n    port: Int\n",
-		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n    fn is_some() -> Bool:\n    fn is_none() -> Bool:\n    fn unwrap() -> T:\n    fn unwrap_or(fallback: T) -> T:\n    fn unwrap_or_else(create: fn() -> T) -> T:\n",
+		"@std/optional.ms#Optional":  "type Optional[T]:\n    case some(value: T)\n    case none\n    fn is_some() -> Bool:\n    fn is_none() -> Bool:\n    fn unwrap() -> T:\n    fn unwrap_or(fallback: T) -> T:\n    fn unwrap_or_else(create: fn() -> T) -> T:\n    fn map[U](transform: fn(value: T) -> U) -> Optional[U]:\n    fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:\n    fn or_else(create: fn() -> Optional[T]) -> Optional[T]:\n",
 	} {
 		if got := exports[key].Declaration; got != want {
 			t.Errorf("%s declaration:\ngot %s\nwant %s", key, got, want)
@@ -96,13 +96,30 @@ func TestDocumentationUsesManuscriptDeclarations(t *testing.T) {
 		"@std/time.ms#Timestamp":   "    fn shift(duration: Duration) -> Result[Timestamp, TimeError]",
 		"@std/collections.ms#Map":  "type Map[T: Hashable, U]:",
 		"@std/collections.ms#List": "    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]",
-		"@std/bytes.ms#Bytes":      "    values: List[Int]",
+		"@std/bytes.ms#Bytes":      "    fn values() -> List[Int]",
 		"prelude#String":           "    fn to_bytes() -> Bytes",
 	} {
 		if !strings.Contains(exports[key].Declaration, want) {
 			t.Errorf("%s lost source syntax %q: %s", key, want, exports[key].Declaration)
 		}
 	}
+}
+
+func TestBytesValuesDocumentationIsAnOperation(t *testing.T) {
+	for _, module := range StandardLibrary() {
+		if module.Path != "@std/bytes.ms" {
+			continue
+		}
+		for _, d := range module.Declarations {
+			if d.Name == "Bytes" {
+				if len(d.Fields) != 0 || !slices.Contains(d.Operations, "values: fn()->List[Int]") {
+					t.Fatalf("Bytes values must be callable, not a data field: %+v", d)
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("missing Bytes documentation")
 }
 
 func TestModuleDocumentationRetainsDefaults(t *testing.T) {
@@ -153,5 +170,43 @@ func TestRecordDefaultDocumentation(t *testing.T) {
 	docs := ModuleDocumentation(program)
 	if len(docs) != 1 || len(docs[0].Declarations) != 1 || docs[0].Declarations[0].Declaration != strings.TrimPrefix(source, "export ") {
 		t.Fatal("field default spelling changed", docs)
+	}
+}
+
+func TestModuleDocumentationCapturesLeadingComments(t *testing.T) {
+	source := `# Adds two numbers.
+# Never rounds.
+export fn add(a: Int, b: Int) -> Int:
+    return a + b
+
+# Detached by a blank line.
+
+export fn sub(a: Int, b: Int) -> Int:
+    return a - b
+
+# Not a doc comment: private declaration.
+fn helper() -> Int:
+    return 1
+
+export fn bare() -> Int:
+    return 0
+`
+	module, err := parser.Parse("docs.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := Check([]*syntax.Module{module}, nil)
+	if len(program.Diagnostics) != 0 {
+		t.Fatal(program.Diagnostics)
+	}
+	docs := map[string]string{}
+	for _, d := range ModuleDocumentation(program)[0].Declarations {
+		docs[d.Name] = d.Doc
+	}
+	if docs["add"] != "Adds two numbers.\nNever rounds." {
+		t.Errorf("add doc = %q", docs["add"])
+	}
+	if docs["sub"] != "" || docs["bare"] != "" {
+		t.Errorf("detached or absent comments leaked: %q %q", docs["sub"], docs["bare"])
 	}
 }

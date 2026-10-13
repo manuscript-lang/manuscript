@@ -7,8 +7,10 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
 )
 
 func clampedIndex(length int, index int64, relative bool) int64 {
@@ -22,6 +24,35 @@ func clampedIndex(length int, index int64, relative bool) int64 {
 		return int64(length)
 	}
 	return index
+}
+
+// StringAt is the direct path for String.at calls.
+func StringAt(ctx *Execution, text, index Value, result string) Value {
+	CheckCancelled(ctx)
+	return stringScalarAt(text.(string), index.(int64), result, false)
+}
+
+func stringScalarAt(text string, index int64, result string, asInt bool) Value {
+	ascii := isASCII(text)
+	count := len(text)
+	if !ascii {
+		count = utf8.RuneCountInString(text)
+	}
+	i := relativeIndex(count, index)
+	if i < 0 || i >= int64(count) {
+		return Alternative{Type: result, Tag: "none"}
+	}
+	var scalar rune
+	if ascii {
+		scalar = rune(text[i])
+	} else {
+		scalar, _ = utf8.DecodeRuneInString(text[scalarOffset(text, int(i)):])
+	}
+	var value Value = string(scalar)
+	if asInt {
+		value = int64(scalar)
+	}
+	return Alternative{result, "some", []Value{value}}
 }
 
 func init() {
@@ -88,16 +119,7 @@ func init() {
 			result = "Optional[Int]"
 		}
 		add("string", name, result, []LibraryParam{p("text", "String"), p("index", "Int")}, func(_ *Execution, r string, a []Value) Value {
-			scalars := []rune(a[0].(string))
-			i := relativeIndex(len(scalars), a[1].(int64))
-			if i < 0 || i >= int64(len(scalars)) {
-				return Alternative{Type: r, Tag: "none"}
-			}
-			var value Value = string(scalars[i])
-			if name == "scalar_at" {
-				value = int64(scalars[i])
-			}
-			return Alternative{r, "some", []Value{value}}
+			return stringScalarAt(a[0].(string), a[1].(int64), r, name == "scalar_at")
 		})
 	}
 	for _, name := range []string{"index_of", "last_index_of"} {
@@ -123,9 +145,14 @@ func init() {
 	}
 	for _, name := range []string{"slice", "substring"} {
 		add("string", name, "String", []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-			scalars := []rune(a[0].(string))
-			s := clampedIndex(len(scalars), a[1].(int64), name == "slice")
-			e := clampedIndex(len(scalars), a[2].(int64), name == "slice")
+			text := a[0].(string)
+			ascii := isASCII(text)
+			count := len(text)
+			if !ascii {
+				count = utf8.RuneCountInString(text)
+			}
+			s := clampedIndex(count, a[1].(int64), name == "slice")
+			e := clampedIndex(count, a[2].(int64), name == "slice")
 			if s > e {
 				if name == "substring" {
 					s, e = e, s
@@ -133,7 +160,11 @@ func init() {
 					e = s
 				}
 			}
-			return string(scalars[s:e])
+			if ascii {
+				return text[s:e]
+			}
+			start := scalarOffset(text, int(s))
+			return text[start : start+scalarOffset(text[start:], int(e-s))]
 		})
 	}
 	for _, name := range []string{"pad_start", "pad_end"} {
@@ -143,6 +174,7 @@ func init() {
 			if target < 0 || max < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
+			max = min(max, nativeMaxBytes)
 			if int64(len(text)) > max {
 				return libraryError(r, "LimitExceeded", "")
 			}
@@ -307,4 +339,46 @@ func formatFloatPrecision(value float64, format byte, precision int) string {
 		sign = ""
 	}
 	return mantissa + "e" + sign + strconv.Itoa(e)
+}
+
+func isASCII(text string) bool {
+	for i := 0; i < len(text); i++ {
+		if text[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
+}
+
+// scalarOffset returns the byte offset of the n-th scalar in text without allocating.
+func scalarOffset(text string, n int) int {
+	offset := 0
+	for ; n > 0 && offset < len(text); n-- {
+		_, width := utf8.DecodeRuneInString(text[offset:])
+		offset += width
+	}
+	return offset
+}
+
+// scalarCountCache remembers the last long string measured, so a loop that
+// calls scalar_length() every iteration pays for the scan once. It holds the
+// string itself, which keeps its backing memory from being reused under the
+// pointer comparison.
+type scalarCountEntry struct {
+	text  string
+	count int64
+}
+
+var scalarCountCache atomic.Pointer[scalarCountEntry]
+
+func scalarCount(text string) int64 {
+	if len(text) < 1024 {
+		return int64(utf8.RuneCountInString(text))
+	}
+	if e := scalarCountCache.Load(); e != nil && len(e.text) == len(text) && unsafe.StringData(e.text) == unsafe.StringData(text) {
+		return e.count
+	}
+	n := int64(utf8.RuneCountInString(text))
+	scalarCountCache.Store(&scalarCountEntry{text, n})
+	return n
 }

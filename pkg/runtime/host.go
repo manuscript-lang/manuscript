@@ -25,6 +25,8 @@ type stream struct {
 	closing, released   chan struct{}
 	active              sync.WaitGroup
 	releaseFault        error
+	// pending holds bytes read ahead by read_line; read returns them first.
+	pending []byte
 }
 
 func (s *stream) initialize() {
@@ -131,6 +133,15 @@ func (s *stream) Operation(name string) Function {
 			if n > 64*1024 {
 				n = 64 * 1024
 			}
+			s.mu.Lock()
+			if len(s.pending) > 0 {
+				take := min(int(n), len(s.pending))
+				data := s.pending[:take:take]
+				s.pending = s.pending[take:]
+				s.mu.Unlock()
+				return Alternative{s.resultType, "ok", []Value{optional("@std/Bytes", Bytes{data}, true)}}
+			}
+			s.mu.Unlock()
 			data := make([]byte, int(n))
 			read, err := s.file.Read(data)
 			CheckCancelled(ctx)
@@ -300,7 +311,7 @@ func newHostValues(arguments []string) (map[string]Value, error) {
 			}
 		}
 	}
-	return map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{""}), "control": ViewOf("@std/ProcessControl", libraryProcessControl{}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{""}), "arguments": &List{"@std/List[String]", values}, "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: "@std/Result[Unit][@std/IoError]"}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: "@std/Result[Unit][@std/IoError]"}), "files": ViewOf("@std/Files", &files{""}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}, nil
+	return map[string]Value{"filesystem": ViewOf("@std/FileSystem", &libraryFileSystem{""}), "control": ViewOf("@std/ProcessControl", libraryProcessControl{}), "entropy": ViewOf("@std/Entropy", libraryEntropy{}), "wall_clock": ViewOf("@std/WallClock", libraryWallClock{}), "system": ViewOf("@std/System", &librarySystem{""}), "arguments": &List{Type: "@std/List[String]", Items: values}, "environment": environment, "stdin": ViewOf("@std/ReadStream", &stream{file: os.Stdin, resultType: "@std/Result[@std/Optional[@std/Bytes]][@std/IoError]"}), "stdout": ViewOf("@std/WriteStream", &stream{file: os.Stdout, resultType: "@std/Result[Unit][@std/IoError]"}), "stderr": ViewOf("@std/WriteStream", &stream{file: os.Stderr, resultType: "@std/Result[Unit][@std/IoError]"}), "files": ViewOf("@std/Files", &files{""}), "network": ViewOf("@std/Network", &network{}), "commands": ViewOf("@std/Commands", &commands{}), "clock": ViewOf("@std/Clock", &clock{&clockDomain{}, time.Now()})}, nil
 }
 func RunMain(main Value, arguments []string) (exit int) {
 	exit = 70
@@ -314,6 +325,7 @@ func RunMain(main Value, arguments []string) (exit int) {
 	defer close(done)
 	var mu sync.Mutex
 	signalExit := 0
+	markConcurrent()
 	go func() {
 		select {
 		case s := <-signals:
@@ -328,7 +340,7 @@ func RunMain(main Value, arguments []string) (exit int) {
 		case <-done:
 		}
 	}()
-	execution := &Execution{Context: ctx, Lifetime: &workLifetime{}, Host: &hostRoots{arguments: arguments}}
+	execution := &Execution{Context: ctx, Lifetime: &workLifetime{}, Host: &hostRoots{arguments: arguments}, calls: &callState{}}
 	defer func() {
 		if r := recover(); r != nil {
 			if _, ok := r.(cancelled); ok {

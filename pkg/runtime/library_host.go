@@ -59,7 +59,7 @@ func libraryMethod(receiver, name string, body func(*Execution, string, []Value)
 			implementation := func(ctx *Execution, a []Value) Value {
 				normalized, ok := nativeOptions(name, spec.Params, a)
 				if !ok {
-					return nativeOptionFailure(result)
+					return nativeOptionFailure(result, name, spec.Params, a)
 				}
 				return body(ctx, result, normalized)
 			}

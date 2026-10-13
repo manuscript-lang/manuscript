@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // Run executes a command and returns its process exit status.
@@ -64,6 +65,9 @@ func Run(args []string) int {
 	if args[0] == "doc" {
 		return runDoc(args[1:])
 	}
+	if args[0] == "init" {
+		return runInit(args[1:])
+	}
 	if args[0] == "fmt" {
 		return runFormat(args[1:])
 	}
@@ -90,14 +94,11 @@ func Run(args []string) int {
 		}
 		return 0
 	}
-	if len(args) < 2 {
-		fmt.Fprintf(os.Stderr, "ms %s: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms %s ms.toml\n\n", args[0], args[0])
-		fmt.Fprint(os.Stderr, usage)
-		return 2
-	}
 	if args[0] == "stdlib" {
 		if len(args) != 2 {
-			fmt.Fprintln(os.Stderr, "usage: ms stdlib <directory>; pass exactly one directory to write the standard declarations into")
+			fmt.Fprintln(os.Stderr, "ms stdlib: pass exactly one directory to write the standard declarations into, e.g. ms stdlib ./declarations")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprint(os.Stderr, usage)
 			return 2
 		}
 		if err := stdlib.Materialize(args[1]); err != nil {
@@ -106,12 +107,30 @@ func Run(args []string) int {
 		}
 		return 0
 	}
+	if len(args) < 2 {
+		fmt.Fprintf(os.Stderr, "ms %s: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms %s ms.toml\n\n", args[0], args[0])
+		fmt.Fprint(os.Stderr, usage)
+		return 2
+	}
 	command, filename := args[0], args[1]
+	if strings.HasPrefix(filename, "-") && filename != "--" {
+		fmt.Fprintf(os.Stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (put the file first, then options)\n", filename, command, command)
+		return 2
+	}
+	if info, err := os.Stat(filename); err == nil && info.IsDir() {
+		manifest := filepath.Join(filename, "ms.toml")
+		if _, err := os.Stat(manifest); err != nil {
+			fmt.Fprintf(os.Stderr, "ms %s: %s is a directory without an ms.toml; pass a .ms file or a project ms.toml, e.g. ms %s ms.toml\n", command, filename, command)
+			return 2
+		}
+		filename = manifest
+	}
 	output := ""
 	cpuProfile, heapProfile, tracePath := "", "", ""
 	formatCheck, structured, debug, watch := false, false, false, false
 	buildTypeName := ""
 	buildTypeSet := false
+	testTimeout, testFilter := "", ""
 	var arguments []string
 	for i := 2; i < len(args); i++ {
 		switch args[i] {
@@ -133,6 +152,22 @@ func Run(args []string) int {
 				return 2
 			}
 			buildTypeName, buildTypeSet = args[i], true
+		case "--timeout", "--filter":
+			flag := args[i]
+			i++
+			if i == len(args) || flag == "--filter" && args[i] == "" {
+				fmt.Fprintf(os.Stderr, "%s requires a value, e.g. %s\n", flag, map[string]string{"--timeout": "--timeout 30s", "--filter": "--filter \"test name\""}[flag])
+				return 2
+			}
+			if flag == "--timeout" {
+				if d, err := time.ParseDuration(args[i]); err != nil || d < 0 {
+					fmt.Fprintf(os.Stderr, "invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable\n", args[i])
+					return 2
+				}
+				testTimeout = args[i]
+			} else {
+				testFilter = args[i]
+			}
 		case "--check":
 			formatCheck = true
 		case "--json":
@@ -159,6 +194,10 @@ func Run(args []string) int {
 				tracePath = args[i]
 			}
 		default:
+			if !strings.HasPrefix(args[i], "-") {
+				fmt.Fprintf(os.Stderr, "unexpected extra argument %s (ms %s takes one file; arguments for the program go after --)\n", args[i], command)
+				return 2
+			}
 			fmt.Fprintf(os.Stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (arguments for the program go after --)\n", args[i], command, command)
 			return 2
 		}
@@ -177,6 +216,20 @@ func Run(args []string) int {
 	default:
 		unknownCommand(command)
 		return 2
+	}
+	if (testTimeout != "" || testFilter != "") && command != "test" {
+		fmt.Fprintf(os.Stderr, "--timeout and --filter are valid only for ms test, not ms %s; run 'ms help %s' for the options this command accepts\n", command, command)
+		return 2
+	}
+	if command == "test" {
+		var testArgs []string
+		if testTimeout != "" {
+			testArgs = append(testArgs, "--timeout="+testTimeout)
+		}
+		if testFilter != "" {
+			testArgs = append(testArgs, "--filter="+testFilter)
+		}
+		arguments = append(testArgs, arguments...)
 	}
 	if watch && command != "run" && command != "test" {
 		fmt.Fprintf(os.Stderr, "--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch\n", command)
@@ -240,7 +293,7 @@ func Run(args []string) int {
 		return watchProgram(command, filename, options, kind, "", arguments)
 	}
 	result := compiler.CompileFile(filename, options)
-	if structured && command == "check" {
+	if structured && command == "check" || structured && command == "lint" && !result.Success() {
 		if result.Diagnostics == nil {
 			result.Diagnostics = []syntax.Diagnostic{}
 		}
@@ -276,10 +329,17 @@ func Run(args []string) int {
 	switch command {
 	case "lint":
 		findings := []tooling.LintFinding{}
+		// Bundled standard modules are not the user's to fix.
 		for _, module := range result.Program.Modules {
-			findings = append(findings, tooling.Lint(module.File, module.Source)...)
+			if !strings.HasPrefix(module.File, "@std/") {
+				findings = append(findings, tooling.Lint(module.File, module.Source)...)
+			}
 		}
-		findings = append(findings, tooling.LintProgram(result.Program)...)
+		for _, finding := range tooling.LintProgram(result.Program) {
+			if !strings.HasPrefix(finding.Position.File, "@std/") {
+				findings = append(findings, finding)
+			}
+		}
 		if structured {
 			data, _ := json.Marshal(struct {
 				Format      int                   `json:"format"`
@@ -300,7 +360,7 @@ func Run(args []string) int {
 		return 0
 	case "lock":
 		if result.ProjectRoot == "" {
-			fmt.Fprintln(os.Stderr, "lock requires a project ms.toml, not a single .ms file; run ms lock path/to/ms.toml (a manifest declares [project] name, source, and entry)")
+			fmt.Fprintln(os.Stderr, "lock requires a project ms.toml, not a single .ms file; run ms lock path/to/ms.toml (a manifest declares [project] name and source, plus entry for an executable)")
 			return 2
 		}
 		if err := compiler.WritePin(result.ProjectRoot); err != nil {
@@ -352,6 +412,10 @@ func Run(args []string) int {
 		}
 		absolute, err := filepath.Abs(output)
 		if err == nil {
+			if info, statErr := os.Stat(absolute); statErr == nil && info.IsDir() {
+				fmt.Fprintf(os.Stderr, "-o %s is a directory; pass a file path (e.g. -o %s)\n", output, filepath.Join(output, "program"))
+				return 2
+			}
 			if cache == "" {
 				cache = filepath.Join(filepath.Dir(absolute), ".ms-cache")
 			}
@@ -415,6 +479,7 @@ func Run(args []string) int {
 			return status
 		}
 		child := exec.Command(executable, arguments...)
+		child.Dir = testWorkingDirectory(command, filename, result)
 		child.Stdin = os.Stdin
 		child.Stdout = os.Stdout
 		child.Stderr = os.Stderr
@@ -472,7 +537,7 @@ func plural(n int, one, many string) string {
 	return many
 }
 
-var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "debug", "lock", "doc", "stdlib", "lsp", "help"}
+var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "debug", "lock", "init", "doc", "stdlib", "lsp", "help"}
 
 // unknownCommand names the nearest command and lists the rest.
 func unknownCommand(name string) {
@@ -554,3 +619,20 @@ type dapStdio struct {
 func (s *dapStdio) Write(p []byte) (int, error) { return s.output.Write(p) }
 
 func (s *dapStdio) Close() error { _ = s.output.Close(); return s.File.Close() }
+
+// Tests run in the project directory (the one holding ms.toml), or beside the
+// test file for a single-file run, so fixtures such as "golden/x.md" resolve the
+// same way wherever ms is invoked. Other commands keep the caller's directory.
+func testWorkingDirectory(command, filename string, result compiler.Result) string {
+	if command != "test" {
+		return ""
+	}
+	directory := result.ProjectRoot
+	if directory == "" {
+		directory = filepath.Dir(filename)
+	}
+	if absolute, err := filepath.Abs(directory); err == nil {
+		return absolute
+	}
+	return ""
+}
