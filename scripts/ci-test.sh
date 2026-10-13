@@ -1,6 +1,8 @@
 #!/bin/sh
-# Run one shard of the Go test suite with coverage; the in-process packages that
-# need the race detector run with it, so each package is compiled and tested once.
+# Run one shard of the Go test suite. The in-process packages that need the race
+# detector run under it, without coverage (race plus coverage instrumentation makes
+# timing-sensitive tests such as TestBuildersAppendInLinearTime flaky); every other
+# package runs once with coverage. Each test runs exactly once.
 # Usage: ci-test.sh SHARD COUNT
 set -eu
 repository=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
@@ -30,16 +32,19 @@ for package in $split_packages; do
     tests=$("$go_tool" test "$package" -list '^Test' | grep '^Test' |
         awk -v n="$count" -v k="$shard" '(NR - 1) % n == k' | paste -sd'|' -)
     [ -n "$tests" ] || continue
-    flags=
-    if printf '%s\n' "$race_packages" | grep -qxF "$package"; then flags=-race; fi
-    run "$(basename "$package")" "$flags" "$package" -run "^($tests)\$"
+    if printf '%s\n' "$race_packages" | grep -qxF "$package"; then
+        "$go_tool" test -race "$package" -run "^($tests)\$"
+    else
+        run "$(basename "$package")" "" "$package" -run "^($tests)\$"
+    fi
 done
 
-# Everything else runs once, on shard 0.
-[ "$shard" -eq 0 ] || exit 0
-others=$(printf '%s\n' "$race_packages" | grep -vxF 'github.com/manuscript-lang/manuscript/pkg/compiler' || true)
+# Remaining packages are dealt round-robin across shards.
+mine() { awk -v n="$count" -v k="$shard" '(NR - 1) % n == k'; }
+race_rest=$(printf '%s\n' "$race_packages" | grep -vxF 'github.com/manuscript-lang/manuscript/pkg/compiler' | mine || true)
 # shellcheck disable=SC2086
-[ -z "$others" ] || run race -race $others
+[ -z "$race_rest" ] || "$go_tool" test -race $race_rest
 excluded=$(printf '%s\n%s\n' "$race_packages" "$split_packages")
-# shellcheck disable=SC2046
-run rest "" $("$go_tool" list ./... | grep -vxF "$excluded" || true)
+cover_rest=$("$go_tool" list ./... | grep -vxF "$excluded" | mine || true)
+# shellcheck disable=SC2086
+[ -z "$cover_rest" ] || run rest "" $cover_rest
