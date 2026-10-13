@@ -13,6 +13,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 )
 
 type Value = any
@@ -59,6 +61,14 @@ func (l *List) ownItems() {
 		l.Items = append([]Value(nil), l.Items...)
 		l.shared = false
 	}
+}
+
+// snapshot retains membership without copying the backing array. All updates
+// to existing elements detach through ownItems; appends lie beyond this length.
+// The private header prevents callback traversal from observing alias growth.
+func (l *List) snapshot() *List {
+	l.shared = true
+	return &List{Type: l.Type, Items: l.Items[:len(l.Items):len(l.Items)], shared: true}
 }
 
 type Map struct {
@@ -853,17 +863,28 @@ func ParseTestArgs(args []string) (TestOptions, error) {
 
 // RunTestsArgs runs tests with the options encoded in the executable's arguments.
 func RunTestsArgs(tests []Test, args []string) int {
-	options, err := ParseTestArgs(args)
+	reporter, err := openTestReporter()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
-	return RunTestsWith(tests, options)
+	defer reporter.close()
+	options, err := ParseTestArgs(args)
+	if err != nil {
+		reporter.emit(nativeabi.TestEvent{Event: "error", Reason: "argument_error", Failure: err.Error()})
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	return runTestsWith(tests, options, reporter)
 }
 
 func RunTests(tests []Test) int { return RunTestsWith(tests, TestOptions{}) }
 
 func RunTestsWith(tests []Test, options TestOptions) int {
+	return runTestsWith(tests, options, nil)
+}
+
+func runTestsWith(tests []Test, options TestOptions, reporter *testReporter) int {
 	total := len(tests)
 	if options.Filter != "" {
 		var selected []Test
@@ -873,25 +894,45 @@ func RunTestsWith(tests []Test, options TestOptions) int {
 			}
 		}
 		tests = selected
+	}
+	if reporter != nil {
+		names := make([]string, len(tests))
+		for i, test := range tests {
+			names[i] = test.Name
+		}
+		reporter.emit(nativeabi.TestEvent{Event: "plan", Format: 1, Available: total, Names: names})
+	}
+	if options.Filter != "" {
 		if len(tests) == 0 {
+			reporter.emit(nativeabi.TestEvent{Event: "done", Reason: "no_match"})
 			fmt.Printf("no tests match filter %q (%d tests available); the filter matches any part of a test's module::name\n", options.Filter, total)
 			return 1
 		}
 	}
 	failed := 0
-	for _, test := range tests {
+	for i, test := range tests {
+		reporter.emit(nativeabi.TestEvent{Event: "run", Index: i})
 		fmt.Printf("RUN %s\n", test.Name)
 		if failure := runTest(test, options.Timeout); failure != nil {
 			failed++
+			if reporter != nil {
+				reporter.emit(nativeabi.TestEvent{Event: "failed", Index: i, Failure: fmt.Sprint(failure)})
+			}
 			fmt.Printf("FAIL %s: %v\n", test.Name, failure)
 			continue
 		}
+		reporter.emit(nativeabi.TestEvent{Event: "passed", Index: i})
 		fmt.Printf("PASS %s\n", test.Name)
 	}
 	if len(tests) == 0 {
 		fmt.Println("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file")
 	}
 	fmt.Printf("%d tests, %d failed\n", len(tests), failed)
+	reason := ""
+	if len(tests) == 0 {
+		reason = "no_tests"
+	}
+	reporter.emit(nativeabi.TestEvent{Event: "done", Reason: reason})
 	return failed
 }
 

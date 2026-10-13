@@ -38,7 +38,7 @@ fn f(first: Int, second: Int) -> Int: return first + second
 		})
 	}
 	r := compiler.CompileSource("import.ms", "fn f() -> Unit:\n    let value = {1: 2}\n", compiler.Options{})
-	if r.Success() || !strings.Contains(r.Diagnostics[0].Message, "canonical Map import") {
+	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
 }

@@ -36,6 +36,43 @@ func init() {
 	add := func(name, result string, vars, params []LibraryParam, body func(*Execution, string, []Value) Value) {
 		libraryGeneric("collections", name, result, vars, params, body)
 	}
+	add("map_transform", "Map[K][W]", []LibraryParam{p("K", "Hashable"), p("V", ""), p("W", "")}, []LibraryParam{p("values", "Map[K][V]"), p("transform", "fn(key:K;value:V)->W")}, func(ctx *Execution, result string, args []Value) Value {
+		out := &Map{Type: result}
+		for _, entry := range args[0].(*Map).Entries {
+			CheckCancelled(ctx)
+			value := Invoke(ctx, args[1], []Argument{{"key", entry.Key}, {"value", entry.Value}})
+			out.Entries = append(out.Entries, Entry{Key: entry.Key, Value: value})
+		}
+		return out
+	})
+	add("map_transform_keys", "Map[W][V]", []LibraryParam{p("K", "Hashable"), p("V", ""), p("W", "Hashable")}, []LibraryParam{p("values", "Map[K][V]"), p("transform", "fn(key:K;value:V)->W")}, func(ctx *Execution, result string, args []Value) Value {
+		out := &Map{Type: result}
+		for _, entry := range args[0].(*Map).Entries {
+			CheckCancelled(ctx)
+			key := Invoke(ctx, args[1], []Argument{{"key", entry.Key}, {"value", entry.Value}})
+			out.put(ctx, key, entry.Value)
+		}
+		return out
+	})
+	add("map_fold_right", "A", []LibraryParam{p("K", "Hashable"), p("V", ""), p("A", "")}, []LibraryParam{p("values", "Map[K][V]"), p("initial", "A"), p("step", "fn(accumulator:A;key:K;value:V)->A")}, func(ctx *Execution, _ string, args []Value) Value {
+		accumulator := args[1]
+		entries := args[0].(*Map).Entries
+		for i := len(entries) - 1; i >= 0; i-- {
+			CheckCancelled(ctx)
+			entry := entries[i]
+			accumulator = Invoke(ctx, args[2], []Argument{{"accumulator", accumulator}, {"key", entry.Key}, {"value", entry.Value}})
+		}
+		return accumulator
+	})
+	add("set_fold_right", "A", []LibraryParam{p("T", "Hashable"), p("A", "")}, []LibraryParam{p("values", "Set[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, args []Value) Value {
+		accumulator := args[1]
+		items := args[0].(*Set).Items
+		for i := len(items) - 1; i >= 0; i-- {
+			CheckCancelled(ctx)
+			accumulator = Invoke(ctx, args[2], []Argument{{"accumulator", accumulator}, {"value", items[i]}})
+		}
+		return accumulator
+	})
 	add("map_fold", "A", []LibraryParam{p("K", "Hashable"), p("V", ""), p("A", "")}, []LibraryParam{p("values", "Map[K][V]"), p("initial", "A"), p("step", "fn(accumulator:A;key:K;value:V)->A")}, func(ctx *Execution, _ string, a []Value) Value {
 		accumulator := a[1]
 		for _, entry := range a[0].(*Map).Entries {
@@ -53,7 +90,7 @@ func init() {
 		return accumulator
 	})
 	for _, kind := range []string{"map", "set"} {
-		for _, name := range []string{"find", "some", "every"} {
+		for _, name := range []string{"find", "find_last", "some", "every"} {
 			vars := hash
 			params := []LibraryParam{p("values", "Set[T]"), p("predicate", "fn(value:T)->Bool")}
 			result := "Optional[T]"
@@ -62,7 +99,7 @@ func init() {
 				params = []LibraryParam{p("values", "Map[K][V]"), p("predicate", "fn(key:K;value:V)->Bool")}
 				result = "Optional[MapEntry[K][V]]"
 			}
-			if name != "find" {
+			if name != "find" && name != "find_last" {
 				result = "Bool"
 			}
 			add(kind+"_"+name, result, vars, params, func(ctx *Execution, result string, args []Value) Value {
@@ -72,6 +109,9 @@ func init() {
 	}
 	add("map_is_empty", "Bool", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, _ string, a []Value) Value {
 		return len(a[0].(*Map).Entries) == 0
+	})
+	add("map_add", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K"), p("value", "V")}, func(ctx *Execution, _ string, a []Value) Value {
+		return MapWithEntry(ctx, a[0], a[1], a[2], ctx.EqualityScope)
 	})
 	add("map_get_or", "V", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K"), p("fallback", "V")}, func(ctx *Execution, _ string, a []Value) Value {
 		values := a[0].(*Map)
@@ -265,10 +305,14 @@ func init() {
 		return a[0]
 	})
 	add("fill", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
-		items := a[0].(*List).Items
+		list := a[0].(*List)
 		s, e := a[2].(int64), a[3].(int64)
-		librarySlice("List.fill", len(items), s, e)
-		out := items
+		librarySlice("List.fill", len(list.Items), s, e)
+		if s == e {
+			return list
+		}
+		list.ownItems()
+		out := list.Items
 		for i := s; i < e; i++ {
 			CheckCancelled(ctx)
 			out[i] = a[1]
@@ -276,12 +320,17 @@ func init() {
 		return a[0]
 	})
 	add("copy_within", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("target", "Int"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
-		items := a[0].(*List).Items
+		list := a[0].(*List)
 		t, s, e := a[1].(int64), a[2].(int64), a[3].(int64)
-		librarySlice("List.copy_within", len(items), s, e)
-		if t < 0 || t > int64(len(items)) {
-			return libraryRangeFault("List.copy_within", "target", t, 0, int64(len(items)))
+		librarySlice("List.copy_within", len(list.Items), s, e)
+		if t < 0 || t > int64(len(list.Items)) {
+			return libraryRangeFault("List.copy_within", "target", t, 0, int64(len(list.Items)))
 		}
+		if s == e || t == int64(len(list.Items)) {
+			return list
+		}
+		list.ownItems()
+		items := list.Items
 		copy(items[t:], items[s:e])
 		return a[0]
 	})
@@ -503,7 +552,11 @@ func libraryCollectionQuery(ctx *Execution, kind, name, result string, args []Va
 	} else {
 		items = args[0].(*Set).Items
 	}
-	for i := 0; i < len(entries)+len(items); i++ {
+	start, end, step := 0, len(entries)+len(items), 1
+	if name == "find_last" {
+		start, end, step = end-1, -1, -1
+	}
+	for i := start; i != end; i += step {
 		CheckCancelled(ctx)
 		var key, value Value
 		var callbackArgs []Argument

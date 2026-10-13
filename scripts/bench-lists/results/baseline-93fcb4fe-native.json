@@ -1,0 +1,73 @@
+{
+  "cli": "/tmp/ms142-latest-baseline-cli",
+  "cli_sha256": "9aba30100e6f95d170629e653f6feeb32f2741e49a5135c2fd145621ab3ee916",
+  "affinity": [
+    1
+  ],
+  "build_type": "Release",
+  "results": [
+    {
+      "name": "append",
+      "elements": 1000000,
+      "samples": [
+        {
+          "seconds": 0.19767870199984827,
+          "peak_rss_kib": 77452
+        },
+        {
+          "seconds": 0.21895116899986533,
+          "peak_rss_kib": 83340
+        },
+        {
+          "seconds": 0.19702758499988704,
+          "peak_rss_kib": 77452
+        }
+      ],
+      "median_seconds": 0.19767870199984827,
+      "median_peak_rss_kib": 77452,
+      "binary_sha256": "0ad00cb4f3a39164d5210ab5a4957eab427495412116283650e4c20547a17fda"
+    },
+    {
+      "name": "append",
+      "elements": 4000000,
+      "samples": [
+        {
+          "seconds": 0.9976101359998211,
+          "peak_rss_kib": 279180
+        },
+        {
+          "seconds": 1.264320762999887,
+          "peak_rss_kib": 302476
+        },
+        {
+          "seconds": 0.8222959610002363,
+          "peak_rss_kib": 279180
+        }
+      ],
+      "median_seconds": 0.9976101359998211,
+      "median_peak_rss_kib": 279180,
+      "binary_sha256": "262f074f3d10ef029fe32352726e10d1ed6b2ffdc60a5ba68b3d1682476b3f7c"
+    },
+    {
+      "name": "sort",
+      "elements": 200000,
+      "samples": [
+        {
+          "seconds": 1.3531852040000558,
+          "peak_rss_kib": 33232
+        },
+        {
+          "seconds": 1.1663836150000861,
+          "peak_rss_kib": 32168
+        },
+        {
+          "seconds": 1.0175957530000233,
+          "peak_rss_kib": 32720
+        }
+      ],
+      "median_seconds": 1.1663836150000861,
+      "median_peak_rss_kib": 32720,
+      "binary_sha256": "5d5d0355af1e6f16c7943814fa22e89240687b2179ed7bf876d19f22cbc75723"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ package checker
 import "github.com/manuscript-lang/manuscript/pkg/syntax"
 
 // Source-backed prelude types retain their standard declaration identities.
-var standardPreludeNames = []string{"Equal", "Hashable", "Optional", "Result", "Error"}
+var standardPreludeNames = []string{"Equal", "Hashable", "Optional", "Result", "Error", "List", "Map"}
 
 func (c *checker) addStandardPrelude() {
 	for _, name := range standardPreludeNames {
@@ -17,9 +17,9 @@ func (c *checker) addStandardPrelude() {
 				explicit = true
 			}
 		}
-		// Optional, Result, and Error are ordinary standard declarations;
+		// Prelude data types are ordinary standard declarations;
 		// module declarations may select a local identity instead.
-		if name == "Optional" || name == "Result" || name == "Error" {
+		if name != "Equal" && name != "Hashable" {
 			for _, decl := range c.module.Declarations {
 				if decl.Kind != syntax.KindImpl && decl.Kind != syntax.KindTest && decl.Name == name {
 					explicit = true

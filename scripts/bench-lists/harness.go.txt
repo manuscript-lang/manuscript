@@ -1,0 +1,104 @@
+package main
+
+import (
+ "encoding/json"
+ "os"
+ "runtime"
+ "strconv"
+ "testing"
+ rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+)
+
+var listResult rt.Value
+
+func generatedList(ctx *rt.Execution, n int64) *rt.List {
+ return @@build@@.(rt.Function).Body(ctx, []rt.Value{n}).(*rt.List)
+}
+func listSum(n int64) int64 {
+ var sum int64
+ for i:=int64(0);i<n;i++ {sum+=i*7919%100003}
+ return sum
+}
+func TestListGeneratedParity(t *testing.T) {
+ initialize()
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ for _,n:=range []int64{0,1,32,1024} {
+  xs:=generatedList(ctx,n)
+  if int64(len(xs.Items))!=n {t.Fatal("length")}
+  want:=listSum(n)
+  for _,fn:=range []rt.Value{@@iterate@@,@@callbacks@@} {
+   if got:=fn.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64);got!=want {t.Fatalf("sum=%d, want %d",got,want)}
+  }
+  if got:=@@index@@.(rt.Function).Body(ctx,[]rt.Value{xs,n}).(int64);got!=want {t.Fatal("index checksum")}
+  sorted:=@@sorted@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(*rt.List)
+  for i:=1;i<len(sorted.Items);i++ {if sorted.Items[i-1].(int64)>sorted.Items[i].(int64) {t.Fatal("sort order")}}
+  if !rt.Equal(xs,generatedList(ctx,n)) {t.Fatal("sort mutated input")}
+ }
+}
+func BenchmarkLists(b *testing.B) {
+ initialize()
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ const n int64=65536
+ xs:=generatedList(ctx,n)
+ b.Run("AppendGenerated64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=generatedList(ctx,n)}})
+ for _,c:=range []struct{name string;fn rt.Value;args []rt.Value}{
+  {"IndexGenerated64K",@@index@@,[]rt.Value{xs,n}},
+  {"IterateGenerated64K",@@iterate@@,[]rt.Value{xs}},
+  {"CallbacksGenerated64K",@@callbacks@@,[]rt.Value{xs}},
+  {"SortGenerated64K",@@sorted@@,[]rt.Value{xs}},
+ } {
+  b.Run(c.name,func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=c.fn.(rt.Function).Body(ctx,c.args)}})
+ }
+ b.Run("CloneSnapshot64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){listResult=rt.Clone(xs)}})
+ benchmarkPrototype(b,ctx,n)
+}
+
+// Paired normal-runtime measurements isolate the bounded COW change. Fresh
+// clone input is common to all variants and keeps writes/reset costs comparable.
+func TestNarrowSnapshotParity(t *testing.T) {
+ initialize()
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ xs:=generatedList(ctx,1024)
+ alias:=xs
+ if @@callback_write@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64)!=listSum(1024)||alias.Items[0]!=int64(7) {t.Fatal("callback write changed captured membership or alias")}
+ xs=generatedList(ctx,1024)
+ if @@callbacks@@.(rt.Function).Body(ctx,[]rt.Value{xs}).(int64)!=listSum(1024)||!rt.Equal(xs,generatedList(ctx,1024)) {t.Fatal("readonly callback mutated values")}
+ rt.Invoke(ctx,rt.NativeMember(xs,"with_value"),[]rt.Argument{{Name:"index",Value:int64(0)},{Name:"value",Value:int64(7)}})
+ if xs.Items[0]!=int64(7)||len(xs.Items)!=1024 {t.Fatal("deferred write changed alias")}
+}
+func BenchmarkNarrowSnapshots(b *testing.B) {
+ initialize()
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ xs:=generatedList(ctx,65536)
+ for _,mode:=range []string{"ReadOnly","WriteInCallback","WriteAfterCallback"} {
+  b.Run(mode,func(b *testing.B){b.ReportAllocs();for b.Loop(){
+   input:=rt.Clone(xs).(*rt.List)
+   if mode=="WriteInCallback" {listResult=@@callback_write@@.(rt.Function).Body(ctx,[]rt.Value{input})} else {
+    listResult=@@callbacks@@.(rt.Function).Body(ctx,[]rt.Value{input})
+    if mode=="WriteAfterCallback" {rt.Invoke(ctx,rt.NativeMember(input,"with_value"),[]rt.Argument{{Name:"index",Value:int64(0)},{Name:"value",Value:int64(7)}})}
+   }
+  }})
+ }
+}
+
+// Each RSS sample runs in a fresh process. Keep storage live through both reads.
+// MS_LIST_MEMORY selects generated, boxed or prototype; MS_LIST_COUNT sets length.
+func TestListMemory(t *testing.T) {
+ mode:=os.Getenv("MS_LIST_MEMORY");if mode=="" {t.Skip("memory worker")}
+ n,err:=strconv.ParseInt(os.Getenv("MS_LIST_COUNT"),10,64);if err!=nil||n<0 {t.Fatal("invalid count")}
+ initialize()
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ runtime.GC()
+ var before,after,live runtime.MemStats
+ runtime.ReadMemStats(&before)
+ var xs rt.Value
+ var sum int64
+ if mode=="generated"||mode=="boxed" {var v *rt.List;if mode=="generated" {v=generatedList(ctx,n)} else {v=runtimeBoxedBuild(ctx,n)};xs=v;for _,x:=range v.Items {sum+=x.(int64)}} else if mode=="prototype" {v:=prototypeBuild(ctx,n);xs=v;for _,x:=range v.storage.ints {sum+=x}} else {t.Fatal("invalid memory mode")}
+ runtime.ReadMemStats(&after)
+ runtime.GC();runtime.ReadMemStats(&live)
+ if sum!=listSum(n) {t.Fatal("memory checksum")}
+ result:=map[string]any{"mode":mode,"elements":n,"allocated_bytes":after.TotalAlloc-before.TotalAlloc,"allocations":after.Mallocs-before.Mallocs,"retained_heap_bytes":live.HeapAlloc-before.HeapAlloc,"heap_sys_bytes":live.HeapSys}
+ if v,ok:=xs.(*rt.List);ok {result["capacity"]=cap(v.Items)} else {result["capacity"]=cap(xs.(*prototypeList).storage.ints)}
+ data,err:=json.Marshal(result);if err!=nil {t.Fatal(err)};t.Log(string(data))
+ runtime.KeepAlive(xs)
+}
