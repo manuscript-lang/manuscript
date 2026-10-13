@@ -50,6 +50,8 @@ type checker struct {
 	returnInference         *callbackReturns
 	inferenceVariables      map[string]bool
 	checkedArguments        map[*syntax.Expression]checkedArgument
+	contextualCollections   map[*syntax.Expression]collectionContext
+	wellFormedCollections   map[*Type]collectionValidity
 	function, serial, loops int
 	testFunction            int
 	rejectedNames           map[string]bool
@@ -519,7 +521,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		var expected *Type
 		if s.Type != nil {
 			expected = c.resolve(s.Type, false)
-			c.wellFormed(expected, s.Type.Pos, map[string]bool{})
+			c.wellFormed(expected, s.Type.Pos, map[*Type]bool{})
 		}
 		before := len(c.Diagnostics)
 		info := c.expression(s.Value, expected)
@@ -805,7 +807,7 @@ func (c *checker) matchContract(pos syntax.Position, arms []syntax.Arm, info *In
 				if len(target.Def.Variables) > 0 && arm.Path.Kind != syntax.KindApply {
 					c.error(arm.Pos, "type", "concrete type pattern requires explicit type arguments; write e.g. Box[Int]")
 				}
-				c.wellFormed(target, arm.Pos, map[string]bool{})
+				c.wellFormed(target, arm.Pos, map[*Type]bool{})
 				if !c.implements(target, &contract) {
 					c.error(arm.Pos, "type", target.String()+" does not implement "+contract.String())
 				}
@@ -1061,24 +1063,16 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		if std(expected, "List") && len(expected.Args) == 1 {
 			element = expected.Args[0]
 		}
-		if element == nil {
-			for _, item := range e.Elements {
-				if !c.contextual(item) {
-					v := c.expression(item, nil)
-					if element == nil && v.Type.ID != "Never" {
-						element = v.Type
-					}
-				}
-			}
-		}
+		inferred := make([]*Info, len(e.Elements))
+		element = c.collectionElement(e.Elements, inferred, 0, 1, element)
 		if element == nil {
 			if !c.unknownType {
 				c.error(e.Pos, "type", "cannot infer list element type; add an annotation, e.g. let xs: List[Int] = []")
 			}
 			element = primitive("<invalid>")
 		}
-		for _, item := range e.Elements {
-			v := c.expression(item, element)
+		for at, item := range e.Elements {
+			v := c.collectionExpression(item, inferred[at], element)
 			i.NoReturn = i.NoReturn || v.NoReturn
 		}
 		i.Type = standard("List", element)
@@ -1087,32 +1081,23 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			c.error(e.Pos, "resolution", "map literal requires the canonical Map type; rename the shadowing Map declaration or binding")
 		}
 		var types [2]*Type
+		inferred := make([]*Info, len(e.Elements))
 		if std(expected, "Map") && len(expected.Args) == 2 {
 			copy(types[:], expected.Args)
 		}
 		for index := range types {
-			if types[index] == nil {
-				for at := index; at < len(e.Elements); at += 2 {
-					item := e.Elements[at]
-					if !c.contextual(item) {
-						v := c.expression(item, nil)
-						if types[index] == nil && v.Type.ID != "Never" {
-							types[index] = v.Type
-						}
-					}
-				}
-			}
+			types[index] = c.collectionElement(e.Elements, inferred, index, 2, types[index])
 			if types[index] == nil {
 				c.error(e.Pos, "type", "cannot infer map key or value type; add an annotation, e.g. let m: Map[String, Int] = {}")
 				types[index] = primitive("<invalid>")
 			}
 		}
 		for at, item := range e.Elements {
-			v := c.expression(item, types[at%2])
+			v := c.collectionExpression(item, inferred[at], types[at%2])
 			i.NoReturn = i.NoReturn || v.NoReturn
 		}
 		i.Type = standard("Map", types[0], types[1])
-		c.wellFormed(i.Type, e.Pos, map[string]bool{})
+		c.wellFormed(i.Type, e.Pos, map[*Type]bool{})
 	case syntax.KindUnary:
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			i.Type = primitive("Int")
@@ -1227,7 +1212,7 @@ func (c *checker) resolveArguments(args []*syntax.Type) []*Type {
 	var result []*Type
 	for _, a := range args {
 		t := c.resolve(a, false)
-		c.wellFormed(t, a.Pos, map[string]bool{})
+		c.wellFormed(t, a.Pos, map[*Type]bool{})
 		result = append(result, t)
 	}
 	return result
@@ -1305,11 +1290,22 @@ func (c *checker) contextual(e *syntax.Expression) bool {
 		}
 	}
 	if e.Kind == syntax.KindList || e.Kind == syntax.KindMap {
+		if previous, ok := c.contextualCollections[e]; ok && previous.scope == c.scope && previous.module == c.module {
+			return previous.contextual
+		}
+		contextual := true
+		defer func() {
+			if c.contextualCollections == nil {
+				c.contextualCollections = map[*syntax.Expression]collectionContext{}
+			}
+			c.contextualCollections[e] = collectionContext{scope: c.scope, module: c.module, contextual: contextual}
+		}()
 		if len(e.Elements) == 0 {
 			return true
 		}
 		for _, a := range e.Elements {
 			if !c.contextual(a) {
+				contextual = false
 				return false
 			}
 		}
