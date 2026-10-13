@@ -117,7 +117,21 @@ Decision: documentation generation was requested as an `ms` subcommand for users
 
 Apply when: adding CLI tooling or making claims about installation requirements.
 Evidence: [ms doc request](codex://threads/01a12d4a-0182-7672-aa00-53f2bdfde033); [native build contract](../documentation/developer-tooling/builds/reproducibility.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
-Verify: exercise a copied binary outside the checkout with empty caches, no Go on PATH, and package downloads disabled. Include ordinary/debug builds and profiling so the reduced payload covers emitted runtime references. Confirm actual external prerequisites for tools such as Delve separately; do not generalize one command's prerequisites to all tooling.
+Verify: exercise a copied binary outside the checkout with empty caches, no Go on PATH, and package downloads disabled. Include ordinary/debug builds and profiling so the reduced payload covers emitted runtime references. Confirm actual debugger backend prerequisites separately; do not generalize one platform’s prerequisites to all tooling.
+
+Verified: embedding Delve uses its public `service`/`pkg` APIs, not restricted
+`internal` imports. The pinned backend still needs Apple debugserver on macOS,
+and Windows ARM64 requires `exp.winarm64`; neither justifies enabling CGO for
+all distributions. DAP uses an owned private pipe and joins the read loop on
+shutdown: upstream’s asynchronous server startup can race an early stop. Closing
+editor input lets the service reap targets before exit, especially on Windows
+where killing the adapter process immediately bypasses cleanup.
+Evidence: [embedded services](../internal/debugger/debugger.go),
+[shutdown race regressions](../internal/debugger/debugger_test.go),
+[copied-binary debugger checks](../scripts/distcheck/debugger.go), and
+[platform contract](../documentation/developer-tooling/debugging/debugger-integration.md).
+Verify: run the shutdown tests with `-race`, the native editor test, and the
+six-target standalone distribution checks after changing Delve or its transport.
 
 ### Polish the documentation design without expanding its prose
 

@@ -293,7 +293,8 @@ class ManuscriptAdapter {
         if (child.exitCode !== null || child.signalCode !== null) return resolve();
         const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
         child.once('close', () => { clearTimeout(timer); resolve(); });
-        child.kill();
+        // Closing stdin lets ms detach/reap the target before it exits, including
+        // on Windows where child.kill() would terminate ms immediately.
       });
     }
     if (this.temp) { const directory = this.temp; this.temp = undefined; await fs.rm(directory, { recursive: true, force: true }).catch(() => {}); }

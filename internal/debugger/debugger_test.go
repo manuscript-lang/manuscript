@@ -2,13 +2,14 @@ package debugger
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 	"time"
 )
 
 func TestDAPShutdown(t *testing.T) {
-	for _, mode := range []string{"cancel-before-client", "cancel-connected", "transport-loss", "malformed-client"} {
+	for _, mode := range []string{"cancel-before-client", "cancel-unread-response", "transport-loss", "malformed-client"} {
 		t.Run(mode, func(t *testing.T) {
 			server, conn := net.Pipe()
 			defer conn.Close()
@@ -17,7 +18,12 @@ func TestDAPShutdown(t *testing.T) {
 			done := make(chan struct{})
 			go func() { DAP(ctx, server); close(done) }()
 			switch mode {
-			case "cancel-before-client", "cancel-connected":
+			case "cancel-unread-response":
+				body := `{"seq":1,"type":"request","command":"initialize","arguments":{"adapterID":"manuscript"}}`
+				_ = conn.SetWriteDeadline(time.Now().Add(time.Second))
+				_, _ = fmt.Fprintf(conn, "Content-Length: %d\r\n\r\n%s", len(body), body)
+				cancel()
+			case "cancel-before-client":
 				cancel()
 			case "transport-loss":
 				_ = conn.Close()
