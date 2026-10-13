@@ -141,3 +141,19 @@ fn use() -> Int:
 		t.Fatalf("static Int sites share a Lazy; type-variable sites stay dynamic:\n%s", result.Source)
 	}
 }
+
+func TestDirectListAppendAndIsEmptyLowering(t *testing.T) {
+	result := compiler.CompileSource("append.ms", `import List from "@std/collections.ms"
+fn grow(values: List[Int]) -> Bool:
+    values.append(1)
+    return values.is_empty()
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for _, operation := range []string{"rt.ListAppend(", "rt.ListIsEmpty("} {
+		if !strings.Contains(result.Source, operation) {
+			t.Fatalf("missing direct %s:\n%s", operation, result.Source)
+		}
+	}
+}
