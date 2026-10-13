@@ -231,6 +231,14 @@ type Map[T: Hashable, U]:
     fn without(key: T) -> Map[T, U]:
 ```
 
+### Map.add
+
+Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position.
+
+```manuscript
+fn add(key: T, value: U) -> Map[T, U]:
+```
+
 ### Map.clone
 
 Returns a shallow copy with independent map storage.
@@ -318,6 +326,14 @@ Creates a value only when the key is absent.
 
 ```manuscript
 fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
+```
+
+### Map.with_entry
+
+Compatible spelling of add, with the same mutation and receiver return.
+
+```manuscript
+fn with_entry(key: T, value: U) -> Map[T, U]:
 ```
 
 ## MapBuilder {data-api-kind="Native type"}

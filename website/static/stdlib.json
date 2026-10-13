@@ -955,6 +955,12 @@
           ],
           "members": [
             {
+              "name": "add",
+              "kind": "operation",
+              "signature": "fn add(key: T, value: U) -\u003e Map[T, U]:",
+              "doc": "Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position."
+            },
+            {
               "name": "clear",
               "kind": "operation",
               "signature": "fn clear() -\u003e Map[T, U]:",
@@ -1072,7 +1078,7 @@
               "name": "with_entry",
               "kind": "operation",
               "signature": "fn with_entry(key: T, value: U) -\u003e Map[T, U]:",
-              "doc": ""
+              "doc": "Compatible spelling of add, with the same mutation and receiver return."
             },
             {
               "name": "without",
@@ -8933,6 +8939,230 @@
             "with_value: fn(index: Int, value: T)-\u003eList[T]",
             "with_values: fn(start: Int, delete_count: Int, replacement: List[T])-\u003eList[T]",
             "without: fn(index: Int)-\u003eList[T]"
+          ],
+          "members": [
+            {
+              "name": "append",
+              "kind": "operation",
+              "signature": "fn append(value: T) -\u003e List[T]:",
+              "doc": ""
+            },
+            {
+              "name": "at",
+              "kind": "operation",
+              "signature": "fn at(index: Int) -\u003e Optional[T]:",
+              "doc": "Returns an element; negative indexes are relative to the end, and out-of-range indexes return none."
+            },
+            {
+              "name": "clone",
+              "kind": "operation",
+              "signature": "fn clone() -\u003e List[T]:",
+              "doc": "Returns a shallow copy with independent list storage."
+            },
+            {
+              "name": "concat",
+              "kind": "operation",
+              "signature": "fn concat(values: List[T]) -\u003e List[T]:",
+              "doc": ""
+            },
+            {
+              "name": "contains",
+              "kind": "operation",
+              "signature": "fn contains(value: T) -\u003e Bool:",
+              "doc": ""
+            },
+            {
+              "name": "copy_within",
+              "kind": "operation",
+              "signature": "fn copy_within(target: Int, start: Int, end: Int) -\u003e List[T]:",
+              "doc": ""
+            },
+            {
+              "name": "entries",
+              "kind": "operation",
+              "signature": "fn entries() -\u003e List[ListEntry[T]]:",
+              "doc": ""
+            },
+            {
+              "name": "every",
+              "kind": "operation",
+              "signature": "fn every(predicate: fn(value: T) -\u003e Bool) -\u003e Bool:",
+              "doc": "Returns true when every value satisfies the predicate; empty lists return true."
+            },
+            {
+              "name": "fill",
+              "kind": "operation",
+              "signature": "fn fill(value: T, start: Int, end: Int) -\u003e List[T]:",
+              "doc": ""
+            },
+            {
+              "name": "filter",
+              "kind": "operation",
+              "signature": "fn filter(predicate: fn(value: T) -\u003e Bool) -\u003e List[T]:",
+              "doc": "Keeps matching values in their original order."
+            },
+            {
+              "name": "find",
+              "kind": "operation",
+              "signature": "fn find(predicate: fn(value: T) -\u003e Bool) -\u003e Optional[T]:",
+              "doc": ""
+            },
+            {
+              "name": "find_index",
+              "kind": "operation",
+              "signature": "fn find_index(predicate: fn(value: T) -\u003e Bool) -\u003e Optional[Int]:",
+              "doc": ""
+            },
+            {
+              "name": "find_last",
+              "kind": "operation",
+              "signature": "fn find_last(predicate: fn(value: T) -\u003e Bool) -\u003e Optional[T]:",
+              "doc": ""
+            },
+            {
+              "name": "find_last_index",
+              "kind": "operation",
+              "signature": "fn find_last_index(predicate: fn(value: T) -\u003e Bool) -\u003e Optional[Int]:",
+              "doc": "Searches from the end and returns the last matching zero-based index, or none."
+            },
+            {
+              "name": "first",
+              "kind": "operation",
+              "signature": "fn first() -\u003e Optional[T]:",
+              "doc": ""
+            },
+            {
+              "name": "flat_map[U]",
+              "kind": "operation",
+              "signature": "fn flat_map[U](transform: fn(value: T) -\u003e List[U]) -\u003e List[U]:",
+              "doc": ""
+            },
+            {
+              "name": "fold[A]",
+              "kind": "operation",
+              "signature": "fn fold[A](initial: A, step: fn(accumulator: A, value: T) -\u003e A) -\u003e A:",
+              "doc": "Reduces values from left to right, starting with `initial`."
+            },
+            {
+              "name": "fold_right[A]",
+              "kind": "operation",
+              "signature": "fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -\u003e A) -\u003e A:",
+              "doc": "Reduces values from right to left, starting with `initial`."
+            },
+            {
+              "name": "for_each",
+              "kind": "operation",
+              "signature": "fn for_each(operation: fn(value: T) -\u003e Unit) -\u003e Unit:",
+              "doc": "Calls operation(value:) sequentially over a membership snapshot; nested references remain shared."
+            },
+            {
+              "name": "group_by[K: Hashable]",
+              "kind": "operation",
+              "signature": "fn group_by[K: Hashable](key: fn(value: T) -\u003e K) -\u003e Map[K, List[T]]:",
+              "doc": ""
+            },
+            {
+              "name": "index_of",
+              "kind": "operation",
+              "signature": "fn index_of(value: T) -\u003e Optional[Int]:",
+              "doc": "Returns the first equal element's zero-based index, or none; elements require Equal."
+            },
+            {
+              "name": "is_empty",
+              "kind": "operation",
+              "signature": "fn is_empty() -\u003e Bool:",
+              "doc": ""
+            },
+            {
+              "name": "join",
+              "kind": "operation",
+              "signature": "fn join(separator: String) -\u003e String:",
+              "doc": ""
+            },
+            {
+              "name": "keys",
+              "kind": "operation",
+              "signature": "fn keys() -\u003e List[Int]:",
+              "doc": ""
+            },
+            {
+              "name": "last",
+              "kind": "operation",
+              "signature": "fn last() -\u003e Optional[T]:",
+              "doc": ""
+            },
+            {
+              "name": "last_index_of",
+              "kind": "operation",
+              "signature": "fn last_index_of(value: T) -\u003e Optional[Int]:",
+              "doc": "Returns the last equal element's zero-based index, or none; elements require Equal."
+            },
+            {
+              "name": "length",
+              "kind": "operation",
+              "signature": "fn length() -\u003e Int:",
+              "doc": ""
+            },
+            {
+              "name": "map[U]",
+              "kind": "operation",
+              "signature": "fn map[U](transform: fn(value: T) -\u003e U) -\u003e List[U]:",
+              "doc": ""
+            },
+            {
+              "name": "prepend",
+              "kind": "operation",
+              "signature": "fn prepend(value: T) -\u003e List[T]:",
+              "doc": ""
+            },
+            {
+              "name": "reverse",
+              "kind": "operation",
+              "signature": "fn reverse() -\u003e List[T]:",
+              "doc": ""
+            },
+            {
+              "name": "slice",
+              "kind": "operation",
+              "signature": "fn slice(start: Int, end: Int) -\u003e List[T]:",
+              "doc": "Returns a new shallow List containing [start, end); outer storage is independent.\nFaults unless 0 \u003c= start \u003c= end \u003c= length(); negative bounds are not relative."
+            },
+            {
+              "name": "some",
+              "kind": "operation",
+              "signature": "fn some(predicate: fn(value: T) -\u003e Bool) -\u003e Bool:",
+              "doc": "Returns true when at least one value satisfies the predicate."
+            },
+            {
+              "name": "sorted",
+              "kind": "operation",
+              "signature": "fn sorted(compare: fn(left: T, right: T) -\u003e Int) -\u003e List[T]:",
+              "doc": "Returns a new list sorted by negative/zero/positive comparator results."
+            },
+            {
+              "name": "to_set",
+              "kind": "operation",
+              "signature": "fn to_set() -\u003e Set[T]:",
+              "doc": ""
+            },
+            {
+              "name": "with_value",
+              "kind": "operation",
+              "signature": "fn with_value(index: Int, value: T) -\u003e List[T]:",
+              "doc": ""
+            },
+            {
+              "name": "with_values",
+              "kind": "operation",
+              "signature": "fn with_values(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
+              "doc": "Replaces `delete_count` values at `start` with the replacement list."
+            },
+            {
+              "name": "without",
+              "kind": "operation",
+              "signature": "fn without(index: Int) -\u003e List[T]:",
+              "doc": ""
+            }
           ]
         },
         {
@@ -8967,6 +9197,140 @@
             "with_default_from: fn(key: T, create: fn(key: T)-\u003eU)-\u003eMap[T, U]",
             "with_entry: fn(key: T, value: U)-\u003eMap[T, U]",
             "without: fn(key: T)-\u003eMap[T, U]"
+          ],
+          "members": [
+            {
+              "name": "add",
+              "kind": "operation",
+              "signature": "fn add(key: T, value: U) -\u003e Map[T, U]:",
+              "doc": "Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position."
+            },
+            {
+              "name": "clear",
+              "kind": "operation",
+              "signature": "fn clear() -\u003e Map[T, U]:",
+              "doc": ""
+            },
+            {
+              "name": "clone",
+              "kind": "operation",
+              "signature": "fn clone() -\u003e Map[T, U]:",
+              "doc": "Returns a shallow copy with independent map storage."
+            },
+            {
+              "name": "contains",
+              "kind": "operation",
+              "signature": "fn contains(key: T) -\u003e Bool:",
+              "doc": ""
+            },
+            {
+              "name": "entries",
+              "kind": "operation",
+              "signature": "fn entries() -\u003e List[MapEntry[T, U]]:",
+              "doc": ""
+            },
+            {
+              "name": "every",
+              "kind": "operation",
+              "signature": "fn every(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Bool:",
+              "doc": "Stops at the first nonmatching entry; empty maps return true."
+            },
+            {
+              "name": "filter",
+              "kind": "operation",
+              "signature": "fn filter(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Map[T, U]:",
+              "doc": "Copies matching entries in insertion order, retaining payload references.\nCallbacks traverse a snapshot even when they mutate the receiver."
+            },
+            {
+              "name": "find",
+              "kind": "operation",
+              "signature": "fn find(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Optional[MapEntry[T, U]]:",
+              "doc": "Returns the first matching entry as a fresh record with shallow references."
+            },
+            {
+              "name": "fold[A]",
+              "kind": "operation",
+              "signature": "fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -\u003e A) -\u003e A:",
+              "doc": "Reduces an entry snapshot in insertion order, starting with initial."
+            },
+            {
+              "name": "for_each",
+              "kind": "operation",
+              "signature": "fn for_each(operation: fn(key: T, value: U) -\u003e Unit) -\u003e Unit:",
+              "doc": "Calls operation(key:, value:) sequentially over an insertion-order membership snapshot."
+            },
+            {
+              "name": "get",
+              "kind": "operation",
+              "signature": "fn get(key: T) -\u003e Optional[U]:",
+              "doc": ""
+            },
+            {
+              "name": "get_or",
+              "kind": "operation",
+              "signature": "fn get_or(key: T, fallback: U) -\u003e U:",
+              "doc": "Returns the stored value or an eagerly evaluated fallback without inserting."
+            },
+            {
+              "name": "is_empty",
+              "kind": "operation",
+              "signature": "fn is_empty() -\u003e Bool:",
+              "doc": "Reports whether this map has no entries."
+            },
+            {
+              "name": "keys",
+              "kind": "operation",
+              "signature": "fn keys() -\u003e List[T]:",
+              "doc": ""
+            },
+            {
+              "name": "length",
+              "kind": "operation",
+              "signature": "fn length() -\u003e Int:",
+              "doc": ""
+            },
+            {
+              "name": "merge",
+              "kind": "operation",
+              "signature": "fn merge(other: Map[T, U]) -\u003e Map[T, U]:",
+              "doc": ""
+            },
+            {
+              "name": "some",
+              "kind": "operation",
+              "signature": "fn some(predicate: fn(key: T, value: U) -\u003e Bool) -\u003e Bool:",
+              "doc": "Stops at the first matching entry; empty maps return false."
+            },
+            {
+              "name": "values",
+              "kind": "operation",
+              "signature": "fn values() -\u003e List[U]:",
+              "doc": ""
+            },
+            {
+              "name": "with_default",
+              "kind": "operation",
+              "signature": "fn with_default(key: T, value: U) -\u003e Map[T, U]:",
+              "doc": "Sets `key` to `value` only when the key is absent."
+            },
+            {
+              "name": "with_default_from",
+              "kind": "operation",
+              "signature": "fn with_default_from(key: T, create: fn(key: T) -\u003e U) -\u003e Map[T, U]:",
+              "doc": "Creates a value only when the key is absent."
+            },
+            {
+              "name": "with_entry",
+              "kind": "operation",
+              "signature": "fn with_entry(key: T, value: U) -\u003e Map[T, U]:",
+              "doc": "Compatible spelling of add, with the same mutation and receiver return."
+            },
+            {
+              "name": "without",
+              "kind": "operation",
+              "signature": "fn without(key: T) -\u003e Map[T, U]:",
+              "doc": ""
+            }
           ]
         },
         {

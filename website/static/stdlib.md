@@ -674,6 +674,14 @@ type Map[T: Hashable, U]:
     fn without(key: T) -> Map[T, U]:
 ```
 
+### Map.add
+
+Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position.
+
+```manuscript
+fn add(key: T, value: U) -> Map[T, U]:
+```
+
 ### Map.clone
 
 Returns a shallow copy with independent map storage.
@@ -761,6 +769,14 @@ Creates a value only when the key is absent.
 
 ```manuscript
 fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
+```
+
+### Map.with_entry
+
+Compatible spelling of add, with the same mutation and receiver return.
+
+```manuscript
+fn with_entry(key: T, value: U) -> Map[T, U]:
 ```
 
 ## MapBuilder
@@ -5438,6 +5454,119 @@ type List[T]:
     fn length() -> Int:
 ```
 
+### List.at
+
+Returns an element; negative indexes are relative to the end, and out-of-range indexes return none.
+
+```manuscript
+fn at(index: Int) -> Optional[T]:
+```
+
+### List.clone
+
+Returns a shallow copy with independent list storage.
+
+```manuscript
+fn clone() -> List[T]:
+```
+
+### List.every
+
+Returns true when every value satisfies the predicate; empty lists return true.
+
+```manuscript
+fn every(predicate: fn(value: T) -> Bool) -> Bool:
+```
+
+### List.filter
+
+Keeps matching values in their original order.
+
+```manuscript
+fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
+```
+
+### List.find_last_index
+
+Searches from the end and returns the last matching zero-based index, or none.
+
+```manuscript
+fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+```
+
+### List.fold[A]
+
+Reduces values from left to right, starting with `initial`.
+
+```manuscript
+fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+```
+
+### List.fold_right[A]
+
+Reduces values from right to left, starting with `initial`.
+
+```manuscript
+fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+```
+
+### List.for_each
+
+Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+
+```manuscript
+fn for_each(operation: fn(value: T) -> Unit) -> Unit:
+```
+
+### List.index_of
+
+Returns the first equal element's zero-based index, or none; elements require Equal.
+
+```manuscript
+fn index_of(value: T) -> Optional[Int]:
+```
+
+### List.last_index_of
+
+Returns the last equal element's zero-based index, or none; elements require Equal.
+
+```manuscript
+fn last_index_of(value: T) -> Optional[Int]:
+```
+
+### List.slice
+
+Returns a new shallow List containing [start, end); outer storage is independent.
+Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
+
+```manuscript
+fn slice(start: Int, end: Int) -> List[T]:
+```
+
+### List.some
+
+Returns true when at least one value satisfies the predicate.
+
+```manuscript
+fn some(predicate: fn(value: T) -> Bool) -> Bool:
+```
+
+### List.sorted
+
+Returns a new list sorted by negative/zero/positive comparator results.
+
+```manuscript
+fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+```
+
+### List.with_values
+
+Replaces `delete_count` values at `start` with the replacement list.
+
+```manuscript
+fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+```
+
 ## Map
 
 **Native type**
@@ -5468,6 +5597,111 @@ type Map[T: Hashable, U]:
     fn add(key: T, value: U) -> Map[T, U]:
     fn with_entry(key: T, value: U) -> Map[T, U]:
     fn without(key: T) -> Map[T, U]:
+```
+
+### Map.add
+
+Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position.
+
+```manuscript
+fn add(key: T, value: U) -> Map[T, U]:
+```
+
+### Map.clone
+
+Returns a shallow copy with independent map storage.
+
+```manuscript
+fn clone() -> Map[T, U]:
+```
+
+### Map.every
+
+Stops at the first nonmatching entry; empty maps return true.
+
+```manuscript
+fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+```
+
+### Map.filter
+
+Copies matching entries in insertion order, retaining payload references.
+Callbacks traverse a snapshot even when they mutate the receiver.
+
+```manuscript
+fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+```
+
+### Map.find
+
+Returns the first matching entry as a fresh record with shallow references.
+
+```manuscript
+fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+```
+
+### Map.fold[A]
+
+Reduces an entry snapshot in insertion order, starting with initial.
+
+```manuscript
+fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+```
+
+### Map.for_each
+
+Calls operation(key:, value:) sequentially over an insertion-order membership snapshot.
+
+```manuscript
+fn for_each(operation: fn(key: T, value: U) -> Unit) -> Unit:
+```
+
+### Map.get_or
+
+Returns the stored value or an eagerly evaluated fallback without inserting.
+
+```manuscript
+fn get_or(key: T, fallback: U) -> U:
+```
+
+### Map.is_empty
+
+Reports whether this map has no entries.
+
+```manuscript
+fn is_empty() -> Bool:
+```
+
+### Map.some
+
+Stops at the first matching entry; empty maps return false.
+
+```manuscript
+fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+```
+
+### Map.with_default
+
+Sets `key` to `value` only when the key is absent.
+
+```manuscript
+fn with_default(key: T, value: U) -> Map[T, U]:
+```
+
+### Map.with_default_from
+
+Creates a value only when the key is absent.
+
+```manuscript
+fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
+```
+
+### Map.with_entry
+
+Compatible spelling of add, with the same mutation and receiver return.
+
+```manuscript
+fn with_entry(key: T, value: U) -> Map[T, U]:
 ```
 
 ## Never
