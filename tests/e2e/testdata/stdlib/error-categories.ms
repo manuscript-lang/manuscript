@@ -12,7 +12,7 @@ import {LogError} from "@std/log.ms"
 import {CryptoError} from "@std/crypto.ms"
 import {YamlError} from "@std/yaml.ms"
 import {TomlError} from "@std/toml.ms"
-import {List, Map} from "@std/collections.ms"
+import {List, Map, range} from "@std/collections.ms"
 import panic from "@std/faults.ms"
 
 type CustomError:
@@ -73,6 +73,11 @@ test "shared categories keep exact standard domain values":
     )
     if category(TomlError.InvalidInput) != some(ErrorCategory.InvalidInput): return panic(
         "source TOML input category"
+    )
+
+    let allocation_error = range(start: 0, end: 268435457, step: 1).unwrap_error()
+    if category(allocation_error) != some(ErrorCategory.LimitExceeded): return panic(
+        "native allocation limit category"
     )
 
     let original: Error = YamlError.InvalidData(

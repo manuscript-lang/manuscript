@@ -1562,7 +1562,7 @@ case InvalidInput
 
 ### ErrorCategory.LimitExceeded
 
-A supplied operation budget was exceeded.
+An operation budget or implementation limit was exceeded.
 
 ```manuscript
 case LimitExceeded

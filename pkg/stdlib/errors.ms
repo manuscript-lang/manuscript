@@ -11,7 +11,7 @@ export type ErrorCategory:
     case InvalidInput
     # Input data is malformed.
     case InvalidData
-    # A supplied operation budget was exceeded.
+    # An operation budget or implementation limit was exceeded.
     case LimitExceeded
     # A requested resource was not found.
     case NotFound
