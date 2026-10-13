@@ -150,6 +150,9 @@ func (g *generator) enterNativeDefault(d *syntax.Declaration) bool {
 	return true
 }
 func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ast.Expr {
+	oldParameters, oldResult, oldWant := g.nativeParameters, g.nativeResult, g.wantScalar
+	g.nativeParameters, g.nativeResult, g.wantScalar = nil, nil, 0
+	defer func() { g.nativeParameters, g.nativeResult, g.wantScalar = oldParameters, oldResult, oldWant }()
 	labels, key, position, out := g.functionParts(name, params, result, body, bindings, self, t, tail...)
 	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
 }
@@ -188,6 +191,10 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 		out = append(out, define(self.ID, ident("receiver")), discard(ident(self.ID)))
 	}
 	for i, b := range bindings {
+		if g.nativeResult != nil {
+			out = append(out, discard(ident(b.ID)))
+			continue
+		}
 		out = append(out, define(b.ID, index(ident("args"), intLiteral(i))), discard(ident(b.ID)))
 		// Checked source values are concrete (including Unit and Optional.none);
 		// Invoke leaves nil only for an omitted argument.
@@ -208,6 +215,10 @@ func (g *generator) functionParts(name string, params []syntax.Parameter, result
 		prologue = append(prologue, define("cleanupStack", runtimeCall("NewCleanupStack")), &ast.DeferStmt{Call: call(selector(ident("cleanupStack"), "Unwind"))})
 	}
 	out = append(prologue, out...)
-	out = append(out, g.locatedStatement(syntax.Position{File: "manuscript.generated.go", Line: 1}, returned(unit())))
+	var fallback ast.Expr = unit()
+	if g.nativeResult != nil {
+		fallback = scalarExtract(g.nativeResult, runtimeCall("Panic", textLiteral("runtime invariant: source function fell through")))
+	}
+	out = append(out, g.locatedStatement(syntax.Position{File: "manuscript.generated.go", Line: 1}, returned(fallback)))
 	return labels, resultKey, result.Pos.String(), out
 }

@@ -34,20 +34,9 @@ func (g *generator) primitiveEquality(e *syntax.Expression) ast.Expr {
 	if typ == "" || left.ID != right.ID || primitiveEqualityType(right) != typ {
 		return nil
 	}
-	// Capture once in source order. A Go binary expression can read an earlier
-	// local after a later operand's call/match has mutated it. The explicit
-	// statements also keep source returns and short-circuiting in their region.
-	a, b := g.temp(), g.temp()
-	extract := func(value ast.Expr) ast.Expr {
-		return &ast.TypeAssertExpr{X: call(runtimeName("Value"), value), Type: ident(typ)}
-	}
 	op := token.EQL
 	if e.Text == "!=" {
 		op = token.NEQ
 	}
-	return call(closure(nil, ident("bool"),
-		define(a, extract(g.expression(e.Left))),
-		define(b, extract(g.expression(e.Right))),
-		returned(sourceAt(e.Pos, &ast.BinaryExpr{X: ident(a), Op: op, Y: ident(b)})),
-	))
+	return g.orderedScalars(e, func(a, b ast.Expr) ast.Expr { return &ast.BinaryExpr{X: a, Op: op, Y: b} })
 }

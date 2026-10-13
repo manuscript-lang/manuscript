@@ -37,6 +37,11 @@ type generator struct {
 	sites            []string // package-level MethodSite variables, one per direct method call
 	debugLiterals    bool
 	literalData      []ast.Decl // immutable scalar input, never source collection storage
+	scalarLocals     map[*checker.Binding]string
+	nativeParameters map[*checker.Binding]bool
+	nativeResult     *checker.Type
+	nativeCalls      map[*checker.Symbol]bool
+	wantScalar       int
 }
 
 func (g *generator) temp() string { g.serial++; return fmt.Sprintf("temporary%d", g.serial) }
