@@ -113,7 +113,7 @@ Verified: a `manuscript-example` annotation alone does not put a chapter into th
 
 ### User tooling must work in the shipped binary
 
-Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
+Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. The later requirement makes the bundled toolchain mandatory: no external override, PATH fallback, or ambient Go configuration may select another tool. OS-specific prerequisites such as Apple debugserver remain permitted. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
 
 Apply when: adding CLI tooling or making claims about installation requirements.
 Evidence: [ms doc request](codex://threads/01a12d4a-0182-7672-aa00-53f2bdfde033); [native build contract](../documentation/developer-tooling/builds/reproducibility.md); [payload construction](../scripts/mktoolchain/main.go); [standalone distribution checks](../scripts/distcheck/main.go).
@@ -130,6 +130,8 @@ Evidence: [embedded services](../internal/debugger/debugger.go),
 [shutdown race regressions](../internal/debugger/debugger_test.go),
 [copied-binary debugger checks](../scripts/distcheck/debugger.go), and
 [platform contract](../documentation/developer-tooling/debugging/debugger-integration.md).
+Verified: the DAP Go-source launch modes, terminal Go-module path guessing, and an obsolete DWARF compatibility probe could still invoke external Go despite embedding Delve. The transport/client now exclude those routes; [vendor refresh](../scripts/maintenance/delve.go) reapplies the small compatibility-probe patch. Profile viewers are prebuilt into the SDK payload, not compiled on first use.
+
 Verify: run the shutdown tests with `-race`, the native editor test, and the
 six-target standalone distribution checks after changing Delve or its transport.
 

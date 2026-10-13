@@ -21,7 +21,7 @@ For the complete native validation:
 make verify-full
 ```
 
-This additionally runs coverage/native conformance, race checks, strict/partial parser and compiler fuzzing, strict book/publication checks, and a standalone distribution test. Set `HUGO=/path/to/hugo` when it is not on PATH. `make build` creates the self-contained `ms` executable.
+This additionally runs coverage/native conformance, race checks, strict/partial parser and compiler fuzzing, strict book/publication checks, and a standalone distribution test. Set `HUGO=/path/to/hugo` when it is not on PATH. `make build` creates the self-contained `ms` executable. All builds embed the native payload; `make setup` and the check targets prepare it. Before invoking Go directly in a fresh checkout, run `make payload`. An unprepared direct build fails at the embed input rather than falling back to a system toolchain.
 
 Tests that open HTTP/socket listeners need local loopback access. With a read-only home, choose writable `GOCACHE` and `GOPATH`, for example `/tmp/manuscript-go-cache` and `/tmp/manuscript-go`; `STATICCHECK_CACHE` defaults to ignored `.artifacts/staticcheck/`.
 
@@ -29,7 +29,7 @@ Tests that open HTTP/socket listeners need local loopback access. With a read-on
 
 `make coverage` runs the entire Go suite and native conformance fixtures, with dependency-package instrumentation so runtime calls into `internal/hostos` contribute to coverage. It also executes complete tutorial modules directly from their Markdown source. The profile and HTML report live in `.artifacts/coverage/` and are uploaded by CI. Separately built native subprocesses are checked by observable expectations; their execution does not increase Go package coverage.
 
-The end-to-end suite builds one CLI with a bounded setup, reuses it, and retains per-case temporary projects and processes. Accepted fixtures execute their test blocks; rejected cases verify diagnostics; transcript cases check evaluation order, cleanup, signals, host operations, and module boundaries. The harness imports the CLI implementation so source changes invalidate Go's test cache. For an explicit fresh native run, use `make e2e E2EFLAGS=-count=1`. Native build pins require empty GOFLAGS; pass test flags through E2EFLAGS instead.
+The end-to-end suite builds one CLI with a bounded setup, reuses it, and retains per-case temporary projects and processes. Accepted fixtures execute their test blocks; rejected cases verify diagnostics; transcript cases check evaluation order, cleanup, signals, host operations, and module boundaries. The harness imports the CLI implementation so source changes invalidate Go's test cache. For an explicit fresh native run, use `make e2e E2EFLAGS=-count=1`. Pass test flags through E2EFLAGS. Native subprocesses ignore ambient Go configuration.
 
 `make stdlib-check` checks the dedicated Manuscript stdlib fixtures and requires a fixture for every public standard module; `make verify` includes it. `make stdlib-test E2EFLAGS=-count=1` builds and executes those test blocks plus expected-fault transcripts. See [stdlib conformance](standard-library-tests.md) for behaviors and coverage limits.
 

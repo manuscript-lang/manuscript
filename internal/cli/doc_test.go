@@ -13,7 +13,7 @@ import (
 func TestDocOutsideRepository(t *testing.T) {
 	directory := t.TempDir()
 	t.Chdir(directory)
-	t.Setenv("MANUSCRIPT_GO", filepath.Join(directory, "no-go-toolchain"))
+	t.Setenv("PATH", t.TempDir())
 	for _, args := range [][]string{
 		{"doc", "--stdlib", "-o", "stdlib.md"},
 		{"doc", "--stdlib", "--json", "-o", "stdlib.json"},

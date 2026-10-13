@@ -31,7 +31,7 @@ func TestProjectCheckFindsUnimportedErrors(t *testing.T) {
 }
 
 func TestProjectCheckDiscoveryAndReporting(t *testing.T) {
-	t.Setenv("MANUSCRIPT_GO", filepath.Join(t.TempDir(), "missing-go"))
+	t.Setenv("PATH", t.TempDir())
 	for _, sourceDir := range []string{"src", "."} {
 		t.Run(sourceDir, func(t *testing.T) {
 			root := t.TempDir()

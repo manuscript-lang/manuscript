@@ -220,7 +220,7 @@ class ManuscriptAdapter {
       if (!args.inspection) throw new Error('Prebuilt launches require an inspection.json path');
       await this.loadMetadata(program, JSON.parse(await fs.readFile(args.inspection, 'utf8')));
     }
-    args.mode = 'exec'; args.outputMode = 'remote'; delete args.compilerPath; delete args.delvePath; delete args.inspection;
+    args.mode = 'exec'; args.outputMode = 'remote'; delete args.compilerPath; delete args.inspection;
     return this.native('launch', args);
   }
   async request(request) {

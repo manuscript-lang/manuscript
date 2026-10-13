@@ -65,12 +65,12 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	defer cancel()
 	cmd := exec.CommandContext(ctx, cli, "debug", source)
 	cmd.Dir, cmd.Env = directory, environment
-	cmd.Stdin = strings.NewReader("break " + source + ":5\ncontinue\nlocals\ncontinue\nquit\n")
+	cmd.Stdin = strings.NewReader("config substitute-path -guess\nbreak " + source + ":5\ncontinue\nlocals\ncontinue\nquit\n")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("standalone terminal: %w\n%s", err, output)
 	}
-	for _, want := range []string{"Breakpoint 1", "result = interface {}(int64) 42", "exited with status 0"} {
+	for _, want := range []string{"Go-module path guessing is unavailable", "Breakpoint 1", "result = interface {}(int64) 42", "exited with status 0"} {
 		if !strings.Contains(string(output), want) {
 			return fmt.Errorf("standalone terminal missing %q:\n%s", want, output)
 		}

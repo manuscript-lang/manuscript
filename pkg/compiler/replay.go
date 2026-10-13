@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -100,9 +101,20 @@ func loadReplay(root, key string, imports []string) (*replayProfile, bool) {
 
 // replay compiles and links dir/main.go into output with the recorded commands.
 func (profile *replayProfile) replay(dir, packagePath, output string) error {
-	_, environment, err := goToolchain()
+	tool, environment, err := goToolchain()
 	if err != nil {
 		return err
+	}
+	// Cached profiles are data, not a second executable selection mechanism.
+	root := filepath.Dir(filepath.Dir(tool))
+	for name, command := range map[string][]string{"compile": profile.Compile, "link": profile.Link} {
+		expected := filepath.Join(root, "pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH, name)
+		if runtime.GOOS == "windows" {
+			expected += ".exe"
+		}
+		if len(command) == 0 || filepath.Clean(command[0]) != expected {
+			return fmt.Errorf("replay requires bundled %s", name)
+		}
 	}
 	work, err := os.MkdirTemp("", "manuscript-link-")
 	if err != nil {

@@ -2317,16 +2317,9 @@ func (d *Debugger) ChanGoroutines(goid int64, frame, deferredCall int, expr stri
 }
 
 func go11DecodeErrorCheck(err error) error {
-	if !errors.Is(err, dwarf.DecodeError{}) {
-		return err
-	}
-
-	gover, ok := goversion.Installed()
-	if !ok || !gover.AfterOrEqual(goversion.GoVersion{Major: 1, Minor: 11, Rev: -1}) || goversion.VersionAfterOrEqual(runtime.Version(), 1, 11) {
-		return err
-	}
-
-	return errors.New("executables built by Go 1.11 or later need Delve built by Go 1.11 or later")
+	// Manuscript embeds Go 1.25+: the pre-Go-1.11 compatibility probe is
+	// obsolete and must not execute an external go command on malformed DWARF.
+	return err
 }
 
 const NoDebugWarning string = "debuggee must not be built with 'go run' or -ldflags='-s -w', which strip debug info"

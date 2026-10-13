@@ -15,7 +15,7 @@ func TestCLIProjectCheck(t *testing.T) {
 	if err := os.CopyFS(root, os.DirFS("testdata/projects/project_check")); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("MANUSCRIPT_GO", filepath.Join(root, "missing-go"))
+	t.Setenv("PATH", t.TempDir())
 	manifest := filepath.Join(root, "ms.toml")
 	output, err := commandOutput(t, cliBinary, "check", manifest, "--json")
 	var report struct {

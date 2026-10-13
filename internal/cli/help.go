@@ -21,6 +21,8 @@ Commands:
   inspect  Emit checked source metadata as JSON
   diagram  Emit a static call graph as Mermaid
   profile  Run with CPU, heap, and trace capture
+  pprof    Inspect captured CPU or heap profiles
+  trace    Inspect captured execution traces
   debug    Start an application in the embedded Delve debugger
   dap      Serve one native debugger session on stdin/stdout
   lock     Create or update project build pins
@@ -43,8 +45,8 @@ Start with:
   ms run ms.toml -- first second
 
 Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
-Release binaries bundle the Go toolchain. MANUSCRIPT_GO selects another Go
-executable; MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains
+The Go toolchain is embedded and cannot be replaced by external tools.
+MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains
 and standalone run/test/debug/profile artifacts.
 `
 
@@ -103,6 +105,10 @@ func commandHelp(command string) (string, bool) {
 		description = "Build and run an application with CPU, heap, and execution trace capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, trace.out,\ninspection.json, and manifest.json. The output directory must not already exist.\nArguments after -- are passed to the application; its exit status is returned."
 		options = "  -o, --output <directory>  Bundle directory (default: ./profile)\n"
 		examples = "ms profile ms.toml\n  ms profile main.ms -o capture -- first second"
+	case "pprof", "trace":
+		usage = "[viewer options] <profile file>"
+		description = "Inspect captured profiles with the embedded SDK viewer."
+		examples = "ms pprof -top heap.pprof\n  ms trace -http=127.0.0.1:8080 trace.out"
 	case "dap":
 		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
 		examples = "ms dap"
@@ -148,7 +154,7 @@ func commandHelp(command string) (string, bool) {
 	}
 	switch command {
 	case "build", "run", "test", "profile", "debug", "lock":
-		description += "\nRelease binaries use the bundled Go toolchain; no Go installation is needed.\nMANUSCRIPT_GO selects another Go executable. Project builds require matching\nms.lock pins; use 'ms lock ms.toml' to create or update them."
+		description += "\nAll builds use the embedded Go toolchain; no Go installation is needed. Project builds require matching\nms.lock pins; use 'ms lock ms.toml' to create or update them."
 	}
 	return text + "\n\n" + description + "\n\nOptions:\n" + options +
 		"  -h, --help  Show this help without executing the command\n\nExamples:\n  " + examples + "\n", true

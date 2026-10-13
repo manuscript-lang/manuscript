@@ -4,39 +4,41 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"testing"
 )
 
 func TestNativeToolchainEnvironment(t *testing.T) {
-	tool := filepath.Join(t.TempDir(), "custom-go")
-	t.Setenv("MANUSCRIPT_GO", tool)
-	t.Setenv("GOROOT", "/custom-root")
-	t.Setenv("CGO_ENABLED", "1")
-	t.Setenv("GOTOOLCHAIN", "auto")
-	t.Setenv("GOENV", "/host-settings")
-	t.Setenv("GOFLAGS", "-race")
-	command, err := goCommand("env")
-	if err != nil || command.Path != tool {
-		t.Fatalf("explicit selection failed: %v, %v", command, err)
+	poison := filepath.Join(t.TempDir(), "external-go")
+	for _, key := range []string{"MANUSCRIPT_GO", "GOROOT", "GOENV", "GOTOOLCHAIN", "GOFLAGS", "GOCACHEPROG", "GOWORK", "GOCACHE", "GOPATH", "GOMODCACHE", "GOEXPERIMENT"} {
+		t.Setenv(key, poison)
 	}
-	for key, value := range map[string]string{"GOROOT": "/custom-root", "CGO_ENABLED": "0", "GOTOOLCHAIN": "local", "GOENV": "off", "GOFLAGS": "-race"} {
-		count := 0
-		for _, entry := range command.Env {
-			if strings.HasPrefix(entry, key+"=") {
-				count++
-				if entry != key+"="+value {
-					t.Errorf("unexpected setting: %s", entry)
-				}
-			}
-		}
-		if count != 1 {
-			t.Errorf("%s appears %d times", key, count)
+	t.Setenv("CGO_ENABLED", "1")
+	t.Setenv("PATH", t.TempDir())
+	command, err := goCommand("env", "-json", "GOROOT", "GOTOOLCHAIN", "GOWORK", "CGO_ENABLED", "GOFLAGS", "GOCACHEPROG")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := bundledGoRoot()
+	if err != nil || command.Path != goExecutable(root) {
+		t.Fatalf("not bundled: %v, %v", command, err)
+	}
+	data, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bundled query failed: %v: %s", err, data)
+	}
+	var values map[string]string
+	if err := json.Unmarshal(data, &values); err != nil {
+		t.Fatal(err)
+	}
+	for key, expected := range map[string]string{"GOROOT": root, "GOTOOLCHAIN": "local", "GOWORK": "off", "CGO_ENABLED": "0", "GOFLAGS": "", "GOCACHEPROG": ""} {
+		if values[key] != expected {
+			t.Errorf("%s = %q, want %q", key, values[key], expected)
 		}
 	}
 }

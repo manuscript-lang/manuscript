@@ -2,7 +2,9 @@
 package debugger
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"os"
 
@@ -25,6 +27,7 @@ func DAP(ctx context.Context, transport io.ReadWriteCloser) {
 		// a target consume DAP requests. Match the old adapter's ignored stdin.
 		Debugger: delve.Config{Backend: "default", CheckGoVersion: true, Stdin: os.DevNull},
 	}, StopTriggered: make(chan struct{})}
+	transport = &execTransport{ReadWriteCloser: transport, reader: bufio.NewReader(transport)}
 	session := dap.NewSession(transport, cfg, nil)
 	done := make(chan struct{})
 	go func() { session.ServeDAPCodec(); close(done) }()
@@ -58,7 +61,7 @@ func Terminal(ctx context.Context, executable string, args []string) (int, error
 	if err != nil {
 		return 1, err
 	}
-	term := terminal.New(rpc2.NewClientFromConn(conn), conf)
+	term := terminal.New(msClient{rpc2.NewClientFromConn(conn)}, conf)
 	type result struct {
 		status int
 		err    error
@@ -74,4 +77,12 @@ func Terminal(ctx context.Context, executable string, args []string) (int, error
 		term.Close()
 		return 1, ctx.Err()
 	}
+}
+
+// Manuscript source maps already identify source files. Delve's Go-module path
+// guessing invokes go list/env from PATH and does not describe these targets.
+type msClient struct{ service.Client }
+
+func (msClient) GuessSubstitutePath() ([][2]string, error) {
+	return nil, fmt.Errorf("Go-module path guessing is unavailable; use the Manuscript source paths or explicit substitute-path rules")
 }

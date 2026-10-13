@@ -85,7 +85,7 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 }
 
 func TestHelpForEveryCommand(t *testing.T) {
-	t.Setenv("MANUSCRIPT_GO", filepath.Join(t.TempDir(), "missing-go"))
+	t.Setenv("PATH", t.TempDir())
 	for _, command := range []string{
 		"check", "lint", "lsp", "profile", "debug", "build", "emit", "run",
 		"test", "fmt", "inspect", "diagram", "lock", "doc", "stdlib", "help",
@@ -252,7 +252,7 @@ func TestProjectLintChecksImportedSource(t *testing.T) {
 }
 
 func TestSourceCommandsNeedNoNativeToolchain(t *testing.T) {
-	t.Setenv("MANUSCRIPT_GO", filepath.Join(t.TempDir(), "missing-go"))
+	t.Setenv("PATH", t.TempDir())
 	file := sourceFile(t, "export fn value() -> Int:\n    return 3\n")
 	for _, command := range []string{"check", "inspect", "diagram", "emit", "doc"} {
 		status, output, errors := invoke(t, command, file)
