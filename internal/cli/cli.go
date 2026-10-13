@@ -39,7 +39,7 @@ func Run(args []string) int {
 		unknownCommand(args[0])
 		return 2
 	}
-	if requestsHelp(args[1:]) {
+	if requestsHelp(args[0], args[1:]) {
 		fmt.Print(usage)
 		return 0
 	}
@@ -124,6 +124,7 @@ func Run(args []string) int {
 	}
 	output := ""
 	cpuProfile, heapProfile, tracePath := "", "", ""
+	profileTrace := false
 	formatCheck, structured, debug, watch := false, false, false, false
 	buildTypeName := ""
 	buildTypeSet := false
@@ -169,7 +170,13 @@ func Run(args []string) int {
 			formatCheck = true
 		case "--json":
 			structured = true
-		case "-o", "--output", "--cpu-profile", "--heap-profile", "--trace":
+		case "--trace":
+			if command == "profile" {
+				profileTrace = true
+				continue
+			}
+			fallthrough
+		case "-o", "--output", "--cpu-profile", "--heap-profile":
 			value, ok := requiredValue(args, &i, value, inline)
 			if !ok {
 				message := flag + " requires a path argument, e.g. " + flag + " out.pprof"
@@ -262,7 +269,7 @@ func Run(args []string) int {
 		kind = compiler.RelWithDebInfo
 	}
 	if (cpuProfile != "" || heapProfile != "" || tracePath != "") && command != "run" {
-		fmt.Fprintf(os.Stderr, "profiling flags (--cpu-profile, --heap-profile, --trace) require run, not %s; use ms run <file> with them, or ms profile <file> to capture all three\n", command)
+		fmt.Fprintf(os.Stderr, "profiling paths (--cpu-profile, --heap-profile, --trace) require run, not %s; use ms run <file> with them, or ms profile <file> [--trace] for a bundle\n", command)
 		return 2
 	}
 	if watch && (cpuProfile != "" || heapProfile != "" || tracePath != "") {
@@ -282,7 +289,9 @@ func Run(args []string) int {
 		output = absolute
 		cpuProfile = filepath.Join(output, "cpu.pprof")
 		heapProfile = filepath.Join(output, "heap.pprof")
-		tracePath = filepath.Join(output, "trace.out")
+		if profileTrace {
+			tracePath = filepath.Join(output, "trace.out")
+		}
 	}
 
 	options.CPUProfile, options.HeapProfile, options.Trace = cpuProfile, heapProfile, tracePath
@@ -296,7 +305,7 @@ func Run(args []string) int {
 	if watch {
 		return watchProgram(command, filename, options, kind, "", arguments)
 	}
-	result := compiler.CompileFile(filename, options)
+	result := compiler.CompileFileForBuild(filename, options, kind)
 	if structured && command == "check" || structured && command == "lint" && !result.Success() {
 		if result.Diagnostics == nil {
 			result.Diagnostics = []syntax.Diagnostic{}
@@ -473,7 +482,11 @@ func Run(args []string) int {
 			return 1
 		}
 		if command == "profile" {
-			manifest, _ := json.MarshalIndent(map[string]any{"format": 1, "source_root": result.SourceRoot, "executable": filepath.Base(executable), "inspection": "inspection.json", "cpu_profile": "cpu.pprof", "heap_profile": "heap.pprof", "trace": "trace.out"}, "", "  ")
+			artifacts := map[string]any{"format": 1, "source_root": result.SourceRoot, "executable": filepath.Base(executable), "inspection": "inspection.json", "cpu_profile": "cpu.pprof", "heap_profile": "heap.pprof"}
+			if profileTrace {
+				artifacts["trace"] = "trace.out"
+			}
+			manifest, _ := json.MarshalIndent(artifacts, "", "  ")
 			if err := os.WriteFile(filepath.Join(output, "manifest.json"), manifest, 0600); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				return 1

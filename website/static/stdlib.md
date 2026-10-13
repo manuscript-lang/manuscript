@@ -281,6 +281,7 @@ An immutable sequence of bytes. Indices and slice bounds are zero-based.
 type Bytes:
     fn clone() -> Bytes:
     fn contains(value: Bytes) -> Bool:
+    fn split(separator: Bytes, max_parts: Optional[Int] = none) -> List[Bytes]:
     fn slice(start: Int, end: Int) -> Bytes:
     fn at(index: Int) -> Optional[Int]:
     fn index_of(value: Bytes) -> Optional[Int]:
@@ -392,6 +393,17 @@ The immutable result may share storage with the receiver.
 
 ```manuscript
 fn slice(start: Int, end: Int) -> Bytes:
+```
+
+### Bytes.split
+
+Splits exact byte separators into a fresh list of immutable byte views.
+Nonempty separators retain empty parts; empty data then yields one empty Bytes.
+Omitted/none max_parts is unlimited; zero returns no parts, negatives fault.
+A cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data.
+
+```manuscript
+fn split(separator: Bytes, max_parts: Optional[Int] = none) -> List[Bytes]:
 ```
 
 ### Bytes.starts_with
@@ -2537,6 +2549,18 @@ Parses HTML into a normalized tree and applies the supplied resource limits.
 
 ```manuscript
 fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, HtmlError]:
+```
+
+## unescape
+
+**Function**
+
+Decodes HTML5 named and numeric character references in text context, once.
+Recognized references can omit semicolons; unrecognized text remains literal.
+Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
+
+```manuscript
+fn unescape(text: String) -> String:
 ```
 
 # @std/http.ms

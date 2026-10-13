@@ -5,6 +5,7 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { Framing, frame, ManuscriptAdapter, sourceType, mapName, rewriteExpression, runtimeType } = require(process.env.MANUSCRIPT_DAP_ADAPTER || '../debug-adapter');
+require('./interface-view-debug.test');
 
 test('DAP framing preserves fragmented UTF-8 and multiple messages', () => {
   const messages = []; const parser = new Framing(message => messages.push(message));

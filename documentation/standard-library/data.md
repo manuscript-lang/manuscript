@@ -75,12 +75,15 @@ Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed 
 | `length`, `is_empty`, `at` | Count bytes, test emptiness, or read an unsigned byte; negative lookup indexes are relative to the end. |
 | `contains`, `starts_with`, `ends_with` | Test byte subsequences, prefixes, or suffixes. |
 | `index_of`, `last_index_of` | Return the first or last matching byte offset, or `none`; empty searches match at zero or `length()` respectively. |
+| `split` | Split exact binary separators into a fresh List of immutable Bytes views. `max_parts` truncates returned parts; omitted/`none` is unlimited, zero returns no parts, negatives fault. |
 | `slice` | Select a strict half-open byte range under the [slice rules](../core-language/basics/text-and-bytes.md#half-open-slices). |
 | `with_value`, `reversed`, `reverse`, `concat`, `clone` | Return Bytes without changing the receiver. `reverse` remains a compatible spelling for `reversed`. `with_value` accepts relative negative indexes; an invalid index or a value outside 0–255 faults. |
 | `values` | Return a fresh mutable `List[Int]` of bytes; `values(data:)` remains available as a free function. |
 | `to_text` | Decode valid UTF-8 or return `none`. |
 
 Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
+
+`Bytes.split` preserves leading, interior and trailing empty parts. An empty separator yields one Bytes per byte, and gives no parts for empty data; a nonempty separator gives one empty part for empty data. It never decodes UTF-8, so separators can split a multibyte character or invalid text. A cap discards later parts instead of retaining an unsplit remainder: `Bytes([1, 0, 2, 0, 3]).split(Bytes([0]), max_parts: 2)` returns `[Bytes([1]), Bytes([2])]`. Returned Lists have independent mutable storage, while their immutable Bytes may share the input storage. Changing a result with `with_value` creates new Bytes and leaves the input and other parts unchanged.
 
 ## Base64 encoding
 
