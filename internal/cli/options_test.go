@@ -160,6 +160,16 @@ func TestDocProjectDirectoryAndUsage(t *testing.T) {
 	if status != 1 || !strings.Contains(stderr, "entry must export") {
 		t.Fatalf("directory skipped entry validation: %d, %q", status, stderr)
 	}
+	// An entryless library follows the current project contract: document all
+	// source modules rather than requiring an application main function.
+	if err := os.WriteFile(filepath.Join(root, "ms.toml"), []byte("[project]\nname = \"library\"\nsource = \".\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	status, directoryDoc, stderr = invoke(t, "doc", root, "--json")
+	manifestStatus, manifestDoc, manifestErr = invoke(t, "doc", filepath.Join(root, "ms.toml"), "--json")
+	if status != 0 || manifestStatus != 0 || stderr != "" || manifestErr != "" || directoryDoc != manifestDoc || !strings.Contains(directoryDoc, "helper") || !strings.Contains(directoryDoc, "value") {
+		t.Fatalf("library directory docs: %d, %q, %q; manifest: %d, %q", status, directoryDoc, stderr, manifestStatus, manifestErr)
+	}
 }
 
 func TestStdlibDeclarationsAndInlineDocOutput(t *testing.T) {
