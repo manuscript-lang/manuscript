@@ -29,6 +29,20 @@ The frontend checks Task[T] through ordinary generics. Native handles retain run
 
 ## Representation boundaries
 
+The current shared runtime ABI boxes locals, captures, arguments, and return
+values as Go `any`. Within statically checked `Int` and `Float` expressions,
+lowering emits typed literals and scalar operations; integer arithmetic retains
+overflow and zero-divisor checks, and floating arithmetic rounds at each source
+operation. Equality still uses the selected implementation scope.
+
+Direct calls to the checked native `List.at` and `Optional.unwrap` operations
+share runtime helpers with bound-method dispatch, avoiding temporary callable
+wrappers. Indexing still returns an Optional, including `none` for out-of-range
+indexes; it does not introduce unchecked access. Bound methods and generic
+callable dispatch retain the ordinary ABI. The reproducible native workloads in
+`scripts/benchmarks/` measure numeric loops, calls, list reads, and Game of Life;
+they do not establish that values or source functions are fully unboxed.
+
 For example, emitting a raw `int64` does not supply checked arithmetic. A raw Go slice does not establish immutable source bytes. The frontend and runtime cooperate with generated wrappers and operations to preserve those contracts.
 
 Explicit [view constructors](../../../core-language/types/contracts.md#explicit-contract-views) create ordinary contract wrappers. There is one contract-view identity and no sharing proof in the frontend or IR. Native services synchronize their internals. Local queues rely on caller-managed Synchronized guards for concurrent access.
