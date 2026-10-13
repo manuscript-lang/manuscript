@@ -14,6 +14,7 @@ type Parser struct {
 	at              int
 	inlineStatement bool
 	inlineReturn    bool
+	blockLambda     bool
 }
 
 func Parse(file, source string) (module *syntax.Module, err error) {
@@ -119,6 +120,9 @@ func (p *Parser) end() {
 	}
 	if p.at > 0 && p.previous().Kind == lexer.Dedent {
 		return
+	}
+	if p.blockLambda && p.peek().Kind == "," {
+		p.fail(p.peek(), "a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses")
 	}
 	p.fail(p.peek(), "expected end of statement, found "+describe(p.peek())+"; put one statement per line, and join operands with an operator or a comma inside brackets")
 }
@@ -346,8 +350,8 @@ func (p *Parser) suite() []*syntax.Statement {
 	return p.statementSuite(false)
 }
 func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statement {
-	outer, outerReturn := p.inlineStatement, p.inlineReturn
-	defer func() { p.inlineStatement, p.inlineReturn = outer, outerReturn }()
+	outer, outerReturn, outerLambda := p.inlineStatement, p.inlineReturn, p.blockLambda
+	defer func() { p.inlineStatement, p.inlineReturn, p.blockLambda = outer, outerReturn, outerLambda }()
 	p.need(":")
 	if p.peek().Kind != lexer.Newline {
 		switch p.peek().Kind {
@@ -365,6 +369,7 @@ func (p *Parser) statementSuite(expression bool, empty ...bool) []*syntax.Statem
 	}
 	p.inlineStatement = false
 	p.inlineReturn = false
+	p.blockLambda = outerLambda || expression
 	p.need(lexer.Newline)
 	p.need(lexer.Indent)
 	var body []*syntax.Statement
@@ -457,6 +462,9 @@ func (p *Parser) statement(allowValue ...bool) *syntax.Statement {
 func (p *Parser) pattern() *syntax.Pattern {
 	t := p.peek()
 	r := &syntax.Pattern{Pos: t.Pos}
+	if t.Kind == "unit" {
+		p.fail(t, "unit is a reserved value keyword, not a binding name; choose another name such as code_unit, and use unit for the Unit value")
+	}
 	if p.take(lexer.Name) {
 		r.Kind = syntax.KindName
 		r.Name = t.Text

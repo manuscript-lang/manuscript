@@ -87,6 +87,20 @@ fn example() -> Int:
 
 Its header has eight leading spaces, its body twelve, and the enclosing call closes at four. Use `fn(value): value - 1` when context supplies the parameter type. An inline function expression body returns its value; indented bodies retain explicit returns. Binding an anonymous function first and then passing its name is also valid. When a suite-bodied expression completes a surrounding simple statement with no enclosing expression delimiter still open, its suite boundary also terminates that statement: the parser supplies the outer `NEWLINE` after the expression's `DEDENT`. It does not require a second physical blank line. When a delimiter remains open, continuation resumes until that delimiter closes and the surrounding statement ends normally.
 
+To continue with another argument after an ungrouped indented function, put the separating comma on its own line at the function header's indentation:
+
+```manuscript
+fn example() -> Int:
+    return apply(
+        transform: fn(value: Int) -> Int:
+            return value - 1
+        ,
+        value: 3,
+    )
+```
+
+The dedented comma ends the function suite and separates the arguments. A comma after `return value - 1` remains inside the function body and is rejected. Grouping the function, as above, also allows another argument after `),`.
+
 ## Modules, declarations, and types
 
 In the EBNF below, braces mean repetition and brackets mean an optional grammar part. Quoted brackets are actual source tokens. `Name` is an identifier, `StringLiteral` is defined by [text and bytes](text-and-bytes.md), and `Expression` is defined by [expressions](expressions.md).
