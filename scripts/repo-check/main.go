@@ -176,7 +176,7 @@ func check() error {
 		{"pkg/lower/lower_statements.go", "statement", syntax.StatementKinds()},
 		{"pkg/lower/lower_expressions.go", "expressionValue", syntax.ExpressionKinds()},
 		{"pkg/checker/checker.go", "checkStatement", syntax.StatementKinds()},
-		{"pkg/checker/checker.go", "infer", syntax.ExpressionKinds()},
+		{"pkg/checker/expressions.go", "infer", syntax.ExpressionKinds()},
 	} {
 		missing, err := missingKinds(stage.path, stage.function, stage.kinds)
 		if err != nil {

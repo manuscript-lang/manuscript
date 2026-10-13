@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "push_back a\npush_back b\npush_front c\ndump\npop_back\npop_front\nsize\npop_front\npop_front\n",
+  "stdout": "[c a b]\nb\nc\n1\na\nempty\n"
+ },
+ {
+  "name": "empty-ops",
+  "stdin": "pop_back\nfront\nsize\ndump\n",
+  "stdout": "empty\nempty\n0\n[]\n"
+ }
+]

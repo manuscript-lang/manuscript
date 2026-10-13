@@ -63,7 +63,7 @@ func TestLiteralDataBoundariesAndAST(t *testing.T) {
 			}
 			g := &generator{program: result.Program}
 			var literal *syntax.Expression
-			for expression := range result.Program.Expressions {
+			for expression := range result.Program.Expressions() {
 				if expression.Kind == syntax.KindList && len(expression.Elements) == n {
 					literal = expression
 					break
@@ -72,7 +72,7 @@ func TestLiteralDataBoundariesAndAST(t *testing.T) {
 			if literal == nil {
 				t.Fatal("missing checked literal")
 			}
-			value := g.literalListData(literal, result.Program.Expressions[literal].Type)
+			value := g.literalListData(literal, result.Program.Info(literal).Type)
 			if (value != nil) != (n > largeListThreshold) {
 				t.Fatal("wrong data threshold")
 			}

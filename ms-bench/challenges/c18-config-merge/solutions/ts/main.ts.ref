@@ -1,0 +1,99 @@
+import { readFileSync } from "node:fs";
+
+const NAME = "[a-z][a-z0-9_]*";
+const isName = (s: string) => new RegExp(`^${NAME}$`).test(s);
+const trim = (s: string) => s.replace(/^ +| +$/g, "");
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+
+function parse(): Map<string, string> | string {
+  const cfg = new Map<string, string>();
+  let layer: string | null = null;
+  let section = "global";
+  for (let i = 0; i < lines.length; i++) {
+    const l = trim(lines[i]);
+    if (l.startsWith("--- ") && trim(l.slice(4)) !== "") {
+      layer = trim(l.slice(4));
+      section = "global";
+      continue;
+    }
+    if (l === "" || l.startsWith("#")) continue;
+    const where = `${layer ?? "input"}:${i + 1}`;
+    if (layer === null) return `error: ${where}: expected layer header`;
+    if (l.startsWith("[")) {
+      if (!l.endsWith("]") || !isName(l.slice(1, -1))) return `error: ${where}: bad section name`;
+      section = l.slice(1, -1);
+    } else if (l.startsWith("@")) {
+      const m = /^@unset ([a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)$/.exec(l);
+      if (!m) return `error: ${where}: bad directive`;
+      cfg.delete(m[1]);
+    } else if (l.includes("=")) {
+      const at = l.indexOf("=");
+      const k = trim(l.slice(0, at));
+      if (!isName(k)) return `error: ${where}: bad key`;
+      cfg.set(`${section}.${k}`, trim(l.slice(at + 1)));
+    } else {
+      return `error: ${where}: invalid line`;
+    }
+  }
+  return cfg;
+}
+
+class Fail extends Error {}
+const parsed = parse();
+if (typeof parsed === "string") {
+  process.stdout.write(parsed + "\n");
+  process.exit(0);
+}
+const cfg = parsed;
+const done = new Map<string, string>();
+const active = new Set<string>();
+function resolve(key: string): string {
+  const cached = done.get(key);
+  if (cached !== undefined) return cached;
+  if (active.has(key)) throw new Fail(`${key}: cycle`);
+  active.add(key);
+  const raw = [...cfg.get(key)!];
+  let out = "";
+  let i = 0;
+  while (i < raw.length) {
+    if (raw[i] === "$" && raw[i + 1] === "$") { out += "$"; i += 2; }
+    else if (raw[i] === "$" && raw[i + 1] === "{") {
+      let j = i + 2;
+      while (j < raw.length && raw[j] !== "}") j++;
+      if (j >= raw.length) throw new Fail(`${key}: bad reference`);
+      const ref = raw.slice(i + 2, j).join("");
+      if (!new RegExp(`^${NAME}\\.${NAME}$`).test(ref)) throw new Fail(`${key}: bad reference`);
+      if (!cfg.has(ref)) throw new Fail(`${key}: unknown reference \${${ref}}`);
+      out += resolve(ref);
+      i = j + 1;
+    } else { out += raw[i]; i++; }
+  }
+  active.delete(key);
+  done.set(key, out);
+  return out;
+}
+const keys = [...cfg.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+try {
+  for (const k of keys) resolve(k);
+} catch (e) {
+  if (e instanceof Fail) {
+    process.stdout.write(`error: ${e.message}\n`);
+    process.exit(0);
+  }
+  throw e;
+}
+let out = "";
+let cur: string | null = null;
+for (const k of keys) {
+  const dot = k.indexOf(".");
+  const sec = k.slice(0, dot);
+  if (sec !== cur) {
+    if (cur !== null) out += "\n";
+    out += `[${sec}]\n`;
+    cur = sec;
+  }
+  out += `${k.slice(dot + 1)} = ${done.get(k)}\n`;
+}
+process.stdout.write(out);

@@ -1,0 +1,97 @@
+import { readFileSync } from "node:fs";
+
+type Clean = { abs: boolean; st: string[] };
+
+function clean(p: string): Clean {
+  const abs = p.startsWith("/");
+  const st: string[] = [];
+  for (const s of p.split("/")) {
+    if (s === "" || s === ".") continue;
+    if (s === "..") {
+      if (st.length > 0 && st[st.length - 1] !== "..") st.pop();
+      else if (!abs) st.push("..");
+    } else st.push(s);
+  }
+  return { abs, st };
+}
+
+function show(abs: boolean, st: string[]): string {
+  if (abs) return "/" + st.join("/");
+  return st.length > 0 ? st.join("/") : ".";
+}
+
+function base(p: string): string {
+  let end = p.length;
+  while (end > 0 && p[end - 1] === "/") end--;
+  if (end === 0) return "/";
+  const q = p.slice(0, end);
+  return q.slice(q.lastIndexOf("/") + 1);
+}
+
+function commonPrefix(a: string[], b: string[]): number {
+  let k = 0;
+  while (k < a.length && k < b.length && a[k] === b[k]) k++;
+  return k;
+}
+
+const out: string[] = [];
+for (const line of readFileSync(0, "utf8").split("\n")) {
+  const t = line.split(/[ \t]+/).filter((x) => x !== "");
+  if (t.length === 0) continue;
+  const c = t[0];
+  const a = t.slice(1);
+  const n = a.length;
+  if (c === "clean" && n === 1) {
+    const r = clean(a[0]);
+    out.push(show(r.abs, r.st));
+  } else if (c === "join" && n >= 1) {
+    const r = clean(a.join("/"));
+    out.push(show(r.abs, r.st));
+  } else if (c === "resolve" && n === 2) {
+    if (!a[0].startsWith("/")) out.push("error: cwd not absolute");
+    else {
+      const r = clean(a[1].startsWith("/") ? a[1] : a[0] + "/" + a[1]);
+      out.push(show(r.abs, r.st));
+    }
+  } else if (c === "rel" && n === 2) {
+    const x = clean(a[0]);
+    const y = clean(a[1]);
+    if (x.abs !== y.abs) {
+      out.push("error: cannot relativize");
+      continue;
+    }
+    const k = commonPrefix(x.st, y.st);
+    const rest = x.st.slice(k);
+    if (rest.includes("..")) {
+      out.push("error: cannot relativize");
+      continue;
+    }
+    const r = [...rest.map(() => ".."), ...y.st.slice(k)];
+    out.push(r.length > 0 ? r.join("/") : ".");
+  } else if (c === "base" && n === 1) {
+    out.push(base(a[0]));
+  } else if (c === "dir" && n === 1) {
+    const i = a[0].lastIndexOf("/");
+    if (i < 0) out.push(".");
+    else {
+      const r = clean(a[0].slice(0, i + 1));
+      out.push(show(r.abs, r.st));
+    }
+  } else if (c === "ext" && n === 1) {
+    const b = base(a[0]);
+    const i = b.lastIndexOf(".");
+    out.push(i > 0 ? b.slice(i) : "(none)");
+  } else if (c === "common" && n >= 1) {
+    const cs = a.map(clean);
+    if (cs.some((x) => x.abs !== cs[0].abs)) {
+      out.push("error: mixed");
+      continue;
+    }
+    let pre = cs[0].st;
+    for (const x of cs.slice(1)) pre = pre.slice(0, commonPrefix(pre, x.st));
+    out.push(show(cs[0].abs, pre));
+  } else {
+    out.push("error: bad command");
+  }
+}
+process.stdout.write(out.map((o) => o + "\n").join(""));

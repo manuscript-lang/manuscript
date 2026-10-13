@@ -23,7 +23,7 @@ func (g *generator) arguments(args []syntax.Argument) ast.Expr {
 }
 func (g *generator) argumentValue(a syntax.Argument) ast.Expr {
 	value := g.expression(a.Value)
-	if target := g.program.Expressions[a.Value].OptionalArgument; target != nil {
+	if target := g.program.Info(a.Value).OptionalArgument; target != nil {
 		value = runtimeCall("NewAlternative", g.key(target), textLiteral("some"), stringSlice([]string{"value"}), sliceLiteral(runtimeName("Argument"), composite(nil, keyed("Name", textLiteral("value")), keyed("Value", value))))
 	}
 	return value
@@ -32,7 +32,7 @@ func (g *generator) expression(e *syntax.Expression) ast.Expr {
 	if value, ok := g.booleans[e]; ok {
 		return ident(strconv.FormatBool(value))
 	}
-	info := g.program.Expressions[e]
+	info := g.program.Info(e)
 	if info.ErrorSource == nil {
 		return g.expressionValue(e, info)
 	}
@@ -126,7 +126,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			return g.methodDefaults(info.Method, g.nativeReceiverMember(e, info))
 		}
 		if info.Method != nil {
-			return g.methodDefaults(info.Method, runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Expressions[e.Left].Type)))
+			return g.methodDefaults(info.Method, runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Info(e.Left).Type)))
 		}
 		if info.Native != "" {
 			if info.Native == "milliseconds" || info.Native == "seconds" || info.Native == "minutes" {
@@ -141,7 +141,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			// Lowering a discarded receiver tree would strand source markers
 			// and other generator state from its nested callable/match bodies.
 			receiver := e.Args[0].Value
-			return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Expressions[receiver].Type))
+			return runtimeCall("ViewOf", g.key(info.Type), g.expression(receiver), g.typeScope(g.program.Info(receiver).Type))
 		}
 		arguments := e.Args
 		if info.Arguments != nil {
@@ -169,7 +169,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 				}
 				return runtimeCall("NewAlternative", g.key(info.Type), textLiteral(info.Case), stringSlice(labels), args)
 			}
-			if symbol := info.Constructor.Def.Symbol; recordDefaults(symbol.Decl) && (symbol.Native == "" || g.program.Parameters[symbol.Decl] != nil) {
+			if symbol := info.Constructor.Def.Symbol; recordDefaults(symbol.Decl) && (symbol.Native == "" || g.program.ParameterBindings(symbol.Decl) != nil) {
 				if symbol.Native != "" {
 					if len(arguments) == len(symbol.Decl.Fields) {
 						return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
@@ -188,7 +188,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		var callable ast.Expr
 		if info.Symbol != nil {
 			if info.Symbol.Native != "" {
-				callable = g.nativeDefaults(info.Symbol.Decl, g.program.Expressions[e.Left].Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
+				callable = g.nativeDefaults(info.Symbol.Decl, g.program.Info(e.Left).Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
 			} else {
 				callable = ident(info.Symbol.ID)
 				if len(info.Symbol.Variables) > 0 {
@@ -242,7 +242,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			if value := g.primitiveEquality(e); value != nil {
 				return value
 			}
-			return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Expressions[e.Left].Type))
+			return g.locatedOperation(e, runtimeName("Equality"), ident("ctx"), textLiteral(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Info(e.Left).Type))
 		}
 		if value := g.numericBinary(e); value != nil {
 			return value
@@ -265,7 +265,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if result == nil {
 			result = &syntax.Type{Pos: e.Pos}
 		}
-		fn := g.function("<anonymous>", e.Params, result, e.Body, g.program.LambdaParameters[e], nil, info.Type)
+		fn := g.function("<anonymous>", e.Params, result, e.Body, g.program.LambdaBindings(e), nil, info.Type)
 		for _, b := range captures {
 			if old[b] == "" {
 				delete(g.captures, b)

@@ -1,0 +1,79 @@
+package main
+
+import (
+	"bufio"
+	"container/heap"
+	"fmt"
+	"io"
+	"os"
+	"strconv"
+	"strings"
+)
+
+type entry struct {
+	prio int
+	seq  int
+	name string
+}
+
+type pq []entry
+
+func (q pq) Len() int { return len(q) }
+func (q pq) Less(i, j int) bool {
+	if q[i].prio != q[j].prio {
+		return q[i].prio < q[j].prio
+	}
+	return q[i].seq < q[j].seq
+}
+func (q pq) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+func (q *pq) Push(x any)   { *q = append(*q, x.(entry)) }
+func (q *pq) Pop() any {
+	old := *q
+	e := old[len(old)-1]
+	*q = old[:len(old)-1]
+	return e
+}
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	q := &pq{}
+	seq := 0
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		p := strings.Split(line, " ")
+		switch p[0] {
+		case "push":
+			n, _ := strconv.Atoi(p[1])
+			heap.Push(q, entry{n, seq, p[2]})
+			seq++
+		case "pop":
+			if q.Len() == 0 {
+				fmt.Fprintln(out, "empty")
+			} else {
+				e := heap.Pop(q).(entry)
+				fmt.Fprintf(out, "%s %d\n", e.name, e.prio)
+			}
+		case "peek":
+			if q.Len() == 0 {
+				fmt.Fprintln(out, "empty")
+			} else {
+				e := (*q)[0]
+				fmt.Fprintf(out, "%s %d\n", e.name, e.prio)
+			}
+		case "size":
+			fmt.Fprintln(out, q.Len())
+		case "drain":
+			if q.Len() == 0 {
+				fmt.Fprintln(out, "empty")
+			}
+			for q.Len() > 0 {
+				e := heap.Pop(q).(entry)
+				fmt.Fprintf(out, "%s %d\n", e.name, e.prio)
+			}
+		}
+	}
+}

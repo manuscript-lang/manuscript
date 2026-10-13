@@ -1,0 +1,217 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+func trim(s string) string { return strings.Trim(s, " \t") }
+
+func isBlank(r rune) bool { return r == ' ' || r == '\t' }
+
+func digits(s string, max int) bool {
+	if s == "" || len(s) > max {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func alnum(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+			return false
+		}
+	}
+	return true
+}
+
+type route struct {
+	word, queue string
+	prio        int
+}
+
+type raw struct {
+	id, reporter, subject, body string
+	created                     int
+}
+
+type entry struct {
+	id, subject string
+	prio        int
+	created     int
+	merged      int
+}
+
+func normalise(subject string) string {
+	s := strings.ToLower(subject)
+	for {
+		s = strings.TrimLeft(s, " \t")
+		if strings.HasPrefix(s, "re:") {
+			s = s[3:]
+		} else if strings.HasPrefix(s, "fwd:") {
+			s = s[4:]
+		} else {
+			break
+		}
+	}
+	return strings.Join(strings.FieldsFunc(s, isBlank), " ")
+}
+
+func tokens(s string) map[string]bool {
+	set := map[string]bool{}
+	start := -1
+	for i := 0; i <= len(s); i++ {
+		word := i < len(s) && ((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= '0' && s[i] <= '9'))
+		if word && start < 0 {
+			start = i
+		}
+		if !word && start >= 0 {
+			set[s[start:i]] = true
+			start = -1
+		}
+	}
+	return set
+}
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	lines := strings.Split(string(data), "\n")
+	if lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	section := byte(0)
+	now := 0
+	vips := map[string]bool{}
+	var routes []route
+	var problems []string
+	ids := map[string]bool{}
+	var raws []raw
+	for idx, line := range lines {
+		n := idx + 1
+		l := trim(line)
+		if l == "" || l[0] == '#' {
+			continue
+		}
+		if l[0] == '[' {
+			switch l {
+			case "[rules]":
+				section = 'r'
+			case "[tickets]":
+				section = 't'
+			default:
+				section = 0
+				problems = append(problems, fmt.Sprintf("line %d: unknown section", n))
+			}
+			continue
+		}
+		switch section {
+		case 'r':
+			t := strings.FieldsFunc(l, isBlank)
+			switch {
+			case t[0] == "now" && len(t) == 2 && digits(t[1], 9):
+				now, _ = strconv.Atoi(t[1])
+			case t[0] == "vip" && len(t) == 2:
+				vips[strings.ToLower(t[1])] = true
+			case t[0] == "route" && len(t) == 4 && alnum(strings.ToLower(t[1])) && len(t[3]) == 1 && t[3][0] >= '1' && t[3][0] <= '5':
+				routes = append(routes, route{strings.ToLower(t[1]), t[2], int(t[3][0] - '0')})
+			default:
+				problems = append(problems, fmt.Sprintf("line %d: bad rule", n))
+			}
+		case 't':
+			p := strings.SplitN(l, "|", 5)
+			for i := range p {
+				p[i] = trim(p[i])
+			}
+			if len(p) < 5 || p[0] == "" || strings.ContainsAny(p[0], " \t") || p[1] == "" || !digits(p[2], 9) || p[3] == "" {
+				problems = append(problems, fmt.Sprintf("line %d: bad ticket", n))
+				continue
+			}
+			if ids[p[0]] {
+				problems = append(problems, fmt.Sprintf("line %d: duplicate id", n))
+				continue
+			}
+			ids[p[0]] = true
+			created, _ := strconv.Atoi(p[2])
+			raws = append(raws, raw{p[0], p[1], p[3], p[4], created})
+		}
+	}
+	queues := map[string][]*entry{}
+	byKey := map[string]*entry{}
+	merged := 0
+	for _, t := range raws {
+		key := strings.ToLower(t.reporter) + "\x00" + normalise(t.subject)
+		if e, ok := byKey[key]; ok {
+			e.merged++
+			merged++
+			continue
+		}
+		toks := tokens(strings.ToLower(t.subject + " " + t.body))
+		queue, prio := "general", 3
+		for _, r := range routes {
+			if toks[r.word] {
+				queue, prio = r.queue, r.prio
+				break
+			}
+		}
+		if vips[strings.ToLower(t.reporter)] && prio > 1 {
+			prio--
+		}
+		if now-t.created >= 1440 && prio > 1 {
+			prio--
+		}
+		e := &entry{t.id, t.subject, prio, t.created, 0}
+		byKey[key] = e
+		queues[queue] = append(queues[queue], e)
+	}
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	names := make([]string, 0, len(queues))
+	for q := range queues {
+		names = append(names, q)
+	}
+	sort.Strings(names)
+	listed := 0
+	for _, q := range names {
+		es := queues[q]
+		sort.Slice(es, func(i, j int) bool {
+			a, b := es[i], es[j]
+			if a.prio != b.prio {
+				return a.prio < b.prio
+			}
+			if a.created != b.created {
+				return a.created < b.created
+			}
+			return a.id < b.id
+		})
+		listed += len(es)
+		fmt.Fprintf(out, "queue %s (%d)\n", q, len(es))
+		for _, e := range es {
+			suffix := ""
+			if e.merged > 0 {
+				suffix = fmt.Sprintf(" (+%d merged)", e.merged)
+			}
+			fmt.Fprintf(out, "  %s P%d %s%s\n", e.id, e.prio, e.subject, suffix)
+		}
+	}
+	fmt.Fprintf(out, "summary: tickets=%d merged=%d problems=%d\n", listed, merged, len(problems))
+	if len(problems) > 0 {
+		fmt.Fprintln(out, "problems:")
+		for _, p := range problems {
+			fmt.Fprintln(out, "  "+p)
+		}
+	}
+}

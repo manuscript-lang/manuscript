@@ -106,12 +106,12 @@ func TestResultArgumentInferenceKeepsConversionEvidence(t *testing.T) {
 				t.Fatal(result.Diagnostics)
 			}
 			found := false
-			for expression, info := range result.Program.Expressions {
+			for expression, info := range result.Program.Expressions() {
 				if expression.Kind != syntax.KindCall || info.Symbol == nil || (info.Symbol.Name != "ignore" && info.Symbol.Name != "optional" && info.Symbol.Name != "h") || expression.Pos.File != "result-evidence.ms" || expression.Pos.Line <= strings.Count(resultArgumentSource, "\n") {
 					continue
 				}
 				found = true
-				argument := result.Program.Expressions[expression.Args[0].Value]
+				argument := result.Program.Info(expression.Args[0].Value)
 				if argument.ErrorSource == nil || argument.ErrorSource.String() != tt.actual || argument.ScopedError != tt.scoped {
 					t.Fatalf("lost conversion evidence: source %v, scoped %v", argument.ErrorSource, argument.ScopedError)
 				}
@@ -149,7 +149,7 @@ func TestFailedResultArgumentDoesNotConstrainLaterEvidence(t *testing.T) {
 				t.Fatal("accepted incompatible error")
 			}
 			found := false
-			for _, info := range result.Program.Expressions {
+			for _, info := range result.Program.Expressions() {
 				if info.Symbol == nil || info.Symbol.Name != "target" || len(info.TypeArgs) == 0 {
 					continue
 				}

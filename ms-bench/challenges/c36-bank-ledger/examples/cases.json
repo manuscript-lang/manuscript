@@ -1,0 +1,7 @@
+[
+ {
+  "name": "basic",
+  "stdin": "open a 20\nopen b 0\ndeposit a 10\nwithdraw a 25\nwithdraw a 10\ntransfer a b 3\nfreeze b\ndeposit b 1\nreport\n",
+  "stdout": "ok\nok\nok 10\nok -20 fee=5\nerror: overdraft limit exceeded a\nerror: overdraft limit exceeded a\nok\nerror: account frozen b\na balance=-20 limit=20 ops=2 rejected=2 frozen=no\nb balance=0 limit=0 ops=0 rejected=1 frozen=yes\ntotal balance=-20 fees=5\n"
+ }
+]

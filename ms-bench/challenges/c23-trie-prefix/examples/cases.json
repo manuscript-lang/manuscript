@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "insert car\ninsert card\ninsert care\ninsert cat\ninsert car\ncount car\ncount ca\ncount d\ncomplete ca 3\ncomplete car 10\ncomplete x 2\nhas cat\nhas ca\n",
+  "stdout": "added\nadded\nadded\nadded\nexists\n3\n4\n0\ncar card care\ncar card care\nnone\nyes\nno\n"
+ },
+ {
+  "name": "prefix-words",
+  "stdin": "insert a\ninsert ab\ninsert abc\ncount a\ncomplete a 2\nhas ab\n",
+  "stdout": "added\nadded\nadded\n3\na ab\nyes\n"
+ }
+]

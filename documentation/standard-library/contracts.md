@@ -91,15 +91,16 @@ test "query keeps the original error":
 | --- | --- |
 | Malformed data or unavailable OS service | Return an expected Result error. |
 | Missing value | Use Optional. |
-| Illegal collection slice bounds, broken programming assumptions, or explicit invariant violation | Produce a programming fault. |
+| Illegal String, List, or Bytes `slice` bounds | Return the declared Result error: StringError.OutOfRange or CollectionError.OutOfRange. |
+| Broken programming assumptions or explicit invariant violation | Produce a programming fault. |
 | Parent cancellation | Unwind; do not turn cancellation into EOF or a domain error. |
 | Local network deadline expires | NetworkError/HttpError use `Timeout`; Connection I/O uses `IoError.Failed` with a timeout diagnostic. Command/group deadlines use `TimedOut`. |
 
-Collection bounds, byte values, integer-formatting radices, and supplied queue capacities fault when their documented call preconditions fail. Their diagnostics name the operation and parameter, show the original offending argument, and state the valid range. For example, `Bytes.with_value: value must be between 0 and 255, found 300` distinguishes a value failure from an index failure.
+Collection mutation bounds, byte values, integer-formatting radices, and supplied queue capacities fault when their documented call preconditions fail. Their diagnostics name the operation and parameter, show the original offending argument, and state the valid range. For example, `Bytes.with_value: value must be between 0 and 255, found 300` distinguishes a value failure from an index failure.
 
-Negative indexes in `at`, `with_value`, and List `without` remain relative to the end. Empty collections have no valid update/removal index. List `fill`, `copy_within`, and List/Bytes `slice` require `0 <= start <= end <= length`; List `with_values` requires `0 <= start <= length` and `0 <= delete_count <= length - start`.
+Negative indexes in `at`, List `set`/`remove`, and Bytes `with_value` are relative to the end. Empty collections have no valid update/removal index. List `fill` and `copy_within` require nonnegative `0 <= start <= end <= length`; List `splice` requires `0 <= start <= length` and `0 <= delete_count <= length - start`. The legacy List spellings `with_value`, `without`, and `with_values` retain the same mutation bounds and faults; see the [naming migration](../core-language/types/collections.md#naming-and-migration).
 
-These diagnostics preserve each operation's return type, bounds behavior, and failure category. String slicing retains its existing clamping behavior; unifying the slice families remains a separate policy decision.
+String, List, and Bytes `slice(start:, end:)` return Result and resolve each negative bound relative to the end before requiring `0 <= start <= end <= length`. String uses its Unicode scalar length; List uses elements and Bytes uses bytes. Invalid bounds return `StringError.OutOfRange` for String or `CollectionError.OutOfRange` for List/Bytes, without clamping or a programming fault. Successful List slices have independent shallow outer storage; immutable Bytes slices may share backing storage. See the [half-open slice rules](../core-language/basics/text-and-bytes.md#half-open-slices) for exact contracts, including `slice_scalars`.
 
 If cancellation wins before a newly acquired resource is delivered, native acquisition releases that resource. Delivered socket handles use `with` and synchronized close admission. Retaining another reference never extends the open lifetime.
 

@@ -42,7 +42,7 @@ func NavigationAt(program *checker.Program, file string, offset int) (Navigation
 		for _, imp := range module.Imports {
 			start := imp.NamePos.Offset
 			if offset >= start && offset < start+len(imp.Name) {
-				symbol := program.Symbols[file][imp.Name]
+				symbol := program.Symbol(file, imp.Name)
 				if strings.HasPrefix(file, "@std/") {
 					symbol = checker.StandardExports(imp.Path)[imp.Name]
 				}
@@ -52,14 +52,12 @@ func NavigationAt(program *checker.Program, file string, offset int) (Navigation
 			}
 		}
 	}
-	for _, refs := range []map[*syntax.Type]*checker.Type{program.TypeReferences, checker.StandardTypeReferences()} {
-		for ref, typ := range refs {
-			if matchName(ref.Pos, ref.Name) && typ.Def != nil && typ.Def.Symbol != nil && typ.Def.Symbol.Decl != nil {
-				return result(typ.String(), typ.Def.Symbol.Decl.Pos)
-			}
+	for ref, typ := range program.AllTypeReferences() {
+		if matchName(ref.Pos, ref.Name) && typ.Def != nil && typ.Def.Symbol != nil && typ.Def.Symbol.Decl != nil {
+			return result(typ.String(), typ.Def.Symbol.Decl.Pos)
 		}
 	}
-	for expression, info := range program.Expressions {
+	for expression, info := range program.Expressions() {
 		if expression.Kind == syntax.KindName && matchName(expression.Pos, expression.Text) && info.Symbol != nil && info.Symbol.Decl != nil {
 			return result(info.Symbol.Name+": "+info.Type.String(), info.Symbol.Decl.Pos)
 		}
@@ -67,7 +65,7 @@ func NavigationAt(program *checker.Program, file string, offset int) (Navigation
 			if info.Method != nil && info.Method.Decl != nil {
 				return result(expression.Text+": "+info.Type.String(), info.Method.Decl.Pos)
 			}
-			if receiver := program.Expressions[expression.Left]; receiver != nil && receiver.Type != nil && receiver.Type.Def != nil {
+			if receiver := program.Info(expression.Left); receiver != nil && receiver.Type != nil && receiver.Type.Def != nil {
 				symbol := receiver.Type.Def.Symbol
 				if symbol != nil && symbol.Decl != nil {
 					for _, field := range symbol.Decl.Fields {

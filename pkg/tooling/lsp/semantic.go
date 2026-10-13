@@ -63,7 +63,7 @@ func semantic(d document, checked ...compiler.Result) map[string]any {
 		result := checked[0]
 		m := module(result, d)
 		if m != nil {
-			for expression, info := range result.Program.Expressions {
+			for expression, info := range result.Program.Expressions() {
 				if expression == nil || info == nil || expression.Pos.File != m.File || expression.Text == "" {
 					continue
 				}

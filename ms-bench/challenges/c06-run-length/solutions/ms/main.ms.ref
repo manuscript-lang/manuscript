@@ -1,0 +1,75 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+
+fn is_digit(c: Int) -> Bool:
+    return c >= 48 and c <= 57
+
+fn is_letter(c: Int) -> Bool:
+    return (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
+
+fn encode(text: String) -> String:
+    let codes = text.scalar_values()
+    if codes.is_empty():
+        return "error"
+    for c in codes:
+        if not is_letter(c):
+            return "error"
+    let cs = text.chars()
+    let parts = List[String]()
+    var i = 0
+    while i < cs.length():
+        let c = cs.at(i).unwrap()
+        var j = i
+        while j < cs.length() and cs.at(j).unwrap() == c:
+            j = j + 1
+        parts.append("{j - i}{c}")
+        i = j
+    return parts.join("")
+
+fn decode(text: String) -> String:
+    let codes = text.scalar_values()
+    let cs = text.chars()
+    let parts = List[String]()
+    var k = 0
+    while k < codes.length():
+        let first = codes.at(k).unwrap()
+        if first < 49 or first > 57:
+            return "error"
+        var n = 0
+        while k < codes.length() and is_digit(codes.at(k).unwrap()):
+            n = n * 10 + (codes.at(k).unwrap() - 48)
+            k = k + 1
+        if k >= codes.length() or not is_letter(codes.at(k).unwrap()):
+            return "error"
+        parts.append(cs.at(k).unwrap().repeat(n).unwrap())
+        k = k + 1
+    if parts.is_empty():
+        return "error"
+    return parts.join("")
+
+fn solve_line(line: String) -> String:
+    let at = line.index_of(" ")
+    if at.is_none():
+        return "error"
+    let cmd = line.slice(0, at.unwrap())
+    let rest = line.slice(at.unwrap() + 1, line.length())
+    if cmd == "E":
+        return encode(rest)
+    if cmd == "D":
+        return decode(rest)
+    return "error"
+
+fn run() -> Result[Unit, Error]:
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let line = next.unwrap()
+        if line.replace_all(old: " ", new: "").unwrap().is_empty():
+            continue
+        try stdout().write("{solve_line(line)}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

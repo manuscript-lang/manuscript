@@ -18,7 +18,7 @@ func (c *checker) effectSummaries() {
 	for _, module := range c.Modules {
 		for _, declaration := range module.Declarations {
 			if declaration.Kind == syntax.KindFn || declaration.Kind == syntax.KindRecord {
-				symbol := c.Symbols[module.File][declaration.Name]
+				symbol := c.symbols[module.File][declaration.Name]
 				nodes[symbol.ID] = &node{declaration, map[string]bool{}, map[string]bool{}}
 			}
 		}
@@ -40,7 +40,7 @@ func (c *checker) effectSummaries() {
 				if statement.Kind != syntax.KindWith {
 					return
 				}
-				method := c.Cleanups[statement]
+				method := c.cleanups[statement]
 				if method != nil && method.ID != "" {
 					n.edges[method.ID] = true
 				} else if method != nil && std(method.Receiver, "SynchronizedGuard") {
@@ -50,11 +50,11 @@ func (c *checker) effectSummaries() {
 				}
 			},
 			Expression: func(expression *syntax.Expression) {
-				if info := c.Expressions[expression]; info != nil && info.Native == "index" {
+				if info := c.expressions[expression]; info != nil && info.Native == "index" {
 					add(n, "read")
 				}
 				if expression.Kind == syntax.KindMember {
-					if receiver := c.Expressions[expression.Left]; receiver != nil && receiver.Type.Kind == syntax.KindRecord && c.Expressions[expression].Method == nil {
+					if receiver := c.expressions[expression.Left]; receiver != nil && receiver.Type.Kind == syntax.KindRecord && c.expressions[expression].Method == nil {
 						add(n, "read")
 					}
 				}
@@ -65,7 +65,7 @@ func (c *checker) effectSummaries() {
 				if expression.Kind != syntax.KindCall {
 					return
 				}
-				info := c.Expressions[expression]
+				info := c.expressions[expression]
 				if info == nil {
 					add(n, "unknown")
 					return

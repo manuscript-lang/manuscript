@@ -27,8 +27,8 @@ fn callback_cancel(values: List[Int], stop: fn() -> Unit) -> Unit:
 		t.Fatal(result.Diagnostics)
 	}
 	harness := strings.NewReplacer(
-		"@@fault@@", result.Program.Symbols["native-range.ms"]["callback_fault"].ID,
-		"@@cancel@@", result.Program.Symbols["native-range.ms"]["callback_cancel"].ID,
+		"@@fault@@", result.Program.Symbol("native-range.ms", "callback_fault").ID,
+		"@@cancel@@", result.Program.Symbol("native-range.ms", "callback_cancel").ID,
 	).Replace(`
 func rangeFailure(body func()) (failure any) {defer func(){failure=recover()}();body();return}
 func checkRangeExits() {

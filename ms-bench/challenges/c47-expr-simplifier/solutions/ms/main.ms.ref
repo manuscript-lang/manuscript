@@ -1,0 +1,347 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+import StringBuilder from "@std/string.ms"
+
+type Expr:
+    case Num(value: Int)
+    case Var(name: String)
+    case Add(left: Expr, right: Expr)
+    case Sub(left: Expr, right: Expr)
+    case Mul(left: Expr, right: Expr)
+    case Neg(inner: Expr)
+    case Pow(base: Expr, exp: Int)
+
+type Pair:
+    first: Expr
+    second: Expr
+
+type Power:
+    base: Expr
+    exp: Int
+
+type Parser:
+    toks: List[String]
+    pos: Int
+
+fn num(n: Int) -> Expr:
+    return Expr.Num(value: n)
+
+fn is_num(e: Expr, v: Int) -> Bool:
+    match e:
+        Num(value): return value == v
+        _: return false
+
+fn num_value(e: Expr) -> Optional[Int]:
+    match e:
+        Num(value): return some(value)
+        _: return none
+
+fn neg_inner(e: Expr) -> Optional[Expr]:
+    match e:
+        Neg(inner): return some(inner)
+        _: return none
+
+fn sub_parts(e: Expr) -> Optional[Pair]:
+    match e:
+        Sub(left, right): return some(Pair(first: left, second: right))
+        _: return none
+
+fn pow_parts(e: Expr) -> Optional[Power]:
+    match e:
+        Pow(base, exp): return some(Power(base: base, exp: exp))
+        _: return none
+
+fn int_pow(k: Int, n: Int) -> Int:
+    var r = 1
+    var i = 0
+    while i < n:
+        r = r * k
+        i = i + 1
+    return r
+
+fn simp(e: Expr) -> Expr:
+    match e:
+        Num(_): return e
+        Var(_): return e
+        Add(l, r): return rw_add(simp(l), simp(r))
+        Sub(l, r): return rw_sub(simp(l), simp(r))
+        Mul(l, r): return rw_mul(simp(l), simp(r))
+        Neg(x): return rw_neg(simp(x))
+        Pow(b, n): return rw_pow(simp(b), n)
+
+fn rw_add(l: Expr, r: Expr) -> Expr:
+    let lv = num_value(l)
+    let rv = num_value(r)
+    if lv.is_some() and rv.is_some():
+        return num(lv.unwrap() + rv.unwrap())
+    if is_num(l, 0):
+        return r
+    if is_num(r, 0):
+        return l
+    if l == r:
+        return simp(Expr.Mul(left: num(2), right: l))
+    let rn = neg_inner(r)
+    if rn.is_some():
+        return simp(Expr.Sub(left: l, right: rn.unwrap()))
+    let ln = neg_inner(l)
+    if ln.is_some():
+        return simp(Expr.Sub(left: r, right: ln.unwrap()))
+    return Expr.Add(left: l, right: r)
+
+fn rw_sub(l: Expr, r: Expr) -> Expr:
+    let lv = num_value(l)
+    let rv = num_value(r)
+    if lv.is_some() and rv.is_some():
+        return num(lv.unwrap() - rv.unwrap())
+    if is_num(r, 0):
+        return l
+    if is_num(l, 0):
+        return simp(Expr.Neg(inner: r))
+    if l == r:
+        return num(0)
+    let rn = neg_inner(r)
+    if rn.is_some():
+        return simp(Expr.Add(left: l, right: rn.unwrap()))
+    return Expr.Sub(left: l, right: r)
+
+fn rw_mul(l: Expr, r: Expr) -> Expr:
+    let lv = num_value(l)
+    let rv = num_value(r)
+    if lv.is_some() and rv.is_some():
+        return num(lv.unwrap() * rv.unwrap())
+    if is_num(l, 0) or is_num(r, 0):
+        return num(0)
+    if is_num(l, 1):
+        return r
+    if is_num(r, 1):
+        return l
+    if is_num(l, -1):
+        return simp(Expr.Neg(inner: r))
+    if is_num(r, -1):
+        return simp(Expr.Neg(inner: l))
+    if l == r:
+        return simp(Expr.Pow(base: l, exp: 2))
+    if rv.is_some():
+        return simp(Expr.Mul(left: r, right: l))
+    let ln = neg_inner(l)
+    let rn = neg_inner(r)
+    if ln.is_some() and rn.is_some():
+        return simp(Expr.Mul(left: ln.unwrap(), right: rn.unwrap()))
+    if ln.is_some():
+        return simp(Expr.Neg(inner: Expr.Mul(left: ln.unwrap(), right: r)))
+    if rn.is_some():
+        return simp(Expr.Neg(inner: Expr.Mul(left: l, right: rn.unwrap())))
+    let lp = pow_parts(l)
+    let rp = pow_parts(r)
+    if lp.is_some() and rp.is_some():
+        let a = lp.unwrap()
+        let b = rp.unwrap()
+        if a.base == b.base:
+            return simp(Expr.Pow(base: a.base, exp: a.exp + b.exp))
+    if lp.is_some():
+        let a = lp.unwrap()
+        if a.base == r:
+            return simp(Expr.Pow(base: r, exp: a.exp + 1))
+    if rp.is_some():
+        let b = rp.unwrap()
+        if b.base == l:
+            return simp(Expr.Pow(base: l, exp: b.exp + 1))
+    return Expr.Mul(left: l, right: r)
+
+fn rw_neg(x: Expr) -> Expr:
+    let v = num_value(x)
+    if v.is_some():
+        return num(0 - v.unwrap())
+    let inner = neg_inner(x)
+    if inner.is_some():
+        return inner.unwrap()
+    let s = sub_parts(x)
+    if s.is_some():
+        let parts = s.unwrap()
+        return simp(Expr.Sub(left: parts.second, right: parts.first))
+    return Expr.Neg(inner: x)
+
+fn rw_pow(b: Expr, n: Int) -> Expr:
+    if n == 0:
+        return num(1)
+    if n == 1:
+        return b
+    let v = num_value(b)
+    if v.is_some():
+        return num(int_pow(v.unwrap(), n))
+    let p = pow_parts(b)
+    if p.is_some():
+        let parts = p.unwrap()
+        return simp(Expr.Pow(base: parts.base, exp: parts.exp * n))
+    let inner = neg_inner(b)
+    if inner.is_some():
+        if n % 2 == 0:
+            return simp(Expr.Pow(base: inner.unwrap(), exp: n))
+        return simp(Expr.Neg(inner: Expr.Pow(base: inner.unwrap(), exp: n)))
+    return Expr.Pow(base: b, exp: n)
+
+fn show(e: Expr) -> String:
+    match e:
+        Num(value): return "{value}"
+        Var(name): return name
+        Add(l, r): return "(+ {show(l)} {show(r)})"
+        Sub(l, r): return "(- {show(l)} {show(r)})"
+        Mul(l, r): return "(* {show(l)} {show(r)})"
+        Neg(x): return "(neg {show(x)})"
+        Pow(b, n): return "(^ {show(b)} {n})"
+
+fn tokenize(line: String) -> List[String]:
+    let cs = line.scalar_values()
+    let toks = List[String]()
+    var i = 0
+    while i < cs.length():
+        let c = cs.at(i).unwrap()
+        if c == 32 or c == 9:
+            i = i + 1
+        else if c == 40 or c == 41:
+            toks.append(line.slice(i, i + 1))
+            i = i + 1
+        else:
+            var j = i
+            while j < cs.length():
+                let d = cs.at(j).unwrap()
+                if d == 32 or d == 9 or d == 40 or d == 41:
+                    break
+                j = j + 1
+            toks.append(line.slice(i, j))
+            i = j
+    return toks
+
+fn all_digits(s: String) -> Bool:
+    if s.is_empty():
+        return false
+    for c in s.scalar_values():
+        if c < 48 or c > 57:
+            return false
+    return true
+
+fn is_ident(s: String) -> Bool:
+    let cs = s.scalar_values()
+    if cs.is_empty():
+        return false
+    let first = cs.at(0).unwrap()
+    if first < 97 or first > 122:
+        return false
+    for c in cs:
+        let lower = c >= 97 and c <= 122
+        let digit = c >= 48 and c <= 57
+        if not (lower or digit or c == 95):
+            return false
+    return true
+
+fn atom(t: String) -> Result[Expr, String]:
+    var body = t
+    if t.starts_with("-"):
+        body = t.slice(1, t.length())
+    if all_digits(body):
+        let v = t.parse_int()
+        if v.is_none():
+            return error("syntax")
+        return ok(num(v.unwrap()))
+    if is_ident(t):
+        return ok(Expr.Var(name: t))
+    return error("syntax")
+
+fn next_token(p: Parser) -> Result[String, String]:
+    if p.pos >= p.toks.length():
+        return error("syntax")
+    let t = p.toks.at(p.pos).unwrap()
+    p.pos = p.pos + 1
+    return ok(t)
+
+fn valid_head(h: String) -> Bool:
+    return h == "+" or h == "-" or h == "*" or h == "neg" or h == "^"
+
+fn build(head: String, args: List[Expr], exp: Int) -> Result[Expr, String]:
+    let n = args.length()
+    if head == "neg" and n == 1:
+        return ok(Expr.Neg(inner: args.at(0).unwrap()))
+    if head == "^" and n == 1:
+        return ok(Expr.Pow(base: args.at(0).unwrap(), exp: exp))
+    if n == 2:
+        let a = args.at(0).unwrap()
+        let b = args.at(1).unwrap()
+        if head == "+":
+            return ok(Expr.Add(left: a, right: b))
+        if head == "-":
+            return ok(Expr.Sub(left: a, right: b))
+        if head == "*":
+            return ok(Expr.Mul(left: a, right: b))
+    return error("syntax")
+
+fn parse_form(p: Parser) -> Result[Expr, String]:
+    let head = try next_token(p)
+    if not valid_head(head):
+        return error("syntax")
+    let args = List[Expr]()
+    var exp = 0
+    var count = 0
+    while true:
+        if p.pos >= p.toks.length():
+            return error("syntax")
+        let cur = p.toks.at(p.pos).unwrap()
+        if cur == ")":
+            break
+        if head == "^" and count == 1:
+            p.pos = p.pos + 1
+            if not all_digits(cur):
+                return error("syntax")
+            let v = cur.parse_int()
+            if v.is_none():
+                return error("syntax")
+            exp = v.unwrap()
+        else:
+            args.append(try parse_expr(p))
+        count = count + 1
+    p.pos = p.pos + 1
+    if head == "^":
+        if count != 2:
+            return error("syntax")
+        return build(head, args, exp)
+    return build(head, args, 0)
+
+fn parse_expr(p: Parser) -> Result[Expr, String]:
+    let t = try next_token(p)
+    if t == ")":
+        return error("syntax")
+    if t != "(":
+        return atom(t)
+    return parse_form(p)
+
+fn run_line(line: String) -> String:
+    let p = Parser(toks: tokenize(line), pos: 0)
+    let parsed = parse_expr(p)
+    if parsed.is_error():
+        return "error: syntax"
+    if p.pos < p.toks.length():
+        return "error: syntax"
+    return show(simp(parsed.unwrap()))
+
+fn is_blank(line: String) -> Bool:
+    for c in line.scalar_values():
+        if c != 32 and c != 9:
+            return false
+    return true
+
+fn run() -> Result[Unit, Error]:
+    let out = StringBuilder()
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let line = next.unwrap()
+        if is_blank(line):
+            continue
+        out.append(run_line(line))
+        out.append("\n")
+    try stdout().write(out.freeze().to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

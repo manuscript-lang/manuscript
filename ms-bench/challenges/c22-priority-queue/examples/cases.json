@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "push 5 write\npush 1 plan\npush 5 test\npush 3 build\npop\npeek\nsize\ndrain\npop\n",
+  "stdout": "plan 1\nbuild 3\n3\nbuild 3\nwrite 5\ntest 5\nempty\n"
+ },
+ {
+  "name": "empty",
+  "stdin": "pop\npeek\nsize\ndrain\n",
+  "stdout": "empty\nempty\n0\nempty\n"
+ }
+]

@@ -15,7 +15,7 @@ func (c *checker) finiteTypeApplications() {
 			if d.Kind != syntax.KindRecord && d.Kind != "alternative" && d.Kind != syntax.KindInterface {
 				continue
 			}
-			symbol := c.Symbols[module.File][d.Name]
+			symbol := c.symbols[module.File][d.Name]
 			if symbol == nil || symbol.Decl != d {
 				continue
 			}

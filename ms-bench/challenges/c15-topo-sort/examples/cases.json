@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "deploy: build test\nbuild: compile\ntest: build\ncompile:\ndocs:\n",
+  "stdout": "compile\nbuild\ndocs\ntest\ndeploy\n"
+ },
+ {
+  "name": "cycle",
+  "stdin": "a: b\nb: c\nc: a\n",
+  "stdout": "cycle\n"
+ }
+]

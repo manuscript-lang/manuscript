@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "date,account,description,amount\n2024-01-05,checking,Payroll,\"2,500.00\"\n01/07/2024, checking ,\"Coffee, beans\",(12.40)\n2024-01-05,checking,Payroll,\"2,500.00\"\n2024-02-30,savings,Interest,1.20\n# a note\n2024-02-01,savings,Deposit,$300\n2024-02-02,savings,x\n",
+  "stdout": "transactions: 3\nduplicates: 1\nerrors: 2\naccounts:\n  checking balance=2,487.60 credits=2,500.00 debits=12.40 count=2\n  savings balance=300.00 credits=300.00 debits=0.00 count=1\nmonths:\n  2024-01 net=2,487.60\n  2024-02 net=300.00\nlargest: 2024-01-05 | checking | Payroll | 2,500.00\nerrors:\n  line 5: bad date\n  line 8: field count\n"
+ },
+ {
+  "name": "tiny",
+  "stdin": "date,account,description,amount\n2024-03-01,a,x,1\n2024-03-02,a,y,-1.5\n",
+  "stdout": "transactions: 2\nduplicates: 0\nerrors: 0\naccounts:\n  a balance=-0.50 credits=1.00 debits=1.50 count=2\nmonths:\n  2024-03 net=-0.50\nlargest: 2024-03-02 | a | y | -1.50\n"
+ }
+]

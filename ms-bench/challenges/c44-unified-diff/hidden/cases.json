@@ -1,0 +1,112 @@
+[
+ {
+  "name": "basic",
+  "stdin": "old.txt new.txt 1 6 6\none\ntwo\nthree\nfour\nfive\nsix\none\ntwo\n3\nfour\nfive\nseven\n",
+  "stdout": "--- old.txt\n+++ new.txt\n@@ -2,5 +2,5 @@\n two\n-three\n+3\n four\n five\n-six\n+seven\n"
+ },
+ {
+  "name": "identical",
+  "stdin": "a.txt b.txt 3 20 20\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\n",
+  "stdout": ""
+ },
+ {
+  "name": "both-empty",
+  "stdin": "a.txt b.txt 3 0 0\n",
+  "stdout": ""
+ },
+ {
+  "name": "a-empty",
+  "stdin": "a.txt b.txt 3 0 3\nx\ny\nz\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -0,0 +1,3 @@\n+x\n+y\n+z\n"
+ },
+ {
+  "name": "b-empty",
+  "stdin": "a.txt b.txt 3 3 0\nx\ny\nz\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1,3 +0,0 @@\n-x\n-y\n-z\n"
+ },
+ {
+  "name": "single-middle",
+  "stdin": "a.txt b.txt 3 40 40\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nCHANGED\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -17,7 +17,7 @@\n line 17\n line 18\n line 19\n-line 20\n+CHANGED\n line 21\n line 22\n line 23\n"
+ },
+ {
+  "name": "start-and-end",
+  "stdin": "a.txt b.txt 3 40 41\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nnew first\nline 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nnew last\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1,3 +1,4 @@\n+new first\n line 1\n line 2\n line 3\n@@ -37,4 +38,4 @@\n line 37\n line 38\n line 39\n-line 40\n+new last\n"
+ },
+ {
+  "name": "gap-exactly-2c",
+  "stdin": "a.txt b.txt 3 20 20\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\nl1\nl2\nl3\nl4\nX\nl6\nl7\nl8\nl9\nl10\nl11\nY\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -2,14 +2,14 @@\n l2\n l3\n l4\n-l5\n+X\n l6\n l7\n l8\n l9\n l10\n l11\n-l12\n+Y\n l13\n l14\n l15\n"
+ },
+ {
+  "name": "gap-2c-plus-1",
+  "stdin": "a.txt b.txt 3 20 20\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\nl1\nl2\nl3\nl4\nX\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nY\nl14\nl15\nl16\nl17\nl18\nl19\nl20\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -2,7 +2,7 @@\n l2\n l3\n l4\n-l5\n+X\n l6\n l7\n l8\n@@ -10,7 +10,7 @@\n l10\n l11\n l12\n-l13\n+Y\n l14\n l15\n l16\n"
+ },
+ {
+  "name": "context-0",
+  "stdin": "a.txt b.txt 0 20 20\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\nl1\nl2\nA\nB\nl5\nl6\nl7\nl8\nl9\nC\nl11\nl12\nl13\nl14\nl15\nD\nl17\nl18\nl19\nl20\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -3,2 +3,2 @@\n-l3\n-l4\n+A\n+B\n@@ -10 +10 @@\n-l10\n+C\n@@ -16 +16 @@\n-l16\n+D\n"
+ },
+ {
+  "name": "context-0-ins-del",
+  "stdin": "a.txt b.txt 0 4 6\na\nb\nc\nd\na\nx\ny\nc\nd\ne\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -2 +2,2 @@\n-b\n+x\n+y\n@@ -4,0 +6 @@\n+e\n"
+ },
+ {
+  "name": "context-1",
+  "stdin": "a.txt b.txt 1 20 20\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\nS\nl2\nT\nl4\nl5\nU\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nV\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1,7 +1,7 @@\n-l1\n+S\n l2\n-l3\n+T\n l4\n l5\n-l6\n+U\n l7\n@@ -19,2 +19,2 @@\n l19\n-l20\n+V\n"
+ },
+ {
+  "name": "context-huge",
+  "stdin": "a.txt b.txt 100 20 20\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\nl1\nl2\nA\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nB\nl19\nl20\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1,20 +1,20 @@\n l1\n l2\n-l3\n+A\n l4\n l5\n l6\n l7\n l8\n l9\n l10\n l11\n l12\n l13\n l14\n l15\n l16\n l17\n-l18\n+B\n l19\n l20\n"
+ },
+ {
+  "name": "pure-insert-delete",
+  "stdin": "a.txt b.txt 2 20 20\nl1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\nl1\nl2\nl3\nl4\nl5\ni1\ni2\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl15\nl16\nl17\nl18\nl19\nl20\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -4,4 +4,6 @@\n l4\n l5\n+i1\n+i2\n l6\n l7\n@@ -11,6 +13,4 @@\n l11\n l12\n-l13\n-l14\n l15\n l16\n"
+ },
+ {
+  "name": "repeated-tiebreak",
+  "stdin": "a.txt b.txt 1 5 3\na\na\nb\na\na\na\nb\na\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1,5 +1,3 @@\n a\n-a\n b\n a\n-a\n"
+ },
+ {
+  "name": "repeated-tiebreak-2",
+  "stdin": "a.txt b.txt 0 5 5\nx\ny\nx\ny\nx\ny\nx\ny\nx\ny\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1 +0,0 @@\n-x\n@@ -5,0 +5 @@\n+y\n"
+ },
+ {
+  "name": "swap-blocks",
+  "stdin": "a.txt b.txt 1 6 6\np\nq\nr\ns\nt\nu\nt\nu\nr\ns\np\nq\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1,6 +1,6 @@\n-p\n-q\n-r\n-s\n t\n u\n+r\n+s\n+p\n+q\n"
+ },
+ {
+  "name": "odd-lines",
+  "stdin": "x z 2 8 8\n\n \n- dash\n+ plus\n@@ -1 +1 @@\n--- hdr\n  two  \ntab\there\n\n- dash\n+ plus!\n@@ -1 +1 @@\n+++ hdr\n  two  \ntab\there\n\n",
+  "stdout": "--- x\n+++ z\n@@ -1,8 +1,8 @@\n \n- \n - dash\n-+ plus\n++ plus!\n @@ -1 +1 @@\n---- hdr\n++++ hdr\n   two  \n tab\there\n+\n"
+ },
+ {
+  "name": "single-line-files",
+  "stdin": "a.txt b.txt 3 1 1\nonly\nother\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1 +1 @@\n-only\n+other\n"
+ },
+ {
+  "name": "single-line-same-ctx",
+  "stdin": "a.txt b.txt 3 1 2\nsame\nsame\nadded\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1 +1,2 @@\n same\n+added\n"
+ },
+ {
+  "name": "random-small",
+  "stdin": "a.txt b.txt 2 25 26\nkappa\n \ntrailing \n  indented\n--- x\nbeta\n  indented\niota\ngamma\nbeta\ngamma\n \n  indented\n--- x\nalpha\ntrailing \n \n@@ -1 +1 @@\n  indented\nzeta\nalpha\nzeta\niota\n@@ -1 +1 @@\n- dash\n\nkappa\n \n  indented\n--- x\nbeta\n  indented\niota\nbeta\nalpha\n \n  indented\n--- x\nalpha\niota\ntrailing \n \n@@ -1 +1 @@\n  indented\nzeta\niota\nalpha\nzeta\niota\n@@ -1 +1 @@\n- dash\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -1,5 +1,5 @@\n+\n kappa\n  \n-trailing \n   indented\n --- x\n@@ -7,11 +7,11 @@\n   indented\n iota\n-gamma\n beta\n-gamma\n+alpha\n  \n   indented\n --- x\n alpha\n+iota\n trailing \n  \n@@ -19,4 +19,5 @@\n   indented\n zeta\n+iota\n alpha\n zeta\n"
+ },
+ {
+  "name": "random-large",
+  "stdin": "a.txt b.txt 3 280 275\n- dash\n--- x\n \ndelta\nzeta\ntrailing \ntheta\nkappa\nalpha\ntheta\ndelta\na b  c\nalpha\ndelta\nzeta\n--- x\nkappa\ntrailing \na b  c\ntrailing \n\n  indented\ngamma\n\nkappa\nzeta\ndelta\n--- x\ngamma\na b  c\ndelta\niota\n\ndelta\nkappa\nbeta\n  indented\ntrailing \ndelta\n@@ -1 +1 @@\n@@ -1 +1 @@\neta\neta\neps\niota\ntheta\nbeta\nbeta\n- dash\nbeta\n\n  indented\n@@ -1 +1 @@\n+ plus\na b  c\n \neps\ntheta\n@@ -1 +1 @@\n+ plus\n  indented\nbeta\niota\nzeta\nalpha\ntheta\nalpha\na b  c\n \n \nkappa\n  indented\na b  c\neta\ntrailing \ndelta\n  indented\n\ndelta\ntheta\nbeta\n- dash\nbeta\n@@ -1 +1 @@\ndelta\neps\nzeta\nalpha\nkappa\ngamma\niota\ngamma\nalpha\n- dash\niota\nzeta\n--- x\neta\nbeta\niota\n@@ -1 +1 @@\niota\ngamma\n--- x\n\n \n@@ -1 +1 @@\ngamma\nkappa\n@@ -1 +1 @@\nkappa\ntrailing \ntrailing \nkappa\n \n+ plus\ngamma\n\niota\neps\neps\neps\ngamma\n+ plus\ntrailing \n  indented\n+ plus\ngamma\niota\na b  c\neps\niota\n \n--- x\n  indented\ntheta\nbeta\ntheta\n \n@@ -1 +1 @@\ngamma\n--- x\niota\n- dash\neps\n+ plus\niota\neps\ntheta\n  indented\n--- x\ndelta\n\n\n@@ -1 +1 @@\neps\nalpha\ngamma\ntrailing \ntrailing \ntrailing \na b  c\n--- x\n+ plus\ntheta\ntheta\nzeta\neps\nalpha\n\nkappa\nalpha\n \neta\neps\nzeta\neta\n \nalpha\ngamma\ndelta\ndelta\ntrailing \n \n--- x\nbeta\nkappa\ntrailing \neps\niota\nzeta\ngamma\n\n \na b  c\n\nkappa\nalpha\nbeta\neta\ndelta\neta\nalpha\nzeta\ngamma\nzeta\n \ndelta\nzeta\n- dash\niota\ntrailing \n  indented\ntheta\na b  c\niota\neps\nkappa\niota\ntrailing \nzeta\nzeta\n@@ -1 +1 @@\nzeta\nkappa\n+ plus\n@@ -1 +1 @@\n@@ -1 +1 @@\nkappa\nkappa\na b  c\n+ plus\n@@ -1 +1 @@\ntrailing \n@@ -1 +1 @@\n+ plus\ndelta\niota\na b  c\neta\niota\ntheta\n@@ -1 +1 @@\nzeta\n  indented\nbeta\n  indented\ntheta\n- dash\n- dash\nkappa\nbeta\niota\n \n- dash\ndelta\nalpha\ntheta\n \nkappa\nalpha\nzeta\neta\n\n\n+ plus\n@@ -1 +1 @@\nalpha\na b  c\na b  c\nbeta\nkappa\nzeta\ntheta\na b  c\n\nalpha\n  indented\nzeta\nbeta\n- dash\n--- x\n \ndelta\nzeta\ntrailing \ntheta\nalpha\ntheta\ndelta\na b  c\nalpha\n\ndelta\nzeta\n--- x\nkappa\ntrailing \na b  c\ntrailing \n\n  indented\nalpha\ngamma\n\nkappa\nzeta\ntrailing \nbeta\n--- x\ngamma\na b  c\ndelta\niota\n\ndelta\nkappa\nbeta\n  indented\nkappa\ndelta\n@@ -1 +1 @@\neta\neta\neps\niota\ndelta\ntheta\nbeta\nbeta\n- dash\nbeta\n\n  indented\n@@ -1 +1 @@\n+ plus\na b  c\n \neps\ntheta\n@@ -1 +1 @@\n+ plus\n  indented\nbeta\niota\nzeta\nalpha\neta\nalpha\na b  c\n \n \nkappa\n  indented\na b  c\neta\ntrailing \ndelta\n  indented\n\nbeta\ndelta\ntheta\nbeta\n- dash\nbeta\n+ plus\n@@ -1 +1 @@\ndelta\neps\nzeta\nalpha\nkappa\ngamma\niota\ngamma\nalpha\n- dash\nzeta\n--- x\neta\nbeta\niota\n@@ -1 +1 @@\niota\ngamma\n--- x\n+ plus\n\n \n@@ -1 +1 @@\ngamma\nkappa\na b  c\nkappa\ntrailing \nkappa\n \n+ plus\ngamma\niota\neps\neps\ntheta\neps\ngamma\n+ plus\ntrailing \n  indented\n+ plus\ngamma\niota\na b  c\neps\niota\n \n--- x\n  indented\ntheta\nbeta\n \ngamma\n--- x\niota\n- dash\neps\na b  c\niota\neps\ntheta\n  indented\n--- x\ndelta\n\na b  c\ntheta\neps\nalpha\ngamma\ntrailing \ntrailing \ntrailing \na b  c\n- dash\n+ plus\ntheta\ntheta\nzeta\nalpha\n+ plus\nkappa\nalpha\n \neps\nzeta\neta\n \nalpha\ngamma\ndelta\ndelta\ntrailing \ngamma\n \n--- x\nbeta\nkappa\ntrailing \neps\niota\nzeta\ngamma\n\n \na b  c\n\nkappa\nalpha\nbeta\neta\n\nalpha\ngamma\nzeta\n \ndelta\nzeta\n- dash\niota\ntrailing \n  indented\ntheta\na b  c\niota\neps\nkappa\niota\ntrailing \nzeta\nzeta\n@@ -1 +1 @@\nzeta\nkappa\n+ plus\n@@ -1 +1 @@\ntrailing \nkappa\nkappa\na b  c\n+ plus\n@@ -1 +1 @@\ntrailing \n@@ -1 +1 @@\n+ plus\ndelta\niota\na b  c\neta\niota\ntheta\n@@ -1 +1 @@\nbeta\nbeta\n  indented\ntheta\n- dash\n- dash\nkappa\nkappa\nbeta\niota\n \ndelta\ndelta\nalpha\ntheta\n \nalpha\nzeta\neta\neta\n\n+ plus\n@@ -1 +1 @@\nalpha\ntrailing \na b  c\nbeta\nkappa\na b  c\n\nalpha\n  indented\niota\nbeta\n",
+  "stdout": "--- a.txt\n+++ b.txt\n@@ -5,12 +5,12 @@\n zeta\n trailing \n theta\n-kappa\n alpha\n theta\n delta\n a b  c\n alpha\n+\n delta\n zeta\n --- x\n@@ -20,11 +20,13 @@\n trailing \n \n   indented\n+alpha\n gamma\n \n kappa\n zeta\n-delta\n+trailing \n+beta\n --- x\n gamma\n a b  c\n@@ -35,14 +37,14 @@\n kappa\n beta\n   indented\n-trailing \n+kappa\n delta\n @@ -1 +1 @@\n-@@ -1 +1 @@\n eta\n eta\n eps\n iota\n+delta\n theta\n beta\n beta\n@@ -63,7 +65,7 @@\n iota\n zeta\n alpha\n-theta\n+eta\n alpha\n a b  c\n  \n@@ -76,11 +78,13 @@\n delta\n   indented\n \n+beta\n delta\n theta\n beta\n - dash\n beta\n++ plus\n @@ -1 +1 @@\n delta\n eps\n@@ -92,7 +96,6 @@\n gamma\n alpha\n - dash\n-iota\n zeta\n --- x\n eta\n@@ -102,23 +105,23 @@\n iota\n gamma\n --- x\n++ plus\n \n  \n @@ -1 +1 @@\n gamma\n kappa\n-@@ -1 +1 @@\n+a b  c\n kappa\n trailing \n-trailing \n kappa\n  \n + plus\n gamma\n-\n iota\n eps\n eps\n+theta\n eps\n gamma\n + plus\n@@ -135,15 +138,13 @@\n   indented\n theta\n beta\n-theta\n  \n-@@ -1 +1 @@\n gamma\n --- x\n iota\n - dash\n eps\n-+ plus\n+a b  c\n iota\n eps\n theta\n@@ -151,8 +152,8 @@\n --- x\n delta\n \n-\n-@@ -1 +1 @@\n+a b  c\n+theta\n eps\n alpha\n gamma\n@@ -160,18 +161,16 @@\n trailing \n trailing \n a b  c\n---- x\n+- dash\n + plus\n theta\n theta\n zeta\n-eps\n alpha\n-\n++ plus\n kappa\n alpha\n  \n-eta\n eps\n zeta\n eta\n@@ -181,6 +180,7 @@\n delta\n delta\n trailing \n+gamma\n  \n --- x\n beta\n@@ -198,10 +198,8 @@\n alpha\n beta\n eta\n-delta\n-eta\n+\n alpha\n-zeta\n gamma\n zeta\n  \n@@ -225,7 +223,7 @@\n kappa\n + plus\n @@ -1 +1 @@\n-@@ -1 +1 @@\n+trailing \n kappa\n kappa\n a b  c\n@@ -241,40 +239,37 @@\n iota\n theta\n @@ -1 +1 @@\n-zeta\n-  indented\n beta\n+beta\n   indented\n theta\n - dash\n - dash\n kappa\n+kappa\n beta\n iota\n  \n-- dash\n delta\n+delta\n alpha\n theta\n  \n-kappa\n alpha\n zeta\n eta\n-\n+eta\n \n + plus\n @@ -1 +1 @@\n alpha\n-a b  c\n+trailing \n a b  c\n beta\n kappa\n-zeta\n-theta\n a b  c\n \n alpha\n   indented\n-zeta\n+iota\n beta\n"
+ }
+]

@@ -135,7 +135,7 @@ func compile(graph frontend.Graph, options Options, kind BuildType) Result {
 }
 
 func checkEntry(program *checker.Program, entry string) *syntax.Diagnostic {
-	main := program.Symbols[entry]["main"]
+	main := program.Symbol(entry, "main")
 	if main != nil && main.Export && main.Kind == syntax.KindFn && len(main.Variables) == 0 && len(main.Type.Params) == 0 && main.Type.Result.ID == "Int" {
 		return nil
 	}

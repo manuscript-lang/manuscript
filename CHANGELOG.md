@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Reduce optimized native compilation work for large List literals with fresh typed data and ordered sized initialization. Check nested List/Map literals without repeatedly rebuilding child evidence, and report unresolved nested empty elements at their leaf. Int/Float retain 64-bit defaults, aliasing/effects and strict Result slicing stay unchanged, and project build pins need regeneration after upgrading.
+- Fix Map and Set lookups after removing the last remaining key: a stale key index made later distinct keys share one entry (#316).
 - Add receiver-returning `Map.remove` and `List.splice` aliases, preserving legacy lookup, insertion order, strict splice bounds and faults; extend native dispatch, mutation analysis and preferred-name advisories.
 - Add `String.replace_n` with a required finite replacement cap and the existing literal/scalar, zero/negative and fault behavior; current `replace`/`replace_first` signatures remain compatible.
 - Warn with MSL107 for nested matches and keep repository examples and implementation flat, using early-exit payload bindings, compatible `try`, or small helpers. Nested matches remain valid syntax; repository checks allow deliberate, scoped syntax and semantics regressions.

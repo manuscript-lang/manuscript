@@ -41,14 +41,14 @@ func TestNestedLiteralInferenceRetainsCheckedChildren(t *testing.T) {
 				}
 				value := module.Declarations[0].Body[0].Value
 				for range depth {
-					info := program.Expressions[value]
+					info := program.Info(value)
 					child := value.Elements[0]
-					if info == nil || info.Type.ID != "@std/List" || len(info.Type.Args) != 1 || info.Type.Args[0] != program.Expressions[child].Type {
+					if info == nil || info.Type.ID != "@std/List" || len(info.Type.Args) != 1 || info.Type.Args[0] != program.Info(child).Type {
 						t.Fatal("nested inference lost its checked child identity")
 					}
 					value = child
 				}
-				if program.Expressions[value].Type.ID != "Int" {
+				if program.Info(value).Type.ID != "Int" {
 					t.Fatal("lost leaf type")
 				}
 			}
@@ -81,7 +81,7 @@ func TestNestedEmptyLiteralReportsMissingLeafContextOnce(t *testing.T) {
 	if len(program.Diagnostics) != 1 || !strings.HasPrefix(program.Diagnostics[0].Message, "cannot infer list element type;") || program.Diagnostics[0].Position != leaf.Pos {
 		t.Fatalf("expected one leaf inference diagnostic, got %v", program.Diagnostics)
 	}
-	if program.Expressions[leaf] == nil {
+	if program.Info(leaf) == nil {
 		t.Fatal("missing checked leaf")
 	}
 }
@@ -145,9 +145,9 @@ func TestNestedMapLiteralInferenceAllocationGrowth(t *testing.T) {
 			}
 			current := value
 			for range depth {
-				info := program.Expressions[current]
+				info := program.Info(current)
 				child := current.Elements[1]
-				if info.Type.ID != "@std/Map" || info.Type.Args[0].ID != "Int" || info.Type.Args[1] != program.Expressions[child].Type {
+				if info.Type.ID != "@std/Map" || info.Type.Args[0].ID != "Int" || info.Type.Args[1] != program.Info(child).Type {
 					t.Fatal("nested map lost its checked child identity")
 				}
 				current = child

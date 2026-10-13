@@ -1,0 +1,136 @@
+import { readFileSync } from "node:fs";
+
+const trimBlanks = (s: string) => s.replace(/^[ \t]+|[ \t]+$/g, "");
+
+function splitFields(line: string): string[] {
+  const fields: string[] = [];
+  let i = 0;
+  const n = line.length;
+  for (;;) {
+    if (i < n && line[i] === '"') {
+      i++;
+      let buf = "";
+      while (i < n) {
+        if (line[i] === '"') {
+          if (i + 1 < n && line[i + 1] === '"') { buf += '"'; i += 2; continue; }
+          i++;
+          break;
+        }
+        buf += line[i++];
+      }
+      fields.push(buf);
+    } else {
+      let j = line.indexOf(",", i);
+      if (j < 0) j = n;
+      fields.push(line.slice(i, j));
+      i = j;
+    }
+    if (i < n && line[i] === ",") {
+      i++;
+      if (i === n) { fields.push(""); break; }
+      continue;
+    }
+    break;
+  }
+  return fields.map(trimBlanks);
+}
+
+const isLeap = (y: number) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+
+function parseDate(s: string): string | null {
+  let y: number, m: number, d: number;
+  let r = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(s);
+  if (r) { y = +r[1]; m = +r[2]; d = +r[3]; }
+  else {
+    r = /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})$/.exec(s);
+    if (!r) return null;
+    m = +r[1]; d = +r[2]; y = +r[3];
+  }
+  if (m < 1 || m > 12) return null;
+  const dim = [31, isLeap(y) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+  if (d < 1 || d > dim) return null;
+  const p = (v: number, w: number) => String(v).padStart(w, "0");
+  return `${p(y, 4)}-${p(m, 2)}-${p(d, 2)}`;
+}
+
+function parseAmount(input: string): number | null {
+  let s = input;
+  let neg = false;
+  if (s.length >= 2 && s[0] === "(" && s[s.length - 1] === ")") {
+    neg = true;
+    s = s.slice(1, -1);
+    if (s.startsWith("-")) return null;
+  } else if (s.startsWith("-")) {
+    neg = true;
+    s = s.slice(1);
+  }
+  if (s.startsWith("$")) s = s.slice(1);
+  const m = /^((?:[0-9]{1,3}(?:,[0-9]{3})+)|[0-9]+)(?:\.([0-9]{1,2}))?$/.exec(s);
+  if (!m) return null;
+  const whole = m[1].replace(/,/g, "");
+  const frac = (m[2] ?? "").padEnd(2, "0");
+  if (whole.length + (m[2] ?? "").length > 12) return null;
+  const cents = parseInt(whole, 10) * 100 + parseInt(frac || "0", 10);
+  return neg ? -cents : cents;
+}
+
+function money(c: number): string {
+  const a = Math.abs(c);
+  const whole = String(Math.floor(a / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${c < 0 ? "-" : ""}${whole}.${String(a % 100).padStart(2, "0")}`;
+}
+
+type Tx = { date: string; account: string; desc: string; amount: number };
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+let sawHeader = false;
+const seen = new Set<string>();
+const txs: Tx[] = [];
+const errs: string[] = [];
+let dups = 0;
+lines.forEach((line, idx) => {
+  const t = trimBlanks(line);
+  if (t === "" || t[0] === "#") return;
+  if (!sawHeader) { sawHeader = true; return; }
+  const n = idx + 1;
+  const f = splitFields(line);
+  if (f.length !== 4) { errs.push(`line ${n}: field count`); return; }
+  const date = parseDate(f[0]);
+  if (date === null) { errs.push(`line ${n}: bad date`); return; }
+  if (f[1] === "") { errs.push(`line ${n}: bad account`); return; }
+  const amount = parseAmount(f[3]);
+  if (amount === null) { errs.push(`line ${n}: bad amount`); return; }
+  const key = JSON.stringify([date, f[1], f[2], amount]);
+  if (seen.has(key)) { dups++; return; }
+  seen.add(key);
+  txs.push({ date, account: f[1], desc: f[2], amount });
+});
+
+type Acc = { balance: number; credits: number; debits: number; count: number };
+const accounts = new Map<string, Acc>();
+const months = new Map<string, number>();
+for (const t of txs) {
+  const a = accounts.get(t.account) ?? { balance: 0, credits: 0, debits: 0, count: 0 };
+  a.balance += t.amount;
+  a.count++;
+  if (t.amount > 0) a.credits += t.amount;
+  if (t.amount < 0) a.debits -= t.amount;
+  accounts.set(t.account, a);
+  const mk = t.date.slice(0, 7);
+  months.set(mk, (months.get(mk) ?? 0) + t.amount);
+}
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+const out = [`transactions: ${txs.length}`, `duplicates: ${dups}`, `errors: ${errs.length}`, "accounts:"];
+for (const name of [...accounts.keys()].sort(cmp)) {
+  const a = accounts.get(name)!;
+  out.push(`  ${name} balance=${money(a.balance)} credits=${money(a.credits)} debits=${money(a.debits)} count=${a.count}`);
+}
+out.push("months:");
+for (const m of [...months.keys()].sort(cmp)) out.push(`  ${m} net=${money(months.get(m)!)}`);
+if (txs.length > 0) {
+  let best = txs[0];
+  for (const t of txs) if (Math.abs(t.amount) > Math.abs(best.amount)) best = t;
+  out.push(`largest: ${best.date} | ${best.account} | ${best.desc} | ${money(best.amount)}`);
+}
+if (errs.length > 0) out.push("errors:", ...errs.map((e) => "  " + e));
+process.stdout.write(out.map((l) => l + "\n").join(""));

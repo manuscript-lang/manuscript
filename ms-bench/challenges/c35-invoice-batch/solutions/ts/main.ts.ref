@@ -1,0 +1,97 @@
+import { readFileSync } from "node:fs";
+
+const trim = (s: string) => s.replace(/^[ \t]+|[ \t]+$/g, "");
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+const fmt = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
+const roundDiv = (a: number, b: number) => Math.floor((a + b / 2) / b);
+
+function money(s: string): number | null {
+  const m = /^([0-9]{1,5})(?:\.([0-9]{1,2}))?$/.exec(s);
+  if (!m) return null;
+  return parseInt(m[1], 10) * 100 + parseInt((m[2] ?? "").padEnd(2, "0") || "0", 10);
+}
+
+function basisPoints(s: string): number | null {
+  const m = /^([0-9]{1,3})(?:\.([0-9]{1,2}))?$/.exec(s);
+  if (!m) return null;
+  const bp = parseInt(m[1], 10) * 100 + parseInt((m[2] ?? "").padEnd(2, "0") || "0", 10);
+  return bp <= 10000 ? bp : null;
+}
+
+type Product = { name: string; price: number; cls: string };
+type Item = { sku: string; name: string; qty: number; price: number; net: number; discount: number; tax: number };
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+let section: "c" | "p" | "o" | null = null;
+const rates = new Map<string, number>();
+let ship: [number, number] | null = null;
+const catalog = new Map<string, Product>();
+const orders: { customer: string; sku: string; qty: number; pct: number }[] = [];
+const problems: string[] = [];
+lines.forEach((raw, idx) => {
+  const n = idx + 1;
+  const l = trim(raw);
+  if (l === "" || l[0] === "#") return;
+  if (l[0] === "[") {
+    section = l === "[config]" ? "c" : l === "[catalog]" ? "p" : l === "[orders]" ? "o" : null;
+    if (section === null) problems.push(`line ${n}: unknown section`);
+    return;
+  }
+  if (section === "c") {
+    const t = l.split(/[ \t]+/);
+    if (t[0] === "tax" && t.length === 3 && basisPoints(t[2]) !== null) rates.set(t[1], basisPoints(t[2])!);
+    else if (t[0] === "shipping" && t.length === 3 && money(t[1]) !== null && money(t[2]) !== null) ship = [money(t[1])!, money(t[2])!];
+    else problems.push(`line ${n}: bad config`);
+  } else if (section === "p") {
+    const p = l.split("|").map(trim);
+    const price = p.length === 4 ? money(p[2]) : null;
+    if (p.length !== 4 || p[0] === "" || /[ \t]/.test(p[0]) || p[1] === "" || p[3] === "" || price === null) {
+      problems.push(`line ${n}: bad product`);
+      return;
+    }
+    if (catalog.has(p[0])) { problems.push(`line ${n}: duplicate sku`); return; }
+    catalog.set(p[0], { name: p[1], price, cls: p[3] });
+  } else if (section === "o") {
+    const p = l.split("|").map(trim);
+    if ((p.length !== 3 && p.length !== 4) || p[0] === "") { problems.push(`line ${n}: bad order`); return; }
+    if (!/^[0-9]{1,4}$/.test(p[2]) || parseInt(p[2], 10) < 1) { problems.push(`line ${n}: bad quantity`); return; }
+    let pct = 0;
+    if (p.length === 4) {
+      if (!/^[0-9]{1,3}$/.test(p[3]) || parseInt(p[3], 10) > 100) { problems.push(`line ${n}: bad discount`); return; }
+      pct = parseInt(p[3], 10);
+    }
+    if (!catalog.has(p[1])) { problems.push(`line ${n}: unknown sku`); return; }
+    orders.push({ customer: p[0], sku: p[1], qty: parseInt(p[2], 10), pct });
+  }
+});
+
+const invoices = new Map<string, Item[]>();
+for (const o of orders) {
+  const prod = catalog.get(o.sku)!;
+  const gross = prod.price * o.qty;
+  const discount = roundDiv(gross * o.pct, 100);
+  const net = gross - discount;
+  const tax = roundDiv(net * (rates.get(prod.cls) ?? 0), 10000);
+  if (!invoices.has(o.customer)) invoices.set(o.customer, []);
+  invoices.get(o.customer)!.push({ sku: o.sku, name: prod.name, qty: o.qty, price: prod.price, net, discount, tax });
+}
+
+const out: string[] = [];
+let grand = 0;
+for (const customer of [...invoices.keys()].sort(cmp)) {
+  out.push(`INVOICE ${customer}`);
+  let subtotal = 0, tax = 0;
+  for (const it of invoices.get(customer)!) {
+    out.push(`  ${it.sku} ${it.name} x${it.qty} @ ${fmt(it.price)} = ${fmt(it.net)}` + (it.discount > 0 ? ` (-${fmt(it.discount)} discount)` : ""));
+    subtotal += it.net;
+    tax += it.tax;
+  }
+  const shipping = ship !== null && subtotal < ship[1] ? ship[0] : 0;
+  const total = subtotal + tax + shipping;
+  grand += total;
+  out.push(`  subtotal ${fmt(subtotal)}`, `  tax ${fmt(tax)}`, `  shipping ${fmt(shipping)}`, `  total ${fmt(total)}`);
+}
+out.push(`summary: invoices=${invoices.size} grand_total=${fmt(grand)} problems=${problems.length}`);
+if (problems.length > 0) out.push("problems:", ...problems.map((p) => "  " + p));
+process.stdout.write(out.map((l) => l + "\n").join(""));

@@ -58,7 +58,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/lexer/` | Tokenization and layout in `lexer.go`; original-position checks in `lexer_test.go` |
 | `pkg/parser/` | Strict source parsing in `parser.go`; editor recovery in `partial.go` |
 | `pkg/frontend/` | Shared parsing and in-memory AST loading in `source.go`; project/module graph loading, canonical snapshots, and import diagnostics in `modules.go` |
-| `pkg/checker/` | Checking entry point in `checker.go`; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
+| `pkg/checker/` | Checking entry point and per-module passes (imports, names, type variables, signatures, defaults, bodies) in `checker.go`; expression kinds in `expressions.go`; calls, contracts, recursion, effects, standard loading, editor queries, and declaration documentation in focused files |
 | `pkg/project/` | Manifest parsing in `manifest.go`; confined import and overlay resolution in `paths.go` |
 | `pkg/compiler/` | Source-to-checked-program pipeline in `compiler.go` (frontend, checker, entry validation, then `lower.Go`); build kinds in `build_type.go`. It never touches native tools |
 | `pkg/lower/` | Checked program to Go source: optimization facts in `optimize.go`; module assembly in `generate.go`; lowering in `lower_*.go`; Go AST builders and printing in `go_ast.go` and `print_go.go`. It consumes only checker identities |

@@ -72,7 +72,7 @@ func (g *generator) literalListData(e *syntax.Expression, typ *checker.Type) ast
 // can strand source markers or captures. Checked identities establish the exact
 // representation, and numeric parsing uses the current Int64/binary64 contract.
 func (g *generator) literalDataScalar(e *syntax.Expression, expected string) (ast.Expr, bool) {
-	info := g.program.Expressions[e]
+	info := g.program.Info(e)
 	if info == nil || info.ErrorSource != nil || info.Type.Kind != "primitive" || info.Type.ID != expected {
 		return nil, false
 	}

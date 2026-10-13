@@ -123,6 +123,8 @@ var ReceiverBindings = map[string]map[string]string{
 		"filter":            "collections/map_filter",
 		"with_default":      "collections/map_with_default",
 		"with_default_from": "collections/map_with_default_from",
+		"add_default":       "collections/map_add_default",
+		"add_default_from":  "collections/map_add_default_from",
 		"clear":             "collections/map_clear",
 		"keys":              "collections/map_keys",
 		"values":            "collections/map_values",

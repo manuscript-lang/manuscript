@@ -1,0 +1,129 @@
+import { readFileSync } from "node:fs";
+
+type Scalar = { k: "s"; v: string } | { k: "i"; v: number } | { k: "b"; v: boolean };
+type Val = Scalar | { k: "l"; v: Scalar[] };
+
+const KEY = /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)*$/;
+const INT = /^-?[0-9]{1,15}$/;
+const trim = (s: string) => s.replace(/^[ \t]+|[ \t]+$/g, "");
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+function scalar(p: string): Scalar {
+  if (p === "true" || p === "false") return { k: "b", v: p === "true" };
+  if (INT.test(p)) return { k: "i", v: parseInt(p, 10) };
+  if (p.length >= 2 && p[0] === '"' && p[p.length - 1] === '"') return { k: "s", v: p.slice(1, -1) };
+  return { k: "s", v: p };
+}
+
+function parseValue(v: string): Val | null {
+  if (v === "true" || v === "false" || INT.test(v)) return scalar(v);
+  if (v.startsWith('"')) {
+    let out = "";
+    let i = 1;
+    while (i < v.length) {
+      const c = v[i];
+      if (c === "\\" && i + 1 < v.length && (v[i + 1] === '"' || v[i + 1] === "\\")) { out += v[i + 1]; i += 2; continue; }
+      if (c === '"') return i === v.length - 1 ? { k: "s", v: out } : null;
+      out += c;
+      i++;
+    }
+    return null;
+  }
+  if (v.startsWith("[")) {
+    if (!v.endsWith("]") || v.length < 2) return null;
+    const inner = v.slice(1, -1);
+    if (trim(inner) === "") return { k: "l", v: [] };
+    const items: Scalar[] = [];
+    for (const piece of inner.split(",")) {
+      const p = trim(piece);
+      if (p === "") return null;
+      items.push(scalar(p));
+    }
+    return { k: "l", v: items };
+  }
+  return { k: "s", v };
+}
+
+function plain(v: Val): string {
+  if (v.k === "s") return v.v;
+  if (v.k === "i") return String(v.v);
+  if (v.k === "b") return v.v ? "true" : "false";
+  return v.v.map(plain).join(",");
+}
+
+function render(v: Val): string {
+  if (v.k === "s") return '"' + v.v.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+  if (v.k === "l") return "[" + v.v.map(render).join(", ") + "]";
+  return plain(v);
+}
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+let layer = "base";
+const vals = new Map<string, Val>();
+const source = new Map<string, string>();
+const errs: string[] = [];
+lines.forEach((raw, idx) => {
+  const n = idx + 1;
+  const l = trim(raw);
+  if (l === "" || l[0] === "#") return;
+  if (l.startsWith("@@")) { layer = trim(l.slice(2)) || "unnamed"; return; }
+  if (l[0] === "!") {
+    const k = trim(l.slice(1));
+    if (!KEY.test(k)) { errs.push(`line ${n}: syntax error`); return; }
+    for (const x of [...vals.keys()]) if (x === k || x.startsWith(k + ".")) { vals.delete(x); source.delete(x); }
+    return;
+  }
+  const eq = l.indexOf("=");
+  if (eq < 0) { errs.push(`line ${n}: syntax error`); return; }
+  const append = eq > 0 && l[eq - 1] === "+";
+  const key = trim(l.slice(0, append ? eq - 1 : eq));
+  if (!KEY.test(key)) { errs.push(`line ${n}: syntax error`); return; }
+  const v = parseValue(trim(l.slice(eq + 1)));
+  if (v === null) { errs.push(`line ${n}: syntax error`); return; }
+  if (append) {
+    const cur = vals.get(key) ?? { k: "l" as const, v: [] };
+    if (cur.k !== "l") { errs.push(`line ${n}: cannot append to non-list`); return; }
+    vals.set(key, { k: "l", v: [...cur.v, ...(v.k === "l" ? v.v : [v])] });
+  } else vals.set(key, v);
+  source.set(key, layer);
+});
+
+const memo = new Map<string, Val>();
+const keyErrs = new Map<string, string[]>();
+function resolve(key: string): Val {
+  const cached = memo.get(key);
+  if (cached) return cached;
+  const v = vals.get(key)!;
+  if (v.k !== "s") { memo.set(key, v); return v; }
+  const text = v.v;
+  let out = "";
+  let i = 0;
+  while (i < text.length) {
+    if (text.startsWith("${", i)) {
+      const j = text.indexOf("}", i + 2);
+      if (j >= 0 && KEY.test(text.slice(i + 2, j))) {
+        const name = text.slice(i + 2, j);
+        if (vals.has(name)) out += plain(resolve(name));
+        else {
+          out += text.slice(i, j + 1);
+          if (!keyErrs.has(key)) keyErrs.set(key, []);
+          keyErrs.get(key)!.push(`key ${key}: unresolved \${${name}}`);
+        }
+        i = j + 1;
+        continue;
+      }
+    }
+    out += text[i++];
+  }
+  const r: Val = { k: "s", v: out };
+  memo.set(key, r);
+  return r;
+}
+
+const out: string[] = [];
+for (const key of [...vals.keys()].sort(cmp)) out.push(`${key} = ${render(resolve(key))}  # ${source.get(key)}`);
+const msgs = [...errs];
+for (const k of [...keyErrs.keys()].sort(cmp)) msgs.push(...keyErrs.get(k)!);
+if (msgs.length > 0) out.push("errors:", ...msgs.map((m) => "  " + m));
+process.stdout.write(out.map((l) => l + "\n").join(""));

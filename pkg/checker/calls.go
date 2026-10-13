@@ -135,7 +135,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 			c.error(e.Pos, "type", "nongeneric function cannot take type arguments; remove the [...] after "+s.Name)
 		}
 		callable = &Info{Type: signature, Symbol: s}
-		c.Expressions[callee] = callable
+		c.expressions[callee] = callable
 	} else {
 		callable = c.nativeCallable(callee)
 		if callable != nil {

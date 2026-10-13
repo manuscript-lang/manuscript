@@ -1,0 +1,144 @@
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::io::{BufRead, Write};
+
+fn is_name(s: &str) -> bool {
+    let b = s.as_bytes();
+    !b.is_empty()
+        && b[0].is_ascii_lowercase()
+        && b[1..].iter().all(|&c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_')
+}
+
+fn trim(s: &str) -> &str {
+    s.trim_matches(' ')
+}
+
+fn parse(lines: &[String]) -> Result<BTreeMap<String, String>, String> {
+    let mut cfg = BTreeMap::new();
+    let mut layer: Option<String> = None;
+    let mut section = "global".to_string();
+    for (i, raw) in lines.iter().enumerate() {
+        let l = trim(raw);
+        if let Some(rest) = l.strip_prefix("--- ") {
+            if !trim(rest).is_empty() {
+                layer = Some(trim(rest).to_string());
+                section = "global".to_string();
+                continue;
+            }
+        }
+        if l.is_empty() || l.starts_with('#') {
+            continue;
+        }
+        let where_ = format!("{}:{}", layer.as_deref().unwrap_or("input"), i + 1);
+        if layer.is_none() {
+            return Err(format!("{}: expected layer header", where_));
+        }
+        if l.starts_with('[') {
+            if !l.ends_with(']') || l.len() < 2 || !is_name(&l[1..l.len() - 1]) {
+                return Err(format!("{}: bad section name", where_));
+            }
+            section = l[1..l.len() - 1].to_string();
+        } else if l.starts_with('@') {
+            let target = l.strip_prefix("@unset ");
+            let ok = target.map_or(false, |t| {
+                let p: Vec<&str> = t.split('.').collect();
+                p.len() == 2 && is_name(p[0]) && is_name(p[1])
+            });
+            if !ok {
+                return Err(format!("{}: bad directive", where_));
+            }
+            cfg.remove(target.unwrap());
+        } else if let Some(at) = l.find('=') {
+            let k = trim(&l[..at]);
+            if !is_name(k) {
+                return Err(format!("{}: bad key", where_));
+            }
+            cfg.insert(format!("{}.{}", section, k), trim(&l[at + 1..]).to_string());
+        } else {
+            return Err(format!("{}: invalid line", where_));
+        }
+    }
+    Ok(cfg)
+}
+
+fn resolve(
+    key: &str,
+    cfg: &BTreeMap<String, String>,
+    done: &mut HashMap<String, String>,
+    active: &mut HashSet<String>,
+) -> Result<String, String> {
+    if let Some(v) = done.get(key) {
+        return Ok(v.clone());
+    }
+    if active.contains(key) {
+        return Err(format!("{}: cycle", key));
+    }
+    active.insert(key.to_string());
+    let raw: Vec<char> = cfg[key].chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < raw.len() {
+        if raw[i] == '$' && i + 1 < raw.len() && raw[i + 1] == '$' {
+            out.push('$');
+            i += 2;
+        } else if raw[i] == '$' && i + 1 < raw.len() && raw[i + 1] == '{' {
+            let mut j = i + 2;
+            while j < raw.len() && raw[j] != '}' {
+                j += 1;
+            }
+            if j >= raw.len() {
+                return Err(format!("{}: bad reference", key));
+            }
+            let r: String = raw[i + 2..j].iter().collect();
+            let p: Vec<&str> = r.split('.').collect();
+            if p.len() != 2 || !is_name(p[0]) || !is_name(p[1]) {
+                return Err(format!("{}: bad reference", key));
+            }
+            if !cfg.contains_key(&r) {
+                return Err(format!("{}: unknown reference ${{{}}}", key, r));
+            }
+            out.push_str(&resolve(&r, cfg, done, active)?);
+            i = j + 1;
+        } else {
+            out.push(raw[i]);
+            i += 1;
+        }
+    }
+    active.remove(key);
+    done.insert(key.to_string(), out.clone());
+    Ok(out)
+}
+
+fn main() {
+    let stdin = std::io::stdin();
+    let lines: Vec<String> = stdin.lock().lines().map(|l| l.unwrap()).collect();
+    let cfg = match parse(&lines) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("error: {}", e);
+            return;
+        }
+    };
+    let mut done = HashMap::new();
+    let mut active = HashSet::new();
+    for k in cfg.keys() {
+        if let Err(e) = resolve(k, &cfg, &mut done, &mut active) {
+            println!("error: {}", e);
+            return;
+        }
+    }
+    let mut out = String::new();
+    let mut cur: Option<&str> = None;
+    for k in cfg.keys() {
+        let dot = k.find('.').unwrap();
+        let sec = &k[..dot];
+        if cur != Some(sec) {
+            if cur.is_some() {
+                out.push('\n');
+            }
+            out.push_str(&format!("[{}]\n", sec));
+            cur = Some(sec);
+        }
+        out.push_str(&format!("{} = {}\n", &k[dot + 1..], done[k]));
+    }
+    std::io::stdout().write_all(out.as_bytes()).unwrap();
+}
