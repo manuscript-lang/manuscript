@@ -224,9 +224,12 @@ func NativeMemberResult(receiver Value, name, result string, scopes ...TypeScope
 			if len(scopes[0].Args) > 0 {
 				child.EqualityScope = scopes[0].Args[0]
 			}
-			// Set.map deduplicates the output, whose implementation evidence
-			// can differ from the receiver element's scope.
-			if _, set := receiver.(*Set); set && name == "map" && len(scopes) > 1 && len(scopes[1].Args) > 0 {
+			// Key/element transformations deduplicate outputs, whose evidence
+			// can differ from the receiver key/element's scope.
+			_, set := receiver.(*Set)
+			_, mapping := receiver.(*Map)
+			outputKeys := set && name == "map" || mapping && name == "map_keys"
+			if outputKeys && len(scopes) > 1 && len(scopes[1].Args) > 0 {
 				child.EqualityScope = scopes[1].Args[0]
 			}
 			return originalBody(&child, args)

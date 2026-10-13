@@ -101,6 +101,10 @@ var ReceiverBindings = map[string]map[string]string{
 		"join":             "string/join",
 	},
 	"Map": {
+		"map":               "collections/map_transform",
+		"map_keys":          "collections/map_transform_keys",
+		"fold_right":        "collections/map_fold_right",
+		"find_last":         "collections/map_find_last",
 		"fold":              "collections/map_fold",
 		"find":              "collections/map_find",
 		"some":              "collections/map_some",
@@ -121,6 +125,8 @@ var ReceiverBindings = map[string]map[string]string{
 	"Set": {
 		"add":                  "collections/set_add",
 		"remove":               "collections/set_remove",
+		"fold_right":           "collections/set_fold_right",
+		"find_last":            "collections/set_find_last",
 		"fold":                 "collections/set_fold",
 		"find":                 "collections/set_find",
 		"some":                 "collections/set_some",
