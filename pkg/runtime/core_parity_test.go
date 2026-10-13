@@ -94,6 +94,12 @@ func TestCoreParityCallbacksPreserveFaultsAndCancellation(t *testing.T) {
 		{"Set some", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "some", "predicate", []string{"value"}, "Bool"},
 		{"Map every", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "every", "predicate", []string{"key", "value"}, "Bool"},
 		{"Set every", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "every", "predicate", []string{"value"}, "Bool"},
+		{"Map value transform", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "map", "transform", []string{"key", "value"}, "@std/Map[String][Int]"},
+		{"Map key transform", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "map_keys", "transform", []string{"key", "value"}, "@std/Map[Int][Int]"},
+		{"Map fold right", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "fold_right", "step", []string{"accumulator", "key", "value"}, "Int"},
+		{"Set fold right", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "fold_right", "step", []string{"accumulator", "value"}, "Int"},
+		{"Map find last", &Map{Type: "@std/Map[String][Int]", Entries: []Entry{{"a", int64(1)}, {"b", int64(2)}}}, "find_last", "predicate", []string{"key", "value"}, "@std/Optional[@std/MapEntry[String][Int]]"},
+		{"Set find last", &Set{Type: "@std/Set[Int]", Items: []Value{int64(1), int64(2)}}, "find_last", "predicate", []string{"value"}, "@std/Optional[Int]"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			for _, cancelCallback := range []bool{false, true} {
@@ -115,7 +121,7 @@ func TestCoreParityCallbacksPreserveFaultsAndCancellation(t *testing.T) {
 				})
 				failure := recovered(func() {
 					arguments := []Argument{{test.argument, callback}}
-					if test.method == "fold" {
+					if test.method == "fold" || test.method == "fold_right" {
 						arguments = append(arguments, Argument{"initial", int64(0)})
 					}
 					Invoke(ctx, NativeMemberResult(test.receiver, test.method, test.result), arguments)

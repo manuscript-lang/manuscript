@@ -3,9 +3,42 @@ package msruntime
 import (
 	"io"
 	"net/http"
+	"reflect"
 	"testing"
 	"time"
 )
+
+func TestHTTPHeaderValues(t *testing.T) {
+	first := libraryStrings([]string{"", "first"})
+	headers := &Map{Type: "@std/Map[String][@std/List[String]]", Entries: []Entry{
+		{"x-test", first}, {"Other", libraryStrings([]string{"skip"})},
+		{"X-Test", libraryStrings([]string{"second", "third"})},
+		{"X-Empty", libraryStrings(nil)}, {"K", libraryStrings([]string{"ascii"})},
+	}}
+	for _, tc := range []struct {
+		name    string
+		want    []string
+		present bool
+	}{
+		{"x-test", []string{"", "first", "second", "third"}, true},
+		{"X-TEST", []string{"", "first", "second", "third"}, true},
+		{"x-empty", []string{}, true}, {"absent", nil, false}, {"K", nil, false},
+	} {
+		got := libraryCall(t, "http/header_values", headers, tc.name)
+		if got.Type != "@std/Optional[@std/List[String]]" || (got.Tag == "some") != tc.present {
+			t.Fatalf("%q: %#v", tc.name, got)
+		}
+		if tc.present && !reflect.DeepEqual(libraryStringValues(got.Fields[0]), tc.want) {
+			t.Fatalf("%q: %#v, want %q", tc.name, got, tc.want)
+		}
+	}
+	got := libraryCall(t, "http/header_values", headers, "X-Test").Fields[0].(*List)
+	got.Items[0] = "changed copy"
+	first.Items[1] = "changed input"
+	if got.Items[1] != "first" || first.Items[0] != "" || headers.Entries[0].Key != "x-test" || len(headers.Entries) != 5 {
+		t.Fatal("helper shared membership or mutated keys", headers, got)
+	}
+}
 
 func TestHTTPRequestHeader(t *testing.T) {
 	headers := &Map{Type: "@std/Map[String][@std/Bytes]", Entries: []Entry{

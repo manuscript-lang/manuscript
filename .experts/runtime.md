@@ -155,7 +155,7 @@ Verify: round-trip consecutive single empty fields with LF/CRLF and alternate de
 
 ### Native transformations need output implementation evidence
 
-Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map deduplicates output elements, whose scope can differ from the input element's scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep callback membership snapshots at the native invocation boundary and payload references shallow.
+Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map and Map.map_keys deduplicate output elements/keys, whose scope can differ from the input element/key scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep callback membership snapshots at the native invocation boundary and payload references shallow.
 
 Apply when: adding native transformations with output bounds or changing receiver specialization.
 Evidence: [receiver lowering](../pkg/compiler/lower_collections.go), [native dispatch](../pkg/runtime/collections.go), [cross-module output evidence](../tests/e2e/testdata/projects/core_parity/main.ms), and [callback mutation conformance](../tests/e2e/testdata/stdlib/core-parity.ms).
@@ -176,3 +176,19 @@ Verified: stripping continuation lines before joining loses paragraph breaks and
 Apply when: changing YAML scalar gathering, comment removal, whitespace handling, folding, or chomping.
 Evidence: [YAML parser](../pkg/stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../documentation/standard-library/formats.md#yaml-behavior), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization.
+
+### Collection snapshots require every in-place writer to detach
+
+Verified: List callback traversals can retain a capacity-limited header and use
+the existing loop COW flag instead of eagerly copying all membership. Appends
+lie beyond the captured length, but fill, overlapping copy, reverse and other
+prefix writes must detach first. Nested element references remain shared; the
+private membership header must not become a second source-visible alias.
+
+Apply when: changing collection storage, mutators, callback traversal or iteration.
+Evidence: [mutation differential tests](../pkg/runtime/list_snapshot_test.go),
+[called native alias/interop cases](../tests/e2e/testdata/accept/list-snapshots.ms),
+[native fault/cancellation cases](../pkg/compiler/list_snapshot_native_test.go),
+and [measured allocation costs and conservative COW tradeoff](../scripts/bench-lists/README.md).
+Verify: read-only traversal allocates only a header; all existing-element writes
+leave captured membership unchanged, including reentry and saved method calls.

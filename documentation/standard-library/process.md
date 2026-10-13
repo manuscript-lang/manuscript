@@ -15,14 +15,16 @@ The bounded subprocess facility is exported by `@std/process.ms`. Import `comman
 
 ```manuscript
 # Commands
-fn run(program: String, arguments: List[String], input: Bytes,
-       max_output_bytes: Optional[Int], timeout: Optional[Duration]) -> Result[CommandOutput, CommandError]
+fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(),
+       max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
 
 type CommandOutput:
     exit_code: Int
     stdout: Bytes
     stderr: Bytes
 ```
+
+Omit `input` for empty standard input; `commands().run(program: "tool", arguments: [])` evaluates fresh empty bytes on each call. Supplied bytes are passed unchanged. The same default works through a stored method or a source implementation of `Commands`.
 
 `CommandError` has `InvalidInput`, `Unavailable`, `TimedOut`, `OutputLimit`, and `Failed(message: String)`. Empty/NUL program names, NUL arguments, negative bounds, and negative timeout return InvalidInput. The total stdout plus stderr bound is nonnegative. Nonzero ordinary exit is an `ok` output with that code. Timeout or output overflow stops and joins the process before returning its error; caller cancellation unwinds after joining. POSIX process groups include descendants in termination.
 

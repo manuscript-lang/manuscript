@@ -231,11 +231,15 @@ func Run(args []string) int {
 		}
 		arguments = append(testArgs, arguments...)
 	}
+	if watch && structured {
+		fmt.Fprintln(os.Stderr, "--json cannot be combined with --watch; remove --watch for one versioned test result")
+		return 2
+	}
 	if watch && command != "run" && command != "test" {
 		fmt.Fprintf(os.Stderr, "--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch\n", command)
 		return 2
 	}
-	if formatCheck && command != "fmt" || structured && command != "check" && command != "lint" || debug && command != "build" && command != "run" && command != "test" {
+	if formatCheck && command != "fmt" || structured && command != "check" && command != "lint" && command != "test" || debug && command != "build" && command != "run" && command != "test" {
 		fmt.Fprintf(os.Stderr, "%s; run 'ms help %s' for the options this command accepts\n", invalidFlag(command, formatCheck, structured, debug), command)
 		return 2
 	}
@@ -312,6 +316,11 @@ func Run(args []string) int {
 		return 0
 	}
 	if !result.Success() {
+		if structured && command == "test" {
+			document := newTestResult(result)
+			document.Reason = "compile_error"
+			return emitJSON(document, 1)
+		}
 		return reportDiagnostics(result)
 	}
 	if command == "profile" {
@@ -432,12 +441,18 @@ func Run(args []string) int {
 			var err error
 			cache, err = compiler.DefaultBuildCacheDir()
 			if err != nil {
+				if structured && command == "test" {
+					return testJSONError(filename, result, "build", err)
+				}
 				fmt.Fprintln(os.Stderr, err)
 				return 1
 			}
 		}
 		directory, err := os.MkdirTemp("", "manuscript-run-")
 		if err != nil {
+			if structured && command == "test" {
+				return testJSONError(filename, result, "execution", err)
+			}
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -451,6 +466,9 @@ func Run(args []string) int {
 		}
 
 		if _, err := compiler.BuildCheckedWithType(result, executable, cache, kind); err != nil {
+			if structured && command == "test" {
+				return testJSONError(filename, result, "build", err)
+			}
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
@@ -481,6 +499,9 @@ func Run(args []string) int {
 		child := exec.Command(executable, arguments...)
 		child.Dir = testWorkingDirectory(command, filename, result)
 		child.Stdin = os.Stdin
+		if command == "test" && structured {
+			return runTestJSON(child, result)
+		}
 		child.Stdout = os.Stdout
 		child.Stderr = os.Stderr
 		if err := runWithSignals(child); err != nil {
@@ -580,7 +601,7 @@ func invalidFlag(command string, formatCheck, structured, debug bool) string {
 	case formatCheck && command != "fmt":
 		return "--check is valid only for ms fmt, not ms " + command
 	case structured:
-		return "--json is valid only for ms check and ms lint, not ms " + command
+		return "--json is valid only for ms check, ms lint, and ms test, not ms " + command
 	case debug:
 		return "--debug is valid only for ms build, run, and test, not ms " + command
 	}

@@ -98,6 +98,16 @@ type HttpRequest:
     fn header(name: String) -> Optional[Bytes]:
 ```
 
+### HttpRequest.header
+
+Finds a header using ASCII case-insensitive names, or returns `none`.
+Leaves Map keys unchanged. Repeated received values remain newline-joined bytes.
+If a manually built Map has equivalent names, returns its first matching entry.
+
+```manuscript
+fn header(name: String) -> Optional[Bytes]:
+```
+
 ## HttpResponse {data-api-kind="Record"}
 
 Buffered response returned by the simple HTTP server handler.
@@ -148,5 +158,15 @@ interface ResponseBody:
     fn headers() -> Map[String, List[String]]
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
     fn status() -> Int
+```
+
+## header_values {data-api-kind="Function"}
+
+Finds all values under ASCII case-equivalent names without changing Map keys.
+Returns none if absent, or some(empty) for a present empty list. Copies list
+membership and preserves Map insertion order followed by each list's order.
+
+```manuscript
+fn header_values(headers: Map[String, List[String]], name: String) -> Optional[List[String]]:
 ```
 

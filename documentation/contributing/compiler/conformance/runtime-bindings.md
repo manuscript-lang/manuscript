@@ -60,7 +60,7 @@ test "standard spellings are ordinary names":
                 return panic(message: "check failed")
 ```
 
-Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected without the standard List import even though a local List exists. The local compute function is an ordinary function value.
+Adding the canonical List or Result import rejects its collision with the local declaration. `try ordinary()` is rejected: this Result is not the standard alternative. A bracket literal is rejected when a module declaration replaces the canonical prelude List identity. The local compute function is an ordinary function value.
 
 Preserve ordinary generic method specialization and constructor restrictions in all existing sharing fixtures. Independently reject unimported TaskGroup, Task, Scheduler, ExecutionError, OperationId, StartError, and check_cancelled in otherwise well-formed calls or annotations; importing one standard export must not expose the rest. A local check_cancelled function remains an ordinary function and receives no runtime checkpoint behavior.
 

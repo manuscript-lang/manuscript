@@ -55,6 +55,7 @@
       "pkg/frontend"
     ],
     "internal/cli": [
+      "internal/nativeabi",
       "pkg/compiler",
       "pkg/project",
       "pkg/syntax",

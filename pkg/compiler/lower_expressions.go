@@ -100,7 +100,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	case syntax.KindName, syntax.KindApply:
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			member := e.Left
-			return g.nativeReceiverMember(member, info)
+			return g.methodDefaults(info.Method, g.nativeReceiverMember(member, info))
 		}
 		if info.Binding != nil {
 			return g.binding(info.Binding)
@@ -108,7 +108,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if info.Symbol != nil {
 			symbol := info.Symbol
 			if symbol.Native != "" {
-				return runtimeCall("StandardFunction", textLiteral(symbol.Native), g.key(info.Type.Result))
+				return g.nativeDefaults(symbol.Decl, info.Type, runtimeCall("StandardFunction", textLiteral(symbol.Native), g.key(info.Type.Result)))
 			}
 			if len(symbol.Variables) > 0 {
 				return g.specialize(symbol, info.TypeArgs)
@@ -123,12 +123,15 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			return runtimeCall("NewAlternative", g.key(info.Constructor), textLiteral(info.Case), ident("nil"), ident("nil"))
 		}
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
-			return g.nativeReceiverMember(e, info)
+			return g.methodDefaults(info.Method, g.nativeReceiverMember(e, info))
 		}
 		if info.Method != nil {
-			return runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Expressions[e.Left].Type))
+			return g.methodDefaults(info.Method, runtimeCall("Bind", g.expression(e.Left), g.key(info.Method.Contract), textLiteral(e.Text), g.typeScope(g.program.Expressions[e.Left].Type)))
 		}
 		if info.Native != "" {
+			if info.Native == "milliseconds" || info.Native == "seconds" || info.Native == "minutes" {
+				return g.locatedOperation(e, runtimeName("NativeMember"), g.expression(e.Left), textLiteral(e.Text))
+			}
 			return runtimeCall("NativeMember", g.expression(e.Left), textLiteral(e.Text))
 		}
 		return runtimeCall("Field", g.expression(e.Left), textLiteral(e.Text))
@@ -162,7 +165,14 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 				}
 				return runtimeCall("NewAlternative", g.key(info.Type), textLiteral(info.Case), stringSlice(labels), args)
 			}
-			if symbol := info.Constructor.Def.Symbol; symbol.Native == "" && recordDefaults(symbol.Decl) {
+			if symbol := info.Constructor.Def.Symbol; recordDefaults(symbol.Decl) && (symbol.Native == "" || g.program.Parameters[symbol.Decl] != nil) {
+				if symbol.Native != "" {
+					if len(arguments) == len(symbol.Decl.Fields) {
+						return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
+					}
+					callable := g.lazyValue("native constructor/"+symbol.ID, g.declaredFunction(symbol))
+					return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
+				}
 				var callable ast.Expr = ident(symbol.ID)
 				if len(symbol.Variables) > 0 {
 					callable = g.specialize(symbol, info.Constructor.Args)
@@ -174,7 +184,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		var callable ast.Expr
 		if info.Symbol != nil {
 			if info.Symbol.Native != "" {
-				callable = runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type))
+				callable = g.nativeDefaults(info.Symbol.Decl, g.program.Expressions[e.Left].Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
 			} else {
 				callable = ident(info.Symbol.ID)
 				if len(info.Symbol.Variables) > 0 {
@@ -183,7 +193,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			}
 		} else {
 			// Capture a dynamic callable before arguments that may replace it.
-			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.expression(e.Left))
+			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.methodCallable(e.Left, arguments))
 		}
 		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 	case syntax.KindList:

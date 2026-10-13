@@ -19,12 +19,12 @@ export type CommandOutput:
     stdout: Bytes
     stderr: Bytes
 
-# Runs child programs with explicit input, output bounds, and an optional timeout.
+# Runs child programs with empty input by default, optional output bounds and timeout.
 export interface Commands:
     fn run(
         program: String,
         arguments: List[String],
-        input: Bytes,
+        input: Bytes = "".to_bytes(),
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]

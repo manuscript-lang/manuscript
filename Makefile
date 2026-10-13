@@ -6,12 +6,12 @@ BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check book book-check vendor-refresh
+.PHONY: toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
 
-check lint repo-check unit stdlib-check stdlib-test examples-check licenses licenses-check test e2e race coverage fuzz fmt docs docs-check: | payload
+check lint repo-check unit stdlib-check stdlib-test examples-check licenses licenses-check test e2e race coverage fuzz fmt docs docs-check docs-coverage: | payload
 
 setup: payload tools
 
@@ -97,6 +97,9 @@ docs:
 
 docs-check:
 	"$(GO)" run ./scripts/docgen -check
+
+docs-coverage:
+	"$(GO)" run ./scripts/docgen -check -coverage .artifacts/stdlib-doc-coverage.json
 
 book: docs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir

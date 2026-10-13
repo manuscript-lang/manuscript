@@ -13,17 +13,28 @@ type APIModule struct {
 type APIDeclaration struct {
 	// Declaration is a source-syntax excerpt for human documentation. The JSON
 	// snapshot retains its existing machine-readable type and member contracts.
-	Declaration                string   `json:"-"`
-	Name                       string   `json:"name"`
-	Doc                        string   `json:"doc,omitempty"`
-	Kind                       string   `json:"kind"`
-	Type                       string   `json:"type"`
-	Parameters                 []string `json:"type_parameters,omitempty"`
-	Fields                     []string `json:"fields,omitempty"`
-	Cases                      []string `json:"cases,omitempty"`
-	Operations                 []string `json:"operations,omitempty"`
-	Implements                 []string `json:"implements,omitempty"`
-	ImplementationDeclarations []string `json:"-"`
+	Declaration                string      `json:"-"`
+	Name                       string      `json:"name"`
+	Doc                        string      `json:"doc,omitempty"`
+	Kind                       string      `json:"kind"`
+	Type                       string      `json:"type"`
+	Parameters                 []string    `json:"type_parameters,omitempty"`
+	Fields                     []string    `json:"fields,omitempty"`
+	Cases                      []string    `json:"cases,omitempty"`
+	Operations                 []string    `json:"operations,omitempty"`
+	Members                    []APIMember `json:"members,omitempty"`
+	Implements                 []string    `json:"implements,omitempty"`
+	ImplementationDeclarations []string    `json:"-"`
+}
+
+// APIMember adds source descriptions without changing the legacy member arrays.
+// Empty Doc values remain visible to documentation coverage consumers.
+type APIMember struct {
+	Name      string `json:"name"`
+	Kind      string `json:"kind"`
+	Signature string `json:"signature"`
+	Doc       string `json:"doc"`
+	Contract  string `json:"contract,omitempty"`
 }
 
 // StandardLibrary captures the actual checker definitions, without exposing mutable
@@ -53,8 +64,8 @@ func StandardLibrary() []APIModule {
 		sort.Slice(symbols, func(i, j int) bool { return symbols[i].Name < symbols[j].Name })
 		module := APIModule{Path: path}
 		for _, symbol := range symbols {
-			d := documentSymbol(symbol, sources[symbol.Module])
-			documentImplementations(&d, symbol, append(append([]*Method{}, standardImplementations...), standardSourceMethods...))
+			d := documentSymbol(symbol, sources)
+			documentImplementations(&d, symbol, append(append([]*Method{}, standardImplementations...), standardSourceMethods...), sources)
 			module.Declarations = append(module.Declarations, d)
 		}
 		result = append(result, module)
@@ -63,7 +74,7 @@ func StandardLibrary() []APIModule {
 	return result
 }
 
-func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Method) {
+func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Method, sources map[string]string) {
 	contracts := map[string]bool{}
 	operations := map[string]bool{}
 	for _, method := range methods {
@@ -73,6 +84,7 @@ func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Metho
 		contracts[method.Contract.String()] = true
 		d.ImplementationDeclarations = append(d.ImplementationDeclarations, "impl "+method.Contract.String()+" for "+method.Receiver.String()+":\n    "+documentDeclaration(method.Decl, "fn", method.Decl.Name))
 		operation := method.Decl.Name + ": " + method.Type.String()
+		d.Members = append(d.Members, APIMember{Name: method.Decl.Name, Kind: "operation", Signature: strings.TrimSpace(documentDeclaration(method.Decl, "fn", method.Decl.Name, sources[method.Decl.Pos.File])), Doc: leadingComment(sources[method.Decl.Pos.File], method.Decl.Pos.Offset), Contract: method.Contract.String()})
 		if !operations[operation] {
 			d.Operations = append(d.Operations, operation)
 			operations[operation] = true
@@ -83,9 +95,11 @@ func documentImplementations(d *APIDeclaration, symbol *Symbol, methods []*Metho
 	}
 	sort.Strings(d.Implements)
 	sort.Strings(d.Operations)
+	sortAPIMembers(d.Members)
 }
 
-func documentSymbol(symbol *Symbol, source string) APIDeclaration {
+func documentSymbol(symbol *Symbol, sources map[string]string) APIDeclaration {
+	source := sources[symbol.Module]
 	d := APIDeclaration{Name: symbol.Name, Kind: symbol.Kind, Type: symbol.Type.String()}
 	if decl := symbol.Decl; decl != nil {
 		keyword := "type"
@@ -94,8 +108,11 @@ func documentSymbol(symbol *Symbol, source string) APIDeclaration {
 		}
 		d.Declaration = documentDeclaration(decl, keyword, decl.Name, source)
 		d.Doc = leadingComment(source, decl.Pos.Offset)
+		d.Members = documentMembers(decl, source, symbol.Type)
 	} else if intrinsic := intrinsicOperations[symbol.Type.ID]; intrinsic != nil {
 		d.Declaration = documentDeclaration(intrinsic.Def.Symbol.Decl, "type", symbol.Name)
+		decl := intrinsic.Def.Symbol.Decl
+		d.Members = documentMembers(decl, sources[decl.Pos.File], symbol.Type)
 	} else {
 		d.Declaration = "type " + symbol.Name + ":\n"
 	}
@@ -154,6 +171,10 @@ func documentSymbol(symbol *Symbol, source string) APIDeclaration {
 // Imported symbols and private declarations do not become public documentation.
 func ModuleDocumentation(program *Program) []APIModule {
 	var modules []APIModule
+	sources := map[string]string{}
+	for _, source := range program.Modules {
+		sources[source.File] = source.Source
+	}
 	for _, source := range program.Modules {
 		module := APIModule{Path: source.File, Declarations: []APIDeclaration{}}
 		for _, decl := range source.Declarations {
@@ -162,8 +183,8 @@ func ModuleDocumentation(program *Program) []APIModule {
 			}
 			symbol := program.Symbols[source.File][decl.Name]
 			if symbol != nil && symbol.Decl == decl {
-				d := documentSymbol(symbol, source.Source)
-				documentImplementations(&d, symbol, program.Methods)
+				d := documentSymbol(symbol, sources)
+				documentImplementations(&d, symbol, program.Methods, sources)
 				module.Declarations = append(module.Declarations, d)
 			}
 		}
@@ -172,6 +193,19 @@ func ModuleDocumentation(program *Program) []APIModule {
 	}
 	sort.Slice(modules, func(i, j int) bool { return modules[i].Path < modules[j].Path })
 	return modules
+}
+
+func sortAPIMembers(members []APIMember) {
+	sort.Slice(members, func(i, j int) bool {
+		a, b := members[i], members[j]
+		if a.Kind != b.Kind {
+			return a.Kind < b.Kind
+		}
+		if a.Name != b.Name {
+			return a.Name < b.Name
+		}
+		return a.Contract < b.Contract
+	})
 }
 
 func documentOperationName(receiver *Type, name string) string {
@@ -203,10 +237,22 @@ func leadingComment(source string, offset int) string {
 		return ""
 	}
 	lines := strings.Split(source[:offset], "\n")
+	ownLine := lines[len(lines)-1]
+	// Names of cases and operations follow their keyword; inline payload fields
+	// do not begin a declaration line and must not inherit a case description.
+	switch strings.TrimSpace(ownLine) {
+	case "", "export", "fn", "case":
+	default:
+		return ""
+	}
+	indent := len(ownLine) - len(strings.TrimLeft(ownLine, " \t"))
 	// The final element is the part of the declaration's own line before it.
 	lines = lines[:len(lines)-1]
 	var block []string
 	for i := len(lines) - 1; i >= 0; i-- {
+		if len(lines[i])-len(strings.TrimLeft(lines[i], " \t")) != indent {
+			break
+		}
 		line := strings.TrimSpace(lines[i])
 		if !strings.HasPrefix(line, "#") {
 			break

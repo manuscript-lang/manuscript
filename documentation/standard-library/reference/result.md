@@ -27,3 +27,75 @@ type Result[T, E]:
     fn to_optional() -> Optional[T]:
 ```
 
+### Result.and_then[U]
+
+Calls transform only on success. Its result keeps the same error type.
+
+```manuscript
+fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+```
+
+### Result.is_error
+
+Reports whether this result contains an expected error.
+
+```manuscript
+fn is_error() -> Bool:
+```
+
+### Result.is_ok
+
+Reports whether this result contains a successful value.
+
+```manuscript
+fn is_ok() -> Bool:
+```
+
+### Result.map[U]
+
+Transforms only a successful payload, preserving an error unchanged.
+
+```manuscript
+fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
+```
+
+### Result.to_optional
+
+Returns some with the original success payload, or none for an error.
+
+```manuscript
+fn to_optional() -> Optional[T]:
+```
+
+### Result.unwrap
+
+Returns the successful payload; faults when this is an error.
+
+```manuscript
+fn unwrap() -> T:
+```
+
+### Result.unwrap_error
+
+Returns the error payload; faults when this is successful.
+
+```manuscript
+fn unwrap_error() -> E:
+```
+
+### Result.unwrap_or
+
+Returns the successful payload, or the eagerly evaluated fallback.
+
+```manuscript
+fn unwrap_or(fallback: T) -> T:
+```
+
+### Result.unwrap_or_else
+
+Calls create once with the original error only when this is an error.
+
+```manuscript
+fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
+```
+
