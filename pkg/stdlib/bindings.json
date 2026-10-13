@@ -38,6 +38,7 @@
     "@std/fs.ms/filesystem": "fs/filesystem",
     "@std/html.ms/escape": "html/escape",
     "@std/html.ms/parse": "html/parse",
+    "@std/http.ms/header_values": "http/header_values",
     "@std/io.ms/copy": "io/copy",
     "@std/io.ms/files": "io/files",
     "@std/io.ms/read_all": "io/read_all",
