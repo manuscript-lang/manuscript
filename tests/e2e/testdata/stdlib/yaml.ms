@@ -234,27 +234,29 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         "a: >\n  x\n \t\n  y",
         "a: >2\n  x\n y"
     ]:
-        match parse(text: text):
+        let cause = match parse(text: text):
             ok(_): return panic("malformed multiline scalar accepted: {text}")
-            error(cause):
-                match cause:
-                    InvalidData(line, column, reason):
-                        if (
-                            line < 1
-                            or column < 1
-                            or reason == ""
-                        ): return panic("multiline diagnostic")
-                    _: return panic("wrong multiline error")
+            error(cause): cause
 
-    match parse(text: "a: x\n\n  b: y"):
-        error(cause):
-            match cause:
-                InvalidData(line, column, _):
-                    if line != 3 or column != 1: return panic(
-                        "continuation error position"
-                    )
-                _: return panic("wrong continuation error")
+        match cause:
+            InvalidData(line, column, reason):
+                if (
+                    line < 1
+                    or column < 1
+                    or reason == ""
+                ): return panic("multiline diagnostic")
+            _: return panic("wrong multiline error")
+
+    let cause = match parse(text: "a: x\n\n  b: y"):
+        error(cause): cause
         ok(_): return panic("indented mapping accepted as plain continuation")
+
+    match cause:
+        InvalidData(line, column, _):
+            if line != 3 or column != 1: return panic(
+                "continuation error position"
+            )
+        _: return panic("wrong continuation error")
 
 test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
@@ -429,37 +431,39 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
         "---\na: 1\n---\nb: 2",
         "a: |0\n  text"
     ]:
-        match parse(text: text):
+        let cause = match parse(text: text):
             ok(_): return panic("invalid YAML accepted: {text}")
 
-            error(cause):
-                match cause:
-                    InvalidData(line, column, reason):
-                        if (
-                            line < 1
-                            or column < 1
-                            or reason == ""
-                        ): return panic("YAML diagnostic details")
+            error(cause): cause
 
-                        let boundary = Error(cause)
-                        if not boundary.message().starts_with("YAML "): return panic(
-                            "source YAML Error"
-                        )
+        match cause:
+            InvalidData(line, column, reason):
+                if (
+                    line < 1
+                    or column < 1
+                    or reason == ""
+                ): return panic("YAML diagnostic details")
 
-                    _: return panic("wrong YAML error")
+                let boundary = Error(cause)
+                if not boundary.message().starts_with("YAML "): return panic(
+                    "source YAML Error"
+                )
+
+            _: return panic("wrong YAML error")
 
     for text in [
         "!custom value",
         "? complex\n: value",
         "%TAG ! tag:example.org\n---\na: 1"
     ]:
-        match parse(text: text):
+        let cause = match parse(text: text):
             ok(_): return panic("unsupported YAML accepted")
 
-            error(cause):
-                match cause:
-                    UnsupportedFeature(_, _): let expected = unit
-                    _: return panic("expected unsupported feature")
+            error(cause): cause
+
+        match cause:
+            UnsupportedFeature(_, _): let expected = unit
+            _: return panic("expected unsupported feature")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
     let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)

@@ -61,12 +61,14 @@ test "sum indexes":
             return panic("Could not build range: {cause.message()}")
 
 test "zero step is rejected":
-    match range(start: 0, end: 5, step: 0):
+    let cause = match range(start: 0, end: 5, step: 0):
         ok(_): return panic("Expected an invalid step error")
-        error(cause):
-            match cause:
-                InvalidInput: unit
-                _: return panic("Expected InvalidInput")
+        error(cause): cause
+
+    match cause:
+        InvalidInput: unit
+        _: return panic("Expected InvalidInput")
+
 ```
 
 Save either complete example as `test.ms` and run `ms test test.ms`. A failed check calls `panic`; see [testing](../../learn/testing.md).

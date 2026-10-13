@@ -96,14 +96,14 @@ test "zero timeout starts no callback":
             fn(): panic("zero timeout invoked callback")
         )
 
-        match task.join():
-            error(cause):
-                match cause:
-                    TimedOut:
-                        return
-
-                    _:
-                        return panic("wrong timeout outcome")
-
+        let cause = match task.join():
+            error(cause): cause
             ok(_):
                 return panic("zero timeout succeeded")
+
+        match cause:
+            TimedOut:
+                return
+
+            _:
+                return panic("wrong timeout outcome")

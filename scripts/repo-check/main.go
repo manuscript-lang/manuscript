@@ -47,6 +47,9 @@ func check() error {
 	if err := checkStandardSyntax(os.DirFS("pkg/stdlib"), "pkg/stdlib"); err != nil {
 		return err
 	}
+	if err := checkNestedMatches(); err != nil {
+		return err
+	}
 
 	data, err := os.ReadFile("scripts/repo-check/policy.json")
 	if err != nil {

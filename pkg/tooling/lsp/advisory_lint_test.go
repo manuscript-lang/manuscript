@@ -14,6 +14,8 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 		name, source, code string
 		line               int
 	}{
+		// manuscript:allow-nested-match editor warning must point at the inner match
+		{"nested match", "fn use(value: Optional[Int]) -> Unit:\n    match value:\n        some(_):\n            match value:\n                some(_): unit\n                none: unit\n        none: unit\n", "MSL107", 3},
 		{"pattern binding", "import filesystem from \"@std/fs.ms\"\nfn use(path: String) -> Int:\n    match filesystem().stat(path: path, follow_links: true):\n        error(NotFound): return 1\n        ok(_): return 0\n", "MSL106", 3},
 		{"pattern binding CRLF and Unicode", "# café 🦀\r\nimport filesystem from \"@std/fs.ms\"\r\nfn use(path: String) -> Int:\r\n    match filesystem().stat(path: path, follow_links: true):\r\n        error(NotFound): return 1\r\n        ok(_): return 0\r\n", "MSL106", 4},
 		{"discarded result", "fn fail() -> Result[Int, String]:\n    return error(\"boom\")\nfn use() -> Unit:\n    fail()\n", "MSL104", 3},
@@ -70,6 +72,9 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 						}
 						if diagnostic.Severity != 2 || diagnostic.Source != "manuscript-lint" || diagnostic.Range.Start.Line != tc.line {
 							t.Fatalf("wrong advisory: %+v", diagnostic)
+						}
+						if tc.code == "MSL107" && (diagnostic.Range.Start.Character != 12 || diagnostic.Range.End.Line != tc.line || diagnostic.Range.End.Character != 17) {
+							t.Fatalf("nested-match warning did not span the inner keyword: %+v", diagnostic.Range)
 						}
 					}
 				}

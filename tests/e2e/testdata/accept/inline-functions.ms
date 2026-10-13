@@ -31,14 +31,14 @@ test "inline callbacks survive contextual rechecking":
         )
 
         match group.join():
-            ok(_):
-                match first_task.join():
-                    ok(value):
-                        if value != 4:
-                            return panic(message: "check failed")
-
-                    error(_):
-                        return panic("task result unavailable")
-
+            ok(_): unit
             error(_):
                 return panic(message: "Unexpected case")
+
+        match first_task.join():
+            ok(value):
+                if value != 4:
+                    return panic(message: "check failed")
+
+            error(_):
+                return panic("task result unavailable")
