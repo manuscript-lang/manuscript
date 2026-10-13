@@ -29,6 +29,13 @@ retained generated Go and escape analysis, and compare allocation counts as well
 as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
 when promoting a benchmark candidate into production lowering.
 
+Verified: immutable boxed literal tables still create fixed GC roots even when
+their source functions never run. Per-construction B/op and Go HeapAlloc omit
+that static data. The bounded Debug prototype measured zero/one/repeated calls,
+multiple literals, child RSS and ELF segments; a lower GC target exposed a
+repeatable construction slowdown despite faster native compilation. Treat those
+as separate review costs. Evidence: [literal memory/runtime controls](../scripts/bench-debug-literals/README.md#current-matched-main-evidence-after-api-review).
+
 Verified: direct native calls must use `argumentValue`, not raw `expression`,
 for supplied arguments. Checking can attach implicit Optional wrapping while
 the expression retains its payload type; bypassing that evidence stored an Int
