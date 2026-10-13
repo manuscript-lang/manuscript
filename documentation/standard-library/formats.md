@@ -77,6 +77,8 @@ The delimiter must be one non-NUL ASCII byte other than quote, CR, or LF. `line_
 
 CSV quotes are doubled; values are not trimmed or converted to other types, rows may have different widths, and blank lines are ignored. CRLF is normalized, including inside quoted cells. Serialization ends every row with the selected terminator. Formula-like spreadsheet values are left as supplied.
 
+A row containing one empty string is serialized as a quoted empty field (`""`), so parsing retains it. A row with no cells is serialized as a blank line and is skipped on parsing; these two rows have distinct serialized forms. Multiple empty cells retain their delimiters.
+
 Exceeded limits return `LimitExceeded`. The input String is already in memory, and the parser reads one record before checking its row and cell limits. Bound the source read before parsing untrusted CSV.
 
 ## URL behavior

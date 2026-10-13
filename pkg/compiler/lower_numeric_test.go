@@ -157,3 +157,28 @@ fn grow(values: List[Int]) -> Bool:
 		}
 	}
 }
+
+func TestDirectKeyedAndStringLowering(t *testing.T) {
+	result := compiler.CompileSource("keyed.ms", `import {List, Map, Set} from "@std/collections.ms"
+fn use(l: List[Int], m: Map[String, Int], s: Set[Int], t: String) -> Unit:
+    l.contains(1)
+    m.contains("a")
+    m.get("a")
+    m.with_entry("a", 1)
+    m.with_entry(value: 2, key: "b")
+    s.contains(1)
+    s.with_value(1)
+    t.at(0)
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	for _, operation := range []string{"rt.ListContains(", "rt.MapContains(", "rt.MapGet(", "rt.MapWithEntry(", "rt.SetContains(", "rt.SetWithValue(", "rt.StringAt("} {
+		if !strings.Contains(result.Source, operation) {
+			t.Fatalf("missing direct %s", operation)
+		}
+	}
+	if strings.Count(result.Source, "rt.MapWithEntry(") != 1 || !strings.Contains(result.Source, `"with_entry"`) {
+		t.Fatalf("reordered labels must keep ordinary dispatch:\n%s", result.Source)
+	}
+}
