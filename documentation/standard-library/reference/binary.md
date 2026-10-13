@@ -21,6 +21,30 @@ impl Error for BinaryError:
     fn message() -> String:
 ```
 
+### BinaryError.InvalidInput
+
+Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes.
+
+```manuscript
+case InvalidInput
+```
+
+### BinaryError.OutOfRange
+
+A read crosses the byte buffer or a number cannot fit the requested signedness/width or result type.
+
+```manuscript
+case OutOfRange
+```
+
+### BinaryError.Error.message
+
+Returns a binary-prefixed diagnostic without echoing source bytes or numeric input.
+
+```manuscript
+fn message() -> String:
+```
+
 ## read_float {data-api-kind="Function"}
 
 Reads a 32-bit floating-point value at `offset` using the selected byte order.

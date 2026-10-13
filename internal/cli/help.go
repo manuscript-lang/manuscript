@@ -31,6 +31,7 @@ Commands:
   stdlib   Write bundled standard library declarations to a directory
   lsp      Serve the language server on stdin/stdout
   help     Show help for a command
+  version  Print the compiler version
 
 Options:
   -h, --help  Show help
@@ -70,9 +71,9 @@ func commandHelp(command string) (string, bool) {
 		options = "  --json  Emit versioned JSON findings with stable rule codes\n"
 		examples = "ms lint ms.toml\n  ms lint main.ms --json\n  ms lint src utilities.ms --json"
 	case "build":
-		usage = "<file.ms|ms.toml> [-o output] [--build-type level] [--debug]"
+		usage = "<file.ms|ms.toml> [--json] [-o output] [--build-type level] [--debug]"
 		description = "Build an application exporting main() -> Int as a native executable."
-		options = "  -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)\n  --debug             Alias for --build-type Debug\n"
+		options = "  -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)\n  --json              Emit one versioned build result and artifact inventory\n  --debug             Alias for --build-type Debug\n"
 		examples = "ms build ms.toml -o hello\n  ms build main.ms --build-type MinSizeRel"
 	case "emit":
 		usage = "<file.ms|ms.toml> [-o output]"
@@ -105,10 +106,10 @@ func commandHelp(command string) (string, bool) {
 		options = outputHelp
 		examples = "ms diagram main.ms\n  ms diagram ms.toml -o calls.mmd"
 	case "profile":
-		usage = "<file.ms|ms.toml> [-o directory] [--trace] [--build-type level] [-- program arguments]"
+		usage = "<file.ms|ms.toml> [--json] [--out-dir directory] [--trace] [--build-type level] [-- program arguments]"
 		description = "Build and run an application with CPU and heap capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, inspection.json,\nand manifest.json. Add --trace to also write trace.out. The directory must be new.\nSource labels/regions identify entry and work boundaries; CPU stacks retain nested calls.\nProfiling adds overhead; tracing can add substantial time and disk usage.\nMeasure normal execution separately. Arguments after -- go to the application; its exit status is returned."
-		options = "  -o, --output <directory>  Bundle directory (default: ./profile)\n  --trace                  Also capture an execution trace\n"
-		examples = "ms profile ms.toml\n  ms profile main.ms -o capture --trace -- first second"
+		options = "  --out-dir <directory>    Bundle directory (default: ./profile)\n  -o, --output <directory>  Compatible aliases for --out-dir\n  --json                   Emit one versioned result; capture stdout, keep stderr live\n  --trace                  Also capture an execution trace\n"
+		examples = "ms profile ms.toml\n  ms profile main.ms --out-dir capture --trace -- first second"
 	case "pprof", "trace":
 		usage = "[viewer options] <profile file>"
 		description = "Inspect captured profiles with the embedded SDK viewer."
@@ -139,6 +140,9 @@ func commandHelp(command string) (string, bool) {
 		usage = "[command]"
 		description = "Show the command list, or detailed usage for one command."
 		examples = "ms help\n  ms help run\n  ms doc --stdlib --help"
+	case "version":
+		description = "Print the compiler version. Equivalent to ms --version. Takes no arguments."
+		examples = "ms version\n  ms --version"
 	default:
 		return "", false
 	}
@@ -195,7 +199,7 @@ func requestsHelp(command string, args []string) bool {
 			if command != "profile" {
 				i++
 			}
-		case "-o", "--output", "--cpu-profile", "--heap-profile", "--build-type", "--timeout", "--filter":
+		case "-o", "--output", "--out-dir", "--cpu-profile", "--heap-profile", "--build-type", "--timeout", "--filter":
 			// A flag value is not a help request, even if it is spelled --help.
 			i++
 		}

@@ -19,19 +19,19 @@
               "name": "data",
               "kind": "field",
               "signature": "data: Bytes",
-              "doc": ""
+              "doc": "File contents as immutable bytes; directory entries must carry empty bytes."
             },
             {
               "name": "directory",
               "kind": "field",
               "signature": "directory: Bool",
-              "doc": ""
+              "doc": "True for a directory entry rather than a regular file; links and special files are not supported."
             },
             {
               "name": "path",
               "kind": "field",
               "signature": "path: String",
-              "doc": ""
+              "doc": "Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names."
             }
           ]
         },
@@ -55,43 +55,43 @@
               "name": "Failed",
               "kind": "case",
               "signature": "case Failed(message: String)",
-              "doc": ""
+              "doc": "An explicit implementation-supplied archive diagnostic; native validation uses specific cases."
             },
             {
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Archive bytes, duplicate paths, extracted entry paths or encoded metadata are invalid."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "A format argument's entry paths, directory payloads or supplied output/unpack limits are invalid."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "Encoded bytes, entry count or unpacked per-entry/total bytes exceed a supplied budget."
             },
             {
               "name": "Unsupported",
               "kind": "case",
               "signature": "case Unsupported",
-              "doc": ""
+              "doc": "The selected format or an encountered entry kind is unsupported, such as links or special files."
             },
             {
               "name": "Failed.message",
               "kind": "field",
               "signature": "message: String",
-              "doc": ""
+              "doc": "Original diagnostic text, returned unchanged by message()."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns original Failed text, or an archive-prefixed diagnostic for other cases.",
               "contract": "Error"
             }
           ],
@@ -154,19 +154,19 @@
               "name": "max_entries",
               "kind": "field",
               "signature": "max_entries: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum unpacked entries, including directories; none adds no entry-count budget."
             },
             {
               "name": "max_entry_bytes",
               "kind": "field",
               "signature": "max_entry_bytes: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum unpacked bytes for each entry; zero admits only empty data."
             },
             {
               "name": "max_total_bytes",
               "kind": "field",
               "signature": "max_total_bytes: Optional[Int] = none",
-              "doc": ""
+              "doc": "Cumulative unpacked file bytes across all entries; none adds no total-output budget."
             }
           ]
         },
@@ -352,19 +352,19 @@
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes."
             },
             {
               "name": "OutOfRange",
               "kind": "case",
               "signature": "case OutOfRange",
-              "doc": ""
+              "doc": "A read crosses the byte buffer or a number cannot fit the requested signedness/width or result type."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns a binary-prefixed diagnostic without echoing source bytes or numeric input.",
               "contract": "Error"
             }
           ],
@@ -545,19 +545,19 @@
               "name": "append",
               "kind": "operation",
               "signature": "fn append(value: Int) -\u003e Unit:",
-              "doc": ""
+              "doc": "Appends one unsigned byte; values outside 0 through 255 or writes after freeze fault."
             },
             {
               "name": "concat",
               "kind": "operation",
               "signature": "fn concat(values: Bytes) -\u003e Unit:",
-              "doc": ""
+              "doc": "Appends all supplied bytes in order; the input is unchanged, and a sealed builder faults."
             },
             {
               "name": "freeze",
               "kind": "operation",
               "signature": "fn freeze() -\u003e Bytes:",
-              "doc": ""
+              "doc": "Seals the builder and returns its immutable bytes; repeated freeze returns the same value."
             }
           ]
         },
@@ -585,7 +585,7 @@
               "name": "close",
               "kind": "operation",
               "signature": "fn close() -\u003e Unit",
-              "doc": ""
+              "doc": "Releases the implementation's resource state; with calls this on every scope exit.\nCleanup runs during return, expected errors, faults, and cancellation too."
             }
           ]
         }
@@ -1547,43 +1547,43 @@
               "name": "Failed",
               "kind": "case",
               "signature": "case Failed(message: String)",
-              "doc": ""
+              "doc": "An explicit implementation-supplied compression diagnostic; native codecs use specific cases."
             },
             {
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Compressed framing, checksum, payload or trailing data is invalid for the chosen format."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "Compression level is outside 0..9, or a supplied encoded/decoded byte budget is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "Encoded or decompressed output exceeds the supplied byte budget."
             },
             {
               "name": "Unsupported",
               "kind": "case",
               "signature": "case Unsupported",
-              "doc": ""
+              "doc": "A String selector is not exactly gzip, zlib or deflate; typed selectors avoid spelling errors."
             },
             {
               "name": "Failed.message",
               "kind": "field",
               "signature": "message: String",
-              "doc": ""
+              "doc": "Original diagnostic text, returned unchanged by message()."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns original Failed text, or a compression-prefixed diagnostic for other cases.",
               "contract": "Error"
             }
           ],
@@ -1616,13 +1616,13 @@
               "name": "Gzip",
               "kind": "case",
               "signature": "case Gzip",
-              "doc": "GZIP framing."
+              "doc": "DEFLATE data wrapped in GZIP headers and a checksum trailer."
             },
             {
               "name": "Zlib",
               "kind": "case",
               "signature": "case Zlib",
-              "doc": "ZLIB framing."
+              "doc": "DEFLATE data with ZLIB header and Adler-32 checksum framing."
             },
             {
               "name": "compress",
@@ -1673,25 +1673,25 @@
               "name": "AuthenticationFailed",
               "kind": "case",
               "signature": "case AuthenticationFailed",
-              "doc": ""
+              "doc": "AES-GCM authentication failed, including a wrong key, nonce, associated data or altered ciphertext."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "Key/seed/nonce length, derivation iteration/count arguments or AES key size is invalid."
             },
             {
               "name": "Unsupported",
               "kind": "case",
               "signature": "case Unsupported",
-              "doc": ""
+              "doc": "The HMAC String selector is not exactly sha256, sha384 or sha512."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns a cryptography-prefixed diagnostic without exposing keys, plaintext or ciphertext.",
               "contract": "Error"
             }
           ],
@@ -1718,19 +1718,19 @@
               "name": "Sha256",
               "kind": "case",
               "signature": "case Sha256",
-              "doc": "SHA-256."
+              "doc": "SHA-256, producing a 32-byte digest or HMAC."
             },
             {
               "name": "Sha384",
               "kind": "case",
               "signature": "case Sha384",
-              "doc": "SHA-384."
+              "doc": "SHA-384, producing a 48-byte digest or HMAC."
             },
             {
               "name": "Sha512",
               "kind": "case",
               "signature": "case Sha512",
-              "doc": "SHA-512."
+              "doc": "SHA-512, producing a 64-byte digest or HMAC."
             },
             {
               "name": "digest",
@@ -1835,25 +1835,25 @@
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Quoting or another CSV record syntax rule is violated by the input."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "The delimiter, line ending or a supplied row/cell/output budget is invalid."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "Parsed row/cell counts or the encoded output exceed a supplied budget."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns a CSV-prefixed diagnostic without exposing input cells or parser text.",
               "contract": "Error"
             }
           ],
@@ -1875,13 +1875,13 @@
               "name": "delimiter",
               "kind": "field",
               "signature": "delimiter: String = \",\"",
-              "doc": ""
+              "doc": "One non-NUL ASCII delimiter other than quote, CR or LF; defaults to comma."
             },
             {
               "name": "line_ending",
               "kind": "field",
               "signature": "line_ending: String = \"\\n\"",
-              "doc": ""
+              "doc": "Row terminator for encoding, either LF or CRLF; defaults to LF."
             }
           ]
         },
@@ -2008,25 +2008,25 @@
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Hexadecimal digits or strict padded Base64 syntax/characters are invalid."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "A supplied decoded-output byte budget is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "The decoded byte count exceeds the supplied output budget."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns an encoding-prefixed diagnostic without echoing the encoded input.",
               "contract": "Error"
             }
           ],
@@ -3003,7 +3003,7 @@
               "name": "NotEmpty",
               "kind": "case",
               "signature": "case NotEmpty",
-              "doc": ""
+              "doc": "Removal failed because the directory still contains entries."
             },
             {
               "name": "NotFound",
@@ -3249,19 +3249,19 @@
               "name": "name",
               "kind": "field",
               "signature": "name: String",
-              "doc": ""
+              "doc": "Local attribute name after native HTML parsing and normalization."
             },
             {
               "name": "namespace",
               "kind": "field",
               "signature": "namespace: String",
-              "doc": ""
+              "doc": "Attribute namespace prefix, or empty text for an unqualified attribute."
             },
             {
               "name": "value",
               "kind": "field",
               "signature": "value: String",
-              "doc": ""
+              "doc": "Decoded attribute contents, with character references resolved."
             }
           ]
         },
@@ -3283,25 +3283,25 @@
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Input encoding or a native parser/tree conversion is invalid; HTML syntax can be recovered normally."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "A supplied input-byte, tree-depth or node-count budget is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "Input bytes or the normalized returned tree exceed a supplied budget."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns an HTML-prefixed diagnostic without echoing source markup.",
               "contract": "Error"
             }
           ],
@@ -3324,19 +3324,19 @@
               "name": "max_bytes",
               "kind": "field",
               "signature": "max_bytes: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum UTF-8 input bytes before parsing; none adds no input-size budget."
             },
             {
               "name": "max_depth",
               "kind": "field",
               "signature": "max_depth: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum normalized node depth; the document is depth zero and direct children depth one."
             },
             {
               "name": "max_nodes",
               "kind": "field",
               "signature": "max_nodes: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum returned nodes, including document/text/comment/doctype and implied element nodes."
             }
           ]
         },
@@ -3357,91 +3357,91 @@
               "name": "Comment",
               "kind": "case",
               "signature": "case Comment(text: String)",
-              "doc": ""
+              "doc": "An HTML comment retained as a node rather than element text."
             },
             {
               "name": "Doctype",
               "kind": "case",
               "signature": "case Doctype(name: String, public_id: String, system_id: String)",
-              "doc": ""
+              "doc": "A document-type declaration retained from the parsed HTML."
             },
             {
               "name": "Document",
               "kind": "case",
               "signature": "case Document(children: List[HtmlNode])",
-              "doc": ""
+              "doc": "Root document node, including any elements implied by HTML tree normalization."
             },
             {
               "name": "Element",
               "kind": "case",
               "signature": "case Element(tag: String, namespace: String, attributes: List[HtmlAttribute], children: List[HtmlNode])",
-              "doc": ""
+              "doc": "An element with normalized attributes and its ordered child nodes."
             },
             {
               "name": "Text",
               "kind": "case",
               "signature": "case Text(text: String)",
-              "doc": ""
+              "doc": "Text node contents after HTML entity decoding and tree normalization."
             },
             {
               "name": "Comment.text",
               "kind": "field",
               "signature": "text: String",
-              "doc": ""
+              "doc": "Comment contents without the opening and closing comment delimiters."
             },
             {
               "name": "Doctype.name",
               "kind": "field",
               "signature": "name: String",
-              "doc": ""
+              "doc": "Doctype name supplied by the native HTML parser."
             },
             {
               "name": "Doctype.public_id",
               "kind": "field",
               "signature": "public_id: String",
-              "doc": ""
+              "doc": "Public identifier, or empty text when no public identifier is present."
             },
             {
               "name": "Doctype.system_id",
               "kind": "field",
               "signature": "system_id: String",
-              "doc": ""
+              "doc": "System identifier, or empty text when no system identifier is present."
             },
             {
               "name": "Document.children",
               "kind": "field",
               "signature": "children: List[HtmlNode]",
-              "doc": ""
+              "doc": "Direct child nodes in normalized document order."
             },
             {
               "name": "Element.attributes",
               "kind": "field",
               "signature": "attributes: List[HtmlAttribute]",
-              "doc": ""
+              "doc": "Attributes in parser order, with decoded values and namespace information."
             },
             {
               "name": "Element.children",
               "kind": "field",
               "signature": "children: List[HtmlNode]",
-              "doc": ""
+              "doc": "Direct child nodes in normalized tree order; mutable list storage is retained."
             },
             {
               "name": "Element.namespace",
               "kind": "field",
               "signature": "namespace: String",
-              "doc": ""
+              "doc": "Element namespace, such as svg/math, or empty text for ordinary HTML."
             },
             {
               "name": "Element.tag",
               "kind": "field",
               "signature": "tag: String",
-              "doc": ""
+              "doc": "Local element tag name produced by the HTML parser."
             },
             {
               "name": "Text.text",
               "kind": "field",
               "signature": "text: String",
-              "doc": ""
+              "doc": "Unicode text belonging to this node, without surrounding markup."
             }
           ]
         },
@@ -3978,13 +3978,13 @@
               "name": "close",
               "kind": "operation",
               "signature": "fn close() -\u003e Unit",
-              "doc": ""
+              "doc": "Releases the file resource; retained aliases do not extend its open lifetime."
             },
             {
               "name": "read",
               "kind": "operation",
               "signature": "fn read(max_bytes: Optional[Int] = none) -\u003e Result[Optional[Bytes], IoError]",
-              "doc": ""
+              "doc": "Returns a byte chunk or none at EOF; max_bytes is a positive chunk size, not a total budget.\nOmission/none uses the native 64 KiB chunk; source implementations define their own buffering."
             }
           ]
         },
@@ -4001,7 +4001,7 @@
               "name": "open",
               "kind": "operation",
               "signature": "fn open(path: String) -\u003e Result[File, IoError]",
-              "doc": ""
+              "doc": "Opens path for read-only access; native missing, denied, and other open failures become Unavailable."
             }
           ]
         },
@@ -4026,49 +4026,49 @@
               "name": "Closed",
               "kind": "case",
               "signature": "case Closed",
-              "doc": ""
+              "doc": "The stream or shared native handle was closed before the operation completed."
             },
             {
               "name": "Failed",
               "kind": "case",
               "signature": "case Failed(message: String)",
-              "doc": ""
+              "doc": "A native or adapter failure outside the more specific I/O cases."
             },
             {
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Read bytes are invalid for the requested decoding, such as malformed UTF-8 text."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "An explicit chunk size, byte limit, or handle mode is invalid for this operation."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "A supplied byte budget was exceeded; already consumed input may not be recoverable."
             },
             {
               "name": "Unavailable",
               "kind": "case",
               "signature": "case Unavailable",
-              "doc": ""
+              "doc": "The native service could not open or provide the requested stream."
             },
             {
               "name": "Failed.message",
               "kind": "field",
               "signature": "message: String",
-              "doc": ""
+              "doc": "Original diagnostic text; message() returns it unchanged rather than redacting it."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns original Failed text, or an I/O-prefixed diagnostic for the other cases.",
               "contract": "Error"
             }
           ],
@@ -4090,13 +4090,13 @@
               "name": "close",
               "kind": "operation",
               "signature": "fn close() -\u003e Unit",
-              "doc": ""
+              "doc": "Releases this implementation's read resource; ownership of underlying handles is implementation-defined."
             },
             {
               "name": "read",
               "kind": "operation",
               "signature": "fn read(max_bytes: Optional[Int] = none) -\u003e Result[Optional[Bytes], IoError]",
-              "doc": ""
+              "doc": "Returns a chunk or none at EOF; a final nonempty chunk can precede EOF.\nA supplied positive max_bytes requests a chunk size; native omission/none uses 64 KiB."
             }
           ]
         },
@@ -4115,13 +4115,13 @@
               "name": "close",
               "kind": "operation",
               "signature": "fn close() -\u003e Unit",
-              "doc": ""
+              "doc": "Releases this implementation's write resource; close does not imply a successful flush."
             },
             {
               "name": "flush",
               "kind": "operation",
               "signature": "fn flush() -\u003e Result[Unit, IoError]",
-              "doc": ""
+              "doc": "Completes implementation-specific buffering or synchronization; native stdout/stderr use a no-op.\nFile-handle writers synchronize the file, and failures retain IoError identity."
             },
             {
               "name": "write",
@@ -4196,25 +4196,25 @@
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "JSON syntax, Unicode escapes, duplicate keys, number text or a cyclic value is invalid."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "An explicit input, depth, value-count or output budget is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "The input, nesting, value count or encoded output exceeds a supplied budget."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns a JSON-prefixed diagnostic without echoing input text or number tokens.",
               "contract": "Error"
             }
           ],
@@ -4237,19 +4237,19 @@
               "name": "max_bytes",
               "kind": "field",
               "signature": "max_bytes: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum UTF-8 input bytes before parsing; none adds no input-size budget."
             },
             {
               "name": "max_depth",
               "kind": "field",
               "signature": "max_depth: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum container nesting; a root scalar has depth zero, and a root container depth one."
             },
             {
               "name": "max_values",
               "kind": "field",
               "signature": "max_values: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum parsed containers and scalar values, excluding object keys; none adds no count budget."
             }
           ]
         },
@@ -4271,67 +4271,67 @@
               "name": "ArrayValue",
               "kind": "case",
               "signature": "case ArrayValue(values: List[JsonValue])",
-              "doc": ""
+              "doc": "An ordered JSON array whose mutable list can be updated before serialization."
             },
             {
               "name": "BoolValue",
               "kind": "case",
               "signature": "case BoolValue(value: Bool)",
-              "doc": ""
+              "doc": "A JSON true or false value."
             },
             {
               "name": "Null",
               "kind": "case",
               "signature": "case Null",
-              "doc": ""
+              "doc": "JSON null, represented without a payload value."
             },
             {
               "name": "NumberValue",
               "kind": "case",
               "signature": "case NumberValue(text: String)",
-              "doc": ""
+              "doc": "An exact JSON number token; parsing does not coerce it into Float."
             },
             {
               "name": "ObjectValue",
               "kind": "case",
               "signature": "case ObjectValue(values: Map[String, JsonValue])",
-              "doc": ""
+              "doc": "A JSON object retaining insertion order and rejecting duplicate keys during parsing."
             },
             {
               "name": "StringValue",
               "kind": "case",
               "signature": "case StringValue(value: String)",
-              "doc": ""
+              "doc": "A decoded JSON string, with escapes resolved into Unicode text."
             },
             {
               "name": "ArrayValue.values",
               "kind": "field",
               "signature": "values: List[JsonValue]",
-              "doc": ""
+              "doc": "Element values in source order; nested mutable payloads retain their references."
             },
             {
               "name": "BoolValue.value",
               "kind": "field",
               "signature": "value: Bool",
-              "doc": ""
+              "doc": "The decoded boolean, without a textual representation requirement."
             },
             {
               "name": "NumberValue.text",
               "kind": "field",
               "signature": "text: String",
-              "doc": ""
+              "doc": "Original numeric token text; stringify validates its JSON number syntax."
             },
             {
               "name": "ObjectValue.values",
               "kind": "field",
               "signature": "values: Map[String, JsonValue]",
-              "doc": ""
+              "doc": "String-keyed members in insertion order; stringify reads their current values."
             },
             {
               "name": "StringValue.value",
               "kind": "field",
               "signature": "value: String",
-              "doc": ""
+              "doc": "Decoded UTF-8 text, preserving scalar contents without normalization."
             }
           ]
         },
@@ -4373,55 +4373,55 @@
               "name": "Closed",
               "kind": "case",
               "signature": "case Closed",
-              "doc": ""
+              "doc": "The native transport has closed, so an admitted write or flush cannot complete."
             },
             {
               "name": "FileSystem",
               "kind": "case",
               "signature": "case FileSystem(cause: FileSystemError)",
-              "doc": ""
+              "doc": "Opening the owned file transport returned a filesystem error."
             },
             {
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Structured fields cannot be encoded as valid JSON, including cyclic values."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "The selected record level or an explicit record-size budget is invalid."
             },
             {
               "name": "Io",
               "kind": "case",
               "signature": "case Io(cause: IoError)",
-              "doc": ""
+              "doc": "A transport's underlying byte-stream operation returned its original I/O error."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "The JSON record plus its terminating newline exceeds the supplied byte budget."
             },
             {
               "name": "FileSystem.cause",
               "kind": "field",
               "signature": "cause: FileSystemError",
-              "doc": ""
+              "doc": "Original filesystem error retained from file acquisition."
             },
             {
               "name": "Io.cause",
               "kind": "field",
               "signature": "cause: IoError",
-              "doc": ""
+              "doc": "Original stream error; its message and concrete case are preserved."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.",
               "contract": "Error"
             }
           ],
@@ -4448,43 +4448,43 @@
               "name": "Debug",
               "kind": "case",
               "signature": "case Debug",
-              "doc": ""
+              "doc": "Development diagnostics, encoded with numeric level 20."
             },
             {
               "name": "Error",
               "kind": "case",
               "signature": "case Error",
-              "doc": ""
+              "doc": "Failure records, encoded with numeric level 50."
             },
             {
               "name": "Fatal",
               "kind": "case",
               "signature": "case Fatal",
-              "doc": ""
+              "doc": "Critical records at numeric level 60; logging does not terminate the process."
             },
             {
               "name": "Info",
               "kind": "case",
               "signature": "case Info",
-              "doc": ""
+              "doc": "Ordinary operational records, encoded with numeric level 30; the default threshold."
             },
             {
               "name": "Silent",
               "kind": "case",
               "signature": "case Silent",
-              "doc": ""
+              "doc": "Filtering threshold that disables records; passing it to log returns InvalidInput."
             },
             {
               "name": "Trace",
               "kind": "case",
               "signature": "case Trace",
-              "doc": ""
+              "doc": "Most detailed records, encoded with numeric level 10."
             },
             {
               "name": "Warn",
               "kind": "case",
               "signature": "case Warn",
-              "doc": ""
+              "doc": "Warning records, encoded with numeric level 40."
             }
           ]
         },
@@ -4518,25 +4518,25 @@
               "name": "debug",
               "kind": "operation",
               "signature": "fn debug(message: String, fields: Optional[Map[String, JsonValue]] = none) -\u003e Result[Unit, LogError]",
-              "doc": ""
+              "doc": "Logs at Debug when enabled, with call fields overriding child bindings for duplicate keys."
             },
             {
               "name": "enabled",
               "kind": "operation",
               "signature": "fn enabled(level: LogLevel) -\u003e Bool",
-              "doc": ""
+              "doc": "Tests the current filtering threshold; Silent is never enabled as a record level."
             },
             {
               "name": "error",
               "kind": "operation",
               "signature": "fn error(message: String, fields: Optional[Map[String, JsonValue]] = none) -\u003e Result[Unit, LogError]",
-              "doc": ""
+              "doc": "Logs at Error when enabled; it records an expected diagnostic rather than raising a fault."
             },
             {
               "name": "fatal",
               "kind": "operation",
               "signature": "fn fatal(message: String, fields: Optional[Map[String, JsonValue]] = none) -\u003e Result[Unit, LogError]",
-              "doc": ""
+              "doc": "Logs at Fatal when enabled; the caller remains responsible for process termination."
             },
             {
               "name": "flush",
@@ -4548,13 +4548,13 @@
               "name": "info",
               "kind": "operation",
               "signature": "fn info(message: String, fields: Optional[Map[String, JsonValue]] = none) -\u003e Result[Unit, LogError]",
-              "doc": ""
+              "doc": "Logs at Info when enabled; reserved level, msg, and time fields remain controlled by the logger."
             },
             {
               "name": "level",
               "kind": "operation",
               "signature": "fn level() -\u003e LogLevel",
-              "doc": ""
+              "doc": "Returns this logger's current threshold, independent of its parent or children."
             },
             {
               "name": "log",
@@ -4566,19 +4566,19 @@
               "name": "set_level",
               "kind": "operation",
               "signature": "fn set_level(level: LogLevel) -\u003e Unit",
-              "doc": ""
+              "doc": "Changes only this logger's threshold; existing child loggers retain their copied threshold."
             },
             {
               "name": "trace",
               "kind": "operation",
               "signature": "fn trace(message: String, fields: Optional[Map[String, JsonValue]] = none) -\u003e Result[Unit, LogError]",
-              "doc": ""
+              "doc": "Logs at Trace when enabled; a filtered call returns ok without encoding or transport access."
             },
             {
               "name": "warn",
               "kind": "operation",
               "signature": "fn warn(message: String, fields: Optional[Map[String, JsonValue]] = none) -\u003e Result[Unit, LogError]",
-              "doc": ""
+              "doc": "Logs at Warn when enabled, returning encoding, size-budget, or transport errors unchanged."
             }
           ]
         },
@@ -4597,19 +4597,19 @@
               "name": "close",
               "kind": "operation",
               "signature": "fn close() -\u003e Unit",
-              "doc": ""
+              "doc": "Releases owned resources; native close cancels admitted operations and leaves borrowed streams open."
             },
             {
               "name": "flush",
               "kind": "operation",
               "signature": "fn flush() -\u003e Result[Unit, LogError]",
-              "doc": ""
+              "doc": "Delegates flush to the destination; persistence and buffering depend on that destination."
             },
             {
               "name": "write",
               "kind": "operation",
               "signature": "fn write(data: Bytes) -\u003e Result[Unit, LogError]",
-              "doc": ""
+              "doc": "Accepts encoded record bytes; native transports serialize writes and may return the original I/O cause.\nErrors can follow a partial external write, without rollback."
             }
           ]
         },
@@ -5352,19 +5352,19 @@
               "name": "none",
               "kind": "case",
               "signature": "case none",
-              "doc": ""
+              "doc": "An absent value with no payload; no T needs to be constructed."
             },
             {
               "name": "some",
               "kind": "case",
               "signature": "case some(value: T)",
-              "doc": ""
+              "doc": "A present payload, retained by reference when T is mutable."
             },
             {
               "name": "some.value",
               "kind": "field",
               "signature": "value: T",
-              "doc": ""
+              "doc": "The contained value; unwrap and matching return this original payload."
             },
             {
               "name": "and_then[U]",
@@ -5382,7 +5382,7 @@
               "name": "is_some",
               "kind": "operation",
               "signature": "fn is_some() -\u003e Bool:",
-              "doc": "Reports whether this value contains a payload."
+              "doc": "Returns true for some(value), and false for none."
             },
             {
               "name": "map[U]",
@@ -5449,13 +5449,13 @@
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "Invalid NUL input, a nonabsolute resolve/relative anchor or malformed glob syntax."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns a path-prefixed diagnostic without revealing the supplied paths or pattern.",
               "contract": "Error"
             }
           ],
@@ -5490,91 +5490,91 @@
               "name": "basename",
               "kind": "operation",
               "signature": "fn basename(path: String) -\u003e String",
-              "doc": ""
+              "doc": "Returns the last component after ignoring trailing separators under this view's path rules."
             },
             {
               "name": "basename_without",
               "kind": "operation",
               "signature": "fn basename_without(path: String, suffix: String) -\u003e String",
-              "doc": ""
+              "doc": "Removes an exact suffix under basename compatibility rules; it does not strip arbitrary extensions."
             },
             {
               "name": "delimiter",
               "kind": "operation",
               "signature": "fn delimiter() -\u003e String",
-              "doc": ""
+              "doc": "Returns colon for POSIX or semicolon for Windows path-list entries."
             },
             {
               "name": "dirname",
               "kind": "operation",
               "signature": "fn dirname(path: String) -\u003e String",
-              "doc": ""
+              "doc": "Returns the directory component using the selected POSIX or Windows convention."
             },
             {
               "name": "extension",
               "kind": "operation",
               "signature": "fn extension(path: String) -\u003e String",
-              "doc": ""
+              "doc": "Returns the final dot extension, or empty text for extensionless names and simple dotfiles."
             },
             {
               "name": "format",
               "kind": "operation",
               "signature": "fn format(parts: PathParts) -\u003e String",
-              "doc": ""
+              "doc": "Builds a path with directory preferred over root, and base preferred over name plus extension."
             },
             {
               "name": "is_absolute",
               "kind": "operation",
               "signature": "fn is_absolute(path: String) -\u003e Bool",
-              "doc": ""
+              "doc": "Tests absolute-root syntax; a Windows drive-relative spelling is not absolute."
             },
             {
               "name": "join",
               "kind": "operation",
               "signature": "fn join(parts: List[String]) -\u003e String",
-              "doc": ""
+              "doc": "Joins nonempty parts and normalizes separators/dot segments without filesystem access."
             },
             {
               "name": "matches_glob",
               "kind": "operation",
               "signature": "fn matches_glob(path: String, pattern: String) -\u003e Result[Bool, PathError]",
-              "doc": ""
+              "doc": "Tests one lexical path against the supported glob syntax; malformed patterns return InvalidInput."
             },
             {
               "name": "normalize",
               "kind": "operation",
               "signature": "fn normalize(path: String) -\u003e String",
-              "doc": ""
+              "doc": "Cleans repeated separators and dot segments lexically; it does not resolve symlinks."
             },
             {
               "name": "parse",
               "kind": "operation",
               "signature": "fn parse(path: String) -\u003e PathParts",
-              "doc": ""
+              "doc": "Splits the original spelling into root, directory, base, extension and name without filesystem access."
             },
             {
               "name": "relative",
               "kind": "operation",
               "signature": "fn relative(base: String, target: String) -\u003e Result[String, PathError]",
-              "doc": ""
+              "doc": "Computes a lexical relative path from absolute anchors; different roots return the original target.\nNonabsolute anchors or invalid NUL input return InvalidInput."
             },
             {
               "name": "resolve",
               "kind": "operation",
               "signature": "fn resolve(base: String, parts: List[String]) -\u003e Result[String, PathError]",
-              "doc": ""
+              "doc": "Resolves parts against an explicit absolute base; no process working directory is consulted."
             },
             {
               "name": "separator",
               "kind": "operation",
               "signature": "fn separator() -\u003e String",
-              "doc": ""
+              "doc": "Returns slash for POSIX or backslash for Windows path components."
             },
             {
               "name": "to_namespaced_path",
               "kind": "operation",
               "signature": "fn to_namespaced_path(path: String) -\u003e String",
-              "doc": ""
+              "doc": "Returns a Windows namespaced absolute path when applicable; POSIX paths are unchanged."
             }
           ]
         },
@@ -5595,31 +5595,31 @@
               "name": "base",
               "kind": "field",
               "signature": "base: String",
-              "doc": ""
+              "doc": "Final component with extension; it takes precedence over name/extension during format."
             },
             {
               "name": "directory",
               "kind": "field",
               "signature": "directory: String",
-              "doc": ""
+              "doc": "Directory portion, including the root when present; it takes precedence over root during format."
             },
             {
               "name": "extension",
               "kind": "field",
               "signature": "extension: String",
-              "doc": ""
+              "doc": "Final extension including its dot; simple dotfiles and dot/dot-dot components have no extension."
             },
             {
               "name": "name",
               "kind": "field",
               "signature": "name: String",
-              "doc": ""
+              "doc": "Final component with its extension removed, retaining the original spelling."
             },
             {
               "name": "root",
               "kind": "field",
               "signature": "root: String",
-              "doc": ""
+              "doc": "Root prefix under the chosen path rules, including a POSIX slash or Windows drive/UNC root."
             }
           ]
         },
@@ -6392,13 +6392,13 @@
               "name": "capacity",
               "kind": "field",
               "signature": "capacity: Optional[Int] = none",
-              "doc": ""
+              "doc": "Constructor capacity in items; omission/none is unbounded, and supplied values must be positive."
             },
             {
               "name": "compare",
               "kind": "field",
               "signature": "compare: fn(left: T, right: T) -\u003e Int",
-              "doc": ""
+              "doc": "Constructor comparator: negative puts left first; ties dequeue in enqueue order.\nComparisons must stay consistent and must not mutate this queue."
             },
             {
               "name": "dequeue",
@@ -6416,25 +6416,25 @@
               "name": "is_empty",
               "kind": "operation",
               "signature": "fn is_empty() -\u003e Bool:",
-              "doc": ""
+              "doc": "Reports whether the queue has no values to peek or dequeue."
             },
             {
               "name": "length",
               "kind": "operation",
               "signature": "fn length() -\u003e Int:",
-              "doc": ""
+              "doc": "Returns the number of enqueued values, independent of their priorities."
             },
             {
               "name": "peek",
               "kind": "operation",
               "signature": "fn peek() -\u003e Optional[T]:",
-              "doc": ""
+              "doc": "Returns the next value by priority without removing it, or none when empty."
             }
           ]
         },
         {
           "name": "Queue",
-          "doc": "FIFO queue. An omitted capacity creates an unbounded queue.",
+          "doc": "A local mutable FIFO queue; protect all shared access with Synchronized.\nOmitted or none capacity grows as needed and adds no fixed queue limit.",
           "kind": "native",
           "type": "Queue[T]",
           "type_parameters": [
@@ -6455,7 +6455,7 @@
               "name": "capacity",
               "kind": "field",
               "signature": "capacity: Optional[Int] = none",
-              "doc": "Optional constructor argument; omit for an unbounded queue."
+              "doc": "Constructor capacity in items; omission/none is unbounded, and supplied values must be positive."
             },
             {
               "name": "dequeue",
@@ -6473,19 +6473,19 @@
               "name": "is_empty",
               "kind": "operation",
               "signature": "fn is_empty() -\u003e Bool:",
-              "doc": ""
+              "doc": "Reports whether dequeue and peek would return none."
             },
             {
               "name": "length",
               "kind": "operation",
               "signature": "fn length() -\u003e Int:",
-              "doc": ""
+              "doc": "Returns the number of values currently waiting in the queue."
             },
             {
               "name": "peek",
               "kind": "operation",
               "signature": "fn peek() -\u003e Optional[T]:",
-              "doc": "Returns the oldest value without removing it."
+              "doc": "Returns the oldest value without removing it, or none when the queue is empty."
             }
           ]
         }
@@ -6600,13 +6600,13 @@
               "name": "find_all",
               "kind": "operation",
               "signature": "fn find_all(text: String, max_matches: Optional[Int] = none) -\u003e Result[List[String], RegexError]:",
-              "doc": ""
+              "doc": "Returns nonoverlapping full-match text in occurrence order, excluding capture groups.\nA supplied cap is a strict budget, not truncation; zero-width matches follow native regexp rules."
             },
             {
               "name": "matches",
               "kind": "operation",
               "signature": "fn matches(text: String) -\u003e Bool:",
-              "doc": ""
+              "doc": "Tests whether any match occurs; anchor the pattern explicitly to require a whole-string match."
             },
             {
               "name": "replace",
@@ -6618,7 +6618,7 @@
               "name": "replace_all",
               "kind": "operation",
               "signature": "fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -\u003e Result[String, RegexError]:",
-              "doc": "Replaces every nonoverlapping match with literal replacement text (no capture expansion).\nmax_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded."
+              "doc": "Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.\nmax_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded."
             }
           ]
         },
@@ -6640,25 +6640,25 @@
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Pattern syntax is invalid for the native RE2-compatible regular-expression engine."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "A supplied match-count or output-byte budget is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "More matches exist than permitted, or replacement output exceeds its byte budget."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns a regular-expression-prefixed diagnostic without echoing pattern or input text.",
               "contract": "Error"
             }
           ],
@@ -6706,25 +6706,25 @@
               "name": "error",
               "kind": "case",
               "signature": "case error(cause: E)",
-              "doc": ""
+              "doc": "An expected failure value; it is distinct from faults and cancellation."
             },
             {
               "name": "ok",
               "kind": "case",
               "signature": "case ok(value: T)",
-              "doc": ""
+              "doc": "A successful result, retaining its payload without a deep copy."
             },
             {
               "name": "error.cause",
               "kind": "field",
               "signature": "cause: E",
-              "doc": ""
+              "doc": "The original domain error, retained through compatible Result propagation."
             },
             {
               "name": "ok.value",
               "kind": "field",
               "signature": "value: T",
-              "doc": ""
+              "doc": "The successful value returned by unwrap, matching, or propagation."
             },
             {
               "name": "and_then[U]",
@@ -6806,25 +6806,25 @@
               "name": "Nfc",
               "kind": "case",
               "signature": "case Nfc",
-              "doc": "Canonical composition."
+              "doc": "Canonical decomposition followed by canonical recomposition where Unicode permits it."
             },
             {
               "name": "Nfd",
               "kind": "case",
               "signature": "case Nfd",
-              "doc": "Canonical decomposition."
+              "doc": "Canonical decomposition with combining marks placed in canonical order."
             },
             {
               "name": "Nfkc",
               "kind": "case",
               "signature": "case Nfkc",
-              "doc": "Compatibility composition."
+              "doc": "Compatibility decomposition followed by canonical recomposition where Unicode permits it."
             },
             {
               "name": "Nfkd",
               "kind": "case",
               "signature": "case Nfkd",
-              "doc": "Compatibility decomposition."
+              "doc": "Compatibility decomposition with combining marks placed in canonical order."
             },
             {
               "name": "normalize",
@@ -6836,7 +6836,7 @@
         },
         {
           "name": "StringBuilder",
-          "doc": "Mutable builder for constructing a string without repeated intermediate copies.\nMutable builder for constructing a string without repeated intermediate copies.",
+          "doc": "Mutable builder for constructing a string without repeated intermediate copies.",
           "kind": "native",
           "type": "StringBuilder",
           "operations": [
@@ -6848,13 +6848,13 @@
               "name": "append",
               "kind": "operation",
               "signature": "fn append(value: String) -\u003e Unit:",
-              "doc": ""
+              "doc": "Appends the supplied text in order; mutation after freeze raises a sealed-builder fault."
             },
             {
               "name": "freeze",
               "kind": "operation",
               "signature": "fn freeze() -\u003e String:",
-              "doc": ""
+              "doc": "Seals the builder and returns immutable text; repeated freeze returns the same text value."
             }
           ]
         },
@@ -6877,37 +6877,37 @@
               "name": "Failed",
               "kind": "case",
               "signature": "case Failed(message: String)",
-              "doc": ""
+              "doc": "A string-domain failure with an explicit diagnostic supplied by an implementation."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "Scalar values, normalization form or a supplied repeat/padding/output budget is invalid."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "UTF-8 output exceeds a supplied byte budget or the native string allocation limit."
             },
             {
               "name": "OutOfRange",
               "kind": "case",
               "signature": "case OutOfRange",
-              "doc": ""
+              "doc": "A strict scalar slice bound lies outside the string or its range is inverted."
             },
             {
               "name": "Failed.message",
               "kind": "field",
               "signature": "message: String",
-              "doc": ""
+              "doc": "Original diagnostic text, returned unchanged by message()."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns original Failed text, or a string-prefixed diagnostic for other cases.",
               "contract": "Error"
             }
           ],
@@ -6945,13 +6945,13 @@
               "name": "value",
               "kind": "field",
               "signature": "value: T",
-              "doc": ""
+              "doc": "Initial constructor payload; retain its mutable aliases only with the same guarded access policy."
             },
             {
               "name": "lock",
               "kind": "operation",
               "signature": "fn lock() -\u003e SynchronizedGuard[T]:",
-              "doc": ""
+              "doc": "Waits for an exclusive guard; caller cancellation interrupts a pending acquisition.\nKeep the guard in a with scope so every exit releases it."
             }
           ]
         },
@@ -6973,19 +6973,19 @@
               "name": "close",
               "kind": "operation",
               "signature": "fn close() -\u003e Unit:",
-              "doc": ""
+              "doc": "Releases the lock for every alias of this guard; repeated close does nothing."
             },
             {
               "name": "get",
               "kind": "operation",
               "signature": "fn get() -\u003e T:",
-              "doc": ""
+              "doc": "Returns the original guarded payload, without cloning; a closed guard faults."
             },
             {
               "name": "set",
               "kind": "operation",
               "signature": "fn set(value: T) -\u003e Unit:",
-              "doc": ""
+              "doc": "Replaces the guarded payload without copying it; a closed guard faults."
             }
           ]
         }
@@ -7908,7 +7908,7 @@
               "name": "add",
               "kind": "operation",
               "signature": "fn add(right: Duration) -\u003e Duration:",
-              "doc": "Adds another duration."
+              "doc": "Adds signed nanoseconds; a result outside Duration's representable range faults."
             },
             {
               "name": "compare",
@@ -8405,43 +8405,43 @@
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData(line: Int, column: Int, reason: String)",
-              "doc": ""
+              "doc": "Invalid syntax, duplicate/conflicting keys, unsupported value forms or numeric range failures."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "One of the supplied input-byte, depth or value-count limits is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "Input, nesting or parsed/returned value counts exceed a supplied budget."
             },
             {
               "name": "InvalidData.column",
               "kind": "field",
               "signature": "column: Int",
-              "doc": ""
+              "doc": "One-based Unicode scalar column after CRLF normalization."
             },
             {
               "name": "InvalidData.line",
               "kind": "field",
               "signature": "line: Int",
-              "doc": ""
+              "doc": "One-based line of the invalid token or conflicting construct."
             },
             {
               "name": "InvalidData.reason",
               "kind": "field",
               "signature": "reason: String",
-              "doc": ""
+              "doc": "Parser diagnostic describing the rejected TOML construct."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Formats the source line, scalar column and parser reason for a malformed document.",
               "contract": "Error"
             }
           ],
@@ -8464,19 +8464,19 @@
               "name": "max_bytes",
               "kind": "field",
               "signature": "max_bytes: Optional[Int]",
-              "doc": ""
+              "doc": "Maximum UTF-8 input bytes before CRLF normalization; none adds no budget."
             },
             {
               "name": "max_depth",
               "kind": "field",
               "signature": "max_depth: Optional[Int]",
-              "doc": ""
+              "doc": "Maximum value depth, including scalar leaves and implicit tables, with the root at one."
             },
             {
               "name": "max_values",
               "kind": "field",
               "signature": "max_values: Optional[Int]",
-              "doc": ""
+              "doc": "Maximum containers and leaves, excluding keys; checked during parsing and materialization."
             }
           ]
         },
@@ -8499,85 +8499,85 @@
               "name": "ArrayValue",
               "kind": "case",
               "signature": "case ArrayValue(values: List[TomlValue])",
-              "doc": ""
+              "doc": "An ordered array; elements can have different TOML value kinds."
             },
             {
               "name": "BoolValue",
               "kind": "case",
               "signature": "case BoolValue(value: Bool)",
-              "doc": ""
+              "doc": "A TOML true or false value; other capitalizations are invalid."
             },
             {
               "name": "DateTimeValue",
               "kind": "case",
               "signature": "case DateTimeValue(text: String)",
-              "doc": ""
+              "doc": "A validated local/offset date or time token, retained as text."
             },
             {
               "name": "FloatValue",
               "kind": "case",
               "signature": "case FloatValue(value: Float)",
-              "doc": ""
+              "doc": "A parsed floating-point number, including TOML infinity and NaN spellings."
             },
             {
               "name": "IntValue",
               "kind": "case",
               "signature": "case IntValue(value: Int)",
-              "doc": ""
+              "doc": "A parsed whole number; out-of-range input is rejected rather than truncated."
             },
             {
               "name": "StringValue",
               "kind": "case",
               "signature": "case StringValue(value: String)",
-              "doc": ""
+              "doc": "Text decoded from TOML basic or literal string syntax."
             },
             {
               "name": "TableValue",
               "kind": "case",
               "signature": "case TableValue(values: Map[String, TomlValue])",
-              "doc": ""
+              "doc": "An insertion-ordered table; parse returns this case even for an empty document."
             },
             {
               "name": "ArrayValue.values",
               "kind": "field",
               "signature": "values: List[TomlValue]",
-              "doc": ""
+              "doc": "Element values in document order, with ordinary mutable list storage."
             },
             {
               "name": "BoolValue.value",
               "kind": "field",
               "signature": "value: Bool",
-              "doc": ""
+              "doc": "The decoded boolean from the lowercase TOML token."
             },
             {
               "name": "DateTimeValue.text",
               "kind": "field",
               "signature": "text: String",
-              "doc": ""
+              "doc": "Original accepted TOML date/time spelling, without a timezone conversion."
             },
             {
               "name": "FloatValue.value",
               "kind": "field",
               "signature": "value: Float",
-              "doc": ""
+              "doc": "Numeric value of the accepted floating token, preserving signed zero."
             },
             {
               "name": "IntValue.value",
               "kind": "field",
               "signature": "value: Int",
-              "doc": ""
+              "doc": "Exact signed integer value of the accepted TOML numeric token."
             },
             {
               "name": "StringValue.value",
               "kind": "field",
               "signature": "value: String",
-              "doc": ""
+              "doc": "Unicode contents after the applicable escapes and multiline rules."
             },
             {
               "name": "TableValue.values",
               "kind": "field",
               "signature": "values: Map[String, TomlValue]",
-              "doc": ""
+              "doc": "String-keyed entries produced by assignments, dotted keys and table headers."
             }
           ]
         },
@@ -8606,13 +8606,13 @@
               "name": "key",
               "kind": "field",
               "signature": "key: String",
-              "doc": ""
+              "doc": "Decoded query key; duplicate keys retain separate entries in input order."
             },
             {
               "name": "value",
               "kind": "field",
               "signature": "value: String",
-              "doc": ""
+              "doc": "Decoded query value; a bare key has an empty value and plus decodes as a space."
             }
           ]
         },
@@ -8634,37 +8634,37 @@
               "name": "fragment",
               "kind": "field",
               "signature": "fragment: String",
-              "doc": ""
+              "doc": "Decoded fragment contents without the leading hash mark."
             },
             {
               "name": "host",
               "kind": "field",
               "signature": "host: String",
-              "doc": ""
+              "doc": "Lowercased hostname, excluding the port and IPv6 brackets; user information is rejected."
             },
             {
               "name": "path",
               "kind": "field",
               "signature": "path: String",
-              "doc": ""
+              "doc": "Escaped path text, retaining escaped separators; format validates its percent escapes and UTF-8."
             },
             {
               "name": "port",
               "kind": "field",
               "signature": "port: Optional[Int]",
-              "doc": ""
+              "doc": "Explicit numeric port in 0..65535, or none when the input has no port."
             },
             {
               "name": "query",
               "kind": "field",
               "signature": "query: String",
-              "doc": ""
+              "doc": "Encoded query contents without the leading question mark; parse_query decodes individual entries."
             },
             {
               "name": "scheme",
               "kind": "field",
               "signature": "scheme: String",
-              "doc": ""
+              "doc": "URL scheme, lowercased during parsing; native parse rejects missing schemes and opaque URLs."
             }
           ]
         },
@@ -8686,25 +8686,25 @@
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "URL text, escaped bytes, port syntax or a relative reference is invalid or unsupported."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "Constructed URL components or a supplied query-entry budget are invalid."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "The decoded query has more entries than its supplied budget permits."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns a URL-prefixed diagnostic without echoing addresses, query values or credentials.",
               "contract": "Error"
             }
           ],
@@ -8968,61 +8968,61 @@
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData(line: Int, column: Int, reason: String)",
-              "doc": ""
+              "doc": "Malformed YAML or a form outside the supported parser's accepted grammar."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "One of the supplied byte, depth or value-count limits is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "Parsing or validating the returned alias-expanded tree exceeds a supplied budget."
             },
             {
               "name": "UnsupportedFeature",
               "kind": "case",
               "signature": "case UnsupportedFeature(line: Int, reason: String)",
-              "doc": ""
+              "doc": "An explicit tag, complex key or directive unsupported by this configuration parser."
             },
             {
               "name": "InvalidData.column",
               "kind": "field",
               "signature": "column: Int",
-              "doc": ""
+              "doc": "One-based Unicode scalar column within that source line."
             },
             {
               "name": "InvalidData.line",
               "kind": "field",
               "signature": "line: Int",
-              "doc": ""
+              "doc": "One-based source line of the offending token or construct."
             },
             {
               "name": "InvalidData.reason",
               "kind": "field",
               "signature": "reason: String",
-              "doc": ""
+              "doc": "Parser diagnostic describing the malformed construct."
             },
             {
               "name": "UnsupportedFeature.line",
               "kind": "field",
               "signature": "line: Int",
-              "doc": ""
+              "doc": "One-based source line where the unsupported construct appears."
             },
             {
               "name": "UnsupportedFeature.reason",
               "kind": "field",
               "signature": "reason: String",
-              "doc": ""
+              "doc": "Diagnostic identifying the unsupported syntax or feature."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Formats parser positions and reason text; match the typed fields for programmatic handling.",
               "contract": "Error"
             }
           ],
@@ -9045,19 +9045,19 @@
               "name": "max_bytes",
               "kind": "field",
               "signature": "max_bytes: Optional[Int]",
-              "doc": ""
+              "doc": "Maximum UTF-8 input bytes before line-ending normalization; none adds no budget."
             },
             {
               "name": "max_depth",
               "kind": "field",
               "signature": "max_depth: Optional[Int]",
-              "doc": ""
+              "doc": "Maximum value depth, including scalar leaves, with the root at one."
             },
             {
               "name": "max_values",
               "kind": "field",
               "signature": "max_values: Optional[Int]",
-              "doc": ""
+              "doc": "Maximum containers and leaves, excluding keys; aliases count at each checked occurrence."
             }
           ]
         },
@@ -9079,67 +9079,67 @@
               "name": "ArrayValue",
               "kind": "case",
               "signature": "case ArrayValue(values: List[YamlValue])",
-              "doc": ""
+              "doc": "An ordered YAML sequence with ordinary mutable list storage."
             },
             {
               "name": "BoolValue",
               "kind": "case",
               "signature": "case BoolValue(value: Bool)",
-              "doc": ""
+              "doc": "A core-schema true or false value; yes and no remain strings."
             },
             {
               "name": "Null",
               "kind": "case",
               "signature": "case Null",
-              "doc": ""
+              "doc": "YAML null, including an empty document or a plain null spelling."
             },
             {
               "name": "NumberValue",
               "kind": "case",
               "signature": "case NumberValue(text: String)",
-              "doc": ""
+              "doc": "Numeric token text retained exactly instead of being coerced into Float."
             },
             {
               "name": "ObjectValue",
               "kind": "case",
               "signature": "case ObjectValue(values: Map[String, YamlValue])",
-              "doc": ""
+              "doc": "A textual-key mapping, with insertion order and duplicate-key checks."
             },
             {
               "name": "StringValue",
               "kind": "case",
               "signature": "case StringValue(value: String)",
-              "doc": ""
+              "doc": "Text decoded from a quoted, plain or block scalar."
             },
             {
               "name": "ArrayValue.values",
               "kind": "field",
               "signature": "values: List[YamlValue]",
-              "doc": ""
+              "doc": "Sequence entries in document order, retaining nested references."
             },
             {
               "name": "BoolValue.value",
               "kind": "field",
               "signature": "value: Bool",
-              "doc": ""
+              "doc": "The decoded boolean selected from YAML core-schema spellings."
             },
             {
               "name": "NumberValue.text",
               "kind": "field",
               "signature": "text: String",
-              "doc": ""
+              "doc": "Original numeric spelling, including supported base prefixes and nonfinite spellings."
             },
             {
               "name": "ObjectValue.values",
               "kind": "field",
               "signature": "values: Map[String, YamlValue]",
-              "doc": ""
+              "doc": "Decoded string keys and their values; aliases may share nested payloads."
             },
             {
               "name": "StringValue.value",
               "kind": "field",
               "signature": "value: String",
-              "doc": ""
+              "doc": "Resulting Unicode text after escape decoding, folding and chomping."
             }
           ]
         },
@@ -9156,6 +9156,7 @@
       "declarations": [
         {
           "name": "Bool",
+          "doc": "Boolean truth values true and false; conditions require this type.",
           "kind": "type",
           "type": "Bool"
         },
@@ -9195,6 +9196,7 @@
         },
         {
           "name": "Float",
+          "doc": "Binary floating-point values, including signed zero, infinities and NaN.",
           "kind": "type",
           "type": "Float",
           "operations": [
@@ -9270,6 +9272,7 @@
         },
         {
           "name": "Int",
+          "doc": "Signed whole numbers with checked arithmetic; overflow and division by zero fault.",
           "kind": "type",
           "type": "Int",
           "operations": [
@@ -9810,6 +9813,7 @@
         },
         {
           "name": "Never",
+          "doc": "The return type of computations that cannot return a value, such as panic.",
           "kind": "type",
           "type": "Never"
         },
@@ -9842,19 +9846,19 @@
               "name": "none",
               "kind": "case",
               "signature": "case none",
-              "doc": ""
+              "doc": "An absent value with no payload; no T needs to be constructed."
             },
             {
               "name": "some",
               "kind": "case",
               "signature": "case some(value: T)",
-              "doc": ""
+              "doc": "A present payload, retained by reference when T is mutable."
             },
             {
               "name": "some.value",
               "kind": "field",
               "signature": "value: T",
-              "doc": ""
+              "doc": "The contained value; unwrap and matching return this original payload."
             },
             {
               "name": "and_then[U]",
@@ -9872,7 +9876,7 @@
               "name": "is_some",
               "kind": "operation",
               "signature": "fn is_some() -\u003e Bool:",
-              "doc": "Reports whether this value contains a payload."
+              "doc": "Returns true for some(value), and false for none."
             },
             {
               "name": "map[U]",
@@ -9947,25 +9951,25 @@
               "name": "error",
               "kind": "case",
               "signature": "case error(cause: E)",
-              "doc": ""
+              "doc": "An expected failure value; it is distinct from faults and cancellation."
             },
             {
               "name": "ok",
               "kind": "case",
               "signature": "case ok(value: T)",
-              "doc": ""
+              "doc": "A successful result, retaining its payload without a deep copy."
             },
             {
               "name": "error.cause",
               "kind": "field",
               "signature": "cause: E",
-              "doc": ""
+              "doc": "The original domain error, retained through compatible Result propagation."
             },
             {
               "name": "ok.value",
               "kind": "field",
               "signature": "value: T",
-              "doc": ""
+              "doc": "The successful value returned by unwrap, matching, or propagation."
             },
             {
               "name": "and_then[U]",
@@ -10025,6 +10029,7 @@
         },
         {
           "name": "String",
+          "doc": "UTF-8 text indexed by Unicode scalar values; byte_length counts encoded bytes instead.",
           "kind": "type",
           "type": "String",
           "operations": [
@@ -10279,6 +10284,7 @@
         },
         {
           "name": "Unit",
+          "doc": "The single value unit, used when an operation returns no useful payload.",
           "kind": "type",
           "type": "Unit"
         }

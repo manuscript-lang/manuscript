@@ -28,6 +28,30 @@ type Optional[T]:
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
+### Optional.none
+
+An absent value with no payload; no T needs to be constructed.
+
+```manuscript
+case none
+```
+
+### Optional.some
+
+A present payload, retained by reference when T is mutable.
+
+```manuscript
+case some(value: T)
+```
+
+### Optional.some.value
+
+The contained value; unwrap and matching return this original payload.
+
+```manuscript
+value: T
+```
+
 ### Optional.and_then[U]
 
 Calls transform only when present, returning its Optional unchanged.
@@ -46,7 +70,7 @@ fn is_none() -> Bool:
 
 ### Optional.is_some
 
-Reports whether this value contains a payload.
+Returns true for some(value), and false for none.
 
 ```manuscript
 fn is_some() -> Bool:

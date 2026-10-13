@@ -15,3 +15,12 @@ interface Closeable:
     fn close() -> Unit
 ```
 
+### Closeable.close
+
+Releases the implementation's resource state; with calls this on every scope exit.
+Cleanup runs during return, expected errors, faults, and cancellation too.
+
+```manuscript
+fn close() -> Unit
+```
+

@@ -49,6 +49,9 @@ export fn values(data: Bytes) -> List[Int]:
 
 # Builds a byte sequence efficiently before freezing it into an immutable value.
 export type BytesBuilder:
+    # Appends one unsigned byte; values outside 0 through 255 or writes after freeze fault.
     fn append(value: Int) -> Unit:
+    # Appends all supplied bytes in order; the input is unchanged, and a sealed builder faults.
     fn concat(values: Bytes) -> Unit:
+    # Seals the builder and returns its immutable bytes; repeated freeze returns the same value.
     fn freeze() -> Bytes:
