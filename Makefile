@@ -74,7 +74,7 @@ e2e:
 	"$(GO)" test $(E2EFLAGS) ./tests/e2e
 
 race:
-	"$(GO)" test -race ./pkg/runtime ./pkg/checker ./pkg/compiler ./pkg/project ./internal/cli ./pkg/tooling/...
+	"$(GO)" test -race ./internal/gotoolchain ./pkg/runtime ./pkg/checker ./pkg/compiler ./pkg/project ./internal/cli ./pkg/tooling/...
 
 coverage:
 	@mkdir -p .artifacts/coverage

@@ -70,7 +70,7 @@ func TestNativeBuildRunsNoGoCommand(t *testing.T) {
 	t.Setenv("MANUSCRIPT_GO", fakeSDK(t))
 	t.Setenv("PATH", t.TempDir())
 	if _, _, ok := nativeToolchain(); !ok {
-		t.Skip("SDK release differs from the built-in Go tools")
+		t.Skip("built-in Go tools unavailable: race build or different SDK release")
 	}
 	toolchain, err := queryToolchain()
 	if err != nil || toolchain["GOVERSION"] != gotoolchain.Version() || toolchain["CGO_ENABLED"] != "0" {
@@ -93,7 +93,7 @@ func TestNativeBuildRunsNoGoCommand(t *testing.T) {
 func TestNativeBuildRecompilesRemovedArchives(t *testing.T) {
 	t.Setenv("MANUSCRIPT_CACHE_DIR", t.TempDir())
 	if _, _, ok := nativeToolchain(); !ok {
-		t.Skip("SDK release differs from the built-in Go tools")
+		t.Skip("built-in Go tools unavailable: race build or different SDK release")
 	}
 	dir := t.TempDir()
 	if err := buildNative(testProgram(t, "seed"), executableName(dir, "seed"), Release, nil); err != nil {

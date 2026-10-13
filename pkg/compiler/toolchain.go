@@ -88,7 +88,7 @@ func sdkRoot(tool string) string {
 // command; otherwise they use the selected go executable.
 func nativeToolchain() (string, []string, bool) {
 	_, root, environment, err := goToolchain()
-	if err != nil || root == "" || gotoolchain.Supported(root) != nil {
+	if raceEnabled || err != nil || root == "" || gotoolchain.Supported(root) != nil {
 		return "", nil, false
 	}
 	return root, environment, true
