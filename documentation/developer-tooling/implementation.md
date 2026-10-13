@@ -127,7 +127,7 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 ## Linting and formatting
 
-`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), and MSL106 (a match payload binding mistaken for a case or type pattern). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
+`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern), and MSL108 (an equivalent preferred standard-library method name is available). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
 
 MSL104 warns when an expression statement discards a standard `Result`. Handle it with `match`, propagate it with `try`, or explicitly bind it as `let _ignored = operation()` when ignoring both success and failure is intentional. See [Result handling](../core-language/errors/results.md).
 
@@ -137,6 +137,20 @@ MSL106 explains that a capitalized payload name creates a fresh binding even
 when it names a known constructor or alternative case. It suggests a separate
 helper to match a case of the payload's type, or renaming an intentional binding.
 See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns).
+
+MSL108 recommends `List.set`, `List.remove`, `List.reverse_in_place`, `Map.add`,
+`Set.add`, `Set.remove`, `Bytes.reversed` and `Regex.replace_all` for their
+equivalent legacy methods. The same arguments retain mutation, receiver returns,
+copy behavior, ordering, equality scopes, limits and faults. It also checks stored
+method references and uses resolved standard identities, so user methods and
+callable fields with the same names keep their own contracts. See
+[collection mutation and copies](../core-language/types/collections.md#mutation-and-copies).
+
+This advisory makes no automatic source edit. Builder return conventions and
+String replacement names are outside its preference map. In particular,
+`String.replace_first` still accepts a cap greater than one; renaming every
+`String.replace` call would conceal that behavior. Both names remain supported
+with their current signatures; see [replacement limits](../standard-library/data.md).
 
 `fmt` accepts files, directories, and manifests, with project discovery shared with checking. `--check` reports every unformatted file and fails if any target needs formatting or cannot be processed. See [formatting](source/formatting.md) for selection and exclusion rules. It preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
 
