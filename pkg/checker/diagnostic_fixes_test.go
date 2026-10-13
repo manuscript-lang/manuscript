@@ -32,7 +32,7 @@ func TestDiagnosticFixes(t *testing.T) {
 		{"Synchronized value", "import Synchronized from \"@std/sync.ms\"\nfn f(s: Synchronized[Int]) -> Int:\n    s.value = 5\n    return s.value\n", []string{"not readable or assignable", "operations: lock"}, []string{"available: lock, value", "record field"}, 2},
 		{"identical diagnostics print once", "interface I:\n    fn n() -> Int\ntype Pair[A, B]:\n    a: A\n    b: B\nimpl I for Pair[A, A]:\n    fn n() -> Int:\n        return 1\nexport fn main() -> Int:\n    return I(value: Pair[Int, String](a: 1, b: \"x\")).n()\n", []string{"does not implement I"}, nil, 1},
 		{"type named like a built-in has one error", "type Int:\n    x: Int\nfn f() -> Int:\n    let t = Int(x: 2)\n    return 0\n", []string{"duplicate or intrinsic name Int"}, []string{"no source constructor"}, 1},
-		{"missing import is reported once", "fn f() -> Int:\n    var a: List[Int] = []\n    var b: List[Int] = []\n    let m = Map[String, Int]()\n    let n = Map[String, Int]()\n    return 0\n", []string{"import List from", "import Map from"}, []string{"cannot infer"}, 2},
+		{"missing import is reported once", "fn f() -> Int:\n    let a = Set[Int]()\n    let b = Set[Int]()\n    let m = Queue[Int]()\n    let n = Queue[Int]()\n    return 0\n", []string{"import Set from", "import Queue from"}, []string{"cannot infer"}, 2},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			m, err := parser.Parse("fix.ms", tt.source)

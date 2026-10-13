@@ -73,6 +73,9 @@ func init() {
 	add("map_is_empty", "Bool", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, _ string, a []Value) Value {
 		return len(a[0].(*Map).Entries) == 0
 	})
+	add("map_add", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K"), p("value", "V")}, func(ctx *Execution, _ string, a []Value) Value {
+		return MapWithEntry(ctx, a[0], a[1], a[2], ctx.EqualityScope)
+	})
 	add("map_get_or", "V", mapVars, []LibraryParam{p("values", "Map[K][V]"), p("key", "K"), p("fallback", "V")}, func(ctx *Execution, _ string, a []Value) Value {
 		values := a[0].(*Map)
 		if index := values.find(ctx, a[1]); index >= 0 {

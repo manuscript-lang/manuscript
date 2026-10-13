@@ -93,6 +93,9 @@ export type Map[T: Hashable, U]:
     fn contains(key: T) -> Bool:
     fn get(key: T) -> Optional[U]:
     fn length() -> Int:
+    # Inserts or replaces a value and returns this map; replacement keeps the original key and insertion position.
+    fn add(key: T, value: U) -> Map[T, U]:
+    # Compatible spelling of add, with the same mutation and receiver return.
     fn with_entry(key: T, value: U) -> Map[T, U]:
     fn without(key: T) -> Map[T, U]:
 

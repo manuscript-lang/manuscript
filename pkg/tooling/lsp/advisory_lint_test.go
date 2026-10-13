@@ -18,6 +18,7 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 		{"pattern binding CRLF and Unicode", "# café 🦀\r\nimport filesystem from \"@std/fs.ms\"\r\nfn use(path: String) -> Int:\r\n    match filesystem().stat(path: path, follow_links: true):\r\n        error(NotFound): return 1\r\n        ok(_): return 0\r\n", "MSL106", 4},
 		{"discarded result", "fn fail() -> Result[Int, String]:\n    return error(\"boom\")\nfn use() -> Unit:\n    fail()\n", "MSL104", 3},
 		{"concurrent capture", "import Map from \"@std/collections.ms\"\nimport TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.with_entry(key: 1, value: 2)\n        )\n", "MSL105", 6},
+		{"prelude Map add concurrent capture", "import TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.add(key: 1, value: 2)\n        )\n", "MSL105", 5},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := document{"file:///tmp/advisory.ms", tc.source, 1}
