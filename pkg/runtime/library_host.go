@@ -297,6 +297,9 @@ func (f *libraryFileSystem) Operation(name string) Function {
 				return libraryOSResult(r, nil, err)
 			}
 			defer directory.Close()
+			if info, err := directory.Stat(); err == nil && !info.IsDir() {
+				return libraryError(r, "InvalidInput", "")
+			}
 			var entries []Value
 			for {
 				CheckCancelled(ctx)
