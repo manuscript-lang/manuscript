@@ -41,6 +41,15 @@ references stay shallow. Cancellation and exact source-frame checks now mutate b
 removal and full splice-to-empty. No other existing mutator return/bounds contract
 requires a change; there is currently no public List.clear method.
 
+Integrated main through `a590954d` includes #263 preferred aliases. Called source
+consumers now dispatch interface views after shrink and exercise stored `set`,
+`remove`, `reverse_in_place`, and independent shallow `reversed` results. Independent
+search tests capture the current value before predicates mutate its cell: forward
+and reverse `find` return that same shallow matching value, and index variants keep
+the captured index. This fixes the review's post-predicate reload bug without any
+copy/COW. The prior 13-callback Body-versus-dispatch comparison shared that bug;
+new tests use explicit expected values and ordinary Go mutation oracles instead.
+
 Main's accepted String and duration-site changes were subsequently integrated;
 the completed `d8a83a2a` gates are evidence for that precise head, not a later head.
 

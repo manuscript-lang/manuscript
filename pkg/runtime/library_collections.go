@@ -246,7 +246,8 @@ func init() {
 			}
 			for i := start; i != end; i += step {
 				CheckCancelled(ctx)
-				matches := Invoke(ctx, a[1], []Argument{{"value", items[i]}}).(bool)
+				value := items[i]
+				matches := Invoke(ctx, a[1], []Argument{{"value", value}}).(bool)
 				if name == "every" {
 					if !matches {
 						return false
@@ -257,7 +258,6 @@ func init() {
 					if name == "some" {
 						return true
 					}
-					var value Value = items[i]
 					if name == "find_index" || name == "find_last_index" {
 						value = int64(i)
 					}

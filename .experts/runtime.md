@@ -211,3 +211,11 @@ clones stay separate and append-only callbacks visit only the initial length.
 Also consume yielded values after shrink in called native/standalone regressions,
 checking types, source fault frames, cancellation, explicit clone independence,
 and retained memory after clearing/reusing/releasing backing capacity.
+
+Verified: a mutating predicate can shift/replace the current List cell. `find`
+and `find_last` must capture the element before invoking the predicate and return
+that same shallow value when it matches; index variants return the captured index.
+Reloading the cell afterward returned an element the predicate never matched.
+Body-versus-dispatch comparisons share the bug, so use independent expected values
+and Go operation oracles. Evidence: [search regression](../pkg/runtime/list_find_mutation_test.go)
+and [called search/view/alias consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms).

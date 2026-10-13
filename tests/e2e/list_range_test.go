@@ -39,7 +39,7 @@ func TestListShrinkConsumersStandalone(t *testing.T) {
 	if err := compiler.Build(source, binary); err != nil {
 		t.Fatal(err)
 	}
-	if output, err := commandOutput(t, binary); err != nil || !strings.Contains(string(output), "7 tests, 0 failed") {
+	if output, err := commandOutput(t, binary); err != nil || !strings.Contains(string(output), "10 tests, 0 failed") {
 		t.Fatalf("standalone typed shrink consumers: %v\n%s", err, output)
 	}
 }

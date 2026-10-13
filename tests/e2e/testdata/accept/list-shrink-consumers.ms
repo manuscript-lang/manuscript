@@ -5,7 +5,7 @@ type Visits:
 
 fn mutate[T](values: List[T], mode: String, replacement: T) -> Unit:
     if mode == "remove":
-        values.without(0)
+        values.remove(0)
 
     if mode == "splice":
         values.with_values(start: 1, delete_count: 2, replacement: [replacement])
@@ -391,3 +391,177 @@ test "map and folds consume valid retained cells":
         and visits.count == 3
     ):
         return panic("right fold shrink did not follow captured backing")
+
+interface ReadValue:
+    fn read() -> Int
+
+impl ReadValue for Payload:
+    fn read() -> Int: self.value
+
+test "interface view consumers dispatch after shrink":
+    for callback in [false, true]:
+        for mode in ["remove", "splice", "clear", "clear_append"]:
+            let last_record = Payload(3)
+            let first = ReadValue(Payload(1))
+            let second = ReadValue(Payload(2))
+            let last = ReadValue(last_record)
+            let replacement = ReadValue(Payload(9))
+            let values = [first, second, last]
+            let clone = values.clone()
+            let seen = observe(
+                values,
+                mode,
+                replacement,
+                callback
+            )
+            let want = expected(
+                mode,
+                first,
+                second,
+                last,
+                replacement
+            )
+            var total = 0
+            var wanted = 0
+
+            for value in seen: total = total + value.read()
+
+            for value in want: wanted = wanted + value.read()
+
+            if not (
+                total == wanted
+                and values.length() == remaining(
+                    mode,
+                    first,
+                    second,
+                    last,
+                    replacement
+                ).length()
+            ):
+                return panic("interface dispatch after shrink lost its receiver")
+
+            last_record.value = 11
+            if not (
+                seen.last().unwrap().read() == 11
+                and clone.last().unwrap().read() == 11
+            ):
+                return panic("interface views did not retain shallow references")
+
+test "find returns the value passed to a mutating predicate":
+    let forward = [1, 2, 3]
+    let found = forward.find(
+        fn(value):
+            forward.remove(0)
+            return value == 1
+    )
+    if not (found.unwrap() == 1 and forward == [2, 3]):
+        return panic("find reloaded a shifted backing cell")
+
+    let replaced = [1, 2, 3]
+    let original = replaced.find(
+        fn(value):
+            replaced.set(0, 9)
+            return value == 1
+    )
+    if not (original.unwrap() == 1 and replaced == [9, 2, 3]):
+        return panic("find returned a replacement rather than its argument")
+
+    let reverse = [1, 2, 3]
+    let last = reverse.find_last(
+        fn(value):
+            if value == 2: reverse.remove(1)
+
+            return value == 2
+    )
+    if not (last.unwrap() == 2 and reverse == [1, 3]):
+        return panic("find_last reloaded a shifted current cell")
+
+    let last_replaced = [1, 2, 3]
+    let before = last_replaced.find_last(
+        fn(value):
+            last_replaced.set(2, 9)
+            return value == 3
+    )
+    if not (before.unwrap() == 3 and last_replaced == [1, 2, 9]):
+        return panic("find_last returned a replacement rather than its argument")
+
+    let indexes = [1, 2, 3]
+    let index = indexes.find_index(
+        fn(value):
+            indexes.remove(0)
+            return value == 1
+    )
+    let reverse_indexes = [1, 2, 3]
+    let last_index = reverse_indexes.find_last_index(
+        fn(value):
+            if value == 2: reverse_indexes.remove(1)
+
+            return value == 2
+    )
+    if not (index.unwrap() == 0 and last_index.unwrap() == 1):
+        return panic("find index variants lost the captured index")
+
+    let record = Payload(1)
+    let records = [record, Payload(2)]
+    let retained = (
+        records
+        .find(
+            fn(value):
+                let matches = value.value == 1
+                value.value = 7
+                records.set(
+                    0,
+                    Payload(9)
+                )
+                return matches
+        )
+        .unwrap()
+    )
+    if not (
+        retained.value == 7
+        and record.value == 7
+        and records.first().unwrap().value == 9
+    ):
+        return panic("find copied its matching shallow reference")
+
+test "preferred List mutators and explicit reversed copy preserve aliases":
+    let values = [1, 2, 3]
+    let alias = values
+    let clone = values.clone()
+    let set = values.set
+    let remove = values.remove
+    let seen: List[Int] = []
+
+    for value in values:
+        seen.append(value)
+
+        if seen.length() == 1:
+            set(index: 1, value: 9)
+            remove(index: 0)
+
+    if not (
+        seen == [1, 3, 3]
+        and alias == [9, 3]
+        and clone == [1, 2, 3]
+    ):
+        return panic("preferred mutation copied traversal or lost an alias")
+
+    let reverse_in_place = values.reverse_in_place
+    let returned = reverse_in_place()
+    returned.append(4)
+    if values != [3, 9, 4]:
+        return panic("reverse_in_place lost receiver identity")
+
+    let reversed = values.reversed
+    let separate = reversed()
+    values.set(1, 5)
+    if not (separate == [4, 9, 3] and values == [3, 5, 4]):
+        return panic("reversed did not allocate separate outer storage")
+
+    let child = Payload(1)
+    let children = [child, Payload(2)]
+    let shallow = children.reversed()
+    child.value = 7
+    children.remove(0)
+    if not (shallow.last().unwrap().value == 7 and children.length() == 1):
+        return panic("reversed changed shallow child reference sharing")
