@@ -242,7 +242,14 @@ func TestExpandedSystemAndProcess(t *testing.T) {
 		for _, name := range []string{"constrained_memory", "available_memory", "title"} {
 			librarySuccess(t, control.Operation(name).Body(ctx, nil))
 		}
-		for _, name := range []string{"cpus", "metrics", "os_release", "os_version"} {
+		// Windows CPU discovery uses WMI. Without a caller deadline the
+		// provider adds a three-second fallback, which can expire during
+		// hosted-runner startup. Give this success probe an explicit bounded
+		// budget; production calls retain their existing timeout behavior.
+		cpuContext, cancelCPU := context.WithTimeout(ctx.Context, 10*time.Second)
+		defer cancelCPU()
+		librarySuccess(t, system.Operation("cpus").Body(inherit(ctx, cpuContext), nil))
+		for _, name := range []string{"metrics", "os_release", "os_version"} {
 			librarySuccess(t, system.Operation(name).Body(ctx, nil))
 		}
 		for _, name := range []string{"cpu_usage", "resource_usage"} {
@@ -266,6 +273,47 @@ func TestExpandedSystemAndProcess(t *testing.T) {
 	}
 	if _, ok := libraryParseEnvironment("BAD KEY=value"); ok {
 		t.Fatal("accepted invalid env name")
+	}
+}
+
+func TestExpandedSystemAndProcessCPUCancellation(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		make func(context.Context) (context.Context, context.CancelFunc)
+		want error
+	}{
+		{"cancelled", context.WithCancel, context.Canceled},
+		{"deadline", func(parent context.Context) (context.Context, context.CancelFunc) {
+			return context.WithDeadline(parent, time.Now().Add(-time.Second))
+		}, context.DeadlineExceeded},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := RootExecution()
+			lifetime, cancel := test.make(ctx.Context)
+			cancel()
+			ctx = inherit(ctx, lifetime)
+			if ctx.Context.Err() != test.want {
+				t.Fatal(ctx.Context.Err())
+			}
+			system := &librarySystem{}
+			failure := recovered(func() { system.Operation("cpus").Body(ctx, nil) })
+			if _, ok := failure.(cancelled); !ok {
+				t.Fatalf("caller cancellation became a CPU result: %#v", failure)
+			}
+		})
+	}
+}
+
+func TestExpandedSystemAndProcessCPUProviderDeadline(t *testing.T) {
+	// A provider's internal timeout leaves the caller live. It is an OS
+	// failure in the existing SystemError domain, rather than cancellation.
+	ctx := RootExecution()
+	CheckCancelled(ctx)
+	result := libraryOSResult("@std/Result[@std/List[@std/CpuInfo]][@std/SystemError]", nil, context.DeadlineExceeded)
+	libraryFailure(t, result, "Failed")
+	cause := result.(Alternative).Fields[0].(Alternative)
+	if cause.Type != "@std/SystemError" || cause.Fields[0] != context.DeadlineExceeded.Error() {
+		t.Fatalf("provider deadline lost its domain or diagnostic: %#v", cause)
 	}
 }
 
