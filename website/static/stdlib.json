@@ -3442,6 +3442,12 @@
           "doc": "Parses HTML into a normalized tree and applies the supplied resource limits.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[HtmlLimits] = ...)-\u003eResult[HtmlNode, HtmlError]"
+        },
+        {
+          "name": "unescape",
+          "doc": "Decodes HTML5 named and numeric character references in text context, once.\nRecognized references can omit semicolons; unrecognized text remains literal.\nDoes not parse markup or normalize text; invalid numeric scalars become U+FFFD.",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eString"
         }
       ]
     },
