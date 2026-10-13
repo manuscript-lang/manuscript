@@ -7,6 +7,28 @@ import (
 	"testing/fstest"
 )
 
+func TestRequiredWorkflowTriggers(t *testing.T) {
+	for _, test := range []struct {
+		name, events string
+		valid        bool
+	}{
+		{"unfiltered", "  pull_request:\n  merge_group:\n    types: [checks_requested]\n", true},
+		{"missing PR", "  merge_group:\n    types: [checks_requested]\n", false},
+		{"missing queue", "  pull_request:\n", false},
+		{"paths", "  pull_request:\n    paths: ['**/*.go']\n  merge_group:\n    types: [checks_requested]\n", false},
+		{"ignored paths", "  pull_request:\n    paths-ignore: ['documentation/**']\n  merge_group:\n    types: [checks_requested]\n", false},
+		{"queue activity", "  pull_request:\n  merge_group:\n    types: [destroyed]\n", false},
+		{"malformed", "  pull_request: [\n", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := checkWorkflowTriggers([]byte("on:\n" + test.events))
+			if (err == nil) != test.valid {
+				t.Fatalf("valid=%v, got %v", test.valid, err)
+			}
+		})
+	}
+}
+
 func TestStandardSyntaxGate(t *testing.T) {
 	valid := fstest.MapFS{
 		"process.ms":    {Data: []byte("export fn commands() -> Commands:\n")},
