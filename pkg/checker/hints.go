@@ -150,6 +150,14 @@ func (c *checker) unknownName(name string) string {
 
 // memberNames lists fields and operations available on a receiver type.
 func (c *checker) memberNames(receiver *Type) []string {
+	return c.memberNamesSeen(receiver, map[*Type]bool{})
+}
+
+func (c *checker) memberNamesSeen(receiver *Type, seen map[*Type]bool) []string {
+	if receiver == nil || seen[receiver] {
+		return nil
+	}
+	seen[receiver] = true
 	var names []string
 	for _, f := range Fields(receiver) {
 		names = append(names, f.Name)
@@ -166,7 +174,7 @@ func (c *checker) memberNames(receiver *Type) []string {
 	}
 	if receiver.Kind == "variable" {
 		for _, b := range receiver.Bounds {
-			names = append(names, c.memberNames(b)...)
+			names = append(names, c.memberNamesSeen(b, seen)...)
 		}
 	}
 	for _, m := range c.Methods {
