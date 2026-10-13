@@ -113,6 +113,14 @@ Apply when: changing native argument normalization or generic receiver methods.
 Evidence: [normalization boundary](../pkg/runtime/library_options.go), [runtime Optional regression](../pkg/runtime/optional_test.go), and [compiled record fallback](../tests/e2e/testdata/accept/optional-methods.ms).
 Verify: unwrap_or returns a JsonLimits record with negative and absent Optional fields unchanged and mutations retain its identity; concrete limits passed to their native operations remain validated.
 
+### CSV writer defaults can erase a single empty field
+
+Verified: Go's CSV writer emits the same bare line ending for zero fields and one empty field, while its reader skips blank lines. Manuscript must explicitly quote the sole empty field to retain that row, including the quotes in the output budget. Empty rows still serialize as skipped blank lines; changing reader behavior would alter that contract.
+
+Apply when: changing CSV adapters or relying on a host codec's round-trip behavior.
+Evidence: [CSV implementation](../pkg/runtime/library_formats.go), [called CSV regressions](../tests/e2e/testdata/stdlib/csv.ms), and [CSV contract](../documentation/standard-library/formats.md#csv-behavior).
+Verify: round-trip consecutive single empty fields with LF/CRLF and alternate delimiters; check distinct empty-row output and exact byte, row, and cell budgets.
+
 ### Typed task handles replace heterogeneous aggregation
 
 Decision: the user chose TaskGroup and Task[T] over the compiler-only heterogeneous aggregation binding because ordinary generic declarations are simpler to reason about and expose usable source signatures to tooling. Group join returns Result[Unit, ExecutionError]; each task join preserves its own T. Remove the old binding and its pack machinery rather than adding a compatibility alias.

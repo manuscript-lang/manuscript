@@ -6,6 +6,7 @@
       "declarations": [
         {
           "name": "ArchiveEntry",
+          "doc": "One file or directory in an archive. Paths use forward slashes.",
           "kind": "record",
           "type": "ArchiveEntry",
           "fields": [
@@ -16,6 +17,7 @@
         },
         {
           "name": "ArchiveError",
+          "doc": "Errors returned when an archive cannot be read or written.",
           "kind": "alternative",
           "type": "ArchiveError",
           "cases": [
@@ -34,6 +36,7 @@
         },
         {
           "name": "ArchiveLimits",
+          "doc": "Optional limits applied while unpacking untrusted archive data.",
           "kind": "record",
           "type": "ArchiveLimits",
           "fields": [
@@ -44,11 +47,13 @@
         },
         {
           "name": "pack",
+          "doc": "Encodes entries as `zip` or `tar` bytes. `max_bytes` bounds output when supplied.",
           "kind": "fn",
           "type": "fn(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, ArchiveError]"
         },
         {
           "name": "unpack",
+          "doc": "Decodes `zip` or `tar` bytes and applies each supplied entry and total-size limit.",
           "kind": "fn",
           "type": "fn(data: Bytes, format: String, limits: Optional[ArchiveLimits] = ...)-\u003eResult[List[ArchiveEntry], ArchiveError]"
         }
@@ -59,6 +64,7 @@
       "declarations": [
         {
           "name": "BigInt",
+          "doc": "An arbitrary-precision signed integer with explicit arithmetic operations.",
           "kind": "native",
           "type": "BigInt",
           "operations": [
@@ -77,6 +83,7 @@
         },
         {
           "name": "BigIntError",
+          "doc": "Errors returned while parsing or converting arbitrary-precision integers.",
           "kind": "alternative",
           "type": "BigIntError",
           "cases": [
@@ -93,11 +100,13 @@
         },
         {
           "name": "from_int",
+          "doc": "Converts a machine-sized integer without loss.",
           "kind": "fn",
           "type": "fn(value: Int)-\u003eBigInt"
         },
         {
           "name": "parse",
+          "doc": "Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.",
           "kind": "fn",
           "type": "fn(text: String, radix: Int, max_digits: Optional[Int] = ...)-\u003eResult[BigInt, BigIntError]"
         }
@@ -108,6 +117,7 @@
       "declarations": [
         {
           "name": "BinaryError",
+          "doc": "Errors returned when a byte range or numeric representation is invalid.",
           "kind": "alternative",
           "type": "BinaryError",
           "cases": [
@@ -123,21 +133,25 @@
         },
         {
           "name": "read_float",
+          "doc": "Reads a 32-bit floating-point value at `offset` using the selected byte order.",
           "kind": "fn",
           "type": "fn(data: Bytes, offset: Int, little_endian: Bool)-\u003eResult[Float, BinaryError]"
         },
         {
           "name": "read_integer",
+          "doc": "Reads an integer of `width` bytes. Signed values use two's-complement encoding.",
           "kind": "fn",
           "type": "fn(data: Bytes, offset: Int, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Int, BinaryError]"
         },
         {
           "name": "write_float",
+          "doc": "Encodes a 32-bit floating-point value using the selected byte order.",
           "kind": "fn",
           "type": "fn(value: Float, little_endian: Bool)-\u003eBytes"
         },
         {
           "name": "write_integer",
+          "doc": "Encodes an integer into `width` bytes, returning an error when it does not fit.",
           "kind": "fn",
           "type": "fn(value: Int, width: Int, signed: Bool, little_endian: Bool)-\u003eResult[Bytes, BinaryError]"
         }
@@ -148,6 +162,7 @@
       "declarations": [
         {
           "name": "Bytes",
+          "doc": "An immutable sequence of bytes. Indices and slice bounds are zero-based.",
           "kind": "native",
           "type": "Bytes",
           "operations": [
@@ -170,6 +185,7 @@
         },
         {
           "name": "BytesBuilder",
+          "doc": "Builds a byte sequence efficiently before freezing it into an immutable value.",
           "kind": "native",
           "type": "BytesBuilder",
           "operations": [
@@ -180,6 +196,7 @@
         },
         {
           "name": "values",
+          "doc": "Returns the byte values as integers in the range 0 through 255.",
           "kind": "fn",
           "type": "fn(data: Bytes)-\u003eList[Int]"
         }
@@ -190,6 +207,7 @@
       "declarations": [
         {
           "name": "Closeable",
+          "doc": "A resource that can be closed. `with` closes a bound resource on every exit.",
           "kind": "interface",
           "type": "Closeable",
           "operations": [
@@ -203,11 +221,13 @@
       "declarations": [
         {
           "name": "arguments",
+          "doc": "Returns process arguments, excluding the executable path.",
           "kind": "fn",
           "type": "fn()-\u003eList[String]"
         },
         {
           "name": "environment",
+          "doc": "Returns the process environment as a map of variable names to values.",
           "kind": "fn",
           "type": "fn()-\u003eMap[String, String]"
         }
@@ -218,6 +238,7 @@
       "declarations": [
         {
           "name": "CollectionError",
+          "doc": "Errors returned when a collection factory exceeds its supplied item limit.",
           "kind": "alternative",
           "type": "CollectionError",
           "cases": [
@@ -233,6 +254,7 @@
         },
         {
           "name": "List",
+          "doc": "An ordered collection of values with indexing, iteration, and transformation operations.",
           "kind": "native",
           "type": "List[T]",
           "type_parameters": [
@@ -280,6 +302,7 @@
         },
         {
           "name": "ListBuilder",
+          "doc": "Appends values efficiently before freezing them into a list.",
           "kind": "native",
           "type": "ListBuilder[T]",
           "type_parameters": [
@@ -292,6 +315,7 @@
         },
         {
           "name": "ListEntry",
+          "doc": "One list index and its corresponding value.",
           "kind": "record",
           "type": "ListEntry[T]",
           "type_parameters": [
@@ -304,6 +328,7 @@
         },
         {
           "name": "Map",
+          "doc": "A mutable key-value collection. Keys use explicit `Hashable` value semantics.",
           "kind": "native",
           "type": "Map[T, U]",
           "type_parameters": [
@@ -329,6 +354,7 @@
         },
         {
           "name": "MapBuilder",
+          "doc": "Adds entries efficiently before freezing them into a map.",
           "kind": "native",
           "type": "MapBuilder[T, U]",
           "type_parameters": [
@@ -342,6 +368,7 @@
         },
         {
           "name": "MapEntry",
+          "doc": "One key-value pair returned by `Map.entries`.",
           "kind": "record",
           "type": "MapEntry[T, U]",
           "type_parameters": [
@@ -355,6 +382,7 @@
         },
         {
           "name": "Set",
+          "doc": "A mutable collection of unique values using explicit `Hashable` value semantics.",
           "kind": "native",
           "type": "Set[T]",
           "type_parameters": [
@@ -381,6 +409,7 @@
         },
         {
           "name": "SetBuilder",
+          "doc": "Adds unique values efficiently before freezing them into a set.",
           "kind": "native",
           "type": "SetBuilder[T]",
           "type_parameters": [
@@ -393,6 +422,7 @@
         },
         {
           "name": "filled",
+          "doc": "Creates a list containing `value` repeated `count` times.",
           "kind": "fn",
           "type": "fn(value: T, count: Int, max_items: Optional[Int] = ...)-\u003eResult[List[T], CollectionError]",
           "type_parameters": [
@@ -401,6 +431,7 @@
         },
         {
           "name": "map_from_entries",
+          "doc": "Builds a map from entries. Later entries replace earlier values for duplicate keys.",
           "kind": "fn",
           "type": "fn(entries: List[MapEntry[K, V]])-\u003eMap[K, V]",
           "type_parameters": [
@@ -410,6 +441,7 @@
         },
         {
           "name": "range",
+          "doc": "Creates integers from `start` up to but excluding `end` using `step`.",
           "kind": "fn",
           "type": "fn(start: Int, end: Int, step: Int, max_items: Optional[Int] = ...)-\u003eResult[List[Int], CollectionError]"
         }
@@ -420,6 +452,7 @@
       "declarations": [
         {
           "name": "CompressionError",
+          "doc": "Errors returned when compressed data is unsupported, invalid, or exceeds a limit.",
           "kind": "alternative",
           "type": "CompressionError",
           "cases": [
@@ -438,11 +471,13 @@
         },
         {
           "name": "compress",
+          "doc": "Compresses bytes using `gzip`, `zlib`, or `deflate` at the requested level.\n`max_bytes` bounds the encoded output when supplied.",
           "kind": "fn",
           "type": "fn(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
         },
         {
           "name": "decompress",
+          "doc": "Decompresses supported data and stops when the supplied output limit is reached.",
           "kind": "fn",
           "type": "fn(data: Bytes, format: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
         }
@@ -453,6 +488,7 @@
       "declarations": [
         {
           "name": "CryptoError",
+          "doc": "Errors returned when cryptographic input is invalid or an algorithm is unavailable.",
           "kind": "alternative",
           "type": "CryptoError",
           "cases": [
@@ -469,56 +505,67 @@
         },
         {
           "name": "constant_time_equal",
+          "doc": "Compares byte strings without making the comparison time depend on their contents.",
           "kind": "fn",
           "type": "fn(left: Bytes, right: Bytes)-\u003eBool"
         },
         {
           "name": "derive_key",
+          "doc": "Derives a key with PBKDF2-HMAC-SHA-256 using the supplied iteration count and length.",
           "kind": "fn",
           "type": "fn(password: Bytes, salt: Bytes, iterations: Int, length: Int)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "hmac",
+          "doc": "Computes an HMAC using `sha256`, `sha384`, or `sha512`.",
           "kind": "fn",
           "type": "fn(key: Bytes, data: Bytes, algorithm: String)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "open",
+          "doc": "Authenticates and decrypts a value produced by `seal` using AES-GCM.",
           "kind": "fn",
           "type": "fn(key: Bytes, nonce: Bytes, ciphertext: Bytes, associated_data: Bytes)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "public_key",
+          "doc": "Derives the Ed25519 public key corresponding to a 32-byte private seed.",
           "kind": "fn",
           "type": "fn(seed: Bytes)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "seal",
+          "doc": "Encrypts and authenticates plaintext with AES-GCM. The caller supplies a unique nonce.",
           "kind": "fn",
           "type": "fn(key: Bytes, nonce: Bytes, plaintext: Bytes, associated_data: Bytes)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "sha256",
+          "doc": "Returns the SHA-256 digest of the input.",
           "kind": "fn",
           "type": "fn(data: Bytes)-\u003eBytes"
         },
         {
           "name": "sha384",
+          "doc": "Returns the SHA-384 digest of the input.",
           "kind": "fn",
           "type": "fn(data: Bytes)-\u003eBytes"
         },
         {
           "name": "sha512",
+          "doc": "Returns the SHA-512 digest of the input.",
           "kind": "fn",
           "type": "fn(data: Bytes)-\u003eBytes"
         },
         {
           "name": "sign",
+          "doc": "Signs data with an Ed25519 private seed.",
           "kind": "fn",
           "type": "fn(seed: Bytes, data: Bytes)-\u003eResult[Bytes, CryptoError]"
         },
         {
           "name": "verify",
+          "doc": "Verifies an Ed25519 signature with a public key.",
           "kind": "fn",
           "type": "fn(key: Bytes, data: Bytes, signature: Bytes)-\u003eBool"
         }
@@ -529,6 +576,7 @@
       "declarations": [
         {
           "name": "CsvError",
+          "doc": "Errors returned for malformed CSV input or configured size limits.",
           "kind": "alternative",
           "type": "CsvError",
           "cases": [
@@ -545,6 +593,7 @@
         },
         {
           "name": "CsvOptions",
+          "doc": "Delimiter and line ending used when parsing or writing CSV.",
           "kind": "record",
           "type": "CsvOptions",
           "fields": [
@@ -554,11 +603,13 @@
         },
         {
           "name": "parse",
+          "doc": "Parses CSV into rows of cells. Optional row and cell limits bound large inputs.",
           "kind": "fn",
           "type": "fn(text: String, options: CsvOptions, max_rows: Optional[Int] = ..., max_cells: Optional[Int] = ...)-\u003eResult[List[List[String]], CsvError]"
         },
         {
           "name": "stringify",
+          "doc": "Encodes rows as CSV, quoting cells when required by the delimiter or line ending.",
           "kind": "fn",
           "type": "fn(rows: List[List[String]], options: CsvOptions, max_bytes: Optional[Int] = ...)-\u003eResult[String, CsvError]"
         }
@@ -569,6 +620,7 @@
       "declarations": [
         {
           "name": "Decimal",
+          "doc": "An exact decimal value. Conversions are explicit because binary floats may round.",
           "kind": "native",
           "type": "Decimal",
           "operations": [
@@ -597,6 +649,7 @@
       "declarations": [
         {
           "name": "EncodingError",
+          "doc": "Errors returned when encoded text is invalid or exceeds a supplied byte limit.",
           "kind": "alternative",
           "type": "EncodingError",
           "cases": [
@@ -613,21 +666,25 @@
         },
         {
           "name": "base64_decode",
+          "doc": "Decodes standard or URL-safe Base64 text into bytes.",
           "kind": "fn",
           "type": "fn(text: String, url_safe: Bool, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, EncodingError]"
         },
         {
           "name": "base64_encode",
+          "doc": "Encodes bytes as standard or URL-safe Base64 text.",
           "kind": "fn",
           "type": "fn(data: Bytes, url_safe: Bool)-\u003eString"
         },
         {
           "name": "hex_decode",
+          "doc": "Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.",
           "kind": "fn",
           "type": "fn(text: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, EncodingError]"
         },
         {
           "name": "hex_encode",
+          "doc": "Encodes each byte as two lowercase hexadecimal digits.",
           "kind": "fn",
           "type": "fn(data: Bytes)-\u003eString"
         }
@@ -638,6 +695,7 @@
       "declarations": [
         {
           "name": "Equal",
+          "doc": "Equality and hashing are ordinary operation interfaces. Built-in data retains\nits value semantics; an explicit implementation selects domain identity.",
           "kind": "interface",
           "type": "Equal",
           "operations": [
@@ -646,6 +704,7 @@
         },
         {
           "name": "Hashable",
+          "doc": "A type with a stable hash consistent with its `Equal` implementation.",
           "kind": "interface",
           "type": "Hashable",
           "operations": [
@@ -659,6 +718,7 @@
       "declarations": [
         {
           "name": "Error",
+          "doc": "A contract for expected failures that can provide a human-readable message.",
           "kind": "interface",
           "type": "Error",
           "operations": [
@@ -672,6 +732,7 @@
       "declarations": [
         {
           "name": "panic",
+          "doc": "Raises a programming fault with the supplied message and stops the current operation.",
           "kind": "fn",
           "type": "fn(message: String)-\u003eNever"
         }
@@ -682,6 +743,7 @@
       "declarations": [
         {
           "name": "CopyOptions",
+          "doc": "Policies for recursive copies, including replacement, symlinks, and optional limits.",
           "kind": "record",
           "type": "CopyOptions",
           "fields": [
@@ -698,6 +760,7 @@
         },
         {
           "name": "Directory",
+          "doc": "An open directory that yields one child per read and must be closed.",
           "kind": "interface",
           "type": "Directory",
           "operations": [
@@ -708,6 +771,7 @@
         },
         {
           "name": "DirectoryEntry",
+          "doc": "The name and kind flags for one child returned by a directory listing.",
           "kind": "record",
           "type": "DirectoryEntry",
           "fields": [
@@ -718,6 +782,7 @@
         },
         {
           "name": "FileEvent",
+          "doc": "One filesystem change and the affected path.",
           "kind": "record",
           "type": "FileEvent",
           "fields": [
@@ -727,6 +792,7 @@
         },
         {
           "name": "FileHandle",
+          "doc": "An open file supporting sequential and positional I/O.",
           "kind": "interface",
           "type": "FileHandle",
           "operations": [
@@ -755,6 +821,7 @@
         },
         {
           "name": "FileInfo",
+          "doc": "File metadata, including portable fields and exact platform-specific numeric values.",
           "kind": "record",
           "type": "FileInfo",
           "fields": [
@@ -786,6 +853,7 @@
         },
         {
           "name": "FileSystem",
+          "doc": "Filesystem operations and resource factories for the current host.",
           "kind": "interface",
           "type": "FileSystem",
           "operations": [
@@ -824,6 +892,7 @@
         },
         {
           "name": "FileSystemError",
+          "doc": "Errors returned by filesystem operations. `Failed` retains the host error text.",
           "kind": "alternative",
           "type": "FileSystemError",
           "cases": [
@@ -846,6 +915,7 @@
         },
         {
           "name": "FileSystemInfo",
+          "doc": "Capacity and free-space statistics for the filesystem containing a path.",
           "kind": "record",
           "type": "FileSystemInfo",
           "fields": [
@@ -860,6 +930,7 @@
         },
         {
           "name": "FileWatcher",
+          "doc": "A change stream returned by a filesystem watch operation.",
           "kind": "interface",
           "type": "FileWatcher",
           "operations": [
@@ -869,6 +940,7 @@
         },
         {
           "name": "GlobOptions",
+          "doc": "Include and exclude patterns and limits used by filesystem glob operations.",
           "kind": "record",
           "type": "GlobOptions",
           "fields": [
@@ -881,6 +953,7 @@
         },
         {
           "name": "PathEntry",
+          "doc": "A matched path together with its filesystem entry metadata.",
           "kind": "record",
           "type": "PathEntry",
           "fields": [
@@ -890,6 +963,7 @@
         },
         {
           "name": "TemporaryDirectory",
+          "doc": "A temporary directory whose contents are removed when it is closed.",
           "kind": "interface",
           "type": "TemporaryDirectory",
           "operations": [
@@ -899,11 +973,13 @@
         },
         {
           "name": "constants",
+          "doc": "Returns host filesystem flag, mode, and permission constants by name.",
           "kind": "fn",
           "type": "fn()-\u003eMap[String, Int]"
         },
         {
           "name": "filesystem",
+          "doc": "Returns filesystem operations for the current host.",
           "kind": "fn",
           "type": "fn()-\u003eFileSystem"
         }
@@ -914,6 +990,7 @@
       "declarations": [
         {
           "name": "HtmlAttribute",
+          "doc": "An HTML attribute, including its namespace and decoded value.",
           "kind": "record",
           "type": "HtmlAttribute",
           "fields": [
@@ -924,6 +1001,7 @@
         },
         {
           "name": "HtmlError",
+          "doc": "Errors returned for malformed HTML or parser resource limits.",
           "kind": "alternative",
           "type": "HtmlError",
           "cases": [
@@ -940,6 +1018,7 @@
         },
         {
           "name": "HtmlLimits",
+          "doc": "Optional bounds for HTML input bytes, tree depth, and node count.",
           "kind": "record",
           "type": "HtmlLimits",
           "fields": [
@@ -950,6 +1029,7 @@
         },
         {
           "name": "HtmlNode",
+          "doc": "A parsed HTML document tree with document, element, text, comment, and doctype nodes.",
           "kind": "alternative",
           "type": "HtmlNode",
           "cases": [
@@ -962,11 +1042,13 @@
         },
         {
           "name": "escape",
+          "doc": "Escapes text for insertion into an HTML text or quoted attribute context.",
           "kind": "fn",
           "type": "fn(text: String)-\u003eString"
         },
         {
           "name": "parse",
+          "doc": "Parses HTML into a normalized tree and applies the supplied resource limits.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[HtmlLimits] = ...)-\u003eResult[HtmlNode, HtmlError]"
         }
@@ -977,6 +1059,7 @@
       "declarations": [
         {
           "name": "ClientResponse",
+          "doc": "Buffered HTTP response metadata and body.",
           "kind": "record",
           "type": "ClientResponse",
           "fields": [
@@ -987,6 +1070,7 @@
         },
         {
           "name": "HttpClient",
+          "doc": "Reusable HTTP client with connection pooling and explicit response limits.",
           "kind": "interface",
           "type": "HttpClient",
           "operations": [
@@ -997,6 +1081,7 @@
         },
         {
           "name": "HttpClientOptions",
+          "doc": "Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.",
           "kind": "record",
           "type": "HttpClientOptions",
           "fields": [
@@ -1011,6 +1096,7 @@
         },
         {
           "name": "HttpError",
+          "doc": "Errors returned for invalid requests, transport failures, timeouts, and limits.",
           "kind": "alternative",
           "type": "HttpError",
           "cases": [
@@ -1031,6 +1117,7 @@
         },
         {
           "name": "HttpExchange",
+          "doc": "One streaming server exchange. Read or write incrementally and close when done.",
           "kind": "interface",
           "type": "HttpExchange",
           "operations": [
@@ -1047,6 +1134,7 @@
         },
         {
           "name": "HttpRequest",
+          "doc": "Buffered request accepted by the simple HTTP server handler.",
           "kind": "record",
           "type": "HttpRequest",
           "fields": [
@@ -1062,6 +1150,7 @@
         },
         {
           "name": "HttpResponse",
+          "doc": "Buffered response returned by the simple HTTP server handler.",
           "kind": "record",
           "type": "HttpResponse",
           "fields": [
@@ -1072,6 +1161,7 @@
         },
         {
           "name": "HttpServer",
+          "doc": "A running HTTP server. Close it to stop accepting new requests.",
           "kind": "interface",
           "type": "HttpServer",
           "operations": [
@@ -1082,6 +1172,7 @@
         },
         {
           "name": "HttpServerOptions",
+          "doc": "Request and response limits, deadlines, graceful shutdown, and TLS server settings.",
           "kind": "record",
           "type": "HttpServerOptions",
           "fields": [
@@ -1096,6 +1187,7 @@
         },
         {
           "name": "ResponseBody",
+          "doc": "Streaming response body returned by HTTP client operations.",
           "kind": "interface",
           "type": "ResponseBody",
           "operations": [
@@ -1112,6 +1204,7 @@
       "declarations": [
         {
           "name": "File",
+          "doc": "A file-like byte stream that returns `none` at end of input.",
           "kind": "interface",
           "type": "File",
           "operations": [
@@ -1121,6 +1214,7 @@
         },
         {
           "name": "Files",
+          "doc": "Opens file resources using the current host's default filesystem.",
           "kind": "interface",
           "type": "Files",
           "operations": [
@@ -1129,6 +1223,7 @@
         },
         {
           "name": "IoError",
+          "doc": "Errors returned while reading, writing, or closing an I/O resource.",
           "kind": "alternative",
           "type": "IoError",
           "cases": [
@@ -1148,6 +1243,7 @@
         },
         {
           "name": "ReadStream",
+          "doc": "A readable byte stream. Each read returns a chunk or `none` at end of stream.",
           "kind": "interface",
           "type": "ReadStream",
           "operations": [
@@ -1157,6 +1253,7 @@
         },
         {
           "name": "WriteStream",
+          "doc": "A writable byte stream. Flush before relying on buffered data being delivered.",
           "kind": "interface",
           "type": "WriteStream",
           "operations": [
@@ -1167,36 +1264,43 @@
         },
         {
           "name": "copy",
+          "doc": "Copies bytes until end of input or the supplied byte limit; returns bytes copied.",
           "kind": "fn",
           "type": "fn(input: ReadStream, output: WriteStream, max_bytes: Optional[Int] = ...)-\u003eResult[Int, IoError]"
         },
         {
           "name": "files",
+          "doc": "Returns file operations for the current host.",
           "kind": "fn",
           "type": "fn()-\u003eFiles"
         },
         {
           "name": "read_all",
+          "doc": "Reads a stream completely into memory. Supply a limit for untrusted streams.",
           "kind": "fn",
           "type": "fn(input: ReadStream, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, IoError]"
         },
         {
           "name": "read_line",
+          "doc": "Reads one line, omitting its line ending; returns `none` at end of stream.",
           "kind": "fn",
           "type": "fn(input: ReadStream, max_bytes: Optional[Int] = ...)-\u003eResult[Optional[String], IoError]"
         },
         {
           "name": "stderr",
+          "doc": "Returns the process standard-error stream.",
           "kind": "fn",
           "type": "fn()-\u003eWriteStream"
         },
         {
           "name": "stdin",
+          "doc": "Returns the process standard-input stream.",
           "kind": "fn",
           "type": "fn()-\u003eReadStream"
         },
         {
           "name": "stdout",
+          "doc": "Returns the process standard-output stream.",
           "kind": "fn",
           "type": "fn()-\u003eWriteStream"
         }
@@ -1207,6 +1311,7 @@
       "declarations": [
         {
           "name": "JsonError",
+          "doc": "Errors returned for malformed JSON or configured input and nesting limits.",
           "kind": "alternative",
           "type": "JsonError",
           "cases": [
@@ -1223,6 +1328,7 @@
         },
         {
           "name": "JsonLimits",
+          "doc": "Optional bounds for JSON input bytes, nesting depth, and parsed values.",
           "kind": "record",
           "type": "JsonLimits",
           "fields": [
@@ -1233,6 +1339,7 @@
         },
         {
           "name": "JsonValue",
+          "doc": "A JSON value. Number text is retained to avoid losing precision during parsing.",
           "kind": "alternative",
           "type": "JsonValue",
           "cases": [
@@ -1246,11 +1353,13 @@
         },
         {
           "name": "parse",
+          "doc": "Parses one JSON value and applies the supplied input, depth, and value limits.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[JsonLimits] = ...)-\u003eResult[JsonValue, JsonError]"
         },
         {
           "name": "stringify",
+          "doc": "Serializes a JSON value. `max_bytes` bounds output when supplied.",
           "kind": "fn",
           "type": "fn(value: JsonValue, max_bytes: Optional[Int] = ...)-\u003eResult[String, JsonError]"
         }
@@ -1261,6 +1370,7 @@
       "declarations": [
         {
           "name": "LogError",
+          "doc": "Errors returned while validating or writing a structured log record.",
           "kind": "alternative",
           "type": "LogError",
           "cases": [
@@ -1280,6 +1390,7 @@
         },
         {
           "name": "LogLevel",
+          "doc": "Severity levels accepted by a logger, ordered from Trace through Fatal.",
           "kind": "alternative",
           "type": "LogLevel",
           "cases": [
@@ -1294,6 +1405,7 @@
         },
         {
           "name": "Logger",
+          "doc": "A structured logger with level filtering, bound fields, and pluggable transports.",
           "kind": "interface",
           "type": "Logger",
           "operations": [
@@ -1313,6 +1425,7 @@
         },
         {
           "name": "Transport",
+          "doc": "A destination that accepts encoded log records and can be flushed and closed.",
           "kind": "interface",
           "type": "Transport",
           "operations": [
@@ -1323,21 +1436,25 @@
         },
         {
           "name": "create",
+          "doc": "Creates a logger. Defaults to `Info`, no bound fields, timestamps enabled, and no record-size limit.",
           "kind": "fn",
           "type": "fn(transport: Transport, level: Optional[LogLevel] = ..., bindings: Optional[Map[String, JsonValue]] = ..., timestamp: Optional[Bool] = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Logger, LogError]"
         },
         {
           "name": "file_transport",
+          "doc": "Appends log records to a file at `path`.",
           "kind": "fn",
           "type": "fn(path: String)-\u003eResult[Transport, LogError]"
         },
         {
           "name": "stdout_transport",
+          "doc": "Writes log records to the process standard-output stream.",
           "kind": "fn",
           "type": "fn()-\u003eTransport"
         },
         {
           "name": "stream_transport",
+          "doc": "Writes log records to an existing byte stream.",
           "kind": "fn",
           "type": "fn(output: WriteStream)-\u003eTransport"
         }
@@ -1348,141 +1465,169 @@
       "declarations": [
         {
           "name": "abs",
+          "doc": "Returns the absolute value of a floating-point number.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "abs_int",
+          "doc": "Returns the absolute value of an integer.",
           "kind": "fn",
           "type": "fn(value: Int)-\u003eInt"
         },
         {
           "name": "acos",
+          "doc": "Returns the inverse cosine in radians.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "asin",
+          "doc": "Returns the inverse sine in radians.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "atan",
+          "doc": "Returns the inverse tangent in radians.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "atan2",
+          "doc": "Returns the angle in radians for `(x, y)`, preserving its quadrant.",
           "kind": "fn",
           "type": "fn(y: Float, x: Float)-\u003eFloat"
         },
         {
           "name": "ceil",
+          "doc": "Rounds upward to the nearest whole number.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "cos",
+          "doc": "Returns the cosine of an angle in radians.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "cosh",
+          "doc": "Returns the hyperbolic cosine.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "e",
+          "doc": "Returns Euler's number, the base of natural logarithms.",
           "kind": "fn",
           "type": "fn()-\u003eFloat"
         },
         {
           "name": "exp",
+          "doc": "Returns e raised to `value`.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "floor",
+          "doc": "Rounds downward to the nearest whole number.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "hypot",
+          "doc": "Returns the length of the hypotenuse for sides `left` and `right`.",
           "kind": "fn",
           "type": "fn(left: Float, right: Float)-\u003eFloat"
         },
         {
           "name": "log",
+          "doc": "Returns the natural logarithm.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "log10",
+          "doc": "Returns the base-10 logarithm.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "log2",
+          "doc": "Returns the base-2 logarithm.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "max",
+          "doc": "Returns the greater of two floating-point values.",
           "kind": "fn",
           "type": "fn(left: Float, right: Float)-\u003eFloat"
         },
         {
           "name": "min",
+          "doc": "Returns the lesser of two floating-point values.",
           "kind": "fn",
           "type": "fn(left: Float, right: Float)-\u003eFloat"
         },
         {
           "name": "pi",
+          "doc": "Returns π, the ratio of a circle's circumference to its diameter.",
           "kind": "fn",
           "type": "fn()-\u003eFloat"
         },
         {
           "name": "pow",
+          "doc": "Returns `base` raised to `exponent`.",
           "kind": "fn",
           "type": "fn(base: Float, exponent: Float)-\u003eFloat"
         },
         {
           "name": "remainder",
+          "doc": "Returns the floating-point remainder after division.",
           "kind": "fn",
           "type": "fn(left: Float, right: Float)-\u003eFloat"
         },
         {
           "name": "round",
+          "doc": "Rounds to the nearest whole number, with half values away from zero.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "sin",
+          "doc": "Returns the sine of an angle in radians.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "sinh",
+          "doc": "Returns the hyperbolic sine.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "sqrt",
+          "doc": "Returns the non-negative square root.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "tan",
+          "doc": "Returns the tangent of an angle in radians.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "tanh",
+          "doc": "Returns the hyperbolic tangent.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         },
         {
           "name": "truncate",
+          "doc": "Truncates a value toward zero.",
           "kind": "fn",
           "type": "fn(value: Float)-\u003eFloat"
         }
@@ -1493,6 +1638,7 @@
       "declarations": [
         {
           "name": "Connection",
+          "doc": "A connected stream socket, optionally protected by TLS.",
           "kind": "interface",
           "type": "Connection",
           "operations": [
@@ -1507,6 +1653,7 @@
         },
         {
           "name": "Datagram",
+          "doc": "One datagram and the address from which it was received.",
           "kind": "record",
           "type": "Datagram",
           "fields": [
@@ -1516,6 +1663,7 @@
         },
         {
           "name": "DatagramSocket",
+          "doc": "A connectionless socket for sending and receiving datagrams.",
           "kind": "interface",
           "type": "DatagramSocket",
           "operations": [
@@ -1527,6 +1675,7 @@
         },
         {
           "name": "DnsRecord",
+          "doc": "DNS record data returned by a typed lookup.",
           "kind": "record",
           "type": "DnsRecord",
           "fields": [
@@ -1539,6 +1688,7 @@
         },
         {
           "name": "Listener",
+          "doc": "A listening socket that accepts incoming connections.",
           "kind": "interface",
           "type": "Listener",
           "operations": [
@@ -1549,6 +1699,7 @@
         },
         {
           "name": "Network",
+          "doc": "Network, DNS, HTTP, and WebSocket operations for the current host.",
           "kind": "interface",
           "type": "Network",
           "operations": [
@@ -1574,6 +1725,7 @@
         },
         {
           "name": "NetworkError",
+          "doc": "Errors returned by socket, DNS, and network connection operations.",
           "kind": "alternative",
           "type": "NetworkError",
           "cases": [
@@ -1595,21 +1747,25 @@
         },
         {
           "name": "contains_ip",
+          "doc": "Reports whether an IP address belongs to a CIDR range.",
           "kind": "fn",
           "type": "fn(cidr: String, address: String)-\u003eResult[Bool, NetworkError]"
         },
         {
           "name": "network",
+          "doc": "Returns network operations for the current host.",
           "kind": "fn",
           "type": "fn()-\u003eNetwork"
         },
         {
           "name": "parse_cidr",
+          "doc": "Validates and canonicalizes an IPv4 or IPv6 CIDR range.",
           "kind": "fn",
           "type": "fn(text: String)-\u003eResult[String, NetworkError]"
         },
         {
           "name": "parse_ip",
+          "doc": "Validates and canonicalizes an IPv4 or IPv6 address.",
           "kind": "fn",
           "type": "fn(text: String)-\u003eResult[String, NetworkError]"
         }
@@ -1620,6 +1776,7 @@
       "declarations": [
         {
           "name": "NumberError",
+          "doc": "Errors returned when numeric text is malformed or outside the target range.",
           "kind": "alternative",
           "type": "NumberError",
           "cases": [
@@ -1636,11 +1793,13 @@
         },
         {
           "name": "parse_float",
+          "doc": "Parses a decimal floating-point number using Manuscript's numeric syntax.",
           "kind": "fn",
           "type": "fn(text: String)-\u003eResult[Float, NumberError]"
         },
         {
           "name": "parse_int",
+          "doc": "Parses an integer in a radix from 2 through 36.",
           "kind": "fn",
           "type": "fn(text: String, radix: Int)-\u003eResult[Int, NumberError]"
         }
@@ -1651,6 +1810,7 @@
       "declarations": [
         {
           "name": "Optional",
+          "doc": "Represents a value that may be absent: `some(value)` or `none`.",
           "kind": "alternative",
           "type": "Optional[T]",
           "type_parameters": [
@@ -1675,6 +1835,7 @@
       "declarations": [
         {
           "name": "PathError",
+          "doc": "Errors returned when a path cannot be parsed or resolved.",
           "kind": "alternative",
           "type": "PathError",
           "cases": [
@@ -1689,6 +1850,7 @@
         },
         {
           "name": "PathOperations",
+          "doc": "Path operations using either POSIX or Windows path conventions.",
           "kind": "interface",
           "type": "PathOperations",
           "operations": [
@@ -1711,6 +1873,7 @@
         },
         {
           "name": "PathParts",
+          "doc": "Parsed path components using the familiar root, directory, base, extension, and name fields.",
           "kind": "record",
           "type": "PathParts",
           "fields": [
@@ -1723,86 +1886,103 @@
         },
         {
           "name": "basename",
+          "doc": "Returns the final path component, excluding trailing separators.",
           "kind": "fn",
           "type": "fn(path: String)-\u003eString"
         },
         {
           "name": "basename_without",
+          "doc": "Returns the basename with the supplied suffix removed when it matches.",
           "kind": "fn",
           "type": "fn(path: String, suffix: String)-\u003eString"
         },
         {
           "name": "delimiter",
+          "doc": "Returns the host's path-list delimiter.",
           "kind": "fn",
           "type": "fn()-\u003eString"
         },
         {
           "name": "dirname",
+          "doc": "Returns the directory portion of a path.",
           "kind": "fn",
           "type": "fn(path: String)-\u003eString"
         },
         {
           "name": "extension",
+          "doc": "Returns the final extension, including its leading dot, or an empty string.",
           "kind": "fn",
           "type": "fn(path: String)-\u003eString"
         },
         {
           "name": "format",
+          "doc": "Formats parsed path components as a path string.",
           "kind": "fn",
           "type": "fn(parts: PathParts)-\u003eString"
         },
         {
           "name": "is_absolute",
+          "doc": "Reports whether a path is absolute according to the host path rules.",
           "kind": "fn",
           "type": "fn(path: String)-\u003eBool"
         },
         {
           "name": "join",
+          "doc": "Joins path parts using the host separator and normalizes the result.",
           "kind": "fn",
           "type": "fn(parts: List[String])-\u003eString"
         },
         {
           "name": "matches_glob",
+          "doc": "Tests a path against a glob pattern.",
           "kind": "fn",
           "type": "fn(path: String, pattern: String)-\u003eResult[Bool, PathError]"
         },
         {
           "name": "normalize",
+          "doc": "Normalizes separators and dot segments without accessing the filesystem.",
           "kind": "fn",
           "type": "fn(path: String)-\u003eString"
         },
         {
           "name": "parse",
+          "doc": "Splits a path into its root, directory, base, extension, and name.",
           "kind": "fn",
           "type": "fn(path: String)-\u003ePathParts"
         },
         {
           "name": "posix",
+          "doc": "Returns path operations using POSIX separators and parsing rules.",
           "kind": "fn",
           "type": "fn()-\u003ePathOperations"
         },
         {
           "name": "relative",
+          "doc": "Computes a relative path from `base` to `target` using host path rules.",
           "kind": "fn",
           "type": "fn(base: String, target: String)-\u003eResult[String, PathError]"
         },
         {
           "name": "resolve",
+          "doc": "Resolves path parts against a base using host path conventions.",
           "kind": "fn",
           "type": "fn(base: String, parts: List[String])-\u003eResult[String, PathError]"
         },
         {
           "name": "separator",
+          "doc": "Returns the host's path separator.",
           "kind": "fn",
           "type": "fn()-\u003eString"
         },
         {
           "name": "to_namespaced_path",
+          "doc": "Converts a path to the host's namespaced representation when applicable.",
           "kind": "fn",
           "type": "fn(path: String)-\u003eString"
         },
         {
           "name": "win32",
+          "doc": "Returns path operations using Windows separators and parsing rules.",
           "kind": "fn",
           "type": "fn()-\u003ePathOperations"
         }
@@ -1813,6 +1993,7 @@
       "declarations": [
         {
           "name": "CommandError",
+          "doc": "Errors returned when a process cannot start, times out, or exceeds an output bound.",
           "kind": "alternative",
           "type": "CommandError",
           "cases": [
@@ -1831,6 +2012,7 @@
         },
         {
           "name": "CommandOutput",
+          "doc": "Captured exit status and standard output/error from a completed command.",
           "kind": "record",
           "type": "CommandOutput",
           "fields": [
@@ -1841,6 +2023,7 @@
         },
         {
           "name": "Commands",
+          "doc": "Runs child programs with explicit input, output bounds, and an optional timeout.",
           "kind": "interface",
           "type": "Commands",
           "operations": [
@@ -1849,6 +2032,7 @@
         },
         {
           "name": "CpuUsage",
+          "doc": "CPU time consumed by the current process.",
           "kind": "record",
           "type": "CpuUsage",
           "fields": [
@@ -1858,6 +2042,7 @@
         },
         {
           "name": "MemoryUsage",
+          "doc": "Memory statistics for the current process.",
           "kind": "record",
           "type": "MemoryUsage",
           "fields": [
@@ -1870,6 +2055,7 @@
         },
         {
           "name": "ProcessControl",
+          "doc": "Process and operating-system controls for the current process.",
           "kind": "interface",
           "type": "ProcessControl",
           "operations": [
@@ -1900,6 +2086,7 @@
         },
         {
           "name": "ProcessError",
+          "doc": "Errors returned by process-control operations.",
           "kind": "alternative",
           "type": "ProcessError",
           "cases": [
@@ -1922,6 +2109,7 @@
         },
         {
           "name": "ProcessInfo",
+          "doc": "Identity and invocation details for the current process.",
           "kind": "record",
           "type": "ProcessInfo",
           "fields": [
@@ -1939,6 +2127,7 @@
         },
         {
           "name": "ResourceUsage",
+          "doc": "Kernel resource counters for the current process.",
           "kind": "record",
           "type": "ResourceUsage",
           "fields": [
@@ -1955,6 +2144,7 @@
         },
         {
           "name": "SignalStream",
+          "doc": "A stream of operating-system signals selected by `watch_signals`.",
           "kind": "interface",
           "type": "SignalStream",
           "operations": [
@@ -1964,11 +2154,13 @@
         },
         {
           "name": "commands",
+          "doc": "Returns child-process operations for the current host.",
           "kind": "fn",
           "type": "fn()-\u003eCommands"
         },
         {
           "name": "control",
+          "doc": "Returns controls and process information for the current process.",
           "kind": "fn",
           "type": "fn()-\u003eProcessControl"
         }
@@ -1979,6 +2171,7 @@
       "declarations": [
         {
           "name": "PriorityQueue",
+          "doc": "Negative compare results put left before right; equal priorities remain FIFO.",
           "kind": "native",
           "type": "PriorityQueue[T]",
           "type_parameters": [
@@ -1998,6 +2191,7 @@
         },
         {
           "name": "Queue",
+          "doc": "FIFO queue. An omitted capacity creates an unbounded queue.",
           "kind": "native",
           "type": "Queue[T]",
           "type_parameters": [
@@ -2021,6 +2215,7 @@
       "declarations": [
         {
           "name": "Entropy",
+          "doc": "A source of cryptographically secure random bytes.",
           "kind": "interface",
           "type": "Entropy",
           "operations": [
@@ -2029,6 +2224,7 @@
         },
         {
           "name": "RandomError",
+          "doc": "Errors returned when random input is invalid or entropy generation fails.",
           "kind": "alternative",
           "type": "RandomError",
           "cases": [
@@ -2045,16 +2241,19 @@
         },
         {
           "name": "entropy",
+          "doc": "Returns the operating system's cryptographic entropy source.",
           "kind": "fn",
           "type": "fn()-\u003eEntropy"
         },
         {
           "name": "secure_int",
+          "doc": "Returns a secure integer at least `min` and below `max_exclusive` when supplied.",
           "kind": "fn",
           "type": "fn(entropy: Entropy, min: Int, max_exclusive: Optional[Int] = ...)-\u003eResult[Int, RandomError]"
         },
         {
           "name": "uuid_v4",
+          "doc": "Creates a version-4 UUID using the supplied cryptographic entropy source.",
           "kind": "fn",
           "type": "fn(entropy: Entropy)-\u003eResult[String, RandomError]"
         }
@@ -2065,6 +2264,7 @@
       "declarations": [
         {
           "name": "Regex",
+          "doc": "A compiled regular expression that can be reused across input strings.",
           "kind": "native",
           "type": "Regex",
           "operations": [
@@ -2075,6 +2275,7 @@
         },
         {
           "name": "RegexError",
+          "doc": "Errors returned for invalid patterns or configured result limits.",
           "kind": "alternative",
           "type": "RegexError",
           "cases": [
@@ -2091,6 +2292,7 @@
         },
         {
           "name": "compile",
+          "doc": "Compiles a regular expression. Invalid pattern syntax is returned as an error.",
           "kind": "fn",
           "type": "fn(pattern: String)-\u003eResult[Regex, RegexError]"
         }
@@ -2101,6 +2303,7 @@
       "declarations": [
         {
           "name": "Result",
+          "doc": "Holds either a successful value (`ok`) or an expected failure (`error`).",
           "kind": "alternative",
           "type": "Result[T, U]",
           "type_parameters": [
@@ -2119,6 +2322,7 @@
       "declarations": [
         {
           "name": "StringBuilder",
+          "doc": "Mutable builder for constructing a string without repeated intermediate copies.\nMutable builder for constructing a string without repeated intermediate copies.",
           "kind": "native",
           "type": "StringBuilder",
           "operations": [
@@ -2128,6 +2332,7 @@
         },
         {
           "name": "StringError",
+          "doc": "Errors returned by Unicode scalar conversions and bounded string operations.",
           "kind": "alternative",
           "type": "StringError",
           "cases": [
@@ -2145,6 +2350,7 @@
         },
         {
           "name": "from_scalars",
+          "doc": "Builds text from Unicode scalar values. Invalid scalars return `InvalidInput`.",
           "kind": "fn",
           "type": "fn(values: List[Int])-\u003eResult[String, StringError]"
         }
@@ -2155,6 +2361,7 @@
       "declarations": [
         {
           "name": "Synchronized",
+          "doc": "Protects a value shared across tasks. Lock before reading or updating the value.",
           "kind": "native",
           "type": "Synchronized[T]",
           "type_parameters": [
@@ -2169,6 +2376,7 @@
         },
         {
           "name": "SynchronizedGuard",
+          "doc": "Holds a synchronization lock. Closing the guard releases the lock.",
           "kind": "native",
           "type": "SynchronizedGuard[T]",
           "type_parameters": [
@@ -2187,6 +2395,7 @@
       "declarations": [
         {
           "name": "CpuInfo",
+          "doc": "Model, speed, and cumulative time counters for one logical CPU.",
           "kind": "record",
           "type": "CpuInfo",
           "fields": [
@@ -2201,6 +2410,7 @@
         },
         {
           "name": "NetworkInterface",
+          "doc": "Address and link metadata for one host network interface.",
           "kind": "record",
           "type": "NetworkInterface",
           "fields": [
@@ -2215,6 +2425,7 @@
         },
         {
           "name": "System",
+          "doc": "Read-only host details and selected controls for the current operating system.",
           "kind": "interface",
           "type": "System",
           "operations": [
@@ -2237,6 +2448,7 @@
         },
         {
           "name": "SystemError",
+          "doc": "Errors returned when a requested host operation is unavailable or denied.",
           "kind": "alternative",
           "type": "SystemError",
           "cases": [
@@ -2259,6 +2471,7 @@
         },
         {
           "name": "SystemInfo",
+          "doc": "Operating system and processor architecture for the current host.",
           "kind": "record",
           "type": "SystemInfo",
           "fields": [
@@ -2269,6 +2482,7 @@
         },
         {
           "name": "SystemMetrics",
+          "doc": "Host memory, uptime, load, and available parallelism measurements.",
           "kind": "record",
           "type": "SystemMetrics",
           "fields": [
@@ -2282,6 +2496,7 @@
         },
         {
           "name": "UserInfo",
+          "doc": "User name, numeric identity, home directory, and login shell.",
           "kind": "record",
           "type": "UserInfo",
           "fields": [
@@ -2294,31 +2509,37 @@
         },
         {
           "name": "constants",
+          "doc": "Returns operating-system constants by name.",
           "kind": "fn",
           "type": "fn()-\u003eMap[String, Int]"
         },
         {
           "name": "dev_null",
+          "doc": "Returns the conventional null-device path for the host.",
           "kind": "fn",
           "type": "fn()-\u003eString"
         },
         {
           "name": "end_of_line",
+          "doc": "Returns the host's line-ending sequence.",
           "kind": "fn",
           "type": "fn()-\u003eString"
         },
         {
           "name": "endianness",
+          "doc": "Returns `little` or `big` for the host's native byte order.",
           "kind": "fn",
           "type": "fn()-\u003eString"
         },
         {
           "name": "os_type",
+          "doc": "Returns the host operating-system family.",
           "kind": "fn",
           "type": "fn()-\u003eString"
         },
         {
           "name": "system",
+          "doc": "Returns system information and controls for the current host.",
           "kind": "fn",
           "type": "fn()-\u003eSystem"
         }
@@ -2329,6 +2550,7 @@
       "declarations": [
         {
           "name": "ExecutionError",
+          "doc": "Why a task or task group did not complete successfully.",
           "kind": "alternative",
           "type": "ExecutionError",
           "cases": [
@@ -2345,11 +2567,13 @@
         },
         {
           "name": "OperationId",
+          "doc": "Opaque identifier used to inspect, cancel, or restart scheduled work.",
           "kind": "native",
           "type": "OperationId"
         },
         {
           "name": "Scheduler",
+          "doc": "Runs immediate, delayed, and repeating operations with explicit cancellation.",
           "kind": "native",
           "type": "Scheduler",
           "fields": [
@@ -2370,6 +2594,7 @@
         },
         {
           "name": "SchedulerFailure",
+          "doc": "A scheduled operation that returned an error or raised a fault.",
           "kind": "alternative",
           "type": "SchedulerFailure",
           "cases": [
@@ -2379,6 +2604,7 @@
         },
         {
           "name": "StartError",
+          "doc": "Why a scheduler could not start an operation.",
           "kind": "alternative",
           "type": "StartError",
           "cases": [
@@ -2395,6 +2621,7 @@
         },
         {
           "name": "Task",
+          "doc": "A handle to a child task. Join it to collect its result and observe failures.",
           "kind": "native",
           "type": "Task[T]",
           "type_parameters": [
@@ -2406,6 +2633,7 @@
         },
         {
           "name": "TaskGroup",
+          "doc": "Starts child tasks and joins them together with an optional group timeout.",
           "kind": "native",
           "type": "TaskGroup",
           "fields": [
@@ -2419,6 +2647,7 @@
         },
         {
           "name": "WorkStatus",
+          "doc": "Current or final state of a scheduled operation.",
           "kind": "alternative",
           "type": "WorkStatus",
           "cases": [
@@ -2432,11 +2661,13 @@
         },
         {
           "name": "check_cancelled",
+          "doc": "Raises the cancellation fault when the current task has been cancelled.",
           "kind": "fn",
           "type": "fn()-\u003eUnit"
         },
         {
           "name": "yield_now",
+          "doc": "Suspends the current task briefly so other ready work can run.",
           "kind": "fn",
           "type": "fn()-\u003eUnit"
         }
@@ -2447,6 +2678,7 @@
       "declarations": [
         {
           "name": "Clock",
+          "doc": "A monotonic clock whose readings are suitable for measuring elapsed time.",
           "kind": "interface",
           "type": "Clock",
           "operations": [
@@ -2455,6 +2687,7 @@
         },
         {
           "name": "Duration",
+          "doc": "A span of elapsed time.",
           "kind": "native",
           "type": "Duration",
           "operations": [
@@ -2475,6 +2708,7 @@
         },
         {
           "name": "Instant",
+          "doc": "An instant on a monotonic clock; it is not a calendar timestamp.",
           "kind": "native",
           "type": "Instant",
           "operations": [
@@ -2485,6 +2719,7 @@
         },
         {
           "name": "TimeError",
+          "doc": "Errors returned by timestamp parsing, arithmetic, or range conversion.",
           "kind": "alternative",
           "type": "TimeError",
           "cases": [
@@ -2502,6 +2737,7 @@
         },
         {
           "name": "Timestamp",
+          "doc": "A wall-clock time with Unix seconds and nanoseconds.",
           "kind": "native",
           "type": "Timestamp",
           "operations": [
@@ -2515,6 +2751,7 @@
         },
         {
           "name": "WallClock",
+          "doc": "A clock that reports calendar time.",
           "kind": "interface",
           "type": "WallClock",
           "operations": [
@@ -2523,31 +2760,37 @@
         },
         {
           "name": "clock",
+          "doc": "Returns the monotonic clock used for elapsed-time measurements.",
           "kind": "fn",
           "type": "fn()-\u003eClock"
         },
         {
           "name": "duration",
+          "doc": "Constructs a duration from a number of nanoseconds.",
           "kind": "fn",
           "type": "fn(nanoseconds: Int)-\u003eDuration"
         },
         {
           "name": "parse_timestamp",
+          "doc": "Parses an RFC 3339 timestamp with an explicit time zone.",
           "kind": "fn",
           "type": "fn(text: String)-\u003eResult[Timestamp, TimeError]"
         },
         {
           "name": "sleep",
+          "doc": "Suspends the current task for at least the requested duration.",
           "kind": "fn",
           "type": "fn(duration: Duration)-\u003eUnit"
         },
         {
           "name": "timestamp",
+          "doc": "Constructs a timestamp from Unix seconds and a nanosecond adjustment.",
           "kind": "fn",
           "type": "fn(seconds: Int, nanoseconds: Int)-\u003eResult[Timestamp, TimeError]"
         },
         {
           "name": "wall_clock",
+          "doc": "Returns the wall clock used for calendar timestamps.",
           "kind": "fn",
           "type": "fn()-\u003eWallClock"
         }
@@ -2558,6 +2801,7 @@
       "declarations": [
         {
           "name": "CertificateInfo",
+          "doc": "Parsed certificate identity, validity range, and original DER bytes.",
           "kind": "record",
           "type": "CertificateInfo",
           "fields": [
@@ -2571,6 +2815,7 @@
         },
         {
           "name": "TlsError",
+          "doc": "Errors returned when TLS configuration, certificates, or peer authentication fail.",
           "kind": "alternative",
           "type": "TlsError",
           "cases": [
@@ -2588,6 +2833,7 @@
         },
         {
           "name": "TlsInfo",
+          "doc": "Negotiated TLS version, cipher, protocol, and peer certificate information.",
           "kind": "record",
           "type": "TlsInfo",
           "fields": [
@@ -2600,6 +2846,7 @@
         },
         {
           "name": "TlsOptions",
+          "doc": "Client or server TLS settings, including roots, certificates, and ALPN protocols.",
           "kind": "record",
           "type": "TlsOptions",
           "fields": [
@@ -2613,11 +2860,13 @@
         },
         {
           "name": "parse_certificates",
+          "doc": "Parses PEM certificates and optionally limits the number returned.",
           "kind": "fn",
           "type": "fn(pem: String, max_certificates: Optional[Int] = ...)-\u003eResult[List[CertificateInfo], TlsError]"
         },
         {
           "name": "verify_certificates",
+          "doc": "Verifies a PEM certificate chain against roots, name constraints, and the supplied time.",
           "kind": "fn",
           "type": "fn(chain_pem: String, roots_pem: String, server_name: String, now: Timestamp)-\u003eResult[Unit, TlsError]"
         }
@@ -2628,6 +2877,7 @@
       "declarations": [
         {
           "name": "TomlError",
+          "doc": "Errors returned for invalid limits, malformed TOML, or exceeded resource bounds.",
           "kind": "alternative",
           "type": "TomlError",
           "cases": [
@@ -2644,6 +2894,7 @@
         },
         {
           "name": "TomlLimits",
+          "doc": "Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.",
           "kind": "record",
           "type": "TomlLimits",
           "fields": [
@@ -2654,6 +2905,7 @@
         },
         {
           "name": "TomlValue",
+          "doc": "A TOML value. Date and time values retain their original TOML text.",
           "kind": "alternative",
           "type": "TomlValue",
           "cases": [
@@ -2668,6 +2920,7 @@
         },
         {
           "name": "parse",
+          "doc": "Parses a TOML document into a table value and reports source line and column on invalid input.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[TomlLimits] = ...)-\u003eResult[TomlValue, TomlError]"
         }
@@ -2678,6 +2931,7 @@
       "declarations": [
         {
           "name": "QueryEntry",
+          "doc": "One decoded key and value in a URL query string.",
           "kind": "record",
           "type": "QueryEntry",
           "fields": [
@@ -2687,6 +2941,7 @@
         },
         {
           "name": "Url",
+          "doc": "Parsed URL components. A missing port is represented by `none`.",
           "kind": "record",
           "type": "Url",
           "fields": [
@@ -2700,6 +2955,7 @@
         },
         {
           "name": "UrlError",
+          "doc": "Errors returned for malformed URL text, components, or query limits.",
           "kind": "alternative",
           "type": "UrlError",
           "cases": [
@@ -2716,36 +2972,43 @@
         },
         {
           "name": "decode_component",
+          "doc": "Decodes one percent-encoded URL component. `+` is not treated as a space.",
           "kind": "fn",
           "type": "fn(text: String)-\u003eResult[String, UrlError]"
         },
         {
           "name": "encode_component",
+          "doc": "Percent-encodes one URL component using UTF-8 bytes.",
           "kind": "fn",
           "type": "fn(text: String)-\u003eString"
         },
         {
           "name": "format",
+          "doc": "Formats URL components as an absolute or relative URL.",
           "kind": "fn",
           "type": "fn(value: Url)-\u003eResult[String, UrlError]"
         },
         {
           "name": "format_query",
+          "doc": "Encodes query entries as a query string.",
           "kind": "fn",
           "type": "fn(entries: List[QueryEntry])-\u003eString"
         },
         {
           "name": "parse",
+          "doc": "Parses an absolute URL into its components.",
           "kind": "fn",
           "type": "fn(text: String)-\u003eResult[Url, UrlError]"
         },
         {
           "name": "parse_query",
+          "doc": "Parses a query string, preserving duplicate keys and their input order.",
           "kind": "fn",
           "type": "fn(text: String, max_entries: Optional[Int] = ...)-\u003eResult[List[QueryEntry], UrlError]"
         },
         {
           "name": "resolve",
+          "doc": "Resolves a relative reference against a base URL.",
           "kind": "fn",
           "type": "fn(base: Url, reference: String)-\u003eResult[Url, UrlError]"
         }
@@ -2756,6 +3019,7 @@
       "declarations": [
         {
           "name": "WebSocket",
+          "doc": "A WebSocket connection. Send and receive byte messages with an explicit text flag.",
           "kind": "interface",
           "type": "WebSocket",
           "operations": [
@@ -2768,6 +3032,7 @@
         },
         {
           "name": "WebSocketError",
+          "doc": "Errors returned by WebSocket handshakes, message limits, timeouts, or closed sockets.",
           "kind": "alternative",
           "type": "WebSocketError",
           "cases": [
@@ -2788,6 +3053,7 @@
         },
         {
           "name": "WebSocketMessage",
+          "doc": "A received message and whether its payload is UTF-8 text.",
           "kind": "record",
           "type": "WebSocketMessage",
           "fields": [
@@ -2797,6 +3063,7 @@
         },
         {
           "name": "WebSocketOptions",
+          "doc": "WebSocket message, timeout, TLS, and per-message compression settings.",
           "kind": "record",
           "type": "WebSocketOptions",
           "fields": [
@@ -2813,6 +3080,7 @@
       "declarations": [
         {
           "name": "YamlError",
+          "doc": "Errors returned for malformed YAML, unsupported features, or exceeded resource limits.",
           "kind": "alternative",
           "type": "YamlError",
           "cases": [
@@ -2830,6 +3098,7 @@
         },
         {
           "name": "YamlLimits",
+          "doc": "Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.",
           "kind": "record",
           "type": "YamlLimits",
           "fields": [
@@ -2840,6 +3109,7 @@
         },
         {
           "name": "YamlValue",
+          "doc": "A YAML value represented as null, boolean, number text, string, array, or object.",
           "kind": "alternative",
           "type": "YamlValue",
           "cases": [
@@ -2853,6 +3123,7 @@
         },
         {
           "name": "parse",
+          "doc": "Parses a YAML document. Unsupported YAML features and invalid input include source locations.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[YamlLimits] = ...)-\u003eResult[YamlValue, YamlError]"
         }
@@ -2868,6 +3139,7 @@
         },
         {
           "name": "Equal",
+          "doc": "Equality and hashing are ordinary operation interfaces. Built-in data retains\nits value semantics; an explicit implementation selects domain identity.",
           "kind": "interface",
           "type": "Equal",
           "operations": [
@@ -2876,6 +3148,7 @@
         },
         {
           "name": "Error",
+          "doc": "A contract for expected failures that can provide a human-readable message.",
           "kind": "interface",
           "type": "Error",
           "operations": [
@@ -2898,6 +3171,7 @@
         },
         {
           "name": "Hashable",
+          "doc": "A type with a stable hash consistent with its `Equal` implementation.",
           "kind": "interface",
           "type": "Hashable",
           "operations": [
@@ -2921,6 +3195,7 @@
         },
         {
           "name": "Optional",
+          "doc": "Represents a value that may be absent: `some(value)` or `none`.",
           "kind": "alternative",
           "type": "Optional[T]",
           "type_parameters": [
@@ -2940,6 +3215,7 @@
         },
         {
           "name": "Result",
+          "doc": "Holds either a successful value (`ok`) or an expected failure (`error`).",
           "kind": "alternative",
           "type": "Result[T, U]",
           "type_parameters": [

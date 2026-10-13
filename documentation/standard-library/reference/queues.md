@@ -8,6 +8,8 @@ Import each required symbol with `import Name from "@std/queues.ms"`.
 
 ## PriorityQueue {data-api-kind="Native type"}
 
+Negative compare results put left before right; equal priorities remain FIFO.
+
 ```manuscript
 type PriorityQueue[T]:
     compare: fn(left: T, right: T) -> Int
@@ -20,6 +22,8 @@ type PriorityQueue[T]:
 ```
 
 ## Queue {data-api-kind="Native type"}
+
+FIFO queue. An omitted capacity creates an unbounded queue.
 
 ```manuscript
 type Queue[T]:
