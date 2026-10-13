@@ -20,7 +20,7 @@ export type Regex:
     fn replace_all(
         text: String,
         replacement: String,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[String, RegexError]:
     # Compatibility spelling for replace_all; replaces every match, with identical limits and errors.
     fn replace(
