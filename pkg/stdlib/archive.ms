@@ -44,7 +44,9 @@ impl Error for ArchiveError:
 # Selects a supported archive format without a runtime string spelling check.
 # Existing pack/unpack format: String calls remain available.
 export type ArchiveFormat:
+    # ZIP files and directories.
     case Zip
+    # TAR files and directories.
     case Tar
     # Packs entries with the same optional output budget and path validation as pack.
     fn pack(

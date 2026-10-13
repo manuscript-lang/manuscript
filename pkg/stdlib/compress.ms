@@ -34,8 +34,11 @@ impl Error for CompressionError:
 # Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
 # Existing compress/decompress format: String calls remain available.
 export type CompressionFormat:
+    # GZIP framing.
     case Gzip
+    # ZLIB framing.
     case Zlib
+    # Raw DEFLATE without framing.
     case Deflate
     # Compresses with level 0..9 and the same optional output budget/domain errors as compress.
     fn compress(

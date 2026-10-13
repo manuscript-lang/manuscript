@@ -24,6 +24,9 @@ import value from "./support/results.ms"
 fn digest(algorithm: HashAlgorithm, data: Bytes) -> Bytes:
     return algorithm.digest(data)
 
+fn call_digest[T](operation: fn(data: Bytes) -> T, data: Bytes) -> T:
+    return operation(data)
+
 fn bounded_compression(
     operation: fn(
         data: Bytes,
@@ -48,6 +51,8 @@ test "typed SHA selectors match their algorithms and retain bound operations":
 
     let stored = HashAlgorithm.Sha384.digest
     if stored(data) != sha384(data): return panic("stored digest")
+
+    if call_digest(stored, data) != sha384(data): return panic("generic stored digest")
 
     let key = "key".to_bytes()
 

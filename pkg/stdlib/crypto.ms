@@ -63,8 +63,11 @@ impl Error for CryptoError:
 # Selects a supported SHA-2 algorithm without a runtime string spelling check.
 # Existing hash functions and hmac(algorithm: String) remain available.
 export type HashAlgorithm:
+    # SHA-256.
     case Sha256
+    # SHA-384.
     case Sha384
+    # SHA-512.
     case Sha512
     # Computes this algorithm's digest, checking cancellation between chunks.
     fn digest(data: Bytes) -> Bytes:
