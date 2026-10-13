@@ -54,14 +54,15 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 	return info
 }
 
-func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info) {
+func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info, expected *Type) {
 	vars := info.Method.Variables
+	context := &callInferenceContext{result: info.Type.Result, expected: expected, pos: e.Pos}
 	var supplied []*Type
 	if e.Left.Kind == syntax.KindApply {
 		supplied = c.resolveArguments(e.Left.Types)
 	} else if len(vars) > 0 {
 		sub := map[string]*Type{}
-		c.inferArguments(functionArguments(e.Args, info.Type.Params), info.Type.Params, vars, sub)
+		c.inferArguments(functionArguments(e.Args, info.Type.Params), info.Type.Params, vars, sub, context)
 		for _, v := range vars {
 			supplied = append(supplied, sub[v.ID])
 		}
@@ -69,6 +70,9 @@ func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info) {
 	copy := *info
 	if len(vars) > 0 || e.Left.Kind == syntax.KindApply {
 		copy.Type = c.specialize(info.Type, vars, supplied, e.Pos, calleeName(e.Left))
+	}
+	if context.conflict {
+		copy.Type.Result = primitive("<invalid>")
 	}
 	c.Expressions[e.Left] = &copy
 	*info = copy

@@ -10,5 +10,5 @@ func missingTypeArgumentHint(name, missing string, variables, arguments []*Type)
 			parts[index] = arguments[index].String()
 		}
 	}
-	return "cannot infer type argument " + missing + " for " + name + "; write " + name + "[" + strings.Join(parts, ", ") + "](...) with an explicit type for " + missing + "; function type arguments are inferred from call arguments"
+	return "cannot infer type argument " + missing + " for " + name + "; write " + name + "[" + strings.Join(parts, ", ") + "](...) with an explicit type for " + missing + "; call arguments and the expected result must determine every type parameter"
 }

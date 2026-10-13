@@ -330,7 +330,7 @@ test "generic argument inference":
         return panic(message: "check failed")
 ```
 
-Inference uses independently typed supplied arguments. Explicit and inferred applications must select the same substitution. Generic bodies are checked against declared bounds, not only the concrete types used by these tests.
+Inference uses independently typed supplied arguments and known expected results. Explicit and inferred applications must select the same substitution. Generic bodies are checked against declared bounds, not only the concrete types used by these tests.
 
 | Independent variant | Expected outcome |
 | --- | --- |
@@ -347,11 +347,11 @@ Separate fixture:
 fn absent[T]() -> Optional[T]:
     return none
 
-test "result context does not infer function arguments":
-    let value: Optional[Int] = absent[Int]()
+test "result context infers function arguments":
+    let value: Optional[Int] = absent()
 ```
 
-Accept the explicit call. Replacing `absent[Int]()` with `absent()` is a type rejection: result context cannot infer a generic function's type arguments. An expected constructor payload type may provide context for `none` or an empty list without introducing result-context function inference.
+Accept both `absent()` and `absent[Int]()` with this annotation. Removing the annotation from `let value = absent()` is a type rejection because no evidence determines `T`. An explicit `absent[String]()` remains a type rejection at an `Optional[Int]` boundary; context cannot override specialization.
 
 Intrinsic-name rejection fixture:
 
@@ -790,7 +790,7 @@ The field, binding annotation, or substituted parameter determines missing data 
 | Replace `none` for `absent` with `3` | Type rejection: no implicit Optional wrapping |
 | Replace `ok(value: 3)` for `success` with `3` | Type rejection: no implicit Result wrapping |
 
-Add a nonempty-list fixture `[none, some(value: 1)]`: the independently typed `some` determines `Optional[Int]` for the absent element. Reject `[some(value: 1), some(value: "one")]`; no implicit union is formed. These data-constructor rules do not infer a missing generic function specialization from its result context; CL-09 checks that separate boundary.
+Add a nonempty-list fixture `[none, some(value: 1)]`: the independently typed `some` determines `Optional[Int]` for the absent element. Reject `[some(value: 1), some(value: "one")]`; no implicit union is formed. CL-09 separately checks generic function inference from arguments and expected results, including rejection when neither determines a parameter.
 
 ## CL-17: Nonreturning subexpressions determine control-flow exits
 
