@@ -19,6 +19,8 @@ Completion is not published until registered cleanup and nested joins have finis
 
 User callbacks, failure reporters, resource cleanup, and joining run outside transition locks. Shutdown is idempotent; concurrent calls to `close()` observe one shutdown sequence and all wait for it to finish.
 
+Synchronized rejects same-operation reentry using execution/work-lifetime identity, including inherited and shielded views. Different operations wait on release or their current context's cancellation signal; the runtime maintains no cross-task wait graph. Cancellation does not forcibly release an executing holder or abandon joined cleanup. Shielded cleanup can remain blocked in a cross-task lock cycle; ordinary deadlines are not a cleanup watchdog. See [synchronization](../concurrency/synchronization.md) and [native shutdown limits](../concurrency/shutdown.md#limits).
+
 An operation must not join itself or an execution ancestor. Closing its own scheduler, including from nested task-group descendants or reporter callbacks joined by that service, faults before initiating shutdown. Check the fixed execution-parent chain, not just the current operation ID. Hosts close services from outside their admitted work. Cross-service cyclic shutdown is invalid library usage and must be avoided by host shutdown ordering.
 
 The conformance suite uses controlled barriers and race stress for admission versus closure, cancellation versus completion, and concurrent shutdown. See [semantic tests](compiler/conformance/semantic-tests.md).

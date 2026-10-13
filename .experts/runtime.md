@@ -27,19 +27,19 @@ Verify: conditional/default/match registrations retain stacks; a nested source
 closure does not force an unused parent stack; return, propagation, fault and
 cancellation retain cleanup and frame behavior.
 
-### Ancestor lock exclusion is broader than actual wait cycles
+### Synchronized uses cancellable cross-task blocking
 
-Verified: Synchronized checks the holder's work lifetime against the acquiring execution's ancestor chain. It rejects ordinary parent/child overlap even when the parent is not joining. Cancellation does not dissolve a cycle involving shielded cleanup, and must not forcibly release a held guard. The bounded tests cover lock-before-join and join-before-lock, task/group joins, group/execution/scheduler shutdown, and cancellation versus release.
+Decision: the user approved ordinary cross-task blocking for issue 148 after reviewing the automatic cycle detector's measured task overhead. Same-operation reentry faults using execution/work-lifetime identity, including helper and shielded views. Different executions, including descendants, wait. The reviewed graph draft and measurements remain in [superseded PR 256](https://github.com/manuscript-lang/manuscript/pull/256); that proposal was not merged and must not be silently restored.
 
-Open: permitting safe ancestor contention requires choosing an actual-cycle contract. Checking only when a child acquires misses an ancestor that joins afterward. A detector must coordinate both sides of the dependency and preserve fixed construction ancestry, failed-task group joins, and shielded cleanup. Independent-lock and cross-service cycles are currently invalid application usage; do not silently broaden that contract.
+Verified: cancellation stops ordinary lock waits, but it neither forcibly releases an executing holder nor abandons joined cleanup. Shielded cleanup ignores initiating cancellation and expired deadlines, so a cross-task cleanup cycle may remain blocked. Native RunMain has no cleanup watchdog or second-signal escalation. Do not claim universal deadlock detection or guaranteed timeout escape. Preserve task/group/service self-join guards and release held guards before joining dependent work.
 
-Verified: another operation can close a guard alias while the admitting operation is blocked joining. A wait-for cycle through the admitting lifetime can therefore be broken by independent alias release. A narrower policy must specify whether such potential cycles fault; do not describe them as proof of a permanent deadlock.
+Verified: another operation can close a guard alias while its owner is blocked joining. Access/release remains atomic, stale aliases cannot reach a later acquisition, and close stays idempotent. Work lifetime, resource lifetime and sharing remain separate.
 
-Verified: acquisition delivery must use one cancellation observation for both disposal and unwinding. Two final checks can see active then cancelled, discard the result without disposing it, and strand a Synchronized lock. A cancellation arriving after the successful delivery checkpoint belongs to caller cleanup.
+Verified: acquisition delivery uses one final cancellation observation for both disposal and unwind. Two checks can discard an acquired guard without disposing it. Keep PR 230's disposal fix; later cancellation after successful delivery belongs to caller cleanup.
 
-Apply when: changing ancestor lock admission, wait-cycle prevention, task/service joins, or acquisition delivery.
-Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [synchronization contract](../documentation/concurrency/synchronization.md), [bounded regressions](../pkg/runtime/synchronized_ancestor_test.go), [acquisition delivery](../pkg/runtime/values.go), and [undelivered acquisition regression](../pkg/runtime/synchronized_test.go).
-Verify: run the Synchronized and TaskGroup tests repeatedly and with the race detector. Any permissive contract must change the overlapping contention case to wait and return 7 while retaining bounded cycle/cleanup rejection in both orders.
+Apply when: changing lock admission, cancellation, alias release, task/service joining or acquisition delivery.
+Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [user decision](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df), [contract](../documentation/concurrency/synchronization.md), [bounded blocking regressions](../pkg/runtime/synchronized_ancestor_test.go), and [acquisition delivery](../pkg/runtime/values.go).
+Verify: ordinary ancestor overlap returns 7; both lock/join orders block until cooperative cancellation or release. Exercise deadlines, same-operation helper/shield reentry, cancellation/delivery/release races, alias close and use after close. Shielded-cycle tests run in bounded disposable subprocesses and release aliases explicitly; no test relies on cleanup timeout escape.
 
 ### Newer stdlib direction needs checkout reconciliation
 
