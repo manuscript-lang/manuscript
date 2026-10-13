@@ -246,3 +246,29 @@ func BenchmarkBindImplementation(b *testing.B) {
 		Invoke(ctx, Bind(receiver, "@std/Hashable", "hash", scope), nil)
 	}
 }
+
+func TestScalarLengthCache(t *testing.T) {
+	long := strings.Repeat("aé", 2000)
+	other := strings.Repeat("é", 2000)
+	for i := 0; i < 2; i++ {
+		if got := libraryPlain(t, "string/scalar_length", long); got != int64(4000) {
+			t.Fatalf("long: %v", got)
+		}
+		if got := libraryPlain(t, "string/scalar_length", other); got != int64(2000) {
+			t.Fatalf("other: %v", got)
+		}
+	}
+	if got := libraryPlain(t, "string/scalar_length", "héllo"); got != int64(5) {
+		t.Fatalf("short: %v", got)
+	}
+}
+
+func BenchmarkScalarLength(b *testing.B) {
+	text := strings.Repeat("ab", 800000)
+	spec := libraryFunctions["string/scalar_length"]
+	f := StandardFunction("string/scalar_length", libraryRuntimeType(spec.Result)).(Function)
+	ctx := RootExecution()
+	for i := 0; i < b.N; i++ {
+		f.Body(ctx, []Value{text})
+	}
+}
