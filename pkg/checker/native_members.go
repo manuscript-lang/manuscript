@@ -32,6 +32,9 @@ func (c *checker) nativeCallable(e *syntax.Expression) *Info {
 		return nil
 	}
 	receiver := c.expression(member.Left, nil)
+	if invalidType(receiver.Type) {
+		return &Info{Type: primitive("<invalid>")}
+	}
 	if receiver.Type.Kind == syntax.KindRecord && member.Text != "toString" {
 		for _, field := range Fields(receiver.Type) {
 			if field.Name == member.Text {
