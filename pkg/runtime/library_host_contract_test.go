@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	goruntime "runtime"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -144,5 +145,31 @@ func TestNativeConnectionWritePrefixOnFailure(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("write did not finish after peer close")
+	}
+}
+
+func TestProcessSignalStreamCapacityContract(t *testing.T) {
+	ctx := RootExecution()
+	control := libraryProcessControl{}
+	signals := libraryList("Int", []Value{int64(syscall.SIGINT)})
+	for _, test := range []struct {
+		name     string
+		capacity Value
+		want     int
+	}{
+		{"none", optional("Int", nil, false), 128},
+		{"explicit", optional("Int", int64(4), true), 4},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			view := librarySuccess(t, control.Operation("watch_signals").Body(ctx, []Value{signals, test.capacity})).(View)
+			observer := view.Receiver.(*librarySignalStream)
+			defer observer.Operation("close").Body(Shield(ctx), nil)
+			if got := cap(observer.events); got != test.want {
+				t.Fatalf("signal buffer capacity = %d; want %d", got, test.want)
+			}
+		})
+	}
+	for _, capacity := range []int64{-1, 0, 1048577} {
+		libraryFailure(t, control.Operation("watch_signals").Body(ctx, []Value{signals, optional("Int", capacity, true)}), "InvalidInput")
 	}
 }

@@ -38,6 +38,7 @@ export interface ProcessControl:
     # This is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing.
     fn monotonic_time() -> Int
     # Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
+    # Capacity must be 1..1048576; omission/none uses 128 buffered signals.
     # Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
     # Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
     fn watch_signals(
