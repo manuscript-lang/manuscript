@@ -49,6 +49,7 @@ type checker struct {
 	result                  *Type
 	returnInference         *callbackReturns
 	inferenceVariables      map[string]bool
+	independentArguments    map[*syntax.Expression]*Info
 	function, serial, loops int
 	unknownType             bool
 	callName                string
