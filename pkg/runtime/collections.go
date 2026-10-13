@@ -144,9 +144,9 @@ func keyContext(ctx *Execution, key Value, scope TypeScope) *Execution {
 // ListContains is the direct path for List.contains calls.
 func ListContains(ctx *Execution, receiver, value Value, scope TypeScope) Value {
 	items := receiver.(*List).Capture()
-	for _, item := range items.Values() {
+	for i := 0; i < items.Len(); i++ {
 		CheckCancelled(ctx)
-		if EqualSelected(ctx, item, value, scope) {
+		if items.EqualAt(ctx, i, value, scope) {
 			return true
 		}
 	}

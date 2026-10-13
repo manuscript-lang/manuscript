@@ -85,6 +85,16 @@ a callback body must not consume the parameter signature's width budget.
 The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
+Verified: typed List storage adds inactive nil slice fields to the native header.
+Rendering `Items` alone exposed bookkeeping or an empty fallback instead of source
+elements. Read the kind tag for expansion and indexed watches; Delve displays a
+uint8 as `1 = 0x1`, so parse its decimal prefix. Do not infer backing from a source
+primitive type because legacy/large literals can still be boxed. Evidence:
+[primitive and native DAP regressions](../extensions/vscode/tests/debug-adapter.test.js)
+and [storage-aware renderer](../extensions/vscode/debug-adapter.js).
+Verify all four primitive backings, legacy/empty Lists, generic types and watch
+indexing; source values must not expose private header fields or inactive lengths.
+
 ### Native build levels need artifact evidence
 
 Verified: Go omits recorded linker flags from build information when `-trimpath` is enabled. Check symbol/DWARF sections and executable size to verify stripping, rather than treating a missing recorded `-ldflags` value as a build failure. Both Debug and optimized RelWithDebInfo retain local source paths, so both need source-root-sensitive cache identities.

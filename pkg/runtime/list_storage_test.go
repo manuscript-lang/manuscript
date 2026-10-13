@@ -484,3 +484,23 @@ func TestListSortInPlaceMutationMatchesGo(t *testing.T) {
 		t.Fatal("legacy primitive natural ordering failed")
 	}
 }
+
+func TestPrimitiveMembershipAllocations(t *testing.T) {
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	values := make([]int64, 4096)
+	for i := range values {
+		values[i] = int64(i + 10000)
+	}
+	list := NewIntList("@std/List[Int]", values)
+	if n := testing.AllocsPerRun(100, func() {
+		if !ListContains(ctx, list, int64(14095), TypeScope{}).(bool) {
+			t.Fatal("missing member")
+		}
+	}); n != 0 {
+		t.Fatalf("primitive membership boxes %g cells", n)
+	}
+	if ListContains(ctx, list, int64(9), TypeScope{}).(bool) {
+		t.Fatal("absent member found")
+	}
+}

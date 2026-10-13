@@ -669,3 +669,26 @@ func InitListString(list *List, index int, value string) {
 		list.Set(index, value)
 	}
 }
+
+// EqualAt compares primitive captured cells without crossing a boxed boundary.
+// Composite elements retain their selected lexical equality implementation.
+func (r ListRange) EqualAt(ctx *Execution, index int, value Value, scope TypeScope) bool {
+	if view, ok := value.(View); ok {
+		value = view.Receiver
+	}
+	switch r.list.kind {
+	case listInt:
+		v, ok := value.(int64)
+		return ok && r.list.ints[index] == v
+	case listFloat:
+		v, ok := value.(float64)
+		return ok && r.list.floats[index] == v
+	case listBool:
+		v, ok := value.(bool)
+		return ok && r.list.bools[index] == v
+	case listString:
+		v, ok := value.(string)
+		return ok && r.list.strings[index] == v
+	}
+	return EqualSelected(ctx, r.Get(index), value, scope)
+}
