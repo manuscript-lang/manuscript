@@ -103,10 +103,10 @@ func commandHelp(command string) (string, bool) {
 		options = outputHelp
 		examples = "ms diagram main.ms\n  ms diagram ms.toml -o calls.mmd"
 	case "profile":
-		usage = "<file.ms|ms.toml> [-o directory] [--trace] [--build-type level] [-- program arguments]"
-		description = "Build and run an application with CPU and heap capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, inspection.json,\nand manifest.json; --trace adds trace.out. The output directory must not already exist.\nExecution tracing records an event for every Manuscript function call and can slow\ncall-heavy programs and produce very large files, so it is off unless requested.\nArguments after -- are passed to the application; its exit status is returned."
-		options = "  -o, --output <directory>  Bundle directory (default: ./profile)\n  --trace                   Also capture trace.out (large; slows call-heavy programs)\n"
-		examples = "ms profile ms.toml\n  ms profile main.ms -o capture --trace -- first second"
+		usage = "<file.ms|ms.toml> [-o directory] [--build-type level] [-- program arguments]"
+		description = "Build and run an application with CPU, heap, and execution trace capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, trace.out,\ninspection.json, and manifest.json. The output directory must not already exist.\nArguments after -- are passed to the application; its exit status is returned."
+		options = "  -o, --output <directory>  Bundle directory (default: ./profile)\n"
+		examples = "ms profile ms.toml\n  ms profile main.ms -o capture -- first second"
 	case "pprof", "trace":
 		usage = "[viewer options] <profile file>"
 		description = "Inspect captured profiles with the embedded SDK viewer."

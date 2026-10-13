@@ -207,7 +207,7 @@ func check() error {
 		return err
 	}
 	profile := filepath.Join(directory, "profile")
-	if data, err := run(cli, "profile", manifest, "-o", profile, "--trace", "--", "first", "second"); err != nil {
+	if data, err := run(cli, "profile", manifest, "-o", profile, "--", "first", "second"); err != nil {
 		return err
 	} else if data != "Arguments: 2\n" {
 		return fmt.Errorf("unexpected profile output: %q", data)
