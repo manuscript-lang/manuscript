@@ -56,3 +56,27 @@ impl At for Custom:
 		}
 	}
 }
+
+func TestDirectLengthLowering(t *testing.T) {
+	result := compiler.CompileSource("length.ms", `import {List, Map, Set} from "@std/collections.ms"
+type Sized:
+    items: List[Int]
+interface Measure:
+    fn length() -> Int
+impl Measure for Sized:
+    fn length() -> Int: return self.items.length()
+fn sizes(values: List[Int], pairs: Map[String, Int], names: Set[String], text: String, sized: Sized) -> Int:
+    let measure = Measure(value: sized)
+    let length = values.length
+    return values.length() + pairs.length() + names.length() + text.byte_length() + measure.length() + length()
+`, compiler.Options{})
+	if !result.Success() {
+		t.Fatal(result.Diagnostics)
+	}
+	if strings.Count(result.Source, "rt.CollectionLength(") != 4 || strings.Count(result.Source, "rt.StringByteLength(") != 1 {
+		t.Fatalf("expected direct length calls only for built-in receivers:\n%s", result.Source)
+	}
+	if !strings.Contains(result.Source, "rt.NativeMemberResult(") {
+		t.Fatal("bound method reference must keep ordinary callable dispatch")
+	}
+}

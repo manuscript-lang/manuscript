@@ -85,6 +85,27 @@ func constructor(typ string, args []Argument) Value {
 	return NewRecord(typ, args)
 }
 func Construct(typ string, args []Argument) Value { return constructor(typ, args) }
+
+// CollectionLength is the direct path for List, Map, and Set length calls.
+func CollectionLength(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	switch v := receiver.(type) {
+	case *List:
+		return int64(len(v.Items))
+	case *Map:
+		return int64(len(v.Entries))
+	case *Set:
+		return int64(len(v.Items))
+	}
+	return Panic("runtime invariant: collection receiver")
+}
+
+// StringByteLength is the direct path for String.byte_length calls.
+func StringByteLength(ctx *Execution, receiver Value) Value {
+	CheckCancelled(ctx)
+	return int64(len(receiver.(string)))
+}
+
 func NativeMember(receiver Value, name string) Value {
 	return NativeMemberResult(receiver, name, "")
 }
