@@ -66,7 +66,7 @@ matches every error payload, even when `NotFound` is a case of that payload's
 type. It does not test for that case. Bind `error(cause)` and pass `cause` to a
 helper that matches its cases, including `NotFound:` and the remaining cases.
 A case that carries data needs its own payload names or `_` placeholders in the
-helper's match. Keep one match per function; nested matches are an anti-pattern.
+helper's match. Keep matches flat; nested matches are an anti-pattern.
 
 `ms lint` reports MSL106 at a capitalized payload identifier that coincides with
 a known case or type name. The editor publishes the same advisory as a warning;
