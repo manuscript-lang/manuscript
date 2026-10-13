@@ -549,6 +549,19 @@ type libraryFileHandle struct {
 	active   sync.WaitGroup
 	released chan struct{}
 	gate     chan struct{}
+	// ahead holds bytes read_line took from the reader beyond the current line.
+	ahead []byte
+}
+
+// rewindAhead returns read-ahead bytes to the file so position-based operations see them.
+func (h *libraryFileHandle) rewindAhead() {
+	h.mu.Lock()
+	ahead := h.ahead
+	h.ahead = nil
+	h.mu.Unlock()
+	if len(ahead) > 0 {
+		h.file.Seek(-int64(len(ahead)), io.SeekCurrent)
+	}
 }
 
 func (h *libraryFileHandle) close() {
@@ -634,6 +647,7 @@ func (h *libraryFileHandle) Operation(name string) Function {
 		h.mu.Unlock()
 		defer h.active.Done()
 		CheckCancelled(ctx)
+		h.rewindAhead()
 		stop := libraryInterrupt(ctx, func(t time.Time) error { h.file.SetReadDeadline(t); return h.file.SetWriteDeadline(t) })
 		defer stop()
 		finish := func(v Value, err error) Value {
@@ -1032,6 +1046,19 @@ func (s libraryHandleStream) Operation(name string) Function {
 		}
 	}
 	return NewFunction(params, result, func(ctx *Execution, a []Value) Value {
+		if name == "read" && !s.write {
+			s.handle.mu.Lock()
+			if ahead := s.handle.ahead; len(ahead) > 0 {
+				take := len(ahead)
+				if n, ok := a[0].(int64); ok && n > 0 && int(n) < take {
+					take = int(n)
+				}
+				s.handle.ahead = ahead[take:]
+				s.handle.mu.Unlock()
+				return Alternative{result, "ok", []Value{optional("@std/Bytes", Bytes{ahead[:take:take]}, true)}}
+			}
+			s.handle.mu.Unlock()
+		}
 		value := s.handle.Operation(operation).Body(ctx, a).(Alternative)
 		if value.Tag == "ok" {
 			return Alternative{result, "ok", value.Fields}

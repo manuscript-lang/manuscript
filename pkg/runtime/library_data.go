@@ -187,7 +187,8 @@ func init() {
 		b := a[0].(Bytes).Items
 		s, e := a[1].(int64), a[2].(int64)
 		librarySlice(len(b), s, e)
-		return Bytes{append([]byte{}, b[s:e]...)}
+		// Bytes are immutable, so the slice shares storage; the capacity limit keeps appends from touching the parent.
+		return Bytes{b[s:e:e]}
 	})
 	add("bytes", "values", "List[Int]", []LibraryParam{p("data", "Bytes")}, func(_ *Execution, _ string, a []Value) Value {
 		b := a[0].(Bytes).Items
