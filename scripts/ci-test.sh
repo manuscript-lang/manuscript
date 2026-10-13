@@ -12,7 +12,11 @@ count=${2:?shard count}
 go_tool=$repository/toolchain/go/bin/go
 export MANUSCRIPT_EXAMPLES_NATIVE=1
 mkdir -p .artifacts/coverage
-coverpkg=$("$go_tool" list ./... | paste -sd, -)
+# Check discovery before any pipeline can hide its exit status. Reuse this
+# complete inventory for both coverage instrumentation and package allocation.
+all_packages=$("$go_tool" list ./...)
+[ -n "$all_packages" ] || { echo 'No Go packages discovered' >&2; exit 1; }
+coverpkg=$(printf '%s\n' "$all_packages" | paste -sd, -)
 
 # Packages that exist only after the compiler split are picked up when present.
 optional=''
@@ -66,7 +70,10 @@ start() { # name, command...
 }
 
 for package in $split_packages; do
-    tests=$("$go_tool" test "$package" -list '^Test' | grep '^Test' |
+    inventory=$("$go_tool" test "$package" -list '^Test')
+    test_names=$(printf '%s\n' "$inventory" | grep '^Test' || true)
+    [ -n "$test_names" ] || { echo "No tests discovered for $package" >&2; exit 1; }
+    tests=$(printf '%s\n' "$test_names" |
         awk -v n="$count" -v k="$shard" '(NR - 1) % n == k' | paste -sd'|' -)
     [ -n "$tests" ] || continue
     name=$(basename "$package")
@@ -80,7 +87,7 @@ done
 # shellcheck disable=SC2086
 [ -z "$race_rest" ] || start race-rest "$go_tool" test -race $race_rest
 excluded=$(printf '%s\n%s\n' "$race_packages" "$split_packages")
-cover_rest=$("$go_tool" list ./... | grep -vxF "$excluded" | mine || true)
+cover_rest=$(printf '%s\n' "$all_packages" | grep -vxF "$excluded" | mine || true)
 # shellcheck disable=SC2086
 [ -z "$cover_rest" ] || start cover-rest run rest "" $cover_rest
 
