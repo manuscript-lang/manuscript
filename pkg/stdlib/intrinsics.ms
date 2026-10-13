@@ -127,7 +127,9 @@ interface StringOperations:
 
 # Conversion operations for machine-sized integers.
 interface IntOperations:
+    # Widens the signed32 value exactly to signed64.
     fn to_int64() -> Int64
+    # Converts the signed32 value exactly to IEEE binary64.
     fn to_float64() -> Float64
     fn to_string(radix: Int) -> String
     fn to_float() -> Float
@@ -135,7 +137,9 @@ interface IntOperations:
 
 # Formatting and classification operations for floating-point values.
 interface FloatOperations:
+    # Widens the stored binary32 value exactly, retaining signed zero and nonfinite values.
     fn to_float64() -> Float64
+    # Truncates toward zero, returning none for nonfinite values or signed64 overflow.
     fn truncate_to_int64() -> Optional[Int64]
     # Formats 1..100 significant digits, preserving trailing zeros; an invalid precision returns NumberError.InvalidInput.
     fn to_precision(precision: Int) -> Result[String, NumberError]
@@ -155,20 +159,35 @@ interface FloatOperations:
 
 # Explicit signed 64-bit arithmetic for counters, offsets, and other wide contracts.
 interface Int64Operations:
+    # Returns the exact value when it fits signed32, otherwise none.
     fn to_int() -> Optional[Int]
+    # Rounds directly to IEEE binary32, without a binary64 intermediate.
     fn to_float() -> Float
+    # Converts to IEEE binary64; integers beyond its exact precision can round.
     fn to_float64() -> Float64
+    # Converts the signed64 integer exactly to a Decimal.
     fn to_decimal() -> Decimal
+    # Formats the signed integer in radix 2..36; an invalid radix faults.
     fn to_string(radix: Int) -> String
 
 # Explicit IEEE binary64 values; conversions never change arithmetic operand types.
 interface Float64Operations:
+    # Rounds to IEEE binary32, allowing signed zero, underflow, infinities and NaN.
     fn to_float() -> Float
+    # Truncates toward zero, returning none for nonfinite values or signed32 overflow.
     fn truncate_to_int() -> Optional[Int]
+    # Truncates toward zero, returning none for nonfinite values or signed64 overflow.
     fn truncate_to_int64() -> Optional[Int64]
+    # Returns the shortest binary64 round-trip text, including NaN and signed infinities.
     fn to_string() -> String
+    # Formats 1..100 significant digits from the stored binary64 value; invalid precision returns InvalidInput.
     fn to_precision(precision: Int) -> Result[String, NumberError]
+    # Formats scientific notation with 0..100 fractional digits; invalid digits return InvalidInput.
     fn to_exponential(digits: Int) -> Result[String, NumberError]
+    # Formats 0..100 fractional digits with ties to even; magnitude >= 1e21 uses binary64 round-trip text.
+    # Invalid digits return NumberError.InvalidInput.
     fn to_fixed(digits: Int) -> Result[String, NumberError]
+    # Tests whether the stored binary64 value is NaN.
     fn is_nan() -> Bool
+    # Tests whether the stored binary64 value is neither NaN nor an infinity.
     fn is_finite() -> Bool
