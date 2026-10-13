@@ -175,3 +175,39 @@ func TestPrimitiveEquality(t *testing.T) {
 		}
 	}
 }
+
+// Removing the last remaining key must not leave its stale position behind:
+// a later insert at position 0 would otherwise alias both keys to one slot.
+func TestIndexForgetsKeysRemovedDownToEmpty(t *testing.T) {
+	ctx := RootExecution()
+	for _, pair := range [][2]Value{
+		{"cap", "pen"},
+		{int64(1), int64(2)},
+		{pointKey(1, 1), pointKey(2, 2)},
+	} {
+		first, second := pair[0], pair[1]
+		m := &Map{Type: "@std/Map[@std/Equal][Int]"}
+		m.put(ctx, first, int64(1))
+		m.removeAt(ctx, m.find(ctx, first))
+		m.put(ctx, second, int64(2))
+		m.put(ctx, first, int64(3))
+		if len(m.Entries) != 2 {
+			t.Fatalf("map %v/%v: %d entries, want 2", first, second, len(m.Entries))
+		}
+		if i := m.find(ctx, second); i != 0 || m.Entries[i].Value != int64(2) {
+			t.Fatalf("map %v/%v: second found at %d", first, second, i)
+		}
+		if i := m.find(ctx, first); i != 1 || m.Entries[i].Value != int64(3) {
+			t.Fatalf("map %v/%v: first found at %d", first, second, i)
+		}
+
+		s := &Set{Type: "@std/Set[@std/Equal]"}
+		s.add(ctx, first)
+		s.removeAt(ctx, s.find(ctx, first))
+		s.add(ctx, second)
+		s.add(ctx, first)
+		if len(s.Items) != 2 || s.find(ctx, second) != 0 || s.find(ctx, first) != 1 {
+			t.Fatalf("set %v/%v: items %v", first, second, s.Items)
+		}
+	}
+}
