@@ -44,6 +44,7 @@ To see a failure, change the first test's expected value from `3` to `4`. The CL
 ```sh
 ms test ms.toml
 ms test ms.toml --filter addition --timeout 10s
+ms test ms.toml --json
 ```
 
 A manifest run discovers `test.ms` and `*_test.ms` files recursively below the project root, as well as tests in imported modules. A direct `ms test file.ms` runs that module's tests and the tests in its imports; it does not discover unrelated sibling files. The exact traversal and excluded-directory rules live in [project configuration](../developer-tooling/builds/project-configuration.md#commands-and-module-discovery).
@@ -53,6 +54,11 @@ Tests run from the manifest's directory, or from the selected source file's dire
 Put reusable application functions in an exported module and import them into a test file with a relative path, for example `import add from "./src/math.ms"`. Keep the import consistent with your project's actual files; see [modules](../core-language/modules/declarations.md).
 
 `--filter` selects tests whose `module::name` contains the supplied text. `--timeout` bounds each test (60 seconds by default; `0` disables it). A programming fault or timeout fails the test; a function returning `error(...)` is still an ordinary value that you must check. Do not discard a `Result` when testing success or failure.
+
+For automation, `--json` emits a versioned result with per-test outcomes, counts,
+source diagnostics and captured stdout. Stderr remains stderr; failures keep
+their exit status. It supports one run and cannot be combined with `--watch`.
+See the [JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests).
 
 For example, this fragment belongs inside a test after calling a fallible function:
 
