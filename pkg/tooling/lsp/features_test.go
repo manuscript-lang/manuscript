@@ -262,6 +262,17 @@ fn extract(data: Bytes) -> List[Int]:
 	}
 }
 
+func TestBytesConstructorRetainsValuesSignature(t *testing.T) {
+	for _, call := range []string{"Bytes(|", "Bytes(values: |"} {
+		source := "import Bytes from \"@std/bytes.ms\"\nimport List from \"@std/collections.ms\"\nfn make() -> Bytes:\n    return " + call + "\n"
+		result := signatureSource(t, source)
+		signature := result["signatures"].([]any)[0].(map[string]any)
+		if signature["label"] != "Bytes(values: List[Int]) -> Bytes" {
+			t.Fatalf("%s: constructor argument lost with field removal: %v", call, signature)
+		}
+	}
+}
+
 func TestNavigationWithinStandardLibrary(t *testing.T) {
 	for _, item := range []struct{ file, needle, target, name string }{
 		{"collections.ms", "Result[List[T]", "result.ms", "Result"},
