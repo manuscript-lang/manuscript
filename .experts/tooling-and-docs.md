@@ -29,6 +29,13 @@ retained generated Go and escape analysis, and compare allocation counts as well
 as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
 when promoting a benchmark candidate into production lowering.
 
+Verified: immutable boxed literal tables still create fixed GC roots even when
+their source functions never run. Per-construction B/op and Go HeapAlloc omit
+that static data. The bounded Debug prototype measured zero/one/repeated calls,
+multiple literals, child RSS and ELF segments; a lower GC target exposed a
+repeatable construction slowdown despite faster native compilation. Treat those
+as separate review costs. Evidence: [literal memory/runtime controls](../scripts/bench-debug-literals/README.md#current-matched-main-evidence-after-api-review).
+
 Verified: direct native calls must use `argumentValue`, not raw `expression`,
 for supplied arguments. Checking can attach implicit Optional wrapping while
 the expression retains its payload type; bypassing that evidence stored an Int
@@ -72,6 +79,20 @@ Verified: Go omits recorded linker flags from build information when `-trimpath`
 Apply when: changing native optimization, symbol settings, or build caches.
 Evidence: [build level contract](../documentation/developer-tooling/builds/build-levels.md), [native flags](../pkg/compiler/build_type.go), [cache identity](../pkg/compiler/cache.go), and [native artifact checks](../pkg/compiler/build_type_test.go).
 Verify: build all four levels, execute and restore each artifact, check native optimization settings and debug sections, and compare stripped sizes with RelWithDebInfo.
+
+Verified: replacing a large list constructor with an anonymous copy thunk
+added physical Go lines under the preceding Manuscript `//line` directive.
+Delve stopped at a later source breakpoint inside that thunk with missing
+source locals. Giving the thunk a generated-file directive still introduced
+an extra stepping frame. An in-statement `append([]rt.Value(nil), data[:]...)`
+retains fresh storage without that frame; native DAP tests must compare against
+the unchanged baseline, including existing bookkeeping-line coalescing.
+Evidence: [large-list DAP regression](../extensions/vscode/tests/debug-large-literal.test.js),
+[bounded Debug lowering](../pkg/compiler/lower_debug_literals.go), and
+[independent measurement/provenance](../scripts/bench-debug-literals/README.md).
+Verify: break before and after construction, step, inspect source locals and
+watches, and mutate one of two independent evaluations. Default/Release
+generation and caller-edited `Result.Source` must remain unchanged.
 
 ### Repository cleanup must remove duplicated work and layers
 

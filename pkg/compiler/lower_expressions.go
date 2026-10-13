@@ -197,6 +197,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		}
 		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 	case syntax.KindList:
+		if value := g.debugListLiteral(e, info.Type); value != nil {
+			return value
+		}
 		var elements []ast.Expr
 		for _, item := range e.Elements {
 			elements = append(elements, g.expression(item))
