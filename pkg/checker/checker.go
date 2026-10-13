@@ -431,7 +431,7 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 			target := c.expression(s.Target, nil)
 			target.Write = true
 			receiver := c.Expressions[s.Target.Left]
-			if receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || target.Method != nil {
+			if receiver == nil || receiver.Type == nil || receiver.Type.Kind != syntax.KindRecord || (receiver.Symbol != nil && receiver.Symbol.Kind == syntax.KindType) || target.Method != nil {
 				c.error(s.Target.Pos, "type", "assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'")
 			}
 			value := c.expression(s.Value, target.Type)
@@ -1098,6 +1098,9 @@ func (c *checker) typeExpression(e *syntax.Expression) *Type {
 			return v
 		}
 		if s := c.names[e.Text]; s != nil && s.Kind == syntax.KindType {
+			// Constructor and qualified-case names bypass expression inference.
+			// Retain their resolved identity for import usage and navigation.
+			c.Expressions[e] = &Info{Type: s.Type, Symbol: s}
 			return s.Type
 		}
 	}

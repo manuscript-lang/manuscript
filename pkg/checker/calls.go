@@ -123,6 +123,12 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	} else {
 		callable = c.nativeCallable(callee)
 		if callable != nil {
+			if callable.Type.ID == "<invalid>" {
+				for _, arg := range e.Args {
+					c.expression(arg.Value, nil)
+				}
+				return callable
+			}
 			c.specializeNativeCall(e, callable)
 		} else {
 			callable = c.expression(callee, nil)
@@ -138,6 +144,9 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	i.Arguments = functionArguments(e.Args, signature.Params)
 	i.NoReturn = callable.NoReturn || c.argumentsFor(calleeName(callee), e.Pos, i.Arguments, signature.Params, signature.Defaults)
 	i.Type = signature.Result
+	if invalidType(i.Type) {
+		i.Type = primitive("<invalid>")
+	}
 	if i.Type != nil && i.Type.ID == "Never" {
 		i.NoReturn = true
 	}
@@ -370,7 +379,10 @@ func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub
 	attempt := func(target *Type) bool {
 		trial := map[string]*Type{}
 		for key, value := range sub {
-			trial[key] = value
+			// A prior failed argument supplies no constraint on later evidence.
+			if !invalidType(value) {
+				trial[key] = value
+			}
 		}
 		if !unify(target, actual, vars, trial) {
 			return false

@@ -18,6 +18,15 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 	}
 	contribute := func(arg syntax.Argument, actual *Info) {
 		pattern := parameter(arg.Name)
+		if invalidType(actual.Type) {
+			if std(pattern, "Optional") && actual.Type.Kind == "function" {
+				pattern = pattern.Args[0]
+			}
+			if !inferInvalidArgument(pattern, actual.Type, vars, sub) {
+				c.error(arg.Pos, "type", conflictingInference)
+			}
+			return
+		}
 		if pattern != nil && !c.errorAssignable(actual.Type, Sub(pattern, sub)) && !c.unifyArgument(pattern, actual.Type, vars, sub) {
 			c.error(arg.Pos, "type", conflictingInference)
 		}
@@ -60,7 +69,7 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 			c.inferenceVariables = previous
 			if len(c.Diagnostics) != checkpoint {
 				c.Diagnostics = c.Diagnostics[:checkpoint]
-				if !inferenceTypeKnown(actual.Type, vars) {
+				if !inferenceTypeKnown(actual.Type, vars) && !invalidType(actual.Type) {
 					next = append(next, arg)
 					continue
 				}
@@ -73,4 +82,68 @@ func (c *checker) inferArguments(args []syntax.Argument, params []Param, variabl
 		}
 		pending = next
 	}
+}
+
+// Keep valid evidence and mismatches when another part of an argument is
+// invalid. Error markers fill only the variables whose evidence failed.
+func inferInvalidArgument(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bool {
+	if pattern == nil || actual == nil {
+		return pattern == actual
+	}
+	if vars[pattern.ID] {
+		previous := sub[pattern.ID]
+		if previous == nil || previous.ID == "<invalid>" {
+			sub[pattern.ID] = requiredType(actual)
+			return true
+		}
+		return actual.ID == "<invalid>" || Same(previous, actual)
+	}
+	if actual.ID == "<invalid>" {
+		for _, arg := range pattern.Args {
+			inferInvalidArgument(arg, actual, vars, sub)
+		}
+		for _, param := range pattern.Params {
+			inferInvalidArgument(param.Type, actual, vars, sub)
+		}
+		inferInvalidArgument(pattern.Result, actual, vars, sub)
+		return true
+	}
+	if pattern.ID != actual.ID || len(pattern.Args) != len(actual.Args) || len(pattern.Params) != len(actual.Params) {
+		return false
+	}
+	valid := true
+	for index, arg := range pattern.Args {
+		if !inferInvalidArgument(arg, actual.Args[index], vars, sub) {
+			valid = false
+		}
+	}
+	for index, param := range pattern.Params {
+		if param.Name != actual.Params[index].Name {
+			valid = false
+		}
+		if !inferInvalidArgument(param.Type, actual.Params[index].Type, vars, sub) {
+			valid = false
+		}
+	}
+	return inferInvalidArgument(pattern.Result, actual.Result, vars, sub) && valid
+}
+
+func invalidType(t *Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.ID == "<invalid>" {
+		return true
+	}
+	for _, arg := range t.Args {
+		if invalidType(arg) {
+			return true
+		}
+	}
+	for _, param := range t.Params {
+		if invalidType(param.Type) {
+			return true
+		}
+	}
+	return invalidType(t.Result)
 }
