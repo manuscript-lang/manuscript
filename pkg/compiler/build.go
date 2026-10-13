@@ -162,7 +162,11 @@ func goBuild(dir, output string, kind BuildType, tags []string) error {
 	command.Dir = dir
 	data, err := command.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Go build failed: %w\n%s", err, data)
+		hint := ""
+		if bytes.Contains(data, []byte("requires go >=")) {
+			hint = "\nhint: the selected Go is too old for this build; set MANUSCRIPT_GO to a newer go executable (ms does not switch toolchains automatically)"
+		}
+		return fmt.Errorf("Go build failed: %w\n%s%s", err, data, hint)
 	}
 	return nil
 }

@@ -51,8 +51,8 @@ steps. `--debug` remains an alias for `--build-type Debug` on `build`, `run`, an
 and build-type flags on source-only commands are rejected before compilation.
 Flags after `--` are passed to the program.
 
-Project commands use the matching `ms.lock` pins. Run `ms lock ms.toml` when
-creating a project or explicitly updating its compiler and toolchain pins.
+Project commands create `ms.lock` when it is missing and otherwise require the
+matching pins. Run `ms lock ms.toml` to explicitly update its compiler and toolchain pins.
 Select build levels on the command line. See [build pinning and cache identity](reproducibility.md).
 
 ## Compiler API

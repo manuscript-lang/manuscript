@@ -44,8 +44,43 @@ func LoadFile(filename string, options Options) Graph {
 		// import failures inside visit and still contain the selected module.
 		graph.Modules = nil
 		graph.Diagnostics = append(graph.Diagnostics, diagnostic(filename, "resolution", err))
+		return graph
+	}
+	if manifest && options.Tests {
+		for _, test := range discoverTests(config.Root) {
+			canonical, err := project.SourcePath(config.Root, test, overlay)
+			if err == nil {
+				_, err = loader.visit(canonical)
+			}
+			if err != nil {
+				graph.Diagnostics = append(graph.Diagnostics, diagnostic(test, "resolution", err))
+			}
+		}
 	}
 	return graph
+}
+
+// discoverTests finds test.ms and *_test.ms files below a project root,
+// skipping hidden and dependency directories.
+func discoverTests(root string) []string {
+	var found []string
+	filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		name := entry.Name()
+		if entry.IsDir() {
+			if path != root && (strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if name == "test.ms" || strings.HasSuffix(name, "_test.ms") {
+			found = append(found, path)
+		}
+		return nil
+	})
+	return found
 }
 
 func sourceProject(filename string) (project.Project, bool, error) {

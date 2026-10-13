@@ -12,7 +12,6 @@ Run these commands from the extracted directory. In Windows PowerShell, replace 
 
 ```sh
 ./ms check examples/hello/ms.toml
-./ms lock examples/hello/ms.toml
 ./ms run examples/hello/ms.toml -- first second
 ```
 
@@ -74,6 +73,6 @@ Paths are relative to the manifest. See [project configuration](../developer-too
 ./ms fmt examples/hello/src/main.ms --check
 ```
 
-`build` leaves a native executable that runs independently of Manuscript. `test` runs the included test blocks. `fmt --check` reports formatting changes without writing them. Use `./ms --help` to list commands or `./ms help run` for a command's options.
+`build` leaves a native executable that runs independently of Manuscript. `test` runs test blocks in the given module; `ms test ms.toml` also runs every `test.ms` and `*_test.ms` file in the project. `fmt --check` reports formatting changes without writing them. Use `./ms --help` to list commands or `./ms help run` for a command's options.
 
 Continue with [the language tour](tour.md). The [developer tools](../developer-tooling/implementation.md) cover editor setup, inspection, API documentation, and debugging.

@@ -688,6 +688,9 @@ func RunTests(tests []Test) int {
 			fmt.Printf("PASS %s\n", test.Name)
 		}()
 	}
+	if len(tests) == 0 {
+		fmt.Println("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file")
+	}
 	fmt.Printf("%d tests, %d failed\n", len(tests), failed)
 	return failed
 }
