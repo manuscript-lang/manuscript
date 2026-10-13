@@ -26,7 +26,7 @@ fn first() -> Unit: consume(value: 1, cause: identity(Cause(2)), optional: ident
 		t.Fatal(program.Diagnostics)
 	}
 	errors, optionals := 0, 0
-	for expression, info := range program.Expressions {
+	for expression, info := range program.Expressions() {
 		if expression.Kind != syntax.KindCall || info.Symbol == nil || info.Symbol.Name != "identity" {
 			continue
 		}

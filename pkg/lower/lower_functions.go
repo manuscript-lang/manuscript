@@ -35,14 +35,14 @@ func (g *generator) nativeDefaults(d *syntax.Declaration, t *checker.Type, calle
 }
 
 func (g *generator) nativeDefaultParameters(d *syntax.Declaration, t *checker.Type, overridden map[string]bool, callee ast.Expr, supplied ...[]syntax.Argument) ast.Expr {
-	if d == nil || g.program.Parameters[d] == nil {
+	if d == nil || g.program.ParameterBindings(d) == nil {
 		return callee
 	}
 	oldModule := g.module
 	g.module = d.Pos.File
 	defer func() { g.module = oldModule }()
 	var values []ast.Expr
-	for _, binding := range g.program.Parameters[d] {
+	for _, binding := range g.program.ParameterBindings(d) {
 		values = append(values, ident(binding.ID))
 	}
 	params := append([]syntax.Parameter{}, d.Params...)
@@ -72,7 +72,7 @@ func (g *generator) nativeDefaultParameters(d *syntax.Declaration, t *checker.Ty
 	defer delete(g.defaultExpansion, d)
 	preparedType := *t
 	preparedType.Defaults = nil // Only the selected expression defaults run here.
-	prepare := g.function(d.Name+" defaults", params, d.Result, nil, g.program.Parameters[d], nil, &preparedType,
+	prepare := g.function(d.Name+" defaults", params, d.Result, nil, g.program.ParameterBindings(d), nil, &preparedType,
 		returned(composite(runtimeName("PreparedDefaults"), values...)))
 	return runtimeCall("WithDefaults", callee, concreteFunction(prepare), sliceLiteral(ident("int"), slots...))
 }
@@ -86,7 +86,7 @@ func (g *generator) methodDefaults(m *checker.Method, callee ast.Expr, supplied 
 	// explicit method defaults keep their existing precedence.
 	if m.Contract != nil && m.Contract.Def != nil && m.Contract.Def.Symbol != nil {
 		for _, d := range m.Contract.Def.Symbol.Decl.Methods {
-			if d.Name != m.Decl.Name || g.program.Parameters[d] == nil {
+			if d.Name != m.Decl.Name || g.program.ParameterBindings(d) == nil {
 				continue
 			}
 			overridden := map[string]bool{}
@@ -103,7 +103,7 @@ func (g *generator) methodDefaults(m *checker.Method, callee ast.Expr, supplied 
 // default wrapper when every new default is supplied; old none adapters still
 // receive exactly the slots they handled before this feature.
 func (g *generator) methodCallable(e *syntax.Expression, arguments []syntax.Argument) ast.Expr {
-	info := g.program.Expressions[e]
+	info := g.program.Info(e)
 	if e.Kind != syntax.KindMember || info.Method == nil {
 		return g.expression(e)
 	}
@@ -111,7 +111,7 @@ func (g *generator) methodCallable(e *syntax.Expression, arguments []syntax.Argu
 	if m.Contract == nil && m.Native != "" && m.Native != "contract" {
 		return g.methodDefaults(m, g.nativeReceiverMember(e, info), arguments)
 	}
-	return g.methodDefaults(m, runtimeCall("Bind", g.expression(e.Left), g.key(m.Contract), textLiteral(e.Text), g.typeScope(g.program.Expressions[e.Left].Type)), arguments)
+	return g.methodDefaults(m, runtimeCall("Bind", g.expression(e.Left), g.key(m.Contract), textLiteral(e.Text), g.typeScope(g.program.Info(e.Left).Type)), arguments)
 }
 func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 	d := s.Decl
@@ -125,14 +125,14 @@ func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 		defer func() { g.module = oldModule }()
 	}
 	if d.Kind == syntax.KindFn {
-		return g.function(d.Name, d.Params, d.Result, d.Body, g.program.Parameters[d], nil, s.Type)
+		return g.function(d.Name, d.Params, d.Result, d.Body, g.program.ParameterBindings(d), nil, s.Type)
 	}
 	var args []ast.Expr
 	for i, field := range d.Fields {
-		args = append(args, composite(runtimeName("Argument"), keyed("Name", textLiteral(field.Name)), keyed("Value", ident(g.program.Parameters[d][i].ID))))
+		args = append(args, composite(runtimeName("Argument"), keyed("Name", textLiteral(field.Name)), keyed("Value", ident(g.program.ParameterBindings(d)[i].ID))))
 	}
 	t := checker.ConstructorSignature(s.Type)
-	return g.function(d.Name, d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.Parameters[d], nil, t,
+	return g.function(d.Name, d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.ParameterBindings(d), nil, t,
 		returned(runtimeCall("ConstructWithContext", ident("ctx"), g.key(s.Type), sliceLiteral(runtimeName("Argument"), args...))))
 }
 

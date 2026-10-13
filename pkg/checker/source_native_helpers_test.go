@@ -38,7 +38,7 @@ func TestSourceNativeHelpersRequirePinnedModuleAndDeclaration(t *testing.T) {
 				t.Fatal(err)
 			}
 			program := Check([]*syntax.Module{module}, nil)
-			if symbol := program.Symbols[file]["same_list"]; symbol == nil || symbol.Native != "" {
+			if symbol := program.Symbol(file, "same_list"); symbol == nil || symbol.Native != "" {
 				t.Fatalf("a user declaration acquired a native helper binding: %#v", symbol)
 			}
 			if body != "" {

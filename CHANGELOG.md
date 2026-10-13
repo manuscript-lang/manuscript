@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix Map and Set lookups after removing the last remaining key: a stale key index made later distinct keys share one entry (#316).
 - Add receiver-returning `Map.remove` and `List.splice` aliases, preserving legacy lookup, insertion order, strict splice bounds and faults; extend native dispatch, mutation analysis and preferred-name advisories.
 - Add `String.replace_n` with a required finite replacement cap and the existing literal/scalar, zero/negative and fault behavior; current `replace`/`replace_first` signatures remain compatible.
 - Warn with MSL107 for nested matches and keep repository examples and implementation flat, using early-exit payload bindings, compatible `try`, or small helpers. Nested matches remain valid syntax; repository checks allow deliberate, scoped syntax and semantics regressions.

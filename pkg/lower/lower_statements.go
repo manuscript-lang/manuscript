@@ -20,7 +20,7 @@ func (g *generator) body(body []*syntax.Statement) []ast.Stmt {
 }
 func (g *generator) pattern(p *syntax.Pattern, value ast.Expr) []ast.Stmt {
 	if p.Kind == syntax.KindName {
-		b := g.program.Bindings[p]
+		b := g.program.PatternBinding(p)
 		return []ast.Stmt{&ast.DeclStmt{Decl: variable(b.ID, runtimeName("Value"), value)}, discard(ident(b.ID))}
 	}
 	tmp := g.temp()
@@ -45,7 +45,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		case syntax.KindBind:
 			return append(pre, g.pattern(s.Pattern, value)...)
 		case syntax.KindAssign:
-			return append(pre, assign(ident(g.program.Assignments[s.Value].ID), token.ASSIGN, value))
+			return append(pre, assign(ident(g.program.AssignedBinding(s.Value).ID), token.ASSIGN, value))
 		case syntax.KindReturn:
 			return append(pre, returned(value))
 		default:
@@ -60,7 +60,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 			return []ast.Stmt{evaluated(runtimeCall("SetField", g.expression(s.Target.Left), textLiteral(s.Target.Text), g.expression(s.Value)))}
 		}
 		// Assignment binding identities are recorded by the checker, including shadows.
-		return []ast.Stmt{assign(ident(g.program.Assignments[s.Value].ID), token.ASSIGN, g.expression(s.Value))}
+		return []ast.Stmt{assign(ident(g.program.AssignedBinding(s.Value).ID), token.ASSIGN, g.expression(s.Value))}
 	case syntax.KindReturn:
 		value := unit()
 		if s.Value != nil {
@@ -113,7 +113,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 			body = append([]ast.Stmt{evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
 			loop = &ast.ForStmt{Cond: runtimeCall("Bool", g.expression(s.Value)), Body: block(body...)}
 		} else {
-			b := g.program.LoopBindings[s]
+			b := g.program.LoopBinding(s)
 			body = append([]ast.Stmt{discard(ident(b.ID)), evaluated(runtimeCall("CheckCancelled", ident("ctx")))}, body...)
 			loop = &ast.RangeStmt{Key: ident("_"), Value: ident(b.ID), Tok: token.DEFINE, X: runtimeCall("Iterate", g.expression(s.Value)), Body: block(body...)}
 		}
@@ -122,13 +122,13 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		return []ast.Stmt{loop}
 	case syntax.KindWith:
-		b := g.program.LoopBindings[s]
+		b := g.program.LoopBinding(s)
 		cleanup := g.temp()
 		g.cleanups = append(g.cleanups, cleanup)
 		body := g.body(s.Body)
 		g.cleanups = g.cleanups[:len(g.cleanups)-1]
 		contract := textLiteral("")
-		if method := g.program.Cleanups[s]; method != nil && method.Contract != nil {
+		if method := g.program.Cleanup(s); method != nil && method.Contract != nil {
 			contract = g.key(method.Contract)
 		}
 		out := []ast.Stmt{define(b.ID, g.expression(s.Value)), discard(ident(b.ID)), define(cleanup, call(selector(ident("cleanupStack"), "PushContract"), ident("ctx"), ident(b.ID), contract, g.typeScope(b.Type)))}
@@ -141,7 +141,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 }
 func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func(*syntax.Arm) []ast.Stmt) []ast.Stmt {
 	tmp := g.temp()
-	contractMatch := g.program.Expressions[value].Type.Kind == "contract"
+	contractMatch := g.program.Info(value).Type.Kind == "contract"
 	out := []ast.Stmt{define(tmp, g.expression(value))}
 	tag := "Tag"
 	if contractMatch {
@@ -155,11 +155,11 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 		if a.Path.Text != "_" {
 			key := textLiteral(a.Path.Text)
 			if contractMatch {
-				key = g.key(g.program.ContractPatterns[a])
+				key = g.key(g.program.ContractPattern(a))
 			}
 			clause.List = []ast.Expr{key}
 		}
-		for i, b := range g.program.ArmBindings[a] {
+		for i, b := range g.program.ArmBindingsFor(a) {
 			if b != nil {
 				var value ast.Expr = runtimeCall("Payload", ident(tmp), intLiteral(i))
 				if contractMatch {
@@ -236,7 +236,7 @@ func (g *generator) inlineTry(s *syntax.Statement) ([]ast.Stmt, ast.Expr) {
 		return nil, nil
 	}
 	e := s.Value
-	info := g.program.Expressions[e]
+	info := g.program.Info(e)
 	if e.Kind != syntax.KindUnary || e.Text != "try" || info.ErrorSource != nil || g.booleans[e] {
 		return nil, nil
 	}

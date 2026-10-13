@@ -184,7 +184,7 @@ func ModuleDocumentation(program *Program) []APIModule {
 			if !decl.Export || decl.Kind == "impl" || decl.Kind == "test" {
 				continue
 			}
-			symbol := program.Symbols[source.File][decl.Name]
+			symbol := program.symbols[source.File][decl.Name]
 			if symbol != nil && symbol.Decl == decl {
 				d := documentSymbol(symbol, sources)
 				documentImplementations(&d, symbol, program.Methods, sources)

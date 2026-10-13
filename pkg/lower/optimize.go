@@ -24,7 +24,7 @@ func optimize(program *checker.Program) optimizedProgram {
 	folder := booleanFolder{optimizedProgram: optimized, visited: map[*syntax.Expression]bool{}}
 	// Checking has already visited defaults, closures, and interpolation. Use
 	// that expression inventory rather than introducing another AST traversal.
-	for expression := range program.Expressions {
+	for expression := range program.Expressions() {
 		folder.boolean(expression)
 	}
 	return optimized
@@ -36,7 +36,7 @@ func (p booleanFolder) boolean(e *syntax.Expression) (bool, bool) {
 		return value, known
 	}
 	p.visited[e] = true
-	info := p.program.Expressions[e]
+	info := p.program.Info(e)
 	if info == nil || info.Type.ID != "Bool" {
 		return false, false
 	}

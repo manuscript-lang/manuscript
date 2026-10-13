@@ -39,7 +39,7 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 	}
 	if e != nil && e.Kind != syntax.KindLambda {
 		child := func(value *syntax.Expression) {
-			if info := c.Expressions[value]; info != nil {
+			if info := c.expressions[value]; info != nil {
 				i.Breaks = i.Breaks || info.Breaks
 			}
 		}
@@ -55,7 +55,7 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 			child(part.Value)
 		}
 	}
-	c.Expressions[e] = i
+	c.expressions[e] = i
 	return i
 }
 func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
@@ -191,7 +191,7 @@ func (c *checker) inferApply(e *syntax.Expression, expected *Type, i *Info) *Inf
 			return i
 		}
 		i.Type = c.specialize(callable.Type, callable.Method.Variables, args, e.Pos, calleeName(e))
-		c.Expressions[e.Left] = i
+		c.expressions[e.Left] = i
 		return i
 	}
 	if s := c.functionSymbol(e.Left); s != nil {
@@ -335,7 +335,7 @@ func (c *checker) inferMapLiteral(e *syntax.Expression, expected *Type, i *Info)
 func (c *checker) inferUnary(e *syntax.Expression, expected *Type, i *Info) *Info {
 	if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 		i.Type = primitive("Int")
-		c.Expressions[e.Right] = &Info{Type: i.Type}
+		c.expressions[e.Right] = &Info{Type: i.Type}
 		return i
 	}
 	v := c.expression(e.Right, nil)

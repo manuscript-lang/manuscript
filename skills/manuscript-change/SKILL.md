@@ -1,13 +1,13 @@
 ---
 name: manuscript-change
-description: Implement or review Manuscript language, standard library, runtime, compiler, documentation, or developer tooling changes against their full observable contract.
+description: Implement or review Manuscript language, standard library, runtime, compiler, documentation, or developer tooling changes against their full observable contract, and record durable lessons.
 ---
 
 # Manuscript changes
 
 Read [the expert protocol](../../.experts/README.md), then select relevant files from [the expert index](../../.experts/index.yml) by task meaning and affected paths. Apply [language design taste](../language-design-taste/SKILL.md) for design choices.
 
-Select domain workflows from [AGENTS.md](../../AGENTS.md#domain-skills): language design, compiler, AST/parsing, runtime, standard library, tooling, documentation, and repository maintenance. Read only the relevant skills, adding another when the contract trace reaches it. They provide concrete entry points and checks; this skill owns the common change workflow.
+Select domain workflows from [AGENTS.md](../../AGENTS.md#domain-skills): language design, compiler (including syntax and parsing), runtime (including the standard library), tooling, documentation, and repository maintenance. Read only the relevant skills, adding another when the contract trace reaches it. They provide concrete entry points and checks; this skill owns the common change workflow.
 
 ## Establish the contract
 
@@ -29,4 +29,15 @@ Choose checks from the repository's current build files and CI. Language behavio
 
 A review follows the same contract trace: passing tests do not establish that every requested surface changed. Report concrete gaps with the source rule and affected behavior. Distinguish implemented behavior, design decisions, and remaining work in the result.
 
-When the work yields reusable evidence or a correction, use [change-memory](../change-memory/SKILL.md). Completion includes the applicable contract surfaces, supporting checks, and any durable lesson discovered by the work; a routine edit need not manufacture a lesson.
+## Record durable lessons
+
+When the work yields reusable evidence or a correction, or the user asks to learn from previous interactions, close the loop using [the expert protocol](../../.experts/README.md) for routing, authority, and the entry format. A routine edit need not manufacture a lesson.
+
+1. Read the relevant expert entries and the evidence from the work. For historical backfills, inspect actual user messages, changes, and checks; chat titles and assistant completion reports are discovery aids, not proof. Follow corrections through to the latest decision.
+2. Identify what would change a future implementation or review: a non-obvious constraint, an accepted or rejected choice, a failure mechanism, or a check that caught a regression. Separate an explicit decision from verified behavior and a hypothesis; keep uncertainty as an open question only when it affects future work.
+3. Put prevention in the strongest home. Observable regressions belong in behavioral tests; deterministic drift in the existing check or generator; exact semantics in canonical design; terminology in the glossary. The expert entry keeps the reason, evidence, and trigger for reaching that home. Change a workflow skill only when the lesson changes the workflow, and a taste preference only when the user's direction supports generalizing it.
+4. Update the closest existing entry in place, merging repeated evidence and replacing superseded guidance. A newer explicit request can supersede a remembered decision before it ships: record the direction, link the request, and state what still needs checkout verification. Add an expert and index route only when a distinct domain needs one. Keep memory changes reviewable alongside the implementation; during read-only reviews, report proposed updates instead of editing.
+
+Update catalog routes and both discovery directories when a skill is added, renamed, or removed. Finish when the next agent can find the lesson, tell what establishes it, and perform a concrete verification.
+
+Completion includes the applicable contract surfaces, supporting checks, and any durable lesson discovered by the work.

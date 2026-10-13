@@ -90,27 +90,27 @@ type Info struct {
 }
 type Flow struct{ FallsThrough bool }
 type Program struct {
-	Flow             map[*syntax.Statement]Flow
-	Scopes           map[*syntax.Expression]ScopeState
-	Cleanups         map[*syntax.Statement]*Method
+	flow             map[*syntax.Statement]Flow
+	scopes           map[*syntax.Expression]ScopeState
+	cleanups         map[*syntax.Statement]*Method
 	Effects          map[string][]string
 	Modules          []*syntax.Module
-	TypeReferences   map[*syntax.Type]*Type
-	Symbols          map[string]map[string]*Symbol
-	Expressions      map[*syntax.Expression]*Info
-	Bindings         map[*syntax.Pattern]*Binding
-	LoopBindings     map[*syntax.Statement]*Binding
-	ArmBindings      map[*syntax.Arm][]*Binding
-	ContractPatterns map[*syntax.Arm]*Type
-	Parameters       map[*syntax.Declaration][]*Binding
-	LambdaParameters map[*syntax.Expression][]*Binding
-	Self             map[*syntax.Declaration]*Binding
-	Assignments      map[*syntax.Expression]*Binding
+	typeReferences   map[*syntax.Type]*Type
+	symbols          map[string]map[string]*Symbol
+	expressions      map[*syntax.Expression]*Info
+	bindings         map[*syntax.Pattern]*Binding
+	loopBindings     map[*syntax.Statement]*Binding
+	armBindings      map[*syntax.Arm][]*Binding
+	contractPatterns map[*syntax.Arm]*Type
+	parameters       map[*syntax.Declaration][]*Binding
+	lambdaParameters map[*syntax.Expression][]*Binding
+	self             map[*syntax.Declaration]*Binding
+	assignments      map[*syntax.Expression]*Binding
 	Methods          []*Method
 	Diagnostics      []syntax.Diagnostic
 	// ArmNameConflicts retains type/case identities before payload names bind.
 	// Entries parallel Arm.Names; lexical values and type variables yield nil.
-	ArmNameConflicts map[*syntax.Arm][]*Info
+	armNameConflicts map[*syntax.Arm][]*Info
 }
 
 func (t *Type) String() string {

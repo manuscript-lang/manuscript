@@ -127,7 +127,7 @@ fn use(yaml: YamlValue, toml: TomlValue) -> Unit:
 		t.Fatal(checked.Diagnostics)
 	}
 	seen := map[string]bool{}
-	for expression, info := range checked.Program.Expressions {
+	for expression, info := range checked.Program.Expressions() {
 		if !strings.HasPrefix(expression.Pos.File, "@std/") || info == nil || info.Method == nil || info.Method.Receiver == nil || info.Method.Contract != nil {
 			continue
 		}

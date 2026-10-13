@@ -14,7 +14,7 @@ func lintDiscardedResults(program *checker.Program) []LintFinding {
 		if statement.Kind != syntax.KindCall {
 			return
 		}
-		info := program.Expressions[statement.Value]
+		info := program.Info(statement.Value)
 		if info != nil && info.Type != nil && info.Type.ID == "@std/Result" {
 			findings = append(findings, LintFinding{
 				Code:     "MSL104",
