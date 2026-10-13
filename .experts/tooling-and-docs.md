@@ -233,3 +233,12 @@ Verified: a function's return-type position identifies its declaration, not a fa
 Apply when: adding or specializing lowered runtime operations, source fault traces, or native call fast paths.
 Evidence: [located lowering](../pkg/compiler/lower_expressions.go), [source frames](../pkg/runtime/values.go), and [native location regressions](../tests/e2e/fault_locations_test.go).
 Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve exact frame order, columns, and names. Keep statement line directives on the operation rather than an inserted bookkeeping line.
+
+Verified: Go orders calls in an expression, but that does not establish when an
+earlier plain local read occurs relative to a later call. A right-hand match can
+mutate the left local. Direct primitive equality therefore captures its operands
+with ordered statements before comparing them. Keep prerequisites inside their
+short-circuit, match and loop regions; hoisting them changes source behavior.
+Evidence: [primitive lowering](../pkg/compiler/lower_equality.go),
+[mutation/order conformance](../tests/e2e/testdata/accept/scalar-lowering.ms), and
+[native IEEE/fault checks](../pkg/compiler/lower_scalar_native_test.go).

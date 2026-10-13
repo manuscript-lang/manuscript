@@ -1,5 +1,24 @@
 # Runtime lessons
 
+### Empty cleanup omission needs callable ownership evidence
+
+Verified: lexical cleanup lists return to empty after lowering a `with` scope;
+their final length cannot prove that a callable needs no stack. Track whether
+lowering emitted a registration owned by that source callable. Default expressions
+and generated match closures share its stack; nested source functions/closures
+save independent state. With no registration, `Unwind` only recovers and rethrows,
+so omitting it preserves the surrounding source tracing, return/propagation and
+cancellation wrappers.
+
+Apply when: changing generated cleanup setup or adding lowering scopes.
+Evidence: [callable lowering](../pkg/compiler/lower_functions.go),
+[ownership tests](../pkg/compiler/lower_scalar_test.go),
+[native cancellation/fault checks](../pkg/compiler/lower_scalar_native_test.go),
+and [runtime unwind](../pkg/runtime/tasks.go).
+Verify: conditional/default/match registrations retain stacks; a nested source
+closure does not force an unused parent stack; return, propagation, fault and
+cancellation retain cleanup and frame behavior.
+
 ### Newer stdlib direction needs checkout reconciliation
 
 Decision: the stdlib request calls for Node.js/JavaScript contract parity with consolidated grouping and one spelling per operation; optional limits/timeouts honored when supplied; removal of the speculative resource-pooling API; equality and hashing interfaces; and a priority queue. This supersedes the older derived-only equality preference. The combined scheduling service is `Scheduler`, with one lifecycle for immediate and timed work.
