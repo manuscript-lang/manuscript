@@ -146,21 +146,19 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if value := g.preparedSourceCall(e, arguments); value != nil {
 			return value
 		}
+		if info.Constructor != nil && info.Native != "view" && info.Case != "" {
+			labels := g.caseLabels(info)
+			if fields := g.alternativeFields(labels, arguments); fields != nil {
+				return composite(runtimeName("Alternative"), keyed("Type", g.key(info.Type)), keyed("Tag", textLiteral(info.Case)), keyed("Fields", sliceLiteral(runtimeName("Value"), fields...)))
+			}
+		}
 		args := g.arguments(arguments)
 		if info.Constructor != nil {
 			if info.Native == "view" {
 				return runtimeCall("ViewOf", g.key(info.Type), g.expression(e.Args[0].Value), g.typeScope(g.program.Expressions[e.Args[0].Value].Type))
 			}
 			if info.Case != "" {
-				var labels []string
-				for _, cs := range checker.Cases(info.Constructor) {
-					if cs.Name == info.Case {
-						for _, f := range cs.Fields {
-							labels = append(labels, f.Name)
-						}
-					}
-				}
-				return runtimeCall("NewAlternative", g.key(info.Type), textLiteral(info.Case), stringSlice(labels), args)
+				return runtimeCall("NewAlternative", g.key(info.Type), textLiteral(info.Case), stringSlice(g.caseLabels(info)), args)
 			}
 			if symbol := info.Constructor.Def.Symbol; symbol.Native == "" && recordDefaults(symbol.Decl) {
 				var callable ast.Expr = ident(symbol.ID)
@@ -276,4 +274,36 @@ func signedInteger(value string) ast.Expr {
 		return &ast.UnaryExpr{Op: token.SUB, X: &ast.BasicLit{Kind: token.INT, Value: value[1:]}}
 	}
 	return &ast.BasicLit{Kind: token.INT, Value: value}
+}
+
+// caseLabels are the payload labels of the alternative case a constructor call builds.
+func (g *generator) caseLabels(info *checker.Info) []string {
+	var labels []string
+	for _, cs := range checker.Cases(info.Constructor) {
+		if cs.Name == info.Case {
+			for _, f := range cs.Fields {
+				labels = append(labels, f.Name)
+			}
+		}
+	}
+	return labels
+}
+
+// alternativeFields lowers constructor arguments straight into the payload
+// slice when they are supplied once each, in payload order. Anything else
+// returns nil without lowering, leaving NewAlternative to match labels.
+func (g *generator) alternativeFields(labels []string, args []syntax.Argument) []ast.Expr {
+	if len(args) != len(labels) {
+		return nil
+	}
+	for i, a := range args {
+		if a.Name != labels[i] {
+			return nil
+		}
+	}
+	fields := make([]ast.Expr, len(args))
+	for i, a := range args {
+		fields[i] = sourceAt(a.Pos, g.argumentValue(a))
+	}
+	return fields
 }
