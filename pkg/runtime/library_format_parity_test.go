@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	xhtml "golang.org/x/net/html"
 )
 
 func htmlParityNode(tag string, fields ...Value) Alternative {
@@ -24,6 +26,80 @@ func TestHTMLStringifyRoundTripAndSharedNodes(t *testing.T) {
 	root := htmlParityNode("Document", libraryList("@std/HtmlNode", []Value{child, child}))
 	if got := librarySuccess(t, libraryCall(t, "html/stringify", root)).(string); got != "<b>é &amp; &lt;</b><b>é &amp; &lt;</b>" {
 		t.Fatal(got)
+	}
+}
+
+func TestHTMLNativeDoctypeIdentifiersTerminateAtGreaterThan(t *testing.T) {
+	// Pin the native renderer/parser mismatch behind the serializer guard:
+	// rendering leaves '>' literal even inside quotes, and parsing ends the token.
+	for _, key := range []string{"public", "system"} {
+		for _, identifier := range []string{"a>b", `a"b>c`} {
+			t.Run(key+"/"+identifier, func(t *testing.T) {
+				node := &xhtml.Node{Type: xhtml.DoctypeNode, Data: "html", Attr: []xhtml.Attribute{{Key: key, Val: identifier}}}
+				var output strings.Builder
+				if err := xhtml.Render(&output, node); err != nil {
+					t.Fatal(err)
+				}
+				keyword, quote := strings.ToUpper(key), `"`
+				if strings.ContainsRune(identifier, '"') {
+					quote = "'"
+				}
+				if want := "<!DOCTYPE html " + keyword + " " + quote + identifier + quote + ">"; output.String() != want {
+					t.Fatalf("native rendering changed: got %q, want %q", output.String(), want)
+				}
+				decoded, err := xhtml.Parse(strings.NewReader(output.String()))
+				if err != nil {
+					t.Fatal(err)
+				}
+				doctype := decoded.FirstChild
+				if doctype == nil || doctype.Type != xhtml.DoctypeNode || len(doctype.Attr) != 1 || doctype.Attr[0].Key != key {
+					t.Fatalf("unexpected parsed doctype: %#v", doctype)
+				}
+				if got, want := doctype.Attr[0].Val, strings.SplitN(identifier, ">", 2)[0]; got != want {
+					t.Fatalf("native truncation changed: %q parsed as %q, want %q", output.String(), got, want)
+				}
+				t.Logf("native roundtrip loss: %q -> %q", output.String(), doctype.Attr[0].Val)
+			})
+		}
+	}
+}
+
+func TestHTMLStringifyDoctypeIdentifiers(t *testing.T) {
+	ctx := RootExecution()
+	for _, key := range []string{"public", "system"} {
+		for _, identifier := range []string{"a>b", `a"b>c`, "a'b>c", "both'\"quotes"} {
+			publicID, systemID := "", ""
+			if key == "public" {
+				publicID = identifier
+			} else {
+				systemID = identifier
+			}
+			libraryFailure(t, libraryCall(t, "html/stringify", htmlParityNode("Doctype", "html", publicID, systemID)), "InvalidData")
+		}
+		for _, test := range []struct{ input, parsed string }{
+			{"a'b", "a'b"}, {`a"b`, `a"b`}, {"a&b", "a&b"},
+			{"a&lt;b", "a<b"}, // Pinned parsing decodes doctype token references.
+			{"a<b", "a<b"}, {"é🙂", "é🙂"}, {" spaced\tidentifier ", " spaced\tidentifier "},
+		} {
+			publicID, systemID := "", ""
+			if key == "public" {
+				publicID = test.input
+			} else {
+				systemID = test.input
+			}
+			node := htmlParityNode("Doctype", "html", publicID, systemID)
+			encoded := librarySuccess(t, libraryCall(t, "html/stringify", node)).(string)
+			decoded := librarySuccess(t, libraryCall(t, "html/parse", encoded)).(Alternative)
+			first := OptionalUnwrap(ctx, ListAt(ctx, decoded.Fields[0], int64(0), "@std/Optional[@std/HtmlNode]"))
+			if key == "public" {
+				publicID = test.parsed
+			} else {
+				systemID = test.parsed
+			}
+			if !Equal(first, htmlParityNode("Doctype", "html", publicID, systemID)) {
+				t.Fatalf("unexpected legal %s identifier after parsing: %q -> %#v", key, test.input, first)
+			}
+		}
 	}
 }
 

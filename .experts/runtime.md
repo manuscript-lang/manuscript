@@ -248,3 +248,26 @@ Reloading the cell afterward returned an element the predicate never matched.
 Body-versus-dispatch comparisons share the bug, so use independent expected values
 and Go operation oracles. Evidence: [search regression](../pkg/runtime/list_find_mutation_test.go)
 and [called search/view/alias consumers](../tests/e2e/testdata/accept/list-shrink-consumers.ms).
+
+### Format serialization must retain syntax provenance and native delimiter limits
+
+Verified: flow YAML merge resolution cannot inspect the first character at key use.
+An anchor or alias can resolve to quoted `<<`; retain scalar-style metadata on the
+parsed value and anchor entry. Quoted/block scalars stay literal, plain `<<` merges,
+and alias key scanning stops at the mapping colon. Nested parses and anchor
+redefinitions must not leak eligibility or charge extra key depth/value budgets.
+
+Verified: pinned x/net HTML rendering writes quoted doctype identifiers verbatim,
+but its parser terminates on `>` even within either quote delimiter. Reject that
+character in public/system identifiers with HtmlError.InvalidData. Do not broaden
+this to legal `<`, ampersands, Unicode, or a usable single quote delimiter; parsed
+entities can still normalize their spelling.
+
+Apply when: changing source format parsers/serializers, anchor resolution, or HTML
+native tree conversion. Evidence: [YAML called regressions](../tests/e2e/testdata/stdlib/yaml-parity.ms),
+[pinned doctype loss and legal character tests](../pkg/runtime/library_format_parity_test.go),
+and [format contracts](../documentation/standard-library/formats.md).
+Verify: anchored/aliased quoted and block `<<` keys remain data, plain merges retain
+precedence, malformed duplicates still fail, and exact optional budgets still hold.
+Run both public/system doctype fields through the native parser and stdlib renderer,
+including both quote delimiters and legal-character positive cases.

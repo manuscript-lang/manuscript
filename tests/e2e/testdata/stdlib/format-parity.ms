@@ -10,6 +10,55 @@ import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
+fn first_document_node(value: HtmlNode) -> HtmlNode:
+    match value:
+        HtmlNode.Document(children): return children.first().unwrap()
+        _: return panic("expected parsed HTML document")
+
+test "HTML stringify rejects terminating doctype identifiers and retains legal text":
+    let invalid: Result[String, HtmlError] = error(HtmlError.InvalidData)
+
+    for identifier in ["a>b", "a\"b>c", "a'b>c", "both'\"quotes"]:
+        if stringify(HtmlNode.Doctype("html", identifier, "")) != invalid: return panic(
+            "invalid public doctype identifier"
+        )
+        if stringify(HtmlNode.Doctype("html", "", identifier)) != invalid: return panic(
+            "invalid system doctype identifier"
+        )
+
+    for identifier in ["a'b", "a\"b", "a&b", "a<b", "é🙂", " spaced\tidentifier "]:
+        let declarations = [
+            HtmlNode.Doctype("html", identifier, ""),
+            HtmlNode.Doctype("html", "", identifier),
+            HtmlNode.Doctype("html", identifier, identifier)
+        ]
+
+        for declaration in declarations:
+            let decoded = value(
+                parse(
+                    value(stringify(declaration))
+                )
+            )
+            if first_document_node(decoded) != declaration: return panic(
+                "legal doctype identifier changed on round trip"
+            )
+
+    let references = value(
+        stringify(HtmlNode.Doctype("html", "a&lt;b", "a&lt;b"))
+    )
+    if references != "<!DOCTYPE html PUBLIC \"a&lt;b\" \"a&lt;b\">": return panic(
+        "doctype reference spelling changed during rendering"
+    )
+    if (
+        first_document_node(
+            value(parse(references))
+        ) != HtmlNode.Doctype(
+            "html",
+            "a<b",
+            "a<b"
+        )
+    ): return panic("doctype native parser reference normalization")
+
 test "HTML stringify round trips normalized trees and preserves raw text":
     let tree = value(
         parse(

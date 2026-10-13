@@ -192,8 +192,9 @@ func libraryHTMLName(text string) bool {
 }
 
 func libraryHTMLIdentifier(text string) bool {
-	// Native rendering chooses one delimiter but cannot escape both kinds.
-	return libraryHTMLText(text) && !(strings.ContainsRune(text, '\'') && strings.ContainsRune(text, '"'))
+	// Quoted doctype identifiers still terminate at '>'; rendering leaves it
+	// literal. The native renderer also cannot escape both quote delimiters.
+	return libraryHTMLText(text) && !strings.ContainsRune(text, '>') && !(strings.ContainsRune(text, '\'') && strings.ContainsRune(text, '"'))
 }
 
 type libraryHTMLRenderWriter struct {

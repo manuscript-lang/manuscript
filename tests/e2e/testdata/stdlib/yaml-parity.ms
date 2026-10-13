@@ -10,6 +10,135 @@ import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
+fn entries(value: YamlValue) -> Map[String, YamlValue]:
+    match value:
+        ObjectValue(entries): return entries
+        _: return panic("expected YAML mapping")
+
+test "YAML flow merge resolution preserves quoted anchors and aliases":
+    for source in [
+        "\{&key \"<<\": 42\}",
+        "\{&key '<<': 42\}",
+        "\{&outer &key \"<<\": 42\}"
+    ]:
+        let root = entries(
+            value(parse(source))
+        )
+        if root.length() != 1 or root.get("<<").unwrap() != YamlValue.NumberValue("42"): return panic(
+            "quoted anchored merge key"
+        )
+
+    for source in [
+        "\{holder: &key \"<<\", *key: \{x:1\}\}",
+        "\{holder: &key '<<', *key: \{x:1\}\}",
+        "\{holder: &key \"<<\", another: &copy *key, *copy: \{x:1\}\}"
+    ]:
+        let root = entries(
+            value(parse(source))
+        )
+        if (
+            root.contains("x")
+            or entries(root.get("<<").unwrap()).get(
+                "x"
+            ).unwrap() != YamlValue.NumberValue("1")
+        ): return panic("quoted alias merge key")
+
+    let nested = entries(
+        value(
+            parse(
+                "\{holder: &key \"<<\", nested: \{<<: \{x: 1\}\}, *key: 42\}"
+            )
+        )
+    )
+    if (
+        nested.get("<<").unwrap() != YamlValue.NumberValue("42")
+        or entries((nested.get("nested").unwrap())).get(
+            "x"
+        ).unwrap() != YamlValue.NumberValue("1")
+    ): return panic("nested merge provenance leaked")
+
+test "YAML scalar style survives block anchors and anchor redefinition":
+    for source in [
+        "holder: &key \"<<\"\ntarget: \{*key: 42\}\n",
+        "holder: &key\n  '<<'\ntarget: \{*key: 42\}\n",
+        "holder: &key |-\n  <<\ntarget: \{*key: 42\}\n"
+    ]:
+        let root = entries(
+            value(parse(source))
+        )
+        let target = entries(root.get("target").unwrap())
+        if (
+            target.length() != 1
+            or target.get("<<").unwrap() != YamlValue.NumberValue("42")
+        ): return panic("block scalar alias merge key")
+
+    let root = entries(
+        value(parse("\{first: &key <<, second: &key \"<<\", *key: 42\}"))
+    )
+    if root.get("<<").unwrap() != YamlValue.NumberValue("42"): return panic(
+        "anchor redefinition provenance"
+    )
+
+test "YAML anchored plain merge keys retain merge semantics":
+    for source in [
+        "\{&key <<: \{x: 1\}\}",
+        "\{holder: &key <<, *key: \{x: 1\}\}",
+        "\{holder: &outer &key <<, *outer: \{x: 1\}\}",
+        "holder: &key <<\ntarget: \{*key: \{x: 1\}\}\n",
+        "holder: &key\n  <<\ntarget: \{*key: \{x: 1\}\}\n"
+    ]:
+        let root = entries(
+            value(parse(source))
+        )
+        let target = root.get("target").unwrap_or(YamlValue.ObjectValue(root))
+        let mapping = entries(target)
+        if (
+            mapping.contains("<<")
+            or mapping.get("x").unwrap() != YamlValue.NumberValue("1")
+        ): return panic("plain anchored merge disabled")
+
+test "YAML anchored key parsing keeps duplicate errors and exact budgets":
+    for source in [
+        "\{&key \"<<\": 1, *key: 2\}",
+        "\{holder: &key \"<<\", *key: 1, \"<<\": 2\}"
+    ]:
+        let cause = match parse(source):
+            ok(_): return panic("duplicate anchored key accepted")
+            error(cause): cause
+
+        match cause:
+            InvalidData(line, column, reason):
+                if (
+                    line != 1
+                    or column < 1
+                    or reason != "duplicate mapping key"
+                ): return panic("duplicate anchored key diagnostic")
+            _: return panic("duplicate anchored key error")
+
+    let source = "\{&key \"<<\": 42\}"
+    let exact = YamlLimits(
+        max_bytes: source.byte_length(),
+        max_depth: 2,
+        max_values: 2
+    )
+    if parse(source, exact) != parse(source): return panic(
+        "anchored keys counted as values"
+    )
+
+    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    if (
+        parse(
+            source,
+            YamlLimits(max_bytes: none, max_depth: none, max_values: 1)
+        ) != limited
+    ): return panic("anchored key value budget")
+    if (
+        parse(
+            source,
+            YamlLimits(max_bytes: none, max_depth: 1, max_values: none)
+        ) != limited
+    ): return panic("anchored key depth budget")
+
 test "YAML stringify preserves kinds number text quoting and Unicode":
     let fields = Map[String, YamlValue]()
     fields.add(

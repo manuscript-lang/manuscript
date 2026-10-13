@@ -3539,6 +3539,7 @@ fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, 
 
 Renders an HTML node or document with HTML5 escaping and raw-text element rules.
 Cycles and malformed nodes return InvalidData; limits bound output bytes, root-zero depth and node count.
+Doctype identifiers containing > or both quote delimiters return InvalidData.
 Parsing the output normalizes the tree and can insert implied document elements.
 
 ```manuscript
