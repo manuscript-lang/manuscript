@@ -160,3 +160,11 @@ Verify: source and native callbacks cover generic map results, callbacks listed 
 
 Apply when: changing callback checking, generic inference, syntax or editor annotations.
 Evidence: [callback rules](../documentation/core-language/functions/function-values-and-closures.md#contextual-callback-inference), [acceptance and rejection checks](../pkg/compiler/callbacks_test.go), and [native fixture](../tests/e2e/testdata/accept/contextual-callbacks.ms).
+
+### Direct native calls must capture receivers before arguments
+
+Verified: Go orders function calls left to right but does not guarantee that a plain variable argument is read before a later call. Replacing bound-method construction with `ListAt(ctx, receiver, indexExpression, ...)` let a match expression in the index reassign the receiver before it was captured. An inline `SourceAt` call captures the receiver first while preserving fault attribution; direct scalar lowering likewise extracts operands through calls.
+
+Apply when: removing bound-call wrappers or lowering expressions directly to Go operations.
+Evidence: [direct collection lowering](../pkg/compiler/lower_collections.go), [receiver reassignment regression](../tests/e2e/testdata/accept/collection-call-order.ms), and [evaluation-order contract](../documentation/contributing/compiler/lowering/evaluation-order.md).
+Verify: a list receiver initially containing 7 still returns 7 when its index expression reassigns the local to a list containing 9; receiver and argument expressions each execute once in written order.

@@ -98,18 +98,9 @@ func Binary(op string, a, b Value) Value {
 		case "*":
 			return checkedMul(x, y)
 		case "/":
-			if y == 0 {
-				return Panic("division by zero; test that the divisor is not 0 before dividing")
-			}
-			if x == math.MinInt64 && y == -1 {
-				return Panic("Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt")
-			}
-			return x / y
+			return IntDivide(x, y)
 		case "%":
-			if y == 0 {
-				return Panic("division by zero; test that the divisor is not 0 before dividing")
-			}
-			return x % y
+			return IntRemainder(x, y)
 		case "<":
 			return x < y
 		case "<=":
