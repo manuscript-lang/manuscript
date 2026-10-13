@@ -9,7 +9,7 @@ These rules apply across the standard library. Exact types and signatures live i
 
 ## Imports and callbacks
 
-Import each function or type you name from its module. Standard imports are pinned with the distribution. They add no ambient types, wildcard imports, user-defined generic operations, or automatic imports of host accessors.
+Prelude names need no imports; import other functions and types from their modules. Standard imports are pinned with the distribution. They add no additional ambient types, wildcard imports, user-defined generic operations, or automatic imports of host accessors.
 
 Function identity includes the module, so `json/parse`, `bigint/parse`, and `url/parse` remain distinct in generated code. Source import renaming is unsupported; use a helper module if two imports have the same spelling.
 

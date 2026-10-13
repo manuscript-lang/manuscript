@@ -6,18 +6,24 @@ import {
     first_failure,
     first_queries,
     first_converted,
-    first_folded
+    first_folded,
+    first_key_transform,
+    first_bound_keys,
+    first_value_transform
 } from "./first.ms"
 import {
     second_mapped,
     second_failure,
     second_queries,
     second_converted,
-    second_folded
+    second_folded,
+    second_key_transform,
+    second_bound_keys,
+    second_value_transform
 } from "./second.ms"
 import {Key, Cause} from "./domain.ms"
 import panic from "@std/faults.ms"
-import Set from "@std/collections.ms"
+import {Map, Set, List} from "@std/collections.ms"
 
 test "mapped output keeps lexical Hashable and Equal evidence":
     let by_id = first_mapped()
@@ -87,3 +93,31 @@ test "generic folds preserve scoped interface accumulators":
     cause.count = 5
     if one.message() != "first 5" or two.message() != "second 5":
         return panic("fold copied interface accumulator")
+
+test "Map transformations preserve input and output equality evidence":
+    let input: Map[Int, Int] = {1: 10, 2: 20}
+    let one = first_key_transform(input)
+    let two = second_key_transform(input)
+    if one.length() != 1 or two.length() != 2:
+        return panic("Map key transform used input scope for output keys")
+    if one.keys().at(0).unwrap().label != "1" or one.values() != [20]:
+        return panic("Map key transform collision identity")
+
+    let bound_one = first_bound_keys()
+    let bound_two = second_bound_keys()
+    if bound_one(
+        fn(key, value): Key(
+            0,
+            key.toString()
+        )
+    ).length() != 1:
+        return panic("bound key transform lost first scope")
+    if bound_two(
+        fn(key, value): Key(
+            0,
+            key.toString()
+        )
+    ).length() != 2:
+        return panic("bound key transform lost second scope")
+    if first_value_transform() != 3 or second_value_transform() != 0:
+        return panic("value transform changed key equality scope")

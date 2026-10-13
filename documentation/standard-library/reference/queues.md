@@ -21,6 +21,22 @@ type PriorityQueue[T]:
     fn is_empty() -> Bool:
 ```
 
+### PriorityQueue.dequeue
+
+Removes and returns the next value by priority, or `none` when empty.
+
+```manuscript
+fn dequeue() -> Optional[T]:
+```
+
+### PriorityQueue.enqueue
+
+Adds a value, returning false when a bounded queue is full.
+
+```manuscript
+fn enqueue(value: T) -> Bool:
+```
+
 ## Queue {data-api-kind="Native type"}
 
 FIFO queue. An omitted capacity creates an unbounded queue.
@@ -33,5 +49,37 @@ type Queue[T]:
     fn peek() -> Optional[T]:
     fn length() -> Int:
     fn is_empty() -> Bool:
+```
+
+### Queue.capacity
+
+Optional constructor argument; omit for an unbounded queue.
+
+```manuscript
+capacity: Optional[Int] = none
+```
+
+### Queue.dequeue
+
+Removes and returns the oldest value, or `none` when empty.
+
+```manuscript
+fn dequeue() -> Optional[T]:
+```
+
+### Queue.enqueue
+
+Adds a value, returning false when a bounded queue is full.
+
+```manuscript
+fn enqueue(value: T) -> Bool:
+```
+
+### Queue.peek
+
+Returns the oldest value without removing it.
+
+```manuscript
+fn peek() -> Optional[T]:
 ```
 

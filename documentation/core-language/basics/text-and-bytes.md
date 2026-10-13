@@ -73,7 +73,11 @@ There is no `text[index]` or slicing syntax. String `at`, `scalar_at`, `index_of
 
 A byte position, a Unicode scalar, and a user-visible grapheme are different units. For example, `"é"` has two UTF-8 bytes; `"e\u{301}"` has two scalars but can display as one grapheme. Byte lookup alone cannot select a character.
 
-`scalar_length()` counts scalars and `scalar_values()` returns their integer code points in order. Bytes use byte indexes and Lists use element indexes. Grapheme indexing is unsupported.
+`length()` and `scalar_length()` count scalars; `is_empty()` reports whether that count is zero. `chars()` returns a fresh `List[String]` with one scalar per item, while `scalar_values()` returns their integer code points in order. `reverse()` reverses scalar order without normalization: `"e\u{301}".reverse()` is `"\u{301}e"`, so combining sequences and graphemes may change. Bytes use byte indexes and Lists use element indexes. Grapheme indexing is unsupported.
+
+`compare(other:)` returns exactly `-1`, `0`, or `1` in lexical Unicode scalar order. It compares case-sensitive contents without locale rules or normalization; a proper prefix sorts before the longer text. For example, `"Z".compare("a")` is `-1`, while `"é".compare("e\u{301}")` is `1`.
+
+`lines()` returns a fresh `List[String]`, splitting at LF or CRLF and removing those terminators. It preserves interior empty lines and every CR not immediately before LF. A terminal newline does not create an extra item, and empty text returns an empty list: `"a\r\nb\n".lines()` is `["a", "b"]`, `"\n\n".lines()` is `["", ""]`, and `"a\r".lines()` is `["a\r"]`. Other Unicode line separators remain ordinary contents. Both `lines()` and `chars()` leave the String unchanged and return independent mutable list storage on every call, including empty calls.
 
 ### Half-open slices
 

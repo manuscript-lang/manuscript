@@ -58,10 +58,58 @@ ms stdlib exported-standard-sources
 
 These commands use source checking and embedded declarations without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
 
-`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. The contiguous `#` comment block directly above an exported declaration (no blank line between) is its description: Markdown prints it above the signature and JSON carries it as a `doc` string with the `#` markers removed. Comments above fields, cases, and operations are not captured yet. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
+`doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. A contiguous `#` comment block directly above a declaration or member, at the same indentation and with no intervening blank line, is its description. Markdown renders these descriptions beside the corresponding signatures; JSON carries declaration `doc` strings and an additive `members` array with `name`, `kind`, `signature`, `doc`, and an optional implementation `contract`. Existing `fields`, `cases`, and `operations` arrays remain strings under schema version 1. Empty member descriptions stay visible as empty `doc` strings; the tool does not invent text from a signature. Inline case payloads do not inherit the case's description. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
 
 `ms stdlib <directory>` writes source declarations and bindings for tooling;
 `ms doc --stdlib` renders API documentation. These outputs serve different tasks.
+
+## Machine-readable checks and tests
+
+`ms fmt <targets> --check --json` and `ms test <input> --json` write one JSON
+document to stdout, with `format: 1`. Human output remains the default. Usage
+errors return 2 on stderr without a JSON document, as with `check --json`.
+`fmt --json` requires `--check`; `test --json --watch` is rejected because a
+single result cannot describe an ongoing sequence of runs.
+
+Formatting results contain `files` and `diagnostics`, both arrays even when empty.
+Each file has a `path` and a `status`: `clean`, `needs_formatting`, or `error`.
+Files are deduplicated by physical identity and ordered by displayed path.
+Paths inside the invocation directory are relative to it; paths outside it are
+canonical absolute paths. Explicit files, directories, manifests and symlinks
+use the same display rule. Formatting drift has code `MSF001`; selection/I/O
+errors use `MSF002`. Parse and manifest diagnostics retain their existing codes,
+phases, messages and source positions. Diagnostics are ordered by path, source
+position, code and message. The command writes no source and returns 1 for any
+drift or error; other files still receive results. An empty selection succeeds.
+
+Test results contain these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `source_root` | Root for module-relative compile diagnostic paths and test names |
+| `tests` | Planned tests in execution order; each has `name`, `status`, and optional `failure` text |
+| `summary` | `available`, `selected`, `passed`, and `failed` counts |
+| `completed` | Whether the native runner reported all selected outcomes |
+| `exit_code` | Observable CLI exit status |
+| `stdout` | Complete captured native stdout, including runner and test-written output |
+| `stdout_base64` | Present instead of stdout text when bytes are not valid UTF-8; `stdout` is then empty |
+| `diagnostics` | Existing compile diagnostics, or execution/build/report errors; an empty array on ordinary runs |
+| `reason` | Optional `no_tests`, `no_match`, `compile_error`, `build_error`, `execution_error`, or `argument_error` |
+
+Completed tests have status `passed` or `failed`. If the process stops early,
+the active test is `incomplete`, later planned tests are `not_run`, and completed
+outcomes remain available. Failure text retains source frames and timeout details.
+The native test executable writes outcomes through a separate result channel;
+test-written text resembling RUN/PASS/FAIL lines does not create outcomes.
+Native stderr stays on stderr and is never mixed into the JSON document.
+The default human transcript and test working directory are unchanged.
+
+No test blocks return 0 with `reason: "no_tests"`. An unmatched filter returns
+1 with `reason: "no_match"`, zero selected tests and the available count.
+Ordinary test failures retain exit 1; abrupt native exits keep their existing
+status and set `completed: false`. Compile failures have no planned tests and
+retain source diagnostics in the document. `MST001` identifies non-source
+test execution/build/report failures. No test output is truncated.
 
 `ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](builds/reproducibility.md).
 

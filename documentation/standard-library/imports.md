@@ -16,9 +16,9 @@ Import a type when naming it in an annotation or constructor. A type inferred fr
 
 ## Names and identity
 
-`Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Equal`, `Hashable`, `Optional`, `Result`, and `Error` are available without imports. The `some`, `none`, `ok`, and `error` cases are available through their prelude types. Every other standard name comes from an explicit `@std/…` import. Importing one name does not expose other names from that module; wildcard imports are unsupported.
+`Bool`, `Int`, `Float`, `String`, `Unit`, `Never`, `Equal`, `Hashable`, `Optional`, `Result`, `Error`, `List`, and `Map` are available without imports. The `some`, `none`, `ok`, and `error` cases are available through their prelude types. Every other standard name comes from an explicit `@std/…` import. Importing one name does not expose other names from that module; wildcard imports are unsupported.
 
-`@std` is the reserved directory supplied by the compiler distribution. Standard identities are independent of its installation path. A module declaration or import can replace the prelude `Optional`, `Result`, or `Error` name. A local type called `Result` or `List` remains an ordinary application type; matching a standard spelling does not give it standard behavior. Imports still obey the usual collision and shadowing rules.
+`@std` is the reserved directory supplied by the compiler distribution. Standard identities are independent of its installation path. A module declaration or import can replace the prelude `Optional`, `Result`, `Error`, `List`, or `Map` name. A local type called `Result` or `List` remains an ordinary application type; matching a standard spelling does not give it standard behavior. Imports still obey the usual collision and shadowing rules.
 
 ## Syntax that uses standard types
 

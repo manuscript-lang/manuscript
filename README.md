@@ -4,6 +4,8 @@ The language for the agentic era.
 
 API-first. Minimal syntax. Best-in-class tooling.
 
+Read the [Manuscript vision](VISION.md) for long-term design direction, while respecting the current technical contracts documented in the language and tooling guides.
+
 ## Design principles
 
 - **API first.** Keep syntax small. Express concurrency, scheduling, synchronization, and host services through imported APIs that compose with ordinary functions and values.

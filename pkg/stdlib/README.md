@@ -11,6 +11,12 @@ The `.ms` files here define public types, fields, cases, function signatures, an
 
 These files use ordinary Manuscript syntax. Runtime functions and receiver operations have empty function bodies, written with the usual colon, such as `export fn commands() -> Commands:`. Opaque type schemas use empty declarations such as `export type Duration:`. Interface signatures remain signatures, and `bindings.json` maps the declarations to native implementations. The checker verifies implementation rules and native signatures. There is no library-only parser mode or `native` keyword. Ordinary record fields may have default expressions.
 
+Nongeneric native defaults are checked expressions in these declarations. Generated source preparation evaluates omitted defaults before calling the unchanged native ABI; mutable values are created afresh. Existing `Optional[T] = none` adapters keep their native path, including generic native declarations. Other native generic expression defaults are rejected until their substitution contract is implemented; source generic defaults remain supported. Do not add another default schema to `bindings.json` or the runtime.
+
+This slice permits expression field defaults on ordinary records. Opaque native constructors retain their existing defaults until delivery/disposal is designed. Standard interface expression defaults are restricted to closed literals or bytes converted from literal text, so preparing inherited defaults before an implementation's own defaults cannot reorder visible effects or read a still-missing parameter. Dependent/effectful inherited defaults need one combined ordered prologue before that restriction is expanded. Recursive native default expansion is rejected during lowering; use a source wrapper for recursive defaults.
+
+Direct calls supplying every new expression default keep the original dispatch, including old `none` omission slots. Stateless free-function and ordinary-record default callables are cached through the existing Lazy mechanism; default expressions and mutable storage are still evaluated per call. Receiver-bound callables retain their captured receiver and have a runtime slot check.
+
 Modules with executable bodies use the ordinary checker and need no entries in `bindings.json`. Imports include their reachable source implementations once, with the same public visibility and type identities as application modules.
 
 ## Editor navigation
@@ -18,6 +24,8 @@ Modules with executable bodies use the ordinary checker and need no entries in `
 Editor adapters can use `tooling.StandardDeclarations` and `tooling.NavigationAt` to find hover and definition locations in `@std` documents.
 
 Hover documentation lives in contiguous `#` comments immediately above a public declaration or operation. The LSP renders this text as Markdown beneath the checked Manuscript signature. Keep the opening sentence direct, then describe behavior that is not clear from the signature: units, defaults, limits, mutation, end-of-stream behavior, and expected errors. Inline Markdown such as code spans is supported.
+
+The generated Markdown/JSON reference also reads comments above fields, cases, and receiver/implementation operations. Keep each block at the member's indentation; a blank line detaches it. JSON preserves the original string arrays and adds structured `members` descriptions. `make docs` and `make docs-check` print description counts; `make docs-coverage` writes a complete inventory, including missing descriptions and prelude aliases, to `.artifacts/stdlib-doc-coverage.json`. An inventory entry or a signature is not evidence that its behavior is described.
 
 Run `ms stdlib <directory>` to export the exact pinned source files for an editor that needs documents on disk. These APIs provide navigation data; an editor integration must supply its own LSP server and transport.
 

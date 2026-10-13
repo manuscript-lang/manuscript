@@ -18,21 +18,23 @@ type loopLabel struct {
 // generator carries checked identities and lexical state through Go lowering.
 // Function lowering saves and restores cleanup/loop state for nested closures.
 type generator struct {
-	program         *checker.Program
-	booleans        map[*syntax.Expression]bool
-	module          string
-	serial          int
-	expressionDepth int
-	resultKey       ast.Expr // result type key of the function being lowered
-	cleanups        []string
-	needsCleanup    bool
-	loopCleanup     []int
-	loopLabels      []*loopLabel
-	captures        map[*checker.Binding]string
-	sourceLines     map[string]syntax.Position
-	hoisted         []string          // package-level Lazy variables for static specializations
-	hoistedByKey    map[string]string // call-site identity to Lazy variable
-	sites           []string          // package-level MethodSite variables, one per direct method call
+	program          *checker.Program
+	booleans         map[*syntax.Expression]bool
+	module           string
+	serial           int
+	expressionDepth  int
+	resultKey        ast.Expr // result type key of the function being lowered
+	cleanups         []string
+	needsCleanup     bool
+	loopCleanup      []int
+	loopLabels       []*loopLabel
+	captures         map[*checker.Binding]string
+	sourceLines      map[string]syntax.Position
+	hoisted          []string          // package-level Lazy variables for static specializations
+	hoistedByKey     map[string]string // call-site identity to Lazy variable
+	defaultExpansion map[*syntax.Declaration]bool
+	loweringError    error
+	sites            []string // package-level MethodSite variables, one per direct method call
 }
 
 func (g *generator) temp() string { g.serial++; return fmt.Sprintf("temporary%d", g.serial) }
@@ -96,6 +98,10 @@ func (g *generator) specialize(symbol *checker.Symbol, args []*checker.Type) ast
 	if !static {
 		return result
 	}
+	return g.lazyValue(identity, result)
+}
+
+func (g *generator) lazyValue(identity string, result ast.Expr) ast.Expr {
 	// Static type arguments specialize once per program. The Lazy has no
 	// initializer, so recursive generics create no Go initialization cycle.
 	name, ok := g.hoistedByKey[identity]
