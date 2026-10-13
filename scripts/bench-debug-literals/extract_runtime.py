@@ -20,22 +20,33 @@ def main():
     parser.add_argument("--sizes", default="16000,100000")
     parser.add_argument("--go", required=True)
     parser.add_argument("--repo", required=True)
+    parser.add_argument("--variants", default="baseline,prototype")
+    parser.add_argument("--build-type", default="Debug",
+                        choices=("Debug", "Release", "RelWithDebInfo", "MinSizeRel"))
     args = parser.parse_args()
     root = Path(args.output).resolve()
     files = list(Path(args.cache).glob("manuscript/workspaces/*/apps/*/main.go"))
     for n in (int(size) for size in args.sizes.split(",")):
         if n <= 1024:
             parser.error("construction comparison requires a transformed list")
-        for variant in ("baseline", "prototype"):
+        for variant in args.variants.split(","):
             matches = []
             for file in files:
                 source = file.read_text()
-                if str(root / str(n) / "source.ms") not in source:
+                # Release rewrites absolute source paths for reproducibility.
+                # Match the explicit expected length in main as well as the
+                # original path; data itself only contains values below n.
+                absolute_source = str(root / str(n) / "source.ms") in source
+                relative_source = ('"source.ms:2:16"' in source and
+                                   re.search(r"IntSubtract[^\n]*int64\(" + str(n) + r"\)", source))
+                if not absolute_source and not relative_source:
                     continue
-                transformed = "debugLiteralData1" in source
+                transformed = ("debugLiteralData1" in source if args.build_type == "Debug"
+                               else "literalData1" in source)
                 if transformed != (variant == "prototype"):
                     continue
-                if transformed and "Items: append([]rt.Value(nil), debugLiteralData1[:]...)" not in source:
+                if (transformed and args.build_type == "Debug" and
+                        "Items: append([]rt.Value(nil), debugLiteralData1[:]...)" not in source):
                     continue
                 matches.append(file)
             original = max(matches, key=lambda file: file.stat().st_mtime_ns)
@@ -55,22 +66,25 @@ var sink rt.Value
 func TestResult(t *testing.T) {{
  initialize()
  ctx:=rt.RootExecution()
- first:=rt.Invoke(ctx,{symbol},nil).(*rt.List)
- second:=rt.Invoke(ctx,{symbol},nil).(*rt.List)
- if len(first.Items)!={n} || len(second.Items)!={n} {{t.Fatal("length")}}
- for i,v:=range first.Items {{if int64(rt.IntValue(v))!=int64(i) {{t.Fatal(i,v)}}}}
- first.Items[0]=first.Items[{n}-1]
- if rt.IntValue(second.Items[0])!=0 {{t.Fatal("shared storage")}}
+ defer rt.FinishExecution(ctx)
+ first:=rt.Invoke(ctx,{symbol},nil)
+ second:=rt.Invoke(ctx,{symbol},nil)
+ if rt.IntValue(rt.CollectionLength(ctx,first))!={n} || rt.IntValue(rt.CollectionLength(ctx,second))!={n} {{t.Fatal("length")}}
+ at:=func(list rt.Value,index int64) int64 {{return rt.IntValue(rt.OptionalUnwrap(ctx,rt.ListAt(ctx,list,index,"@std/Optional[Int]")))}}
+ for i:=int64(0);i<{n};i++ {{if v:=at(first,i);v!=i {{t.Fatal(i,v)}}}}
+ rt.Invoke(ctx,rt.NativeMemberResult(first,"set","@std/List[Int]"),[]rt.Argument{{{{Name:"index",Value:int64(0)}},{{Name:"value",Value:int64({n}-1)}}}})
+ if at(first,0)!={n}-1 || at(second,0)!=0 {{t.Fatal("shared storage or lost mutation")}}
 }}
 func BenchmarkLiteral(b *testing.B) {{
- initialize();ctx:=rt.RootExecution();b.ReportAllocs();b.ResetTimer()
+ initialize();ctx:=rt.RootExecution();defer rt.FinishExecution(ctx);b.ReportAllocs();b.ResetTimer()
  for i:=0;i<b.N;i++ {{sink=rt.Invoke(ctx,{symbol},nil)}}
 }}
 '''
             (directory / "program_test.go").write_text(harness)
             with (directory / "test-build.log").open("w") as log:
-                subprocess.run([args.go, "test", "-mod=vendor", "-tags=ms_lean",
-                                "-gcflags=all=-N -l", "-ldflags=-compressdwarf=false",
+                flags = (["-gcflags=all=-N -l", "-ldflags=-compressdwarf=false"]
+                         if args.build_type == "Debug" else [])
+                subprocess.run([args.go, "test", "-mod=vendor", "-tags=ms_lean", *flags,
                                 "-c", "-o", str(directory / "runtime.test"),
                                 str(directory / "main.go"), str(directory / "program_test.go")],
                                cwd=args.repo, stdout=log, stderr=log, check=True)

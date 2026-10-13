@@ -154,6 +154,21 @@ Apply when: changing recursive data, automatic equality/hashing, or generic regu
 Evidence: [recursive data rules](../documentation/core-language/types/records.md#recursive-data), [declaration checks](../pkg/checker/type_recursion.go), [compiler regressions](../pkg/compiler/recursive_types_test.go), [shared-dependency regressions](../pkg/checker/layout_diagnostics_test.go), and [native recursive data fixture](../tests/e2e/testdata/accept/recursive-types.ms).
 Verify: direct and mutual trees execute; cyclic equality terminates; clone retains child references; uninitialized self-references and automatic recursive hashing fail. Finite nested generic applications pass; expanding cycles through fields, callbacks, or interfaces fail.
 
+Verified: nested collection literals first inferred independent children, then
+rebuilt the same trees under their inferred types. Combined with repeated
+context classification and type comparisons, this made List checking cubic.
+Nested Map bound walks additionally serialized every suffix type repeatedly.
+Reuse complete same-type child evidence, scope contextual classification by
+lexical identity, and visit bound graphs by checked type pointers. A literal
+child owns its bound diagnostics; traversing it again at each parent duplicates
+failures. Different callback labels, generic contexts and conversions still need
+their ordinary checks. The parser's source nesting guard remains independent.
+Evidence: [nested identity/context/allocation and bound-diagnostic regressions](../pkg/checker/collection_inference_test.go)
+and [direct-AST checker runner](../scripts/bench-nested-literals/main.go).
+Verify: doubling depth grows allocations approximately linearly; both 4K List
+and Map ASTs terminate, nested empty lists report one missing leaf context, and
+each invalid Map key reports at its own use site.
+
 ### Match is uniformly a value expression; indexing preserves Optional
 
 Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The user also clarified that list brackets must preserve `.at()`'s Optional result, rather than unwrap or introduce bounds faults. Generic specialization retains its existing meaning.

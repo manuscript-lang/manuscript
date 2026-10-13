@@ -487,11 +487,6 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[*Type]bool) 
 		return
 	}
 	seen[t] = true
-	context := collectionValidity{scope: c.scope, module: c.module, methods: len(c.Methods)}
-	if previous, ok := c.wellFormedCollections[t]; ok && previous == context {
-		return
-	}
-	checkpoint := len(c.Diagnostics)
 	if t.Def != nil && len(t.Args) == len(t.Def.Variables) {
 		sub := substitution(t)
 		for _, v := range t.Def.Variables {
@@ -510,16 +505,6 @@ func (c *checker) wellFormed(t *Type, pos syntax.Position, seen map[*Type]bool) 
 		c.wellFormed(p.Type, pos, seen)
 	}
 	c.wellFormed(t.Result, pos, seen)
-	// Nested Map literals retain their independently checked child types.
-	// Successful immutable collection applications can reuse bound checks in
-	// the same lexical/implementation context. Failures still report at each
-	// use site; never cache an error or cross module-local implementations.
-	if (std(t, "Map") || std(t, "List")) && len(c.Diagnostics) == checkpoint {
-		if c.wellFormedCollections == nil {
-			c.wellFormedCollections = map[*Type]collectionValidity{}
-		}
-		c.wellFormedCollections[t] = context
-	}
 }
 func (c *checker) declarationChecks(module *syntax.Module) {
 	for _, d := range module.Declarations {

@@ -170,3 +170,24 @@ func TestCollectionBoundFailuresRetainEachUseSite(t *testing.T) {
 		t.Fatalf("bound failures lost their use sites: %v", program.Diagnostics)
 	}
 }
+
+func TestNestedMapBoundFailuresDoNotCascadeThroughParents(t *testing.T) {
+	module, _ := nestedLiteralModule(t, 0, false)
+	value := module.Declarations[0].Body[0].Value
+	const depth = 250
+	for level := range depth {
+		position := syntax.Position{File: "bounds.ms", Line: level + 2, Column: 1}
+		key := &syntax.Expression{Kind: syntax.KindNumber, Text: "1.0", Pos: position}
+		value = &syntax.Expression{Kind: syntax.KindMap, Elements: []*syntax.Expression{key, value}, Pos: position}
+	}
+	module.Declarations[0].Body[0].Value = value
+	program := checker.Check([]*syntax.Module{module}, nil)
+	if len(program.Diagnostics) != depth {
+		t.Fatalf("want one bound diagnostic per map, got %d", len(program.Diagnostics))
+	}
+	for _, diagnostic := range program.Diagnostics {
+		if !strings.Contains(diagnostic.Message, "Hashable") {
+			t.Fatal(diagnostic)
+		}
+	}
+}

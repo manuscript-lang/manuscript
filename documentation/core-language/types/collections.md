@@ -27,6 +27,12 @@ let also_empty = List[Int]()
 
 The first literal infers `List[Int]`. An empty literal gets its element type from an annotation or the expected parameter type. Every element must match the list's element type; numeric conversions are explicit. Elements evaluate from left to right, and nested lists remain nested.
 
+Every evaluation creates a fresh List instance with independent outer storage,
+including evaluation in a default argument. Element references keep their
+ordinary aliasing. A nested empty literal without enough context reports the
+missing element type at its innermost unresolved literal; add an annotation to
+the enclosing binding to supply that context.
+
 A function taking `values: List[Int]` is called as `sum(values: [1, 2, 3])` or with an existing list. See [collections as arguments](../functions/declarations-and-calls.md#collections-as-arguments).
 
 ## Map literals

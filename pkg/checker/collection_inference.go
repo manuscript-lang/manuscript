@@ -10,12 +10,6 @@ type collectionContext struct {
 	contextual bool
 }
 
-type collectionValidity struct {
-	scope   *scope
-	module  *syntax.Module
-	methods int
-}
-
 func (c *checker) collectionElement(elements []*syntax.Expression, inferred []*Info, start, stride int, expected *Type) *Type {
 	if expected != nil {
 		return expected
@@ -47,9 +41,9 @@ func (c *checker) collectionElement(elements []*syntax.Expression, inferred []*I
 }
 
 func (c *checker) collectionExpression(e *syntax.Expression, inferred *Info, expected *Type) *Info {
-	if inferred != nil && inferred.Type == expected {
+	if inferred != nil && !inferred.inferenceDeferred && Same(inferred.Type, expected) {
 		// The independent pass already checked every child. Keep that evidence
-		// when its exact type supplies the context; rebuilding the same nested
+		// when the same complete type supplies the context; rebuilding the nested
 		// tree here caused cubic checking. Different contexts still re-infer,
 		// including callback labels, generic result evidence and conversions.
 		return c.checkExpression(e, inferred, expected)

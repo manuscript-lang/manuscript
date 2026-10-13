@@ -21,6 +21,8 @@ def main():
     parser.add_argument("--output", default=".artifacts/debug-literals")
     parser.add_argument("--sizes", default="1024,1025,4000,16000,100000")
     parser.add_argument("--count", type=int, default=3)
+    parser.add_argument("--build-type", default="Debug",
+                        choices=("Debug", "Release", "RelWithDebInfo", "MinSizeRel"))
     args = parser.parse_args()
     root = Path(args.output).resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -53,7 +55,7 @@ def main():
                     with (directory / (name + ".build.log")).open("w") as file:
                         child = subprocess.Popen(
                             [binaries[name], "build", str(source),
-                             "--build-type", "Debug", "-o", str(binary)],
+                             "--build-type", args.build_type, "-o", str(binary)],
                             stdout=file, stderr=file,
                         )
                         _, status, usage = os.wait4(child.pid, 0)

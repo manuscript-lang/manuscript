@@ -201,6 +201,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		}
 		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 	case syntax.KindList:
+		if value := g.largeListLiteral(e, info.Type); value != nil {
+			return value
+		}
 		if value := g.debugListLiteral(e, info.Type); value != nil {
 			return value
 		}

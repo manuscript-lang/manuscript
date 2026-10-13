@@ -51,7 +51,6 @@ type checker struct {
 	inferenceVariables      map[string]bool
 	checkedArguments        map[*syntax.Expression]checkedArgument
 	contextualCollections   map[*syntax.Expression]collectionContext
-	wellFormedCollections   map[*Type]collectionValidity
 	function, serial, loops int
 	testFunction            int
 	rejectedNames           map[string]bool
@@ -1097,7 +1096,16 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			i.NoReturn = i.NoReturn || v.NoReturn
 		}
 		i.Type = standard("Map", types[0], types[1])
-		c.wellFormed(i.Type, e.Pos, map[*Type]bool{})
+		seen := map[*Type]bool{}
+		for _, item := range e.Elements {
+			if item.Kind == syntax.KindList || item.Kind == syntax.KindMap {
+				// Literal children already checked their own bounds at their
+				// source locations, including failures. Do not traverse those
+				// same type trees (or duplicate their diagnostics) at each parent.
+				seen[c.Expressions[item].Type] = true
+			}
+		}
+		c.wellFormed(i.Type, e.Pos, seen)
 	case syntax.KindUnary:
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			i.Type = primitive("Int")

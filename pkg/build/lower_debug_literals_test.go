@@ -9,6 +9,7 @@ import (
 	"go/format"
 	goparser "go/parser"
 	"go/token"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -30,7 +31,11 @@ func TestDebugLiteralBuildSelection(t *testing.T) {
 	// provenance note; never regenerate this oracle using the implementation
 	// under test. Existing pre-AST fixtures are left untouched.
 	fset := token.NewFileSet()
-	file, err := goparser.ParseFile(fset, "generated.go", original, 0)
+	baseline, err := os.ReadFile("testdata/literal-data/before.go.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := goparser.ParseFile(fset, "generated.go", baseline, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +57,7 @@ func TestDebugLiteralBuildSelection(t *testing.T) {
 	// Hash the constructor rather than unrelated stdlib registrations, which
 	// evolve on main. The complete before-source hash is also retained.
 	if got := fmt.Sprintf("%x", sha256.Sum256(constructor.Bytes())); got != "14f056a0e496cbba6ff77959a189419ceed5206a63a9ece9b49aa07aae677362" {
-		t.Fatal("default lowering changed from the independent baseline", got)
+		t.Fatal("independent baseline fixture changed", got)
 	}
 	for _, kind := range []compiler.BuildType{compiler.Release, compiler.RelWithDebInfo, compiler.MinSizeRel} {
 		got := compiler.CompileSourceForBuild("literal.ms", debugLiteralSource(), compiler.Options{Entry: true}, kind)
@@ -106,8 +111,8 @@ func TestDebugLiteralBoundaryAndIneligibleSource(t *testing.T) {
 	if !r.Success() {
 		t.Fatal(r.Diagnostics)
 	}
-	if debug := compiler.CompileSourceForBuild("literal.ms", source, compiler.Options{Entry: true}, compiler.Debug); !debug.Success() || debug.Source != r.Source {
-		t.Fatal("effectful list changed", debug.Diagnostics)
+	if debug := compiler.CompileSourceForBuild("literal.ms", source, compiler.Options{Entry: true}, compiler.Debug); !debug.Success() || strings.Contains(debug.Source, "debugLiteralData") || strings.Contains(debug.Source, "InitList") || !strings.Contains(r.Source, "InitListInt") {
+		t.Fatal("effectful list did not retain explicit Debug lowering", debug.Diagnostics)
 	}
 }
 
