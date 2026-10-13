@@ -18,6 +18,7 @@
     "callbacks-alternating.txt": "c67e76c3f2f2865d253743513041aa53613646f2a4643bd77840a70356053146",
     "baseline-7bd79bb0-bench.txt": "2dfbead680fc4484afd0b83b03425dd229a699145fee5138eaf67cbd5cd0bd62",
     "baseline-5b482774-bench.txt": "cd20a96f4fa6ee5715d81e2db2c74a3b8459ee4711383a21c76e97bd7de4611e",
+    "baseline-7bd79bb0-memory.json": "bb36304e4e2ece95e363d6b877b3d466eb9c5aebafa2095bd13f0781f6401640",
     "after-7bd79bb0-bench.txt": "7b2c6ea4b0bbfbba24302ff1a1f4d4a06ea11c772e40b4bb2a64853408418f2d",
     "baseline-93fcb4fe-bench.txt": "b72283c9f6f51ba0e2669c8ed6a48a037ca9bd7e385ab5046995b3d29b3cb8e3",
     "literal-copy-control.txt": "76ca0532d3179536310ed37add73da3f3e7a5a5b1d913daca3cdd78d0cc6ac88",
