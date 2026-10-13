@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/record-baseline
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkRecords/ConstructRetained         	    1503	    974529 ns/op	  434560 B/op	    3854 allocs/op
+BenchmarkRecords/ConstructRetained         	    1401	    920820 ns/op	  434560 B/op	    3854 allocs/op
+BenchmarkRecords/ConstructRetained         	    1491	    851143 ns/op	  434560 B/op	    3854 allocs/op
+BenchmarkRecords/Access                    	    5438	   5479652 ns/op	   12664 B/op	    1541 allocs/op
+BenchmarkRecords/Access                    	    2047	    740482 ns/op	   12664 B/op	    1541 allocs/op
+BenchmarkRecords/Access                    	    2448	    414392 ns/op	   12664 B/op	    1541 allocs/op
+BenchmarkRecords/AliasClone                	     501	   2403422 ns/op	  800728 B/op	   11985 allocs/op
+BenchmarkRecords/AliasClone                	     504	   2326723 ns/op	  800728 B/op	   11985 allocs/op
+BenchmarkRecords/AliasClone                	     602	   2213564 ns/op	  800728 B/op	   11985 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/.artifacts/record-baseline	40.123s

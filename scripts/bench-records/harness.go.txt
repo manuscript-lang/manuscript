@@ -1,0 +1,5 @@
+package main
+import("testing";rt "github.com/manuscript-lang/manuscript/pkg/runtime")
+var sink rt.Value
+func TestParity(t *testing.T){initialize();ctx:=rt.RootExecution();defer rt.FinishExecution(ctx);for _,c:=range []struct{fn rt.Function;want int64}{{@@construct@@.(rt.Function),1024},{@@access@@.(rt.Function),1024},{@@alias_clone@@.(rt.Function),5120}}{if got:=c.fn.Body(ctx,[]rt.Value{int64(1024)});got!=c.want{t.Fatal(got,c.want)}}}
+func BenchmarkRecords(b *testing.B){initialize();ctx:=rt.RootExecution();defer rt.FinishExecution(ctx);for _,c:=range []struct{name string;fn rt.Function}{{"ConstructRetained",@@construct@@.(rt.Function)},{"Access",@@access@@.(rt.Function)},{"AliasClone",@@alias_clone@@.(rt.Function)}}{b.Run(c.name,func(b *testing.B){args:=[]rt.Value{int64(1024)};b.ReportAllocs();for b.Loop(){sink=c.fn.Body(ctx,args)}})}}
