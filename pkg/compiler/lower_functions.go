@@ -51,7 +51,7 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 	for _, p := range t.Params {
 		labels = append(labels, p.Name)
 	}
-	out.WriteString("rt.NewSourceFunction(" + stringsGo(labels) + "," + g.key(t.Result) + "," + quote(result.Pos.String()) + ",func(ctx *rt.Execution,args []rt.Value)rt.Value{\nsourcePosition:=" + quote(result.Pos.String()) + ";defer rt.TraceSource(&sourcePosition," + quote(name) + ")\ncleanupStack:=rt.NewCleanupStack();defer cleanupStack.Unwind()\n")
+	out.WriteString("rt.NewSourceFunction(" + stringsGo(labels) + "," + g.key(t.Result) + "," + quote(result.Pos.String()) + ",func(ctx *rt.Execution,args []rt.Value)rt.Value{\nsourcePosition:=" + quote(result.Pos.String()) + ";defer rt.TraceSource(ctx,&sourcePosition," + quote(name) + ")\ncleanupStack:=rt.NewCleanupStack();defer cleanupStack.Unwind()\n")
 	if self != nil {
 		out.WriteString(self.ID + " := receiver; _ = " + self.ID + "\n")
 	}

@@ -314,6 +314,7 @@ func RunMain(main Value, arguments []string) (exit int) {
 	defer close(done)
 	var mu sync.Mutex
 	signalExit := 0
+	markConcurrent()
 	go func() {
 		select {
 		case s := <-signals:
@@ -328,7 +329,7 @@ func RunMain(main Value, arguments []string) (exit int) {
 		case <-done:
 		}
 	}()
-	execution := &Execution{Context: ctx, Lifetime: &workLifetime{}, Host: &hostRoots{arguments: arguments}}
+	execution := &Execution{Context: ctx, Lifetime: &workLifetime{}, Host: &hostRoots{arguments: arguments}, calls: &callState{}}
 	defer func() {
 		if r := recover(); r != nil {
 			if _, ok := r.(cancelled); ok {
