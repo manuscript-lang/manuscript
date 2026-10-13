@@ -2,8 +2,9 @@
 
 Linux only. Builds both actual CLI paths with bundled Go, captures their cached
 Debug Go and compiles the harness against each corresponding runtime workspace.
-Heap stats exclude static global tables; /proc RSS/file/anonymous metrics and
-wait4 peak RSS account for process-resident data separately. No unsafe is used.
+Heap stats exclude static global tables; direct child /proc RSS/file/anonymous
+metrics account for resident data separately. Linux wait4 can retain a pre-exec
+parent RSS floor, so it is recorded but excluded from conclusions. No unsafe.
 """
 
 import argparse
@@ -139,9 +140,9 @@ def main():
                         start = time.monotonic()
                         with (root / "sample.log").open("w+") as file:
                             # Absolute executable + close_fds=False permits
-                            # posix_spawn/vfork. Forking a source-heavy Python
-                            # parent otherwise gives small children an inherited
-                            # wait4 RSS floor unrelated to their own image.
+                            # posix_spawn/vfork. Linux wait4 may still include a
+                            # pre-exec RSS floor; direct /proc readings describe
+                            # the child image used for the memory conclusions.
                             child = subprocess.Popen([shutil.which("taskset"), "-c", args.cpu, binaries[variant],
                                                       "-test.run=^TestMemoryControl$", "-test.v"],
                                                      env=settings, stdout=file, stderr=file, close_fds=False)

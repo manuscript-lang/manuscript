@@ -13,7 +13,8 @@ rounded-underflow cases stay on that path. Current evidence uses existing
 **Review hold:** this prototype is not approved for merging. Release #238 also
 remains held: its constant-table copy repeatedly slowed construction under GC.
 This Debug prototype improves builds and default-GC construction, but also has
-a confirmed construction regression at GOGC=50. #147 remains open: Release,
+a confirmed construction regression at GOGC=50 and fixed live global data,
+even when literal functions never execute. #147 remains open: Release,
 effectful/mixed lists, other excluded constants and nested-depth scope remain.
 
 ## Build-mode design and compatibility
@@ -84,7 +85,124 @@ acceptance fixtures compiled with Options{Tests:true}. Retained ordered hashes:
 `cd9c05f70cff1e03b3fbde6bdc1aa604432431cea2d26c40ea8630743269d3fe`.
 Those hashes represent the original main snapshot, not future width migrations.
 
-## Forced-edit whole-CLI Debug builds
+## Current matched-main evidence after API review
+
+The additive API candidate and independent unchanged before executable both use
+main **9391cb9b0102c6cc9b7c7a0b619a984c78dd92e3**, including the canonical docs
+repair. They share the same runtime workspace identity
+`92353d7e21c30f05c2575b591347d8d1`; this removes stdlib/runtime changes as a
+comparison confound. The API selects Debug before one lowering pass.
+All **86** current acceptance fixtures compiled with Options{Tests:true} have
+byte-identical default Go on both pipelines. The independent ordered corpus
+[current-release-corpus.txt](results/current-release-corpus.txt) has SHA256
+`89007ddfb2c60b9691dbb66d7d8b3d7de8e280cda3c393d0bd712e4a9e5cef3e`.
+The earlier 82-fixture corpus and original constructor oracle remain frozen.
+
+Whole-CLI Debug builds: three alternating forced-edit pairs, warm SDK/workspace,
+CPU affinity 2,3, bundled Go1.25.1, current Int64/Float64 semantics. Build wall
+includes checking and one selected lowering pass. RSS is wait4 child peak KiB,
+not retained heap. This compiler/CLI workload exceeds the small-child inherited
+RSS floor discussed below. Native output was executed after each build.
+All [current samples](results/current-cli-builds.jsonl) are retained. The 1,024
+control has identical binary size and constructor code; timing differences
+reflect host noise. Compilation RSS is visibly nonmonotonic for unoptimized Go.
+
+| Elements | Median before → prototype | Build RSS median (MiB) | Debug executable bytes |
+| --- | --- | --- | --- |
+| 1,024 control | 0.542 → 0.451 s | 118.0 → 118.0 | 11,300,447 → 11,300,447 |
+| 1,025 | 0.537 → 0.328 s | 124.6 → 116.3 | 11,300,439 → 11,242,862 |
+| 4,000 | 2.597 → 0.354 s | 847.1 → 121.5 | 11,542,067 → 11,312,494 |
+| 16,000 | 2.254 → 0.514 s | 269.3 → 133.3 | 12,512,885 → 11,603,310 |
+| 100,000 | 14.303 → 1.659 s | 1,693.0 → 253.3 | 19,308,159 → 13,618,550 |
+
+Current repeated Debug construction uses actual captured CLI Go, matching
+runtime, CPU1/GOMAXPROCS1, **24 randomized pairs at1s/sample** per GC setting.
+The [raw pairs](results/current-runtime-100000.jsonl) and
+[summary](results/current-runtime-summary.jsonl) use the same paired-log
+bootstrap method described below. At100K: GOGC100 **0.817 [95%CI0.737,0.876]**;
+GOGC50 **1.220 [1.171,1.271]**. Both allocate2 objects/1,605,680 bytes. The lower
+GC target still gives a confirmed ~22% slowdown, consistent with the earlier
+~24% result; the earlier result is retained, not erased by this rerun.
+
+### Startup, never-called literals and retained storage
+
+[memory_controls.py](memory_controls.py) captures actual CLI-generated Go and
+builds each harness against its corresponding runtime workspace with Debug
+flags. Fresh processes, randomized pairs (seed147), CPU0/GOMAXPROCS1, five pairs
+per case at GOGC100/50. Four **distinct**100K Int64 literals test fixed global
+cost; four4K unique String literals additionally cover string backing. Source
+main calls none of the constructors. Harness paths remain reachable at link
+time and select zero, one, or64 calls **per literal** at runtime. The last result
+from each constructor remains live. Two forced GCs release transient buffers
+before retained readings. Startup readings occur before source initialization;
+process wall includes initialization, workload and forced GCs, so zero-call wall
+is a controlled startup/GC probe rather than natural application startup latency.
+
+Go HeapAlloc excludes static globals. Direct child `/proc/self/status` VmRSS,
+VmHWM, RssFile and RssAnon measure the executable image; Linux wait4 can retain
+an inherited pre-exec parent/taskset RSS floor even with posix_spawn, so raw
+wait4 peak values are recorded **but excluded from memory conclusions**. Every
+raw heap/RSS sample is retained:
+[Int controls](results/current-memory-int4.jsonl),
+[String controls](results/current-memory-string4.jsonl).
+
+| Four Int64 literals | GOGC | Retained RSS before → prototype (MiB) | Retained heap (MiB), both | Process wall median before → prototype |
+| --- | --- | --- | --- | --- |
+| Zero calls | 100 | 11.00 → 15.54 | 0.42 | 8.60 → 21.74 ms |
+| One call each | 100 | 42.40 → 21.91 | 6.54 | 37.64 → 57.29 ms |
+| 64 calls each | 100 | 46.67 → 24.54 | 6.54 | 1008.01 → 705.76 ms |
+| Zero calls | 50 | 11.00 → 15.54 | 0.42 | 7.98 → 23.14 ms |
+| One call each | 50 | 42.51 → 21.91 | 6.54 | 48.64 → 51.87 ms |
+| 64 calls each | 50 | 43.20 → 22.75 | 6.54 | 1289.99 → 1102.34 ms |
+
+Initial startup VmRSS was9.36→8.95MiB at zero calls, before forced scanning
+made the rooted table pages resident. This **does not remove the fixed cost**:
+post-GC zero-call RSS rises by~4.54MiB despite identical heap. ELF sections show
+`.data` increases by**6,400,016 bytes**, approximately4×100K×16 for the interface
+tables. `.noptrdata` grows3,200,000 bytes while `.rodata` shrinks3,332,128 bytes;
+scalar backing changes section rather than representing an entirely new pool.
+The after-call RSS win includes fewer executable code pages: `.text` shrinks
+from31,880,913 to4,453,617 bytes. Static payloads remain live regardless of calls.
+[Exact Int ELF sections](results/current-elf-int4.json) are retained.
+
+| Four String literals | GOGC | Retained RSS before → prototype (MiB) | Retained heap before → prototype (MiB) |
+| --- | --- | --- | --- |
+| Zero calls | 100 | 9.61 → 9.71 | 0.42 → 0.42 |
+| One call each | 100 | 13.75 → 10.06 | 1.16 → 0.67 |
+| 64 calls each | 100 | 15.59 → 10.65 | 1.16 → 0.67 |
+| Zero calls | 50 | 9.62 → 9.71 | 0.42 → 0.42 |
+| One call each | 50 | 13.73 → 10.06 | 1.16 → 0.67 |
+| 64 calls each | 50 | 15.27 → 11.40 | 1.16 → 0.67 |
+
+String `.data` grows**512,016 bytes**:16K interface entries plus static string
+headers. String byte backing remains in `.rodata`; the much larger before
+`.rodata` also includes function stack metadata. Both natural startup readings
+were~8.9MiB. Full [String ELF sections](results/current-elf-string4.json) separate
+segments; heap improvement after calls does not imply the global data is free.
+Multiple roots alter GC pacing (e.g. at Int64/GOGC50/64 calls,89→54 GC cycles),
+so this four-table workload is not a substitute for the single-table benchmark
+that confirms the construction regression.
+
+Reproduce using independent before/candidate executables and the bundled SDK:
+
+```sh
+python scripts/bench-debug-literals/memory_controls.py \
+  --baseline /path/to/main/ms --prototype /path/to/candidate/ms \
+  --go "$PWD/toolchain/go/bin/go" --cache "$MANUSCRIPT_CACHE_DIR" \
+  --output "$PWD/.artifacts/memory-int4" --elements 100000 --literals 4
+python scripts/bench-debug-literals/memory_controls.py \
+  --baseline /path/to/main/ms --prototype /path/to/candidate/ms \
+  --go "$PWD/toolchain/go/bin/go" --cache "$MANUSCRIPT_CACHE_DIR" \
+  --output "$PWD/.artifacts/memory-string4" --kind String --elements 4000 --literals 4
+```
+
+## Historical forced-edit whole-CLI Debug builds
+
+The following frozen measurements used the earlier recipe-based prototype
+before API review, including default lowering followed by Debug re-lowering.
+They establish history, not current API costs. The retained source references
+and current matched-main evidence above are authoritative for the revised API.
+
 
 Linux amd64, warm bundled SDK/native workspace, three alternating-order pairs.
 Every build appends a comment to invalidate executable restoration. Build wall
@@ -109,7 +227,7 @@ The measured 1,025-element improvement supports keeping the conservative
 1,024-element cutoff. It is a selection cutoff, not a chunk size. This does not
 claim the optimal cutoff on every architecture or default-width representation.
 
-## Repeated Debug construction
+## Historical repeated Debug construction
 
 Benchmark Go is captured from actual CLI-generated Debug application cache
 entries. Build with `-gcflags=all=-N -l -ldflags=-compressdwarf=false` and
