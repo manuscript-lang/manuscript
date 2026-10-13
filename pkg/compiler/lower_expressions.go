@@ -71,9 +71,11 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 			return "rt.DecimalLiteral(" + quote(e.Text) + ")"
 		}
 		if strings.ContainsAny(e.Text, ".eE") {
-			return "rt.Float(" + quote(e.Text) + ")"
+			value, _ := strconv.ParseFloat(e.Text, 64)
+			return "float64(" + strconv.FormatFloat(value, 'g', -1, 64) + ")"
 		}
-		return "rt.Integer(" + quote(e.Text) + ")"
+		value, _ := strconv.ParseInt(e.Text, 10, 64)
+		return "int64(" + strconv.FormatInt(value, 10) + ")"
 	case syntax.KindBool:
 		return e.Text
 	case syntax.KindUnit:
@@ -127,6 +129,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 		arguments := e.Args
 		if info.Arguments != nil {
 			arguments = info.Arguments
+		}
+		if value := g.directCollectionCall(e, arguments); value != "" {
+			return value
 		}
 		args := g.arguments(arguments)
 		if info.Constructor != nil {
@@ -188,7 +193,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 			return "rt.Try(" + g.expression(e.Right) + scope + ")"
 		}
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
-			return "rt.Integer(\"-9223372036854775808\")"
+			return "int64(-9223372036854775808)"
 		}
 		return "rt.Unary(" + quote(e.Text) + "," + g.expression(e.Right) + ")"
 	case syntax.KindBinary:
@@ -201,6 +206,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 		}
 		if e.Text == "==" || e.Text == "!=" {
 			return "rt.Equality(ctx," + quote(e.Text) + "," + g.expression(e.Left) + "," + g.expression(e.Right) + "," + g.typeScope(g.program.Expressions[e.Left].Type) + ")"
+		}
+		if value := g.numericBinary(e); value != "" {
+			return value
 		}
 		return "rt.Binary(" + quote(e.Text) + "," + g.expression(e.Left) + "," + g.expression(e.Right) + ")"
 	case syntax.KindLambda:
