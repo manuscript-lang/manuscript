@@ -187,7 +187,6 @@ var ReceiverBindings = map[string]map[string]string{
 		"pad_end":       "string/pad_end",
 		"replace_all":   "string/replace_all",
 		"slice":         "string/slice",
-		"substring":     "string/substring",
 	},
 	"Bytes": {
 		"split":         "bytes/split",

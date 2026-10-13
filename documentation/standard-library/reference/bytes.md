@@ -15,7 +15,7 @@ type Bytes:
     fn clone() -> Bytes:
     fn contains(value: Bytes) -> Bool:
     fn split(separator: Bytes, max_parts: Optional[Int] = none) -> List[Bytes]:
-    fn slice(start: Int, end: Int) -> Bytes:
+    fn slice(start: Int, end: Int) -> Result[Bytes, CollectionError]:
     fn at(index: Int) -> Optional[Int]:
     fn index_of(value: Bytes) -> Optional[Int]:
     fn last_index_of(value: Bytes) -> Optional[Int]:
@@ -121,11 +121,12 @@ fn reversed() -> Bytes:
 
 ### Bytes.slice
 
-Selects [start, end) in bytes; faults unless 0 <= start <= end <= length().
+Selects [start, end) in bytes; negative bounds are relative to the end.
+Bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
 The immutable result may share storage with the receiver.
 
 ```manuscript
-fn slice(start: Int, end: Int) -> Bytes:
+fn slice(start: Int, end: Int) -> Result[Bytes, CollectionError]:
 ```
 
 ### Bytes.split

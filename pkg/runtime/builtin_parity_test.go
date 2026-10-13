@@ -61,7 +61,11 @@ func TestListCloneSeparatesUpdateStorage(t *testing.T) {
 		{"with_values", []Argument{{"start", int64(0)}, {"delete_count", int64(0)}, {"replacement", original}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			result := Invoke(RootExecution(), NativeMember(Clone(original), test.name), test.args).(*List)
+			value := Invoke(RootExecution(), NativeMember(Clone(original), test.name), test.args)
+			if alt, ok := value.(Alternative); ok && alt.Tag == "ok" {
+				value = alt.Fields[0]
+			}
+			result := value.(*List)
 			result.Items[0] = int64(99) // model a subsequent builder/native adapter write
 			if !Equal(original, libraryList("Int", []Value{int64(1), int64(2), int64(3), int64(4)})) {
 				t.Fatal("update shared source storage", original)

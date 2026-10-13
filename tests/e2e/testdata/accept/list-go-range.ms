@@ -163,7 +163,7 @@ test "clone slice and nested references retain their own contracts":
     let child = Child(1)
     let values = [child, child]
     let clone = values.clone()
-    let slice = values.slice(start: 0, end: 2)
+    let slice = values.slice(start: 0, end: 2).unwrap()
     let seen: List[Int] = []
     values.for_each(
         fn(value):

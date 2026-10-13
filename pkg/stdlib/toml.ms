@@ -496,9 +496,9 @@ fn date_valid(text: String) -> Bool:
         or text.at(7).unwrap_or("") != "-"
     ): return false
 
-    let year = text.slice(start: 0, end: 4)
-    let month = text.slice(start: 5, end: 7)
-    let day = text.slice(start: 8, end: 10)
+    let year = text.slice(start: 0, end: 4).unwrap_or("")
+    let month = text.slice(start: 5, end: 7).unwrap_or("")
+    let day = text.slice(start: 8, end: 10).unwrap_or("")
     if (
         not date_number(text: year, minimum: 0, maximum: 9999)
         or not date_number(text: month, minimum: 1, maximum: 12)
@@ -529,17 +529,17 @@ fn time_valid(text: String) -> Bool:
         or text.at(5).unwrap_or("") != ":"
     ): return false
     if not date_number(
-        text: text.slice(start: 0, end: 2),
+        text: text.slice(start: 0, end: 2).unwrap_or(""),
         minimum: 0,
         maximum: 23
     ): return false
     if not date_number(
-        text: text.slice(start: 3, end: 5),
+        text: text.slice(start: 3, end: 5).unwrap_or(""),
         minimum: 0,
         maximum: 59
     ): return false
     if not date_number(
-        text: text.slice(start: 6, end: 8),
+        text: text.slice(start: 6, end: 8).unwrap_or(""),
         minimum: 0,
         maximum: 60
     ): return false
@@ -548,7 +548,7 @@ fn time_valid(text: String) -> Bool:
     let fraction = text.slice(
         start: 9,
         end: text.scalar_length()
-    )
+    ).unwrap_or("")
     return (
         text.at(8).unwrap_or("") == "."
         and decimal_digits(fraction)
@@ -558,7 +558,10 @@ fn time_valid(text: String) -> Bool:
 fn datetime_valid(text: String) -> Bool:
     if date_valid(text): return true
     if time_valid(text): return true
-    if text.scalar_length() < 19 or not date_valid(text.slice(start: 0, end: 10)): return false
+    if (
+        text.scalar_length() < 19
+        or not date_valid((text.slice(start: 0, end: 10).unwrap_or("")))
+    ): return false
 
     let separator = text.at(10).unwrap_or("")
     if (
@@ -570,10 +573,10 @@ fn datetime_valid(text: String) -> Bool:
     var rest = text.slice(
         start: 11,
         end: text.scalar_length()
-    )
+    ).unwrap_or("")
 
     if rest.ends_with("Z") or rest.ends_with("z"):
-        rest = rest.slice(start: 0, end: rest.scalar_length() - 1)
+        rest = rest.slice(start: 0, end: rest.scalar_length() - 1).unwrap_or("")
     else if rest.contains("+") or rest.contains("-"):
         var index = rest.index_of("+").unwrap_or(-1)
 
@@ -582,20 +585,20 @@ fn datetime_valid(text: String) -> Bool:
         let zone = rest.slice(
             start: index + 1,
             end: rest.scalar_length()
-        )
+        ).unwrap_or("")
         if zone.scalar_length() != 5 or zone.at(2).unwrap_or("") != ":": return false
         if not date_number(
-            text: zone.slice(start: 0, end: 2),
+            text: zone.slice(start: 0, end: 2).unwrap_or(""),
             minimum: 0,
             maximum: 23
         ): return false
         if not date_number(
-            text: zone.slice(start: 3, end: 5),
+            text: zone.slice(start: 3, end: 5).unwrap_or(""),
             minimum: 0,
             maximum: 59
         ): return false
 
-        rest = rest.slice(start: 0, end: index)
+        rest = rest.slice(start: 0, end: index).unwrap_or("")
 
     return time_valid(rest)
 
@@ -618,7 +621,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         clean = clean.slice(
             start: 1,
             end: clean.scalar_length()
-        )
+        ).unwrap_or("")
 
     var radix = 10
     var alphabet = "0123456789"
@@ -640,7 +643,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                 text: clean.slice(
                     start: 2,
                     end: clean.scalar_length()
-                ),
+                ).unwrap_or(""),
                 alphabet: alphabet
             )
         ):
@@ -653,6 +656,7 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                     start: 2,
                     end: clean.scalar_length()
                 )
+                .unwrap_or("")
                 .replace(
                     old: "_",
                     new: "",
@@ -697,9 +701,13 @@ fn scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
             if parts.length() == 2:
                 var exponent = parts.at(1).unwrap()
 
-                if exponent.starts_with("+") or exponent.starts_with("-"): exponent = exponent.slice(
-                    start: 1,
-                    end: exponent.scalar_length()
+                if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
+                    exponent
+                    .slice(
+                        start: 1,
+                        end: exponent.scalar_length()
+                    )
+                    .unwrap_or("")
                 )
 
                 if not decimal_digits(exponent): return error(

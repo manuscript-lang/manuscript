@@ -69,7 +69,7 @@ The built-in method takes precedence over a field or interface operation named `
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slicing syntax. String `at`, `scalar_at`, `index_of`, `last_index_of`, `slice`, `substring`, and `slice_scalars` use Unicode scalar indexes, not byte offsets. `at` returns a one-scalar String; `scalar_at` returns its integer code point. Both accept negative indexes relative to the end and return `none` out of range. Search returns the first or last matching scalar index, or `none`; an empty search matches at zero for `index_of` and at `scalar_length()` for `last_index_of`.
+There is no `text[index]` or slicing syntax. String `at`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use Unicode scalar indexes, not byte offsets. `at` returns a one-scalar String; `scalar_at` returns its integer code point. Both accept negative indexes relative to the end and return `none` out of range. Search returns the first or last matching scalar index, or `none`; an empty search matches at zero for `index_of` and at `scalar_length()` for `last_index_of`.
 
 A byte position, a Unicode scalar, and a user-visible grapheme are different units. For example, `"é"` has two UTF-8 bytes; `"e\u{301}"` has two scalars but can display as one grapheme. Byte lookup alone cannot select a character.
 
@@ -85,13 +85,12 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 
 | Operation | Bounds and result |
 | --- | --- |
-| `String.slice(start:, end:)` | Add `n` to each negative bound, then clamp each bound to `0..n`. Return empty text if the adjusted start exceeds the adjusted end. |
-| `String.substring(start:, end:)` | Clamp each bound to `0..n`; negative bounds become zero. Swap the adjusted bounds if start exceeds end. |
-| `String.slice_scalars(start:, end:)` | Require `0 <= start <= end <= n`; invalid bounds return `StringError.OutOfRange`. |
-| `List.slice(start:, end:)` | Require `0 <= start <= end <= n`; invalid bounds produce a programming fault. Return a new shallow List with independent outer storage. |
-| `Bytes.slice(start:, end:)` | Require `0 <= start <= end <= n`; invalid bounds produce a programming fault. Return immutable Bytes; native slices may share immutable storage. |
+| `String.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `StringError.OutOfRange`. |
+| `String.slice_scalars(start:, end:)` | Require `0 <= start <= end <= n` with no relative negative bounds; invalid bounds return `StringError.OutOfRange`. |
+| `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `CollectionError.OutOfRange`; success is a new shallow List with independent outer storage. |
+| `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `CollectionError.OutOfRange`; success is immutable Bytes that may share immutable storage. |
 
-Equal valid bounds select an empty range. Strict slices accept `start: n, end: n` and do not accept relative negative indexes, unlike `at`. String slices preserve scalar boundaries and leave their receiver unchanged. For example, `"aé🙂z".slice(start: -2, end: 10)` is `"🙂z"`, `"aé🙂z".slice(start: 3, end: 1)` is `""`, and `"aé🙂z".substring(start: 3, end: 1)` is `"é🙂"`. Choose `slice_scalars` when invalid text bounds should be an expected error. Exact signatures appear in the [String reference](../../standard-library/reference/prelude.md#string), [collection reference](../../standard-library/reference/collections.md), and [Bytes reference](../../standard-library/reference/bytes.md).
+Equal valid bounds select an empty range. Slices never clamp or swap bounds, so an off-by-one such as `text.slice(start: 0, end: n + 1)` is an expected `OutOfRange` error rather than a shorter result or a fault. Negative bounds are relative to the end, as for `at`. String slices preserve scalar boundaries and leave their receiver unchanged. For example, `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`, while `"aé🙂z".slice(start: 3, end: 1)` and `"aé🙂z".slice(start: 1, end: 10)` are `error(StringError.OutOfRange)`. Unwrap only when the bounds are known to be valid. Exact signatures appear in the [String reference](../../standard-library/reference/prelude.md#string), [collection reference](../../standard-library/reference/collections.md), and [Bytes reference](../../standard-library/reference/bytes.md).
 
 ## Encoding and parsing
 

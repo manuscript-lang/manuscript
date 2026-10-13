@@ -410,7 +410,7 @@ type Bytes:
     fn clone() -> Bytes:
     fn contains(value: Bytes) -> Bool:
     fn split(separator: Bytes, max_parts: Optional[Int] = none) -> List[Bytes]:
-    fn slice(start: Int, end: Int) -> Bytes:
+    fn slice(start: Int, end: Int) -> Result[Bytes, CollectionError]:
     fn at(index: Int) -> Optional[Int]:
     fn index_of(value: Bytes) -> Optional[Int]:
     fn last_index_of(value: Bytes) -> Optional[Int]:
@@ -516,11 +516,12 @@ fn reversed() -> Bytes:
 
 ### Bytes.slice
 
-Selects [start, end) in bytes; faults unless 0 <= start <= end <= length().
+Selects [start, end) in bytes; negative bounds are relative to the end.
+Bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
 The immutable result may share storage with the receiver.
 
 ```manuscript
-fn slice(start: Int, end: Int) -> Bytes:
+fn slice(start: Int, end: Int) -> Result[Bytes, CollectionError]:
 ```
 
 ### Bytes.split
@@ -680,11 +681,20 @@ Errors returned when a collection factory exceeds its supplied item limit.
 type CollectionError:
     case InvalidInput
     case LimitExceeded
+    case OutOfRange
 ```
 
 ```manuscript
 impl Error for CollectionError:
     fn message() -> String:
+```
+
+### CollectionError.OutOfRange
+
+A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
+
+```manuscript
+case OutOfRange
 ```
 
 ## List
@@ -708,7 +718,7 @@ type List[T]:
     fn remove(index: Int) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
-    fn slice(start: Int, end: Int) -> List[T]:
+    fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     fn take(count: Int) -> List[T]:
     fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
@@ -876,10 +886,10 @@ fn set(index: Int, value: T) -> List[T]:
 ### List.slice
 
 Returns a new shallow List containing [start, end); outer storage is independent.
-Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
+Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
 
 ```manuscript
-fn slice(start: Int, end: Int) -> List[T]:
+fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
 ```
 
 ### List.some
@@ -8012,7 +8022,7 @@ type List[T]:
     fn remove(index: Int) -> List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
-    fn slice(start: Int, end: Int) -> List[T]:
+    fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
     fn take(count: Int) -> List[T]:
     fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
@@ -8180,10 +8190,10 @@ fn set(index: Int, value: T) -> List[T]:
 ### List.slice
 
 Returns a new shallow List containing [start, end); outer storage is independent.
-Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
+Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
 
 ```manuscript
-fn slice(start: Int, end: Int) -> List[T]:
+fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
 ```
 
 ### List.some
@@ -8740,8 +8750,7 @@ type String:
     fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
     fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
     fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
-    fn slice(start: Int, end: Int) -> String:
-    fn substring(start: Int, end: Int) -> String:
+    fn slice(start: Int, end: Int) -> Result[String, StringError]:
     fn byte_length() -> Int:
     fn to_bytes() -> Bytes:
     fn parse_int() -> Optional[Int]:
@@ -8967,11 +8976,11 @@ fn scalar_values() -> List[Int]
 
 ### String.slice
 
-Selects [start, end) in scalars: negative bounds are relative to the end, then clamp to 0..scalar_length().
-An inverted adjusted range yields empty text; the receiver is unchanged.
+Selects [start, end) in Unicode scalars; negative bounds are relative to the end.
+Bounds outside 0 <= start <= end <= scalar_length() return StringError.OutOfRange; the receiver is unchanged.
 
 ```manuscript
-fn slice(start: Int, end: Int) -> String
+fn slice(start: Int, end: Int) -> Result[String, StringError]
 ```
 
 ### String.slice_scalars
@@ -8998,15 +9007,6 @@ Tests whether the receiver begins with this exact prefix.
 
 ```manuscript
 fn starts_with(prefix: String) -> Bool
-```
-
-### String.substring
-
-Selects a scalar range after clamping each bound to 0..scalar_length() (negative becomes zero).
-Swaps inverted adjusted bounds; the receiver is unchanged.
-
-```manuscript
-fn substring(start: Int, end: Int) -> String
 ```
 
 ### String.to_bytes

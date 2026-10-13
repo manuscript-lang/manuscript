@@ -1,6 +1,6 @@
 import {from_scalars, StringError, StringBuilder} from "@std/string.ms"
 import {Bytes, BytesBuilder, values} from "@std/bytes.ms"
-import List from "@std/collections.ms"
+import {CollectionError, List} from "@std/collections.ms"
 import Optional from "@std/optional.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
@@ -82,8 +82,19 @@ test "bytes copy slice search and UTF8 validation":
     if data.last_index_of(Bytes([1])) != some(3): return panic(
         "last byte search"
     )
-    if data.slice(start: 1, end: 3) != Bytes([1, 255]): return panic(
+    if data.slice(start: 1, end: 3).unwrap() != Bytes([1, 255]): return panic(
         "byte slice"
+    )
+    if data.slice(start: -3, end: -1).unwrap() != Bytes([1, 255]): return panic(
+        "relative byte slice"
+    )
+
+    let byte_range: Result[Bytes, CollectionError] = error(CollectionError.OutOfRange)
+    if data.slice(start: 1, end: 10) != byte_range: return panic(
+        "byte slice past length"
+    )
+    if data.slice(start: -10, end: 2) != byte_range: return panic(
+        "byte slice before zero"
     )
     if data.reverse() != Bytes([1, 255, 1, 0]): return panic("byte reverse")
 
@@ -120,14 +131,19 @@ test "Bytes values direct bound and free calls return independent lists":
         "empty or positional byte constructor"
     )
 
-test "String slice clamp swap and strict bounds use Unicode scalars":
+test "String slice uses Unicode scalars with relative bounds and OutOfRange errors":
     let text = "aé🙂z"
-    if text.slice(start: -2, end: 10) != "🙂z": return panic("relative clamped slice")
-    if text.slice(start: -100, end: 100) != text: return panic("clamped extremes")
-    if text.slice(start: 3, end: 1) != "": return panic("inverted slice")
-    if text.substring(start: 3, end: 1) != "é🙂": return panic("swapped substring")
-    if text.substring(start: -2, end: 2) != "aé": return panic("negative substring")
-    if text.substring(start: 100, end: -100) != text: return panic("clamp then swap")
+    let out_of_range: Result[String, StringError] = error(StringError.OutOfRange)
+    if value(text.slice(start: -2, end: 4)) != "🙂z": return panic("relative slice")
+    if value(text.slice(start: 0, end: -1)) != "aé🙂": return panic("relative end")
+    if value(text.slice(start: 4, end: 4)) != "": return panic("empty end slice")
+    if text.slice(start: -2, end: 10) != out_of_range: return panic(
+        "slice end past length"
+    )
+    if text.slice(start: -100, end: 4) != out_of_range: return panic(
+        "slice start before zero"
+    )
+    if text.slice(start: 3, end: 1) != out_of_range: return panic("inverted slice")
     if text.index_of("🙂") != some(2) or text.last_index_of("") != some(4): return panic(
         "scalar search offsets"
     )

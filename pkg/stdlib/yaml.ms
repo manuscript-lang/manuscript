@@ -270,9 +270,13 @@ fn digit_text(text: String) -> Bool:
 fn numeric(text: String) -> Bool:
     var clean = text
 
-    if clean.starts_with("+") or clean.starts_with("-"): clean = clean.slice(
-        start: 1,
-        end: clean.scalar_length()
+    if clean.starts_with("+") or clean.starts_with("-"): clean = (
+        clean
+        .slice(
+            start: 1,
+            end: clean.scalar_length()
+        )
+        .unwrap_or("")
     )
 
     if (
@@ -296,7 +300,7 @@ fn numeric(text: String) -> Bool:
         let digits = clean.slice(
             start: 2,
             end: clean.scalar_length()
-        )
+        ).unwrap_or("")
         if digits == "": return false
 
         for c in digits.split(separator: ""):
@@ -310,9 +314,13 @@ fn numeric(text: String) -> Bool:
     if exponent.length() == 2:
         var power = exponent.last().unwrap()
 
-        if power.starts_with("+") or power.starts_with("-"): power = power.slice(
-            start: 1,
-            end: power.scalar_length()
+        if power.starts_with("+") or power.starts_with("-"): power = (
+            power
+            .slice(
+                start: 1,
+                end: power.scalar_length()
+            )
+            .unwrap_or("")
         )
 
         if not digit_text(power): return false
@@ -642,7 +650,7 @@ fn uncomment(text: String) -> String:
 
         return text.trim_end()
 
-    return text.slice(start: 0, end: index).trim_end()
+    return text.slice(start: 0, end: index).unwrap_or("").trim_end()
 
 fn indent(text: String) -> Int:
     var result = 0
@@ -735,7 +743,7 @@ fn inline_value(
         let comment = boundary(text: combined, colon: false)
 
         if comment < 0: joined = combined
-        else: joined = combined.slice(start: 0, end: comment)
+        else: joined = combined.slice(start: 0, end: comment).unwrap_or("")
 
         context.index = context.index + 1
 
@@ -771,10 +779,15 @@ fn block_string(
         + 1
     )
 
-    for c in header.slice(
-        start: 1,
-        end: header.scalar_length()
-    ).split(separator: ""):
+    for c in (
+        header
+        .slice(
+            start: 1,
+            end: header.scalar_length()
+        )
+        .unwrap_or("")
+        .split(separator: "")
+    ):
         offset = offset + 1
 
         if (c == "+" or c == "-") and mode == "": mode = c
@@ -802,7 +815,7 @@ fn block_string(
             and context.lines.at(probe).unwrap().slice(
                 start: indent(context.lines.at(probe).unwrap()),
                 end: context.lines.at(probe).unwrap().scalar_length()
-            ) == ""
+            ).unwrap_or("") == ""
         ):
             let spaces = indent(context.lines.at(probe).unwrap())
 
@@ -825,7 +838,7 @@ fn block_string(
             line.slice(
                 start: spaces,
                 end: line.scalar_length()
-            ) != ""
+            ).unwrap_or("") != ""
             and spaces < content_indent
         ):
             break
@@ -834,7 +847,7 @@ fn block_string(
             line.slice(
                 start: content_indent,
                 end: line.scalar_length()
-            )
+            ).unwrap_or("")
         )
         context.index = context.index + 1
 
@@ -881,9 +894,13 @@ fn block_string(
     if mode != "+":
         let final_break = result.ends_with("\n")
 
-        while result.ends_with("\n"): result = result.slice(
-            start: 0,
-            end: (result.scalar_length() - 1)
+        while result.ends_with("\n"): result = (
+            result
+            .slice(
+                start: 0,
+                end: (result.scalar_length() - 1)
+            )
+            .unwrap_or("")
         )
 
         if (
@@ -919,6 +936,7 @@ fn block_value(
                 start: flow.pos,
                 end: remainder.scalar_length()
             )
+            .unwrap_or("")
             .trim_start()
         )
 
@@ -1029,6 +1047,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                     start: 1,
                     end: (line.trim_start().scalar_length())
                 )
+                .unwrap_or("")
                 .trim_start()
             )
 
@@ -1087,7 +1106,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
             let colon = boundary(text: content, colon: true)
             if colon < 0: break
 
-            var name = content.slice(start: 0, end: colon).trim()
+            var name = content.slice(start: 0, end: colon).unwrap_or("").trim()
 
             if name.starts_with("\"") or name.starts_with("'"):
                 let flow = Flow(
@@ -1133,6 +1152,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                     start: colon + 1,
                     end: content.scalar_length()
                 )
+                .unwrap_or("")
                 .trim_start()
             )
             let key_line = context.index + 1
@@ -1225,9 +1245,13 @@ export fn parse(
         )
     )
 
-    if normalized.starts_with("\u{feff}"): normalized = normalized.slice(
-        start: 1,
-        end: normalized.scalar_length()
+    if normalized.starts_with("\u{feff}"): normalized = (
+        normalized
+        .slice(
+            start: 1,
+            end: normalized.scalar_length()
+        )
+        .unwrap_or("")
     )
 
     for code in normalized.scalar_values():
