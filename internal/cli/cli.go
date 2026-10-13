@@ -357,7 +357,7 @@ func Run(args []string) int {
 		return 0
 	case "lock":
 		if result.ProjectRoot == "" {
-			fmt.Fprintln(os.Stderr, "lock requires a project ms.toml, not a single .ms file; run ms lock path/to/ms.toml (a manifest declares [project] name, source, and entry)")
+			fmt.Fprintln(os.Stderr, "lock requires a project ms.toml, not a single .ms file; run ms lock path/to/ms.toml (a manifest declares [project] name and source, plus entry for an executable)")
 			return 2
 		}
 		if err := compiler.WritePin(result.ProjectRoot); err != nil {

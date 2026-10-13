@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -17,6 +18,8 @@ type Project struct {
 	Root, Name, Source, Entry string
 	Configuration             string
 	Aliases                   map[string]string
+	Location                  Location
+	Assignments               map[string]Assignment
 }
 
 // FindManifest returns the nearest containing manifest, even if it is invalid.
@@ -43,7 +46,7 @@ func ReadProject(filename string) (Project, error) {
 	if err != nil {
 		return Project{}, err
 	}
-	p := Project{Root: root, Aliases: map[string]string{}}
+	p := Project{Root: root, Aliases: map[string]string{}, Location: Location{File: filepath.Base(absolute), Line: 1, Column: 1}, Assignments: map[string]Assignment{}}
 	file, err := os.Open(absolute)
 	if err != nil {
 		return p, err
@@ -54,17 +57,34 @@ func ReadProject(filename string) (Project, error) {
 		return p, err
 	}
 	p.Configuration = string(data)
-	scan := bufio.NewScanner(strings.NewReader(strings.TrimPrefix(p.Configuration, "\ufeff")))
-	lineNumber := 0
+	scan := bufio.NewScanner(strings.NewReader(p.Configuration))
+	lineNumber, offset := 0, 0
+	location := p.Location
 	fail := func(format string, args ...any) error {
-		return fmt.Errorf("%s:%d: %s", filepath.Base(absolute), lineNumber, fmt.Sprintf(format, args...))
+		return &ManifestError{Location: location, Cause: fmt.Errorf(format, args...)}
 	}
 	section := ""
 	tables := map[string]bool{}
 	seen := map[string]bool{}
 	for scan.Scan() {
 		lineNumber++
-		line := strings.TrimSpace(manifestLine(scan.Text()))
+		raw := scan.Text()
+		lineStart := offset
+		if end := strings.IndexByte(p.Configuration[offset:], '\n'); end >= 0 {
+			offset += end + 1
+		} else {
+			offset = len(p.Configuration)
+		}
+		if lineNumber == 1 {
+			if strings.HasPrefix(raw, "\ufeff") {
+				lineStart += len("\ufeff")
+				raw = strings.TrimPrefix(raw, "\ufeff")
+			}
+		}
+		content := manifestLine(raw)
+		line := strings.TrimSpace(content)
+		leading := len(content) - len(strings.TrimLeft(content, " \t\r"))
+		location = Location{File: filepath.Base(absolute), Line: lineNumber, Column: leading + 1, Offset: lineStart + leading}
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
@@ -80,6 +100,9 @@ func ReadProject(filename string) (Project, error) {
 			}
 			tables[line] = true
 			section = strings.Trim(line, "[]")
+			if section == "project" {
+				p.Location = location
+			}
 			continue
 		}
 		var key, value string
@@ -101,7 +124,11 @@ func ReadProject(filename string) (Project, error) {
 		if !ok || section == "" {
 			return p, fail("invalid manifest assignment; write key = \"value\" inside [project] or [aliases], after the table header")
 		}
+		keyLocation := location
 		value = strings.TrimSpace(value)
+		valueStart := len(line) - len(value)
+		location.Column += valueStart
+		location.Offset += valueStart
 		if len(value) < 2 || value[0] != '"' || value[len(value)-1] != '"' {
 			return p, fail("manifest values must be double-quoted strings; write %s = \"%s\"", strings.TrimSpace(key), strings.Trim(value, "\"' "))
 		}
@@ -114,9 +141,11 @@ func ReadProject(filename string) (Project, error) {
 		}
 		id := section + "." + key
 		if seen[id] {
+			location = keyLocation
 			return p, fail("duplicate manifest key %s; each key may be set once", id)
 		}
 		seen[id] = true
+		p.Assignments[id] = Assignment{Key: keyLocation, Value: location}
 		if section == "project" {
 			switch key {
 			case "name":
@@ -126,11 +155,16 @@ func ReadProject(filename string) (Project, error) {
 			case "entry":
 				p.Entry = value
 			default:
+				location = keyLocation
 				return p, fail("unknown project key %s; [project] accepts name, source, and entry", key)
 			}
 		} else {
-			if !validAlias(key) || key == "@std" || strings.HasPrefix(value, "@") {
+			if !validAlias(key) || key == "@std" {
+				location = keyLocation
 				return p, fail("invalid or reserved alias %s; aliases look like @lib (start with @, letters/digits/underscore), cannot be @std, and must map to a path, not another alias", key)
+			}
+			if strings.HasPrefix(value, "@") {
+				return p, fail("invalid alias target %s; map it to a project-local path, not another alias", value)
 			}
 			p.Aliases[key] = value
 		}
@@ -138,36 +172,51 @@ func ReadProject(filename string) (Project, error) {
 	if err := scan.Err(); err != nil {
 		if errors.Is(err, bufio.ErrTooLong) {
 			lineNumber++
+			location = Location{File: filepath.Base(absolute), Line: lineNumber, Column: 1, Offset: offset}
 			return p, fail("line too long; keep each ms.toml line under 64 KiB")
 		}
 		return p, err
 	}
-	if p.Name == "" || p.Source == "" || p.Entry == "" {
-		return p, fmt.Errorf("%s: [project] requires name, source, and entry; missing: %s, e.g. name = \"app\", source = \"src\", entry = \"src/main.ms\"", filepath.Base(absolute), missingKeys(p))
+	location = p.Location
+	if p.Name == "" || p.Source == "" {
+		return p, fail("[project] requires name and source; missing: %s, e.g. name = \"app\", source = \"src\" (add entry = \"src/main.ms\" for an executable)", missingKeys(p))
 	}
+	location = p.Assignments["project.source"].Value
 	p.Source, err = SourcePath(root, p.Source, nil)
 	if err != nil {
-		return p, err
+		return p, &ManifestError{Location: location, Cause: err}
 	}
 	info, err := os.Stat(p.Source)
 	if err != nil || !info.IsDir() {
-		return p, fmt.Errorf("%s: project source must be an existing directory; %q does not exist or is not a directory, so create it or fix source in [project]", filepath.Base(absolute), p.Source)
+		return p, fail("project source must be an existing directory; %q does not exist or is not a directory, so create it or fix source in [project]", p.Source)
 	}
-	p.Entry, err = SourcePath(root, p.Entry, nil)
-	if err != nil {
-		return p, err
-	}
-	if filepath.Ext(p.Entry) != ".ms" {
-		return p, fmt.Errorf("%s: entry requires .ms extension; set entry to a .ms file such as \"src/main.ms\"", filepath.Base(absolute))
-	}
-	info, err = os.Stat(p.Entry)
-	if err != nil || !info.Mode().IsRegular() {
-		return p, fmt.Errorf("%s: project entry must be an existing regular file; create %s or fix entry in [project]", filepath.Base(absolute), p.Entry)
-	}
-	for key, value := range p.Aliases {
-		target, err := SourcePath(root, value, nil)
+	if entry, explicit := p.Assignments["project.entry"]; explicit {
+		location = entry.Value
+		if p.Entry == "" {
+			return p, fail("project entry cannot be empty; omit entry for a library or set it to a .ms file such as \"src/main.ms\"")
+		}
+		p.Entry, err = SourcePath(root, p.Entry, nil)
 		if err != nil {
-			return p, err
+			return p, &ManifestError{Location: location, Cause: err}
+		}
+		if filepath.Ext(p.Entry) != ".ms" {
+			return p, fail("entry requires .ms extension; set entry to a .ms file such as \"src/main.ms\"")
+		}
+		info, err = os.Stat(p.Entry)
+		if err != nil || !info.Mode().IsRegular() {
+			return p, fail("project entry must be an existing regular file; create %s or fix entry in [project]", p.Entry)
+		}
+	}
+	keys := make([]string, 0, len(p.Aliases))
+	for key := range p.Aliases {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		location = p.Assignments["aliases."+key].Value
+		target, err := SourcePath(root, p.Aliases[key], nil)
+		if err != nil {
+			return p, fail("alias %s target cannot be resolved: %v; external Manuscript dependency projects are unsupported, so copy the sources inside this project root and point the alias at that copy", key, err)
 		}
 		p.Aliases[key] = target
 	}
@@ -212,9 +261,6 @@ func missingKeys(p Project) string {
 	}
 	if p.Source == "" {
 		keys = append(keys, "source")
-	}
-	if p.Entry == "" {
-		keys = append(keys, "entry")
 	}
 	return strings.Join(keys, ", ")
 }

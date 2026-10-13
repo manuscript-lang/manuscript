@@ -1,0 +1,98 @@
+package e2e_test
+
+import (
+	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/manuscript-lang/manuscript/pkg/compiler"
+)
+
+func TestLibraryProjectCommandsAndCache(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("MANUSCRIPT_CACHE_DIR", filepath.Join(t.TempDir(), "user-cache"))
+	write := func(name, text string) {
+		t.Helper()
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := filepath.Join(root, "ms.toml")
+	configuration := "# library\n[project]\nname = \"library\"\nsource = \"src\"\n[aliases]\n\"@lib\" = \"src\"\n"
+	write("ms.toml", configuration)
+	write("src/value.ms", "export fn value() -> Int: return 3\n")
+	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    if other() != 4: return panic(\"bad other\")\n")
+	write("test.ms", "import value from \"@lib/value.ms\"\nimport panic from \"@std/faults.ms\"\ntest \"root\":\n    if value() != 3: return panic(\"bad value\")\n")
+	write("tests/value_test.ms", "test \"nested\":\n    return unit\n")
+	// Invoke from an unrelated directory: module and lock paths remain manifest-relative.
+	run := func(args ...string) (string, error) {
+		t.Helper()
+		c := exec.Command(cliBinary, args...)
+		c.Dir = t.TempDir()
+		data, err := c.CombinedOutput()
+		return string(data), err
+	}
+	for _, command := range []string{"check", "lint", "doc", "lock"} {
+		data, err := run(command, manifest)
+		if err != nil {
+			t.Fatalf("%s: %v %s", command, err, data)
+		}
+	}
+	pinData, err := os.ReadFile(filepath.Join(root, "ms.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pin compiler.BuildPin
+	if err := json.Unmarshal(pinData, &pin); err != nil || pin.Format != 1 || pin.Compiler == "" || pin.ImplementationSHA256 == "" || pin.Toolchain["CGO_ENABLED"] != "0" {
+		t.Fatalf("invalid library lock: %+v %v", pin, err)
+	}
+	if err := compiler.CheckPin(root); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		data, err := run("test", manifest)
+		if err != nil || !strings.Contains(data, "3 tests, 0 failed") || !strings.Contains(data, "src/other.ms::unimported") {
+			t.Fatalf("library tests: %v %s", err, data)
+		}
+	}
+	files, err := filepath.Glob(filepath.Join(root, ".ms-cache", "*.bin"))
+	if err != nil || len(files) != 1 {
+		t.Fatalf("library test cache: %v %v", files, err)
+	}
+	// Editing an unimported source module must invalidate native test artifacts.
+	write("src/other.ms", "import panic from \"@std/faults.ms\"\nexport fn other() -> Int: return 4\ntest \"unimported\":\n    return panic(\"changed unimported test\")\n")
+	data, err := run("test", manifest)
+	if err == nil || !strings.Contains(data, "changed unimported test") || !strings.Contains(data, "1 failed") {
+		t.Fatalf("stale library test executable: %v %s", err, data)
+	}
+	for _, command := range []string{"run", "build", "emit", "debug", "profile"} {
+		data, err := run(command, manifest)
+		if err == nil || !strings.Contains(data, "ms.toml:2:1: resolution: library project has no executable entry") || !strings.Contains(data, "add entry =") {
+			t.Fatalf("%s accepted a library: %v %s", command, err, data)
+		}
+	}
+	write("src/other.ms", "export fn other() -> Int: return 4\n")
+	write("ms.toml", strings.Replace(configuration, "[aliases]", "entry = \"src/missing.ms\"\n[aliases]", 1))
+	data, err = run("check", manifest)
+	if err == nil || !strings.Contains(data, "ms.toml:5:9:") {
+		t.Fatalf("explicit entry treated as library: %v %s", err, data)
+	}
+	write("src/main.ms", "import value from \"@lib/value.ms\"\nexport fn main() -> Int: return value() - 3\n")
+	write("src/other.ms", "export fn other() -> Int: return \"bad\"\n")
+	write("ms.toml", strings.Replace(configuration, "[aliases]", "entry = \"src/main.ms\"\n[aliases]", 1))
+	data, err = run("run", manifest)
+	if err != nil {
+		t.Fatalf("explicit executable discovery changed: %v %s", err, data)
+	}
+	data, err = run("check", manifest)
+	if err == nil || !strings.Contains(data, "other.ms") {
+		t.Fatalf("project check stopped discovering: %v %s", err, data)
+	}
+}

@@ -47,3 +47,41 @@ func DiscoverModules(p Project, includeSource bool) ([]string, error) {
 	sort.Strings(result)
 	return result, nil
 }
+
+// DiscoverModulesWithOverlay also includes new editor files that meet the same
+// discovery rules. Overlay keys have already been confined and canonicalized.
+func DiscoverModulesWithOverlay(p Project, includeSource bool, overlay map[string]string) ([]string, error) {
+	files, err := DiscoverModules(p, includeSource)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool, len(files))
+	for _, file := range files {
+		seen[file] = true
+	}
+	for file := range overlay {
+		name := filepath.Base(file)
+		if includeSource && filepath.Ext(name) == ".ms" && discoveredBelow(p.Source, file) || (name == "test.ms" || strings.HasSuffix(name, "_test.ms")) && discoveredBelow(p.Root, file) {
+			seen[file] = true
+		}
+	}
+	files = files[:0]
+	for file := range seen {
+		files = append(files, file)
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+func discoveredBelow(root, file string) bool {
+	rel, err := filepath.Rel(root, file)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return false
+	}
+	for _, dir := range strings.Split(filepath.Dir(rel), string(filepath.Separator)) {
+		if dir != "." && (strings.HasPrefix(dir, ".") || dir == "vendor" || dir == "node_modules") {
+			return false
+		}
+	}
+	return true
+}
