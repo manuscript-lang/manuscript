@@ -244,3 +244,11 @@ short-circuit, match and loop regions; hoisting them changes source behavior.
 Evidence: [primitive lowering](../pkg/compiler/lower_equality.go),
 [mutation/order conformance](../tests/e2e/testdata/accept/scalar-lowering.ms), and
 [native IEEE/fault checks](../pkg/compiler/lower_scalar_native_test.go).
+
+### Omitted library entries must stay empty through graph loading
+
+Verified: executable manifests previously required an explicit entry and had no default. Libraries now omit that key; an explicitly empty or invalid entry remains an error. Resolving an empty entry with `SourcePath` would turn it into the project directory, so graph loading skips that resolution and discovers source/test roots instead. Native application commands report the missing entry at the manifest's project table; source analysis and test lowering use the same graph without requiring `main`.
+
+Apply when: changing manifest modes, project discovery, editor overlays, or entry validation.
+Evidence: [manifest validation](../pkg/project/manifest.go), [graph loading](../pkg/frontend/modules.go), [library contracts](../documentation/developer-tooling/builds/project-configuration.md#library-projects-and-copied-dependencies), and [native regressions](../tests/e2e/library_project_test.go).
+Verify: an omitted entry checks unimported modules and executes their tests; an explicit bad entry still fails. Check unsaved unimported library files, canonical symlink entry identities, confined alias targets, and test cache invalidation after an unimported source edit. `ms.lock` pins build inputs and never claims to pin copied package content.
