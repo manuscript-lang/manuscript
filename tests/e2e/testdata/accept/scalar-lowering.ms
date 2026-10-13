@@ -95,6 +95,63 @@ fn equality_propagate() -> Result[Bool, String]:
     let matches = (try failed()) == 0
     return ok(matches)
 
+fn bool_failed() -> Result[Bool, String]: error("expected")
+
+fn nested_results(counter: Counter) -> Result[Int, String]:
+    let child = fn() -> Result[Bool, String]:
+        with resource = Resource(counter):
+            let value = try bool_failed()
+            return ok(value)
+
+        return ok(false)
+    let ignored = child()
+    let value = try failed()
+    return ok(value)
+
+fn statement_match_try(counter: Counter) -> Result[Int, String]:
+    match some(1):
+        some(number):
+            with resource = Resource(counter):
+                let value = try failed()
+                return ok(value)
+        none: return ok(0)
+
+    return ok(-1)
+
+fn value_match_loop_try(counter: Counter) -> Result[Int, String]:
+    var index = 0
+
+    while index < 2:
+        let selected = match some(index):
+            some(number):
+                with resource = Resource(counter):
+                    let value = try failed()
+                    let used = value
+                number
+            none: 0
+
+        index = index + 1
+
+    return ok(index)
+
+test "combined lowering retains callable state and try boundaries":
+    let counter = Counter()
+    if (
+        nested_results(counter) != Result[Int, String].error("expected")
+        or counter.value != 1
+    ):
+        return panic("nested callable result or cleanup state leaked")
+    if (
+        statement_match_try(counter) != Result[Int, String].error("expected")
+        or counter.value != 2
+    ):
+        return panic("statement match try lost cleanup")
+    if (
+        value_match_loop_try(counter) != Result[Int, String].error("expected")
+        or counter.value != 3
+    ):
+        return panic("value match loop swallowed propagation")
+
 test "cleanup remains owned by its source callable":
     let counter = Counter()
     if conditional(counter, take: false) != 8 or counter.value != 0:
