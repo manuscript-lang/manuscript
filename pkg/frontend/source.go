@@ -16,8 +16,10 @@ import (
 // Options selects editor recovery and source snapshots for graph loading.
 type Options struct {
 	// Tests adds the project's test.ms and *_test.ms files to the module graph.
-	Tests   bool
-	Recover bool
+	Tests bool
+	// ProjectSources adds all source modules and project tests, including unimported files.
+	ProjectSources bool
+	Recover        bool
 	// Module selects an editor module within a project's root.
 	Module string
 	// Overlay maps absolute filenames to unsaved source.

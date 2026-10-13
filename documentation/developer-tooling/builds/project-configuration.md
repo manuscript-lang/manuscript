@@ -26,12 +26,26 @@ entry = "./src/main.ms"
 
 | Command | Behavior |
 | --- | --- |
-| `ms check <ms.toml>` | Check the program and its entry signature |
+| `ms check <ms.toml>` | Check all source modules, discovered tests, and the entry signature |
 | `ms build <ms.toml>` | Check, generate Go, and build the executable |
 
 A relative manifest argument resolves from the invocation directory. Its containing directory then becomes the project root for configuration paths. The entry follows the [CLI main contract](../../standard-library/cli.md).
 
-The compiler discovers application modules by following imports from entry. The manifest does not enumerate them. Only `[project]` and `[aliases]` are implemented; unknown tables, unknown project keys, duplicate tables, and duplicate keys are rejected. Values must be double-quoted strings. Comments begin with `#` outside a quoted string.
+`ms check ms.toml` checks every `.ms` file recursively below `project.source`,
+including modules the entry does not import. It also checks `test.ms` and
+`*_test.ms` files anywhere below the project root, matching `ms test ms.toml`
+discovery. Discovery skips hidden directories (such as `.ms-cache`), `vendor`,
+and `node_modules`, and does not follow directory symlinks. An explicitly selected
+source directory is scanned even if its own name is hidden. Entries and imports
+are always followed, including paths otherwise excluded from discovery. Files
+outside the source directory are checked only if imported, selected as entry, or
+named as tests. Discovered files use the manifest aliases and the same confined,
+canonical module identities as imports. A traversal or source error fails the
+check; successful text output reports the number of local modules checked.
+Checking never executes main functions or test blocks and needs no native toolchain.
+
+`ms check file.ms` checks that file and its imports without project-wide discovery.
+The build and other source commands discover application modules by following imports from entry. The manifest does not enumerate them. Only `[project]` and `[aliases]` are implemented; unknown tables, unknown project keys, duplicate tables, and duplicate keys are rejected. Values must be double-quoted strings. Comments begin with `#` outside a quoted string.
 
 External `[adapters]` entries and [adapter bindings](../../contributing/compiler/adapters/manifests.md) remain design work. The current compiler rejects those tables.
 
