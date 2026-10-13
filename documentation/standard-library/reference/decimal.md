@@ -20,6 +20,8 @@ type Decimal:
 
 ## RoundingMode {data-api-kind="Alternative"}
 
+How a Decimal rounds to a multiple of the requested power of ten.
+
 ```manuscript
 type RoundingMode:
     case HalfEven
