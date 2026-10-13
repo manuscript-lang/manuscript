@@ -22,8 +22,8 @@ func TestInferredCallbackParameterNavigation(t *testing.T) {
 		if navigation(result, d, declaration, "textDocument/hover") == nil || len(references(result, d, use, true)) != 2 {
 			t.Fatal("lost inferred parameter information")
 		}
-		if _, err := rename(result, d, declaration, "input"); err == nil {
-			t.Fatal("rename must preserve contextual function parameter labels")
+		if _, err := rename(result, d, declaration, "input"); err != nil {
+			t.Fatal("local callback names may be renamed independently of call labels", err)
 		}
 	}
 }
