@@ -49,8 +49,15 @@ interface StringOperations:
         count: Int,
         max_bytes: Optional[Int] = none
     ) -> Result[String, StringError]
-    # Replaces the first occurrence when the cap is omitted or none; zero changes nothing, negatives fault.
+    # Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.
     # An empty old matches at scalar boundaries, and inserted text is not searched again.
+    # Zero changes nothing; negative caps retain replace's programming fault.
+    fn replace_first(
+        old: String,
+        new: String,
+        max_replacements: Optional[Int] = none
+    ) -> String
+    # Compatibility spelling for replace_first, including its explicit replacement cap.
     fn replace(
         old: String,
         new: String,

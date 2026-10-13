@@ -2,11 +2,12 @@
 
 ## Unreleased
 
-- Accept independent input collections and standalone directories in check, lint, and doc; aggregate deterministic reports without combining applications or changing fmt discovery.
+- Add preferred `List.set`/`remove`/`reverse_in_place`, copying `List.reversed`/`Bytes.reversed`, `Set.add`/`remove`, `String.replace_first`, and `Regex.replace_all` spellings. Existing names remain compatible, including receiver returns, replacement caps, limits, and errors.
 - Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.
 
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
 - Add versioned `fmt --check --json` and `test --json` results, preserving test streams and partial outcomes; display explicit and discovered fmt paths consistently.
+- Accept independent input collections and standalone directories in check, lint, and doc; aggregate deterministic reports without combining applications or changing fmt discovery.
 
 - Fix standard-library data bugs: `String.upper()`/`lower()` use full Unicode case mapping (`ß` to `SS`, final sigma, `İ`); negative `split`/`replace` limits fault with the operation and parameter; `bigint.parse(max_digits: 0)` is a real zero budget; TOML and YAML parse errors report the offending line and column.
 - Update the VS Code language client and packaging dependencies; the extension now requires VS Code 1.91 or newer.

@@ -59,3 +59,17 @@ export fn verify(key: Bytes, data: Bytes, signature: Bytes) -> Bool:
 
 impl Error for CryptoError:
     fn message() -> String:
+
+# Selects a supported SHA-2 algorithm without a runtime string spelling check.
+# Existing hash functions and hmac(algorithm: String) remain available.
+export type HashAlgorithm:
+    # SHA-256.
+    case Sha256
+    # SHA-384.
+    case Sha384
+    # SHA-512.
+    case Sha512
+    # Computes this algorithm's digest, checking cancellation between chunks.
+    fn digest(data: Bytes) -> Bytes:
+    # Computes HMAC with this algorithm and retains CryptoError results.
+    fn hmac(key: Bytes, data: Bytes) -> Result[Bytes, CryptoError]:

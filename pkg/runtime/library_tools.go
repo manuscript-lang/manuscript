@@ -134,6 +134,7 @@ func init() {
 		out.WriteString(text[at:])
 		return libraryOK(r, out.String())
 	})
+	libraryAlias("regex", "replace_all", "replace")
 }
 
 func libraryValidText(b []byte) bool { return utf8.Valid(b) }
