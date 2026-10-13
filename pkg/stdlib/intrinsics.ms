@@ -17,6 +17,19 @@ interface CloneOperations[T]:
 # scalar values; ordinary indices and lengths count Unicode scalar positions unless
 # the method explicitly refers to bytes.
 interface StringOperations:
+    # Counts Unicode scalars, with the same unit as scalar_length.
+    fn length() -> Int
+    # Reports whether the text contains no scalars.
+    fn is_empty() -> Bool
+    # Returns a fresh list with one String for each Unicode scalar, in order.
+    fn chars() -> List[String]
+    # Reverses Unicode scalar order; combining sequences/graphemes may change.
+    fn reverse() -> String
+    # Returns -1, 0 or 1 in lexical scalar order, without locale or normalization.
+    fn compare(other: String) -> Int
+    # Splits LF and CRLF lines, preserving interior empty lines and standalone CR.
+    # Omits a final extra empty item; empty text returns a fresh empty list.
+    fn lines() -> List[String]
     # Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.
     # Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
     fn normalize(

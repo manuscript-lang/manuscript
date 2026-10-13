@@ -738,6 +738,12 @@ fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 
 ```manuscript
 type String:
+    fn length() -> Int:
+    fn is_empty() -> Bool:
+    fn chars() -> List[String]:
+    fn reverse() -> String:
+    fn compare(other: String) -> Int:
+    fn lines() -> List[String]:
     fn normalize(form: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
     fn concat(values: String) -> String:
     fn contains(text: String) -> Bool:
@@ -785,6 +791,22 @@ Returns the UTF-8 encoded byte length.
 fn byte_length() -> Int
 ```
 
+### String.chars
+
+Returns a fresh list with one String for each Unicode scalar, in order.
+
+```manuscript
+fn chars() -> List[String]
+```
+
+### String.compare
+
+Returns -1, 0 or 1 in lexical scalar order, without locale or normalization.
+
+```manuscript
+fn compare(other: String) -> Int
+```
+
 ### String.concat
 
 Concatenates text without changing either operand.
@@ -817,12 +839,37 @@ Returns the first matching Unicode scalar index or none; empty value matches at 
 fn index_of(value: String) -> Optional[Int]
 ```
 
+### String.is_empty
+
+Reports whether the text contains no scalars.
+
+```manuscript
+fn is_empty() -> Bool
+```
+
 ### String.last_index_of
 
 Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().
 
 ```manuscript
 fn last_index_of(value: String) -> Optional[Int]
+```
+
+### String.length
+
+Counts Unicode scalars, with the same unit as scalar_length.
+
+```manuscript
+fn length() -> Int
+```
+
+### String.lines
+
+Splits LF and CRLF lines, preserving interior empty lines and standalone CR.
+Omits a final extra empty item; empty text returns a fresh empty list.
+
+```manuscript
+fn lines() -> List[String]
 ```
 
 ### String.lower
@@ -901,6 +948,14 @@ Zero changes nothing; negative caps retain replace's programming fault.
 
 ```manuscript
 fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String
+```
+
+### String.reverse
+
+Reverses Unicode scalar order; combining sequences/graphemes may change.
+
+```manuscript
+fn reverse() -> String
 ```
 
 ### String.scalar_at

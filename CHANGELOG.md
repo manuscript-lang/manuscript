@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Add preferred `List.set`/`remove`/`reverse_in_place`, copying `List.reversed`/`Bytes.reversed`, `Set.add`/`remove`, `String.replace_first`, and `Regex.replace_all` spellings. Existing names remain compatible, including receiver returns, replacement caps, limits, and errors.
+- Report duration-unit property faults at the member token after evaluating the receiver, preserving source order and numeric widths.
+
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
 - Add versioned `fmt --check --json` and `test --json` results, preserving test streams and partial outcomes; display explicit and discovered fmt paths consistently.
 
