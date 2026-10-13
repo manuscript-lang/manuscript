@@ -1,0 +1,63 @@
+import { readFileSync } from "node:fs";
+
+const HEADER = "order,country,weight_g,service,declared_cents";
+const Z3 = ["AT", "BE", "DE", "ES", "FR", "IE", "IT", "NL", "PT", "SE"];
+const RATES: Record<number, [number, number]> = { 1: [499, 120], 2: [899, 180], 3: [1499, 250], 4: [2199, 400] };
+const SERVICES = ["standard", "express", "overnight"];
+
+const money = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
+const zoneOf = (c: string) => (c === "US" ? 1 : c === "CA" || c === "MX" ? 2 : Z3.includes(c) ? 3 : 4);
+
+const lines = readFileSync(0, "utf8").split("\n");
+if (lines[lines.length - 1] === "") lines.pop();
+if (lines.length === 0 || lines[0] !== HEADER) {
+  process.stdout.write("error: bad header\n");
+  process.exit(0);
+}
+const out: string[] = [];
+const seen = new Set<string>();
+const stats: Record<string, [number, number]> = { standard: [0, 0], express: [0, 0], overnight: [0, 0] };
+let rejected = 0;
+for (let i = 1; i < lines.length; i++) {
+  const l = lines[i];
+  if (l.replace(/ /g, "") === "") continue;
+  const f = l.split(",");
+  let why: string | null = null;
+  let w = 0, dec = 0;
+  if (f.length !== 5) why = "malformed row";
+  else {
+    const [oid, cc, ws, svc, ds] = f;
+    if (!/^[A-Za-z0-9-]+$/.test(oid)) why = "bad order";
+    else if (!/^[A-Z]{2}$/.test(cc)) why = "bad country";
+    else if (!/^[0-9]{1,5}$/.test(ws) || Number(ws) < 1 || Number(ws) > 30000) why = "bad weight";
+    else if (!SERVICES.includes(svc)) why = "bad service";
+    else if (!/^[0-9]{1,8}$/.test(ds) || Number(ds) > 10000000) why = "bad declared";
+    else if (seen.has(oid)) why = "duplicate order";
+    else if (svc === "overnight" && zoneOf(cc) !== 1) why = "overnight unavailable";
+    w = Number(ws);
+    dec = Number(ds);
+  }
+  if (why) { out.push(`line ${i + 1}: rejected: ${why}`); rejected++; continue; }
+  const [oid, cc, , svc] = f;
+  seen.add(oid);
+  const z = zoneOf(cc);
+  const band = Math.floor((w + 499) / 500);
+  const [start, step] = RATES[z];
+  const rate = start + step * (band - 1);
+  let base = svc === "standard" ? rate : svc === "express" ? Math.floor((rate * 3 + 1) / 2) : rate * 3;
+  if (svc === "standard" && z === 1 && w <= 2000 && dec >= 5000) base = 0;
+  const fuel = Math.floor((base * 8 + 50) / 100);
+  const ins = dec <= 10000 ? 0 : Math.floor((dec + 50) / 100);
+  const total = base + fuel + ins;
+  stats[svc][0]++;
+  stats[svc][1] += total;
+  out.push(`${oid} | zone=${z} | band=${band} | base=${money(base)} | fuel=${money(fuel)} | insurance=${money(ins)} | total=${money(total)}`);
+}
+let orders = 0, sum = 0;
+for (const k of SERVICES) {
+  out.push(`service ${k}: orders=${stats[k][0]} total=${money(stats[k][1])}`);
+  orders += stats[k][0];
+  sum += stats[k][1];
+}
+out.push(`summary: orders=${orders} rejected=${rejected} total=${money(sum)}`);
+process.stdout.write(out.map((x) => x + "\n").join(""));

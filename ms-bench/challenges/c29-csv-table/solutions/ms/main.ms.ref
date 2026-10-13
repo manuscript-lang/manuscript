@@ -25,7 +25,7 @@ fn parse_row(line: String) -> List[String]:
             var j = i
             while j < n and chars.at(j).unwrap() != ",":
                 j = j + 1
-            fields.append(chars.slice(i, j).join(""))
+            fields.append(chars.slice(i, j).unwrap().join(""))
             i = j
         if i < n and chars.at(i).unwrap() == ",":
             i = i + 1

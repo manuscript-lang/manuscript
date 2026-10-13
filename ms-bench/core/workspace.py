@@ -50,7 +50,7 @@ exit $fail
 def make_workspace(ch: Challenge, lang_id: str, lang: dict, dest: Path) -> str:
     """Create dest with template, spec, examples and check.sh. Returns the agent prompt."""
     dest.mkdir(parents=True)
-    shutil.copytree(ROOT / "templates" / lang_id, dest, dirs_exist_ok=True)
+    shutil.copytree(ROOT / "templates" / lang.get("template", lang_id), dest, dirs_exist_ok=True)
     for i, c in enumerate(ch.cases("examples"), 1):
         (dest / "examples").mkdir(exist_ok=True)
         (dest / "examples" / f"{i:02d}.in").write_text(c["stdin"])
@@ -62,6 +62,9 @@ def make_workspace(ch: Challenge, lang_id: str, lang: dict, dest: Path) -> str:
     for ctx in lang.get("context", []):
         if ctx == "@stdlib":
             subprocess.run(["ms", "stdlib", str(dest / "docs" / "stdlib")], check=True, capture_output=True)
+        elif ctx.startswith("@file/"):
+            src, _, name = ctx[6:].partition(">")
+            shutil.copy(ROOT / src, dest / name)
         elif ctx.startswith("@repo/"):
             shutil.copytree(REPO / ctx[6:], dest / "docs", dirs_exist_ok=True)
     return (

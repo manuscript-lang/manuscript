@@ -34,7 +34,7 @@ fn render(line: String, vars: Map[String, String]) -> String:
                 j = j + 1
             var done = false
             if j < n:
-                let name = chars.slice(i + 1, j).join("")
+                let name = chars.slice(i + 1, j).unwrap().join("")
                 if is_ident(name):
                     out.append(vars.get_or(key: name, fallback: "<undefined:{name}>"))
                     i = j + 1
@@ -67,9 +67,9 @@ fn run() -> Result[Unit, Error]:
         d = d + 1
         let eq = l.index_of("=")
         if eq.is_some():
-            let name = l.slice(0, eq.unwrap())
+            let name = l.slice(0, eq.unwrap()).unwrap()
             if is_ident(name):
-                vars.add(key: name, value: l.slice(eq.unwrap() + 1, l.length()))
+                vars.add(key: name, value: l.slice(eq.unwrap() + 1, l.length()).unwrap())
     var end = lines.length()
     if lines.at(end - 1).unwrap().is_empty():
         end = end - 1

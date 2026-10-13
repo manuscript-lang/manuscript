@@ -1,0 +1,209 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type booking struct {
+	room, date, st, en string
+	a, b, n            int
+	act                bool
+}
+
+var reDate = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`)
+var reTime = regexp.MustCompile(`^[0-9]{2}:[0-9]{2}$`)
+var reRoom = regexp.MustCompile(`^[a-z][a-z0-9]{0,9}$`)
+var reNum = regexp.MustCompile(`^[0-9]{1,6}$`)
+var reID = regexp.MustCompile(`^[a-z0-9-]+$`)
+
+func leap(y int) bool { return (y%4 == 0 && y%100 != 0) || y%400 == 0 }
+
+func validDate(s string) bool {
+	if !reDate.MatchString(s) {
+		return false
+	}
+	y, _ := strconv.Atoi(s[0:4])
+	m, _ := strconv.Atoi(s[5:7])
+	d, _ := strconv.Atoi(s[8:10])
+	if y < 2000 || y > 2099 || m < 1 || m > 12 || d < 1 {
+		return false
+	}
+	f := 28
+	if leap(y) {
+		f = 29
+	}
+	return d <= []int{31, f, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}[m-1]
+}
+
+func hm(s string) (int, bool) {
+	if !reTime.MatchString(s) {
+		return 0, false
+	}
+	h, _ := strconv.Atoi(s[0:2])
+	m, _ := strconv.Atoi(s[3:5])
+	if h > 23 || m > 59 {
+		return 0, false
+	}
+	return h*60 + m, true
+}
+
+func main() {
+	rooms := map[string]int{}
+	used := map[string]bool{}
+	book := map[string]*booking{}
+	var order, out []string
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	for sc.Scan() {
+		l := sc.Text()
+		if strings.ReplaceAll(l, " ", "") == "" {
+			continue
+		}
+		t := strings.Split(l, " ")
+		switch t[0] {
+		case "room":
+			if len(t) != 3 {
+				out = append(out, "error: usage")
+			} else if !reRoom.MatchString(t[1]) {
+				out = append(out, "error: bad room name")
+			} else if v, _ := strconv.Atoi(t[2]); !reNum.MatchString(t[2]) || v < 1 || v > 500 {
+				out = append(out, "error: bad capacity")
+			} else if _, ok := rooms[t[1]]; ok {
+				out = append(out, "error: room exists")
+			} else {
+				rooms[t[1]] = v
+				out = append(out, "ok")
+			}
+		case "book":
+			if len(t) != 7 {
+				out = append(out, "error: usage")
+				continue
+			}
+			id, r, d, st, en, at := t[1], t[2], t[3], t[4], t[5], t[6]
+			if !reID.MatchString(id) {
+				out = append(out, "error: bad id")
+				continue
+			}
+			if used[id] {
+				out = append(out, "error: duplicate id")
+				continue
+			}
+			used[id] = true
+			a, aok := hm(st)
+			b, bok := hm(en)
+			n, _ := strconv.Atoi(at)
+			capacity, rok := rooms[r]
+			switch {
+			case !rok:
+				out = append(out, "error: unknown room")
+			case !validDate(d):
+				out = append(out, "error: bad date")
+			case !aok || !bok:
+				out = append(out, "error: bad time")
+			case b <= a:
+				out = append(out, "error: bad range")
+			case a%15 != 0 || b%15 != 0:
+				out = append(out, "error: not aligned")
+			case a < 480 || b > 1200:
+				out = append(out, "error: outside hours")
+			case b-a > 240:
+				out = append(out, "error: too long")
+			case !reNum.MatchString(at) || n < 1:
+				out = append(out, "error: bad attendees")
+			case n > capacity:
+				out = append(out, "error: over capacity")
+			default:
+				hit := ""
+				for _, x := range order {
+					k := book[x]
+					if k.act && k.room == r && k.date == d && a < k.b && k.a < b {
+						hit = x
+						break
+					}
+				}
+				if hit != "" {
+					out = append(out, "error: conflict with "+hit)
+				} else {
+					book[id] = &booking{r, d, st, en, a, b, n, true}
+					order = append(order, id)
+					out = append(out, "ok "+id)
+				}
+			}
+		case "cancel":
+			if len(t) != 2 {
+				out = append(out, "error: usage")
+			} else if k, ok := book[t[1]]; !ok {
+				out = append(out, "error: unknown booking")
+			} else if !k.act {
+				out = append(out, "error: already cancelled")
+			} else {
+				k.act = false
+				out = append(out, "ok")
+			}
+		case "report":
+			if len(t) != 1 {
+				out = append(out, "error: usage")
+				continue
+			}
+			names := make([]string, 0, len(rooms))
+			for k := range rooms {
+				names = append(names, k)
+			}
+			sort.Strings(names)
+			for _, name := range names {
+				var bs []string
+				for _, x := range order {
+					if book[x].room == name && book[x].act {
+						bs = append(bs, x)
+					}
+				}
+				sort.Slice(bs, func(i, j int) bool {
+					p, q := book[bs[i]], book[bs[j]]
+					if p.date != q.date {
+						return p.date < q.date
+					}
+					if p.a != q.a {
+						return p.a < q.a
+					}
+					return bs[i] < bs[j]
+				})
+				mins := 0
+				dates := map[string]bool{}
+				for _, x := range bs {
+					mins += book[x].b - book[x].a
+					dates[book[x].date] = true
+				}
+				days := len(dates)
+				util := 0
+				if days > 0 {
+					util = (mins*200 + 720*days) / (1440 * days)
+				}
+				out = append(out, fmt.Sprintf("%s cap=%d active=%d minutes=%d util=%d%%", name, rooms[name], len(bs), mins, util))
+				for _, x := range bs {
+					k := book[x]
+					out = append(out, fmt.Sprintf("  %s %s-%s %s attendees=%d", k.date, k.st, k.en, x, k.n))
+				}
+			}
+			act := 0
+			for _, x := range order {
+				if book[x].act {
+					act++
+				}
+			}
+			out = append(out, fmt.Sprintf("bookings active=%d cancelled=%d", act, len(order)-act))
+		default:
+			out = append(out, "error: unknown command")
+		}
+	}
+	w := bufio.NewWriter(os.Stdout)
+	for _, s := range out {
+		w.WriteString(s + "\n")
+	}
+	w.Flush()
+}

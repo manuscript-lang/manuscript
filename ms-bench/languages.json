@@ -30,6 +30,21 @@
     "run": "./prog",
     "version": "ms --version",
     "notes": "Docs for the language are in docs/ (tutorials) and docs/stdlib/ (standard declarations). `ms help` lists commands.",
-    "context": ["@repo/documentation/learn", "@stdlib"]
+    "context": [
+      "@repo/documentation/learn",
+      "@stdlib"
+    ]
+  },
+  "ms_cheat": {
+    "name": "Manuscript",
+    "solution": "src/main.ms",
+    "build": "ms lock ms.toml && ms build ms.toml -o prog",
+    "run": "./prog",
+    "version": "ms --version",
+    "notes": "A short Manuscript cheat sheet is in CHEATSHEET.md; the full docs are not provided. `ms help` lists commands.",
+    "context": [
+      "@file/context/manuscript-cheatsheet.md>CHEATSHEET.md"
+    ],
+    "template": "ms"
   }
 }

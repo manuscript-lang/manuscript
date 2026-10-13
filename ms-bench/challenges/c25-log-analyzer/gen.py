@@ -13,10 +13,12 @@ def parse(line):
     if not ts or lv not in LEVELS or m not in METHODS: return None
     if not path.startswith("/") or not (len(st) == 3 and digits(st)): return None
     if not digits(lat) or len(lat) > 9: return None
-    return lv, path, int(st), int(lat)
+    return lv, path, int(st), int(lat), m, ts
 
 def solve(s):
-    valid = bad = e5 = 0
+    valid = bad = 0
+    sc = {k: 0 for k in '2345o'}
+    lats, slow = [], None
     lv = {l: 0 for l in LEVELS}
     cnt, tot = defaultdict(int), defaultdict(int)
     for line in s.split("\n"):
@@ -24,9 +26,11 @@ def solve(s):
         r = parse(line)
         if r is None: bad += 1; continue
         valid += 1; lv[r[0]] += 1
-        if r[2] >= 500: e5 += 1
+        sc[str(r[2])[0] if str(r[2])[0] in '2345' else 'o'] += 1
+        lats.append(r[3])
+        if slow is None or r[3] > slow[0]: slow = (r[3], r[4], r[1], r[5])
         cnt[r[1]] += 1; tot[r[1]] += r[3]
-    out = [f"valid: {valid}", f"malformed: {bad}"] + [f"{l}: {lv[l]}" for l in LEVELS] + [f"5xx: {e5}", "top:"]
+    out = [f"valid: {valid}", f"malformed: {bad}"] + [f"{l}: {lv[l]}" for l in LEVELS] + [f"status: 2xx={sc['2']} 3xx={sc['3']} 4xx={sc['4']} 5xx={sc['5']} other={sc['o']}", f"p95: {sorted(lats)[(95 * len(lats) + 99) // 100 - 1] if lats else 0}"] + ([f"slowest: {slow[0]} {slow[1]} {slow[2]} {slow[3]}"] if slow else []) + ["top:"]
     for p in sorted(cnt, key=lambda p: (-cnt[p], p))[:3]:
         out.append(f"{p} {cnt[p]} avg={tot[p] // cnt[p]}")
     return "".join(o + "\n" for o in out)
@@ -66,7 +70,8 @@ hidden = examples + [
     case("one-valid", "t DEBUG PUT /x 099 0\n"),
     case("tie-break-path", "t INFO GET /b 200 1\nt INFO GET /a 200 1\nt INFO GET /c 200 1\nt INFO GET /d 200 1\nt INFO GET /d 200 3\n"),
     case("floor-avg", "t INFO GET /p 200 1\nt INFO GET /p 200 2\nt INFO GET /p 200 2\n"),
-    case("status-5xx", "t INFO GET /p 499 1\nt INFO GET /p 500 1\nt INFO GET /p 999 1\nt INFO GET /p 099 1\n"),
+    case("status-classes", "t INFO GET /p 499 1\nt INFO GET /p 500 1\nt INFO GET /p 999 1\nt INFO GET /p 099 1\nt INFO GET /p 100 1\nt INFO GET /p 302 1\nt INFO GET /p 204 1\n"),
+    case("p95-and-slowest", "".join(f"t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n" for i in range(40)) + "t99 INFO GET /z 200 100\n"),
     case("spacing-and-case", "t INFO  GET /p 200 1\nt  INFO GET /p 200 1\n t INFO GET /p 200 1\nt info GET /p 200 1\nt INFO get /p 200 1\nt INFO GET p 200 1\nt INFO GET /p 2000 1\nt INFO GET /p 20a 1\nt INFO GET /p 200 -1\nt INFO GET /p 200 1234567890\nt INFO GET /p 200 123456789\n"),
     case("no-trailing-newline", "t ERROR POST /z 500 7"),
     case("random-small", rand_log(40)),

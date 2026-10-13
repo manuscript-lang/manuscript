@@ -8,7 +8,7 @@ fn trim_spaces(s: String) -> String:
         start = start + 1
     while end > start and codes.at(end - 1).unwrap() == 32:
         end = end - 1
-    return s.slice(start, end)
+    return s.slice(start, end).unwrap()
 
 fn run() -> Result[Unit, Error]:
     let data = try read_all(input: stdin())
@@ -31,7 +31,7 @@ fn run() -> Result[Unit, Error]:
         # At least one space must follow the hashes, then a non-space character.
         if level >= codes.length() or codes.at(level).unwrap() != 32:
             continue
-        let title = trim_spaces(line.slice(level, codes.length()))
+        let title = trim_spaces(line.slice(level, codes.length()).unwrap())
         if title.is_empty():
             continue
         counters.set(level, counters.at(level).unwrap() + 1)

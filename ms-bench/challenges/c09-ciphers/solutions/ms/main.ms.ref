@@ -53,8 +53,8 @@ fn solve_line(line: String) -> String:
         let at = rest.index_of(" ")
         if at.is_none():
             return "error: bad command"
-        parts.append(rest.slice(0, at.unwrap()))
-        rest = rest.slice(at.unwrap() + 1, rest.length())
+        parts.append(rest.slice(0, at.unwrap()).unwrap())
+        rest = rest.slice(at.unwrap() + 1, rest.length()).unwrap()
     if rest.is_empty():
         return "error: bad command"
     let cipher = parts.at(0).unwrap()

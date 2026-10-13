@@ -18,7 +18,7 @@ fn trim_blanks(s: String) -> String:
         start = start + 1
     while end > start and (codes.at(end - 1).unwrap() == 32 or codes.at(end - 1).unwrap() == 9):
         end = end - 1
-    return s.slice(start, end)
+    return s.slice(start, end).unwrap()
 
 fn is_ident_start(c: Int) -> Bool:
     return (c >= 97 and c <= 122) or c == 95
@@ -57,7 +57,7 @@ fn scalar(p: String) -> Val:
     if is_int(p):
         return scalar_val("i", "{p.parse_int().unwrap()}")
     if p.length() >= 2 and p.starts_with("\"") and p.ends_with("\""):
-        return scalar_val("s", p.slice(1, p.length() - 1))
+        return scalar_val("s", p.slice(1, p.length() - 1).unwrap())
     return scalar_val("s", p)
 
 fn parse_value(v: String) -> Optional[Val]:
@@ -84,7 +84,7 @@ fn parse_value(v: String) -> Optional[Val]:
     if v.starts_with("["):
         if not v.ends_with("]") or v.length() < 2:
             return none
-        let inner = v.slice(1, v.length() - 1)
+        let inner = v.slice(1, v.length() - 1).unwrap()
         let list = Val(kind: "l", text: "", items: List[Val]())
         if trim_blanks(inner).is_empty():
             return some(list)
@@ -141,12 +141,12 @@ fn resolve(ctx: Context, key: String) -> Val:
             while j < n and chars.at(j).unwrap() != "\}":
                 j = j + 1
             if j < n:
-                let name = chars.slice(i + 2, j).join("")
+                let name = chars.slice(i + 2, j).unwrap().join("")
                 if valid_key(name):
                     if ctx.vals.contains(name):
                         out.append(plain(resolve(ctx, name)))
                     else:
-                        out.append(chars.slice(i, j + 1).join(""))
+                        out.append(chars.slice(i, j + 1).unwrap().join(""))
                         if not ctx.key_errs.contains(key):
                             ctx.key_errs.add(key: key, value: List[String]())
                         ctx.key_errs.get(key).unwrap().append("key {key}: unresolved $\{{name}\}")
@@ -178,12 +178,12 @@ fn run() -> Result[Unit, Error]:
         if l.is_empty() or l.starts_with("#"):
             continue
         if l.starts_with("@@"):
-            layer = trim_blanks(l.slice(2, l.length()))
+            layer = trim_blanks(l.slice(2, l.length()).unwrap())
             if layer.is_empty():
                 layer = "unnamed"
             continue
         if l.starts_with("!"):
-            let k = trim_blanks(l.slice(1, l.length()))
+            let k = trim_blanks(l.slice(1, l.length()).unwrap())
             if not valid_key(k):
                 errs.append("line {n}: syntax error")
                 continue
@@ -197,15 +197,15 @@ fn run() -> Result[Unit, Error]:
             errs.append("line {n}: syntax error")
             continue
         let eq = eq_at.unwrap()
-        let append = eq > 0 and l.slice(eq - 1, eq) == "+"
+        let append = eq > 0 and l.slice(eq - 1, eq).unwrap() == "+"
         var key_end = eq
         if append:
             key_end = eq - 1
-        let key = trim_blanks(l.slice(0, key_end))
+        let key = trim_blanks(l.slice(0, key_end).unwrap())
         if not valid_key(key):
             errs.append("line {n}: syntax error")
             continue
-        let parsed = parse_value(trim_blanks(l.slice(eq + 1, l.length())))
+        let parsed = parse_value(trim_blanks(l.slice(eq + 1, l.length()).unwrap()))
         if parsed.is_none():
             errs.append("line {n}: syntax error")
             continue
