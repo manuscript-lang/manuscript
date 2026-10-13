@@ -31,28 +31,28 @@ func installRandomParity() {
 	})
 	libraryGeneric("random", "secure_choice", libraryResult("Optional[T]", "RandomError"), variables, []LibraryParam{p("entropy", "Entropy"), p("values", "List[T]")}, func(ctx *Execution, result string, args []Value) Value {
 		CheckCancelled(ctx)
-		items := args[1].(*List).Items
+		items := CaptureList(args[1])
 		optionalType := typeArguments(result)[0]
-		if len(items) == 0 {
+		if items.Len() == 0 {
 			return libraryOK(result, Alternative{Type: optionalType, Tag: "none"})
 		}
-		index := librarySecureIndex(ctx, args[0], len(items))
+		index := librarySecureIndex(ctx, args[0], items.Len())
 		if index.Tag == "error" {
 			return Alternative{result, "error", index.Fields}
 		}
-		return libraryOK(result, Alternative{optionalType, "some", []Value{items[index.Fields[0].(int64)]}})
+		return libraryOK(result, Alternative{optionalType, "some", []Value{items.Get(int(index.Fields[0].(int64)))}})
 	})
 	libraryGeneric("random", "secure_shuffle", libraryResult("List[T]", "RandomError"), variables, []LibraryParam{p("entropy", "Entropy"), p("values", "List[T]")}, func(ctx *Execution, result string, args []Value) Value {
 		CheckCancelled(ctx)
 		out := randomListCopy(ctx, args[1].(*List), typeArguments(result)[0])
-		for i := len(out.Items) - 1; i > 0; i-- {
+		for i := out.Len() - 1; i > 0; i-- {
 			CheckCancelled(ctx)
 			index := librarySecureIndex(ctx, args[0], i+1)
 			if index.Tag == "error" {
 				return Alternative{result, "error", index.Fields}
 			}
 			j := int(index.Fields[0].(int64))
-			out.Items[i], out.Items[j] = out.Items[j], out.Items[i]
+			out.swap(i, j)
 		}
 		return libraryOK(result, out)
 	})
@@ -76,20 +76,20 @@ func installRandomParity() {
 	})
 	libraryGeneric("random", "choice", "Optional[T]", variables, []LibraryParam{p("random", "Random"), p("values", "List[T]")}, func(ctx *Execution, result string, args []Value) Value {
 		CheckCancelled(ctx)
-		items := args[1].(*List).Items
-		if len(items) == 0 {
+		items := CaptureList(args[1])
+		if items.Len() == 0 {
 			return Alternative{Type: result, Tag: "none"}
 		}
-		index := args[0].(*libraryRandom).bounded(ctx, uint64(len(items)))
-		return Alternative{result, "some", []Value{items[index]}}
+		index := args[0].(*libraryRandom).bounded(ctx, uint64(items.Len()))
+		return Alternative{result, "some", []Value{items.Get(int(index))}}
 	})
 	libraryGeneric("random", "shuffle", "List[T]", variables, []LibraryParam{p("random", "Random"), p("values", "List[T]")}, func(ctx *Execution, result string, args []Value) Value {
 		CheckCancelled(ctx)
 		out := randomListCopy(ctx, args[1].(*List), result)
 		random := args[0].(*libraryRandom)
-		for i := len(out.Items) - 1; i > 0; i-- {
+		for i := out.Len() - 1; i > 0; i-- {
 			j := int(random.bounded(ctx, uint64(i+1)))
-			out.Items[i], out.Items[j] = out.Items[j], out.Items[i]
+			out.swap(i, j)
 		}
 		return out
 	})
@@ -100,12 +100,9 @@ func librarySecureIndex(ctx *Execution, entropy Value, length int) Alternative {
 }
 
 func randomListCopy(ctx *Execution, values *List, typ string) *List {
-	items := values.Items
-	out := &List{Type: typ, Items: make([]Value, len(items))}
-	for i, value := range items {
-		CheckCancelled(ctx)
-		out.Items[i] = value
-	}
+	captured := values.Capture()
+	out := captured.list.copySliceChecked(ctx, 0, captured.Len())
+	out.Type = typ
 	return out
 }
 

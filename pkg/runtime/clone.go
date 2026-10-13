@@ -15,7 +15,7 @@ func Clone(value Value) Value {
 	case Alternative:
 		return Alternative{v.Type, v.Tag, append([]Value{}, v.Fields...)}
 	case *List:
-		return &List{Type: v.Type, Items: append([]Value{}, v.Items...)}
+		return v.CopySlice(0, v.Len())
 	case *Map:
 		return &Map{Type: v.Type, Entries: append([]Entry{}, v.Entries...)}
 	case *Set:

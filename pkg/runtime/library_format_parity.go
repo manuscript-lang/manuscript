@@ -110,7 +110,7 @@ func libraryHTMLStringify(ctx *Execution, result string, args []Value) Value {
 			if !valid {
 				return invalid()
 			}
-			for _, item := range attributes.Items {
+			for _, item := range Iterate(attributes) {
 				CheckCancelled(ctx)
 				attribute, valid := item.(Record)
 				if !valid || attribute.Type != "@std/HtmlAttribute" {
@@ -167,8 +167,9 @@ func libraryHTMLStringify(ctx *Execution, result string, args []Value) Value {
 			}
 			active[identity] = true
 			stack = append(stack, frame{identity: identity, leave: true})
-			for index := len(children.Items) - 1; index >= 0; index-- {
-				stack = append(stack, frame{value: children.Items[index], parent: node, depth: current.depth + 1})
+			captured := children.Capture()
+			for index := captured.Len() - 1; index >= 0; index-- {
+				stack = append(stack, frame{value: captured.Get(index), parent: node, depth: current.depth + 1})
 			}
 		}
 	}
@@ -192,8 +193,9 @@ func libraryHTMLName(text string) bool {
 }
 
 func libraryHTMLIdentifier(text string) bool {
-	// Native rendering chooses one delimiter but cannot escape both kinds.
-	return libraryHTMLText(text) && !(strings.ContainsRune(text, '\'') && strings.ContainsRune(text, '"'))
+	// Quoted doctype identifiers still terminate at '>'; rendering leaves it
+	// literal. The native renderer also cannot escape both quote delimiters.
+	return libraryHTMLText(text) && !strings.ContainsRune(text, '>') && !(strings.ContainsRune(text, '\'') && strings.ContainsRune(text, '"'))
 }
 
 type libraryHTMLRenderWriter struct {

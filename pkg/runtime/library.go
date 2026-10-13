@@ -101,17 +101,12 @@ func libraryErrorFields(result, code string, fields []Value) Value {
 }
 func libraryResult(typ, errorType string) string { return "Result[" + typ + "][" + errorType + "]" }
 func libraryList(typ string, values []Value) *List {
-	return &List{Type: "@std/List[" + typ + "]", Items: values}
+	return NewList("@std/List["+typ+"]", values)
 }
-func libraryStrings(values []string) *List {
-	items := make([]Value, len(values))
-	for i, s := range values {
-		items[i] = s
-	}
-	return libraryList("String", items)
-}
+func libraryStrings(values []string) *List { return NewStringList("@std/List[String]", values) }
+
 func libraryStringValues(v Value) []string {
-	items := v.(*List).Items
+	items := v.(*List).Boxed()
 	out := make([]string, len(items))
 	for i, x := range items {
 		out[i] = x.(string)

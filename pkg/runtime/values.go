@@ -4,6 +4,7 @@ package msruntime
 import (
 	"context"
 	"fmt"
+	"iter"
 	"os"
 	"reflect"
 	goruntime "runtime"
@@ -20,9 +21,11 @@ import (
 type Value = any
 type Unit struct{}
 type Function struct {
-	Labels []string
-	Result string
-	Body   func(*Execution, []Value) Value
+	Labels       []string
+	Result       string
+	Body         func(*Execution, []Value) Value
+	IntCompare   func(*Execution, int64, int64) int64
+	FloatCompare func(*Execution, float64, float64) int64
 }
 type Generic struct {
 	Variables []string
@@ -48,9 +51,19 @@ type Alternative struct {
 	Type, Tag string
 	Fields    []Value
 }
+
+// List is the authoritative mutable identity. Items is the boxed fallback for
+// Go callers; typed Lists use exactly one private primitive backing slice.
+// Use constructors and accessors rather than inspecting Items.
 type List struct {
-	Type  string
-	Items []Value
+	Type         string
+	Items        []Value
+	kind         uint8
+	initializing bool
+	ints         []int64
+	floats       []float64
+	bools        []bool
+	strings      []string
 }
 
 type Map struct {
@@ -125,7 +138,7 @@ func NewAcquisition(labels []string, result string, body func(*Execution, []Valu
 	return newFunction(labels, result, body, dispose)
 }
 func newFunction(labels []string, result string, body func(*Execution, []Value) Value, dispose func(*Execution, Value)) Function {
-	return Function{labels, result, func(ctx *Execution, args []Value) (value Value) {
+	return Function{Labels: labels, Result: result, Body: func(ctx *Execution, args []Value) (value Value) {
 		defer func() {
 			if controlPanics.Load() == 0 {
 				return
@@ -182,7 +195,7 @@ type PreparedDefaults []Value
 // continue directly to the native adapter when these slots are supplied.
 func WithDefaults(callee Value, prepare Function, slots []int) Value {
 	f := callee.(Function)
-	return Function{f.Labels, f.Result, func(ctx *Execution, args []Value) Value {
+	return Function{Labels: f.Labels, Result: f.Result, Body: func(ctx *Execution, args []Value) Value {
 		CheckCancelled(ctx)
 		missing := false
 		for _, index := range slots {
@@ -322,7 +335,7 @@ func Positions(value Value, length int) []Value {
 	var values []Value
 	switch v := value.(type) {
 	case *List:
-		values = v.Items
+		values = v.Boxed()
 	default:
 		Panic("runtime invariant: positional binding")
 	}
@@ -331,27 +344,32 @@ func Positions(value Value, length int) []Value {
 	}
 	return values
 }
-func Iterate(value Value) []Value {
+
+// Iterate remains rangeable for previously emitted programs. New primitive
+// lowering can use CaptureList plus typed element access without boxing.
+func Iterate(value Value) iter.Seq2[int, Value] { return captureIterable(value).Values() }
+func CaptureList(value Value) ListRange         { return value.(*List).Capture() }
+
+func captureIterable(value Value) ListRange {
 	switch v := value.(type) {
 	case *List:
-		// Go range captures this header/length once. Writes to its backing
-		// array remain visible; append never extends the running traversal.
-		return v.Items
+		return v.Capture()
 	case *Set:
 		v.shared = true
-		return v.Items[:len(v.Items):len(v.Items)]
+		return ListRange{List{Items: v.Items[:len(v.Items):len(v.Items)]}}
 	case *Map:
 		values := make([]Value, len(v.Entries))
 		args := typeArguments(v.Type)
-		entryType := "@std/MapEntry[" + args[0] + "][" + args[1] + "]"
+		typ := "@std/MapEntry[" + args[0] + "][" + args[1] + "]"
 		for i, e := range v.Entries {
-			values[i] = Record{entryType, map[string]Value{"key": e.Key, "value": e.Value}}
+			values[i] = Record{typ, map[string]Value{"key": e.Key, "value": e.Value}}
 		}
-		return values
+		return ListRange{List{Items: values}}
 	}
 	Panic("runtime invariant: iterable")
-	return nil
+	return ListRange{}
 }
+
 func Text(values ...Value) Value {
 	var text strings.Builder
 	for _, v := range values {
@@ -408,7 +426,7 @@ func formatValue(value Value, depth int) string {
 		}
 		return text
 	case *List:
-		return "[" + items(v.Items) + "]"
+		return "[" + items(v.Boxed()) + "]"
 	case *Map:
 		parts := make([]string, len(v.Entries))
 		for i, entry := range v.Entries {
@@ -615,7 +633,16 @@ func equal(a, b Value, state *equalityState) bool {
 		return ok && x.Type == y.Type && x.Tag == y.Tag && equalItemsState(x.Fields, y.Fields, state)
 	case *List:
 		y, ok := b.(*List)
-		return ok && x.Type == y.Type && equalItemsState(x.Items, y.Items, equalityChild(state, 0))
+		if !ok || x.Type != y.Type || x.Len() != y.Len() {
+			return false
+		}
+		child := equalityChild(state, 0)
+		for i := 0; i < x.Len(); i++ {
+			if !equal(x.Get(i), y.Get(i), child) {
+				return false
+			}
+		}
+		return true
 	case *Set:
 		y, ok := b.(*Set)
 		if !ok || x.Type != y.Type || len(x.Items) != len(y.Items) {

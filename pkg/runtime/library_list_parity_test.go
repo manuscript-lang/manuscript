@@ -75,7 +75,7 @@ func TestListParityCapturedQueries(t *testing.T) {
 				if partition.Type != result || matching.Type != list.Type || nonmatching.Type != list.Type || matching == list || nonmatching == list || matching == nonmatching {
 					t.Fatal("partition lost record/list type or outer identity")
 				}
-				if !reflect.DeepEqual(matching.Items, []Value{int64(1), int64(3)}) || !reflect.DeepEqual(nonmatching.Items, []Value{remaining}) {
+				if !reflect.DeepEqual(matching.Boxed(), []Value{int64(1), int64(3)}) || !reflect.DeepEqual(nonmatching.Boxed(), []Value{remaining}) {
 					t.Fatalf("partition reread payload after callback: %#v", partition)
 				}
 			})
@@ -209,8 +209,8 @@ func TestListParityInsertPopAndStableSort(t *testing.T) {
 	if !reflect.DeepEqual(alias.Items, []Value{int64(4), int64(3), int64(1), int64(2), int64(5)}) {
 		t.Fatal("insert endpoint order")
 	}
-	captured, capacity := Iterate(list), cap(list.Items)
-	if got := listParityCall(RootExecution(), "pop", "@std/Optional[Int]", list).(Alternative); got.Tag != "some" || got.Fields[0] != int64(5) || captured[4] != int64(5) || cap(list.Items) != capacity {
+	captured, capacity := CaptureList(list), list.Cap()
+	if got := listParityCall(RootExecution(), "pop", "@std/Optional[Int]", list).(Alternative); got.Tag != "some" || got.Fields[0] != int64(5) || captured.Get(4) != int64(5) || list.Cap() != capacity {
 		t.Fatal("pop cleared captured tail, released capacity or lost payload")
 	}
 	if listParityCall(RootExecution(), "sort_in_place", list.Type, list, listParityCompare()) != list || !reflect.DeepEqual(alias.Items, []Value{int64(1), int64(2), int64(3), int64(4)}) {
@@ -335,7 +335,7 @@ func TestListParityBoundTypeAndWorkCancellation(t *testing.T) {
 		defer cancel()
 		ctx.Context = &stringWorkCancellation{Context: workContext, cancel: cancel}
 		values := &List{Type: list.Type, Items: []Value{int64(1)}}
-		captured := Iterate(values)
+		captured := CaptureList(values)
 		args := []Value{values}
 		wantLength := 0
 		if name == "insert" {
@@ -343,7 +343,7 @@ func TestListParityBoundTypeAndWorkCancellation(t *testing.T) {
 			wantLength = 2
 		}
 		failure := recovered(func() { listParityCall(ctx, name, list.Type, args...) })
-		if _, ok := failure.(cancelled); !ok || len(values.Items) != wantLength || captured[0] != int64(1) {
+		if _, ok := failure.(cancelled); !ok || len(values.Items) != wantLength || captured.Get(0) != int64(1) {
 			t.Fatalf("%s post-effect cancellation lost mutation or captured payload: %#v", name, failure)
 		}
 	}

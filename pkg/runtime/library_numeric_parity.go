@@ -93,13 +93,13 @@ func installNumericParity() {
 	}
 	libraryAdd("math", "sum_int", libraryResult("Int", "NumberError"), []LibraryParam{p("values", "List[Int]")}, func(ctx *Execution, result string, args []Value) Value {
 		CheckCancelled(ctx)
-		items := args[0].(*List).Items
+		items := CaptureList(args[0])
 		out := int64(0)
-		for i, value := range items {
+		for i := 0; i < items.Len(); i++ {
 			if i%256 == 0 {
 				CheckCancelled(ctx)
 			}
-			number := value.(int64)
+			number := items.Int(i)
 			if number > 0 && out > math.MaxInt64-number || number < 0 && out < math.MinInt64-number {
 				return libraryError(result, "OutOfRange", "")
 			}
@@ -110,13 +110,13 @@ func installNumericParity() {
 	})
 	libraryAdd("math", "sum_float", "Float", []LibraryParam{p("values", "List[Float]")}, func(ctx *Execution, _ string, args []Value) Value {
 		CheckCancelled(ctx)
-		items := args[0].(*List).Items
+		items := CaptureList(args[0])
 		out := float64(0)
-		for i, value := range items {
+		for i := 0; i < items.Len(); i++ {
 			if i%256 == 0 {
 				CheckCancelled(ctx)
 			}
-			out += value.(float64)
+			out += items.Float(i)
 		}
 		CheckCancelled(ctx)
 		return out

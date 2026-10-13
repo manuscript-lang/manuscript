@@ -780,7 +780,9 @@ case OutOfRange
 
 **Native type**
 
-An ordered collection of values with indexing, iteration, and transformation operations.
+An ordered mutable collection with indexing, iteration, and transformations.
+Primitive backing stores Int and Float values at 64 bits, Bool values as bytes, and String references without an element box.
+Generic forwarding retains the same List identity; clone and slice copy outer storage.
 
 ```manuscript
 type List[T]:
@@ -3539,6 +3541,7 @@ fn parse(text: String, limits: Optional[HtmlLimits] = none) -> Result[HtmlNode, 
 
 Renders an HTML node or document with HTML5 escaping and raw-text element rules.
 Cycles and malformed nodes return InvalidData; limits bound output bytes, root-zero depth and node count.
+Doctype identifiers containing > or both quote delimiters return InvalidData.
 Parsing the output normalizes the tree and can insert implied document elements.
 
 ```manuscript
@@ -8769,7 +8772,9 @@ type Int:
 
 **Native type**
 
-An ordered collection of values with indexing, iteration, and transformation operations.
+An ordered mutable collection with indexing, iteration, and transformations.
+Primitive backing stores Int and Float values at 64 bits, Bool values as bytes, and String references without an element box.
+Generic forwarding retains the same List identity; clone and slice copy outer storage.
 
 ```manuscript
 type List[T]:

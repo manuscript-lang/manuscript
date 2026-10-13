@@ -713,7 +713,7 @@
         },
         {
           "name": "List",
-          "doc": "An ordered collection of values with indexing, iteration, and transformation operations.",
+          "doc": "An ordered mutable collection with indexing, iteration, and transformations.\nPrimitive backing stores Int and Float values at 64 bits, Bool values as bytes, and String references without an element box.\nGeneric forwarding retains the same List identity; clone and slice copy outer storage.",
           "kind": "native",
           "type": "List[T]",
           "type_parameters": [
@@ -3735,7 +3735,7 @@
         },
         {
           "name": "stringify",
-          "doc": "Renders an HTML node or document with HTML5 escaping and raw-text element rules.\nCycles and malformed nodes return InvalidData; limits bound output bytes, root-zero depth and node count.\nParsing the output normalizes the tree and can insert implied document elements.",
+          "doc": "Renders an HTML node or document with HTML5 escaping and raw-text element rules.\nCycles and malformed nodes return InvalidData; limits bound output bytes, root-zero depth and node count.\nDoctype identifiers containing \u003e or both quote delimiters return InvalidData.\nParsing the output normalizes the tree and can insert implied document elements.",
           "kind": "fn",
           "type": "fn(value: HtmlNode, limits: Optional[HtmlLimits] = ...)-\u003eResult[String, HtmlError]"
         },
@@ -9847,7 +9847,7 @@
         },
         {
           "name": "List",
-          "doc": "An ordered collection of values with indexing, iteration, and transformation operations.",
+          "doc": "An ordered mutable collection with indexing, iteration, and transformations.\nPrimitive backing stores Int and Float values at 64 bits, Bool values as bytes, and String references without an element box.\nGeneric forwarding retains the same List identity; clone and slice copy outer storage.",
           "kind": "native",
           "type": "List[T]",
           "type_parameters": [

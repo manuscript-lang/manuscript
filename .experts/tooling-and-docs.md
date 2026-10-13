@@ -130,3 +130,14 @@ Verified: agents act on a diagnostic only when it names the cause, the location,
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../documentation/developer-tooling/source/diagnostics.md), [catalogue](../documentation/contributing/diagnostics-catalogue.md), [checker hints](../pkg/checker/hints.go), [hint tests](../pkg/checker/hints_test.go), and [recovery](../pkg/parser/partial.go).
 Verify: run `go test ./pkg/checker ./pkg/parser ./pkg/tooling/lsp ./internal/cli`; extend the hint tests with the new message.
+
+Verified: typed List storage adds inactive nil slice fields to the native header.
+Rendering `Items` alone exposed bookkeeping or an empty fallback instead of source
+elements. Read the kind tag for expansion and indexed watches; Delve displays a
+uint8 as `1 = 0x1`, so parse its decimal prefix. Do not infer backing from a source
+primitive type because legacy/large literals can still be boxed. Evidence:
+[primitive and native DAP regressions](../extensions/vscode/tests/debug-adapter.test.js)
+and [storage-aware renderer](../extensions/vscode/debug-adapter.js).
+Verify all four primitive backings, legacy/empty Lists, generic types and watch
+indexing; source values must not expose private header fields or inactive lengths.
+

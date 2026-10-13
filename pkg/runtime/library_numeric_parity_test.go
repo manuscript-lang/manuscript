@@ -251,11 +251,11 @@ func TestNumericParitySums(t *testing.T) {
 		if got := librarySuccess(t, numericParityCall(t, "math/sum_int", list)); got != test.want {
 			t.Fatalf("integer sum = %v, want %d", got, test.want)
 		}
-		if len(list.Items) != len(test.values) {
+		if list.Len() != len(test.values) {
 			t.Fatal("sum changed list storage")
 		}
 		for i, value := range test.values {
-			if list.Items[i] != value {
+			if list.Get(i) != value {
 				t.Fatal("sum changed an input value")
 			}
 		}
@@ -277,5 +277,98 @@ func TestNumericParitySums(t *testing.T) {
 	}
 	if !math.IsInf(numericParityCall(t, "math/sum_float", libraryList("Float", []Value{math.MaxFloat64, math.MaxFloat64})).(float64), 1) {
 		t.Fatal("floating sum overflow changed IEEE behavior")
+	}
+}
+
+type numericParityMutationContext struct {
+	context.Context
+	checks int
+	onErr  func(int)
+}
+
+func (ctx *numericParityMutationContext) Err() error {
+	ctx.checks++
+	ctx.onErr(ctx.checks)
+	return ctx.Context.Err()
+}
+
+func TestNumericParitySumCapturedTypedAndBoxedStorage(t *testing.T) {
+	for _, kind := range []string{"Int", "Float"} {
+		for _, boxed := range []bool{false, true} {
+			for _, spare := range []bool{false, true} {
+				t.Run(kind+"/boxed="+Format(boxed)+"/spare="+Format(spare), func(t *testing.T) {
+					typ, operation, want, replacement := "@std/List[Int]", "sum_int", Value(int64(6)), Value(int64(20))
+					values := []Value{int64(1), int64(2), int64(3)}
+					if kind == "Float" {
+						typ, operation, want, replacement = "@std/List[Float]", "sum_float", 7.5, 20.5
+						values = []Value{1.5, 2.5, 3.5}
+					}
+					list := NewList(typ, values)
+					if boxed {
+						list = &List{Type: typ, Items: append([]Value(nil), values...)}
+					}
+					if spare {
+						list.Append(values[0])
+						list.truncate(3)
+						if kind == "Float" {
+							want = 25.5
+						} else {
+							want = int64(24)
+						}
+					}
+					storageKind := list.kind
+					ctx := RootExecution()
+					ctx.Context = &numericParityMutationContext{Context: ctx.Context, onErr: func(check int) {
+						if check == 2 {
+							list.Append(values[0])
+							list.Set(1, replacement)
+						}
+					}}
+					spec := libraryFunctions["math/"+operation]
+					got := spec.Body(ctx, libraryRuntimeType(spec.Result), []Value{list})
+					if kind == "Int" {
+						got = librarySuccess(t, got)
+					}
+					if got != want || list.Len() != 4 || list.kind != storageKind {
+						t.Fatalf("captured %s sum = %v, want %v; list length/kind %d/%d", kind, got, want, list.Len(), list.kind)
+					}
+					if !boxed && list.Items != nil {
+						t.Fatal("sum created a boxed mirror of typed backing")
+					}
+				})
+			}
+		}
+	}
+	for _, kind := range []string{"Int", "Float"} {
+		for _, boxed := range []bool{false, true} {
+			values, typ, operation := make([]Value, 1024), "@std/List[Int]", "sum_int"
+			for i := range values {
+				values[i] = int64(1)
+			}
+			if kind == "Float" {
+				typ, operation = "@std/List[Float]", "sum_float"
+				for i := range values {
+					values[i] = 1.0
+				}
+			}
+			list := NewList(typ, values)
+			if boxed {
+				list = &List{Type: typ, Items: values}
+			}
+			ctx := RootExecution()
+			lifetime, cancel := context.WithCancel(ctx.Context)
+			defer cancel()
+			work := &numericParityMutationContext{Context: lifetime, onErr: func(check int) {
+				if check == 3 {
+					cancel()
+				}
+			}}
+			ctx.Context = work
+			spec := libraryFunctions["math/"+operation]
+			failure := recovered(func() { spec.Body(ctx, libraryRuntimeType(spec.Result), []Value{list}) })
+			if _, ok := failure.(cancelled); !ok || work.checks != 3 || list.Len() != 1024 || list.Get(0) != values[0] {
+				t.Fatalf("%s boxed=%t sum failed to cancel after a traversal chunk: %#v (%d checks)", kind, boxed, failure, work.checks)
+			}
+		}
 	}
 }
