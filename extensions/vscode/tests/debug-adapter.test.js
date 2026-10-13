@@ -143,3 +143,20 @@ test('typed task handles and groups expose work state without native bookkeeping
 });
 
 require('./native-scalar-debug.test.js');
+
+
+test('typed and legacy List debugger handles expose their active backing', async () => {
+  for (const [kind, field, nativeType] of [[0,'Items','interface {}(int64)'],[1,'ints','int64'],[2,'floats','float64'],[3,'bools','bool'],[4,'strings','string']]) {
+    const adapter = new ManuscriptAdapter(new PassThrough());
+    const values = new Map([[1,[{name:'kind',value:String(kind)},{name:field,variablesReference:2}]], [2,[{name:'[0]',type:nativeType,value:kind===3?'true':kind===4?'"value"':'1000',variablesReference:0}]]]);
+    adapter.native = async (command,args) => ({variables:values.get(args.variablesReference)||[]});
+    const children = await adapter.valueChildren({kind:'List',ref:1},{});
+    assert.equal(children.length,1); assert.equal(children[0].name,'[0]');
+    const variable={name:'local8_values',type:'interface {}(*runtime.List)'};
+    const metadata=new Map([['local8_values',{name:'values'}]]);
+    assert.equal(rewriteExpression('values[0]',[variable],metadata,new Map([['local8_values',field]])),`local8_values.(data).${field}[0]`);
+  }
+  const adapter = new ManuscriptAdapter(new PassThrough());
+  adapter.native = async () => ({variables:[{name:'kind',value:'1'},{name:'ints',variablesReference:0}]});
+  assert.deepEqual(await adapter.valueChildren({kind:'List',ref:1},{}),[]);
+});

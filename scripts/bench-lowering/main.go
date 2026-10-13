@@ -40,7 +40,7 @@ func run() error {
 	names := []string{"scalar", "calls", "items", "add"}
 	if *workloads {
 		program, harnessFile = "workloads.ms", "workloads.go.txt"
-		names = []string{"scalar", "calls", "items", "add", "identity", "forwarded", "copied", "capture", "stored", "life"}
+		names = []string{"scalar", "calls", "items", "add", "identity", "forwarded", "copied", "capture", "stored", "life", "matched", "ranged", "compare", "sort_values", "sort_captured"}
 	}
 	if *production {
 		program, harnessFile = "production.ms", "production.go.txt"
@@ -79,6 +79,11 @@ func run() error {
 			constructor = "rt.NewList(\"@std/List[Int]\", boxedValues)"
 		}
 		replacements = append(replacements, "@@listConstructor@@", constructor)
+		sortConstructor := "&rt.List{Type: \"@std/List[Int]\", Items: source}"
+		if strings.Contains(result.Source, "rt.NewList(") {
+			sortConstructor = "rt.NewList(\"@std/List[Int]\",source)"
+		}
+		replacements = append(replacements, "@@sortConstructor@@", sortConstructor)
 	}
 	if *nativeDefaults {
 		replacements = append(replacements, "@@baseline@@", strconv.FormatBool(*baseline))

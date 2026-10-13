@@ -53,10 +53,13 @@ func (g *generator) nativeCallAvailable(e *syntax.Expression) bool {
 // and its output is newly computed. Otherwise lower a boxed adapter from the
 // same checked body, preserving the original box for identity/capture/storage.
 func (g *generator) shareNativeBody(s *checker.Symbol) bool {
+	return g.nativeBodyCompatible(s.Decl.Params, s.Decl.Body, g.program.Parameters[s.Decl], s.Type)
+}
+func (g *generator) nativeBodyCompatible(params []syntax.Parameter, body []*syntax.Statement, bindings []*checker.Binding, t *checker.Type) bool {
 	parameters := map[*checker.Binding]bool{}
-	for i, b := range g.program.Parameters[s.Decl] {
+	for i, b := range bindings {
 		parameters[b] = true
-		if s.Decl.Params[i].Default != nil || s.Type.Defaults[s.Type.Params[i].Name] {
+		if params[i].Default != nil || t.Defaults[t.Params[i].Name] {
 			return false
 		}
 	}
@@ -64,7 +67,7 @@ func (g *generator) shareNativeBody(s *checker.Symbol) bool {
 	var uses []*syntax.Expression
 	valid := true
 	syntax.Visitor{Statement: func(stmt *syntax.Statement) {
-		if primitiveEqualityType(s.Type.Result) != "" && stmt.Kind == syntax.KindReturn && !g.freshScalar(stmt.Value) {
+		if primitiveEqualityType(t.Result) != "" && stmt.Kind == syntax.KindReturn && !g.freshScalar(stmt.Value) {
 			valid = false
 		}
 	}, Expression: func(e *syntax.Expression) {
@@ -88,7 +91,7 @@ func (g *generator) shareNativeBody(s *checker.Symbol) bool {
 		if e.Kind == syntax.KindUnary && (e.Text == "-" || e.Text == "not") {
 			allowed[e.Right] = true
 		}
-	}}.Callable(s.Decl.Params, s.Decl.Body)
+	}}.Callable(params, body)
 	for _, e := range uses {
 		if primitiveEqualityType(g.program.Expressions[e].Type) != "" && !allowed[e] {
 			valid = false
@@ -109,17 +112,26 @@ func (g *generator) freshScalar(e *syntax.Expression) bool {
 		return e.Text == "-" || e.Text == "not"
 	case syntax.KindName:
 		return g.scalarLocals[g.program.Expressions[e].Binding] != ""
+	case syntax.KindCall:
+		return g.numericCallName(e) != "" || g.typedCollectionScalar(e)
 	}
 	return false
 }
 
 func (g *generator) nativeFunction(s *checker.Symbol) ([]ast.Decl, ast.Expr) {
+	return g.nativeCallable(s, nil, s.Decl.Name)
+}
+func (g *generator) nativeCallable(s *checker.Symbol, self *checker.Binding, name string) ([]ast.Decl, ast.Expr) {
 	oldParameters, oldResult, oldWant := g.nativeParameters, g.nativeResult, g.wantScalar
 	g.nativeParameters = map[*checker.Binding]bool{}
 	g.nativeResult = s.Type.Result
 	g.wantScalar = 0
 	parameters := []*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")})}
 	values := []ast.Expr{ident("ctx")}
+	if self != nil {
+		parameters = append(parameters, field("receiver", runtimeName("Value")))
+		values = append(values, ident("receiver"))
+	}
 	bindings := g.program.Parameters[s.Decl]
 	for _, b := range bindings {
 		typ := runtimeName("Value")
@@ -136,7 +148,7 @@ func (g *generator) nativeFunction(s *checker.Symbol) ([]ast.Decl, ast.Expr) {
 			values = append(values, ident(nativePresence(i)))
 		}
 	}
-	labels, key, position, body := g.functionParts(s.Decl.Name, s.Decl.Params, s.Decl.Result, s.Decl.Body, bindings, nil, s.Type)
+	labels, key, position, body := g.functionParts(name, s.Decl.Params, s.Decl.Result, s.Decl.Body, bindings, self, s.Type)
 	result := nativeResultType(s.Type.Result)
 	raw, native := s.ID+"Body", s.ID+"Native"
 	run := func() ast.Expr {
@@ -151,12 +163,28 @@ func (g *generator) nativeFunction(s *checker.Symbol) ([]ast.Decl, ast.Expr) {
 	}
 	g.nativeParameters, g.nativeResult, g.wantScalar = oldParameters, oldResult, oldWant
 	var adapter ast.Expr
-	if g.shareNativeBody(s) {
+	if self != nil {
+		var out []ast.Stmt
+		if g.shareNativeBody(s) {
+			boxed := []ast.Expr{ident("ctx"), ident("receiver")}
+			for i, p := range s.Type.Params {
+				boxed = append(boxed, scalarExtract(p.Type, index(ident("args"), intLiteral(i))))
+			}
+			out = []ast.Stmt{returned(call(ident(raw), boxed...))}
+		} else {
+			_, _, _, out = g.functionParts(name, s.Decl.Params, s.Decl.Result, s.Decl.Body, bindings, self, s.Type)
+		}
+		adapter = runtimeCall("SourceDirect", textLiteral(position), key, closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("receiver", runtimeName("Value")), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
+	} else if g.shareNativeBody(s) {
 		boxed := []ast.Expr{ident("ctx")}
 		for i, p := range s.Type.Params {
 			boxed = append(boxed, scalarExtract(p.Type, index(ident("args"), intLiteral(i))))
 		}
-		adapter = runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), returned(call(ident(raw), boxed...))))
+		if kind := comparatorKind(s.Type, s.Decl.Params); kind != "" {
+			adapter = runtimeCall("New"+kind+"CompareFunction", stringSlice(labels), key, textLiteral(position), ident(raw))
+		} else {
+			adapter = runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), returned(call(ident(raw), boxed...))))
+		}
 	} else {
 		adapter = g.declaredFunction(s)
 	}
@@ -192,7 +220,7 @@ func (g *generator) nativeSourceCall(e *syntax.Expression, args []syntax.Argumen
 			value := nativeZero(p.Type)
 			if a, present := byName[p.Name]; present {
 				if primitiveEqualityType(p.Type) != "" {
-					value = g.scalarValue(a.Value)
+					value = g.scalarValueAs(a.Value, p.Type)
 				} else {
 					value = g.argumentValue(a)
 				}
@@ -220,7 +248,7 @@ func (g *generator) nativeSourceCall(e *syntax.Expression, args []syntax.Argumen
 		}
 		var value ast.Expr
 		if primitiveEqualityType(typ) != "" {
-			value = g.scalarValue(a.Value)
+			value = g.scalarValueAs(a.Value, typ)
 		} else {
 			value = g.argumentValue(a)
 		}
@@ -265,4 +293,26 @@ func nativeZero(t *checker.Type) ast.Expr {
 		return textLiteral("")
 	}
 	return ident("nil")
+}
+
+func comparatorKind(t *checker.Type, params []syntax.Parameter) string {
+	if t == nil || hasTypeVariable(t) || primitiveEqualityType(t.Result) != "int64" || len(t.Params) != 2 {
+		return ""
+	}
+	for i, p := range t.Params {
+		if params[i].Default != nil || t.Defaults[p.Name] {
+			return ""
+		}
+	}
+	a, b := primitiveEqualityType(t.Params[0].Type), primitiveEqualityType(t.Params[1].Type)
+	if a != b {
+		return ""
+	}
+	if a == "int64" {
+		return "Int"
+	}
+	if a == "float64" {
+		return "Float"
+	}
+	return ""
 }

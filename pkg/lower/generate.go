@@ -24,6 +24,7 @@ func Go(program *checker.Program, entry string, options Options) (string, error)
 	optimized := optimize(program)
 	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}, debugLiterals: options.DebugLiterals}
 	g.selectNativeCalls()
+	g.selectNativeMethods()
 	g.scalarLocals = g.selectScalarLocals()
 
 	file := g.file(entry, options)
@@ -100,6 +101,20 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			continue
 		}
 		flushNatives()
+		if g.nativeMethods[m.ID] != nil {
+			declarations, direct := g.nativeCallable(methodSymbol(m), g.program.Self[m.Decl], m.Receiver.Name+"."+m.Decl.Name)
+			file.Decls = append(file.Decls, declarations...)
+			name := m.ID + "Direct"
+			initialize = append(initialize, define(name, direct))
+			var labels []string
+			for _, p := range m.Type.Params {
+				labels = append(labels, p.Name)
+			}
+			key := g.key(m.Type.Result)
+			fields = append(fields, keyed("Direct", ident(name)), keyed("DirectGuarded", ident("true")), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), key, ident(name))))))
+			initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))
+			continue
+		}
 		labels, resultKey, position, body := g.functionParts(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type)
 		if len(m.Variables) == 0 && !mentionsTypeBindings(body) {
 			// A nongeneric method body needs only its receiver, so call sites

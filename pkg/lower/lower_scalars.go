@@ -65,6 +65,37 @@ func (g *generator) selectScalarLocals() map[*checker.Binding]string {
 			visitor.Walk(d)
 		}
 	}
+	for statement, b := range g.program.LoopBindings {
+		if statement.Kind != syntax.KindFor || captured[b] || primitiveListSuffix(g.program.Expressions[statement.Value].Type) == "" {
+			continue
+		}
+		valid := true
+		for _, use := range uses[b] {
+			valid = valid && allowed[use]
+		}
+		if typ := primitiveEqualityType(b.Type); valid && typ != "" {
+			locals[b] = typ
+		}
+	}
+	for e := range g.program.Expressions {
+		if e.Kind != syntax.KindMatch || g.typedListAtSuffix(e.Left) == "" {
+			continue
+		}
+		for i := range e.Arms {
+			for _, b := range g.program.ArmBindings[&e.Arms[i]] {
+				if b == nil || captured[b] {
+					continue
+				}
+				valid := true
+				for _, use := range uses[b] {
+					valid = valid && allowed[use]
+				}
+				if typ := primitiveEqualityType(b.Type); valid && typ != "" {
+					locals[b] = typ
+				}
+			}
+		}
+	}
 	for e, b := range g.program.Assignments {
 		if b.Mutable && !captured[b] && g.scalarProducer(e) {
 			if typ := primitiveEqualityType(b.Type); typ != "" {
@@ -75,7 +106,7 @@ func (g *generator) selectScalarLocals() map[*checker.Binding]string {
 	// A boxed source result/payload can reuse its box at the next boxed call.
 	// Only known native producers remove both sides of that boundary.
 	for e, b := range g.program.Assignments {
-		if e.Kind == syntax.KindCall && !g.nativeCallAvailable(e) {
+		if e.Kind == syntax.KindCall && !g.scalarProducer(e) {
 			delete(locals, b)
 		}
 		if e.Kind == syntax.KindUnary && (e.Text == "try" || e.Text == "+") {
@@ -95,7 +126,7 @@ func (g *generator) scalarProducer(e *syntax.Expression) bool {
 	case syntax.KindUnary:
 		return e.Text == "-" || e.Text == "not"
 	case syntax.KindCall:
-		return g.numericCallName(e) != "" || g.nativeCallAvailable(e) && g.shareNativeBody(g.program.Expressions[e].Symbol)
+		return g.numericCallName(e) != "" || g.typedCollectionScalar(e) || g.nativeCallAvailable(e) && g.shareNativeBody(g.program.Expressions[e].Symbol) || g.nativeMethodAvailable(e) && g.shareNativeBody(methodSymbol(g.program.Expressions[e.Left].Method))
 	}
 	return false
 }
@@ -130,6 +161,13 @@ func (g *generator) scalarValue(e *syntax.Expression) ast.Expr {
 	}
 	return scalarExtract(g.program.Expressions[e].Type, value)
 }
+
+func (g *generator) scalarValueAs(e *syntax.Expression, expected *checker.Type) ast.Expr {
+	if g.program.Expressions[e].Type.ID == "Never" {
+		return scalarExtract(expected, g.expression(e))
+	}
+	return g.scalarValue(e)
+}
 func (g *generator) nativeScalarExpression(e *syntax.Expression) bool {
 	info := g.program.Expressions[e]
 	if info == nil || primitiveEqualityType(info.Type) == "" || info.ErrorSource != nil {
@@ -148,13 +186,15 @@ func (g *generator) nativeScalarExpression(e *syntax.Expression) bool {
 	case syntax.KindUnary:
 		return e.Text == "not" || e.Text == "-" || e.Text == "+"
 	case syntax.KindCall:
-		return g.nativeCallAvailable(e) || g.numericCallName(e) != ""
+		return g.nativeCallAvailable(e) || g.nativeMethodAvailable(e) || g.numericCallName(e) != "" || g.typedCollectionScalar(e)
+	case syntax.KindMatch:
+		return g.wantScalar > 0
 	}
 	return false
 }
 func (g *generator) bindingValue(b *checker.Binding, e *syntax.Expression) ast.Expr {
 	if g.typedBinding(b) {
-		return g.scalarValue(e)
+		return g.scalarValueAs(e, b.Type)
 	}
 	return g.expression(e)
 }

@@ -67,3 +67,30 @@ fn life(side: Int, generations: Int) -> Int:
         alive = alive + cells.at(index).unwrap()
         index = index + 1
     return alive
+
+fn matched(values: List[Int], limit: Int) -> Int:
+    var total = 0
+    var index = 0
+    while index < limit:
+        total = total + (match values.at(index % values.length()):
+            some(value): value
+            none: 0
+        )
+        index = index + 1
+    return total
+
+fn ranged(values: List[Int]) -> Int:
+    var total = 0
+    for value in values:
+        total = total + value
+    return total
+
+fn compare(left: Int, right: Int) -> Int: left - right
+fn sort_values(values: List[Int]) -> Int:
+    let sorted = values.sorted(compare)
+    return sorted.at(0).unwrap()
+fn sort_captured(values: List[Int]) -> Int:
+    let bias = 1000
+    let compare = fn(left: Int, right: Int) -> Int: (left + bias) - (right + bias)
+    let sorted = values.sorted(compare)
+    return sorted.at(0).unwrap()

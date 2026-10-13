@@ -153,6 +153,17 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 	oldParameters, oldResult, oldWant := g.nativeParameters, g.nativeResult, g.wantScalar
 	g.nativeParameters, g.nativeResult, g.wantScalar = nil, nil, 0
 	defer func() { g.nativeParameters, g.nativeResult, g.wantScalar = oldParameters, oldResult, oldWant }()
+	if kind := comparatorKind(t, params); self == nil && len(tail) == 0 && kind != "" && g.nativeBodyCompatible(params, body, bindings, t) {
+		g.nativeParameters = map[*checker.Binding]bool{}
+		g.nativeResult = t.Result
+		parameters := []*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")})}
+		for _, b := range bindings {
+			g.nativeParameters[b] = true
+			parameters = append(parameters, field(b.ID, ident(primitiveEqualityType(b.Type))))
+		}
+		labels, key, position, out := g.functionParts(name, params, result, body, bindings, self, t)
+		return runtimeCall("New"+kind+"CompareFunction", stringSlice(labels), key, textLiteral(position), closure(parameters, ident("int64"), out...))
+	}
 	labels, key, position, out := g.functionParts(name, params, result, body, bindings, self, t, tail...)
 	return runtimeCall("NewSourceFunction", stringSlice(labels), key, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), out...))
 }
@@ -163,6 +174,9 @@ func (g *generator) function(name string, params []syntax.Parameter, result *syn
 func (g *generator) functionParts(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...ast.Stmt) ([]string, ast.Expr, string, []ast.Stmt) {
 	oldCleanups, oldLoops, oldLabels, oldDepth, oldResult := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth, g.resultKey
 	oldNeedsCleanup := g.needsCleanup
+	oldExpressionResult := g.expressionResult
+	g.expressionResult = nil
+	defer func() { g.expressionResult = oldExpressionResult }()
 	resultKey := g.key(t.Result)
 	g.resultKey = resultKey
 	g.expressionDepth = 0

@@ -50,7 +50,7 @@ impl At for Custom:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAt(", "rt.OptionalUnwrap(", "rt.NativeMemberResult(", "rt.Invoke("} {
+	for _, operation := range []string{"rt.ListAtInt(", ".Unwrap(", "rt.NativeMemberResult(", "rt.Invoke("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing expected dispatch %s", operation)
 		}
@@ -75,7 +75,7 @@ fn sizes(values: List[Int], pairs: Map[String, Int], names: Set[String], text: S
 	}
 	bodies := strings.Count(result.Source, `"sizes")`)
 	// The separate Measure implementation adds one List length call.
-	if bodies < 1 || strings.Count(result.Source, "rt.CollectionLength(") != 3*bodies+1 || strings.Count(result.Source, "rt.StringByteLength(") != bodies {
+	if bodies < 1 || strings.Count(result.Source, "rt.CollectionLengthInt(") != 3*bodies+1 || strings.Count(result.Source, "rt.StringByteLength(") != bodies {
 		t.Fatalf("expected direct length calls only for built-in receivers:\n%s", result.Source)
 	}
 	if !strings.Contains(result.Source, "rt.NativeMemberResult(") {
@@ -154,7 +154,7 @@ fn grow(values: List[Int]) -> Bool:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	for _, operation := range []string{"rt.ListAppend(", "rt.ListIsEmpty("} {
+	for _, operation := range []string{"rt.ListAppendInt(", "rt.ListIsEmpty("} {
 		if !strings.Contains(result.Source, operation) {
 			t.Fatalf("missing direct %s:\n%s", operation, result.Source)
 		}
@@ -210,12 +210,30 @@ fn reordered(c: Counter) -> Int:
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
+	var bump, scale string
+	for _, method := range result.Program.Methods {
+		if method.Module == "method.ms" {
+			if method.Decl.Name == "bump" {
+				bump = method.ID
+			}
+			if method.Decl.Name == "scale" {
+				scale = method.ID
+			}
+		}
+	}
 	directBodies := strings.Count(result.Source, `"direct")`)
-	if directBodies < 1 || strings.Count(result.Source, "rt.CallMethod(") != directBodies || strings.Count(result.Source, " rt.MethodSite") != directBodies {
-		t.Fatalf("only the in-order concrete call is direct:\n%s", result.Source)
+	if bump == "" || scale == "" || strings.Count(result.Source, "return "+bump+"Native(") != directBodies || strings.Contains(result.Source, "rt.CallMethod(") || strings.Contains(result.Source, " rt.MethodSite") {
+		t.Fatalf("known concrete methods must use checked native entries: %s", result.Source)
 	}
-	boxedBodies := strings.Count(result.Source, `"view")`) + strings.Count(result.Source, `"omitted")`) + strings.Count(result.Source, `"reordered")`)
-	if strings.Count(result.Source, "rt.Bind(") != boxedBodies {
-		t.Fatalf("views, omitted defaults, and reordered labels keep Bind:\n%s", result.Source)
+	if !strings.Contains(result.Source, "return "+scale+"Native(") {
+		t.Fatal("fully supplied reordered method must capture arguments and call its native entry")
 	}
+	// Views and omitted inherited defaults keep checked binding/preparation. The
+	// boxed reordered adapter also retains its defaulted callable boundary.
+	viewBodies := strings.Count(result.Source, `"view")`)
+	omittedBodies := strings.Count(result.Source, `"omitted")`)
+	if strings.Count(result.Source, "rt.Bind(") != viewBodies+omittedBodies+1 {
+		t.Fatalf("view/defaulted callable boundaries changed: %s", result.Source)
+	}
+
 }
