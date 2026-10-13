@@ -10,6 +10,7 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/checker"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/frontend"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/lexer"
 	"github.com/manuscript-lang/manuscript/pkg/lower"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
@@ -53,7 +54,7 @@ var implementation = sync.OnceValue(func() string {
 	bundles := []struct {
 		name  string
 		files fs.FS
-	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"frontend", frontend.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"project", project.ImplementationSources}, {"compiler", compiler.ImplementationSources}, {"lower", lower.ImplementationSources}, {"build", ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}, {"stdlib", stdlib.Sources}}
+	}{{"lexer", lexer.ImplementationSources}, {"parser", parser.ImplementationSources}, {"frontend", frontend.ImplementationSources}, {"checker", checker.ImplementationSources}, {"syntax", syntax.ImplementationSources}, {"project", project.ImplementationSources}, {"compiler", compiler.ImplementationSources}, {"ir", ir.ImplementationSources}, {"lower", lower.ImplementationSources}, {"build", ImplementationSources}, {"runtime", msruntime.Sources}, {"dependencies", support.NativeDependencies}, {"stdlib", stdlib.Sources}}
 	return bundleDigest(bundles)
 })
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
+	"github.com/manuscript-lang/manuscript/pkg/ir"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 )
 
@@ -57,6 +58,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 	if info.Native == "index" {
 		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
 	}
+	if value := ir.Value(g.program, e, info); value != nil {
+		return g.irValue(value)
+	}
 	switch e.Kind {
 	case syntax.KindIndex:
 		return g.locatedOperation(e, runtimeName("Index"), g.expression(e.Left), g.expression(e.Right))
@@ -73,30 +77,6 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		g.expressionDepth--
 		body = append(body, returned(runtimeCall("Panic", textLiteral("runtime invariant: exhaustive match"))))
 		return call(closure(nil, runtimeName("Value"), body...))
-	case syntax.KindNumber:
-		if strings.HasSuffix(e.Text, "d") {
-			return runtimeCall("DecimalLiteral", textLiteral(e.Text))
-		}
-		if strings.ContainsAny(e.Text, ".eE") {
-			value, _ := strconv.ParseFloat(e.Text, 64)
-			return call(ident("float64"), &ast.BasicLit{Kind: token.FLOAT, Value: strconv.FormatFloat(value, 'g', -1, 64)})
-		}
-		value, _ := strconv.ParseInt(e.Text, 10, 64)
-		return call(ident("int64"), signedInteger(strconv.FormatInt(value, 10)))
-	case syntax.KindBool:
-		return ident(e.Text)
-	case syntax.KindUnit:
-		return unit()
-	case syntax.KindText:
-		var values []ast.Expr
-		for _, p := range e.Parts {
-			if p.Value != nil {
-				values = append(values, runtimeCall("Format", g.expression(p.Value)))
-			} else {
-				values = append(values, textLiteral(p.Text))
-			}
-		}
-		return runtimeCall("Text", values...)
 	case syntax.KindName, syntax.KindApply:
 		if info.Method != nil && info.Method.Contract == nil && info.Method.Native != "" && info.Method.Native != "contract" {
 			member := e.Left
@@ -200,21 +180,6 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.methodCallable(e.Left, arguments))
 		}
 		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
-	case syntax.KindList:
-		if value := g.debugListLiteral(e, info.Type); value != nil {
-			return value
-		}
-		var elements []ast.Expr
-		for _, item := range e.Elements {
-			elements = append(elements, g.expression(item))
-		}
-		return address(composite(runtimeName("List"), keyed("Type", g.key(info.Type)), keyed("Items", sliceLiteral(runtimeName("Value"), elements...))))
-	case syntax.KindMap:
-		var entries []ast.Expr
-		for at := 0; at < len(e.Elements); at += 2 {
-			entries = append(entries, composite(nil, keyed("Key", g.expression(e.Elements[at])), keyed("Value", g.expression(e.Elements[at+1]))))
-		}
-		return g.locatedOperation(e, runtimeName("MapLiteral"), ident("ctx"), g.key(info.Type), sliceLiteral(runtimeName("Entry"), entries...), g.typeScope(info.Type))
 	case syntax.KindUnary:
 		if e.Text == "try" {
 			args := []ast.Expr{g.expression(e.Right)}
