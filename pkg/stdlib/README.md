@@ -25,6 +25,8 @@ Editor adapters can use `tooling.StandardDeclarations` and `tooling.NavigationAt
 
 Hover documentation lives in contiguous `#` comments immediately above a public declaration or operation. The LSP renders this text as Markdown beneath the checked Manuscript signature. Keep the opening sentence direct, then describe behavior that is not clear from the signature: units, defaults, limits, mutation, end-of-stream behavior, and expected errors. Inline Markdown such as code spans is supported.
 
+The generated Markdown/JSON reference also reads comments above fields, cases, and receiver/implementation operations. Keep each block at the member's indentation; a blank line detaches it. JSON preserves the original string arrays and adds structured `members` descriptions. `make docs` and `make docs-check` print description counts; `make docs-coverage` writes a complete inventory, including missing descriptions and prelude aliases, to `.artifacts/stdlib-doc-coverage.json`. An inventory entry or a signature is not evidence that its behavior is described.
+
 Run `ms stdlib <directory>` to export the exact pinned source files for an editor that needs documents on disk. These APIs provide navigation data; an editor integration must supply its own LSP server and transport.
 
 For user-facing imports and API behavior, see the [standard-library guide](../../documentation/standard-library/_index.md).

@@ -21,6 +21,22 @@ interface Connection:
     fn write(data: Bytes, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
 ```
 
+### Connection.read
+
+Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
+
+```manuscript
+fn read(max_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[Optional[Bytes], IoError]
+```
+
+### Connection.write
+
+Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed.
+
+```manuscript
+fn write(data: Bytes, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
+```
+
 ## Datagram {data-api-kind="Record"}
 
 One datagram and the address from which it was received.
@@ -29,6 +45,14 @@ One datagram and the address from which it was received.
 type Datagram:
     data: Bytes
     sender: String
+```
+
+### Datagram.sender
+
+Native host:port text, with bracketed IPv6 addresses.
+
+```manuscript
+sender: String
 ```
 
 ## DatagramSocket {data-api-kind="Interface"}
@@ -54,6 +78,14 @@ type DnsRecord:
     priority: Int
     weight: Int
     port: Int
+```
+
+### DnsRecord.kind
+
+Uppercase A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV.
+
+```manuscript
+kind: String
 ```
 
 ## Listener {data-api-kind="Interface"}
@@ -91,6 +123,15 @@ interface Network:
     fn serve_stream(address: String, handler: fn(exchange: HttpExchange) -> Result[Unit, HttpError], options: HttpServerOptions) -> Result[HttpServer, HttpError]
     fn web_socket(url: String, headers: Map[String, String], subprotocols: List[String], options: WebSocketOptions) -> Result[WebSocket, WebSocketError]
     fn with_resolver(address: String) -> Result[Network, NetworkError]
+```
+
+### Network.resolve
+
+Accepts A, AAAA, CNAME, MX, NS, TXT, PTR, or SRV, case-insensitively; others return InvalidInput.
+Returned DnsRecord.kind is uppercase.
+
+```manuscript
+fn resolve(name: String, kind: String, max_records: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[List[DnsRecord], NetworkError]
 ```
 
 ## NetworkError {data-api-kind="Alternative"}

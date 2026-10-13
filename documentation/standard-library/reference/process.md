@@ -54,6 +54,22 @@ type CpuUsage:
     system_microseconds: Int
 ```
 
+### CpuUsage.system_microseconds
+
+Kernel CPU time in microseconds.
+
+```manuscript
+system_microseconds: Int
+```
+
+### CpuUsage.user_microseconds
+
+User CPU time in microseconds.
+
+```manuscript
+user_microseconds: Int
+```
+
 ## MemoryUsage {data-api-kind="Record"}
 
 Memory statistics for the current process; every field is bytes.
@@ -101,6 +117,76 @@ interface ProcessControl:
     fn set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
 ```
 
+### ProcessControl.environment
+
+Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
+
+```manuscript
+fn environment() -> Result[Map[String, String], ProcessError]
+```
+
+### ProcessControl.monotonic_time
+
+Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
+This is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing.
+
+```manuscript
+fn monotonic_time() -> Int
+```
+
+### ProcessControl.send_signal
+
+Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
+Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
+
+```manuscript
+fn send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
+```
+
+### ProcessControl.set_identity
+
+Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.
+Identity changes require OS permission and are Unsupported on Windows.
+
+```manuscript
+fn set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
+```
+
+### ProcessControl.umask
+
+Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows.
+
+```manuscript
+fn umask(mask: Int) -> Result[Int, ProcessError]
+```
+
+### ProcessControl.uptime
+
+Returns elapsed Duration since runtime initialization, rather than host boot.
+
+```manuscript
+fn uptime() -> Result[Duration, ProcessError]
+```
+
+### ProcessControl.watch_signals
+
+Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
+Capacity must be 1..1048576; omission/none uses 128 buffered signals.
+Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
+Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+
+```manuscript
+fn watch_signals(signals: List[Int], capacity: Optional[Int] = none) -> Result[SignalStream, ProcessError]
+```
+
+### ProcessControl.working_directory
+
+Reads the live process directory, preserving OS failures as ProcessError.
+
+```manuscript
+fn working_directory() -> Result[String, ProcessError]
+```
+
 See the [shutdown cookbook](../../concurrency/shutdown.md) for runnable examples and limitations.
 
 ## ProcessError {data-api-kind="Alternative"}
@@ -141,6 +227,14 @@ type ProcessInfo:
     gid: Int
     effective_uid: Int
     effective_gid: Int
+```
+
+### ProcessInfo.arguments
+
+Live native argv including argv[0]; cli.arguments() is the supplied startup tail without it.
+
+```manuscript
+arguments: List[String]
 ```
 
 ## ResourceUsage {data-api-kind="Record"}
