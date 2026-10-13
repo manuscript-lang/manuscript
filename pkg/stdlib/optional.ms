@@ -20,3 +20,7 @@ export type Optional[T]:
     fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
     # Calls create once only when absent, returning its Optional unchanged.
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+    # Returns ok with the original payload, or error with the eager cause.
+    fn ok_or[E](cause: E) -> Result[T, E]:
+    # Constructs an error once only for none; present payloads remain unchanged.
+    fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:

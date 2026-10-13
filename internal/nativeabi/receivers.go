@@ -39,6 +39,8 @@ var ReceiverBindings = map[string]map[string]string{
 		"compare":      "time/timestamp_compare",
 	},
 	"Optional": {
+		"ok_or":          "optional/ok_or",
+		"ok_or_else":     "optional/ok_or_else",
 		"map":            "optional/map",
 		"and_then":       "optional/and_then",
 		"or_else":        "optional/or_else",
@@ -49,6 +51,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"unwrap_or_else": "optional/unwrap_or_else",
 	},
 	"Result": {
+		"to_optional":    "result/to_optional",
 		"is_ok":          "result/is_ok",
 		"is_error":       "result/is_error",
 		"unwrap":         "result/unwrap",
@@ -94,6 +97,10 @@ var ReceiverBindings = map[string]map[string]string{
 		"join":            "string/join",
 	},
 	"Map": {
+		"fold":              "collections/map_fold",
+		"find":              "collections/map_find",
+		"some":              "collections/map_some",
+		"every":             "collections/map_every",
 		"is_empty":          "collections/map_is_empty",
 		"get_or":            "collections/map_get_or",
 		"filter":            "collections/map_filter",
@@ -107,6 +114,10 @@ var ReceiverBindings = map[string]map[string]string{
 		"for_each":          "collections/map_for_each",
 	},
 	"Set": {
+		"fold":                 "collections/set_fold",
+		"find":                 "collections/set_find",
+		"some":                 "collections/set_some",
+		"every":                "collections/set_every",
 		"is_empty":             "collections/set_is_empty",
 		"filter":               "collections/set_filter",
 		"map":                  "collections/set_map",

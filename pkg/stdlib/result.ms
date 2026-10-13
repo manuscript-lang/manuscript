@@ -20,3 +20,5 @@ export type Result[T, E]:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     # Calls transform only on success. Its result keeps the same error type.
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+    # Returns some with the original success payload, or none for an error.
+    fn to_optional() -> Optional[T]:

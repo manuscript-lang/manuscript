@@ -64,7 +64,7 @@ func libraryFunction(name, result string) (Value, bool) {
 func invokeLibrary(spec LibrarySpec, ctx *Execution, result string, args []Value) Value {
 	if spec.Module == "collections" {
 		switch spec.Name {
-		case "map", "filter", "fold", "fold_right", "find", "find_last", "find_index", "find_last_index", "some", "every", "for_each", "flat_map", "group_by", "map_for_each", "set_for_each", "map_filter", "set_filter", "set_map":
+		case "map", "filter", "fold", "fold_right", "find", "find_last", "find_index", "find_last_index", "some", "every", "for_each", "flat_map", "group_by", "map_for_each", "set_for_each", "map_filter", "set_filter", "set_map", "map_fold", "map_find", "map_some", "map_every", "set_fold", "set_find", "set_some", "set_every":
 			args = append([]Value{}, args...)
 			args[0] = Clone(args[0])
 		}
@@ -113,10 +113,25 @@ func libraryBound(result string, n int64) Value {
 	}
 	return nil
 }
-func librarySlice(length int, start, end int64) {
+func librarySlice(operation string, length int, start, end int64) {
 	if start < 0 || end < start || end > int64(length) {
-		Panic(fmt.Sprintf("invalid half-open slice bounds; need 0 <= start <= end <= %d, found start %d and end %d", length, start, end))
+		Panic(fmt.Sprintf("%s: start/end must satisfy 0 <= start <= end <= %d; found start %d and end %d", operation, length, start, end))
 	}
+}
+
+// Faults retain the supplied argument, before relative-index or option normalization.
+func libraryRangeFault(operation, parameter string, value Value, minimum, maximum int64) Value {
+	if option, ok := value.(Alternative); ok && option.Tag == "some" && strings.HasPrefix(option.Type, "@std/Optional[") {
+		value = option.Fields[0]
+	}
+	return Panic(fmt.Sprintf("%s: %s must be between %d and %d, found %s", operation, parameter, minimum, maximum, Format(value)))
+}
+
+func libraryIndexFault(operation string, length int, index int64) Value {
+	if length == 0 {
+		return Panic(fmt.Sprintf("%s: index has no valid value for an empty collection, found %d", operation, index))
+	}
+	return Panic(fmt.Sprintf("%s: index must be between %d and %d (negative indexes count from the end), found %d", operation, -length, length-1, index))
 }
 
 func libraryDisposeResource(ctx *Execution, value Value) {

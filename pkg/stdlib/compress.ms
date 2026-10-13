@@ -10,7 +10,8 @@ export type CompressionError:
     case Unsupported
     case Failed(message: String)
 
-# Compresses bytes using `gzip`, `zlib`, or `deflate` at the requested level.
+# Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
+# Other formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.
 # `max_bytes` bounds the encoded output when supplied.
 export fn compress(
     data: Bytes,
@@ -19,7 +20,8 @@ export fn compress(
     max_bytes: Optional[Int] = none
 ) -> Result[Bytes, CompressionError]:
 
-# Decompresses supported data and stops when the supplied output limit is reached.
+# Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
+# Stops when the supplied output limit is reached.
 export fn decompress(
     data: Bytes,
     format: String,

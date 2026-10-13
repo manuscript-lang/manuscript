@@ -64,9 +64,44 @@ Unrelated domain errors still need an explicit translation. The Error interface 
 | Missing value | Use Optional. |
 | Illegal collection slice bounds, broken programming assumptions, or explicit invariant violation | Produce a programming fault. |
 | Parent cancellation | Unwind; do not turn cancellation into EOF or a domain error. |
-| Local network deadline expires | Return Timeout, subject to the operation's documented error type. |
+| Local network deadline expires | NetworkError/HttpError use `Timeout`; Connection I/O uses `IoError.Failed` with a timeout diagnostic. Command/group deadlines use `TimedOut`. |
+
+Collection bounds, byte values, integer-formatting radices, and supplied queue capacities fault when their documented call preconditions fail. Their diagnostics name the operation and parameter, show the original offending argument, and state the valid range. For example, `Bytes.with_value: value must be between 0 and 255, found 300` distinguishes a value failure from an index failure.
+
+Negative indexes in `at`, `with_value`, and List `without` remain relative to the end. Empty collections have no valid update/removal index. List `fill`, `copy_within`, and List/Bytes `slice` require `0 <= start <= end <= length`; List `with_values` requires `0 <= start <= length` and `0 <= delete_count <= length - start`.
+
+These diagnostics preserve each operation's return type, bounds behavior, and failure category. String slicing retains its existing clamping behavior; unifying the slice families remains a separate policy decision.
 
 If cancellation wins before a newly acquired resource is delivered, native acquisition releases that resource. Delivered socket handles use `with` and synchronized close admission. Retaining another reference never extends the open lifetime.
+
+### Host views and error translation
+
+Error case sets describe each domain, even when case names coincide. Filesystem, system, and process calls share mappings for native not-found, already-existing, permission-denied and unsupported errors to their own `NotFound`, `AlreadyExists`, `PermissionDenied` and `Unsupported` cases. Validated caller input produces `InvalidInput`; unclassified OS failures retain host text in `Failed(message)`. Operation-specific mappings and validation still apply.
+
+| Boundary | Result contract |
+| --- | --- |
+| `io.Files.open` | Read-only File view; native open failures become `IoError.Unavailable`, including missing paths and permissions. |
+| `FileSystem.open` / `open_flags` | Read/write/positional FileHandle with FileSystemError cases. |
+| `FileHandle.reader()` / `writer()` | Shared-handle stream adapters retain `Closed`/`InvalidInput`; other filesystem cases become `IoError.Failed` with their case name, or the original Failed text. |
+| Stream helpers | Preserve returned IoError case/payload. EOF is absence/empty data, not a failure; cancellation unwinds. |
+| `Error` view | Retains the concrete error value for type matching, while exposing only `message()` as a common operation. |
+| Scheduler callbacks | Currently use `Result[Unit, String]`; `SchedulerFailure.Failed.cause` is text, and Crashed carries a fault message. No domain-error view is implied. |
+
+The absence of a case in PathError, CryptoError, RegexError, UrlError, or JsonError does not authorize inventing a generic Failed/LimitExceeded at that boundary. A shared error classification, scheduler error migration, timeout spelling migration, or unified write result would need explicit API and compatibility decisions.
+
+### Native I/O success and EOF
+
+Native WriteStream, Connection, and FileHandle writes accept all supplied bytes on success. FileHandle count results report the complete input length; Unit results omit that count. Errors/cancellation may leave a prefix and do not report its size. Acceptance does not guarantee disk durability or peer processing. Source WriteStream implementations may buffer until flush; native stdout/stderr flush is a no-op, while the file-handle writer adapter flushes with file sync. Commands and `read_file`/`read_all` buffer whole results in memory; chunk readers, directory cursors, sockets, and streaming HTTP expose incremental delivery.
+
+| Reader | EOF contract |
+| --- | --- |
+| File, ReadStream, Connection, FileHandle.read | `ok(none)` once no data remains; a final positive chunk can precede EOF. |
+| FileHandle.read_at | `ok(Bytes)` with a short final chunk or empty bytes beyond EOF; no sequential position change. |
+| FileSystem.read_file, FileHandle.read_file, io.read_all | Whole/remaining content on success; empty content gives empty Bytes. |
+| io.read_line | `none` only when EOF precedes all data; final unterminated text is a line. |
+| Directory.read | `none` once entries are exhausted. |
+
+See [file positions/adapters](filesystem.md#file-reads-and-writes), [stream helpers](process.md#stream-helpers), and [socket deadlines](network.md#datagrams-and-operation-timeouts) for exact bounds and error identities.
 
 ## Optional limits and deadlines
 

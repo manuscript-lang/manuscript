@@ -83,6 +83,7 @@ func assertFormatMeaning(t *testing.T, filename, original, formatted string) {
 			case map[string]any:
 				delete(node, "Pos")
 				delete(node, "NamePos")
+				delete(node, "NamePositions")
 				for _, child := range node {
 					positions(child)
 				}

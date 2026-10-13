@@ -1,7 +1,6 @@
 package msruntime
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -36,6 +35,40 @@ func init() {
 	listParam := []LibraryParam{p("values", "List[T]")}
 	add := func(name, result string, vars, params []LibraryParam, body func(*Execution, string, []Value) Value) {
 		libraryGeneric("collections", name, result, vars, params, body)
+	}
+	add("map_fold", "A", []LibraryParam{p("K", "Hashable"), p("V", ""), p("A", "")}, []LibraryParam{p("values", "Map[K][V]"), p("initial", "A"), p("step", "fn(accumulator:A;key:K;value:V)->A")}, func(ctx *Execution, _ string, a []Value) Value {
+		accumulator := a[1]
+		for _, entry := range a[0].(*Map).Entries {
+			CheckCancelled(ctx)
+			accumulator = Invoke(ctx, a[2], []Argument{{"accumulator", accumulator}, {"key", entry.Key}, {"value", entry.Value}})
+		}
+		return accumulator
+	})
+	add("set_fold", "A", []LibraryParam{p("T", "Hashable"), p("A", "")}, []LibraryParam{p("values", "Set[T]"), p("initial", "A"), p("step", "fn(accumulator:A;value:T)->A")}, func(ctx *Execution, _ string, a []Value) Value {
+		accumulator := a[1]
+		for _, value := range a[0].(*Set).Items {
+			CheckCancelled(ctx)
+			accumulator = Invoke(ctx, a[2], []Argument{{"accumulator", accumulator}, {"value", value}})
+		}
+		return accumulator
+	})
+	for _, kind := range []string{"map", "set"} {
+		for _, name := range []string{"find", "some", "every"} {
+			vars := hash
+			params := []LibraryParam{p("values", "Set[T]"), p("predicate", "fn(value:T)->Bool")}
+			result := "Optional[T]"
+			if kind == "map" {
+				vars = mapVars
+				params = []LibraryParam{p("values", "Map[K][V]"), p("predicate", "fn(key:K;value:V)->Bool")}
+				result = "Optional[MapEntry[K][V]]"
+			}
+			if name != "find" {
+				result = "Bool"
+			}
+			add(kind+"_"+name, result, vars, params, func(ctx *Execution, result string, args []Value) Value {
+				return libraryCollectionQuery(ctx, kind, name, result, args)
+			})
+		}
 	}
 	add("map_is_empty", "Bool", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(_ *Execution, _ string, a []Value) Value {
 		return len(a[0].(*Map).Entries) == 0
@@ -135,7 +168,7 @@ func init() {
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
-			return Panic(fmt.Sprintf("list update index out of range; the list has %d elements, so use an index from %d to %d (negative indexes count from the end)", len(items), -len(items), len(items)-1))
+			return libraryIndexFault("List.with_value", len(items), a[1].(int64))
 		}
 		items[i] = a[2]
 		return a[0]
@@ -145,7 +178,7 @@ func init() {
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
-			return Panic(fmt.Sprintf("list removal index out of range; the list has %d elements, so use an index from %d to %d (negative indexes count from the end)", len(items), -len(items), len(items)-1))
+			return libraryIndexFault("List.without", len(items), a[1].(int64))
 		}
 		copy(items[i:], items[i+1:])
 		items[len(items)-1] = nil
@@ -222,8 +255,11 @@ func init() {
 	add("with_values", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("start", "Int"), p("delete_count", "Int"), p("replacement", "List[T]")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		start, count := a[1].(int64), a[2].(int64)
-		if start < 0 || start > int64(len(items)) || count < 0 || count > int64(len(items))-start {
-			return Panic("invalid list replacement bounds")
+		if start < 0 || start > int64(len(items)) {
+			return libraryRangeFault("List.with_values", "start", start, 0, int64(len(items)))
+		}
+		if count < 0 || count > int64(len(items))-start {
+			return libraryRangeFault("List.with_values", "delete_count", count, 0, int64(len(items))-start)
 		}
 		spliceList(a[0].(*List), int(start), int(count), a[3].(*List))
 		return a[0]
@@ -231,7 +267,7 @@ func init() {
 	add("fill", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		s, e := a[2].(int64), a[3].(int64)
-		librarySlice(len(items), s, e)
+		librarySlice("List.fill", len(items), s, e)
 		out := items
 		for i := s; i < e; i++ {
 			CheckCancelled(ctx)
@@ -242,9 +278,9 @@ func init() {
 	add("copy_within", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("target", "Int"), p("start", "Int"), p("end", "Int")}, func(ctx *Execution, r string, a []Value) Value {
 		items := a[0].(*List).Items
 		t, s, e := a[1].(int64), a[2].(int64), a[3].(int64)
-		librarySlice(len(items), s, e)
+		librarySlice("List.copy_within", len(items), s, e)
 		if t < 0 || t > int64(len(items)) {
-			return Panic("invalid copy target")
+			return libraryRangeFault("List.copy_within", "target", t, 0, int64(len(items)))
 		}
 		copy(items[t:], items[s:e])
 		return a[0]
@@ -454,4 +490,50 @@ func init() {
 func mapPut(ctx *Execution, values *Map, key, value Value) *Map {
 	values.put(ctx, key, value)
 	return values
+}
+
+// Both receiver families share first-match and short-circuit semantics. The
+// native invocation boundary has already snapshotted membership, retaining
+// payload references; only a found Map entry gets a fresh record shell.
+func libraryCollectionQuery(ctx *Execution, kind, name, result string, args []Value) Value {
+	var entries []Entry
+	var items []Value
+	if kind == "map" {
+		entries = args[0].(*Map).Entries
+	} else {
+		items = args[0].(*Set).Items
+	}
+	for i := 0; i < len(entries)+len(items); i++ {
+		CheckCancelled(ctx)
+		var key, value Value
+		var callbackArgs []Argument
+		if kind == "map" {
+			key, value = entries[i].Key, entries[i].Value
+			callbackArgs = []Argument{{"key", key}, {"value", value}}
+		} else {
+			value = items[i]
+			callbackArgs = []Argument{{"value", value}}
+		}
+		matches := Invoke(ctx, args[1], callbackArgs).(bool)
+		if name == "every" {
+			if !matches {
+				return false
+			}
+		} else if matches {
+			if name == "some" {
+				return true
+			}
+			if kind == "map" {
+				value = Record{Type: typeArguments(result)[0], Fields: map[string]Value{"key": key, "value": value}}
+			}
+			return Alternative{Type: result, Tag: "some", Fields: []Value{value}}
+		}
+	}
+	if name == "every" {
+		return true
+	}
+	if name == "some" {
+		return false
+	}
+	return Alternative{Type: result, Tag: "none"}
 }

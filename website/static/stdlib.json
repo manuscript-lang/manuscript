@@ -47,13 +47,13 @@
         },
         {
           "name": "pack",
-          "doc": "Encodes entries as `zip` or `tar` bytes. `max_bytes` bounds output when supplied.",
+          "doc": "Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.",
           "kind": "fn",
           "type": "fn(entries: List[ArchiveEntry], format: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, ArchiveError]"
         },
         {
           "name": "unpack",
-          "doc": "Decodes `zip` or `tar` bytes and applies each supplied entry and total-size limit.",
+          "doc": "Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.\nApplies each supplied entry and total-size limit.",
           "kind": "fn",
           "type": "fn(data: Bytes, format: String, limits: Optional[ArchiveLimits] = ...)-\u003eResult[List[ArchiveEntry], ArchiveError]"
         }
@@ -221,13 +221,13 @@
       "declarations": [
         {
           "name": "arguments",
-          "doc": "Returns process arguments, excluding the executable path.",
+          "doc": "Returns the host-supplied startup arguments, excluding the executable path.\nRepeated calls share the same mutable list; mutations do not rewrite native argv.",
           "kind": "fn",
           "type": "fn()-\u003eList[String]"
         },
         {
           "name": "environment",
-          "doc": "Returns the process environment as a map of variable names to values.",
+          "doc": "Returns the startup environment snapshot, not the live process environment.\nRepeated calls share the same mutable map; mutations do not call set_environment.",
           "kind": "fn",
           "type": "fn()-\u003eMap[String, String]"
         }
@@ -340,7 +340,10 @@
             "clone: fn()-\u003eMap[T, U]",
             "contains: fn(key: T)-\u003eBool",
             "entries: fn()-\u003eList[MapEntry[T, U]]",
+            "every: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
             "filter: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eMap[T, U]",
+            "find: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eOptional[MapEntry[T, U]]",
+            "fold[A]: fn(initial: A, step: fn(accumulator: A, key: T, value: U)-\u003eA)-\u003eA",
             "for_each: fn(operation: fn(key: T, value: U)-\u003eUnit)-\u003eUnit",
             "get: fn(key: T)-\u003eOptional[U]",
             "get_or: fn(key: T, fallback: U)-\u003eU",
@@ -348,6 +351,7 @@
             "keys: fn()-\u003eList[T]",
             "length: fn()-\u003eInt",
             "merge: fn(other: Map[T, U])-\u003eMap[T, U]",
+            "some: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eBool",
             "values: fn()-\u003eList[U]",
             "with_default: fn(key: T, value: U)-\u003eMap[T, U]",
             "with_default_from: fn(key: T, create: fn(key: T)-\u003eU)-\u003eMap[T, U]",
@@ -397,7 +401,10 @@
             "contains: fn(value: T)-\u003eBool",
             "difference: fn(right: Set[T])-\u003eSet[T]",
             "entries: fn()-\u003eList[List[T]]",
+            "every: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "filter: fn(predicate: fn(value: T)-\u003eBool)-\u003eSet[T]",
+            "find: fn(predicate: fn(value: T)-\u003eBool)-\u003eOptional[T]",
+            "fold[A]: fn(initial: A, step: fn(accumulator: A, value: T)-\u003eA)-\u003eA",
             "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
             "intersection: fn(right: Set[T])-\u003eSet[T]",
             "is_disjoint_from: fn(right: Set[T])-\u003eBool",
@@ -406,6 +413,7 @@
             "is_superset_of: fn(right: Set[T])-\u003eBool",
             "length: fn()-\u003eInt",
             "map[U: Hashable]: fn(transform: fn(value: T)-\u003eU)-\u003eSet[U]",
+            "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "symmetric_difference: fn(right: Set[T])-\u003eSet[T]",
             "union: fn(right: Set[T])-\u003eSet[T]",
             "values: fn()-\u003eList[T]",
@@ -477,13 +485,13 @@
         },
         {
           "name": "compress",
-          "doc": "Compresses bytes using `gzip`, `zlib`, or `deflate` at the requested level.\n`max_bytes` bounds the encoded output when supplied.",
+          "doc": "Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).\nOther formats return Unsupported; level must be 0..9 (0 stores data), else InvalidInput.\n`max_bytes` bounds the encoded output when supplied.",
           "kind": "fn",
           "type": "fn(data: Bytes, format: String, level: Int, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
         },
         {
           "name": "decompress",
-          "doc": "Decompresses supported data and stops when the supplied output limit is reached.",
+          "doc": "Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.\nStops when the supplied output limit is reached.",
           "kind": "fn",
           "type": "fn(data: Bytes, format: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
         }
@@ -523,7 +531,7 @@
         },
         {
           "name": "hmac",
-          "doc": "Computes an HMAC using `sha256`, `sha384`, or `sha512`.",
+          "doc": "Computes an HMAC using exactly `sha256`, `sha384`, or `sha512` (case-sensitive).\nOther algorithms return CryptoError.Unsupported.",
           "kind": "fn",
           "type": "fn(key: Bytes, data: Bytes, algorithm: String)-\u003eResult[Bytes, CryptoError]"
         },
@@ -922,7 +930,7 @@
         },
         {
           "name": "FileSystemInfo",
-          "doc": "Capacity and free-space statistics for the filesystem containing a path.",
+          "doc": "Capacity/free-space statistics: block_size is bytes, blocks/free/available are counts\nin those blocks, and files/files_free are native file-node counts (zero if unavailable).",
           "kind": "record",
           "type": "FileSystemInfo",
           "fields": [
@@ -980,7 +988,7 @@
         },
         {
           "name": "constants",
-          "doc": "Returns host filesystem flag, mode, and permission constants by name.",
+          "doc": "Returns this host's filesystem flag, mode, and permission constants by name.\nNames and values vary by host; absent entries are not supported constants or portable enum cases.",
           "kind": "fn",
           "type": "fn()-\u003eMap[String, Int]"
         },
@@ -1066,7 +1074,7 @@
       "declarations": [
         {
           "name": "ClientResponse",
-          "doc": "Buffered HTTP response metadata and body.",
+          "doc": "Buffered HTTP response metadata and body. Header names have canonical spelling;\nMap lookup is case-sensitive. Lists preserve separate values in received order.",
           "kind": "record",
           "type": "ClientResponse",
           "fields": [
@@ -1077,7 +1085,7 @@
         },
         {
           "name": "HttpClient",
-          "doc": "Reusable HTTP client with connection pooling and explicit response limits.",
+          "doc": "Reusable HTTP client with connection pooling and explicit response limits.\nOutbound case-equivalent header keys append values in Map insertion order.",
           "kind": "interface",
           "type": "HttpClient",
           "operations": [
@@ -1124,7 +1132,7 @@
         },
         {
           "name": "HttpExchange",
-          "doc": "One streaming server exchange. Read or write incrementally and close when done.",
+          "doc": "One streaming server exchange. Read or write incrementally and close when done.\nReceived header names have canonical spelling; Map lookup is case-sensitive.\nSending case-equivalent names appends each list in Map insertion order.",
           "kind": "interface",
           "type": "HttpExchange",
           "operations": [
@@ -1157,7 +1165,7 @@
         },
         {
           "name": "HttpResponse",
-          "doc": "Buffered response returned by the simple HTTP server handler.",
+          "doc": "Buffered response returned by the simple HTTP server handler.\nCase-equivalent header keys emit separate values in Map insertion order.\nUse HttpExchange.send_headers for repeated values under one exact Map key.",
           "kind": "record",
           "type": "HttpResponse",
           "fields": [
@@ -1194,7 +1202,7 @@
         },
         {
           "name": "ResponseBody",
-          "doc": "Streaming response body returned by HTTP client operations.",
+          "doc": "Streaming response body returned by HTTP client operations. Header names have\ncanonical spelling; Map lookup is case-sensitive. Lists keep received order.",
           "kind": "interface",
           "type": "ResponseBody",
           "operations": [
@@ -1221,7 +1229,7 @@
         },
         {
           "name": "Files",
-          "doc": "Opens file resources using the current host's default filesystem.",
+          "doc": "Opens read-only file resources using the current host's default filesystem.\nNative open failures (including missing paths and permission denial) become IoError.Unavailable.",
           "kind": "interface",
           "type": "Files",
           "operations": [
@@ -1260,7 +1268,7 @@
         },
         {
           "name": "WriteStream",
-          "doc": "A writable byte stream. Flush before relying on buffered data being delivered.",
+          "doc": "A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.\nBuffering/flush depends on the implementation: native stdout/stderr are unbuffered (flush is a no-op),\nwhile FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.",
           "kind": "interface",
           "type": "WriteStream",
           "operations": [
@@ -1832,6 +1840,8 @@
             "is_none: fn()-\u003eBool",
             "is_some: fn()-\u003eBool",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eOptional[U]",
+            "ok_or[E]: fn(cause: E)-\u003eResult[T, E]",
+            "ok_or_else[E]: fn(create: fn()-\u003eE)-\u003eResult[T, E]",
             "or_else: fn(create: fn()-\u003eOptional[T])-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_or: fn(fallback: T)-\u003eT",
@@ -2042,7 +2052,7 @@
         },
         {
           "name": "CpuUsage",
-          "doc": "CPU time consumed by the current process.",
+          "doc": "Cumulative CPU time consumed by the current process, in integer microseconds.",
           "kind": "record",
           "type": "CpuUsage",
           "fields": [
@@ -2052,7 +2062,7 @@
         },
         {
           "name": "MemoryUsage",
-          "doc": "Memory statistics for the current process.",
+          "doc": "Memory statistics for the current process; every field is bytes.",
           "kind": "record",
           "type": "MemoryUsage",
           "fields": [
@@ -2137,7 +2147,7 @@
         },
         {
           "name": "ResourceUsage",
-          "doc": "Kernel resource counters for the current process.",
+          "doc": "Kernel resource counters for the current process. CPU times are integer microseconds;\nmax_resident_bytes is bytes; other fields are counts, not durations or byte totals.\nFilesystem reads/writes count native block I/O on Unix and I/O operations on Windows.\nUnavailable Windows fault/context-switch counters are zero.",
           "kind": "record",
           "type": "ResourceUsage",
           "fields": [
@@ -2329,6 +2339,7 @@
             "is_error: fn()-\u003eBool",
             "is_ok: fn()-\u003eBool",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eResult[U, E]",
+            "to_optional: fn()-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_error: fn()-\u003eE",
             "unwrap_or: fn(fallback: T)-\u003eT",
@@ -2415,7 +2426,7 @@
       "declarations": [
         {
           "name": "CpuInfo",
-          "doc": "Model, speed, and cumulative time counters for one logical CPU.",
+          "doc": "Model, integer MHz speed (fractional MHz truncated), and cumulative integer millisecond\ncounters for one logical CPU. irq includes hardware and software interrupt time.",
           "kind": "record",
           "type": "CpuInfo",
           "fields": [
@@ -2502,7 +2513,7 @@
         },
         {
           "name": "SystemMetrics",
-          "doc": "Host memory, uptime, load, and available parallelism measurements.",
+          "doc": "Host measurements: memory fields are bytes; load_average is 1/5/15-minute load\n(three zeros on Windows); available_parallelism is a usable logical-processor count.",
           "kind": "record",
           "type": "SystemMetrics",
           "fields": [
@@ -2529,7 +2540,7 @@
         },
         {
           "name": "constants",
-          "doc": "Returns operating-system constants by name.",
+          "doc": "Returns native signal/error/loader/priority constants by name.\nNames and values vary by host; missing entries do not imply a portable numeric default.",
           "kind": "fn",
           "type": "fn()-\u003eMap[String, Int]"
         },
@@ -2547,13 +2558,13 @@
         },
         {
           "name": "endianness",
-          "doc": "Returns `little` or `big` for the host's native byte order.",
+          "doc": "Returns exactly `LE` or `BE` for the host's native byte order.",
           "kind": "fn",
           "type": "fn()-\u003eString"
         },
         {
           "name": "os_type",
-          "doc": "Returns the host operating-system family.",
+          "doc": "Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their Go OS name.",
           "kind": "fn",
           "type": "fn()-\u003eString"
         },
@@ -3230,6 +3241,8 @@
             "is_none: fn()-\u003eBool",
             "is_some: fn()-\u003eBool",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eOptional[U]",
+            "ok_or[E]: fn(cause: E)-\u003eResult[T, E]",
+            "ok_or_else[E]: fn(create: fn()-\u003eE)-\u003eResult[T, E]",
             "or_else: fn(create: fn()-\u003eOptional[T])-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_or: fn(fallback: T)-\u003eT",
@@ -3254,6 +3267,7 @@
             "is_error: fn()-\u003eBool",
             "is_ok: fn()-\u003eBool",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eResult[U, E]",
+            "to_optional: fn()-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_error: fn()-\u003eE",
             "unwrap_or: fn(fallback: T)-\u003eT",

@@ -288,7 +288,7 @@ func (e *libraryHTTPExchange) Operation(name string) Function {
 					if headerBytes > e.owner.headerLimit {
 						return libraryError(r, "LimitExceeded", "")
 					}
-					if strings.ContainsAny(value, "\r\n\x00") {
+					if !validHeaderValue(value) {
 						return libraryError(r, "InvalidInput", "")
 					}
 				}
