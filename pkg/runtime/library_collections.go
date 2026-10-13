@@ -13,6 +13,20 @@ func relativeIndex(length int, index int64) int64 {
 	return index
 }
 
+// ListAt is the checked direct-call path for List.at. It retains Optional-safe
+// indexing and the cancellation boundaries of an ordinary native call.
+func ListAt(ctx *Execution, receiver Value, index Value, result string) Value {
+	CheckCancelled(ctx)
+	list := receiver.(*List)
+	i := relativeIndex(len(list.Items), index.(int64))
+	value := Alternative{Type: result, Tag: "none"}
+	if i >= 0 && i < int64(len(list.Items)) {
+		value = Alternative{Type: result, Tag: "some", Fields: []Value{list.Items[i]}}
+	}
+	CheckCancelled(ctx)
+	return value
+}
+
 func init() {
 	p := func(n, t string) LibraryParam { return LibraryParam{n, t} }
 	elements := []LibraryParam{p("T", "")}
@@ -35,12 +49,9 @@ func init() {
 				i = int64(len(v.Items)) - 1
 			}
 			if name == "at" {
-				i = relativeIndex(len(v.Items), a[1].(int64))
+				i = a[1].(int64)
 			}
-			if i < 0 || i >= int64(len(v.Items)) {
-				return Alternative{Type: r, Tag: "none"}
-			}
-			return Alternative{r, "some", []Value{v.Items[i]}}
+			return ListAt(ctx, v, i, r)
 		})
 	}
 	add("is_empty", "Bool", elements, listParam, func(ctx *Execution, _ string, a []Value) Value { return len(a[0].(*List).Items) == 0 })
