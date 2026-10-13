@@ -377,7 +377,7 @@ func init() {
 
 func libraryBytesSplit(ctx *Execution, result string, args []Value) Value {
 	data, separator := args[0].(Bytes).Items, args[1].(Bytes).Items
-	limit := args[2].(int64)
+	limit := nativeInteger(args[2])
 	if limit < 0 {
 		return Panic("split: max_parts must be nonnegative, found " + strconv.FormatInt(limit, 10))
 	}
