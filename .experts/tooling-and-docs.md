@@ -39,6 +39,19 @@ Evidence: [direct collection lowering](../pkg/compiler/lower_collections.go),
 [generated-form checks](../pkg/compiler/lower_collection_conversions_test.go),
 and [native conversion/order conformance](../tests/e2e/testdata/accept/direct-collection-conversions.ms).
 
+Verified: choose a lowering path before generating its operands. Explicit views
+previously built and abandoned ordinary-call arguments, then lowered the receiver
+again for `ViewOf`. A nested callable or match registered source markers in the
+discarded tree, so checked programs failed the printer's exact-once invariant.
+Lowering mutates generator state even when its resulting expression is discarded;
+eligibility probes must return without lowering operands on an ineligible path.
+Preserve the printer assertion and independent baseline rather than dropping
+unprinted markers or rewriting source to introduce an intermediate binding.
+Evidence: [view lowering](../pkg/compiler/lower_expressions.go),
+[AST marker regressions](../pkg/compiler/lower_views_test.go),
+[native evaluation/capture tests](../tests/e2e/testdata/accept/interface-view-callables.ms),
+and [native DAP regression](../extensions/vscode/tests/interface-view-debug.test.js).
+
 ### Readable formatting needs paragraphs while retaining inline guards
 
 Decision: the user's formatter request keeps inline `if` bodies and introduces
