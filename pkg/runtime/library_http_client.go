@@ -164,10 +164,10 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 		}
 		for _, entry := range a[2].(*Map).Entries {
 			key, value := entry.Key.(string), entry.Value.(string)
-			if !libraryHeaderName(key) || strings.ContainsAny(value, "\r\n\x00") || strings.EqualFold(key, "Host") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
+			if !libraryHeaderName(key) || !validHeaderValue(value) || strings.EqualFold(key, "Host") || strings.EqualFold(key, "Content-Length") || strings.EqualFold(key, "Transfer-Encoding") {
 				return libraryError(r, "InvalidInput", "")
 			}
-			req.Header.Set(key, value)
+			req.Header.Add(key, value)
 		}
 		// A borrowed streaming body cannot be replayed; return redirects for explicit handling.
 		client := *c.client
@@ -342,7 +342,7 @@ func (b *libraryResponseBody) Operation(name string) Function {
 func libraryHTTPHeaders(headers http.Header) *Map {
 	out := &Map{Type: "@std/Map[String][@std/List[String]]"}
 	for _, key := range sortedHeaderNames(headers) {
-		out.Entries = append(out.Entries, Entry{key, libraryStrings(headers.Values(key))})
+		out.Entries = append(out.Entries, Entry{key, libraryStrings(headers[key])})
 	}
 	return out
 }
