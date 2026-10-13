@@ -1,4 +1,4 @@
-# agentbench
+# ms-bench
 
 Measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
 Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wall time and cost.
@@ -24,12 +24,12 @@ cover all runs.
 ## Commands
 
 ```sh
-python3 agentbench/run.py list
-python3 agentbench/run.py oracle                     # reference solutions vs hidden cases; validates the suite
-python3 agentbench/run.py run --harness claude_code --model <model> \
+python3 ms-bench/run.py list
+python3 ms-bench/run.py oracle                     # reference solutions vs hidden cases; validates the suite
+python3 ms-bench/run.py run --harness claude_code --model <model> \
     --challenges c01,c02 --languages ms,go --repeat 3 --tag baseline
-python3 agentbench/report.py                         # Markdown tables from results/runs.jsonl
-python3 -m unittest discover -s agentbench/tests
+python3 ms-bench/report.py                         # Markdown tables from results/runs.jsonl
+python3 -m unittest discover -s ms-bench/tests
 ```
 
 `ms`, `go`, `cargo` and `node` (22+) must be on `PATH`. Build `ms` with `make build` and add the repo root to `PATH`.

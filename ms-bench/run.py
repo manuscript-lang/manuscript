@@ -22,7 +22,7 @@ RESULTS = ROOT / "results"
 
 def run_one(ch, lang_id, lang, harness, model, timeout_s, keep, out_file, tag):
     run_id = uuid.uuid4().hex[:10]
-    base = Path(tempfile.mkdtemp(prefix="agentbench-"))
+    base = Path(tempfile.mkdtemp(prefix="ms-bench-"))
     ws = base / "ws"
     prompt = make_workspace(ch, lang_id, lang, ws)
     transcripts = RESULTS / "transcripts"
@@ -38,7 +38,7 @@ def run_one(ch, lang_id, lang, harness, model, timeout_s, keep, out_file, tag):
     log = read_log(ws)
     # Cheap leak guard: flag runs whose transcript mentions the benchmark's own challenge tree.
     tpath = transcripts / f"{run_id}.log"
-    peeked = tpath.exists() and any(m in tpath.read_text(errors="replace") for m in ("agentbench/challenges", "hidden/cases.json"))
+    peeked = tpath.exists() and any(m in tpath.read_text(errors="replace") for m in ("ms-bench/challenges", "hidden/cases.json"))
     g = grade(ch, lang, ws)
     rec = {
         "run_id": run_id, "ts": int(time.time()), "tag": tag,
