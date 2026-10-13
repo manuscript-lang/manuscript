@@ -5,7 +5,7 @@ weight = 7
 
 # Numbers and mathematics
 
-API reference: [math](reference/math.md), [numbers](reference/numbers.md), [bigint](reference/bigint.md).
+API reference: [math](reference/math.md), [numbers](reference/numbers.md), [decimal](reference/decimal.md), [bigint](reference/bigint.md).
 
 Use math for floating-point calculations, numbers for text conversion, and bigint when values exceed the Int range. Numeric conversions are explicit. Read the behavior sections before depending on rounding or overflow results.
 
@@ -44,4 +44,4 @@ The three precision-formatting operations return `Result[String, NumberError]`; 
 | Convert to Int | Returns `none` outside the signed 64-bit range. |
 | Bit operations | Use mathematical two's-complement semantics. |
 
-A very large native arithmetic operation can delay cancellation until it returns. Bound input magnitudes where that matters. Decimal keeps its existing 34-digit contract; extended Decimal parse and format APIs remain future work.
+A very large native arithmetic operation can delay cancellation until it returns. Bound input magnitudes where that matters. Decimal keeps its [34-digit arithmetic and explicit scale rounding](../core-language/basics/numbers-and-booleans.md#decimal) contract. Its `to_fixed` method formats exact decimal values with stable trailing zeros. Decimal text parsing remains unsupported.

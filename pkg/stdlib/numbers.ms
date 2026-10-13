@@ -1,6 +1,6 @@
 # Canonical standard-library declarations. Implementations are native.
 
-# Errors returned when numeric text is malformed or outside the target range.
+# Errors returned for invalid numeric requests, malformed text, or out-of-range values.
 export type NumberError:
     case InvalidInput
     case InvalidData

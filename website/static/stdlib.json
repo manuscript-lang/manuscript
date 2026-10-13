@@ -572,8 +572,22 @@
           "kind": "native",
           "type": "Decimal",
           "operations": [
+            "round: fn(places: Int, mode: Optional[RoundingMode] = ...)-\u003eResult[Decimal, NumberError]",
+            "to_fixed: fn(digits: Int, mode: Optional[RoundingMode] = ...)-\u003eResult[String, NumberError]",
             "to_float: fn()-\u003eFloat",
             "truncate_to_int: fn()-\u003eOptional[Int]"
+          ]
+        },
+        {
+          "name": "RoundingMode",
+          "kind": "alternative",
+          "type": "RoundingMode",
+          "cases": [
+            "HalfEven",
+            "HalfAwayFromZero",
+            "TowardZero",
+            "Floor",
+            "Ceil"
           ]
         }
       ]
