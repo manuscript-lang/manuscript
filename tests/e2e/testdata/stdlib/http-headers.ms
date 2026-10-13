@@ -110,12 +110,12 @@ fn echo_streaming_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
         )
     )
 
-test "empty server options and list bridge preserve streaming fields":
+test "explicit server TLS absence and list bridge preserve streaming fields":
     with server = value(
         network().serve_stream(
             address: "127.0.0.1:0",
             handler: echo_streaming_headers,
-            options: HttpServerOptions()
+            options: HttpServerOptions(tls: none)
         )
     ):
         let response = value(
@@ -137,11 +137,8 @@ test "empty server options and list bridge preserve streaming fields":
         ):
             return panic("streaming list bridge lost fields")
 
-    if (
-        not HttpServerOptions().tls.is_none()
-        or not HttpServerOptions(tls: none).tls.is_none()
-    ):
-        return panic("server TLS omission differs from explicit none")
+    if not HttpServerOptions(tls: none).tls.is_none():
+        return panic("explicit server TLS absence changed")
 
 test "header lookup preserves empty and repeated values and map order":
     let headers = (

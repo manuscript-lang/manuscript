@@ -119,7 +119,7 @@ export type HttpServerOptions:
     max_header_bytes: Optional[Int] = none
     timeout: Optional[Duration] = none
     grace: Optional[Duration] = none
-    tls: Optional[TlsOptions] = none
+    tls: Optional[TlsOptions]
 
 # Streaming response body returned by HTTP client operations. Header names have
 # canonical spelling; Map lookup is case-sensitive. Lists keep received order.

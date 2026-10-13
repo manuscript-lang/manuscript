@@ -15,7 +15,7 @@ Use HttpClient for reusable outbound requests and HttpExchange for streaming req
 
 ## Configuration
 
-Limits and deadlines are optional. Supplied redirect counts, idle capacity, byte budgets, deadlines, and grace must be nonnegative; supplied header and request-admission caps must be positive. `HttpServerOptions()` defaults `tls` to `none`, as does an explicit `tls: none`: the server uses plain HTTP/1.1. With TLS configured, native ALPN negotiation selects HTTP/1.1 or HTTP/2. Credentials/trust come from explicit TlsOptions. Client `decompress`, `cookies`, and `tls` settings remain required. No ambient HTTP proxy is read.
+Limits and deadlines are optional. Supplied redirect counts, idle capacity, byte budgets, deadlines, and grace must be nonnegative; supplied header and request-admission caps must be positive. `HttpServerOptions` requires an explicit `tls` field: `tls: none` selects plain HTTP/1.1. With TLS configured, native ALPN negotiation selects HTTP/1.1 or HTTP/2. Credentials/trust come from explicit TlsOptions. Client `decompress`, `cookies`, and `tls` settings remain required. No ambient HTTP proxy is read.
 
 ### Client lifetime
 
