@@ -1,0 +1,274 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+import StringBuilder from "@std/string.ms"
+
+type ConvError:
+    case Syntax
+    case BadNumber(token: String)
+    case BadName(name: String)
+    case UnknownUnit(token: String)
+    case UnitExists(name: String)
+    case NotBuiltin(name: String)
+    case NoTemperatureDefinition
+    case OutOfRange
+    case Mismatch(first: String, second: String)
+    case BelowAbsoluteZero
+
+type UnitDef:
+    dim: String
+    factor: Int
+    builtin: Bool
+
+type Frac:
+    num: Int
+    den: Int
+
+type State:
+    units: Map[String, UnitDef]
+
+fn describe(e: ConvError) -> String:
+    match e:
+        Syntax: return "error: syntax"
+        BadNumber(token): return "error: bad number {token}"
+        BadName(name): return "error: bad name {name}"
+        UnknownUnit(token): return "error: unknown unit {token}"
+        UnitExists(name): return "error: unit exists {name}"
+        NotBuiltin(name): return "error: not a builtin unit {name}"
+        NoTemperatureDefinition: return "error: cannot define temperature unit"
+        OutOfRange: return "error: out of range"
+        Mismatch(first, second): return "error: dimension mismatch {first} vs {second}"
+        BelowAbsoluteZero: return "error: below absolute zero"
+
+fn add_units(st: State, dim: String, names: List[String], factors: List[Int]) -> Unit:
+    var i = 0
+    while i < names.length():
+        st.units.add(key: names.at(i).unwrap(), value: UnitDef(dim: dim, factor: factors.at(i).unwrap(), builtin: true))
+        i = i + 1
+
+fn abs_int(v: Int) -> Int:
+    if v < 0:
+        return 0 - v
+    return v
+
+fn round_div(n: Int, d: Int) -> Int:
+    let q = (2 * abs_int(n) + d) / (2 * d)
+    if n < 0:
+        return 0 - q
+    return q
+
+fn trim_zeros(s: String) -> String:
+    var end = s.length()
+    while end > 0 and s.at(end - 1).unwrap() == "0":
+        end = end - 1
+    return s.slice(0, end)
+
+fn fmt_milli(m: Int) -> String:
+    if m == 0:
+        return "0"
+    var sign = ""
+    if m < 0:
+        sign = "-"
+    let a = abs_int(m)
+    let whole = a / 1000
+    let frac = a % 1000
+    if frac == 0:
+        return "{sign}{whole}"
+    let digits = "{frac}".pad_start(3, "0").unwrap()
+    return "{sign}{whole}.{trim_zeros(digits)}"
+
+fn all_digits(s: String) -> Bool:
+    if s.is_empty():
+        return false
+    for c in s.scalar_values():
+        if c < 48 or c > 57:
+            return false
+    return true
+
+fn parse_num(t: String) -> Optional[Int]:
+    var neg = false
+    var s = t
+    if s.starts_with("-"):
+        neg = true
+        s = s.slice(1, s.length())
+    var whole = s
+    var frac = "000"
+    let dot = s.index_of(".")
+    if dot.is_some():
+        let i = dot.unwrap()
+        whole = s.slice(0, i)
+        let fr = s.slice(i + 1, s.length())
+        if fr.length() < 1 or fr.length() > 3 or not all_digits(fr):
+            return none
+        frac = fr.pad_end(3, "0").unwrap()
+    if not all_digits(whole):
+        return none
+    let w = whole.parse_int()
+    if w.is_none():
+        return none
+    let v = w.unwrap() * 1000 + frac.parse_int().unwrap()
+    if neg:
+        return some(0 - v)
+    return some(v)
+
+fn to_celsius(u: String, sv: Int) -> Frac:
+    if u == "c":
+        return Frac(num: sv, den: 1)
+    if u == "f":
+        return Frac(num: (sv - 32000) * 5, den: 9)
+    return Frac(num: sv - 273150, den: 1)
+
+fn from_celsius(u: String, c: Frac) -> Int:
+    if u == "c":
+        return round_div(c.num, c.den)
+    if u == "f":
+        return round_div(c.num * 9 + 32000 * 5 * c.den, 5 * c.den)
+    return round_div(c.num + 273150 * c.den, c.den)
+
+fn below_zero(c: Frac) -> Bool:
+    return c.num < 0 - 273150 * c.den
+
+fn valid_name(s: String) -> Bool:
+    let cs = s.scalar_values()
+    if cs.is_empty():
+        return false
+    let first = cs.at(0).unwrap()
+    if first < 97 or first > 122:
+        return false
+    for c in cs:
+        let lower = c >= 97 and c <= 122
+        let digit = c >= 48 and c <= 57
+        if not (lower or digit or c == 95):
+            return false
+    return true
+
+fn define(st: State, t: List[String]) -> Result[String, ConvError]:
+    if t.length() != 5 or t.at(2).unwrap() != "=":
+        return error(ConvError.Syntax)
+    let name = t.at(1).unwrap()
+    let v = t.at(3).unwrap()
+    let u = t.at(4).unwrap()
+    if not valid_name(name):
+        return error(ConvError.BadName(name: name))
+    if st.units.contains(name):
+        return error(ConvError.UnitExists(name: name))
+    var n = 0
+    if all_digits(v):
+        n = v.parse_int().unwrap_or(0)
+    if n < 1 or n > 1000:
+        return error(ConvError.BadNumber(token: v))
+    let found = st.units.get(u)
+    if found.is_none():
+        return error(ConvError.UnknownUnit(token: u))
+    let base = found.unwrap()
+    if not base.builtin:
+        return error(ConvError.NotBuiltin(name: u))
+    if base.dim == "temperature":
+        return error(ConvError.NoTemperatureDefinition)
+    st.units.add(key: name, value: UnitDef(dim: base.dim, factor: n * base.factor, builtin: false))
+    return ok("ok")
+
+fn convert_linear(v: Int, a: UnitDef, b: UnitDef) -> Int:
+    return round_div(v * a.factor, b.factor)
+
+fn do_convert(v: Int, fu: String, tu: String, a: UnitDef, b: UnitDef) -> Result[String, ConvError]:
+    var r = 0
+    if a.dim == "temperature":
+        let c = to_celsius(fu, v)
+        if below_zero(c):
+            return error(ConvError.BelowAbsoluteZero)
+        r = from_celsius(tu, c)
+    else:
+        r = convert_linear(v, a, b)
+    return ok("{fmt_milli(v)} {fu} = {fmt_milli(r)} {tu}")
+
+fn do_compare(v1: Int, v2: Int, fu: String, tu: String, a: UnitDef, b: UnitDef) -> Result[String, ConvError]:
+    var x = 0
+    var y = 0
+    if a.dim == "temperature":
+        let ca = to_celsius(fu, v1)
+        let cb = to_celsius(tu, v2)
+        if below_zero(ca) or below_zero(cb):
+            return error(ConvError.BelowAbsoluteZero)
+        x = ca.num * cb.den
+        y = cb.num * ca.den
+    else:
+        x = v1 * a.factor
+        y = v2 * b.factor
+    var rel = "="
+    if x < y:
+        rel = "<"
+    else if x > y:
+        rel = ">"
+    return ok("{fmt_milli(v1)} {fu} {rel} {fmt_milli(v2)} {tu}")
+
+fn two_unit(st: State, cmd: String, t: List[String]) -> Result[String, ConvError]:
+    if t.length() != 5:
+        return error(ConvError.Syntax)
+    if cmd == "convert" and t.at(3).unwrap() != "to":
+        return error(ConvError.Syntax)
+    var num_toks = [t.at(1).unwrap()]
+    if cmd == "compare":
+        num_toks = [t.at(1).unwrap(), t.at(3).unwrap()]
+    let unit_toks = [t.at(2).unwrap(), t.at(4).unwrap()]
+    let vals = List[Int]()
+    for x in num_toks:
+        let v = parse_num(x)
+        if v.is_none():
+            return error(ConvError.BadNumber(token: x))
+        vals.append(v.unwrap())
+    for u in unit_toks:
+        if not st.units.contains(u):
+            return error(ConvError.UnknownUnit(token: u))
+    for v in vals:
+        if abs_int(v) > 100000000:
+            return error(ConvError.OutOfRange)
+    let fu = unit_toks.at(0).unwrap()
+    let tu = unit_toks.at(1).unwrap()
+    let a = st.units.get(fu).unwrap()
+    let b = st.units.get(tu).unwrap()
+    if a.dim != b.dim:
+        return error(ConvError.Mismatch(first: a.dim, second: b.dim))
+    if cmd == "convert":
+        return do_convert(vals.at(0).unwrap(), fu, tu, a, b)
+    return do_compare(vals.at(0).unwrap(), vals.at(1).unwrap(), fu, tu, a, b)
+
+fn fields(line: String) -> List[String]:
+    let spaced = line.replace_all(old: "\t", new: " ").unwrap()
+    return spaced.split(" ").filter(fn(part: String) -> Bool:
+        return not part.is_empty()
+    )
+
+fn run_command(st: State, t: List[String]) -> String:
+    let cmd = t.at(0).unwrap()
+    var result = Result[String, ConvError].error(ConvError.Syntax)
+    if cmd == "define":
+        result = define(st, t)
+    else if cmd == "convert" or cmd == "compare":
+        result = two_unit(st, cmd, t)
+    match result:
+        ok(text): return text
+        error(e): return describe(e)
+
+fn run() -> Result[Unit, Error]:
+    let st = State(units: Map[String, UnitDef]())
+    add_units(st, "length", ["mm", "cm", "m", "km", "in", "ft", "yd", "mi"], [10, 100, 10000, 10000000, 254, 3048, 9144, 16093440])
+    add_units(st, "mass", ["mg", "g", "kg", "oz", "lb"], [1, 1000, 1000000, 28350, 453592])
+    add_units(st, "time", ["ms", "s", "min", "h", "d"], [1, 1000, 60000, 3600000, 86400000])
+    add_units(st, "volume", ["ml", "l", "tsp", "tbsp", "cup", "gal"], [1, 1000, 5, 15, 240, 3785])
+    add_units(st, "temperature", ["c", "f", "k"], [0, 0, 0])
+    let out = StringBuilder()
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let t = fields(next.unwrap())
+        if t.is_empty():
+            continue
+        out.append(run_command(st, t))
+        out.append("\n")
+    try stdout().write(out.freeze().to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

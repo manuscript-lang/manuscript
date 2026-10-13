@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "host = \"db.local\"\nport = 5432\nname = x\nurl = ${host}:${port}/main\ntags = [a, b]\n@@ prod\nhost = \"db.prod\"\ntags += c\n!port\ndebug = maybe?\noops\nname += 1\n",
+  "stdout": "debug = \"maybe?\"  # prod\nhost = \"db.prod\"  # prod\nname = \"x\"  # base\ntags = [\"a\", \"b\", \"c\"]  # prod\nurl = \"db.prod:${port}/main\"  # base\nerrors:\n  line 11: syntax error\n  line 12: cannot append to non-list\n  key url: unresolved ${port}\n"
+ },
+ {
+  "name": "layers",
+  "stdin": "a = 1\n@@ one\na = 2\nb = true\n@@ two\nb = false\nc = hi\n",
+  "stdout": "a = 2  # one\nb = false  # two\nc = \"hi\"  # two\n"
+ }
+]

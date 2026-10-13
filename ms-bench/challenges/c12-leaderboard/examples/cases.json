@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "rank\nann 90\nbob 80\ncat 80\ndan 70\neve\nfay x1\n",
+  "stdout": "1 ann 90\n2 bob 80\n2 cat 80\n4 dan 70\nskipped: 2\n"
+ },
+ {
+  "name": "dense",
+  "stdin": "dense\nann 90\nbob 80\ncat 80\ndan 70\n",
+  "stdout": "1 ann 90\n2 bob 80\n2 cat 80\n3 dan 70\n"
+ }
+]

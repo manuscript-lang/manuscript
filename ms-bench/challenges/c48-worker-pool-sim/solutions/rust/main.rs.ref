@@ -1,0 +1,154 @@
+use std::collections::VecDeque;
+use std::io::{self, Read, Write};
+
+struct Task {
+    id: String,
+    arr: i64,
+    cost: i64,
+    fails: u32,
+    high: bool,
+    attempts: u32,
+    res: String,
+    state: u8, // 0 none, 1 ok, 2 failed, 3 rejected
+}
+
+struct Run {
+    task: usize,
+    start: i64,
+    end: i64,
+}
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let lines: Vec<Vec<&str>> = input
+        .split('\n')
+        .map(|l| l.split(|c| c == ' ' || c == '\t').filter(|x| !x.is_empty()).collect::<Vec<_>>())
+        .filter(|t| !t.is_empty())
+        .collect();
+    let w_count: usize = lines[0][1].parse().unwrap();
+    let q_cap: usize = lines[0][2].parse().unwrap();
+    let retries: u32 = lines[0][3].parse().unwrap();
+    let mut tasks: Vec<Task> = Vec::new();
+    for t in &lines[1..] {
+        let mut tk = Task {
+            id: t[1].to_string(),
+            arr: t[2].parse().unwrap(),
+            cost: t[3].parse().unwrap(),
+            fails: 0,
+            high: false,
+            attempts: 0,
+            res: String::new(),
+            state: 0,
+        };
+        for x in &t[4..] {
+            if *x == "high" {
+                tk.high = true;
+            } else {
+                tk.fails = x["fails=".len()..].parse().unwrap();
+            }
+        }
+        tasks.push(tk);
+    }
+    let mut order: Vec<usize> = (0..tasks.len()).collect();
+    order.sort_by_key(|&i| (tasks[i].arr, i));
+
+    let mut run: Vec<Option<Run>> = (0..w_count).map(|_| None).collect();
+    let mut busy = vec![0i64; w_count];
+    let mut qh: VecDeque<usize> = VecDeque::new();
+    let mut qn: VecDeque<usize> = VecDeque::new();
+    let mut ai = 0;
+    let mut makespan = 0i64;
+
+    loop {
+        let mut t = -1i64;
+        for r in run.iter().flatten() {
+            if t < 0 || r.end < t {
+                t = r.end;
+            }
+        }
+        if ai < order.len() {
+            let a = tasks[order[ai]].arr;
+            if t < 0 || a < t {
+                t = a;
+            }
+        }
+        if t < 0 {
+            break;
+        }
+        for w in 0..w_count {
+            let ended = matches!(&run[w], Some(r) if r.end == t);
+            if !ended {
+                continue;
+            }
+            let r = run[w].take().unwrap();
+            let tk = &mut tasks[r.task];
+            makespan = makespan.max(r.end);
+            if tk.attempts <= tk.fails {
+                if tk.attempts < retries + 1 {
+                    if tk.high {
+                        qh.push_back(r.task);
+                    } else {
+                        qn.push_back(r.task);
+                    }
+                } else {
+                    tk.state = 2;
+                    tk.res = format!("{} failed attempts={} end={}", tk.id, tk.attempts, r.end);
+                }
+            } else {
+                tk.state = 1;
+                tk.res = format!(
+                    "{} ok worker={} start={} end={} attempts={}",
+                    tk.id,
+                    w + 1,
+                    r.start,
+                    r.end,
+                    tk.attempts
+                );
+            }
+        }
+        for w in 0..w_count {
+            if run[w].is_none() && (!qh.is_empty() || !qn.is_empty()) {
+                let i = if !qh.is_empty() { qh.pop_front().unwrap() } else { qn.pop_front().unwrap() };
+                tasks[i].attempts += 1;
+                run[w] = Some(Run { task: i, start: t, end: t + tasks[i].cost });
+                busy[w] += tasks[i].cost;
+            }
+        }
+        while ai < order.len() && tasks[order[ai]].arr == t {
+            let i = order[ai];
+            ai += 1;
+            if let Some(w) = run.iter().position(|r| r.is_none()) {
+                tasks[i].attempts += 1;
+                run[w] = Some(Run { task: i, start: t, end: t + tasks[i].cost });
+                busy[w] += tasks[i].cost;
+            } else if qh.len() + qn.len() < q_cap {
+                if tasks[i].high {
+                    qh.push_back(i);
+                } else {
+                    qn.push_back(i);
+                }
+            } else {
+                tasks[i].state = 3;
+                tasks[i].res = format!("{} rejected at={}", tasks[i].id, t);
+            }
+        }
+    }
+    let mut out = String::new();
+    for tk in &tasks {
+        out.push_str(&tk.res);
+        out.push('\n');
+    }
+    for w in 0..w_count {
+        out.push_str(&format!("worker {} busy={}\n", w + 1, busy[w]));
+    }
+    let count = |s: u8| tasks.iter().filter(|t| t.state == s).count();
+    out.push_str(&format!(
+        "summary ok={} failed={} rejected={} makespan={}\n",
+        count(1),
+        count(2),
+        count(3),
+        makespan
+    ));
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

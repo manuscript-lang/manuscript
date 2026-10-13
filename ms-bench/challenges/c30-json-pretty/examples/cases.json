@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "{\"a\":[1,2,{\"b\":null}],\"c\":\"x\\ty\", \"d\":{}, \"e\":[]}\n",
+  "stdout": "{\n  \"a\": [\n    1,\n    2,\n    {\n      \"b\": null\n    }\n  ],\n  \"c\": \"x\\ty\",\n  \"d\": {},\n  \"e\": []\n}\n"
+ },
+ {
+  "name": "invalid",
+  "stdin": "{\"a\": 1,}\n",
+  "stdout": "invalid\n"
+ }
+]

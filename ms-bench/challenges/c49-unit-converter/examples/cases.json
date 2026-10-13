@@ -1,0 +1,7 @@
+[
+ {
+  "name": "basic",
+  "stdin": "convert 1 in to mm\nconvert 100 c to f\nconvert 3 kg to m\nconvert 1.0005 km to m\ndefine mile2 = 2 mi\nconvert 1 mile2 to km\ncompare 1 ft 12 in\n",
+  "stdout": "1 in = 25.4 mm\n100 c = 212 f\nerror: dimension mismatch mass vs length\nerror: bad number 1.0005\nok\n1 mile2 = 3.219 km\n1 ft = 12 in\n"
+ }
+]

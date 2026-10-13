@@ -1,0 +1,89 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type entry struct {
+	name  string
+	score int
+}
+
+func validScore(s string) bool {
+	if strings.HasPrefix(s, "-") {
+		s = s[1:]
+	}
+	if len(s) < 1 || len(s) > 9 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	mode := ""
+	if sc.Scan() {
+		mode = sc.Text()
+	}
+	if mode != "rank" && mode != "dense" && mode != "stable" {
+		fmt.Fprintln(w, "error: bad mode")
+		return
+	}
+	var ents []entry
+	bad := 0
+	for sc.Scan() {
+		l := sc.Text()
+		if strings.Trim(l, " ") == "" {
+			continue
+		}
+		t := strings.Split(l, " ")
+		if len(t) != 2 || t[0] == "" || !validScore(t[1]) {
+			bad++
+			continue
+		}
+		n, _ := strconv.Atoi(t[1])
+		ents = append(ents, entry{t[0], n})
+	}
+	if mode == "stable" {
+		sort.SliceStable(ents, func(i, j int) bool { return ents[i].score > ents[j].score })
+	} else {
+		sort.SliceStable(ents, func(i, j int) bool {
+			if ents[i].score != ents[j].score {
+				return ents[i].score > ents[j].score
+			}
+			return ents[i].name < ents[j].name
+		})
+	}
+	rank, prev := 0, 0
+	for i, e := range ents {
+		if mode == "stable" {
+			fmt.Fprintf(w, "%s %d\n", e.name, e.score)
+			continue
+		}
+		if i == 0 || e.score != prev {
+			if mode == "rank" {
+				rank = i + 1
+			} else {
+				rank++
+			}
+			prev = e.score
+		}
+		fmt.Fprintf(w, "%d %s %d\n", rank, e.name, e.score)
+	}
+	if bad > 0 {
+		fmt.Fprintf(w, "skipped: %d\n", bad)
+	}
+}

@@ -1,0 +1,147 @@
+package main
+
+import (
+	"bufio"
+	"io"
+	"os"
+	"strings"
+)
+
+const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+const hexDigits = "0123456789abcdef"
+
+func b64Encode(text string) string {
+	var sb strings.Builder
+	for i := 0; i < len(text); i += 3 {
+		n := len(text) - i
+		v := int(text[i]) << 16
+		if n > 1 {
+			v |= int(text[i+1]) << 8
+		}
+		if n > 2 {
+			v |= int(text[i+2])
+		}
+		sb.WriteByte(alpha[(v>>18)&63])
+		sb.WriteByte(alpha[(v>>12)&63])
+		if n > 1 {
+			sb.WriteByte(alpha[(v>>6)&63])
+		} else {
+			sb.WriteByte('=')
+		}
+		if n > 2 {
+			sb.WriteByte(alpha[v&63])
+		} else {
+			sb.WriteByte('=')
+		}
+	}
+	return sb.String()
+}
+
+func printable(b []byte) (string, bool) {
+	for _, c := range b {
+		if c < 32 || c > 126 {
+			return "", false
+		}
+	}
+	return string(b), true
+}
+
+func b64Decode(t string) (string, bool) {
+	if len(t)%4 != 0 {
+		return "", false
+	}
+	body := strings.TrimRight(t, "=")
+	pad := len(t) - len(body)
+	if pad > 2 {
+		return "", false
+	}
+	vals := make([]int, len(body))
+	for i := 0; i < len(body); i++ {
+		v := strings.IndexByte(alpha, body[i])
+		if v < 0 {
+			return "", false
+		}
+		vals[i] = v
+	}
+	var bytes []byte
+	for i := 0; i < len(vals); i += 4 {
+		g := vals[i:min(i+4, len(vals))]
+		n := 0
+		for k := 0; k < 4; k++ {
+			n <<= 6
+			if k < len(g) {
+				n |= g[k]
+			}
+		}
+		raw := []byte{byte(n >> 16), byte(n >> 8), byte(n)}
+		keep := len(g) - 1
+		for _, b := range raw[keep:] {
+			if b != 0 {
+				return "", false
+			}
+		}
+		bytes = append(bytes, raw[:keep]...)
+	}
+	return printable(bytes)
+}
+
+func hexVal(c byte) int {
+	switch {
+	case c >= '0' && c <= '9':
+		return int(c - '0')
+	case c >= 'a' && c <= 'f':
+		return int(c-'a') + 10
+	case c >= 'A' && c <= 'F':
+		return int(c-'A') + 10
+	}
+	return -1
+}
+
+func hexDecode(t string) (string, bool) {
+	if len(t)%2 != 0 {
+		return "", false
+	}
+	var bytes []byte
+	for i := 0; i < len(t); i += 2 {
+		hi, lo := hexVal(t[i]), hexVal(t[i+1])
+		if hi < 0 || lo < 0 {
+			return "", false
+		}
+		bytes = append(bytes, byte(hi*16+lo))
+	}
+	return printable(bytes)
+}
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Trim(line, " ") == "" {
+			continue
+		}
+		cmd, text, _ := strings.Cut(line, " ")
+		res, ok := "", true
+		switch cmd {
+		case "b64e":
+			res = b64Encode(text)
+		case "hexe":
+			var sb strings.Builder
+			for i := 0; i < len(text); i++ {
+				sb.WriteByte(hexDigits[text[i]>>4])
+				sb.WriteByte(hexDigits[text[i]&15])
+			}
+			res = sb.String()
+		case "b64d":
+			res, ok = b64Decode(text)
+		case "hexd":
+			res, ok = hexDecode(text)
+		default:
+			ok = false
+		}
+		if !ok {
+			res = "error"
+		}
+		out.WriteString(res + "\n")
+	}
+}

@@ -1,0 +1,7 @@
+[
+ {
+  "name": "basic",
+  "stdin": "book dune 1\nmember ann\nmember bob\ncheckout ann dune 1\nhold bob dune\nrenew ann dune 5\nreturn ann dune 20\ncheckout bob dune 21\noverdue 40\nreport\n",
+  "stdout": "ok\nok\nok\nok due=15\nok position=1\nerror: held by others\nok fine=50\nok due=35\nbob dune late=5\nmembers=2 books=1\nann loans=0 fines=50\nbob loans=1 fines=0\ndune copies=1 out=1 holds=0\n"
+ }
+]

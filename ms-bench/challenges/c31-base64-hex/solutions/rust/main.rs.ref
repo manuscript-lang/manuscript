@@ -1,0 +1,89 @@
+use std::io::{self, Read, Write};
+
+const ALPHA: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const HEX: &[u8] = b"0123456789abcdef";
+
+fn b64_encode(text: &[u8]) -> String {
+    let mut out = String::new();
+    for chunk in text.chunks(3) {
+        let n = chunk.len();
+        let v = ((chunk[0] as u32) << 16)
+            | ((if n > 1 { chunk[1] } else { 0 } as u32) << 8)
+            | (if n > 2 { chunk[2] } else { 0 } as u32);
+        out.push(ALPHA[((v >> 18) & 63) as usize] as char);
+        out.push(ALPHA[((v >> 12) & 63) as usize] as char);
+        out.push(if n > 1 { ALPHA[((v >> 6) & 63) as usize] as char } else { '=' });
+        out.push(if n > 2 { ALPHA[(v & 63) as usize] as char } else { '=' });
+    }
+    out
+}
+
+fn printable(bytes: Vec<u8>) -> Option<String> {
+    if bytes.iter().all(|&b| (32..=126).contains(&b)) {
+        Some(String::from_utf8(bytes).unwrap())
+    } else {
+        None
+    }
+}
+
+fn b64_decode(t: &str) -> Option<String> {
+    if t.len() % 4 != 0 {
+        return None;
+    }
+    let body = t.trim_end_matches('=');
+    if t.len() - body.len() > 2 {
+        return None;
+    }
+    let mut vals = Vec::new();
+    for c in body.bytes() {
+        vals.push(ALPHA.iter().position(|&a| a == c)? as u32);
+    }
+    let mut bytes = Vec::new();
+    for g in vals.chunks(4) {
+        let mut n = 0u32;
+        for k in 0..4 {
+            n = (n << 6) | if k < g.len() { g[k] } else { 0 };
+        }
+        let raw = [(n >> 16) as u8, (n >> 8) as u8, n as u8];
+        let keep = g.len() - 1;
+        if raw[keep..].iter().any(|&b| b != 0) {
+            return None;
+        }
+        bytes.extend_from_slice(&raw[..keep]);
+    }
+    printable(bytes)
+}
+
+fn hex_decode(t: &str) -> Option<String> {
+    if t.len() % 2 != 0 {
+        return None;
+    }
+    let digit = |c: u8| (c as char).to_digit(16);
+    let mut bytes = Vec::new();
+    for pair in t.as_bytes().chunks(2) {
+        bytes.push((digit(pair[0])? * 16 + digit(pair[1])?) as u8);
+    }
+    printable(bytes)
+}
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let mut out = String::new();
+    for line in input.split('\n') {
+        if line.trim_matches(' ').is_empty() {
+            continue;
+        }
+        let (cmd, text) = line.split_once(' ').unwrap_or((line, ""));
+        let res = match cmd {
+            "b64e" => Some(b64_encode(text.as_bytes())),
+            "hexe" => Some(text.bytes().flat_map(|b| [HEX[(b >> 4) as usize] as char, HEX[(b & 15) as usize] as char]).collect()),
+            "b64d" => b64_decode(text),
+            "hexd" => hex_decode(text),
+            _ => None,
+        };
+        out.push_str(&res.unwrap_or_else(|| "error".to_string()));
+        out.push('\n');
+    }
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

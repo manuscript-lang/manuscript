@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "1994\nMCMXCIV\nIIII\n0\n4000\nxiv\n3999\n",
+  "stdout": "MCMXCIV\n1994\ninvalid\ninvalid\ninvalid\ninvalid\nMMMCMXCIX\n"
+ },
+ {
+  "name": "small",
+  "stdin": "4\nIV\n9\nXLII\n",
+  "stdout": "IV\n4\nIX\n42\n"
+ }
+]

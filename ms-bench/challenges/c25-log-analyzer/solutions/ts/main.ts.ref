@@ -1,0 +1,36 @@
+import { readFileSync } from "node:fs";
+
+const LEVELS = ["DEBUG", "INFO", "WARN", "ERROR"];
+const METHODS = ["GET", "POST", "PUT", "DELETE"];
+const digits = (s: string) => /^[0-9]+$/.test(s);
+
+let valid = 0, malformed = 0, server = 0;
+const levels: Record<string, number> = { DEBUG: 0, INFO: 0, WARN: 0, ERROR: 0 };
+const count = new Map<string, number>();
+const total = new Map<string, number>();
+
+for (const line of readFileSync(0, "utf8").split("\n")) {
+  if (line.trim() === "") continue;
+  const f = line.split(" ");
+  if (
+    f.length !== 6 || f[0] === "" || !LEVELS.includes(f[1]) || !METHODS.includes(f[2]) ||
+    !f[3].startsWith("/") || f[4].length !== 3 || !digits(f[4]) || !digits(f[5]) || f[5].length > 9
+  ) {
+    malformed++;
+    continue;
+  }
+  valid++;
+  levels[f[1]]++;
+  if (parseInt(f[4], 10) >= 500) server++;
+  count.set(f[3], (count.get(f[3]) ?? 0) + 1);
+  total.set(f[3], (total.get(f[3]) ?? 0) + parseInt(f[5], 10));
+}
+
+const out = [`valid: ${valid}`, `malformed: ${malformed}`];
+for (const l of LEVELS) out.push(`${l}: ${levels[l]}`);
+out.push(`5xx: ${server}`, "top:");
+const ranked = [...count.keys()].sort((a, b) => count.get(b)! - count.get(a)! || (a < b ? -1 : a > b ? 1 : 0));
+for (const p of ranked.slice(0, 3)) {
+  out.push(`${p} ${count.get(p)} avg=${Math.floor(total.get(p)! / count.get(p)!)}`);
+}
+process.stdout.write(out.map((l) => l + "\n").join(""));

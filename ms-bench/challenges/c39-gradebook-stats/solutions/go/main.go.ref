@@ -1,0 +1,161 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type assignment struct{ max, w int }
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func fmtTenths(v int) string { return fmt.Sprintf("%d.%d", v/10, v%10) }
+
+func letter(f int) string {
+	switch {
+	case f >= 900:
+		return "A"
+	case f >= 800:
+		return "B"
+	case f >= 700:
+		return "C"
+	case f >= 600:
+		return "D"
+	}
+	return "F"
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	assigns := map[string]assignment{}
+	students := map[string]map[string]int{}
+	arity := map[string]int{"assign": 4, "student": 2, "score": 4, "report": 1}
+	for sc.Scan() {
+		t := strings.FieldsFunc(sc.Text(), func(r rune) bool { return r == ' ' || r == '\t' })
+		if len(t) == 0 {
+			continue
+		}
+		c := t[0]
+		if n, ok := arity[c]; !ok || n != len(t) {
+			fmt.Fprintln(out, "error: bad command")
+			continue
+		}
+		switch c {
+		case "assign":
+			mx, _ := strconv.Atoi(t[2])
+			w, _ := strconv.Atoi(t[3])
+			if !isDigits(t[2]) || !isDigits(t[3]) || mx == 0 || w == 0 {
+				fmt.Fprintln(out, "error: bad number")
+			} else if _, ok := assigns[t[1]]; ok {
+				fmt.Fprintf(out, "error: assignment exists %s\n", t[1])
+			} else {
+				assigns[t[1]] = assignment{mx, w}
+				fmt.Fprintln(out, "ok")
+			}
+		case "student":
+			if _, ok := students[t[1]]; ok {
+				fmt.Fprintf(out, "error: student exists %s\n", t[1])
+			} else {
+				students[t[1]] = map[string]int{}
+				fmt.Fprintln(out, "ok")
+			}
+		case "score":
+			a, aok := assigns[t[2]]
+			p, _ := strconv.Atoi(t[3])
+			if _, ok := students[t[1]]; !ok {
+				fmt.Fprintf(out, "error: unknown student %s\n", t[1])
+			} else if !aok {
+				fmt.Fprintf(out, "error: unknown assignment %s\n", t[2])
+			} else if !isDigits(t[3]) || p > a.max {
+				fmt.Fprintln(out, "error: bad points")
+			} else {
+				students[t[1]][t[2]] = p
+				fmt.Fprintln(out, "ok")
+			}
+		default:
+			if len(students) == 0 {
+				fmt.Fprintln(out, "no students")
+				continue
+			}
+			total := 0
+			names := make([]string, 0, len(assigns))
+			for name, a := range assigns {
+				total += a.w
+				names = append(names, name)
+			}
+			sort.Strings(names)
+			tenths := func(st, name string) int {
+				mx := assigns[name].max
+				return (2000*students[st][name] + mx) / (2 * mx)
+			}
+			fin := map[string]int{}
+			ids := make([]string, 0, len(students))
+			for st := range students {
+				s := 0
+				for _, name := range names {
+					s += assigns[name].w * tenths(st, name)
+				}
+				if total > 0 {
+					fin[st] = (2*s + total) / (2 * total)
+				}
+				ids = append(ids, st)
+			}
+			sort.Slice(ids, func(i, j int) bool {
+				if fin[ids[i]] != fin[ids[j]] {
+					return fin[ids[i]] > fin[ids[j]]
+				}
+				return ids[i] < ids[j]
+			})
+			vals := make([]int, 0, len(ids))
+			for _, st := range ids {
+				f := fin[st]
+				rank := 1
+				for _, o := range fin {
+					if o > f {
+						rank++
+					}
+				}
+				fmt.Fprintf(out, "%d %s %s %s\n", rank, st, fmtTenths(f), letter(f))
+				vals = append(vals, f)
+			}
+			sort.Ints(vals)
+			n := len(vals)
+			sum := 0
+			cnt := map[string]int{}
+			for _, f := range vals {
+				sum += f
+				cnt[letter(f)]++
+			}
+			med := vals[n/2]
+			if n%2 == 0 {
+				med = (vals[n/2-1] + vals[n/2] + 1) / 2
+			}
+			fmt.Fprintf(out, "class: n=%d min=%s max=%s mean=%s median=%s\n", n, fmtTenths(vals[0]), fmtTenths(vals[n-1]), fmtTenths((2*sum+n)/(2*n)), fmtTenths(med))
+			fmt.Fprintf(out, "grades: A=%d B=%d C=%d D=%d F=%d\n", cnt["A"], cnt["B"], cnt["C"], cnt["D"], cnt["F"])
+			for _, name := range names {
+				sm := 0
+				for st := range students {
+					sm += tenths(st, name)
+				}
+				fmt.Fprintf(out, "assignment %s mean=%s\n", name, fmtTenths((2*sm+n)/(2*n)))
+			}
+		}
+	}
+}
