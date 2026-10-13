@@ -29,17 +29,17 @@ cancellation retain cleanup and frame behavior.
 
 ### Ancestor lock exclusion is broader than actual wait cycles
 
-Verified: Synchronized checks the holder's work lifetime against the acquiring execution's ancestor chain. It rejects ordinary parent/child overlap even when the parent is not joining. Cancellation does not dissolve a cycle involving shielded cleanup, and must not forcibly release a held guard. The bounded tests cover lock-before-join and join-before-lock, task/group joins, group/execution/scheduler shutdown, and cancellation versus release.
+Decision: permit ordinary ancestor contention while retaining immediate same-operation reentry rejection and faulting child lock waiters when an ancestor join/close completes a potential cycle. This narrows the former held-ancestor exclusion. The parent authorized this scope for issue 148; no permanent-deadlock or arbitrary-I/O detection is promised.
 
-Open: permitting safe ancestor contention requires choosing an actual-cycle contract. Checking only when a child acquires misses an ancestor that joins afterward. A detector must coordinate both sides of the dependency and preserve fixed construction ancestry, failed-task group joins, and shielded cleanup. Independent-lock and cross-service cycles are currently invalid application usage; do not silently broaden that contract.
+Verified: checking only when a child acquires misses an ancestor that joins afterward. Both lock and join/admission dependencies must be registered atomically, including fixed child identities, failed-task joins that widen to sibling cleanup, nested services and queued reporters. Shielded cleanup survives ordinary cancellation; cancellation never forcibly releases a held guard. Guard release removes dependency edges before waking contenders so an unscheduled waiter cannot create a stale cycle.
 
-Verified: another operation can close a guard alias while the admitting operation is blocked joining. A wait-for cycle through the admitting lifetime can therefore be broken by independent alias release. A narrower policy must specify whether such potential cycles fault; do not describe them as proof of a permanent deadlock.
+Verified: another operation can close a guard alias while the admitting operation is blocked joining. A cycle through that lifetime can therefore be broken by independent release. The accepted scoped policy still faults these potential cycles, as the former guard did; it does not prove a permanent deadlock. Independent-lock/cross-service cycles remain invalid application usage.
 
 Verified: acquisition delivery must use one cancellation observation for both disposal and unwinding. Two final checks can see active then cancelled, discard the result without disposing it, and strand a Synchronized lock. A cancellation arriving after the successful delivery checkpoint belongs to caller cleanup.
 
 Apply when: changing ancestor lock admission, wait-cycle prevention, task/service joins, or acquisition delivery.
-Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [synchronization contract](../documentation/concurrency/synchronization.md), [bounded regressions](../pkg/runtime/synchronized_ancestor_test.go), [acquisition delivery](../pkg/runtime/values.go), and [undelivered acquisition regression](../pkg/runtime/synchronized_test.go).
-Verify: run the Synchronized and TaskGroup tests repeatedly and with the race detector. Any permissive contract must change the overlapping contention case to wait and return 7 while retaining bounded cycle/cleanup rejection in both orders.
+Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [synchronization contract](../documentation/concurrency/synchronization.md), [wait dependencies](../pkg/runtime/work_wait.go), [bounded contention regressions](../pkg/runtime/synchronized_ancestor_test.go), [cycle and stale-edge regressions](../pkg/runtime/work_wait_test.go), [HTTP cleanup regressions](../pkg/runtime/work_wait_http_test.go), and [acquisition delivery](../pkg/runtime/values.go).
+Verify: repeat Synchronized and TaskGroup tests with the race detector. Ordinary overlap must wait and return 7; cycles must fault the child in both orders. Include successful versus failed individual joins, shielded cleanup, future reporters, cancellation/release/join races and stale dependencies after release/reacquisition. The original issue snippet executes in native conformance.
 
 ### Newer stdlib direction needs checkout reconciliation
 

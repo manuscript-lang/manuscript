@@ -19,6 +19,8 @@ Completion is not published until registered cleanup and nested joins have finis
 
 User callbacks, failure reporters, resource cleanup, and joining run outside transition locks. Shutdown is idempotent; concurrent calls to `close()` observe one shutdown sequence and all wait for it to finish.
 
+Synchronized admission tracks lock waits against the current guard acquisition. Task/group and service joins track their admitted work until body, nested shutdown and cleanup finish. Both sides register dependencies atomically; a later join that completes an ancestral cycle wakes and faults the child lock waiter. Release invalidates that acquisition's wait edges before waking contenders, and every wait removes its edges on completion, fault or cancellation. Shielded waits retain dependencies after ordinary cancellation. The dependency mutex invokes no callbacks and acquires no component locks; component transition locks may acquire it. See [synchronization](../concurrency/synchronization.md) for the conservative guard-alias and arbitrary-I/O limits.
+
 An operation must not join itself or an execution ancestor. Closing its own scheduler, including from nested task-group descendants or reporter callbacks joined by that service, faults before initiating shutdown. Check the fixed execution-parent chain, not just the current operation ID. Hosts close services from outside their admitted work. Cross-service cyclic shutdown is invalid library usage and must be avoided by host shutdown ordering.
 
 The conformance suite uses controlled barriers and race stress for admission versus closure, cancellation versus completion, and concurrent shutdown. See [semantic tests](compiler/conformance/semantic-tests.md).

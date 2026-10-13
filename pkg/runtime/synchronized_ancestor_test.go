@@ -21,6 +21,37 @@ func (c *synchronizedWaitContext) Done() <-chan struct{} {
 	return c.Context.Done()
 }
 
+// Done is first sampled for cancellation before admission, then by the select
+// after registering the lock wait. Only the latter observation is a barrier.
+type synchronizedLockWaitContext struct {
+	context.Context
+	cell     *Synchronized
+	lifetime *workLifetime
+	entered  chan struct{}
+	resume   <-chan struct{}
+	once     sync.Once
+}
+
+func (c *synchronizedLockWaitContext) Done() <-chan struct{} {
+	c.cell.mu.Lock()
+	registered := false
+	if c.cell.holder != nil {
+		for wait := range c.cell.holder.waiters {
+			registered = registered || wait.lifetime == c.lifetime
+		}
+	}
+	c.cell.mu.Unlock()
+	if registered {
+		c.once.Do(func() {
+			close(c.entered)
+			if c.resume != nil {
+				<-c.resume
+			}
+		})
+	}
+	return c.Context.Done()
+}
+
 type synchronizedCallOutcome struct {
 	value   Value
 	failure any
@@ -66,7 +97,7 @@ func requireSynchronizedAncestorCrash(t *testing.T, outcome synchronizedCallOutc
 		t.Fatal("expected ancestor lock fault", result)
 	}
 	cause := result.Fields[0].(Alternative)
-	if cause.Tag != "Crashed" || !strings.Contains(cause.Fields[1].(string), "lock held by this operation or an ancestor") {
+	if cause.Tag != "Crashed" || !strings.Contains(cause.Fields[1].(string), "ancestor waiting for this operation") {
 		t.Fatal("unexpected task failure", cause)
 	}
 }
@@ -77,11 +108,9 @@ func TestSynchronizedReentryAcrossExecutionViews(t *testing.T) {
 	guard := lockCell(root, cell)
 	defer guard.close()
 	for name, caller := range map[string]*Execution{
-		"same operation":      root,
-		"shielded operation":  Shield(root),
-		"inherited view":      inherit(root, root.Context),
-		"nested descendant":   newExecution(newExecution(root, root.Context), root.Context),
-		"shielded descendant": Shield(newExecution(root, root.Context)),
+		"same operation":     root,
+		"shielded operation": Shield(root),
+		"inherited view":     inherit(root, root.Context),
 	} {
 		t.Run(name, func(t *testing.T) {
 			outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value {
@@ -89,7 +118,7 @@ func TestSynchronizedReentryAcrossExecutionViews(t *testing.T) {
 				locked.close()
 				return Unit{}
 			}))
-			if fault, ok := outcome.failure.(Fault); !ok || !strings.Contains(fault.Message, "ancestor") {
+			if fault, ok := outcome.failure.(Fault); !ok || !strings.Contains(fault.Message, "held by this operation") {
 				t.Fatal("reentrant lock was not rejected", outcome)
 			}
 		})
@@ -162,14 +191,17 @@ func TestSynchronizedAncestorCloseJoinsShieldedCleanup(t *testing.T) {
 	}
 }
 
-// Characterizes #148 under the current documented conservative contract.
-// There is no ancestor join while the child attempts acquisition. A future
-// actual-cycle policy must change the overlapping case to wait and return 7.
-func TestSynchronizedAncestorContentionCurrentContract(t *testing.T) {
-	for _, overlap := range []bool{false, true} {
+// The parent continues its critical section while the child is blocked, then
+// releases before joining. This is ordinary contention, including in cleanup.
+func TestSynchronizedAncestorContentionWaits(t *testing.T) {
+	for _, scenario := range []struct{ overlap, shield bool }{{false, false}, {true, false}, {true, true}} {
+		overlap := scenario.overlap
 		name := "released before child acquisition"
 		if overlap {
 			name = "held while child runs without a parent join"
+		}
+		if scenario.shield {
+			name = "shielded child waits without a parent join"
 		}
 		t.Run(name, func(t *testing.T) {
 			root := RootExecution()
@@ -177,6 +209,7 @@ func TestSynchronizedAncestorContentionCurrentContract(t *testing.T) {
 			guard := lockCell(root, cell)
 			group := NewTaskGroup(root, nil).(*TaskGroup)
 			acquire := make(chan struct{})
+			waiting := make(chan struct{})
 			var release sync.Once
 			// Release the lock and callback barrier before any cleanup join, even
 			// when a regressed guard lets the callback block indefinitely.
@@ -189,6 +222,10 @@ func TestSynchronizedAncestorContentionCurrentContract(t *testing.T) {
 			})
 			task := groupTask(root, group, NewFunction(nil, "Int", func(child *Execution, _ []Value) Value {
 				<-acquire
+				if scenario.shield {
+					child = Shield(child)
+				}
+				child = inherit(child, &synchronizedLockWaitContext{Context: child.Context, cell: cell, lifetime: child.Lifetime, entered: waiting})
 				locked := lockCell(child, cell)
 				defer locked.close()
 				return Invoke(child, locked.Operation("get"), nil)
@@ -198,23 +235,25 @@ func TestSynchronizedAncestorContentionCurrentContract(t *testing.T) {
 				guard.close()
 			}
 			release.Do(func() { close(acquire) })
-			// Observe completion first; invoking join here would obscure the
-			// distinction between ordinary contention and a real wait cycle.
-			awaitSynchronizedSignal(t, task.done)
+			if overlap {
+				awaitSynchronizedSignal(t, waiting)
+				select {
+				case <-task.done:
+					t.Fatal("ancestor contention completed before release")
+				default:
+				}
+			}
 			guard.close()
 			outcome := awaitSynchronizedCall(t, synchronizedCall(func() Value { return taskResult(root, task) }))
-			if overlap {
-				requireSynchronizedAncestorCrash(t, outcome)
-			} else if outcome.failure != nil || outcome.value.(Alternative).Tag != "ok" || outcome.value.(Alternative).Fields[0] != int64(7) {
+			if outcome.failure != nil || outcome.value.(Alternative).Tag != "ok" || outcome.value.(Alternative).Fields[0] != int64(7) {
 				t.Fatal("released ancestor lock did not deliver the committed value", outcome)
 			}
 		})
 	}
 }
 
-// Covers both orders that an actual-cycle detector must handle: acquisition
-// before join, and join before acquisition. An ancestor-only check currently
-// rejects the first lock attempt; removing it would hang both cases.
+// Both insertion orders must fault the child lock waiter and report Crashed
+// through the ancestor's join, without faulting that joining ancestor.
 func TestSynchronizedAncestorJoinLockCycle(t *testing.T) {
 	for _, boundary := range []string{"task", "group"} {
 		for _, joinFirst := range []bool{false, true} {
@@ -228,6 +267,7 @@ func TestSynchronizedAncestorJoinLockCycle(t *testing.T) {
 				guard := lockCell(root, cell)
 				group := NewTaskGroup(root, nil).(*TaskGroup)
 				acquire := make(chan struct{})
+				lockWaiting := make(chan struct{})
 				var release sync.Once
 				t.Cleanup(func() {
 					guard.close()
@@ -238,6 +278,7 @@ func TestSynchronizedAncestorJoinLockCycle(t *testing.T) {
 				})
 				task := groupTask(root, group, NewFunction(nil, "Int", func(child *Execution, _ []Value) Value {
 					<-acquire
+					child = inherit(child, &synchronizedLockWaitContext{Context: child.Context, cell: cell, lifetime: child.Lifetime, entered: lockWaiting})
 					locked := lockCell(child, cell)
 					defer locked.close()
 					return int64(1)
@@ -257,7 +298,7 @@ func TestSynchronizedAncestorJoinLockCycle(t *testing.T) {
 					release.Do(func() { close(acquire) })
 				} else {
 					release.Do(func() { close(acquire) })
-					awaitSynchronizedSignal(t, task.done)
+					awaitSynchronizedSignal(t, lockWaiting)
 					done = synchronizedCall(join)
 				}
 				requireSynchronizedAncestorCrash(t, awaitSynchronizedCall(t, done))
@@ -347,8 +388,9 @@ func TestSynchronizedBlockedCancellationRacesRelease(t *testing.T) {
 		waitContext, cancel := context.WithCancel(root.Context)
 		t.Cleanup(cancel)
 		t.Cleanup(guard.close)
-		waiting := &synchronizedWaitContext{Context: waitContext, entered: make(chan struct{})}
+		waiting := &synchronizedLockWaitContext{Context: waitContext, cell: cell, entered: make(chan struct{})}
 		waiter := newExecution(root, waiting) // Independent of the holder.
+		waiting.lifetime = waiter.Lifetime
 		done := synchronizedCall(func() Value { return lockCell(waiter, cell) })
 		awaitSynchronizedSignal(t, waiting.entered)
 		var racers sync.WaitGroup

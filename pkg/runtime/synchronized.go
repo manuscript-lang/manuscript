@@ -18,6 +18,7 @@ type SynchronizedGuard struct {
 	cell     *Synchronized
 	owner    *Execution
 	lifetime *workLifetime
+	waiters  map[*synchronizedWait]struct{} // Protected by cell.mu.
 }
 
 func (s *Synchronized) Operation(name string) Function {
@@ -25,6 +26,7 @@ func (s *Synchronized) Operation(name string) Function {
 		Panic("unknown Synchronized operation")
 	}
 	return NewAcquisition(nil, "@std/SynchronizedGuard["+typeArguments(s.typ)[0]+"]", func(ctx *Execution, _ []Value) Value {
+		cancelled := ctx.Context.Done()
 		for {
 			CheckCancelled(ctx)
 			s.mu.Lock()
@@ -34,23 +36,28 @@ func (s *Synchronized) Operation(name string) Function {
 				s.mu.Unlock()
 				return guard
 			}
-			reentrant := s.holder.owner == ctx
-			for life := ctx.Lifetime; life != nil; life = life.parent {
-				if life == s.holder.lifetime {
-					reentrant = true
-					break
-				}
+			reentrant := s.holder.owner == ctx || ctx.Lifetime != nil && s.holder.lifetime == ctx.Lifetime
+			if reentrant {
+				s.mu.Unlock()
+				return Panic("cannot acquire a Synchronized lock held by this operation")
 			}
+			wait := registerSynchronizedWait(s.holder, ctx.Lifetime, cancelled)
 			changed := s.changed
 			s.mu.Unlock()
-			if reentrant {
-				return Panic("cannot acquire a Synchronized lock held by this operation or an ancestor")
-			}
-			select {
-			case <-changed:
-			case <-ctx.Context.Done():
+			func() {
+				defer wait.remove()
+				select {
+				case <-changed:
+				case <-wait.fault:
+				case <-ctx.Context.Done():
+				}
+				select {
+				case <-wait.fault:
+					Panic("cannot acquire a Synchronized lock held by an ancestor waiting for this operation")
+				default:
+				}
 				CheckCancelled(ctx)
-			}
+			}()
 		}
 	}, func(_ *Execution, value Value) { value.(*SynchronizedGuard).close() })
 }
@@ -62,6 +69,7 @@ func (g *SynchronizedGuard) close() {
 	if s.holder != g {
 		return
 	}
+	releaseSynchronizedWaitsLocked(g)
 	s.holder = nil
 	close(s.changed)
 	s.changed = make(chan struct{})

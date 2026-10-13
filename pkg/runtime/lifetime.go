@@ -10,6 +10,7 @@ type workLifetime struct {
 	mu       sync.Mutex
 	parent   *workLifetime
 	services []Value
+	waits    workWaitNode
 }
 
 func newExecution(parent *Execution, ctx context.Context) *Execution {

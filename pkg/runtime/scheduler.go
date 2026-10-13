@@ -20,8 +20,13 @@ type schedulerJob struct {
 	stop    context.CancelFunc
 	stopped bool
 	done    chan struct{}
+	waits   workWaitNode
 }
-type completionReport struct{ failure Alternative }
+type completionReport struct {
+	failure Alternative
+	child   *Execution
+	release func()
+}
 type Scheduler struct {
 	mu                  sync.Mutex
 	parent              *Execution
@@ -43,6 +48,7 @@ type Scheduler struct {
 	reportClosed        bool
 	reporting           sync.WaitGroup
 	pending             int
+	waits               workWaitNode
 }
 
 func inherit(parent *Execution, ctx context.Context) *Execution {
@@ -160,6 +166,9 @@ func (b *Scheduler) startScheduled(ctx *Execution, operation Value, schedule *sc
 	id := newOperationId()
 	jobContext, cancel := context.WithCancel(b.context)
 	job := &schedulerJob{id: id, stop: cancel, done: make(chan struct{})}
+	child := newExecution(owned(b.parent, jobContext, b), jobContext)
+	releaseJob := addWorkDependency(&job.waits, lifetimeWaitNode(child.Lifetime))
+	releaseService := addWorkDependency(&b.waits, lifetimeWaitNode(child.Lifetime))
 	if schedule != nil {
 		b.schedules[id] = *schedule
 	}
@@ -170,11 +179,12 @@ func (b *Scheduler) startScheduled(ctx *Execution, operation Value, schedule *sc
 	go func() {
 		defer b.jobs.Done()
 		defer close(job.done)
+		defer releaseJob()
+		defer releaseService()
 		var outcome Value
 		var failed any
 		func() {
 			defer func() { failed = recover() }()
-			child := newExecution(owned(b.parent, jobContext, b), jobContext)
 			defer FinishExecution(child)
 			outcome = profileWork(child, "scheduler.operation", fmt.Sprint(id), func(execution *Execution) Value { return Invoke(execution, operation, nil) })
 		}()
@@ -192,13 +202,13 @@ func (b *Scheduler) commit(job *schedulerJob, ctx context.Context, outcome Value
 			status = "Cancelled"
 		} else {
 			status = "Crashed"
-			report = &completionReport{Alternative{"@std/SchedulerFailure", "Crashed", []Value{job.id, fmt.Sprint(fault)}}}
+			report = &completionReport{failure: Alternative{"@std/SchedulerFailure", "Crashed", []Value{job.id, fmt.Sprint(fault)}}}
 		}
 	} else if job.stopped || ctx.Err() != nil {
 		status = "Cancelled"
 	} else if result, ok := outcome.(Alternative); ok && result.Tag == "error" {
 		status = "Failed"
-		report = &completionReport{Alternative{"@std/SchedulerFailure", "Failed", []Value{job.id, result.Fields[0]}}}
+		report = &completionReport{failure: Alternative{"@std/SchedulerFailure", "Failed", []Value{job.id, result.Fields[0]}}}
 	}
 	delete(b.active, job.id)
 	if b.historyLimit != 0 {
@@ -218,6 +228,13 @@ func (b *Scheduler) commit(job *schedulerJob, ctx context.Context, outcome Value
 		if b.limit > 0 && b.pending >= b.limit {
 			overflow = true
 		} else {
+			if b.reporter != nil {
+				// Closing joins queued reporters too, including reports accepted
+				// after shutdown began but before a worker commits its outcome.
+				shielded := context.WithoutCancel(b.context)
+				report.child = newExecution(owned(b.parent, shielded, b), shielded)
+				report.release = addWorkDependency(&b.waits, lifetimeWaitNode(report.child.Lifetime))
+			}
 			b.pending++
 			b.reports = append(b.reports, *report)
 		}
@@ -257,6 +274,9 @@ func (b *Scheduler) reportLoop() {
 		b.reports = b.reports[1:]
 		b.mu.Unlock()
 		func() {
+			if report.release != nil {
+				defer report.release()
+			}
 			defer func() {
 				if r := recover(); r != nil {
 					reportDiagnostic(fmt.Sprintf("scheduler %v: %v", report.failure.Fields[0], report.failure.Fields[1]))
@@ -266,9 +286,8 @@ func (b *Scheduler) reportLoop() {
 			if b.reporter == nil {
 				reportDiagnostic(fmt.Sprint("Scheduler failure: ", report.failure.Fields[1]))
 			} else {
-				child := newExecution(owned(b.parent, context.WithoutCancel(b.context), b), context.WithoutCancel(b.context))
-				defer FinishExecution(child)
-				Invoke(child, b.reporter, []Argument{{"failure", report.failure}})
+				defer FinishExecution(report.child)
+				Invoke(report.child, b.reporter, []Argument{{"failure", report.failure}})
 			}
 		}()
 		b.mu.Lock()
@@ -280,6 +299,7 @@ func (b *Scheduler) close(ctx *Execution) {
 	if ctx.Owners[b] {
 		Panic("a Scheduler operation or reporter cannot close its own service")
 	}
+	defer addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &b.waits)()
 	b.mu.Lock()
 	if b.closing {
 		done := b.done

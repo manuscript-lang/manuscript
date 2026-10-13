@@ -152,6 +152,7 @@ type httpService struct {
 	closing                  bool
 	fault                    any
 	requests                 sync.WaitGroup
+	waits                    workWaitNode
 }
 
 func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -203,6 +204,7 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	func() {
 		defer func() { failure = recover() }()
 		child := newExecution(s.parent, execution)
+		defer addWorkDependency(&s.waits, lifetimeWaitNode(child.Lifetime))()
 		child.HostServices = map[*httpService]bool{}
 		for service, owned := range s.parent.HostServices {
 			child.HostServices[service] = owned
@@ -267,6 +269,7 @@ func (s *httpService) close(ctx *Execution) {
 	if ctx.HostServices[s] {
 		Panic("HTTP server cannot close from its own request")
 	}
+	defer addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &s.waits)()
 	s.mu.Lock()
 	if s.closing {
 		done := s.closed

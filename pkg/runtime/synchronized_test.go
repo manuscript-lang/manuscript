@@ -78,9 +78,9 @@ func TestSynchronizedReentryAndClosedAliases(t *testing.T) {
 	cell := synchronizedInt()
 	guard := lockCell(root, cell)
 	saved := guard.Operation("set")
-	for _, ctx := range []*Execution{root, Shield(root), newExecution(root, root.Context)} {
+	for _, ctx := range []*Execution{root, Shield(root), inherit(root, root.Context)} {
 		failure := recovered(func() { lockCell(ctx, cell) })
-		if fault, ok := failure.(Fault); !ok || !strings.Contains(fault.Message, "ancestor") {
+		if fault, ok := failure.(Fault); !ok || !strings.Contains(fault.Message, "held by this operation") {
 			t.Fatal(failure)
 		}
 	}

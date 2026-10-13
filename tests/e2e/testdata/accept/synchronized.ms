@@ -7,6 +7,7 @@ import Result from "@std/result.ms"
 import ExecutionError from "@std/tasks.ms"
 import TaskGroup from "@std/tasks.ms"
 import panic from "@std/faults.ms"
+import sleep from "@std/time.ms"
 
 fn identity[T](value: T) -> T:
     return value
@@ -211,7 +212,7 @@ test "guard aliases close once and stale methods fault":
                     if not (second.get() == 2):
                         return panic(message: "check failed")
 
-test "ancestor reentry faults without hanging":
+test "ancestor join cycle faults without hanging":
     let counter = Synchronized(0)
 
     with locked = counter.lock():
@@ -230,6 +231,25 @@ test "ancestor reentry faults without hanging":
 
                 error(_):
                     locked.set(value: 3)
+
+test "parent holds lock while a running child waits for it":
+    let cell = Synchronized(0)
+    with tasks = TaskGroup():
+        let child = tasks.start(fn() -> Int:
+            sleep(duration: 20.milliseconds)
+            with locked = cell.lock():
+                return locked.get()
+        )
+        with locked = cell.lock():
+            sleep(duration: 100.milliseconds)
+            locked.set(value: 7)
+        match child.join():
+            ok(value):
+                if value != 7:
+                    return panic(message: "got {value}")
+
+            error(_):
+                return panic(message: "child failed")
 
 test "loop exits release the guard":
     let counter = Synchronized(0)

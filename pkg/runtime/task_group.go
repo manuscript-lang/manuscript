@@ -24,6 +24,7 @@ type TaskGroup struct {
 	workers                           sync.WaitGroup
 	joined                            chan struct{}
 	closedDone                        chan struct{}
+	waits                             workWaitNode
 }
 
 type Task struct {
@@ -33,6 +34,7 @@ type Task struct {
 	done      chan struct{}
 	value     Value
 	committed bool
+	waits     workWaitNode
 }
 
 func NewTaskGroup(ctx *Execution, args []Argument) Value {
@@ -116,22 +118,28 @@ func (g *TaskGroup) start(ctx *Execution, typ string, operation Value) Value {
 		g.mu.Unlock()
 		return task
 	}
+	// Publish fixed child identity and both admission dependencies before the
+	// worker can run or another execution can join the task/group.
+	child := newExecution(g.parent, g.context)
+	child.TaskGroups = make(map[*TaskGroup]bool, len(g.parent.TaskGroups)+1)
+	for ancestor, owned := range g.parent.TaskGroups {
+		child.TaskGroups[ancestor] = owned
+	}
+	child.TaskGroups[g] = true
+	releaseTask := addWorkDependency(&task.waits, lifetimeWaitNode(child.Lifetime))
+	releaseGroup := addWorkDependency(&g.waits, lifetimeWaitNode(child.Lifetime))
 	g.active++
 	g.workers.Add(1)
 	g.mu.Unlock()
 	markConcurrent()
 	go func() {
 		defer g.workers.Done()
+		defer releaseTask()
+		defer releaseGroup()
 		var value Value
 		var fault any
 		func() {
 			defer func() { fault = recover() }()
-			child := newExecution(g.parent, g.context)
-			child.TaskGroups = make(map[*TaskGroup]bool, len(g.parent.TaskGroups)+1)
-			for ancestor, owned := range g.parent.TaskGroups {
-				child.TaskGroups[ancestor] = owned
-			}
-			child.TaskGroups[g] = true
 			defer FinishExecution(child)
 			value = profileWork(child, "task_group.operation", fmt.Sprint(task.id.number), func(execution *Execution) Value { return Invoke(execution, operation, nil) })
 		}()
@@ -187,7 +195,9 @@ func (g *TaskGroup) wait(ctx *Execution) {
 	g.rejectSelf(ctx)
 	g.mu.Lock()
 	done := g.sealLocked()
+	releaseWait := addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &g.waits)
 	g.mu.Unlock()
+	defer releaseWait()
 	select {
 	case <-done:
 	case <-ctx.Context.Done():
@@ -211,6 +221,7 @@ func (g *TaskGroup) join(ctx *Execution, result string) Value {
 }
 func (t *Task) join(ctx *Execution, result string) Value {
 	t.group.rejectSelf(ctx)
+	defer addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &t.waits)()
 	select {
 	case <-t.done:
 	case <-ctx.Context.Done():
@@ -241,7 +252,9 @@ func (g *TaskGroup) close(ctx *Execution) {
 	g.mu.Lock()
 	if g.closing {
 		done := g.closedDone
+		releaseWait := addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &g.waits)
 		g.mu.Unlock()
+		defer releaseWait()
 		<-done
 		return
 	}
@@ -252,7 +265,9 @@ func (g *TaskGroup) close(ctx *Execution) {
 		g.cancel()
 	}
 	done := g.sealLocked()
+	releaseWait := addWorkDependency(lifetimeWaitNode(ctx.Lifetime), &g.waits)
 	g.mu.Unlock()
+	defer releaseWait()
 	<-done
 	g.mu.Lock()
 	g.closed = true

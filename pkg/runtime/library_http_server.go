@@ -123,6 +123,7 @@ func (s *httpService) serveStreamingRequest(w http.ResponseWriter, r *http.Reque
 	call, cancel := nativeContextTimeout(r.Context(), s.timeout)
 	defer cancel()
 	child := newExecution(s.parent, call)
+	defer addWorkDependency(&s.waits, lifetimeWaitNode(child.Lifetime))()
 	child.HostServices = map[*httpService]bool{s: true}
 	for key, value := range s.parent.HostServices {
 		child.HostServices[key] = value
