@@ -178,7 +178,7 @@ func (stack *CleanupStack) Unwind() {
 func CleanupOperation(resource Value, contract string, scopes ...TypeScope) Value {
 	if contract == "" {
 		switch resource.(type) {
-		case Record, Alternative:
+		case Struct, Record, Alternative:
 			contract = "@std/Closeable"
 		}
 	}

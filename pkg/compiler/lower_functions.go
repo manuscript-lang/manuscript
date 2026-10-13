@@ -29,6 +29,18 @@ func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 		args = append(args, composite(runtimeName("Argument"), keyed("Name", textLiteral(field.Name)), keyed("Value", ident(g.program.Parameters[d][i].ID))))
 	}
 	t := checker.ConstructorSignature(s.Type)
+	if st := g.structFor(s.Type); st != nil {
+		var elements []ast.Expr
+		for i, f := range st.fields {
+			var value ast.Expr = ident(g.program.Parameters[d][i].ID)
+			if f.scalar != "" {
+				value = unbox(value, f.scalar)
+			}
+			elements = append(elements, keyed(fieldName(f.name), value))
+		}
+		return g.function(d.Name, d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.Parameters[d], nil, t,
+			returned(call(runtimeName("Value"), address(composite(ident(st.name), elements...)))))
+	}
 	return g.function(d.Name, d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.Parameters[d], nil, t,
 		returned(runtimeCall("ConstructWithContext", ident("ctx"), g.key(s.Type), sliceLiteral(runtimeName("Argument"), args...))))
 }

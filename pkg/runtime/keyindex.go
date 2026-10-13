@@ -68,13 +68,16 @@ func keyHash(ctx *Execution, v Value) uint64 {
 		child := *ctx
 		child.EqualityScope = x.Scope
 		return keyHash(&child, x.Receiver)
-	case Record, Alternative:
+	case Struct, Record, Alternative:
 		scope := ctx.EqualityScope
 		if method, ok := implementationFunction(v, "@std/Hashable", "hash", scope); ok {
 			return mixHash(uint64(Invoke(ctx, method, nil).(int64)))
 		}
 		if _, custom := implementationFunction(v, "@std/Equal", "equals", scope); custom {
 			Panic("runtime invariant: key type overrides Equal without Hashable")
+		}
+		if s, ok := v.(Struct); ok {
+			v = structRecord(s)
 		}
 		if record, ok := v.(Record); ok {
 			h := maphash.String(hashSeed, record.Type)

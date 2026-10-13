@@ -131,6 +131,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		if info.Native != "" {
 			return runtimeCall("NativeMember", g.expression(e.Left), textLiteral(e.Text))
 		}
+		if st, _ := g.structFieldOf(e); st != nil {
+			return call(selector(g.structOperand(st, e.Left), "Get_"+e.Text))
+		}
 		return runtimeCall("Field", g.expression(e.Left), textLiteral(e.Text))
 	case syntax.KindCall:
 		arguments := e.Args
@@ -150,6 +153,13 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			labels := g.caseLabels(info)
 			if fields := g.alternativeFields(labels, arguments); fields != nil {
 				return composite(runtimeName("Alternative"), keyed("Type", g.key(info.Type)), keyed("Tag", textLiteral(info.Case)), keyed("Fields", sliceLiteral(runtimeName("Value"), fields...)))
+			}
+		}
+		if info.Constructor != nil && info.Native != "view" && info.Case == "" {
+			if st := g.structFor(info.Constructor); st != nil && !recordDefaults(info.Constructor.Def.Symbol.Decl) {
+				if value := g.constructStruct(st, arguments); value != nil {
+					return value
+				}
 			}
 		}
 		args := g.arguments(arguments)

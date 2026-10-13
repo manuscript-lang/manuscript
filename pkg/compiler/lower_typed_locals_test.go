@@ -48,3 +48,26 @@ func TestConstantFloatArithmeticFollowsRuntimeRules(t *testing.T) {
 		t.Fatalf("constant float expression left for the Go compiler\n%s", r.Source)
 	}
 }
+
+func TestRecordsLowerToStructs(t *testing.T) {
+	r := CompileSource("records.ms", `type Point:
+    x: Int
+    label: String
+fn bump(point: Point) -> Int:
+    point.x = point.x + 1
+    return point.x
+fn make() -> Point: Point(x: 1, label: "a")
+`, Options{})
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	source := strings.Join(strings.Fields(r.Source), " ")
+	for _, want := range []string{"f_x int64", "f_label string", "Get_x()", "Set_x(", "rt.RegisterStruct(", "&record_"} {
+		if !strings.Contains(source, want) {
+			t.Errorf("missing %q\n%s", want, r.Source)
+		}
+	}
+	if strings.Contains(r.Source, `rt.Field(`) || strings.Contains(r.Source, `rt.SetField(`) {
+		t.Errorf("record access fell back to the map-backed path\n%s", r.Source)
+	}
+}

@@ -76,6 +76,12 @@ func (g *generator) nativeType(e *syntax.Expression) string {
 			return ""
 		}
 		return g.numericResult(e)
+	case syntax.KindMember:
+		if info.Constructor == nil && info.Method == nil && info.Native == "" {
+			if _, f := g.structFieldOf(e); f != nil {
+				return f.scalar
+			}
+		}
 	case syntax.KindCall:
 		if direct := g.directTarget(e); direct != nil {
 			return direct.result
