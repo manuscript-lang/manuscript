@@ -14,7 +14,7 @@ Start from `.github/pull_request_template.md` and put these four sections first,
 1. **Problem**: what is wrong or missing, who hits it, and a concrete trigger (input, command, or diagnostic). Not a restatement of the diff.
 2. **Proposed change**: what the PR does and why that fixes the problem. Name the behavior that changes, not every file touched.
 3. **Alternatives considered**: other approaches, including doing nothing, and why each was rejected. If none were viable, say why. Do not invent strawmen.
-4. **Testing**: the commands run and the cases they cover, with results. State what was not run and why.
+4. **Testing**: list each new or changed test by name and what it verifies (the behavior or regression it pins). Then the commands run with results. State what was not run and why. If no tests were added, say why none apply.
 
 ## Rules
 
