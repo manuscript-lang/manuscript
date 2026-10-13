@@ -9,7 +9,7 @@ import (
 
 // Keep statically known scalar operands typed through an expression. Locals,
 // captures, generic values, and call boundaries retain the shared Value ABI.
-// Equality still follows the checker's selected implementation scope.
+// Nonprimitive equality retains the checker's selected implementation scope.
 func (g *generator) numericBinary(e *syntax.Expression) ast.Expr {
 	left := g.program.Expressions[e.Left].Type
 	right := g.program.Expressions[e.Right].Type

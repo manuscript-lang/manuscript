@@ -415,7 +415,7 @@ func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info
 // Inference matches the complete optional first, then its payload. Failed
 // attempts must not leave substitutions that constrain the second attempt.
 func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub map[string]*Type) bool {
-	attempt := func(target *Type) bool {
+	attempt := func(target, evidence *Type) bool {
 		trial := map[string]*Type{}
 		for key, value := range sub {
 			// A prior failed argument supplies no constraint on later evidence.
@@ -423,7 +423,7 @@ func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub
 				trial[key] = value
 			}
 		}
-		if !unify(target, actual, vars, trial) {
+		if !unify(target, evidence, vars, trial) {
 			return false
 		}
 		for key, value := range trial {
@@ -431,11 +431,17 @@ func (c *checker) unifyArgument(pattern, actual *Type, vars map[string]bool, sub
 		}
 		return true
 	}
-	if attempt(pattern) {
+	if attempt(pattern, actual) {
 		return true
 	}
+	// A Result[X, E] widens its error to Error while keeping the success type,
+	// so match the success side alone when the parameter's error is Error.
+	if std(pattern, "Result") && std(actual, "Result") && len(pattern.Args) == 2 && len(actual.Args) == 2 &&
+		std(pattern.Args[1], "Error") && c.implements(actual.Args[1], pattern.Args[1]) {
+		return attempt(pattern.Args[0], actual.Args[0])
+	}
 	return std(pattern, "Optional") && len(pattern.Args) == 1 &&
-		(c.errorAssignable(actual, Sub(pattern.Args[0], sub)) || attempt(pattern.Args[0]))
+		(c.errorAssignable(actual, Sub(pattern.Args[0], sub)) || attempt(pattern.Args[0], actual))
 }
 
 // Only complete, independently typed arguments contribute inference evidence.
