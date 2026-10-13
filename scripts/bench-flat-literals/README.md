@@ -1,3 +1,7 @@
+Merge is paused for review of the measured repeated-construction cost. See
+[runtime review](runtime-review.md) for pinned paired confidence estimates,
+profiles, safe mitigation results, raw samples and the recommendation.
+
 Run from the repository root with its prepared bundled Go and writable Go
 caches. The generator retains actual Manuscript, generated Go and a native
 evaluation benchmark. `measure.py` is Linux-only (Python `wait4`): it records
