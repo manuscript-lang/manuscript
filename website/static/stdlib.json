@@ -109,7 +109,7 @@
             "Tar"
           ],
           "operations": [
-            "pack: fn(entries: List[ArchiveEntry], max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, ArchiveError]",
+            "pack: fn(entries: List[ArchiveEntry], max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, ArchiveError]",
             "unpack: fn(data: Bytes, limits: Optional[ArchiveLimits] = ...)-\u003eResult[List[ArchiveEntry], ArchiveError]"
           ],
           "members": [
@@ -128,7 +128,7 @@
             {
               "name": "pack",
               "kind": "operation",
-              "signature": "fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -\u003e Result[Bytes, ArchiveError]:",
+              "signature": "fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int64] = none) -\u003e Result[Bytes, ArchiveError]:",
               "doc": "Packs entries with the same optional output budget and path validation as pack."
             },
             {
@@ -1613,8 +1613,8 @@
             "Deflate"
           ],
           "operations": [
-            "compress: fn(data: Bytes, level: Int, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]",
-            "decompress: fn(data: Bytes, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, CompressionError]"
+            "compress: fn(data: Bytes, level: Int, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, CompressionError]",
+            "decompress: fn(data: Bytes, max_bytes: Optional[Int64] = ...)-\u003eResult[Bytes, CompressionError]"
           ],
           "members": [
             {
@@ -1638,13 +1638,13 @@
             {
               "name": "compress",
               "kind": "operation",
-              "signature": "fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, CompressionError]:",
+              "signature": "fn compress(data: Bytes, level: Int, max_bytes: Optional[Int64] = none) -\u003e Result[Bytes, CompressionError]:",
               "doc": "Compresses with level 0..9 and the same optional output budget/domain errors as compress."
             },
             {
               "name": "decompress",
               "kind": "operation",
-              "signature": "fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -\u003e Result[Bytes, CompressionError]:",
+              "signature": "fn decompress(data: Bytes, max_bytes: Optional[Int64] = none) -\u003e Result[Bytes, CompressionError]:",
               "doc": "Decompresses with the same cumulative output limit and validation as decompress."
             }
           ]
@@ -6630,7 +6630,7 @@
             "find_all: fn(text: String, max_matches: Optional[Int] = ...)-\u003eResult[List[String], RegexError]",
             "matches: fn(text: String)-\u003eBool",
             "replace: fn(text: String, replacement: String, max_bytes: Optional[Int64] = ...)-\u003eResult[String, RegexError]",
-            "replace_all: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]"
+            "replace_all: fn(text: String, replacement: String, max_bytes: Optional[Int64] = ...)-\u003eResult[String, RegexError]"
           ],
           "members": [
             {
@@ -6654,7 +6654,7 @@
             {
               "name": "replace_all",
               "kind": "operation",
-              "signature": "fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -\u003e Result[String, RegexError]:",
+              "signature": "fn replace_all(text: String, replacement: String, max_bytes: Optional[Int64] = none) -\u003e Result[String, RegexError]:",
               "doc": "Replaces every nonoverlapping match with literal replacement text (no capture expansion).\nmax_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded."
             }
           ]

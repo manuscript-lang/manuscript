@@ -44,10 +44,10 @@ export type CompressionFormat:
     fn compress(
         data: Bytes,
         level: Int,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[Bytes, CompressionError]:
     # Decompresses with the same cumulative output limit and validation as decompress.
     fn decompress(
         data: Bytes,
-        max_bytes: Optional[Int] = none
+        max_bytes: Optional[Int64] = none
     ) -> Result[Bytes, CompressionError]:

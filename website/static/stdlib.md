@@ -73,7 +73,7 @@ Existing pack/unpack format: String calls remain available.
 type ArchiveFormat:
     case Zip
     case Tar
-    fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+    fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int64] = none) -> Result[Bytes, ArchiveError]:
     fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
 ```
 
@@ -98,7 +98,7 @@ case Zip
 Packs entries with the same optional output budget and path validation as pack.
 
 ```manuscript
-fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int64] = none) -> Result[Bytes, ArchiveError]:
 ```
 
 ### ArchiveFormat.unpack
@@ -1288,8 +1288,8 @@ type CompressionFormat:
     case Gzip
     case Zlib
     case Deflate
-    fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
-    fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+    fn compress(data: Bytes, level: Int, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
+    fn decompress(data: Bytes, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ### CompressionFormat.Deflate
@@ -1321,7 +1321,7 @@ case Zlib
 Compresses with level 0..9 and the same optional output budget/domain errors as compress.
 
 ```manuscript
-fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn compress(data: Bytes, level: Int, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ### CompressionFormat.decompress
@@ -1329,7 +1329,7 @@ fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[
 Decompresses with the same cumulative output limit and validation as decompress.
 
 ```manuscript
-fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn decompress(data: Bytes, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ## compress
@@ -4559,7 +4559,7 @@ A compiled regular expression that can be reused across input strings.
 type Regex:
     fn matches(text: String) -> Bool:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
-    fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+    fn replace_all(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
 ```
 
@@ -4577,7 +4577,7 @@ Replaces every nonoverlapping match with literal replacement text (no capture ex
 max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
 
 ```manuscript
-fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+fn replace_all(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
 ```
 
 ## RegexError

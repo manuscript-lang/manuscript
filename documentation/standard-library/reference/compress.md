@@ -34,8 +34,8 @@ type CompressionFormat:
     case Gzip
     case Zlib
     case Deflate
-    fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
-    fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+    fn compress(data: Bytes, level: Int, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
+    fn decompress(data: Bytes, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ### CompressionFormat.Deflate
@@ -67,7 +67,7 @@ case Zlib
 Compresses with level 0..9 and the same optional output budget/domain errors as compress.
 
 ```manuscript
-fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn compress(data: Bytes, level: Int, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ### CompressionFormat.decompress
@@ -75,7 +75,7 @@ fn compress(data: Bytes, level: Int, max_bytes: Optional[Int] = none) -> Result[
 Decompresses with the same cumulative output limit and validation as decompress.
 
 ```manuscript
-fn decompress(data: Bytes, max_bytes: Optional[Int] = none) -> Result[Bytes, CompressionError]:
+fn decompress(data: Bytes, max_bytes: Optional[Int64] = none) -> Result[Bytes, CompressionError]:
 ```
 
 ## compress {data-api-kind="Function"}

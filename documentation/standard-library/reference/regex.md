@@ -14,7 +14,7 @@ A compiled regular expression that can be reused across input strings.
 type Regex:
     fn matches(text: String) -> Bool:
     fn find_all(text: String, max_matches: Optional[Int] = none) -> Result[List[String], RegexError]:
-    fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+    fn replace_all(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
     fn replace(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
 ```
 
@@ -32,7 +32,7 @@ Replaces every nonoverlapping match with literal replacement text (no capture ex
 max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
 
 ```manuscript
-fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -> Result[String, RegexError]:
+fn replace_all(text: String, replacement: String, max_bytes: Optional[Int64] = none) -> Result[String, RegexError]:
 ```
 
 ## RegexError {data-api-kind="Alternative"}

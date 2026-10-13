@@ -44,7 +44,7 @@ Existing pack/unpack format: String calls remain available.
 type ArchiveFormat:
     case Zip
     case Tar
-    fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+    fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int64] = none) -> Result[Bytes, ArchiveError]:
     fn unpack(data: Bytes, limits: Optional[ArchiveLimits] = none) -> Result[List[ArchiveEntry], ArchiveError]:
 ```
 
@@ -69,7 +69,7 @@ case Zip
 Packs entries with the same optional output budget and path validation as pack.
 
 ```manuscript
-fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int] = none) -> Result[Bytes, ArchiveError]:
+fn pack(entries: List[ArchiveEntry], max_bytes: Optional[Int64] = none) -> Result[Bytes, ArchiveError]:
 ```
 
 ### ArchiveFormat.unpack

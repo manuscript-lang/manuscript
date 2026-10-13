@@ -18,17 +18,17 @@ func init() {
 		name := librarySelectorName(args[0], "HashAlgorithm")
 		return invokeLibrary(libraryFunctions["crypto/hmac"], ctx, result, []Value{args[1], args[2], name})
 	})
-	libraryAdd("compress", "format_compress", libraryResult("Bytes", "CompressionError"), []LibraryParam{{"format", "CompressionFormat"}, {"data", "Bytes"}, {"level", "Int"}, {"max_bytes", "Optional[Int]"}}, func(ctx *Execution, result string, args []Value) Value {
+	libraryAdd("compress", "format_compress", libraryResult("Bytes", "CompressionError"), []LibraryParam{{"format", "CompressionFormat"}, {"data", "Bytes"}, {"level", "Int"}, {"max_bytes", "Optional[Int64]"}}, func(ctx *Execution, result string, args []Value) Value {
 		CheckCancelled(ctx)
 		name := librarySelectorName(args[0], "CompressionFormat")
 		return invokeLibrary(libraryFunctions["compress/compress"], ctx, result, []Value{args[1], name, args[2], args[3]})
 	})
-	libraryAdd("compress", "format_decompress", libraryResult("Bytes", "CompressionError"), []LibraryParam{{"format", "CompressionFormat"}, {"data", "Bytes"}, {"max_bytes", "Optional[Int]"}}, func(ctx *Execution, result string, args []Value) Value {
+	libraryAdd("compress", "format_decompress", libraryResult("Bytes", "CompressionError"), []LibraryParam{{"format", "CompressionFormat"}, {"data", "Bytes"}, {"max_bytes", "Optional[Int64]"}}, func(ctx *Execution, result string, args []Value) Value {
 		CheckCancelled(ctx)
 		name := librarySelectorName(args[0], "CompressionFormat")
 		return invokeLibrary(libraryFunctions["compress/decompress"], ctx, result, []Value{args[1], name, args[2]})
 	})
-	libraryAdd("archive", "format_pack", libraryResult("Bytes", "ArchiveError"), []LibraryParam{{"format", "ArchiveFormat"}, {"entries", "List[ArchiveEntry]"}, {"max_bytes", "Optional[Int]"}}, func(ctx *Execution, result string, args []Value) Value {
+	libraryAdd("archive", "format_pack", libraryResult("Bytes", "ArchiveError"), []LibraryParam{{"format", "ArchiveFormat"}, {"entries", "List[ArchiveEntry]"}, {"max_bytes", "Optional[Int64]"}}, func(ctx *Execution, result string, args []Value) Value {
 		CheckCancelled(ctx)
 		name := librarySelectorName(args[0], "ArchiveFormat")
 		return invokeLibrary(libraryFunctions["archive/pack"], ctx, result, []Value{args[1], name, args[2]})
