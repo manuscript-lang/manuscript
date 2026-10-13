@@ -231,7 +231,6 @@ An immutable sequence of bytes. Indices and slice bounds are zero-based.
 
 ```manuscript
 type Bytes:
-    values: List[Int]
     fn clone() -> Bytes:
     fn contains(value: Bytes) -> Bool:
     fn slice(start: Int, end: Int) -> Bytes:
@@ -243,6 +242,7 @@ type Bytes:
     fn reverse() -> Bytes:
     fn with_value(index: Int, value: Int) -> Bytes:
     fn is_empty() -> Bool:
+    fn values() -> List[Int]:
     fn concat(values: Bytes) -> Bytes:
     fn length() -> Int:
     fn to_text() -> Optional[String]:
@@ -265,7 +265,7 @@ type BytesBuilder:
 
 **Function**
 
-Returns the byte values as integers in the range 0 through 255.
+Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().
 
 ```manuscript
 fn values(data: Bytes) -> List[Int]:
@@ -2599,6 +2599,9 @@ type MemoryUsage:
 **Interface**
 
 Process and operating-system controls for the current process.
+`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
+`next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup
+and finish shutdown work directly in the shielded close call after joining cancelled workers.
 
 ```manuscript
 interface ProcessControl:
@@ -2694,7 +2697,9 @@ type ResourceUsage:
 
 **Interface**
 
-A stream of operating-system signals selected by `watch_signals`.
+A cancellable observer of operating-system signals selected by `watch_signals`.
+SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
+`next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.
 
 ```manuscript
 interface SignalStream:

@@ -165,9 +165,6 @@
           "doc": "An immutable sequence of bytes. Indices and slice bounds are zero-based.",
           "kind": "native",
           "type": "Bytes",
-          "fields": [
-            "values: List[Int]"
-          ],
           "operations": [
             "at: fn(index: Int)-\u003eOptional[Int]",
             "clone: fn()-\u003eBytes",
@@ -182,6 +179,7 @@
             "slice: fn(start: Int, end: Int)-\u003eBytes",
             "starts_with: fn(value: Bytes)-\u003eBool",
             "to_text: fn()-\u003eOptional[String]",
+            "values: fn()-\u003eList[Int]",
             "with_value: fn(index: Int, value: Int)-\u003eBytes"
           ]
         },
@@ -198,7 +196,7 @@
         },
         {
           "name": "values",
-          "doc": "Returns the byte values as integers in the range 0 through 255.",
+          "doc": "Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().",
           "kind": "fn",
           "type": "fn(data: Bytes)-\u003eList[Int]"
         }
@@ -2067,7 +2065,7 @@
         },
         {
           "name": "ProcessControl",
-          "doc": "Process and operating-system controls for the current process.",
+          "doc": "Process and operating-system controls for the current process.\n`watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.\n`next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup\nand finish shutdown work directly in the shielded close call after joining cancelled workers.",
           "kind": "interface",
           "type": "ProcessControl",
           "operations": [
@@ -2156,7 +2154,7 @@
         },
         {
           "name": "SignalStream",
-          "doc": "A stream of operating-system signals selected by `watch_signals`.",
+          "doc": "A cancellable observer of operating-system signals selected by `watch_signals`.\nSIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.\n`next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.",
           "kind": "interface",
           "type": "SignalStream",
           "operations": [

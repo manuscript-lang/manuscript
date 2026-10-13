@@ -20,6 +20,18 @@ ms pprof -http=127.0.0.1:8080 cpu.pprof
 ms trace trace.out
 ```
 
+Bare `ms` prints help and exits successfully. Value-taking long options accept
+both `--output path` and `--output=path`; only the first `=` separates the flag
+from its value, so `--output=api=v1.md` writes `api=v1.md`. The same rule applies
+to build types, test timeouts/filters, and profile paths. Required values cannot
+be empty. Arguments after `--` and options for `ms pprof`/`ms trace` are forwarded
+to their existing consumers.
+
+Commands that take one source input also accept a project directory containing
+`ms.toml`, including `doc`; native commands select one application entrypoint.
+`fmt` selects multiple files or recursively discovers directories as described
+in [formatting](source/formatting.md).
+
 ## Rebuild on save
 
 ```sh
@@ -47,6 +59,9 @@ ms stdlib exported-standard-sources
 These commands use source checking and embedded declarations without a Go installation or native toolchain extraction. `inspect` retains symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders their static call graph as Mermaid; it is not an execution trace.
 
 `doc` checks the input first and documents only its exported declarations, including fields, alternative cases, contract operations, and generic bounds. The contiguous `#` comment block directly above an exported declaration (no blank line between) is its description: Markdown prints it above the signature and JSON carries it as a `doc` string with the `#` markers removed. Comments above fields, cases, and operations are not captured yet. Project docs include reachable local modules; library projects include all source modules and discovered tests. Private declarations and re-imported standard names are excluded. Without `-o`, output goes to stdout. JSON uses schema version 1. The `--stdlib` reference and `stdlib` source export describe the compiler version bundled in that binary; neither downloads a library.
+
+`ms stdlib <directory>` writes source declarations and bindings for tooling;
+`ms doc --stdlib` renders API documentation. These outputs serve different tasks.
 
 `ms emit ms.toml -o main.go` writes generated Go with the runtime included. Compiling emitted source directly still requires the repository's pinned `go.mod`, `go.sum`, `vendor/` tree, and `internal/hostos/` platform helpers. From a checkout, use `toolchain/go/bin/go build -mod=vendor main.go`. Ordinary `ms build`, `run`, and `test` supply those inputs themselves. See [pins and native builds](builds/reproducibility.md).
 
