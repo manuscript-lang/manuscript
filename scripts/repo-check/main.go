@@ -13,6 +13,7 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"os"
@@ -159,12 +160,14 @@ func check() error {
 			return err
 		}
 	}
-	release, err := os.ReadFile(".github/workflows/release.yml")
-	if err != nil {
-		return err
-	}
-	if !strings.Contains(string(release), "'**/*.go'") {
-		issues = append(issues, "release workflow must cover all Go sources, including platform helpers")
+	for _, path := range []string{".github/workflows/cicd.yml", ".github/workflows/release.yml"} {
+		workflow, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if err := checkWorkflowTriggers(workflow); err != nil {
+			issues = append(issues, path+": "+err.Error())
+		}
 	}
 	for _, stage := range []struct {
 		path, function string
@@ -231,6 +234,29 @@ func check() error {
 		return fmt.Errorf("repository invariants:\n- %s", strings.Join(issues, "\n- "))
 	}
 	fmt.Println("Package boundaries, implementation pins, native bundles, and release triggers agree.")
+	return nil
+}
+
+// Required workflows must report on every PR and on the queue's combined commit.
+func checkWorkflowTriggers(data []byte) error {
+	var workflow struct {
+		On map[string]struct {
+			Paths       []string `yaml:"paths"`
+			PathsIgnore []string `yaml:"paths-ignore"`
+			Types       []string `yaml:"types"`
+		} `yaml:"on"`
+	}
+	if err := yaml.Unmarshal(data, &workflow); err != nil {
+		return fmt.Errorf("parse workflow: %w", err)
+	}
+	pr, ok := workflow.On["pull_request"]
+	if !ok || len(pr.Paths) != 0 || len(pr.PathsIgnore) != 0 {
+		return fmt.Errorf("required checks must run on every pull request without path filters")
+	}
+	queue, ok := workflow.On["merge_group"]
+	if !ok || len(queue.Types) != 1 || queue.Types[0] != "checks_requested" {
+		return fmt.Errorf("required checks must run on merge_group checks_requested")
+	}
 	return nil
 }
 
