@@ -43,17 +43,6 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 			before(topLevel[i])
 		}
 	}
-	indentedArm := func(arm syntax.Arm) bool {
-		line := arm.Pos.Line
-		if len(arm.Body) > 0 {
-			line = arm.Body[0].Pos.Line
-		} else if arm.Value != nil {
-			line = arm.Value.Pos.Line
-		}
-		header, body := lines[arm.Pos.Line-1], lines[line-1]
-		return len(body)-len(strings.TrimLeft(body, " ")) >
-			len(header)-len(strings.TrimLeft(header, " "))
-	}
 	visitor := syntax.Visitor{
 		Block: func(body []*syntax.Statement) {
 			for i := 1; i < len(body); i++ {
@@ -63,14 +52,6 @@ func paragraphBreaks(module *syntax.Module, lines []string) map[int]bool {
 				}
 				if paragraphBlock(previous) || paragraphBlock(current) ||
 					(guardStatement(previous) && !guardStatement(current)) {
-					before(current.Pos.Line)
-				}
-			}
-		},
-		Expression: func(expression *syntax.Expression) {
-			for i := 1; i < len(expression.Arms); i++ {
-				previous, current := expression.Arms[i-1], expression.Arms[i]
-				if indentedArm(previous) || indentedArm(current) {
 					before(current.Pos.Line)
 				}
 			}

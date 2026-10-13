@@ -78,8 +78,7 @@ paragraphs:
   `continue` is a guard: keep it with preceding setup and consecutive guards,
   then add a blank line before the next statement.
 - Keep each `if`/`else if`/`else` family together. Preserve inline bodies.
-- Separate neighboring match arms when either arm has an indented body; keep
-  inline arms compact.
+- Preserve authored spacing between match arms, including compact indented arms.
 - Put inserted breaks before contiguous leading comments at the same indentation,
   keeping those comments with the following code.
 
@@ -94,9 +93,11 @@ Expression layout uses a soft limit of 88 columns:
   or a closure argument. Single-argument calls containing another nested
   computation can also expand.
 - Expand signatures with four or more parameters or complex defaults. Include the
-  return type when deciding whether a signature fits.
-- Expand lists with five or more elements or nested lists, and grouped imports
-  with five or more names.
+  return type when deciding whether a signature fits, excluding callback bodies
+  and enclosing arguments.
+- Keep lists compact when they fit, including nested lists. Expand grouped
+  imports with five or more names. Later call arguments do not count toward
+  the width of a preceding list or call in a chain.
 - Once a group expands, put every argument, parameter, or element on its own line.
   Use four spaces beyond the containing line and align the closing delimiter with
   that line. Existing multiline groups remain expanded with this same layout.

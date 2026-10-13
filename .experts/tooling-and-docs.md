@@ -4,7 +4,9 @@
 
 Decision: the user's formatter request keeps inline `if` bodies and introduces
 natural reading boundaries around declarations, guard sections, substantial
-control flow, and indented match arms. This also requires wrapping complex
+control flow. Later feedback in [issue #102](https://github.com/manuscript-lang/manuscript/issues/102)
+requires preserving authored spacing between match arms and keeping short lists
+and callback signatures compact. This also requires wrapping complex
 expressions; paragraph breaks alone leave dense calls and conditions unreadable.
 Do not expand inline bodies to create readability or guess business stages from
 adjacent call names.
@@ -19,7 +21,10 @@ paragraph; branch families and leading comments remain attached; LF/CRLF output
 preserves literal spellings and is identical after a second format. Added grouping
 must preserve the entire parsed syntax tree, especially inline callback return
 boundaries and mixed-precedence conditions. Moving a callback argument must move
-its suite indentation too.
+its suite indentation too. A later call in a chain must budget its own arguments;
+a callback body must not consume the parameter signature's width budget.
+The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
+exercises these boundaries alongside comments and literal spellings.
 
 ### Native build levels need artifact evidence
 

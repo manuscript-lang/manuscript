@@ -182,7 +182,7 @@ func TestFormatGroupedImports(t *testing.T) {
 
 func TestFormatMultilineFunctionParameters(t *testing.T) {
 	input := "export fn render(\r\n    arguments:List[String], # arguments\r\n    output:WriteStream,\r\n)->Int:\r\n    let message=\"Arguments: {arguments.join(\",\")}\\n\"\r\n    match output.write(data:message.to_bytes()):\r\n        ok(_):\r\n            return 0\r\n        error(_):\r\n            return 1\r\n"
-	want := "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) -> Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message.to_bytes()):\n        ok(_):\n            return 0\n\n        error(_):\n            return 1\n"
+	want := "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) -> Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message.to_bytes()):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n"
 	formatted, err := tooling.Format("main.ms", input)
 	if err != nil || formatted != want {
 		t.Fatalf("got %q, err %v", formatted, err)
