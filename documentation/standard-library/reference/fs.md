@@ -438,6 +438,7 @@ type FileSystemError:
     case LimitExceeded
     case NotFound
     case AlreadyExists
+    case NotEmpty
     case PermissionDenied
     case Unsupported
     case Closed
@@ -447,6 +448,14 @@ type FileSystemError:
 ```manuscript
 impl Error for FileSystemError:
     fn message() -> String:
+```
+
+### FileSystemError.NotEmpty
+
+Removal failed because the directory still contains entries.
+
+```manuscript
+case NotEmpty
 ```
 
 ## FileSystemInfo {data-api-kind="Record"}

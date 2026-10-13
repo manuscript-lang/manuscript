@@ -6,6 +6,77 @@ import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 import value from "./support/results.ms"
 
+fn expect_fs_error[T](
+    outcome: Result[T, FileSystemError],
+    expected: FileSystemError
+) -> Unit:
+    match outcome:
+        ok(_): return panic("filesystem misuse succeeded")
+        error(cause):
+            if cause != expected: return panic("wrong filesystem error")
+
+test "ordinary filesystem misuse retains typed cases":
+    let fs = filesystem()
+
+    with temporary = value(fs.temporary("manuscript-errors-")):
+        let directory = "{temporary.path()}/directory"
+        let file = "{temporary.path()}/file"
+        let created = value(fs.create_directory(path: directory, recursive: false))
+        let child = value(
+            fs.write_file(
+                path: "{directory}/child",
+                data: "x".to_bytes(),
+                replace: false
+            )
+        )
+        let written = value(
+            fs.write_file(
+                path: file,
+                data: "abc".to_bytes(),
+                replace: false
+            )
+        )
+        expect_fs_error(
+            outcome: fs.remove(path: directory, recursive: false),
+            expected: FileSystemError.NotEmpty
+        )
+        expect_fs_error(
+            outcome: fs.list(path: file),
+            expected: FileSystemError.InvalidInput
+        )
+        expect_fs_error(
+            outcome: fs.read_file(path: directory),
+            expected: FileSystemError.InvalidInput
+        )
+        expect_fs_error(
+            outcome: fs.create_directory(path: file, recursive: false),
+            expected: FileSystemError.AlreadyExists
+        )
+
+        with reader = value(fs.open(path: file, flags: "r", mode: 384)):
+            expect_fs_error(
+                outcome: reader.write("x".to_bytes()),
+                expected: FileSystemError.InvalidInput
+            )
+            expect_fs_error(
+                outcome: reader.seek(offset: -1, origin: 0),
+                expected: FileSystemError.InvalidInput
+            )
+            expect_fs_error(
+                outcome: reader.seek(offset: 0, origin: 3),
+                expected: FileSystemError.InvalidInput
+            )
+
+        with writer = value(fs.open(path: file, flags: "a", mode: 384)):
+            expect_fs_error(
+                outcome: writer.read(1),
+                expected: FileSystemError.InvalidInput
+            )
+            expect_fs_error(
+                outcome: writer.read_file(),
+                expected: FileSystemError.InvalidInput
+            )
+
 test "filesystem scoped temporary directories and bounded file reads":
     let fs = filesystem()
     var directory = ""

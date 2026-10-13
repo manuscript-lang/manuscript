@@ -16,6 +16,8 @@ export type FileSystemError:
     case LimitExceeded
     case NotFound
     case AlreadyExists
+    # Removal failed because the directory still contains entries.
+    case NotEmpty
     case PermissionDenied
     case Unsupported
     case Closed

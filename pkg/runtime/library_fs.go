@@ -317,7 +317,7 @@ func (f *libraryFileSystem) extended(ctx *Execution, r, name, p string, a []Valu
 			file.Close()
 			CheckCancelled(ctx)
 		}
-		return libraryOK(r, ViewOf("@std/FileHandle", &libraryFileHandle{file: file}))
+		return libraryOK(r, ViewOf("@std/FileHandle", &libraryFileHandle{file: file, noRead: flags&3 == os.O_WRONLY, noWrite: flags&3 == os.O_RDONLY}))
 	case "open_directory":
 		file, err := os.Open(p)
 		if err != nil {
@@ -543,12 +543,15 @@ func libraryCopyTree(ctx *Execution, source, dest string, replace bool, entries,
 // FileHandle serializes offset-changing operations. Close first closes the OS
 // descriptor to interrupt pollable I/O, then joins admitted calls.
 type libraryFileHandle struct {
-	mu       sync.Mutex
-	file     *os.File
-	closed   bool
-	active   sync.WaitGroup
-	released chan struct{}
-	gate     chan struct{}
+	mu     sync.Mutex
+	file   *os.File
+	closed bool
+	// noRead and noWrite record the open mode so misuse is InvalidInput on
+	// every host instead of a platform-specific errno.
+	noRead, noWrite bool
+	active          sync.WaitGroup
+	released        chan struct{}
+	gate            chan struct{}
 	// ahead holds bytes read_line took from the reader beyond the current line.
 	ahead []byte
 }
@@ -659,6 +662,16 @@ func (h *libraryFileHandle) Operation(name string) Function {
 				return libraryError(r, "Closed", "")
 			}
 			return libraryOSResult(r, v, err)
+		}
+		switch name {
+		case "read", "read_at", "read_file", "read_vectors":
+			if h.noRead {
+				return libraryError(r, "InvalidInput", "")
+			}
+		case "write", "write_file", "write_at", "append_file", "write_vectors", "truncate":
+			if h.noWrite {
+				return libraryError(r, "InvalidInput", "")
+			}
 		}
 		switch name {
 		case "read", "read_at":
@@ -772,6 +785,9 @@ func (h *libraryFileHandle) Operation(name string) Function {
 		case "seek":
 			origin := a[1].(int64)
 			if origin < 0 || origin > 2 {
+				return libraryError(r, "InvalidInput", "")
+			}
+			if a[0].(int64) < 0 && origin == 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
 			n, err := h.file.Seek(a[0].(int64), int(origin))

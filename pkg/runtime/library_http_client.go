@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -100,6 +101,14 @@ func (n *network) httpOperation(name string) (Function, bool) {
 	}
 	return Function{}, false
 }
+func libraryValidPort(u *url.URL) bool {
+	port := u.Port()
+	if port == "" {
+		return true
+	}
+	n, err := strconv.Atoi(port)
+	return err == nil && n <= 65535
+}
 func sameHTTPOrigin(a, b *url.URL) bool {
 	return strings.EqualFold(a.Scheme, b.Scheme) && strings.EqualFold(a.Host, b.Host)
 }
@@ -114,7 +123,7 @@ func (c *libraryHTTPClient) Operation(name string) Function {
 			return libraryError(r, "InvalidInput", "")
 		}
 		u, err := url.Parse(a[1].(string))
-		if err != nil || u.Host == "" || u.User != nil || u.Scheme != "http" && u.Scheme != "https" {
+		if err != nil || u.Host == "" || u.User != nil || !libraryValidPort(u) || u.Scheme != "http" && u.Scheme != "https" {
 			return libraryError(r, "InvalidInput", "")
 		}
 		if !c.owner.policy.host(u.Hostname()) {
