@@ -13,10 +13,10 @@ fn fallback(counter: Counter) -> Int:
 fn value_or[T](value: Optional[T], fallback: T) -> T:
     return value.unwrap_or(fallback)
 
-fn increment(value: Int) -> Int: return value + 1
+fn increment(value: Int) -> Int: value + 1
 
 test "Optional presence and extraction preserve false and zero":
-    let present: Optional[Int] = some(value: 0)
+    let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
     if not (present.is_some()): return panic("zero was absent")
     if present.is_none(): return panic("some reported none")
@@ -24,7 +24,7 @@ test "Optional presence and extraction preserve false and zero":
     if not (missing.is_none()): return panic("none was present")
     if present.unwrap() != 0: return panic("payload lost")
 
-    let flag: Optional[Bool] = some(value: false)
+    let flag: Optional[Bool] = some(false)
     if flag.unwrap(): return panic("false payload lost")
     if value_or(value: missing, fallback: 7) != 7: return panic("generic fallback")
     if value_or(value: present, fallback: 7) != 0: return panic("generic payload")
@@ -32,13 +32,13 @@ test "Optional presence and extraction preserve false and zero":
         return panic(missing.unwrap().toString())
 
 test "Optional fallbacks distinguish eager and lazy evaluation":
-    let present: Optional[Int] = some(value: 0)
+    let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    let counter = Counter(calls: 0)
+    let counter = Counter(0)
     if present.unwrap_or(fallback(counter)) != 0: return panic("eager fallback result")
     if counter.calls != 1: return panic("fallback expression was not evaluated")
 
-    let create = fn() -> Int: return fallback(counter)
+    let create = fn(): fallback(counter)
     if present.unwrap_or_else(create) != 0: return panic("lazy payload")
     if counter.calls != 1: return panic("some invoked fallback")
     if missing.unwrap_or_else(create) != 42: return panic("lazy fallback")
@@ -46,12 +46,12 @@ test "Optional fallbacks distinguish eager and lazy evaluation":
 
 test "Optional methods retain generic payload and receiver identity":
     let inner: Optional[Int] = none
-    let outer: Optional[Optional[Int]] = some(value: inner)
+    let outer: Optional[Optional[Int]] = some(inner)
     if not (outer.is_some()): return panic("nested optional flattened")
     if not (outer.unwrap().is_none()): return panic("nested none lost")
 
-    let counter = Counter(calls: 0)
-    let record: Optional[Counter] = some(value: counter)
+    let counter = Counter(0)
+    let record: Optional[Counter] = some(counter)
     record.unwrap().calls = 3
     if counter.calls != 3: return panic("unwrap copied the payload")
 
@@ -59,7 +59,7 @@ test "Optional methods retain generic payload and receiver identity":
     extract().calls = 4
     if counter.calls != 4: return panic("stored method lost its receiver")
 
-    let callback: Optional[fn(value: Int) -> Int] = some(value: increment)
+    let callback: Optional[fn(value: Int) -> Int] = some(increment)
     if callback.unwrap()(2) != 3: return panic("function payload type lost")
 
     let snapshot = outer.clone()
@@ -74,7 +74,7 @@ test "Optional fallbacks preserve standard option records":
         "generic record default changed"
     )
 
-    extracted.max_values = some(value: 7)
+    extracted.max_values = some(7)
     if limits.max_values.unwrap() != 7: return panic(
         "generic fallback cloned the record"
     )

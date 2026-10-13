@@ -44,6 +44,7 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 			out.WriteString("}()\n")
 		}
 	}
+	natives := false
 	for _, m := range program.Methods {
 		g.module = m.Module
 		var vars []string
@@ -54,13 +55,26 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 		if m.Local {
 			scope = m.Module
 		}
-		out.WriteString("rt.Register(rt.Implementation{Receiver:" + quote(checker.TypeKey(m.Receiver)) + ",Contract:" + quote(checker.TypeKey(m.Contract)) + ",Name:" + quote(m.Decl.Name) + ",Scope:" + quote(scope) + ",Variables:" + stringsGo(vars) + ",Build:func(receiver rt.Value,typeArgs map[string]string,typeScopes map[string]rt.TypeScope) rt.Function{_ = typeArgs;return ")
+		// Consecutive standard implementations register as one data table,
+		// which compiles much faster than a closure for each.
 		if m.Native != "" {
-			out.WriteString("rt.StandardImplementation(" + quote(m.Native) + ",receiver)")
-		} else {
-			out.WriteString(g.function(m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type))
+			if !natives {
+				out.WriteString("rt.RegisterStandard([]rt.StandardRegistration{\n")
+				natives = true
+			}
+			out.WriteString("{Receiver:" + quote(checker.TypeKey(m.Receiver)) + ",Contract:" + quote(checker.TypeKey(m.Contract)) + ",Name:" + quote(m.Decl.Name) + ",Scope:" + quote(scope) + ",Variables:" + stringsGo(vars) + ",Native:" + quote(m.Native) + "},\n")
+			continue
 		}
+		if natives {
+			out.WriteString("})\n")
+			natives = false
+		}
+		out.WriteString("rt.Register(rt.Implementation{Receiver:" + quote(checker.TypeKey(m.Receiver)) + ",Contract:" + quote(checker.TypeKey(m.Contract)) + ",Name:" + quote(m.Decl.Name) + ",Scope:" + quote(scope) + ",Variables:" + stringsGo(vars) + ",Build:func(receiver rt.Value,typeArgs map[string]string,typeScopes map[string]rt.TypeScope) rt.Function{_ = typeArgs;return ")
+		out.WriteString(g.function(m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type))
 		out.WriteString("}})\n")
+	}
+	if natives {
+		out.WriteString("})\n")
 	}
 	out.WriteString("}\nfunc main(){initialize();\n")
 	if options.Tests {
@@ -89,7 +103,7 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 	out.WriteString("}\n")
 	formatted, err := format.Source([]byte(out.String()))
 	if err != nil {
-		return "", fmt.Errorf("generated invalid Go: %w", err)
+		return "", fmt.Errorf("generated invalid Go: %w; this is a Manuscript compiler bug, so report it with the .ms source that triggers it", err)
 	}
 	return string(formatted), nil
 }

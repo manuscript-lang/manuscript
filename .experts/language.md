@@ -65,11 +65,12 @@ Evidence: [sharing rules](../documentation/concurrency/sharing.md).
 
 ### Syntax improvements need examples across their boundaries
 
-Decision: support grouped symbol imports, and allow an omitted call label for a function with one parameter while requiring labels for functions with more than one parameter. The single-parameter request measures declaration arity, not the number of arguments supplied. These are user decisions; verify their availability in the branch being changed.
+Decision: support grouped symbol imports, and allow an omitted call label for a function with one parameter. The later token-cost request permits matching-name shorthand for multi-parameter functions and brace Map literals. Other multi-parameter expressions retain explicit labels. The latest correction also allows omitted labels on single-payload record/case constructors and contract views; multi-payload constructors retain labels. The single-parameter request measures declaration arity, not the number of arguments supplied. These are user decisions; verify their availability in the branch being changed.
 
 Apply when: changing imports, calls, grammar, or editor assistance.
+Evidence for the newer rule: [call rules](../documentation/core-language/functions/declarations-and-calls.md#argument-names), [Map literals](../documentation/core-language/types/collections.md#map-literals), and [native terse syntax fixture](../tests/e2e/testdata/accept/terse-data.ms).
 Evidence: [grouped-import request](codex://threads/01a12e1a-7d2d-7646-b5fc-2dc8fdd60038); [single-parameter request](codex://threads/01a12e4a-98e8-775e-9e6c-c101a8ac300d).
-Verify: grouped imports resolve each symbol and its editor location; one-parameter calls exercise both spellings, multi-parameter calls require labels, and missing arguments still fail. Consult current grammar and compatibility rules for methods, constructors, and function values rather than assuming identical boundaries.
+Verify: grouped imports resolve each symbol and its editor location; one-parameter calls exercise both spellings, multi-parameter calls accept matching bare names in any order and reject other unlabeled expressions, and missing arguments still fail. Consult current grammar and compatibility rules for methods, constructors, and function values rather than assuming identical boundaries.
 
 ### Recover concrete contract receivers through checked matching
 
@@ -109,7 +110,7 @@ Verify: a parameterless entry runs; parameterized entries fail; imported accesso
 
 ### Keep short bodies available without a second function kind
 
-Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `else if`. Inline suites use the existing colon and explicit statement/return semantics; they do not introduce implicit returns or a separate callable kind.
+Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `else if`. The latest correction permits a single expression after a function or method colon and implicitly returns it. Multiline bodies retain explicit returns. Other inline suites retain ordinary statement semantics; there is no separate callable kind.
 
 Apply when: changing suite parsing, anonymous-function layout, formatting, or syntax documentation.
 Evidence: [canonical suite rules](../documentation/core-language/basics/grammar.md#statements-and-patterns), [parser boundary cases](../pkg/parser/parser_test.go), and [native inline conformance](../tests/e2e/testdata/accept/inline-suites.ms).
@@ -142,3 +143,12 @@ Decision: when addressing familiar-language friction, the user explicitly chose 
 Apply when: changing matching, collection lookup, type application parsing, or examples migrating from other languages.
 Evidence: [match values](../documentation/core-language/control-flow/pattern-matching.md#arm-values), [list lookup](../documentation/core-language/types/collections.md#lookup-and-updates), and [native expression conformance](../tests/e2e/testdata/accept/expression-conveniences.ms).
 Verify: use `items[index].unwrap_or(0)` for absent indexes, keep `identity[Int]` specialization, and exercise enclosing returns, propagation, cleanup, and loop exits from match arms. An effects-only arm ending in a value-returning call needs an explicit `unit` when another arm produces Unit.
+
+### Infer local callback signatures from context
+
+Decision: the user explicitly permits callback parameter and result inference. Known function contexts supply omitted parameter types; callback bodies can supply generic output evidence after inputs are known, including success types within a partially known Result context. Named public signatures stay explicit, and parameter labels retain their existing function identity. Use existing argument/field defaults to omit redundant values; do not treat every Optional parameter as implicitly defaulted.
+
+Verify: source and native callbacks cover generic map results, callbacks listed before their inference inputs, optional callbacks, nested closures, constructors, and editor parameter navigation. Preserve explicit annotations where incomplete Result construction or `try` lacks a known result context.
+
+Apply when: changing callback checking, generic inference, syntax or editor annotations.
+Evidence: [callback rules](../documentation/core-language/functions/function-values-and-closures.md#contextual-callback-inference), [acceptance and rejection checks](../pkg/compiler/callbacks_test.go), and [native fixture](../tests/e2e/testdata/accept/contextual-callbacks.ms).

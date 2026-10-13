@@ -2,6 +2,7 @@ package msruntime
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -40,7 +41,7 @@ func TestOptionalReceiverMethods(t *testing.T) {
 		t.Fatal("none must evaluate fallback once")
 	}
 	fault, ok := recovered(func() { call(optional("Int", nil, false), "unwrap") }).(Fault)
-	if !ok || fault.Message != "called Optional.unwrap() on none" {
+	if !ok || !strings.HasPrefix(fault.Message, "called Optional.unwrap() on none") {
 		t.Fatalf("unexpected absent extraction fault: %#v", fault)
 	}
 	create = NewFunction(nil, "Int", func(_ *Execution, _ []Value) Value { return Panic("fallback failed") })

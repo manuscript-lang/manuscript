@@ -1,3 +1,5 @@
+//go:build !ms_lean
+
 package msruntime
 
 import (

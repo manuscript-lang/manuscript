@@ -61,7 +61,13 @@ func TestStandaloneRunCache(t *testing.T) {
 	if err != nil || !reused.ModTime().Equal(info.ModTime()) || !reflect.DeepEqual(binaries(), first) {
 		t.Fatal("unchanged run rewrote its cache", err)
 	}
-	if err := os.WriteFile(first[0], []byte("corrupt"), 0755); err != nil {
+	// Replace the artifact so corruption does not require writing an inode
+	// the OS may still hold as an executable after the preceding run.
+	corrupt := filepath.Join(cache, "corrupt.tmp")
+	if err := os.WriteFile(corrupt, []byte("corrupt"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(corrupt, first[0]); err != nil {
 		t.Fatal(err)
 	}
 	run(0)

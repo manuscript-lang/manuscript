@@ -19,9 +19,9 @@ fn verify_bigint() -> Result[Unit, BigIntError]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 test "large integers are exact":
-    let expected: Result[Unit, BigIntError] = ok(value: unit)
+    let expected: Result[Unit, BigIntError] = ok(unit)
     if not (verify_bigint() == expected):
         return panic(message: "check failed")

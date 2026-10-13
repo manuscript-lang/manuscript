@@ -58,6 +58,10 @@ func (c *checker) effectSummaries() {
 						add(n, "read")
 					}
 				}
+				if expression.Kind == syntax.KindMap && len(expression.Elements) > 2 {
+					// Duplicate-key insertion may dispatch user-defined equality.
+					add(n, "unknown")
+				}
 				if expression.Kind != syntax.KindCall {
 					return
 				}

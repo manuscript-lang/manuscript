@@ -30,7 +30,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         ): return panic("read file")
 
         let limited: Result[Bytes, FileSystemError] = error(
-            cause: FileSystemError.LimitExceeded
+            FileSystemError.LimitExceeded
         )
         if fs.read_file(
             path: path,
@@ -38,7 +38,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         ) != limited: return panic("file byte limit")
 
         let exists: Result[Unit, FileSystemError] = error(
-            cause: FileSystemError.AlreadyExists
+            FileSystemError.AlreadyExists
         )
         if (
             fs.write_file(
@@ -104,7 +104,7 @@ test "file handles positional I/O stream adapters and closed errors":
             ) != "aXYd".to_bytes(): return panic("reader adapter")
 
         let closed: Result[Bytes, FileSystemError] = error(
-            cause: FileSystemError.Closed
+            FileSystemError.Closed
         )
         if handle.read_at(
             offset: 0,

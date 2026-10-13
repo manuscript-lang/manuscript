@@ -116,7 +116,7 @@ fn text_content(node: HtmlNode) -> String:
 
 fn read_text() -> Result[String, Error]:
     let document = try parse(text: "<p>Hello <b>world</b> &amp; friends</p>")
-    return ok(value: text_content(document))
+    return ok(text_content(document))
 
 test "read HTML text":
     match read_text():

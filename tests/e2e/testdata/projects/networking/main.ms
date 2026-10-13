@@ -35,15 +35,15 @@ fn websocket_error(cause: WebSocketError) -> HttpError:
             return HttpError.Timeout
 
         Failed(message):
-            return HttpError.Failed(message: message)
+            return HttpError.Failed(message)
 
 fn socket_result[T](result: Result[T, WebSocketError]) -> Result[T, HttpError]:
     match result:
         ok(value):
-            return ok(value: value)
+            return ok(value)
 
         error(cause):
-            return error(cause: websocket_error(cause))
+            return error(websocket_error(cause))
 
 fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     if exchange.path() == "/ws":
@@ -64,9 +64,9 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
                     )
 
                 none:
-                    return ok(value: unit)
+                    return ok(unit)
 
-        return ok(value: unit)
+        return ok(unit)
 
     let headers = Map[String, List[String]]().with_entry(
         key: "X-Test",
@@ -76,10 +76,10 @@ fn echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
 
     match exchange.write(data: "hello from streaming Manuscript".to_bytes()):
         ok(_):
-            return ok(value: unit)
+            return ok(unit)
 
         error(_):
-            return error(cause: HttpError.Failed(message: "write failed"))
+            return error(HttpError.Failed("write failed"))
 
 fn exercise() -> Result[Unit, HttpError]:
     let tls = TlsOptions(
@@ -133,7 +133,7 @@ fn exercise() -> Result[Unit, HttpError]:
                             some(data):
                                 if not (
                                     data.to_text() == some(
-                                        value: "hello from streaming Manuscript"
+                                        "hello from streaming Manuscript"
                                     )
                                 ):
                                     return panic(message: "check failed")
@@ -173,13 +173,13 @@ fn exercise() -> Result[Unit, HttpError]:
                 some(message):
                     if not (message.text):
                         return panic(message: "check failed")
-                    if not (message.data.to_text() == some(value: "echo me")):
+                    if not (message.data.to_text() == some("echo me")):
                         return panic(message: "check failed")
 
                 none:
                     return panic(message: "Unexpected case")
 
-    return ok(value: unit)
+    return ok(unit)
 
 export fn main() -> Int:
     match exercise():

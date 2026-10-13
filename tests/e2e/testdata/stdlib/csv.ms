@@ -35,14 +35,14 @@ test "CSV quotes delimiters multiline cells and line endings":
 test "CSV rejects malformed records invalid options and limits":
     let options = CsvOptions(delimiter: ",", line_ending: "\n")
     let malformed: Result[List[List[String]], CsvError] = error(
-        cause: CsvError.InvalidData
+        CsvError.InvalidData
     )
     if parse(text: "\"unterminated", options: options) != malformed: return panic(
         "unclosed quote"
     )
 
     let limited: Result[List[List[String]], CsvError] = error(
-        cause: CsvError.LimitExceeded
+        CsvError.LimitExceeded
     )
     if parse(
         text: "a,b\n",
@@ -55,7 +55,7 @@ test "CSV rejects malformed records invalid options and limits":
         max_rows: 1
     ) != limited: return panic("row budget")
 
-    let invalid: Result[String, CsvError] = error(cause: CsvError.InvalidInput)
+    let invalid: Result[String, CsvError] = error(CsvError.InvalidInput)
     if (
         stringify(
             rows: [

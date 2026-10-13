@@ -13,7 +13,7 @@ type Package:
 export fn main() -> Int:
     let package = Package(title: "Manuscript", count: 42)
     let values = [10, 20, 30]
-    let optional = Optional[Int].some(value: 5)
+    let optional = Optional[Int].some(5)
 
     match optional:
         some(value):

@@ -36,19 +36,21 @@ CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
 Argument      = [ Name, ":" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
               | "true" | "false" | "unit" | "self" | Name
-              | "(", Expression, ")" | SharedViewConstruction | ListLiteral | FunctionExpression | MatchExpression ;
+              | "(", Expression, ")" | SharedViewConstruction | ListLiteral | MapLiteral | FunctionExpression | MatchExpression ;
 SharedViewConstruction = "(", SharedContractType, ")", CallArguments ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
-FunctionExpression = "fn", "(", [ FunctionParameters ], ")", "->", Type, Suite ;
+MapLiteral    = "{", [ MapEntry, { ",", MapEntry }, [ "," ] ], "}" ;
+MapEntry      = Expression, ":", Expression ;
+FunctionExpression = "fn", "(", [ CallbackParameters ], ")", [ "->", Type ], FunctionSuite ;
 MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                   MatchArm, { MatchArm }, DEDENT ;
 ```
 
 The common `Comparison` production makes `a < b == c`, `a == b == c`, and `a < b < c` syntax errors. Comparisons with explicit grouping, such as `(a < b) == flag`, are ordinary Bool equality. `not a == b` means `not (a == b)`. `try read() + 1` means `(try read()) + 1`; use `try (expression)` to propagate the result of a larger expression.
 
-A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. When the receiver is a list value, brackets instead perform lookup: `values[index]` has the same `Optional[T]` result and negative-index behavior as `values.at(index)`. The receiver determines whether brackets supply types or an Int index; this does not depend on capitalization. Slicing and indexed assignment remain unsupported; use collection methods for updates. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Argument labels are optional only for functions and methods with exactly one declared parameter; the checker enforces [call rules](../functions/declarations-and-calls.md#argument-names). Constructors and explicit contract views such as `Payments(value: card)` require labels.
+A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. When the receiver is a list value, brackets instead perform lookup: `values[index]` has the same `Optional[T]` result and negative-index behavior as `values.at(index)`. The receiver determines whether brackets supply types or an Int index; this does not depend on capitalization. Slicing and indexed assignment remain unsupported; use collection methods for updates. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Calls may omit labels for single-parameter functions or use matching-name shorthand for multi-parameter functions; the checker enforces [call rules](../functions/declarations-and-calls.md#argument-names). Single-payload constructors and explicit contract views may omit their label, as in `Box(3)`, `some(3)`, or `Payments(card)`. Constructors with multiple payload fields require explicit labels.
 
-Contract views use `Payments(value: card)`. [Contract views](../types/contracts.md#explicit-contract-views) require an explicit implementation and exactly one `value` argument. There is no separate sharing refinement or shared constructor.
+Contract views use `Payments(card)` or `Payments(value: card)`. [Contract views](../types/contracts.md#explicit-contract-views) require an explicit implementation and exactly one `value` argument. There is no separate sharing refinement or shared constructor.
 
 ## Operand and result types
 
@@ -91,7 +93,7 @@ Ordinary [expected-type compatibility](../types/compatibility.md) still admits N
 
 Subexpressions evaluate from left to right. A binary operator evaluates its left operand once, then its right operand once, then applies the operator. The right side of `false and expression` and `true or expression` is not evaluated. Both branches must nevertheless type-check.
 
-A call evaluates its callable or method receiver first and its supplied argument expressions once each in written order. Parameter declaration order does not reorder evaluation. Field access evaluates its receiver once. List indexing evaluates its receiver once, then its index once. Explicit type arguments have no runtime evaluation. List elements evaluate in written order; [list literals](../types/collections.md) remain homogeneous.
+A call evaluates its callable or method receiver first and its supplied argument expressions once each in written order. Parameter declaration order does not reorder evaluation. Field access evaluates its receiver once. List indexing evaluates its receiver once, then its index once. Explicit type arguments have no runtime evaluation. List elements and map entries evaluate in written order; map keys precede their values. [Collection literals](../types/collections.md) retain homogeneous element, key, and value types.
 
 A function expression creates a function value; its statement body runs on invocation, not creation. Its capture behavior is specified by [function values and closures](../functions/function-values-and-closures.md). String interpolation evaluates each embedded expression once in written order and then formats it, as specified by [text and bytes](text-and-bytes.md).
 

@@ -53,7 +53,7 @@ impl Equal for CustomerKey:
             _: return false
 
 impl Hashable for CustomerKey:
-    fn hash() -> Int: return self.id
+    fn hash() -> Int: self.id
 ```
 
 These implementations apply to equality operators, collection searches, and key lookup. An equality override disables automatic structural hashing: provide a matching explicit hash before using that type as a key. Implementation visibility follows [ordinary contract rules](contracts.md#coherence-and-visibility), including local extensions and generic specialization.

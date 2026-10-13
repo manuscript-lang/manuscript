@@ -338,3 +338,28 @@ test "match evaluates its input once and only the selected arm":
 
     if result != 6 or counter.count != 11:
         return panic("match evaluation count")
+
+fn inline_match(value: Optional[Int]) -> Int: match value:
+    some(number): number
+    none: 0
+
+test "match composes with inferred callbacks and map literals":
+    let values: List[Optional[Int]] = [some(3), none]
+    let mapped = values.map(
+        fn(value): match value:
+            some(number): number + 1
+            none: 0
+    )
+    if mapped[0].unwrap() != 4 or mapped[1].unwrap() != 0:
+        return panic("match callback inference")
+
+    let lookup = {
+        "value": match values[0].unwrap():
+            some(number): number
+            none: 0
+    }
+    if lookup.get("value").unwrap() != 3:
+        return panic("match in map literal")
+
+    if inline_match(none) != 0 or inline_match(some(5)) != 5:
+        return panic("inline match result")

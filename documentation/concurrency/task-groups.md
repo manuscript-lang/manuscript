@@ -15,8 +15,8 @@ import { TaskGroup, ExecutionError } from "@std/tasks.ms"
 import Result from "@std/result.ms"
 import panic from "@std/faults.ms"
 
-fn number() -> Int: return 42
-fn greeting() -> String: return "hello"
+fn number() -> Int: 42
+fn greeting() -> String: "hello"
 
 fn check() -> Result[Unit, ExecutionError]:
     with tasks = TaskGroup():
@@ -27,7 +27,7 @@ fn check() -> Result[Unit, ExecutionError]:
         let message = try greeting_task.join()
         if value != 42 or message != "hello":
             return panic("task results changed")
-        return ok(value: unit)
+        return ok(unit)
 
 test "independent typed results":
     match check():

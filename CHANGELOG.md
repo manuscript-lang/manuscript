@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `ms run --watch` and `ms test --watch` to rebuild and restart after each saved change.
+- Rebuild edited programs faster: native builds share a content-addressed workspace, replay recorded compile/link commands without the go command, link a lean runtime for programs without network, system, or process imports, publish artifacts by hard link, and link Debug builds with uncompressed DWARF. `ms` loads standard declarations on first use and computes build pins while checking.
 - Accept plain values for standard `Optional[T]` arguments, including `Queue[Int](capacity: 4)`, and use this convention across current call sites and examples.
 - Parse HTML strings into `HtmlNode` trees with `HtmlAttribute` records, HTML5 recovery, and optional byte, depth, and node limits.
 - Replace `@std/log.ms`'s `write` function with structured `Logger` and `Transport` interfaces: six levels, typed JSON fields, child bindings, record limits, and stdout/file/custom transports. Migrate calls to `create(transport: transport)` and `logger.info(message: message, fields: fields)`; fields now use `Map[String, JsonValue]`, and transports use scoped cleanup.

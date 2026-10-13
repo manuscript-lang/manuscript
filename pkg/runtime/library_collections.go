@@ -1,6 +1,9 @@
 package msruntime
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // relativeIndex implements Array.at-style indexing without negating MinInt64.
 func relativeIndex(length int, index int64) int64 {
@@ -78,7 +81,7 @@ func init() {
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
-			return Panic("list update index out of range")
+			return Panic(fmt.Sprintf("list update index out of range; the list has %d elements, so use an index from %d to %d (negative indexes count from the end)", len(items), -len(items), len(items)-1))
 		}
 		items[i] = a[2]
 		return a[0]
@@ -87,7 +90,7 @@ func init() {
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
-			return Panic("list removal index out of range")
+			return Panic(fmt.Sprintf("list removal index out of range; the list has %d elements, so use an index from %d to %d (negative indexes count from the end)", len(items), -len(items), len(items)-1))
 		}
 		copy(items[i:], items[i+1:])
 		items[len(items)-1] = nil

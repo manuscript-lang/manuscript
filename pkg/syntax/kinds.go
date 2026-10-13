@@ -28,6 +28,7 @@ const (
 	KindApply     = "apply"
 	KindIndex     = "index"
 	KindList      = "list"
+	KindMap       = "map"
 	KindUnary     = "unary"
 	KindBinary    = "binary"
 	KindLambda    = "lambda"
@@ -41,5 +42,5 @@ func StatementKinds() []string {
 
 // ExpressionKinds enumerates executable nodes; repo-check verifies checker/lowering coverage.
 func ExpressionKinds() []string {
-	return []string{KindNumber, KindBool, KindUnit, KindText, KindName, KindMember, KindApply, KindCall, KindList, KindUnary, KindBinary, KindLambda, KindIndex, KindMatch}
+	return []string{KindNumber, KindBool, KindUnit, KindText, KindName, KindMember, KindApply, KindCall, KindList, KindMap, KindUnary, KindBinary, KindLambda, KindIndex, KindMatch}
 }

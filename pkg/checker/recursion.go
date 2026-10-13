@@ -91,7 +91,7 @@ func (c *checker) finiteApplications() {
 						}
 					}
 					if !equal {
-						c.error(edge.pos, "type", "recursive generic applications must preserve their parameters")
+						c.error(edge.pos, "type", "recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])")
 					}
 					continue
 				}

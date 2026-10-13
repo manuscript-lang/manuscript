@@ -74,6 +74,8 @@ func TestUsageAndInvalidOptions(t *testing.T) {
 		{"build", "missing.ms", "--build-type", "Release", "--debug"},
 		{"debug", "missing.ms", "--build-type", "RelWithDebInfo"},
 		{"build", "missing.ms", "--build-type", "Debug", "--build-type", "Release"},
+		{"build", "missing.ms", "--watch"}, {"check", "missing.ms", "--watch"},
+		{"run", "missing.ms", "--watch", "--trace", "trace.out"},
 	} {
 		status, output, errors := invoke(t, args...)
 		if status != 2 || output != "" || errors == "" {
@@ -288,5 +290,25 @@ func TestFailedProfileDoesNotCreateAnArtifactDirectory(t *testing.T) {
 	}
 	if _, err := os.Stat(output); !os.IsNotExist(err) {
 		t.Fatal("failed checking created a profile artifact directory", err)
+	}
+}
+
+func TestCLIErrorsNameTheFix(t *testing.T) {
+	status, _, errors := invoke(t, "chek", "x.ms")
+	if status != 2 || !strings.Contains(errors, "Did you mean 'ms check'?") {
+		t.Fatalf("unknown command: %d, %q", status, errors)
+	}
+	status, _, errors = invoke(t, "check", "missing-file.ms")
+	if status != 1 || !strings.Contains(errors, "file not found: missing-file.ms; check the path") || !strings.Contains(errors, "1 error;") {
+		t.Fatalf("missing file: %d, %q", status, errors)
+	}
+	status, _, errors = invoke(t, "fmt", "missing-file.ms")
+	if status != 1 || !strings.Contains(errors, "file not found: missing-file.ms") {
+		t.Fatalf("missing format file: %d, %q", status, errors)
+	}
+	source := sourceFile(t, "fn value() -> Int:\n    return 1\n")
+	status, _, errors = invoke(t, "check", source, "--bogus")
+	if status != 2 || !strings.Contains(errors, "unknown option --bogus for ms check; run 'ms help check'") {
+		t.Fatalf("unknown option: %d, %q", status, errors)
 	}
 }

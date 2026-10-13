@@ -32,7 +32,7 @@ Use `Debug` for source stepping, `Release` for distribution, and
 
 | Level | Optimization | Debugging information | Native flags |
 | --- | --- | --- | --- |
-| `Debug` | Disabled, including inlining | Retained, with local source paths | `-gcflags=all=-N -l` |
+| `Debug` | Disabled, including inlining | Retained uncompressed, with local source paths | `-gcflags=all=-N -l` `-ldflags=-compressdwarf=false` |
 | `Release` | Go's normal optimizer | Symbol tables and DWARF stripped | `-trimpath -ldflags="-s -w"` |
 | `RelWithDebInfo` | Go's normal optimizer | Retained, with local source paths | No additional flags |
 | `MinSizeRel` | Go's normal optimizer | Symbol tables and DWARF stripped | `-trimpath -ldflags="-s -w"` |
@@ -51,8 +51,8 @@ steps. `--debug` remains an alias for `--build-type Debug` on `build`, `run`, an
 and build-type flags on source-only commands are rejected before compilation.
 Flags after `--` are passed to the program.
 
-Project commands use the matching `ms.lock` pins. Run `ms lock ms.toml` when
-creating a project or explicitly updating its compiler and toolchain pins.
+Project commands create `ms.lock` when it is missing and otherwise require the
+matching pins. Run `ms lock ms.toml` to explicitly update its compiler and toolchain pins.
 Select build levels on the command line. See [build pinning and cache identity](reproducibility.md).
 
 ## Compiler API

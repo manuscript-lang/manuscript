@@ -39,13 +39,13 @@ test "process environment is live while CLI environment retains its snapshot":
             value: "stdlib"
         )
     )
-    if system().environment(name) != some(value: "stdlib"): return panic(
+    if system().environment(name) != some("stdlib"): return panic(
         "system environment"
     )
     if environment().get(name) != snapshot: return panic(
         "CLI environment snapshot changed"
     )
-    if value(control().environment()).get(name) != some(value: "stdlib"): return panic(
+    if value(control().environment()).get(name) != some("stdlib"): return panic(
         "process environment"
     )
 
@@ -53,7 +53,7 @@ test "process environment is live while CLI environment retains its snapshot":
 
 test "subprocess validation returns expected domain errors":
     let invalid: Result[CommandOutput, CommandError] = error(
-        cause: CommandError.InvalidInput
+        CommandError.InvalidInput
     )
     if commands().run(
         program: "",
@@ -62,7 +62,7 @@ test "subprocess validation returns expected domain errors":
     ) != invalid: return panic("empty program")
 
     let unavailable: Result[CommandOutput, CommandError] = error(
-        cause: CommandError.Unavailable
+        CommandError.Unavailable
     )
     if (
         commands().run(

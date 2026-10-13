@@ -80,7 +80,7 @@ test "authenticated encryption detects wrong associated data":
     ): return panic("AES GCM roundtrip")
 
     let failed: Result[Bytes, CryptoError] = error(
-        cause: CryptoError.AuthenticationFailed
+        CryptoError.AuthenticationFailed
     )
     if (
         open(
@@ -91,7 +91,7 @@ test "authenticated encryption detects wrong associated data":
         ) != failed
     ): return panic("authentication bypass")
 
-    let invalid: Result[Bytes, CryptoError] = error(cause: CryptoError.InvalidInput)
+    let invalid: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
     if (
         seal(
             key: "short".to_bytes(),

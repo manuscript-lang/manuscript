@@ -3,6 +3,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	support "github.com/manuscript-lang/manuscript"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
@@ -10,11 +11,13 @@ import (
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/pkg/tooling"
 	"github.com/manuscript-lang/manuscript/pkg/tooling/lsp"
+	"io/fs"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 )
 
@@ -30,8 +33,7 @@ func Run(args []string) int {
 	}
 	usage, known := commandHelp(args[0])
 	if !known {
-		fmt.Fprintln(os.Stderr, "unknown command:", args[0])
-		fmt.Fprintln(os.Stderr, "Run 'ms --help' to list commands.")
+		unknownCommand(args[0])
 		return 2
 	}
 	if requestsHelp(args[1:]) {
@@ -52,12 +54,13 @@ func Run(args []string) int {
 		return 0
 	}
 	if len(args) < 2 {
+		fmt.Fprintf(os.Stderr, "ms %s: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms %s ms.toml\n\n", args[0], args[0])
 		fmt.Fprint(os.Stderr, usage)
 		return 2
 	}
 	if args[0] == "stdlib" {
 		if len(args) != 2 {
-			fmt.Fprintln(os.Stderr, "usage: ms stdlib <directory>")
+			fmt.Fprintln(os.Stderr, "usage: ms stdlib <directory>; pass exactly one directory to write the standard declarations into")
 			return 2
 		}
 		if err := stdlib.Materialize(args[1]); err != nil {
@@ -69,7 +72,7 @@ func Run(args []string) int {
 	command, filename := args[0], args[1]
 	output := ""
 	cpuProfile, heapProfile, tracePath := "", "", ""
-	formatCheck, structured, debug := false, false, false
+	formatCheck, structured, debug, watch := false, false, false, false
 	buildTypeName := ""
 	buildTypeSet := false
 	var arguments []string
@@ -80,14 +83,16 @@ func Run(args []string) int {
 			i = len(args)
 		case "--debug":
 			debug = true
+		case "--watch":
+			watch = true
 		case "--build-type":
 			i++
 			if i == len(args) || args[i] == "" {
-				fmt.Fprintln(os.Stderr, "--build-type requires a build type")
+				fmt.Fprintln(os.Stderr, "--build-type requires a build type; use Debug, Release, RelWithDebInfo, or MinSizeRel")
 				return 2
 			}
 			if buildTypeSet {
-				fmt.Fprintln(os.Stderr, "--build-type may only be specified once")
+				fmt.Fprintln(os.Stderr, "--build-type may only be specified once; remove the duplicate flag")
 				return 2
 			}
 			buildTypeName, buildTypeSet = args[i], true
@@ -99,9 +104,9 @@ func Run(args []string) int {
 			flag := args[i]
 			i++
 			if i == len(args) {
-				message := "profile flag requires a path"
+				message := flag + " requires a path argument, e.g. " + flag + " out.pprof"
 				if flag == "-o" || flag == "--output" {
-					message = "output flag requires a path"
+					message = flag + " requires a path argument, e.g. " + flag + " out.go"
 				}
 				fmt.Fprintln(os.Stderr, message)
 				return 2
@@ -117,7 +122,7 @@ func Run(args []string) int {
 				tracePath = args[i]
 			}
 		default:
-			fmt.Fprintln(os.Stderr, "unknown option:", args[i])
+			fmt.Fprintf(os.Stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (arguments for the program go after --)\n", args[i], command, command)
 			return 2
 		}
 	}
@@ -133,11 +138,15 @@ func Run(args []string) int {
 	case "test":
 		options.Tests = true
 	default:
-		fmt.Fprintln(os.Stderr, "unknown command:", command)
+		unknownCommand(command)
+		return 2
+	}
+	if watch && command != "run" && command != "test" {
+		fmt.Fprintf(os.Stderr, "--watch requires run or test, not %s; use ms run <file> --watch or ms test <file> --watch\n", command)
 		return 2
 	}
 	if formatCheck && command != "fmt" || structured && command != "check" && command != "lint" || debug && command != "build" && command != "run" && command != "test" {
-		fmt.Fprintln(os.Stderr, "flag is not valid for this command")
+		fmt.Fprintf(os.Stderr, "%s; run 'ms help %s' for the options this command accepts\n", invalidFlag(command, formatCheck, structured, debug), command)
 		return 2
 	}
 	kind, err := compiler.ParseBuildType(buildTypeName)
@@ -146,12 +155,12 @@ func Run(args []string) int {
 		return 2
 	}
 	if buildTypeSet && command != "build" && command != "run" && command != "test" && command != "debug" && command != "profile" {
-		fmt.Fprintln(os.Stderr, "--build-type requires build, run, test, debug, or profile")
+		fmt.Fprintf(os.Stderr, "--build-type requires build, run, test, debug, or profile, not %s; remove the flag\n", command)
 		return 2
 	}
 	if debug || command == "debug" {
 		if buildTypeSet && kind != compiler.Debug {
-			fmt.Fprintln(os.Stderr, "debug requires build type Debug")
+			fmt.Fprintln(os.Stderr, "debug requires build type Debug; remove --build-type or pass --build-type Debug")
 			return 2
 		}
 		kind = compiler.Debug
@@ -159,25 +168,29 @@ func Run(args []string) int {
 		kind = compiler.RelWithDebInfo
 	}
 	if (cpuProfile != "" || heapProfile != "" || tracePath != "") && command != "run" {
-		fmt.Fprintln(os.Stderr, "profiling flags require run")
+		fmt.Fprintf(os.Stderr, "profiling flags (--cpu-profile, --heap-profile, --trace) require run, not %s; use ms run <file> with them, or ms profile <file> to capture all three\n", command)
+		return 2
+	}
+	if watch && (cpuProfile != "" || heapProfile != "" || tracePath != "") {
+		fmt.Fprintln(os.Stderr, "--watch cannot be combined with profiling flags; run the profile once without --watch")
 		return 2
 	}
 	if command == "fmt" {
 		source, err := os.ReadFile(filename)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(os.Stderr, fileError(err))
 			return 1
 		}
 		formatted, err := tooling.Format(filename, string(source))
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintf(os.Stderr, "%v\nfmt only formats source that parses; fix the syntax error above, then re-run ms fmt %s\n", err, filename)
 			return 1
 		}
 		if string(source) == formatted {
 			return 0
 		}
 		if formatCheck {
-			fmt.Fprintln(os.Stderr, "Formatting needed:", filename)
+			fmt.Fprintf(os.Stderr, "Formatting needed: %s; run ms fmt %s to rewrite it\n", filename, filename)
 			return 1
 		}
 		info, err := os.Stat(filename)
@@ -208,6 +221,15 @@ func Run(args []string) int {
 
 	options.CPUProfile, options.HeapProfile, options.Trace = cpuProfile, heapProfile, tracePath
 
+	switch command {
+	case "build", "run", "test", "debug", "profile":
+		// Native commands need the build pin; query the toolchain and hash
+		// embedded inputs while the source is parsed and checked.
+		go compiler.CurrentPin()
+	}
+	if watch {
+		return watchProgram(command, filename, options, kind, "", arguments)
+	}
 	result := compiler.CompileFile(filename, options)
 	if structured && command == "check" {
 		if result.Diagnostics == nil {
@@ -232,7 +254,7 @@ func Run(args []string) int {
 	}
 	if command == "profile" {
 		if err := os.Mkdir(output, 0700); err != nil {
-			fmt.Fprintln(os.Stderr, "profile directory must be new:", err)
+			fmt.Fprintf(os.Stderr, "profile directory must be new: %v; choose a path that does not exist with -o <directory>, or delete the old one\n", err)
 			return 1
 		}
 	}
@@ -269,7 +291,7 @@ func Run(args []string) int {
 		return 0
 	case "lock":
 		if result.ProjectRoot == "" {
-			fmt.Fprintln(os.Stderr, "lock requires a project ms.toml")
+			fmt.Fprintln(os.Stderr, "lock requires a project ms.toml, not a single .ms file; run ms lock path/to/ms.toml (a manifest declares [project] name, source, and entry)")
 			return 2
 		}
 		if err := compiler.WritePin(result.ProjectRoot); err != nil {
@@ -368,7 +390,7 @@ func Run(args []string) int {
 		if command == "debug" {
 			dlv, e := exec.LookPath("dlv")
 			if e != nil {
-				fmt.Fprintln(os.Stderr, "debug requires Delve (dlv) on PATH")
+				fmt.Fprintln(os.Stderr, "debug requires Delve (dlv) on PATH; install it with: go install github.com/go-delve/delve/cmd/dlv@latest")
 				return 1
 			}
 			dlvArgs := append([]string{"exec", executable, "--"}, arguments...)
@@ -420,7 +442,74 @@ func reportDiagnostics(result compiler.Result) int {
 		}
 		fmt.Fprintln(os.Stderr, issue)
 	}
+	fmt.Fprintf(os.Stderr, "%d %s; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n", len(result.Diagnostics), plural(len(result.Diagnostics), "error", "errors"))
 	return 1
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
+}
+
+var commandNames = []string{"check", "lint", "build", "emit", "run", "test", "fmt", "inspect", "diagram", "profile", "debug", "lock", "doc", "stdlib", "lsp", "help"}
+
+// unknownCommand names the nearest command and lists the rest.
+func unknownCommand(name string) {
+	fmt.Fprintln(os.Stderr, "unknown command:", name)
+	best, bestDistance := "", 3
+	for _, candidate := range commandNames {
+		if d := distance(name, candidate); d < bestDistance {
+			best, bestDistance = candidate, d
+		}
+	}
+	if best != "" {
+		fmt.Fprintf(os.Stderr, "Did you mean 'ms %s'?\n", best)
+	}
+	fmt.Fprintf(os.Stderr, "Commands: %s. Run 'ms --help' for details.\n", strings.Join(commandNames, ", "))
+}
+
+func distance(a, b string) int {
+	previous := make([]int, len(b)+1)
+	for j := range previous {
+		previous[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		current := make([]int, len(b)+1)
+		current[0] = i
+		for j := 1; j <= len(b); j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			current[j] = min(previous[j]+1, current[j-1]+1, previous[j-1]+cost)
+		}
+		previous = current
+	}
+	return previous[len(b)]
+}
+
+// invalidFlag names the flag that this command does not accept.
+func invalidFlag(command string, formatCheck, structured, debug bool) string {
+	switch {
+	case formatCheck && command != "fmt":
+		return "--check is valid only for ms fmt, not ms " + command
+	case structured:
+		return "--json is valid only for ms check and ms lint, not ms " + command
+	case debug:
+		return "--debug is valid only for ms build, run, and test, not ms " + command
+	}
+	return "an option is not valid for ms " + command
+}
+
+// fileError turns a failed file read into a cause and a fix.
+func fileError(err error) string {
+	var pathError *fs.PathError
+	if errors.As(err, &pathError) && errors.Is(err, fs.ErrNotExist) {
+		return "file not found: " + pathError.Path + "; check the path and run from the directory that contains it"
+	}
+	return err.Error()
 }
 
 func writeOutput(filename string, data []byte) int {

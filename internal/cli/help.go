@@ -75,12 +75,12 @@ func commandHelp(command string) (string, bool) {
 	case "run":
 		usage = "<file.ms|ms.toml> [options] [-- program arguments]"
 		description = "Build a temporary executable and run its exported main() -> Int.\nArguments after -- are passed unchanged to the application; its exit status is returned."
-		options = "  --debug               Alias for --build-type Debug\n  --cpu-profile <path>  Write a CPU profile\n  --heap-profile <path> Write a heap profile\n  --trace <path>        Write an execution trace\n"
-		examples = "ms run ms.toml -- first second\n  ms run main.ms --cpu-profile cpu.pprof"
+		options = "  --debug               Alias for --build-type Debug\n  --watch               Rebuild and restart after each saved source change\n  --cpu-profile <path>  Write a CPU profile\n  --heap-profile <path> Write a heap profile\n  --trace <path>        Write an execution trace\n"
+		examples = "ms run ms.toml -- first second\n  ms run main.ms --watch\n  ms run main.ms --cpu-profile cpu.pprof"
 	case "test":
-		usage = "<file.ms|ms.toml> [--build-type level] [--debug] [-- program arguments]"
+		usage = "<file.ms|ms.toml> [--build-type level] [--debug] [--watch] [-- program arguments]"
 		description = "Build and execute test blocks in the module and its imported modules.\nArguments after -- are passed to the test executable; its exit status is returned."
-		options = "  --debug  Alias for --build-type Debug\n"
+		options = "  --debug  Alias for --build-type Debug\n  --watch  Rebuild and rerun after each saved source change\n"
 		examples = "ms test test.ms\n  ms test ms.toml --debug"
 	case "fmt":
 		usage = "<file.ms> [--check]"

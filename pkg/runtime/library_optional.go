@@ -30,7 +30,7 @@ func init() {
 			case "unwrap_or_else":
 				return Invoke(ctx, args[1], nil)
 			default:
-				return Panic("called Optional.unwrap() on none")
+				return Panic("called Optional.unwrap() on none; check is_some() first, or use unwrap_or(fallback: ...) to supply a default")
 			}
 		})
 	}

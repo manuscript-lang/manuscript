@@ -81,6 +81,10 @@ func formatExpressionLayout(filename, source string) (string, error) {
 					g.force = g.force || element.Kind == syntax.KindList
 				}
 			}
+		case syntax.KindMap:
+			if g := layout.byOpen[e.Pos.Offset]; g != nil {
+				g.force = g.force || len(e.Elements) >= 10
+			}
 		case syntax.KindLambda:
 			layout.parameters(e.Params)
 		}
@@ -129,6 +133,8 @@ func complexArgument(e *syntax.Expression) bool {
 		return true
 	case syntax.KindList:
 		return len(e.Elements) > 2
+	case syntax.KindMap:
+		return len(e.Elements) > 4
 	case syntax.KindBinary:
 		return e.Left.Kind == syntax.KindBinary || e.Right.Kind == syntax.KindBinary
 	case syntax.KindUnary:
@@ -252,7 +258,7 @@ func (l *expressionLayout) tree(tokens []lexer.Token) []layoutNode {
 					}
 				}
 				if len(code) > 1 && token.Kind == "{" {
-					// Only grouped imports and record patterns use braces.
+					// Imports, record patterns, and map literals use braces.
 					g.force = g.force || len(splitLayout(g.nodes, ",")) >= 5
 				}
 				node.group = g
@@ -592,8 +598,12 @@ func groupStatementExpressions(filename, source string) (string, error) {
 				return
 			}
 			switch s.Kind {
-			case syntax.KindIf, syntax.KindWhile, syntax.KindReturn:
+			case syntax.KindIf, syntax.KindWhile:
 				start++
+			case syntax.KindReturn:
+				if tokens[start].Kind == syntax.KindReturn {
+					start++
+				}
 			case syntax.KindBind, syntax.KindAssign, syntax.KindWith, syntax.KindFor:
 				target := "="
 				if s.Kind == syntax.KindFor {
@@ -628,6 +638,27 @@ func groupStatementExpressions(filename, source string) (string, error) {
 				for range e.Elements {
 					end := wrap(start)
 					if end == start || tokens[end].Kind != "," {
+						break
+					}
+					start = end + 1
+				}
+				return
+			case syntax.KindMap:
+				start, ok := starts[e.Pos.Offset]
+				if !ok || tokens[start].Kind != "{" {
+					return
+				}
+				start++
+				for at := 0; at < len(e.Elements); at += 2 {
+					if suiteExpression(e.Elements[at]) || suiteExpression(e.Elements[at+1]) {
+						return
+					}
+					end := wrap(start)
+					if end == start || tokens[end].Kind != ":" {
+						break
+					}
+					end = wrap(end + 1)
+					if tokens[end].Kind != "," {
 						break
 					}
 					start = end + 1

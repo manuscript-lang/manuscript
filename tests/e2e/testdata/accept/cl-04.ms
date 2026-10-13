@@ -11,7 +11,7 @@ test "list binding":
         return panic(message: "check failed")
 
     let empty: List[Int] = []
-    let {value: label} = Label(value: "ready")
+    let {value: label} = Label("ready")
     if not (label == "ready"):
         return panic(message: "check failed")
 

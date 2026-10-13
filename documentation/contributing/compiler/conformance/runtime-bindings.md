@@ -17,7 +17,7 @@ import Decimal from "@std/decimal.ms"
 import Result from "@std/result.ms"
 
 fn amount() -> Result[Decimal, String]:
-    return ok(value: 12.50d)
+    return ok(12.50d)
 
 test "explicit standard imports":
     if not ([1, 2].length() == 2):
@@ -47,10 +47,10 @@ fn compute(value: Int) -> Int:
     return value
 
 fn ordinary() -> Result:
-    return Result.Value(value: compute(value: 3))
+    return Result.Value(compute(value: 3))
 
 test "standard spellings are ordinary names":
-    if not (List(count: 2).count == 2):
+    if not (List(2).count == 2):
         return panic(message: "check failed")
     let forward = compute
     if not (forward(value: 4) == 4):
@@ -91,15 +91,17 @@ type ClosedFile:
 
 impl File for ClosedFile:
     fn read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
-        return error(cause: IoError.Closed)
+        return error(IoError.Closed)
+
     fn close() -> Unit:
         return
 
 test "contract-valued cleanup":
-    with file = File(value: ClosedFile(marker: unit)):
+    with file = File(ClosedFile(unit)):
         match file.read(max_bytes: 1):
             ok(_):
                 return panic(message: "Unexpected case")
+
             error(cause):
                 if not (cause == IoError.Closed):
                     return panic(message: "check failed")

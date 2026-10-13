@@ -33,7 +33,8 @@ func (kind BuildType) sourcePaths() bool { return kind == Debug || kind == RelWi
 func (kind BuildType) nativeFlags() []string {
 	switch kind {
 	case Debug:
-		return []string{"-gcflags=all=-N -l"}
+		// Uncompressed DWARF links faster; Debug artifacts favor rebuild time.
+		return []string{"-gcflags=all=-N -l", "-ldflags=-compressdwarf=false"}
 	case RelWithDebInfo:
 		return nil
 	default:

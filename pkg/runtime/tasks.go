@@ -58,7 +58,7 @@ func StandardFunction(name, result string) Value {
 		return NewFunction([]string{"duration"}, "Unit", func(ctx *Execution, args []Value) Value {
 			delay := args[0].(Duration)
 			if delay < 0 {
-				return Panic("sleep duration must be nonnegative")
+				return Panic("sleep duration must be nonnegative; pass a Duration of 0 or more")
 			}
 			timer := time.NewTimer(time.Duration(delay))
 			defer timer.Stop()

@@ -204,7 +204,7 @@ func Positions(value Value, length int) []Value {
 		Panic("runtime invariant: positional binding")
 	}
 	if len(values) != length {
-		Panic("destructuring length mismatch")
+		Panic(fmt.Sprintf("destructuring length mismatch; the pattern binds %d names but the list has %d elements", length, len(values)))
 	}
 	return values
 }
@@ -687,6 +687,9 @@ func RunTests(tests []Test) int {
 			}()
 			fmt.Printf("PASS %s\n", test.Name)
 		}()
+	}
+	if len(tests) == 0 {
+		fmt.Println("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file")
 	}
 	fmt.Printf("%d tests, %d failed\n", len(tests), failed)
 	return failed

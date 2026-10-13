@@ -15,4 +15,5 @@ Use for `pkg/runtime/`, `internal/hostos/`, or lowering that changes execution. 
 - Native I/O remains interruptible after descriptor metadata access. Parity includes blocked I/O, concurrent close, bounded streaming, and shutdown, beyond successful return values.
 - Preserve declared error types/cases/causes and checked binding identities. Pair public changes with [standard-library](../standard-library/SKILL.md).
 - Include new runtime/platform sources in standalone bundles and implementation identity; aliases must agree when runtime files are merged. Verify emitted programs as well as ordinary package compilation.
+- Keep implementations needing `net/http`, `crypto/tls`, gopsutil, or similar heavy dependencies in `//go:build !ms_lean` files, and list their standard modules in the compiler's full-runtime set; `TestLeanRuntimeImplementsLeanModules` checks the lean runtime still serves every other module.
 - Run affected runtime tests and called native conformance; concurrency/lifetime changes need relevant race checks and bounded coordinated cancellation/shutdown cases. Report material untested platform limits.

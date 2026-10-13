@@ -9,7 +9,7 @@ type ApplicationError:
     case Encoding(cause: EncodingError)
 
 fn encoding_error(cause: EncodingError) -> ApplicationError:
-    return Encoding(cause: cause)
+    return Encoding(cause)
 
 fn decode_bad_input() -> Result[Unit, ApplicationError]:
     match hex_decode(
@@ -17,10 +17,10 @@ fn decode_bad_input() -> Result[Unit, ApplicationError]:
         max_bytes: 10
     ):
         ok(_):
-            return ok(value: unit)
+            return ok(unit)
 
         error(cause):
-            return error(cause: encoding_error(cause))
+            return error(encoding_error(cause))
 
 fn json_error_code(cause: JsonError) -> Int:
     match cause:
@@ -53,7 +53,7 @@ test "JSON errors need only JSON cases":
 
 test "explicit error mapping preserves the cause":
     let expected: Result[Unit, ApplicationError] = error(
-        cause: Encoding(cause: EncodingError.InvalidData)
+        Encoding(EncodingError.InvalidData)
     )
     if decode_bad_input() != expected:
         return panic(message: "error mapping lost its cause")
@@ -82,11 +82,11 @@ fn decode_generically() -> Result[Unit, Error]:
         text: "zz",
         max_bytes: 10
     )
-    return ok(value: unit)
+    return ok(unit)
 
 fn propagate_generic() -> Result[Unit, Error]:
     let completed = try decode_generically()
-    return ok(value: unit)
+    return ok(unit)
 
 fn describe_error(cause: Error) -> String:
     match cause:
@@ -132,19 +132,19 @@ fn generic_type_pattern[T](cause: Error, expected: T) -> Bool:
             return false
 
 test "generic handling preserves the concrete error and its payload":
-    let json = Error(value: JsonError.InvalidData)
+    let json = Error(JsonError.InvalidData)
     if describe_error(json) != "malformed JSON":
         return panic(message: "specific handler did not run")
 
-    let io = Error(value: IoError.Failed(message: "disk diagnostic"))
+    let io = Error(IoError.Failed("disk diagnostic"))
     if describe_error(io) != "I/O: disk diagnostic":
         return panic(message: "specific handler lost diagnostic")
 
-    let custom = Error(value: CustomError(detail: "application diagnostic"))
+    let custom = Error(CustomError("application diagnostic"))
     if describe_error(custom) != "application diagnostic":
         return panic(message: "generic fallback did not use custom implementation")
 
-    let wrapped = Error(value: json)
+    let wrapped = Error(json)
     if describe_error(wrapped) != "malformed JSON":
         return panic(message: "repeated views changed concrete identity")
 
@@ -162,8 +162,8 @@ test "generic handling preserves the concrete error and its payload":
                     return panic(message: "generic propagation lost concrete type")
 
 test "type patterns compare exact generic applications":
-    let integer = Error(value: TaggedError(detail: 7))
-    let text = Error(value: TaggedError(detail: "text diagnostic"))
+    let integer = Error(TaggedError(7))
+    let text = Error(TaggedError("text diagnostic"))
     if (
         tagged_detail(integer) != "integer 7"
         or tagged_detail(text) != "text diagnostic"
@@ -175,7 +175,7 @@ test "type patterns compare exact generic applications":
         return panic(message: "generic type pattern matched wrong application")
 
 test "Error views can be stored and matched":
-    let shared = Error(value: CustomError(detail: "shared diagnostic"))
+    let shared = Error(CustomError("shared diagnostic"))
     let errors: List[Error] = [shared]
 
     match errors.at(index: 0):
@@ -203,7 +203,7 @@ impl Error for ReadError:
 
 fn failed_read() -> Result[Unit, ReadError]:
     return error(
-        cause: ReadError(
+        ReadError(
             diagnostic: "read failed",
             path: "settings.json",
             attempt: 2,
@@ -213,7 +213,7 @@ fn failed_read() -> Result[Unit, ReadError]:
 
 fn propagate_read() -> Result[Unit, ReadError]:
     let completed = try failed_read()
-    return ok(value: unit)
+    return ok(unit)
 
 test "domain error fields survive propagation without a wrapper":
     match propagate_read():
@@ -247,21 +247,21 @@ test "domain error fields survive propagation without a wrapper":
                     return panic(message: "generic boundary lost concrete error")
 
 fn read_failure(cause: ReadError) -> Result[Unit, ReadError]:
-    return error(cause: cause)
+    return error(cause)
 
 fn general_read(cause: ReadError) -> Result[Unit, Error]:
     let completed = try read_failure(cause)
-    return ok(value: unit)
+    return ok(unit)
 
 fn forward_read(cause: ReadError) -> Result[Unit, Error]:
     return read_failure(cause)
 
 fn generic_failure[E: Error](cause: E) -> Result[Unit, E]:
-    return error(cause: cause)
+    return error(cause)
 
 fn generic_propagation[E: Error](cause: E) -> Result[Unit, Error]:
     let completed = try generic_failure(cause)
-    return ok(value: unit)
+    return ok(unit)
 
 fn describe_direct(cause: Error) -> String:
     return cause.message()
@@ -281,7 +281,7 @@ test "specific errors pass directly into Error boundaries":
         general_read(original),
         forward_read(original),
         generic_propagation(original),
-        error(cause: original)
+        error(original)
     ]
     original.attempt = 3
 
@@ -319,7 +319,7 @@ test "specific errors pass directly into Error boundaries":
         return panic(message: "Error boundary copied original error")
 
 fn read_success() -> Result[Int, ReadError]:
-    return ok(value: 7)
+    return ok(7)
 
 fn general_read_success() -> Result[Int, Error]:
     return read_success()
@@ -337,7 +337,7 @@ type ValidationError:
     case InvalidField(field: String, expected: Int, actual: Int)
 
 fn invalid_field() -> Result[Unit, ValidationError]:
-    return error(cause: InvalidField(field: "attempt", expected: 1, actual: 0))
+    return error(InvalidField(field: "attempt", expected: 1, actual: 0))
 
 test "domain case payloads need no Error implementation":
     match invalid_field():
@@ -355,7 +355,7 @@ test "domain case payloads need no Error implementation":
                         return panic(message: "domain case lost typed fields")
 
 test "standard error diagnostics work directly":
-    let cause = IoError.Failed(message: "read failed")
+    let cause = IoError.Failed("read failed")
     let message = cause.message
     if cause.message() != "read failed" or message() != "read failed":
         return panic(message: "standard diagnostic lost")
@@ -368,24 +368,24 @@ import {CommandError} from "@std/process.ms"
 import {ExecutionError, StartError} from "@std/tasks.ms"
 
 test "standard diagnostics preserve messages and wrapped causes":
-    let sink = LogError.Io(cause: IoError.Failed(message: "sink diagnostic"))
-    if Error(value: sink).message() != "sink diagnostic":
+    let sink = LogError.Io(IoError.Failed("sink diagnostic"))
+    if Error(sink).message() != "sink diagnostic":
         return panic(message: "log error lost underlying diagnostic")
 
     let file_sink = LogError.FileSystem(
-        cause: FileSystemError.Failed(message: "file sink diagnostic")
+        FileSystemError.Failed("file sink diagnostic")
     )
-    if Error(value: file_sink).message() != "file sink diagnostic":
+    if Error(file_sink).message() != "file sink diagnostic":
         return panic(message: "log file error lost underlying diagnostic")
     if (
         Error(
-            value: CommandError.Failed(message: "command diagnostic")
+            CommandError.Failed("command diagnostic")
         ).message() != "command diagnostic"
     ):
         return panic(message: "command error lost diagnostic")
-    if Error(value: ExecutionError.TimedOut).message() != "ExecutionError.TimedOut":
+    if Error(ExecutionError.TimedOut).message() != "ExecutionError.TimedOut":
         return panic(message: "execution error has no diagnostic")
-    if Error(value: StartError.Full).message() != "StartError.Full":
+    if Error(StartError.Full).message() != "StartError.Full":
         return panic(message: "start error has no diagnostic")
 
 # The type-pattern rule also works for unrelated operation contracts.
@@ -413,10 +413,10 @@ fn counted_view(count: Synchronized[Int]) -> Label[String]:
     with locked = count.lock():
         locked.set(value: locked.get() + 1)
 
-    return Label[String](value: Labelled(value: "label diagnostic"))
+    return Label[String](Labelled("label diagnostic"))
 
 test "contract matches evaluate once and preserve ordinary contract semantics":
-    let count = Synchronized(value: 0)
+    let count = Synchronized(0)
 
     match counted_view(count):
         Labelled[String](receiver):
@@ -430,6 +430,6 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
         if locked.get() != 1:
             return panic(message: "contract scrutinee was evaluated more than once")
 
-    let view = Label[String](value: Labelled(value: "separate handler"))
+    let view = Label[String](Labelled("separate handler"))
     if match_label(view) != "separate handler":
         return panic(message: "contract match depended on Error identity")

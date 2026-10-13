@@ -173,6 +173,12 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 			elements = append(elements, g.expression(item))
 		}
 		return "&rt.List{Type:" + g.key(info.Type) + ",Items:[]rt.Value{" + strings.Join(elements, ",") + "}}"
+	case syntax.KindMap:
+		var entries []string
+		for at := 0; at < len(e.Elements); at += 2 {
+			entries = append(entries, "{Key:"+g.expression(e.Elements[at])+",Value:"+g.expression(e.Elements[at+1])+"}")
+		}
+		return "rt.MapLiteral(ctx," + g.key(info.Type) + ",[]rt.Entry{" + strings.Join(entries, ",") + "}," + g.typeScope(info.Type) + ")"
 	case syntax.KindUnary:
 		if e.Text == "try" {
 			scope := ""
@@ -209,7 +215,11 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 			g.captures[b] = snapshot
 			declarations = append(declarations, snapshot+" rt.Value")
 		}
-		fn := g.function(e.Params, e.Result, e.Body, g.program.LambdaParameters[e], nil, info.Type)
+		result := e.Result
+		if result == nil {
+			result = &syntax.Type{Pos: e.Pos}
+		}
+		fn := g.function(e.Params, result, e.Body, g.program.LambdaParameters[e], nil, info.Type)
 		for _, b := range captures {
 			if old[b] == "" {
 				delete(g.captures, b)

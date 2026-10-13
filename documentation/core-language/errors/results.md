@@ -18,11 +18,11 @@ type DiscountError:
 
 fn discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:
     if price < 0d:
-        return error(cause: InvalidPrice)
+        return error(InvalidPrice)
     if percent < 0d or percent > 100d:
-        return error(cause: InvalidPercent)
+        return error(InvalidPercent)
 
-    return ok(value: price * (1d - percent / 100d))
+    return ok(price * (1d - percent / 100d))
 ```
 
 The function checks inputs before calculating. It returns an explicit error for each invalid condition and wraps the calculated decimal in `ok` on success.
@@ -57,7 +57,7 @@ import Result from "@std/result.ms"
 
 fn decode(text: String) -> Result[Bytes, Error]:
     let bytes = try hex_decode(text: text)
-    return ok(value: bytes)
+    return ok(bytes)
 ```
 
 `try` passes the original `EncodingError` into the common Error boundary. A caller may handle it with `cause.message()`, or recover its specific type and fields using a [contract type pattern](../control-flow/pattern-matching.md#contract-type-patterns). A caller that needs only encoding errors can keep `Result[Bytes, EncodingError]` and match its cases directly.

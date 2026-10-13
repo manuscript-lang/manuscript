@@ -53,7 +53,10 @@ func callableText(name string, t *checker.Type, variables []*checker.Type, snipp
 		if written > 0 {
 			output.WriteString(", ")
 		}
-		fmt.Fprintf(&output, "%s: ${%d:%s}", p.Name, at, p.Name)
+		if len(t.Params) != 1 {
+			fmt.Fprintf(&output, "%s: ", p.Name)
+		}
+		fmt.Fprintf(&output, "${%d:%s}", at, p.Name)
 		at++
 		written++
 	}
@@ -61,27 +64,8 @@ func callableText(name string, t *checker.Type, variables []*checker.Type, snipp
 	return output.String()
 }
 func description(result compiler.Result, decl *syntax.Declaration) any {
-	if decl == nil || result.Program == nil {
-		return nil
-	}
-	for _, m := range sourceModules(result) {
-		if m.File != decl.Pos.File {
-			continue
-		}
-		lines := strings.Split(m.Source, "\n")
-		line := decl.Pos.Line - 2
-		notes := []string{}
-		for line >= 0 {
-			text := strings.TrimSpace(lines[line])
-			if !strings.HasPrefix(text, "#") {
-				break
-			}
-			notes = append([]string{strings.TrimSpace(strings.TrimPrefix(text, "#"))}, notes...)
-			line--
-		}
-		if len(notes) > 0 {
-			return map[string]string{"kind": "plaintext", "value": strings.Join(notes, "\n")}
-		}
+	if notes := declarationDocumentation(result, decl); notes != "" {
+		return map[string]string{"kind": "markdown", "value": notes}
 	}
 	return nil
 }
@@ -150,7 +134,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 	if c.argument {
 		if call, signature := queryCall(analysis); call != nil && signature != nil {
 			used := map[string]bool{}
-			for _, arg := range call.Args {
+			for _, arg := range editorCallArguments(analysis, call) {
 				if arg.Name != analysis.marker {
 					used[arg.Name] = true
 				}
@@ -619,4 +603,12 @@ func nameMatches(name, query string) bool {
 		}
 	}
 	return at == len(query)
+}
+
+// Use checked label resolution without changing the source expressions used for navigation.
+func editorCallArguments(a editorAnalysis, call *syntax.Expression) []syntax.Argument {
+	if info := a.result.Program.Expressions[call]; info != nil && info.Arguments != nil {
+		return info.Arguments
+	}
+	return call.Args
 }

@@ -75,7 +75,7 @@ func rename(result compiler.Result, d document, p position, name string, open ..
 				}
 			}
 			if !exists {
-				byURI[uri] = append(byURI[uri], replacement{entry.pos.Offset, entry.end, name})
+				byURI[uri] = append(byURI[uri], replacement{entry.pos.Offset, entry.end, entry.renamePrefix + name + entry.renameSuffix})
 			}
 		}
 	}
@@ -118,8 +118,8 @@ func rename(result compiler.Result, d document, p position, name string, open ..
 			if edit.end > len(newSource) {
 				return nil, fmt.Errorf("source revision changed")
 			}
-			lspEdits = append(lspEdits, map[string]any{"range": span{Position(file.Text, edit.start), Position(file.Text, edit.end)}, "newText": name})
-			newSource = newSource[:edit.start] + name + newSource[edit.end:]
+			lspEdits = append(lspEdits, map[string]any{"range": span{Position(file.Text, edit.start), Position(file.Text, edit.end)}, "newText": edit.newText})
+			newSource = newSource[:edit.start] + edit.newText + newSource[edit.end:]
 		}
 		updated := file
 		updated.Text = newSource
