@@ -48,11 +48,11 @@ func (g *generator) expression(e *syntax.Expression) string {
 
 func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) string {
 	if info.Native == "index" {
-		return "rt.Index(" + g.expression(e.Left) + "," + g.expression(e.Right) + ")"
+		return g.locatedOperation(e, "rt.Index", g.expression(e.Left), g.expression(e.Right))
 	}
 	switch e.Kind {
 	case syntax.KindIndex:
-		return "rt.Index(" + g.expression(e.Left) + "," + g.expression(e.Right) + ")"
+		return g.locatedOperation(e, "rt.Index", g.expression(e.Left), g.expression(e.Right))
 	case syntax.KindMatch:
 		g.expressionDepth++
 		body := g.match(e.Left, e.Arms, func(a *syntax.Arm) string {
@@ -149,9 +149,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 				if len(symbol.Variables) > 0 {
 					callable = g.specialize(symbol, info.Constructor.Args)
 				}
-				return "rt.Invoke(ctx," + callable + "," + args + ")"
+				return g.locatedOperation(e, "rt.Invoke", "ctx", callable, args)
 			}
-			return "rt.ConstructWithContext(ctx," + g.key(info.Type) + "," + args + ")"
+			return g.locatedOperation(e, "rt.ConstructWithContext", "ctx", g.key(info.Type), args)
 		}
 		var callable string
 		if info.Symbol != nil {
@@ -166,7 +166,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 		} else {
 			callable = g.expression(e.Left)
 		}
-		return "rt.Invoke(ctx," + callable + "," + args + ")"
+		return g.locatedOperation(e, "rt.Invoke", "ctx", callable, args)
 	case syntax.KindList:
 		var elements []string
 		for _, item := range e.Elements {
@@ -178,7 +178,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 		for at := 0; at < len(e.Elements); at += 2 {
 			entries = append(entries, "{Key:"+g.expression(e.Elements[at])+",Value:"+g.expression(e.Elements[at+1])+"}")
 		}
-		return "rt.MapLiteral(ctx," + g.key(info.Type) + ",[]rt.Entry{" + strings.Join(entries, ",") + "}," + g.typeScope(info.Type) + ")"
+		return g.locatedOperation(e, "rt.MapLiteral", "ctx", g.key(info.Type), "[]rt.Entry{"+strings.Join(entries, ",")+"}", g.typeScope(info.Type))
 	case syntax.KindUnary:
 		if e.Text == "try" {
 			scope := ""
@@ -190,7 +190,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 		if e.Text == "-" && e.Right.Kind == syntax.KindNumber && e.Right.Text == "9223372036854775808" {
 			return "rt.Integer(\"-9223372036854775808\")"
 		}
-		return "rt.Unary(" + quote(e.Text) + "," + g.expression(e.Right) + ")"
+		return g.locatedOperation(e, "rt.Unary", quote(e.Text), g.expression(e.Right))
 	case syntax.KindBinary:
 		if e.Text == "and" || e.Text == "or" {
 			op := "&&"
@@ -200,9 +200,9 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 			return "(rt.Bool(" + g.expression(e.Left) + ")" + op + "rt.Bool(" + g.expression(e.Right) + "))"
 		}
 		if e.Text == "==" || e.Text == "!=" {
-			return "rt.Equality(ctx," + quote(e.Text) + "," + g.expression(e.Left) + "," + g.expression(e.Right) + "," + g.typeScope(g.program.Expressions[e.Left].Type) + ")"
+			return g.locatedOperation(e, "rt.Equality", "ctx", quote(e.Text), g.expression(e.Left), g.expression(e.Right), g.typeScope(g.program.Expressions[e.Left].Type))
 		}
-		return "rt.Binary(" + quote(e.Text) + "," + g.expression(e.Left) + "," + g.expression(e.Right) + ")"
+		return g.locatedOperation(e, "rt.Binary", quote(e.Text), g.expression(e.Left), g.expression(e.Right))
 	case syntax.KindLambda:
 		captures := append([]*checker.Binding{}, info.Captures...)
 		sort.Slice(captures, func(i, j int) bool { return captures[i].ID < captures[j].ID })
@@ -219,7 +219,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 		if result == nil {
 			result = &syntax.Type{Pos: e.Pos}
 		}
-		fn := g.function(e.Params, result, e.Body, g.program.LambdaParameters[e], nil, info.Type)
+		fn := g.function("<anonymous>", e.Params, result, e.Body, g.program.LambdaParameters[e], nil, info.Type)
 		for _, b := range captures {
 			if old[b] == "" {
 				delete(g.captures, b)
@@ -230,4 +230,14 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) st
 		return "func(" + strings.Join(declarations, ",") + ") rt.Function{return " + fn + "}(" + strings.Join(values, ",") + ")"
 	}
 	panic("missing lowering for " + e.Kind)
+}
+
+// locatedOperation updates the active frame only after evaluating its operands.
+// Nested calls can therefore report their own sites without hiding this call site
+// when they succeed. SourceAt inlines to an assignment; no expression closures or
+// per-operation recovery are needed.
+func (g *generator) locatedOperation(e *syntax.Expression, operation string, args ...string) string {
+	last := len(args) - 1
+	args[last] = "rt.SourceAt(&sourcePosition," + quote(e.Pos.String()) + "," + args[last] + ")"
+	return operation + "(" + strings.Join(args, ",") + ")"
 }

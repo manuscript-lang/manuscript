@@ -181,3 +181,11 @@ Verified: agents act on a diagnostic only when it names the cause, the location,
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../documentation/developer-tooling/source/diagnostics.md), [catalogue](../documentation/contributing/diagnostics-catalogue.md), [checker hints](../pkg/checker/hints.go), [hint tests](../pkg/checker/hints_test.go), and [recovery](../pkg/parser/partial.go).
 Verify: run `go test ./pkg/checker ./pkg/parser ./pkg/tooling/lsp ./internal/cli`; extend the hint tests with the new message.
+
+### Fault sites must be recorded after operands finish
+
+Verified: a function's return-type position identifies its declaration, not a failing expression. Generated functions retain a local source position and append one named frame while unwinding a fault. Update that position after evaluating an operation's operands: a successful nested call must not hide the enclosing operation's site, while an operand that faults must keep its own site. Statement fallbacks cover implicit operations; list destructuring records the pattern after evaluating its initializer.
+
+Apply when: adding or specializing lowered runtime operations, source fault traces, or native call fast paths.
+Evidence: [located lowering](../pkg/compiler/lower_expressions.go), [source frames](../pkg/runtime/values.go), and [native location regressions](../tests/e2e/fault_locations_test.go).
+Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve exact frame order, columns, and names. Keep statement line directives on the operation rather than an inserted bookkeeping line.

@@ -23,18 +23,18 @@ func recordDefaults(d *syntax.Declaration) bool {
 func (g *generator) declaredFunction(s *checker.Symbol) string {
 	d := s.Decl
 	if d.Kind == syntax.KindFn {
-		return g.function(d.Params, d.Result, d.Body, g.program.Parameters[d], nil, s.Type)
+		return g.function(d.Name, d.Params, d.Result, d.Body, g.program.Parameters[d], nil, s.Type)
 	}
 	var args []string
 	for i, field := range d.Fields {
 		args = append(args, "rt.Argument{Name:"+quote(field.Name)+",Value:"+g.program.Parameters[d][i].ID+"}")
 	}
 	t := checker.ConstructorSignature(s.Type)
-	return g.function(d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.Parameters[d], nil, t,
+	return g.function(d.Name, d.Fields, &syntax.Type{Pos: d.Pos}, nil, g.program.Parameters[d], nil, t,
 		"return rt.ConstructWithContext(ctx,"+g.key(s.Type)+",[]rt.Argument{"+strings.Join(args, ",")+"})\n")
 }
 
-func (g *generator) function(params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...string) string {
+func (g *generator) function(name string, params []syntax.Parameter, result *syntax.Type, body []*syntax.Statement, bindings []*checker.Binding, self *checker.Binding, t *checker.Type, tail ...string) string {
 	oldCleanups, oldLoops, oldLabels, oldDepth := g.cleanups, g.loopCleanup, g.loopLabels, g.expressionDepth
 	g.expressionDepth = 0
 	g.cleanups = nil
@@ -51,7 +51,7 @@ func (g *generator) function(params []syntax.Parameter, result *syntax.Type, bod
 	for _, p := range t.Params {
 		labels = append(labels, p.Name)
 	}
-	out.WriteString("rt.NewSourceFunction(" + stringsGo(labels) + "," + g.key(t.Result) + "," + quote(result.Pos.String()) + ",func(ctx *rt.Execution,args []rt.Value)rt.Value{\ncleanupStack:=rt.NewCleanupStack();defer cleanupStack.Unwind()\n")
+	out.WriteString("rt.NewSourceFunction(" + stringsGo(labels) + "," + g.key(t.Result) + "," + quote(result.Pos.String()) + ",func(ctx *rt.Execution,args []rt.Value)rt.Value{\nsourcePosition:=" + quote(result.Pos.String()) + ";defer rt.TraceSource(&sourcePosition," + quote(name) + ")\ncleanupStack:=rt.NewCleanupStack();defer cleanupStack.Unwind()\n")
 	if self != nil {
 		out.WriteString(self.ID + " := receiver; _ = " + self.ID + "\n")
 	}
