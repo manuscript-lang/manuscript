@@ -7,6 +7,7 @@ import (
 	goruntime "runtime"
 	"runtime/pprof"
 	"runtime/trace"
+	"sync"
 	"sync/atomic"
 )
 
@@ -45,6 +46,7 @@ func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
 	cpuStarted, traceStarted, ran := false, false, false
 	defer func() {
 		sourceProfiling.Store(false)
+		sourceTracing.Store(false)
 		if traceStarted {
 			trace.Stop()
 		}
@@ -74,6 +76,7 @@ func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
 		}
 		traceStarted = true
 	}
+	sourceTracing.Store(traceStarted)
 	sourceProfiling.Store(cpuStarted || traceStarted)
 	ran = true
 	return run()
@@ -82,13 +85,33 @@ func Profile(cpuPath, heapPath, tracePath string, run func() int) (exit int) {
 // Source profiling is opt-in. Normal calls take one inexpensive atomic branch.
 var sourceProfiling atomic.Bool
 
+// Execution tracing records an event and a stack walk for every region, which
+// dominates call-heavy programs, so source regions are emitted only when a trace
+// was explicitly requested.
+var sourceTracing atomic.Bool
+
+// Label sets are immutable and a program has few distinct call positions, so
+// build each once instead of per call.
+var sourceLabels sync.Map // position -> pprof.LabelSet
+
+func sourceLabelSet(position string) pprof.LabelSet {
+	if labels, ok := sourceLabels.Load(position); ok {
+		return labels.(pprof.LabelSet)
+	}
+	labels := pprof.Labels("ms.source", position)
+	sourceLabels.Store(position, labels)
+	return labels
+}
+
 func profileSource(ctx *Execution, position string, args []Value, body func(*Execution, []Value) Value) (value Value) {
 	if ctx == nil || ctx.Context == nil {
 		return body(ctx, args)
 	}
-	pprof.Do(ctx.Context, pprof.Labels("ms.source", position), func(labeled context.Context) {
-		region := trace.StartRegion(labeled, "source:"+position)
-		defer region.End()
+	pprof.Do(ctx.Context, sourceLabelSet(position), func(labeled context.Context) {
+		if sourceTracing.Load() {
+			region := trace.StartRegion(labeled, "source:"+position)
+			defer region.End()
+		}
 		value = body(inherit(ctx, labeled), args)
 	})
 	return value

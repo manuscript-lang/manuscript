@@ -135,11 +135,21 @@ func TestCLICommands(t *testing.T) {
 	if data, err := commandOutput(t, binary, "profile", manifest, "-o", bundle); err != nil {
 		t.Fatalf("profile bundle: %v %s", err, data)
 	}
-	for _, name := range []string{"program", "program.ms-build.json", "inspection.json", "manifest.json", "cpu.pprof", "heap.pprof", "trace.out"} {
+	for _, name := range []string{"program", "program.ms-build.json", "inspection.json", "manifest.json", "cpu.pprof", "heap.pprof"} {
 		info, err := os.Stat(filepath.Join(bundle, name))
 		if err != nil || info.Size() == 0 {
 			t.Fatalf("missing profile artifact %s: %v", name, err)
 		}
+	}
+	if _, err := os.Stat(filepath.Join(bundle, "trace.out")); err == nil {
+		t.Fatal("profile captured an execution trace without --trace")
+	}
+	traced := filepath.Join(project, "profile-traced")
+	if data, err := commandOutput(t, binary, "profile", manifest, "--trace", "-o", traced); err != nil {
+		t.Fatalf("traced profile bundle: %v %s", err, data)
+	}
+	if info, err := os.Stat(filepath.Join(traced, "trace.out")); err != nil || info.Size() == 0 {
+		t.Fatalf("missing trace with --trace: %v", err)
 	}
 	if err := exec.Command(binary, "profile", manifest, "-o", bundle).Run(); err == nil {
 		t.Fatal("profile bundle overwrote existing directory")

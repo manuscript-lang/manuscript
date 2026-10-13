@@ -65,3 +65,24 @@ func TestSourceProfilesPreserveExecutionAndAttributeWork(t *testing.T) {
 		t.Fatal("trace lacks source/work regions", err)
 	}
 }
+
+func TestSourceTracingIsOptIn(t *testing.T) {
+	dir := t.TempDir()
+	var tracing, labelled bool
+	root := RootExecution()
+	fn := NewSourceFunction(nil, "Int", "a.ms:1:1", func(ctx *Execution, _ []Value) Value {
+		_, labelled = pprof.Label(ctx.Context, "ms.source")
+		return int64(1)
+	})
+	exit := Profile(filepath.Join(dir, "cpu.pprof"), "", "", func() int {
+		tracing = sourceTracing.Load()
+		Invoke(root, fn, nil)
+		return 0
+	})
+	if exit != 0 || tracing || !labelled {
+		t.Fatal("cpu-only profile must label calls without tracing", exit, tracing, labelled)
+	}
+	if sourceTracing.Load() {
+		t.Fatal("tracing flag leaked after profile")
+	}
+}
