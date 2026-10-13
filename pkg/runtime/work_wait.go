@@ -91,14 +91,18 @@ func strictExecutionAncestor(ancestor, lifetime *workLifetime) bool {
 // outside this guarantee. A later join wakes the waiter instead of faulting
 // the joining ancestor, preserving the task's Crashed reporting boundary.
 func detectAncestorLockCyclesLocked() {
+	// Cancellation ends an ordinary lock dependency even if its goroutine has
+	// not yet resumed to remove the token. Exclude it from transitive paths too.
+	for wait := range workWaits.locks {
+		select {
+		case <-wait.cancelled:
+			removeSynchronizedWaitLocked(wait)
+		default:
+		}
+	}
 	for wait := range workWaits.locks {
 		if wait.faulted || !strictExecutionAncestor(wait.guard.lifetime, wait.lifetime) {
 			continue
-		}
-		select {
-		case <-wait.cancelled:
-			continue
-		default:
 		}
 		if workReachesLocked(wait.to, wait.from) {
 			wait.faulted = true

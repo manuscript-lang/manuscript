@@ -459,3 +459,64 @@ func TestSynchronizedJoinRacesCancellationAndRelease(t *testing.T) {
 		}()
 	}
 }
+
+func TestSynchronizedCancelledTransitiveWaitDoesNotFaultOtherTask(t *testing.T) {
+	root := RootExecution()
+	firstCell, secondCell := synchronizedInt(), synchronizedInt()
+	guard := lockCell(root, firstCell)
+	firstGroup := NewTaskGroup(root, nil).(*TaskGroup)
+	secondGroup := NewTaskGroup(root, nil).(*TaskGroup)
+	resume := make(chan struct{})
+	var allow sync.Once
+	t.Cleanup(func() {
+		guard.close()
+		allow.Do(func() { close(resume) })
+		firstGroup.close(Shield(root))
+		secondGroup.close(Shield(root))
+	})
+	secondBlocked := make(chan struct{})
+	second := groupTask(root, secondGroup, NewFunction(nil, "Unit", func(child *Execution, _ []Value) Value {
+		owned := lockCell(child, secondCell)
+		defer owned.close()
+		child = inherit(child, &synchronizedLockWaitContext{Context: child.Context, cell: firstCell, lifetime: child.Lifetime, entered: secondBlocked})
+		locked := lockCell(child, firstCell)
+		defer locked.close()
+		return Unit{}
+	}))
+	awaitSynchronizedSignal(t, secondBlocked)
+	firstBlocked := make(chan struct{})
+	cancellation := make(chan context.CancelFunc, 1)
+	first := groupTask(root, firstGroup, NewFunction(nil, "Unit", func(child *Execution, _ []Value) Value {
+		active, cancel := context.WithCancel(child.Context)
+		defer cancel()
+		cancellation <- cancel
+		child = inherit(child, &synchronizedLockWaitContext{Context: active, cell: secondCell, lifetime: child.Lifetime, entered: firstBlocked, resume: resume})
+		locked := lockCell(child, secondCell)
+		defer locked.close()
+		return Unit{}
+	}))
+	awaitSynchronizedSignal(t, firstBlocked)
+	(<-cancellation)()
+	waiting := &synchronizedWaitContext{Context: root.Context, entered: make(chan struct{})}
+	done := synchronizedCall(func() Value { return taskResult(inherit(root, waiting), first) })
+	awaitSynchronizedSignal(t, waiting.entered)
+	// The cancelled A -> B lock edge must not complete root -> A -> B -> root.
+	select {
+	case <-second.done:
+		t.Fatal("cancelled transitive dependency faulted unrelated group work")
+	default:
+	}
+	allow.Do(func() { close(resume) })
+	outcome := awaitSynchronizedCall(t, done)
+	if outcome.failure != nil || outcome.value.(Alternative).Fields[0].(Alternative).Tag != "Cancelled" {
+		t.Fatal(outcome)
+	}
+	guard.close()
+	outcome = awaitSynchronizedCall(t, synchronizedCall(func() Value { return taskResult(root, second) }))
+	if outcome.failure != nil || outcome.value.(Alternative).Tag != "ok" {
+		t.Fatal("cancelled transitive wait introduced a false ancestor cycle", outcome)
+	}
+	firstGroup.close(root)
+	secondGroup.close(root)
+	requireWorkWaitsClear(t, root, &firstGroup.waits, &secondGroup.waits, &first.waits, &second.waits)
+}
