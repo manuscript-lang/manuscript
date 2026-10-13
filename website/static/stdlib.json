@@ -3477,13 +3477,13 @@
               "name": "head",
               "kind": "field",
               "signature": "head: HttpResponseMetadata",
-              "doc": "Mutable metadata returned by every metadata() read."
+              "doc": "Current mutable metadata; replacing head detaches existing metadata aliases."
             },
             {
               "name": "metadata",
               "kind": "operation",
               "signature": "fn metadata() -\u003e HttpResponseMetadata:",
-              "doc": "Returns the same mutable metadata record, without copying header membership."
+              "doc": "Returns current head without copying; record clone is shallow.\nClone headers explicitly when separate mutable membership is needed."
             }
           ]
         },

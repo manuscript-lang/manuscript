@@ -55,11 +55,12 @@ export type HttpResponseMetadata:
 
 # Buffered response body with explicit common metadata access.
 export type ClientResponse:
-    # Mutable metadata returned by every metadata() read.
+    # Current mutable metadata; replacing head detaches existing metadata aliases.
     head: HttpResponseMetadata
     # The complete response payload within the supplied byte bound.
     body: Bytes
-    # Returns the same mutable metadata record, without copying header membership.
+    # Returns current head without copying; record clone is shallow.
+    # Clone headers explicitly when separate mutable membership is needed.
     fn metadata() -> HttpResponseMetadata:
 
 # Known HTTP methods, plus extension tokens validated by outgoing operations.

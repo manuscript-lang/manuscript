@@ -27,7 +27,7 @@ body: Bytes
 
 ### ClientResponse.head
 
-Mutable metadata returned by every metadata() read.
+Current mutable metadata; replacing head detaches existing metadata aliases.
 
 ```manuscript
 head: HttpResponseMetadata
@@ -35,7 +35,8 @@ head: HttpResponseMetadata
 
 ### ClientResponse.metadata
 
-Returns the same mutable metadata record, without copying header membership.
+Returns current head without copying; record clone is shallow.
+Clone headers explicitly when separate mutable membership is needed.
 
 ```manuscript
 fn metadata() -> HttpResponseMetadata:
