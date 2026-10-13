@@ -1,0 +1,359 @@
+package main
+
+import (
+	rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+	"os"
+)
+
+var symbol1 rt.Value
+var symbol2 rt.Value
+var symbol3 rt.Value
+var symbol4 rt.Value
+var symbol5 rt.Value
+
+func initialize() {
+	symbol1 = func() rt.Function {
+		typeArgs := map[string]string{}
+		_ = typeArgs
+		return rt.NewSourceFunction([]string{"value"}, "module/6173742d6c6f776572696e672e6d73#Counter", "ast-lowering.ms:4:1", func(ctx *rt.Execution, args []rt.Value) rt.Value {
+			sourcePosition := "ast-lowering.ms:4:1"
+			defer rt.TraceSource(&sourcePosition, "Counter")
+			cleanupStack := rt.NewCleanupStack()
+			defer cleanupStack.Unwind()
+			local8_value := args[0]
+			_ = local8_value
+//line ast-lowering.ms:5
+			if local8_value == nil {
+				local8_value = int64(0)
+			}
+			return rt.ConstructWithContext(ctx, "module/6173742d6c6f776572696e672e6d73#Counter", []rt.Argument{rt.Argument{Name: "value", Value: local8_value}})
+//line manuscript.generated.go:1
+			return rt.Unit{}
+		})
+	}()
+	symbol2 = func() rt.Function {
+		typeArgs := map[string]string{}
+		_ = typeArgs
+		return rt.NewSourceFunction([]string{"counter"}, "Bool", "ast-lowering.ms:7:30", func(ctx *rt.Execution, args []rt.Value) rt.Value {
+			sourcePosition := "ast-lowering.ms:7:30"
+			defer rt.TraceSource(&sourcePosition, "bump")
+			cleanupStack := rt.NewCleanupStack()
+			defer cleanupStack.Unwind()
+			local10_counter := args[0]
+			_ = local10_counter
+			sourcePosition = "ast-lowering.ms:8:5"
+//line ast-lowering.ms:8
+			rt.SetField(local10_counter, "value", rt.IntAdd(rt.IntValue(rt.Field(local10_counter, "value")), rt.SourceAt(&sourcePosition, "ast-lowering.ms:8:35", rt.IntValue(int64(1)))))
+			sourcePosition = "ast-lowering.ms:9:5"
+//line ast-lowering.ms:9
+			return true
+//line manuscript.generated.go:1
+			return rt.Unit{}
+		})
+	}()
+	symbol3 = rt.Generic{Variables: []string{"typevar6"}, Build: func(typeArgs map[string]string, typeScopes map[string]rt.TypeScope) rt.Function {
+		return rt.NewSourceFunction([]string{"value"}, rt.ResolveType("typevar6", typeArgs), "ast-lowering.ms:11:29", func(ctx *rt.Execution, args []rt.Value) rt.Value {
+			sourcePosition := "ast-lowering.ms:11:29"
+			defer rt.TraceSource(&sourcePosition, "identity")
+			cleanupStack := rt.NewCleanupStack()
+			defer cleanupStack.Unwind()
+			local12_value := args[0]
+			_ = local12_value
+			sourcePosition = "ast-lowering.ms:11:32"
+//line ast-lowering.ms:11
+			return local12_value
+//line manuscript.generated.go:1
+			return rt.Unit{}
+		})
+	}}
+	symbol4 = func() rt.Function {
+		typeArgs := map[string]string{}
+		_ = typeArgs
+		return rt.NewSourceFunction([]string{"left", "right"}, "Int", "ast-lowering.ms:13:42", func(ctx *rt.Execution, args []rt.Value) rt.Value {
+			sourcePosition := "ast-lowering.ms:13:42"
+			defer rt.TraceSource(&sourcePosition, "combine")
+			cleanupStack := rt.NewCleanupStack()
+			defer cleanupStack.Unwind()
+			local14_left := args[0]
+			_ = local14_left
+			local15_right := args[1]
+			_ = local15_right
+//line ast-lowering.ms:13
+			if local15_right == nil {
+				local15_right = int64(3)
+			}
+			sourcePosition = "ast-lowering.ms:13:47"
+//line ast-lowering.ms:13
+			return rt.IntAdd(rt.IntValue(rt.IntMultiply(rt.IntValue(local14_left), rt.SourceAt(&sourcePosition, "ast-lowering.ms:13:52", rt.IntValue(int64(10))))), rt.SourceAt(&sourcePosition, "ast-lowering.ms:13:57", rt.IntValue(local15_right)))
+//line manuscript.generated.go:1
+			return rt.Unit{}
+		})
+	}()
+	symbol5 = func() rt.Function {
+		typeArgs := map[string]string{}
+		_ = typeArgs
+		return rt.NewSourceFunction([]string{"a", "b", "c"}, "Float", "ast-lowering.ms:15:47", func(ctx *rt.Execution, args []rt.Value) rt.Value {
+			sourcePosition := "ast-lowering.ms:15:47"
+			defer rt.TraceSource(&sourcePosition, "floatMath")
+			cleanupStack := rt.NewCleanupStack()
+			defer cleanupStack.Unwind()
+			local17_a := args[0]
+			_ = local17_a
+			local18_b := args[1]
+			_ = local18_b
+			local19_c := args[2]
+			_ = local19_c
+			sourcePosition = "ast-lowering.ms:15:54"
+//line ast-lowering.ms:15
+			return float64(rt.FloatValue(local17_a) * rt.FloatValue(float64(rt.FloatValue(local18_b)+rt.FloatValue(local19_c))))
+//line manuscript.generated.go:1
+			return rt.Unit{}
+		})
+	}()
+	rt.RegisterStandard([]rt.StandardRegistration{
+		{Receiver: "@std/ArchiveError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/BigIntError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/BinaryError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/CollectionError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/CompressionError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/CryptoError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/CsvError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/EncodingError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/FileSystemError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/HtmlError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/HttpError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/IoError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/JsonError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/LogError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/NetworkError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/NumberError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/PathError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/ProcessError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/CommandError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/RandomError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/RegexError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/StringError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/SystemError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/ExecutionError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/StartError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/TimeError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/TlsError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/UrlError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+		{Receiver: "@std/WebSocketError", Contract: "@std/Error", Name: "message", Scope: "", Variables: []string{}, Native: "errors/message"},
+	})
+}
+func main() {
+	initialize()
+	tests := []rt.Test{
+		{Name: "ast-lowering.ms::structured lowering", Run: func() rt.Function {
+			typeArgs := map[string]string{}
+			_ = typeArgs
+			return rt.NewSourceFunction([]string{}, "Unit", "ast-lowering.ms:17:1", func(ctx *rt.Execution, args []rt.Value) rt.Value {
+				sourcePosition := "ast-lowering.ms:17:1"
+				defer rt.TraceSource(&sourcePosition, "test structured lowering")
+				cleanupStack := rt.NewCleanupStack()
+				defer cleanupStack.Unwind()
+				sourcePosition = "ast-lowering.ms:18:5"
+//line ast-lowering.ms:18
+				var local21_counter rt.Value = rt.Invoke(ctx, symbol1, rt.SourceAt(&sourcePosition, "ast-lowering.ms:18:19", []rt.Argument{}))
+				_ = local21_counter
+				sourcePosition = "ast-lowering.ms:19:5"
+//line ast-lowering.ms:19
+				var local22_short rt.Value = true
+				_ = local22_short
+				sourcePosition = "ast-lowering.ms:20:5"
+//line ast-lowering.ms:20
+				var local23_effect rt.Value = (rt.Bool((symbol2).(rt.Function).Body(ctx, rt.SourceAt(&sourcePosition, "ast-lowering.ms:20:18", []rt.Value{rt.SourceAt(&sourcePosition, "ast-lowering.ms:20:23", local21_counter)}))) && rt.Bool(false))
+				_ = local23_effect
+				sourcePosition = "ast-lowering.ms:21:5"
+//line ast-lowering.ms:21
+				if rt.Bool((rt.Bool((rt.Bool(rt.Unary("not", rt.SourceAt(&sourcePosition, "ast-lowering.ms:21:8", local22_short))) || rt.Bool(local23_effect))) || rt.Bool(rt.Equality(ctx, "!=", rt.Field(local21_counter, "value"), int64(1), rt.SourceAt(&sourcePosition, "ast-lowering.ms:21:45", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))))) {
+					sourcePosition = "ast-lowering.ms:22:9"
+//line ast-lowering.ms:22
+					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:22:16", []rt.Argument{{Name: "message", Value: rt.Text("short circuit changed")}}))
+				}
+				sourcePosition = "ast-lowering.ms:23:5"
+//line ast-lowering.ms:23
+				var local24_escaped rt.Value = rt.Text("quote: \" slash: \\ newline: \n Unicode: λ")
+				_ = local24_escaped
+				sourcePosition = "ast-lowering.ms:24:5"
+//line ast-lowering.ms:24
+				if rt.Bool(rt.Equality(ctx, "!=", local24_escaped, rt.Invoke(ctx, rt.Specialize(symbol3, []string{"String"}, []rt.TypeScope{rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}}...), rt.SourceAt(&sourcePosition, "ast-lowering.ms:24:19", []rt.Argument{{Name: "value", Value: local24_escaped}})), rt.SourceAt(&sourcePosition, "ast-lowering.ms:24:16", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+					sourcePosition = "ast-lowering.ms:24:38"
+//line ast-lowering.ms:24
+					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:24:45", []rt.Argument{{Name: "message", Value: rt.Text("escaping changed")}}))
+				}
+				sourcePosition = "ast-lowering.ms:25:5"
+//line ast-lowering.ms:25
+				var local25_minimum rt.Value = int64(-9223372036854775808)
+				_ = local25_minimum
+				sourcePosition = "ast-lowering.ms:26:5"
+//line ast-lowering.ms:26
+				if rt.Bool((rt.IntValue(local25_minimum) >= rt.IntValue(int64(0)))) {
+					sourcePosition = "ast-lowering.ms:26:22"
+//line ast-lowering.ms:26
+					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:26:29", []rt.Argument{{Name: "message", Value: rt.Text("integer sign changed")}}))
+				}
+				sourcePosition = "ast-lowering.ms:27:5"
+//line ast-lowering.ms:27
+				if rt.Bool(rt.Equality(ctx, "!=", (symbol5).(rt.Function).Body(ctx, rt.SourceAt(&sourcePosition, "ast-lowering.ms:27:8", []rt.Value{rt.SourceAt(&sourcePosition, "ast-lowering.ms:27:18", float64(2)), rt.SourceAt(&sourcePosition, "ast-lowering.ms:27:26", float64(3)), rt.SourceAt(&sourcePosition, "ast-lowering.ms:27:34", float64(4))})), float64(14), rt.SourceAt(&sourcePosition, "ast-lowering.ms:27:42", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+					sourcePosition = "ast-lowering.ms:28:9"
+//line ast-lowering.ms:28
+					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:28:16", []rt.Argument{{Name: "message", Value: rt.Text("precedence changed")}}))
+				}
+				sourcePosition = "ast-lowering.ms:29:5"
+//line ast-lowering.ms:29
+				var local26_original rt.Value = int64(5)
+				_ = local26_original
+				sourcePosition = "ast-lowering.ms:30:5"
+//line ast-lowering.ms:30
+				var local29_snapshot rt.Value = func(temporary1 rt.Value) rt.Function {
+					return rt.NewSourceFunction([]string{"value"}, "Int", "ast-lowering.ms:30:38", func(ctx *rt.Execution, args []rt.Value) rt.Value {
+						sourcePosition := "ast-lowering.ms:30:38"
+						defer rt.TraceSource(&sourcePosition, "<anonymous>")
+						cleanupStack := rt.NewCleanupStack()
+						defer cleanupStack.Unwind()
+						local28_value := args[0]
+						_ = local28_value
+						sourcePosition = "ast-lowering.ms:30:43"
+//line ast-lowering.ms:30
+						return rt.IntAdd(rt.IntValue(temporary1), rt.SourceAt(&sourcePosition, "ast-lowering.ms:30:52", rt.IntValue(local28_value)))
+//line manuscript.generated.go:1
+						return rt.Unit{}
+					})
+				}(local26_original)
+				_ = local29_snapshot
+				sourcePosition = "ast-lowering.ms:31:5"
+//line ast-lowering.ms:31
+				local26_original = int64(9)
+				sourcePosition = "ast-lowering.ms:32:5"
+//line ast-lowering.ms:32
+				if rt.Bool(rt.Equality(ctx, "!=", rt.Invoke(ctx, local29_snapshot, rt.SourceAt(&sourcePosition, "ast-lowering.ms:32:8", []rt.Argument{{Name: "value", Value: int64(2)}})), int64(7), rt.SourceAt(&sourcePosition, "ast-lowering.ms:32:20", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+					sourcePosition = "ast-lowering.ms:32:26"
+//line ast-lowering.ms:32
+					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:32:33", []rt.Argument{{Name: "message", Value: rt.Text("capture changed")}}))
+				}
+				sourcePosition = "ast-lowering.ms:33:5"
+//line ast-lowering.ms:33
+				var local30_values rt.Value = &rt.List{Type: "@std/List[Int]", Items: []rt.Value{int64(1), int64(2), int64(3)}}
+				_ = local30_values
+				sourcePosition = "ast-lowering.ms:34:5"
+//line ast-lowering.ms:34
+				temporary2 := local30_values
+				_ = temporary2
+				temporary3 := rt.Positions(temporary2, rt.SourceAt(&sourcePosition, "ast-lowering.ms:34:9", 3))
+				_ = temporary3
+				var local31_first rt.Value = temporary3[0]
+				_ = local31_first
+				var local32_second rt.Value = temporary3[1]
+				_ = local32_second
+				var local33_third rt.Value = temporary3[2]
+				_ = local33_third
+				sourcePosition = "ast-lowering.ms:35:5"
+//line ast-lowering.ms:35
+				if rt.Bool(rt.Equality(ctx, "!=", rt.Invoke(ctx, symbol4, rt.SourceAt(&sourcePosition, "ast-lowering.ms:35:8", []rt.Argument{{Name: "left", Value: local31_first}})), int64(13), rt.SourceAt(&sourcePosition, "ast-lowering.ms:35:29", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+					sourcePosition = "ast-lowering.ms:35:36"
+//line ast-lowering.ms:35
+					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:35:43", []rt.Argument{{Name: "message", Value: rt.Text("default changed")}}))
+				}
+				sourcePosition = "ast-lowering.ms:36:5"
+//line ast-lowering.ms:36
+				if rt.Bool(rt.Equality(ctx, "!=", rt.Invoke(ctx, symbol4, rt.SourceAt(&sourcePosition, "ast-lowering.ms:36:8", []rt.Argument{{Name: "right", Value: local32_second}, {Name: "left", Value: local33_third}})), int64(32), rt.SourceAt(&sourcePosition, "ast-lowering.ms:36:44", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+					sourcePosition = "ast-lowering.ms:37:9"
+//line ast-lowering.ms:37
+					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:37:16", []rt.Argument{{Name: "message", Value: rt.Text("argument order changed")}}))
+				}
+				sourcePosition = "ast-lowering.ms:38:5"
+//line ast-lowering.ms:38
+				if rt.Bool(rt.Equality(ctx, "!=", rt.OptionalUnwrap(ctx, rt.SourceAt(&sourcePosition, "ast-lowering.ms:38:21", rt.ListAt(ctx, rt.SourceAt(&sourcePosition, "ast-lowering.ms:38:8", local30_values), int64(0), rt.SourceAt(&sourcePosition, "ast-lowering.ms:38:15", "@std/Optional[Int]")))), int64(1), rt.SourceAt(&sourcePosition, "ast-lowering.ms:38:30", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+					sourcePosition = "ast-lowering.ms:38:36"
+//line ast-lowering.ms:38
+					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:38:43", []rt.Argument{{Name: "message", Value: rt.Text("index changed")}}))
+				}
+				sourcePosition = "ast-lowering.ms:39:5"
+//line ast-lowering.ms:39
+				var local34_total rt.Value = int64(0)
+				_ = local34_total
+				sourcePosition = "ast-lowering.ms:40:5"
+//line ast-lowering.ms:40
+			temporary4:
+				for _, local35_value := range rt.Iterate(local30_values) {
+					_ = local35_value
+					rt.CheckCancelled(ctx)
+					sourcePosition = "ast-lowering.ms:41:9"
+//line ast-lowering.ms:41
+					if rt.Bool(rt.Equality(ctx, "==", local35_value, int64(2), rt.SourceAt(&sourcePosition, "ast-lowering.ms:41:18", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+						sourcePosition = "ast-lowering.ms:41:24"
+//line ast-lowering.ms:41
+						continue temporary4
+					}
+					sourcePosition = "ast-lowering.ms:42:9"
+//line ast-lowering.ms:42
+					local34_total = rt.IntAdd(rt.IntValue(local34_total), rt.SourceAt(&sourcePosition, "ast-lowering.ms:42:23", rt.IntValue(local35_value)))
+				}
+				sourcePosition = "ast-lowering.ms:43:5"
+//line ast-lowering.ms:43
+				var local36_iterations rt.Value = int64(0)
+				_ = local36_iterations
+				sourcePosition = "ast-lowering.ms:44:5"
+//line ast-lowering.ms:44
+			temporary5:
+				for rt.Bool((rt.IntValue(local36_iterations) < rt.IntValue(int64(3)))) {
+					rt.CheckCancelled(ctx)
+					switch rt.LoopBody(func() rt.Value {
+						sourcePosition = "ast-lowering.ms:45:9"
+//line ast-lowering.ms:45
+						local36_iterations = rt.IntAdd(rt.IntValue(local36_iterations), rt.SourceAt(&sourcePosition, "ast-lowering.ms:45:33", rt.IntValue(int64(1))))
+						sourcePosition = "ast-lowering.ms:46:9"
+//line ast-lowering.ms:46
+						var local37_selected rt.Value = rt.NewAlternative("@std/Optional[Int]", "some", []string{"value"}, []rt.Argument{{Name: "value", Value: local36_iterations}})
+						_ = local37_selected
+						sourcePosition = "ast-lowering.ms:47:9"
+//line ast-lowering.ms:47
+						var local39_unwrapped rt.Value = func() rt.Value {
+							temporary6 := local37_selected
+							switch rt.Tag(temporary6) {
+							case "some":
+								local38_value := rt.Payload(temporary6, 0)
+								_ = local38_value
+								sourcePosition = "ast-lowering.ms:49:17"
+//line ast-lowering.ms:49
+								if rt.Bool(rt.Equality(ctx, "==", local38_value, int64(2), rt.SourceAt(&sourcePosition, "ast-lowering.ms:49:26", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+									sourcePosition = "ast-lowering.ms:49:32"
+//line ast-lowering.ms:49
+									rt.ExitLoop(false)
+								}
+								return local38_value
+							case "none":
+								return int64(0)
+							}
+							return rt.Panic("runtime invariant: exhaustive match")
+						}()
+						_ = local39_unwrapped
+						sourcePosition = "ast-lowering.ms:52:9"
+//line ast-lowering.ms:52
+						local34_total = rt.IntAdd(rt.IntValue(local34_total), rt.SourceAt(&sourcePosition, "ast-lowering.ms:52:23", rt.IntValue(local39_unwrapped)))
+						return rt.Unit{}
+					}) {
+					case 1:
+						break temporary5
+					case 2:
+						continue temporary5
+					}
+				}
+				sourcePosition = "ast-lowering.ms:53:5"
+//line ast-lowering.ms:53
+				if rt.Bool(rt.Equality(ctx, "!=", local34_total, int64(8), rt.SourceAt(&sourcePosition, "ast-lowering.ms:53:14", rt.TypeScope{Module: "ast-lowering.ms", Args: []rt.TypeScope{}}))) {
+					sourcePosition = "ast-lowering.ms:53:20"
+//line ast-lowering.ms:53
+					return rt.Invoke(ctx, rt.StandardFunction("panic", "Never"), rt.SourceAt(&sourcePosition, "ast-lowering.ms:53:27", []rt.Argument{{Name: "message", Value: rt.Text("loop exit changed")}}))
+				}
+//line manuscript.generated.go:1
+				return rt.Unit{}
+			})
+		}()},
+	}
+	if rt.RunTestsArgs(tests, os.Args[1:]) > 0 {
+		os.Exit(1)
+	}
+}
