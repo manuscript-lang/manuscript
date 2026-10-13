@@ -1,0 +1,35 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-baseline
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLists/AppendGenerated64K-4         	      25	   9053721 ns/op	 6585520 B/op	  130681 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	      27	   8585351 ns/op	 6585507 B/op	  130681 allocs/op
+BenchmarkLists/AppendGenerated64K-4         	      31	   7881124 ns/op	 6585515 B/op	  130681 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	      18	  12940622 ns/op	 6813721 B/op	  327424 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	      16	  12786763 ns/op	 6814070 B/op	  327424 allocs/op
+BenchmarkLists/IndexGenerated64K-4          	      19	  13058496 ns/op	 6813724 B/op	  327424 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     130	   2077666 ns/op	  524282 B/op	   65535 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     100	   2137813 ns/op	  524282 B/op	   65535 allocs/op
+BenchmarkLists/IterateGenerated64K-4        	     100	   2049105 ns/op	  524286 B/op	   65535 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      20	  10830732 ns/op	 2622662 B/op	  131093 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      36	   9194572 ns/op	 2622640 B/op	  131093 allocs/op
+BenchmarkLists/CallbacksGenerated64K-4      	      30	   8939094 ns/op	 2622638 B/op	  131093 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       1	 267718501 ns/op	52647448 B/op	 2225800 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       1	 273264240 ns/op	52647448 B/op	 2225801 allocs/op
+BenchmarkLists/SortGenerated64K-4           	       1	 253482030 ns/op	52647400 B/op	 2225800 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	     254	    837538 ns/op	 1048624 B/op	       2 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	     290	    870953 ns/op	 1048624 B/op	       2 allocs/op
+BenchmarkLists/CloneSnapshot64K-4           	     331	    799206 ns/op	 1048624 B/op	       2 allocs/op
+BenchmarkLists/AppendPrototype64K-4         	     142	   1811343 ns/op	 2512204 B/op	      28 allocs/op
+BenchmarkLists/AppendPrototype64K-4         	      84	   2522707 ns/op	 2512211 B/op	      28 allocs/op
+BenchmarkLists/AppendPrototype64K-4         	     127	   1806771 ns/op	 2512200 B/op	      28 allocs/op
+BenchmarkLists/IndexPrototypeBoxed64K-4     	      30	   8442400 ns/op	 5765936 B/op	  196444 allocs/op
+BenchmarkLists/IndexPrototypeBoxed64K-4     	      24	   9373625 ns/op	 5765896 B/op	  196444 allocs/op
+BenchmarkLists/IndexPrototypeBoxed64K-4     	      32	  10172752 ns/op	 5765912 B/op	  196444 allocs/op
+BenchmarkLists/IteratePrototypeTyped64K-4   	     944	    252819 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IteratePrototypeTyped64K-4   	     907	    249328 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/IteratePrototypeTyped64K-4   	     952	    368613 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLists/SortPrototypeBoxedCallback64K-4         	       1	 229236589 ns/op	74603744 B/op	 5035877 allocs/op
+BenchmarkLists/SortPrototypeBoxedCallback64K-4         	       1	 283051452 ns/op	74604032 B/op	 5035879 allocs/op
+BenchmarkLists/SortPrototypeBoxedCallback64K-4         	       1	 233727258 ns/op	74604048 B/op	 5035879 allocs/op
+PASS

@@ -13,6 +13,20 @@ func TestFaultSourceLocations(t *testing.T) {
 		tests        bool
 		frames       []string
 	}{
+
+		{"Map add key fault", `fn crash() -> Int:
+    return 1 / 0
+export fn main() -> Int:
+    let values = Map[Int, Int]()
+    return values.add(crash(), 1).length()
+`, false, []string{"fault.ms:2:14 in crash", "fault.ms:5:23 in main"}},
+		{"bound Map add value fault", `fn crash() -> Int:
+    return 1 / 0
+export fn main() -> Int:
+    let values = Map[Int, Int]()
+    let add = values.add
+    return add(value: crash(), key: 1).length()
+`, false, []string{"fault.ms:2:14 in crash", "fault.ms:6:23 in main"}},
 		{"Result unwrap", `fn deep(value: Result[Int, String]) -> Int:
     return value.unwrap()
 export fn main() -> Int:

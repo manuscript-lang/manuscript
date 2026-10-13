@@ -14,7 +14,7 @@ Functions, methods, function values, record/case constructors and contract views
 - `Queue[T]()` creates an unbounded local FIFO. `Queue[T](capacity: 4)` supplies a fixed positive bound through its `capacity: Optional[Int]` constructor argument; supplied payloads are wrapped once under the [optional argument rules](https://manuscript-lang.github.io/manuscript/core-language/types/optionals/#passing-optional-arguments). A nonpositive explicit capacity is a programming fault. Shared access requires `Synchronized[Queue[T]]`.
 - `Synchronized[T](value: T)` stores a value behind a mutex. Its `lock()` returns a `SynchronizedGuard[T]` for `with`; guard get/set require an active acquisition, and close releases it.
 - `Bytes(values: List[Int])` constructs bytes. The runtime checks the byte range.
-- `List[T]()` constructs an empty list, with explicit type arguments or a complete expected List type. List literals remain available.
+- Prelude `List[T]()` and `Map[K, V]()` construct empty collections, with explicit type arguments or a complete expected type. List and map literals need no imports; explicit imports remain supported. Map keys still require `Hashable`. `Map.add(key, value)` inserts or replaces a value, returns the receiver and preserves the original key and insertion position; `with_entry` remains compatible.
 - `Task`, `SynchronizedGuard`, `Instant`, `Duration`, `Decimal`, and `OperationId` have no source constructor. Durations use literals; other values come from APIs or conversions.
 - `.clone()` is built in on records, alternatives, List, Map, Set, and Bytes and returns the same concrete data type with separate outer storage. It does not clone nested handles or introduce a method on native services.
 - Records use their listed fields as constructor arguments, with optional labels and declaration-order positional slots. Alternatives construct one listed case. Interfaces describe operations implemented by explicit `impl` declarations; they are capability views rather than concrete resource constructors.
@@ -315,7 +315,9 @@ fn environment() -> Map[String, String]:
 
 # @std/collections.ms
 
-Import each required symbol with `import Name from "@std/collections.ms"`.
+`List` and `Map` are available in the prelude; no import required.
+
+Other names require `import Name from "@std/collections.ms"`; explicit List/Map imports remain supported.
 
 ## CollectionError
 
@@ -432,6 +434,7 @@ type Map[T: Hashable, U]:
     fn contains(key: T) -> Bool:
     fn get(key: T) -> Optional[U]:
     fn length() -> Int:
+    fn add(key: T, value: U) -> Map[T, U]:
     fn with_entry(key: T, value: U) -> Map[T, U]:
     fn without(key: T) -> Map[T, U]:
 ```
@@ -3964,6 +3967,85 @@ type Int:
     fn to_string(radix: Int) -> String:
     fn to_float() -> Float:
     fn to_decimal() -> Decimal:
+```
+
+## List
+
+**Native type**
+
+An ordered collection of values with indexing, iteration, and transformation operations.
+
+```manuscript
+type List[T]:
+    fn clone() -> List[T]:
+    fn at(index: Int) -> Optional[T]:
+    fn contains(value: T) -> Bool:
+    fn index_of(value: T) -> Optional[Int]:
+    fn last_index_of(value: T) -> Optional[Int]:
+    fn first() -> Optional[T]:
+    fn last() -> Optional[T]:
+    fn is_empty() -> Bool:
+    fn prepend(value: T) -> List[T]:
+    fn with_value(index: Int, value: T) -> List[T]:
+    fn without(index: Int) -> List[T]:
+    fn slice(start: Int, end: Int) -> List[T]:
+    fn reverse() -> List[T]:
+    fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+    fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
+    fn find(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn find_last(predicate: fn(value: T) -> Bool) -> Optional[T]:
+    fn find_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+    fn some(predicate: fn(value: T) -> Bool) -> Bool:
+    fn every(predicate: fn(value: T) -> Bool) -> Bool:
+    fn for_each(operation: fn(value: T) -> Unit) -> Unit:
+    fn group_by[K: Hashable](key: fn(value: T) -> K) -> Map[K, List[T]]:
+    fn map[U](transform: fn(value: T) -> U) -> List[U]:
+    fn flat_map[U](transform: fn(value: T) -> List[U]) -> List[U]:
+    fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+    fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+    fn fill(value: T, start: Int, end: Int) -> List[T]:
+    fn copy_within(target: Int, start: Int, end: Int) -> List[T]:
+    fn to_set() -> Set[T]:
+    fn keys() -> List[Int]:
+    fn entries() -> List[ListEntry[T]]:
+    fn join(separator: String) -> String:
+    fn append(value: T) -> List[T]:
+    fn concat(values: List[T]) -> List[T]:
+    fn length() -> Int:
+```
+
+## Map
+
+**Native type**
+
+A mutable key-value collection. Keys use explicit `Hashable` value semantics.
+
+```manuscript
+type Map[T: Hashable, U]:
+    fn clone() -> Map[T, U]:
+    fn is_empty() -> Bool:
+    fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    fn get_or(key: T, fallback: U) -> U:
+    fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) -> A) -> A:
+    fn find(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
+    fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn with_default(key: T, value: U) -> Map[T, U]:
+    fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
+    fn clear() -> Map[T, U]:
+    fn keys() -> List[T]:
+    fn values() -> List[U]:
+    fn entries() -> List[MapEntry[T, U]]:
+    fn merge(other: Map[T, U]) -> Map[T, U]:
+    fn for_each(operation: fn(key: T, value: U) -> Unit) -> Unit:
+    fn contains(key: T) -> Bool:
+    fn get(key: T) -> Optional[U]:
+    fn length() -> Int:
+    fn add(key: T, value: U) -> Map[T, U]:
+    fn with_entry(key: T, value: U) -> Map[T, U]:
+    fn without(key: T) -> Map[T, U]:
 ```
 
 ## Never

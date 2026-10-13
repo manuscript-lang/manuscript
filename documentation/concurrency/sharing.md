@@ -19,7 +19,7 @@ A [Queue](queues.md) is a local mutable collection with no internal synchronizat
 
 ## Captured mutable data
 
-A closure snapshots the reference to a Map, List, or record, not its contents. Two tasks that capture the same object share its storage. Unsynchronized writes can lose updates or race with reads; `let` does not prevent this. Read-only sharing is safe only while no caller mutates the shared object.
+A closure snapshots the reference to a Map, List, or record, not its contents. Two tasks that capture the same object share its storage. Unsynchronized writes can lose updates or race with reads; `let` does not prevent this. Read-only sharing is safe only while no caller mutates the shared object. Mutable collections have a stricter access contract: use `Synchronized` for concurrent reads and traversals too, as described in [collection mutation and copies](../core-language/types/collections.md#mutation-and-copies).
 
 This fragment is unsafe when callbacks or other users access `counts` concurrently:
 

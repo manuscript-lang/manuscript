@@ -61,6 +61,14 @@ func (l *List) ownItems() {
 	}
 }
 
+// snapshot retains membership without copying the backing array. All updates
+// to existing elements detach through ownItems; appends lie beyond this length.
+// The private header prevents callback traversal from observing alias growth.
+func (l *List) snapshot() *List {
+	l.shared = true
+	return &List{Type: l.Type, Items: l.Items[:len(l.Items):len(l.Items)], shared: true}
+}
+
 type Map struct {
 	Type    string
 	Entries []Entry
