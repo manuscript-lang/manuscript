@@ -56,6 +56,8 @@ hugo --source website server --bind 127.0.0.1 --port 4000 --renderToMemory
 
 `make docs-check` detects stale generated references without rewriting them. `make book-check` validates strict Markdown links, highlighting, rendered API signatures, downloads, and obsolete routes under a project URL prefix. `make book` writes the production site into ignored `.artifacts/book/`. Generated HTML is not committed. Use `--cleanDestinationDir` so removed modules cannot survive in the published site.
 
+`make docs-coverage` checks reference freshness and writes `.artifacts/stdlib-doc-coverage.json`, an inventory of every generated public declaration and member, including prelude aliases. The report counts descriptions and marks missing ones; it does not infer documentation from names or signatures. Use it when filling missing behavior comments in the canonical standard sources. The summary also appears during `make docs` and `make docs-check`.
+
 The book uses Hugo Extended 0.146.7 in CI and vendored Hugo Book v13, with its license and upstream revision in `website/themes/hugo-book/`. Custom styling lives in `website/assets/_custom.scss`, behavior in `website/assets/docs.js`, and overrides in `website/layouts/`. Keep changes in these files instead of modifying the theme.
 
 The shared `.msversion` supplies the current release labels. For preserved older sites, add version/URL entries in `website/data/docs_versions.toml`. Relative archive URLs respect the site's base URL; archives open their home page so newer routes do not produce broken links. Preserve snapshots separately from the cleaned current build. See [maintenance and compatibility](maintenance.md) for pin and release changes.
