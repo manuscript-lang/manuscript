@@ -22,8 +22,10 @@
 - Add `ms run --watch` and `ms test --watch` to rebuild and restart after each saved change.
 - Rebuild edited programs faster: native builds share a content-addressed workspace, replay recorded compile/link commands without the go command, link a lean runtime for programs without network, system, or process imports, publish artifacts by hard link, and link Debug builds with uncompressed DWARF. `ms` loads standard declarations on first use and computes build pins while checking.
 - Accept plain values for standard `Optional[T]` arguments, including `Queue[Int](capacity: 4)`, and use this convention across current call sites and examples.
+- Name Int division/remainder, Decimal division, and Duration/Instant arithmetic faults with the offending operands and valid constraints, retaining existing numeric outcomes and cancellation.
 - Parse HTML strings into `HtmlNode` trees with `HtmlAttribute` records, HTML5 recovery, and optional byte, depth, and node limits.
 - Replace `@std/log.ms`'s `write` function with structured `Logger` and `Transport` interfaces: six levels, typed JSON fields, child bindings, record limits, and stdout/file/custom transports. Migrate calls to `create(transport: transport)` and `logger.info(message: message, fields: fields)`; fields now use `Map[String, JsonValue]`, and transports use scoped cleanup.
+- Report invalid Scheduler limits/drain, TaskGroup timeout and sleep duration with the operation, parameter, original value and valid range, preserving all scheduling and cancellation contracts.
 
 - Share parsing and AST graph loading across compilation and source tools; make checking, boolean optimization, and Go lowering explicit stages while preserving the checked source model.
 - Group reusable Go packages under `pkg/`; Go callers must update the former root package imports to `github.com/manuscript-lang/manuscript/pkg/...`.

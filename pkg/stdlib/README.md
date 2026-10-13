@@ -19,6 +19,8 @@ Direct calls supplying every new expression default keep the original dispatch, 
 
 Modules with executable bodies use the ordinary checker and need no entries in `bindings.json`. Imports include their reachable source implementations once, with the same public visibility and type identities as application modules.
 
+Keep a module's implementation ownership consistent: adding an executable body marks the whole module as source-owned. A typed adapter in an existing declaration-only module should use its native binding path; one source helper body does not preserve that module's other native declarations or nominal identities.
+
 ## Editor navigation
 
 Editor adapters can use `tooling.StandardDeclarations` and `tooling.NavigationAt` to find hover and definition locations in `@std` documents.

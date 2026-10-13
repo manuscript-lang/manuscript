@@ -16,6 +16,7 @@ func TestTypedCodecReceiverIdentityAndCancellation(t *testing.T) {
 		{"CompressionFormat", "Gzip", "decompress", []Value{Bytes{}, optional("Int", nil, false)}},
 		{"ArchiveFormat", "Zip", "pack", []Value{libraryList("@std/ArchiveEntry", nil), optional("Int", nil, false)}},
 		{"ArchiveFormat", "Zip", "unpack", []Value{Bytes{}, optional("@std/ArchiveLimits", nil, false)}},
+		{"NormalizationForm", "Nfc", "normalize", []Value{"text", optional("Int", nil, false)}},
 	} {
 		t.Run(test.kind+"/"+test.operation, func(t *testing.T) {
 			local := Alternative{Type: "local/" + test.kind, Tag: test.tag}
