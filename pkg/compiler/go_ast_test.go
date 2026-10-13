@@ -33,7 +33,11 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	if !bytes.Equal(normalizedGo(t, string(baseline)), normalizedGo(t, result.Source)) {
+	// Optional call labels preserve the old lowering except for the explicit
+	// capture guards needed to read values before later match arguments mutate
+	// them. Keep the independent old executable, and normalize only those new
+	// guards for the structural comparison; native regressions verify their order.
+	if !bytes.Equal(normalizedGo(t, string(baseline)), normalizedGo(t, withoutArgumentCaptures(t, result.Source))) {
 		t.Fatal("lowering changed the baseline executable Go AST")
 	}
 	if !reflect.DeepEqual(sourceDirectives(string(baseline)), sourceDirectives(result.Source)) {
@@ -60,6 +64,73 @@ func TestGoASTLoweringAgainstBaseline(t *testing.T) {
 	if outputs[0] != outputs[1] || !strings.Contains(outputs[1], "1 tests, 0 failed") {
 		t.Fatalf("baseline behavior differs: %q", outputs)
 	}
+}
+
+func withoutArgumentCaptures(t *testing.T, source string) string {
+	t.Helper()
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "generated.go", source, parser.SkipObjectResolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	isRuntime := func(e ast.Expr, name string) bool {
+		member, ok := e.(*ast.SelectorExpr)
+		if !ok || member.Sel.Name != name {
+			return false
+		}
+		pkg, ok := member.X.(*ast.Ident)
+		return ok && pkg.Name == "rt"
+	}
+	uncapture := func(e ast.Expr) ast.Expr {
+		call, ok := e.(*ast.CallExpr)
+		if !ok || !isRuntime(call.Fun, "SourceAt") || len(call.Args) != 3 {
+			return e
+		}
+		address, ok := call.Args[0].(*ast.UnaryExpr)
+		if !ok || address.Op != token.AND {
+			return e
+		}
+		position, ok := address.X.(*ast.Ident)
+		if !ok || position.Name != "sourcePosition" {
+			return e
+		}
+		return call.Args[2]
+	}
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch node := n.(type) {
+		case *ast.CompositeLit:
+			array, ok := node.Type.(*ast.ArrayType)
+			if !ok || array.Len != nil || !isRuntime(array.Elt, "Argument") {
+				break
+			}
+			for _, element := range node.Elts {
+				argument, ok := element.(*ast.CompositeLit)
+				if !ok {
+					continue
+				}
+				for _, field := range argument.Elts {
+					kv, ok := field.(*ast.KeyValueExpr)
+					if !ok {
+						continue
+					}
+					key, ok := kv.Key.(*ast.Ident)
+					if ok && key.Name == "Value" {
+						kv.Value = uncapture(kv.Value)
+					}
+				}
+			}
+		case *ast.CallExpr:
+			if isRuntime(node.Fun, "Invoke") && len(node.Args) == 3 {
+				node.Args[1] = uncapture(node.Args[1])
+			}
+		}
+		return true
+	})
+	var out bytes.Buffer
+	if err := format.Node(&out, fset, file); err != nil {
+		t.Fatal(err)
+	}
+	return out.String()
 }
 
 // Normalize only nonsemantic position information and redundant parentheses.

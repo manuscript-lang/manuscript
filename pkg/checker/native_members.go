@@ -62,7 +62,7 @@ func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info, expecte
 		supplied = c.resolveArguments(e.Left.Types)
 	} else if len(vars) > 0 {
 		sub := map[string]*Type{}
-		c.inferArguments(positionalArguments(functionArguments(e.Args, info.Type.Params), info.Type.Params), info.Type.Params, vars, sub, context)
+		c.inferArguments(functionArguments(e.Args, info.Type.Params), info.Type.Params, vars, sub, context)
 		for _, v := range vars {
 			supplied = append(supplied, sub[v.ID])
 		}

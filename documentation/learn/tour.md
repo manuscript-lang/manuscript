@@ -78,10 +78,10 @@ fn line_total(price: Int, quantity: Int) -> Int:
     return price * quantity
 
 let welcome = greeting("Sam")
-let subtotal = line_total(price: 12, quantity: 3)
+let subtotal = line_total(12, 3)
 ```
 
-Functions declare parameter and return types. A single parameter allows an unlabeled call. With multiple parameters, name every argument. Use `Unit` when a function has no result to return.
+Functions declare parameter and return types. Call with positional arguments or add labels for clarity. Use `Unit` when a function has no result to return.
 
 Pass functions to transform collections:
 
@@ -213,7 +213,7 @@ These fragments are intentionally rejected:
 let count = 2
 count = 3                 # Use var for reassignment.
 let mixed = [1, "two"]    # List elements need a common type.
-line_total(12, 3)         # Name both arguments.
+line_total(12)            # Supply the required quantity.
 ```
 
 Keep these cases separate from runnable examples. Continue with the [language guide](../core-language/_index.md) or find an API in the [API reference](../standard-library/reference/_index.md).
