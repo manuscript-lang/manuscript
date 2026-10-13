@@ -13,7 +13,11 @@ import (
 // source or resolves a type or binding by its spelling.
 func lowerGo(optimized optimizedProgram, entry string, options Options) (string, error) {
 	g := &generator{program: optimized.program, booleans: optimized.booleans, captures: map[*checker.Binding]string{}}
-	return g.printGo(g.file(entry, options))
+	file := g.file(entry, options)
+	if g.loweringError != nil {
+		return "", g.loweringError
+	}
+	return g.printGo(file)
 }
 
 // file assembles the Go tree; executable source is serialized only by printGo.

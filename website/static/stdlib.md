@@ -1254,32 +1254,34 @@ impl Error for CsvError:
 
 **Record**
 
-Delimiter and line ending used when parsing or writing CSV.
+Delimiter and line ending used when parsing or writing CSV; defaults are comma and LF.
 
 ```manuscript
 type CsvOptions:
-    delimiter: String
-    line_ending: String
+    delimiter: String = ","
+    line_ending: String = "\n"
 ```
 
 ## parse
 
 **Function**
 
-Parses CSV into rows of cells. Optional row and cell limits bound large inputs.
+Parses CSV into rows of cells, using fresh default options when omitted.
+Optional row and cell limits bound large inputs.
 
 ```manuscript
-fn parse(text: String, options: CsvOptions, max_rows: Optional[Int] = none, max_cells: Optional[Int] = none) -> Result[List[List[String]], CsvError]:
+fn parse(text: String, options: CsvOptions = CsvOptions(), max_rows: Optional[Int] = none, max_cells: Optional[Int] = none) -> Result[List[List[String]], CsvError]:
 ```
 
 ## stringify
 
 **Function**
 
-Encodes rows as CSV, quoting cells when required by the delimiter or line ending.
+Encodes rows as CSV with comma delimiters and LF endings by default.
+Quotes cells when required by the delimiter or line ending.
 
 ```manuscript
-fn stringify(rows: List[List[String]], options: CsvOptions, max_bytes: Optional[Int] = none) -> Result[String, CsvError]:
+fn stringify(rows: List[List[String]], options: CsvOptions = CsvOptions(), max_bytes: Optional[Int] = none) -> Result[String, CsvError]:
 ```
 
 # @std/decimal.ms
@@ -1402,20 +1404,20 @@ impl Error for EncodingError:
 
 **Function**
 
-Decodes standard or URL-safe Base64 text into bytes.
+Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
 
 ```manuscript
-fn base64_decode(text: String, url_safe: Bool, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
+fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Optional[Int] = none) -> Result[Bytes, EncodingError]:
 ```
 
 ## base64_encode
 
 **Function**
 
-Encodes bytes as standard or URL-safe Base64 text.
+Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
 
 ```manuscript
-fn base64_encode(data: Bytes, url_safe: Bool) -> String:
+fn base64_encode(data: Bytes, url_safe: Bool = false) -> String:
 ```
 
 ## hex_decode
@@ -2334,6 +2336,18 @@ interface ResponseBody:
     fn headers() -> Map[String, List[String]]
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
     fn status() -> Int
+```
+
+## header_values
+
+**Function**
+
+Finds all values under ASCII case-equivalent names without changing Map keys.
+Returns none if absent, or some(empty) for a present empty list. Copies list
+membership and preserves Map insertion order followed by each list's order.
+
+```manuscript
+fn header_values(headers: Map[String, List[String]], name: String) -> Optional[List[String]]:
 ```
 
 # @std/io.ms
@@ -3614,11 +3628,11 @@ type CommandOutput:
 
 **Interface**
 
-Runs child programs with explicit input, output bounds, and an optional timeout.
+Runs child programs with empty input by default, optional output bounds and timeout.
 
 ```manuscript
 interface Commands:
-    fn run(program: String, arguments: List[String], input: Bytes, max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
+    fn run(program: String, arguments: List[String], input: Bytes = "".to_bytes(), max_output_bytes: Optional[Int] = none, timeout: Optional[Duration] = none) -> Result[CommandOutput, CommandError]
 ```
 
 ## CpuUsage

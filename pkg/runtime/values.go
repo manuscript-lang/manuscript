@@ -170,6 +170,35 @@ func Invoke(ctx *Execution, callee Value, args []Argument) Value {
 	return f.Body(ctx, ordered)
 }
 
+// PreparedDefaults carries the fully evaluated slots from generated default
+// preparation. It is not a source value: propagation may instead return the
+// callable's declared Result without entering its native body.
+type PreparedDefaults []Value
+
+// WithDefaults preserves the native callable's delivery checkpoint, including
+// acquisition disposal. Do not wrap the final call in NewFunction: an extra
+// delivery checkpoint could discard a resource after its native owner returned.
+// slots lists only the new expression defaults; old Optional.none omissions
+// continue directly to the native adapter when these slots are supplied.
+func WithDefaults(callee Value, prepare Function, slots []int) Value {
+	f := callee.(Function)
+	return Function{f.Labels, f.Result, func(ctx *Execution, args []Value) Value {
+		CheckCancelled(ctx)
+		missing := false
+		for _, index := range slots {
+			missing = missing || args[index] == nil
+		}
+		if !missing {
+			return f.Body(ctx, args)
+		}
+		value := prepare.Body(ctx, args)
+		if completed, ok := value.(PreparedDefaults); ok {
+			return f.Body(ctx, []Value(completed))
+		}
+		return value
+	}}
+}
+
 // Lazy holds a value built on first use; generated code keeps one per call site
 // whose type arguments are known statically, so repeated calls skip Specialize.
 type Lazy struct {
