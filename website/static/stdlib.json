@@ -19,19 +19,19 @@
               "name": "data",
               "kind": "field",
               "signature": "data: Bytes",
-              "doc": ""
+              "doc": "File contents as immutable bytes; directory entries must carry empty bytes."
             },
             {
               "name": "directory",
               "kind": "field",
               "signature": "directory: Bool",
-              "doc": ""
+              "doc": "True for a directory entry rather than a regular file; links and special files are not supported."
             },
             {
               "name": "path",
               "kind": "field",
               "signature": "path: String",
-              "doc": ""
+              "doc": "Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names."
             }
           ]
         },
@@ -55,43 +55,43 @@
               "name": "Failed",
               "kind": "case",
               "signature": "case Failed(message: String)",
-              "doc": ""
+              "doc": "An explicit implementation-supplied archive diagnostic; native validation uses specific cases."
             },
             {
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Archive bytes, duplicate paths, extracted entry paths or encoded metadata are invalid."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "A format argument's entry paths, directory payloads or supplied output/unpack limits are invalid."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "Encoded bytes, entry count or unpacked per-entry/total bytes exceed a supplied budget."
             },
             {
               "name": "Unsupported",
               "kind": "case",
               "signature": "case Unsupported",
-              "doc": ""
+              "doc": "The selected format or an encountered entry kind is unsupported, such as links or special files."
             },
             {
               "name": "Failed.message",
               "kind": "field",
               "signature": "message: String",
-              "doc": ""
+              "doc": "Original diagnostic text, returned unchanged by message()."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns original Failed text, or an archive-prefixed diagnostic for other cases.",
               "contract": "Error"
             }
           ],
@@ -154,19 +154,19 @@
               "name": "max_entries",
               "kind": "field",
               "signature": "max_entries: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum unpacked entries, including directories; none adds no entry-count budget."
             },
             {
               "name": "max_entry_bytes",
               "kind": "field",
               "signature": "max_entry_bytes: Optional[Int] = none",
-              "doc": ""
+              "doc": "Maximum unpacked bytes for each entry; zero admits only empty data."
             },
             {
               "name": "max_total_bytes",
               "kind": "field",
               "signature": "max_total_bytes: Optional[Int] = none",
-              "doc": ""
+              "doc": "Cumulative unpacked file bytes across all entries; none adds no total-output budget."
             }
           ]
         },
@@ -352,19 +352,19 @@
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes."
             },
             {
               "name": "OutOfRange",
               "kind": "case",
               "signature": "case OutOfRange",
-              "doc": ""
+              "doc": "A read crosses the byte buffer or a number cannot fit the requested signedness/width or result type."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns a binary-prefixed diagnostic without echoing source bytes or numeric input.",
               "contract": "Error"
             }
           ],
@@ -1526,43 +1526,43 @@
               "name": "Failed",
               "kind": "case",
               "signature": "case Failed(message: String)",
-              "doc": ""
+              "doc": "An explicit implementation-supplied compression diagnostic; native codecs use specific cases."
             },
             {
               "name": "InvalidData",
               "kind": "case",
               "signature": "case InvalidData",
-              "doc": ""
+              "doc": "Compressed framing, checksum, payload or trailing data is invalid for the chosen format."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "Compression level is outside 0..9, or a supplied encoded/decoded byte budget is negative."
             },
             {
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
-              "doc": ""
+              "doc": "Encoded or decompressed output exceeds the supplied byte budget."
             },
             {
               "name": "Unsupported",
               "kind": "case",
               "signature": "case Unsupported",
-              "doc": ""
+              "doc": "A String selector is not exactly gzip, zlib or deflate; typed selectors avoid spelling errors."
             },
             {
               "name": "Failed.message",
               "kind": "field",
               "signature": "message: String",
-              "doc": ""
+              "doc": "Original diagnostic text, returned unchanged by message()."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns original Failed text, or a compression-prefixed diagnostic for other cases.",
               "contract": "Error"
             }
           ],
@@ -1652,25 +1652,25 @@
               "name": "AuthenticationFailed",
               "kind": "case",
               "signature": "case AuthenticationFailed",
-              "doc": ""
+              "doc": "AES-GCM authentication failed, including a wrong key, nonce, associated data or altered ciphertext."
             },
             {
               "name": "InvalidInput",
               "kind": "case",
               "signature": "case InvalidInput",
-              "doc": ""
+              "doc": "Key/seed/nonce length, derivation iteration/count arguments or AES key size is invalid."
             },
             {
               "name": "Unsupported",
               "kind": "case",
               "signature": "case Unsupported",
-              "doc": ""
+              "doc": "The HMAC String selector is not exactly sha256, sha384 or sha512."
             },
             {
               "name": "message",
               "kind": "operation",
               "signature": "fn message() -\u003e String:",
-              "doc": "",
+              "doc": "Returns a cryptography-prefixed diagnostic without exposing keys, plaintext or ciphertext.",
               "contract": "Error"
             }
           ],

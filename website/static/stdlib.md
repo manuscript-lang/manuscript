@@ -42,6 +42,30 @@ type ArchiveEntry:
     directory: Bool
 ```
 
+### ArchiveEntry.data
+
+File contents as immutable bytes; directory entries must carry empty bytes.
+
+```manuscript
+data: Bytes
+```
+
+### ArchiveEntry.directory
+
+True for a directory entry rather than a regular file; links and special files are not supported.
+
+```manuscript
+directory: Bool
+```
+
+### ArchiveEntry.path
+
+Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names.
+
+```manuscript
+path: String
+```
+
 ## ArchiveError
 
 **Alternative**
@@ -60,6 +84,62 @@ type ArchiveError:
 ```manuscript
 impl Error for ArchiveError:
     fn message() -> String:
+```
+
+### ArchiveError.Failed
+
+An explicit implementation-supplied archive diagnostic; native validation uses specific cases.
+
+```manuscript
+case Failed(message: String)
+```
+
+### ArchiveError.InvalidData
+
+Archive bytes, duplicate paths, extracted entry paths or encoded metadata are invalid.
+
+```manuscript
+case InvalidData
+```
+
+### ArchiveError.InvalidInput
+
+A format argument's entry paths, directory payloads or supplied output/unpack limits are invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### ArchiveError.LimitExceeded
+
+Encoded bytes, entry count or unpacked per-entry/total bytes exceed a supplied budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### ArchiveError.Unsupported
+
+The selected format or an encountered entry kind is unsupported, such as links or special files.
+
+```manuscript
+case Unsupported
+```
+
+### ArchiveError.Failed.message
+
+Original diagnostic text, returned unchanged by message().
+
+```manuscript
+message: String
+```
+
+### ArchiveError.Error.message
+
+Returns original Failed text, or an archive-prefixed diagnostic for other cases.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## ArchiveFormat
@@ -120,6 +200,30 @@ type ArchiveLimits:
     max_entries: Optional[Int] = none
     max_entry_bytes: Optional[Int] = none
     max_total_bytes: Optional[Int] = none
+```
+
+### ArchiveLimits.max_entries
+
+Maximum unpacked entries, including directories; none adds no entry-count budget.
+
+```manuscript
+max_entries: Optional[Int] = none
+```
+
+### ArchiveLimits.max_entry_bytes
+
+Maximum unpacked bytes for each entry; zero admits only empty data.
+
+```manuscript
+max_entry_bytes: Optional[Int] = none
+```
+
+### ArchiveLimits.max_total_bytes
+
+Cumulative unpacked file bytes across all entries; none adds no total-output budget.
+
+```manuscript
+max_total_bytes: Optional[Int] = none
 ```
 
 ## pack
@@ -225,6 +329,30 @@ type BinaryError:
 ```manuscript
 impl Error for BinaryError:
     fn message() -> String:
+```
+
+### BinaryError.InvalidInput
+
+Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes.
+
+```manuscript
+case InvalidInput
+```
+
+### BinaryError.OutOfRange
+
+A read crosses the byte buffer or a number cannot fit the requested signedness/width or result type.
+
+```manuscript
+case OutOfRange
+```
+
+### BinaryError.Error.message
+
+Returns a binary-prefixed diagnostic without echoing source bytes or numeric input.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## read_float
@@ -1257,6 +1385,62 @@ impl Error for CompressionError:
     fn message() -> String:
 ```
 
+### CompressionError.Failed
+
+An explicit implementation-supplied compression diagnostic; native codecs use specific cases.
+
+```manuscript
+case Failed(message: String)
+```
+
+### CompressionError.InvalidData
+
+Compressed framing, checksum, payload or trailing data is invalid for the chosen format.
+
+```manuscript
+case InvalidData
+```
+
+### CompressionError.InvalidInput
+
+Compression level is outside 0..9, or a supplied encoded/decoded byte budget is negative.
+
+```manuscript
+case InvalidInput
+```
+
+### CompressionError.LimitExceeded
+
+Encoded or decompressed output exceeds the supplied byte budget.
+
+```manuscript
+case LimitExceeded
+```
+
+### CompressionError.Unsupported
+
+A String selector is not exactly gzip, zlib or deflate; typed selectors avoid spelling errors.
+
+```manuscript
+case Unsupported
+```
+
+### CompressionError.Failed.message
+
+Original diagnostic text, returned unchanged by message().
+
+```manuscript
+message: String
+```
+
+### CompressionError.Error.message
+
+Returns original Failed text, or a compression-prefixed diagnostic for other cases.
+
+```manuscript
+fn message() -> String:
+```
+
 ## CompressionFormat
 
 **Alternative**
@@ -1356,6 +1540,38 @@ type CryptoError:
 ```manuscript
 impl Error for CryptoError:
     fn message() -> String:
+```
+
+### CryptoError.AuthenticationFailed
+
+AES-GCM authentication failed, including a wrong key, nonce, associated data or altered ciphertext.
+
+```manuscript
+case AuthenticationFailed
+```
+
+### CryptoError.InvalidInput
+
+Key/seed/nonce length, derivation iteration/count arguments or AES key size is invalid.
+
+```manuscript
+case InvalidInput
+```
+
+### CryptoError.Unsupported
+
+The HMAC String selector is not exactly sha256, sha384 or sha512.
+
+```manuscript
+case Unsupported
+```
+
+### CryptoError.Error.message
+
+Returns a cryptography-prefixed diagnostic without exposing keys, plaintext or ciphertext.
+
+```manuscript
+fn message() -> String:
 ```
 
 ## HashAlgorithm
