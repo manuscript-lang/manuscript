@@ -36,7 +36,7 @@ test "remainder zero":
 	if err == nil || !strings.Contains(string(output), "9 tests, 9 failed") {
 		t.Fatalf("numeric faults were lost: %v\n%s", err, output)
 	}
-	if strings.Count(string(output), "Int overflow;") != 7 || strings.Count(string(output), "division by zero;") != 2 {
+	if strings.Count(string(output), "Int overflow;") != 6 || strings.Count(string(output), "Int./: overflow;") != 1 || strings.Count(string(output), "division by zero;") != 1 || strings.Count(string(output), "remainder by zero;") != 1 {
 		t.Fatalf("numeric fault identities changed: %s", output)
 	}
 }
