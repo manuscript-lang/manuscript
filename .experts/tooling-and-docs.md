@@ -134,6 +134,8 @@ Verify: run the displayed source and commands with the stated prerequisites; che
 
 Verified: a `manuscript-example` annotation alone does not put a chapter into the executable example suite. The harness discovers introductory tutorials and explicitly listed guides; the logging guide needed an inventory entry before its annotated stdout example was checked or run. See [the example inventory](../tests/examples/examples_test.go) and [the logging example](../documentation/standard-library/packages/tooling.md). When adding complete examples outside the introductory chapters, confirm that their file appears in the harness and run its named subtest with `MANUSCRIPT_EXAMPLES_NATIVE=1`.
 
+Task recipes must also preserve I/O failure: matching a failed stdout write and returning success hides an undelivered result. [Common tasks](../documentation/learn/common-tasks.md) forwards write/flush errors to a nonzero entry status. The same [example harness](../tests/examples/examples_test.go) supplies isolated files, stdin, and loopback HTTP plus additional expected-failure cases; type checking alone cannot establish the displayed output, EOF handling, or failure status. See [annotation fields and native execution](../documentation/contributing/development.md#conformance-and-coverage).
+
 ### User tooling must work in the shipped binary
 
 Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were subsequently requested to work from a single binary without separately installing Go, with CGO excluded. The later requirement makes the bundled toolchain mandatory: no external override, PATH fallback, or ambient Go configuration may select another tool. OS-specific prerequisites such as Apple debugserver remain permitted. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context.
@@ -242,3 +244,11 @@ short-circuit, match and loop regions; hoisting them changes source behavior.
 Evidence: [primitive lowering](../pkg/compiler/lower_equality.go),
 [mutation/order conformance](../tests/e2e/testdata/accept/scalar-lowering.ms), and
 [native IEEE/fault checks](../pkg/compiler/lower_scalar_native_test.go).
+
+### Omitted library entries must stay empty through graph loading
+
+Verified: executable manifests previously required an explicit entry and had no default. Libraries now omit that key; an explicitly empty or invalid entry remains an error. Resolving an empty entry with `SourcePath` would turn it into the project directory, so graph loading skips that resolution and discovers source/test roots instead. Native application commands report the missing entry at the manifest's project table; source analysis and test lowering use the same graph without requiring `main`.
+
+Apply when: changing manifest modes, project discovery, editor overlays, or entry validation.
+Evidence: [manifest validation](../pkg/project/manifest.go), [graph loading](../pkg/frontend/modules.go), [library contracts](../documentation/developer-tooling/builds/project-configuration.md#library-projects-and-copied-dependencies), and [native regressions](../tests/e2e/library_project_test.go).
+Verify: an omitted entry checks unimported modules and executes their tests; an explicit bad entry still fails. Check unsaved unimported library files, canonical symlink entry identities, confined alias targets, and test cache invalidation after an unimported source edit. `ms.lock` pins build inputs and never claims to pin copied package content.

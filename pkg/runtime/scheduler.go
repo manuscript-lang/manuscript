@@ -46,7 +46,7 @@ type Scheduler struct {
 }
 
 func inherit(parent *Execution, ctx context.Context) *Execution {
-	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: parent.Owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
+	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: parent.Owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host, calls: &callState{}}
 }
 func owned(parent *Execution, ctx context.Context, owner *Scheduler) *Execution {
 	owners := map[*Scheduler]bool{}
@@ -54,7 +54,7 @@ func owned(parent *Execution, ctx context.Context, owner *Scheduler) *Execution 
 		owners[key] = value
 	}
 	owners[owner] = true
-	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host}
+	return &Execution{EqualityScope: parent.EqualityScope, Context: ctx, Owners: owners, TaskGroups: parent.TaskGroups, HostServices: parent.HostServices, Lifetime: parent.Lifetime, Host: parent.Host, calls: &callState{}}
 }
 func NewScheduler(ctx *Execution, args []Argument) Value {
 	limit, historyLimit := int64(0), int64(-1)
@@ -96,6 +96,7 @@ func NewScheduler(ctx *Execution, args []Argument) Value {
 	b := &Scheduler{parent: ctx, context: parent, cancel: cancel, limit: int(limit), historyLimit: int(historyLimit), drain: time.Duration(drain), reporter: reporter, active: map[OperationId]*schedulerJob{}, history: map[OperationId]string{}, schedules: map[OperationId]scheduledOperation{}, changed: make(chan struct{}, 1), done: make(chan struct{}), reportReady: make(chan struct{}, 1)}
 	registerService(ctx, b)
 	b.reporting.Add(1)
+	markConcurrent()
 	go b.reportLoop()
 	return b
 }
@@ -165,6 +166,7 @@ func (b *Scheduler) startScheduled(ctx *Execution, operation Value, schedule *sc
 	b.active[id] = job
 	b.jobs.Add(1)
 	b.mu.Unlock()
+	markConcurrent()
 	go func() {
 		defer b.jobs.Done()
 		defer close(job.done)
@@ -342,6 +344,7 @@ var diagnostics = struct {
 }{queue: make(chan string, 128)}
 
 func init() {
+	markConcurrent()
 	go func() {
 		for message := range diagnostics.queue {
 			fmt.Fprintln(os.Stderr, message)

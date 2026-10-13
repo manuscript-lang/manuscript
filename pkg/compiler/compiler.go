@@ -49,13 +49,18 @@ func CompileSource(filename, source string, options Options) (result Result) {
 	return compile(graph, options)
 }
 
-// CompileFile loads a module or project and checks its reachable import graph.
-// AnalyzeOnly with ProjectSources also checks unimported source and test modules.
+// CompileFile checks a module's reachable imports or a project's module graph.
+// Libraries always include all source and test modules; executable projects do
+// so with AnalyzeOnly and ProjectSources, preserving ordinary entry reachability.
 func CompileFile(filename string, options Options) (result Result) {
 	defer recoverCompilerBug(filename, &result)
 	graph := frontend.LoadFile(filename, options.sourceOptions())
 	if graph.ProjectRoot != "" {
-		options.Entry = !options.Tests && (!options.AnalyzeOnly || options.Entry)
+		if graph.Library && !options.Tests && !options.AnalyzeOnly {
+			graph.Diagnostics = append(graph.Diagnostics, syntax.Diagnostic{Position: graph.ManifestPosition, Phase: "resolution", Message: "library project has no executable entry; add entry = \"src/main.ms\" under [project] and export fn main() -> Int from that file, or use check, lint, test, doc, or lock for the library"})
+			return Result{SourceRoot: graph.SourceRoot, ProjectRoot: graph.ProjectRoot, Configuration: graph.Configuration, Diagnostics: graph.Diagnostics}
+		}
+		options.Entry = !graph.Library && !options.Tests && (!options.AnalyzeOnly || options.Entry)
 	}
 	return compile(graph, options)
 }
@@ -83,7 +88,7 @@ func compile(graph frontend.Graph, options Options) Result {
 		SourceRoot: graph.SourceRoot, ProjectRoot: graph.ProjectRoot,
 		Configuration: graph.Configuration, Diagnostics: graph.Diagnostics,
 	}
-	if len(graph.Modules) == 0 {
+	if len(graph.Modules) == 0 && (!graph.Library || len(graph.Diagnostics) != 0) {
 		return result
 	}
 

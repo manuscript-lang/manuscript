@@ -49,4 +49,24 @@ func init() {
 			}
 		})
 	}
+	libraryGeneric("optional", "map", "Optional[U]", []LibraryParam{{"T", ""}, {"U", ""}}, []LibraryParam{{"value", "Optional[T]"}, {"transform", "fn(value:T)->U"}}, func(ctx *Execution, result string, args []Value) Value {
+		value := args[0].(Alternative)
+		if value.Tag == "none" {
+			return Alternative{Type: result, Tag: "none"}
+		}
+		return Alternative{Type: result, Tag: "some", Fields: []Value{Invoke(ctx, args[1], []Argument{{"value", value.Fields[0]}})}}
+	})
+	libraryGeneric("optional", "and_then", "Optional[U]", []LibraryParam{{"T", ""}, {"U", ""}}, []LibraryParam{{"value", "Optional[T]"}, {"transform", "fn(value:T)->Optional[U]"}}, func(ctx *Execution, result string, args []Value) Value {
+		value := args[0].(Alternative)
+		if value.Tag == "none" {
+			return Alternative{Type: result, Tag: "none"}
+		}
+		return Invoke(ctx, args[1], []Argument{{"value", value.Fields[0]}})
+	})
+	libraryGeneric("optional", "or_else", "Optional[T]", variables, []LibraryParam{{"value", "Optional[T]"}, {"create", "fn()->Optional[T]"}}, func(ctx *Execution, _ string, args []Value) Value {
+		if args[0].(Alternative).Tag == "some" {
+			return args[0]
+		}
+		return Invoke(ctx, args[1], nil)
+	})
 }

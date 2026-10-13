@@ -121,6 +121,7 @@ func (n *network) Operation(name string) Function {
 		n.servers = append(n.servers, server)
 		n.mu.Unlock()
 		registerResource(ctx, server)
+		markConcurrent()
 		go func() { server.err = server.server.Serve(listener); close(server.done) }()
 		return Alternative{result, "ok", []Value{ViewOf("@std/HttpServer", server)}}
 	}, func(ctx *Execution, value Value) {
