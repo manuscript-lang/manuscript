@@ -59,6 +59,9 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 		}
 		return []ast.Stmt{returned(value)}
 	case syntax.KindCall:
+		if s.Value.Kind == syntax.KindMatch {
+			return g.matchStatement(s.Value)
+		}
 		return []ast.Stmt{discard(g.expression(s.Value))}
 	case syntax.KindBreak, syntax.KindContinue:
 		var out []ast.Stmt
@@ -158,11 +161,37 @@ func (g *generator) match(value *syntax.Expression, arms []syntax.Arm, body func
 	return append(out, &ast.SwitchStmt{Tag: runtimeCall(tag, ident(tmp)), Body: block(cases...)})
 }
 
+// A match in statement position lowers to a Go switch in the enclosing body,
+// so return, break, and continue in its arms are ordinary Go statements. Only
+// a match used as a value needs the generated closure.
+func (g *generator) matchStatement(e *syntax.Expression) []ast.Stmt {
+	out := g.match(e.Left, e.Arms, func(a *syntax.Arm) []ast.Stmt {
+		body := g.body(a.Body)
+		if a.Value != nil {
+			body = append(body, discard(g.expression(a.Value)))
+		}
+		return body
+	})
+	cases := out[len(out)-1].(*ast.SwitchStmt)
+	for _, clause := range cases.Body.List {
+		if clause.(*ast.CaseClause).List == nil {
+			return out
+		}
+	}
+	cases.Body.List = append(cases.Body.List, &ast.CaseClause{Body: []ast.Stmt{evaluated(runtimeCall("Panic", textLiteral("runtime invariant: exhaustive match")))}})
+	return out
+}
+
 // A loop containing match expressions gets a boundary for exits from their
 // generated closures. Scan before lowering so nested loops are emitted once.
 func (g *generator) loopBody(statements []*syntax.Statement, label *loopLabel) []ast.Stmt {
-	syntax.Visitor{Expression: func(e *syntax.Expression) {
-		if e.Kind == syntax.KindMatch {
+	direct := map[*syntax.Expression]bool{}
+	syntax.Visitor{Statement: func(s *syntax.Statement) {
+		if s.Kind == syntax.KindCall && s.Value.Kind == syntax.KindMatch {
+			direct[s.Value] = true
+		}
+	}, Expression: func(e *syntax.Expression) {
+		if e.Kind == syntax.KindMatch && !direct[e] {
 			label.escaped = true
 		}
 	}}.Callable(nil, statements)
