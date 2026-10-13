@@ -7,6 +7,8 @@ on:
 permissions:
   contents: read
 
+# Pull requests run a minimal set (static checks, unit tests, a CLI smoke test);
+# the merge queue runs everything, once, on the exact commit that will merge.
 # Each unit of work runs exactly once. Jobs are grouped by shared inputs, not by
 # topic: static checks share the pinned linters, Go tests share one sharded
 # race+coverage run, and the editor tests reuse the CLI built for the hello run.
@@ -35,10 +37,37 @@ jobs:
       - name: Format, vet, lint, repo rules, licenses
         run: make check lint repo-check licenses-check
 
-  # Every Go test runs once: unit, stdlib, examples, and native end-to-end, with
+  # Pull requests: fast unit, stdlib-source, and example tests. The full suite
+  # runs in the merge queue.
+  unit:
+    name: Unit tests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - uses: actions/cache@v6
+        with:
+          path: toolchain/
+          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
+      - name: Prepare SDK payload
+        run: make payload
+      - name: Unit, stdlib-source, and example tests
+        run: make unit stdlib-check examples-check
+
+  # Merge queue and manual runs: every Go test runs once: unit, stdlib, examples, and native end-to-end, with
   # coverage; in-process packages also run under the race detector.
   go:
     name: Go tests (shard ${{ matrix.shard }})
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -97,23 +126,28 @@ jobs:
           ./ms run examples/hello/ms.toml -- first second
       # Standalone distribution checks run once, per target, in release.yml.
       - name: Parser and compiler fuzzing
+        if: github.event_name != 'pull_request'
         run: make fuzz
       - name: Validate and package VS Code extension
+        if: github.event_name != 'pull_request'
         working-directory: extensions/vscode
         run: |
           npm ci
           npm run package -- --allow-missing-repository
       - name: Native Manuscript DAP integration
+        if: github.event_name != 'pull_request'
         working-directory: extensions/vscode
         run: |
           MANUSCRIPT_DAP_TEST=1 MANUSCRIPT_MS="$GITHUB_WORKSPACE/ms" MANUSCRIPT_DAP_ADAPTER="$PWD/dist/debug-adapter.js" node --test tests/debug-adapter.test.js tests/debug-large-literal.test.js
       - uses: actions/upload-artifact@v7
+        if: github.event_name != 'pull_request'
         with:
           name: manuscript-vscode
           path: extensions/vscode/*.vsix
 
-  # Linux host behavior is covered by the Go shards.
+  # Linux host behavior is covered by the Go shards. Merge queue only.
   host-stdlib:
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -138,9 +172,10 @@ jobs:
           make payload
           toolchain/go/bin/go test ./pkg/runtime ./pkg/compiler ./tests/e2e -run 'TestFileSystem|TestNativeFileWatch|TestTimeScheduling|TestFilesystemCopyOptions|TestFilesystemGlobOptions|TestFileStatMetadata|TestNodePathFixtures|TestBundledRuntimeImport|TestNativeBuildInSymlinked|TestNodeHost|TestNodeConstantCatalogs|TestProcessSignalStream|TestShutdownCookbook|TestExpandedSystemAndProcess|TestExpandedLibraryCLI'
 
-  # Keep one stable required check; every applicable job must pass before merging.
+  # Keep one stable required check. Jobs skipped by event are fine; a failed or
+  # cancelled job is not.
   test:
-    needs: [static, go, dist, host-stdlib]
+    needs: [static, unit, go, dist, host-stdlib]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -149,5 +184,5 @@ jobs:
           RESULTS: ${{ join(needs.*.result, ',') }}
         run: |
           case ",$RESULTS," in
-            *,failure,*|*,cancelled,*|*,skipped,*) exit 1 ;;
+            *,failure,*|*,cancelled,*) exit 1 ;;
           esac
