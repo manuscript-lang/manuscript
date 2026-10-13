@@ -58,20 +58,7 @@ func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info) {
 		supplied = c.resolveArguments(e.Left.Types)
 	} else if len(vars) > 0 {
 		sub := map[string]*Type{}
-		for _, arg := range functionArguments(e.Args, info.Type.Params) {
-			if c.contextual(arg.Value) {
-				continue
-			}
-			actual := c.independentArgument(arg.Value)
-			if actual == nil {
-				continue
-			}
-			for _, param := range info.Type.Params {
-				if param.Name == arg.Name && !c.unifyArgument(param.Type, actual.Type, variableSet(vars), sub) {
-					c.error(arg.Pos, "type", "conflicting generic inference")
-				}
-			}
-		}
+		c.inferArguments(functionArguments(e.Args, info.Type.Params), info.Type.Params, vars, sub)
 		for _, v := range vars {
 			supplied = append(supplied, sub[v.ID])
 		}

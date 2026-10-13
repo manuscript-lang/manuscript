@@ -28,7 +28,7 @@ test "regex rejects invalid expressions and exhausted budgets":
 
     let regex = value(compile("[0-9]+"))
     let limited: Result[List[String], RegexError] = error(
-        cause: RegexError.LimitExceeded
+        RegexError.LimitExceeded
     )
     if regex.find_all(
         text: "1 2",
@@ -36,7 +36,7 @@ test "regex rejects invalid expressions and exhausted budgets":
     ) != limited: return panic("match budget")
 
     let output_limit: Result[String, RegexError] = error(
-        cause: RegexError.LimitExceeded
+        RegexError.LimitExceeded
     )
     if (
         regex.replace(

@@ -11,14 +11,14 @@ fn apply[T](operation: fn(value: T) -> T, value: T) -> T:
 test "inline callbacks survive contextual rechecking":
     let value = apply(
         value: 3,
-        operation: fn(value: Int) -> Int:
+        operation: fn(value):
             return value + 1
     )
     if not (value == 4):
         return panic(message: "check failed")
 
     let transform = Transform(
-        operation: fn(value: Int) -> Int:
+        fn(value):
             return value + 2
     )
     if not (transform.operation(value: 3) == 5):
@@ -26,7 +26,7 @@ test "inline callbacks survive contextual rechecking":
 
     with group = TaskGroup():
         let first_task = group.start(
-            fn() -> Int:
+            fn():
                 return 4
         )
 

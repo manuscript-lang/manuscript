@@ -47,6 +47,8 @@ type checker struct {
 	names                   map[string]*Symbol
 	scope                   *scope
 	result                  *Type
+	returnInference         *callbackReturns
+	inferenceVariables      map[string]bool
 	function, serial, loops int
 	unknownType             bool
 	captures                map[int]map[*Binding]bool
@@ -461,6 +463,14 @@ func (c *checker) checkStatement(s *syntax.Statement) (bool, bool) {
 		i := c.expression(s.Value, b.Type)
 		return !i.NoReturn, false
 	case syntax.KindReturn:
+		if c.returnInference != nil {
+			typ := primitive("Unit")
+			if s.Value != nil {
+				typ = c.checkExpression(s.Value, c.infer(s.Value, c.returnInference.context), nil).Type
+			}
+			c.returnInference.add(c, typ, s.Pos)
+			return false, false
+		}
 		if s.Value == nil {
 			if c.result.ID != "Unit" {
 				c.error(s.Pos, "type", "bare return requires Unit")
@@ -882,33 +892,7 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 	case syntax.KindCall:
 		return c.call(e, expected)
 	case syntax.KindLambda:
-		c.LambdaParameters[e] = nil
-		t := c.signature(e.Params, e.Result)
-		oldScope, oldResult, oldFunction, oldLoops := c.scope, c.result, c.function, c.loops
-		c.scope = newScope(oldScope)
-		c.result = t.Result
-		c.function = c.serial + 1
-		c.serial++
-		c.loops = 0
-		c.captures[c.function] = map[*Binding]bool{}
-		for index, param := range t.Params {
-			if e.Params[index].Default != nil {
-				c.expression(e.Params[index].Default, param.Type)
-			}
-			c.LambdaParameters[e] = append(c.LambdaParameters[e], c.bind(param.Name, param.Type, false, e.Params[index].Pos))
-		}
-		fall, _ := c.block(e.Body, false)
-		if fall && t.Result.ID != "Unit" && t.Result.ID != "<invalid>" {
-			c.error(e.Pos, "type", "reachable fallthrough in anonymous function")
-		}
-		i.Type = t
-		for b := range c.captures[c.function] {
-			i.Captures = append(i.Captures, b)
-			if oldFunction != b.Function && c.captures[oldFunction] != nil {
-				c.captures[oldFunction][b] = true
-			}
-		}
-		c.scope, c.result, c.function, c.loops = oldScope, oldResult, oldFunction, oldLoops
+		return c.callback(e, expected)
 	case syntax.KindList:
 		if s := c.names["List"]; s == nil || s != standardSymbols["List"] {
 			c.error(e.Pos, "resolution", "list literal requires the canonical List import")
@@ -1132,6 +1116,16 @@ func (c *checker) findCase(name string, pos syntax.Position) (*Type, Case) {
 	return found, cs
 }
 func (c *checker) contextual(e *syntax.Expression) bool {
+	if e.Kind == syntax.KindLambda {
+		if e.Result == nil {
+			return true
+		}
+		for _, param := range e.Params {
+			if param.Type == nil {
+				return true
+			}
+		}
+	}
 	if e.Kind == syntax.KindList || e.Kind == syntax.KindMap {
 		if len(e.Elements) == 0 {
 			return true

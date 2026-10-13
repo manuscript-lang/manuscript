@@ -14,7 +14,7 @@ The following continues the `discount` and `DiscountError` declarations in [expe
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
     let value = try discount(price: price, percent: percent)
-    return ok(value: "Discounted price: {value}")
+    return ok("Discounted price: {value}")
 ```
 
 ## Success and failure paths

@@ -34,7 +34,7 @@ type ReadError:
     retryable: Bool
 
 fn failed_read() -> Result[Unit, ReadError]:
-    return error(cause: ReadError(path: "settings.json", attempt: 2, retryable: true))
+    return error(ReadError(path: "settings.json", attempt: 2, retryable: true))
 
 test "read typed error fields":
     match failed_read():

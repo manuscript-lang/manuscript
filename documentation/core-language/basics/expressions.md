@@ -41,14 +41,14 @@ SharedViewConstruction = "(", SharedContractType, ")", CallArguments ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
 MapLiteral    = "{", [ MapEntry, { ",", MapEntry }, [ "," ] ], "}" ;
 MapEntry      = Expression, ":", Expression ;
-FunctionExpression = "fn", "(", [ FunctionParameters ], ")", "->", Type, Suite ;
+FunctionExpression = "fn", "(", [ CallbackParameters ], ")", [ "->", Type ], FunctionSuite ;
 ```
 
 The common `Comparison` production makes `a < b == c`, `a == b == c`, and `a < b < c` syntax errors. Comparisons with explicit grouping, such as `(a < b) == flag`, are ordinary Bool equality. `not a == b` means `not (a == b)`. `try read() + 1` means `(try read()) + 1`; use `try (expression)` to propagate the result of a larger expression.
 
-A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. Its brackets cannot index a list. Collection/text lookup and updates use declared library operations; neither `values[0]` nor slicing syntax is supported. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Calls may omit labels for single-parameter functions or use matching-name shorthand for multi-parameter functions; the checker enforces [call rules](../functions/declarations-and-calls.md#argument-names). Constructors and explicit contract views such as `Payments(value: card)` require labels.
+A generic application in expression position, such as `identity[Int]` or `Box[String]`, supplies types to a resolved generic declaration. Its brackets cannot index a list. Collection/text lookup and updates use declared library operations; neither `values[0]` nor slicing syntax is supported. The grammar accepts member paths syntactically; resolution determines whether a member is a record field, alternative case, or operation. Calls may omit labels for single-parameter functions or use matching-name shorthand for multi-parameter functions; the checker enforces [call rules](../functions/declarations-and-calls.md#argument-names). Single-payload constructors and explicit contract views may omit their label, as in `Box(3)`, `some(3)`, or `Payments(card)`. Constructors with multiple payload fields require explicit labels.
 
-Contract views use `Payments(value: card)`. [Contract views](../types/contracts.md#explicit-contract-views) require an explicit implementation and exactly one `value` argument. There is no separate sharing refinement or shared constructor.
+Contract views use `Payments(card)` or `Payments(value: card)`. [Contract views](../types/contracts.md#explicit-contract-views) require an explicit implementation and exactly one `value` argument. There is no separate sharing refinement or shared constructor.
 
 ## Operand and result types
 

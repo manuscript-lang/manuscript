@@ -58,10 +58,10 @@ fn observe_entry(key: String, value: Int) -> Unit:
 fn common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
     match result:
         ok(value):
-            return ok(value: value)
+            return ok(value)
 
         error(cause):
-            return error(cause: Error(value: cause))
+            return error(Error(cause))
 
 fn checked_expansion() -> Result[Unit, Error]:
     if not (
@@ -148,12 +148,12 @@ fn checked_expansion() -> Result[Unit, Error]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 test "list methods mutate explicit clones and remain typed":
     let original = [3, 1, 2, 1]
     let alias = original
-    if not (original.at(index: -1) == some(value: 1)):
+    if not (original.at(index: -1) == some(1)):
         return panic(message: "check failed")
 
     let absent: Optional[Int] = none
@@ -161,9 +161,9 @@ test "list methods mutate explicit clones and remain typed":
         return panic(message: "check failed")
     if not (original.at(index: 9223372036854775807) == absent):
         return panic(message: "check failed")
-    if not (original.first() == some(value: 3)):
+    if not (original.first() == some(3)):
         return panic(message: "check failed")
-    if not (original.last() == some(value: 1)):
+    if not (original.last() == some(1)):
         return panic(message: "check failed")
 
     let empty: List[Int] = []
@@ -179,9 +179,9 @@ test "list methods mutate explicit clones and remain typed":
         return panic(message: "check failed")
     if not (not original.contains(value: 8)):
         return panic(message: "check failed")
-    if not (original.index_of(value: 1) == some(value: 1)):
+    if not (original.index_of(value: 1) == some(1)):
         return panic(message: "check failed")
-    if not (original.last_index_of(value: 1) == some(value: 3)):
+    if not (original.last_index_of(value: 1) == some(3)):
         return panic(message: "check failed")
     if not (original.index_of(value: 8) == absent):
         return panic(message: "check failed")
@@ -209,13 +209,13 @@ test "list methods mutate explicit clones and remain typed":
         return panic(message: "check failed")
     if not ([-1, 0, 2, 3].filter(predicate: positive) == [2, 3]):
         return panic(message: "check failed")
-    if not ([-1, 0, 2, 3].find(predicate: positive) == some(value: 2)):
+    if not ([-1, 0, 2, 3].find(predicate: positive) == some(2)):
         return panic(message: "check failed")
-    if not ([-1, 0, 2, 3].find_last(predicate: positive) == some(value: 3)):
+    if not ([-1, 0, 2, 3].find_last(predicate: positive) == some(3)):
         return panic(message: "check failed")
-    if not ([-1, 0, 2, 3].find_index(predicate: positive) == some(value: 2)):
+    if not ([-1, 0, 2, 3].find_index(predicate: positive) == some(2)):
         return panic(message: "check failed")
-    if not ([-1, 0, 2, 3].find_last_index(predicate: positive) == some(value: 3)):
+    if not ([-1, 0, 2, 3].find_last_index(predicate: positive) == some(3)):
         return panic(message: "check failed")
     if not (original.find(predicate: negative) == absent):
         return panic(message: "check failed")
@@ -301,7 +301,7 @@ test "list methods mutate explicit clones and remain typed":
     if not (
         original.entries().at(
             index: 0
-        ) == some(value: ListEntry(index: 0, value: 3))
+        ) == some(ListEntry(index: 0, value: 3))
     ):
         return panic(message: "check failed")
     if not (original.to_set().values() == [3, 1, 2]):
@@ -312,7 +312,7 @@ test "list methods mutate explicit clones and remain typed":
             [],
             [3]
         ].flat_map(
-            transform: fn(value: List[Int]) -> List[Int]: return value
+            transform: fn(value): value
         ) == [1, 2, 3]
     ):
         return panic(message: "check failed")
@@ -413,9 +413,9 @@ test "set algebra and enumeration preserve source values":
         return panic(message: "check failed")
 
 test "string methods use Unicode scalars":
-    if not ("é🙂é".at(index: -1) == some(value: "é")):
+    if not ("é🙂é".at(index: -1) == some("é")):
         return panic(message: "check failed")
-    if not ("é🙂é".scalar_at(index: 1) == some(value: 128578)):
+    if not ("é🙂é".scalar_at(index: 1) == some(128578)):
         return panic(message: "check failed")
 
     let missing: Optional[String] = none
@@ -423,13 +423,13 @@ test "string methods use Unicode scalars":
         return panic(message: "check failed")
     if not ("é".at(index: -9223372036854775808) == missing):
         return panic(message: "check failed")
-    if not ("é🙂é".index_of(value: "🙂") == some(value: 1)):
+    if not ("é🙂é".index_of(value: "🙂") == some(1)):
         return panic(message: "check failed")
-    if not ("é🙂é".last_index_of(value: "é") == some(value: 2)):
+    if not ("é🙂é".last_index_of(value: "é") == some(2)):
         return panic(message: "check failed")
-    if not ("é🙂é".last_index_of(value: "") == some(value: 3)):
+    if not ("é🙂é".last_index_of(value: "") == some(3)):
         return panic(message: "check failed")
-    if not ("é🙂é".index_of(value: "") == some(value: 0)):
+    if not ("é🙂é".index_of(value: "") == some(0)):
         return panic(message: "check failed")
 
     let absent: Optional[Int] = none
@@ -493,36 +493,36 @@ test "string methods use Unicode scalars":
             return panic(message: cause.message())
 
 test "bytes have analogous immutable operations":
-    let data = Bytes(values: [1, 2, 3, 2])
-    if not (data.at(index: -1) == some(value: 2)):
+    let data = Bytes([1, 2, 3, 2])
+    if not (data.at(index: -1) == some(2)):
         return panic(message: "check failed")
 
     let missing: Optional[Int] = none
     if not (data.at(index: -9223372036854775808) == missing):
         return panic(message: "check failed")
-    if not (data.contains(value: Bytes(values: [2, 3]))):
+    if not (data.contains(value: Bytes([2, 3]))):
         return panic(message: "check failed")
-    if not (data.index_of(value: Bytes(values: [2])) == some(value: 1)):
+    if not (data.index_of(value: Bytes([2])) == some(1)):
         return panic(message: "check failed")
-    if not (data.last_index_of(value: Bytes(values: [2])) == some(value: 3)):
+    if not (data.last_index_of(value: Bytes([2])) == some(3)):
         return panic(message: "check failed")
-    if not (data.index_of(value: Bytes(values: [9])) == missing):
+    if not (data.index_of(value: Bytes([9])) == missing):
         return panic(message: "check failed")
-    if not (data.starts_with(value: Bytes(values: [1, 2]))):
+    if not (data.starts_with(value: Bytes([1, 2]))):
         return panic(message: "check failed")
-    if not (data.ends_with(value: Bytes(values: [3, 2]))):
+    if not (data.ends_with(value: Bytes([3, 2]))):
         return panic(message: "check failed")
-    if not (data.slice(start: 1, end: 3) == Bytes(values: [2, 3])):
+    if not (data.slice(start: 1, end: 3) == Bytes([2, 3])):
         return panic(message: "check failed")
-    if not (data.reverse() == Bytes(values: [2, 3, 2, 1])):
+    if not (data.reverse() == Bytes([2, 3, 2, 1])):
         return panic(message: "check failed")
-    if not (data.with_value(index: -1, value: 255) == Bytes(values: [1, 2, 3, 255])):
+    if not (data.with_value(index: -1, value: 255) == Bytes([1, 2, 3, 255])):
         return panic(message: "check failed")
-    if not (Bytes(values: []).is_empty()):
+    if not (Bytes([]).is_empty()):
         return panic(message: "check failed")
     if not (not data.is_empty()):
         return panic(message: "check failed")
-    if not (data == Bytes(values: [1, 2, 3, 2])):
+    if not (data == Bytes([1, 2, 3, 2])):
         return panic(message: "check failed")
     if not (255.to_string(radix: 16) == "ff"):
         return panic(message: "check failed")
@@ -534,8 +534,8 @@ test "bytes have analogous immutable operations":
         return panic(message: "check failed")
 
 test "growth limits and invalid inputs return values":
-    let too_large: Result[String, StringError] = error(cause: StringError.LimitExceeded)
-    let invalid: Result[String, StringError] = error(cause: StringError.InvalidInput)
+    let too_large: Result[String, StringError] = error(StringError.LimitExceeded)
+    let invalid: Result[String, StringError] = error(StringError.InvalidInput)
     if not (
         "x".pad_start(
             target_length: 4,
@@ -569,7 +569,7 @@ test "growth limits and invalid inputs return values":
     ):
         return panic(message: "check failed")
 
-    let unchanged: Result[String, StringError] = ok(value: "x")
+    let unchanged: Result[String, StringError] = ok("x")
     if not (
         "x".pad_end(
             target_length: 4,
@@ -588,10 +588,10 @@ test "growth limits and invalid inputs return values":
         return panic(message: "check failed")
 
     let list_limit: Result[List[Int], CollectionError] = error(
-        cause: CollectionError.LimitExceeded
+        CollectionError.LimitExceeded
     )
     let list_invalid: Result[List[Int], CollectionError] = error(
-        cause: CollectionError.InvalidInput
+        CollectionError.InvalidInput
     )
     if not (
         range(
@@ -720,7 +720,7 @@ fn verify_text_and_numbers() -> Result[Unit, Error]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 test "normalization, empty separators, and precision formatting":
     match verify_text_and_numbers():
@@ -765,11 +765,11 @@ test "normalization, empty separators, and precision formatting":
     if not ("é".concat(values: "🙂") == "é🙂"):
         return panic(message: "check failed")
 
-    let invalid: Result[String, StringError] = error(cause: StringError.InvalidInput)
+    let invalid: Result[String, StringError] = error(StringError.InvalidInput)
     let invalid_number: Result[String, NumberError] = error(
-        cause: NumberError.InvalidInput
+        NumberError.InvalidInput
     )
-    let limit: Result[String, StringError] = error(cause: StringError.LimitExceeded)
+    let limit: Result[String, StringError] = error(StringError.LimitExceeded)
     if not (
         "é".normalize(
             form: "invalid",
@@ -798,21 +798,21 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
         return panic(message: "check failed")
     if not (a.multiply(right: b).to_string(radix: 10) == "60"):
         return panic(message: "check failed")
-    if not ((try common_result(result: a.divide(right: b))).to_int() == some(value: 2)):
+    if not ((try common_result(result: a.divide(right: b))).to_int() == some(2)):
         return panic(message: "check failed")
     if not (
         (
             try common_result(result: a.remainder(right: b))
-        ).to_int() == some(value: 2)
+        ).to_int() == some(2)
     ):
         return panic(message: "check failed")
     if not (a.compare(right: b) == 1):
         return panic(message: "check failed")
-    if not (a.bit_and(right: b).to_int() == some(value: 4)):
+    if not (a.bit_and(right: b).to_int() == some(4)):
         return panic(message: "check failed")
-    if not (a.bit_or(right: b).to_int() == some(value: 13)):
+    if not (a.bit_or(right: b).to_int() == some(13)):
         return panic(message: "check failed")
-    if not (a.bit_xor(right: b).to_int() == some(value: 9)):
+    if not (a.bit_xor(right: b).to_int() == some(9)):
         return panic(message: "check failed")
 
     let pattern = try common_result(result: compile(pattern: "[0-9]+"))
@@ -838,7 +838,7 @@ fn verify_bigint_and_regex() -> Result[Unit, Error]:
     ):
         return panic(message: "check failed")
 
-    return ok(value: unit)
+    return ok(unit)
 
 test "BigInt and Regex share function implementations with methods":
     match verify_bigint_and_regex():

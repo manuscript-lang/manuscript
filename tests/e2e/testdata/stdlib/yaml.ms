@@ -22,7 +22,7 @@ fn limits(
     values: Optional[Int]
 ) -> Optional[YamlLimits]:
     return some(
-        value: YamlLimits(
+        YamlLimits(
             max_bytes: bytes,
             max_depth: depth,
             max_values: values
@@ -34,19 +34,19 @@ test "YAML block mappings sequences exact scalars and core schema":
     let root = entries(
         value(parse(text: text))
     )
-    if root.get("name").unwrap() != YamlValue.StringValue(value: "é🙂"): return panic(
+    if root.get("name").unwrap() != YamlValue.StringValue("é🙂"): return panic(
         "YAML Unicode"
     )
-    if root.get("large").unwrap() != YamlValue.NumberValue(text: "9007199254740993"): return panic(
+    if root.get("large").unwrap() != YamlValue.NumberValue("9007199254740993"): return panic(
         "YAML precision"
     )
-    if root.get("boolean").unwrap() != YamlValue.BoolValue(value: true): return panic(
+    if root.get("boolean").unwrap() != YamlValue.BoolValue(true): return panic(
         "core boolean"
     )
-    if root.get("legacy").unwrap() != YamlValue.StringValue(value: "yes"): return panic(
+    if root.get("legacy").unwrap() != YamlValue.StringValue("yes"): return panic(
         "YAML 1.2 yes"
     )
-    if root.get("date").unwrap() != YamlValue.StringValue(value: "2024-02-29"): return panic(
+    if root.get("date").unwrap() != YamlValue.StringValue("2024-02-29"): return panic(
         "core date"
     )
     if root.get("empty").unwrap() != YamlValue.Null: return panic("empty scalar")
@@ -55,8 +55,8 @@ test "YAML block mappings sequences exact scalars and core schema":
             root.get("values").unwrap()
         ) != [
             YamlValue.Null,
-            YamlValue.BoolValue(value: false),
-            YamlValue.NumberValue(text: "0xFF")
+            YamlValue.BoolValue(false),
+            YamlValue.NumberValue("0xFF")
         ]
     ): return panic("indentless sequence")
 
@@ -65,12 +65,12 @@ test "YAML block mappings sequences exact scalars and core schema":
         people.length() != 2
         or entries(
             people.first().unwrap()
-        ).get("age").unwrap() != YamlValue.NumberValue(text: "37")
+        ).get("age").unwrap() != YamlValue.NumberValue("37")
     ): return panic("compact mappings")
     if (
         items(
             entries(people.last().unwrap()).get("skills").unwrap()
-        ).first().unwrap() != YamlValue.StringValue(value: "compilers")
+        ).first().unwrap() != YamlValue.StringValue("compilers")
     ): return panic("nested compact mapping")
 
 test "YAML flow collections quotes escapes comments and multiline values":
@@ -84,17 +84,17 @@ test "YAML flow collections quotes escapes comments and multiline values":
     if (
         entries(
             root.get("flow").unwrap()
-        ).get("name").unwrap() != YamlValue.StringValue(value: "it's # fine")
+        ).get("name").unwrap() != YamlValue.StringValue("it's # fine")
     ): return panic("single quotes")
     if (
         items(
             entries(root.get("flow").unwrap()).get("list").unwrap()
-        ).last().unwrap() != YamlValue.StringValue(value: "é☺")
+        ).last().unwrap() != YamlValue.StringValue("é☺")
     ): return panic("quoted escape")
     if (
         root.get(
             "url"
-        ).unwrap() != YamlValue.StringValue(value: "https://example.org/#fragment")
+        ).unwrap() != YamlValue.StringValue("https://example.org/#fragment")
     ): return panic("URL comment")
     if items(root.get("multiline").unwrap()).length() != 3: return panic(
         "multiline flow"
@@ -102,9 +102,9 @@ test "YAML flow collections quotes escapes comments and multiline values":
     if (
         root.get(
             "text"
-        ).unwrap() != YamlValue.StringValue(value: "a long continued sentence")
+        ).unwrap() != YamlValue.StringValue("a long continued sentence")
     ): return panic("plain folding")
-    if value(parse(text: "'literal\\n'")) != YamlValue.StringValue(value: "literal\\n"): return panic(
+    if value(parse(text: "'literal\\n'")) != YamlValue.StringValue("literal\\n"): return panic(
         "literal quote"
     )
 
@@ -119,18 +119,18 @@ test "YAML literal folded and chomped block scalars preserve content":
     if (
         root.get(
             "literal"
-        ).unwrap() != YamlValue.StringValue(value: "first # text\nsecond\n")
+        ).unwrap() != YamlValue.StringValue("first # text\nsecond\n")
     ): return panic("literal block")
-    if root.get("folded").unwrap() != YamlValue.StringValue(value: "hello world"): return panic(
+    if root.get("folded").unwrap() != YamlValue.StringValue("hello world"): return panic(
         "folded block"
     )
-    if root.get("keep").unwrap() != YamlValue.StringValue(value: "line\n\n"): return panic(
+    if root.get("keep").unwrap() != YamlValue.StringValue("line\n\n"): return panic(
         "keep chomping"
     )
-    if root.get("explicit").unwrap() != YamlValue.StringValue(value: "indented"): return panic(
+    if root.get("explicit").unwrap() != YamlValue.StringValue("indented"): return panic(
         "explicit indentation"
     )
-    if root.get("tabs").unwrap() != YamlValue.StringValue(value: "\tcontent"): return panic(
+    if root.get("tabs").unwrap() != YamlValue.StringValue("\tcontent"): return panic(
         "tabs in scalar content"
     )
 
@@ -145,10 +145,10 @@ test "YAML anchors aliases merge keys and override precedence":
 
     let config = entries(root.get("config").unwrap())
     if (
-        config.get("retries").unwrap() != YamlValue.NumberValue(text: "5")
-        or config.get("enabled").unwrap() != YamlValue.BoolValue(value: true)
+        config.get("retries").unwrap() != YamlValue.NumberValue("5")
+        or config.get("enabled").unwrap() != YamlValue.BoolValue(true)
     ): return panic("merge override")
-    if root.get("alias").unwrap() != YamlValue.NumberValue(text: "42"): return panic(
+    if root.get("alias").unwrap() != YamlValue.NumberValue("42"): return panic(
         "scalar anchor"
     )
     if root.get("flow_alias").unwrap() != root.get("flow").unwrap(): return panic(
@@ -164,15 +164,15 @@ test "YAML anchors aliases merge keys and override precedence":
     )
     let c = entries(merged.get("c").unwrap())
     if (
-        c.get("x").unwrap() != YamlValue.NumberValue(text: "1")
-        or c.get("y").unwrap() != YamlValue.NumberValue(text: "4")
+        c.get("x").unwrap() != YamlValue.NumberValue("1")
+        or c.get("y").unwrap() != YamlValue.NumberValue("4")
     ): return panic("merge precedence")
 
 test "YAML documents BOM CRLF empty input and version directive":
     let root = value(
         parse(text: "\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n")
     )
-    if entries(root).get("a").unwrap() != YamlValue.NumberValue(text: "1"): return panic(
+    if entries(root).get("a").unwrap() != YamlValue.NumberValue("1"): return panic(
         "document markers"
     )
     if value(parse(text: "# comment\n")) != YamlValue.Null: return panic("empty YAML")
@@ -214,7 +214,7 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
                             or reason == ""
                         ): return panic("YAML diagnostic details")
 
-                        let boundary = Error(value: cause)
+                        let boundary = Error(cause)
                         if not boundary.message().starts_with("YAML "): return panic(
                             "source YAML Error"
                         )
@@ -235,8 +235,8 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
                     _: return panic("expected unsupported feature")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
-    let limited: Result[YamlValue, YamlError] = error(cause: YamlError.LimitExceeded)
-    let invalid: Result[YamlValue, YamlError] = error(cause: YamlError.InvalidInput)
+    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    let invalid: Result[YamlValue, YamlError] = error(YamlError.InvalidInput)
     if (
         parse(
             text: "é",
@@ -295,7 +295,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
                 depth: 1,
                 values: 1
             )
-        ) != parse(text: "", limits: none)
+        ) != parse(text: "")
     ): return panic("empty exact limits")
     if (
         parse(
@@ -339,7 +339,7 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
         "-0",
         "0001"
     ]:
-        if value(parse(text: text)) != YamlValue.NumberValue(text: text): return panic(
+        if value(parse(text: text)) != YamlValue.NumberValue(text): return panic(
             "YAML number treated as string: {text}"
         )
 
@@ -353,6 +353,6 @@ test "YAML exact decimal syntax does not depend on binary64 conversion":
         "it's plain",
         "text [with] punctuation"
     ]:
-        if value(parse(text: text)) != YamlValue.StringValue(value: text): return panic(
+        if value(parse(text: text)) != YamlValue.StringValue(text): return panic(
             "plain scalar resolved incorrectly: {text}"
         )

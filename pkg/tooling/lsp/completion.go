@@ -53,7 +53,10 @@ func callableText(name string, t *checker.Type, variables []*checker.Type, snipp
 		if written > 0 {
 			output.WriteString(", ")
 		}
-		fmt.Fprintf(&output, "%s: ${%d:%s}", p.Name, at, p.Name)
+		if len(t.Params) != 1 {
+			fmt.Fprintf(&output, "%s: ", p.Name)
+		}
+		fmt.Fprintf(&output, "${%d:%s}", at, p.Name)
 		at++
 		written++
 	}

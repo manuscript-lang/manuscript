@@ -31,7 +31,7 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                     ]().with_entry(
                         key: "worker",
                         value: JsonValue.NumberValue(
-                            text: worker.toString()
+                            worker.toString()
                         )
                     )
                     let child = logger.child(bindings)
@@ -52,7 +52,7 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                         ]().with_entry(
                             key: "sequence",
                             value: JsonValue.NumberValue(
-                                text: sequence.toString()
+                                sequence.toString()
                             )
                         )
                         let logged = try child.info(
@@ -60,7 +60,7 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
                             fields: fields
                         )
 
-                    return ok(value: unit)
+                    return ok(unit)
             )
             tasks.append(task)
 
@@ -70,12 +70,12 @@ fn concurrent_records(logger: Logger) -> Result[Unit, Error]:
             let outcome = try task.join()
             let completed = try outcome
 
-    return ok(value: unit)
+    return ok(unit)
 
 fn exercise(mode: String, path: String) -> Result[Unit, Error]:
     let bindings = Map[String, JsonValue]().with_entry(
         key: "service",
-        value: JsonValue.StringValue(value: "api")
+        value: JsonValue.StringValue("api")
     )
 
     if (
@@ -97,7 +97,7 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
 
             let flushed = try logger.flush()
 
-        return ok(value: unit)
+        return ok(unit)
 
     with transport = stdout_transport():
         if mode == "limit":
@@ -115,7 +115,7 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
             if mode == "invalid":
                 let fields = Map[String, JsonValue]().with_entry(
                     key: "bad",
-                    value: JsonValue.NumberValue(text: "NaN")
+                    value: JsonValue.NumberValue("NaN")
                 )
                 let logged = try logger.info(
                     message: "invalid",
@@ -135,7 +135,7 @@ fn exercise(mode: String, path: String) -> Result[Unit, Error]:
         )
         let logged = try logger.info(message: "still open")
 
-    return ok(value: unit)
+    return ok(unit)
 
 export fn main() -> Int:
     let args = arguments()

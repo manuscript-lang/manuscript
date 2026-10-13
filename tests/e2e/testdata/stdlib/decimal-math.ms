@@ -22,7 +22,7 @@ import panic from "@std/faults.ms"
 test "decimal arithmetic is exact and conversion truncates":
     if 0.1d + 0.2d != 0.3d: return panic("decimal precision")
     if 1.00d != 1d: return panic("decimal scale equality")
-    if (-1.9d).truncate_to_int() != some(value: -1): return panic("decimal truncation")
+    if (-1.9d).truncate_to_int() != some(-1): return panic("decimal truncation")
     if 2d.to_float() != 2.0: return panic("decimal float conversion")
     if 123.to_decimal() != 123d: return panic("integer decimal conversion")
 

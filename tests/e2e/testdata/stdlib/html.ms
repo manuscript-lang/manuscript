@@ -78,12 +78,12 @@ test "HTML parses nested elements attributes entities and comments":
                 ]
             ): return panic("HTML attributes")
             if (
-                items.at(0).unwrap() != HtmlNode.Text(text: "Hello ")
+                items.at(0).unwrap() != HtmlNode.Text("Hello ")
                 or items.at(
                     2
-                ).unwrap() != HtmlNode.Text(text: " <world>")
+                ).unwrap() != HtmlNode.Text(" <world>")
             ): return panic("HTML text ordering or entities")
-            if items.at(3).unwrap() != HtmlNode.Comment(text: "note"): return panic(
+            if items.at(3).unwrap() != HtmlNode.Comment("note"): return panic(
                 "HTML comment"
             )
             if (
@@ -140,7 +140,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
             system_id: "system"
         )
     ): return panic("doctype identifiers")
-    if nodes.at(1).unwrap() != HtmlNode.Comment(text: "before"): return panic(
+    if nodes.at(1).unwrap() != HtmlNode.Comment("before"): return panic(
         "document comment"
     )
 
@@ -172,7 +172,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     )
 
 test "HTML honors optional byte depth and node limits":
-    let empty = value(parse(text: "", limits: none))
+    let empty = value(parse(text: ""))
     if (
         value(
             parse(
@@ -194,7 +194,7 @@ test "HTML honors optional byte depth and node limits":
         ) != value(parse(text: "é"))
     ): return panic("omitted HTML limits")
 
-    let limited: Result[HtmlNode, HtmlError] = error(cause: HtmlError.LimitExceeded)
+    let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
     if (
         parse(
             text: "é",
@@ -214,7 +214,7 @@ test "HTML honors optional byte depth and node limits":
         ) != limited
     ): return panic("implicit node count limit")
 
-    let invalid: Result[HtmlNode, HtmlError] = error(cause: HtmlError.InvalidInput)
+    let invalid: Result[HtmlNode, HtmlError] = error(HtmlError.InvalidInput)
     if (
         parse(
             text: "",

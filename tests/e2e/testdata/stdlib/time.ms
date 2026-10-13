@@ -25,12 +25,12 @@ test "timestamps preserve nanoseconds and shift across epoch":
     if value(later.shift((-2).seconds)) != epoch: return panic("negative shift")
 
 test "time rejects invalid timestamps and out of range nanoseconds":
-    let invalid: Result[Timestamp, TimeError] = error(cause: TimeError.InvalidData)
+    let invalid: Result[Timestamp, TimeError] = error(TimeError.InvalidData)
     if parse_timestamp("2024-02-30T00:00:00Z") != invalid: return panic(
         "invalid calendar date"
     )
 
-    let out_of_range: Result[Timestamp, TimeError] = error(cause: TimeError.OutOfRange)
+    let out_of_range: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
     if timestamp(seconds: 0, nanoseconds: 1000000000) != out_of_range: return panic(
         "nanosecond range"
     )
