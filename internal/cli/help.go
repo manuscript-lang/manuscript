@@ -54,7 +54,7 @@ func commandHelp(command string) (string, bool) {
 	switch command {
 	case "check":
 		usage = "<file.ms|ms.toml> [--json]"
-		description = "Parse, resolve imports, and type-check without executing source.\nA project also checks its application entry signature."
+		description = "Parse, resolve imports, and type-check without executing source.\nA project checks all source modules, discovered tests, and its entry signature."
 		options = "  --json  Emit versioned JSON diagnostics instead of terminal messages\n"
 		examples = "ms check main.ms\n  ms check ms.toml --json"
 	case "lint":

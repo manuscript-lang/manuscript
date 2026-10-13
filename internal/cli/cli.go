@@ -133,6 +133,7 @@ func Run(args []string) int {
 	switch command {
 	case "check", "lint", "inspect", "diagram", "lock":
 		options.AnalyzeOnly = true
+		options.ProjectSources = command == "check"
 		options.Entry = command != "lint" && filepath.Base(filename) == "ms.toml"
 	case "emit": // Only source emission needs lowering without an entry launcher.
 	case "build", "run", "debug", "profile":
@@ -289,7 +290,17 @@ func Run(args []string) int {
 		}
 		return writeOutput(output, []byte(source))
 	case "check":
-		fmt.Println("Checked", filename)
+		if result.ProjectRoot != "" {
+			count := 0
+			for _, module := range result.Program.Modules {
+				if !strings.HasPrefix(module.File, "@std/") {
+					count++
+				}
+			}
+			fmt.Printf("Checked %s (%d %s)\n", filename, count, plural(count, "module", "modules"))
+		} else {
+			fmt.Println("Checked", filename)
+		}
 		return 0
 	case "emit":
 		source, err := compiler.Standalone(result.Source)
