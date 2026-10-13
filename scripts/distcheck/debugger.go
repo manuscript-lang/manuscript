@@ -77,7 +77,7 @@ func checkDebugger(cli, directory string, environment []string, run func(string,
 	return nil
 }
 
-func checkDAP(cli, directory string, environment []string, binary, source string, disconnect bool) error {
+func checkDAP(cli, directory string, environment []string, binary, source string, disconnect bool) (resultErr error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, cli, "dap")
@@ -98,16 +98,23 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 		return err
 	}
 	waited := false
+	stage := "startup"
+	var waitErr error
+	var transcript strings.Builder
 	defer func() {
 		if !waited {
 			_ = conn.Close()
-			_ = cmd.Wait()
+			waitErr = cmd.Wait()
+		}
+		if resultErr != nil {
+			resultErr = fmt.Errorf("DAP %s (disconnect=%v): %w; process=%v; deadline=%v\nstderr: %s\nprotocol: %s", stage, disconnect, resultErr, waitErr, ctx.Err(), &stderr, &transcript)
 		}
 	}()
 	defer conn.Close()
 	reader := bufio.NewReader(stdout)
 	seq := 0
 	request := func(command string, args any) error {
+		stage = command
 		seq++
 		data, err := json.Marshal(map[string]any{"seq": seq, "type": "request", "command": command, "arguments": args})
 		if err != nil {
@@ -123,11 +130,14 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 			if err != nil {
 				return nil, err
 			}
+			if transcript.Len() < 8192 {
+				fmt.Fprintf(&transcript, "%+v\n", message)
+			}
 			if p, ok := message.(*dap.ProcessEvent); ok {
 				pid = p.Body.SystemProcessId
 			}
 			if r, ok := message.(dap.ResponseMessage); ok && !r.GetResponse().Success {
-				return nil, fmt.Errorf("DAP %s failed: %s", r.GetResponse().Command, r.GetResponse().Message)
+				return nil, fmt.Errorf("DAP %s failed: %s", r.GetResponse().Command, fmt.Sprintf("%+v", message))
 			}
 			if match(message) {
 				return message, nil
@@ -235,6 +245,7 @@ func checkDAP(cli, directory string, environment []string, binary, source string
 		_ = conn.Close()
 	}
 	err = cmd.Wait()
+	waitErr = err
 	waited = true
 	if err != nil {
 		return fmt.Errorf("DAP shutdown (disconnect=%v): %w\n%s", disconnect, err, &stderr)
