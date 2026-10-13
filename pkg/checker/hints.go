@@ -247,6 +247,9 @@ func (c *checker) exportMessage(item *syntax.Import, imports map[*syntax.Import]
 		}
 	} else {
 		for name, symbol := range c.Symbols[imports[item]] {
+			if symbol.Module != imports[item] || symbol.Decl == nil {
+				continue
+			}
 			if symbol.Export {
 				exports = append(exports, name)
 			} else if name == item.Name {
@@ -258,9 +261,9 @@ func (c *checker) exportMessage(item *syntax.Import, imports map[*syntax.Import]
 		return message + hint
 	}
 	if len(exports) == 0 {
-		return message + "; " + item.Path + " exports nothing"
+		return message + "; " + item.Path + " exports nothing; namespace imports are unsupported, so import individual exported declarations"
 	}
-	return message + "; " + item.Path + " exports: " + list(exports, 12)
+	return message + "; " + item.Path + " exports: " + list(exports, 12) + "; namespace imports are unsupported, so import individual exports with 'import { Name, OtherName } from \"" + item.Path + "\"'"
 }
 
 // signatureText renders "(a: Int, b: String) -> Bool" for a function type.

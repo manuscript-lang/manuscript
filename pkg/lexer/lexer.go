@@ -11,6 +11,7 @@ import (
 type Token struct {
 	Kind, Text string
 	Pos        syntax.Position
+	End        syntax.Position // Exclusive original-source position.
 }
 
 const (
@@ -55,7 +56,7 @@ func (s *scanner) failAt(p syntax.Position, message string) {
 	panic(syntax.Diagnostic{Position: p, Phase: "parse", Message: message})
 }
 func (s *scanner) emit(kind, text string, p syntax.Position) {
-	s.tokens = append(s.tokens, Token{kind, text, p})
+	s.tokens = append(s.tokens, Token{Kind: kind, Text: text, Pos: p, End: s.pos()})
 }
 func (s *scanner) advance() byte {
 	b := s.source[s.offset]

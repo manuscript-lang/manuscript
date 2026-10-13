@@ -67,3 +67,35 @@ func TestDiagnosticCodeIgnoresFix(t *testing.T) {
 		t.Fatalf("code %s", d.Code())
 	}
 }
+
+func TestWrongImportListsOnlyDeclaredExports(t *testing.T) {
+	for _, tc := range []struct{ name, declarations, want string }{
+		{"money", "export type MoneyError:\n    case Invalid\nexport fn parse_cents() -> Int: 0\nexport fn format_cents() -> String: \"0\"\n", "./money.ms exports: MoneyError, format_cents, parse_cents; namespace imports are unsupported"},
+		{"missing", "fn hidden() -> Int: 0\n", "./money.ms exports nothing; namespace imports are unsupported"},
+		{"hidden", "fn hidden() -> Int: 0\n", "not exported, so write 'export'"},
+		{"parse_cent", "export fn parse_cents() -> Int: 0\n", "did you mean 'parse_cents'?"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			money, err := parser.Parse("money.ms", "import panic from \"@std/faults.ms\"\n"+tc.declarations)
+			if err != nil {
+				t.Fatal(err)
+			}
+			source := "import " + tc.name + " from \"./money.ms\"\n"
+			main, err := parser.Parse("main.ms", source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p := checker.Check([]*syntax.Module{money, main}, map[*syntax.Import]string{main.Imports[0]: money.File})
+			if len(p.Diagnostics) != 1 {
+				t.Fatal(p.Diagnostics)
+			}
+			d := p.Diagnostics[0]
+			if !strings.Contains(d.Message, tc.want) || strings.Contains(d.Message, "Bool") || strings.Contains(d.Message, "panic") || d.Fix != nil || d.Code() != "MS2002" {
+				t.Fatalf("incorrect exports/fix/code: %+v", d)
+			}
+			if d.End == nil || source[d.Position.Offset:d.End.Offset] != tc.name {
+				t.Fatalf("incorrect import range: %+v", d)
+			}
+		})
+	}
+}

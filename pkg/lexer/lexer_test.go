@@ -74,3 +74,22 @@ func TestLexicalBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestTokenEndPositionsUseOriginalBytes(t *testing.T) {
+	source := "fn f() -> String:\r\n    return \"é\" # keep\r\n"
+	tokens, err := lexer.Lex("ends.ms", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, token := range tokens {
+		if token.End.File != token.Pos.File || token.End.Offset < token.Pos.Offset || token.End.Offset > len(source) {
+			t.Fatalf("invalid token range: %+v", token)
+		}
+		if token.Text != "" && source[token.Pos.Offset:token.End.Offset] != token.Text {
+			t.Fatalf("incorrect original range: %+v", token)
+		}
+		if token.Kind == lexer.String && (token.End.Column != token.Pos.Column+len(token.Text) || token.End.Line != 2) {
+			t.Fatalf("incorrect UTF-8 end: %+v", token)
+		}
+	}
+}
