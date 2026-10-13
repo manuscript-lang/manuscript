@@ -81,6 +81,15 @@ Verified: optimization uses a separate lowering view of checked source. Rewritin
 
 Verified: Go's test cache does not automatically track source built only by a subprocess. The native end-to-end harness imports the CLI implementation as a test dependency so changing CLI code invalidates its cached result. Evidence: [native harness dependency](../tests/e2e/e2e_test.go). For a final native run after command changes, use `go test -count=1 ./tests/e2e` with the pinned toolchain.
 
+Verified: a payload binder such as `error(NotFound)` can conceal a case name
+without a checking error. Advisory lint needs the checked identity before any
+sibling payload bindings enter scope; the payload's own cases remain matchable
+even when only its producing function was imported. Retain each binder's original
+position and rebase it during partial parsing. Evidence: [checked name evidence](../pkg/checker/pattern_names.go),
+[binding/alias/shadowing regressions](../pkg/tooling/pattern_lint_test.go),
+[recovery positions](../pkg/parser/pattern_positions_test.go), and
+[native binding versus separate payload handling](../tests/e2e/testdata/accept/pattern-binding-capture.ms).
+
 ### Package moves must preserve build identity and publication inputs
 
 Verified: project manifest/import behavior now lives outside `compiler`. Its embedded implementation sources participate in native pins so future resolver changes invalidate build identity. Authored guides live in `documentation/`, site inputs in `website/`, and Pages output is built into ignored `.artifacts/book/` and deployed as an Actions artifact. Hugo mounts the shared root version and extension grammar as assets; parent-relative `readFile` calls did not resolve those inputs after the move.

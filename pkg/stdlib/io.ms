@@ -7,7 +7,8 @@ export interface File:
     fn close() -> Unit
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 
-# Opens file resources using the current host's default filesystem.
+# Opens read-only file resources using the current host's default filesystem.
+# Native open failures (including missing paths and permission denial) become IoError.Unavailable.
 export interface Files:
     fn open(path: String) -> Result[File, IoError]
 
@@ -25,10 +26,13 @@ export interface ReadStream:
     fn close() -> Unit
     fn read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 
-# A writable byte stream. Flush before relying on buffered data being delivered.
+# A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
+# Buffering/flush depends on the implementation: native stdout/stderr are unbuffered (flush is a no-op),
+# while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
 export interface WriteStream:
     fn close() -> Unit
     fn flush() -> Result[Unit, IoError]
+    # Accepts the complete input on success; a source implementation may buffer until flush.
     fn write(data: Bytes) -> Result[Unit, IoError]
 
 # Copies bytes until end of input or the supplied byte limit; returns bytes copied.
