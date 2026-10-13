@@ -88,6 +88,8 @@ fn repeated() -> Result[String, StringError]:
 
 Supplied negative bounds are invalid. Zero retains each operation's declared meaning: an output budget allows no output, a zero timeout expires immediately, split's zero limit returns no parts, a zero `max_digits` or `max_rows` budget admits no digits or rows (`LimitExceeded` when input exceeds it), a negative limit on `split` or `replace` faults with a message naming the operation and parameter, and a queue's supplied capacity must be positive. Limits are validated even when another limit is omitted.
 
+Invalid supplied Scheduler `limit`, `history_limit`, or `drain`, TaskGroup `timeout`, and `sleep` duration values fault with the operation, parameter, original value, and valid range. Duration arguments are reported in nanoseconds. Omitted/`none` bounds retain their existing meaning; zero is allowed for history, drain, timeout, and sleep, while a supplied Scheduler admission limit must be positive.
+
 A chunk read's `max_bytes` requests a chunk size; it does not cap the total stream. Omitted reads use a 64 KiB buffer, and datagrams use their protocol maximum. Signal and file-watcher buffers retain finite default buffer sizes, rather than imposing a total event budget. Protocol restrictions, numeric representability, filesystem authority, and execution cancellation still apply.
 
 Socket reads/writes, datagram send/receive, and listener accept have one operation each with an optional `timeout`. The caller's execution cancellation remains effective with no local timeout. HTTP request/body limits and server admission are likewise optional; omitted server admission does not allocate a fixed-capacity queue.
