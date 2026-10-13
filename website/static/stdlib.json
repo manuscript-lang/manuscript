@@ -417,6 +417,7 @@
             "last_index_of: fn(value: Bytes)-\u003eOptional[Int]",
             "length: fn()-\u003eInt",
             "reverse: fn()-\u003eBytes",
+            "reversed: fn()-\u003eBytes",
             "slice: fn(start: Int, end: Int)-\u003eBytes",
             "starts_with: fn(value: Bytes)-\u003eBool",
             "to_text: fn()-\u003eOptional[String]",
@@ -482,7 +483,13 @@
               "name": "reverse",
               "kind": "operation",
               "signature": "fn reverse() -\u003e Bytes:",
-              "doc": "Returns reversed bytes without changing the receiver."
+              "doc": "Compatibility spelling for reversed; returns a copy without changing the receiver."
+            },
+            {
+              "name": "reversed",
+              "kind": "operation",
+              "signature": "fn reversed() -\u003e Bytes:",
+              "doc": "Returns a reversed copy without changing the receiver."
             },
             {
               "name": "slice",
@@ -672,7 +679,11 @@
             "length: fn()-\u003eInt",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
             "prepend: fn(value: T)-\u003eList[T]",
+            "remove: fn(index: Int)-\u003eList[T]",
             "reverse: fn()-\u003eList[T]",
+            "reverse_in_place: fn()-\u003eList[T]",
+            "reversed: fn()-\u003eList[T]",
+            "set: fn(index: Int, value: T)-\u003eList[T]",
             "slice: fn(start: Int, end: Int)-\u003eList[T]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
@@ -857,10 +868,34 @@
               "doc": ""
             },
             {
+              "name": "remove",
+              "kind": "operation",
+              "signature": "fn remove(index: Int) -\u003e List[T]:",
+              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as without."
+            },
+            {
               "name": "reverse",
               "kind": "operation",
               "signature": "fn reverse() -\u003e List[T]:",
-              "doc": ""
+              "doc": "Compatibility spelling for reverse_in_place; mutates and returns this list."
+            },
+            {
+              "name": "reverse_in_place",
+              "kind": "operation",
+              "signature": "fn reverse_in_place() -\u003e List[T]:",
+              "doc": "Reverses this list in place and returns the same instance."
+            },
+            {
+              "name": "reversed",
+              "kind": "operation",
+              "signature": "fn reversed() -\u003e List[T]:",
+              "doc": "Returns a reversed shallow copy with independent outer storage; nested references remain shared."
+            },
+            {
+              "name": "set",
+              "kind": "operation",
+              "signature": "fn set(index: Int, value: T) -\u003e List[T]:",
+              "doc": "Replaces an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as with_value."
             },
             {
               "name": "slice",
@@ -890,7 +925,7 @@
               "name": "with_value",
               "kind": "operation",
               "signature": "fn with_value(index: Int, value: T) -\u003e List[T]:",
-              "doc": ""
+              "doc": "Compatibility spelling for set; mutates and returns this list."
             },
             {
               "name": "with_values",
@@ -902,7 +937,7 @@
               "name": "without",
               "kind": "operation",
               "signature": "fn without(index: Int) -\u003e List[T]:",
-              "doc": ""
+              "doc": "Compatibility spelling for remove; mutates and returns this list."
             }
           ]
         },
@@ -1221,6 +1256,7 @@
             "T: Hashable"
           ],
           "operations": [
+            "add: fn(value: T)-\u003eSet[T]",
             "clear: fn()-\u003eSet[T]",
             "clone: fn()-\u003eSet[T]",
             "contains: fn(value: T)-\u003eBool",
@@ -1240,6 +1276,7 @@
             "is_superset_of: fn(right: Set[T])-\u003eBool",
             "length: fn()-\u003eInt",
             "map[U: Hashable]: fn(transform: fn(value: T)-\u003eU)-\u003eSet[U]",
+            "remove: fn(value: T)-\u003eSet[T]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "symmetric_difference: fn(right: Set[T])-\u003eSet[T]",
             "union: fn(right: Set[T])-\u003eSet[T]",
@@ -1248,6 +1285,12 @@
             "without: fn(value: T)-\u003eSet[T]"
           ],
           "members": [
+            {
+              "name": "add",
+              "kind": "operation",
+              "signature": "fn add(value: T) -\u003e Set[T]:",
+              "doc": "Adds a value in place and returns this set; an equal value retains its original payload and position."
+            },
             {
               "name": "clear",
               "kind": "operation",
@@ -1363,6 +1406,12 @@
               "doc": "Transforms a snapshot into a fresh set, retaining the first equal result."
             },
             {
+              "name": "remove",
+              "kind": "operation",
+              "signature": "fn remove(value: T) -\u003e Set[T]:",
+              "doc": "Removes an equal value in place and returns this set; an absent value leaves it unchanged."
+            },
+            {
               "name": "some",
               "kind": "operation",
               "signature": "fn some(predicate: fn(value: T) -\u003e Bool) -\u003e Bool:",
@@ -1390,13 +1439,13 @@
               "name": "with_value",
               "kind": "operation",
               "signature": "fn with_value(value: T) -\u003e Set[T]:",
-              "doc": ""
+              "doc": "Compatibility spelling for add; mutates and returns this set."
             },
             {
               "name": "without",
               "kind": "operation",
               "signature": "fn without(value: T) -\u003e Set[T]:",
-              "doc": ""
+              "doc": "Compatibility spelling for remove; mutates and returns this set."
             }
           ]
         },
@@ -6423,7 +6472,8 @@
           "operations": [
             "find_all: fn(text: String, max_matches: Optional[Int] = ...)-\u003eResult[List[String], RegexError]",
             "matches: fn(text: String)-\u003eBool",
-            "replace: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]"
+            "replace: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]",
+            "replace_all: fn(text: String, replacement: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, RegexError]"
           ],
           "members": [
             {
@@ -6442,7 +6492,13 @@
               "name": "replace",
               "kind": "operation",
               "signature": "fn replace(text: String, replacement: String, max_bytes: Optional[Int] = none) -\u003e Result[String, RegexError]:",
-              "doc": ""
+              "doc": "Compatibility spelling for replace_all; replaces every match, with identical limits and errors."
+            },
+            {
+              "name": "replace_all",
+              "kind": "operation",
+              "signature": "fn replace_all(text: String, replacement: String, max_bytes: Optional[Int] = none) -\u003e Result[String, RegexError]:",
+              "doc": "Replaces every nonoverlapping match with literal replacement text (no capture expansion).\nmax_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded."
             }
           ]
         },
@@ -9116,7 +9172,11 @@
             "length: fn()-\u003eInt",
             "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eList[U]",
             "prepend: fn(value: T)-\u003eList[T]",
+            "remove: fn(index: Int)-\u003eList[T]",
             "reverse: fn()-\u003eList[T]",
+            "reverse_in_place: fn()-\u003eList[T]",
+            "reversed: fn()-\u003eList[T]",
+            "set: fn(index: Int, value: T)-\u003eList[T]",
             "slice: fn(start: Int, end: Int)-\u003eList[T]",
             "some: fn(predicate: fn(value: T)-\u003eBool)-\u003eBool",
             "sorted: fn(compare: fn(left: T, right: T)-\u003eInt)-\u003eList[T]",
@@ -9301,10 +9361,34 @@
               "doc": ""
             },
             {
+              "name": "remove",
+              "kind": "operation",
+              "signature": "fn remove(index: Int) -\u003e List[T]:",
+              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as without."
+            },
+            {
               "name": "reverse",
               "kind": "operation",
               "signature": "fn reverse() -\u003e List[T]:",
-              "doc": ""
+              "doc": "Compatibility spelling for reverse_in_place; mutates and returns this list."
+            },
+            {
+              "name": "reverse_in_place",
+              "kind": "operation",
+              "signature": "fn reverse_in_place() -\u003e List[T]:",
+              "doc": "Reverses this list in place and returns the same instance."
+            },
+            {
+              "name": "reversed",
+              "kind": "operation",
+              "signature": "fn reversed() -\u003e List[T]:",
+              "doc": "Returns a reversed shallow copy with independent outer storage; nested references remain shared."
+            },
+            {
+              "name": "set",
+              "kind": "operation",
+              "signature": "fn set(index: Int, value: T) -\u003e List[T]:",
+              "doc": "Replaces an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as with_value."
             },
             {
               "name": "slice",
@@ -9334,7 +9418,7 @@
               "name": "with_value",
               "kind": "operation",
               "signature": "fn with_value(index: Int, value: T) -\u003e List[T]:",
-              "doc": ""
+              "doc": "Compatibility spelling for set; mutates and returns this list."
             },
             {
               "name": "with_values",
@@ -9346,7 +9430,7 @@
               "name": "without",
               "kind": "operation",
               "signature": "fn without(index: Int) -\u003e List[T]:",
-              "doc": ""
+              "doc": "Compatibility spelling for remove; mutates and returns this list."
             }
           ]
         },
@@ -9788,6 +9872,7 @@
             "repeat: fn(count: Int, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
             "replace: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
             "replace_all: fn(old: String, new: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
+            "replace_first: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
             "reverse: fn()-\u003eString",
             "scalar_at: fn(index: Int)-\u003eOptional[Int]",
             "scalar_length: fn()-\u003eInt",
@@ -9916,13 +10001,19 @@
               "name": "replace",
               "kind": "operation",
               "signature": "fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -\u003e String",
-              "doc": "Replaces the first occurrence when the cap is omitted or none; zero changes nothing, negatives fault.\nAn empty old matches at scalar boundaries, and inserted text is not searched again."
+              "doc": "Compatibility spelling for replace_first, including its explicit replacement cap."
             },
             {
               "name": "replace_all",
               "kind": "operation",
               "signature": "fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]",
               "doc": "Replaces every nonoverlapping occurrence; empty old matches at each scalar boundary.\nmax_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion returns LimitExceeded."
+            },
+            {
+              "name": "replace_first",
+              "kind": "operation",
+              "signature": "fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -\u003e String",
+              "doc": "Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.\nAn empty old matches at scalar boundaries, and inserted text is not searched again.\nZero changes nothing; negative caps retain replace's programming fault."
             },
             {
               "name": "reverse",
