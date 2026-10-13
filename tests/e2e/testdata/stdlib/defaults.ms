@@ -38,6 +38,33 @@ fn generic_run[T: Commands](service: T) -> Bytes:
 type Override:
     input: Bytes
 
+test "bound receiver is captured before supplied arguments":
+    let first = Capture(
+        "first".to_bytes(),
+        0
+    )
+    let second = Capture(
+        "second".to_bytes(),
+        0
+    )
+    var selected = first
+    let output = value(
+        selected.run(
+            program: match unit:
+                _:
+                    selected = second
+                    "fake"
+            ,
+            arguments: []
+        )
+    )
+    if (
+        first.calls != 1
+        or second.calls != 0
+        or output.stdout.length() != 0
+    ):
+        return panic("receiver capture order changed")
+
 impl Commands for Override:
     fn run(
         program: String,

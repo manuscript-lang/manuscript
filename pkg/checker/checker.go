@@ -102,6 +102,12 @@ func check(modules []*syntax.Module, imports map[*syntax.Import]string, options 
 		for s, flow := range standardDefaults.Flow {
 			p.Flow[s] = flow
 		}
+		for e, binding := range standardDefaults.Assignments {
+			p.Assignments[e] = binding
+		}
+		for e, scope := range standardDefaults.Scopes {
+			p.Scopes[e] = scope
+		}
 	}
 	c := &checker{scopeMarker: options.ScopeMarker, Program: p, captures: map[int]map[*Binding]bool{}}
 	for _, module := range modules {
