@@ -93,7 +93,15 @@ func normalizeGoNode(value reflect.Value) any {
 		fields := map[string]any{"node": value.Type().Name()}
 		for i := 0; i < value.NumField(); i++ {
 			field := value.Type().Field(i)
-			if field.Type == reflect.TypeOf(token.NoPos) || field.Name == "Comments" || field.Name == "Comment" || field.Name == "Doc" {
+			if field.Type == reflect.TypeOf(token.NoPos) {
+				// These positions also encode syntax: variadic call expansion
+				// and a type alias must not disappear from the semantic oracle.
+				if field.Name == "Ellipsis" || field.Name == "Assign" {
+					fields[field.Name] = value.Field(i).Interface().(token.Pos).IsValid()
+				}
+				continue
+			}
+			if field.Name == "Comments" || field.Name == "Comment" || field.Name == "Doc" {
 				continue
 			}
 			fields[field.Name] = normalizeGoNode(value.Field(i))
@@ -109,6 +117,19 @@ func normalizeGoNode(value reflect.Value) any {
 		return value.Interface()
 	}
 }
+
+func TestGoASTComparisonRetainsSyntaxFlags(t *testing.T) {
+	for _, pair := range [][2]string{
+		{"package p; func f() { g(xs) }", "package p; func f() { g(xs...) }"},
+		{"package p; type A B", "package p; type A = B"},
+		{"package p; var v = a * (b + c)", "package p; var v = a * b + c"},
+	} {
+		if bytes.Equal(normalizedGo(t, pair[0]), normalizedGo(t, pair[1])) {
+			t.Fatalf("semantic oracle equated different programs: %q", pair)
+		}
+	}
+}
+
 func sourceDirectives(source string) []string {
 	var directives []string
 	for _, line := range strings.Split(source, "\n") {
