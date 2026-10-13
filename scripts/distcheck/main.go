@@ -18,7 +18,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fmt.Println("Packaged compilation, source tooling, LSP, and profiles passed using only ms, without system Go or downloads.")
+	fmt.Println("Packaged compilation, source tooling, LSP, terminal/DAP debugging, and profiles passed using only ms, without system Go, dlv, or downloads (macOS uses system debugserver).")
 }
 
 func check() error {
@@ -38,6 +38,12 @@ func check() error {
 		return err
 	}
 	defer os.RemoveAll(directory)
+	// Compiler metadata uses canonical source roots. In particular macOS /var
+	// is a symlink to /private/var; DAP breakpoint paths must use the same identity.
+	directory, err = filepath.EvalSymlinks(directory)
+	if err != nil {
+		return err
+	}
 	// Only the binary is installed: its SDK must come from its own contents.
 	cli := filepath.Join(directory, "ms"+suffix)
 	data, err := os.ReadFile(filepath.Join(distribution, "ms"+suffix))
@@ -68,6 +74,19 @@ func check() error {
 		"CGO_ENABLED": "1", "GOPROXY": "off", "GOSUMDB": "off", "GOFLAGS": "",
 		"GOCACHE": filepath.Join(directory, "cache"), "GOMODCACHE": filepath.Join(directory, "modules"),
 		"MANUSCRIPT_CACHE_DIR": filepath.Join(directory, "user-cache"),
+		"XDG_CONFIG_HOME":      filepath.Join(directory, "config"),
+	}
+	// Delve's macOS backend requires Apple's separately installed debugserver.
+	// Resolve the documented prerequisite before removing host tools from PATH.
+	// This does not install tools, change signing, or weaken the isolation on
+	// Linux/Windows, where only ms and its embedded native backend are needed.
+	if runtime.GOOS == "darwin" {
+		server, err := systemDebugserver()
+		if err != nil {
+			return err
+		}
+		settings["DELVE_DEBUGSERVER_PATH"] = server
+		fmt.Println("macOS debugging uses installed Apple debugserver:", server)
 	}
 	var environment []string
 	for _, entry := range os.Environ() {
@@ -172,6 +191,9 @@ func check() error {
 		} else if data != "Arguments: 2\n" {
 			return fmt.Errorf("unexpected %s output: %q", kind, data)
 		}
+	}
+	if err := checkDebugger(cli, directory, environment, run); err != nil {
+		return err
 	}
 	profile := filepath.Join(directory, "profile")
 	if data, err := run(cli, "profile", manifest, "-o", profile, "--", "first", "second"); err != nil {

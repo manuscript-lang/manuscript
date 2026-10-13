@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Embed Delve in `ms debug` and `ms dap`; VS Code no longer needs `dlv`. CGO remains disabled; macOS still requires Apple debugserver from Xcode command line tools.
+
 - Add `ms run --watch` and `ms test --watch` to rebuild and restart after each saved change.
 - Rebuild edited programs faster: native builds share a content-addressed workspace, replay recorded compile/link commands without the go command, link a lean runtime for programs without network, system, or process imports, publish artifacts by hard link, and link Debug builds with uncompressed DWARF. `ms` loads standard declarations on first use and computes build pins while checking.
 - Accept plain values for standard `Optional[T]` arguments, including `Queue[Int](capacity: 4)`, and use this convention across current call sites and examples.

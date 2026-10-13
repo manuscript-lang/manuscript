@@ -21,7 +21,8 @@ Commands:
   inspect  Emit checked source metadata as JSON
   diagram  Emit a static call graph as Mermaid
   profile  Run with CPU, heap, and trace capture
-  debug    Start an application in Delve
+  debug    Start an application in the embedded Delve debugger
+  dap      Serve one native debugger session on stdin/stdout
   lock     Create or update project build pins
   doc      Generate public API documentation
   stdlib   Write bundled standard library declarations to a directory
@@ -102,9 +103,12 @@ func commandHelp(command string) (string, bool) {
 		description = "Build and run an application with CPU, heap, and execution trace capture.\nThe bundle contains the executable, cpu.pprof, heap.pprof, trace.out,\ninspection.json, and manifest.json. The output directory must not already exist.\nArguments after -- are passed to the application; its exit status is returned."
 		options = "  -o, --output <directory>  Bundle directory (default: ./profile)\n"
 		examples = "ms profile ms.toml\n  ms profile main.ms -o capture -- first second"
+	case "dap":
+		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
+		examples = "ms dap"
 	case "debug":
 		usage = "<file.ms|ms.toml> [-- program arguments]"
-		description = "Build without optimization or inlining, then start Delve with dlv exec.\nRequires Delve (dlv) on PATH. Arguments after -- are passed to the application."
+		description = "Build without optimization or inlining, then start the embedded Delve terminal.\nNo dlv executable is needed. On macOS, Xcode command line tools supply debugserver. Arguments after -- are passed to the application."
 		examples = "ms debug ms.toml\n  ms debug main.ms -- first second"
 	case "lock":
 		usage = "<ms.toml>"
@@ -131,6 +135,9 @@ func commandHelp(command string) (string, bool) {
 		options += buildTypeHelp + "  Default build type: Release\n"
 	case "profile":
 		options += buildTypeHelp + "  Default build type: RelWithDebInfo\n"
+	case "dap":
+		description = "Serve one Delve DAP session on stdin/stdout.\nExits on disconnect, closed input, or termination."
+		examples = "ms dap"
 	case "debug":
 		usage = "<file.ms|ms.toml> [--build-type Debug] [-- program arguments]"
 		options += "  --build-type Debug  Debug is required for Delve\n"

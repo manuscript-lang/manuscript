@@ -62,7 +62,7 @@ payload: | toolchain
 	CGO_ENABLED=0 "$(GO)" run ./scripts/mktoolchain "$(CURDIR)/toolchain/go" .build-payload.tar.gz $$("$(GO)" env GOHOSTOS) $$("$(GO)" env GOHOSTARCH)
 
 build: payload
-	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags bundled_toolchain -o ms ./cmd/ms
+	CGO_ENABLED=0 "$(GO)" build -trimpath -mod=vendor -tags bundled_toolchain,exp.winarm64 -o ms ./cmd/ms
 
 test:
 	"$(GO)" test ./...
@@ -71,7 +71,7 @@ e2e:
 	"$(GO)" test $(E2EFLAGS) ./tests/e2e
 
 race:
-	"$(GO)" test -race ./pkg/runtime ./pkg/checker ./pkg/compiler ./pkg/project ./internal/cli ./pkg/tooling/...
+	"$(GO)" test -race ./internal/debugger ./pkg/runtime ./pkg/checker ./pkg/compiler ./pkg/project ./internal/cli ./pkg/tooling/...
 
 coverage:
 	@mkdir -p .artifacts/coverage

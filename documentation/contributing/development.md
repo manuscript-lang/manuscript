@@ -5,7 +5,7 @@ weight = 2
 
 # Development workflow
 
-Run commands from the repository root. The pinned SDK is selected through `.go-version`; Node uses `.node-version`. Initial setup needs Make, curl, tar with xz support, a SHA-256 utility, and Internet access. Install the pinned Node version and Hugo Extended 0.146.7 or newer for editor and book work. A C compiler is required for race checks; Delve is required for native debugger integration.
+Run commands from the repository root. The pinned SDK is selected through `.go-version`; Node uses `.node-version`. Initial setup needs Make, curl, tar with xz support, a SHA-256 utility, and Internet access. Install the pinned Node version and Hugo Extended 0.146.7 or newer for editor and book work. A C compiler is required for race checks; Delve is embedded for native debugger integration (macOS requires Xcode command line tools for `debugserver`).
 
 ```sh
 make setup
