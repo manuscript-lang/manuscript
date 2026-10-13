@@ -59,5 +59,11 @@ test "negative byte slice faults":
 test "out of range byte slice faults":
     let impossible = Bytes([1, 2, 3]).slice(start: 1, end: 10)
 
+test "negative split limit faults":
+    let impossible = "a,b,c".split(separator: ",", max_parts: -1)
+
+test "negative replace limit faults":
+    let impossible = "aaa".replace(old: "a", new: "b", max_replacements: -1)
+
 test "runner continues with fresh roots after faults":
     emit("fresh root after stdlib faults\n")

@@ -19,6 +19,20 @@ Verify: conditional/default/match registrations retain stacks; a nested source
 closure does not force an unused parent stack; return, propagation, fault and
 cancellation retain cleanup and frame behavior.
 
+### Ancestor lock exclusion is broader than actual wait cycles
+
+Verified: Synchronized checks the holder's work lifetime against the acquiring execution's ancestor chain. It rejects ordinary parent/child overlap even when the parent is not joining. Cancellation does not dissolve a cycle involving shielded cleanup, and must not forcibly release a held guard. The bounded tests cover lock-before-join and join-before-lock, task/group joins, group/execution/scheduler shutdown, and cancellation versus release.
+
+Open: permitting safe ancestor contention requires choosing an actual-cycle contract. Checking only when a child acquires misses an ancestor that joins afterward. A detector must coordinate both sides of the dependency and preserve fixed construction ancestry, failed-task group joins, and shielded cleanup. Independent-lock and cross-service cycles are currently invalid application usage; do not silently broaden that contract.
+
+Verified: another operation can close a guard alias while the admitting operation is blocked joining. A wait-for cycle through the admitting lifetime can therefore be broken by independent alias release. A narrower policy must specify whether such potential cycles fault; do not describe them as proof of a permanent deadlock.
+
+Verified: acquisition delivery must use one cancellation observation for both disposal and unwinding. Two final checks can see active then cancelled, discard the result without disposing it, and strand a Synchronized lock. A cancellation arriving after the successful delivery checkpoint belongs to caller cleanup.
+
+Apply when: changing ancestor lock admission, wait-cycle prevention, task/service joins, or acquisition delivery.
+Evidence: [issue 148](https://github.com/manuscript-lang/manuscript/issues/148), [synchronization contract](../documentation/concurrency/synchronization.md), [bounded regressions](../pkg/runtime/synchronized_ancestor_test.go), [acquisition delivery](../pkg/runtime/values.go), and [undelivered acquisition regression](../pkg/runtime/synchronized_test.go).
+Verify: run the Synchronized and TaskGroup tests repeatedly and with the race detector. Any permissive contract must change the overlapping contention case to wait and return 7 while retaining bounded cycle/cleanup rejection in both orders.
+
 ### Newer stdlib direction needs checkout reconciliation
 
 Decision: the stdlib request calls for Node.js/JavaScript contract parity with consolidated grouping and one spelling per operation; optional limits/timeouts honored when supplied; removal of the speculative resource-pooling API; equality and hashing interfaces; and a priority queue. This supersedes the older derived-only equality preference. The combined scheduling service is `Scheduler`, with one lifecycle for immediate and timed work.
@@ -121,6 +135,14 @@ Apply when: changing CSV adapters or relying on a host codec's round-trip behavi
 Evidence: [CSV implementation](../pkg/runtime/library_formats.go), [called CSV regressions](../tests/e2e/testdata/stdlib/csv.ms), and [CSV contract](../documentation/standard-library/formats.md#csv-behavior).
 Verify: round-trip consecutive single empty fields with LF/CRLF and alternate delimiters; check distinct empty-row output and exact byte, row, and cell budgets.
 
+### Native transformations need output implementation evidence
+
+Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map deduplicates output elements, whose scope can differ from the input element's scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep callback membership snapshots at the native invocation boundary and payload references shallow.
+
+Apply when: adding native transformations with output bounds or changing receiver specialization.
+Evidence: [receiver lowering](../pkg/compiler/lower_collections.go), [native dispatch](../pkg/runtime/collections.go), [cross-module output evidence](../tests/e2e/testdata/projects/core_parity/main.ms), and [callback mutation conformance](../tests/e2e/testdata/stdlib/core-parity.ms).
+Verify: a generic input forwarded from another module still maps to a set deduplicated by the defining output module's equality; two modules can select different implementations for the same type. A bound specialized method retains its defining module, and callback removals or clearing do not alter the traversal's original membership.
+
 ### Typed task handles replace heterogeneous aggregation
 
 Decision: the user chose TaskGroup and Task[T] over the compiler-only heterogeneous aggregation binding because ordinary generic declarations are simpler to reason about and expose usable source signatures to tooling. Group join returns Result[Unit, ExecutionError]; each task join preserves its own T. Remove the old binding and its pack machinery rather than adding a compatibility alias.
@@ -128,3 +150,11 @@ Decision: the user chose TaskGroup and Task[T] over the compiler-only heterogene
 Apply when: changing joined work, standard task declarations, result inference, or editor signatures.
 Evidence: the user's direction in this implementation chat; [task declarations](../pkg/stdlib/tasks.ms); [task group contract](../documentation/concurrency/task-groups.md); [joining](../documentation/concurrency/joining.md).
 Verify: native heterogeneous-handle and cached-result fixtures, cancellation/close races, self-join rejection, ordinary source navigation/signatures, and generated reference freshness.
+
+### YAML folding must retain physical blank lines until decoding
+
+Verified: stripping continuation lines before joining loses paragraph breaks and can misclassify comment markers inside an open quote. Quoted and plain folding remove the first break before empty lines; folded blocks do so only between ordinary lines, preserving breaks around more-indented content. Chomping also needs to know whether the final physical line had a terminator.
+
+Apply when: changing YAML scalar gathering, comment removal, whitespace handling, folding, or chomping.
+Evidence: [YAML parser](../pkg/stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../documentation/standard-library/formats.md#yaml-behavior), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
+Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization.

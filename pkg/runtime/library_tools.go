@@ -101,7 +101,8 @@ func init() {
 		if len(s) == 0 {
 			return libraryOK(r, "")
 		}
-		if count > max/int64(len(s)) || count > int64(^uint(0)>>1) {
+		max = min(max, nativeMaxBytes)
+		if count > max/int64(len(s)) {
 			return libraryError(r, "LimitExceeded", "")
 		}
 		return libraryOK(r, strings.Repeat(s, int(count)))

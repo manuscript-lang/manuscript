@@ -29,7 +29,7 @@ interface StringOperations:
     fn contains(text: String) -> Bool
     # Tests whether the receiver ends with this exact suffix.
     fn ends_with(suffix: String) -> Bool
-    # Returns lowercased text.
+    # Returns locale-independent full Unicode lowercase mapping; the scalar length can change.
     fn lower() -> String
     # Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
     fn repeat(
@@ -57,7 +57,7 @@ interface StringOperations:
     fn starts_with(prefix: String) -> Bool
     # Removes Unicode whitespace at both ends; see the exact whitespace set in the text guide.
     fn trim() -> String
-    # Returns uppercased text.
+    # Returns locale-independent full Unicode uppercase mapping; the scalar length can change.
     fn upper() -> String
     # Returns a one-scalar String; negative indexes are relative to the end, and invalid indexes return none.
     fn at(index: Int) -> Optional[String]

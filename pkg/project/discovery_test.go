@@ -32,3 +32,23 @@ func TestDiscoveryReportsTraversalErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestOverlayDiscoveryUsesSourceAndTestExclusions(t *testing.T) {
+	p := fixture(t, manifest)
+	overlay := map[string]string{}
+	for _, name := range []string{"src/new.ms", "tests/new_test.ms", "src/.hidden/new.ms", "src/vendor/new.ms", "src/node_modules/new.ms", "scratch/new.ms", ".hidden/new_test.ms"} {
+		overlay[filepath.Join(p.Root, name)] = ""
+	}
+	files, err := project.DiscoverModulesWithOverlay(p, true, overlay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 4 {
+		t.Fatalf("overlay exclusions lost: %v", files)
+	}
+	for i, file := range files {
+		if i > 0 && files[i-1] >= file {
+			t.Fatal("discovery is not sorted:", files)
+		}
+	}
+}

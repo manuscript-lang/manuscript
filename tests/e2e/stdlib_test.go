@@ -79,6 +79,8 @@ func TestStandardLibraryFaults(t *testing.T) {
 		"negative list slice faults":      "invalid half-open slice bounds; need 0 <= start <= end <= 4, found start -2 and end 4",
 		"negative byte slice faults":      "invalid half-open slice bounds; need 0 <= start <= end <= 3, found start -1 and end 3",
 		"out of range byte slice faults":  "invalid half-open slice bounds; need 0 <= start <= end <= 3, found start 1 and end 10",
+		"negative split limit faults":     "split: max_parts must be nonnegative, found -1",
+		"negative replace limit faults":   "replace: max_replacements must be nonnegative, found -1",
 	}
 	for _, declaration := range module.Declarations {
 		if declaration.Kind != syntax.KindTest {
@@ -100,7 +102,7 @@ func TestStandardLibraryFaults(t *testing.T) {
 			t.Errorf("missing %s%s:\n%s", prefix, declaration.Name, output)
 		}
 	}
-	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "11 tests, 10 failed"} {
+	for _, expected := range []string{"fault cleanup completed\n", "fresh root after stdlib faults\n", "13 tests, 12 failed"} {
 		if !strings.Contains(output, expected) {
 			t.Errorf("missing transcript %q:\n%s", expected, output)
 		}

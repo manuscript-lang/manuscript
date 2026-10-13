@@ -57,7 +57,7 @@ func TestMalformedManifests(t *testing.T) {
 		{"duplicate table", manifest + "[project]\n", "duplicate manifest table"},
 		{"duplicate key", manifest + "name = \"other\"\n", "duplicate manifest key"},
 		{"unknown key", manifest + "version = \"1\"\n", "unknown project key"},
-		{"missing required key", strings.Replace(manifest, "name = \"sample\"\n", "", 1), "requires name, source, and entry"},
+		{"missing required key", strings.Replace(manifest, "name = \"sample\"\n", "", 1), "requires name and source"},
 		{"unquoted value", strings.Replace(manifest, "\"sample\"", "sample", 1), "double-quoted"},
 		{"raw Go literal", strings.Replace(manifest, "\"sample\"", "`sample`", 1), "double-quoted"},
 		{"broken quote", strings.Replace(manifest, "\"sample\"", "\"sample", 1), "double-quoted"},
@@ -68,12 +68,12 @@ func TestMalformedManifests(t *testing.T) {
 		{"entry is directory", strings.Replace(manifest, "src/main.ms", "src/directory.ms", 1), "regular file"},
 		{"reserved alias", manifest + "[aliases]\n\"@std\" = \"src\"\n", "invalid or reserved alias"},
 		{"invalid alias", manifest + "[aliases]\n\"@2bad\" = \"src\"\n", "invalid or reserved alias"},
-		{"alias chaining", manifest + "[aliases]\n\"@one\" = \"@two\"\n", "invalid or reserved alias"},
+		{"alias chaining", manifest + "[aliases]\n\"@one\" = \"@two\"\n", "invalid alias target"},
 		{"duplicate alias", manifest + "[aliases]\n\"@one\" = \"src\"\n\"@one\" = \"src\"\n", "duplicate manifest key"},
-		{"unterminated quoted key", "[project]\n\"nam = \"x\"\n", "ms.toml:2: invalid manifest assignment"},
-		{"unterminated quoted key line", "[project]\n\"nam\n", "ms.toml:2: unterminated quoted key"},
-		{"NUL in value", strings.Replace(manifest, "src/main.ms", "src/ma\\u0000in.ms", 1), "ms.toml:4: manifest value for entry contains a NUL"},
-		{"line too long", manifest + "# " + strings.Repeat("x", 70000) + "\n", "ms.toml:5: line too long"},
+		{"unterminated quoted key", "[project]\n\"nam = \"x\"\n", "ms.toml:2:1: invalid manifest assignment"},
+		{"unterminated quoted key line", "[project]\n\"nam\n", "ms.toml:2:1: unterminated quoted key"},
+		{"NUL in value", strings.Replace(manifest, "src/main.ms", "src/ma\\u0000in.ms", 1), "ms.toml:4:9: manifest value for entry contains a NUL"},
+		{"line too long", manifest + "# " + strings.Repeat("x", 70000) + "\n", "ms.toml:5:1: line too long"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()

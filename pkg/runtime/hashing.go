@@ -23,14 +23,15 @@ func HashIn(ctx *Execution, value Value) int64 {
 	switch v := value.(type) {
 	case Record:
 		write(v.Type)
-		keys := make([]string, 0, len(v.Fields))
-		for k := range v.Fields {
+		fields := fieldsSnapshot(v.Fields)
+		keys := make([]string, 0, len(fields))
+		for k := range fields {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
 			write(k)
-			write(strconv.FormatInt(HashIn(ctx, v.Fields[k]), 10))
+			write(strconv.FormatInt(HashIn(ctx, fields[k]), 10))
 		}
 	case Alternative:
 		write(v.Type)

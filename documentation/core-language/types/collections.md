@@ -99,9 +99,13 @@ A `for` loop and collection callback traversals snapshot collection membership o
 | `List[T]` | `append(value: T) -> List[T]`; `concat(values: List[T]) -> List[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
 | `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
+| `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
+| `Map[K, V]` | `filter(predicate: fn(key: K, value: V) -> Bool) -> Map[K, V]` |
 | `Map[K, V]` | `with_entry(key: K, value: V) -> Map[K, V]`; `without(key: K) -> Map[K, V]` |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
+| `Set[T]` | `is_empty() -> Bool`; `filter(predicate: fn(value: T) -> Bool) -> Set[T]` |
+| `Set[T]` | `map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]` |
 | `Set[T]` | `with_value(value: T) -> Set[T]`; `without(value: T) -> Set[T]` |
 
 All existing element and key bounds apply. An empty List/Map/Set constructor requires explicit type arguments or a complete expected application; it supplies no inference evidence by itself. Each call creates fresh storage. Lists also support bracket literals. `values[index]` is equivalent to `values.at(index)`: both return `Optional[T]`, accept relative negative indexes, and return `none` out of range. For example, `values[0].unwrap_or(0)` supplies a default without a separate length check. Bytes `.at` also accepts relative negative indexes and returns `none` out of range. A size exceeding MaxInt64 faults.
@@ -152,6 +156,10 @@ test "dynamic mutable data and explicit copies":
     if not (updated.get(key: "a") == some(3)):
         return panic(message: "check failed")
 ```
+
+Map `get_or` evaluates its fallback as an ordinary argument and never inserts an absent key. Map and Set `filter` return fresh outer storage in insertion order while retaining key and payload references. Their predicates visit a snapshot, so additions, removals, replacements, and clearing during a callback do not change which entries it receives. An empty result still has independent storage.
+
+Set `map` also visits a snapshot and returns a fresh set. Its output type must satisfy `Hashable`; equal mapped results retain the first payload and its insertion position. Deduplication uses the output type's scoped Equal/Hashable implementations, including in generic calls and stored methods. Callbacks run sequentially in the caller's execution context; faults and cancellation stop the traversal normally.
 
 ## Building data
 
