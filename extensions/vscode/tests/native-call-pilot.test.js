@@ -4,7 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { PassThrough } = require('node:stream');
 const path = require('node:path');
-const { Framing, ManuscriptAdapter } = require('../debug-adapter');
+const { Framing, ManuscriptAdapter } = require(process.env.MANUSCRIPT_DAP_ADAPTER || '../debug-adapter');
 
 test('held native-call pilot retains source frame, parameters, locals and watches', {
   skip: !process.env.MANUSCRIPT_NATIVE_CALL_FIXTURE, timeout: 60000

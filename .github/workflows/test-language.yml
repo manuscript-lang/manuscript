@@ -64,6 +64,16 @@ jobs:
         with:
           name: manuscript-test-cli
           path: ms
+      - name: Verify held native-call allocation controls and build DAP fixture
+        run: |
+          GOMAXPROCS=1 toolchain/go/bin/go run ./scripts/bench-lowering -native-calls -baseline -output .artifacts/call-baseline -count 1 -benchtime 10x
+          GOMAXPROCS=1 toolchain/go/bin/go run ./scripts/bench-lowering -native-calls -output .artifacts/call-pilot -count 1 -benchtime 10x
+          toolchain/go/bin/go run ./scripts/bench-lowering -native-calls -debug-fixture -output .artifacts/native-call-pilot-dap
+      - uses: actions/upload-artifact@v7
+        with:
+          name: manuscript-native-call-pilot-dap
+          path: .artifacts/native-call-pilot-dap/
+          if-no-files-found: error
       - name: Verify offline standalone distribution
         run: make dist-check
 
@@ -105,9 +115,14 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: manuscript-test-cli
+      - uses: actions/download-artifact@v8
+        with:
+          name: manuscript-native-call-pilot-dap
+          path: .artifacts/native-call-pilot-dap
       - name: Prepare embedded debugger CLI
         run: |
           chmod +x ms
+          chmod +x .artifacts/native-call-pilot-dap/program
       - name: Validate and package VS Code extension
         working-directory: extensions/vscode
         run: |
@@ -117,6 +132,7 @@ jobs:
         working-directory: extensions/vscode
         run: |
           MANUSCRIPT_DAP_TEST=1 MANUSCRIPT_MS="$GITHUB_WORKSPACE/ms" MANUSCRIPT_DAP_ADAPTER="$PWD/dist/debug-adapter.js" node --test tests/debug-adapter.test.js tests/debug-large-literal.test.js
+          MANUSCRIPT_NATIVE_CALL_FIXTURE="$GITHUB_WORKSPACE/.artifacts/native-call-pilot-dap" MANUSCRIPT_MS="$GITHUB_WORKSPACE/ms" MANUSCRIPT_DAP_ADAPTER="$PWD/dist/debug-adapter.js" node --test tests/native-call-pilot.test.js
       - uses: actions/upload-artifact@v7
         with:
           name: manuscript-vscode

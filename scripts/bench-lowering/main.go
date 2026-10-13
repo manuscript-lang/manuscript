@@ -55,7 +55,7 @@ func run() error {
 	}
 	if *nativeCalls {
 		program, harnessFile = "native-calls.ms", "native-calls.go.txt"
-		names = []string{"calls", "mixed", "identity", "forward", "computed_forward", "add"}
+		names = []string{"calls", "mixed", "identity", "forward", "computed_forward", "add", "captured_parameter", "stored_parameter", "record_parameter"}
 	}
 	source, err := inputs.ReadFile(program)
 	if err != nil {

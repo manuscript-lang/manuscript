@@ -139,3 +139,73 @@ func TestSourceCallBoxedNilReturn(t *testing.T) {
 		t.Fatal("boxed nil source return changed", value)
 	}
 }
+
+func TestCallMethodSourceBoundary(t *testing.T) {
+	defer sourceProfiling.Store(false)
+	for _, profiling := range []bool{false, true} {
+		sourceProfiling.Store(profiling)
+		ctx := RootExecution()
+		observed := &sourceObservedContext{Context: ctx.Context}
+		ctx.Context = observed
+		entered := 0
+		direct := SourceDirect("method.ms:2:1", "Int", func(execution *Execution, _ Value, _ []Value) Value {
+			entered++
+			if execution.calls.depth.Load() != 1 {
+				t.Fatal("method acquired another depth guard")
+			}
+			return int64(7)
+		})
+		typ := "source-boundary/Probe"
+		Register(Implementation{Receiver: typ, Contract: "source-boundary/Call", Name: "probe", Scope: "method.ms", Direct: direct, DirectGuarded: true,
+			Build: func(receiver Value, _ map[string]string, _ map[string]TypeScope) Function {
+				return BoundDirect(receiver, nil, "Int", direct)
+			}})
+		var site MethodSite
+		for _, hot := range []bool{false, true} {
+			observed.observations.Store(0)
+			if got := CallMethod(ctx, &site, Record{Type: typ}, "source-boundary/Call", "probe", TypeScope{Module: "method.ms"}, nil); got != int64(7) || observed.observations.Load() != 2 || ctx.calls.depth.Load() != 0 {
+				t.Fatalf("profiling=%v hot=%v: value=%v observations=%d depth=%d", profiling, hot, got, observed.observations.Load(), ctx.calls.depth.Load())
+			}
+		}
+		var cancel context.CancelFunc
+		observed.Context, cancel = context.WithCancel(observed.Context)
+		cancel()
+		for _, cached := range []bool{false, true} {
+			if !cached {
+				site = MethodSite{}
+			}
+			before := entered
+			failure := experimentFailure(func() {
+				CallMethod(ctx, &site, Record{Type: typ}, "source-boundary/Call", "probe", TypeScope{Module: "method.ms"}, nil)
+			})
+			if _, ok := failure.(cancelled); !ok || entered != before || ctx.calls.depth.Load() != 0 {
+				t.Fatalf("profiling=%v cached=%v: failed admission=%#v entered=%d", profiling, cached, failure, entered)
+			}
+		}
+		FinishExecution(ctx)
+	}
+}
+
+func TestCallMethodUnguardedAdmission(t *testing.T) {
+	ctx := RootExecution()
+	defer FinishExecution(ctx)
+	entered := 0
+	typ := "router-admission/Probe"
+	Register(Implementation{Receiver: typ, Contract: "router-admission/Call", Name: "probe", Scope: "router.ms", Direct: func(*Execution, Value, []Value) Value { entered++; return int64(1) }})
+	var hot MethodSite
+	if got := CallMethod(ctx, &hot, Record{Type: typ}, "router-admission/Call", "probe", TypeScope{Module: "router.ms"}, nil); got != int64(1) {
+		t.Fatal(got)
+	}
+	var cancel context.CancelFunc
+	ctx.Context, cancel = context.WithCancel(ctx.Context)
+	cancel()
+	var cold MethodSite
+	for _, site := range []*MethodSite{&cold, &hot} {
+		failure := experimentFailure(func() {
+			CallMethod(ctx, site, Record{Type: typ}, "router-admission/Call", "probe", TypeScope{Module: "router.ms"}, nil)
+		})
+		if _, ok := failure.(cancelled); !ok || entered != 1 {
+			t.Fatalf("unguarded registration lost admission: failure=%#v entered=%d", failure, entered)
+		}
+	}
+}

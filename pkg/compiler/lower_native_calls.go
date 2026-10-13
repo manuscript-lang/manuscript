@@ -41,7 +41,7 @@ func (g *generator) selectNativeCalls() {
 			if !eligible {
 				continue
 			}
-			valid := true
+			valid := g.nativeParameterUses(s)
 			syntax.Visitor{Statement: func(stmt *syntax.Statement) {
 				if stmt.Kind == syntax.KindReturn && !g.nativeReturnProducer(stmt.Value) {
 					valid = false
@@ -53,6 +53,79 @@ func (g *generator) selectNativeCalls() {
 			}
 		}
 	}
+}
+
+// Unboxing a first-class input is safe only if every parameter use consumes a
+// native scalar. Captures and Value-backed storage would allocate a new box for
+// an input that the ordinary adapter already owns. Keep those declarations on
+// their original ABI, including forwarding chains pruned by the fixed point.
+func (g *generator) nativeParameterUses(s *checker.Symbol) bool {
+	parameters := map[*checker.Binding]bool{}
+	for _, b := range g.program.Parameters[s.Decl] {
+		parameters[b] = true
+	}
+	allowed := map[*syntax.Expression]bool{}
+	var uses []*syntax.Expression
+	valid := true
+	syntax.Visitor{Expression: func(e *syntax.Expression) {
+		info := g.program.Expressions[e]
+		if info == nil {
+			// Static callee/constructor syntax is traversed too; it need not
+			// carry a value binding. Actual parameter reads have checked info.
+			return
+		}
+		if parameters[info.Binding] {
+			uses = append(uses, e)
+		}
+		if e.Kind == syntax.KindLambda {
+			for _, b := range info.Captures {
+				if parameters[b] {
+					valid = false
+				}
+			}
+		}
+		if e.Kind == syntax.KindBinary && g.nativeBinaryOperands(e) {
+			allowed[e.Left], allowed[e.Right] = true, true
+		}
+		if e.Kind == syntax.KindCall {
+			args := e.Args
+			if info.Arguments != nil {
+				args = info.Arguments
+			}
+			if g.nativeCallArguments(e, args) {
+				for _, a := range args {
+					allowed[a.Value] = true
+				}
+			}
+		}
+	}}.Callable(s.Decl.Params, s.Decl.Body)
+	for _, e := range uses {
+		valid = valid && allowed[e]
+	}
+	return valid
+}
+
+func (g *generator) nativeBinaryOperands(e *syntax.Expression) bool {
+	a, b := g.program.Expressions[e.Left], g.program.Expressions[e.Right]
+	if a == nil || b == nil {
+		return false
+	}
+	left, right := a.Type, b.Type
+	typ := primitiveEqualityType(left)
+	if typ == "" || left.ID != right.ID || primitiveEqualityType(right) != typ {
+		return false
+	}
+	switch e.Text {
+	case "==", "!=":
+		return true
+	case "and", "or":
+		return left.ID == "Bool"
+	case "+", "-", "*", "/", "<", "<=", ">", ">=":
+		return left.ID == "Int" || left.ID == "Float"
+	case "%":
+		return left.ID == "Int"
+	}
+	return false
 }
 
 func (g *generator) nativeReturnProducer(e *syntax.Expression) bool {

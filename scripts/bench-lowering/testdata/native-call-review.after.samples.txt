@@ -1,0 +1,34 @@
+Generated source and benchmark harness: /workspace/manuscript-direct-calls/.artifacts/native-call-review/after
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/native-call-review/after
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkLowering/Actual1024Calls         	   10000	    274535 ns/op	   14160 B/op	    1770 allocs/op
+BenchmarkLowering/Actual1024Calls         	   10000	    135223 ns/op	   14160 B/op	    1770 allocs/op
+BenchmarkLowering/Actual1024Calls         	   10000	    109915 ns/op	   14160 B/op	    1770 allocs/op
+BenchmarkLowering/MixedFirstClass1024     	   10000	    235413 ns/op	   46928 B/op	    2794 allocs/op
+BenchmarkLowering/MixedFirstClass1024     	   10000	    216809 ns/op	   46928 B/op	    2794 allocs/op
+BenchmarkLowering/MixedFirstClass1024     	   10000	    218588 ns/op	   46928 B/op	    2794 allocs/op
+BenchmarkLowering/BoxedIdentity           	   10000	        61.59 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLowering/BoxedIdentity           	   10000	        40.58 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLowering/BoxedIdentity           	   10000	        56.24 ns/op	       0 B/op	       0 allocs/op
+BenchmarkLowering/BoxedForward            	   10000	       128.2 ns/op	      16 B/op	       1 allocs/op
+BenchmarkLowering/BoxedForward            	   10000	       115.7 ns/op	      16 B/op	       1 allocs/op
+BenchmarkLowering/BoxedForward            	   10000	       146.5 ns/op	      16 B/op	       1 allocs/op
+BenchmarkLowering/BoxedComputedForward    	   10000	       100.1 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedComputedForward    	   10000	        96.95 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedComputedForward    	   10000	       298.3 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedAdd                	   10000	       263.2 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedAdd                	   10000	        57.13 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/BoxedAdd                	   10000	        95.78 ns/op	       8 B/op	       1 allocs/op
+BenchmarkLowering/CapturedParameter       	   10000	       264.1 ns/op	      88 B/op	       4 allocs/op
+BenchmarkLowering/CapturedParameter       	   10000	       284.9 ns/op	      88 B/op	       4 allocs/op
+BenchmarkLowering/CapturedParameter       	   10000	       438.8 ns/op	      88 B/op	       4 allocs/op
+BenchmarkLowering/StoredParameter         	   10000	       123.1 ns/op	      88 B/op	       3 allocs/op
+BenchmarkLowering/StoredParameter         	   10000	       216.3 ns/op	      88 B/op	       3 allocs/op
+BenchmarkLowering/StoredParameter         	   10000	       120.5 ns/op	      88 B/op	       3 allocs/op
+BenchmarkLowering/RecordParameter         	   10000	       591.1 ns/op	     368 B/op	       4 allocs/op
+BenchmarkLowering/RecordParameter         	   10000	       477.5 ns/op	     368 B/op	       4 allocs/op
+BenchmarkLowering/RecordParameter         	   10000	       507.2 ns/op	     368 B/op	       4 allocs/op
+PASS
+ok  	github.com/manuscript-lang/manuscript/.artifacts/native-call-review/after	11.989s

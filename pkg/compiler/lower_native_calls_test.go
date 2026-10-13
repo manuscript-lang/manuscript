@@ -24,7 +24,7 @@ fn ordered() -> Int:
         none: 0
     )
 fn nested_return(value: Int) -> Int:
-    return add(1, match some(value):
+    return add(1, match some(value + 0):
         some(found): return found + 1
         none: 0
     )
@@ -43,11 +43,21 @@ impl Closeable for Resource:
 fn cleanup(value: Int) -> Int:
     let counter = Counter(0)
     with active = Resource(counter):
-        let copy = value
+        let copy = value + 0
     return counter.value + value
 fn overflow(value: Int) -> Int: value + 1
 fn divide(value: Int) -> Int: value / 0
 fn outer(value: Int) -> Int: divide(value)
+fn captured_parameter(value: Int) -> Int:
+    let held: fn() -> Int = fn() -> Int: value + 1
+    return held() + 0
+fn stored_parameter(value: Int) -> Int:
+    let values = [value]
+    return values.at(0).unwrap() + 0
+fn record_parameter(value: Int) -> Int:
+    let box = Counter(value)
+    return box.value + 0
+fn capture_forward(value: Int) -> Int: captured_parameter(value)
 `
 
 func TestNativeCallPilotEligibility(t *testing.T) {
@@ -61,7 +71,7 @@ func TestNativeCallPilotEligibility(t *testing.T) {
 			t.Errorf("%s has no native entry", name)
 		}
 	}
-	for _, name := range []string{"identity", "forward", "defaulted", "generic", "payload"} {
+	for _, name := range []string{"identity", "forward", "defaulted", "generic", "payload", "captured_parameter", "stored_parameter", "record_parameter", "capture_forward"} {
 		id := r.Program.Symbols["native-calls.ms"][name].ID
 		if strings.Contains(r.Source, "func "+id+"Native(") {
 			t.Errorf("%s crossed the boxed eligibility boundary", name)

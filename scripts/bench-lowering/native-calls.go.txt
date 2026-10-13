@@ -16,6 +16,9 @@ func TestBenchmarkParity(t *testing.T) {
   {@@identity@@.(rt.Function),[]rt.Value{int64(1024)},1024},
   {@@forward@@.(rt.Function),[]rt.Value{int64(1024)},1024},
   {@@computed_forward@@.(rt.Function),[]rt.Value{int64(1024)},1025},
+  {@@captured_parameter@@.(rt.Function),[]rt.Value{int64(1024)},1025},
+  {@@stored_parameter@@.(rt.Function),[]rt.Value{int64(1024)},1024},
+  {@@record_parameter@@.(rt.Function),[]rt.Value{int64(1024)},1024},
  } {
   if got:=c.fn.Body(ctx,c.args);got!=c.want {t.Fatalf("got %v want %v",got,c.want)}
  }
@@ -23,6 +26,13 @@ func TestBenchmarkParity(t *testing.T) {
  // microbenchmark can miss a body-thunk allocation after cross-package inlining.
  identity:=@@identity@@.(rt.Function); args:=[]rt.Value{int64(1024)}
  if got:=testing.AllocsPerRun(100,func(){nativeCallResult=identity.Body(ctx,args)});got!=0 {t.Fatalf("boxed identity acquired %v allocations",got)}
+ for _,c:=range []struct{name string;fn rt.Function;want float64}{
+  {"capture",@@captured_parameter@@.(rt.Function),4},
+  {"List storage",@@stored_parameter@@.(rt.Function),3},
+  {"record storage",@@record_parameter@@.(rt.Function),4},
+ } {
+  if got:=testing.AllocsPerRun(100,func(){nativeCallResult=c.fn.Body(ctx,args)});got!=c.want {t.Fatalf("%s parameter uses: %v allocations, want %v",c.name,got,c.want)}
+ }
 }
 
 func BenchmarkLowering(b *testing.B) {
@@ -35,6 +45,9 @@ func BenchmarkLowering(b *testing.B) {
   {"BoxedForward",@@forward@@.(rt.Function),[]rt.Value{int64(1024)}},
   {"BoxedComputedForward",@@computed_forward@@.(rt.Function),[]rt.Value{int64(1024)}},
   {"BoxedAdd",@@add@@.(rt.Function),[]rt.Value{int64(1024),int64(2048)}},
+  {"CapturedParameter",@@captured_parameter@@.(rt.Function),[]rt.Value{int64(1024)}},
+  {"StoredParameter",@@stored_parameter@@.(rt.Function),[]rt.Value{int64(1024)}},
+  {"RecordParameter",@@record_parameter@@.(rt.Function),[]rt.Value{int64(1024)}},
  } {
   b.Run(c.name,func(b *testing.B){b.ReportAllocs();for b.Loop(){nativeCallResult=c.fn.Body(ctx,c.args)}})
  }

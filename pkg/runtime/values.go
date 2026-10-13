@@ -765,6 +765,9 @@ type Implementation struct {
 	// Direct runs a nongeneric method for any receiver of the implemented type
 	// without first binding it; Build derives from it when present.
 	Direct func(*Execution, Value, []Value) Value
+	// DirectGuarded is set by source lowering when Direct owns admission through
+	// SourceCall. Other Go registrations retain router admission by default.
+	DirectGuarded bool
 }
 
 var implementations []Implementation
@@ -774,6 +777,12 @@ var implementations []Implementation
 var implementationsByName = map[string][]int{}
 
 func Register(implementation Implementation) {
+	if direct := implementation.Direct; direct != nil && !implementation.DirectGuarded {
+		implementation.Direct = func(ctx *Execution, receiver Value, args []Value) Value {
+			CheckCancelled(ctx)
+			return direct(ctx, receiver, args)
+		}
+	}
 	implementationCache.Clear()
 	implementationGeneration.Add(1)
 	implementationsByName[implementation.Name] = append(implementationsByName[implementation.Name], len(implementations))
@@ -1142,7 +1151,6 @@ type methodEntry struct {
 func CallMethod(ctx *Execution, site *MethodSite, receiver Value, contract, name string, scope TypeScope, args []Value) Value {
 	typ := ConcreteType(receiver)
 	if e := site.entry.Load(); e != nil && e.typ == typ && e.generation == implementationGeneration.Load() {
-		CheckCancelled(ctx)
 		return e.direct(ctx, receiver, args)
 	}
 	return callMethodSlow(ctx, site, receiver, contract, name, scope, args)
@@ -1163,7 +1171,6 @@ func callMethodSlow(ctx *Execution, site *MethodSite, receiver Value, contract, 
 			}
 			if resolved != nil && resolved.impl.Direct != nil {
 				site.entry.Store(&methodEntry{generation: generation, typ: typ, direct: resolved.impl.Direct})
-				CheckCancelled(ctx)
 				return resolved.impl.Direct(ctx, receiver, args)
 			}
 		}

@@ -99,7 +99,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			name := "direct" + strconv.Itoa(len(initialize)+1)
 			direct := closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("receiver", runtimeName("Value")), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...)
 			initialize = append(initialize, define(name, runtimeCall("SourceDirect", textLiteral(position), resultKey, direct)))
-			fields = append(fields, keyed("Direct", ident(name)), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), resultKey, ident(name))))))
+			fields = append(fields, keyed("Direct", ident(name)), keyed("DirectGuarded", ident("true")), keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(runtimeCall("BoundDirect", ident("receiver"), stringSlice(labels), resultKey, ident(name))))))
 		} else {
 			fn := runtimeCall("NewSourceFunction", stringSlice(labels), resultKey, textLiteral(position), closure([]*ast.Field{field("ctx", &ast.StarExpr{X: runtimeName("Execution")}), field("args", sliceOf(runtimeName("Value")))}, runtimeName("Value"), body...))
 			fields = append(fields, keyed("Build", closure(buildParameters(true), runtimeName("Function"), discard(ident("typeArgs")), returned(fn))))

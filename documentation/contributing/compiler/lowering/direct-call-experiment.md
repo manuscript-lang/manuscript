@@ -41,6 +41,14 @@ computed native result can remain native. Eligibility is pruned to a fixed
 point; unsupported nested callable/return shapes fall back conservatively.
 This is a held use classification, not a new language rule or typed IR.
 
+Parameter uses have a separate gate. Every checked parameter read must feed a
+supported primitive binary operand or a fully supplied ordered native call.
+Captures, Value-backed local copies, List/record/Optional storage, text conversion
+and dynamic-call argument uses keep the entire declaration on its existing ABI.
+This avoids unboxing a first-class input and reboxing it for storage even when
+the function's result is newly computed. Forwarding eligibility is pruned again
+when a callee fails either gate. No boxed mirror or duplicated body is introduced.
+
 ## One body and one source guard
 
 `lower_native_calls.go` builds three AST components for an eligible declaration:
@@ -62,6 +70,13 @@ select that guard once; a wrapper never guards an already guarded native entry.
 The temporary mirrored test guard has been removed. Native/profile adapters do
 not fall back into the same wrapper. Generic/default/composite callers still
 stop propagation at their own Result boundary.
+
+The method router also respects guard ownership. Generated source registrations
+mark their `SourceDirect` entry as `DirectGuarded`; cold lookup and cached
+`CallMethod` calls dispatch to its existing guard. Other Go registrations keep
+admission by default: `Register` normalizes their raw Direct callback once.
+Runtime tests cover both routes, and the emitted-method test counts admission/
+delivery for caller plus method under cold/hot lookup and CPU/trace profiling.
 
 Attribution runs inside the selected guard. Adapter selection checks the existing
 inherited source-profile boundary; nested calls retain #234's sampled-stack path
@@ -98,6 +113,20 @@ Uncontrolled build elapsed times were 5.86/5.28 seconds (Release/Debug baseline)
 and 10.17/1.77 (pilot); unequal caches and shared load prevent attributing a
 compile-time regression or improvement. Raw observations are retained beside
 the allocation samples. A controlled cold/warm build comparison remains a gate.
+
+Review added generated controls for already boxed parameters. On the original
+pilot they each added one allocation / eight bytes despite scalar-producing
+results. The parameter-use gate restores their baseline counts:
+
+| Boxed parameter use | Baseline | Original pilot | Corrected pilot |
+| --- | ---: | ---: | ---: |
+| Closure capture | 4 / 88 | 5 / 96 | 4 / 88 |
+| List storage | 3 / 88 | 4 / 96 | 3 / 88 |
+| Record storage | 4 / 368 | 5 / 376 | 4 / 368 |
+
+Three 10,000-invocation samples are in `native-call-review.*.samples.txt`.
+The generated harness asserts these allocation counts and identity's zero
+allocations. The 1,024-call reduction and mixed first-class controls stay intact.
 
 ```sh
 GOMAXPROCS=1 toolchain/go/bin/go run ./scripts/bench-lowering \
@@ -142,7 +171,12 @@ MANUSCRIPT_NATIVE_CALL_FIXTURE="$PWD/.artifacts/call-dap" \
 ```
 
 The compiler pilot option remains off in CLI-created artifacts. The explicit DAP
-fixture avoids adding a supported experimental CLI flag. Before integration,
+fixture avoids adding a supported experimental CLI flag. Hosted conformance
+builds/uploads the opt-in artifact and verifies allocation controls; the editor
+job downloads it at the same workspace path, restores execute permissions and
+supplies `MANUSCRIPT_NATIVE_CALL_FIXTURE` to the packaged-adapter test. A local
+test without that fixture skips explicitly; the hosted test is required and runs.
+Before integration,
 repeat the complete evidence after #271's coherent width/host transition and
 parent review. Wider/generic/default/composite eligibility, native acquisitions,
 #252 record representation and #259 scalar storage are excluded here.
@@ -166,3 +200,26 @@ misattribution above is concrete evidence for consolidating that ownership later
 ordering, cleanup and source maps. The later skill/expert consolidation should
 keep concise routing in skills, canonical rules in documentation and measured
 failure mechanisms in experts. No broader reorganization is performed here.
+
+## Ownership comparison for later integration
+
+This comparison is scoped source inspection, not acceptance of the other lane.
+#255 is now `76e5f7c4`; owner comment 6153235210 confirms its expanded #249–#252
+scope, operand-order fixture and merge hold. #295 being a proposal does not mean
+there is no record implementation elsewhere.
+
+| Lane | Current scope and files | Integration constraint |
+| --- | --- | --- |
+| #255 | Typed scalar locals/parameters and native expressions in `lower_scalars.go`; broader direct functions with Value fallbacks in `lower_direct.go`; scalar/Value struct records in `lower_structs.go` and runtime `struct.go`; record concurrency policy; `frames.go` Enter/Leave/control recovery and site-carrying arithmetic | Overlaps #249–#252. Its guard/layout machinery cannot simply be layered on this pilot. Owner reports ordering fixed in `operand-order.ms`; no complete independent acceptance is claimed here. |
+| #288 | Opt-in required scalar calls, scalar result/parameter-use gates, AST body builders, shared SourceCall, unchanged Value locals/records, explicit hosted DAP controls | Owns only this bounded pilot/review correction. No new record or local-storage implementation. |
+| #259 | Mutable uncaptured Int/Float/Bool storage selected from arithmetic use; Value captures/params and ABI-only copies retained | Still held for scalar ownership and coherent #271 widths. Preserve its original golden and historical controls. |
+| #295 / #252 | This lane's pointer/alias/adapter design and map-record generated baselines; implementation queued here | #255 already has a struct-record implementation. Compare designs and evidence before choosing one storage authority. |
+| #271 / #280 | Signed32/binary32 defaults plus explicit wide values and host/time contracts | Owns the numeric mapping. Both call/local/record lanes must consume one authoritative map; do not retain independent hardcoded64 paths. |
+
+Later consolidation must choose one guard ownership model (`SourceCall` or the
+other lane's Enter/Leave/control machinery), one record representation across
+direct/dynamic adapters and one checked Go-type/box mapping. #255's `nativeType`,
+zero-scalar helpers and struct field helpers reach the same representation facts
+as this pilot's `primitiveEqualityType`; #271 integration must reconcile those
+consumers. Scope splitting/review remain decisions, not permission to merge or
+expand this lane. Prepared docs/default batches retain their integration priority.

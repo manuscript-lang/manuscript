@@ -495,7 +495,7 @@ func TestCallMethodMatchesBoundCallOutcomes(t *testing.T) {
 }
 
 func registerDirectProbeBody(typ string, direct func(*Execution, Value, []Value) Value) {
-	Register(Implementation{Receiver: typ, Contract: "probe/Speak", Name: "speak", Scope: "probe.ms", Direct: direct,
+	Register(Implementation{Receiver: typ, Contract: "probe/Speak", Name: "speak", Scope: "probe.ms", Direct: direct, DirectGuarded: true,
 		Build: func(receiver Value, _ map[string]string, _ map[string]TypeScope) Function {
 			return BoundDirect(receiver, nil, "Int", direct)
 		}})
