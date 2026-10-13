@@ -760,6 +760,9 @@ func (h *libraryFileHandle) Operation(name string) Function {
 			if origin < 0 || origin > 2 {
 				return libraryError(r, "InvalidInput", "")
 			}
+			if a[0].(int64) < 0 && origin == 0 {
+				return libraryError(r, "InvalidInput", "")
+			}
 			n, err := h.file.Seek(a[0].(int64), int(origin))
 			return finish(n, err)
 		case "stat":

@@ -91,6 +91,7 @@ var standardErrorReasons = map[string]string{
 	"LimitExceeded":        "limit exceeded",
 	"NotFound":             "not found",
 	"AlreadyExists":        "already exists",
+	"NotEmpty":             "directory not empty",
 	"PermissionDenied":     "permission denied",
 	"Unsupported":          "operation not supported",
 	"UnsupportedFeature":   "unsupported feature",

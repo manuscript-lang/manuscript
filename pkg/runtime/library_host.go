@@ -18,6 +18,7 @@ import (
 
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 	"unicode/utf8"
 )
@@ -165,6 +166,16 @@ func (f *libraryFileSystem) path(s string) (string, bool) {
 	}
 	return libraryHostPath(f.directory, s)
 }
+
+// libraryNotEmpty reports a directory-not-empty failure. Windows reports
+// ERROR_DIR_NOT_EMPTY (145), which Go classifies as os.ErrExist.
+func libraryNotEmpty(err error) bool {
+	if errors.Is(err, syscall.ENOTEMPTY) {
+		return true
+	}
+	var errno syscall.Errno
+	return goruntime.GOOS == "windows" && errors.As(err, &errno) && errno == 145
+}
 func libraryOSResult(r string, value Value, err error) Value {
 	if err == nil {
 		return libraryOK(r, value)
@@ -177,8 +188,12 @@ func libraryOSResult(r string, value Value, err error) Value {
 		code = "Unsupported"
 	case errors.Is(err, os.ErrNotExist):
 		code = "NotFound"
+	case libraryNotEmpty(err) && strings.HasSuffix(r, "FileSystemError]"):
+		code = "NotEmpty"
 	case errors.Is(err, os.ErrExist):
 		code = "AlreadyExists"
+	case errors.Is(err, syscall.EISDIR), errors.Is(err, syscall.ENOTDIR), errors.Is(err, syscall.EBADF), errors.Is(err, syscall.EINVAL):
+		code = "InvalidInput"
 	case errors.Is(err, os.ErrPermission):
 		code = "PermissionDenied"
 	}
@@ -222,6 +237,9 @@ func (f *libraryFileSystem) Operation(name string) Function {
 				return libraryOSResult(r, nil, err)
 			}
 			defer file.Close()
+			if info, err := file.Stat(); err == nil && info.IsDir() {
+				return libraryError(r, "InvalidInput", "")
+			}
 			b, code := libraryReadBounded(ctx, file, n)
 			if code != "" {
 				return libraryError(r, code, "")

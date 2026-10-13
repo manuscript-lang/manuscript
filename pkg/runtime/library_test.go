@@ -180,6 +180,7 @@ func TestLibraryHTTPClient(t *testing.T) {
 		t.Fatal(response)
 	}
 	libraryFailure(t, call("/body", 3), "LimitExceeded")
+	libraryFailure(t, n.Operation("request").Body(ctx, []Value{"GET", "http://127.0.0.1:99999/", headers, Bytes{}, int64(10), Duration(time.Second)}), "InvalidInput")
 	redirect := librarySuccess(t, call("/redirect", 1000)).(Record)
 	if redirect.Fields["status"] != int64(302) {
 		t.Fatal("followed redirect")

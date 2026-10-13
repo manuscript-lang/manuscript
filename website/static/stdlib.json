@@ -820,6 +820,7 @@
             "LimitExceeded",
             "NotFound",
             "AlreadyExists",
+            "NotEmpty",
             "PermissionDenied",
             "Unsupported",
             "Closed",

@@ -30,7 +30,7 @@ func libraryNetworkRequest(n *network, ctx *Execution, r string, a []Value) Valu
 		return libraryError(r, "InvalidInput", "")
 	}
 	u, err := url.Parse(address)
-	if err != nil || u.Host == "" || u.User != nil || u.Scheme != "http" && u.Scheme != "https" {
+	if err != nil || u.Host == "" || u.User != nil || !libraryValidPort(u) || u.Scheme != "http" && u.Scheme != "https" {
 		return libraryError(r, "InvalidInput", "")
 	}
 	call, cancel := contextWithLibraryTimeout(ctx, timeout)

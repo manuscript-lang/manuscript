@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -182,6 +183,10 @@ func (s *httpService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		controller.SetReadDeadline(time.Now().Add(s.timeout))
 		controller.SetWriteDeadline(time.Now().Add(s.timeout))
 	}
+	if !normalizeHTTPRequestPath(r) {
+		http.Error(w, "invalid request path", 400)
+		return
+	}
 	if !utf8.ValidString(r.URL.Path) || !utf8.ValidString(r.URL.RawQuery) {
 		http.Error(w, "invalid UTF-8 URL", 400)
 		return
@@ -326,6 +331,24 @@ func validHeaderName(name string) bool {
 		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("!#$%&'*+-.^_`|~", r)) {
 			return false
 		}
+	}
+	return true
+}
+
+// normalizeHTTPRequestPath makes the decoded path safe to route on: an
+// encoded slash or NUL is rejected, and dot segments (including encoded ones)
+// are resolved so no spelling can climb above the root.
+func normalizeHTTPRequestPath(r *http.Request) bool {
+	raw := r.URL.EscapedPath()
+	if strings.Contains(raw, "%00") || strings.Contains(strings.ToLower(raw), "%2f") || strings.Contains(r.URL.Path, "\x00") {
+		return false
+	}
+	if strings.HasPrefix(r.URL.Path, "/") {
+		clean := path.Clean(r.URL.Path)
+		if strings.HasSuffix(r.URL.Path, "/") && clean != "/" {
+			clean += "/"
+		}
+		r.URL.Path, r.URL.RawPath = clean, ""
 	}
 	return true
 }
