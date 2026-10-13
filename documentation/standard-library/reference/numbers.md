@@ -8,7 +8,7 @@ Import each required symbol with `import Name from "@std/numbers.ms"`.
 
 ## NumberError {data-api-kind="Alternative"}
 
-Errors returned when numeric text is malformed or outside the target range.
+Errors returned for invalid numeric requests, malformed text, or out-of-range values.
 
 ```manuscript
 type NumberError:

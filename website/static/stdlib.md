@@ -265,7 +265,7 @@ type BytesBuilder:
 
 **Function**
 
-Returns the byte values as integers in the range 0 through 255.
+Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().
 
 ```manuscript
 fn values(data: Bytes) -> List[Int]:
@@ -770,6 +770,8 @@ type Decimal:
 ## RoundingMode
 
 **Alternative**
+
+How a Decimal rounds to a multiple of the requested power of ten.
 
 ```manuscript
 type RoundingMode:
@@ -2214,7 +2216,7 @@ Import each required symbol with `import Name from "@std/numbers.ms"`.
 
 **Alternative**
 
-Errors returned when numeric text is malformed or outside the target range.
+Errors returned for invalid numeric requests, malformed text, or out-of-range values.
 
 ```manuscript
 type NumberError:

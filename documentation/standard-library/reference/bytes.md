@@ -42,7 +42,7 @@ type BytesBuilder:
 
 ## values {data-api-kind="Function"}
 
-Returns the byte values as integers in the range 0 through 255.
+Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().
 
 ```manuscript
 fn values(data: Bytes) -> List[Int]:

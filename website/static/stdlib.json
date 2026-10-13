@@ -196,7 +196,7 @@
         },
         {
           "name": "values",
-          "doc": "Returns the byte values as integers in the range 0 through 255.",
+          "doc": "Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().",
           "kind": "fn",
           "type": "fn(data: Bytes)-\u003eList[Int]"
         }
@@ -632,6 +632,7 @@
         },
         {
           "name": "RoundingMode",
+          "doc": "How a Decimal rounds to a multiple of the requested power of ten.",
           "kind": "alternative",
           "type": "RoundingMode",
           "cases": [
@@ -1776,7 +1777,7 @@
       "declarations": [
         {
           "name": "NumberError",
-          "doc": "Errors returned when numeric text is malformed or outside the target range.",
+          "doc": "Errors returned for invalid numeric requests, malformed text, or out-of-range values.",
           "kind": "alternative",
           "type": "NumberError",
           "cases": [
