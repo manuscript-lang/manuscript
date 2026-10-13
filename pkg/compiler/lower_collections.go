@@ -14,11 +14,11 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 	switch callee.Method.Native {
 	case "collections/at":
 		if len(arguments) == 1 {
-			return "rt.ListAt(ctx," + g.expression(e.Left.Left) + "," + g.expression(arguments[0].Value) + "," + g.key(g.program.Expressions[e].Type) + ")"
+			return g.locatedOperation(e, "rt.ListAt", "ctx", g.expression(e.Left.Left), g.expression(arguments[0].Value), g.key(g.program.Expressions[e].Type))
 		}
 	case "optional/unwrap":
 		if len(arguments) == 0 {
-			return "rt.OptionalUnwrap(ctx," + g.expression(e.Left.Left) + ")"
+			return g.locatedOperation(e, "rt.OptionalUnwrap", "ctx", g.expression(e.Left.Left))
 		}
 	}
 	return ""

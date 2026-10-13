@@ -12,6 +12,7 @@ func (g *generator) body(body []*syntax.Statement) string {
 	var out strings.Builder
 	for _, s := range body {
 		filename := strings.NewReplacer("\n", "_", "\r", "_").Replace(s.Pos.File)
+		out.WriteString("sourcePosition = " + quote(s.Pos.String()) + "\n")
 		fmt.Fprintf(&out, "//line %s:%d\n", filename, s.Pos.Line)
 		out.WriteString(g.statement(s))
 	}
@@ -31,7 +32,7 @@ func (g *generator) pattern(p *syntax.Pattern, value string) string {
 	}
 	if p.Kind == syntax.KindList {
 		positions := g.temp()
-		out += positions + " := rt.Positions(" + tmp + "," + strconv.Itoa(len(p.Elements)) + "); _ = " + positions + "\n"
+		out += positions + " := rt.Positions(" + tmp + ",rt.SourceAt(&sourcePosition," + quote(p.Pos.String()) + "," + strconv.Itoa(len(p.Elements)) + ")); _ = " + positions + "\n"
 		for i, child := range p.Elements {
 			out += g.pattern(child, fmt.Sprintf("%s[%d]", positions, i))
 		}

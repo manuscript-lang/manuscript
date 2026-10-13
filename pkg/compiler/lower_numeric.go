@@ -23,7 +23,7 @@ func (g *generator) numericBinary(e *syntax.Expression) string {
 	case "+", "-", "*", "/", "%":
 		if left.ID == "Int" {
 			operation := map[string]string{"+": "IntAdd", "-": "IntSubtract", "*": "IntMultiply", "/": "IntDivide", "%": "IntRemainder"}[e.Text]
-			return "rt." + operation + "(" + a + "," + b + ")"
+			return g.locatedOperation(e, "rt."+operation, a, b)
 		}
 		if e.Text != "%" {
 			// Explicit rounding preserves each source operation even on FMA targets.

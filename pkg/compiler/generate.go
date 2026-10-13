@@ -70,7 +70,7 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 			natives = false
 		}
 		out.WriteString("rt.Register(rt.Implementation{Receiver:" + quote(checker.TypeKey(m.Receiver)) + ",Contract:" + quote(checker.TypeKey(m.Contract)) + ",Name:" + quote(m.Decl.Name) + ",Scope:" + quote(scope) + ",Variables:" + stringsGo(vars) + ",Build:func(receiver rt.Value,typeArgs map[string]string,typeScopes map[string]rt.TypeScope) rt.Function{_ = typeArgs;return ")
-		out.WriteString(g.function(m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type))
+		out.WriteString(g.function(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type))
 		out.WriteString("}})\n")
 	}
 	if natives {
@@ -86,7 +86,7 @@ func lowerGo(optimized optimizedProgram, entry string, options Options) (string,
 					continue
 				}
 				out.WriteString("{Name:" + quote(module.File+"::"+d.Name) + ",Run:func()rt.Function{typeArgs:=map[string]string{};_ = typeArgs;return ")
-				out.WriteString(g.function(nil, d.Result, d.Body, nil, nil, &checker.Type{Kind: "function", Result: &checker.Type{ID: "Unit"}}))
+				out.WriteString(g.function("test "+d.Name, nil, d.Result, d.Body, nil, nil, &checker.Type{Kind: "function", Result: &checker.Type{ID: "Unit"}}))
 				out.WriteString("}()},\n")
 			}
 		}

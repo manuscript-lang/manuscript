@@ -707,10 +707,6 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 					value = returned.value
 					return
 				}
-				if fault, ok := failure.(Fault); ok {
-					fault.Frames = append(append([]string{}, fault.Frames...), position)
-					panic(fault)
-				}
 				panic(failure)
 			}
 		}()
@@ -779,4 +775,21 @@ func LoopBody(body func() Value) (exit int) {
 	}()
 	body()
 	return 0
+}
+
+// SourceAt records an operation's site after its operands have been evaluated.
+func SourceAt[T any](position *string, site string, value T) T {
+	*position = site
+	return value
+}
+
+// TraceSource runs once per source function, after its cleanup has completed.
+func TraceSource(position *string, name string) {
+	if failure := recover(); failure != nil {
+		if fault, ok := failure.(Fault); ok {
+			fault.Frames = append(append([]string{}, fault.Frames...), *position+" in "+name)
+			panic(fault)
+		}
+		panic(failure)
+	}
 }

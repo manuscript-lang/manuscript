@@ -14,6 +14,9 @@ type Options struct {
 	Recover bool
 	// AnalyzeOnly stops after type checking and optional entry validation.
 	AnalyzeOnly bool
+	// ProjectSources checks all project source and test modules with AnalyzeOnly.
+	// It has no effect for file inputs or executable compilation.
+	ProjectSources bool
 	// Module selects a project module; ScopeMarker captures its editor scope.
 	Module, ScopeMarker string
 	// Overlay contains absolute filenames with unsaved editor content.
@@ -45,6 +48,7 @@ func CompileSource(filename, source string, options Options) Result {
 }
 
 // CompileFile loads a module or project and checks its reachable import graph.
+// AnalyzeOnly with ProjectSources also checks unimported source and test modules.
 func CompileFile(filename string, options Options) Result {
 	graph := frontend.LoadFile(filename, options.sourceOptions())
 	if graph.ProjectRoot != "" {
@@ -54,7 +58,7 @@ func CompileFile(filename string, options Options) Result {
 }
 
 func (o Options) sourceOptions() frontend.Options {
-	return frontend.Options{Recover: o.Recover && o.AnalyzeOnly, Module: o.Module, Overlay: o.Overlay, Tests: o.Tests}
+	return frontend.Options{Recover: o.Recover && o.AnalyzeOnly, Module: o.Module, Overlay: o.Overlay, Tests: o.Tests, ProjectSources: o.ProjectSources && o.AnalyzeOnly}
 }
 
 // compile is the common path after parsing and import resolution. Each stage
