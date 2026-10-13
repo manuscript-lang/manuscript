@@ -26,6 +26,7 @@ Commands:
   debug    Start an application in the embedded Delve debugger
   dap      Serve one native debugger session on stdin/stdout
   lock     Create or update project build pins
+  init     Create a new project with a manifest, entry, test, and .gitignore
   doc      Generate public API documentation
   stdlib   Write bundled standard library declarations to a directory
   lsp      Serve the language server on stdin/stdout
@@ -40,6 +41,7 @@ Native build levels:
   Default: Release; profile defaults to RelWithDebInfo; debug always uses Debug
 
 Start with:
+  ms init hello
   ms check ms.toml
   ms lock ms.toml
   ms run ms.toml -- first second
@@ -122,6 +124,8 @@ func commandHelp(command string) (string, bool) {
 		examples = "ms lock ms.toml"
 	case "doc":
 		return docHelp, true
+	case "init":
+		return initHelp, true
 	case "stdlib":
 		usage = "<directory>"
 		description = "Materialize bundled standard library .ms declarations and bindings.json.\nCreate the directory if needed and replace matching files already in it.\nThese are API declarations for tooling, rather than executable implementations."

@@ -64,6 +64,19 @@ entry = "./src/main.ms"
 
 Paths are relative to the manifest. See [project configuration](../developer-tooling/builds/project-configuration.md) when setting up your own application.
 
+## Create your own project
+
+```sh
+ms init hello
+cd hello
+ms run ms.toml -- first second
+ms test ms.toml
+```
+
+`ms init [directory]` writes `ms.toml`, `src/main.ms` (the program above), `test.ms`, and a `.gitignore`. It stops without writing anything if one of those files already exists. A project is just that manifest plus an entry module exporting `main() -> Int`, so you can also create the files by hand.
+
+The first `ms run` or `ms build` writes two things next to `ms.toml`. `ms.lock` records the compiler, runtime, and toolchain pins the build used: commit it. `.ms-cache/` holds build artifacts, several megabytes per project: keep it out of version control (`ms init` adds it to `.gitignore`). A `ms` built from a source checkout has different pins than a release, so running `ms lock` or `ms run` on a project such as `examples/hello` with it rewrites the checked-in `ms.lock`; discard that change rather than committing it.
+
 ## Build and test
 
 ```sh
