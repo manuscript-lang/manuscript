@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/compiler"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
 	"github.com/manuscript-lang/manuscript/pkg/tooling/docgen"
 )
@@ -95,34 +95,32 @@ func runDoc(args []string) int {
 		}
 		inputs, issues := analyzeSelection("doc", selection)
 		if len(issues) != 0 {
-			root := ""
-			if !selection.collection && len(inputs) == 1 {
-				root = inputs[0].result.SourceRoot
-			}
-			if selection.collection {
-				diagnostics := make([]commandDiagnostic, 0, len(issues))
-				for _, issue := range issues {
-					diagnostics = append(diagnostics, sourceDiagnostic(issue))
-				}
-				issues = issues[:0]
-				for _, issue := range orderedAnalysisDiagnostics(diagnostics) {
-					issues = append(issues, syntax.Diagnostic{Position: issue.Position, Phase: issue.Phase, Message: issue.Message, End: issue.End, Fix: issue.Fix})
-				}
-			}
-			return reportDiagnostics(compiler.Result{SourceRoot: root, Diagnostics: issues})
+			return reportAnalysisErrors(selection, inputs, issues)
 		}
-		seen := map[string]bool{}
+		seen := map[string]checker.APIModule{}
 		modules = []checker.APIModule{}
 		for _, input := range inputs {
 			for _, module := range checker.ModuleDocumentation(input.result.Program) {
+				if selection.collection {
+					for i := range module.Declarations {
+						sort.Strings(module.Declarations[i].ImplementationDeclarations)
+					}
+				}
 				if selection.collection && !strings.HasPrefix(module.Path, "@std/") {
 					module.Path = filepath.ToSlash(formatDisplay(selection.cwd, filepath.Join(input.result.SourceRoot, filepath.FromSlash(module.Path))))
 				}
-				if !seen[module.Path] {
-					seen[module.Path] = true
-					modules = append(modules, module)
+				if previous, exists := seen[module.Path]; exists {
+					if !reflect.DeepEqual(previous, module) {
+						issues = append(issues, syntax.Diagnostic{Position: syntax.Position{File: module.Path, Line: 1, Column: 1}, Phase: "resolution", Message: "conflicting API descriptions for " + module.Path + "; select one independent input, or a project manifest defining one complete module graph"})
+					}
+					continue
 				}
+				seen[module.Path] = module
+				modules = append(modules, module)
 			}
+		}
+		if len(issues) > 0 {
+			return reportAnalysisErrors(selection, inputs, issues)
 		}
 		sort.Slice(modules, func(i, j int) bool { return modules[i].Path < modules[j].Path })
 	}

@@ -98,7 +98,10 @@ Doc checks every input before writing its combined public module reference.
 On any error it returns 1, reports diagnostics on stderr, and leaves stdout and
 an existing output file untouched. Successful JSON retains `format: 1` and the
 `modules` array; an empty selection produces an empty reference. `--stdlib`
-continues to require no input targets.
+continues to require no input targets. If one physical module has different API
+snapshots in separate input graphs (for example, different local interface
+implementations), doc rejects the conflicting descriptions. Select one input
+or a project manifest defining one complete graph instead.
 
 ## Machine-readable checks and tests
 

@@ -249,3 +249,25 @@ func TestAnalysisCollectionRangesAndSymlinkConfinement(t *testing.T) {
 		t.Fatalf("explicit outside input rejected: %d, %q, %q", status, stdout, stderr)
 	}
 }
+
+func TestAnalysisDocRejectsConflictingModuleSnapshots(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	analysisFiles(t, root, map[string]string{
+		"shared.ms": "export type Item:\n    value: Int\n",
+		"left.ms":   "import Item from \"./shared.ms\"\nexport interface Left:\n    fn left() -> Int\nimpl Left for Item:\n    fn left() -> Int:\n        return 0\n",
+		"right.ms":  "import Item from \"./shared.ms\"\nexport interface Right:\n    fn right() -> Int\nimpl Right for Item:\n    fn right() -> Int:\n        return 0\n",
+		"api.json":  "preserve previous reference",
+	})
+	for _, target := range []string{"left.ms", "right.ms"} {
+		status, _, stderr := invoke(t, "doc", target, "--json")
+		if status != 0 || stderr != "" {
+			t.Fatalf("single %s snapshot: %d, %q", target, status, stderr)
+		}
+	}
+	status, stdout, stderr := invoke(t, "doc", "right.ms", "left.ms", "--json", "-o", "api.json")
+	data, err := os.ReadFile("api.json")
+	if status != 1 || stdout != "" || !strings.Contains(stderr, "conflicting API descriptions for shared.ms") || err != nil || string(data) != "preserve previous reference" {
+		t.Fatalf("silently selected one module context: %d, %q, %q, %s, %v", status, stdout, stderr, data, err)
+	}
+}

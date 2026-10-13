@@ -154,3 +154,21 @@ func orderedAnalysisDiagnostics(issues []commandDiagnostic) []commandDiagnostic 
 	})
 	return unique
 }
+
+func reportAnalysisErrors(selection analysisSelection, inputs []analyzedInput, issues []syntax.Diagnostic) int {
+	root := ""
+	if !selection.collection && len(inputs) == 1 {
+		root = inputs[0].result.SourceRoot
+	}
+	if selection.collection {
+		diagnostics := make([]commandDiagnostic, 0, len(issues))
+		for _, issue := range issues {
+			diagnostics = append(diagnostics, sourceDiagnostic(issue))
+		}
+		issues = issues[:0]
+		for _, issue := range orderedAnalysisDiagnostics(diagnostics) {
+			issues = append(issues, syntax.Diagnostic{Position: issue.Position, Phase: issue.Phase, Message: issue.Message, End: issue.End, Fix: issue.Fix})
+		}
+	}
+	return reportDiagnostics(compiler.Result{SourceRoot: root, Diagnostics: issues})
+}
