@@ -48,6 +48,8 @@ ms test ms.toml --filter addition --timeout 10s
 
 A manifest run discovers `test.ms` and `*_test.ms` files recursively below the project root, as well as tests in imported modules. A direct `ms test file.ms` runs that module's tests and the tests in its imports; it does not discover unrelated sibling files. The exact traversal and excluded-directory rules live in [project configuration](../developer-tooling/builds/project-configuration.md#commands-and-module-discovery).
 
+Tests run from the manifest's directory, or from the selected source file's directory for a single-file run. Relative fixture paths therefore resolve consistently when you invoke `ms test` from another directory; see [build and test](getting-started.md#build-and-test).
+
 Put reusable application functions in an exported module and import them into a test file with a relative path, for example `import add from "./src/math.ms"`. Keep the import consistent with your project's actual files; see [modules](../core-language/modules/declarations.md).
 
 `--filter` selects tests whose `module::name` contains the supplied text. `--timeout` bounds each test (60 seconds by default; `0` disables it). A programming fault or timeout fails the test; a function returning `error(...)` is still an ordinary value that you must check. Do not discard a `Result` when testing success or failure.
