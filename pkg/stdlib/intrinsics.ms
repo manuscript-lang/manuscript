@@ -17,7 +17,7 @@ interface CloneOperations[T]:
 # scalar values; ordinary indices and lengths count Unicode scalar positions unless
 # the method explicitly refers to bytes.
 interface StringOperations:
-    # Normalizes using NFC, NFD, NFKC, or NFKD; max_bytes optionally bounds UTF-8 output.
+    # Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.
     # Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
     fn normalize(
         form: String,

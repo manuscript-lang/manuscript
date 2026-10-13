@@ -24,4 +24,5 @@
 - Reuse the CLI across conformance tests, execute complete tutorial examples, and collect dependency-package coverage.
 - Separate frontend facts from host runtime implementations and verify native signatures in integration tests.
 - Validate compressed toolchain archives before cache publication, including interrupted downloads.
+- Preserve case-equivalent HTTP header keys as separate values in insertion order, including `Set-Cookie`; reject malformed outgoing header values before emission.
 - Add repeatable dependency/pin maintenance, license inventories, and one shared release version.

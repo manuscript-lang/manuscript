@@ -130,14 +130,19 @@ func TestNetworkingDNSRecordsAndClose(t *testing.T) {
 	n := &network{}
 	defer n.Operation("close").Body(ctx, nil)
 	resolver := librarySuccess(t, n.Operation("with_resolver").Body(ctx, []Value{socket.LocalAddr().String()}))
-	for _, kind := range []string{"A", "AAAA", "TXT", "MX", "NS", "PTR", "SRV"} {
+	for _, kind := range []string{"A", "a", "AAAA", "aaaa", "TXT", "txt", "MX", "mX", "NS", "nS", "PTR", "ptr", "SRV", "sRv"} {
 		name := "test."
-		if kind == "PTR" {
+		if strings.EqualFold(kind, "PTR") {
 			name = "127.0.0.1"
 		}
 		records := librarySuccess(t, networkingInvoke(ctx, resolver, "resolve", name, kind, int64(8), Duration(time.Second))).(*List)
 		if len(records.Items) == 0 {
 			t.Fatal(kind, "no records")
+		}
+		for _, item := range records.Items {
+			if got := item.(Record).Fields["kind"]; got != strings.ToUpper(kind) {
+				t.Fatalf("record kind = %s; want %s", got, strings.ToUpper(kind))
+			}
 		}
 	}
 	blocking := &network{resolver: &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, _, _ string) (net.Conn, error) { <-ctx.Done(); return nil, ctx.Err() }}}
