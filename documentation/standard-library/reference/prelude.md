@@ -8,6 +8,8 @@ Names available in every module; no import required.
 
 ## Bool {data-api-kind="Type"}
 
+Boolean truth values true and false; conditions require this type.
+
 ```manuscript
 type Bool:
 ```
@@ -48,6 +50,8 @@ fn message() -> String
 ```
 
 ## Float {data-api-kind="Type"}
+
+Binary floating-point values, including signed zero, infinities and NaN.
 
 ```manuscript
 type Float:
@@ -135,6 +139,8 @@ fn hash() -> Int
 ```
 
 ## Int {data-api-kind="Type"}
+
+Signed whole numbers with checked arithmetic; overflow and division by zero fault.
 
 ```manuscript
 type Int:
@@ -477,6 +483,8 @@ fn with_entry(key: T, value: U) -> Map[T, U]:
 
 ## Never {data-api-kind="Type"}
 
+The return type of computations that cannot return a value, such as panic.
+
 ```manuscript
 type Never:
 ```
@@ -501,6 +509,30 @@ type Optional[T]:
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
+### Optional.none
+
+An absent value with no payload; no T needs to be constructed.
+
+```manuscript
+case none
+```
+
+### Optional.some
+
+A present payload, retained by reference when T is mutable.
+
+```manuscript
+case some(value: T)
+```
+
+### Optional.some.value
+
+The contained value; unwrap and matching return this original payload.
+
+```manuscript
+value: T
+```
+
 ### Optional.and_then[U]
 
 Calls transform only when present, returning its Optional unchanged.
@@ -519,7 +551,7 @@ fn is_none() -> Bool:
 
 ### Optional.is_some
 
-Reports whether this value contains a payload.
+Returns true for some(value), and false for none.
 
 ```manuscript
 fn is_some() -> Bool:
@@ -600,6 +632,38 @@ type Result[T, E]:
     fn to_optional() -> Optional[T]:
 ```
 
+### Result.error
+
+An expected failure value; it is distinct from faults and cancellation.
+
+```manuscript
+case error(cause: E)
+```
+
+### Result.ok
+
+A successful result, retaining its payload without a deep copy.
+
+```manuscript
+case ok(value: T)
+```
+
+### Result.error.cause
+
+The original domain error, retained through compatible Result propagation.
+
+```manuscript
+cause: E
+```
+
+### Result.ok.value
+
+The successful value returned by unwrap, matching, or propagation.
+
+```manuscript
+value: T
+```
+
 ### Result.and_then[U]
 
 Calls transform only on success. Its result keeps the same error type.
@@ -673,6 +737,8 @@ fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 ```
 
 ## String {data-api-kind="Type"}
+
+UTF-8 text indexed by Unicode scalar values; byte_length counts encoded bytes instead.
 
 ```manuscript
 type String:
@@ -940,6 +1006,8 @@ fn upper() -> String
 ```
 
 ## Unit {data-api-kind="Type"}
+
+The single value unit, used when an operation returns no useful payload.
 
 ```manuscript
 type Unit:

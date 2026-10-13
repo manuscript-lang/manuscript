@@ -2,8 +2,16 @@
 
 # Holds either a successful value (`ok`) or an expected failure (`error`).
 export type Result[T, E]:
-    case ok(value: T)
-    case error(cause: E)
+    # A successful result, retaining its payload without a deep copy.
+    case ok(
+        # The successful value returned by unwrap, matching, or propagation.
+        value: T
+    )
+    # An expected failure value; it is distinct from faults and cancellation.
+    case error(
+        # The original domain error, retained through compatible Result propagation.
+        cause: E
+    )
     # Reports whether this result contains a successful value.
     fn is_ok() -> Bool:
     # Reports whether this result contains an expected error.
