@@ -135,10 +135,14 @@ func newFunction(labels []string, result string, body func(*Execution, []Value) 
 		}()
 		CheckCancelled(ctx)
 		value = body(ctx, args)
-		if ctx != nil && ctx.Context.Err() != nil && dispose != nil {
-			dispose(ctx, value)
+		// One delivery checkpoint decides both disposal and unwinding. A
+		// second cancellation check could discard an undisposed acquisition.
+		if ctx != nil && ctx.Context.Err() != nil {
+			if dispose != nil {
+				dispose(ctx, value)
+			}
+			panic(cancelled{})
 		}
-		CheckCancelled(ctx)
 		return value
 	}}
 }
