@@ -44,6 +44,6 @@ Maps and sets enumerate in insertion order, while equality ignores order. Replac
 
 ## Text and regular expressions
 
-String indexing counts Unicode scalars. `replace` replaces one occurrence by default; `replace_all` replaces every occurrence. An explicit replacement cap is respected. `split` truncates to `max_parts` when supplied, including an empty result for zero. Unicode normalization is explicit.
+String indexing counts Unicode scalars. `replace` replaces one occurrence by default; `replace_all` replaces every occurrence. An explicit replacement cap is respected. `split` truncates to `max_parts` when supplied, including an empty result for zero; `n` separators give `n + 1` parts, so empty text with a nonempty separator gives one empty part, while an empty separator splits into scalars and gives none for empty text. A negative `max_parts` or `max_replacements` faults with a message naming the operation and parameter, because those operations return plain values. `upper` and `lower` apply locale-independent full Unicode case mapping, matching JavaScript, Python, and Rust: `"ß".upper()` is `"SS"`, `"ﬁ".upper()` is `"FI"`, `"ΑΣ".lower()` ends in final sigma `ς`, and `"İ".lower()` is `i` followed by U+0307. Mapping can change the scalar length. Unicode normalization is explicit.
 
 Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed patterns return typed errors. See [common contracts](contracts.md) for optional budgets and the [API reference](reference/_index.md) for exact signatures.

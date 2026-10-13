@@ -64,3 +64,23 @@ test "CSV rejects malformed records invalid options and limits":
             options: CsvOptions(delimiter: "::", line_ending: "\n")
         ) != invalid
     ): return panic("invalid delimiter")
+
+test "CSV single empty cell rows survive a round trip":
+    let options = CsvOptions(delimiter: ",", line_ending: "\n")
+    let rows = [["a"], [""], ["b"]]
+    let text = value(stringify(rows: rows, options: options))
+    if text != "a\n\"\"\nb\n": return panic("quoted sole empty cell")
+    if value(parse(text: text, options: options)) != rows: return panic(
+        "single column round trip"
+    )
+
+    let crlf = CsvOptions(delimiter: ",", line_ending: "\r\n")
+    if value(stringify(rows: [[""]], options: crlf)) != "\"\"\r\n": return panic(
+        "CRLF empty cell"
+    )
+    if (
+        value(parse(text: "a,b\n\n\nc,d\n", options: options)) != [
+            ["a", "b"],
+            ["c", "d"]
+        ]
+    ): return panic("blank lines skipped")

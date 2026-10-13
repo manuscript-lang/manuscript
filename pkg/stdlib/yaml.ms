@@ -106,9 +106,20 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
             return ok(result)
 
         if c == "\n":
-            result = result.concat(" ")
+            # One line break folds to a space; each blank line after it is a
+            # newline and the break itself is dropped.
+            var breaks = 0
 
             while peek(flow) == " " or peek(flow) == "\t": advance(flow)
+
+            while peek(flow) == "\n":
+                advance(flow)
+                breaks = breaks + 1
+
+                while peek(flow) == " " or peek(flow) == "\t": advance(flow)
+
+            if breaks == 0: result = result.concat(" ")
+            else: result = result.concat(newlines(breaks))
 
             continue
 
@@ -188,6 +199,16 @@ fn quoted(flow: Flow) -> Result[String, YamlError]:
                     reason: "invalid string escape"
                 )
             )
+
+fn newlines(count: Int) -> String:
+    var result = ""
+    var remaining = count
+
+    while remaining > 0:
+        result = result.concat("\n")
+        remaining = remaining - 1
+
+    return result
 
 fn digit_text(text: String) -> Bool:
     if text == "": return false
@@ -295,7 +316,8 @@ fn anchor_name(flow: Flow) -> Result[String, YamlError]:
     return ok(name)
 
 fn merge(
-    context: Context,
+    line: Int,
+    column: Int,
     target: Map[String, YamlValue],
     value: YamlValue
 ) -> Result[Unit, YamlError]:
@@ -313,13 +335,15 @@ fn merge(
             for item in values:
                 match item:
                     ObjectValue(_): let merged = try merge(
-                        context: context,
+                        line: line,
+                        column: column,
                         target: target,
                         value: item
                     )
                     _: return error(
-                        invalid(
-                            context: context,
+                        YamlError.InvalidData(
+                            line: line,
+                            column: column,
                             reason: "merge requires mappings"
                         )
                     )
@@ -327,8 +351,9 @@ fn merge(
             return ok(unit)
 
         _: return error(
-            invalid(
-                context: context,
+            YamlError.InvalidData(
+                line: line,
+                column: column,
                 reason: "merge requires mappings"
             )
         )
@@ -462,7 +487,8 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
             if name == "<<":
                 let merged = try merge(
-                    context: flow.context,
+                    line: flow.line,
+                    column: flow.pos + 1,
                     target: values,
                     value: value
                 )
@@ -676,11 +702,22 @@ fn block_string(
 ) -> Result[YamlValue, YamlError]:
     var mode = ""
     var explicit = 0
+    var offset = 0
+    # The header line was already consumed, so it is the previous line.
+    let header_line = context.index
+    let header_column = (
+        context.lines.at(context.index - 1).unwrap_or("").index_of(
+            header
+        ).unwrap_or(0)
+        + 1
+    )
 
     for c in header.slice(
         start: 1,
         end: header.scalar_length()
     ).split(separator: ""):
+        offset = offset + 1
+
         if (c == "+" or c == "-") and mode == "": mode = c
         else if "123456789".contains(c) and explicit == 0: explicit = (
             c
@@ -688,8 +725,9 @@ fn block_string(
             .unwrap()
         )
         else: return error(
-            invalid(
-                context: context,
+            YamlError.InvalidData(
+                line: header_line,
+                column: header_column + offset,
                 reason: "invalid block scalar header"
             )
         )
@@ -724,25 +762,46 @@ fn block_string(
         context.index = context.index + 1
 
     var result = ""
-    var index = 0
+    var blanks = 0
+    var previous = ""
+    var has_previous = false
+    let folded = header.starts_with(">")
 
-    while index < parts.length():
-        let part = parts.at(index).unwrap()
-        result = result.concat(part)
-        var separator = "\n"
+    for part in parts:
+        if part == "" and folded:
+            blanks = blanks + 1
+            continue
 
-        if (
-            header.starts_with(">")
-            and part != ""
-            and not part.starts_with(" ")
-            and index + 1 < parts.length()
-        ):
-            let next = parts.at(index + 1).unwrap()
+        if not folded:
+            result = result.concat(part).concat("\n")
+            continue
 
-            if next != "" and not next.starts_with(" "): separator = " "
+        # Folding: a lone line break between ordinary lines is a space, and
+        # each blank line between them is one newline. Lines that start with a
+        # space keep their breaks.
+        var separator = ""
 
-        result = result.concat(separator)
-        index = index + 1
+        if has_previous:
+            let ordinary = (
+                not previous.starts_with(" ")
+                and not part.starts_with(" ")
+            )
+
+            if ordinary and blanks == 0: separator = " "
+            else if ordinary: separator = newlines(blanks)
+            else: separator = newlines(blanks + 1)
+        else: separator = newlines(blanks)
+
+        result = result.concat(separator).concat(part)
+        previous = part
+        has_previous = true
+        blanks = 0
+
+    if folded:
+        if has_previous: result = result.concat("\n").concat(
+            newlines(blanks)
+        )
+        else: result = newlines(blanks)
 
     if mode != "+":
         while result.ends_with("\n"): result = result.slice(
@@ -790,8 +849,29 @@ fn block_value(
     else if remainder != "":
         if not "['\"\{*&!".contains(remainder.at(0).unwrap()):
             while context.index < context.lines.length():
-                let next = uncomment(context.lines.at(context.index).unwrap())
-                if next.trim() == "" or indent(next) <= base: break
+                var next = uncomment(context.lines.at(context.index).unwrap())
+                var blanks = 0
+
+                # Blank lines inside a plain scalar fold to newlines when the
+                # scalar continues after them.
+                if next.trim() == "":
+                    var probe = context.index
+
+                    while (
+                        probe < context.lines.length()
+                        and uncomment(
+                            context.lines.at(probe).unwrap()
+                        ).trim() == ""
+                    ):
+                        probe = probe + 1
+                        blanks = blanks + 1
+
+                    if probe >= context.lines.length(): break
+
+                    next = uncomment(context.lines.at(probe).unwrap())
+                    if indent(next) <= base: break
+
+                if indent(next) <= base: break
                 if (
                     boundary(text: next, colon: true) >= 0
                     or sequence(next.trim_start())
@@ -802,8 +882,12 @@ fn block_value(
                     )
                 )
 
-                remainder = remainder.concat(" ").concat(next.trim())
-                context.index = context.index + 1
+                var joiner = " "
+
+                if blanks > 0: joiner = newlines(blanks)
+
+                remainder = remainder.concat(joiner).concat(next.trim())
+                context.index = context.index + 1 + blanks
 
         result = try inline_value(context: context, text: remainder, depth: depth)
     else:
@@ -967,6 +1051,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 )
                 .trim()
             )
+            let key_line = context.index + 1
             context.index = context.index + 1
             let value = try block_value(
                 context: context,
@@ -977,7 +1062,12 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
             )
 
             if name == "<<":
-                let merged = try merge(context: context, target: values, value: value)
+                let merged = try merge(
+                    line: key_line,
+                    column: line_indent + 1,
+                    target: values,
+                    value: value
+                )
             else:
                 values.with_entry(key: name, value: value)
 

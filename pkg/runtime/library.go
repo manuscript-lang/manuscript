@@ -30,7 +30,7 @@ func libraryAdd(module, name, result string, params []LibraryParam, body func(*E
 		}
 		normalized, ok := nativeOptions(name, params, args)
 		if !ok {
-			return nativeOptionFailure(result)
+			return nativeOptionFailure(result, name, params, args)
 		}
 		return original(ctx, result, normalized)
 	}

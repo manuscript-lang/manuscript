@@ -97,3 +97,19 @@ test "string and bytes builders freeze idempotently":
         bytes.freeze() != Bytes([0, 255, 1])
         or bytes.freeze() != Bytes([0, 255, 1])
     ): return panic("bytes freeze")
+
+test "empty text splits into one part and case mapping is full Unicode":
+    if "".split(separator: ",") != [""]: return panic("empty split")
+
+    let none_requested: List[String] = []
+    if "".split(separator: "") != none_requested: return panic(
+        "empty text has no scalars"
+    )
+    if "".split(separator: ",", max_parts: 0) != none_requested: return panic(
+        "zero parts"
+    )
+    if "ß".upper() != "SS": return panic("sharp s upper")
+    if "ﬁ".upper() != "FI": return panic("ligature upper")
+    if "ΑΣ".lower() != "ας": return panic("final sigma")
+    if "İ".lower() != "i\u{307}": return panic("dotted capital I")
+    if "Maße".upper() != "MASSE": return panic("upper mixed")

@@ -405,7 +405,20 @@ func libraryCSVStringify(ctx *Execution, r string, a []Value) Value {
 	writer.UseCRLF = crlf
 	for _, row := range a[0].(*List).Items {
 		CheckCancelled(ctx)
-		if err := writer.Write(libraryStringValues(row)); err != nil {
+		cells := libraryStringValues(row)
+		if len(cells) == 1 && cells[0] == "" {
+			// A bare blank line is skipped by parse, so quote the sole empty cell
+			// to keep the row on a round trip.
+			ending := "\n"
+			if crlf {
+				ending = "\r\n"
+			}
+			if _, err := w.Write([]byte("\"\"" + ending)); err != nil {
+				return libraryError(r, "LimitExceeded", "")
+			}
+			continue
+		}
+		if err := writer.Write(cells); err != nil {
 			return libraryError(r, "LimitExceeded", "")
 		}
 		writer.Flush()
