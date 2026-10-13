@@ -113,11 +113,12 @@ type PatternField struct {
 	Pattern *Pattern
 }
 type Arm struct {
-	Pos   Position
-	Path  *Expression
-	Names []string
-	Value *Expression
-	Body  []*Statement
+	Pos           Position
+	Path          *Expression
+	Names         []string
+	NamePositions []Position // Original positions, parallel to Names (including _).
+	Value         *Expression
+	Body          []*Statement
 }
 type Statement struct {
 	Pos        Position
