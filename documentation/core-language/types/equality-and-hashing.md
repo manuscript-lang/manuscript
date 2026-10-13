@@ -62,4 +62,4 @@ These implementations apply to equality operators, collection searches, and key 
 
 For Hashable values, equality must be reflexive, symmetric, and transitive, and equal values must produce equal hashes. Unequal values may collide; equality resolves collisions. Hashes are implementation-dependent lookup aids, not stable IDs or a serialization format.
 
-Keep a stored key's equality and hash behavior unchanged. Remove it before mutating its identity and reinsert afterward. `.clone()` copies outer storage while nested references remain shared. Equality and hash functions should be deterministic and must not depend on authority, resource open state, or wall-clock time.
+Keep a stored key's equality and hash behavior unchanged. Remove it before mutating its identity and reinsert afterward. A mutated key is filed under its old hash, so lookups by the old or the new value no longer find it. A custom `hash` is called whenever a key is inserted or looked up. `.clone()` copies outer storage while nested references remain shared. Equality and hash functions should be deterministic and must not depend on authority, resource open state, or wall-clock time.

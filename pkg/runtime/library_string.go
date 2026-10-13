@@ -88,14 +88,25 @@ func init() {
 			result = "Optional[Int]"
 		}
 		add("string", name, result, []LibraryParam{p("text", "String"), p("index", "Int")}, func(_ *Execution, r string, a []Value) Value {
-			scalars := []rune(a[0].(string))
-			i := relativeIndex(len(scalars), a[1].(int64))
-			if i < 0 || i >= int64(len(scalars)) {
+			text := a[0].(string)
+			ascii := isASCII(text)
+			count := len(text)
+			if !ascii {
+				count = utf8.RuneCountInString(text)
+			}
+			i := relativeIndex(count, a[1].(int64))
+			if i < 0 || i >= int64(count) {
 				return Alternative{Type: r, Tag: "none"}
 			}
-			var value Value = string(scalars[i])
+			var scalar rune
+			if ascii {
+				scalar = rune(text[i])
+			} else {
+				scalar, _ = utf8.DecodeRuneInString(text[scalarOffset(text, int(i)):])
+			}
+			var value Value = string(scalar)
 			if name == "scalar_at" {
-				value = int64(scalars[i])
+				value = int64(scalar)
 			}
 			return Alternative{r, "some", []Value{value}}
 		})
@@ -123,9 +134,14 @@ func init() {
 	}
 	for _, name := range []string{"slice", "substring"} {
 		add("string", name, "String", []LibraryParam{p("text", "String"), p("start", "Int"), p("end", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-			scalars := []rune(a[0].(string))
-			s := clampedIndex(len(scalars), a[1].(int64), name == "slice")
-			e := clampedIndex(len(scalars), a[2].(int64), name == "slice")
+			text := a[0].(string)
+			ascii := isASCII(text)
+			count := len(text)
+			if !ascii {
+				count = utf8.RuneCountInString(text)
+			}
+			s := clampedIndex(count, a[1].(int64), name == "slice")
+			e := clampedIndex(count, a[2].(int64), name == "slice")
 			if s > e {
 				if name == "substring" {
 					s, e = e, s
@@ -133,7 +149,11 @@ func init() {
 					e = s
 				}
 			}
-			return string(scalars[s:e])
+			if ascii {
+				return text[s:e]
+			}
+			start := scalarOffset(text, int(s))
+			return text[start : start+scalarOffset(text[start:], int(e-s))]
 		})
 	}
 	for _, name := range []string{"pad_start", "pad_end"} {
@@ -308,4 +328,23 @@ func formatFloatPrecision(value float64, format byte, precision int) string {
 		sign = ""
 	}
 	return mantissa + "e" + sign + strconv.Itoa(e)
+}
+
+func isASCII(text string) bool {
+	for i := 0; i < len(text); i++ {
+		if text[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
+}
+
+// scalarOffset returns the byte offset of the n-th scalar in text without allocating.
+func scalarOffset(text string, n int) int {
+	offset := 0
+	for ; n > 0 && offset < len(text); n-- {
+		_, width := utf8.DecodeRuneInString(text[offset:])
+		offset += width
+	}
+	return offset
 }

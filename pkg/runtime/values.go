@@ -2,12 +2,16 @@
 package msruntime
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"reflect"
+	goruntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 )
 
 type Value = any
@@ -44,15 +48,28 @@ type Alternative struct {
 type List struct {
 	Type  string
 	Items []Value
+	// shared marks Items as visible to a running for-loop; in-place writes must clone first.
+	shared bool
 }
+
+// ownItems gives the list a private backing array before an in-place write.
+func (l *List) ownItems() {
+	if l.shared {
+		l.Items = append([]Value(nil), l.Items...)
+		l.shared = false
+	}
+}
+
 type Map struct {
 	Type    string
 	Entries []Entry
+	keys    keyIndex
 }
 type Entry struct{ Key, Value Value }
 type Set struct {
 	Type  string
 	Items []Value
+	keys  keyIndex
 }
 type Bytes struct{ Items []byte }
 type Duration int64
@@ -227,7 +244,10 @@ func Positions(value Value, length int) []Value {
 func Iterate(value Value) []Value {
 	switch v := value.(type) {
 	case *List:
-		return append([]Value{}, v.Items...)
+		// Loops see the elements as of loop start. Appends land beyond the captured
+		// length; in-place writes call ownItems and leave this slice untouched.
+		v.shared = true
+		return v.Items[:len(v.Items):len(v.Items)]
 	case *Set:
 		return append([]Value{}, v.Items...)
 	case *Map:
@@ -367,9 +387,37 @@ func equalityID(value Value) (equalityIdentity, bool) {
 	return equalityIdentity{}, false
 }
 
+// primitiveEqual compares Int, Float, String, and Bool operands directly. These
+// types cannot carry a user Equal implementation, so it needs no scope, cycle
+// bookkeeping, or state allocation.
+func primitiveEqual(a, b Value) (result, ok bool) {
+	switch x := a.(type) {
+	case int64:
+		if y, same := b.(int64); same {
+			return x == y, true
+		}
+	case string:
+		if y, same := b.(string); same {
+			return x == y, true
+		}
+	case bool:
+		if y, same := b.(bool); same {
+			return x == y, true
+		}
+	case float64:
+		if y, same := b.(float64); same {
+			return x == y, true
+		}
+	}
+	return false, false
+}
+
 func Equal(a, b Value) bool                   { return equal(a, b, &equalityState{}) }
 func EqualIn(ctx *Execution, a, b Value) bool { return EqualSelected(ctx, a, b, ctx.EqualityScope) }
 func EqualSelected(ctx *Execution, a, b Value, scope TypeScope) bool {
+	if result, ok := primitiveEqual(a, b); ok {
+		return result
+	}
 	return equal(a, b, &equalityState{ctx: ctx, scope: scope})
 }
 func Equality(ctx *Execution, operator string, a, b Value, scope TypeScope) Value {
@@ -380,6 +428,9 @@ func Equality(ctx *Execution, operator string, a, b Value, scope TypeScope) Valu
 	return result
 }
 func equal(a, b Value, state *equalityState) bool {
+	if result, ok := primitiveEqual(a, b); ok {
+		return result
+	}
 	if view, ok := a.(View); ok {
 		a = view.Receiver
 		stateCopy := *state
@@ -605,7 +656,12 @@ type Implementation struct {
 
 var implementations []Implementation
 
+// implementationsByName indexes implementations by method name so a lookup
+// visits only candidates instead of the whole registry.
+var implementationsByName = map[string][]int{}
+
 func Register(implementation Implementation) {
+	implementationsByName[implementation.Name] = append(implementationsByName[implementation.Name], len(implementations))
 	implementations = append(implementations, implementation)
 }
 func ViewOf(contract string, receiver Value, scopes ...TypeScope) Value {
@@ -684,36 +740,132 @@ type Test struct {
 	Run  Function
 }
 
-func RunTests(tests []Test) int {
+// DefaultTestTimeout bounds each test run by the generated test executable
+// so one deadlocked test cannot hang the whole run silently.
+const DefaultTestTimeout = 60 * time.Second
+
+// testCancelGrace is how long a timed-out test gets to unwind after
+// cancellation before the runner abandons it and moves on.
+const testCancelGrace = 2 * time.Second
+
+// TestOptions selects and bounds the tests a run executes. A zero Timeout
+// disables the per-test limit; a non-empty Filter keeps tests whose full
+// name (module::name) contains it.
+type TestOptions struct {
+	Timeout time.Duration
+	Filter  string
+}
+
+// ParseTestArgs reads --timeout=<duration> and --filter=<text> from the test
+// executable's arguments; other arguments are ignored.
+func ParseTestArgs(args []string) (TestOptions, error) {
+	options := TestOptions{Timeout: DefaultTestTimeout}
+	for _, arg := range args {
+		switch {
+		case strings.HasPrefix(arg, "--timeout="):
+			timeout, err := time.ParseDuration(strings.TrimPrefix(arg, "--timeout="))
+			if err != nil || timeout < 0 {
+				return options, fmt.Errorf("invalid --timeout %q; use a duration such as 30s or 2m, or 0 to disable", strings.TrimPrefix(arg, "--timeout="))
+			}
+			options.Timeout = timeout
+		case strings.HasPrefix(arg, "--filter="):
+			options.Filter = strings.TrimPrefix(arg, "--filter=")
+		}
+	}
+	return options, nil
+}
+
+// RunTestsArgs runs tests with the options encoded in the executable's arguments.
+func RunTestsArgs(tests []Test, args []string) int {
+	options, err := ParseTestArgs(args)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	}
+	return RunTestsWith(tests, options)
+}
+
+func RunTests(tests []Test) int { return RunTestsWith(tests, TestOptions{}) }
+
+func RunTestsWith(tests []Test, options TestOptions) int {
+	total := len(tests)
+	if options.Filter != "" {
+		var selected []Test
+		for _, test := range tests {
+			if strings.Contains(test.Name, options.Filter) {
+				selected = append(selected, test)
+			}
+		}
+		tests = selected
+		if len(tests) == 0 {
+			fmt.Printf("no tests match filter %q (%d tests available); the filter matches any part of a test's module::name\n", options.Filter, total)
+			return 1
+		}
+	}
 	failed := 0
 	for _, test := range tests {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					failed++
-					fmt.Printf("FAIL %s: %v\n", test.Name, r)
-				}
-			}()
-			func() {
-				execution := RootExecution()
-				if err := execution.Host.initialize(); err != nil {
-					Panic(err.Error())
-				}
-				defer Cleanup(execution, hostValue(execution, "stdin"))
-				defer Cleanup(execution, hostValue(execution, "stdout"))
-				defer Cleanup(execution, hostValue(execution, "stderr"))
-				defer Cleanup(execution, hostValue(execution, "network"))
-				defer FinishExecution(execution)
-				Invoke(execution, test.Run, nil)
-			}()
-			fmt.Printf("PASS %s\n", test.Name)
-		}()
+		fmt.Printf("RUN %s\n", test.Name)
+		if failure := runTest(test, options.Timeout); failure != nil {
+			failed++
+			fmt.Printf("FAIL %s: %v\n", test.Name, failure)
+			continue
+		}
+		fmt.Printf("PASS %s\n", test.Name)
 	}
 	if len(tests) == 0 {
 		fmt.Println("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file")
 	}
 	fmt.Printf("%d tests, %d failed\n", len(tests), failed)
 	return failed
+}
+
+// runTest executes one test on its own root execution and returns its failure.
+// When the timeout elapses the execution is cancelled; a test that still does
+// not stop is abandoned after a goroutine dump so later tests can run.
+func runTest(test Test, timeout time.Duration) any {
+	execution := RootExecution()
+	cancelled, cancel := context.WithCancel(execution.Context)
+	defer cancel()
+	execution.Context = cancelled
+	done := make(chan any, 1)
+	go func() {
+		var failure any
+		defer func() { done <- failure }()
+		defer func() {
+			if r := recover(); r != nil {
+				failure = r
+			}
+		}()
+		if err := execution.Host.initialize(); err != nil {
+			Panic(err.Error())
+		}
+		defer Cleanup(execution, hostValue(execution, "stdin"))
+		defer Cleanup(execution, hostValue(execution, "stdout"))
+		defer Cleanup(execution, hostValue(execution, "stderr"))
+		defer Cleanup(execution, hostValue(execution, "network"))
+		defer FinishExecution(execution)
+		Invoke(execution, test.Run, nil)
+	}()
+	if timeout <= 0 {
+		return <-done
+	}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case failure := <-done:
+		return failure
+	case <-timer.C:
+	}
+	cancel()
+	select {
+	case <-done:
+		return fmt.Sprintf("timed out after %s; the test was cancelled (use --timeout to change the limit, 0 disables it)", timeout)
+	case <-time.After(testCancelGrace):
+	}
+	stacks := make([]byte, 1<<20)
+	stacks = stacks[:goruntime.Stack(stacks, true)]
+	fmt.Fprintf(os.Stderr, "goroutines after timeout in %s:\n%s\n", test.Name, stacks)
+	return fmt.Sprintf("timed out after %s and did not stop when cancelled; goroutine dump is on stderr", timeout)
 }
 
 type sourceReturn struct{ value Value }
@@ -766,8 +918,9 @@ func NewSourceFunction(labels []string, result, position string, body func(*Exec
 
 func implementationFunction(receiver Value, contract, name string, scope TypeScope) (Function, bool) {
 	typ := ConcreteType(receiver)
-	for _, m := range implementations {
-		if m.Name != name || m.Scope != "" && m.Scope != scope.Module {
+	for _, at := range implementationsByName[name] {
+		m := &implementations[at]
+		if m.Scope != "" && m.Scope != scope.Module {
 			continue
 		}
 		vars := map[string]bool{}

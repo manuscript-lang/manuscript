@@ -15,11 +15,11 @@ func Clone(value Value) Value {
 	case Alternative:
 		return Alternative{v.Type, v.Tag, append([]Value{}, v.Fields...)}
 	case *List:
-		return &List{v.Type, append([]Value{}, v.Items...)}
+		return &List{Type: v.Type, Items: append([]Value{}, v.Items...)}
 	case *Map:
-		return &Map{v.Type, append([]Entry{}, v.Entries...)}
+		return &Map{Type: v.Type, Entries: append([]Entry{}, v.Entries...)}
 	case *Set:
-		return &Set{v.Type, append([]Value{}, v.Items...)}
+		return &Set{Type: v.Type, Items: append([]Value{}, v.Items...)}
 	case Bytes:
 		return Bytes{append([]byte{}, v.Items...)}
 	default:

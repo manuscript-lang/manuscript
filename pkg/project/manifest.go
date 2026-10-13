@@ -4,6 +4,7 @@ package project
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -53,7 +54,7 @@ func ReadProject(filename string) (Project, error) {
 		return p, err
 	}
 	p.Configuration = string(data)
-	scan := bufio.NewScanner(strings.NewReader(p.Configuration))
+	scan := bufio.NewScanner(strings.NewReader(strings.TrimPrefix(p.Configuration, "\ufeff")))
 	lineNumber := 0
 	fail := func(format string, args ...any) error {
 		return fmt.Errorf("%s:%d: %s", filepath.Base(absolute), lineNumber, fmt.Sprintf(format, args...))
@@ -68,6 +69,9 @@ func ReadProject(filename string) (Project, error) {
 			continue
 		}
 		if strings.HasPrefix(line, "[") {
+			if strings.HasSuffix(line, "]") && !strings.HasPrefix(line, "[[") {
+				line = "[" + strings.TrimSpace(line[1:len(line)-1]) + "]"
+			}
 			if line != "[project]" && line != "[aliases]" {
 				return p, fail("unsupported manifest table %s; ms.toml supports only [project] and [aliases]", line)
 			}
@@ -78,16 +82,24 @@ func ReadProject(filename string) (Project, error) {
 			section = strings.Trim(line, "[]")
 			continue
 		}
-		key, value, ok := strings.Cut(line, "=")
+		var key, value string
+		var ok bool
+		if strings.HasPrefix(line, "\"") {
+			quoted, rest, closed := quotedPrefix(line)
+			if !closed {
+				return p, fail("unterminated quoted key; close the key's double quote, e.g. \"name\" = \"value\"")
+			}
+			key, err = strconv.Unquote(quoted)
+			if err != nil {
+				return p, fail("invalid quoted key %s: %v; escape backslashes and quotes inside the key", quoted, err)
+			}
+			value, ok = strings.CutPrefix(strings.TrimSpace(rest), "=")
+		} else {
+			key, value, ok = strings.Cut(line, "=")
+			key = strings.TrimSpace(key)
+		}
 		if !ok || section == "" {
 			return p, fail("invalid manifest assignment; write key = \"value\" inside [project] or [aliases], after the table header")
-		}
-		key = strings.TrimSpace(key)
-		if strings.HasPrefix(key, "\"") {
-			key, err = strconv.Unquote(key)
-			if err != nil {
-				return p, err
-			}
 		}
 		value = strings.TrimSpace(value)
 		if len(value) < 2 || value[0] != '"' || value[len(value)-1] != '"' {
@@ -96,6 +108,9 @@ func ReadProject(filename string) (Project, error) {
 		value, err = strconv.Unquote(value)
 		if err != nil {
 			return p, fail("manifest values must be quoted strings: %v; escape backslashes and quotes inside the value", err)
+		}
+		if strings.ContainsFunc(value, func(r rune) bool { return r < ' ' || r == 0x7f }) {
+			return p, fail("manifest value for %s contains a NUL or control character; remove it", key)
 		}
 		id := section + "." + key
 		if seen[id] {
@@ -121,6 +136,10 @@ func ReadProject(filename string) (Project, error) {
 		}
 	}
 	if err := scan.Err(); err != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			lineNumber++
+			return p, fail("line too long; keep each ms.toml line under 64 KiB")
+		}
 		return p, err
 	}
 	if p.Name == "" || p.Source == "" || p.Entry == "" {
@@ -198,4 +217,17 @@ func missingKeys(p Project) string {
 		keys = append(keys, "entry")
 	}
 	return strings.Join(keys, ", ")
+}
+
+// quotedPrefix splits a leading double-quoted string, honoring backslash escapes.
+func quotedPrefix(line string) (quoted, rest string, closed bool) {
+	for i := 1; i < len(line); i++ {
+		switch line[i] {
+		case '\\':
+			i++
+		case '"':
+			return line[:i+1], line[i+1:], true
+		}
+	}
+	return "", "", false
 }

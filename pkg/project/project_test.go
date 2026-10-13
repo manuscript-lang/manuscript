@@ -70,6 +70,10 @@ func TestMalformedManifests(t *testing.T) {
 		{"invalid alias", manifest + "[aliases]\n\"@2bad\" = \"src\"\n", "invalid or reserved alias"},
 		{"alias chaining", manifest + "[aliases]\n\"@one\" = \"@two\"\n", "invalid or reserved alias"},
 		{"duplicate alias", manifest + "[aliases]\n\"@one\" = \"src\"\n\"@one\" = \"src\"\n", "duplicate manifest key"},
+		{"unterminated quoted key", "[project]\n\"nam = \"x\"\n", "ms.toml:2: invalid manifest assignment"},
+		{"unterminated quoted key line", "[project]\n\"nam\n", "ms.toml:2: unterminated quoted key"},
+		{"NUL in value", strings.Replace(manifest, "src/main.ms", "src/ma\\u0000in.ms", 1), "ms.toml:4: manifest value for entry contains a NUL"},
+		{"line too long", manifest + "# " + strings.Repeat("x", 70000) + "\n", "ms.toml:5: line too long"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -83,6 +87,14 @@ func TestMalformedManifests(t *testing.T) {
 				t.Fatalf("got %v, want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestManifestToleratesBOMAndSpacedHeaders(t *testing.T) {
+	source := "\ufeff[ project ]\nname = \"sample\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[ aliases ]\n\"a=b\" = \"src\"\n"
+	source = strings.Replace(source, "\"a=b\"", "\"@a\"", 1)
+	if p := fixture(t, source); p.Name != "sample" || p.Aliases["@a"] == "" {
+		t.Fatalf("unexpected project: %+v", p)
 	}
 }
 
