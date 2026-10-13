@@ -1,0 +1,179 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+
+type Ticket:
+    pri: Int
+    title: String
+    agent: String
+    status: String
+    reopened: Int
+
+fn all_in_range(s: String, low: Int, high: Int) -> Bool:
+    let codes = s.scalar_values()
+    if codes.is_empty():
+        return false
+    for c in codes:
+        if c < low or c > high:
+            return false
+    return true
+
+fn well_formed_id(s: String) -> Bool:
+    let parts = s.split("-")
+    if parts.length() != 2:
+        return false
+    return all_in_range(parts.at(0).unwrap(), 65, 90) and all_in_range(parts.at(1).unwrap(), 48, 57)
+
+fn index_of_name(names: List[String], name: String) -> Int:
+    var i = 0
+    while i < names.length():
+        if names.at(i).unwrap() == name:
+            return i
+        i = i + 1
+    return -1
+
+fn arity(name: String) -> Int:
+    if name == "assign":
+        return 3
+    if name == "start" or name == "resolve" or name == "close" or name == "reopen" or name == "escalate" or name == "show":
+        return 2
+    if name == "report":
+        return 1
+    return 0
+
+fn order(ids: List[String], tickets: Map[String, Ticket]) -> List[String]:
+    return ids.sorted(compare: fn(left: String, right: String) -> Int:
+        let a = tickets.get(left).unwrap()
+        let b = tickets.get(right).unwrap()
+        if a.pri != b.pri:
+            return b.pri - a.pri
+        return left.compare(right)
+    )
+
+fn report(tickets: Map[String, Ticket]) -> List[String]:
+    let statuses = ["new", "assigned", "in_progress", "resolved", "closed"]
+    let counts = [0, 0, 0, 0, 0]
+    let by_agent = Map[String, List[String]]()
+    let unassigned = List[String]()
+    for id in tickets.keys():
+        let t = tickets.get(id).unwrap()
+        let at = index_of_name(statuses, t.status)
+        counts.set(at, counts.at(at).unwrap() + 1)
+        if t.status == "assigned" or t.status == "in_progress":
+            let list = by_agent.get(t.agent)
+            if list.is_none():
+                by_agent.add(key: t.agent, value: [id])
+            else:
+                list.unwrap().append(id)
+        else if t.status == "new":
+            unassigned.append(id)
+    let parts = List[String]()
+    var i = 0
+    while i < statuses.length():
+        parts.append("{statuses.at(i).unwrap()}={counts.at(i).unwrap()}")
+        i = i + 1
+    let out = [parts.join(" ")]
+    let agents = by_agent.keys().sorted(compare: fn(left: String, right: String) -> Int:
+        return left.compare(right)
+    )
+    for a in agents:
+        out.append("{a}: {order(by_agent.get(a).unwrap(), tickets).join(" ")}")
+    if not unassigned.is_empty():
+        out.append("unassigned: {order(unassigned, tickets).join(" ")}")
+    return out
+
+fn run_command(line: String, tickets: Map[String, Ticket]) -> List[String]:
+    let t = line.split(" ")
+    let name = t.at(0).unwrap()
+    let priorities = ["low", "normal", "high", "urgent"]
+    if name == "open":
+        var rest = line
+        let parts = List[String]()
+        while parts.length() < 3:
+            let at = rest.index_of(" ")
+            if at.is_none():
+                return ["error: usage"]
+            parts.append(rest.slice(0, at.unwrap()))
+            rest = rest.slice(at.unwrap() + 1, rest.length())
+        if rest.is_empty():
+            return ["error: usage"]
+        let id = parts.at(1).unwrap()
+        let pri = index_of_name(priorities, parts.at(2).unwrap())
+        if not well_formed_id(id):
+            return ["error: bad id"]
+        if pri < 0:
+            return ["error: bad priority"]
+        if tickets.contains(id):
+            return ["error: {id} already exists"]
+        tickets.add(key: id, value: Ticket(pri: pri, title: rest, agent: "", status: "new", reopened: 0))
+        return ["ok"]
+    let want = arity(name)
+    if want == 0:
+        return ["error: unknown command"]
+    if t.length() != want:
+        return ["error: usage"]
+    if name == "report":
+        return report(tickets)
+    let id = t.at(1).unwrap()
+    if name == "assign" and not all_in_range(t.at(2).unwrap(), 97, 122):
+        return ["error: bad agent"]
+    let found = tickets.get(id)
+    if found.is_none():
+        return ["error: unknown ticket {id}"]
+    let v = found.unwrap()
+    let st = v.status
+    if name == "assign":
+        if st == "resolved" or st == "closed":
+            return ["error: {id} is {st}"]
+        v.agent = t.at(2).unwrap()
+        if st == "new":
+            v.status = "assigned"
+    else if name == "start":
+        if st == "new":
+            return ["error: {id} has no assignee"]
+        if st == "in_progress":
+            return ["error: {id} already in progress"]
+        if st != "assigned":
+            return ["error: {id} is {st}"]
+        v.status = "in_progress"
+    else if name == "resolve":
+        if st != "in_progress":
+            return ["error: {id} cannot be resolved from {st}"]
+        v.status = "resolved"
+    else if name == "close":
+        if st != "resolved":
+            return ["error: {id} cannot be closed from {st}"]
+        v.status = "closed"
+    else if name == "reopen":
+        if st != "resolved" and st != "closed":
+            return ["error: {id} cannot be reopened from {st}"]
+        v.status = "in_progress"
+        v.reopened = v.reopened + 1
+    else if name == "escalate":
+        if st == "closed":
+            return ["error: {id} is closed"]
+        if v.pri == 3:
+            return ["error: {id} is already urgent"]
+        v.pri = v.pri + 1
+    else:
+        var agent = v.agent
+        if agent.is_empty():
+            agent = "-"
+        return ["{id} [{priorities.at(v.pri).unwrap()}] {st} agent={agent} reopened={v.reopened}: {v.title}"]
+    return ["ok"]
+
+fn run() -> Result[Unit, Error]:
+    let tickets = Map[String, Ticket]()
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let line = next.unwrap()
+        if line.replace_all(old: " ", new: "").unwrap().is_empty():
+            continue
+        for out in run_command(line, tickets):
+            try stdout().write("{out}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

@@ -1,0 +1,117 @@
+import { readFileSync } from "node:fs";
+
+const s = readFileSync(0, "utf8");
+let pos = 0;
+
+class Invalid extends Error {}
+const fail = (): never => { throw new Invalid(); };
+
+const isDigit = (c: string | undefined) => c !== undefined && c >= "0" && c <= "9";
+const isHex = (c: string | undefined) => c !== undefined && /^[0-9a-fA-F]$/.test(c);
+
+function ws(): void {
+  while (pos < s.length && (s[pos] === " " || s[pos] === "\t" || s[pos] === "\n" || s[pos] === "\r")) pos++;
+}
+
+function expect(word: string): string {
+  if (s.slice(pos, pos + word.length) !== word) fail();
+  pos += word.length;
+  return word;
+}
+
+function str(): string {
+  const start = pos;
+  if (s[pos] !== '"') fail();
+  pos++;
+  for (;;) {
+    if (pos >= s.length) fail();
+    const c = s[pos];
+    if (c === '"') { pos++; return s.slice(start, pos); }
+    if (c < " ") fail();
+    if (c === "\\") {
+      pos++;
+      const e = s[pos];
+      if (e !== undefined && '"\\/bfnrt'.includes(e)) pos++;
+      else if (e === "u") {
+        for (let k = 1; k <= 4; k++) if (!isHex(s[pos + k])) fail();
+        pos += 5;
+      } else fail();
+    } else pos++;
+  }
+}
+
+function digits(): void {
+  if (!isDigit(s[pos])) fail();
+  while (isDigit(s[pos])) pos++;
+}
+
+function num(): string {
+  const start = pos;
+  if (s[pos] === "-") pos++;
+  if (s[pos] === "0") pos++;
+  else if (s[pos] >= "1" && s[pos] <= "9") digits();
+  else fail();
+  if (s[pos] === ".") { pos++; digits(); }
+  if (s[pos] === "e" || s[pos] === "E") {
+    pos++;
+    if (s[pos] === "+" || s[pos] === "-") pos++;
+    digits();
+  }
+  return s.slice(start, pos);
+}
+
+function value(indent: number): string {
+  const pad = "  ".repeat(indent + 1);
+  const c = s[pos];
+  if (c === "{") {
+    pos++;
+    ws();
+    if (s[pos] === "}") { pos++; return "{}"; }
+    const items: string[] = [];
+    for (;;) {
+      ws();
+      const key = str();
+      ws();
+      if (s[pos] !== ":") fail();
+      pos++;
+      ws();
+      items.push(pad + key + ": " + value(indent + 1));
+      ws();
+      if (s[pos] === ",") { pos++; continue; }
+      if (s[pos] === "}") { pos++; break; }
+      fail();
+    }
+    return "{\n" + items.join(",\n") + "\n" + "  ".repeat(indent) + "}";
+  }
+  if (c === "[") {
+    pos++;
+    ws();
+    if (s[pos] === "]") { pos++; return "[]"; }
+    const items: string[] = [];
+    for (;;) {
+      ws();
+      items.push(pad + value(indent + 1));
+      ws();
+      if (s[pos] === ",") { pos++; continue; }
+      if (s[pos] === "]") { pos++; break; }
+      fail();
+    }
+    return "[\n" + items.join(",\n") + "\n" + "  ".repeat(indent) + "]";
+  }
+  if (c === '"') return str();
+  if (c === "t") return expect("true");
+  if (c === "f") return expect("false");
+  if (c === "n") return expect("null");
+  return num();
+}
+
+try {
+  ws();
+  const result = value(0);
+  ws();
+  if (pos !== s.length) fail();
+  process.stdout.write(result + "\n");
+} catch (e) {
+  if (!(e instanceof Invalid)) throw e;
+  process.stdout.write("invalid\n");
+}

@@ -1,0 +1,89 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+
+type Entry:
+    name: String
+    score: Int
+    index: Int
+
+# Parses an optional '-' followed by 1 to 9 digits.
+fn parse_score(s: String) -> Optional[Int]:
+    let codes = s.scalar_values()
+    var start = 0
+    if codes.length() > 0 and codes.at(0).unwrap() == 45:
+        start = 1
+    let count = codes.length() - start
+    if count < 1 or count > 9:
+        return none
+    var n = 0
+    var i = start
+    while i < codes.length():
+        let c = codes.at(i).unwrap()
+        if c < 48 or c > 57:
+            return none
+        n = n * 10 + (c - 48)
+        i = i + 1
+    if start == 1:
+        n = 0 - n
+    return some(n)
+
+fn run() -> Result[Unit, Error]:
+    let first = try read_line(input: stdin(), max_bytes: 1048576)
+    var mode = ""
+    if first.is_some():
+        mode = first.unwrap()
+    if mode != "rank" and mode != "dense" and mode != "stable":
+        try stdout().write("error: bad mode\n".to_bytes())
+        return stdout().flush()
+    let ents = List[Entry]()
+    var bad = 0
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let line = next.unwrap()
+        if line.replace_all(old: " ", new: "").unwrap().is_empty():
+            continue
+        let t = line.split(" ")
+        if t.length() != 2 or t.at(0).unwrap().is_empty():
+            bad = bad + 1
+            continue
+        let score = parse_score(t.at(1).unwrap())
+        if score.is_none():
+            bad = bad + 1
+            continue
+        ents.append(Entry(name: t.at(0).unwrap(), score: score.unwrap(), index: ents.length()))
+    let by_name = mode != "stable"
+    let ordered = ents.sorted(compare: fn(a: Entry, b: Entry) -> Int:
+        if a.score != b.score:
+            if a.score > b.score:
+                return -1
+            return 1
+        if by_name:
+            let c = a.name.compare(b.name)
+            if c != 0:
+                return c
+        return a.index - b.index
+    )
+    var rank = 0
+    var prev = 0
+    var i = 0
+    for e in ordered:
+        if mode == "stable":
+            try stdout().write("{e.name} {e.score}\n".to_bytes())
+        else:
+            if i == 0 or e.score != prev:
+                if mode == "rank":
+                    rank = i + 1
+                else:
+                    rank = rank + 1
+                prev = e.score
+            try stdout().write("{rank} {e.name} {e.score}\n".to_bytes())
+        i = i + 1
+    if bad > 0:
+        try stdout().write("skipped: {bad}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

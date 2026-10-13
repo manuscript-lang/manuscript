@@ -1,0 +1,58 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+)
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	var dq []string
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		p := strings.Split(line, " ")
+		switch p[0] {
+		case "push_back":
+			dq = append(dq, p[1])
+		case "push_front":
+			dq = append([]string{p[1]}, dq...)
+		case "pop_back":
+			if len(dq) == 0 {
+				fmt.Fprintln(out, "empty")
+			} else {
+				fmt.Fprintln(out, dq[len(dq)-1])
+				dq = dq[:len(dq)-1]
+			}
+		case "pop_front":
+			if len(dq) == 0 {
+				fmt.Fprintln(out, "empty")
+			} else {
+				fmt.Fprintln(out, dq[0])
+				dq = dq[1:]
+			}
+		case "back":
+			if len(dq) == 0 {
+				fmt.Fprintln(out, "empty")
+			} else {
+				fmt.Fprintln(out, dq[len(dq)-1])
+			}
+		case "front":
+			if len(dq) == 0 {
+				fmt.Fprintln(out, "empty")
+			} else {
+				fmt.Fprintln(out, dq[0])
+			}
+		case "size":
+			fmt.Fprintln(out, len(dq))
+		case "dump":
+			fmt.Fprintf(out, "[%s]\n", strings.Join(dq, " "))
+		}
+	}
+}

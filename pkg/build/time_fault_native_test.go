@@ -29,7 +29,7 @@ fn elapsed(left: Instant, right: Instant) -> Duration:
 	}
 	var replacements []string
 	for _, name := range []string{"shift", "difference", "plus", "minus", "elapsed"} {
-		replacements = append(replacements, "@@"+name+"@@", r.Program.Symbols["time-fault.ms"][name].ID)
+		replacements = append(replacements, "@@"+name+"@@", r.Program.Symbol("time-fault.ms", name).ID)
 	}
 	harness := strings.NewReplacer(replacements...).Replace(`
 func timeFailure(body func()) (failure any) {defer func(){failure=recover()}();body();return}

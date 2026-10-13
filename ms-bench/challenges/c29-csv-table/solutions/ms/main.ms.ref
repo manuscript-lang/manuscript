@@ -1,0 +1,114 @@
+import {stdin, stdout, read_all} from "@std/io.ms"
+
+fn parse_row(line: String) -> List[String]:
+    let chars = line.chars()
+    let n = chars.length()
+    let fields = List[String]()
+    var i = 0
+    while true:
+        if i < n and chars.at(i).unwrap() == "\"":
+            i = i + 1
+            let buf = List[String]()
+            while i < n:
+                let c = chars.at(i).unwrap()
+                if c == "\"":
+                    if i + 1 < n and chars.at(i + 1).unwrap() == "\"":
+                        buf.append("\"")
+                        i = i + 2
+                        continue
+                    i = i + 1
+                    break
+                buf.append(c)
+                i = i + 1
+            fields.append(buf.join(""))
+        else:
+            var j = i
+            while j < n and chars.at(j).unwrap() != ",":
+                j = j + 1
+            fields.append(chars.slice(i, j).join(""))
+            i = j
+        if i < n and chars.at(i).unwrap() == ",":
+            i = i + 1
+            if i == n:
+                fields.append("")
+                break
+            continue
+        break
+    return fields
+
+# True for an optional minus sign followed by one or more ASCII digits.
+fn is_int(s: String) -> Bool:
+    let codes = s.scalar_values()
+    var start = 0
+    if codes.length() > 0 and codes.at(0).unwrap() == 45:
+        start = 1
+    if start >= codes.length():
+        return false
+    var i = start
+    while i < codes.length():
+        let c = codes.at(i).unwrap()
+        if c < 48 or c > 57:
+            return false
+        i = i + 1
+    return true
+
+fn cell_text(cell: String, width: Int, numeric: Bool) -> String:
+    if numeric:
+        return cell.pad_start(width, " ").unwrap()
+    return cell.pad_end(width, " ").unwrap()
+
+fn run() -> Result[Unit, Error]:
+    let data = try read_all(input: stdin())
+    let text = data.to_text().unwrap_or("")
+    let rows = List[List[String]]()
+    for l in text.split("\n"):
+        if not l.is_empty():
+            rows.append(parse_row(l))
+    if rows.is_empty():
+        return stdout().flush()
+    let cols = rows.at(0).unwrap().length()
+    for r in rows:
+        while r.length() > cols:
+            r.remove(r.length() - 1)
+        while r.length() < cols:
+            r.append("")
+    let numeric = List[Bool]()
+    let width = List[Int]()
+    var c = 0
+    while c < cols:
+        var is_num = rows.length() > 1
+        var w = 0
+        var ri = 0
+        while ri < rows.length():
+            let cell = rows.at(ri).unwrap().at(c).unwrap()
+            if cell.length() > w:
+                w = cell.length()
+            if ri > 0 and not is_int(cell):
+                is_num = false
+            ri = ri + 1
+        numeric.append(is_num)
+        width.append(w)
+        c = c + 1
+    let out = List[String]()
+    var ri = 0
+    while ri < rows.length():
+        let r = rows.at(ri).unwrap()
+        let cells = List[String]()
+        var k = 0
+        while k < cols:
+            cells.append(cell_text(r.at(k).unwrap(), width.at(k).unwrap(), numeric.at(k).unwrap()))
+            k = k + 1
+        out.append(cells.join(" | ").trim_end())
+        if ri == 0:
+            let dashes = List[String]()
+            for w in width:
+                dashes.append("-".repeat(w).unwrap())
+            out.append(dashes.join("-+-"))
+        ri = ri + 1
+    try stdout().write("{out.join("\n")}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

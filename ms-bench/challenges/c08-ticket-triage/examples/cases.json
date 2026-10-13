@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "open T-1 high Login page broken\nopen T-2 low Typo in footer\nassign T-1 ann\nstart T-1\nresolve T-2\nshow T-1\nescalate T-1\nescalate T-1\nreport\n",
+  "stdout": "ok\nok\nok\nok\nerror: T-2 cannot be resolved from new\nT-1 [high] in_progress agent=ann reopened=0: Login page broken\nok\nerror: T-1 is already urgent\nnew=1 assigned=0 in_progress=1 resolved=0 closed=0\nann: T-1\nunassigned: T-2\n"
+ },
+ {
+  "name": "lifecycle",
+  "stdin": "open A-1 normal Fix it\nassign A-1 bob\nstart A-1\nresolve A-1\nclose A-1\nreopen A-1\nshow A-1\n",
+  "stdout": "ok\nok\nok\nok\nok\nok\nA-1 [normal] in_progress agent=bob reopened=1: Fix it\n"
+ }
+]

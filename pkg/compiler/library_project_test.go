@@ -38,7 +38,7 @@ func TestLibraryProjectChecksAllSourcesAndTests(t *testing.T) {
 	write("src/unimported.ms", "export fn other() -> Int: return 4\n")
 	for _, options := range []Options{{AnalyzeOnly: true, Entry: true}, {AnalyzeOnly: true}, {Tests: true}} {
 		result := CompileFile(manifest, options)
-		if !result.Success() || result.Program == nil || len(result.Program.Symbols["src/unimported.ms"]) == 0 || len(result.Program.Symbols["tests/value_test.ms"]) == 0 {
+		if !result.Success() || result.Program == nil || len(result.Program.ModuleSymbols("src/unimported.ms")) == 0 || len(result.Program.ModuleSymbols("tests/value_test.ms")) == 0 {
 			t.Fatalf("library modules missing: %+v", result)
 		}
 	}

@@ -9,24 +9,22 @@ Manuscript is a statically typed language implemented in Go. Source `.ms` files 
 - Before implementing or reviewing a change, read [manuscript-change](skills/manuscript-change/SKILL.md), select relevant domain skills below, and consult the experts it routes to. Read additional skills if exploration reaches another domain; do not load the whole catalog for every task.
 - Apply [language-design-taste](skills/language-design-taste/SKILL.md) for language, standard-library, runtime, compiler, or tooling design choices.
 - The user's latest explicit direction and current canonical design take precedence over remembered preferences. Historical proposals and assistant completion reports do not establish current behavior. Identify material differences between a newer decision and this checkout.
-- Use [change-memory](skills/change-memory/SKILL.md) when a correction or verified lesson would change future work. Update existing entries rather than accumulating duplicate or superseded advice.
+- Use [manuscript-change](skills/manuscript-change/SKILL.md#record-durable-lessons) when a correction or verified lesson would change future work. Update existing entries rather than accumulating duplicate or superseded advice.
 
 ## Domain skills
 
 | Task or affected surface | Read |
 | --- | --- |
 | Syntax, types, calls, imports, interfaces, language semantics | [language-design](skills/language-design/SKILL.md) |
-| Checking, lowering, module resolution, build pins/cache, native toolchain | [compiler](skills/compiler/SKILL.md) |
-| Syntax nodes, traversal, lexer/layout, strict and partial parsing | [ast](skills/ast/SKILL.md) |
-| Execution, resources, cancellation, cleanup, concurrency, native dispatch | [runtime](skills/runtime/SKILL.md) |
-| Standard declarations, bindings, errors, API parity/grouping | [standard-library](skills/standard-library/SKILL.md) |
+| Syntax nodes, lexer/parser, checking, lowering, module resolution, build pins/cache, native toolchain | [compiler](skills/compiler/SKILL.md) |
+| Execution, resources, cancellation, cleanup, concurrency, native dispatch, standard declarations, bindings, API parity | [runtime](skills/runtime/SKILL.md) |
 | Formatter, lint, inspection, LSP, VS Code, CLI, debugger | [tooling](skills/tooling/SKILL.md) |
 | Tutorials, exact rules, generated API reference, Hugo book/publication | [documentation](skills/documentation/SKILL.md) |
 | Package organization, dependency policy, pins, CI, releases, repository cleanup | [repository-maintenance](skills/repository-maintenance/SKILL.md) |
 | Opening or updating a pull request | [create-pr](skills/create-pr/SKILL.md) |
 | Filing or rewriting an issue | [create-issue](skills/create-issue/SKILL.md) |
 
-Syntax changes usually need language-design, ast, compiler, tooling, and documentation. Standard API changes usually need standard-library, runtime, tooling, and documentation. Select only domains the change reaches.
+Syntax changes usually need language-design, compiler, tooling, and documentation. Standard API changes usually need runtime, tooling, and documentation. Select only domains the change reaches.
 
 ## Repository layout
 

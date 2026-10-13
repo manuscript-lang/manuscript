@@ -1,0 +1,125 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+// parseInt accepts an optional '-' and 1 to 10 digits.
+func parseInt(s string) (int64, bool) {
+	d := strings.TrimPrefix(s, "-")
+	if len(d) < 1 || len(d) > 10 {
+		return 0, false
+	}
+	for i := 0; i < len(d); i++ {
+		if d[i] < '0' || d[i] > '9' {
+			return 0, false
+		}
+	}
+	n, _ := strconv.ParseInt(s, 10, 64)
+	return n, true
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	mode := ""
+	if sc.Scan() {
+		mode = sc.Text()
+	}
+	var lo, hi int64
+	mt := strings.Split(mode, " ")
+	if mode == "merge" || mode == "total" {
+	} else if len(mt) == 3 && mt[0] == "gaps" {
+		a, ok1 := parseInt(mt[1])
+		b, ok2 := parseInt(mt[2])
+		if !ok1 || !ok2 || a > b {
+			fmt.Fprintln(w, "error: bad mode")
+			return
+		}
+		lo, hi = a, b
+	} else {
+		fmt.Fprintln(w, "error: bad mode")
+		return
+	}
+	type iv struct{ a, b int64 }
+	var ivs []iv
+	for ln := 2; sc.Scan(); ln++ {
+		l := sc.Text()
+		if strings.Trim(l, " ") == "" {
+			continue
+		}
+		t := strings.Split(l, " ")
+		if len(t) != 2 {
+			fmt.Fprintf(w, "error: line %d\n", ln)
+			return
+		}
+		a, ok1 := parseInt(t[0])
+		b, ok2 := parseInt(t[1])
+		if !ok1 || !ok2 || a > b {
+			fmt.Fprintf(w, "error: line %d\n", ln)
+			return
+		}
+		ivs = append(ivs, iv{a, b})
+	}
+	sort.Slice(ivs, func(i, j int) bool {
+		if ivs[i].a != ivs[j].a {
+			return ivs[i].a < ivs[j].a
+		}
+		return ivs[i].b < ivs[j].b
+	})
+	var merged []iv
+	for _, v := range ivs {
+		if n := len(merged); n > 0 && v.a <= merged[n-1].b+1 {
+			if v.b > merged[n-1].b {
+				merged[n-1].b = v.b
+			}
+		} else {
+			merged = append(merged, v)
+		}
+	}
+	switch mode {
+	case "merge":
+		for _, v := range merged {
+			fmt.Fprintf(w, "%d %d\n", v.a, v.b)
+		}
+	case "total":
+		var total int64
+		for _, v := range merged {
+			total += v.b - v.a + 1
+		}
+		fmt.Fprintln(w, total)
+	default:
+		cur := lo
+		printed := false
+		for _, v := range merged {
+			if v.b < cur {
+				continue
+			}
+			if v.a > hi {
+				break
+			}
+			if v.a > cur {
+				fmt.Fprintf(w, "%d %d\n", cur, v.a-1)
+				printed = true
+			}
+			cur = v.b + 1
+			if cur > hi {
+				break
+			}
+		}
+		if cur <= hi {
+			fmt.Fprintf(w, "%d %d\n", cur, hi)
+			printed = true
+		}
+		if !printed {
+			fmt.Fprintln(w, "none")
+		}
+	}
+}

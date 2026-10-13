@@ -37,7 +37,7 @@ func TestArgumentBindingPreservesWrittenOrderAndSource(t *testing.T) {
 					t.Fatal(p.Diagnostics)
 				}
 				var names []string
-				for i, arg := range p.Expressions[call].Arguments {
+				for i, arg := range p.Info(call).Arguments {
 					names = append(names, arg.Name)
 					if arg.Value != original[i].Value || arg.Pos != original[i].Pos || call.Args[i] != original[i] {
 						t.Fatal("argument resolution changed source or written order")

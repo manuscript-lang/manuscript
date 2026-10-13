@@ -311,7 +311,7 @@ func loadStandardSources() error {
 	if len(c.Diagnostics) > 0 {
 		return fmt.Errorf("invalid standard declarations: %v", c.Diagnostics)
 	}
-	standardTypeReferences = c.TypeReferences
+	standardTypeReferences = c.typeReferences
 	for receiver, name := range bindings.IntrinsicReceivers {
 		typ := standardSymbols[name]
 		if typ == nil {
@@ -408,13 +408,13 @@ func loadStandardSources() error {
 	}
 	for _, module := range program.Modules {
 		standardModules[module.File] = map[string]*Symbol{}
-		for name, symbol := range program.Symbols[module.File] {
+		for name, symbol := range program.symbols[module.File] {
 			if symbol.Module == module.File {
 				standardModules[module.File][name] = symbol
 			}
 		}
 	}
-	for ref, typ := range program.TypeReferences {
+	for ref, typ := range program.typeReferences {
 		standardTypeReferences[ref] = typ
 	}
 	standardSourceMethods = program.Methods[len(standardImplementations):]
@@ -466,7 +466,7 @@ func (c *checker) closedInterfaceDefault(e *syntax.Expression) bool {
 	case syntax.KindBool, syntax.KindNumber, syntax.KindUnit:
 		return true
 	case syntax.KindName:
-		info := c.Expressions[e]
+		info := c.expressions[e]
 		return e.Text == "none" && info != nil && info.Binding == nil && info.Constructor != nil && info.Constructor.ID == "@std/Optional" && info.Case == "none"
 	case syntax.KindText:
 		for _, part := range e.Parts {
@@ -477,7 +477,7 @@ func (c *checker) closedInterfaceDefault(e *syntax.Expression) bool {
 		return true
 	case syntax.KindCall:
 		if e.Left.Kind == syntax.KindMember && len(e.Args) == 0 {
-			info := c.Expressions[e.Left]
+			info := c.expressions[e.Left]
 			return info != nil && info.Method != nil && info.Method.Native == "to_bytes" && info.Method.Receiver.ID == "String" && c.closedInterfaceDefault(e.Left.Left)
 		}
 	}

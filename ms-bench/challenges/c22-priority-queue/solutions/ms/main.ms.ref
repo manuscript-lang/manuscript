@@ -1,0 +1,53 @@
+import {stdin, stdout, read_all} from "@std/io.ms"
+import PriorityQueue from "@std/queues.ms"
+
+type Entry:
+    prio: Int
+    name: String
+
+fn by_priority(left: Entry, right: Entry) -> Int:
+    if left.prio < right.prio:
+        return -1
+    if left.prio > right.prio:
+        return 1
+    return 0
+
+fn show(e: Entry) -> String:
+    return "{e.name} {e.prio}"
+
+fn run() -> Result[Unit, Error]:
+    let data = try read_all(input: stdin())
+    let text = data.to_text().unwrap_or("")
+    # The standard priority queue keeps equal priorities in FIFO order.
+    let queue = PriorityQueue[Entry](compare: by_priority)
+    let out = List[String]()
+    for line in text.split("\n"):
+        if line.trim().is_empty():
+            continue
+        let p = line.split(" ")
+        let cmd = p.at(0).unwrap()
+        if cmd == "push":
+            queue.enqueue(Entry(prio: p.at(1).unwrap().parse_int().unwrap(), name: p.at(2).unwrap()))
+        else if cmd == "pop":
+            match queue.dequeue():
+                some(e): out.append(show(e))
+                none: out.append("empty")
+        else if cmd == "peek":
+            match queue.peek():
+                some(e): out.append(show(e))
+                none: out.append("empty")
+        else if cmd == "size":
+            out.append("{queue.length()}")
+        else if cmd == "drain":
+            if queue.is_empty():
+                out.append("empty")
+            while not queue.is_empty():
+                out.append(show(queue.dequeue().unwrap()))
+    if not out.is_empty():
+        try stdout().write("{out.join("\n")}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

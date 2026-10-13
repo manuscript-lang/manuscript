@@ -1,0 +1,81 @@
+package main
+
+import (
+	"bufio"
+	"io"
+	"os"
+	"strings"
+)
+
+func ident(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		letter := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+		if !letter && !(i > 0 && c >= '0' && c <= '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	lines := strings.Split(string(data), "\n")
+	sep := -1
+	for i, l := range lines {
+		if l == "---" {
+			sep = i
+			break
+		}
+	}
+	if sep < 0 {
+		return
+	}
+	vars := map[string]string{}
+	for _, l := range lines[:sep] {
+		if eq := strings.Index(l, "="); eq >= 0 && ident(l[:eq]) {
+			vars[l[:eq]] = l[eq+1:]
+		}
+	}
+	tpl := lines[sep+1:]
+	if len(tpl) > 0 && tpl[len(tpl)-1] == "" {
+		tpl = tpl[:len(tpl)-1]
+	}
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	for _, line := range tpl {
+		var sb strings.Builder
+		for i := 0; i < len(line); {
+			switch {
+			case strings.HasPrefix(line[i:], "{{"):
+				sb.WriteByte('{')
+				i += 2
+			case strings.HasPrefix(line[i:], "}}"):
+				sb.WriteByte('}')
+				i += 2
+			case line[i] == '{':
+				j := strings.IndexByte(line[i+1:], '}')
+				if j >= 0 && ident(line[i+1:i+1+j]) {
+					name := line[i+1 : i+1+j]
+					if v, ok := vars[name]; ok {
+						sb.WriteString(v)
+					} else {
+						sb.WriteString("<undefined:" + name + ">")
+					}
+					i += j + 2
+				} else {
+					sb.WriteByte('{')
+					i++
+				}
+			default:
+				sb.WriteByte(line[i])
+				i++
+			}
+		}
+		out.WriteString(sb.String())
+		out.WriteByte('\n')
+	}
+}

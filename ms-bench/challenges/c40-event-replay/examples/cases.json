@@ -1,0 +1,7 @@
+[
+ {
+  "name": "basic",
+  "stdin": "o1 1 created\no1 1 created\no1 2 item_added pen 3 50\no1 3 item_added ink 1 700\no1 4 paid 100\no1 4 paid 850\no1 5 item_added cap 1 5\nshow o1\nat o1 2\n",
+  "stdout": "o1: created -> open v=1\no1: conflict v=1 expected=2\no1: item_added -> open v=2\no1: item_added -> open v=3\no1: wrong amount expected=850 at v4\no1: paid -> paid v=4\no1: invalid item_added in paid at v5\no1 state=paid v=4 items=2 total=850\n  ink x1 @700\n  pen x3 @50\no1 state=open v=2 items=1 total=150\n  pen x3 @50\n"
+ }
+]

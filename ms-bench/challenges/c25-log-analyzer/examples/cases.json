@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "2024-05-01T10:00:00 INFO GET /api/users 200 12\n2024-05-01T10:00:01 ERROR POST /api/orders 503 250\nthis line is broken\n2024-05-01T10:00:02 INFO GET /api/users 200 15\n2024-05-01T10:00:03 WARN GET /health 404 1\n",
+  "stdout": "valid: 4\nmalformed: 1\nDEBUG: 0\nINFO: 2\nWARN: 1\nERROR: 1\n5xx: 1\ntop:\n/api/users 2 avg=13\n/api/orders 1 avg=250\n/health 1 avg=1\n"
+ },
+ {
+  "name": "all-malformed",
+  "stdin": "x\n\nINFO GET / 200 1\n",
+  "stdout": "valid: 0\nmalformed: 2\nDEBUG: 0\nINFO: 0\nWARN: 0\nERROR: 0\n5xx: 0\ntop:\n"
+ }
+]

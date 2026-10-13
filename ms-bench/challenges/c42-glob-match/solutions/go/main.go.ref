@@ -1,0 +1,308 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+const (
+	kLit = iota
+	kAny
+	kStar
+	kClass
+)
+
+type atom struct {
+	k     int
+	c     byte
+	neg   bool
+	items [][2]byte
+}
+
+var errBad = fmt.Errorf("bad")
+
+func parseClass(p string, i int) (atom, int, error) {
+	neg := false
+	if i < len(p) && p[i] == '!' {
+		neg = true
+		i++
+	}
+	var items [][2]byte
+	get := func(j int) (byte, int, error) {
+		if j >= len(p) {
+			return 0, 0, errBad
+		}
+		if p[j] == '\\' {
+			if j+1 >= len(p) {
+				return 0, 0, errBad
+			}
+			return p[j+1], j + 2, nil
+		}
+		return p[j], j + 1, nil
+	}
+	for {
+		if i >= len(p) {
+			return atom{}, 0, errBad
+		}
+		if p[i] == ']' {
+			if len(items) == 0 {
+				return atom{}, 0, errBad
+			}
+			return atom{k: kClass, neg: neg, items: items}, i + 1, nil
+		}
+		c, j, err := get(i)
+		if err != nil {
+			return atom{}, 0, err
+		}
+		i = j
+		if i+1 < len(p) && p[i] == '-' && p[i+1] != ']' {
+			d, j, err := get(i + 1)
+			if err != nil {
+				return atom{}, 0, err
+			}
+			i = j
+			if d < c {
+				return atom{}, 0, errBad
+			}
+			items = append(items, [2]byte{c, d})
+		} else {
+			items = append(items, [2]byte{c, c})
+		}
+	}
+}
+
+func parse(p string) ([][][]atom, error) {
+	var elems [][][]atom
+	var cur []atom
+	flush := func() {
+		if len(cur) > 0 {
+			elems = append(elems, [][]atom{cur})
+			cur = nil
+		}
+	}
+	i := 0
+	for i < len(p) {
+		ch := p[i]
+		switch ch {
+		case '\\':
+			if i+1 >= len(p) {
+				return nil, errBad
+			}
+			cur = append(cur, atom{k: kLit, c: p[i+1]})
+			i += 2
+		case '?':
+			cur = append(cur, atom{k: kAny})
+			i++
+		case '*':
+			cur = append(cur, atom{k: kStar})
+			i++
+		case '[':
+			a, j, err := parseClass(p, i+1)
+			if err != nil {
+				return nil, err
+			}
+			cur = append(cur, a)
+			i = j
+		case '}':
+			return nil, errBad
+		case '{':
+			flush()
+			i++
+			var alts [][]atom
+			var alt []atom
+		group:
+			for {
+				if i >= len(p) {
+					return nil, errBad
+				}
+				c := p[i]
+				switch c {
+				case '}':
+					alts = append(alts, alt)
+					i++
+					break group
+				case '{':
+					return nil, errBad
+				case ',':
+					alts = append(alts, alt)
+					alt = nil
+					i++
+				case '\\':
+					if i+1 >= len(p) {
+						return nil, errBad
+					}
+					alt = append(alt, atom{k: kLit, c: p[i+1]})
+					i += 2
+				case '?':
+					alt = append(alt, atom{k: kAny})
+					i++
+				case '*':
+					alt = append(alt, atom{k: kStar})
+					i++
+				case '[':
+					a, j, err := parseClass(p, i+1)
+					if err != nil {
+						return nil, err
+					}
+					alt = append(alt, a)
+					i = j
+				default:
+					alt = append(alt, atom{k: kLit, c: c})
+					i++
+				}
+			}
+			elems = append(elems, alts)
+		default:
+			cur = append(cur, atom{k: kLit, c: ch})
+			i++
+		}
+	}
+	flush()
+	return elems, nil
+}
+
+func expansions(elems [][][]atom) [][]atom {
+	acc := [][]atom{{}}
+	for _, alts := range elems {
+		var next [][]atom
+		for _, pre := range acc {
+			for _, alt := range alts {
+				e := make([]atom, 0, len(pre)+len(alt))
+				e = append(e, pre...)
+				e = append(e, alt...)
+				next = append(next, e)
+			}
+		}
+		acc = next
+	}
+	return acc
+}
+
+func splitAtoms(atoms []atom) [][]atom {
+	var segs [][]atom
+	var cur []atom
+	for _, a := range atoms {
+		if a.k == kLit && a.c == '/' {
+			segs = append(segs, cur)
+			cur = nil
+		} else {
+			cur = append(cur, a)
+		}
+	}
+	return append(segs, cur)
+}
+
+func segMatch(atoms []atom, s string) bool {
+	m := len(s)
+	if m > 0 && s[0] == '.' {
+		if len(atoms) == 0 || atoms[0].k != kLit || atoms[0].c != '.' {
+			return false
+		}
+	}
+	cur := make([]bool, m+1)
+	cur[0] = true
+	for _, a := range atoms {
+		nxt := make([]bool, m+1)
+		if a.k == kStar {
+			run := false
+			for j := 0; j <= m; j++ {
+				run = run || cur[j]
+				nxt[j] = run
+			}
+		} else {
+			for j := 0; j < m; j++ {
+				if !cur[j] {
+					continue
+				}
+				c := s[j]
+				ok := false
+				switch a.k {
+				case kLit:
+					ok = c == a.c
+				case kAny:
+					ok = true
+				default:
+					in := false
+					for _, it := range a.items {
+						if it[0] <= c && c <= it[1] {
+							in = true
+							break
+						}
+					}
+					ok = in != a.neg
+				}
+				if ok {
+					nxt[j+1] = true
+				}
+			}
+		}
+		cur = nxt
+	}
+	return cur[m]
+}
+
+func isGlobstar(a []atom) bool {
+	return len(a) == 2 && a[0].k == kStar && a[1].k == kStar
+}
+
+func matchSegs(ps [][]atom, xs []string) bool {
+	memo := map[[2]int]bool{}
+	var rec func(i, j int) bool
+	rec = func(i, j int) bool {
+		key := [2]int{i, j}
+		if v, ok := memo[key]; ok {
+			return v
+		}
+		var r bool
+		if i == len(ps) {
+			r = j == len(xs)
+		} else if isGlobstar(ps[i]) {
+			r = rec(i+1, j)
+			if !r && j < len(xs) && !strings.HasPrefix(xs[j], ".") {
+				r = rec(i, j+1)
+			}
+		} else if j < len(xs) {
+			r = segMatch(ps[i], xs[j]) && rec(i+1, j+1)
+		}
+		memo[key] = r
+		return r
+	}
+	return rec(0, 0)
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<26)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	for sc.Scan() {
+		t := strings.Fields(strings.ReplaceAll(sc.Text(), "\t", " "))
+		if len(t) == 0 {
+			continue
+		}
+		if len(t) != 2 {
+			fmt.Fprintln(w, "error: bad line")
+			continue
+		}
+		elems, err := parse(t[0])
+		if err != nil {
+			fmt.Fprintln(w, "error: invalid pattern")
+			continue
+		}
+		xs := strings.Split(t[1], "/")
+		ok := false
+		for _, e := range expansions(elems) {
+			if matchSegs(splitAtoms(e), xs) {
+				ok = true
+				break
+			}
+		}
+		if ok {
+			fmt.Fprintln(w, "match")
+		} else {
+			fmt.Fprintln(w, "no match")
+		}
+	}
+}

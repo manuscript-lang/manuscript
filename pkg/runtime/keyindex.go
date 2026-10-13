@@ -184,10 +184,12 @@ func keyRemoved(ctx *Execution, c keyed, pos int, removed Value) {
 		ix.n = -1
 		return
 	}
-	ix.n, ix.base = n, c.first()
 	if n == 0 {
+		// Nothing remains, so no position in the old maps is valid.
+		*ix = keyIndex{}
 		return
 	}
+	ix.n, ix.base = n, c.first()
 	switch k := removed.(type) {
 	case int64:
 		delete(ix.ints, k)

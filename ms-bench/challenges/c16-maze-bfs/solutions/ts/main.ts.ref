@@ -1,0 +1,40 @@
+import { readFileSync } from "node:fs";
+
+function solve(rows: string[][]): string {
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < rows[r].length; c++) {
+      if (!"#.SE".includes(rows[r][c])) return `error: bad character at ${r + 1},${c + 1}`;
+    }
+  }
+  if (new Set(rows.map((r) => r.length)).size > 1) return "error: ragged grid";
+  const flat = rows.flat();
+  const count = (ch: string) => flat.filter((x) => x === ch).length;
+  if (count("S") === 0) return "error: no start";
+  if (count("S") > 1) return "error: multiple starts";
+  if (count("E") === 0) return "error: no end";
+  if (count("E") > 1) return "error: multiple ends";
+  const H = rows.length, W = rows[0].length;
+  const si = flat.indexOf("S");
+  const dist = new Array(H * W).fill(-1);
+  dist[si] = 0;
+  const queue = [si];
+  for (let head = 0; head < queue.length; head++) {
+    const cur = queue[head];
+    if (flat[cur] === "E") return String(dist[cur]);
+    const r = Math.floor(cur / W), c = cur % W;
+    for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= H || nc < 0 || nc >= W) continue;
+      const ni = nr * W + nc;
+      if (flat[ni] !== "#" && dist[ni] < 0) {
+        dist[ni] = dist[cur] + 1;
+        queue.push(ni);
+      }
+    }
+  }
+  return "no path";
+}
+
+const lines = readFileSync(0, "utf8").split("\n");
+while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+process.stdout.write(solve(lines.map((l) => [...l])) + "\n");

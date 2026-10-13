@@ -1,0 +1,190 @@
+use std::io::{self, Read, Write};
+
+struct Parser<'a> {
+    s: &'a [u8],
+    pos: usize,
+    out: String,
+}
+
+type Res = Result<(), ()>;
+
+impl<'a> Parser<'a> {
+    fn peek(&self) -> Option<u8> {
+        self.s.get(self.pos).copied()
+    }
+
+    fn ws(&mut self) {
+        while matches!(self.peek(), Some(b' ' | b'\t' | b'\n' | b'\r')) {
+            self.pos += 1;
+        }
+    }
+
+    fn word(&mut self, w: &str) -> Res {
+        if self.s[self.pos..].starts_with(w.as_bytes()) {
+            self.pos += w.len();
+            self.out.push_str(w);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    fn text(&self, start: usize) -> &str {
+        std::str::from_utf8(&self.s[start..self.pos]).unwrap()
+    }
+
+    fn string(&mut self) -> Res {
+        let start = self.pos;
+        if self.peek() != Some(b'"') {
+            return Err(());
+        }
+        self.pos += 1;
+        loop {
+            let c = self.peek().ok_or(())?;
+            if c == b'"' {
+                self.pos += 1;
+                let t = self.text(start).to_string();
+                self.out.push_str(&t);
+                return Ok(());
+            }
+            if c < 0x20 {
+                return Err(());
+            }
+            if c == b'\\' {
+                self.pos += 1;
+                match self.peek() {
+                    Some(b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't') => self.pos += 1,
+                    Some(b'u') => {
+                        for k in 1..=4 {
+                            match self.s.get(self.pos + k) {
+                                Some(h) if h.is_ascii_hexdigit() => {}
+                                _ => return Err(()),
+                            }
+                        }
+                        self.pos += 5;
+                    }
+                    _ => return Err(()),
+                }
+            } else {
+                self.pos += 1;
+            }
+        }
+    }
+
+    fn digits(&mut self) -> Res {
+        if !matches!(self.peek(), Some(b'0'..=b'9')) {
+            return Err(());
+        }
+        while matches!(self.peek(), Some(b'0'..=b'9')) {
+            self.pos += 1;
+        }
+        Ok(())
+    }
+
+    fn number(&mut self) -> Res {
+        let start = self.pos;
+        if self.peek() == Some(b'-') {
+            self.pos += 1;
+        }
+        match self.peek() {
+            Some(b'0') => self.pos += 1,
+            Some(b'1'..=b'9') => self.digits()?,
+            _ => return Err(()),
+        }
+        if self.peek() == Some(b'.') {
+            self.pos += 1;
+            self.digits()?;
+        }
+        if matches!(self.peek(), Some(b'e' | b'E')) {
+            self.pos += 1;
+            if matches!(self.peek(), Some(b'+' | b'-')) {
+                self.pos += 1;
+            }
+            self.digits()?;
+        }
+        let t = self.text(start).to_string();
+        self.out.push_str(&t);
+        Ok(())
+    }
+
+    fn indent(&mut self, n: usize) {
+        for _ in 0..n {
+            self.out.push_str("  ");
+        }
+    }
+
+    fn container(&mut self, depth: usize, open: u8, close: u8) -> Res {
+        self.pos += 1;
+        self.ws();
+        if self.peek() == Some(close) {
+            self.pos += 1;
+            self.out.push(open as char);
+            self.out.push(close as char);
+            return Ok(());
+        }
+        self.out.push(open as char);
+        self.out.push('\n');
+        let mut first = true;
+        loop {
+            if !first {
+                self.out.push_str(",\n");
+            }
+            first = false;
+            self.ws();
+            self.indent(depth + 1);
+            if open == b'{' {
+                self.string()?;
+                self.ws();
+                if self.peek() != Some(b':') {
+                    return Err(());
+                }
+                self.pos += 1;
+                self.ws();
+                self.out.push_str(": ");
+            }
+            self.value(depth + 1)?;
+            self.ws();
+            match self.peek() {
+                Some(b',') => self.pos += 1,
+                Some(c) if c == close => {
+                    self.pos += 1;
+                    break;
+                }
+                _ => return Err(()),
+            }
+        }
+        self.out.push('\n');
+        self.indent(depth);
+        self.out.push(close as char);
+        Ok(())
+    }
+
+    fn value(&mut self, depth: usize) -> Res {
+        match self.peek() {
+            Some(b'{') => self.container(depth, b'{', b'}'),
+            Some(b'[') => self.container(depth, b'[', b']'),
+            Some(b'"') => self.string(),
+            Some(b't') => self.word("true"),
+            Some(b'f') => self.word("false"),
+            Some(b'n') => self.word("null"),
+            Some(_) => self.number(),
+            None => Err(()),
+        }
+    }
+}
+
+fn main() {
+    let mut input = Vec::new();
+    io::stdin().read_to_end(&mut input).unwrap();
+    let mut p = Parser { s: &input, pos: 0, out: String::new() };
+    p.ws();
+    let mut res = p.value(0);
+    if res.is_ok() {
+        p.ws();
+        if p.pos != input.len() {
+            res = Err(());
+        }
+    }
+    let text = if res.is_ok() { format!("{}\n", p.out) } else { "invalid\n".to_string() };
+    io::stdout().write_all(text.as_bytes()).unwrap();
+}

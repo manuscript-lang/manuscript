@@ -1,0 +1,50 @@
+package main
+
+import (
+	"bufio"
+	"io"
+	"os"
+	"strconv"
+	"strings"
+)
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	var counters [7]int
+	fence := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(line, "```") {
+			fence = !fence
+			continue
+		}
+		if fence {
+			continue
+		}
+		level := 0
+		for level < len(line) && line[level] == '#' {
+			level++
+		}
+		if level < 1 || level > 6 {
+			continue
+		}
+		rest := line[level:]
+		if !strings.HasPrefix(rest, " ") {
+			continue
+		}
+		title := strings.Trim(rest, " ")
+		if title == "" {
+			continue
+		}
+		counters[level]++
+		for k := level + 1; k <= 6; k++ {
+			counters[k] = 0
+		}
+		parts := make([]string, level)
+		for k := 1; k <= level; k++ {
+			parts[k-1] = strconv.Itoa(counters[k])
+		}
+		out.WriteString(strings.Repeat("  ", level-1) + strings.Join(parts, ".") + " " + title + "\n")
+	}
+}

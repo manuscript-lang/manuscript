@@ -1,64 +1,5 @@
 # Tooling and documentation lessons
 
-### Generated Go serves performance; lowering code serves maintainability
-
-Decision: the user wants highly optimized generated Go and explicitly permits
-mechanical, non-idiomatic output. Erase high-level abstractions using checked
-facts where semantics allow; readability of emitted Go is not a constraint.
-Maintainable compiler code, precise source/debugger mapping, and supported
-platform behavior remain requirements. Unsafe or runtime-internal techniques
-need documented invariants and tests.
-
-Verified: concrete scalar locals can eliminate repeated boxing in arithmetic
-loops, but unboxing a source-call result and reboxing it for the next call can
-increase allocations. Classify uses and ABI boundaries before choosing a local
-representation; Go's optimizer does not reliably remove those allocations.
-
-Verified: primitive List storage also needs a use/ABI classification. The
-[numeric List experiment](../scripts/bench-lists/README.md) separates boxed
-storage from scalar-local boxing; its typed storage adds payload allocations
-when fed through the unchanged Optional/comparator ABI. Preserve one authoritative
-mutable handle across typed and generic aliases rather than keeping a boxed mirror.
-
-Apply when: optimizing Go lowering, representations, calls, or collection access.
-Evidence: [user direction](codex://threads/01a12c8b-2b5a-71ad-8446-e786ea4580df),
-[lowering objectives and staged scope](../documentation/contributing/compiler/lowering/_index.md),
-and [generated/handwritten comparison](../scripts/bench-lowering/harness.go.txt).
-Verify: run `go run ./scripts/bench-lowering` with the pinned SDK, inspect the
-retained generated Go and escape analysis, and compare allocation counts as well
-as runtime. Preserve fault, cancellation, aliasing, callback, and debugger tests
-when promoting a benchmark candidate into production lowering.
-
-Verified: immutable boxed literal tables still create fixed GC roots even when
-their source functions never run. Per-construction B/op and Go HeapAlloc omit
-that static data. The bounded Debug prototype measured zero/one/repeated calls,
-multiple literals, child RSS and ELF segments; a lower GC target exposed a
-repeatable construction slowdown despite faster native compilation. Treat those
-as separate review costs. Evidence: [literal memory/runtime controls](../scripts/bench-debug-literals/README.md#current-matched-main-evidence-after-api-review).
-
-Verified: direct native calls must use `argumentValue`, not raw `expression`,
-for supplied arguments. Checking can attach implicit Optional wrapping while
-the expression retains its payload type; bypassing that evidence stored an Int
-inside `List[Optional[Int]]` and caused an exit-70 conversion crash. Multi-argument
-fast paths also retain ordered capture guards. Error/Result widening remains in
-expression lowering and composes with the Optional wrapper.
-Evidence: [direct collection lowering](../pkg/lower/lower_collections.go),
-[generated-form checks](../pkg/compiler/lower_collection_conversions_test.go),
-and [native conversion/order conformance](../tests/e2e/testdata/accept/direct-collection-conversions.ms).
-
-Verified: choose a lowering path before generating its operands. Explicit views
-previously built and abandoned ordinary-call arguments, then lowered the receiver
-again for `ViewOf`. A nested callable or match registered source markers in the
-discarded tree, so checked programs failed the printer's exact-once invariant.
-Lowering mutates generator state even when its resulting expression is discarded;
-eligibility probes must return without lowering operands on an ineligible path.
-Preserve the printer assertion and independent baseline rather than dropping
-unprinted markers or rewriting source to introduce an intermediate binding.
-Evidence: [view lowering](../pkg/lower/lower_expressions.go),
-[AST marker regressions](../pkg/lower/lower_views_test.go),
-[native evaluation/capture tests](../tests/e2e/testdata/accept/interface-view-callables.ms),
-and [native DAP regression](../extensions/vscode/tests/interface-view-debug.test.js).
-
 ### Readable formatting needs paragraphs while retaining inline guards
 
 Decision: the user's formatter request keeps inline `if` bodies and introduces
@@ -85,6 +26,8 @@ a callback body must not consume the parameter signature's width budget.
 The [compact golden fixture](../pkg/tooling/testdata/format/compact.golden.ms)
 exercises these boundaries alongside comments and literal spellings.
 
+### Inspect active List backing in the debugger
+
 Verified: typed List storage adds inactive nil slice fields to the native header.
 Rendering `Items` alone exposed bookkeeping or an empty fallback instead of source
 elements. Read the kind tag for expansion and indexed watches; Delve displays a
@@ -94,95 +37,6 @@ primitive type because legacy/large literals can still be boxed. Evidence:
 and [storage-aware renderer](../extensions/vscode/debug-adapter.js).
 Verify all four primitive backings, legacy/empty Lists, generic types and watch
 indexing; source values must not expose private header fields or inactive lengths.
-
-### Native build levels need artifact evidence
-
-Verified: Go omits recorded linker flags from build information when `-trimpath` is enabled. Check symbol/DWARF sections and executable size to verify stripping, rather than treating a missing recorded `-ldflags` value as a build failure. Both Debug and optimized RelWithDebInfo retain local source paths, so both need source-root-sensitive cache identities.
-
-Apply when: changing native optimization, symbol settings, or build caches.
-Evidence: [build level contract](../documentation/developer-tooling/builds/build-levels.md), [native flags](../pkg/compiler/build_type.go), [cache identity](../pkg/build/cache.go), and [native artifact checks](../pkg/build/build_type_test.go).
-Verify: build all four levels, execute and restore each artifact, check native optimization settings and debug sections, and compare stripped sizes with RelWithDebInfo.
-
-Verified: replacing a large list constructor with an anonymous copy thunk
-added physical Go lines under the preceding Manuscript `//line` directive.
-Delve stopped at a later source breakpoint inside that thunk with missing
-source locals. Giving the thunk a generated-file directive still introduced
-an extra stepping frame. An in-statement `append([]rt.Value(nil), data[:]...)`
-retains fresh storage without that frame; native DAP tests must compare against
-the unchanged baseline, including existing bookkeeping-line coalescing.
-Evidence: [large-list DAP regression](../extensions/vscode/tests/debug-large-literal.test.js),
-[bounded Debug lowering](../pkg/lower/lower_debug_literals.go), and
-[independent measurement/provenance](../scripts/bench-debug-literals/README.md).
-Verify: break before and after construction, step, inspect source locals and
-watches, and mutate one of two independent evaluations. Default/Release
-generation and caller-edited `Result.Source` must remain unchanged.
-
-### Repository cleanup must remove duplicated work and layers
-
-Decision: the user's codebase cleanup request includes simplifying the implementation as a whole; reorganizing files alone does not satisfy it. Consolidate duplicated behavior and remove avoidable work before adding abstraction layers.
-
-Verified: source-only CLI commands stop at checked programs, while explicit application entry validation remains available without Go lowering. Semantic lint uses resolved identities instead of re-lexing names. Shared executable-syntax traversal includes defaults, closures, and interpolation; editor requests reuse their source index and resolve receivers without building an inspection document.
-
-Apply when: organizing packages, extracting helpers, or adding another frontend/tooling pass.
-Evidence: [shared traversal](../pkg/syntax/walk.go), [semantic lint](../pkg/tooling/lint_program.go), [CLI modes](../internal/cli/cli.go), [analysis entry regression](../pkg/build/metadata_test.go), and [default/list editor regressions](../pkg/tooling/lsp/defaults_test.go).
-Verify: identify the duplicate traversal, query, serialization, or forwarding path that disappears. Preserve source-level checking, default evaluation, module identity, and native conformance; a smaller file tree alone is not evidence of simplification.
-
-Verified: optimization uses a separate lowering view of checked source. Rewriting or removing AST nodes would break the pointer identities used by editor queries, lint, effects, and source maps. Parsing and resolution diagnostics travel with the AST graph, including during recovery; folding a short-circuited expression never permits an invalid operand to bypass checking. Evidence: [shared pipeline](../pkg/compiler/compiler.go), [source model regressions](../pkg/compiler/pipeline_test.go), and [native side-effect regression](../tests/e2e/testdata/accept/boolean-optimization.ms).
-
-Verified: Go's test cache does not automatically track source built only by a subprocess. The native end-to-end harness imports the CLI implementation as a test dependency so changing CLI code invalidates its cached result. Evidence: [native harness dependency](../tests/e2e/e2e_test.go). For a final native run after command changes, use `go test -count=1 ./tests/e2e` with the pinned toolchain.
-
-Verified: a payload binder such as `error(NotFound)` can conceal a case name
-without a checking error. Advisory lint needs the checked identity before any
-sibling payload bindings enter scope; the payload's own cases remain matchable
-even when only its producing function was imported. Retain each binder's original
-position and rebase it during partial parsing. Evidence: [checked name evidence](../pkg/checker/pattern_names.go),
-[binding/alias/shadowing regressions](../pkg/tooling/pattern_lint_test.go),
-[recovery positions](../pkg/parser/pattern_positions_test.go), and
-[native binding versus separate payload handling](../tests/e2e/testdata/accept/pattern-binding-capture.ms).
-
-Verified: a preferred-name advisory must identify the checked standard native
-method, including its receiver. User methods and callable fields can share the
-same spelling without sharing its semantics. Equivalent stored-method shapes
-can be advised, but String.replace_first currently retains a cap that can replace
-multiple matches; a blanket replace-to-replace_first migration would obscure
-that contract. Its final first/n/all split is a proposal, not a shipped arity
-change. Evidence: [identity and migration exclusions](../pkg/tooling/preferred_names_lint_test.go),
-[current replacement signature](../pkg/stdlib/intrinsics.ms), and
-[naming proposal](https://github.com/manuscript-lang/manuscript/issues/167#issuecomment-6151772994).
-Verify direct/stored native calls, user implementations, callable-field shadowing,
-and excluded capped calls; preserve CLI checking and exact Unicode editor ranges.
-
-Verified: the collection naming migration retains legacy mutator callable shapes
-and uses Unit uniformly for builder mutation. MapBuilder.add and SetBuilder.add
-keep that Unit shape; changing existing append/concat returns would break stored
-function annotations. Never reinterpret legacy mutable with_*/without calls as
-copies. Bytes.with_value remains copying, and immutable slice/split views retain
-their existing backing contracts. Evidence: [migration policy](../documentation/core-language/types/collections.md#naming-and-migration),
-[called builder/default contracts](../tests/e2e/testdata/stdlib/naming-migration.ms),
-and [preferred-name source guards](../pkg/tooling/preferred_names_lint_test.go).
-Verify legacy and preferred direct/stored operations, builder sealing and mutable
-freeze aliases; teaching examples reject MSL108 while compatibility tests retain
-legacy coverage.
-
-### Package moves must preserve build identity and publication inputs
-
-Verified: project manifest/import behavior now lives outside `compiler`. Its embedded implementation sources participate in native pins so future resolver changes invalidate build identity. Authored guides live in `documentation/`, site inputs in `website/`, and Pages output is built into ignored `.artifacts/book/` and deployed as an Actions artifact. Hugo mounts the shared root version and extension grammar as assets; parent-relative `readFile` calls did not resolve those inputs after the move.
-
-Apply when: extracting a build-affecting package or relocating documentation/site inputs.
-Evidence: [pin input bundles](../pkg/build/cache.go), [project source embedding](../pkg/project/identity.go), [site mounts](../website/hugo.toml), [publication checks](../tests/docs/publication.test.cjs), and [architecture](../documentation/contributing/architecture.md).
-Verify: include moved behavior in implementation hashing and release workflow path filters; run `make docs-check`, `make book-check`, and `make dist-check`. Build `.artifacts/book/` with destination cleanup and verify the Pages artifact deployment; generated HTML is no longer a source commit.
-
-Verified: reusable Go packages live in `pkg/`. Moving runtime code requires updating both the runtime import emitted by the compiler and the package queried by SDK payload discovery; ordinary package tests do not exercise payload discovery. Package-relative conformance fixture paths must also account for the additional directory level.
-Evidence: [generated runtime import](../pkg/lower/generate.go), [SDK dependency discovery](../scripts/mktoolchain/main.go), [compiler fixtures](../pkg/build/compiler_test.go), and [layout and Go import migration](../documentation/contributing/architecture.md).
-Verify: run native conformance and `make dist-check` after a package move, alongside the repository dependency/pin checks.
-
-### Native omissions are declared and preserved across interface dispatch
-
-Verified: native defaults are written in the standard function, method, or constructor-field declaration and checked as ordinary expressions. Extended defaults use generated source preparation before the unchanged native ABI; existing Optional `= none` adapters retain their path. Constructor omission follows source metadata. Application implementations inherit standard interface default permissions and receive concrete values, while native compositions pass `some(n)` through source-defined streams. Inferring permission or expressions from a field's name would create a second schema; passing raw integers through an Optional interface would break source implementations.
-
-Apply when: adding native defaults, changing source/native signatures, or implementing stream compositions.
-Evidence: [standard source checks](../pkg/checker/standard.go), [constructor/ABI regressions](../pkg/checker/stdlib_revamp_test.go), [native emission](../pkg/lower/lower_functions.go), and [compiled stream boundary](../tests/e2e/testdata/accept/stdlib-revamp.ms).
-Verify: inspect the generated defaults; exercise [native defaults](../tests/e2e/testdata/stdlib/defaults.ms), including stored/bound/generic calls and fresh records. Omit a limit through an application-defined ReadStream and match `none`; run read_line over that implementation and match its supplied `some(1)`. Keep native acquisition disposal at the final native delivery checkpoint; [default preparation regressions](../pkg/runtime/defaults_test.go) cover cancellation and disposal. Migrate embedded source fixtures in native debugger tests too: an invalid constructor argument can leave a DAP launch waiting for initialization instead of surfacing its build diagnostic.
 
 ### Editor recovery must preserve delimiter continuations
 
@@ -281,40 +135,6 @@ Apply when: removing or renaming public language/API surface, or reporting a doc
 Evidence: the user's follow-up to [the concurrency change](https://github.com/manuscript-lang/manuscript/pull/24); [publication checks](../tests/docs/publication.test.cjs); [publishing workflow](../.github/workflows/cicd.yml).
 Verify: regenerate both reference sources and the website with destination cleanup; compare shipped schema downloads against current generated sources, reject obsolete module routes, and search rendered pages and search data for retired terminology. Confirm publication separately from a successful source merge. Historical review text must not reintroduce syntax the user explicitly requested removing.
 
-### Standalone runtime imports share one alias namespace
-
-Verified: native builds keep the embedded runtime in its own package; merging it into the application forced Go to recompile host services after every source edit. Writing the 15 MB dependency bundle into a fresh directory took about as long as compiling and linking, and changing directories defeated package-cache reuse for Debug; a shared content-addressed workspace removed both. After that, the go command's package loading cost about 100 ms per edit, so rebuilds replay the traced compile/link of `package main` and fall back to `go build` on any mismatch. Linking was then the floor: about 230 ms Release, dominated by loading 108 MB of package archives, half of them `net/http`, `crypto/tls`, and gopsutil. Programs that import no network, system, or process module now link an `ms_lean` runtime without them (about 150 ms). Values of those modules' types only originate from their own functions, which makes module imports a sound selection rule. Keep heavy native dependencies in `!ms_lean` files, list their modules in the compiler's full-runtime set, and let the lean inventory test catch omissions. Per-process costs matter at this scale: loading standard declarations in `checker` package init cost 33 ms on every `ms` invocation, and garbage collection was about a third of that; load them on first use, overlap the pin with checking, and keep the language server on Go's default GC target. Keep single-file merging confined to `emit`. A separately compiled runtime also changes Delve type names, so debugger watches use Delve's `.(data)` rather than hard-coded `main.Record` assertions.
-Evidence: [native assembly](../pkg/build/build.go), [shared workspace](../pkg/build/workspace.go), [command replay](../pkg/build/replay.go), [runtime variants](../pkg/build/variant.go), [lean stubs](../pkg/runtime/lean.go), [cache boundaries](../documentation/developer-tooling/builds/incremental-compilation.md), [standalone artifact invalidation](../tests/e2e/run_cache_test.go), and [native debugger checks](../extensions/vscode/tests/debug-adapter.test.js).
-Verify: run native conformance and the native DAP test; compare both unchanged runs and edited-source builds with warm Go caches for Release and Debug. Unchanged runs exercise executable caching and do not establish runtime package reuse after edits. Check that replay profiles exist under the workspace and that a missing archive or tool falls back to `go build`.
-
-Verified: standalone generation merges runtime declarations and deduplicates imports by import path. Inconsistent aliases for the same Go package can pass ordinary runtime package compilation while breaking every emitted application. Platform helper packages also need inclusion in the standalone dependency bundle; embedding the main runtime sources alone does not carry imported repository packages.
-
-Apply when: adding native runtime implementation files or platform adapters.
-Evidence: [standalone merger](../pkg/build/build.go), [import-alias regression check](../pkg/build/library_test.go), [native dependency bundle](../native_bundle.go), and [platform bridge](../internal/hostos/hostos.go).
-Verify: `TestBundledRuntimeImportAliasesAgree`, source-to-native CLI tests, and the packaged binary check with an empty cache and no system Go.
-
-Verified: native compilation must build the temporary module (`go build .`) rather than an absolute source filename. A filename build can give the main package the synthetic `command-line-arguments` identity and reject bundled internal imports when path canonicalization differs, as on macOS temporary paths. [Native build regression](../pkg/build/library_test.go) exercises a symlinked temporary root; [module build](../pkg/build/build.go) preserves the dependency namespace.
-
-### Frontend independence retains runtime contract checks
-
-Decision: native receiver signatures belong directly on the standard type or intrinsic interface. Do not duplicate them as private free functions. Native bindings identify implementations and any method-specific receiver requirements; the checker resolves requirements against checked standard types without importing the host runtime.
-
-Verified: shared decimal literal rules and runtime receiver identities live in lightweight internal packages; the checker cannot import runtime/host dependencies under the repository policy. Native signature comparisons validate receiver types, parameters, results, generic variables, bounds, and binding coverage directly against receiver declarations, including deliberate mismatch regressions.
-
-Apply when: adding standard operations or moving runtime code.
-Evidence: [source receiver constraints](../pkg/checker/native_members.go), [ABI tests](../pkg/checker/library_test.go), [dependency and bundle policy](../scripts/repo-check/policy.json), and [policy checks](../scripts/repo-check/main.go).
-Verify: run `make verify` and native conformance. New bundled internal sources must enter the dependency bundle and implementation identity.
-
-### Pages deployment and Pages administration have different permissions
-
-Verified: the built-in workflow token with Pages write permission can deploy artifacts, but GitHub rejected changing the existing site's build type through the settings REST endpoint with HTTP 403. Keep deployment on the standard configure/deploy actions; switching the repository's Pages source is an administrator action.
-
-Decision: the user switched Pages to GitHub Actions and requested removal of obsolete Jekyll support. Publish Hugo output through the artifact workflow; no branch-publishing marker is needed. Historical workflow runs do not configure future publishing.
-
-Apply when: migrating or repairing Pages publishing.
-Evidence: [failed settings request](https://github.com/manuscript-lang/manuscript/actions/runs/38275457893/job/114902462365), [artifact deployment](../.github/workflows/cicd.yml), and [publishing instructions](../documentation/contributing/development.md).
-Verify: inspect the actual deployment result, not just the book artifact or merged PR; confirm Pages source is GitHub Actions.
-
 ### Diagnostics are `<cause>; <fix>`, and tools key on the cause
 
 Verified: agents act on a diagnostic only when it names the cause, the location, and a concrete fix (nearest name, import line, valid options). Messages therefore read `<cause>; <fix>`. `Diagnostic.Code` classifies only the text before the first `; `, so fix text cannot change a rule code. Partial parsing recovers from an unterminated delimiter by matching the message prefix, and the lexer reports it at end of file; moving that position or exact wording breaks editor recovery. A follow-on error that only restates `<invalid>` after an unknown name or operand mismatch is suppressed, but a genuine mismatch that mentions `<invalid>` (callback arity) must still surface.
@@ -322,28 +142,3 @@ Verified: agents act on a diagnostic only when it names the cause, the location,
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../documentation/developer-tooling/source/diagnostics.md), [catalogue](../documentation/contributing/diagnostics-catalogue.md), [checker hints](../pkg/checker/hints.go), [hint tests](../pkg/checker/hints_test.go), and [recovery](../pkg/parser/partial.go).
 Verify: run `go test ./pkg/checker ./pkg/parser ./pkg/tooling/lsp ./internal/cli`; extend the hint tests with the new message.
-
-### Fault sites must be recorded after operands finish
-
-Verified: a function's return-type position identifies its declaration, not a failing expression. Generated functions retain a local source position and append one named frame while unwinding a fault. Update that position after evaluating an operation's operands: a successful nested call must not hide the enclosing operation's site, while an operand that faults must keep its own site. Statement fallbacks cover implicit operations; list destructuring records the pattern after evaluating its initializer.
-
-Apply when: adding or specializing lowered runtime operations, source fault traces, or native call fast paths.
-Evidence: [located lowering](../pkg/lower/lower_expressions.go), [source frames](../pkg/runtime/values.go), and [native location regressions](../tests/e2e/fault_locations_test.go).
-Verify: run `TestFaultSourceLocations`, including multiline operands, argument faults, default arguments, bound methods, and destructuring; preserve exact frame order, columns, and names. Keep statement line directives on the operation rather than an inserted bookkeeping line.
-
-Verified: Go orders calls in an expression, but that does not establish when an
-earlier plain local read occurs relative to a later call. A right-hand match can
-mutate the left local. Direct primitive equality therefore captures its operands
-with ordered statements before comparing them. Keep prerequisites inside their
-short-circuit, match and loop regions; hoisting them changes source behavior.
-Evidence: [primitive lowering](../pkg/lower/lower_equality.go),
-[mutation/order conformance](../tests/e2e/testdata/accept/scalar-lowering.ms), and
-[native IEEE/fault checks](../pkg/build/lower_scalar_native_test.go).
-
-### Omitted library entries must stay empty through graph loading
-
-Verified: executable manifests previously required an explicit entry and had no default. Libraries now omit that key; an explicitly empty or invalid entry remains an error. Resolving an empty entry with `SourcePath` would turn it into the project directory, so graph loading skips that resolution and discovers source/test roots instead. Native application commands report the missing entry at the manifest's project table; source analysis and test lowering use the same graph without requiring `main`.
-
-Apply when: changing manifest modes, project discovery, editor overlays, or entry validation.
-Evidence: [manifest validation](../pkg/project/manifest.go), [graph loading](../pkg/frontend/modules.go), [library contracts](../documentation/developer-tooling/builds/project-configuration.md#library-projects-and-copied-dependencies), and [native regressions](../tests/e2e/library_project_test.go).
-Verify: an omitted entry checks unimported modules and executes their tests; an explicit bad entry still fails. Check unsaved unimported library files, canonical symlink entry identities, confined alias targets, and test cache invalidation after an unimported source edit. `ms.lock` pins build inputs and never claims to pin copied package content.

@@ -49,10 +49,10 @@ fn fault_with(resource: Resource, broken: Broken) -> Unit:
 	}
 	var replacements []string
 	for _, name := range []string{"floats", "strings", "unequal", "fault_left", "fault_right", "fault_caller", "empty", "cancelled_with", "cancelled_empty", "fault_with"} {
-		replacements = append(replacements, "@@"+name+"@@", r.Program.Symbols["native.ms"][name].ID)
+		replacements = append(replacements, "@@"+name+"@@", r.Program.Symbol("native.ms", name).ID)
 	}
 	for _, name := range []string{"Counter", "Resource", "Broken"} {
-		replacements = append(replacements, "@@"+name+"@@", strconv.Quote(checker.TypeKey(r.Program.Symbols["native.ms"][name].Type)))
+		replacements = append(replacements, "@@"+name+"@@", strconv.Quote(checker.TypeKey(r.Program.Symbol("native.ms", name).Type)))
 	}
 	// The native harness exercises IEEE values not expressible as source literals,
 	// and cancellation after admission with and without a registered cleanup.

@@ -1,0 +1,79 @@
+package main
+
+import (
+	"bufio"
+	"os"
+	"strconv"
+	"strings"
+)
+
+func isLetter(c byte) bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') }
+
+func solveLine(line string) string {
+	i := strings.IndexByte(line, ' ')
+	if i < 0 {
+		return "error"
+	}
+	cmd, rest := line[:i], line[i+1:]
+	switch cmd {
+	case "E":
+		if rest == "" {
+			return "error"
+		}
+		for k := 0; k < len(rest); k++ {
+			if !isLetter(rest[k]) {
+				return "error"
+			}
+		}
+		var sb strings.Builder
+		for k := 0; k < len(rest); {
+			j := k
+			for j < len(rest) && rest[j] == rest[k] {
+				j++
+			}
+			sb.WriteString(strconv.Itoa(j - k))
+			sb.WriteByte(rest[k])
+			k = j
+		}
+		return sb.String()
+	case "D":
+		var sb strings.Builder
+		k := 0
+		pairs := 0
+		for k < len(rest) {
+			if rest[k] < '1' || rest[k] > '9' {
+				return "error"
+			}
+			n := 0
+			for k < len(rest) && rest[k] >= '0' && rest[k] <= '9' {
+				n = n*10 + int(rest[k]-'0')
+				k++
+			}
+			if k >= len(rest) || !isLetter(rest[k]) {
+				return "error"
+			}
+			sb.WriteString(strings.Repeat(string(rest[k]), n))
+			k++
+			pairs++
+		}
+		if pairs == 0 {
+			return "error"
+		}
+		return sb.String()
+	}
+	return "error"
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<26)
+	w := bufio.NewWriter(os.Stdout)
+	defer w.Flush()
+	for sc.Scan() {
+		l := sc.Text()
+		if strings.Trim(l, " ") == "" {
+			continue
+		}
+		w.WriteString(solveLine(l) + "\n")
+	}
+}

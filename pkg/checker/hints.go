@@ -310,7 +310,7 @@ func (c *checker) exportMessage(item *syntax.Import, imports map[*syntax.Import]
 			exports = append(exports, name)
 		}
 	} else {
-		for name, symbol := range c.Symbols[imports[item]] {
+		for name, symbol := range c.symbols[imports[item]] {
 			if symbol.Module != imports[item] || symbol.Decl == nil {
 				continue
 			}

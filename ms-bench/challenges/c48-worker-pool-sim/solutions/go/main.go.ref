@@ -1,0 +1,160 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type task struct {
+	id       string
+	arr      int64
+	cost     int64
+	fails    int
+	high     bool
+	attempts int
+	res      string
+	state    string
+}
+
+type running struct {
+	task       int
+	start, end int64
+}
+
+func main() {
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Buffer(make([]byte, 1<<20), 1<<24)
+	var lines [][]string
+	for sc.Scan() {
+		f := strings.FieldsFunc(sc.Text(), func(r rune) bool { return r == ' ' || r == '\t' })
+		if len(f) > 0 {
+			lines = append(lines, f)
+		}
+	}
+	W, _ := strconv.Atoi(lines[0][1])
+	Q, _ := strconv.Atoi(lines[0][2])
+	R, _ := strconv.Atoi(lines[0][3])
+	var tasks []*task
+	for _, t := range lines[1:] {
+		tk := &task{id: t[1]}
+		tk.arr, _ = strconv.ParseInt(t[2], 10, 64)
+		tk.cost, _ = strconv.ParseInt(t[3], 10, 64)
+		for _, x := range t[4:] {
+			if x == "high" {
+				tk.high = true
+			} else {
+				tk.fails, _ = strconv.Atoi(strings.TrimPrefix(x, "fails="))
+			}
+		}
+		tasks = append(tasks, tk)
+	}
+	order := make([]int, len(tasks))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(a, b int) bool { return tasks[order[a]].arr < tasks[order[b]].arr })
+
+	run := make([]*running, W)
+	busy := make([]int64, W)
+	var qh, qn []int
+	ai := 0
+	var makespan int64
+	waiting := func() int { return len(qh) + len(qn) }
+	start := func(w, i int, t int64) {
+		tk := tasks[i]
+		tk.attempts++
+		run[w] = &running{i, t, t + tk.cost}
+		busy[w] += tk.cost
+	}
+	for {
+		t := int64(-1)
+		for _, r := range run {
+			if r != nil && (t < 0 || r.end < t) {
+				t = r.end
+			}
+		}
+		if ai < len(order) {
+			if a := tasks[order[ai]].arr; t < 0 || a < t {
+				t = a
+			}
+		}
+		if t < 0 {
+			break
+		}
+		for w := 0; w < W; w++ {
+			r := run[w]
+			if r == nil || r.end != t {
+				continue
+			}
+			tk := tasks[r.task]
+			run[w] = nil
+			if r.end > makespan {
+				makespan = r.end
+			}
+			if tk.attempts <= tk.fails {
+				if tk.attempts < R+1 {
+					if tk.high {
+						qh = append(qh, r.task)
+					} else {
+						qn = append(qn, r.task)
+					}
+				} else {
+					tk.state = "failed"
+					tk.res = fmt.Sprintf("%s failed attempts=%d end=%d", tk.id, tk.attempts, r.end)
+				}
+			} else {
+				tk.state = "ok"
+				tk.res = fmt.Sprintf("%s ok worker=%d start=%d end=%d attempts=%d", tk.id, w+1, r.start, r.end, tk.attempts)
+			}
+		}
+		for w := 0; w < W; w++ {
+			if run[w] == nil && waiting() > 0 {
+				if len(qh) > 0 {
+					start(w, qh[0], t)
+					qh = qh[1:]
+				} else {
+					start(w, qn[0], t)
+					qn = qn[1:]
+				}
+			}
+		}
+		for ai < len(order) && tasks[order[ai]].arr == t {
+			i := order[ai]
+			ai++
+			idle := -1
+			for w := 0; w < W; w++ {
+				if run[w] == nil {
+					idle = w
+					break
+				}
+			}
+			if idle >= 0 {
+				start(idle, i, t)
+			} else if waiting() < Q {
+				if tasks[i].high {
+					qh = append(qh, i)
+				} else {
+					qn = append(qn, i)
+				}
+			} else {
+				tasks[i].state = "rejected"
+				tasks[i].res = fmt.Sprintf("%s rejected at=%d", tasks[i].id, t)
+			}
+		}
+	}
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	counts := map[string]int{}
+	for _, tk := range tasks {
+		fmt.Fprintln(out, tk.res)
+		counts[tk.state]++
+	}
+	for w := 0; w < W; w++ {
+		fmt.Fprintf(out, "worker %d busy=%d\n", w+1, busy[w])
+	}
+	fmt.Fprintf(out, "summary ok=%d failed=%d rejected=%d makespan=%d\n", counts["ok"], counts["failed"], counts["rejected"], makespan)
+}

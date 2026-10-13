@@ -61,7 +61,7 @@ func checkInvalidBounds(t *testing.T) {
 		if !strings.Contains(program.Diagnostics[0].Message, want) {
 			t.Fatal(program.Diagnostics)
 		}
-		for _, symbol := range program.Symbols[module.File] {
+		for _, symbol := range program.symbols[module.File] {
 			for _, variable := range symbol.Variables {
 				for _, bound := range variable.Bounds {
 					if bound.Kind != "contract" {

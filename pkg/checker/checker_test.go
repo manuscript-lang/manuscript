@@ -44,7 +44,7 @@ func TestOmittedLabelPreservesSourceAST(t *testing.T) {
 		if call.Args[0].Name != "" {
 			t.Fatal("checking changed the source argument label")
 		}
-		arguments := program.Expressions[call].Arguments
+		arguments := program.Info(call).Arguments
 		if len(arguments) != 1 || arguments[0].Name != "value" || arguments[0].Value != call.Args[0].Value || arguments[0].Pos != call.Args[0].Pos {
 			t.Fatal("incorrect checked argument mapping", arguments)
 		}
@@ -67,7 +67,7 @@ func TestContextualCallbackPreservesSourceAST(t *testing.T) {
 		if call.Args[0].Name != "" || callback.Params[0].Type != nil || callback.Result != nil {
 			t.Fatal("checking changed source syntax")
 		}
-		if program.Expressions[call].Arguments[0].Name != "value" || program.LambdaParameters[callback][0].Type.ID != "Int" {
+		if program.Info(call).Arguments[0].Name != "value" || program.LambdaBindings(callback)[0].Type.ID != "Int" {
 			t.Fatal("missing inferred source information")
 		}
 	}
@@ -118,7 +118,7 @@ func TestMatchingLabelPreservesSourceAST(t *testing.T) {
 			t.Fatal(program.Diagnostics)
 		}
 		for at, label := range []string{"right", "left"} {
-			if call.Args[at].Name != "" || program.Expressions[call].Arguments[at].Name != label {
+			if call.Args[at].Name != "" || program.Info(call).Arguments[at].Name != label {
 				t.Fatal("incorrect shorthand mapping")
 			}
 		}

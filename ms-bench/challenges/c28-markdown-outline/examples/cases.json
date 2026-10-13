@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "# Guide\nIntro text\n## Install\n```sh\n# not a heading\n```\n## Use\n### Flags\n#hashtag\n# Appendix\n",
+  "stdout": "1 Guide\n  1.1 Install\n  1.2 Use\n    1.2.1 Flags\n2 Appendix\n"
+ },
+ {
+  "name": "skipped-levels",
+  "stdin": "# A\n### B\n## C\n#### D\n# E\n###### F\n",
+  "stdout": "1 A\n    1.0.1 B\n  1.1 C\n      1.1.0.1 D\n2 E\n          2.0.0.0.0.1 F\n"
+ }
+]

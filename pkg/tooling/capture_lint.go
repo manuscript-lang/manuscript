@@ -9,7 +9,7 @@ import (
 // It deliberately does not infer aliasing, helper effects, or lock ownership.
 func lintSharedCaptures(program *checker.Program) []LintFinding {
 	var findings []LintFinding
-	for call, info := range program.Expressions {
+	for call, info := range program.Expressions() {
 		if call.Kind != syntax.KindCall || info == nil || info.Method == nil || info.Method.Receiver == nil || info.Method.Decl == nil {
 			continue
 		}
@@ -38,7 +38,7 @@ func lintSharedCaptures(program *checker.Program) []LintFinding {
 			if arg.Name != argument || callback == nil || callback.Kind != syntax.KindLambda {
 				continue
 			}
-			callbackInfo := program.Expressions[callback]
+			callbackInfo := program.Info(callback)
 			if callbackInfo == nil {
 				continue
 			}
@@ -64,7 +64,7 @@ func lintSharedCaptures(program *checker.Program) []LintFinding {
 				if receiver == nil || receiver.Kind != syntax.KindName {
 					return
 				}
-				receiverInfo := program.Expressions[receiver]
+				receiverInfo := program.Info(receiver)
 				if receiverInfo == nil || !captures[receiverInfo.Binding] {
 					return
 				}
@@ -80,7 +80,7 @@ func lintSharedCaptures(program *checker.Program) []LintFinding {
 						return
 					}
 					receiver := s.Target.Left
-					if receiverInfo := program.Expressions[receiver]; receiverInfo != nil && receiverInfo.Type != nil && receiverInfo.Type.Kind == syntax.KindRecord {
+					if receiverInfo := program.Info(receiver); receiverInfo != nil && receiverInfo.Type != nil && receiverInfo.Type.Kind == syntax.KindRecord {
 						report(receiver, s.Target.Pos)
 					}
 				},
@@ -88,7 +88,7 @@ func lintSharedCaptures(program *checker.Program) []LintFinding {
 					if nestedExpressions[e] || e.Kind != syntax.KindCall || e.Left == nil || e.Left.Kind != syntax.KindMember {
 						return
 					}
-					info := program.Expressions[e]
+					info := program.Info(e)
 					if info == nil || info.Method == nil || info.Method.Decl == nil {
 						return
 					}

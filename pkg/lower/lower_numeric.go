@@ -11,8 +11,8 @@ import (
 // captures, generic values, and call boundaries retain the shared Value ABI.
 // Nonprimitive equality retains the checker's selected implementation scope.
 func (g *generator) numericBinary(e *syntax.Expression) ast.Expr {
-	left := g.program.Expressions[e.Left].Type
-	right := g.program.Expressions[e.Right].Type
+	left := g.program.Info(e.Left).Type
+	right := g.program.Info(e.Right).Type
 	if left.ID != right.ID || left.ID != "Int" && left.ID != "Float" {
 		return nil
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checker.Info) ast.Expr {
-	args := []ast.Expr{g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result), g.typeScope(g.program.Expressions[member.Left].Type)}
+	args := []ast.Expr{g.expression(member.Left), textLiteral(member.Text), g.key(info.Type.Result), g.typeScope(g.program.Info(member.Left).Type)}
 	if info.Method.Native == "collections/set_map" || info.Method.Native == "collections/map_transform_keys" {
 		// Output deduplication needs the mapped key/element's lexical evidence,
 		// including when a generic receiver method is explicitly specialized.
@@ -22,7 +22,7 @@ func (g *generator) nativeReceiverMember(member *syntax.Expression, info *checke
 // constructing a bound Function, resolving labels, or changing Optional storage.
 // References to bound methods still use ordinary callable dispatch.
 func (g *generator) directCollectionCall(e *syntax.Expression, arguments []syntax.Argument) ast.Expr {
-	callee := g.program.Expressions[e.Left]
+	callee := g.program.Info(e.Left)
 	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Contract != nil {
 		return nil
 	}
@@ -33,34 +33,34 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 			// a match expression in the index can reassign that local. Go does
 			// not otherwise order a variable read before a later function call.
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-			return g.locatedOperation(e, runtimeName("ListAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Expressions[e].Type))
+			return g.locatedOperation(e, runtimeName("ListAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Info(e).Type))
 		}
 	case "length":
 		// Collection length reads the receiver's size; it never calls back or fails.
-		switch g.program.Expressions[e.Left.Left].Type.ID {
+		switch g.program.Info(e.Left.Left).Type.ID {
 		case "@std/List", "@std/Map", "@std/Set":
 			if len(arguments) == 0 {
 				return g.locatedOperation(e, runtimeName("CollectionLength"), ident("ctx"), g.expression(e.Left.Left))
 			}
 		}
 	case "append":
-		if len(arguments) == 1 && g.program.Expressions[e.Left.Left].Type.ID == "@std/List" {
+		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
 			return g.locatedOperation(e, runtimeName("ListAppend"), ident("ctx"), receiver, g.argumentValue(arguments[0]))
 		}
 	case "is_empty", "collections/is_empty":
-		if len(arguments) == 0 && g.program.Expressions[e.Left.Left].Type.ID == "@std/List" {
+		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "@std/List" {
 			return g.locatedOperation(e, runtimeName("ListIsEmpty"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	case "collections/contains", "contains", "get", "with_entry", "with_value", "collections/set_add", "collections/set_remove", "collections/map_add", "collections/map_remove":
 		return g.directKeyedCall(e, callee.Method.Native, arguments)
 	case "string/at":
-		if len(arguments) == 1 && g.program.Expressions[e.Left.Left].Type.ID == "String" {
+		if len(arguments) == 1 && g.program.Info(e.Left.Left).Type.ID == "String" {
 			receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
-			return g.locatedOperation(e, runtimeName("StringAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Expressions[e].Type))
+			return g.locatedOperation(e, runtimeName("StringAt"), ident("ctx"), receiver, g.argumentValue(arguments[0]), g.key(g.program.Info(e).Type))
 		}
 	case "byte_length":
-		if len(arguments) == 0 && g.program.Expressions[e.Left.Left].Type.ID == "String" {
+		if len(arguments) == 0 && g.program.Info(e.Left.Left).Type.ID == "String" {
 			return g.locatedOperation(e, runtimeName("StringByteLength"), ident("ctx"), g.expression(e.Left.Left))
 		}
 	case "optional/unwrap":
@@ -75,7 +75,7 @@ func (g *generator) directCollectionCall(e *syntax.Expression, arguments []synta
 // and Set receivers. The element or key scope travels as data, replacing the
 // per-call Execution copy of a bound native member.
 func (g *generator) directKeyedCall(e *syntax.Expression, native string, arguments []syntax.Argument) ast.Expr {
-	receiverType := g.program.Expressions[e.Left.Left].Type
+	receiverType := g.program.Info(e.Left.Left).Type
 	if len(receiverType.Args) == 0 {
 		return nil
 	}
@@ -115,7 +115,7 @@ func (g *generator) directKeyedCall(e *syntax.Expression, native string, argumen
 	}
 	args = append(args, g.typeScope(receiverType.Args[0]))
 	if name == "MapGet" {
-		args = append(args, g.key(g.program.Expressions[e].Type))
+		args = append(args, g.key(g.program.Info(e).Type))
 	}
 	return g.locatedOperation(e, runtimeName(name), args...)
 }

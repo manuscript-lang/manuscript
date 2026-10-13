@@ -64,7 +64,7 @@ func signatureHelp(d document, docs map[string]document, p position) (any, error
 	}
 	label := name + "(" + strings.Join(labels, ", ") + ") -> " + t.Result.String()
 	var doc any
-	if info := a.result.Program.Expressions[call.Left]; info != nil {
+	if info := a.result.Program.Info(call.Left); info != nil {
 		if info.Symbol != nil {
 			doc = description(a.result, info.Symbol.Decl)
 		}
@@ -89,7 +89,7 @@ func inlayHints(result compiler.Result, d document, requested span) []any {
 	}
 	visitor := syntax.Visitor{Statement: func(s *syntax.Statement) {
 		if s.Kind == syntax.KindBind && s.Type == nil && s.Pattern != nil && s.Pattern.Kind == syntax.KindName {
-			if binding := result.Program.Bindings[s.Pattern]; binding != nil && binding.Type != nil && binding.Type.ID != "<invalid>" {
+			if binding := result.Program.PatternBinding(s.Pattern); binding != nil && binding.Type != nil && binding.Type.ID != "<invalid>" {
 				p := Position(d.Text, s.Pattern.Pos.Offset+len(s.Pattern.Name))
 				if (p.Line > requested.Start.Line || p.Line == requested.Start.Line && p.Character >= requested.Start.Character) && (p.Line < requested.End.Line || p.Line == requested.End.Line && p.Character <= requested.End.Character) {
 					hints = append(hints, map[string]any{"position": p, "label": ": " + binding.Type.String(), "kind": 1, "paddingLeft": false, "paddingRight": false})

@@ -1,0 +1,218 @@
+import { readFileSync } from "node:fs";
+
+type Atom = { k: "lit" | "any" | "star" | "class"; c: number; neg: boolean; items: [number, number][] };
+
+class Bad extends Error {}
+
+const lit = (c: number): Atom => ({ k: "lit", c, neg: false, items: [] });
+const any: Atom = { k: "any", c: 0, neg: false, items: [] };
+const star: Atom = { k: "star", c: 0, neg: false, items: [] };
+
+function parseClass(p: string, i: number): [Atom, number] {
+  let neg = false;
+  if (i < p.length && p[i] === "!") {
+    neg = true;
+    i++;
+  }
+  const items: [number, number][] = [];
+  const get = (j: number): [number, number] => {
+    if (j >= p.length) throw new Bad();
+    if (p[j] === "\\") {
+      if (j + 1 >= p.length) throw new Bad();
+      return [p.charCodeAt(j + 1), j + 2];
+    }
+    return [p.charCodeAt(j), j + 1];
+  };
+  for (;;) {
+    if (i >= p.length) throw new Bad();
+    if (p[i] === "]") {
+      if (items.length === 0) throw new Bad();
+      return [{ k: "class", c: 0, neg, items }, i + 1];
+    }
+    let c: number;
+    [c, i] = get(i);
+    if (i + 1 < p.length && p[i] === "-" && p[i + 1] !== "]") {
+      let d: number;
+      [d, i] = get(i + 1);
+      if (d < c) throw new Bad();
+      items.push([c, d]);
+    } else {
+      items.push([c, c]);
+    }
+  }
+}
+
+// Returns elements; each element is a list of alternatives; an alternative is a list of atoms.
+function parse(p: string): Atom[][][] {
+  const elems: Atom[][][] = [];
+  let cur: Atom[] = [];
+  const flush = () => {
+    if (cur.length > 0) {
+      elems.push([cur]);
+      cur = [];
+    }
+  };
+  let i = 0;
+  while (i < p.length) {
+    const ch = p[i];
+    if (ch === "\\") {
+      if (i + 1 >= p.length) throw new Bad();
+      cur.push(lit(p.charCodeAt(i + 1)));
+      i += 2;
+    } else if (ch === "?") {
+      cur.push(any);
+      i++;
+    } else if (ch === "*") {
+      cur.push(star);
+      i++;
+    } else if (ch === "[") {
+      const [a, j] = parseClass(p, i + 1);
+      cur.push(a);
+      i = j;
+    } else if (ch === "}") {
+      throw new Bad();
+    } else if (ch === "{") {
+      flush();
+      i++;
+      const alts: Atom[][] = [];
+      let alt: Atom[] = [];
+      for (;;) {
+        if (i >= p.length) throw new Bad();
+        const c = p[i];
+        if (c === "}") {
+          alts.push(alt);
+          i++;
+          break;
+        }
+        if (c === "{") throw new Bad();
+        if (c === ",") {
+          alts.push(alt);
+          alt = [];
+          i++;
+        } else if (c === "\\") {
+          if (i + 1 >= p.length) throw new Bad();
+          alt.push(lit(p.charCodeAt(i + 1)));
+          i += 2;
+        } else if (c === "?") {
+          alt.push(any);
+          i++;
+        } else if (c === "*") {
+          alt.push(star);
+          i++;
+        } else if (c === "[") {
+          const [a, j] = parseClass(p, i + 1);
+          alt.push(a);
+          i = j;
+        } else {
+          alt.push(lit(c.charCodeAt(0)));
+          i++;
+        }
+      }
+      elems.push(alts);
+    } else {
+      cur.push(lit(ch.charCodeAt(0)));
+      i++;
+    }
+  }
+  flush();
+  return elems;
+}
+
+function expansions(elems: Atom[][][]): Atom[][] {
+  let acc: Atom[][] = [[]];
+  for (const alts of elems) {
+    const next: Atom[][] = [];
+    for (const pre of acc) for (const alt of alts) next.push([...pre, ...alt]);
+    acc = next;
+  }
+  return acc;
+}
+
+function splitAtoms(atoms: Atom[]): Atom[][] {
+  const segs: Atom[][] = [];
+  let cur: Atom[] = [];
+  for (const a of atoms) {
+    if (a.k === "lit" && a.c === 47) {
+      segs.push(cur);
+      cur = [];
+    } else cur.push(a);
+  }
+  segs.push(cur);
+  return segs;
+}
+
+function segMatch(atoms: Atom[], s: string): boolean {
+  const m = s.length;
+  if (m > 0 && s[0] === ".") {
+    if (atoms.length === 0 || atoms[0].k !== "lit" || atoms[0].c !== 46) return false;
+  }
+  let cur = new Array<boolean>(m + 1).fill(false);
+  cur[0] = true;
+  for (const a of atoms) {
+    const nxt = new Array<boolean>(m + 1).fill(false);
+    if (a.k === "star") {
+      let run = false;
+      for (let j = 0; j <= m; j++) {
+        run = run || cur[j];
+        nxt[j] = run;
+      }
+    } else {
+      for (let j = 0; j < m; j++) {
+        if (!cur[j]) continue;
+        const c = s.charCodeAt(j);
+        let ok: boolean;
+        if (a.k === "lit") ok = c === a.c;
+        else if (a.k === "any") ok = true;
+        else ok = a.items.some(([lo, hi]) => lo <= c && c <= hi) !== a.neg;
+        if (ok) nxt[j + 1] = true;
+      }
+    }
+    cur = nxt;
+  }
+  return cur[m];
+}
+
+const isGlobstar = (a: Atom[]) => a.length === 2 && a[0].k === "star" && a[1].k === "star";
+
+function matchSegs(ps: Atom[][], xs: string[]): boolean {
+  const memo = new Map<number, boolean>();
+  const go = (i: number, j: number): boolean => {
+    const key = i * 100000 + j;
+    const hit = memo.get(key);
+    if (hit !== undefined) return hit;
+    let r: boolean;
+    if (i === ps.length) r = j === xs.length;
+    else if (isGlobstar(ps[i])) {
+      r = go(i + 1, j);
+      if (!r && j < xs.length && !xs[j].startsWith(".")) r = go(i, j + 1);
+    } else if (j < xs.length) r = segMatch(ps[i], xs[j]) && go(i + 1, j + 1);
+    else r = false;
+    memo.set(key, r);
+    return r;
+  };
+  return go(0, 0);
+}
+
+const out: string[] = [];
+for (const line of readFileSync(0, "utf8").split("\n")) {
+  const t = line.split(/[ \t]+/).filter((x) => x !== "");
+  if (t.length === 0) continue;
+  if (t.length !== 2) {
+    out.push("error: bad line");
+    continue;
+  }
+  let elems: Atom[][][];
+  try {
+    elems = parse(t[0]);
+  } catch (e) {
+    if (e instanceof Bad) {
+      out.push("error: invalid pattern");
+      continue;
+    }
+    throw e;
+  }
+  const xs = t[1].split("/");
+  const ok = expansions(elems).some((e) => matchSegs(splitAtoms(e), xs));
+  out.push(ok ? "match" : "no match");
+}
+process.stdout.write(out.map((o) => o + "\n").join(""));
