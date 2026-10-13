@@ -63,6 +63,46 @@ These commands use source checking and embedded declarations without a Go instal
 `ms stdlib <directory>` writes source declarations and bindings for tooling;
 `ms doc --stdlib` renders API documentation. These outputs serve different tasks.
 
+## Selecting independent analysis inputs
+
+`check`, `lint`, and `doc` accept multiple `.ms` files, directories, and `ms.toml`
+projects. For example, `ms check src utilities.ms --json` checks each selected
+input independently. It does not combine their declarations or execute their
+`main` functions or test blocks. Native commands still take one entrypoint.
+
+A directory containing `ms.toml` selects that project and retains the command's
+existing project behavior. A directory without its own manifest recursively
+selects `.ms` files, skipping hidden, `vendor`, and `node_modules` directories,
+directory symlinks, and nested directories containing `ms.toml`. Select nested
+projects explicitly. Selecting an excluded directory or file explicitly is
+allowed. Discovered file symlinks must stay inside the selected directory.
+Files keep their ordinary import roots; selecting a directory does not grant
+parent-directory imports or inherit manifest aliases. Select `ms.toml` to use
+project aliases and project-wide checking. These additions do not change fmt's
+existing [directory and manifest discovery](source/formatting.md).
+
+Collections deduplicate canonical targets, imported diagnostics, and documented
+modules. Targets and diagnostics are ordered by displayed path and source
+position; module documentation paths use `/` separators. Paths inside the
+invocation directory are relative to it, and outside paths are canonical
+absolute paths. The existing single-file/project path spelling is preserved.
+Use `--` before literal filenames beginning with `-`.
+
+Check and lint process other independent inputs after an error, returning 1 for
+any failed selection, source error, or lint finding. Their existing `format: 1`
+JSON documents collect all diagnostics; lint findings retain their existing
+shape alongside source diagnostics. Empty standalone selections succeed with
+empty arrays. Usage errors return 2 before checking.
+
+Doc checks every input before writing its combined public module reference.
+On any error it returns 1, reports diagnostics on stderr, and leaves stdout and
+an existing output file untouched. Successful JSON retains `format: 1` and the
+`modules` array; an empty selection produces an empty reference. `--stdlib`
+continues to require no input targets. If one physical module has different API
+snapshots in separate input graphs (for example, different local interface
+implementations), doc rejects the conflicting descriptions. Select one input
+or a project manifest defining one complete graph instead.
+
 ## Machine-readable checks and tests
 
 `ms fmt <targets> --check --json` and `ms test <input> --json` write one JSON
@@ -127,7 +167,7 @@ Content-Length transport limits frames to 16 MiB and headers to 8 KiB. Invalid J
 
 ## Linting and formatting
 
-`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), and MSL106 (a match payload binding mistaken for a case or type pattern). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
+`lint` returns 1 for findings and 0 for clean source. Stable advisory codes are MSL001 (trailing whitespace), MSL002 (missing final newline), MSL101 (unread local), MSL102 (unused import), MSL103 (unreachable statement), MSL104 (discarded Result), MSL105 (unsynchronized captured mutation), MSL106 (a match payload binding mistaken for a case or type pattern), and MSL108 (an equivalent preferred standard-library method name is available). Semantic rules use checked bindings and control-flow facts. Required implicit imports, such as canonical `List` for list literals, count as uses. Unused-import and whitespace fixes are available in the editor; initializers with possible effects are never silently removed. Run `ms check` for correctness errors.
 
 MSL104 warns when an expression statement discards a standard `Result`. Handle it with `match`, propagate it with `try`, or explicitly bind it as `let _ignored = operation()` when ignoring both success and failure is intentional. See [Result handling](../core-language/errors/results.md).
 
@@ -137,6 +177,20 @@ MSL106 explains that a capitalized payload name creates a fresh binding even
 when it names a known constructor or alternative case. It suggests a separate
 helper to match a case of the payload's type, or renaming an intentional binding.
 See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns).
+
+MSL108 recommends `List.set`, `List.remove`, `List.reverse_in_place`, `Map.add`,
+`Set.add`, `Set.remove`, `Bytes.reversed` and `Regex.replace_all` for their
+equivalent legacy methods. The same arguments retain mutation, receiver returns,
+copy behavior, ordering, equality scopes, limits and faults. It also checks stored
+method references and uses resolved standard identities, so user methods and
+callable fields with the same names keep their own contracts. See
+[collection mutation and copies](../core-language/types/collections.md#mutation-and-copies).
+
+This advisory makes no automatic source edit. Builder return conventions and
+String replacement names are outside its preference map. In particular,
+`String.replace_first` still accepts a cap greater than one; renaming every
+`String.replace` call would conceal that behavior. Both names remain supported
+with their current signatures; see [replacement limits](../standard-library/data.md).
 
 `fmt` accepts files, directories, and manifests, with project discovery shared with checking. `--check` reports every unformatted file and fails if any target needs formatting or cannot be processed. See [formatting](source/formatting.md) for selection and exclusion rules. It preserves comments and token spellings, validates both input and output, and writes atomically. Formatting and import-organization actions include document versions. Import sorting retains comment and blank-line group boundaries.
 

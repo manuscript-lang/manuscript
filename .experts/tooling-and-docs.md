@@ -130,6 +130,18 @@ position and rebase it during partial parsing. Evidence: [checked name evidence]
 [recovery positions](../pkg/parser/pattern_positions_test.go), and
 [native binding versus separate payload handling](../tests/e2e/testdata/accept/pattern-binding-capture.ms).
 
+Verified: a preferred-name advisory must identify the checked standard native
+method, including its receiver. User methods and callable fields can share the
+same spelling without sharing its semantics. Equivalent stored-method shapes
+can be advised, but String.replace_first currently retains a cap that can replace
+multiple matches; a blanket replace-to-replace_first migration would obscure
+that contract. Its final first/n/all split is a proposal, not a shipped arity
+change. Evidence: [identity and migration exclusions](../pkg/tooling/preferred_names_lint_test.go),
+[current replacement signature](../pkg/stdlib/intrinsics.ms), and
+[naming proposal](https://github.com/manuscript-lang/manuscript/issues/167#issuecomment-6151772994).
+Verify direct/stored native calls, user implementations, callable-field shadowing,
+and excluded capped calls; preserve CLI checking and exact Unicode editor ranges.
+
 ### Package moves must preserve build identity and publication inputs
 
 Verified: project manifest/import behavior now lives outside `compiler`. Its embedded implementation sources participate in native pins so future resolver changes invalidate build identity. Authored guides live in `documentation/`, site inputs in `website/`, and Pages output is built into ignored `.artifacts/book/` and deployed as an Actions artifact. Hugo mounts the shared root version and extension grammar as assets; parent-relative `readFile` calls did not resolve those inputs after the move.

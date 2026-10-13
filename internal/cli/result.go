@@ -12,7 +12,7 @@ import (
 // command-specific failures (such as formatting drift) to have stable codes.
 type commandDiagnostic struct {
 	Code     string                `json:"code"`
-	Phase    string                `json:"phase"`
+	Phase    string                `json:"phase,omitempty"`
 	Message  string                `json:"message"`
 	Position syntax.Position       `json:"position"`
 	End      *syntax.Position      `json:"end,omitempty"`

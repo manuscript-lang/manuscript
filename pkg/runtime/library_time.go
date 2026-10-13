@@ -1,6 +1,10 @@
 package msruntime
 
-import "time"
+import (
+	"fmt"
+	"math"
+	"time"
+)
 
 func init() {
 	p := func(name, typ string) LibraryParam { return LibraryParam{name, typ} }
@@ -9,22 +13,40 @@ func init() {
 	})
 	for _, operation := range []struct{ name, operator string }{{"add", "+"}, {"subtract", "-"}} {
 		libraryAdd("time", "duration_"+operation.name, "Duration", []LibraryParam{p("left", "Duration"), p("right", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
-			return Binary(operation.operator, a[0], a[1])
+			left, right := int64(a[0].(Duration)), int64(a[1].(Duration))
+			if operation.operator == "+" {
+				return Duration(checkedTimeAdd("Duration.add", "value", "right", left, right))
+			}
+			return Duration(checkedTimeSub("Duration.subtract", "value", "right", left, right))
 		})
 	}
 	libraryAdd("time", "duration_multiply", "Duration", []LibraryParam{p("value", "Duration"), p("factor", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		return Duration(checkedMul(int64(a[0].(Duration)), a[1].(int64)))
+		return Duration(checkedTimeMul("Duration.multiply", int64(a[0].(Duration)), a[1].(int64)))
 	})
 	libraryAdd("time", "duration_divide", "Duration", []LibraryParam{p("value", "Duration"), p("divisor", "Int")}, func(_ *Execution, _ string, a []Value) Value {
-		return Duration(Binary("/", int64(a[0].(Duration)), a[1]).(int64))
+		value, divisor := int64(a[0].(Duration)), a[1].(int64)
+		if divisor == 0 {
+			return Panic("Duration.divide: division by zero; divisor must be nonzero, found 0")
+		}
+		if value == math.MinInt64 && divisor == -1 {
+			timeArithmeticFault("Duration.divide", "value", "divisor", value, divisor)
+		}
+		return Duration(value / divisor)
 	})
 	libraryAdd("time", "duration_negate", "Duration", []LibraryParam{p("value", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
-		return Duration(checkedSub(0, int64(a[0].(Duration))))
+		value := int64(a[0].(Duration))
+		if value == math.MinInt64 {
+			return libraryRangeFault("Duration.negate", "value (nanoseconds)", value, math.MinInt64+1, math.MaxInt64)
+		}
+		return Duration(-value)
 	})
 	libraryAdd("time", "duration_abs", "Duration", []LibraryParam{p("value", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
 		value := a[0].(Duration)
+		if value == Duration(math.MinInt64) {
+			return libraryRangeFault("Duration.abs", "value (nanoseconds)", int64(value), math.MinInt64+1, math.MaxInt64)
+		}
 		if value < 0 {
-			return Duration(checkedSub(0, int64(value)))
+			return -value
 		}
 		return value
 	})
@@ -48,10 +70,13 @@ func init() {
 		})
 	}
 	libraryAdd("time", "instant_shift", "Instant", []LibraryParam{p("value", "Instant"), p("duration", "Duration")}, func(_ *Execution, _ string, a []Value) Value {
-		return Binary("+", a[0], a[1])
+		value, offset := a[0].(Instant), int64(a[1].(Duration))
+		return Instant{value.Domain, checkedTimeAdd("Instant.shift", "value", "duration", value.Tick, offset)}
 	})
 	libraryAdd("time", "instant_difference", "Duration", []LibraryParam{p("left", "Instant"), p("right", "Instant")}, func(_ *Execution, _ string, a []Value) Value {
-		return Binary("-", a[0], a[1])
+		left, right := a[0].(Instant), a[1].(Instant)
+		sameClock(left, right)
+		return Duration(checkedTimeSub("Instant.difference", "value", "right", left.Tick, right.Tick))
 	})
 	libraryAdd("time", "instant_compare", "Int", []LibraryParam{p("left", "Instant"), p("right", "Instant")}, func(_ *Execution, _ string, a []Value) Value {
 		left, right := a[0].(Instant), a[1].(Instant)
@@ -71,4 +96,42 @@ func libraryTimeCompare(left, right int64) int64 {
 		return 1
 	}
 	return 0
+}
+
+// Time arithmetic retains the same signed 64-bit checks as Int arithmetic, but
+// faults name the time operation and nanosecond operands. Int hot paths remain
+// independent of these diagnostic labels.
+func timeArithmeticFault(operation, leftLabel, rightLabel string, left, right int64) {
+	leftLabel += " (nanoseconds)"
+	if rightLabel != "factor" && rightLabel != "divisor" {
+		rightLabel += " (nanoseconds)"
+	}
+	Panic(fmt.Sprintf("%s: overflow; found %s %d and %s %d; result nanoseconds must be between %d and %d", operation, leftLabel, left, rightLabel, right, math.MinInt64, math.MaxInt64))
+}
+func checkedTimeAdd(operation, leftLabel, rightLabel string, left, right int64) int64 {
+	result := left + right
+	if right > 0 && result < left || right < 0 && result > left {
+		timeArithmeticFault(operation, leftLabel, rightLabel, left, right)
+	}
+	return result
+}
+func checkedTimeSub(operation, leftLabel, rightLabel string, left, right int64) int64 {
+	result := left - right
+	if right < 0 && result < left || right > 0 && result > left {
+		timeArithmeticFault(operation, leftLabel, rightLabel, left, right)
+	}
+	return result
+}
+func checkedTimeMul(operation string, value, factor int64) int64 {
+	if value == 0 || factor == 0 {
+		return 0
+	}
+	if value == math.MinInt64 && factor == -1 || factor == math.MinInt64 && value == -1 {
+		timeArithmeticFault(operation, "value", "factor", value, factor)
+	}
+	result := value * factor
+	if result/factor != value {
+		timeArithmeticFault(operation, "value", "factor", value, factor)
+	}
+	return result
 }

@@ -6,6 +6,7 @@ var ReceiverBindings = map[string]map[string]string{
 	"Cidr":              {"text": "net/cidr_text"},
 	"DnsKind":           {"text": "net/dns_kind_text"},
 	"IpFamily":          {"text": "net/ip_family_text"},
+	"NormalizationForm": {"normalize": "string/form_normalize"},
 	"HashAlgorithm":     {"digest": "crypto/hash_algorithm_digest", "hmac": "crypto/hash_algorithm_hmac"},
 	"CompressionFormat": {"compress": "compress/format_compress", "decompress": "compress/format_decompress"},
 	"ArchiveFormat":     {"pack": "archive/format_pack", "unpack": "archive/format_unpack"},
@@ -190,6 +191,7 @@ var ReceiverBindings = map[string]map[string]string{
 		"substring":     "string/substring",
 	},
 	"Bytes": {
+		"split":         "bytes/split",
 		"values":        "bytes/values",
 		"contains":      "bytes/contains",
 		"slice":         "bytes/slice",

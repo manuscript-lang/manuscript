@@ -7,6 +7,16 @@ import (
 
 func TestTypedCodecSelectorsRejectInvalidCasesAndTypes(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
+		{"normalization typo", `import NormalizationForm from "@std/string.ms"
+fn wrong() -> Unit:
+    let form = NormalizationForm.NFC
+`, "NFC"},
+		{"string into normalization selector", `import NormalizationForm from "@std/string.ms"
+fn choose(form: NormalizationForm) -> Unit:
+    return unit
+fn wrong() -> Unit:
+    choose("NFC")
+`, "NormalizationForm"},
 		{"algorithm typo", `import HashAlgorithm from "@std/crypto.ms"
 fn wrong() -> Unit:
     let algorithm = HashAlgorithm.Sha257
