@@ -92,6 +92,16 @@ func TestPreludeCompletionNeedsNoImport(t *testing.T) {
 	}
 }
 
+func TestCollectionPreludeExpressionCompletionNeedsNoImport(t *testing.T) {
+	for _, name := range []string{"List", "Map"} {
+		items := completeSource(t, "fn work() -> Unit:\n    "+name[:2]+"|\n")
+		item := itemNamed(items, name)
+		if item == nil || len(item.AdditionalTextEdits) != 0 {
+			t.Fatalf("%s: %+v", name, item)
+		}
+	}
+}
+
 func TestPreludeNavigationUsesStandardSource(t *testing.T) {
 	source := "fn work(value: Optional[Int]) -> Result[Int, Error]:\n    return ok(value: value.unwrap())\n"
 	d := document{"file:///tmp/prelude.ms", source, 1}
