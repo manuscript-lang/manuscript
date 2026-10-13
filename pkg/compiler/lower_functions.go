@@ -19,6 +19,59 @@ func recordDefaults(d *syntax.Declaration) bool {
 	}
 	return false
 }
+
+// Native Optional.none adapters already implement omission. Other defaults use
+// the same checked per-call prologue as source functions, then tail-dispatch to
+// the existing native body with full concrete argument slots.
+func (g *generator) nativeDefaults(d *syntax.Declaration, t *checker.Type, callee ast.Expr) ast.Expr {
+	return g.nativeDefaultParameters(d, t, nil, callee)
+}
+
+func (g *generator) nativeDefaultParameters(d *syntax.Declaration, t *checker.Type, overridden map[string]bool, callee ast.Expr) ast.Expr {
+	if d == nil || g.program.Parameters[d] == nil {
+		return callee
+	}
+	oldModule := g.module
+	g.module = d.Pos.File
+	defer func() { g.module = oldModule }()
+	var values []ast.Expr
+	for _, binding := range g.program.Parameters[d] {
+		values = append(values, ident(binding.ID))
+	}
+	params := append([]syntax.Parameter{}, d.Params...)
+	for i := range params {
+		if overridden[params[i].Name] {
+			params[i].Default = nil
+		}
+	}
+	preparedType := *t
+	preparedType.Defaults = nil // Only the selected expression defaults run here.
+	prepare := g.function(d.Name+" defaults", params, d.Result, nil, g.program.Parameters[d], nil, &preparedType,
+		returned(composite(runtimeName("PreparedDefaults"), values...)))
+	return runtimeCall("WithDefaults", callee, concreteFunction(prepare))
+}
+
+func (g *generator) methodDefaults(m *checker.Method, callee ast.Expr) ast.Expr {
+	if m.Native != "" {
+		return g.nativeDefaults(m.Decl, m.Type, callee)
+	}
+	// Source implementations inherit omission permission from a standard
+	// interface. Prepare its new defaults before entering the source method;
+	// explicit method defaults keep their existing precedence.
+	if m.Contract != nil && m.Contract.Def != nil && m.Contract.Def.Symbol != nil {
+		for _, d := range m.Contract.Def.Symbol.Decl.Methods {
+			if d.Name != m.Decl.Name || g.program.Parameters[d] == nil {
+				continue
+			}
+			overridden := map[string]bool{}
+			for _, p := range m.Decl.Params {
+				overridden[p.Name] = p.Default != nil
+			}
+			return g.nativeDefaultParameters(d, m.Type, overridden, callee)
+		}
+	}
+	return callee
+}
 func (g *generator) declaredFunction(s *checker.Symbol) ast.Expr {
 	d := s.Decl
 	if d.Kind == syntax.KindFn {

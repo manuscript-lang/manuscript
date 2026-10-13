@@ -76,3 +76,7 @@ Regex uses RE2 syntax. Backreferences and lookbehind are unsupported; malformed 
 | `to_text` | Decode valid UTF-8 or return `none`. |
 
 Bytes stay immutable even when a native slice shares storage. Construction and extraction copy values, as described in [encoding and parsing](../core-language/basics/text-and-bytes.md#encoding-and-parsing).
+
+## Base64 encoding
+
+`base64_encode(data: bytes)` and `base64_decode(text: "/w==")` use the standard alphabet by default. Pass `url_safe: true` for the URL-safe alphabet (`_w==` for the same byte). Decoding still validates the selected alphabet and an explicit `max_bytes` output budget; zero is a supplied budget.

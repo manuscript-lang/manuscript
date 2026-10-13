@@ -11,6 +11,8 @@ The `.ms` files here define public types, fields, cases, function signatures, an
 
 These files use ordinary Manuscript syntax. Runtime functions and receiver operations have empty function bodies, written with the usual colon, such as `export fn commands() -> Commands:`. Opaque type schemas use empty declarations such as `export type Duration:`. Interface signatures remain signatures, and `bindings.json` maps the declarations to native implementations. The checker verifies implementation rules and native signatures. There is no library-only parser mode or `native` keyword. Ordinary record fields may have default expressions.
 
+Nongeneric native defaults are checked expressions in these declarations. Generated source preparation evaluates omitted defaults before calling the unchanged native ABI; mutable values are created afresh. Existing `Optional[T] = none` adapters keep their native path, including generic native declarations. Other native generic expression defaults are rejected until their substitution contract is implemented; source generic defaults remain supported. Do not add another default schema to `bindings.json` or the runtime.
+
 Modules with executable bodies use the ordinary checker and need no entries in `bindings.json`. Imports include their reachable source implementations once, with the same public visibility and type identities as application modules.
 
 ## Editor navigation

@@ -52,6 +52,7 @@ func libraryParseType(s string, vars map[string]*Type) *Type {
 }
 
 func validateStandardNativeBindings() error {
+	ensureStandard()
 	receivers := map[string][2]string{}
 	for receiver, operations := range rt.NativeLibraryBindings {
 		typ := standardSymbols[receiver]
