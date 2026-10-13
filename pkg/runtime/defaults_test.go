@@ -16,7 +16,7 @@ func TestNativeDefaultsPreservePayloadAndCancellation(t *testing.T) {
 		}
 		return PreparedDefaults(args)
 	})
-	callable := WithDefaults(native, prepare)
+	callable := WithDefaults(native, prepare, []int{0})
 	first := Invoke(ctx, callable, nil).(Record)
 	second := Invoke(ctx, callable, nil).(Record)
 	first.Fields["count"] = int64(4)
@@ -44,7 +44,7 @@ func TestNativeDefaultsPreservePayloadAndCancellation(t *testing.T) {
 	parent, cancel = context.WithCancel(ctx.Context)
 	stopped.Context = parent
 	cancelling := NewFunction(native.Labels, native.Result, func(_ *Execution, args []Value) Value { cancel(); return PreparedDefaults(args) })
-	if _, ok := recovered(func() { Invoke(&stopped, WithDefaults(native, cancelling), nil) }).(cancelled); !ok || calls != 8 {
+	if _, ok := recovered(func() { Invoke(&stopped, WithDefaults(native, cancelling, []int{0}), nil) }).(cancelled); !ok || calls != 8 {
 		t.Fatal("cancelled default reached native body")
 	}
 }
@@ -55,11 +55,11 @@ func TestNativeDefaultFailureAndAcquisitionDelivery(t *testing.T) {
 	native := NewFunction([]string{"value"}, "Result[Int][String]", func(*Execution, []Value) Value { called = true; return int64(1) })
 	failure := Alternative{Type: native.Result, Tag: "error", Fields: []Value{"failed"}}
 	prepare := NewFunction(native.Labels, native.Result, func(*Execution, []Value) Value { return failure })
-	if got := Invoke(ctx, WithDefaults(native, prepare), nil); !Equal(got, failure) || called {
+	if got := Invoke(ctx, WithDefaults(native, prepare, []int{0}), nil); !Equal(got, failure) || called {
 		t.Fatal("propagation reached native body", got)
 	}
 	prepare = NewFunction(native.Labels, native.Result, func(*Execution, []Value) Value { return Panic("default fault") })
-	if fault, ok := recovered(func() { Invoke(ctx, WithDefaults(native, prepare), nil) }).(Fault); !ok || fault.Message != "default fault" || called {
+	if fault, ok := recovered(func() { Invoke(ctx, WithDefaults(native, prepare, []int{0}), nil) }).(Fault); !ok || fault.Message != "default fault" || called {
 		t.Fatal("default fault changed", fault)
 	}
 	parent, cancel := context.WithCancel(ctx.Context)
@@ -68,8 +68,23 @@ func TestNativeDefaultFailureAndAcquisitionDelivery(t *testing.T) {
 	disposed := 0
 	acquire := NewAcquisition([]string{"value"}, "Resource", func(*Execution, []Value) Value { cancel(); return Record{Type: "Resource"} }, func(*Execution, Value) { disposed++ })
 	prepare = NewFunction(acquire.Labels, "Resource", func(_ *Execution, args []Value) Value { return PreparedDefaults(args) })
-	if _, ok := recovered(func() { Invoke(&stopped, WithDefaults(acquire, prepare), nil) }).(cancelled); !ok || disposed != 1 {
+	if _, ok := recovered(func() { Invoke(&stopped, WithDefaults(acquire, prepare, []int{0}), nil) }).(cancelled); !ok || disposed != 1 {
 		t.Fatal("native acquisition disposal changed", disposed)
+	}
+}
+
+func TestPresentNewDefaultsKeepOldOmissionSlots(t *testing.T) {
+	ctx := RootExecution()
+	prepared := 0
+	native := NewFunction([]string{"flag", "limit"}, "Bool", func(_ *Execution, args []Value) Value {
+		return args[0] == false && args[1] == nil
+	})
+	prepare := NewFunction(native.Labels, native.Result, func(_ *Execution, args []Value) Value {
+		prepared++
+		return PreparedDefaults{false, optional("Int", nil, false)}
+	})
+	if Invoke(ctx, WithDefaults(native, prepare, []int{0}), []Argument{{"flag", false}}) != true || prepared != 0 {
+		t.Fatal("supplying the new default changed the old native omission path", prepared)
 	}
 }
 
@@ -88,7 +103,7 @@ func BenchmarkNativeDefaultPreparation(b *testing.B) {
 			callable := Value(native)
 			args := []Argument{{"value", false}}
 			if name != "native" {
-				callable = WithDefaults(native, prepare)
+				callable = WithDefaults(native, prepare, []int{0})
 			}
 			if name == "omitted" {
 				args = nil

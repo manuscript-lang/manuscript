@@ -196,13 +196,15 @@ type PreparedDefaults []Value
 // WithDefaults preserves the native callable's delivery checkpoint, including
 // acquisition disposal. Do not wrap the final call in NewFunction: an extra
 // delivery checkpoint could discard a resource after its native owner returned.
-func WithDefaults(callee Value, prepare Function) Value {
+// slots lists only the new expression defaults; old Optional.none omissions
+// continue directly to the native adapter when these slots are supplied.
+func WithDefaults(callee Value, prepare Function, slots []int) Value {
 	f := callee.(Function)
 	return Function{f.Labels, f.Result, func(ctx *Execution, args []Value) Value {
 		CheckCancelled(ctx)
 		missing := false
-		for _, value := range args {
-			missing = missing || value == nil
+		for _, index := range slots {
+			missing = missing || args[index] == nil
 		}
 		if !missing {
 			return f.Body(ctx, args)

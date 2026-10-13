@@ -164,7 +164,11 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			}
 			if symbol := info.Constructor.Def.Symbol; recordDefaults(symbol.Decl) && (symbol.Native == "" || g.program.Parameters[symbol.Decl] != nil) {
 				if symbol.Native != "" {
-					return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), g.declaredFunction(symbol), args)
+					if len(arguments) == len(symbol.Decl.Fields) {
+						return g.locatedOperation(e, runtimeName("ConstructWithContext"), ident("ctx"), g.key(info.Type), args)
+					}
+					callable := g.lazyValue("native constructor/"+symbol.ID, g.declaredFunction(symbol))
+					return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 				}
 				var callable ast.Expr = ident(symbol.ID)
 				if len(symbol.Variables) > 0 {
@@ -177,7 +181,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 		var callable ast.Expr
 		if info.Symbol != nil {
 			if info.Symbol.Native != "" {
-				callable = g.nativeDefaults(info.Symbol.Decl, g.program.Expressions[e.Left].Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)))
+				callable = g.nativeDefaults(info.Symbol.Decl, g.program.Expressions[e.Left].Type, runtimeCall("StandardFunction", textLiteral(info.Symbol.Native), g.key(info.Type)), arguments)
 			} else {
 				callable = ident(info.Symbol.ID)
 				if len(info.Symbol.Variables) > 0 {
@@ -186,7 +190,7 @@ func (g *generator) expressionValue(e *syntax.Expression, info *checker.Info) as
 			}
 		} else {
 			// Capture a dynamic callable before arguments that may replace it.
-			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.expression(e.Left))
+			callable = runtimeCall("SourceAt", address(ident("sourcePosition")), textLiteral(e.Left.Pos.String()), g.methodCallable(e.Left, arguments))
 		}
 		return g.locatedOperation(e, runtimeName("Invoke"), ident("ctx"), callable, args)
 	case syntax.KindList:

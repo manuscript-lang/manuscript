@@ -384,7 +384,7 @@ func loadStandardSources() error {
 				for _, operation := range symbol.Type.Def.Operations {
 					method := standardMethodDeclaration(symbol.Type, operation.Name)
 					variables := append(append([]*Type{}, symbol.Variables...), standardOperationVariables[symbol.ID+"/"+operation.Name]...)
-					c.checkNativeDefaults(method, method.Params, operation.Type, variables)
+					c.checkNativeDefaults(method, method.Params, operation.Type, variables, symbol.Type.Kind == "contract")
 				}
 			}
 		}
@@ -421,7 +421,7 @@ func loadStandardSources() error {
 	return nil
 }
 
-func (c *checker) checkNativeDefaults(d *syntax.Declaration, params []syntax.Parameter, t *Type, variables []*Type) {
+func (c *checker) checkNativeDefaults(d *syntax.Declaration, params []syntax.Parameter, t *Type, variables []*Type, contract ...bool) {
 	if !hasExtendedDefaults(params) {
 		// Existing Optional.none adapters retain their allocation-free path.
 		for _, parameter := range params {
@@ -438,13 +438,50 @@ func (c *checker) checkNativeDefaults(d *syntax.Declaration, params []syntax.Par
 		c.error(d.Pos, "type", "native generic expression defaults are not supported; keep '= none' on Optional parameters or use a source wrapper")
 		return
 	}
+	if d.Kind == syntax.KindRecord && t.Result.Kind != syntax.KindRecord {
+		c.error(d.Pos, "type", "native opaque constructor expression defaults need a delivery/disposal design; keep Optional.none defaults or use a source wrapper")
+		return
+	}
 	oldScope, oldResult, oldFunction := c.scope, c.result, c.function
 	c.scope = c.variableScope(variables)
 	c.result = t.Result
 	c.serial++
 	c.function = c.serial
 	c.checkParameters(d, params, t.Params)
+	if len(contract) > 0 && contract[0] {
+		// Inherited preparation precedes an implementation's own defaults.
+		// Keep this bounded interface slice independent and free of effects;
+		// combining dependent/effectful defaults needs one ordered prologue.
+		for _, parameter := range params {
+			if e := parameter.Default; e != nil && !c.closedInterfaceDefault(e) {
+				c.error(parameter.Pos, "type", "standard interface expression defaults must be closed literals or bytes from literal text; use a source wrapper for dependent or effectful defaults")
+			}
+		}
+	}
 	c.scope, c.result, c.function = oldScope, oldResult, oldFunction
+}
+
+func (c *checker) closedInterfaceDefault(e *syntax.Expression) bool {
+	switch e.Kind {
+	case syntax.KindBool, syntax.KindNumber, syntax.KindUnit:
+		return true
+	case syntax.KindName:
+		info := c.Expressions[e]
+		return e.Text == "none" && info != nil && info.Binding == nil && info.Constructor != nil && info.Constructor.ID == "@std/Optional" && info.Case == "none"
+	case syntax.KindText:
+		for _, part := range e.Parts {
+			if part.Value != nil {
+				return false
+			}
+		}
+		return true
+	case syntax.KindCall:
+		if e.Left.Kind == syntax.KindMember && len(e.Args) == 0 {
+			info := c.Expressions[e.Left]
+			return info != nil && info.Method != nil && info.Method.Native == "to_bytes" && info.Method.Receiver.ID == "String" && c.closedInterfaceDefault(e.Left.Left)
+		}
+	}
+	return false
 }
 
 // Extended defaults need source preparation rather than the native none adapter.

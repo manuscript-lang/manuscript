@@ -76,6 +76,8 @@ Named functions, anonymous functions, and implementation methods with bodies may
 
 An inferred immutable local copy of a callable retains its defaults. Explicit function-type annotations, mutable bindings, function parameters and results, fields, and generic forwarding require the full argument list. Defaults are not part of function-type identity; a defaulted function can be passed wherever its complete labeled signature is expected.
 
+The current native standard-library slice supports expression defaults on nongeneric functions and ordinary record fields. Standard interface expression defaults must be closed literals or bytes converted from literal text; dependent or effectful inherited defaults require a combined ordering design. Native generic expression defaults and expression defaults on opaque native constructors remain unsupported. A recursive native default expansion is rejected during lowering; ordinary source wrappers retain their runtime recursion behavior.
+
 ## Collections as arguments
 
 To accept a variable number of values, declare an ordinary list parameter:

@@ -13,6 +13,10 @@ These files use ordinary Manuscript syntax. Runtime functions and receiver opera
 
 Nongeneric native defaults are checked expressions in these declarations. Generated source preparation evaluates omitted defaults before calling the unchanged native ABI; mutable values are created afresh. Existing `Optional[T] = none` adapters keep their native path, including generic native declarations. Other native generic expression defaults are rejected until their substitution contract is implemented; source generic defaults remain supported. Do not add another default schema to `bindings.json` or the runtime.
 
+This slice permits expression field defaults on ordinary records. Opaque native constructors retain their existing defaults until delivery/disposal is designed. Standard interface expression defaults are restricted to closed literals or bytes converted from literal text, so preparing inherited defaults before an implementation's own defaults cannot reorder visible effects or read a still-missing parameter. Dependent/effectful inherited defaults need one combined ordered prologue before that restriction is expanded. Recursive native default expansion is rejected during lowering; use a source wrapper for recursive defaults.
+
+Direct calls supplying every new expression default keep the original dispatch, including old `none` omission slots. Stateless free-function and ordinary-record default callables are cached through the existing Lazy mechanism; default expressions and mutable storage are still evaluated per call. Receiver-bound callables retain their captured receiver and have a runtime slot check.
+
 Modules with executable bodies use the ordinary checker and need no entries in `bindings.json`. Imports include their reachable source implementations once, with the same public visibility and type identities as application modules.
 
 ## Editor navigation

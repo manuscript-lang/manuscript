@@ -79,6 +79,12 @@ test "native preparation order skip repetition and propagation":
     let explicit: List[List[String]] = []
     if callable(explicit, chosen, none) != Result[String, CsvError].ok("") or explicit.length() != 0:
         return panic("present values skip all defaults including explicit none")
+    let options_only: List[List[String]] = []
+    if native(options_only, max_bytes: none) != Result[String, CsvError].ok("3\n"):
+        return panic("cached callable must retain every default slot")
+    let budget_only: List[List[String]] = []
+    if native(budget_only, options: chosen) != Result[String, CsvError].ok("4\n"):
+        return panic("cached callable must support another omission subset")
     let stopped: List[List[String]] = []
     if failing(stopped) != Result[String, CsvError].error(CsvError.InvalidInput) or stopped != [["failed"]]:
         return panic("default failure stops later defaults and native body")
@@ -100,5 +106,51 @@ test "native preparation order skip repetition and propagation":
 	}
 	if output, err := exec.Command(binary).CombinedOutput(); err != nil || !strings.Contains(string(output), "1 tests, 0 failed") {
 		t.Fatalf("native defaults: %v\n%s", err, output)
+	}
+}
+
+func TestExplicitNativeCallsKeepDirectDispatch(t *testing.T) {
+	r := CompileSource("explicit-native.ms", `import base64_encode from "@std/encoding.ms"
+import CsvOptions from "@std/csv.ms"
+import {commands} from "@std/process.ms"
+import List from "@std/collections.ms"
+import Bytes from "@std/bytes.ms"
+fn explicit(data: Bytes) -> Unit:
+    base64_encode(data,false)
+    CsvOptions(",","\n")
+    commands().run(program: "",arguments: [],input: data)
+`, Options{})
+	if !r.Success() {
+		t.Fatal(r.Diagnostics)
+	}
+	if strings.Contains(r.Source, "WithDefaults") || strings.Contains(r.Source, "PreparedDefaults") {
+		t.Fatal("explicit calls emitted default preparation")
+	}
+}
+
+func TestRecursiveNativeDefaultExpansionIsRejected(t *testing.T) {
+	for _, source := range []string{
+		`import Bytes from "@std/bytes.ms"
+fn recursive(data: Bytes, url_safe: Bool = recursive(data) == "") -> String: "stub"
+fn call() -> String: recursive("".to_bytes())
+`,
+		`type Recursive:
+    value: Int = Recursive().value
+fn call() -> Recursive: Recursive()
+`,
+	} {
+		r := CompileSource("recursive-native.ms", source, Options{AnalyzeOnly: true})
+		if !r.Success() {
+			t.Fatal(r.Diagnostics)
+		}
+		for _, name := range []string{"recursive", "Recursive"} {
+			if symbol := r.Program.Symbols["recursive-native.ms"][name]; symbol != nil {
+				symbol.Native = "encoding/base64_encode"
+			}
+		}
+		_, err := lowerGo(optimize(r.Program), "recursive-native.ms", Options{})
+		if err == nil || !strings.Contains(err.Error(), "recursive native default expansion") {
+			t.Fatalf("recursive native default: %v", err)
+		}
 	}
 }

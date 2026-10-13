@@ -48,12 +48,14 @@ test "bound receiver is captured before supplied arguments":
         0
     )
     var selected = first
+    let index: Optional[Int] = some(0)
     let output = value(
         selected.run(
-            program: match unit:
-                _:
+            program: match index:
+                some(_):
                     selected = second
                     "fake"
+                none: "fake"
             ,
             arguments: []
         )
