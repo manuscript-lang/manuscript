@@ -13,6 +13,7 @@ The source file defines the program. The formatter gives it a consistent layout,
 ms fmt file.ms
 ms fmt file.ms --check
 ms fmt ms.toml --check
+ms fmt ms.toml --check --json
 ms fmt src test.ms
 ms fmt src/*.ms --check
 ```
@@ -20,6 +21,11 @@ ms fmt src/*.ms --check
 Formatting writes each valid file in place, preserving its permissions. `--check` writes nothing, lists every file needing formatting in path order, and returns 1 if any file needs changes or any target fails. Invalid source produces diagnostics and is left unchanged; other selected files are still processed.
 
 A manifest selects its entry, every `.ms` file below its configured source directory, and project `test.ms`/`*_test.ms` files. A directory recursively selects all `.ms` files. Both use the same discovery exclusions as project checking: hidden, `vendor`, and `node_modules` directories are skipped, and directory symlinks are not followed. Discovered file symlinks must stay within the selected root. Explicit file arguments can select excluded files; overlapping selections are formatted only once. An empty directory succeeds without output.
+
+Explicit and discovered files use the same canonical display path: relative to
+the invocation directory when inside it, otherwise absolute. `--check --json`
+emits ordered file statuses and diagnostics, including a valid empty result.
+See the [versioned JSON contract](../implementation.md#machine-readable-checks-and-tests).
 
 ## Formatter contract
 

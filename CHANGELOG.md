@@ -5,6 +5,7 @@
 - Warn with MSL107 for nested matches and keep repository examples and implementation flat, using early-exit payload bindings, compatible `try`, or small helpers. Nested matches remain valid syntax; repository checks allow deliberate, scoped syntax and semantics regressions.
 
 - Name operations, parameters, offending arguments and valid ranges in List/Bytes bounds, byte-value, integer-formatting radix and queue-capacity faults; preserve existing return types and bounds behavior.
+- Add versioned `fmt --check --json` and `test --json` results, preserving test streams and partial outcomes; display explicit and discovered fmt paths consistently.
 
 - Fix standard-library data bugs: `String.upper()`/`lower()` use full Unicode case mapping (`ß` to `SS`, final sigma, `İ`); negative `split`/`replace` limits fault with the operation and parameter; `bigint.parse(max_digits: 0)` is a real zero budget; TOML and YAML parse errors report the offending line and column.
 - Update the VS Code language client and packaging dependencies; the extension now requires VS Code 1.91 or newer.

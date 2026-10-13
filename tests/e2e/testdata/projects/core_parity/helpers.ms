@@ -28,3 +28,15 @@ export fn locate_set[T: Hashable](values: Set[T], needle: T) -> Optional[T]:
 
 export fn convert[T, E](value: Optional[T], create: fn() -> E) -> Result[T, E]:
     return value.ok_or_else[E](create)
+
+export fn remap_keys[K: Hashable, V, W: Hashable](
+    values: Map[K, V],
+    transform: fn(key: K, value: V) -> W
+) -> Map[W, V]:
+    return values.map_keys[W](transform)
+
+export fn remap_values[K: Hashable, V, W](
+    values: Map[K, V],
+    transform: fn(key: K, value: V) -> W
+) -> Map[K, W]:
+    return values.map[W](transform)
