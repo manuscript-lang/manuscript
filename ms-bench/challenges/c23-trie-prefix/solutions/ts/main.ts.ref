@@ -1,0 +1,59 @@
+import { readFileSync } from "node:fs";
+
+class Node {
+  kids = new Map<string, Node>();
+  end = false;
+  count = 0; // number of dictionary words in this subtree
+}
+
+const root = new Node();
+
+function find(prefix: string): Node | null {
+  let n = root;
+  for (const c of prefix) {
+    const k = n.kids.get(c);
+    if (!k) return null;
+    n = k;
+  }
+  return n;
+}
+
+function insert(word: string): boolean {
+  const n = find(word);
+  if (n && n.end) return false;
+  let cur = root;
+  cur.count++;
+  for (const c of word) {
+    let k = cur.kids.get(c);
+    if (!k) { k = new Node(); cur.kids.set(c, k); }
+    cur = k;
+    cur.count++;
+  }
+  cur.end = true;
+  return true;
+}
+
+function collect(n: Node, prefix: string, limit: number, acc: string[]) {
+  if (acc.length >= limit) return;
+  if (n.end) acc.push(prefix);
+  for (const c of [...n.kids.keys()].sort()) {
+    if (acc.length >= limit) return;
+    collect(n.kids.get(c)!, prefix + c, limit, acc);
+  }
+}
+
+const out: string[] = [];
+for (const line of readFileSync(0, "utf8").split("\n")) {
+  if (line.trim() === "") continue;
+  const p = line.split(" ");
+  if (p[0] === "insert") out.push(insert(p[1]) ? "added" : "exists");
+  else if (p[0] === "has") { const n = find(p[1]); out.push(n && n.end ? "yes" : "no"); }
+  else if (p[0] === "count") { const n = find(p[1]); out.push(String(n ? n.count : 0)); }
+  else if (p[0] === "complete") {
+    const n = find(p[1]);
+    const acc: string[] = [];
+    if (n) collect(n, p[1], parseInt(p[2], 10), acc);
+    out.push(acc.length ? acc.join(" ") : "none");
+  }
+}
+process.stdout.write(out.map((l) => l + "\n").join(""));

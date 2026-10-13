@@ -1,0 +1,139 @@
+use std::io::{BufRead, Write};
+
+const DIGITS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
+
+fn parse_number(s: &str) -> Option<u64> {
+    if s.is_empty() || s.len() > 18 || !s.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    s.parse().ok()
+}
+
+fn gcd(mut a: u64, mut b: u64) -> u64 {
+    while b != 0 {
+        let t = a % b;
+        a = b;
+        b = t;
+    }
+    a
+}
+
+fn base_cmd(t: &[&str]) -> String {
+    let v = t[1];
+    let mut bases = [0u64; 2];
+    for (i, s) in t[2..].iter().enumerate() {
+        match parse_number(s) {
+            Some(n) if (2..=36).contains(&n) => bases[i] = n,
+            _ => return "error: bad base".into(),
+        }
+    }
+    let (from, to) = (bases[0], bases[1]);
+    if v.is_empty() {
+        return "error: bad digit".into();
+    }
+    let mut n: u64 = 0;
+    for c in v.bytes() {
+        let c = c.to_ascii_lowercase();
+        match DIGITS.iter().position(|&d| d == c) {
+            Some(d) if (d as u64) < from => n = n * from + d as u64,
+            _ => return "error: bad digit".into(),
+        }
+    }
+    if n == 0 {
+        return "0".into();
+    }
+    let mut out = Vec::new();
+    while n > 0 {
+        out.push(DIGITS[(n % to) as usize]);
+        n /= to;
+    }
+    out.reverse();
+    String::from_utf8(out).unwrap()
+}
+
+fn solve_line(line: &str) -> String {
+    let t: Vec<&str> = line.split(' ').collect();
+    let want = match t[0] {
+        "gcd" | "lcm" => 3,
+        "isprime" | "factor" => 2,
+        "base" => 4,
+        _ => return "error: unknown command".into(),
+    };
+    if t.len() != want {
+        return "error: bad arguments".into();
+    }
+    if t[0] == "base" {
+        return base_cmd(&t);
+    }
+    let mut nums = Vec::new();
+    for s in &t[1..] {
+        match parse_number(s) {
+            Some(n) => nums.push(n),
+            None => return "error: bad arguments".into(),
+        }
+    }
+    if t[0] == "gcd" || t[0] == "lcm" {
+        if nums.iter().any(|&n| n > 1_000_000_000) {
+            return "error: out of range".into();
+        }
+        let g = gcd(nums[0], nums[1]);
+        if t[0] == "gcd" {
+            return g.to_string();
+        }
+        if nums[0] == 0 || nums[1] == 0 {
+            return "0".into();
+        }
+        return (nums[0] / g * nums[1]).to_string();
+    }
+    let mut n = nums[0];
+    if n > 10_000_000_000 {
+        return "error: out of range".into();
+    }
+    if t[0] == "isprime" {
+        if n < 2 {
+            return "neither".into();
+        }
+        let mut p = 2;
+        while p * p <= n {
+            if n % p == 0 {
+                return "composite".into();
+            }
+            p += 1;
+        }
+        return "prime".into();
+    }
+    if n < 2 {
+        return "error: n must be at least 2".into();
+    }
+    let mut parts: Vec<String> = Vec::new();
+    let mut p = 2;
+    while p * p <= n {
+        if n % p == 0 {
+            let mut e = 0;
+            while n % p == 0 {
+                n /= p;
+                e += 1;
+            }
+            parts.push(if e > 1 { format!("{}^{}", p, e) } else { p.to_string() });
+        }
+        p += 1;
+    }
+    if n > 1 {
+        parts.push(n.to_string());
+    }
+    parts.join(" * ")
+}
+
+fn main() {
+    let stdin = std::io::stdin();
+    let mut out = String::new();
+    for line in stdin.lock().lines() {
+        let line = line.unwrap();
+        if line.trim_matches(' ').is_empty() {
+            continue;
+        }
+        out.push_str(&solve_line(&line));
+        out.push('\n');
+    }
+    std::io::stdout().write_all(out.as_bytes()).unwrap();
+}

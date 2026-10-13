@@ -1,0 +1,7 @@
+[
+ {
+  "name": "basic",
+  "stdin": "(+ x 0)\n(* (+ 1 2) y)\n(- z z)\n(* x x)\n(neg (neg a))\n",
+  "stdout": "x\n(* 3 y)\n0\n(^ x 2)\na\n"
+ }
+]

@@ -48,7 +48,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 	for _, module := range program.Modules {
 		for _, d := range module.Declarations {
 			if d.Kind == syntax.KindFn || recordDefaults(d) {
-				s := program.Symbols[module.File][d.Name]
+				s := program.Symbol(module.File, d.Name)
 				functions = append(functions, s)
 				file.Decls = append(file.Decls, variable(s.ID, runtimeName("Value"), nil))
 			}
@@ -102,7 +102,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		}
 		flushNatives()
 		if g.nativeMethods[m.ID] != nil {
-			declarations, direct := g.nativeCallable(methodSymbol(m), g.program.Self[m.Decl], m.Receiver.Name+"."+m.Decl.Name)
+			declarations, direct := g.nativeCallable(methodSymbol(m), g.program.SelfBinding(m.Decl), m.Receiver.Name+"."+m.Decl.Name)
 			file.Decls = append(file.Decls, declarations...)
 			name := m.ID + "Direct"
 			initialize = append(initialize, define(name, direct))
@@ -115,7 +115,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 			initialize = append(initialize, evaluated(runtimeCall("Register", composite(runtimeName("Implementation"), fields...))))
 			continue
 		}
-		labels, resultKey, position, body := g.functionParts(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.Parameters[m.Decl], program.Self[m.Decl], m.Type)
+		labels, resultKey, position, body := g.functionParts(m.Receiver.Name+"."+m.Decl.Name, m.Decl.Params, m.Decl.Result, m.Decl.Body, program.ParameterBindings(m.Decl), program.SelfBinding(m.Decl), m.Type)
 		if len(m.Variables) == 0 && !mentionsTypeBindings(body) {
 			// A nongeneric method body needs only its receiver, so call sites
 			// can run it without building a bound Function for each call.
@@ -146,7 +146,7 @@ func (g *generator) file(entry string, options Options) *ast.File {
 		}
 		main = append(main, define("tests", sliceLiteral(runtimeName("Test"), tests...)), &ast.IfStmt{Cond: &ast.BinaryExpr{X: runtimeCall("RunTestsArgs", ident("tests"), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)}), Op: token.GTR, Y: intLiteral(0)}, Body: block(evaluated(call(selector(ident("os"), "Exit"), intLiteral(1))))})
 	} else if options.Entry {
-		run := runtimeCall("RunMain", ident(program.Symbols[entry]["main"].ID), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)})
+		run := runtimeCall("RunMain", ident(program.Symbol(entry, "main").ID), &ast.SliceExpr{X: selector(ident("os"), "Args"), Low: intLiteral(1)})
 		if options.CPUProfile != "" || options.HeapProfile != "" || options.Trace != "" {
 			run = runtimeCall("Profile", textLiteral(options.CPUProfile), textLiteral(options.HeapProfile), textLiteral(options.Trace), closure(nil, ident("int"), returned(run)))
 		}

@@ -35,15 +35,15 @@ test "atomic state and sealed builders":
         return panic(message: "check failed")
 
     let map = MapBuilder[String, Int]()
-    map.with_entry(key: "a", value: 1)
-    map.with_entry(key: "a", value: 2)
+    map.add(key: "a", value: 1)
+    map.add(key: "a", value: 2)
     let expected: Optional[Int] = some(2)
     if not (map.freeze().get(key: "a") == expected):
         return panic(message: "check failed")
 
     let set = SetBuilder[Int]()
-    set.with_value(value: 3)
-    set.with_value(value: 3)
+    set.add(value: 3)
+    set.add(value: 3)
     if not (set.freeze().length() == 1):
         return panic(message: "check failed")
 

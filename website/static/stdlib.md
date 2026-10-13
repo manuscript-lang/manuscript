@@ -998,6 +998,8 @@ type Map[T: Hashable, U]:
     fn find_last(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
     fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn add_default(key: T, value: U) -> Map[T, U]:
+    fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn with_default(key: T, value: U) -> Map[T, U]:
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
@@ -1021,6 +1023,24 @@ Inserts or replaces a value and returns this map; replacement keeps the original
 
 ```manuscript
 fn add(key: T, value: U) -> Map[T, U]:
+```
+
+### Map.add_default
+
+Inserts a default only when the key is absent and returns this map.
+The supplied value evaluates normally even when the key already exists.
+
+```manuscript
+fn add_default(key: T, value: U) -> Map[T, U]:
+```
+
+### Map.add_default_from
+
+Creates and inserts a default only when the key is absent, then returns this map.
+Calls create(key:) once for absence; an existing key leaves its value and position unchanged.
+
+```manuscript
+fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
 ```
 
 ### Map.clone
@@ -1142,7 +1162,7 @@ fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
 
 ### Map.with_default
 
-Sets `key` to `value` only when the key is absent.
+Legacy spelling for add_default; mutates and returns this map, never a copy.
 
 ```manuscript
 fn with_default(key: T, value: U) -> Map[T, U]:
@@ -1150,7 +1170,7 @@ fn with_default(key: T, value: U) -> Map[T, U]:
 
 ### Map.with_default_from
 
-Creates a value only when the key is absent.
+Legacy spelling for add_default_from; retains lazy creation and the receiver return.
 
 ```manuscript
 fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
@@ -1181,7 +1201,25 @@ Adds entries efficiently before freezing them into a map.
 ```manuscript
 type MapBuilder[T: Hashable, U]:
     fn freeze() -> Map[T, U]:
+    fn add(key: T, value: U) -> Unit:
     fn with_entry(key: T, value: U) -> Unit:
+```
+
+### MapBuilder.add
+
+Inserts or replaces an entry in the shared builder; returns Unit like all builder mutations.
+Replacement retains the original key and insertion position; a sealed builder faults.
+
+```manuscript
+fn add(key: T, value: U) -> Unit:
+```
+
+### MapBuilder.with_entry
+
+Legacy spelling for add, with the same Unit return and sealing behavior.
+
+```manuscript
+fn with_entry(key: T, value: U) -> Unit:
 ```
 
 ## MapEntry
@@ -1403,7 +1441,25 @@ Adds unique values efficiently before freezing them into a set.
 ```manuscript
 type SetBuilder[T: Hashable]:
     fn freeze() -> Set[T]:
+    fn add(value: T) -> Unit:
     fn with_value(value: T) -> Unit:
+```
+
+### SetBuilder.add
+
+Adds a value to the shared builder; returns Unit like all builder mutations.
+Equal values retain the first payload and position; a sealed builder faults.
+
+```manuscript
+fn add(value: T) -> Unit:
+```
+
+### SetBuilder.with_value
+
+Legacy spelling for add, with the same Unit return and sealing behavior.
+
+```manuscript
+fn with_value(value: T) -> Unit:
 ```
 
 ## filled
@@ -8280,6 +8336,8 @@ type Map[T: Hashable, U]:
     fn find_last(predicate: fn(key: T, value: U) -> Bool) -> Optional[MapEntry[T, U]]:
     fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
     fn every(predicate: fn(key: T, value: U) -> Bool) -> Bool:
+    fn add_default(key: T, value: U) -> Map[T, U]:
+    fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn with_default(key: T, value: U) -> Map[T, U]:
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
@@ -8303,6 +8361,24 @@ Inserts or replaces a value and returns this map; replacement keeps the original
 
 ```manuscript
 fn add(key: T, value: U) -> Map[T, U]:
+```
+
+### Map.add_default
+
+Inserts a default only when the key is absent and returns this map.
+The supplied value evaluates normally even when the key already exists.
+
+```manuscript
+fn add_default(key: T, value: U) -> Map[T, U]:
+```
+
+### Map.add_default_from
+
+Creates and inserts a default only when the key is absent, then returns this map.
+Calls create(key:) once for absence; an existing key leaves its value and position unchanged.
+
+```manuscript
+fn add_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
 ```
 
 ### Map.clone
@@ -8424,7 +8500,7 @@ fn some(predicate: fn(key: T, value: U) -> Bool) -> Bool:
 
 ### Map.with_default
 
-Sets `key` to `value` only when the key is absent.
+Legacy spelling for add_default; mutates and returns this map, never a copy.
 
 ```manuscript
 fn with_default(key: T, value: U) -> Map[T, U]:
@@ -8432,7 +8508,7 @@ fn with_default(key: T, value: U) -> Map[T, U]:
 
 ### Map.with_default_from
 
-Creates a value only when the key is absent.
+Legacy spelling for add_default_from; retains lazy creation and the receiver return.
 
 ```manuscript
 fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:

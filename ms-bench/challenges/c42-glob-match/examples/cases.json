@@ -1,0 +1,7 @@
+[
+ {
+  "name": "basic",
+  "stdin": "src/*.ms src/main.ms\nsrc/*.ms src/a/main.ms\n**/test_*.go a/b/test_x.go\n**/x a/.hidden/x\n*.{go,rs} lib.rs\n[!a-c]at bat\na[ a\n",
+  "stdout": "match\nno match\nmatch\nno match\nmatch\nno match\nerror: invalid pattern\n"
+ }
+]

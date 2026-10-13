@@ -96,7 +96,7 @@ test "native preparation order skip repetition and propagation":
 		t.Fatal(r.Diagnostics)
 	}
 	for _, name := range []string{"native", "failing"} {
-		r.Program.Symbols["native-defaults.ms"][name].Native = "csv/stringify"
+		r.Program.Symbol("native-defaults.ms", name).Native = "csv/stringify"
 	}
 	generated, err := lower.Go(r.Program, "native-defaults.ms", lower.Options{Tests: true})
 	if err != nil {
@@ -146,7 +146,7 @@ fn call() -> Recursive: Recursive()
 			t.Fatal(r.Diagnostics)
 		}
 		for _, name := range []string{"recursive", "Recursive"} {
-			if symbol := r.Program.Symbols["recursive-native.ms"][name]; symbol != nil {
+			if symbol := r.Program.Symbol("recursive-native.ms", name); symbol != nil {
 				symbol.Native = "encoding/base64_encode"
 			}
 		}

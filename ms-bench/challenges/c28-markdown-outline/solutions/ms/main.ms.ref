@@ -1,0 +1,56 @@
+import {stdin, stdout, read_all} from "@std/io.ms"
+
+fn trim_spaces(s: String) -> String:
+    let codes = s.scalar_values()
+    var start = 0
+    var end = codes.length()
+    while start < end and codes.at(start).unwrap() == 32:
+        start = start + 1
+    while end > start and codes.at(end - 1).unwrap() == 32:
+        end = end - 1
+    return s.slice(start, end)
+
+fn run() -> Result[Unit, Error]:
+    let data = try read_all(input: stdin())
+    let text = data.to_text().unwrap_or("")
+    let counters = [0, 0, 0, 0, 0, 0, 0]
+    let out = List[String]()
+    var fence = false
+    for line in text.split("\n"):
+        if line.starts_with("```"):
+            fence = not fence
+            continue
+        if fence:
+            continue
+        let codes = line.scalar_values()
+        var level = 0
+        while level < codes.length() and codes.at(level).unwrap() == 35:
+            level = level + 1
+        if level < 1 or level > 6:
+            continue
+        # At least one space must follow the hashes, then a non-space character.
+        if level >= codes.length() or codes.at(level).unwrap() != 32:
+            continue
+        let title = trim_spaces(line.slice(level, codes.length()))
+        if title.is_empty():
+            continue
+        counters.set(level, counters.at(level).unwrap() + 1)
+        var k = level + 1
+        while k <= 6:
+            counters.set(k, 0)
+            k = k + 1
+        let parts = List[String]()
+        var c = 1
+        while c <= level:
+            parts.append("{counters.at(c).unwrap()}")
+            c = c + 1
+        let indent = "  ".repeat(level - 1).unwrap()
+        out.append("{indent}{parts.join(".")} {title}")
+    if not out.is_empty():
+        try stdout().write("{out.join("\n")}\n".to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

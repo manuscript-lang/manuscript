@@ -11,7 +11,7 @@ func (g *generator) numericCallName(e *syntax.Expression) string {
 	if e.Kind != syntax.KindCall {
 		return ""
 	}
-	info := g.program.Expressions[e]
+	info := g.program.Info(e)
 	if info == nil {
 		return ""
 	}
@@ -19,12 +19,12 @@ func (g *generator) numericCallName(e *syntax.Expression) string {
 	if info.Arguments != nil {
 		args = info.Arguments
 	}
-	if info.Symbol != nil && len(args) == 1 && args[0].Name == "value" && primitiveEqualityType(g.program.Expressions[args[0].Value].Type) == "float64" {
+	if info.Symbol != nil && len(args) == 1 && args[0].Name == "value" && primitiveEqualityType(g.program.Info(args[0].Value).Type) == "float64" {
 		return map[string]string{"math/sqrt": "NativeFloatSqrt", "math/abs": "NativeFloatAbs", "math/floor": "NativeFloatFloor", "math/ceil": "NativeFloatCeil"}[info.Symbol.Native]
 	}
 	if e.Left.Kind == syntax.KindMember && len(args) == 0 {
-		callee := g.program.Expressions[e.Left]
-		if callee != nil && callee.Method != nil && callee.Method.Contract == nil && callee.Method.Native == "to_float" && primitiveEqualityType(g.program.Expressions[e.Left.Left].Type) == "int64" {
+		callee := g.program.Info(e.Left)
+		if callee != nil && callee.Method != nil && callee.Method.Contract == nil && callee.Method.Native == "to_float" && primitiveEqualityType(g.program.Info(e.Left.Left).Type) == "int64" {
 			return "NativeIntToFloat"
 		}
 	}
@@ -36,7 +36,7 @@ func (g *generator) numericCall(e *syntax.Expression) ast.Expr {
 		return nil
 	}
 	args := e.Args
-	if converted := g.program.Expressions[e].Arguments; converted != nil {
+	if converted := g.program.Info(e).Arguments; converted != nil {
 		args = converted
 	}
 	operand := e.Left.Left

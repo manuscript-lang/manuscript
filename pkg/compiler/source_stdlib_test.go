@@ -18,7 +18,7 @@ func TestSourceStandardModulesAreCheckedAndReachable(t *testing.T) {
 				if len(result.Program.Modules) != 2 || result.Program.Modules[0].File != "@std/"+name+".ms" {
 					t.Fatal("source standard module not included", result.Program.Modules)
 				}
-				if result.Program.Symbols["application.ms"]["parse"].Native != "" {
+				if result.Program.Symbol("application.ms", "parse").Native != "" {
 					t.Fatal("source parser lowered as native dispatch")
 				}
 				other := "toml"

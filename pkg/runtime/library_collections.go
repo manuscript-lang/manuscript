@@ -447,6 +447,8 @@ func init() {
 			return mapPut(ctx, values, a[1], value)
 		})
 	}
+	libraryAlias("collections", "map_add_default", "map_with_default")
+	libraryAlias("collections", "map_add_default_from", "map_with_default_from")
 
 	add("map_clear", "Map[K][V]", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, _ string, a []Value) Value { a[0].(*Map).Entries = nil; return a[0] })
 	add("map_entries", "List[MapEntry[K][V]]", mapVars, []LibraryParam{p("values", "Map[K][V]")}, func(ctx *Execution, r string, a []Value) Value {

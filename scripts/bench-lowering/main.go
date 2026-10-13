@@ -89,11 +89,11 @@ func run() error {
 		replacements = append(replacements, "@@baseline@@", strconv.FormatBool(*baseline))
 	}
 	for _, name := range names {
-		symbol := result.Program.Symbols["benchmark.ms"][name]
+		symbol := result.Program.Symbol("benchmark.ms", name)
 		replacements = append(replacements, "@@"+name+"@@", symbol.ID, "@@"+name+"Position@@", strconv.Quote(symbol.Decl.Result.Pos.String()))
 	}
 	if *production {
-		replacements = append(replacements, "@@Resource@@", strconv.Quote(checker.TypeKey(result.Program.Symbols["benchmark.ms"]["Resource"].Type)))
+		replacements = append(replacements, "@@Resource@@", strconv.Quote(checker.TypeKey(result.Program.Symbol("benchmark.ms", "Resource").Type)))
 	}
 	harness, err := format.Source([]byte(strings.NewReplacer(replacements...).Replace(string(template))))
 	if err != nil {

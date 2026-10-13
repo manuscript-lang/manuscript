@@ -1,0 +1,12 @@
+[
+ {
+  "name": "basic",
+  "stdin": "[config]\ntax A 20\ntax B 7.5\nshipping 4.99 50\n[catalog]\npen|Blue pen|1.20|A\npad|Note pad|3.35|B\n[orders]\nann|pen|10\nann|pad|3|10\nbob|pen|1\nbob|ink|2\ncy|pad|x\n",
+  "stdout": "INVOICE ann\n  pen Blue pen x10 @ 1.20 = 12.00\n  pad Note pad x3 @ 3.35 = 9.04 (-1.01 discount)\n  subtotal 21.04\n  tax 3.08\n  shipping 4.99\n  total 29.11\nINVOICE bob\n  pen Blue pen x1 @ 1.20 = 1.20\n  subtotal 1.20\n  tax 0.24\n  shipping 4.99\n  total 6.43\nsummary: invoices=2 grand_total=35.54 problems=2\nproblems:\n  line 12: unknown sku\n  line 13: bad quantity\n"
+ },
+ {
+  "name": "rounding",
+  "stdin": "[config]\ntax A 10\n[catalog]\nc|Candy|0.05|A\n[orders]\nu|c|1|10\nu|c|3|50\nu|c|1\n",
+  "stdout": "INVOICE u\n  c Candy x1 @ 0.05 = 0.04 (-0.01 discount)\n  c Candy x3 @ 0.05 = 0.07 (-0.08 discount)\n  c Candy x1 @ 0.05 = 0.05\n  subtotal 0.16\n  tax 0.02\n  shipping 0.00\n  total 0.18\nsummary: invoices=1 grand_total=0.18 problems=0\n"
+ }
+]

@@ -1,0 +1,259 @@
+use std::collections::{BTreeMap, HashSet};
+use std::io::{self, Read, Write};
+
+fn trim_blanks(s: &str) -> &str {
+    s.trim_matches(|c| c == ' ' || c == '\t')
+}
+
+fn split_fields(line: &str) -> Vec<String> {
+    let b = line.as_bytes();
+    let n = b.len();
+    let mut fields: Vec<String> = Vec::new();
+    let mut i = 0;
+    loop {
+        if i < n && b[i] == b'"' {
+            i += 1;
+            let mut buf = Vec::new();
+            while i < n {
+                if b[i] == b'"' {
+                    if i + 1 < n && b[i + 1] == b'"' {
+                        buf.push(b'"');
+                        i += 2;
+                        continue;
+                    }
+                    i += 1;
+                    break;
+                }
+                buf.push(b[i]);
+                i += 1;
+            }
+            fields.push(String::from_utf8(buf).unwrap());
+        } else {
+            let j = line[i..].find(',').map_or(n, |k| k + i);
+            fields.push(line[i..j].to_string());
+            i = j;
+        }
+        if i < n && b[i] == b',' {
+            i += 1;
+            if i == n {
+                fields.push(String::new());
+                break;
+            }
+            continue;
+        }
+        break;
+    }
+    fields.iter().map(|f| trim_blanks(f).to_string()).collect()
+}
+
+fn all_digits(s: &str) -> bool {
+    !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit())
+}
+
+fn is_leap(y: i64) -> bool {
+    y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
+}
+
+fn parse_date(s: &str) -> Option<String> {
+    let b = s.as_bytes();
+    if b.len() != 10 {
+        return None;
+    }
+    let (y, m, d): (i64, i64, i64);
+    if b[4] == b'-' && b[7] == b'-' && all_digits(&s[..4]) && all_digits(&s[5..7]) && all_digits(&s[8..]) {
+        y = s[..4].parse().unwrap();
+        m = s[5..7].parse().unwrap();
+        d = s[8..].parse().unwrap();
+    } else if b[2] == b'/' && b[5] == b'/' && all_digits(&s[..2]) && all_digits(&s[3..5]) && all_digits(&s[6..]) {
+        m = s[..2].parse().unwrap();
+        d = s[3..5].parse().unwrap();
+        y = s[6..].parse().unwrap();
+    } else {
+        return None;
+    }
+    if !(1..=12).contains(&m) {
+        return None;
+    }
+    let mut dim = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][(m - 1) as usize];
+    if m == 2 && is_leap(y) {
+        dim = 29;
+    }
+    if d < 1 || d > dim {
+        return None;
+    }
+    Some(format!("{:04}-{:02}-{:02}", y, m, d))
+}
+
+fn parse_amount(input: &str) -> Option<i64> {
+    let mut s = input;
+    let mut neg = false;
+    if s.len() >= 2 && s.starts_with('(') && s.ends_with(')') {
+        neg = true;
+        s = &s[1..s.len() - 1];
+        if s.starts_with('-') {
+            return None;
+        }
+    } else if let Some(rest) = s.strip_prefix('-') {
+        neg = true;
+        s = rest;
+    }
+    s = s.strip_prefix('$').unwrap_or(s);
+    let (whole, frac) = match s.split_once('.') {
+        Some((w, f)) => {
+            if f.is_empty() || f.len() > 2 || !all_digits(f) {
+                return None;
+            }
+            (w, f)
+        }
+        None => (s, ""),
+    };
+    let digits: String = if whole.contains(',') {
+        let groups: Vec<&str> = whole.split(',').collect();
+        if groups[0].is_empty() || groups[0].len() > 3 {
+            return None;
+        }
+        for (k, g) in groups.iter().enumerate() {
+            if !all_digits(g) || (k > 0 && g.len() != 3) {
+                return None;
+            }
+        }
+        groups.concat()
+    } else if all_digits(whole) {
+        whole.to_string()
+    } else {
+        return None;
+    };
+    if digits.len() + frac.len() > 12 {
+        return None;
+    }
+    let f = format!("{:0<2}", frac);
+    let c = digits.parse::<i64>().unwrap() * 100 + f.parse::<i64>().unwrap();
+    Some(if neg { -c } else { c })
+}
+
+fn money(c: i64) -> String {
+    let sign = if c < 0 { "-" } else { "" };
+    let a = c.abs();
+    let whole = (a / 100).to_string();
+    let mut grouped = String::new();
+    for (i, ch) in whole.chars().enumerate() {
+        if i > 0 && (whole.len() - i) % 3 == 0 {
+            grouped.push(',');
+        }
+        grouped.push(ch);
+    }
+    format!("{}{}.{:02}", sign, grouped, a % 100)
+}
+
+struct Tx {
+    date: String,
+    account: String,
+    desc: String,
+    amount: i64,
+}
+
+#[derive(Default)]
+struct Acc {
+    balance: i64,
+    credits: i64,
+    debits: i64,
+    count: usize,
+}
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let mut lines: Vec<&str> = input.split('\n').collect();
+    if lines.last() == Some(&"") {
+        lines.pop();
+    }
+    let mut saw_header = false;
+    let mut seen: HashSet<(String, String, String, i64)> = HashSet::new();
+    let mut txs: Vec<Tx> = Vec::new();
+    let mut errs: Vec<String> = Vec::new();
+    let mut dups = 0;
+    for (idx, line) in lines.iter().enumerate() {
+        let t = trim_blanks(line);
+        if t.is_empty() || t.starts_with('#') {
+            continue;
+        }
+        if !saw_header {
+            saw_header = true;
+            continue;
+        }
+        let n = idx + 1;
+        let f = split_fields(line);
+        if f.len() != 4 {
+            errs.push(format!("line {}: field count", n));
+            continue;
+        }
+        let date = match parse_date(&f[0]) {
+            Some(d) => d,
+            None => {
+                errs.push(format!("line {}: bad date", n));
+                continue;
+            }
+        };
+        if f[1].is_empty() {
+            errs.push(format!("line {}: bad account", n));
+            continue;
+        }
+        let amount = match parse_amount(&f[3]) {
+            Some(a) => a,
+            None => {
+                errs.push(format!("line {}: bad amount", n));
+                continue;
+            }
+        };
+        if !seen.insert((date.clone(), f[1].clone(), f[2].clone(), amount)) {
+            dups += 1;
+            continue;
+        }
+        txs.push(Tx { date, account: f[1].clone(), desc: f[2].clone(), amount });
+    }
+    let mut accounts: BTreeMap<String, Acc> = BTreeMap::new();
+    let mut months: BTreeMap<String, i64> = BTreeMap::new();
+    for t in &txs {
+        let a = accounts.entry(t.account.clone()).or_default();
+        a.balance += t.amount;
+        a.count += 1;
+        if t.amount > 0 {
+            a.credits += t.amount;
+        }
+        if t.amount < 0 {
+            a.debits -= t.amount;
+        }
+        *months.entry(t.date[..7].to_string()).or_insert(0) += t.amount;
+    }
+    let mut out = format!("transactions: {}\nduplicates: {}\nerrors: {}\naccounts:\n", txs.len(), dups, errs.len());
+    for (k, a) in &accounts {
+        out.push_str(&format!(
+            "  {} balance={} credits={} debits={} count={}\n",
+            k,
+            money(a.balance),
+            money(a.credits),
+            money(a.debits),
+            a.count
+        ));
+    }
+    out.push_str("months:\n");
+    for (k, v) in &months {
+        out.push_str(&format!("  {} net={}\n", k, money(*v)));
+    }
+    if !txs.is_empty() {
+        let mut best = &txs[0];
+        for t in &txs {
+            if t.amount.abs() > best.amount.abs() {
+                best = t;
+            }
+        }
+        out.push_str(&format!("largest: {} | {} | {} | {}\n", best.date, best.account, best.desc, money(best.amount)));
+    }
+    if !errs.is_empty() {
+        out.push_str("errors:\n");
+        for e in &errs {
+            out.push_str(&format!("  {}\n", e));
+        }
+    }
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

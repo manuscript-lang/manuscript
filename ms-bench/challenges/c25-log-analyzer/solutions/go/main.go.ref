@@ -1,0 +1,84 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+func digits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func oneOf(s string, opts ...string) bool {
+	for _, o := range opts {
+		if s == o {
+			return true
+		}
+	}
+	return false
+}
+
+func main() {
+	data, _ := io.ReadAll(os.Stdin)
+	levels := map[string]int{}
+	count := map[string]int{}
+	total := map[string]int{}
+	valid, malformed, server := 0, 0, 0
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		f := strings.Split(line, " ")
+		if len(f) != 6 || f[0] == "" || !oneOf(f[1], "DEBUG", "INFO", "WARN", "ERROR") ||
+			!oneOf(f[2], "GET", "POST", "PUT", "DELETE") || !strings.HasPrefix(f[3], "/") ||
+			len(f[4]) != 3 || !digits(f[4]) || !digits(f[5]) || len(f[5]) > 9 {
+			malformed++
+			continue
+		}
+		valid++
+		levels[f[1]]++
+		st, _ := strconv.Atoi(f[4])
+		if st >= 500 {
+			server++
+		}
+		lat, _ := strconv.Atoi(f[5])
+		count[f[3]]++
+		total[f[3]] += lat
+	}
+	out := bufio.NewWriter(os.Stdout)
+	defer out.Flush()
+	fmt.Fprintf(out, "valid: %d\nmalformed: %d\n", valid, malformed)
+	for _, l := range []string{"DEBUG", "INFO", "WARN", "ERROR"} {
+		fmt.Fprintf(out, "%s: %d\n", l, levels[l])
+	}
+	fmt.Fprintf(out, "5xx: %d\ntop:\n", server)
+	var paths []string
+	for p := range count {
+		paths = append(paths, p)
+	}
+	sort.Slice(paths, func(i, j int) bool {
+		if count[paths[i]] != count[paths[j]] {
+			return count[paths[i]] > count[paths[j]]
+		}
+		return paths[i] < paths[j]
+	})
+	if len(paths) > 3 {
+		paths = paths[:3]
+	}
+	for _, p := range paths {
+		fmt.Fprintf(out, "%s %d avg=%d\n", p, count[p], total[p]/count[p])
+	}
+}

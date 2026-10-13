@@ -219,15 +219,18 @@ See [payload patterns](../core-language/control-flow/pattern-matching.md#payload
 MSL107 warns at a match nested structurally inside another match. Use an early-exit payload binding, compatible `try`, or a small helper to keep flow flat. It includes inline callbacks beneath an outer match and preserves checking/runtime behavior. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 
 MSL108 recommends `List.set`, `List.remove`, `List.splice`, `List.reverse_in_place`, `Map.add`, `Map.remove`,
-`Set.add`, `Set.remove`, `Bytes.reversed` and `Regex.replace_all` for their
+`Map.add_default`, `Map.add_default_from`, `Set.add`, `Set.remove`,
+`MapBuilder.add`, `SetBuilder.add`, `Bytes.reversed` and `Regex.replace_all` for their
 equivalent legacy methods. The same arguments retain mutation, receiver returns,
 copy behavior, ordering, equality scopes, limits and faults. It also checks stored
 method references and uses resolved standard identities, so user methods and
 callable fields with the same names keep their own contracts. See
 [collection mutation and copies](../core-language/types/collections.md#mutation-and-copies).
 
-This advisory makes no automatic source edit. Builder return conventions and
-String replacement names are outside its preference map. In particular,
+This advisory makes no automatic source edit. Builder `add` retains the legacy
+Unit return, while collection mutations retain the receiver return. See the
+[naming migration](../core-language/types/collections.md#naming-and-migration).
+String replacement names remain outside its preference map. In particular,
 `String.replace_first` still accepts a cap greater than one; renaming every
 `String.replace` call would conceal that behavior. Both names remain supported
 with their current signatures; see [replacement limits](../standard-library/data.md).

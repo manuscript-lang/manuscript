@@ -3,7 +3,7 @@
 Measures how effectively coding agents solve the same programming challenges in TypeScript, Go, Rust and
 Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wall time and cost.
 
-Status: pilot. 5 of a planned ~50 challenges, one verified harness (Claude Code).
+Status: 50 challenges x 4 languages with reference solutions. Runs through Harbor (preferred) or the built-in runner.
 
 ## How a run works
 
@@ -33,6 +33,26 @@ python3 -m unittest discover -s ms-bench/tests
 ```
 
 `ms`, `go`, `cargo` and `node` (22+) must be on `PATH`. Build `ms` with `make build` and add the repo root to `PATH`.
+
+## Running through Harbor
+
+[Harbor](https://docs.harborframework.com) provides the agents (`claude-code`, `codex`, `pi` are pre-integrated), sandboxes, parallelism and result files.
+`export_harbor.py` turns every challenge x language into a Harbor task; the hidden cases go only into `tests/`.
+
+```sh
+python3 ms-bench/export_harbor.py --out /tmp/ms-bench-tasks --ms-binary ./ms
+harbor run -p /tmp/ms-bench-tasks -a claude-code -m claude-haiku-5-5 -o jobs     # Docker or any Harbor sandbox
+```
+
+Without Docker, use the local-process environment (not a sandbox; the toolchains must be on `PATH`):
+
+```sh
+PYTHONPATH=ms-bench/harbor harbor run -p /tmp/ms-bench-tasks/c01-word-frequency-ms -a claude-code \
+    -m claude-haiku-5-5 --env local_env:LocalProcessEnvironment -o jobs
+```
+
+The verifier (`harbor/grade.py`) writes reward 1 only when every hidden case passes, and `detail.json` with passed/total
+cases and first-build success. Harbor records tokens and cost per trial. Use `-a oracle` to check the reference solutions.
 
 ## Layout
 

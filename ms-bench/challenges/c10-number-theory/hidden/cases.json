@@ -1,0 +1,67 @@
+[
+ {
+  "name": "basic",
+  "stdin": "gcd 12 18\nlcm 4 6\nisprime 97\nfactor 360\nbase ff 16 2\nbase 12 2 10\nfactor 1\npow 2 3\ngcd 4\n",
+  "stdout": "6\n12\nprime\n2^3 * 3^2 * 5\n11111111\nerror: bad digit\nerror: n must be at least 2\nerror: unknown command\nerror: bad arguments\n"
+ },
+ {
+  "name": "primes",
+  "stdin": "isprime 0\nisprime 1\nisprime 2\nisprime 91\n",
+  "stdout": "neither\nneither\nprime\ncomposite\n"
+ },
+ {
+  "name": "gcd-lcm-zero",
+  "stdin": "gcd 0 0\ngcd 0 7\ngcd 7 0\nlcm 0 5\nlcm 5 0\nlcm 0 0\nlcm 1 1\ngcd 1000000000 999999999\nlcm 1000000000 999999999\nlcm 999999937 999999929\n",
+  "stdout": "0\n7\n7\n0\n0\n0\n1\n1\n999999999000000000\n999999866000004473\n"
+ },
+ {
+  "name": "leading-zeros",
+  "stdin": "gcd 0012 0018\nfactor 0360\nisprime 007\ngcd 000000000000000000 5\n",
+  "stdout": "6\n2^3 * 3^2 * 5\nprime\n5\n"
+ },
+ {
+  "name": "factor-edge",
+  "stdin": "factor 2\nfactor 3\nfactor 4\nfactor 9973\nfactor 10000000000\nfactor 9999999967\nfactor 9999999999\nfactor 0\n",
+  "stdout": "2\n3\n2^2\n9973\n2^10 * 5^10\n9999999967\n3^2 * 11 * 41 * 271 * 9091\nerror: n must be at least 2\n"
+ },
+ {
+  "name": "isprime-big",
+  "stdin": "isprime 9999999967\nisprime 9999999969\nisprime 10000000000\nisprime 3215031751\nisprime 4294967297\n",
+  "stdout": "prime\ncomposite\ncomposite\ncomposite\ncomposite\n"
+ },
+ {
+  "name": "base-digits",
+  "stdin": "base 0 2 36\nbase 000 10 2\nbase zz 36 10\nbase ZZ 36 10\nbase Ff 16 10\nbase 777 8 16\nbase 1010 2 2\nbase 999999999999999999 10 36\nbase 255 10 16\n",
+  "stdout": "0\n0\n1295\n1295\n255\n1ff\n1010\n7lieexzx4kxr\nff\n"
+ },
+ {
+  "name": "base-errors",
+  "stdin": "base 2 2 10\nbase g 16 10\nbase  10 2\nbase 10 1 2\nbase 10 2 37\nbase 10 x 2\nbase 10 2 +2\nbase 10 10\nbase 10 2 3 4\nbase - 10 2\nbase 1_0 10 2\n",
+  "stdout": "error: bad digit\nerror: bad digit\nerror: bad digit\nerror: bad base\nerror: bad base\nerror: bad base\nerror: bad base\nerror: bad arguments\nerror: bad arguments\nerror: bad digit\nerror: bad digit\n"
+ },
+ {
+  "name": "argument-errors",
+  "stdin": "gcd 1 2 3\ngcd 1\ngcd\ngcd  4 6\ngcd -1 2\ngcd +1 2\ngcd 1.5 2\ngcd a 2\ngcd 1234567890123456789 2\nisprime\nfactor 1 2\nisprime \n",
+  "stdout": "error: bad arguments\nerror: bad arguments\nerror: bad arguments\nerror: bad arguments\nerror: bad arguments\nerror: bad arguments\nerror: bad arguments\nerror: bad arguments\nerror: bad arguments\nerror: bad arguments\nerror: bad arguments\nerror: bad arguments\n"
+ },
+ {
+  "name": "range-errors",
+  "stdin": "gcd 1000000001 2\nlcm 2 1000000001\nisprime 10000000001\nfactor 10000000001\nfactor 123456789012345678\nfactor abc\n",
+  "stdout": "error: out of range\nerror: out of range\nerror: out of range\nerror: out of range\nerror: out of range\nerror: bad arguments\n"
+ },
+ {
+  "name": "unknown",
+  "stdin": "GCD 1 2\nprime 7\n gcd 1 2\ngcd\u00a01 2\nbase16 ff\n",
+  "stdout": "error: unknown command\nerror: unknown command\nerror: unknown command\nerror: unknown command\nerror: unknown command\n"
+ },
+ {
+  "name": "blank-lines",
+  "stdin": "\n  \ngcd 6 4\n\n   \nfactor 12\n",
+  "stdout": "2\n2^2 * 3\n"
+ },
+ {
+  "name": "mixed-big",
+  "stdin": "base 2103333131323202102211230 4 29\ngcd 216109 485050\nfactor 85651\nlcm 36074 545961\nfactor 79785\nlcm 998662 999100\nisprime 6\nlcm 632491 372330\nfactor 4758324\nisprime 23443889\nisprime 139437\nfactor 7203\nbase lmj9keeik 26 4\nlcm 140480 204423\nisprime 393145843\nlcm 329634 699075\nbase 3lfrmanqd8 30 29\nbase 1df91j5f31ed 22 34\nlcm 432925 249953\ngcd 33288 520726\nisprime 2825620078\nbase 251343653231636205 7 11\nisprime 642791926\ngcd 462999 174445\nlcm 993729 365618\nfactor 7476049\nlcm 713859 288047\nlcm 647236 547206\nlcm 906895 125286\nisprime 40610262\nlcm 692502 680237\nlcm 815279 184643\nfactor 343999\nfactor 82\nbase 1101301123211213033132033 4 23\nlcm 83807 274482\nfactor 9778583\nlcm 409560 965340\nfactor 8607\nisprime 518181949\nbase bspki7muiw 33 6\nfactor 2277684\nfactor 628069224\nisprime 416418843\nfactor 572\nfactor 53\ngcd 914372 2967\nfactor 69729565\ngcd 366621 97248\nlcm 114039 637767\nfactor 18696483\nfactor 8407267\nfactor 761491\nisprime 56815787\nisprime 976611781\nbase 192116423a43670 11 17\ngcd 720392 205078\nbase 3n5f7bs96p 32 3\nisprime 4136263\nisprime 5\nbase 25341205150453537 8 20\nfactor 369\nbase 1ohk31460ab 27 14\nlcm 83619 620205\nlcm 447476 217792\ngcd 717620 323489\nfactor 775751079\nfactor 89130412\nbase 3265113742408 15 19\ngcd 657736 820788\ngcd 219774 444468\nbase 32c5moo0aha 28 26\nlcm 73581 809790\nfactor 7\nisprime 47215\nfactor 3248405\nisprime 93290590\nisprime 536217163\nbase b3beg81641ga 18 27\nisprime 761839\nisprime 59963860\nfactor 2061203660\nbase 9957a3nacd9 25 27\nlcm 632210 435939\nbase 10321014023542011053 6 21\nisprime 77457\nfactor 5901210710\nbase 11b423ca8963ac 13 17\ngcd 583120 828975\ngcd 230557 597718\ngcd 997346 442137\nlcm 597194 599674\nfactor 4363893419\nlcm 355828 889175\nbase 12121c66d964ba 14 35\nbase 177dfa4c696e 22 5\nbase 413001331123412434222 5 4\nfactor 630360\nlcm 810249 165397\ngcd 635494 827664\nisprime 31\nbase 7cixjspqv5 34 24\nfactor 8078437046\ngcd 152577 968857\nfactor 81853344\nfactor 81090155\nlcm 370971 864203\nfactor 585919\nbase 442pceo27k 31 26\nfactor 42\nlcm 671145 664672\nlcm 597701 449595\nisprime 403851729\ngcd 634813 54355\nlcm 326079 995969\nlcm 51948 608172\nlcm 104482 667089\nbase cfefnml94f 25 13\nfactor 7573863755\ngcd 362113 796435\nlcm 515548 170718\nlcm 425331 848136\nfactor 921344\ngcd 181515 873843\nlcm 609645 740488\nfactor 525\nfactor 50\ngcd 246464 112016\nfactor 94799\nisprime 697441770\ngcd 362369 874145\nbase 99j6457bj1 32 17\ngcd 697447 165731\nfactor 1587\nbase ikodj2qrfs 32 8\nlcm 301275 372734\ngcd 925470 197658\nbase 5p3bp3ojmn 35 3\ngcd 18126 684873\nfactor 874411\nlcm 762308 49675\nisprime 655707\nfactor 19\nlcm 133489 303249\nlcm 258925 950220\nlcm 405095 644563\nbase g7f78g19a 28 3\ngcd 29013 879304\ngcd 718997 808162\nlcm 130692 726824\n",
+  "stdout": "1fp338sb25f\n1\n97 * 883\n19694997114\n3^4 * 5 * 197\n498881602100\ncomposite\n235495374030\n2^2 * 3 * 396527\ncomposite\ncomposite\n3 * 7^4\n1002132111032300002300\n28717343040\ncomposite\n25604320950\n5182a8piqn\nfkx0isxf97\n108210902525\n2\ncomposite\n175548129a58636\ncomposite\n1\n33029564502\n7 * 103 * 10369\n205624943373\n177085711308\n113621246970\ncomposite\n471065482974\n150535560397\n419 * 821\n2 * 41\n8ffa3ged56e\n23003512974\n67 * 145949\n6589410840\n3 * 19 * 151\ncomposite\n5231512514404533135\n2^2 * 3^2 * 151 * 419\n2^3 * 3 * 73 * 358487\ncomposite\n2^2 * 11 * 13\n53\n1\n5 * 13945913\n3\n8081145657\n3^2 * 13 * 159799\n11 * 719 * 1063\n257 * 2963\ncomposite\ncomposite\n135cgbd70db3g\n2\n122011221100102111012211200111\ncomposite\nprime\n3dd6h370d35b\n3^2 * 41\n6d3b9997c7ba3\n17286973965\n24364173248\n1\n3 * 258583693\n2^2 * 7^2 * 349 * 1303\n39h37321d34f\n4\n6\n6cae6bpja70\n19861719330\n7\ncomposite\n5 * 23 * 47 * 601\ncomposite\ncomposite\n3db985ll5n1\ncomposite\ncomposite\n2^2 * 5 * 41 * 2513663\n494bjhlaoen\n275604995190\n1ijhdb6a7kb0\ncomposite\n2 * 5 * 131 * 4504741\na1e9bf41gd06\n5\n1\n1\n179060857378\n19 * 229678601\n316393361900\nbjv9j6g11v\n1304130323324222240113\n1131223332100223321113332\n2^3 * 3^2 * 5 * 17 * 103\n134012753853\n2\nprime\n718lhgnk9a3\n2 * 1571 * 2571113\n1\n2^5 * 3^2 * 71 * 4003\n5 * 16218031\n320594251113\n585919\nk33mem3ihm\n2 * 3 * 7\n446091289440\n268723381095\ncomposite\n1\n24981890427\n2632776588\n69698792898\n20b3c50202212\n5 * 1514772751\n1\n44006661732\n120246177672\n2^8 * 59 * 61\n3\n451434806760\n3 * 5^2 * 7\n2 * 5^2\n16\n47 * 2017\ncomposite\n1\n995462445395\n1\n3 * 23^2\n22514154613266774\n112295435850\n18\n2012002101221121102201021120202\n9\n181 * 4831\n37867649900\ncomposite\n19\n40480405761\n49207142700\n261109248485\n210202121112200010002200022\n1\n1\n23747520552\n"
+ }
+]

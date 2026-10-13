@@ -1,0 +1,160 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+import StringBuilder from "@std/string.ms"
+
+type Req:
+    id: String
+    start: Int
+    k: Int
+    t: Int
+    status: String
+    done: Int
+
+type Sim:
+    base: Int
+    factor: Int
+    cap: Int
+    max: Int
+    jit: Int
+    deadline: Int
+    state: Int
+    down_start: List[Int]
+    down_end: List[Int]
+    has_limit: Bool
+    limit_window: Int
+    limit_count: Int
+    reqs: List[Req]
+    accepted: List[Int]
+    log: StringBuilder
+
+fn fields(line: String) -> List[String]:
+    let spaced = line.replace_all(old: "\t", new: " ").unwrap()
+    return spaced.split(" ").filter(fn(part: String) -> Bool:
+        return not part.is_empty()
+    )
+
+fn num(t: List[String], i: Int) -> Int:
+    return t.at(i).unwrap().parse_int().unwrap()
+
+fn is_down(s: Sim, t: Int) -> Bool:
+    var i = 0
+    while i < s.down_start.length():
+        if s.down_start.at(i).unwrap() <= t and t < s.down_end.at(i).unwrap():
+            return true
+        i = i + 1
+    return false
+
+fn next_pending(s: Sim) -> Int:
+    var best = -1
+    var i = 0
+    while i < s.reqs.length():
+        let q = s.reqs.at(i).unwrap()
+        if q.status.is_empty():
+            if best < 0 or q.t < s.reqs.at(best).unwrap().t:
+                best = i
+        i = i + 1
+    return best
+
+fn emit(s: Sim, text: String) -> Unit:
+    s.log.append(text)
+    s.log.append("\n")
+
+fn attempt(s: Sim, r: Req) -> Unit:
+    let t = r.t
+    let k = r.k
+    var res = ""
+    var retry_after = 0
+    if is_down(s, t):
+        res = "down"
+    else:
+        if s.has_limit:
+            var count = 0
+            var oldest = 0
+            for a in s.accepted:
+                if a > t - s.limit_window:
+                    if count == 0 or a < oldest:
+                        oldest = a
+                    count = count + 1
+            if count >= s.limit_count:
+                res = "limited"
+                retry_after = oldest + s.limit_window - t
+        if res.is_empty():
+            s.accepted.append(t)
+            r.status = "ok"
+            r.done = t
+            return emit(s, "t={t} {r.id} #{k} ok")
+    r.done = t
+    if k == s.max:
+        r.status = "gave-up"
+        return emit(s, "t={t} {r.id} #{k} {res} gave-up")
+    var d = s.base
+    if s.cap < d:
+        d = s.cap
+    var i = 1
+    while i < k:
+        d = d * s.factor
+        if s.cap < d:
+            d = s.cap
+        i = i + 1
+    s.state = s.state * 48271 % 2147483647
+    let rr = s.state % 1000
+    var d2 = d - d * s.jit * rr / 100000
+    if d2 < 1:
+        d2 = 1
+    var wait = d2
+    if res == "limited" and retry_after > wait:
+        wait = retry_after
+    let nt = t + wait
+    if s.deadline > 0 and nt > r.start + s.deadline:
+        r.status = "expired"
+        return emit(s, "t={t} {r.id} #{k} {res} expired")
+    emit(s, "t={t} {r.id} #{k} {res} retry@{nt}")
+    r.t = nt
+    r.k = k + 1
+
+fn run() -> Result[Unit, Error]:
+    let s = Sim(base: 100, factor: 2, cap: 5000, max: 5, jit: 0, deadline: 0, state: 1, down_start: List[Int](), down_end: List[Int](), has_limit: false, limit_window: 0, limit_count: 0, reqs: List[Req](), accepted: List[Int](), log: StringBuilder())
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let t = fields(next.unwrap())
+        if t.is_empty():
+            continue
+        let cmd = t.at(0).unwrap()
+        if cmd == "policy":
+            s.base = num(t, 1)
+            s.factor = num(t, 2)
+            s.cap = num(t, 3)
+            s.max = num(t, 4)
+            s.jit = num(t, 5)
+            s.deadline = num(t, 6)
+            s.state = num(t, 7)
+        else if cmd == "down":
+            s.down_start.append(num(t, 1))
+            s.down_end.append(num(t, 2))
+        else if cmd == "limit":
+            s.has_limit = true
+            s.limit_window = num(t, 1)
+            s.limit_count = num(t, 2)
+        else if cmd == "req":
+            s.reqs.append(Req(id: t.at(1).unwrap(), start: num(t, 2), k: 1, t: num(t, 2), status: "", done: 0))
+    while true:
+        let pick = next_pending(s)
+        if pick < 0:
+            break
+        attempt(s, s.reqs.at(pick).unwrap())
+    var ok_count = 0
+    var attempts = 0
+    for r in s.reqs:
+        emit(s, "{r.id} {r.status} attempts={r.k} done={r.done}")
+        if r.status == "ok":
+            ok_count = ok_count + 1
+        attempts = attempts + r.k
+    emit(s, "total ok={ok_count} failed={s.reqs.length() - ok_count} attempts={attempts}")
+    try stdout().write(s.log.freeze().to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

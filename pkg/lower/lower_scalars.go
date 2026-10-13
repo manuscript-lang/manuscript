@@ -12,7 +12,7 @@ import (
 // representation. Captures and existing boxed payload copies keep their ABI.
 func (g *generator) selectScalarLocals() map[*checker.Binding]string {
 	captured := map[*checker.Binding]bool{}
-	for _, info := range g.program.Expressions {
+	for _, info := range g.program.Expressions() {
 		for _, b := range info.Captures {
 			captured[b] = true
 		}
@@ -20,7 +20,7 @@ func (g *generator) selectScalarLocals() map[*checker.Binding]string {
 	locals := map[*checker.Binding]string{}
 	allowed := map[*syntax.Expression]bool{}
 	uses := map[*checker.Binding][]*syntax.Expression{}
-	for e, info := range g.program.Expressions {
+	for e, info := range g.program.Expressions() {
 		if info.Binding != nil {
 			uses[info.Binding] = append(uses[info.Binding], e)
 		}
@@ -38,7 +38,7 @@ func (g *generator) selectScalarLocals() map[*checker.Binding]string {
 		if s.Kind != syntax.KindBind || s.Pattern.Kind != syntax.KindName || !g.scalarProducer(s.Value) {
 			return
 		}
-		b := g.program.Bindings[s.Pattern]
+		b := g.program.PatternBinding(s.Pattern)
 		if b == nil || b.Mutable || captured[b] {
 			return
 		}
@@ -65,8 +65,8 @@ func (g *generator) selectScalarLocals() map[*checker.Binding]string {
 			visitor.Walk(d)
 		}
 	}
-	for statement, b := range g.program.LoopBindings {
-		if statement.Kind != syntax.KindFor || captured[b] || primitiveListSuffix(g.program.Expressions[statement.Value].Type) == "" {
+	for statement, b := range g.program.LoopBindings() {
+		if statement.Kind != syntax.KindFor || captured[b] || primitiveListSuffix(g.program.Info(statement.Value).Type) == "" {
 			continue
 		}
 		valid := true
@@ -77,12 +77,12 @@ func (g *generator) selectScalarLocals() map[*checker.Binding]string {
 			locals[b] = typ
 		}
 	}
-	for e := range g.program.Expressions {
+	for e := range g.program.Expressions() {
 		if e.Kind != syntax.KindMatch || g.typedListAtSuffix(e.Left) == "" {
 			continue
 		}
 		for i := range e.Arms {
-			for _, b := range g.program.ArmBindings[&e.Arms[i]] {
+			for _, b := range g.program.ArmBindingsFor(&e.Arms[i]) {
 				if b == nil || captured[b] {
 					continue
 				}
@@ -96,7 +96,11 @@ func (g *generator) selectScalarLocals() map[*checker.Binding]string {
 			}
 		}
 	}
-	for e, b := range g.program.Assignments {
+	for e := range g.program.Expressions() {
+		b := g.program.AssignedBinding(e)
+		if b == nil {
+			continue
+		}
 		if b.Mutable && !captured[b] && g.scalarProducer(e) {
 			if typ := primitiveEqualityType(b.Type); typ != "" {
 				locals[b] = typ
@@ -105,7 +109,11 @@ func (g *generator) selectScalarLocals() map[*checker.Binding]string {
 	}
 	// A boxed source result/payload can reuse its box at the next boxed call.
 	// Only known native producers remove both sides of that boundary.
-	for e, b := range g.program.Assignments {
+	for e := range g.program.Expressions() {
+		b := g.program.AssignedBinding(e)
+		if b == nil {
+			continue
+		}
 		if e.Kind == syntax.KindCall && !g.scalarProducer(e) {
 			delete(locals, b)
 		}
@@ -126,7 +134,7 @@ func (g *generator) scalarProducer(e *syntax.Expression) bool {
 	case syntax.KindUnary:
 		return e.Text == "-" || e.Text == "not"
 	case syntax.KindCall:
-		return g.numericCallName(e) != "" || g.typedCollectionScalar(e) || g.nativeCallAvailable(e) && g.shareNativeBody(g.program.Expressions[e].Symbol) || g.nativeMethodAvailable(e) && g.shareNativeBody(methodSymbol(g.program.Expressions[e.Left].Method))
+		return g.numericCallName(e) != "" || g.typedCollectionScalar(e) || g.nativeCallAvailable(e) && g.shareNativeBody(g.program.Info(e).Symbol) || g.nativeMethodAvailable(e) && g.shareNativeBody(methodSymbol(g.program.Info(e.Left).Method))
 	}
 	return false
 }
@@ -159,17 +167,17 @@ func (g *generator) scalarValue(e *syntax.Expression) ast.Expr {
 	if native {
 		return value
 	}
-	return scalarExtract(g.program.Expressions[e].Type, value)
+	return scalarExtract(g.program.Info(e).Type, value)
 }
 
 func (g *generator) scalarValueAs(e *syntax.Expression, expected *checker.Type) ast.Expr {
-	if g.program.Expressions[e].Type.ID == "Never" {
+	if g.program.Info(e).Type.ID == "Never" {
 		return scalarExtract(expected, g.expression(e))
 	}
 	return g.scalarValue(e)
 }
 func (g *generator) nativeScalarExpression(e *syntax.Expression) bool {
-	info := g.program.Expressions[e]
+	info := g.program.Info(e)
 	if info == nil || primitiveEqualityType(info.Type) == "" || info.ErrorSource != nil {
 		return false
 	}
@@ -200,7 +208,7 @@ func (g *generator) bindingValue(b *checker.Binding, e *syntax.Expression) ast.E
 }
 func (g *generator) returnValue(e *syntax.Expression) ast.Expr {
 	if g.nativeResult != nil && g.expressionDepth == 0 {
-		if g.program.Expressions[e].Type.ID == "Never" {
+		if g.program.Info(e).Type.ID == "Never" {
 			return scalarExtract(g.nativeResult, g.expression(e))
 		}
 		return g.scalarValue(e)
@@ -219,7 +227,7 @@ func (g *generator) orderedScalars(e *syntax.Expression, build func(ast.Expr, as
 		return build(g.scalarValue(e.Left), sourceAt(e.Pos, g.scalarValue(e.Right)))
 	}
 	a, b := g.temp(), g.temp()
-	result := primitiveEqualityType(g.program.Expressions[e].Type)
+	result := primitiveEqualityType(g.program.Info(e).Type)
 	return call(closure(nil, ident(result),
 		define(a, g.scalarValue(e.Left)), define(b, g.scalarValue(e.Right)),
 		assign(ident("sourcePosition"), token.ASSIGN, textLiteral(e.Pos.String())),
@@ -248,7 +256,7 @@ func scalarEffects(e *syntax.Expression) bool {
 }
 
 func (g *generator) nativeBinaryOperands(e *syntax.Expression) bool {
-	a, b := g.program.Expressions[e.Left], g.program.Expressions[e.Right]
+	a, b := g.program.Info(e.Left), g.program.Info(e.Right)
 	if a == nil || b == nil || primitiveEqualityType(a.Type) == "" || a.Type.ID != b.Type.ID || primitiveEqualityType(a.Type) != primitiveEqualityType(b.Type) {
 		return false
 	}
@@ -266,7 +274,7 @@ func (g *generator) nativeBinaryOperands(e *syntax.Expression) bool {
 }
 
 func (g *generator) scalarUnary(e *syntax.Expression) ast.Expr {
-	typ := primitiveEqualityType(g.program.Expressions[e].Type)
+	typ := primitiveEqualityType(g.program.Info(e).Type)
 	if typ == "" {
 		return nil
 	}

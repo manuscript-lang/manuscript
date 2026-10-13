@@ -59,7 +59,7 @@ tags.append("news")
 let visits = Map[String, Int]()
 visits.add(key: "/help", value: 12)
 let subscribers = Set[String]()
-subscribers.with_value("sam@example.com")
+subscribers.add("sam@example.com")
 
 match visits.get("/help"):
     some(count):

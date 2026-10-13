@@ -1,0 +1,276 @@
+use std::collections::{BTreeMap, HashMap};
+use std::io::{self, Read, Write};
+
+struct Step {
+    w: String,
+    t: Vec<String>,
+    label: String,
+}
+
+fn kinds(w: &str) -> Option<&'static str> {
+    Some(match w {
+        "trim" | "lower" | "required" | "unique" => "f",
+        "default" | "oneof" | "pattern" => "ft",
+        "int" => "fii",
+        "len" => "fnn",
+        "less" => "ff",
+        "needs" => "ftf",
+        _ => return None,
+    })
+}
+
+fn ws_split(l: &str) -> Vec<&str> {
+    l.split(|c| c == ' ' || c == '\t').filter(|x| !x.is_empty()).collect()
+}
+
+fn is_name(s: &str) -> bool {
+    let b = s.as_bytes();
+    !b.is_empty()
+        && (b[0] == b'_' || b[0].is_ascii_lowercase())
+        && b[1..].iter().all(|c| *c == b'_' || c.is_ascii_lowercase() || c.is_ascii_digit())
+}
+
+fn is_non_neg(s: &str) -> bool {
+    !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit())
+}
+
+fn is_int(s: &str) -> bool {
+    is_non_neg(s.strip_prefix('-').unwrap_or(s))
+}
+
+fn to_int(s: &str) -> i64 {
+    s.parse().unwrap_or(0)
+}
+
+fn glob(mask: &str, s: &str) -> bool {
+    let m: Vec<u8> = mask.bytes().collect();
+    let s: Vec<u8> = s.bytes().collect();
+    let n = s.len();
+    let mut prev = vec![false; n + 1];
+    prev[0] = true;
+    for i in 1..=m.len() {
+        let c = m[i - 1];
+        let mut cur = vec![false; n + 1];
+        for j in 0..=n {
+            cur[j] = if c == b'*' {
+                prev[j] || (j > 0 && cur[j - 1])
+            } else if j == 0 {
+                false
+            } else {
+                let ch = s[j - 1];
+                let good = match c {
+                    b'9' => ch.is_ascii_digit(),
+                    b'a' => ch.is_ascii_alphabetic(),
+                    _ => ch == c,
+                };
+                prev[j - 1] && good
+            };
+        }
+        prev = cur;
+    }
+    prev[n]
+}
+
+type Rec = BTreeMap<String, String>;
+
+fn run_step(st: &Step, rec: &mut Rec, seen: &HashMap<String, HashMap<String, usize>>) -> Option<String> {
+    let t = &st.t;
+    let f = t[1].clone();
+    let v = rec.get(&f).cloned();
+    match st.w.as_str() {
+        "trim" => {
+            if let Some(v) = v {
+                rec.insert(f, v.trim_matches(|c| c == ' ' || c == '\t').to_string());
+            }
+        }
+        "lower" => {
+            if let Some(v) = v {
+                rec.insert(f, v.to_ascii_lowercase());
+            }
+        }
+        "default" => {
+            if v.as_deref().map_or(true, |s| s.is_empty()) {
+                rec.insert(f, t[2].clone());
+            }
+        }
+        "required" => {
+            if v.as_deref().map_or(true, |s| s.is_empty()) {
+                return Some(format!("{} is required", f));
+            }
+        }
+        "int" => {
+            let v = v?;
+            if !is_int(&v) {
+                return Some(format!("{} is not an integer", f));
+            }
+            let (lo, hi) = (to_int(&t[2]), to_int(&t[3]));
+            let x = to_int(&v);
+            if x < lo || x > hi {
+                return Some(format!("{} out of range {}..{}", f, lo, hi));
+            }
+        }
+        "len" => {
+            let v = v?;
+            let (lo, hi) = (to_int(&t[2]), to_int(&t[3]));
+            let l = v.len() as i64;
+            if l < lo || l > hi {
+                return Some(format!("{} length out of range {}..{}", f, lo, hi));
+            }
+        }
+        "oneof" => {
+            let v = v?;
+            if !t[2].split('|').any(|o| o == v) {
+                return Some(format!("{} not one of {}", f, t[2]));
+            }
+        }
+        "pattern" => {
+            let v = v?;
+            if !glob(&t[2], &v) {
+                return Some(format!("{} does not match {}", f, t[2]));
+            }
+        }
+        "unique" => {
+            let v = v?;
+            if let Some(k) = seen.get(&f).and_then(|m| m.get(&v)) {
+                return Some(format!("{} duplicates record {}", f, k));
+            }
+        }
+        "less" => {
+            let a = rec.get(&t[1])?;
+            let b = rec.get(&t[2])?;
+            if !is_int(a) {
+                return Some(format!("{} is not an integer", t[1]));
+            }
+            if !is_int(b) {
+                return Some(format!("{} is not an integer", t[2]));
+            }
+            if !(to_int(a) < to_int(b)) {
+                return Some(format!("{} must be less than {}", t[1], t[2]));
+            }
+        }
+        "needs" => {
+            let v = v?;
+            if v != t[2] {
+                return None;
+            }
+            if rec.get(&t[3]).map_or(true, |o| o.is_empty()) {
+                return Some(format!("{} is required when {}={}", t[3], f, t[2]));
+            }
+        }
+        _ => {}
+    }
+    None
+}
+
+fn parse_record(line: &str) -> Result<Rec, String> {
+    let mut rec = Rec::new();
+    for piece in line.split(',') {
+        let i = piece.find('=');
+        match i {
+            Some(i) if is_name(&piece[..i]) => {
+                let k = &piece[..i];
+                if rec.contains_key(k) {
+                    return Err(format!("duplicate key {}", k));
+                }
+                rec.insert(k.to_string(), piece[i + 1..].to_string());
+            }
+            _ => return Err(format!("bad field '{}'", piece)),
+        }
+    }
+    Ok(rec)
+}
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let mut lines: Vec<&str> = input.split('\n').collect();
+    if lines.last() == Some(&"") {
+        lines.pop();
+    }
+    let sep = lines.iter().position(|l| l.trim_matches(|c| c == ' ' || c == '\t') == "---");
+    let (step_lines, rec_lines): (&[&str], &[&str]) = match sep {
+        Some(i) => (&lines[..i], &lines[i + 1..]),
+        None => (&lines[..], &[]),
+    };
+    let mut out = String::new();
+    let mut steps: Vec<Step> = Vec::new();
+    for (i, l) in step_lines.iter().enumerate() {
+        let t = ws_split(l);
+        if t.is_empty() {
+            continue;
+        }
+        let w = t[0];
+        let ks = match kinds(w) {
+            Some(k) => k,
+            None => {
+                println!("pipeline error: line {}: unknown step {}", i + 1, w);
+                return;
+            }
+        };
+        let mut ok = t.len() == 1 + ks.len();
+        if ok {
+            for (k, kind) in ks.bytes().enumerate() {
+                let a = t[k + 1];
+                if (kind == b'f' && !is_name(a)) || (kind == b'i' && !is_int(a)) || (kind == b'n' && !is_non_neg(a)) {
+                    ok = false;
+                }
+            }
+            if ok && (w == "int" || w == "len") && to_int(t[2]) > to_int(t[3]) {
+                ok = false;
+            }
+        }
+        if !ok {
+            println!("pipeline error: line {}: bad arguments for {}", i + 1, w);
+            return;
+        }
+        steps.push(Step { w: w.to_string(), t: t.iter().map(|s| s.to_string()).collect(), label: t.join(" ") });
+    }
+    let mut fails = vec![0usize; steps.len()];
+    let uniq: Vec<String> = steps.iter().filter(|s| s.w == "unique").map(|s| s.t[1].clone()).collect();
+    let mut seen: HashMap<String, HashMap<String, usize>> = HashMap::new();
+    let (mut parse_fails, mut ok_count, mut total) = (0, 0, 0);
+    for line in rec_lines {
+        if ws_split(line).is_empty() {
+            continue;
+        }
+        total += 1;
+        let mut rec = match parse_record(line) {
+            Ok(r) => r,
+            Err(e) => {
+                parse_fails += 1;
+                out.push_str(&format!("record {}: FAILED parse: {}\n", total, e));
+                continue;
+            }
+        };
+        let mut failed = false;
+        for (i, st) in steps.iter().enumerate() {
+            if let Some(msg) = run_step(st, &mut rec, &seen) {
+                fails[i] += 1;
+                failed = true;
+                out.push_str(&format!("record {}: FAILED step {} ({}): {}\n", total, i + 1, st.label, msg));
+                break;
+            }
+        }
+        if failed {
+            continue;
+        }
+        ok_count += 1;
+        for f in &uniq {
+            if let Some(v) = rec.get(f) {
+                seen.entry(f.clone()).or_default().entry(v.clone()).or_insert(total);
+            }
+        }
+        let parts: Vec<String> = rec.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
+        out.push_str(&format!("record {}: ok {}\n", total, parts.join(",")));
+    }
+    out.push_str(&format!("summary records={} ok={} failed={}\n", total, ok_count, total - ok_count));
+    if parse_fails > 0 {
+        out.push_str(&format!("failed at parse: {}\n", parse_fails));
+    }
+    for (i, st) in steps.iter().enumerate() {
+        if fails[i] > 0 {
+            out.push_str(&format!("failed at step {} ({}): {}\n", i + 1, st.label, fails[i]));
+        }
+    }
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

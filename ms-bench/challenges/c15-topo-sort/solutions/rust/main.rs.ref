@@ -1,0 +1,85 @@
+use std::collections::{BTreeMap, BTreeSet};
+use std::io::BufRead;
+
+fn valid_name(s: &str) -> bool {
+    let b = s.as_bytes();
+    !b.is_empty()
+        && b[0].is_ascii_lowercase()
+        && b[1..].iter().all(|&c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_')
+}
+
+fn parse(l: &str) -> Option<(String, Vec<String>)> {
+    let i = l.find(':')?;
+    let name = &l[..i];
+    if !valid_name(name) {
+        return None;
+    }
+    let rest = &l[i + 1..];
+    if rest.is_empty() {
+        return Some((name.to_string(), vec![]));
+    }
+    let rest = rest.strip_prefix(' ')?;
+    let ds: Vec<&str> = rest.split(' ').collect();
+    if !ds.iter().all(|d| valid_name(d)) {
+        return None;
+    }
+    Some((name.to_string(), ds.iter().map(|d| d.to_string()).collect()))
+}
+
+fn main() {
+    let stdin = std::io::stdin();
+    let mut deps: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for (i, line) in stdin.lock().lines().enumerate() {
+        let l = line.unwrap();
+        if l.trim_matches(' ').is_empty() {
+            continue;
+        }
+        match parse(&l) {
+            None => {
+                println!("error: line {}", i + 1);
+                return;
+            }
+            Some((name, ds)) => {
+                let set = deps.entry(name).or_default();
+                for d in &ds {
+                    set.insert(d.clone());
+                }
+                for d in ds {
+                    deps.entry(d).or_default();
+                }
+            }
+        }
+    }
+    let mut indeg: BTreeMap<&String, usize> = BTreeMap::new();
+    let mut rev: BTreeMap<&String, Vec<&String>> = BTreeMap::new();
+    let mut ready: BTreeSet<&String> = BTreeSet::new();
+    for (n, ds) in &deps {
+        indeg.insert(n, ds.len());
+        if ds.is_empty() {
+            ready.insert(n);
+        }
+        for d in ds {
+            rev.entry(d).or_default().push(n);
+        }
+    }
+    let mut out: Vec<&String> = Vec::new();
+    while let Some(n) = ready.pop_first() {
+        out.push(n);
+        if let Some(ms) = rev.get(n) {
+            for m in ms {
+                let e = indeg.get_mut(m).unwrap();
+                *e -= 1;
+                if *e == 0 {
+                    ready.insert(m);
+                }
+            }
+        }
+    }
+    if out.len() < deps.len() {
+        println!("cycle");
+        return;
+    }
+    for n in out {
+        println!("{}", n);
+    }
+}

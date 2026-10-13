@@ -59,7 +59,7 @@ test "list search callbacks empty identities and folding":
 test "list mutation and clone keep separate storage":
     let original = [1, 2, 3]
     let copy = original.clone()
-    copy.with_values(start: 1, delete_count: 1, replacement: [8, 9])
+    copy.splice(start: 1, delete_count: 1, replacement: [8, 9])
     if copy != [1, 8, 9, 3] or original != [1, 2, 3]: return panic("splice clone")
 
     copy.fill(value: 0, start: 1, end: 3)
@@ -78,10 +78,10 @@ test "maps preserve insertion order and overwrite duplicate keys":
     let map = map_from_entries(entries)
     if map.keys() != ["a", "b"] or map.values() != [3, 2]: return panic("map order")
 
-    map.with_default(key: "a", value: 99)
+    map.add_default(key: "a", value: 99)
     if map.get("a") != some(3): return panic("default overwrote value")
 
-    let copy = map.clone().without("a")
+    let copy = map.clone().remove("a")
     if copy.keys() != ["b"] or map.keys() != ["a", "b"]: return panic("map clone")
     if not map.get("missing").is_none(): return panic("missing key")
 
@@ -153,13 +153,13 @@ test "collection builders freeze all accumulated values":
     if list.freeze() != [1, 2] or list.freeze() != [1, 2]: return panic("list builder")
 
     let map = MapBuilder[String, Int]()
-    map.with_entry(key: "a", value: 1)
-    map.with_entry(key: "a", value: 2)
+    map.add(key: "a", value: 1)
+    map.add(key: "a", value: 2)
     if map.freeze().get("a") != some(2): return panic("map builder")
 
     let set = SetBuilder[Int]()
-    set.with_value(1)
-    set.with_value(1)
+    set.add(1)
+    set.add(1)
     if set.freeze().values() != [1]: return panic("set builder")
 
 test "imported map add interoperates with with_entry":

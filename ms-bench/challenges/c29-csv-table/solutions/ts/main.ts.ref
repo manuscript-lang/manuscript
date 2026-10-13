@@ -1,0 +1,55 @@
+import { readFileSync } from "node:fs";
+
+function parseRow(line: string): string[] {
+  const fields: string[] = [];
+  let i = 0;
+  const n = line.length;
+  for (;;) {
+    if (i < n && line[i] === '"') {
+      i++;
+      let buf = "";
+      while (i < n) {
+        if (line[i] === '"') {
+          if (i + 1 < n && line[i + 1] === '"') { buf += '"'; i += 2; continue; }
+          i++;
+          break;
+        }
+        buf += line[i++];
+      }
+      fields.push(buf);
+    } else {
+      let j = line.indexOf(",", i);
+      if (j < 0) j = n;
+      fields.push(line.slice(i, j));
+      i = j;
+    }
+    if (i < n && line[i] === ",") {
+      i++;
+      if (i === n) { fields.push(""); break; }
+      continue;
+    }
+    break;
+  }
+  return fields;
+}
+
+const rows = readFileSync(0, "utf8").split("\n").filter((l) => l !== "").map(parseRow);
+if (rows.length > 0) {
+  const cols = rows[0].length;
+  const norm = rows.map((r) => {
+    const cells = r.slice(0, cols);
+    while (cells.length < cols) cells.push("");
+    return cells;
+  });
+  const data = norm.slice(1);
+  const numeric: boolean[] = [];
+  const width: number[] = [];
+  for (let c = 0; c < cols; c++) {
+    numeric.push(data.length > 0 && data.every((r) => /^-?[0-9]+$/.test(r[c])));
+    width.push(Math.max(...norm.map((r) => r[c].length)));
+  }
+  const fmt = (r: string[]) =>
+    r.map((cell, c) => (numeric[c] ? cell.padStart(width[c]) : cell.padEnd(width[c]))).join(" | ").replace(/ +$/, "");
+  const out = [fmt(norm[0]), width.map((w) => "-".repeat(w)).join("-+-"), ...data.map(fmt)];
+  process.stdout.write(out.map((l) => l + "\n").join(""));
+}

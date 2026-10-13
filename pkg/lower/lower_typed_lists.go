@@ -26,18 +26,18 @@ func (g *generator) typedListAtSuffix(e *syntax.Expression) string {
 	if e == nil || e.Kind != syntax.KindCall || e.Left.Kind != syntax.KindMember {
 		return ""
 	}
-	info := g.program.Expressions[e.Left]
+	info := g.program.Info(e.Left)
 	if info == nil || info.Method == nil || info.Method.Contract != nil || info.Method.Native != "collections/at" {
 		return ""
 	}
 	args := e.Args
-	if converted := g.program.Expressions[e].Arguments; converted != nil {
+	if converted := g.program.Info(e).Arguments; converted != nil {
 		args = converted
 	}
 	if len(args) != 1 {
 		return ""
 	}
-	return primitiveListSuffix(g.program.Expressions[e.Left.Left].Type)
+	return primitiveListSuffix(g.program.Info(e.Left.Left).Type)
 }
 func (g *generator) typedListAt(e *syntax.Expression) ast.Expr {
 	suffix := g.typedListAtSuffix(e)
@@ -45,7 +45,7 @@ func (g *generator) typedListAt(e *syntax.Expression) ast.Expr {
 		return nil
 	}
 	args := e.Args
-	if converted := g.program.Expressions[e].Arguments; converted != nil {
+	if converted := g.program.Info(e).Arguments; converted != nil {
 		args = converted
 	}
 	receiver := sourceAt(e.Left.Left.Pos, g.expression(e.Left.Left))
@@ -55,12 +55,12 @@ func (g *generator) typedUnwrapAt(e *syntax.Expression) bool {
 	if e.Kind != syntax.KindCall || e.Left.Kind != syntax.KindMember {
 		return false
 	}
-	info := g.program.Expressions[e.Left]
+	info := g.program.Info(e.Left)
 	if info == nil || info.Method == nil || info.Method.Contract != nil || info.Method.Native != "optional/unwrap" {
 		return false
 	}
 	args := e.Args
-	if converted := g.program.Expressions[e].Arguments; converted != nil {
+	if converted := g.program.Info(e).Arguments; converted != nil {
 		args = converted
 	}
 	return len(args) == 0 && g.typedListAtSuffix(e.Left.Left) != ""
@@ -72,10 +72,10 @@ func (g *generator) typedCollectionScalar(e *syntax.Expression) bool {
 	if e.Kind != syntax.KindCall || e.Left.Kind != syntax.KindMember {
 		return false
 	}
-	info := g.program.Expressions[e.Left]
+	info := g.program.Info(e.Left)
 	if info == nil || info.Method == nil || info.Method.Contract != nil || info.Method.Native != "length" {
 		return false
 	}
-	t := g.program.Expressions[e.Left.Left].Type
+	t := g.program.Info(e.Left.Left).Type
 	return len(e.Args) == 0 && (t.ID == "@std/List" || t.ID == "@std/Map" || t.ID == "@std/Set")
 }

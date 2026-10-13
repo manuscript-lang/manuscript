@@ -25,7 +25,7 @@ fn first() -> Result[Int, Error]: fail_cause(Failure("empty"))
 		t.Fatal(p.Diagnostics)
 	}
 	found := false
-	for expression, info := range p.Expressions {
+	for expression, info := range p.Expressions() {
 		if expression.Kind != syntax.KindCall || info.Symbol == nil || info.Symbol.Name != "fail_cause" {
 			continue
 		}
@@ -56,7 +56,7 @@ fn first() -> Unit:
 		t.Fatal(p.Diagnostics)
 	}
 	found := false
-	for expression, info := range p.Expressions {
+	for expression, info := range p.Expressions() {
 		if expression.Kind != syntax.KindCall || info.Symbol == nil || info.Symbol.Name != "from_callback" {
 			continue
 		}

@@ -1,0 +1,120 @@
+use std::io::{self, Read, Write};
+
+struct Req {
+    id: String,
+    start: i64,
+    k: i64,
+    t: i64,
+    status: &'static str,
+    done: i64,
+}
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    let (mut base, mut factor, mut capv, mut max, mut jit, mut deadline, mut seed) = (100i64, 2i64, 5000i64, 5i64, 0i64, 0i64, 1i64);
+    let mut downs: Vec<(i64, i64)> = Vec::new();
+    let mut limit: Option<(i64, i64)> = None;
+    let mut reqs: Vec<Req> = Vec::new();
+    for line in input.split('\n') {
+        let t: Vec<&str> = line.split(|c| c == ' ' || c == '\t').filter(|x| !x.is_empty()).collect();
+        if t.is_empty() {
+            continue;
+        }
+        let n = |i: usize| -> i64 { t[i].parse().unwrap() };
+        match t[0] {
+            "policy" => {
+                base = n(1);
+                factor = n(2);
+                capv = n(3);
+                max = n(4);
+                jit = n(5);
+                deadline = n(6);
+                seed = n(7);
+            }
+            "down" => downs.push((n(1), n(2))),
+            "limit" => limit = Some((n(1), n(2))),
+            "req" => reqs.push(Req { id: t[1].to_string(), start: n(2), k: 1, t: n(2), status: "", done: 0 }),
+            _ => {}
+        }
+    }
+    let mut state = seed;
+    let mut accepted: Vec<i64> = Vec::new();
+    let mut out = String::new();
+    loop {
+        let mut pick: Option<usize> = None;
+        for (i, q) in reqs.iter().enumerate() {
+            if !q.status.is_empty() {
+                continue;
+            }
+            match pick {
+                None => pick = Some(i),
+                Some(p) => {
+                    if q.t < reqs[p].t {
+                        pick = Some(i);
+                    }
+                }
+            }
+        }
+        let ri = match pick {
+            Some(i) => i,
+            None => break,
+        };
+        let t = reqs[ri].t;
+        let k = reqs[ri].k;
+        let mut res = "";
+        let mut retry_after = 0i64;
+        if downs.iter().any(|&(a, b)| a <= t && t < b) {
+            res = "down";
+        } else {
+            if let Some((win, cnt)) = limit {
+                let inwin: Vec<i64> = accepted.iter().copied().filter(|&a| a > t - win).collect();
+                if inwin.len() as i64 >= cnt {
+                    res = "limited";
+                    retry_after = inwin.iter().copied().min().unwrap() + win - t;
+                }
+            }
+            if res.is_empty() {
+                accepted.push(t);
+                reqs[ri].status = "ok";
+                reqs[ri].done = t;
+                out.push_str(&format!("t={} {} #{} ok\n", t, reqs[ri].id, k));
+                continue;
+            }
+        }
+        reqs[ri].done = t;
+        if k == max {
+            reqs[ri].status = "gave-up";
+            out.push_str(&format!("t={} {} #{} {} gave-up\n", t, reqs[ri].id, k, res));
+            continue;
+        }
+        let mut d = capv.min(base);
+        for _ in 1..k {
+            d = capv.min(d * factor);
+        }
+        state = state * 48271 % 2147483647;
+        let rr = state % 1000;
+        let d2 = (d - d * jit * rr / 100000).max(1);
+        let wait = if res == "limited" { d2.max(retry_after) } else { d2 };
+        let nt = t + wait;
+        if deadline > 0 && nt > reqs[ri].start + deadline {
+            reqs[ri].status = "expired";
+            out.push_str(&format!("t={} {} #{} {} expired\n", t, reqs[ri].id, k, res));
+            continue;
+        }
+        out.push_str(&format!("t={} {} #{} {} retry@{}\n", t, reqs[ri].id, k, res, nt));
+        reqs[ri].t = nt;
+        reqs[ri].k = k + 1;
+    }
+    let mut ok = 0;
+    let mut att = 0;
+    for r in &reqs {
+        out.push_str(&format!("{} {} attempts={} done={}\n", r.id, r.status, r.k, r.done));
+        if r.status == "ok" {
+            ok += 1;
+        }
+        att += r.k;
+    }
+    out.push_str(&format!("total ok={} failed={} attempts={}\n", ok, reqs.len() - ok, att));
+    io::stdout().write_all(out.as_bytes()).unwrap();
+}

@@ -40,7 +40,7 @@ func (g *generator) debugListLiteral(e *syntax.Expression, typ *checker.Type) as
 // Unary numbers retain normal lowering, including the sign of rounded zero;
 // numeric widths and rounding belong to checked expression lowering.
 func (g *generator) debugLiteralScalar(e *syntax.Expression) ast.Expr {
-	info := g.program.Expressions[e]
+	info := g.program.Info(e)
 	if info.ErrorSource != nil || info.Type.Kind != "primitive" {
 		return nil
 	}

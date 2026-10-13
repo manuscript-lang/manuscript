@@ -115,7 +115,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 					add(cs.Name, 20, signature, 0, insert, nil)
 				}
 			} else if result.Program != nil {
-				if info := result.Program.Expressions[left]; info != nil && info.Type != nil {
+				if info := result.Program.Info(left); info != nil && info.Type != nil {
 					for _, member := range checker.Members(result.Program, info.Type, left.Pos.File) {
 						kind := 5
 						insert := member.Name
@@ -164,7 +164,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 	symbols := analysis.scope.Symbols
 	if len(symbols) == 0 && result.Program != nil {
 		if m := module(result, analysis.document); m != nil {
-			symbols = result.Program.Symbols[m.File]
+			symbols = result.Program.ModuleSymbols(m.File)
 		}
 	}
 	for name, s := range symbols {
@@ -289,7 +289,7 @@ func completionAt(d document, docs map[string]document, p position, snippets boo
 				if !strings.HasPrefix(path, ".") {
 					path = "./" + path
 				}
-				for _, s := range checked.Program.Symbols[m.File] {
+				for _, s := range checked.Program.ModuleSymbols(m.File) {
 					if !s.Export || s.Decl == nil || s.Decl.Pos.File != m.File || seen[s.Name] || !nameMatches(s.Name, c.prefix) || c.typeContext && s.Kind != syntax.KindType {
 						continue
 					}
@@ -374,7 +374,7 @@ func queryCall(a editorAnalysis) (*syntax.Expression, *checker.Type) {
 	if a.result.Program == nil {
 		return nil, nil
 	}
-	for e := range a.result.Program.Expressions {
+	for e := range a.result.Program.Expressions() {
 		if e.Kind != syntax.KindCall || e.Pos.File != moduleFile(a.result, a.document) {
 			continue
 		}
@@ -387,14 +387,14 @@ func queryCall(a editorAnalysis) (*syntax.Expression, *checker.Type) {
 		if !matched {
 			continue
 		}
-		if info := a.result.Program.Expressions[e.Left]; info != nil && info.Type != nil && info.Type.Kind == "function" {
+		if info := a.result.Program.Info(e.Left); info != nil && info.Type != nil && info.Type.Kind == "function" {
 			signature := info.Type
 			if strings.Contains(signature.String(), "<invalid>") && info.Symbol != nil {
 				signature = info.Symbol.Type
 			}
 			return e, signature
 		}
-		if constructed := a.result.Program.Expressions[e]; constructed != nil && constructed.Constructor != nil && constructed.Case != "" {
+		if constructed := a.result.Program.Info(e); constructed != nil && constructed.Constructor != nil && constructed.Case != "" {
 			for _, cs := range checker.Cases(constructed.Constructor) {
 				if cs.Name == constructed.Case {
 					return e, &checker.Type{Kind: "function", Params: cs.Fields, Result: constructed.Constructor}
@@ -535,7 +535,7 @@ func importCompletion(d document, docs map[string]document, c cursorContext, sni
 					target := document{URI: fileURI(file), Text: string(source)}
 					checked := workspaceAnalysis(target, docs)
 					if m := module(checked, target); m != nil {
-						for _, s := range checked.Program.Symbols[m.File] {
+						for _, s := range checked.Program.ModuleSymbols(m.File) {
 							if s.Export && s.Decl != nil && s.Decl.Pos.File == m.File {
 								exports = append(exports, s)
 							}
@@ -607,7 +607,7 @@ func nameMatches(name, query string) bool {
 
 // Use checked label resolution without changing the source expressions used for navigation.
 func editorCallArguments(a editorAnalysis, call *syntax.Expression) []syntax.Argument {
-	if info := a.result.Program.Expressions[call]; info != nil && info.Arguments != nil {
+	if info := a.result.Program.Info(call); info != nil && info.Arguments != nil {
 		return info.Arguments
 	}
 	return call.Args

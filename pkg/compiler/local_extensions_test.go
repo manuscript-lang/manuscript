@@ -146,7 +146,7 @@ import Box from "./domain.ms"
 	if !result.Success() {
 		t.Fatal(result.Diagnostics)
 	}
-	receiver := result.Program.Symbols["extension.ms"]["read"].Type.Params[0].Type
+	receiver := result.Program.Symbol("extension.ms", "read").Type.Params[0].Type
 	for _, module := range []string{"extension.ms", "main.ms", "domain.ms"} {
 		found := false
 		for _, member := range checker.Members(result.Program, receiver, module) {

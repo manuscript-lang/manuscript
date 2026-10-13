@@ -14,7 +14,7 @@ import (
 // argument is already in declaration order, Invoke adds only redundant label
 // preparation and a cancellation check. Keep other callable paths unchanged.
 func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
-	symbol := g.program.Expressions[e].Symbol
+	symbol := g.program.Info(e).Symbol
 	if symbol == nil || symbol.Native != "" || len(symbol.Variables) != 0 || symbol.Decl == nil || symbol.Decl.Kind != syntax.KindFn {
 		return nil
 	}
@@ -42,11 +42,11 @@ func (g *generator) preparedSourceCall(e *syntax.Expression, args []syntax.Argum
 // and Argument slice that Bind and Invoke build for every call. Arguments must
 // already be in declaration order so the labels carry no information.
 func (g *generator) preparedMethodCall(e *syntax.Expression, args []syntax.Argument) ast.Expr {
-	callee := g.program.Expressions[e.Left]
+	callee := g.program.Info(e.Left)
 	if e.Left.Kind != syntax.KindMember || callee == nil || callee.Method == nil || callee.Method.Contract == nil || callee.Method.Native != "" {
 		return nil
 	}
-	receiverType := g.program.Expressions[e.Left.Left].Type
+	receiverType := g.program.Info(e.Left.Left).Type
 	if (receiverType.Kind != syntax.KindRecord && receiverType.Kind != "alternative") || len(receiverType.Args) != 0 || hasTypeVariable(receiverType) || strings.HasPrefix(receiverType.ID, "@std/") {
 		return nil
 	}

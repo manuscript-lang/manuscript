@@ -23,16 +23,16 @@ func (g *generator) nativeMethodAvailable(e *syntax.Expression) bool {
 	if e.Kind != syntax.KindCall || e.Left.Kind != syntax.KindMember {
 		return false
 	}
-	info := g.program.Expressions[e.Left]
+	info := g.program.Info(e.Left)
 	if info == nil || info.Method == nil || g.nativeMethods[info.Method.ID] == nil {
 		return false
 	}
-	receiver := g.program.Expressions[e.Left.Left].Type
+	receiver := g.program.Info(e.Left.Left).Type
 	if receiver.Kind == "contract" || hasTypeVariable(receiver) {
 		return false
 	}
 	args := e.Args
-	if converted := g.program.Expressions[e].Arguments; converted != nil {
+	if converted := g.program.Info(e).Arguments; converted != nil {
 		args = converted
 	}
 	// Omitted inherited interface defaults retain their existing preparation.
@@ -42,7 +42,7 @@ func (g *generator) nativeMethodCall(e *syntax.Expression, args []syntax.Argumen
 	if !g.nativeMethodAvailable(e) {
 		return nil
 	}
-	m := g.nativeMethods[g.program.Expressions[e.Left].Method.ID]
+	m := g.nativeMethods[g.program.Info(e.Left).Method.ID]
 	s := methodSymbol(m)
 	if g.wantScalar == 0 && !g.shareNativeBody(s) {
 		return nil

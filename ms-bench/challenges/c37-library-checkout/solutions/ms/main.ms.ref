@@ -1,0 +1,215 @@
+import {stdin, stdout, read_line} from "@std/io.ms"
+import StringBuilder from "@std/string.ms"
+
+type Loan:
+    member: String
+    book: String
+    due: Int
+    renewals: Int
+
+type Library:
+    books: Map[String, Int]
+    holds: Map[String, List[String]]
+    fines: Map[String, Int]
+    loans: List[Loan]
+    out: StringBuilder
+
+fn fields(line: String) -> List[String]:
+    let spaced = line.replace_all(old: "\t", new: " ").unwrap()
+    return spaced.split(" ").filter(fn(part: String) -> Bool:
+        return not part.is_empty()
+    )
+
+fn all_digits(s: String) -> Bool:
+    if s.is_empty():
+        return false
+    for c in s.scalar_values():
+        if c < 48 or c > 57:
+            return false
+    return true
+
+fn emit(lib: Library, text: String) -> Unit:
+    lib.out.append(text)
+    lib.out.append("\n")
+
+fn arity(cmd: String) -> Int:
+    if cmd == "book" or cmd == "hold":
+        return 3
+    if cmd == "member" or cmd == "overdue":
+        return 2
+    if cmd == "checkout" or cmd == "return" or cmd == "renew":
+        return 4
+    if cmd == "report":
+        return 1
+    return 0
+
+fn find_loan(lib: Library, m: String, b: String) -> Int:
+    var i = 0
+    for l in lib.loans:
+        if l.member == m and l.book == b:
+            return i
+        i = i + 1
+    return -1
+
+fn count_member(lib: Library, m: String) -> Int:
+    var n = 0
+    for l in lib.loans:
+        if l.member == m:
+            n = n + 1
+    return n
+
+fn count_book(lib: Library, b: String) -> Int:
+    var n = 0
+    for l in lib.loans:
+        if l.book == b:
+            n = n + 1
+    return n
+
+fn sorted_keys(keys: List[String]) -> List[String]:
+    return keys.sorted(compare: fn(x: String, y: String) -> Int:
+        return x.compare(y)
+    )
+
+fn report(lib: Library) -> Unit:
+    emit(lib, "members={lib.fines.length()} books={lib.books.length()}")
+    for m in sorted_keys(lib.fines.keys()):
+        emit(lib, "{m} loans={count_member(lib, m)} fines={lib.fines.get(m).unwrap()}")
+    for b in sorted_keys(lib.books.keys()):
+        emit(lib, "{b} copies={lib.books.get(b).unwrap()} out={count_book(lib, b)} holds={lib.holds.get(b).unwrap().length()}")
+
+fn overdue(lib: Library, day: Int) -> Unit:
+    let rows = lib.loans.filter(fn(l: Loan) -> Bool:
+        return day > l.due
+    ).sorted(compare: fn(x: Loan, y: Loan) -> Int:
+        let c = x.member.compare(y.member)
+        if c != 0:
+            return c
+        return x.book.compare(y.book)
+    )
+    if rows.is_empty():
+        return emit(lib, "none")
+    for l in rows:
+        emit(lib, "{l.member} {l.book} late={day - l.due}")
+
+fn checkout(lib: Library, m: String, b: String, day: Int, q: List[String], avail: Int) -> Unit:
+    if find_loan(lib, m, b) >= 0:
+        return emit(lib, "error: already borrowed")
+    if count_member(lib, m) >= 3:
+        return emit(lib, "error: loan limit reached")
+    for l in lib.loans:
+        if l.member == m and day > l.due:
+            return emit(lib, "error: has overdue loans")
+    if avail <= 0:
+        return emit(lib, "error: no copies available")
+    let p = q.index_of(m)
+    var allowed = avail > q.length()
+    if p.is_some():
+        allowed = p.unwrap() < avail
+    if not allowed:
+        return emit(lib, "error: reserved for holds")
+    if p.is_some():
+        q.remove(p.unwrap())
+    lib.loans.append(Loan(member: m, book: b, due: day + 14, renewals: 0))
+    emit(lib, "ok due={day + 14}")
+
+fn give_back(lib: Library, m: String, b: String, day: Int) -> Unit:
+    let li = find_loan(lib, m, b)
+    if li < 0:
+        return emit(lib, "error: not borrowed")
+    let loan = lib.loans.at(li).unwrap()
+    var fine = 0
+    if day > loan.due:
+        fine = 10 * (day - loan.due)
+    lib.loans.remove(li)
+    lib.fines.add(key: m, value: lib.fines.get(m).unwrap() + fine)
+    emit(lib, "ok fine={fine}")
+
+fn renew(lib: Library, m: String, b: String, day: Int, q: List[String]) -> Unit:
+    let li = find_loan(lib, m, b)
+    if li < 0:
+        return emit(lib, "error: not borrowed")
+    let loan = lib.loans.at(li).unwrap()
+    if day > loan.due:
+        return emit(lib, "error: overdue")
+    if loan.renewals >= 2:
+        return emit(lib, "error: renewal limit")
+    if q.length() > 0:
+        return emit(lib, "error: held by others")
+    loan.due = loan.due + 14
+    loan.renewals = loan.renewals + 1
+    emit(lib, "ok due={loan.due}")
+
+fn hold(lib: Library, m: String, b: String, q: List[String], avail: Int) -> Unit:
+    if find_loan(lib, m, b) >= 0:
+        return emit(lib, "error: already borrowed")
+    if q.contains(m):
+        return emit(lib, "error: already on hold")
+    if avail > q.length():
+        return emit(lib, "error: copies available")
+    q.append(m)
+    emit(lib, "ok position={q.length()}")
+
+fn step(lib: Library, t: List[String]) -> Unit:
+    let c = t.at(0).unwrap()
+    if arity(c) != t.length():
+        return emit(lib, "error: bad command")
+    if c == "book":
+        let n = t.at(2).unwrap()
+        if not all_digits(n) or n.parse_int().unwrap_or(0) == 0:
+            return emit(lib, "error: bad copies")
+        let b = t.at(1).unwrap()
+        lib.books.add(key: b, value: lib.books.get_or(key: b, fallback: 0) + n.parse_int().unwrap())
+        lib.holds.with_default(key: b, value: List[String]())
+        return emit(lib, "ok")
+    if c == "member":
+        let m = t.at(1).unwrap()
+        if lib.fines.contains(m):
+            return emit(lib, "error: member exists {m}")
+        lib.fines.add(key: m, value: 0)
+        return emit(lib, "ok")
+    if c == "report":
+        return report(lib)
+    if c != "hold" and not all_digits(t.at(t.length() - 1).unwrap()):
+        return emit(lib, "error: bad day")
+    if c == "overdue":
+        return overdue(lib, t.at(1).unwrap().parse_int().unwrap())
+    let m = t.at(1).unwrap()
+    let b = t.at(2).unwrap()
+    if not lib.fines.contains(m):
+        return emit(lib, "error: unknown member {m}")
+    if not lib.books.contains(b):
+        return emit(lib, "error: unknown book {b}")
+    let avail = lib.books.get(b).unwrap() - count_book(lib, b)
+    let q = lib.holds.get(b).unwrap()
+    if c == "hold":
+        return hold(lib, m, b, q, avail)
+    let day = t.at(3).unwrap().parse_int().unwrap()
+    if c == "checkout":
+        return checkout(lib, m, b, day, q, avail)
+    if c == "return":
+        return give_back(lib, m, b, day)
+    renew(lib, m, b, day, q)
+
+fn run() -> Result[Unit, Error]:
+    let lib = Library(
+        books: Map[String, Int](),
+        holds: Map[String, List[String]](),
+        fines: Map[String, Int](),
+        loans: List[Loan](),
+        out: StringBuilder()
+    )
+    while true:
+        let next = try read_line(input: stdin(), max_bytes: 1048576)
+        if next.is_none():
+            break
+        let t = fields(next.unwrap())
+        if t.is_empty():
+            continue
+        step(lib, t)
+    try stdout().write(lib.out.freeze().to_bytes())
+    return stdout().flush()
+
+export fn main() -> Int:
+    match run():
+        ok(_): return 0
+        error(_): return 1

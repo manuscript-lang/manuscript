@@ -20,13 +20,13 @@ func (g *generator) selectNativeCalls() {
 			if d.Kind != syntax.KindFn {
 				continue
 			}
-			s := g.program.Symbols[m.File][d.Name]
+			s := g.program.Symbol(m.File, d.Name)
 			g.nativeCalls[s] = s.Native == "" && len(s.Variables) == 0 && !hasTypeVariable(s.Type)
 		}
 	}
 }
 func (g *generator) nativeCallAvailable(e *syntax.Expression) bool {
-	info := g.program.Expressions[e]
+	info := g.program.Info(e)
 	if info == nil || !g.nativeCalls[info.Symbol] {
 		return false
 	}
@@ -53,7 +53,7 @@ func (g *generator) nativeCallAvailable(e *syntax.Expression) bool {
 // and its output is newly computed. Otherwise lower a boxed adapter from the
 // same checked body, preserving the original box for identity/capture/storage.
 func (g *generator) shareNativeBody(s *checker.Symbol) bool {
-	return g.nativeBodyCompatible(s.Decl.Params, s.Decl.Body, g.program.Parameters[s.Decl], s.Type)
+	return g.nativeBodyCompatible(s.Decl.Params, s.Decl.Body, g.program.ParameterBindings(s.Decl), s.Type)
 }
 func (g *generator) nativeBodyCompatible(params []syntax.Parameter, body []*syntax.Statement, bindings []*checker.Binding, t *checker.Type) bool {
 	parameters := map[*checker.Binding]bool{}
@@ -71,7 +71,7 @@ func (g *generator) nativeBodyCompatible(params []syntax.Parameter, body []*synt
 			valid = false
 		}
 	}, Expression: func(e *syntax.Expression) {
-		info := g.program.Expressions[e]
+		info := g.program.Info(e)
 		if info == nil {
 			return
 		}
@@ -93,7 +93,7 @@ func (g *generator) nativeBodyCompatible(params []syntax.Parameter, body []*synt
 		}
 	}}.Callable(params, body)
 	for _, e := range uses {
-		if primitiveEqualityType(g.program.Expressions[e].Type) != "" && !allowed[e] {
+		if primitiveEqualityType(g.program.Info(e).Type) != "" && !allowed[e] {
 			valid = false
 		}
 	}
@@ -111,7 +111,7 @@ func (g *generator) freshScalar(e *syntax.Expression) bool {
 	case syntax.KindUnary:
 		return e.Text == "-" || e.Text == "not"
 	case syntax.KindName:
-		return g.scalarLocals[g.program.Expressions[e].Binding] != ""
+		return g.scalarLocals[g.program.Info(e).Binding] != ""
 	case syntax.KindCall:
 		return g.numericCallName(e) != "" || g.typedCollectionScalar(e)
 	}
@@ -132,7 +132,7 @@ func (g *generator) nativeCallable(s *checker.Symbol, self *checker.Binding, nam
 		parameters = append(parameters, field("receiver", runtimeName("Value")))
 		values = append(values, ident("receiver"))
 	}
-	bindings := g.program.Parameters[s.Decl]
+	bindings := g.program.ParameterBindings(s.Decl)
 	for _, b := range bindings {
 		typ := runtimeName("Value")
 		if scalar := primitiveEqualityType(b.Type); scalar != "" {
@@ -195,7 +195,7 @@ func (g *generator) nativeSourceCall(e *syntax.Expression, args []syntax.Argumen
 	if !g.nativeCallAvailable(e) {
 		return nil
 	}
-	s := g.program.Expressions[e].Symbol
+	s := g.program.Info(e).Symbol
 	// A boxed identity/forwarding call must keep the box it already owns.
 	if g.wantScalar == 0 && !g.shareNativeBody(s) {
 		return nil

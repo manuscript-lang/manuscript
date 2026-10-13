@@ -41,10 +41,7 @@ jobs:
           node-version-file: .node-version
       - name: Prepare pinned SDK
         run: make toolchain
-      - name: Check generated reference and shared highlighting
-        run: |
-          make docs-check
-          node --test tests/docs/highlighting.test.cjs
+      # book-check below runs docs-check and the highlighting test.
       - uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: '0.146.7'

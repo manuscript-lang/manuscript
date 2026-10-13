@@ -1,0 +1,192 @@
+import * as fs from "node:fs";
+
+type Expr =
+  | { k: "num"; n: number }
+  | { k: "var"; name: string }
+  | { k: "add" | "sub" | "mul"; l: Expr; r: Expr }
+  | { k: "neg"; e: Expr }
+  | { k: "pow"; b: Expr; n: number };
+
+class Syn {}
+
+const num = (n: number): Expr => ({ k: "num", n: n === 0 ? 0 : n });
+const ZERO = num(0);
+const ONE = num(1);
+const TWO = num(2);
+const MONE = num(-1);
+
+function eq(a: Expr, b: Expr): boolean {
+  if (a.k !== b.k) return false;
+  switch (a.k) {
+    case "num":
+      return a.n === (b as typeof a).n;
+    case "var":
+      return a.name === (b as typeof a).name;
+    case "neg":
+      return eq(a.e, (b as typeof a).e);
+    case "pow":
+      return a.n === (b as typeof a).n && eq(a.b, (b as typeof a).b);
+    default: {
+      const c = b as typeof a;
+      return eq(a.l, c.l) && eq(a.r, c.r);
+    }
+  }
+}
+
+function parseLine(line: string): Expr {
+  const toks = line.match(/[()]|[^\s()]+/g) ?? [];
+  let pos = 0;
+  const nxt = (): string => {
+    if (pos >= toks.length) throw new Syn();
+    return toks[pos++];
+  };
+  const atom = (t: string): Expr => {
+    if (/^-?[0-9]+$/.test(t)) return num(parseInt(t, 10));
+    if (/^[a-z][a-z0-9_]*$/.test(t)) return { k: "var", name: t };
+    throw new Syn();
+  };
+  const expr = (): Expr => {
+    const t = nxt();
+    if (t === ")") throw new Syn();
+    if (t !== "(") return atom(t);
+    const head = nxt();
+    if (!["+", "-", "*", "neg", "^"].includes(head)) throw new Syn();
+    const args: Expr[] = [];
+    let exp = -1;
+    let nargs = 0;
+    while (toks[pos] !== ")") {
+      if (pos >= toks.length) throw new Syn();
+      if (head === "^" && nargs === 1) {
+        const t2 = nxt();
+        if (!/^[0-9]+$/.test(t2)) throw new Syn();
+        exp = parseInt(t2, 10);
+      } else {
+        args.push(expr());
+      }
+      nargs++;
+    }
+    pos++;
+    if (head === "neg" && nargs === 1) return { k: "neg", e: args[0] };
+    if (head === "^" && nargs === 2) return { k: "pow", b: args[0], n: exp };
+    if ((head === "+" || head === "-" || head === "*") && nargs === 2) {
+      const k = head === "+" ? "add" : head === "-" ? "sub" : "mul";
+      return { k, l: args[0], r: args[1] };
+    }
+    throw new Syn();
+  };
+  const e = expr();
+  if (pos < toks.length) throw new Syn();
+  return e;
+}
+
+function ipow(k: number, n: number): number {
+  let r = 1;
+  for (let i = 0; i < n; i++) r *= k;
+  return r;
+}
+
+function simp(e: Expr): Expr {
+  switch (e.k) {
+    case "num":
+    case "var":
+      return e;
+    case "neg":
+      return rw({ k: "neg", e: simp(e.e) });
+    case "pow":
+      return rw({ k: "pow", b: simp(e.b), n: e.n });
+    default:
+      return rw({ k: e.k, l: simp(e.l), r: simp(e.r) });
+  }
+}
+
+function rw(e: Expr): Expr {
+  switch (e.k) {
+    case "add": {
+      const { l, r } = e;
+      if (l.k === "num" && r.k === "num") return num(l.n + r.n);
+      if (eq(l, ZERO)) return r;
+      if (eq(r, ZERO)) return l;
+      if (eq(l, r)) return simp({ k: "mul", l: TWO, r: l });
+      if (r.k === "neg") return simp({ k: "sub", l, r: r.e });
+      if (l.k === "neg") return simp({ k: "sub", l: r, r: l.e });
+      return e;
+    }
+    case "sub": {
+      const { l, r } = e;
+      if (l.k === "num" && r.k === "num") return num(l.n - r.n);
+      if (eq(r, ZERO)) return l;
+      if (eq(l, ZERO)) return simp({ k: "neg", e: r });
+      if (eq(l, r)) return ZERO;
+      if (r.k === "neg") return simp({ k: "add", l, r: r.e });
+      return e;
+    }
+    case "mul": {
+      const { l, r } = e;
+      if (l.k === "num" && r.k === "num") return num(l.n * r.n);
+      if (eq(l, ZERO) || eq(r, ZERO)) return ZERO;
+      if (eq(l, ONE)) return r;
+      if (eq(r, ONE)) return l;
+      if (eq(l, MONE)) return simp({ k: "neg", e: r });
+      if (eq(r, MONE)) return simp({ k: "neg", e: l });
+      if (eq(l, r)) return simp({ k: "pow", b: l, n: 2 });
+      if (r.k === "num") return simp({ k: "mul", l: r, r: l });
+      if (l.k === "neg" && r.k === "neg") return simp({ k: "mul", l: l.e, r: r.e });
+      if (l.k === "neg") return simp({ k: "neg", e: { k: "mul", l: l.e, r } });
+      if (r.k === "neg") return simp({ k: "neg", e: { k: "mul", l, r: r.e } });
+      if (l.k === "pow" && r.k === "pow" && eq(l.b, r.b)) return simp({ k: "pow", b: l.b, n: l.n + r.n });
+      if (l.k === "pow" && eq(l.b, r)) return simp({ k: "pow", b: r, n: l.n + 1 });
+      if (r.k === "pow" && eq(r.b, l)) return simp({ k: "pow", b: l, n: r.n + 1 });
+      return e;
+    }
+    case "neg": {
+      const x = e.e;
+      if (x.k === "num") return num(-x.n);
+      if (x.k === "neg") return x.e;
+      if (x.k === "sub") return simp({ k: "sub", l: x.r, r: x.l });
+      return e;
+    }
+    case "pow": {
+      const { b, n } = e;
+      if (n === 0) return ONE;
+      if (n === 1) return b;
+      if (b.k === "num") return num(ipow(b.n, n));
+      if (b.k === "pow") return simp({ k: "pow", b: b.b, n: b.n * n });
+      if (b.k === "neg") {
+        if (n % 2 === 0) return simp({ k: "pow", b: b.e, n });
+        return simp({ k: "neg", e: { k: "pow", b: b.e, n } });
+      }
+      return e;
+    }
+    default:
+      return e;
+  }
+}
+
+function show(e: Expr): string {
+  switch (e.k) {
+    case "num":
+      return String(e.n);
+    case "var":
+      return e.name;
+    case "neg":
+      return `(neg ${show(e.e)})`;
+    case "pow":
+      return `(^ ${show(e.b)} ${e.n})`;
+    default: {
+      const op = e.k === "add" ? "+" : e.k === "sub" ? "-" : "*";
+      return `(${op} ${show(e.l)} ${show(e.r)})`;
+    }
+  }
+}
+
+const out: string[] = [];
+for (const line of fs.readFileSync(0, "utf8").split("\n")) {
+  if (line.replace(/[ \t]+/g, "") === "") continue;
+  try {
+    out.push(show(simp(parseLine(line))));
+  } catch (x) {
+    if (x instanceof Syn) out.push("error: syntax");
+    else throw x;
+  }
+}
+process.stdout.write(out.map((l) => l + "\n").join(""));

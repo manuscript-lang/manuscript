@@ -26,7 +26,7 @@ This fragment is unsafe when callbacks or other users access `counts` concurrent
 ```manuscript
 let counts = {"hits": 0}
 let task = tasks.start(fn():
-    counts.with_entry(key: "hits", value: counts.get("hits").unwrap_or(0) + 1)
+    counts.add(key: "hits", value: counts.get("hits").unwrap_or(0) + 1)
 )
 ```
 
@@ -37,7 +37,7 @@ let counts = Synchronized({"hits": 0})
 let task = tasks.start(fn():
     with locked = counts.lock():
         let values = locked.get()
-        values.with_entry(key: "hits", value: values.get("hits").unwrap_or(0) + 1)
+        values.add(key: "hits", value: values.get("hits").unwrap_or(0) + 1)
 )
 ```
 
