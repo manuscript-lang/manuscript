@@ -35,7 +35,7 @@ The parser is written in Manuscript. It reads one YAML 1.2 configuration documen
 
 Anchors and previously defined aliases retain the same value references. Forward and recursive aliases fail. Merge keys accept a mapping or a list of mappings; earlier mappings win and explicit entries override merged values. Duplicate explicit keys fail.
 
-This configuration parser does not implement the complete YAML specification: explicit tags, complex/explicit mapping keys, custom directives, multiple documents, and flow sequence mapping shorthand are unsupported. Multiline scalars cover continuation and line folding: a single break between lines folds to a space, and each blank line between them is one newline, in plain, quoted, and folded (`>`) scalars alike; lines of a folded scalar that start with a space keep their breaks. Flow indentation rules are not fully implemented. `UnsupportedFeature` identifies explicit tags, complex keys, and unsupported directives; other malformed or unsupported forms return `InvalidData` with a one-based line, column, and reason. Positions identify the offending token: merge-key errors point at the `<<` key and block-scalar header errors at the offending header character.
+This configuration parser does not implement the complete YAML specification: explicit tags, complex/explicit mapping keys, custom directives, multiple documents, and flow sequence mapping shorthand are unsupported. Multiline scalars cover ordinary continuation and folding; specialized empty-line folding and flow indentation rules are not fully implemented. `UnsupportedFeature` identifies explicit tags, complex keys, and unsupported directives; other malformed or unsupported forms return `InvalidData` with a one-based line, column, and reason. Positions identify the offending token: merge-key errors point at the `<<` key and block-scalar header errors at the offending header character.
 
 ## TOML behavior
 
@@ -75,7 +75,7 @@ test "parse bounded TOML configuration":
 
 The delimiter must be one non-NUL ASCII byte other than quote, CR, or LF. `line_ending` is LF or CRLF. Row, cell, and output limits must be nonnegative; `max_cells` counts every returned cell.
 
-CSV quotes are doubled; values are not trimmed or converted to other types, rows may have different widths, and unquoted blank lines are ignored (a leading BOM stays in the first cell). A row whose only cell is empty is written as `""` so it survives a round trip; a row with no cells is written as a blank line, which `parse` skips. CRLF is normalized, including inside quoted cells. Serialization ends every row with the selected terminator. Formula-like spreadsheet values are left as supplied.
+CSV quotes are doubled; values are not trimmed or converted to other types, rows may have different widths, and blank lines are ignored. CRLF is normalized, including inside quoted cells. Serialization ends every row with the selected terminator. Formula-like spreadsheet values are left as supplied.
 
 Exceeded limits return `LimitExceeded`. The input String is already in memory, and the parser reads one record before checking its row and cell limits. Bound the source read before parsing untrusted CSV.
 

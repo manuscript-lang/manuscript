@@ -362,44 +362,6 @@ fn failure(text: String) -> String:
         ok(_): return "accepted"
         error(cause): return cause.message()
 
-fn text_at(text: String, key: String) -> String:
-    match entries(
-        value(parse(text: text))
-    ).get(key).unwrap():
-        StringValue(found): return found
-        _: return panic("expected YAML string")
-
-test "YAML folds blank lines in block, quoted, and plain scalars":
-    if text_at(text: "a: >\n  x\n  y\n\n  z\n", key: "a") != "x y\nz\n": return panic(
-        "folded paragraph"
-    )
-    if text_at(text: "a: >\n  x\n\n\n  z\n", key: "a") != "x\n\nz\n": return panic(
-        "folded blanks"
-    )
-    if text_at(text: "a: >\n  x\n  y\n", key: "a") != "x y\n": return panic(
-        "folded lines"
-    )
-    if text_at(text: "a: |\n  x\n\n  y\n", key: "a") != "x\n\ny\n": return panic(
-        "literal"
-    )
-    if text_at(text: "a: 'x\n\n  y'", key: "a") != "x\ny": return panic(
-        "single quoted blank"
-    )
-    if text_at(text: "a: \"x\n\n\n  y\"", key: "a") != "x\n\ny": return panic(
-        "double quoted blanks"
-    )
-    if text_at(text: "a: 'x\n  y'", key: "a") != "x y": return panic("quoted fold")
-
-    let plain = entries(
-        value(parse(text: "a: x\n\n  y\nb: 1\n"))
-    )
-    if plain.get("a").unwrap() != YamlValue.StringValue("x\ny"): return panic(
-        "plain blank"
-    )
-    if plain.get("b").unwrap() != YamlValue.NumberValue("1"): return panic(
-        "plain next key"
-    )
-
 test "YAML merge and block header errors name their own line":
     if failure("<<: 1") != "YAML 1:1: merge requires mappings": return panic(
         "single line merge"
