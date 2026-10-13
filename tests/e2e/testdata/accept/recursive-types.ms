@@ -152,3 +152,68 @@ test "recursive defaults construct independent complete objects":
 
     if second.next.is_some() or first.next.unwrap().value != 1:
         panic("recursive default initialization failed")
+
+type Entry:
+    name: String
+    nickname: Optional[String]
+
+type Person:
+    primary: Optional[Entry]
+
+type NestedOptional:
+    case Value(value: Optional[Optional[Int]])
+
+type NestedResult:
+    value: Result[Result[Int, String], String]
+
+type Box[T]:
+    value: T
+
+type Pair[T, U]:
+    first: T
+    second: U
+
+test "finite nested generic composition constructs and extracts values":
+    let person = Person(
+        Entry(
+            name: "Ada",
+            nickname: some("A")
+        )
+    )
+
+    if person.primary.unwrap().nickname.unwrap() != "A":
+        panic("composed optional entry failed")
+
+    let optional = NestedOptional.Value(
+        some(some(4))
+    )
+
+    match optional:
+        Value(value):
+            if value.unwrap().unwrap() != 4:
+                panic("nested optional payload failed")
+
+    let result = NestedResult(
+        ok(ok(5))
+    )
+
+    match result.value:
+        ok(inner):
+            match inner:
+                ok(value):
+                    if value != 5: panic("nested result value failed")
+                error(_): panic("unexpected inner result error")
+        error(_): panic("unexpected outer result error")
+
+    let box = Box(Box(6))
+
+    if box.value.value != 6:
+        panic("nested box failed")
+
+    let pair: Pair[Optional[Int], Optional[Optional[String]]] = Pair(
+        first: some(7),
+        second: some(some("nested"))
+    )
+
+    if pair.first.unwrap() != 7 or pair.second.unwrap().unwrap() != "nested":
+        panic("nested optional generic pair failed")

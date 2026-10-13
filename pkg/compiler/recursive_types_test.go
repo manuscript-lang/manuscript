@@ -17,6 +17,20 @@ func TestRecursiveTypesPreserveInitializationAndHashing(t *testing.T) {
 		{"generic hash bound", recursive + "fn hash[T: Hashable](value: T) -> Int: return value.hash()\nfn f(node: Node) -> Int: return hash(node)\n", "does not satisfy Hashable"},
 		{"generic callback expansion", "import List from \"@std/collections.ms\"\ntype Grow[T]:\n    next: fn() -> Grow[List[T]]\n", "recursive generic applications"},
 		{"generic contract expansion", "import List from \"@std/collections.ms\"\ninterface Grow[T]:\n    fn next() -> Grow[List[T]]\n", "recursive generic applications"},
+		{"expanding implemented interface parameter", `import List from "@std/collections.ms"
+interface I[T]:
+    fn f(x: I[List[T]]) -> Int
+
+type Box[T]:
+    v: T
+impl I[T] for Box[T]:
+    fn f(x: I[List[T]]) -> Int:
+        return 1
+export fn main() -> Int:
+    let b = Box[Int](v: 1)
+    let i = I[Int](value: b)
+    return 0
+`, "recursive generic applications"},
 		{"nonexhaustive recursive match", "type Expr:\n    case Num(value: Int)\n    case Add(left: Expr, right: Expr)\nfn value(expr: Expr) -> Int:\n    match expr:\n        Num(value): return value\n", "non-exhaustive match"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
