@@ -28,7 +28,6 @@ func spliceList(list *List, start, count int, replacement *List) {
 	if list == replacement {
 		items = append([]Value{}, items...)
 	}
-	list.ownItems()
 	oldLength := len(list.Items)
 	newLength := oldLength - count + len(items)
 	if newLength < oldLength-count {

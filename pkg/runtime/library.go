@@ -59,16 +59,14 @@ func libraryFunction(name, result string) (Value, bool) {
 	return NewFunction(labels, result, body), true
 }
 
-// Callback traversals snapshot membership so callbacks can safely update the
-// original collection. Elements themselves retain their ordinary references.
+// List callbacks range over their initial slice header without copying. Map
+// and Set callbacks retain their independent membership snapshot contract.
 func invokeLibrary(spec LibrarySpec, ctx *Execution, result string, args []Value) Value {
 	if spec.Module == "collections" {
 		switch spec.Name {
 		case "map", "filter", "fold", "fold_right", "find", "find_last", "find_index", "find_last_index", "some", "every", "for_each", "flat_map", "group_by", "map_for_each", "set_for_each", "map_filter", "set_filter", "set_map", "map_fold", "map_find", "map_some", "map_every", "set_fold", "set_find", "set_some", "set_every", "map_transform", "map_transform_keys", "map_fold_right", "set_fold_right", "map_find_last", "set_find_last":
-			args = append([]Value{}, args...)
-			if list, ok := args[0].(*List); ok {
-				args[0] = list.snapshot()
-			} else {
+			if _, list := args[0].(*List); !list {
+				args = append([]Value{}, args...)
 				args[0] = Clone(args[0])
 			}
 		}

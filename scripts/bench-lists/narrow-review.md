@@ -1,5 +1,11 @@
 # Narrow callback snapshot review
 
+**Historical review of #247.** The later explicit user direction supersedes List
+membership snapshots/COW with no-copy Go slice range semantics. The current List
+contract captures backing and length once, exposes backing writes, and does not
+extend traversal on append. Map/Set snapshots and explicit clone/slice contracts
+are unchanged. The figures below describe the earlier COW implementation.
+
 This production slice changes List callback membership capture and three missing
 writer detach calls. Production storage remains `[]Value`; the typed representation
 is isolated benchmark code. #142 and #87 remain open.

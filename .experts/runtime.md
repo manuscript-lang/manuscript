@@ -155,7 +155,7 @@ Verify: round-trip consecutive single empty fields with LF/CRLF and alternate de
 
 ### Native transformations need output implementation evidence
 
-Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map and Map.map_keys deduplicate output elements/keys, whose scope can differ from the input element/key scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep callback membership snapshots at the native invocation boundary and payload references shallow.
+Verified: a generic native receiver's type name does not carry lexical Equal/Hashable selection. Set.map and Map.map_keys deduplicate output elements/keys, whose scope can differ from the input element/key scope. Lower both the receiver scope and the mapped result scope, including explicit specialization and bound methods; use output evidence for deduplication. Keep Map/Set callback membership snapshots at the native invocation boundary and payload references shallow.
 
 Apply when: adding native transformations with output bounds or changing receiver specialization.
 Evidence: [receiver lowering](../pkg/compiler/lower_collections.go), [native dispatch](../pkg/runtime/collections.go), [cross-module output evidence](../tests/e2e/testdata/projects/core_parity/main.ms), and [callback mutation conformance](../tests/e2e/testdata/stdlib/core-parity.ms).
@@ -177,18 +177,20 @@ Apply when: changing YAML scalar gathering, comment removal, whitespace handling
 Evidence: [YAML parser](../pkg/stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../documentation/standard-library/formats.md#yaml-behavior), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization.
 
-### Collection snapshots require every in-place writer to detach
+### List traversal follows the captured Go slice header
 
-Verified: List callback traversals can retain a capacity-limited header and use
-the existing loop COW flag instead of eagerly copying all membership. Appends
-lie beyond the captured length, but fill, overlapping copy, reverse and other
-prefix writes must detach first. Nested element references remain shared; the
-private membership header must not become a second source-visible alias.
+Decision: the user's later instruction explicitly supersedes List membership
+snapshot/COW guarantees. Capture the slice and initial length once, expose writes
+to shared backing elements, and never extend a traversal on append. Reallocation
+leaves the running traversal on its original array. No traversal-driven List copy
+or hidden shared flag is needed. Map/Set snapshots, closure variable capture,
+explicit shallow clone/slice storage and synchronization contracts remain distinct.
 
-Apply when: changing collection storage, mutators, callback traversal or iteration.
-Evidence: [mutation differential tests](../pkg/runtime/list_snapshot_test.go),
-[called native alias/interop cases](../tests/e2e/testdata/accept/list-snapshots.ms),
-[native fault/cancellation cases](../pkg/compiler/list_snapshot_native_test.go),
-and [measured allocation costs and conservative COW tradeoff](../scripts/bench-lists/README.md).
-Verify: read-only traversal allocates only a header; all existing-element writes
-leave captured membership unchanged, including reentry and saved method calls.
+Apply when: changing List traversal, callbacks, writers or typed numeric storage.
+Evidence: [range/mutation oracle](../pkg/runtime/list_range_test.go),
+[called native Go-range cases](../tests/e2e/testdata/accept/list-go-range.ms),
+[loop contract](../documentation/core-language/control-flow/loops.md#iterable-types-and-binding),
+and [historical superseded COW review](../scripts/bench-lists/narrow-review.md).
+Verify: capture once, mutate in place, append with/without growth, shrink, reverse
+and self-splice; observed reads match ordinary Go backing-array behavior. Explicit
+clones stay separate and append-only callbacks visit only the initial length.

@@ -197,14 +197,12 @@ func init() {
 	}
 	add("prepend", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("value", "T")}, func(ctx *Execution, r string, a []Value) Value {
 		v := a[0].(*List)
-		v.ownItems()
 		v.Items = append(v.Items, nil)
 		copy(v.Items[1:], v.Items[:len(v.Items)-1])
 		v.Items[0] = a[1]
 		return v
 	})
 	add("with_value", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int"), p("value", "T")}, func(ctx *Execution, r string, a []Value) Value {
-		a[0].(*List).ownItems()
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
@@ -214,7 +212,6 @@ func init() {
 		return a[0]
 	})
 	add("without", "List[T]", elements, []LibraryParam{p("values", "List[T]"), p("index", "Int")}, func(ctx *Execution, r string, a []Value) Value {
-		a[0].(*List).ownItems()
 		items := a[0].(*List).Items
 		i := relativeIndex(len(items), a[1].(int64))
 		if i < 0 || i >= int64(len(items)) {
@@ -311,7 +308,6 @@ func init() {
 		if s == e {
 			return list
 		}
-		list.ownItems()
 		out := list.Items
 		for i := s; i < e; i++ {
 			CheckCancelled(ctx)
@@ -329,7 +325,6 @@ func init() {
 		if s == e || t == int64(len(list.Items)) {
 			return list
 		}
-		list.ownItems()
 		items := list.Items
 		copy(items[t:], items[s:e])
 		return a[0]

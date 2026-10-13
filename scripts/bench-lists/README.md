@@ -1,5 +1,13 @@
 # Numeric List storage measurements and staged representation plan
 
+**Direction updates:** the user's default Int32/Float32 migration is owned by its
+dedicated task; the 64-bit results here describe the historical/current pre-migration
+ABI, not permission to narrow storage independently. Later user direction also
+supersedes List traversal snapshots/COW: capture backing and initial length once,
+permit backing writes, never extend traversal on append, and follow Go reallocation
+behavior. Explicit clone/slice results and Map/Set snapshots remain independent.
+The COW review/results are retained as historical evidence, not current semantics.
+
 Refs #142 and #87. This directory contains checked Manuscript workloads, a
 generated-Go benchmark runner, fresh-process allocation/RSS workers, and an
 isolated typed-storage experiment. The experiment is **not** a runtime ABI or
@@ -140,18 +148,21 @@ bounded change does not solve boxed element storage or callback dispatch cost.
 ## Authoritative typed representation
 
 Keep `*List` as the single source identity and shared mutable handle. An
-internal backing object owns exactly one representation: Int `[]int64`, Float
-`[]float64`, Bool `[]bool`, or generic `[]Value`. `List[Int]` remains Int-backed
+internal backing object owns exactly one representation: target default Int
+`[]int32` and Float `[]float32`, explicit wider numeric types where required,
+Bool `[]bool`, or generic `[]Value`. Select widths only after the dedicated language
+range/rounding/ABI migration. `List[Int]` remains Int-backed
 even when passed through `Value`, a generic function, a record, Optional,
 Result, a closure, a contract view or a saved method. A typed projection must
 reference the backing object, never copy its slice header into an independent
 mutable owner. No lazy boxed mirror is permitted.
-COW replaces the array field inside that same backing object; replacing the
-backing object itself would strand previously captured typed projections.
+Growth replaces the array field inside that same backing object; replacing the
+backing object itself would strand previously captured typed projections. A
+running traversal retains its captured old array if growth reallocates.
 
 The Int-only prototype uses `*prototypeStorage` to make that invariant explicit.
 Typed and boxed aliases plus a bound append function see growth and updates
-through the same handle. Snapshot slices capture membership and trigger COW;
+through the same handle. Range slices capture the initial header without COW;
 clones allocate a fresh handle and array. The prototype is deliberately absent
 from production dispatch. It does not establish complete nested/recursive,
 equality/hash, native-service, debugger or generic ABI compatibility.
