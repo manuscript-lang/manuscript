@@ -771,6 +771,8 @@ type Decimal:
 
 **Alternative**
 
+How a Decimal rounds to a multiple of the requested power of ten.
+
 ```manuscript
 type RoundingMode:
     case HalfEven
@@ -2214,7 +2216,7 @@ Import each required symbol with `import Name from "@std/numbers.ms"`.
 
 **Alternative**
 
-Errors returned when numeric text is malformed or outside the target range.
+Errors returned for invalid numeric requests, malformed text, or out-of-range values.
 
 ```manuscript
 type NumberError:

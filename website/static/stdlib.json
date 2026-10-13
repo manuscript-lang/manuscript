@@ -634,6 +634,7 @@
         },
         {
           "name": "RoundingMode",
+          "doc": "How a Decimal rounds to a multiple of the requested power of ten.",
           "kind": "alternative",
           "type": "RoundingMode",
           "cases": [
@@ -1778,7 +1779,7 @@
       "declarations": [
         {
           "name": "NumberError",
-          "doc": "Errors returned when numeric text is malformed or outside the target range.",
+          "doc": "Errors returned for invalid numeric requests, malformed text, or out-of-range values.",
           "kind": "alternative",
           "type": "NumberError",
           "cases": [
