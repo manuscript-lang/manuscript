@@ -6,12 +6,17 @@ import (
 	"strings"
 )
 
+type checkedArgument struct {
+	info        *Info
+	diagnostics []syntax.Diagnostic
+}
+
 func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
-	// Successful independent checks belong to this call only. Nested calls
-	// own their own evidence; callbacks and failed probes still need context.
-	previous := c.independentArguments
-	c.independentArguments = map[*syntax.Expression]*Info{}
-	defer func() { c.independentArguments = previous }()
+	// Argument checks belong to this call only. Nested calls own
+	// their own evidence; callback reuse also requires the same final context.
+	previous := c.checkedArguments
+	c.checkedArguments = map[*syntax.Expression]checkedArgument{}
+	defer func() { c.checkedArguments = previous }()
 	i := &Info{}
 	callee := e.Left
 	if typ := c.typeExpression(callee); typ != nil {
@@ -357,7 +362,14 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 // context (including empty lists and incomplete data constructors), then wrap
 // only the supplied argument. Ordinary expression compatibility stays exact.
 func (c *checker) argumentExpression(e *syntax.Expression, expected *Type) *Info {
-	info := c.independentArguments[e]
+	checked := c.checkedArguments[e]
+	info := checked.info
+	if e.Kind == syntax.KindLambda && info != nil && !Same(info.Type, callbackContext(expected)) {
+		info = nil // Later inference changed the callback's required signature.
+	}
+	if info != nil {
+		c.Diagnostics = append(c.Diagnostics, checked.diagnostics...)
+	}
 	if !std(expected, "Optional") || len(expected.Args) != 1 {
 		if info != nil {
 			return c.checkExpression(e, info, expected)
@@ -427,8 +439,8 @@ func (c *checker) independentArgument(e *syntax.Expression) *Info {
 		c.Diagnostics = c.Diagnostics[:checkpoint]
 		return nil
 	}
-	if c.independentArguments != nil {
-		c.independentArguments[e] = info
+	if c.checkedArguments != nil {
+		c.checkedArguments[e] = checkedArgument{info: info}
 	}
 	return info
 }
