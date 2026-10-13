@@ -419,6 +419,7 @@
             "reverse: fn()-\u003eBytes",
             "reversed: fn()-\u003eBytes",
             "slice: fn(start: Int, end: Int)-\u003eBytes",
+            "split: fn(separator: Bytes, max_parts: Optional[Int] = ...)-\u003eList[Bytes]",
             "starts_with: fn(value: Bytes)-\u003eBool",
             "to_text: fn()-\u003eOptional[String]",
             "values: fn()-\u003eList[Int]",
@@ -496,6 +497,12 @@
               "kind": "operation",
               "signature": "fn slice(start: Int, end: Int) -\u003e Bytes:",
               "doc": "Selects [start, end) in bytes; faults unless 0 \u003c= start \u003c= end \u003c= length().\nThe immutable result may share storage with the receiver."
+            },
+            {
+              "name": "split",
+              "kind": "operation",
+              "signature": "fn split(separator: Bytes, max_parts: Optional[Int] = none) -\u003e List[Bytes]:",
+              "doc": "Splits exact byte separators into a fresh list of immutable byte views.\nNonempty separators retain empty parts; empty data then yields one empty Bytes.\nOmitted/none max_parts is unlimited; zero returns no parts, negatives fault.\nA cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data."
             },
             {
               "name": "starts_with",
@@ -805,7 +812,7 @@
               "name": "for_each",
               "kind": "operation",
               "signature": "fn for_each(operation: fn(value: T) -\u003e Unit) -\u003e Unit:",
-              "doc": "Calls operation(value:) sequentially over a membership snapshot; nested references remain shared."
+              "doc": "Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal."
             },
             {
               "name": "group_by[K: Hashable]",
@@ -871,7 +878,7 @@
               "name": "remove",
               "kind": "operation",
               "signature": "fn remove(index: Int) -\u003e List[T]:",
-              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as without."
+              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as without.\nShifts the suffix without clearing prior values retained in spare backing capacity."
             },
             {
               "name": "reverse",
@@ -931,7 +938,7 @@
               "name": "with_values",
               "kind": "operation",
               "signature": "fn with_values(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
-              "doc": "Replaces `delete_count` values at `start` with the replacement list."
+              "doc": "Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity."
             },
             {
               "name": "without",
@@ -2097,6 +2104,92 @@
               "doc": "Returns a human-readable description of this expected error."
             }
           ]
+        },
+        {
+          "name": "ErrorCategory",
+          "doc": "Portable categories for shared standard error cases. Domain errors retain their types and payloads.",
+          "kind": "alternative",
+          "type": "ErrorCategory",
+          "cases": [
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "NotFound",
+            "AlreadyExists",
+            "PermissionDenied",
+            "Unsupported",
+            "Closed",
+            "Timeout",
+            "Unavailable"
+          ],
+          "members": [
+            {
+              "name": "AlreadyExists",
+              "kind": "case",
+              "signature": "case AlreadyExists",
+              "doc": "A requested exclusive resource already exists."
+            },
+            {
+              "name": "Closed",
+              "kind": "case",
+              "signature": "case Closed",
+              "doc": "The resource has been closed."
+            },
+            {
+              "name": "InvalidData",
+              "kind": "case",
+              "signature": "case InvalidData",
+              "doc": "Input data is malformed."
+            },
+            {
+              "name": "InvalidInput",
+              "kind": "case",
+              "signature": "case InvalidInput",
+              "doc": "Caller input is invalid."
+            },
+            {
+              "name": "LimitExceeded",
+              "kind": "case",
+              "signature": "case LimitExceeded",
+              "doc": "An operation budget or implementation limit was exceeded."
+            },
+            {
+              "name": "NotFound",
+              "kind": "case",
+              "signature": "case NotFound",
+              "doc": "A requested resource was not found."
+            },
+            {
+              "name": "PermissionDenied",
+              "kind": "case",
+              "signature": "case PermissionDenied",
+              "doc": "Host authority denied the operation."
+            },
+            {
+              "name": "Timeout",
+              "kind": "case",
+              "signature": "case Timeout",
+              "doc": "A local operation or group deadline expired."
+            },
+            {
+              "name": "Unavailable",
+              "kind": "case",
+              "signature": "case Unavailable",
+              "doc": "The service/resource is unavailable; this does not imply NotFound or PermissionDenied."
+            },
+            {
+              "name": "Unsupported",
+              "kind": "case",
+              "signature": "case Unsupported",
+              "doc": "The requested operation is unsupported."
+            }
+          ]
+        },
+        {
+          "name": "category",
+          "doc": "Queries a shared category without changing or invoking the error.\nRecognized standard cases use their same-name category; TimedOut maps to Timeout.\nCustom errors and domain-specific cases (including Failed, Full, OutputLimit, OutOfRange,\nAuthenticationFailed and wrapped LogError causes) return none. Messages are never parsed.",
+          "kind": "fn",
+          "type": "fn(cause: Error)-\u003eOptional[ErrorCategory]"
         }
       ]
     },
@@ -2621,9 +2714,9 @@
             "chmod_link: fn(path: String, mode: Int)-\u003eResult[Unit, FileSystemError]",
             "chown: fn(path: String, uid: Int, gid: Int, follow_links: Bool)-\u003eResult[Unit, FileSystemError]",
             "copy: fn(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String)-\u003eBool])-\u003eResult[Unit, FileSystemError]",
-            "copy_file: fn(source: String, destination: String, replace: Bool, max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
-            "copy_tree: fn(source: String, destination: String, replace: Bool, max_entries: Optional[Int] = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
-            "create_directory: fn(path: String, recursive: Bool)-\u003eResult[Unit, FileSystemError]",
+            "copy_file: fn(source: String, destination: String, replace: Bool = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
+            "copy_tree: fn(source: String, destination: String, replace: Bool = ..., max_entries: Optional[Int] = ..., max_bytes: Optional[Int] = ...)-\u003eResult[Unit, FileSystemError]",
+            "create_directory: fn(path: String, recursive: Bool = ...)-\u003eResult[Unit, FileSystemError]",
             "create_link: fn(path: String, target: String)-\u003eResult[Unit, FileSystemError]",
             "glob: fn(path: String, pattern: String, max_entries: Optional[Int] = ...)-\u003eResult[List[String], FileSystemError]",
             "glob_entries: fn(path: String, options: GlobOptions, exclude: Optional[fn(entry: PathEntry)-\u003eBool])-\u003eResult[List[PathEntry], FileSystemError]",
@@ -2634,7 +2727,7 @@
             "open_flags: fn(path: String, flags: Int, mode: Int)-\u003eResult[FileHandle, FileSystemError]",
             "read_file: fn(path: String, max_bytes: Optional[Int] = ...)-\u003eResult[Bytes, FileSystemError]",
             "read_link: fn(path: String)-\u003eResult[String, FileSystemError]",
-            "remove: fn(path: String, recursive: Bool)-\u003eResult[Unit, FileSystemError]",
+            "remove: fn(path: String, recursive: Bool = ...)-\u003eResult[Unit, FileSystemError]",
             "rename: fn(source: String, destination: String)-\u003eResult[Unit, FileSystemError]",
             "set_times: fn(path: String, accessed: Timestamp, modified: Timestamp, follow_links: Bool)-\u003eResult[Unit, FileSystemError]",
             "stat: fn(path: String, follow_links: Bool)-\u003eResult[FileInfo, FileSystemError]",
@@ -2644,7 +2737,7 @@
             "truncate: fn(path: String, size: Int)-\u003eResult[Unit, FileSystemError]",
             "watch: fn(path: String, recursive: Bool, interval: Duration, max_entries: Optional[Int] = ...)-\u003eResult[FileWatcher, FileSystemError]",
             "watch_native: fn(path: String, recursive: Bool, max_entries: Optional[Int] = ..., max_events: Optional[Int] = ..., overflow: String)-\u003eResult[FileWatcher, FileSystemError]",
-            "write_file: fn(path: String, data: Bytes, replace: Bool)-\u003eResult[Unit, FileSystemError]"
+            "write_file: fn(path: String, data: Bytes, replace: Bool = ...)-\u003eResult[Unit, FileSystemError]"
           ],
           "members": [
             {
@@ -2692,20 +2785,20 @@
             {
               "name": "copy_file",
               "kind": "operation",
-              "signature": "fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
-              "doc": "Copies one file; existing destinations are replaced only when requested."
+              "signature": "fn copy_file(source: String, destination: String, replace: Bool = false, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Copies one file; replace defaults to false, refusing an existing destination."
             },
             {
               "name": "copy_tree",
               "kind": "operation",
-              "signature": "fn copy_tree(source: String, destination: String, replace: Bool, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "signature": "fn copy_tree(source: String, destination: String, replace: Bool = false, max_entries: Optional[Int] = none, max_bytes: Optional[Int] = none) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Copies a tree; replace defaults to false, refusing existing destinations.\nEntry and byte limits remain separate and apply cumulatively across the copy."
             },
             {
               "name": "create_directory",
               "kind": "operation",
-              "signature": "fn create_directory(path: String, recursive: Bool) -\u003e Result[Unit, FileSystemError]",
-              "doc": "Creates a directory, optionally creating missing parents."
+              "signature": "fn create_directory(path: String, recursive: Bool = false) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Creates one directory; recursive defaults to false, requiring its parent to exist."
             },
             {
               "name": "create_link",
@@ -2770,8 +2863,8 @@
             {
               "name": "remove",
               "kind": "operation",
-              "signature": "fn remove(path: String, recursive: Bool) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "signature": "fn remove(path: String, recursive: Bool = false) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Removes a file or empty directory; recursive defaults to false, retaining nonempty trees."
             },
             {
               "name": "rename",
@@ -2830,8 +2923,8 @@
             {
               "name": "write_file",
               "kind": "operation",
-              "signature": "fn write_file(path: String, data: Bytes, replace: Bool) -\u003e Result[Unit, FileSystemError]",
-              "doc": ""
+              "signature": "fn write_file(path: String, data: Bytes, replace: Bool = false) -\u003e Result[Unit, FileSystemError]",
+              "doc": "Creates a file exclusively; replace defaults to false, retaining an existing file."
             }
           ]
         },
@@ -2846,6 +2939,7 @@
             "LimitExceeded",
             "NotFound",
             "AlreadyExists",
+            "NotEmpty",
             "PermissionDenied",
             "Unsupported",
             "Closed",
@@ -2889,6 +2983,12 @@
               "name": "LimitExceeded",
               "kind": "case",
               "signature": "case LimitExceeded",
+              "doc": ""
+            },
+            {
+              "name": "NotEmpty",
+              "kind": "case",
+              "signature": "case NotEmpty",
               "doc": ""
             },
             {
@@ -3342,6 +3442,12 @@
           "doc": "Parses HTML into a normalized tree and applies the supplied resource limits.",
           "kind": "fn",
           "type": "fn(text: String, limits: Optional[HtmlLimits] = ...)-\u003eResult[HtmlNode, HtmlError]"
+        },
+        {
+          "name": "unescape",
+          "doc": "Decodes HTML5 named and numeric character references in text context, once.\nRecognized references can omit semicolons; unrecognized text remains literal.\nDoes not parse markup or normalize text; invalid numeric scalars become U+FFFD.",
+          "kind": "fn",
+          "type": "fn(text: String)-\u003eString"
         }
       ]
     },
@@ -6668,6 +6774,53 @@
       "path": "@std/string.ms",
       "declarations": [
         {
+          "name": "NormalizationForm",
+          "doc": "The four Unicode normalization forms, selected without runtime string spelling errors.",
+          "kind": "alternative",
+          "type": "NormalizationForm",
+          "cases": [
+            "Nfc",
+            "Nfd",
+            "Nfkc",
+            "Nfkd"
+          ],
+          "operations": [
+            "normalize: fn(text: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]"
+          ],
+          "members": [
+            {
+              "name": "Nfc",
+              "kind": "case",
+              "signature": "case Nfc",
+              "doc": "Canonical composition."
+            },
+            {
+              "name": "Nfd",
+              "kind": "case",
+              "signature": "case Nfd",
+              "doc": "Canonical decomposition."
+            },
+            {
+              "name": "Nfkc",
+              "kind": "case",
+              "signature": "case Nfkc",
+              "doc": "Compatibility composition."
+            },
+            {
+              "name": "Nfkd",
+              "kind": "case",
+              "signature": "case Nfkd",
+              "doc": "Compatibility decomposition."
+            },
+            {
+              "name": "normalize",
+              "kind": "operation",
+              "signature": "fn normalize(text: String, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]:",
+              "doc": "Normalizes text with the existing String.normalize budgets and StringError cases.\nOmission or none adds no output budget; a supplied budget counts UTF-8 bytes."
+            }
+          ]
+        },
+        {
           "name": "StringBuilder",
           "doc": "Mutable builder for constructing a string without repeated intermediate copies.\nMutable builder for constructing a string without repeated intermediate copies.",
           "kind": "native",
@@ -9295,7 +9448,7 @@
               "name": "for_each",
               "kind": "operation",
               "signature": "fn for_each(operation: fn(value: T) -\u003e Unit) -\u003e Unit:",
-              "doc": "Calls operation(value:) sequentially over a membership snapshot; nested references remain shared."
+              "doc": "Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal."
             },
             {
               "name": "group_by[K: Hashable]",
@@ -9361,7 +9514,7 @@
               "name": "remove",
               "kind": "operation",
               "signature": "fn remove(index: Int) -\u003e List[T]:",
-              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as without."
+              "doc": "Removes an element in place and returns this list; negative indexes count from the end.\nInvalid indexes fault, with the same bounds and diagnostics as without.\nShifts the suffix without clearing prior values retained in spare backing capacity."
             },
             {
               "name": "reverse",
@@ -9421,7 +9574,7 @@
               "name": "with_values",
               "kind": "operation",
               "signature": "fn with_values(start: Int, delete_count: Int, replacement: List[T]) -\u003e List[T]:",
-              "doc": "Replaces `delete_count` values at `start` with the replacement list."
+              "doc": "Replaces `delete_count` values at `start` and returns this list; shrinking retains prior values in spare backing capacity."
             },
             {
               "name": "without",

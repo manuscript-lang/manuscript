@@ -14,25 +14,29 @@ import (
 
 // Check the machine-readable boundary using only the copied bundled CLI and
 // the same poisoned/offline environment as the rest of distribution checking.
+func runResultCommand(cli, directory string, environment []string, arguments ...string) (int, []byte, string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	command := exec.CommandContext(ctx, cli, arguments...)
+	command.Dir, command.Env = directory, environment
+	var stdout, stderr bytes.Buffer
+	command.Stdout, command.Stderr = &stdout, &stderr
+	err := command.Run()
+	if ctx.Err() != nil {
+		return 0, nil, "", fmt.Errorf("structured distribution command timed out: %v", arguments)
+	}
+	status := 0
+	if exit, ok := err.(*exec.ExitError); ok {
+		status = exit.ExitCode()
+	} else if err != nil {
+		return 0, nil, "", err
+	}
+	return status, stdout.Bytes(), stderr.String(), nil
+}
+
 func checkJSONResults(cli, directory string, environment []string) error {
 	run := func(arguments ...string) (int, []byte, string, error) {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-		command := exec.CommandContext(ctx, cli, arguments...)
-		command.Dir, command.Env = directory, environment
-		var stdout, stderr bytes.Buffer
-		command.Stdout, command.Stderr = &stdout, &stderr
-		err := command.Run()
-		if ctx.Err() != nil {
-			return 0, nil, "", fmt.Errorf("JSON distribution command timed out: %v", arguments)
-		}
-		status := 0
-		if exit, ok := err.(*exec.ExitError); ok {
-			status = exit.ExitCode()
-		} else if err != nil {
-			return 0, nil, "", err
-		}
-		return status, stdout.Bytes(), stderr.String(), nil
+		return runResultCommand(cli, directory, environment, arguments...)
 	}
 	formatDir := filepath.Join(directory, "json-format")
 	if err := os.Mkdir(formatDir, 0700); err != nil {

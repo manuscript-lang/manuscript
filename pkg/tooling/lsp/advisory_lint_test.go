@@ -21,6 +21,8 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 		{"discarded result", "fn fail() -> Result[Int, String]:\n    return error(\"boom\")\nfn use() -> Unit:\n    fail()\n", "MSL104", 3},
 		{"concurrent capture", "import Map from \"@std/collections.ms\"\nimport TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.with_entry(key: 1, value: 2)\n        )\n", "MSL105", 6},
 		{"prelude Map add concurrent capture", "import TaskGroup from \"@std/tasks.ms\"\nfn use() -> Unit:\n    let shared = Map[Int, Int]()\n    with tasks = TaskGroup():\n        let _task = tasks.start(fn() -> Unit:\n            shared.add(key: 1, value: 2)\n        )\n", "MSL105", 5},
+		{"preferred name after Unicode", "fn use() -> Unit:\n    let _copy = [\"🦀\"].reverse()\n", "MSL108", 1},
+		{"preferred name after Unicode CRLF", "fn use() -> Unit:\r\n    let _copy = [\"🦀\"].reverse()\r\n", "MSL108", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := document{"file:///tmp/advisory.ms", tc.source, 1}
@@ -64,6 +66,9 @@ func TestSafetyAdvisoriesPublishAsWarnings(t *testing.T) {
 						found = true
 						if tc.code == "MSL106" && (diagnostic.Range.Start.Character != 14 || diagnostic.Range.End != (position{Line: tc.line, Character: 22})) {
 							t.Fatalf("warning must cover only NotFound: %+v", diagnostic)
+						}
+						if tc.code == "MSL108" && (diagnostic.Range.Start.Character != 23 || diagnostic.Range.End != (position{Line: tc.line, Character: 30})) {
+							t.Fatalf("warning must cover only reverse after the Unicode scalar: %+v", diagnostic)
 						}
 						if diagnostic.Severity != 2 || diagnostic.Source != "manuscript-lint" || diagnostic.Range.Start.Line != tc.line {
 							t.Fatalf("wrong advisory: %+v", diagnostic)

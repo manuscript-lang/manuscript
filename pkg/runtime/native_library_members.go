@@ -51,6 +51,8 @@ func nativeLibraryMember(receiver Value, name, result string) (Value, bool) {
 			kind = "CompressionFormat"
 		case "@std/ArchiveFormat":
 			kind = "ArchiveFormat"
+		case "@std/NormalizationForm":
+			kind = "NormalizationForm"
 		default:
 			return nil, false
 		}

@@ -1,0 +1,493 @@
+{
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "cpu_affinity": [
+    0
+  ],
+  "GOMAXPROCS": 1,
+  "GOGC": 100,
+  "GOMEMLIMIT": "unset",
+  "pairs": [
+    {
+      "before": {
+        "ReadOnly": {
+          "ns": 11652689.0,
+          "bytes": 2622751,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 12785119.0,
+          "bytes": 3672039,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12831798.0,
+          "bytes": 3671790,
+          "allocations": 131109
+        }
+      },
+      "after": {
+        "ReadOnly": {
+          "ns": 12691852.0,
+          "bytes": 2622669,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12440181.0,
+          "bytes": 2623379,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11580630.0,
+          "bytes": 2623130,
+          "allocations": 131106
+        }
+      }
+    },
+    {
+      "after": {
+        "ReadOnly": {
+          "ns": 11766081.0,
+          "bytes": 2622669,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12239798.0,
+          "bytes": 2623381,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11807368.0,
+          "bytes": 2623130,
+          "allocations": 131106
+        }
+      },
+      "before": {
+        "ReadOnly": {
+          "ns": 11986087.0,
+          "bytes": 2622749,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 13572229.0,
+          "bytes": 3672036,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12928851.0,
+          "bytes": 3671788,
+          "allocations": 131109
+        }
+      }
+    },
+    {
+      "before": {
+        "ReadOnly": {
+          "ns": 11956160.0,
+          "bytes": 2622752,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 13711866.0,
+          "bytes": 3672035,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12919932.0,
+          "bytes": 3671789,
+          "allocations": 131109
+        }
+      },
+      "after": {
+        "ReadOnly": {
+          "ns": 11719460.0,
+          "bytes": 2622668,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12121135.0,
+          "bytes": 2623382,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11883784.0,
+          "bytes": 2623130,
+          "allocations": 131106
+        }
+      }
+    },
+    {
+      "before": {
+        "ReadOnly": {
+          "ns": 11691105.0,
+          "bytes": 2622750,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 12865878.0,
+          "bytes": 3672039,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12945666.0,
+          "bytes": 3671789,
+          "allocations": 131109
+        }
+      },
+      "after": {
+        "ReadOnly": {
+          "ns": 11800579.0,
+          "bytes": 2622670,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12332790.0,
+          "bytes": 2623380,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11739336.0,
+          "bytes": 2623130,
+          "allocations": 131106
+        }
+      }
+    },
+    {
+      "after": {
+        "ReadOnly": {
+          "ns": 11903699.0,
+          "bytes": 2622668,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12474532.0,
+          "bytes": 2623379,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11718007.0,
+          "bytes": 2623130,
+          "allocations": 131106
+        }
+      },
+      "before": {
+        "ReadOnly": {
+          "ns": 11733477.0,
+          "bytes": 2622748,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 13347849.0,
+          "bytes": 3672038,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12994390.0,
+          "bytes": 3671788,
+          "allocations": 131109
+        }
+      }
+    },
+    {
+      "before": {
+        "ReadOnly": {
+          "ns": 11846485.0,
+          "bytes": 2622749,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 12812229.0,
+          "bytes": 3672039,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12891213.0,
+          "bytes": 3671786,
+          "allocations": 131109
+        }
+      },
+      "after": {
+        "ReadOnly": {
+          "ns": 11816780.0,
+          "bytes": 2622668,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12261739.0,
+          "bytes": 2623380,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11671528.0,
+          "bytes": 2623130,
+          "allocations": 131106
+        }
+      }
+    },
+    {
+      "after": {
+        "ReadOnly": {
+          "ns": 12069343.0,
+          "bytes": 2622669,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12400794.0,
+          "bytes": 2623381,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11622273.0,
+          "bytes": 2623130,
+          "allocations": 131106
+        }
+      },
+      "before": {
+        "ReadOnly": {
+          "ns": 11993205.0,
+          "bytes": 2622749,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 13591430.0,
+          "bytes": 3672036,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12963462.0,
+          "bytes": 3671790,
+          "allocations": 131109
+        }
+      }
+    },
+    {
+      "after": {
+        "ReadOnly": {
+          "ns": 11644681.0,
+          "bytes": 2622670,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12296930.0,
+          "bytes": 2623379,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11754824.0,
+          "bytes": 2623130,
+          "allocations": 131106
+        }
+      },
+      "before": {
+        "ReadOnly": {
+          "ns": 11786762.0,
+          "bytes": 2622748,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 13955584.0,
+          "bytes": 3672035,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12780252.0,
+          "bytes": 3671787,
+          "allocations": 131109
+        }
+      }
+    },
+    {
+      "after": {
+        "ReadOnly": {
+          "ns": 12175574.0,
+          "bytes": 2622670,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12305426.0,
+          "bytes": 2623381,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 12585522.0,
+          "bytes": 2623131,
+          "allocations": 131106
+        }
+      },
+      "before": {
+        "ReadOnly": {
+          "ns": 12079745.0,
+          "bytes": 2622748,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 13526350.0,
+          "bytes": 3672036,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 13067129.0,
+          "bytes": 3671790,
+          "allocations": 131109
+        }
+      }
+    },
+    {
+      "after": {
+        "ReadOnly": {
+          "ns": 11982265.0,
+          "bytes": 2622669,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12328482.0,
+          "bytes": 2623381,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11486245.0,
+          "bytes": 2623130,
+          "allocations": 131106
+        }
+      },
+      "before": {
+        "ReadOnly": {
+          "ns": 11981946.0,
+          "bytes": 2622748,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 13256622.0,
+          "bytes": 3672038,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12739275.0,
+          "bytes": 3671791,
+          "allocations": 131109
+        }
+      }
+    },
+    {
+      "after": {
+        "ReadOnly": {
+          "ns": 11783824.0,
+          "bytes": 2622670,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12272503.0,
+          "bytes": 2623380,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 11822557.0,
+          "bytes": 2623131,
+          "allocations": 131106
+        }
+      },
+      "before": {
+        "ReadOnly": {
+          "ns": 11634291.0,
+          "bytes": 2622750,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 13685764.0,
+          "bytes": 3672035,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12745814.0,
+          "bytes": 3671790,
+          "allocations": 131109
+        }
+      }
+    },
+    {
+      "after": {
+        "ReadOnly": {
+          "ns": 11663273.0,
+          "bytes": 2622669,
+          "allocations": 131093
+        },
+        "WriteInCallback": {
+          "ns": 12175749.0,
+          "bytes": 2623379,
+          "allocations": 131104
+        },
+        "WriteAfterCallback": {
+          "ns": 13168547.0,
+          "bytes": 2623132,
+          "allocations": 131106
+        }
+      },
+      "before": {
+        "ReadOnly": {
+          "ns": 11607630.0,
+          "bytes": 2622750,
+          "allocations": 131095
+        },
+        "WriteInCallback": {
+          "ns": 12767083.0,
+          "bytes": 3672039,
+          "allocations": 131107
+        },
+        "WriteAfterCallback": {
+          "ns": 12803576.0,
+          "bytes": 3671788,
+          "allocations": 131109
+        }
+      }
+    }
+  ],
+  "summary": {
+    "ReadOnly": {
+      "geomean_after_before": 1.0073432264204727,
+      "paired_95_percent_interval": [
+        0.9953269515506467,
+        1.0244668176185137
+      ],
+      "after_faster_pairs": 4,
+      "median_before_ns": 11816623.5,
+      "median_after_ns": 11808679.5,
+      "median_before_bytes": 2622749.0,
+      "median_after_bytes": 2622669.0,
+      "median_before_allocations": 131095.0,
+      "median_after_allocations": 131093.0
+    },
+    "WriteInCallback": {
+      "geomean_after_before": 0.9239085580421548,
+      "paired_95_percent_interval": [
+        0.9074168934145257,
+        0.941041487509005
+      ],
+      "after_faster_pairs": 12,
+      "median_before_ns": 13437099.5,
+      "median_after_ns": 12301178.0,
+      "median_before_bytes": 3672037.0,
+      "median_after_bytes": 2623380.0,
+      "median_before_allocations": 131107.0,
+      "median_after_allocations": 131104.0
+    },
+    "WriteAfterCallback": {
+      "geomean_after_before": 0.9232275207867484,
+      "paired_95_percent_interval": [
+        0.9073647660902158,
+        0.9452391234510032
+      ],
+      "after_faster_pairs": 11,
+      "median_before_ns": 12905572.5,
+      "median_after_ns": 11747080.0,
+      "median_before_bytes": 3671789.0,
+      "median_after_bytes": 2623130.0,
+      "median_before_allocations": 131109.0,
+      "median_after_allocations": 131106.0
+    }
+  },
+  "binary_sha256": {
+    "before": "ce1a9ef48cfc8bc51fb6df86fbf44cbd57dc5b4a1e84eee190b82700b5163c1e",
+    "after": "d2d732eeca43e14b95df14b1facefa82a4a9c342e4144955ae72493057767b7d"
+  },
+  "benchtime": "200ms",
+  "seed": 20261013
+}

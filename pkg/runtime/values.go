@@ -51,24 +51,6 @@ type Alternative struct {
 type List struct {
 	Type  string
 	Items []Value
-	// shared marks Items as visible to a running for-loop; in-place writes must clone first.
-	shared bool
-}
-
-// ownItems gives the list a private backing array before an in-place write.
-func (l *List) ownItems() {
-	if l.shared {
-		l.Items = append([]Value(nil), l.Items...)
-		l.shared = false
-	}
-}
-
-// snapshot retains membership without copying the backing array. All updates
-// to existing elements detach through ownItems; appends lie beyond this length.
-// The private header prevents callback traversal from observing alias growth.
-func (l *List) snapshot() *List {
-	l.shared = true
-	return &List{Type: l.Type, Items: l.Items[:len(l.Items):len(l.Items)], shared: true}
 }
 
 type Map struct {
@@ -352,10 +334,9 @@ func Positions(value Value, length int) []Value {
 func Iterate(value Value) []Value {
 	switch v := value.(type) {
 	case *List:
-		// Loops see the elements as of loop start. Appends land beyond the captured
-		// length; in-place writes call ownItems and leave this slice untouched.
-		v.shared = true
-		return v.Items[:len(v.Items):len(v.Items)]
+		// Go range captures this header/length once. Writes to its backing
+		// array remain visible; append never extends the running traversal.
+		return v.Items
 	case *Set:
 		v.shared = true
 		return v.Items[:len(v.Items):len(v.Items)]

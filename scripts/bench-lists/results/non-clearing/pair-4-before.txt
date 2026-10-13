@@ -1,0 +1,8 @@
+goos: linux
+goarch: amd64
+pkg: github.com/manuscript-lang/manuscript/.artifacts/list-no-clear-before
+cpu: INTEL(R) XEON(R) PLATINUM 8573C
+BenchmarkNarrowSnapshots/ReadOnly         	      20	  11691105 ns/op	 2622750 B/op	  131095 allocs/op
+BenchmarkNarrowSnapshots/WriteInCallback  	      18	  12865878 ns/op	 3672039 B/op	  131107 allocs/op
+BenchmarkNarrowSnapshots/WriteAfterCallback         	      20	  12945666 ns/op	 3671789 B/op	  131109 allocs/op
+PASS

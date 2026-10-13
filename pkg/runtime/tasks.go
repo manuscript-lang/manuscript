@@ -68,7 +68,7 @@ func StandardFunction(name, result string) Value {
 		return NewFunction([]string{"duration"}, "Unit", func(ctx *Execution, args []Value) Value {
 			delay := args[0].(Duration)
 			if delay < 0 {
-				return Panic("sleep duration must be nonnegative; pass a Duration of 0 or more")
+				return durationParameterFault("sleep", "duration", args[0])
 			}
 			timer := time.NewTimer(time.Duration(delay))
 			defer timer.Stop()
@@ -191,4 +191,12 @@ func init() {
 		CheckCancelled(ctx)
 		return Unit{}
 	})
+}
+
+// Duration limits are displayed as their original signed nanosecond count.
+func durationParameterFault(operation, parameter string, value Value) Value {
+	if option, ok := value.(Alternative); ok && option.Tag == "some" {
+		value = option.Fields[0]
+	}
+	return libraryRangeFault(operation, parameter+" (nanoseconds)", int64(value.(Duration)), 0, nativeUnlimited)
 }

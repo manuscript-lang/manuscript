@@ -58,6 +58,35 @@ Pass or return a specific error directly where `Error` is expected. Functions re
 
 Unrelated domain errors still need an explicit translation. The Error interface does not constrain Result's error parameter or turn faults and cancellation into expected failures.
 
+### Shared error categories
+
+`category(cause: Error) -> Optional[ErrorCategory]` from `@std/errors.ms` queries a portable category for a recognized standard error. It keeps the original domain value and payload, calls no error operation, and never parses messages. It does not add an operation to the `Error` interface; existing custom implementations remain valid.
+
+| Standard case | Category |
+| --- | --- |
+| `InvalidInput`, `InvalidData`, `LimitExceeded` | The same-name category |
+| `NotFound`, `AlreadyExists`, `PermissionDenied` | The same-name category |
+| `Unsupported`, `Closed`, `Unavailable` | The same-name category |
+| `Timeout`, `TimedOut` | `Timeout` |
+| Custom errors or other domain cases | `none` |
+
+`Unavailable` does not imply a missing resource or denied permission. Cases such as `Failed(message)`, `Full`, `OutputLimit`, `OutOfRange`, `AuthenticationFailed`, `Cancelled`, YAML `UnsupportedFeature`, and wrapped logging causes remain domain-specific and return `none`. In particular, a timeout described only by an `IoError.Failed` message is not classified as `Timeout`. Use the concrete domain type when these distinctions matter.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import {category, ErrorCategory} from "@std/errors.ms"
+import FileSystemError from "@std/fs.ms"
+import panic from "@std/faults.ms"
+
+fn is_missing(cause: Error) -> Bool:
+    return category(cause) == some(ErrorCategory.NotFound)
+
+test "query keeps the original error":
+    let cause = FileSystemError.NotFound
+    if not is_missing(cause): return panic("missing category")
+    if cause != FileSystemError.NotFound: return panic("changed domain value")
+```
+
 | Situation | Behavior |
 | --- | --- |
 | Malformed data or unavailable OS service | Return an expected Result error. |
@@ -87,7 +116,7 @@ Error case sets describe each domain, even when case names coincide. Filesystem,
 | `Error` view | Retains the concrete error value for type matching, while exposing only `message()` as a common operation. |
 | Scheduler callbacks | Currently use `Result[Unit, String]`; `SchedulerFailure.Failed.cause` is text, and Crashed carries a fault message. No domain-error view is implied. |
 
-The absence of a case in PathError, CryptoError, RegexError, UrlError, or JsonError does not authorize inventing a generic Failed/LimitExceeded at that boundary. A shared error classification, scheduler error migration, timeout spelling migration, or unified write result would need explicit API and compatibility decisions.
+The absence of a case in PathError, CryptoError, RegexError, UrlError, or JsonError does not authorize inventing a generic Failed/LimitExceeded at that boundary. The optional category query preserves those distinctions. A scheduler error migration, timeout case rename, or unified write result still needs an explicit API and compatibility decision.
 
 ### Native I/O success and EOF
 
@@ -116,6 +145,8 @@ fn repeated() -> Result[String, StringError]:
 ```
 
 Supplied negative bounds are invalid. Zero retains each operation's declared meaning: an output budget allows no output, a zero timeout expires immediately, split's zero limit returns no parts, a zero `max_digits` or `max_rows` budget admits no digits or rows (`LimitExceeded` when input exceeds it), a negative limit on `split` or `replace` faults with a message naming the operation and parameter, and a queue's supplied capacity must be positive. Limits are validated even when another limit is omitted.
+
+Invalid supplied Scheduler `limit`, `history_limit`, or `drain`, TaskGroup `timeout`, and `sleep` duration values fault with the operation, parameter, original value, and valid range. Duration arguments are reported in nanoseconds. Omitted/`none` bounds retain their existing meaning; zero is allowed for history, drain, timeout, and sleep, while a supplied Scheduler admission limit must be positive.
 
 A chunk read's `max_bytes` requests a chunk size; it does not cap the total stream. Omitted reads use a 64 KiB buffer, and datagrams use their protocol maximum. Signal and file-watcher buffers retain finite default buffer sizes, rather than imposing a total event budget. Protocol restrictions, numeric representability, filesystem authority, and execution cancellation still apply.
 

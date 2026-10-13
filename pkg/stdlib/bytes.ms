@@ -8,6 +8,11 @@ export type Bytes:
     fn clone() -> Bytes:
     # Tests whether `value` occurs as a byte subsequence.
     fn contains(value: Bytes) -> Bool:
+    # Splits exact byte separators into a fresh list of immutable byte views.
+    # Nonempty separators retain empty parts; empty data then yields one empty Bytes.
+    # Omitted/none max_parts is unlimited; zero returns no parts, negatives fault.
+    # A cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data.
+    fn split(separator: Bytes, max_parts: Optional[Int] = none) -> List[Bytes]:
     # Selects [start, end) in bytes; faults unless 0 <= start <= end <= length().
     # The immutable result may share storage with the receiver.
     fn slice(start: Int, end: Int) -> Bytes:

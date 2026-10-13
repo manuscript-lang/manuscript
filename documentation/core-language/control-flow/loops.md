@@ -79,7 +79,7 @@ A positive step moves upward; a negative step moves downward. `range(start: 5, e
 
 ## Iterable types and binding
 
-Evaluate a `for`'s iterable expression once before entering the loop and snapshot its membership. Mutations to the collection do not change the current traversal; referenced elements remain shared. The loop introduces one immutable identifier per iteration; it does not accept a binding pattern or a type annotation. The closed set of supported iterables is:
+Evaluate a `for`'s iterable expression once before entering the loop. A List traversal captures its backing slice and initial length without copying: later element writes can be observed, append does not extend the traversal, and reallocation leaves it reading the original array. Map and Set snapshot their membership. Referenced elements remain shared. The loop introduces one immutable identifier per iteration; it does not accept a binding pattern or a type annotation. The closed set of supported iterables is:
 
 | Iterable | Iteration binding type | Traversal order |
 | --- | --- | --- |

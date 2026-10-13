@@ -596,6 +596,22 @@ func TestNativeProfilesAndDebugSources(t *testing.T) {
 			t.Fatalf("missing profile %s: %v", path, err)
 		}
 	}
+	for _, viewer := range []struct {
+		tool string
+		args []string
+	}{
+		{"pprof", []string{"-top", cpu}},
+		{"pprof", []string{"-top", heap}},
+		{"trace", []string{"-d=parsed", trace}},
+	} {
+		command, err := compiler.ProfileCommand(viewer.tool, viewer.args...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("invalid %s output: %v: %s", viewer.tool, err, output)
+		}
+	}
 }
 
 func TestSynchronizedBoundaries(t *testing.T) {
