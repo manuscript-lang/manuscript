@@ -38,6 +38,12 @@ func check() error {
 		return err
 	}
 	defer os.RemoveAll(directory)
+	// Compiler metadata uses canonical source roots. In particular macOS /var
+	// is a symlink to /private/var; DAP breakpoint paths must use the same identity.
+	directory, err = filepath.EvalSymlinks(directory)
+	if err != nil {
+		return err
+	}
 	// Only the binary is installed: its SDK must come from its own contents.
 	cli := filepath.Join(directory, "ms"+suffix)
 	data, err := os.ReadFile(filepath.Join(distribution, "ms"+suffix))
