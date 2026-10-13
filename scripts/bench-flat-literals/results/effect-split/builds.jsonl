@@ -1,0 +1,9 @@
+{"source": ".artifacts/effect-split/baseline/1100/program.go", "wall_s": 17.539484050999818, "rss_kb": 1305296, "exit": 0, "timed_out": false, "size": 6492344, "output": ""}
+{"source": ".artifacts/effect-split/baseline/1600/program.go", "wall_s": 25.80288194500008, "rss_kb": 2709924, "exit": 0, "timed_out": false, "size": 7221432, "output": ""}
+{"source": ".artifacts/effect-split/baseline/2200/program.go", "wall_s": 46.54351568400034, "rss_kb": 5201960, "exit": 0, "timed_out": false, "size": 8347832, "output": ""}
+{"source": ".artifacts/effect-split/slice/1100/program.go", "wall_s": 1.5501427939998393, "rss_kb": 200296, "exit": 0, "timed_out": false, "size": 5992632, "output": ""}
+{"source": ".artifacts/effect-split/slice/1600/program.go", "wall_s": 2.184822766999787, "rss_kb": 269408, "exit": 0, "timed_out": false, "size": 6193336, "output": ""}
+{"source": ".artifacts/effect-split/slice/2200/program.go", "wall_s": 2.976682217999951, "rss_kb": 343604, "exit": 0, "timed_out": false, "size": 6430904, "output": ""}
+{"source": ".artifacts/effect-split/fixed/1100/program.go", "wall_s": 1.4163802789998954, "rss_kb": 181180, "exit": 0, "timed_out": false, "size": 5951672, "output": ""}
+{"source": ".artifacts/effect-split/fixed/1600/program.go", "wall_s": 2.0689627929996277, "rss_kb": 261880, "exit": 0, "timed_out": false, "size": 6127800, "output": ""}
+{"source": ".artifacts/effect-split/fixed/2200/program.go", "wall_s": 2.832434400999773, "rss_kb": 338088, "exit": 0, "timed_out": false, "size": 6344888, "output": ""}

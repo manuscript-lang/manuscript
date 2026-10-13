@@ -1,0 +1,3 @@
+{"source": ".artifacts/effect-split/ordered/1100/program.go", "wall_s": 24.741404881999188, "rss_kb": 2832200, "exit": 0, "timed_out": false, "size": 5959864, "output": ""}
+{"source": ".artifacts/effect-split/ordered/1600/program.go", "wall_s": 57.24036385299951, "rss_kb": 5633296, "exit": 0, "timed_out": false, "size": 6148280, "output": ""}
+{"source": ".artifacts/effect-split/ordered/2200/program.go", "wall_s": 113.87765064999985, "rss_kb": 9174268, "exit": 0, "timed_out": false, "size": 6373560, "output": ""}

@@ -1,6 +1,8 @@
 Merge is paused for review of the measured repeated-construction cost. See
 [runtime review](runtime-review.md) for pinned paired confidence estimates,
 profiles, safe mitigation results, raw samples and the recommendation.
+The follow-up [alternatives review](alternatives-review.md) measures effectful
+helper splits and proposes a Debug-only boundary without implementing it.
 
 Run from the repository root with its prepared bundled Go and writable Go
 caches. The generator retains actual Manuscript, generated Go and a native
