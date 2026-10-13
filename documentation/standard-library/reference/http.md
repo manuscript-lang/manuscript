@@ -94,6 +94,16 @@ type HttpRequest:
     fn header(name: String) -> Optional[Bytes]:
 ```
 
+### HttpRequest.header
+
+Finds a header using ASCII case-insensitive names, or returns `none`.
+Leaves Map keys unchanged. Repeated received values remain newline-joined bytes.
+If a manually built Map has equivalent names, returns its first matching entry.
+
+```manuscript
+fn header(name: String) -> Optional[Bytes]:
+```
+
 ## HttpResponse {data-api-kind="Record"}
 
 Buffered response returned by the simple HTTP server handler.

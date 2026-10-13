@@ -17,3 +17,11 @@ interface Error:
     fn message() -> String
 ```
 
+### Error.message
+
+Returns a human-readable description of this expected error.
+
+```manuscript
+fn message() -> String
+```
+

@@ -155,6 +155,86 @@ interface FileSystem:
     fn chmod_link(path: String, mode: Int) -> Result[Unit, FileSystemError]
 ```
 
+### FileSystem.canonicalize
+
+Resolves symlinks and returns the canonical absolute path.
+
+```manuscript
+fn canonicalize(path: String) -> Result[String, FileSystemError]
+```
+
+### FileSystem.copy
+
+Copies a file or tree according to the supplied replacement and size policies.
+
+```manuscript
+fn copy(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String) -> Bool]) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.copy_file
+
+Copies one file; existing destinations are replaced only when requested.
+
+```manuscript
+fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.create_directory
+
+Creates a directory, optionally creating missing parents.
+
+```manuscript
+fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.create_link
+
+Creates a symbolic link at `path` pointing to `target`.
+
+```manuscript
+fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.glob_entries
+
+Returns entries matching the supplied include and exclude patterns.
+
+```manuscript
+fn glob_entries(path: String, options: GlobOptions, exclude: Optional[fn(entry: PathEntry) -> Bool]) -> Result[List[PathEntry], FileSystemError]
+```
+
+### FileSystem.list
+
+Lists a directory, optionally limiting the number of returned entries.
+
+```manuscript
+fn list(path: String, max_entries: Optional[Int] = none) -> Result[List[DirectoryEntry], FileSystemError]
+```
+
+### FileSystem.open_flags
+
+Opens a path using host flag and mode bit values.
+
+```manuscript
+fn open_flags(path: String, flags: Int, mode: Int) -> Result[FileHandle, FileSystemError]
+```
+
+### FileSystem.read_file
+
+Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
+
+```manuscript
+fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+```
+
+### FileSystem.watch_native
+
+Watches filesystem changes. Limits bound tracked paths and queued events.
+
+```manuscript
+fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -> Result[FileWatcher, FileSystemError]
+```
+
 ## FileSystemError {data-api-kind="Alternative"}
 
 Errors returned by filesystem operations. `Failed` retains the host error text.

@@ -248,6 +248,128 @@ type Bytes:
     fn to_text() -> Optional[String]:
 ```
 
+### Bytes.at
+
+Returns an unsigned byte; negative indexes are relative to the end, and out-of-range indexes return `none`.
+
+```manuscript
+fn at(index: Int) -> Optional[Int]:
+```
+
+### Bytes.clone
+
+Copies byte storage without changing the receiver.
+
+```manuscript
+fn clone() -> Bytes:
+```
+
+### Bytes.concat
+
+Returns concatenated bytes without changing either operand.
+
+```manuscript
+fn concat(values: Bytes) -> Bytes:
+```
+
+### Bytes.contains
+
+Tests whether `value` occurs as a byte subsequence.
+
+```manuscript
+fn contains(value: Bytes) -> Bool:
+```
+
+### Bytes.ends_with
+
+Tests whether the receiver ends with these bytes.
+
+```manuscript
+fn ends_with(value: Bytes) -> Bool:
+```
+
+### Bytes.index_of
+
+Returns the first matching byte offset or `none`; empty `value` matches at zero.
+
+```manuscript
+fn index_of(value: Bytes) -> Optional[Int]:
+```
+
+### Bytes.is_empty
+
+Tests whether the receiver contains no bytes.
+
+```manuscript
+fn is_empty() -> Bool:
+```
+
+### Bytes.last_index_of
+
+Returns the last matching byte offset or `none`; empty `value` matches at length().
+
+```manuscript
+fn last_index_of(value: Bytes) -> Optional[Int]:
+```
+
+### Bytes.length
+
+Returns the number of bytes, not the number of Unicode characters.
+
+```manuscript
+fn length() -> Int:
+```
+
+### Bytes.reverse
+
+Returns reversed bytes without changing the receiver.
+
+```manuscript
+fn reverse() -> Bytes:
+```
+
+### Bytes.slice
+
+Selects [start, end) in bytes; faults unless 0 <= start <= end <= length().
+The immutable result may share storage with the receiver.
+
+```manuscript
+fn slice(start: Int, end: Int) -> Bytes:
+```
+
+### Bytes.starts_with
+
+Tests whether the receiver begins with these bytes.
+
+```manuscript
+fn starts_with(value: Bytes) -> Bool:
+```
+
+### Bytes.to_text
+
+Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
+
+```manuscript
+fn to_text() -> Optional[String]:
+```
+
+### Bytes.values
+
+Returns a fresh mutable list of unsigned byte values; changing it leaves the Bytes unchanged.
+
+```manuscript
+fn values() -> List[Int]:
+```
+
+### Bytes.with_value
+
+Returns a copy with one byte replaced; negative indexes are relative to the end.
+An out-of-range index or a value outside 0 through 255 faults.
+
+```manuscript
+fn with_value(index: Int, value: Int) -> Bytes:
+```
+
 ## BytesBuilder
 
 **Native type**
@@ -378,6 +500,119 @@ type List[T]:
     fn length() -> Int:
 ```
 
+### List.at
+
+Returns an element; negative indexes are relative to the end, and out-of-range indexes return none.
+
+```manuscript
+fn at(index: Int) -> Optional[T]:
+```
+
+### List.clone
+
+Returns a shallow copy with independent list storage.
+
+```manuscript
+fn clone() -> List[T]:
+```
+
+### List.every
+
+Returns true when every value satisfies the predicate; empty lists return true.
+
+```manuscript
+fn every(predicate: fn(value: T) -> Bool) -> Bool:
+```
+
+### List.filter
+
+Keeps matching values in their original order.
+
+```manuscript
+fn filter(predicate: fn(value: T) -> Bool) -> List[T]:
+```
+
+### List.find_last_index
+
+Searches from the end and returns the last matching zero-based index, or none.
+
+```manuscript
+fn find_last_index(predicate: fn(value: T) -> Bool) -> Optional[Int]:
+```
+
+### List.fold[A]
+
+Reduces values from left to right, starting with `initial`.
+
+```manuscript
+fn fold[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+```
+
+### List.fold_right[A]
+
+Reduces values from right to left, starting with `initial`.
+
+```manuscript
+fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) -> A) -> A:
+```
+
+### List.for_each
+
+Calls operation(value:) sequentially over a membership snapshot; nested references remain shared.
+
+```manuscript
+fn for_each(operation: fn(value: T) -> Unit) -> Unit:
+```
+
+### List.index_of
+
+Returns the first equal element's zero-based index, or none; elements require Equal.
+
+```manuscript
+fn index_of(value: T) -> Optional[Int]:
+```
+
+### List.last_index_of
+
+Returns the last equal element's zero-based index, or none; elements require Equal.
+
+```manuscript
+fn last_index_of(value: T) -> Optional[Int]:
+```
+
+### List.slice
+
+Returns a new shallow List containing [start, end); outer storage is independent.
+Faults unless 0 <= start <= end <= length(); negative bounds are not relative.
+
+```manuscript
+fn slice(start: Int, end: Int) -> List[T]:
+```
+
+### List.some
+
+Returns true when at least one value satisfies the predicate.
+
+```manuscript
+fn some(predicate: fn(value: T) -> Bool) -> Bool:
+```
+
+### List.sorted
+
+Returns a new list sorted by negative/zero/positive comparator results.
+
+```manuscript
+fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+```
+
+### List.with_values
+
+Replaces `delete_count` values at `start` with the replacement list.
+
+```manuscript
+fn with_values(start: Int, delete_count: Int, replacement: List[T]) -> List[T]:
+```
+
 ## ListBuilder
 
 **Native type**
@@ -427,6 +662,63 @@ type Map[T: Hashable, U]:
     fn length() -> Int:
     fn with_entry(key: T, value: U) -> Map[T, U]:
     fn without(key: T) -> Map[T, U]:
+```
+
+### Map.clone
+
+Returns a shallow copy with independent map storage.
+
+```manuscript
+fn clone() -> Map[T, U]:
+```
+
+### Map.filter
+
+Copies matching entries in insertion order, retaining payload references.
+Callbacks traverse a snapshot even when they mutate the receiver.
+
+```manuscript
+fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+```
+
+### Map.for_each
+
+Calls operation(key:, value:) sequentially over an insertion-order membership snapshot.
+
+```manuscript
+fn for_each(operation: fn(key: T, value: U) -> Unit) -> Unit:
+```
+
+### Map.get_or
+
+Returns the stored value or an eagerly evaluated fallback without inserting.
+
+```manuscript
+fn get_or(key: T, fallback: U) -> U:
+```
+
+### Map.is_empty
+
+Reports whether this map has no entries.
+
+```manuscript
+fn is_empty() -> Bool:
+```
+
+### Map.with_default
+
+Sets `key` to `value` only when the key is absent.
+
+```manuscript
+fn with_default(key: T, value: U) -> Map[T, U]:
+```
+
+### Map.with_default_from
+
+Creates a value only when the key is absent.
+
+```manuscript
+fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
 ```
 
 ## MapBuilder
@@ -480,6 +772,87 @@ type Set[T: Hashable]:
     fn length() -> Int:
     fn with_value(value: T) -> Set[T]:
     fn without(value: T) -> Set[T]:
+```
+
+### Set.entries
+
+Returns a new list of [value, value] lists in insertion order.
+
+```manuscript
+fn entries() -> List[List[T]]:
+```
+
+### Set.filter
+
+Copies matching elements in insertion order, retaining payload references.
+Callbacks traverse a snapshot even when they mutate the receiver.
+
+```manuscript
+fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
+```
+
+### Set.for_each
+
+Calls operation(value:) sequentially over an insertion-order membership snapshot.
+
+```manuscript
+fn for_each(operation: fn(value: T) -> Unit) -> Unit:
+```
+
+### Set.is_disjoint_from
+
+Tests whether the operands have no common values.
+
+```manuscript
+fn is_disjoint_from(right: Set[T]) -> Bool:
+```
+
+### Set.is_empty
+
+Reports whether this set has no elements.
+
+```manuscript
+fn is_empty() -> Bool:
+```
+
+### Set.is_subset_of
+
+Tests whether every receiver value also occurs in right.
+
+```manuscript
+fn is_subset_of(right: Set[T]) -> Bool:
+```
+
+### Set.is_superset_of
+
+Tests whether every right value also occurs in the receiver.
+
+```manuscript
+fn is_superset_of(right: Set[T]) -> Bool:
+```
+
+### Set.map[U: Hashable]
+
+Transforms a snapshot into a fresh set, retaining the first equal result.
+
+```manuscript
+fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
+```
+
+### Set.symmetric_difference
+
+Returns a new set of values in exactly one operand; leaves both operands unchanged.
+
+```manuscript
+fn symmetric_difference(right: Set[T]) -> Set[T]:
+```
+
+### Set.values
+
+Returns a shallow list of values in insertion order.
+
+```manuscript
+fn values() -> List[T]:
 ```
 
 ## SetBuilder
@@ -773,6 +1146,27 @@ type Decimal:
     fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
 ```
 
+### Decimal.round
+
+Rounds exactly to a multiple of `10^-places`, without converting to Float.
+Places range from -6144 through 6176; negative places round tens, hundreds, etc.
+Invalid places return InvalidInput; an unrepresentable result returns OutOfRange.
+Omitted or `none` mode selects HalfEven. This does not preserve trailing zeros or change arithmetic.
+
+```manuscript
+fn round(places: Int, mode: Optional[RoundingMode] = none) -> Result[Decimal, NumberError]:
+```
+
+### Decimal.to_fixed
+
+Rounds exactly and prints plain decimal notation with exactly `digits` fractional digits.
+Digits range from 0 through 6176; invalid digits return InvalidInput.
+HalfEven is the default; rounded zero has no minus sign. Trailing zeros are retained.
+
+```manuscript
+fn to_fixed(digits: Int, mode: Optional[RoundingMode] = none) -> Result[String, NumberError]:
+```
+
 ## RoundingMode
 
 **Alternative**
@@ -786,6 +1180,46 @@ type RoundingMode:
     case TowardZero
     case Floor
     case Ceil
+```
+
+### RoundingMode.Ceil
+
+Rounds toward positive infinity.
+
+```manuscript
+case Ceil
+```
+
+### RoundingMode.Floor
+
+Rounds toward negative infinity.
+
+```manuscript
+case Floor
+```
+
+### RoundingMode.HalfAwayFromZero
+
+Nearest value; an exact tie rounds away from zero.
+
+```manuscript
+case HalfAwayFromZero
+```
+
+### RoundingMode.HalfEven
+
+Nearest value; an exact tie chooses the even coefficient.
+
+```manuscript
+case HalfEven
+```
+
+### RoundingMode.TowardZero
+
+Discards the fractional coefficient toward zero.
+
+```manuscript
+case TowardZero
 ```
 
 # @std/encoding.ms
@@ -868,6 +1302,14 @@ interface Equal:
     fn equals(other: Equal) -> Bool
 ```
 
+### Equal.equals
+
+Compares this value with another value in the same domain.
+
+```manuscript
+fn equals(other: Equal) -> Bool
+```
+
 ## Hashable
 
 **Interface**
@@ -877,6 +1319,14 @@ A type with a stable hash consistent with its `Equal` implementation.
 ```manuscript
 interface Hashable:
     fn hash() -> Int
+```
+
+### Hashable.hash
+
+Returns a stable hash consistent with `equals` for the same value.
+
+```manuscript
+fn hash() -> Int
 ```
 
 # @std/errors.ms
@@ -894,6 +1344,14 @@ A contract for expected failures that can provide a human-readable message.
 ```manuscript
 interface Error:
     fn message() -> String
+```
+
+### Error.message
+
+Returns a human-readable description of this expected error.
+
+```manuscript
+fn message() -> String
 ```
 
 # @std/faults.ms
@@ -1075,6 +1533,86 @@ interface FileSystem:
     fn temporary(prefix: String) -> Result[TemporaryDirectory, FileSystemError]
     fn stat_filesystem(path: String) -> Result[FileSystemInfo, FileSystemError]
     fn chmod_link(path: String, mode: Int) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.canonicalize
+
+Resolves symlinks and returns the canonical absolute path.
+
+```manuscript
+fn canonicalize(path: String) -> Result[String, FileSystemError]
+```
+
+### FileSystem.copy
+
+Copies a file or tree according to the supplied replacement and size policies.
+
+```manuscript
+fn copy(source: String, destination: String, options: CopyOptions, filter: Optional[fn(source: String, destination: String) -> Bool]) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.copy_file
+
+Copies one file; existing destinations are replaced only when requested.
+
+```manuscript
+fn copy_file(source: String, destination: String, replace: Bool, max_bytes: Optional[Int] = none) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.create_directory
+
+Creates a directory, optionally creating missing parents.
+
+```manuscript
+fn create_directory(path: String, recursive: Bool) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.create_link
+
+Creates a symbolic link at `path` pointing to `target`.
+
+```manuscript
+fn create_link(path: String, target: String) -> Result[Unit, FileSystemError]
+```
+
+### FileSystem.glob_entries
+
+Returns entries matching the supplied include and exclude patterns.
+
+```manuscript
+fn glob_entries(path: String, options: GlobOptions, exclude: Optional[fn(entry: PathEntry) -> Bool]) -> Result[List[PathEntry], FileSystemError]
+```
+
+### FileSystem.list
+
+Lists a directory, optionally limiting the number of returned entries.
+
+```manuscript
+fn list(path: String, max_entries: Optional[Int] = none) -> Result[List[DirectoryEntry], FileSystemError]
+```
+
+### FileSystem.open_flags
+
+Opens a path using host flag and mode bit values.
+
+```manuscript
+fn open_flags(path: String, flags: Int, mode: Int) -> Result[FileHandle, FileSystemError]
+```
+
+### FileSystem.read_file
+
+Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
+
+```manuscript
+fn read_file(path: String, max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+```
+
+### FileSystem.watch_native
+
+Watches filesystem changes. Limits bound tracked paths and queued events.
+
+```manuscript
+fn watch_native(path: String, recursive: Bool, max_entries: Optional[Int] = none, max_events: Optional[Int] = none, overflow: String) -> Result[FileWatcher, FileSystemError]
 ```
 
 ## FileSystemError
@@ -1374,6 +1912,16 @@ type HttpRequest:
     headers: Map[String, Bytes]
     body: Bytes
     fn header(name: String) -> Optional[Bytes]:
+```
+
+### HttpRequest.header
+
+Finds a header using ASCII case-insensitive names, or returns `none`.
+Leaves Map keys unchanged. Repeated received values remain newline-joined bytes.
+If a manually built Map has equivalent names, returns its first matching entry.
+
+```manuscript
+fn header(name: String) -> Optional[Bytes]:
 ```
 
 ## HttpResponse
@@ -1709,6 +2257,30 @@ interface Logger:
     fn set_level(level: LogLevel) -> Unit
     fn child(bindings: Map[String, JsonValue]) -> Logger
     fn flush() -> Result[Unit, LogError]
+```
+
+### Logger.child
+
+Returns a logger that adds these fields to each record.
+
+```manuscript
+fn child(bindings: Map[String, JsonValue]) -> Logger
+```
+
+### Logger.flush
+
+Flushes the logger's transport.
+
+```manuscript
+fn flush() -> Result[Unit, LogError]
+```
+
+### Logger.log
+
+Writes a record at the selected level with optional JSON fields.
+
+```manuscript
+fn log(level: LogLevel, message: String, fields: Optional[Map[String, JsonValue]] = none) -> Result[Unit, LogError]
 ```
 
 ## Transport
@@ -2282,6 +2854,70 @@ type Optional[T]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
 ```
 
+### Optional.and_then[U]
+
+Calls transform only when present, returning its Optional unchanged.
+
+```manuscript
+fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
+```
+
+### Optional.is_none
+
+Reports whether this value is absent.
+
+```manuscript
+fn is_none() -> Bool:
+```
+
+### Optional.is_some
+
+Reports whether this value contains a payload.
+
+```manuscript
+fn is_some() -> Bool:
+```
+
+### Optional.map[U]
+
+Transforms a present payload; none remains absent.
+
+```manuscript
+fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
+```
+
+### Optional.or_else
+
+Calls create once only when absent, returning its Optional unchanged.
+
+```manuscript
+fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+```
+
+### Optional.unwrap
+
+Returns the payload. Calling this on `none` raises a fault.
+
+```manuscript
+fn unwrap() -> T:
+```
+
+### Optional.unwrap_or
+
+Returns the contained value, or `fallback` when this is `none`.
+
+```manuscript
+fn unwrap_or(fallback: T) -> T:
+```
+
+### Optional.unwrap_or_else
+
+Computes a fallback only when this is `none`.
+
+```manuscript
+fn unwrap_or_else(create: fn() -> T) -> T:
+```
+
 # @std/path.ms
 
 Import each required symbol with `import Name from "@std/path.ms"`.
@@ -2736,6 +3372,22 @@ type PriorityQueue[T]:
     fn is_empty() -> Bool:
 ```
 
+### PriorityQueue.dequeue
+
+Removes and returns the next value by priority, or `none` when empty.
+
+```manuscript
+fn dequeue() -> Optional[T]:
+```
+
+### PriorityQueue.enqueue
+
+Adds a value, returning false when a bounded queue is full.
+
+```manuscript
+fn enqueue(value: T) -> Bool:
+```
+
 ## Queue
 
 **Native type**
@@ -2750,6 +3402,38 @@ type Queue[T]:
     fn peek() -> Optional[T]:
     fn length() -> Int:
     fn is_empty() -> Bool:
+```
+
+### Queue.capacity
+
+Optional constructor argument; omit for an unbounded queue.
+
+```manuscript
+capacity: Optional[Int] = none
+```
+
+### Queue.dequeue
+
+Removes and returns the oldest value, or `none` when empty.
+
+```manuscript
+fn dequeue() -> Optional[T]:
+```
+
+### Queue.enqueue
+
+Adds a value, returning false when a bounded queue is full.
+
+```manuscript
+fn enqueue(value: T) -> Bool:
+```
+
+### Queue.peek
+
+Returns the oldest value without removing it.
+
+```manuscript
+fn peek() -> Optional[T]:
 ```
 
 # @std/random.ms
@@ -2884,6 +3568,70 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+```
+
+### Result.and_then[U]
+
+Calls transform only on success. Its result keeps the same error type.
+
+```manuscript
+fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+```
+
+### Result.is_error
+
+Reports whether this result contains an expected error.
+
+```manuscript
+fn is_error() -> Bool:
+```
+
+### Result.is_ok
+
+Reports whether this result contains a successful value.
+
+```manuscript
+fn is_ok() -> Bool:
+```
+
+### Result.map[U]
+
+Transforms only a successful payload, preserving an error unchanged.
+
+```manuscript
+fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
+```
+
+### Result.unwrap
+
+Returns the successful payload; faults when this is an error.
+
+```manuscript
+fn unwrap() -> T:
+```
+
+### Result.unwrap_error
+
+Returns the error payload; faults when this is successful.
+
+```manuscript
+fn unwrap_error() -> E:
+```
+
+### Result.unwrap_or
+
+Returns the successful payload, or the eagerly evaluated fallback.
+
+```manuscript
+fn unwrap_or(fallback: T) -> T:
+```
+
+### Result.unwrap_or_else
+
+Calls create once with the original error only when this is an error.
+
+```manuscript
+fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 ```
 
 # @std/string.ms
@@ -3334,6 +4082,46 @@ type Duration:
     fn to_hours() -> Float:
 ```
 
+### Duration.add
+
+Adds another duration.
+
+```manuscript
+fn add(right: Duration) -> Duration:
+```
+
+### Duration.to_microseconds
+
+Converts this duration to an integer number of microseconds.
+
+```manuscript
+fn to_microseconds() -> Int:
+```
+
+### Duration.to_milliseconds
+
+Converts this duration to an integer number of milliseconds.
+
+```manuscript
+fn to_milliseconds() -> Int:
+```
+
+### Duration.to_nanoseconds
+
+Converts this duration to an integer number of nanoseconds.
+
+```manuscript
+fn to_nanoseconds() -> Int:
+```
+
+### Duration.to_seconds
+
+Converts this duration to floating-point seconds.
+
+```manuscript
+fn to_seconds() -> Float:
+```
+
 ## Instant
 
 **Native type**
@@ -3345,6 +4133,22 @@ type Instant:
     fn shift(duration: Duration) -> Instant:
     fn difference(right: Instant) -> Duration:
     fn compare(right: Instant) -> Int:
+```
+
+### Instant.difference
+
+Returns the elapsed duration from `right` to this instant.
+
+```manuscript
+fn difference(right: Instant) -> Duration:
+```
+
+### Instant.shift
+
+Shifts this monotonic instant by a duration.
+
+```manuscript
+fn shift(duration: Duration) -> Instant:
 ```
 
 ## TimeError
@@ -3380,6 +4184,46 @@ type Timestamp:
     fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
     fn difference(right: Timestamp) -> Result[Duration, TimeError]:
     fn compare(right: Timestamp) -> Int:
+```
+
+### Timestamp.difference
+
+Returns `self - right` as a duration.
+
+```manuscript
+fn difference(right: Timestamp) -> Result[Duration, TimeError]:
+```
+
+### Timestamp.nanoseconds
+
+Returns this timestamp's nanosecond component.
+
+```manuscript
+fn nanoseconds() -> Int:
+```
+
+### Timestamp.shift
+
+Adds a duration to this wall-clock timestamp.
+
+```manuscript
+fn shift(duration: Duration) -> Result[Timestamp, TimeError]:
+```
+
+### Timestamp.to_string
+
+Formats this timestamp in RFC 3339 form.
+
+```manuscript
+fn to_string() -> String:
+```
+
+### Timestamp.unix_seconds
+
+Returns the whole Unix seconds represented by this timestamp.
+
+```manuscript
+fn unix_seconds() -> Int:
 ```
 
 ## WallClock
@@ -3878,6 +4722,14 @@ interface Equal:
     fn equals(other: Equal) -> Bool
 ```
 
+### Equal.equals
+
+Compares this value with another value in the same domain.
+
+```manuscript
+fn equals(other: Equal) -> Bool
+```
+
 ## Error
 
 **Interface**
@@ -3887,6 +4739,14 @@ A contract for expected failures that can provide a human-readable message.
 ```manuscript
 interface Error:
     fn message() -> String
+```
+
+### Error.message
+
+Returns a human-readable description of this expected error.
+
+```manuscript
+fn message() -> String
 ```
 
 ## Float
@@ -3904,6 +4764,63 @@ type Float:
     fn truncate_to_int() -> Optional[Int]:
 ```
 
+### Float.is_finite
+
+Tests whether the value is neither NaN nor an infinity.
+
+```manuscript
+fn is_finite() -> Bool
+```
+
+### Float.is_nan
+
+Tests whether the value is NaN.
+
+```manuscript
+fn is_nan() -> Bool
+```
+
+### Float.to_exponential
+
+Formats scientific notation with 0..100 fractional digits; an invalid count returns NumberError.InvalidInput.
+
+```manuscript
+fn to_exponential(digits: Int) -> Result[String, NumberError]
+```
+
+### Float.to_fixed
+
+Formats 0..100 fractional digits; magnitude >= 1e21 uses ordinary round-trip notation.
+Invalid digits return NumberError.InvalidInput; rounding uses binary64 ties to even.
+
+```manuscript
+fn to_fixed(digits: Int) -> Result[String, NumberError]
+```
+
+### Float.to_precision
+
+Formats 1..100 significant digits, preserving trailing zeros; an invalid precision returns NumberError.InvalidInput.
+
+```manuscript
+fn to_precision(precision: Int) -> Result[String, NumberError]
+```
+
+### Float.to_string
+
+Returns the shortest round-trip representation, including NaN and signed infinities.
+
+```manuscript
+fn to_string() -> String
+```
+
+### Float.truncate_to_int
+
+Truncates toward zero, or returns none for nonfinite values or Int overflow.
+
+```manuscript
+fn truncate_to_int() -> Optional[Int]
+```
+
 ## Hashable
 
 **Interface**
@@ -3913,6 +4830,14 @@ A type with a stable hash consistent with its `Equal` implementation.
 ```manuscript
 interface Hashable:
     fn hash() -> Int
+```
+
+### Hashable.hash
+
+Returns a stable hash consistent with `equals` for the same value.
+
+```manuscript
+fn hash() -> Int
 ```
 
 ## Int
@@ -3954,6 +4879,70 @@ type Optional[T]:
     fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
 ```
 
+### Optional.and_then[U]
+
+Calls transform only when present, returning its Optional unchanged.
+
+```manuscript
+fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
+```
+
+### Optional.is_none
+
+Reports whether this value is absent.
+
+```manuscript
+fn is_none() -> Bool:
+```
+
+### Optional.is_some
+
+Reports whether this value contains a payload.
+
+```manuscript
+fn is_some() -> Bool:
+```
+
+### Optional.map[U]
+
+Transforms a present payload; none remains absent.
+
+```manuscript
+fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
+```
+
+### Optional.or_else
+
+Calls create once only when absent, returning its Optional unchanged.
+
+```manuscript
+fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
+```
+
+### Optional.unwrap
+
+Returns the payload. Calling this on `none` raises a fault.
+
+```manuscript
+fn unwrap() -> T:
+```
+
+### Optional.unwrap_or
+
+Returns the contained value, or `fallback` when this is `none`.
+
+```manuscript
+fn unwrap_or(fallback: T) -> T:
+```
+
+### Optional.unwrap_or_else
+
+Computes a fallback only when this is `none`.
+
+```manuscript
+fn unwrap_or_else(create: fn() -> T) -> T:
+```
+
 ## Result
 
 **Alternative**
@@ -3972,6 +4961,70 @@ type Result[T, E]:
     fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
     fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
     fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+```
+
+### Result.and_then[U]
+
+Calls transform only on success. Its result keeps the same error type.
+
+```manuscript
+fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
+```
+
+### Result.is_error
+
+Reports whether this result contains an expected error.
+
+```manuscript
+fn is_error() -> Bool:
+```
+
+### Result.is_ok
+
+Reports whether this result contains a successful value.
+
+```manuscript
+fn is_ok() -> Bool:
+```
+
+### Result.map[U]
+
+Transforms only a successful payload, preserving an error unchanged.
+
+```manuscript
+fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
+```
+
+### Result.unwrap
+
+Returns the successful payload; faults when this is an error.
+
+```manuscript
+fn unwrap() -> T:
+```
+
+### Result.unwrap_error
+
+Returns the error payload; faults when this is successful.
+
+```manuscript
+fn unwrap_error() -> E:
+```
+
+### Result.unwrap_or
+
+Returns the successful payload, or the eagerly evaluated fallback.
+
+```manuscript
+fn unwrap_or(fallback: T) -> T:
+```
+
+### Result.unwrap_or_else
+
+Calls create once with the original error only when this is an error.
+
+```manuscript
+fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 ```
 
 ## String
@@ -4008,6 +5061,239 @@ type String:
     fn byte_length() -> Int:
     fn to_bytes() -> Bytes:
     fn parse_int() -> Optional[Int]:
+```
+
+### String.at
+
+Returns a one-scalar String; negative indexes are relative to the end, and invalid indexes return none.
+
+```manuscript
+fn at(index: Int) -> Optional[String]
+```
+
+### String.byte_length
+
+Returns the UTF-8 encoded byte length.
+
+```manuscript
+fn byte_length() -> Int
+```
+
+### String.concat
+
+Concatenates text without changing either operand.
+
+```manuscript
+fn concat(values: String) -> String
+```
+
+### String.contains
+
+Tests whether the exact text occurs, without normalization.
+
+```manuscript
+fn contains(text: String) -> Bool
+```
+
+### String.ends_with
+
+Tests whether the receiver ends with this exact suffix.
+
+```manuscript
+fn ends_with(suffix: String) -> Bool
+```
+
+### String.index_of
+
+Returns the first matching Unicode scalar index or none; empty value matches at zero.
+
+```manuscript
+fn index_of(value: String) -> Optional[Int]
+```
+
+### String.last_index_of
+
+Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().
+
+```manuscript
+fn last_index_of(value: String) -> Optional[Int]
+```
+
+### String.lower
+
+Returns locale-independent full Unicode lowercase mapping; the scalar length can change.
+
+```manuscript
+fn lower() -> String
+```
+
+### String.normalize
+
+Normalizes using NFC, NFD, NFKC, or NFKD; max_bytes optionally bounds UTF-8 output.
+Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
+
+```manuscript
+fn normalize(form: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+```
+
+### String.pad_end
+
+Pads on the right until the scalar length reaches `target_length`.
+Empty padding or a shorter target leaves text unchanged; negative targets/budgets return InvalidInput.
+
+```manuscript
+fn pad_end(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+```
+
+### String.pad_start
+
+Pads on the left until the scalar length reaches `target_length`.
+Empty padding or a shorter target leaves text unchanged; max_bytes still bounds UTF-8 output.
+
+```manuscript
+fn pad_start(target_length: Int, padding: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+```
+
+### String.parse_int
+
+Parses signed ASCII decimal digits; invalid text or Int overflow returns none.
+
+```manuscript
+fn parse_int() -> Optional[Int]
+```
+
+### String.repeat
+
+Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
+
+```manuscript
+fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+```
+
+### String.replace
+
+Replaces the first occurrence when the cap is omitted or none; zero changes nothing, negatives fault.
+An empty old matches at scalar boundaries, and inserted text is not searched again.
+
+```manuscript
+fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String
+```
+
+### String.replace_all
+
+Replaces every nonoverlapping occurrence; empty old matches at each scalar boundary.
+max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion returns LimitExceeded.
+
+```manuscript
+fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+```
+
+### String.scalar_at
+
+Returns an integer scalar code point; negative indexes are relative to the end, and invalid indexes return none.
+
+```manuscript
+fn scalar_at(index: Int) -> Optional[Int]
+```
+
+### String.scalar_length
+
+Returns the number of Unicode scalar values in the string.
+
+```manuscript
+fn scalar_length() -> Int
+```
+
+### String.scalar_values
+
+Returns each Unicode scalar value as an integer.
+
+```manuscript
+fn scalar_values() -> List[Int]
+```
+
+### String.slice
+
+Selects [start, end) in scalars: negative bounds are relative to the end, then clamp to 0..scalar_length().
+An inverted adjusted range yields empty text; the receiver is unchanged.
+
+```manuscript
+fn slice(start: Int, end: Int) -> String
+```
+
+### String.slice_scalars
+
+Selects [start, end) in Unicode scalars; requires 0 <= start <= end <= scalar_length().
+Negative, inverted, or out-of-range bounds return StringError.OutOfRange.
+
+```manuscript
+fn slice_scalars(start: Int, end: Int) -> Result[String, StringError]
+```
+
+### String.split
+
+Splits exact separators, truncating parts to a supplied nonnegative cap; zero returns [], negatives fault.
+Empty text with a nonempty separator yields [""]; an empty separator splits into scalars.
+
+```manuscript
+fn split(separator: String, max_parts: Optional[Int] = none) -> List[String]
+```
+
+### String.starts_with
+
+Tests whether the receiver begins with this exact prefix.
+
+```manuscript
+fn starts_with(prefix: String) -> Bool
+```
+
+### String.substring
+
+Selects a scalar range after clamping each bound to 0..scalar_length() (negative becomes zero).
+Swaps inverted adjusted bounds; the receiver is unchanged.
+
+```manuscript
+fn substring(start: Int, end: Int) -> String
+```
+
+### String.to_bytes
+
+Encodes the string as UTF-8 bytes.
+
+```manuscript
+fn to_bytes() -> Bytes
+```
+
+### String.trim
+
+Removes Unicode whitespace at both ends; see the exact whitespace set in the text guide.
+
+```manuscript
+fn trim() -> String
+```
+
+### String.trim_end
+
+Removes Unicode whitespace at the end.
+
+```manuscript
+fn trim_end() -> String
+```
+
+### String.trim_start
+
+Removes Unicode whitespace at the start.
+
+```manuscript
+fn trim_start() -> String
+```
+
+### String.upper
+
+Returns locale-independent full Unicode uppercase mapping; the scalar length can change.
+
+```manuscript
+fn upper() -> String
 ```
 
 ## Unit
