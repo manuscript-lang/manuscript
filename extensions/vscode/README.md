@@ -1,5 +1,7 @@
 # Manuscript for VS Code
 
+Requires VS Code 1.91 or newer.
+
 Download the self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), place it on PATH, or configure `manuscript.serverPath`. A source checkout can build it with `make build`, which prepares Go automatically. Native debugging uses Delve embedded in `ms`; no `dlv` installation is needed. On macOS, Xcode command line tools must supply Apple’s `debugserver`. No separate Go installation or Go extension is required to use `ms`.
 
 Open `.ms` files for typed lexical/member completion, named argument completion and call snippets, auto-imports, signature help, diagnostics, type hover, definition/type navigation, project references and checked rename, hierarchical/workspace symbols, semantic highlighting, folding, type hints, formatting, import organization, and lint fixes. Completion works during unfinished calls and member accesses. Source synchronization uses UTF-16 incremental edits. **Manuscript: Restart language server** reloads compiler/debugger paths.
