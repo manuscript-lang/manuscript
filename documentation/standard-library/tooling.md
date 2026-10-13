@@ -22,7 +22,7 @@ import Map from "@std/collections.ms"
 fn announce() -> Result[Unit, Error]:
     with transport = stdout_transport():
         let logger = try create(transport: transport, timestamp: false)
-        let fields = Map[String, JsonValue]().with_entry(
+        let fields = Map[String, JsonValue]().add(
             key: "port",
             value: JsonValue.NumberValue("8080")
         )

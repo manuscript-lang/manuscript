@@ -381,7 +381,7 @@ fn merge(
     let values = match value:
         ObjectValue(entries):
             for entry in entries:
-                if not target.contains(entry.key): target.with_entry(
+                if not target.contains(entry.key): target.add(
                     key: entry.key,
                     value: entry.value
                 )
@@ -428,7 +428,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
         let name = try anchor_name(flow)
         flow.context.values = flow.context.values - 1
         let value = try flow_value(flow: flow, depth: depth, key: false)
-        flow.context.anchors.with_entry(key: name, value: value)
+        flow.context.anchors.add(key: name, value: value)
         return ok(value)
 
     if c == "*":
@@ -550,7 +550,7 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
                     value: value
                 )
             else:
-                values.with_entry(key: name, value: value)
+                values.add(key: name, value: value)
 
             flow_space(flow)
             if peek(flow) == "\}": break
@@ -1013,7 +1013,7 @@ fn block_value(
         else:
             let counted = try count(context: context, depth: depth)
 
-    if anchor != "": context.anchors.with_entry(key: anchor, value: result)
+    if anchor != "": context.anchors.add(key: anchor, value: result)
 
     return ok(result)
 
@@ -1063,7 +1063,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 (
                     context
                     .lines
-                    .with_value(
+                    .set(
                         index: context.index,
                         value: padding.concat(item)
                     )
@@ -1173,7 +1173,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                     value: value
                 )
             else:
-                values.with_entry(key: name, value: value)
+                values.add(key: name, value: value)
 
         return ok(YamlValue.ObjectValue(values))
 
@@ -1285,7 +1285,7 @@ export fn parse(
     )
 
     # split's synthetic terminal empty line is not scalar content.
-    if normalized.ends_with("\n"): context.lines.without(context.lines.length() - 1)
+    if normalized.ends_with("\n"): context.lines.remove(context.lines.length() - 1)
 
     skip(context)
 

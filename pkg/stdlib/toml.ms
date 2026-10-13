@@ -345,7 +345,7 @@ fn child(
         none:
             let allocated = try allocate(reader)
             let created = table(explicit: false, dotted: dotted)
-            parent.entries.with_entry(
+            parent.entries.add(
                 key: key,
                 value: Node.TableNode(created)
             )
@@ -396,7 +396,7 @@ fn append_table(
     let node = match parent.entries.get(key):
         none:
             let allocated_array = try allocate(reader)
-            parent.entries.with_entry(
+            parent.entries.add(
                 key: key,
                 value: Node.TableArray([next])
             )
@@ -437,7 +437,7 @@ fn assign(
         invalid(reader: reader, reason: "duplicate or closed key")
     )
 
-    current.entries.with_entry(key: key, value: value)
+    current.entries.add(key: key, value: value)
     return ok(unit)
 
 fn seal(value: Node) -> Unit:
@@ -913,7 +913,7 @@ fn materialize(reader: Reader, node: Node, depth: Int) -> Result[TomlValue, Toml
             let entries = Map[String, TomlValue]()
 
             for entry in table.entries:
-                entries.with_entry(
+                entries.add(
                     key: entry.key,
                     value: try materialize(
                         reader: reader,

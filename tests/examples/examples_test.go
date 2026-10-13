@@ -17,6 +17,7 @@ import (
 
 	"github.com/manuscript-lang/manuscript/pkg/build"
 	"github.com/manuscript-lang/manuscript/pkg/compiler"
+	"github.com/manuscript-lang/manuscript/pkg/tooling"
 )
 
 type example struct {
@@ -83,6 +84,11 @@ func TestTutorialExamples(t *testing.T) {
 				result := compiler.CompileSource("example.ms", block[2], options)
 				if !result.Success() {
 					t.Fatal(result.Diagnostics)
+				}
+				for _, finding := range tooling.LintProgram(result.Program) {
+					if finding.Code == "MSL108" {
+						t.Errorf("teaching example uses legacy standard name: %s", finding.Message)
+					}
 				}
 				// Signal cookbook execution uses disposable children in tests/e2e.
 				if spec.Mode == "signal" || os.Getenv("MANUSCRIPT_EXAMPLES_NATIVE") != "1" {
