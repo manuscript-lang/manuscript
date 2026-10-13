@@ -2,9 +2,14 @@
 
 # Represents a value that may be absent: `some(value)` or `none`.
 export type Optional[T]:
-    case some(value: T)
+    # A present payload, retained by reference when T is mutable.
+    case some(
+        # The contained value; unwrap and matching return this original payload.
+        value: T
+    )
+    # An absent value with no payload; no T needs to be constructed.
     case none
-    # Reports whether this value contains a payload.
+    # Returns true for some(value), and false for none.
     fn is_some() -> Bool:
     # Reports whether this value is absent.
     fn is_none() -> Bool:

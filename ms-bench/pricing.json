@@ -1,0 +1,4 @@
+{
+  "_comment": "USD per million tokens. Used only when a harness does not report cost itself. Update before trusting cost numbers.",
+  "default": {"input": 3.0, "cached_input": 0.3, "output": 15.0}
+}

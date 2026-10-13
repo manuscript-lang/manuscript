@@ -1,0 +1,36 @@
+use std::io::{BufRead, Write};
+
+fn check(line: &str) -> String {
+    let mut stack: Vec<(char, usize)> = Vec::new();
+    for (i, c) in line.chars().enumerate() {
+        match c {
+            '(' | '[' | '{' => stack.push((c, i + 1)),
+            ')' | ']' | '}' => {
+                let want = match c {
+                    ')' => '(',
+                    ']' => '[',
+                    _ => '{',
+                };
+                match stack.last() {
+                    Some(&(o, _)) if o == want => {
+                        stack.pop();
+                    }
+                    _ => return format!("error {}", i + 1),
+                }
+            }
+            _ => {}
+        }
+    }
+    match stack.first() {
+        Some(&(_, p)) => format!("error {}", p),
+        None => "ok".to_string(),
+    }
+}
+
+fn main() {
+    let stdin = std::io::stdin();
+    let mut out = std::io::stdout().lock();
+    for line in stdin.lock().lines() {
+        writeln!(out, "{}", check(&line.unwrap())).unwrap();
+    }
+}
