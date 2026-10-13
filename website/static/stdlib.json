@@ -9625,11 +9625,16 @@
           "operations": [
             "at: fn(index: Int)-\u003eOptional[String]",
             "byte_length: fn()-\u003eInt",
+            "chars: fn()-\u003eList[String]",
+            "compare: fn(other: String)-\u003eInt",
             "concat: fn(values: String)-\u003eString",
             "contains: fn(text: String)-\u003eBool",
             "ends_with: fn(suffix: String)-\u003eBool",
             "index_of: fn(value: String)-\u003eOptional[Int]",
+            "is_empty: fn()-\u003eBool",
             "last_index_of: fn(value: String)-\u003eOptional[Int]",
+            "length: fn()-\u003eInt",
+            "lines: fn()-\u003eList[String]",
             "lower: fn()-\u003eString",
             "normalize: fn(form: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
             "pad_end: fn(target_length: Int, padding: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
@@ -9638,6 +9643,7 @@
             "repeat: fn(count: Int, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
             "replace: fn(old: String, new: String, max_replacements: Optional[Int] = ...)-\u003eString",
             "replace_all: fn(old: String, new: String, max_bytes: Optional[Int] = ...)-\u003eResult[String, StringError]",
+            "reverse: fn()-\u003eString",
             "scalar_at: fn(index: Int)-\u003eOptional[Int]",
             "scalar_length: fn()-\u003eInt",
             "scalar_values: fn()-\u003eList[Int]",
@@ -9666,6 +9672,18 @@
               "doc": "Returns the UTF-8 encoded byte length."
             },
             {
+              "name": "chars",
+              "kind": "operation",
+              "signature": "fn chars() -\u003e List[String]",
+              "doc": "Returns a fresh list with one String for each Unicode scalar, in order."
+            },
+            {
+              "name": "compare",
+              "kind": "operation",
+              "signature": "fn compare(other: String) -\u003e Int",
+              "doc": "Returns -1, 0 or 1 in lexical scalar order, without locale or normalization."
+            },
+            {
               "name": "concat",
               "kind": "operation",
               "signature": "fn concat(values: String) -\u003e String",
@@ -9690,10 +9708,28 @@
               "doc": "Returns the first matching Unicode scalar index or none; empty value matches at zero."
             },
             {
+              "name": "is_empty",
+              "kind": "operation",
+              "signature": "fn is_empty() -\u003e Bool",
+              "doc": "Reports whether the text contains no scalars."
+            },
+            {
               "name": "last_index_of",
               "kind": "operation",
               "signature": "fn last_index_of(value: String) -\u003e Optional[Int]",
               "doc": "Returns the last matching Unicode scalar index or none; empty value matches at scalar_length()."
+            },
+            {
+              "name": "length",
+              "kind": "operation",
+              "signature": "fn length() -\u003e Int",
+              "doc": "Counts Unicode scalars, with the same unit as scalar_length."
+            },
+            {
+              "name": "lines",
+              "kind": "operation",
+              "signature": "fn lines() -\u003e List[String]",
+              "doc": "Splits LF and CRLF lines, preserving interior empty lines and standalone CR.\nOmits a final extra empty item; empty text returns a fresh empty list."
             },
             {
               "name": "lower",
@@ -9742,6 +9778,12 @@
               "kind": "operation",
               "signature": "fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -\u003e Result[String, StringError]",
               "doc": "Replaces every nonoverlapping occurrence; empty old matches at each scalar boundary.\nmax_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion returns LimitExceeded."
+            },
+            {
+              "name": "reverse",
+              "kind": "operation",
+              "signature": "fn reverse() -\u003e String",
+              "doc": "Reverses Unicode scalar order; combining sequences/graphemes may change."
             },
             {
               "name": "scalar_at",
