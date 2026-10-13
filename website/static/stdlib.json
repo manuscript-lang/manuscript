@@ -342,8 +342,11 @@
             "clone: fn()-\u003eMap[T, U]",
             "contains: fn(key: T)-\u003eBool",
             "entries: fn()-\u003eList[MapEntry[T, U]]",
+            "filter: fn(predicate: fn(key: T, value: U)-\u003eBool)-\u003eMap[T, U]",
             "for_each: fn(operation: fn(key: T, value: U)-\u003eUnit)-\u003eUnit",
             "get: fn(key: T)-\u003eOptional[U]",
+            "get_or: fn(key: T, fallback: U)-\u003eU",
+            "is_empty: fn()-\u003eBool",
             "keys: fn()-\u003eList[T]",
             "length: fn()-\u003eInt",
             "merge: fn(other: Map[T, U])-\u003eMap[T, U]",
@@ -396,12 +399,15 @@
             "contains: fn(value: T)-\u003eBool",
             "difference: fn(right: Set[T])-\u003eSet[T]",
             "entries: fn()-\u003eList[List[T]]",
+            "filter: fn(predicate: fn(value: T)-\u003eBool)-\u003eSet[T]",
             "for_each: fn(operation: fn(value: T)-\u003eUnit)-\u003eUnit",
             "intersection: fn(right: Set[T])-\u003eSet[T]",
             "is_disjoint_from: fn(right: Set[T])-\u003eBool",
+            "is_empty: fn()-\u003eBool",
             "is_subset_of: fn(right: Set[T])-\u003eBool",
             "is_superset_of: fn(right: Set[T])-\u003eBool",
             "length: fn()-\u003eInt",
+            "map[U: Hashable]: fn(transform: fn(value: T)-\u003eU)-\u003eSet[U]",
             "symmetric_difference: fn(right: Set[T])-\u003eSet[T]",
             "union: fn(right: Set[T])-\u003eSet[T]",
             "values: fn()-\u003eList[T]",
@@ -1824,8 +1830,11 @@
             "none"
           ],
           "operations": [
+            "and_then[U]: fn(transform: fn(value: T)-\u003eOptional[U])-\u003eOptional[U]",
             "is_none: fn()-\u003eBool",
             "is_some: fn()-\u003eBool",
+            "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eOptional[U]",
+            "or_else: fn(create: fn()-\u003eOptional[T])-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_or: fn(fallback: T)-\u003eT",
             "unwrap_or_else: fn(create: fn()-\u003eT)-\u003eT"
@@ -2308,14 +2317,24 @@
           "name": "Result",
           "doc": "Holds either a successful value (`ok`) or an expected failure (`error`).",
           "kind": "alternative",
-          "type": "Result[T, U]",
+          "type": "Result[T, E]",
           "type_parameters": [
             "T",
-            "U"
+            "E"
           ],
           "cases": [
             "ok(value: T)",
-            "error(cause: U)"
+            "error(cause: E)"
+          ],
+          "operations": [
+            "and_then[U]: fn(transform: fn(value: T)-\u003eResult[U, E])-\u003eResult[U, E]",
+            "is_error: fn()-\u003eBool",
+            "is_ok: fn()-\u003eBool",
+            "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eResult[U, E]",
+            "unwrap: fn()-\u003eT",
+            "unwrap_error: fn()-\u003eE",
+            "unwrap_or: fn(fallback: T)-\u003eT",
+            "unwrap_or_else: fn(create: fn(cause: E)-\u003eT)-\u003eT"
           ]
         }
       ]
@@ -3209,8 +3228,11 @@
             "none"
           ],
           "operations": [
+            "and_then[U]: fn(transform: fn(value: T)-\u003eOptional[U])-\u003eOptional[U]",
             "is_none: fn()-\u003eBool",
             "is_some: fn()-\u003eBool",
+            "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eOptional[U]",
+            "or_else: fn(create: fn()-\u003eOptional[T])-\u003eOptional[T]",
             "unwrap: fn()-\u003eT",
             "unwrap_or: fn(fallback: T)-\u003eT",
             "unwrap_or_else: fn(create: fn()-\u003eT)-\u003eT"
@@ -3220,14 +3242,24 @@
           "name": "Result",
           "doc": "Holds either a successful value (`ok`) or an expected failure (`error`).",
           "kind": "alternative",
-          "type": "Result[T, U]",
+          "type": "Result[T, E]",
           "type_parameters": [
             "T",
-            "U"
+            "E"
           ],
           "cases": [
             "ok(value: T)",
-            "error(cause: U)"
+            "error(cause: E)"
+          ],
+          "operations": [
+            "and_then[U]: fn(transform: fn(value: T)-\u003eResult[U, E])-\u003eResult[U, E]",
+            "is_error: fn()-\u003eBool",
+            "is_ok: fn()-\u003eBool",
+            "map[U]: fn(transform: fn(value: T)-\u003eU)-\u003eResult[U, E]",
+            "unwrap: fn()-\u003eT",
+            "unwrap_error: fn()-\u003eE",
+            "unwrap_or: fn(fallback: T)-\u003eT",
+            "unwrap_or_else: fn(create: fn(cause: E)-\u003eT)-\u003eT"
           ]
         },
         {

@@ -35,6 +35,8 @@ The end-to-end suite builds one CLI with a bounded setup, reuses it, and retains
 
 Complete tutorial code fences carry a `manuscript-example` JSON comment specifying `test` or `run`, arguments, and expected stdout. `make examples-check` checks them without lowering; coverage executes them. Fragments remain clearly introduced as fragments. Do not maintain another copy of complete examples in test fixtures.
 
+For task recipes, annotations may also supply `stdin`, input `files` (relative path to text), `want_files` (expected file contents), and an expected `exit_code` (0 by default). A local `http` fixture supplies `status` and `body`; use `$HTTP_URL` in `args` for its loopback URL. Additional `cases` run the same compiled program with independent inputs and expectations. Native execution gives each case a temporary working directory and uses no public HTTP service. Run `MANUSCRIPT_EXAMPLES_NATIVE=1 toolchain/go/bin/go test ./tests/examples -count=1` to execute the annotated examples directly. See [common tasks](../learn/common-tasks.md) for success and failure cases.
+
 `make fuzz` exercises strict parsing, editor recovery, and compilation for ten seconds each. Set `FUZZTIME=1m` for longer runs. Preserve reproducible failures and add an observable regression before declaring a failure resolved.
 
 `make dist` creates a single-binary archive in `dist/`. `sh scripts/package.sh <os> <arch>` packages Linux, macOS, or Windows for AMD64 or ARM64. `make dist-check` runs a copied binary outside the checkout with empty caches, no Go on PATH, and downloads disabled; compilation, source tools, LSP, debug builds, and profiles must work there. Archives include examples and dependency/SDK notices.

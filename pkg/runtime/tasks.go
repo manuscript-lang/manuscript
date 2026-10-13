@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	goruntime "runtime"
+	"sync/atomic"
 	"time"
 )
 
@@ -15,11 +16,20 @@ type Execution struct {
 	HostServices  map[*httpService]bool
 	Lifetime      *workLifetime
 	Host          *hostRoots
+	calls         *callState
 }
+
+// callState tracks one goroutine's nested source calls. Copies of an
+// Execution made for equality scopes or cancellation share it.
+type callState struct {
+	depth     atomic.Int64
+	traceFull atomic.Bool
+}
+
 type cancelled struct{}
 
 func RootExecution() *Execution {
-	return &Execution{Context: context.Background(), Lifetime: &workLifetime{}, Host: &hostRoots{}}
+	return &Execution{Context: context.Background(), Lifetime: &workLifetime{}, Host: &hostRoots{}, calls: &callState{}}
 }
 func CheckCancelled(ctx *Execution) {
 	if ctx != nil && ctx.Context.Err() != nil {
@@ -140,6 +150,11 @@ func (stack *CleanupStack) remove(action *CleanupAction) {
 	}
 }
 func (stack *CleanupStack) Unwind() {
+	// Without actions there is nothing to run, and recovering only to
+	// re-raise makes unwinding a deep stack quadratic.
+	if len(stack.actions) == 0 {
+		return
+	}
 	pending := recover()
 	for len(stack.actions) > 0 {
 		action := stack.actions[len(stack.actions)-1]

@@ -121,6 +121,13 @@ func check() error {
 		}
 		return string(data), nil
 	}
+	library, err := libraryFixture(directory)
+	if err != nil {
+		return err
+	}
+	if err := checkLibrarySource(cli, library, run); err != nil {
+		return err
+	}
 	manifest := filepath.Join(project, "ms.toml")
 	output := filepath.Join(directory, "hello=program"+suffix)
 	for _, arguments := range [][]string{
@@ -158,6 +165,9 @@ func check() error {
 		if arguments[0] == "test" && !strings.Contains(data, "0 failed") {
 			return fmt.Errorf("unexpected test output: %q", data)
 		}
+	}
+	if err := checkLibraryNative(cli, library, run); err != nil {
+		return err
 	}
 	data, err = os.ReadFile(filepath.Join(project, "ms.lock"))
 	if err != nil {

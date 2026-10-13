@@ -411,6 +411,9 @@ A mutable key-value collection. Keys use explicit `Hashable` value semantics.
 ```manuscript
 type Map[T: Hashable, U]:
     fn clone() -> Map[T, U]:
+    fn is_empty() -> Bool:
+    fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    fn get_or(key: T, fallback: U) -> U:
     fn with_default(key: T, value: U) -> Map[T, U]:
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
@@ -459,6 +462,9 @@ A mutable collection of unique values using explicit `Hashable` value semantics.
 ```manuscript
 type Set[T: Hashable]:
     fn clone() -> Set[T]:
+    fn is_empty() -> Bool:
+    fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
+    fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
     fn union(right: Set[T]) -> Set[T]:
     fn intersection(right: Set[T]) -> Set[T]:
     fn difference(right: Set[T]) -> Set[T]:
@@ -2271,6 +2277,9 @@ type Optional[T]:
     fn unwrap() -> T:
     fn unwrap_or(fallback: T) -> T:
     fn unwrap_or_else(create: fn() -> T) -> T:
+    fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
+    fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
+    fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
 ```
 
 # @std/path.ms
@@ -2864,9 +2873,17 @@ Explicit imports with `import Name from "@std/result.ms"` remain supported.
 Holds either a successful value (`ok`) or an expected failure (`error`).
 
 ```manuscript
-type Result[T, U]:
+type Result[T, E]:
     case ok(value: T)
-    case error(cause: U)
+    case error(cause: E)
+    fn is_ok() -> Bool:
+    fn is_error() -> Bool:
+    fn unwrap() -> T:
+    fn unwrap_error() -> E:
+    fn unwrap_or(fallback: T) -> T:
+    fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
+    fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
+    fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
 ```
 
 # @std/string.ms
@@ -3932,6 +3949,9 @@ type Optional[T]:
     fn unwrap() -> T:
     fn unwrap_or(fallback: T) -> T:
     fn unwrap_or_else(create: fn() -> T) -> T:
+    fn map[U](transform: fn(value: T) -> U) -> Optional[U]:
+    fn and_then[U](transform: fn(value: T) -> Optional[U]) -> Optional[U]:
+    fn or_else(create: fn() -> Optional[T]) -> Optional[T]:
 ```
 
 ## Result
@@ -3941,9 +3961,17 @@ type Optional[T]:
 Holds either a successful value (`ok`) or an expected failure (`error`).
 
 ```manuscript
-type Result[T, U]:
+type Result[T, E]:
     case ok(value: T)
-    case error(cause: U)
+    case error(cause: E)
+    fn is_ok() -> Bool:
+    fn is_error() -> Bool:
+    fn unwrap() -> T:
+    fn unwrap_error() -> E:
+    fn unwrap_or(fallback: T) -> T:
+    fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
+    fn map[U](transform: fn(value: T) -> U) -> Result[U, E]:
+    fn and_then[U](transform: fn(value: T) -> Result[U, E]) -> Result[U, E]:
 ```
 
 ## String

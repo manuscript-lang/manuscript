@@ -174,6 +174,7 @@ func init() {
 			if target < 0 || max < 0 {
 				return libraryError(r, "InvalidInput", "")
 			}
+			max = min(max, nativeMaxBytes)
 			if int64(len(text)) > max {
 				return libraryError(r, "LimitExceeded", "")
 			}

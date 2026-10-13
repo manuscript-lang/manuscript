@@ -93,6 +93,9 @@ A mutable key-value collection. Keys use explicit `Hashable` value semantics.
 ```manuscript
 type Map[T: Hashable, U]:
     fn clone() -> Map[T, U]:
+    fn is_empty() -> Bool:
+    fn filter(predicate: fn(key: T, value: U) -> Bool) -> Map[T, U]:
+    fn get_or(key: T, fallback: U) -> U:
     fn with_default(key: T, value: U) -> Map[T, U]:
     fn with_default_from(key: T, create: fn(key: T) -> U) -> Map[T, U]:
     fn clear() -> Map[T, U]:
@@ -135,6 +138,9 @@ A mutable collection of unique values using explicit `Hashable` value semantics.
 ```manuscript
 type Set[T: Hashable]:
     fn clone() -> Set[T]:
+    fn is_empty() -> Bool:
+    fn filter(predicate: fn(value: T) -> Bool) -> Set[T]:
+    fn map[U: Hashable](transform: fn(value: T) -> U) -> Set[U]:
     fn union(right: Set[T]) -> Set[T]:
     fn intersection(right: Set[T]) -> Set[T]:
     fn difference(right: Set[T]) -> Set[T]:
