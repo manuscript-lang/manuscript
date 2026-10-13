@@ -274,3 +274,28 @@ test "TOML nonfinite floats CRLF and repeated separators":
     if root.get("integer").unwrap() != TomlValue.IntValue(1000000): return panic(
         "repeated underscore separators"
     )
+
+fn failure(text: String) -> String:
+    match parse(text: text):
+        ok(_): return "accepted"
+        error(cause): return cause.message()
+
+test "TOML errors report the offending line and column":
+    if failure("x = 1\ny = \"a\u{1}b\"") != "TOML 2:7: invalid control character": return panic(
+        "control character position"
+    )
+    if failure("x = 1\ny = 2\rz = 3") != "TOML 2:6: bare carriage return": return panic(
+        "carriage return position"
+    )
+    if failure("x = 1\n\u{0}") != "TOML 2:1: invalid control character": return panic(
+        "NUL position"
+    )
+    if failure("a = 1\u{0}") != "TOML 1:6: invalid control character": return panic(
+        "trailing NUL position"
+    )
+    if failure("y = True") != "TOML 1:5: invalid value": return panic("True")
+    if failure("y = yes") != "TOML 1:5: invalid value": return panic("yes")
+    if failure("y = abc") != "TOML 1:5: invalid value": return panic("abc")
+    if failure("x = 1\ny = 1e") != "TOML 2:5: invalid exponent": return panic(
+        "exponent position"
+    )

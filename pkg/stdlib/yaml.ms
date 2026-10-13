@@ -322,7 +322,8 @@ fn anchor_name(flow: Flow) -> Result[String, YamlError]:
     return ok(name)
 
 fn merge(
-    context: Context,
+    line: Int,
+    column: Int,
     target: Map[String, YamlValue],
     value: YamlValue
 ) -> Result[Unit, YamlError]:
@@ -340,13 +341,15 @@ fn merge(
             for item in values:
                 match item:
                     ObjectValue(_): let merged = try merge(
-                        context: context,
+                        line: line,
+                        column: column,
                         target: target,
                         value: item
                     )
                     _: return error(
-                        invalid(
-                            context: context,
+                        YamlError.InvalidData(
+                            line: line,
+                            column: column,
                             reason: "merge requires mappings"
                         )
                     )
@@ -354,8 +357,9 @@ fn merge(
             return ok(unit)
 
         _: return error(
-            invalid(
-                context: context,
+            YamlError.InvalidData(
+                line: line,
+                column: column,
                 reason: "merge requires mappings"
             )
         )
@@ -489,7 +493,8 @@ fn flow_value(flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]
 
             if name == "<<":
                 let merged = try merge(
-                    context: flow.context,
+                    line: flow.line,
+                    column: flow.pos + 1,
                     target: values,
                     value: value
                 )
@@ -713,11 +718,22 @@ fn block_string(
 ) -> Result[YamlValue, YamlError]:
     var mode = ""
     var explicit = 0
+    var offset = 0
+    # The header line was already consumed, so it is the previous line.
+    let header_line = context.index
+    let header_column = (
+        context.lines.at(context.index - 1).unwrap_or("").index_of(
+            header
+        ).unwrap_or(0)
+        + 1
+    )
 
     for c in header.slice(
         start: 1,
         end: header.scalar_length()
     ).split(separator: ""):
+        offset = offset + 1
+
         if (c == "+" or c == "-") and mode == "": mode = c
         else if "123456789".contains(c) and explicit == 0: explicit = (
             c
@@ -725,8 +741,9 @@ fn block_string(
             .unwrap()
         )
         else: return error(
-            invalid(
-                context: context,
+            YamlError.InvalidData(
+                line: header_line,
+                column: header_column + offset,
                 reason: "invalid block scalar header"
             )
         )
@@ -1075,6 +1092,7 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
                 )
                 .trim_start()
             )
+            let key_line = context.index + 1
             context.index = context.index + 1
             let value = try block_value(
                 context: context,
@@ -1085,7 +1103,12 @@ fn block(context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError
             )
 
             if name == "<<":
-                let merged = try merge(context: context, target: values, value: value)
+                let merged = try merge(
+                    line: key_line,
+                    column: line_indent + 1,
+                    target: values,
+                    value: value
+                )
             else:
                 values.with_entry(key: name, value: value)
 

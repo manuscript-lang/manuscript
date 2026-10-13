@@ -80,7 +80,7 @@ fn repeated() -> Result[String, StringError]:
     return "ab".repeat(count: 3, max_bytes: 6)
 ```
 
-Supplied negative bounds are invalid. Zero retains each operation's declared meaning: an output budget allows no output, a zero timeout expires immediately, split's zero limit returns no parts, and a queue's supplied capacity must be positive. Limits are validated even when another limit is omitted.
+Supplied negative bounds are invalid. Zero retains each operation's declared meaning: an output budget allows no output, a zero timeout expires immediately, split's zero limit returns no parts, a zero `max_digits` or `max_rows` budget admits no digits or rows (`LimitExceeded` when input exceeds it), a negative limit on `split` or `replace` faults with a message naming the operation and parameter, and a queue's supplied capacity must be positive. Limits are validated even when another limit is omitted.
 
 A chunk read's `max_bytes` requests a chunk size; it does not cap the total stream. Omitted reads use a 64 KiB buffer, and datagrams use their protocol maximum. Signal and file-watcher buffers retain finite default buffer sizes, rather than imposing a total event budget. Protocol restrictions, numeric representability, filesystem authority, and execution cancellation still apply.
 
