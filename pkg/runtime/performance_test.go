@@ -2,6 +2,7 @@ package msruntime
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -326,5 +327,21 @@ func BenchmarkIterateMap(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for range Iterate(m) {
 		}
+	}
+}
+
+func BenchmarkListAppendDirect(b *testing.B) {
+	ctx := &Execution{Context: context.Background()}
+	list := &List{Type: "@std/List[Int]"}
+	for i := 0; i < b.N; i++ {
+		ListAppend(ctx, list, int64(i))
+	}
+}
+
+func BenchmarkListAppendMember(b *testing.B) {
+	ctx := &Execution{Context: context.Background()}
+	list := &List{Type: "@std/List[Int]"}
+	for i := 0; i < b.N; i++ {
+		Invoke(ctx, NativeMemberResult(list, "append", "", TypeScope{}), []Argument{{Value: int64(i)}})
 	}
 }
