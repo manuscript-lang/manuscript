@@ -68,7 +68,7 @@ func (c *checker) specializeNativeCall(e *syntax.Expression, info *Info) {
 	}
 	copy := *info
 	if len(vars) > 0 || e.Left.Kind == syntax.KindApply {
-		copy.Type = c.specialize(info.Type, vars, supplied, e.Pos)
+		copy.Type = c.specialize(info.Type, vars, supplied, e.Pos, calleeName(e.Left))
 	}
 	c.Expressions[e.Left] = &copy
 	*info = copy

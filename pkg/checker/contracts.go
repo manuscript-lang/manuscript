@@ -519,7 +519,19 @@ func (c *checker) declarationChecks(module *syntax.Module) {
 			for _, op := range s.Type.Def.Operations {
 				check(op.Type)
 			}
-			c.layout(s.Type, d.Pos, map[string]*Type{}, false)
+			checkLayout := func(field Param, pos syntax.Position, name string) {
+				if message := layoutIssue(field.Type, map[string]*Type{s.Type.ID: s.Type}, false, name); message != "" {
+					c.error(pos, "type", message)
+				}
+			}
+			for i, field := range s.Type.Def.Fields {
+				checkLayout(field, d.Fields[i].Pos, d.Name+"."+field.Name)
+			}
+			for i, cs := range s.Type.Def.Cases {
+				for j, field := range cs.Fields {
+					checkLayout(field, d.Cases[i].Fields[j].Pos, d.Name+"."+cs.Name+"."+field.Name)
+				}
+			}
 		}
 		for _, v := range s.Variables {
 			for _, b := range v.Bounds {
@@ -545,36 +557,47 @@ func (c *checker) public(t *Type, pos syntax.Position, seen map[string]bool) {
 	}
 	c.public(t.Result, pos, seen)
 }
-func (c *checker) layout(t *Type, pos syntax.Position, active map[string]*Type, indirect bool) {
+
+// layoutIssue returns the first invalid cycle reachable from a source field.
+// Each declaration checks its own fields, preserving their names and positions
+// even when a cycle passes through inline Optional/Result payloads.
+func layoutIssue(t *Type, active map[string]*Type, indirect bool, field string) string {
 	if t == nil || t.Kind == "function" || t.Kind == "contract" || t.Kind == "variable" {
-		return
+		return ""
 	}
 	if std(t, "List") || std(t, "Set") || std(t, "Map") {
 		for _, a := range t.Args {
-			c.layout(a, pos, active, true)
+			if issue := layoutIssue(a, active, true, field); issue != "" {
+				return issue
+			}
 		}
-		return
+		return ""
 	}
 	if previous := active[t.ID]; previous != nil {
 		if !Same(previous, t) {
-			c.error(pos, "type", "recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])")
+			return "recursive generic applications must preserve their parameters in field " + field + "; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])"
 		}
 		if !indirect {
-			c.error(pos, "type", "unguarded inline recursive layout; a type cannot contain itself directly, so wrap the recursive field in List[...], Optional[...], or another indirection")
+			return "unguarded inline recursive layout in field " + field + " through " + t.String() + "; use an indirect container such as List[" + t.String() + "] or restructure the recursive field"
 		}
-		return
+		return ""
 	}
 	if t.Def == nil {
-		return
+		return ""
 	}
 	active[t.ID] = t
 	defer delete(active, t.ID)
 	for _, f := range Fields(t) {
-		c.layout(f.Type, pos, active, indirect)
+		if issue := layoutIssue(f.Type, active, indirect, field); issue != "" {
+			return issue
+		}
 	}
 	for _, cs := range Cases(t) {
 		for _, f := range cs.Fields {
-			c.layout(f.Type, pos, active, indirect)
+			if issue := layoutIssue(f.Type, active, indirect, field); issue != "" {
+				return issue
+			}
 		}
 	}
+	return ""
 }

@@ -735,7 +735,7 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 	if i.Type.ID == "Never" {
 		i.NoReturn = true
 	}
-	if expected != nil && !compatible(i.Type, expected) {
+	if expected != nil && i.Type.ID != "<invalid>" && !compatible(i.Type, expected) {
 		if c.errorAssignable(i.Type, expected) {
 			i.ErrorSource = i.Type
 			cause := i.Type
@@ -745,7 +745,7 @@ func (c *checker) checkExpression(e *syntax.Expression, i *Info, expected *Type)
 			i.ScopedError = c.errorNeedsScope(cause)
 			i.Type = expected
 		} else {
-			c.error(e.Pos, "type", formatMismatch(i.Type, expected))
+			c.error(e.Pos, "type", c.assignmentMismatch(i.Type, expected))
 		}
 	}
 	if expected != nil && expected.Kind == "function" && Same(i.Type, expected) {
@@ -859,14 +859,14 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 			if callable.Type.ID == "<invalid>" {
 				return i
 			}
-			i.Type = c.specialize(callable.Type, callable.Method.Variables, args, e.Pos)
+			i.Type = c.specialize(callable.Type, callable.Method.Variables, args, e.Pos, calleeName(e))
 			c.Expressions[e.Left] = i
 			return i
 		}
 		if s := c.functionSymbol(e.Left); s != nil {
 			args := c.resolveArguments(e.Types)
 			i.Symbol = s
-			i.Type = c.specialize(s.Type, s.Variables, args, e.Pos)
+			i.Type = c.specialize(s.Type, s.Variables, args, e.Pos, calleeName(e))
 			i.TypeArgs = args
 		} else {
 			typ := c.typeExpression(e)
@@ -882,6 +882,10 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 	case syntax.KindMember:
 		if typ := c.typeExpression(e.Left); typ != nil {
+			if typ.Kind == "contract" {
+				c.error(e.Pos, "resolution", c.interfaceTypeMember(typ))
+				return i
+			}
 			cs, ok := caseOf(typ, e.Text)
 			if ok && len(cs.Fields) == 0 {
 				i.Constructor = c.instantiate(typ, nil, nil, expected, e.Pos)
@@ -895,6 +899,9 @@ func (c *checker) infer(e *syntax.Expression, expected *Type) *Info {
 		}
 		receiver := c.expression(e.Left, nil)
 		i.NoReturn = receiver.NoReturn
+		if receiver.Type.ID == "<invalid>" {
+			return i
+		}
 		for _, f := range Fields(receiver.Type) {
 			if receiver.Type.Kind == syntax.KindRecord && f.Name == e.Text && e.Text != "toString" {
 				i.Type = f.Type

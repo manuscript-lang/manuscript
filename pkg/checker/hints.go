@@ -136,6 +136,9 @@ func importHint(name string) string {
 func (c *checker) unknownName(name string) string {
 	c.unknownType = true // later "<invalid>" diagnostics only restate this one
 	message := "unknown binding " + name
+	if name == "this" && c.scope.binding("self") != nil {
+		return message + "; the receiver in an impl method is 'self'; write self instead of this"
+	}
 	if hint := didYouMean(name, c.valueNames()); hint != "" {
 		return message + hint
 	}
@@ -221,10 +224,10 @@ func typeSketch(name string, arity int) string {
 
 func (c *checker) unknownTypeMessage(name string) string {
 	message := "unknown type " + name
-	if hint := didYouMean(name, c.typeNames()); hint != "" {
+	if hint := importHint(name); hint != "" {
 		return message + hint
 	}
-	if hint := importHint(name); hint != "" {
+	if hint := didYouMean(name, c.typeNames()); hint != "" {
 		return message + hint
 	}
 	return message + "; declare it with 'type " + name + ":' / 'interface " + name + ":', declare it as a type parameter, or import it"
@@ -273,4 +276,26 @@ func signatureText(t *Type) string {
 		parts[i] = p.Name + ": " + p.Type.String()
 	}
 	return "(" + strings.Join(parts, ", ") + ") -> " + t.Result.String()
+}
+
+// assignmentMismatch adds a view hint only when the expected type itself is
+// an interface. Collections and other invariant containers need their own
+// element conversions and cannot be converted by wrapping the whole value.
+func (c *checker) assignmentMismatch(actual, expected *Type) string {
+	message := formatMismatch(actual, expected)
+	if expected.Kind != "contract" || actual == nil || actual.ID == "<invalid>" {
+		return message
+	}
+	if c.implements(actual, expected) {
+		return message + "; " + actual.String() + " implements " + expected.String() + "; write " + expected.String() + "(value: ...) to create an explicit interface view"
+	}
+	if actual.Def != nil && actual.Def.Symbol != nil && actual.Def.Symbol.Native == "" && (actual.Kind == syntax.KindRecord || actual.Kind == "alternative") {
+		return message + "; no applicable 'impl " + expected.String() + " for " + actual.String() + "' is visible; declare an implementation before creating an interface view"
+	}
+	return message + "; use a concrete value implementing " + expected.String() + " and create its explicit interface view with " + expected.String() + "(value: ...)"
+}
+
+func (c *checker) interfaceTypeMember(typ *Type) string {
+	c.unknownType = true
+	return typ.String() + " is an interface, not an alternative; declare a concrete type and 'impl " + typ.String() + " for <Type>:', then construct that concrete type"
 }

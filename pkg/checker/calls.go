@@ -63,6 +63,10 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 	if callee.Kind == syntax.KindMember {
 		alternative = c.typeExpression(callee.Left)
 		if alternative != nil {
+			if alternative.Kind == "contract" {
+				c.error(e.Pos, "resolution", c.interfaceTypeMember(alternative))
+				return i
+			}
 			var ok bool
 			cs, ok = caseOf(alternative, callee.Text)
 			if !ok {
@@ -113,7 +117,7 @@ func (c *checker) call(e *syntax.Expression, expected *Type) *Info {
 					supplied = append(supplied, sub[v.ID])
 				}
 			}
-			signature = c.specialize(signature, s.Variables, supplied, e.Pos)
+			signature = c.specialize(signature, s.Variables, supplied, e.Pos, calleeName(callee))
 			i.TypeArgs = supplied
 		} else if explicit && len(supplied) > 0 {
 			c.error(e.Pos, "type", "nongeneric function cannot take type arguments; remove the [...] after "+s.Name)
@@ -277,7 +281,7 @@ func (c *checker) arguments(args []syntax.Argument, params []Param, defaults ...
 func (c *checker) modulePosition() syntax.Position {
 	return syntax.Position{File: c.module.File, Line: 1, Column: 1}
 }
-func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position) *Type {
+func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position, name string) *Type {
 	sub := map[string]*Type{}
 	if len(vars) != len(args) {
 		c.error(pos, "type", fmt.Sprintf("generic arity mismatch; expected %d type arguments, found %d", len(vars), len(args)))
@@ -288,7 +292,7 @@ func (c *checker) specialize(t *Type, vars, args []*Type, pos syntax.Position) *
 			a = args[index]
 		}
 		if a == nil {
-			c.error(pos, "type", "cannot infer type argument "+v.Name+"; give it explicitly, e.g. f[Int](...), or annotate the expected type")
+			c.error(pos, "type", missingTypeArgumentHint(name, v.Name, vars, args))
 			a = primitive("<invalid>")
 		}
 		sub[v.ID] = a
@@ -315,7 +319,7 @@ func (c *checker) instantiate(t *Type, fields []Param, args []syntax.Argument, e
 	}
 	if expected != nil && expected.ID == t.ID && len(expected.Args) == len(vars) {
 		for index, v := range vars {
-			if sub[v.ID] == nil && inferenceTypeKnown(expected.Args[index], c.inferenceVariables) {
+			if sub[v.ID] == nil && (inferenceTypeKnown(expected.Args[index], c.inferenceVariables) || invalidType(expected.Args[index])) {
 				sub[v.ID] = expected.Args[index]
 			}
 		}
