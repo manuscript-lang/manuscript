@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `String.replace_n` with a required finite replacement cap and the existing literal/scalar, zero/negative and fault behavior; current `replace`/`replace_first` signatures remain compatible.
 - Warn with MSL107 for nested matches and keep repository examples and implementation flat, using early-exit payload bindings, compatible `try`, or small helpers. Nested matches remain valid syntax; repository checks allow deliberate, scoped syntax and semantics regressions.
 - List loops and callbacks follow Go slice range behavior without traversal copies: capture backing and initial length once, observe in-place writes, and do not extend traversal on append. Shrinking shifts/reslices without clearing valid tail values; removed references can remain in spare capacity. Explicit clones/slices and Map/Set membership snapshots retain their contracts.
 - Add MSL108 advisories for equivalent preferred collection mutation, byte-copy reversal and regex replacement names, including stored methods; preserve user methods, callable fields and existing execution.
@@ -13,6 +14,7 @@
 - Identify Decimal arithmetic overflow by operator, operands and the finite magnitude limit, without changing arithmetic or rounding.
 - Add versioned `fmt --check --json` and `test --json` results, preserving test streams and partial outcomes; display explicit and discovered fmt paths consistently.
 - Accept independent input collections and standalone directories in check, lint, and doc; aggregate deterministic reports without combining applications or changing fmt discovery.
+- Add versioned build/profile JSON results with partial artifact inventories; add profile `--out-dir` and `ms version` aliases while retaining existing spellings.
 
 - Fix standard-library data bugs: `String.upper()`/`lower()` use full Unicode case mapping (`ß` to `SS`, final sigma, `İ`); negative `split`/`replace` limits fault with the operation and parameter; `bigint.parse(max_digits: 0)` is a real zero budget; TOML and YAML parse errors report the offending line and column.
 - Update the VS Code language client and packaging dependencies; the extension now requires VS Code 1.91 or newer.

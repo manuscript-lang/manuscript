@@ -38,7 +38,7 @@ type Duration:
 
 ### Duration.add
 
-Adds another duration.
+Adds signed nanoseconds; a result outside Duration's representable range faults.
 
 ```manuscript
 fn add(right: Duration) -> Duration:

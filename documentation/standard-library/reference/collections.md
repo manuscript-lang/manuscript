@@ -24,6 +24,14 @@ impl Error for CollectionError:
     fn message() -> String:
 ```
 
+### CollectionError.OutOfRange
+
+A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
+
+```manuscript
+case OutOfRange
+```
+
 ## List {data-api-kind="Native type"}
 
 An ordered collection of values with indexing, iteration, and transformation operations.
@@ -44,6 +52,8 @@ type List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
+    fn take(count: Int) -> List[T]:
+    fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
     fn reverse() -> List[T]:
@@ -87,6 +97,15 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.drop
+
+Copies the remainder after min(count, length) into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn drop(count: Int) -> List[T]:
 ```
 
 ### List.every
@@ -219,6 +238,15 @@ Returns a new list sorted by negative/zero/positive comparator results.
 
 ```manuscript
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+```
+
+### List.take
+
+Copies the first min(count, length) elements into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn take(count: Int) -> List[T]:
 ```
 
 ### List.with_value

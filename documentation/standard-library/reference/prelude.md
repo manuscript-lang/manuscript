@@ -8,6 +8,8 @@ Names available in every module; no import required.
 
 ## Bool {data-api-kind="Type"}
 
+Boolean truth values true and false; conditions require this type.
+
 ```manuscript
 type Bool:
 ```
@@ -48,6 +50,8 @@ fn message() -> String
 ```
 
 ## Float {data-api-kind="Type"}
+
+Binary floating-point values, including signed zero, infinities and NaN.
 
 ```manuscript
 type Float:
@@ -136,6 +140,8 @@ fn hash() -> Int
 
 ## Int {data-api-kind="Type"}
 
+Signed whole numbers with checked arithmetic; overflow and division by zero fault.
+
 ```manuscript
 type Int:
     fn to_string(radix: Int) -> String:
@@ -163,6 +169,8 @@ type List[T]:
     fn with_value(index: Int, value: T) -> List[T]:
     fn without(index: Int) -> List[T]:
     fn slice(start: Int, end: Int) -> Result[List[T], CollectionError]:
+    fn take(count: Int) -> List[T]:
+    fn drop(count: Int) -> List[T]:
     fn reverse_in_place() -> List[T]:
     fn reversed() -> List[T]:
     fn reverse() -> List[T]:
@@ -206,6 +214,15 @@ Returns a shallow copy with independent list storage.
 
 ```manuscript
 fn clone() -> List[T]:
+```
+
+### List.drop
+
+Copies the remainder after min(count, length) into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn drop(count: Int) -> List[T]:
 ```
 
 ### List.every
@@ -338,6 +355,15 @@ Returns a new list sorted by negative/zero/positive comparator results.
 
 ```manuscript
 fn sorted(compare: fn(left: T, right: T) -> Int) -> List[T]:
+```
+
+### List.take
+
+Copies the first min(count, length) elements into fresh shallow List storage.
+Leaves the receiver unchanged; negative count is a programming fault.
+
+```manuscript
+fn take(count: Int) -> List[T]:
 ```
 
 ### List.with_value
@@ -540,6 +566,8 @@ fn with_entry(key: T, value: U) -> Map[T, U]:
 
 ## Never {data-api-kind="Type"}
 
+The return type of computations that cannot return a value, such as panic.
+
 ```manuscript
 type Never:
 ```
@@ -564,6 +592,30 @@ type Optional[T]:
     fn ok_or_else[E](create: fn() -> E) -> Result[T, E]:
 ```
 
+### Optional.none
+
+An absent value with no payload; no T needs to be constructed.
+
+```manuscript
+case none
+```
+
+### Optional.some
+
+A present payload, retained by reference when T is mutable.
+
+```manuscript
+case some(value: T)
+```
+
+### Optional.some.value
+
+The contained value; unwrap and matching return this original payload.
+
+```manuscript
+value: T
+```
+
 ### Optional.and_then[U]
 
 Calls transform only when present, returning its Optional unchanged.
@@ -582,7 +634,7 @@ fn is_none() -> Bool:
 
 ### Optional.is_some
 
-Reports whether this value contains a payload.
+Returns true for some(value), and false for none.
 
 ```manuscript
 fn is_some() -> Bool:
@@ -663,6 +715,38 @@ type Result[T, E]:
     fn to_optional() -> Optional[T]:
 ```
 
+### Result.error
+
+An expected failure value; it is distinct from faults and cancellation.
+
+```manuscript
+case error(cause: E)
+```
+
+### Result.ok
+
+A successful result, retaining its payload without a deep copy.
+
+```manuscript
+case ok(value: T)
+```
+
+### Result.error.cause
+
+The original domain error, retained through compatible Result propagation.
+
+```manuscript
+cause: E
+```
+
+### Result.ok.value
+
+The successful value returned by unwrap, matching, or propagation.
+
+```manuscript
+value: T
+```
+
 ### Result.and_then[U]
 
 Calls transform only on success. Its result keeps the same error type.
@@ -737,6 +821,8 @@ fn unwrap_or_else(create: fn(cause: E) -> T) -> T:
 
 ## String {data-api-kind="Type"}
 
+UTF-8 text indexed by Unicode scalar values; byte_length counts encoded bytes instead.
+
 ```manuscript
 type String:
     fn length() -> Int:
@@ -752,6 +838,7 @@ type String:
     fn lower() -> String:
     fn repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]:
     fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
+    fn replace_n(old: String, new: String, max_replacements: Int) -> String:
     fn replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String:
     fn scalar_length() -> Int:
     fn scalar_values() -> List[Int]:
@@ -942,12 +1029,23 @@ fn replace_all(old: String, new: String, max_bytes: Optional[Int] = none) -> Res
 
 ### String.replace_first
 
-Replaces the first occurrence when the cap is omitted or none; an explicit cap can replace more.
+Transitional compatibility name: omitted or none replaces the first occurrence; an explicit cap can replace more.
+Use replace_n for a required finite cap; this retained signature has not become a strict first-only operation.
 An empty old matches at scalar boundaries, and inserted text is not searched again.
 Zero changes nothing; negative caps retain replace's programming fault.
 
 ```manuscript
 fn replace_first(old: String, new: String, max_replacements: Optional[Int] = none) -> String
+```
+
+### String.replace_n
+
+Replaces at most the required number of nonoverlapping literal occurrences; zero leaves text unchanged.
+Empty old matches at scalar boundaries, inserted text is not rescanned, and negative caps retain replace's programming fault.
+The count limits replacements, not UTF-8 output bytes; there is no additional allocation budget.
+
+```manuscript
+fn replace_n(old: String, new: String, max_replacements: Int) -> String
 ```
 
 ### String.reverse
@@ -1058,6 +1156,8 @@ fn upper() -> String
 ```
 
 ## Unit {data-api-kind="Type"}
+
+The single value unit, used when an operation returns no useful payload.
 
 ```manuscript
 type Unit:
