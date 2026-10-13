@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
@@ -24,6 +26,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
