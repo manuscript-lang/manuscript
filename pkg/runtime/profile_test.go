@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+	"strings"
 	"testing"
 )
 
@@ -106,7 +107,7 @@ func TestSourceProfileBoundaries(t *testing.T) {
 				if cpu != "" && (!ok || label != "work.ms:3:1") {
 					t.Fatal("work inherited the submitting source", label)
 				}
-				if ctx.Lifetime != root.Lifetime || ctx.Host != root.Host || ctx.Context.Done() != root.Context.Done() {
+				if ctx.Lifetime != root.Lifetime || ctx.Host != root.Host || ctx.Context.Done() != root.Context.Done() || ctx.calls != root.calls {
 					t.Fatal("work profiling changed execution identity")
 				}
 				return int64(9)
@@ -119,6 +120,9 @@ func TestSourceProfileBoundaries(t *testing.T) {
 				}
 				if active == (ctx == root) {
 					t.Fatal("unexpected entry derivation")
+				}
+				if ctx.calls != root.calls {
+					t.Fatal("source profiling reset call accounting")
 				}
 				if nested.Body(ctx, []Value{int64(1000)}) != int64(42) {
 					t.Fatal("source return changed")
@@ -216,5 +220,40 @@ func TestNestedSourceProfilingDoesNotAllocate(t *testing.T) {
 	})
 	if exit := Profile(filepath.Join(t.TempDir(), "cpu.pprof"), "", "", func() int { return int(Invoke(RootExecution(), entry, nil).(int64)) }); exit != 0 {
 		t.Fatal(exit)
+	}
+}
+
+func TestProfilingPreservesCallDepthLimit(t *testing.T) {
+	for _, mode := range []string{"cpu", "trace", "both"} {
+		t.Run(mode, func(t *testing.T) {
+			root := RootExecution()
+			root.calls.depth.Store(MaxCallDepth - 1)
+			root.calls.traceFull.Store(true)
+			inner := NewSourceFunction(nil, "Int", "inner.ms:2:1", func(_ *Execution, _ []Value) Value {
+				t.Fatal("profiled call crossed the source depth limit")
+				return int64(0)
+			})
+			entry := NewSourceFunction(nil, "Int", "entry.ms:1:1", func(ctx *Execution, _ []Value) Value {
+				if ctx.calls != root.calls || ctx.calls.depth.Load() != MaxCallDepth || !ctx.calls.traceFull.Load() {
+					t.Fatal("attribution replaced call/fault accounting")
+				}
+				failure := recovered(func() { Invoke(ctx, inner, nil) })
+				if fault, ok := failure.(Fault); !ok || !strings.Contains(fault.Message, "call depth limit exceeded") {
+					t.Fatal("profiling changed depth-limit fault", failure)
+				}
+				return int64(0)
+			})
+			dir := t.TempDir()
+			var cpu, traceFile string
+			if mode != "trace" {
+				cpu = filepath.Join(dir, "cpu.pprof")
+			}
+			if mode != "cpu" {
+				traceFile = filepath.Join(dir, "trace.out")
+			}
+			if exit := Profile(cpu, "", traceFile, func() int { return int(Invoke(root, entry, nil).(int64)) }); exit != 0 || root.calls.depth.Load() != MaxCallDepth-1 {
+				t.Fatal("profiled call did not restore depth", exit, root.calls.depth.Load())
+			}
+		})
 	}
 }

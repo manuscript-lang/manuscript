@@ -115,7 +115,11 @@ func profileSource(ctx *Execution, position string, args []Value, body func(*Exe
 			region := trace.StartRegion(boundary, "source:"+position)
 			defer region.End()
 		}
-		value = body(inherit(ctx, boundary), args)
+		// Attribution stays on the same execution/goroutine. Inherit creates
+		// fresh call accounting for work; profiling must keep that state.
+		execution := *ctx
+		execution.Context = boundary
+		value = body(&execution, args)
 	}
 	if cpuProfiling.Load() {
 		pprof.Do(ctx.Context, pprof.Labels("ms.source", position), run)
@@ -135,7 +139,11 @@ func profileWork(ctx *Execution, kind, id string, body func(*Execution) Value) (
 		defer task.End()
 		trace.Log(taskContext, "ms.operation", id)
 	}
-	run := func(labeled context.Context) { value = body(inherit(ctx, labeled)) }
+	run := func(labeled context.Context) {
+		execution := *ctx
+		execution.Context = labeled
+		value = body(&execution)
+	}
 	if cpuProfiling.Load() {
 		pprof.Do(taskContext, pprof.Labels("ms.work", kind, "ms.operation", id), run)
 	} else {
