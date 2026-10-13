@@ -323,7 +323,7 @@ func Run(args []string) int {
 	if watch {
 		return watchProgram(command, filename, options, kind, "", arguments)
 	}
-	result := compiler.CompileFile(filename, options)
+	result := compiler.CompileFileForBuild(filename, options, kind)
 	if !result.Success() {
 		if structured && command == "test" {
 			document := newTestResult(result)
