@@ -132,6 +132,7 @@ func (g *generator) statement(s *syntax.Statement) []ast.Stmt {
 			contract = g.key(method.Contract)
 		}
 		out := []ast.Stmt{define(b.ID, g.expression(s.Value)), discard(ident(b.ID)), define(cleanup, call(selector(ident("cleanupStack"), "PushContract"), ident("ctx"), ident(b.ID), contract, g.typeScope(b.Type)))}
+		g.needsCleanup = true
 		out = append(out, body...)
 		out = append(out, evaluated(call(selector(ident(cleanup), "Run"))))
 		return []ast.Stmt{block(out...)}

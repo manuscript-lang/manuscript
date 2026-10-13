@@ -2,6 +2,7 @@
 package nativeabi
 
 var ReceiverBindings = map[string]map[string]string{
+	"Decimal":     {"round": "decimal/round", "to_fixed": "decimal/to_fixed"},
 	"HttpRequest": {"header": "http/request_header"},
 	"TaskGroup": {
 		"start": "tasks/task_group_start",

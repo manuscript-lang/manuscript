@@ -1,0 +1,55 @@
+package main
+
+import (
+ "context"
+ "math"
+ "reflect"
+ "testing"
+ rt "github.com/manuscript-lang/manuscript/pkg/runtime"
+)
+
+var productionResult rt.Value
+func productionCases(ctx *rt.Execution, limit int64) []struct{name string; fn rt.Function; args []rt.Value; want int64} {
+ resource:=rt.ConstructWithContext(ctx,@@Resource@@,[]rt.Argument{{Name:"value",Value:int64(0)}})
+ return []struct{name string; fn rt.Function; args []rt.Value; want int64}{
+  {"EmptyCleanup",@@empty@@.(rt.Function),[]rt.Value{int64(1)},1},
+  {"KeptCleanup",@@kept@@.(rt.Function),[]rt.Value{resource},1},
+  {"IntEquality1024",@@ints@@.(rt.Function),[]rt.Value{int64(512),int64(512),limit,resource},limit},
+  {"FloatEquality1024",@@floats@@.(rt.Function),[]rt.Value{float64(1.25),float64(1.25),limit,resource},limit},
+  {"BoolEquality1024",@@bools@@.(rt.Function),[]rt.Value{true,true,limit,resource},limit},
+  {"StringEquality1024",@@strings@@.(rt.Function),[]rt.Value{"λ🙂","λ🙂",limit,resource},limit},
+ }
+}
+func productionFailure(body func())(failure any) {defer func(){failure=recover()}();body();return}
+func TestBenchmarkParity(t *testing.T) {
+ initialize()
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ for _,limit:=range []int64{0,1,32,1024} {
+  for _,test:=range productionCases(ctx,limit) {
+   if got:=rt.IntValue(test.fn.Body(ctx,test.args));got!=test.want {t.Fatalf("%s=%d want %d",test.name,got,test.want)}
+  }
+ }
+ resource:=productionCases(ctx,0)[1].args[0]
+ for _,pair:=range [][2]float64{{math.NaN(),math.NaN()},{0,math.Copysign(0,-1)},{math.Inf(1),math.Inf(1)},{math.Inf(1),math.Inf(-1)}} {
+  want:=int64(0);if pair[0]==pair[1] {want=32}
+  if got:=@@floats@@.(rt.Function).Body(ctx,[]rt.Value{pair[0],pair[1],int64(32),resource});got!=want {t.Fatalf("IEEE pair %v=%v want %d",pair,got,want)}
+ }
+ cancelled:=rt.RootExecution();defer rt.FinishExecution(cancelled)
+ var cancel context.CancelFunc
+ cancelled.Context,cancel=context.WithCancel(cancelled.Context);cancel()
+ expected:=productionFailure(func(){rt.CheckCancelled(cancelled)})
+ for _,test:=range productionCases(ctx,32) {
+  got:=productionFailure(func(){test.fn.Body(cancelled,test.args)})
+  if got==nil || !reflect.DeepEqual(got,expected) {t.Fatalf("%s cancellation changed: %v",test.name,got)}
+ }
+}
+func BenchmarkLowering(b *testing.B) {
+ initialize()
+ ctx:=rt.RootExecution();defer rt.FinishExecution(ctx)
+ for _,test:=range productionCases(ctx,1024) {
+  b.Run(test.name,func(b *testing.B){
+   b.ReportAllocs()
+   for b.Loop() {productionResult=test.fn.Body(ctx,test.args)}
+  })
+ }
+}
