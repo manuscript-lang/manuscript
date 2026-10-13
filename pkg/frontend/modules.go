@@ -11,7 +11,8 @@ import (
 )
 
 // LoadFile resolves a module or manifest, then parses each reachable local
-// module once. Standard declarations are supplied by the checker.
+// module once, adding discovered project modules when requested.
+// Standard declarations are supplied by the checker.
 func LoadFile(filename string, options Options) Graph {
 	config, manifest, err := sourceProject(filename)
 	if err != nil {
@@ -46,41 +47,22 @@ func LoadFile(filename string, options Options) Graph {
 		graph.Diagnostics = append(graph.Diagnostics, diagnostic(filename, "resolution", err))
 		return graph
 	}
-	if manifest && options.Tests {
-		for _, test := range discoverTests(config.Root) {
-			canonical, err := project.SourcePath(config.Root, test, overlay)
+	if manifest && (options.Tests || options.ProjectSources) {
+		files, err := project.DiscoverModules(config, options.ProjectSources)
+		if err != nil {
+			graph.Diagnostics = append(graph.Diagnostics, diagnostic(filename, "resolution", err))
+		}
+		for _, file := range files {
+			canonical, err := project.SourcePath(config.Root, file, overlay)
 			if err == nil {
 				_, err = loader.visit(canonical)
 			}
 			if err != nil {
-				graph.Diagnostics = append(graph.Diagnostics, diagnostic(test, "resolution", err))
+				graph.Diagnostics = append(graph.Diagnostics, diagnostic(file, "resolution", err))
 			}
 		}
 	}
 	return graph
-}
-
-// discoverTests finds test.ms and *_test.ms files below a project root,
-// skipping hidden and dependency directories.
-func discoverTests(root string) []string {
-	var found []string
-	filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		name := entry.Name()
-		if entry.IsDir() {
-			if path != root && (strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules") {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if name == "test.ms" || strings.HasSuffix(name, "_test.ms") {
-			found = append(found, path)
-		}
-		return nil
-	})
-	return found
 }
 
 func sourceProject(filename string) (project.Project, bool, error) {
